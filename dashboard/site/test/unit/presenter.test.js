@@ -118,8 +118,9 @@ async function activatePage(rendered, pageId) {
 }
 
 describe('dashboard DOM provenance', () => {
-  it('leaves factory queries to independently bound reactive elements', () => {
+  it('includes the declarative campaign view in the Overview page subscription', () => {
     expect(dashboardPageSourceNames(authoritativeDashboardDocument, 'overview')).toEqual([
+      'campaign-inventory',
       'data-health-collections'
     ]);
     const rendered = renderDashboardView({
@@ -128,13 +129,13 @@ describe('dashboard DOM provenance', () => {
       loadPageSources: () => new Promise(() => {})
     });
     const overview = rendered.querySelector('[data-page-id="overview"]');
-    expect(overview?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(2);
+    expect(overview?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(0);
     expect(overview?.querySelector('.dashboard-lazy-view')).toBeNull();
-    expect(overview?.querySelector('.dashboard-view-skeleton')).toBeNull();
+    expect(overview?.querySelector('.dashboard-view-skeleton')).not.toBeNull();
     disposeDashboard(rendered);
   });
 
-  it('keeps independently bound Overview elements mounted when the page subscription resolves', async () => {
+  it('renders the factory and declarative campaign cards when the page subscription resolves', async () => {
     let resolvePageSources = () => {};
     const loadPageSources = vi.fn(() => new Promise((resolve) => {
       resolvePageSources = () => resolve({
@@ -143,6 +144,19 @@ describe('dashboard DOM provenance', () => {
           rows: [],
           metadata: {
             'source-id': 'data-health-collections',
+            'source-kind': 'canonical-query',
+            'as-of': '2026-09-17T00:00:00Z',
+            'retrieved-at': '2026-09-17T00:00:00Z',
+            availability: 'empty',
+            completeness: 'complete',
+            freshness: 'fresh'
+          }
+        },
+        'campaign-inventory': {
+          source: 'campaign-inventory',
+          rows: [],
+          metadata: {
+            'source-id': 'campaign-inventory',
             'source-kind': 'canonical-query',
             'as-of': '2026-09-17T00:00:00Z',
             'retrieved-at': '2026-09-17T00:00:00Z',
@@ -159,15 +173,16 @@ describe('dashboard DOM provenance', () => {
       loadPageSources
     });
     const overviewBefore = rendered.querySelector('[data-page-id="overview"]');
-    const floorBefore = overviewBefore?.querySelector('.factory-floor');
+    expect(overviewBefore?.querySelector('.dashboard-view-skeleton')).not.toBeNull();
 
     await vi.waitFor(() => expect(loadPageSources).toHaveBeenCalled());
     resolvePageSources();
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(rendered.querySelector('[data-page-id="overview"]')).toBe(overviewBefore);
-    expect(rendered.querySelector('.factory-floor')).toBe(floorBefore);
+    expect(rendered.querySelector('[data-page-id="overview"]')).not.toBe(overviewBefore);
+    expect(rendered.querySelector('.factory-floor')).not.toBeNull();
+    expect(rendered.querySelector('[data-view-id="overview-campaigns"]')).not.toBeNull();
     disposeDashboard(rendered);
   });
 
@@ -1370,7 +1385,7 @@ describe('presenter built-in and custom pages', () => {
 
     const page = await activatePage(rendered, 'overview');
     expect(page?.querySelector(':scope > .custom-view-grid')).not.toBeNull();
-    expect(page?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(2);
+    expect(page?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(3);
     expect(page?.querySelectorAll('.factory-station')).toHaveLength(4);
     expect(page?.querySelector('.factory-intro h2')?.textContent).toBe('Your factory is idle.');
     expect(page?.querySelector('.notifications-inbox')).toBeNull();

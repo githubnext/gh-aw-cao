@@ -1619,10 +1619,6 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .factory-station small { margin-top: 5px; color: var(--muted); font-size: .6875rem; }
 .factory-station a { min-width: 24px; min-height: 24px; display: inline-flex; align-items: center; justify-content: center; color: inherit; text-decoration: none; }
 .factory-station a:hover { color: var(--accent); text-decoration: underline; }
-.factory-campaigns { position: relative; z-index: 1; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border); }
-.factory-campaigns h3 { margin: 0 0 14px; font-size: 1rem; }
-.factory-campaign-list { margin: 0; padding: 0; }
-.factory-campaign-empty { margin: 0; color: var(--muted); font-size: .875rem; }
 .factory-rhythm { min-width: 0; display: grid; grid-template-columns: minmax(180px, .35fr) minmax(0, 1fr); align-items: center; gap: 32px; padding: 24px 40px; border-bottom: 1px solid var(--border); background: var(--canvas); }
 .factory-intro .factory-rhythm { grid-template-columns: minmax(0, 1fr); align-self: stretch; gap: 16px; padding: 0; border: 0; background: transparent; }
 .factory-rhythm-heading { display: grid; gap: 5px; }

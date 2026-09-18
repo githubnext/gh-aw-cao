@@ -2,10 +2,6 @@ import { formatCount } from './count-formatters.js';
 import { bindFactorySources, createFactoryMetrics, createFactoryScope, factoryStationLabel } from './factory-elements.js';
 import { renderFactoryStation } from './factory-station.js';
 import { renderReactiveGrid } from './reactive-grid.js';
-import { h, keyed } from '../dom.js';
-import { effect } from '../reactive.js';
-import { findLink } from './link-content.js';
-import { octicon } from '../octicons.js';
 
 /** @typedef {{ operations: number, live: number, review: number }} Motion */
 /** @typedef {{ rows: () => Record<string, unknown>[], pending: () => boolean, unavailable: () => boolean }} SourceBinding */
@@ -82,7 +78,7 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
     { id: 'dispatches', element: dispatches.element },
     { id: 'value-gains', element: valueGains.element }
   ];
-  const floor = renderReactiveGrid({
+  return renderReactiveGrid({
     className: 'factory-floor',
     activeClassName: 'factory-floor-active',
     listClassName: 'factory-stations',
@@ -104,8 +100,6 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
     },
     signal: scope.signal
   });
-  floor.append(renderFactoryCampaigns(sources['campaign-inventory'], scope, 'Campains'));
-  return floor;
 }
 
 const FLOOR_SOURCE_NAMES = [
@@ -115,8 +109,7 @@ const FLOOR_SOURCE_NAMES = [
   'overview-delivery-summary',
   'overview-value-summary',
   'overview-registered-repository-summary',
-  'overview-worker-summary',
-  'campaign-inventory'
+  'overview-worker-summary'
 ];
 
 /**
@@ -142,60 +135,4 @@ export function renderFactoryFloorElement(context) {
   );
   scope.bind(rendered);
   return rendered;
-}
-
-/**
- * @param {SourceBinding | undefined} source
- * @param {FactoryFloorScope} scope
- * @param {string} heading
- */
-function renderFactoryCampaigns(source, scope, heading) {
-  const cards = keyed([], renderFactoryCampaignCard, (row, index) => String(row.campaign ?? index));
-  const list = h('ol', { className: 'factory-campaign-list entity-card-list-grid' }, cards);
-  const empty = h('p', { className: 'factory-campaign-empty' }, 'No campaigns discovered.');
-  const root = h(
-    'section',
-    { className: 'factory-campaigns', 'aria-labelledby': 'factory-campaigns-heading' },
-    h('h3', { id: 'factory-campaigns-heading' }, heading),
-    list,
-    empty
-  );
-  effect(() => {
-    const rows = source?.rows() ?? [];
-    cards.items = rows;
-    cards.render();
-    const pending = source?.pending() ?? false;
-    root.toggleAttribute('aria-busy', pending);
-    empty.hidden = pending || rows.length > 0;
-    empty.textContent = source?.unavailable() ? 'Campaign data is unavailable.' : 'No campaigns discovered.';
-  }, { signal: scope.signal });
-  return root;
-}
-
-/** @param {Record<string, unknown>} row */
-function renderFactoryCampaignCard(row) {
-  const name = String(row['campaign-name'] ?? row.campaign ?? 'Campaign');
-  const link = findLink(row, 'campaign-dashboard-link');
-  const title = link ? h('a', { href: link.href }, name) : name;
-  const details = [
-    ['Workflows', row.workflows],
-    ['Runs', row.runs],
-    ['Dispatches', row.dispatches],
-    ['AIC', row.aic]
-  ];
-  return h(
-    'li',
-    { className: 'issue-list-card entity-card-list-card' },
-    h('span', { className: 'issue-list-card-icon', 'aria-hidden': 'true' }, octicon('goal')),
-    h(
-      'div',
-      { className: 'issue-list-card-content' },
-      h('div', { className: 'issue-list-card-title entity-card-list-title' }, title),
-      h(
-        'dl',
-        { className: 'issue-list-card-meta', 'aria-label': `${name} metrics` },
-        details.map(([label, value]) => h('div', null, h('dt', null, label), h('dd', null, formatCount(Number(value) || 0))))
-      )
-    )
-  );
 }

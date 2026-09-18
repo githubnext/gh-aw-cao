@@ -76,19 +76,7 @@ it('renders the factory floor from its independent JSON view and configuration',
     'overview-delivery-summary': source('overview-delivery-summary', [{ 'delivered-repositories': 3 }]),
     'overview-value-summary': source('overview-value-summary', [{ 'value-gains': 1 }]),
     'overview-registered-repository-summary': source('overview-registered-repository-summary', [{ 'registered-repositories': 6 }]),
-    'overview-worker-summary': source('overview-worker-summary', [{ workers: 2 }]),
-    'campaign-inventory': source('campaign-inventory', [{
-      campaign: 'aw-doctor',
-      'campaign-name': 'AW Doctor',
-      'campaign-dashboard-link': {
-        'dashboard-href': '#page-campaign-detail?campaign=aw-doctor',
-        'dashboard-label': 'View AW Doctor campaign dashboard'
-      },
-      workflows: 3,
-      runs: 8,
-      dispatches: 4,
-      aic: 12
-    }])
+    'overview-worker-summary': source('overview-worker-summary', [{ workers: 2 }])
   }, {
     animate: 'number',
     labels: {
@@ -107,9 +95,6 @@ it('renders the factory floor from its independent JSON view and configuration',
   expect(rendered?.querySelector('.factory-station:nth-child(3) small a')?.getAttribute('href'))
     .toBe('#page-dispatches?campaign-worker-dispatches.status=failure');
   expect(rendered?.getAttribute('aria-label')).toContain('6 repositories registered with 3 delivered to');
-  expect(rendered?.querySelector('.factory-campaigns h3')?.textContent).toBe('Campains');
-  expect(rendered?.querySelector('.factory-campaigns a')?.getAttribute('href'))
-    .toBe('#page-campaign-detail?campaign=aw-doctor');
 });
 
 it('keeps unavailable registered repository evidence distinct from zero', () => {
@@ -120,8 +105,7 @@ it('keeps unavailable registered repository evidence distinct from zero', () => 
     'overview-delivery-summary': source('overview-delivery-summary', [{ 'delivered-repositories': 3 }]),
     'overview-value-summary': source('overview-value-summary', [{ 'value-gains': 0 }]),
     'overview-registered-repository-summary': source('overview-registered-repository-summary', [], { availability: 'unavailable' }),
-    'overview-worker-summary': source('overview-worker-summary', [{ workers: 0 }]),
-    'campaign-inventory': source('campaign-inventory', [])
+    'overview-worker-summary': source('overview-worker-summary', [{ workers: 0 }])
   }));
 
   expect(rendered?.querySelector('.factory-station')?.textContent).toBe('Repositories registeredUnavailable');
@@ -159,8 +143,7 @@ it('renders both elements immediately and updates only widgets whose query resol
     'overview-delivery-summary',
     'overview-value-summary',
     'overview-registered-repository-summary',
-    'overview-worker-summary',
-    'campaign-inventory'
+    'overview-worker-summary'
   ]);
   expect(requests.every(({ pageId }) => pageId === 'overview')).toBe(true);
 
