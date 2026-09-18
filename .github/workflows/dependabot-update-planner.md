@@ -170,7 +170,7 @@ safe-outputs:
   create-issue:
     target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
     title-prefix: "[dependabot:update-planner] "
-    labels: [dependabot, dependabot:update-planner]
+    labels: [dependabot]
     deduplicate-by-title: true
     require-temporary-id: true
     max: 13

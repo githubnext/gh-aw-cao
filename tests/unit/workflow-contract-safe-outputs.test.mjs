@@ -131,7 +131,7 @@ test("Dependabot worker maintains a durable parent and one-PR child tasks withou
   assert.equal(outputs["create-issue"].max, 13);
   assert.equal(outputs["create-issue"]["deduplicate-by-title"], true);
   assert.equal(outputs["create-issue"]["require-temporary-id"], true);
-  assert.deepEqual(outputs["create-issue"].labels, ["dependabot", "dependabot:update-planner"]);
+  assert.deepEqual(outputs["create-issue"].labels, ["dependabot"]);
   assert.equal(outputs["create-issue"].expires, undefined);
   assert.equal(outputs["update-issue"].body, true);
   assert.equal(outputs["update-issue"].max, 13);
