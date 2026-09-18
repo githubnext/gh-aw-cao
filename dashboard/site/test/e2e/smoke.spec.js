@@ -3519,6 +3519,8 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   await expect(page.locator('[data-page-id="campaign-issues"] [data-view-id="campaign-issue-table"] tbody tr')).toHaveCount(1);
   await expect(page.locator('[data-page-id="campaign-issues"] [data-view-id="campaign-issue-table"]')).toContainText('Review worker finding');
   await expect(page.locator('[data-page-id="campaign-issues"] [data-view-id="campaign-issue-table"]')).not.toContainText('Review ambient context proposal');
+  await campaignNavigation.getByRole('link', { name: 'Overview' }).click();
+  await expect(page.locator('[data-page-id="campaign-detail"]')).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(campaignNavigation).toHaveCSS('display', 'grid');
@@ -3550,8 +3552,9 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   await expect(campaignInsights.locator('.campaign-value-history')).toContainText('Quality');
   await expect(campaignInsights.locator('.campaign-value-history')).toContainText('Efficiency');
   await mobileBack.click();
-  await expect(page).toHaveURL(/#page-campaign-issues\?campaign=ambient-context$/);
-  await expect(page.locator('[data-page-id="campaign-issues"]')).toBeVisible();
+  await expect(page).toHaveURL(/#page-campaign-detail\?campaign=ambient-context$/);
+  await expect(page.locator('[data-page-id="campaign-detail"]')).toBeVisible();
+  await expect(campaignNavigation).toBeVisible();
 });
 
 test('DLS-PAGE-017 renders an editable filter bar and applies changes automatically', async ({ page }) => {
