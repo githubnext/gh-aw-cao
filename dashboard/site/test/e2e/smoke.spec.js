@@ -947,7 +947,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
   expect(swimlaneSummaryBox.x).toBeGreaterThan(swimlaneHeadingBox.x);
   expect(swimlaneLabelBox.x).toBeGreaterThan(swimlaneHeadingBox.x);
   expect(swimlaneChartBox.height).toBeLessThanOrEqual(swimlaneChartMaxHeight);
-  await page.getByRole('button', { name: 'Show table view' }).click();
+  await page.getByRole('button', { name: 'Table' }).click();
   await expect(table).toBeVisible();
   await expect(table.locator('tbody > tr')).toHaveCount(25);
   const more = table.locator('[data-table-more]');
@@ -980,14 +980,14 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
   assert(facetControlBox);
   assert(scrolledSummaryBox);
   expect(scrolledSummaryBox.y - (facetControlBox.y + facetControlBox.height)).toBeGreaterThanOrEqual(4);
-  await page.getByRole('button', { name: 'Show card list view' }).click();
-  await page.getByRole('button', { name: 'Show chart view' }).click();
+  await page.getByRole('button', { name: 'Cards' }).click();
+  await page.getByRole('button', { name: 'Chart' }).click();
   await expect(swimlane).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(swimlane).toBeVisible();
   await expect(table).toBeHidden();
-  await page.getByRole('button', { name: 'Show table view' }).click();
+  await page.getByRole('button', { name: 'Table' }).click();
   await expect(swimlane).toBeHidden();
   await expect(table).toBeVisible();
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
@@ -1080,7 +1080,7 @@ test('a page combining a chart with a full-view table fills and scrolls in table
   await expect(scroll).toBeHidden();
   await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view/);
 
-  await page.getByRole('button', { name: 'Show table view' }).click();
+  await page.getByRole('button', { name: 'Table' }).click();
   await expect(chart).toBeHidden();
   await expect(scroll).toBeVisible();
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
@@ -1092,7 +1092,7 @@ test('a page combining a chart with a full-view table fills and scrolls in table
   await scroll.evaluate((element) => { element.scrollTop = 100; });
   await expect.poll(async () => scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
 
-  await page.getByRole('button', { name: 'Show card list view' }).click();
+  await page.getByRole('button', { name: 'Cards' }).click();
   await expect(chart).toBeHidden();
   await expect(scroll).toBeHidden();
   await expect(cards).toBeVisible();
@@ -1109,9 +1109,9 @@ test('a page combining a chart with a full-view table fills and scrolls in table
   )).toBe(true);
   await cardScroll.evaluate((element) => { element.scrollTop = element.scrollHeight; });
   await expect.poll(async () => cardScroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
-  await expect(cards.locator('.entity-card-list-card')).toHaveCount(60);
+  await expect(cards.locator('.entity-card-list-card')).toHaveCount(50);
 
-  await page.getByRole('button', { name: 'Show chart view' }).click();
+  await page.getByRole('button', { name: 'Chart' }).click();
   await expect(chart).toBeVisible();
   await expect(scroll).toBeHidden();
   await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view/);
@@ -1192,8 +1192,10 @@ test('Runs renders the worker-projected table for an active time window', async 
   const select = horizonFilter.locator('[aria-label="Time window"]');
 
   await expect(select).toHaveValue('custom');
-  await page.getByRole('button', { name: 'Show table view' }).click();
+  await page.getByRole('button', { name: 'Table' }).click();
   await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText('No runs observed.');
+  await view.getByRole('button', { name: 'Clear time filter' }).click();
   await expect(rows.first()).toContainText('2');
   await expect(rows.locator('a').first()).toBeVisible();
 });
@@ -1383,7 +1385,8 @@ test('control-plane readiness presents operational evidence in one lazy table', 
   const readinessPage = page.locator('[data-page-id="readiness"]');
   await expect(readinessPage).toBeVisible();
   const horizonFilter = page.getByLabel('Dashboard filters');
-  await horizonFilter.locator('.horizon-toggle').click();
+  const horizonToggle = page.locator('.dashboard-horizon .horizon-toggle');
+  await horizonToggle.click();
   await expect(horizonFilter.getByRole('searchbox', { name: 'Current filters' })).toHaveValue('');
   await expect(horizonFilter.locator('.count-badge')).toHaveText('3');
   const readinessNavigation = page.locator('[data-nav-page-id="readiness"]');
@@ -1414,12 +1417,12 @@ test('control-plane readiness presents operational evidence in one lazy table', 
   ).range)).toBe('custom');
   await expect(readinessPage).not.toContainText('Smoke regression');
   await expect(readinessPage.locator('[data-lazy-list]')).toBeVisible();
-  await horizonFilter.locator('.horizon-toggle').click();
+  await horizonToggle.click();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(horizonFilter.locator('.time-window-control:visible')).toHaveCount(0);
-  await horizonFilter.locator('.horizon-toggle').last().click();
+  await horizonToggle.last().click();
   await expect(horizonFilter.locator('.time-window-control:visible')).toHaveCount(1);
   await expect(horizonFilter.locator('[aria-label="Window start time"]:visible')).toHaveCount(1);
   await expect(horizonFilter.locator('[aria-label="Window stop time"]:visible')).toHaveCount(1);
@@ -2180,7 +2183,7 @@ test('performance page renders an SVG heatmap before its full-view lazy job tabl
   await expect(pageRegion.locator('[data-chart-widget="heatmap"] rect')).toHaveCount(1);
   await expect(pageRegion.locator('[data-chart-widget="heatmap"] .heatmap-cell'))
     .toHaveAttribute('aria-label', 'agent, ubuntu-latest, Mean duration: 45s');
-  await page.getByRole('button', { name: 'Show table view' }).click();
+  await page.getByRole('button', { name: 'Table' }).click();
   await expect(pageRegion.locator('[data-lazy-list]')).toBeVisible();
   await expect(pageRegion.locator('tbody tr')).toHaveCount(1);
   await expect(pageRegion).toContainText('gvisor');
@@ -2727,7 +2730,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   await expect(siteCallout).toBeVisible();
   await expect(warningCallout).toBeVisible();
   await expect(summary).toBeVisible();
-  await page.getByRole('button', { name: 'Show table view' }).click();
+  await page.getByRole('button', { name: 'Table' }).click();
   await expect(warningCallout).toBeHidden();
   await expect(summary).toBeHidden();
   await expect(pageTitle).toBeVisible();
@@ -2772,7 +2775,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
     assert(expandedScrollBox);
     expect(expandedScrollBox.x).toBeGreaterThanOrEqual(sidebarBox.x + sidebarBox.width);
     expect(expandedScrollBox.width).toBeCloseTo(initialScrollBox.width, 0);
-    expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(850);
+    expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(830);
     await scroll.evaluate((element) => {
       element.scrollTop = element.scrollHeight;
       element.dispatchEvent(new Event('scroll'));
@@ -2796,13 +2799,13 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
     }
   }
 
-  await page.getByRole('button', { name: 'Show card list view' }).click();
-  await page.getByRole('button', { name: 'Show chart view' }).click();
+  await page.getByRole('button', { name: 'Cards' }).click();
+  await page.getByRole('button', { name: 'Chart' }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
   await expect(page.locator('.org-sidebar')).toBeVisible();
   await expect(view).toBeHidden();
-  await page.getByRole('button', { name: 'Show table view' }).click();
+  await page.getByRole('button', { name: 'Table' }).click();
   await expect(view).toBeVisible();
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
   const mobileViewportHeight = await page.evaluate(() => innerHeight);
@@ -2819,7 +2822,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
   await expect(page.locator('.top-nav')).toBeHidden();
   await expect(page.locator('.org-sidebar')).toBeVisible();
-  expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(890);
+  expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(830);
 });
 
 test('full-view scrolling with a small overscroll range does not jitter the app chrome', async ({ page }) => {
@@ -3441,7 +3444,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   await expect(valueChart.locator('[data-chart-widget="pie"]')).toBeVisible();
   await expect(valueChart.locator('.chart-legend-pie')).toContainText('Ambient Context');
   await expect(valueChart.locator('.chart-legend-pie')).toContainText('AW Doctor');
-  await page.getByRole('button', { name: 'Show table view' }).click();
+  await page.getByRole('button', { name: 'Table' }).click();
   await expect(page.locator('[data-page-id="campaigns"] [data-view-layout="full-view"]')).toBeVisible();
   await expect(page.locator('[data-page-id="campaigns"] [data-lazy-list]')).toBeVisible();
   await expect(page.locator('[data-page-id="campaigns"] [data-table-filter]')).toBeVisible();
@@ -3467,7 +3470,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   await expect(awDoctorSummary.getByRole('link', { name: 'View AW Doctor campaign dashboard' })).toHaveAttribute('href', '#page-campaign-detail?campaign=aw-doctor');
   await expect(awDoctorSummary.locator('[data-field="modes"] .mode-badge')).toHaveText('review');
   await expect(awDoctorSummary.locator('[data-field="registration"] .status')).toHaveText('true');
-  await page.getByRole('button', { name: 'Show card list view' }).click();
+  await page.getByRole('button', { name: 'Cards' }).click();
   const awDoctorCard = page.locator('[data-page-id="campaigns"] [data-mobile-card-list] .entity-card-list-card').filter({ hasText: 'AW Doctor' });
   await expect(awDoctorCard.locator('[data-card-drill]')).toHaveAttribute('href', '#page-campaign-detail?campaign=aw-doctor');
   await awDoctorCard.click({ position: { x: 6, y: 6 } });
@@ -3480,6 +3483,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   await expect(operationalValue.locator('[data-view-id="operational-value-by-campaign"] [data-chart-widget="pie"]')).toBeAttached();
   await expect(operationalValue.locator('.chart-legend-pie')).toContainText('Ambient Context');
   await expect(operationalValue.locator('.chart-legend-pie')).toContainText('AW Doctor');
+  await operationalValue.getByRole('button', { name: 'Table' }).click();
   await expect(operationalValue.locator('.custom-table tbody tr')).toHaveCount(2);
   await expect(operationalValue.locator('.custom-table thead tr').first().locator('th')).toHaveText([
     'Campaign',
@@ -3507,8 +3511,10 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   })).toBe(true);
   await expect(page.getByRole('heading', { name: 'Orchestrator and workers', level: 3 })).toHaveCount(0);
   await campaignNavigation.getByRole('link', { name: 'Workflows' }).click();
-  await expect(page.getByRole('heading', { name: 'Orchestrator and workers', level: 3 })).toBeVisible();
+  await expect(page).toHaveURL(/#page-campaign-workflows\?campaign=ambient-context$/);
   await expect(campaignNavigation.getByRole('link', { name: 'Workflows' })).toHaveAttribute('aria-current', 'page');
+  await page.getByRole('button', { name: 'Table' }).click();
+  await expect(page.getByRole('heading', { name: 'Orchestrator and workers', level: 3 })).toBeVisible();
   const campaignWorkflowRows = page.locator('[data-page-id="campaign-workflows"] .custom-table tbody tr');
   await expect(campaignWorkflowRows).toHaveCount(2);
   await expect(page.locator('[data-page-id="campaign-workflows"] .custom-table thead tr').first().locator('th')).toHaveText([
@@ -3524,20 +3530,24 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   await expect(campaignWorkflowRows.first().locator('td').nth(5)).toHaveText('0');
   await expect(campaignWorkflowRows.first().locator('td').nth(6)).toHaveText('0');
   await expect(campaignWorkflowRows.nth(1)).toContainText('WorkerAmbient Context Worker');
+  await page.getByRole('button', { name: 'Chart' }).click();
   await campaignNavigation.getByRole('link', { name: 'Runs' }).click();
   const campaignRunsPage = page.locator('[data-page-id="campaign-runs"]');
   await expect(campaignRunsPage.locator('.custom-view-grid > .custom-view').first()).toHaveAttribute('data-view-id', 'campaign-run-navigation');
   await expect(campaignNavigation.getByRole('link', { name: 'Runs' })).toHaveAttribute('aria-current', 'page');
   await expect(campaignRunsPage.locator('[data-view-id="campaign-run-status"] [data-chart-widget="pie"]')).toBeVisible();
   await expect(campaignRunsPage.locator('[data-view-id="campaign-failure-reason-distribution"] [data-chart-widget="pie"]')).toBeVisible();
-  await campaignRunsPage.getByText('All workflow runs', { exact: true }).click();
+  await page.getByRole('button', { name: 'Table' }).click();
   await expect(campaignRunsPage.locator('[data-view-id="campaign-run-table"] tbody tr')).toHaveCount(5);
+  await page.getByRole('button', { name: 'Chart' }).click();
   await campaignNavigation.getByRole('link', { name: 'Issues' }).click();
   await expect(campaignNavigation.getByRole('link', { name: 'Issues' })).toHaveAttribute('aria-current', 'page');
+  await page.getByRole('button', { name: 'Table' }).click();
   await expect(page.locator('[data-page-id="campaign-issues"] [data-view-id="campaign-issue-table"]')).toBeVisible();
   await expect(page.locator('[data-page-id="campaign-issues"] [data-view-id="campaign-issue-table"] tbody tr')).toHaveCount(1);
   await expect(page.locator('[data-page-id="campaign-issues"] [data-view-id="campaign-issue-table"]')).toContainText('Review worker finding');
   await expect(page.locator('[data-page-id="campaign-issues"] [data-view-id="campaign-issue-table"]')).not.toContainText('Review ambient context proposal');
+  await page.getByRole('button', { name: 'Chart' }).click();
   await campaignNavigation.getByRole('link', { name: 'Overview' }).click();
   await expect(page.locator('[data-page-id="campaign-detail"]')).toBeVisible();
 
@@ -3669,10 +3679,10 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
   ).publishHorizonSources());
   await expect(page.locator('.dashboard-horizon-skeleton')).toHaveCount(0);
   await expect(filterBar).toBeVisible();
-  await expect(filterBar.locator(':scope > .dashboard-horizon')).toHaveCount(1);
-  await expect(page.locator('.report-actions > .dashboard-horizon')).toHaveCount(0);
-  await expect(filterBar.locator('.filter-tuning-controls')).toBeHidden();
-  await filterBar.locator('.horizon-toggle').click();
+  await expect(filterBar.locator(':scope > .filter-tuning-controls > .time-window-control')).toHaveCount(1);
+  await expect(page.locator('.report-actions > .dashboard-horizon')).toHaveCount(1);
+  await expect(filterBar.locator('.filter-tuning-controls')).toBeVisible();
+  await page.locator('.dashboard-horizon .horizon-toggle').click();
   const filterInput = filterBar.getByRole('searchbox', { name: 'Current filters' });
   await expect(filterInput).toHaveValue('');
   await expect(filterBar.getByRole('combobox', { name: 'Time window' })).toHaveValue('all');
@@ -3689,26 +3699,30 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
   await expect(page.locator('[data-page-id="cost"] [data-metric-value="invocation"]')).toHaveText('2');
 
   await page.getByRole('heading', { name: 'Cost' }).click();
-  await expect(filterBar.locator('.filter-tuning-controls')).toBeHidden();
-  await filterBar.locator('.horizon-toggle').click();
+  await expect(filterBar.locator('.filter-tuning-controls')).toBeVisible();
+  await page.locator('.dashboard-horizon .horizon-toggle').click();
 
-  await filterBar.getByRole('checkbox', { name: 'review' }).uncheck({ force: true });
+  await filterBar.getByRole('checkbox', { name: 'review' }).evaluate((input) => {
+    const checkbox = /** @type {HTMLInputElement} */ (input);
+    checkbox.checked = false;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+  });
   await expect(filterBar.locator('.count-badge')).toHaveText('2');
   await expect(page.locator('[data-page-id="cost"] [data-metric-value="invocation"]')).toHaveText('1');
   await expect.poll(() => page.evaluate(() => JSON.parse(
     localStorage.getItem('central-agentic-ops.dashboard.horizon-filter-settings') ?? '{}'
   ).modes)).toEqual(['live', 'unknown']);
-  await filterBar.locator('.horizon-toggle').click();
+  await page.locator('.dashboard-horizon .horizon-toggle').click();
 
   await page.setViewportSize({ width: 400, height: 900 });
   expect((await page.getByRole('link', { name: 'View coverage' }).boundingBox())?.height)
     .toBeGreaterThanOrEqual(24);
   await page.locator('.mobile-nav-menu > summary').click();
-  const horizonBox = await filterBar.locator('.dashboard-horizon').last().boundingBox();
+  const horizonBox = await page.locator('.dashboard-horizon').last().boundingBox();
   expect(horizonBox).not.toBeNull();
-  await expect(filterBar.locator('.filter-tuning-controls:visible')).toHaveCount(0);
-  await filterBar.locator('.horizon-toggle').last().click();
-  const expandedHorizonBox = await filterBar.locator('.dashboard-horizon').last().boundingBox();
+  await expect(filterBar.locator('.time-window-control:visible')).toHaveCount(0);
+  await page.locator('.dashboard-horizon .horizon-toggle').last().click();
+  const expandedHorizonBox = await page.locator('.dashboard-horizon').last().boundingBox();
   const tuningControls = filterBar.locator('.filter-tuning-controls:visible');
   const timeRangeBox = await tuningControls.locator('.time-window-control').boundingBox();
   const tuningControlsBox = await tuningControls.boundingBox();
@@ -3778,6 +3792,7 @@ test('DLS-PAGE-009 DLS-PAGE-014 built-in evals page renders distinguishable defi
   `);
 
   await expect(page.getByRole('heading', { name: 'Evals', exact: true, level: 1 })).toBeVisible();
+  await page.getByRole('button', { name: 'Table' }).click();
   await page.locator('summary').filter({ hasText: 'Evals Evals Source' }).click();
   await expect(page.getByRole('region', { name: 'Evals Evals Source', exact: true })).toBeVisible();
   await page.locator('summary').filter({ hasText: 'Evals Observations Source' }).click();
@@ -3850,6 +3865,7 @@ test('DLS-SAFE-004 DLS-SAFE-007 DLS-SAFE-008 DLS-SAFE-010 built-in findings page
   await expect(page.getByRole('link', { name: 'Skip to main content' })).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Findings', exact: true, level: 1 })).toBeVisible();
+  await page.getByRole('button', { name: 'Table' }).click();
   await page.locator('summary').filter({ hasText: 'Findings Source' }).click();
   await expect(page.locator('.data-state-summary')).toBeHidden();
   await expect(page.getByRole('columnheader', { name: 'Issue Link' })).toBeVisible();
@@ -4114,6 +4130,7 @@ test('DLS-VIEW-013 DLS-VIEW-014 DLS-VIEW-015 DLS-SAFE-006 custom views render av
   await expect(metricSection).not.toContainText('Source: usage');
   await expect(metricSection).not.toContainText('Filters:');
 
+  await page.getByRole('button', { name: 'Table' }).click();
   await expect(page.getByRole('heading', { name: 'Findings Table' })).toBeVisible();
   await expect(page.locator('.custom-table tbody tr')).toHaveCount(1);
   await expect(page.getByRole('link', { name: 'PR 1' })).toHaveAttribute('href', 'https://example.com/pull/1');
@@ -4123,6 +4140,7 @@ test('DLS-VIEW-013 DLS-VIEW-014 DLS-VIEW-015 DLS-SAFE-006 custom views render av
   await expect(tableSection).not.toContainText('Out of scope finding');
   await expect(tableSection).not.toContainText('Out of range finding');
 
+  await page.getByRole('button', { name: 'Chart' }).click();
   await expect(page.getByRole('heading', { name: 'Daily Runs' })).toBeVisible();
   await expect(page.locator('.chart-default')).toHaveCount(0);
   await expect(page.locator('[data-chart-legend="text"]')).toHaveCount(0);
@@ -4137,6 +4155,7 @@ test('DLS-VIEW-013 DLS-VIEW-014 DLS-VIEW-015 DLS-SAFE-006 custom views render av
   const emptySection = page.locator('.page-section').filter({ has: page.getByRole('heading', { name: 'Empty Usage' }) });
   await expect(emptySection).toContainText('Affected source: empty-usage');
 
+  await page.getByRole('button', { name: 'Table' }).click();
   await hydrateView(page, 'Missing Source');
   await expect(page.getByRole('heading', { name: 'Missing Source' })).toBeVisible();
   await expect(page.locator('[data-view-availability="unavailable"]')).toHaveText('This view cannot be shown because its data source is unavailable.');

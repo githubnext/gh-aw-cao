@@ -72,6 +72,25 @@ export function renderDashboardHorizon(options) {
     )
   );
   const root = h('div', { className: 'dashboard-horizon' }, skeleton);
+  /** @param {boolean} expanded */
+  const setExpanded = (expanded) => {
+    toggle.setAttribute('aria-expanded', String(expanded));
+    root.classList.toggle('filter-bar-expanded', expanded);
+    const dashboardRoot = root.closest('.dashboard-root');
+    const activeFilterBar = dashboardRoot?.querySelector('.dashboard-page:not([hidden]) > .filter-bar');
+    if (activeFilterBar instanceof HTMLElement) {
+      activeFilterBar.classList.toggle('filter-bar-expanded', expanded);
+    }
+  };
+  toggle.addEventListener('click', () => {
+    setExpanded(toggle.getAttribute('aria-expanded') !== 'true');
+  }, { signal: lifetime.signal });
+  root.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || toggle.getAttribute('aria-expanded') !== 'true') return;
+    setExpanded(false);
+    toggle.focus();
+    event.stopPropagation();
+  }, { signal: lifetime.signal });
 
   effect(() => {
     const current = value.get();

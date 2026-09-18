@@ -173,11 +173,15 @@ function renderViewModeControl(modes, selectedMode, onChange) {
  */
 export function enableHorizonOutsideClickDismissal(root) {
   root.addEventListener('click', (event) => {
-    if (!(event.target instanceof Element)) return;
-    const filterBar = root.querySelector('.filter-bar-expanded');
-    if (!(filterBar instanceof HTMLElement) || filterBar.contains(event.target)) return;
-    filterBar.querySelector('.horizon-toggle')?.setAttribute('aria-expanded', 'false');
-    filterBar.classList.remove('filter-bar-expanded');
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const expanded = [...root.querySelectorAll('.filter-bar-expanded')]
+      .filter((element) => element instanceof HTMLElement);
+    if (expanded.length === 0 || expanded.some((element) => element.contains(target))) return;
+    for (const element of expanded) {
+      element.querySelector('.horizon-toggle')?.setAttribute('aria-expanded', 'false');
+      element.classList.remove('filter-bar-expanded');
+    }
   });
 }
 
