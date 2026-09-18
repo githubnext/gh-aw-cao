@@ -721,6 +721,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .swimlane-mark-cancelled { stroke: var(--attention); }
 .swimlane-mark-skipped { stroke: var(--muted); }
 .swimlane-mark-success { stroke: var(--accent); }
+.swimlane-mark-unknown { stroke: var(--muted); }
 .swimlane-mark:hover, .swimlane-mark:focus-visible { filter: brightness(1.2); stroke-width: 4; }
 .swimlane-mark:focus-visible { outline: none; }
 .dashboard-full-view .custom-view-grid > .chart-view-swimlane { padding: 0 24px 14px; }

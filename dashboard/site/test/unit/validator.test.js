@@ -1045,8 +1045,7 @@ describe('dashboard document validation', () => {
       encoding: {
         x: { field: 'started-at', type: 'temporal' },
         y: { field: 'workflow-label', type: 'ordinal', format: 'workflow-identity-label' },
-        color: { field: 'run-conclusion', type: 'nominal' },
-        href: { field: 'run-link', type: 'nominal' }
+        color: { field: 'run-conclusion', type: 'nominal' }
       }
     });
     expect(page.definition.views.find((/** @type {{ id: string }} */ view) =>

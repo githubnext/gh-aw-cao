@@ -3132,8 +3132,7 @@ describe('presenter built-in and custom pages', () => {
         encoding: {
           x: { field: 'started-at', type: 'temporal', format: 'human-friendly-timestamp', title: 'Started' },
           y: { field: 'workflow-label', type: 'ordinal', format: 'workflow-identity-label', title: 'Workflow' },
-          color: { field: 'run-conclusion', type: 'nominal', title: 'Conclusion' },
-          href: { field: 'run-link', type: 'nominal' }
+          color: { field: 'run-conclusion', type: 'nominal', title: 'Conclusion' }
         }
       },
       {

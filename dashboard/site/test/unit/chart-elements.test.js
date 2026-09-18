@@ -350,6 +350,45 @@ describe('chart element helpers', () => {
     expect(chart.textContent).toContain('Aug 28');
   });
 
+  it('renders arbitrary workflow categories as lanes colored by run conclusion', () => {
+    const points = [
+      {
+        x: '2026-08-28T08:00:00Z',
+        y: Number.NaN,
+        category: 'doctor.md (githubnext/gh-aw-cao)',
+        color: 'success',
+        source: { run: '1840' }
+      },
+      {
+        x: '2026-08-29T08:00:00Z',
+        y: Number.NaN,
+        category: 'doctor.md (githubnext/gh-aw-cao)',
+        color: 'failure',
+        source: { run: '1841' }
+      },
+      {
+        x: '2026-08-30T08:00:00Z',
+        y: Number.NaN,
+        category: 'audit.md (githubnext/control-plane)',
+        color: 'cancelled',
+        source: { run: '1842' }
+      }
+    ];
+
+    const chart = renderChartWidget('swimlane', points, listChartSeries(points));
+
+    expect([...chart.querySelectorAll('.swimlane-label')].map((label) => label.textContent)).toEqual([
+      'doctor.md (githubnext/gh-aw-cao)',
+      'audit.md (githubnext/control-plane)'
+    ]);
+    expect(chart.querySelectorAll('.swimlane-run-mark')).toHaveLength(3);
+    expect(chart.querySelectorAll('.swimlane-mark-success')).toHaveLength(1);
+    expect(chart.querySelectorAll('.swimlane-mark-failure')).toHaveLength(1);
+    expect(chart.querySelectorAll('.swimlane-mark-cancelled')).toHaveLength(1);
+    expect(chart.querySelector('.swimlane-mark-failure')?.getAttribute('aria-label'))
+      .toContain('Lane: doctor.md (githubnext/gh-aw-cao)');
+  });
+
   it('renders 100,000 swimlane observations as bounded line intervals', () => {
     const start = Date.parse('2026-08-01T00:00:00Z');
     const points = Array.from({ length: 100_000 }, (_, index) => {
