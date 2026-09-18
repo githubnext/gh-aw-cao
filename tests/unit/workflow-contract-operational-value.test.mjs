@@ -127,6 +127,11 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
   assert.match(dependabotWorker, /repo-memory:/);
   assert.match(dependabotWorker, /Do not call `search_issues`/);
   assert.match(dependabotWorker, /target\/\.github\/dependabot\.md/);
+  assert.match(dependabotWorker, /GET \/orgs\/\{org\}\/dependabot\/repository-access/);
+  assert.match(dependabotWorker, /Do not treat pull requests as required input/);
+  assert.match(dependabotWorker, /Apply in this order/);
+  assert.match(dependabotWorker, /Security and access boundaries/);
+  assert.match(dependabotWorker, /Respond to issue comments/);
   assert.match(dependabotEvaluator, /dependabot-plan-consumption/);
   assert.match(dependabotEvaluator, /--definition\|--metric\|--grade-run/);
   assert.match(dependabotEvaluator, /repos\/\$evidence_repo\/issues\/\$issue_number/);
