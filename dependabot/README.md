@@ -9,12 +9,14 @@ The Agentic Workflow definitions remain in the control repository. Target reposi
 
 ## What It Does
 
-- Prioritizes repositories with dependency alerts, stale or conflicted update pull requests, lockfile drift, and actionable Dependabot configuration failures.
+- Prioritizes repositories with dependency alerts, Dependabot repository-access gaps, stale or conflicted update pull requests, lockfile drift, and actionable Dependabot configuration failures.
 - Understands relationships among manifests, lockfiles, workspaces, solutions, source code, tests, and CI instead of grouping updates only by package name.
-- Maintains one repository-scoped issue containing every update currently identified by Dependabot.
+- Maintains one concise repository-scoped issue containing every update, blocker, and access gap currently identified by Dependabot service evidence.
+- Keeps merge order, grouping, security-sensitive surfaces, and Dependabot access boundaries visible near the top of the issue instead of burying them in collapsed details.
 - Refreshes the durable existing issue, posts a confirmation comment on later runs, and replaces obsolete tasks with a completed description when no work remains.
 - Remembers the issue number in repository memory and reads that issue directly on later runs instead of repeatedly using GitHub search.
 - Reads optional target-maintainer guidance from `.github/dependabot.md` and tells issue readers how to use that feedback channel.
+- Reads comments on the durable plan issue and incorporates safe, evidence-backed feedback about priority, grouping, validation, blockers, and risk in the next refresh.
 - Uses progressive disclosure, a visible human call to action, and a complete prompt for an assigned coding agent.
 - Measures whether each plan issue is consumed through assignment, outside participation, checklist progress, a linked pull request, or closure within 14 days.
 - Never creates or changes a pull request.
@@ -69,7 +71,7 @@ The App installation or PAT must cover every private or internal target, alterna
 
 The update-planner rename preserves previously created plan issues. Existing issues with the former `dependabot:release-train-updater` label are recovered by the `dependabot` package label and canonical repository marker; newly created issues use `dependabot:update-planner`.
 
-Grant the credential read access to Dependabot alerts and security events. The workflows already declare `vulnerability-alerts: read` and `security-events: read`; they do not request security write access. Dependabot alerts can therefore be inspected directly without scraping pull requests or repository content for vulnerability details.
+Grant the credential read access to Dependabot alerts, Dependabot repository access, and security events. The workflows already declare `vulnerability-alerts: read` and `security-events: read`; they do not request security write access and never change Dependabot repository-access settings. Dependabot alerts and access boundaries can therefore be inspected directly without treating Dependabot pull requests as the source of truth.
 
 Target maintainers can add `.github/dependabot.md` to declare dependency priorities, grouping preferences, validation commands, and sensitive risk areas. The update planner treats this file as guidance only: it cannot grant permissions, widen repository scope, or override package safety rules. Every generated plan issue reports whether the file was present and which guidance was used.
 
@@ -101,10 +103,11 @@ A manual `target_repo` can address a fully qualified repository only when its ow
 The orchestrator favors:
 
 1. Critical or high security alerts with a known patched version.
-2. Broken, stale, conflicted, or duplicated dependency update work.
-3. Lower-severity security updates with a clear path to a safer state.
-4. Dependabot, registry, toolchain, grouping, or permissions repairs.
-5. Routine compatible patch and minor maintenance.
+2. Dependabot repository-access blockers that prevent security updates.
+3. Broken, stale, conflicted, or duplicated dependency update work.
+4. Lower-severity security updates with a clear path to a safer state.
+5. Dependabot, registry, toolchain, grouping, or permissions repairs.
+6. Routine compatible patch and minor maintenance.
 
 Repositories without a recognized dependency ecosystem, readable manifests, or enough evidence for a safe change are skipped.
 
@@ -115,6 +118,8 @@ Repositories without a recognized dependency ecosystem, readable manifests, or e
 - A worker workflow receives one target and cannot discover more repositories, dispatch another workflow, or promote its mode.
 - The worker workflow cannot create or mutate pull requests or repository files.
 - The worker can create one deduplicated plan issue, refresh the existing issue with one confirmation comment, replace resolved work with a completed description, or emit `noop`.
+- The worker can report Dependabot repository-access gaps, but it cannot grant, revoke, or broaden Dependabot access.
+- Comments on the plan issue can refine the next refresh only within existing control-plane policy, credential reach, Dependabot evidence, and safe-output boundaries.
 - Credentials remain in the private control repository and are never included in dispatch inputs.
 
 ## Operational Questions
