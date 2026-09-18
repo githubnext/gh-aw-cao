@@ -875,7 +875,8 @@ describe('presenter built-in and custom pages', () => {
     expect([...(page?.querySelectorAll('[data-view-id="workflows-by-runs"] .chart-legend-pie strong') ?? [])].map((value) => value.textContent)).toEqual(['2', '1']);
     expect(page?.querySelector('[data-view-id="workflows-inventory"][data-view-layout="full-view"]')).not.toBeNull();
     const rocket = rendered.querySelector('[data-nav-page-id="workflows"] .octicon-rocket');
-    expect(rocket?.querySelector('use')?.getAttribute('href')).toBe('#octicon-rocket');
+    expect(rocket?.classList.contains('octicon-rocket')).toBe(true);
+    expect(rocket?.querySelector('path')).not.toBeNull();
   });
 
   it('uses declared workflow identities for inventory navigation', () => {

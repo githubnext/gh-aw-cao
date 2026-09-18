@@ -282,14 +282,14 @@ describe('ui primitives', () => {
     expect(rendered.tagName).toBe('SPAN');
     expect(rendered.className).toBe('signal-icon');
     expect(rendered.hasAttribute('aria-hidden')).toBe(false);
-    expect(rendered.querySelector('svg use')?.getAttribute('href')).toContain('#octicon-check-circle');
+    expect(rendered.querySelector('svg.octicon-check-circle path')).not.toBeNull();
   });
 
   it('renders the shared icon span with aria-hidden when requested', () => {
     const rendered = renderIconSpan('readiness-verdict-icon', 'x-circle', { ariaHidden: true });
 
     expect(rendered.getAttribute('aria-hidden')).toBe('true');
-    expect(rendered.querySelector('svg use')?.getAttribute('href')).toContain('#octicon-x-circle');
+    expect(rendered.querySelector('svg.octicon-x-circle path')).not.toBeNull();
   });
 
   it('renders the shared close/dismiss icon button with matching title and aria-label text', () => {
@@ -305,7 +305,7 @@ describe('ui primitives', () => {
     expect(rendered.className).toBe('site-callout-dismiss');
     expect(rendered.getAttribute('title')).toBe('Dismiss Notice');
     expect(rendered.getAttribute('aria-label')).toBe('Dismiss Notice');
-    expect(rendered.querySelector('svg use')?.getAttribute('href')).toContain('#octicon-x');
+    expect(rendered.querySelector('svg.octicon-x path')).not.toBeNull();
   });
 
   it('renders the shared identity link with an icon, label element, and optional class name', () => {
@@ -320,7 +320,7 @@ describe('ui primitives', () => {
     expect(withStrong.tagName).toBe('A');
     expect(withStrong.getAttribute('href')).toBe('#page-campaign-insights?campaign=self-care');
     expect(withStrong.className).toBe('campaign-status-identity');
-    expect(withStrong.querySelector('svg use')?.getAttribute('href')).toContain('#octicon-goal');
+    expect(withStrong.querySelector('svg.octicon-goal path')).not.toBeNull();
     expect(withStrong.querySelector('strong')?.textContent).toBe('SelfCare');
 
     const withDefaultLabelTag = renderIdentityLink({
