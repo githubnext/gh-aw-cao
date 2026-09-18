@@ -101,6 +101,15 @@ describe('DLS-CONF-004 scaffold gates', () => {
     expect(preview).toContain('<title>Central Agentic Ops Dashboard</title>');
   });
 
+  it('displays an error when JavaScript is unavailable', () => {
+    const preview = readFileSync(resolve('index.html'), 'utf8');
+
+    expect(preview).toContain('<noscript>');
+    expect(preview).toContain(
+      '<p role="alert">JavaScript is required to use the Central Agentic Ops Dashboard. Enable JavaScript in your browser and reload this page.</p>'
+    );
+  });
+
   it('parity motion audit keeps report-style transitions and reduced-motion overrides', () => {
     const styles = readFileSync(resolve('src/styles.js'), 'utf8');
 
