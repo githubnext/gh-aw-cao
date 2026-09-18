@@ -84,14 +84,14 @@ test("workflow issue outputs are bounded, deduplicated, and centrally quiet on n
     const issue = safeOutputs["create-issue"];
     if (issue) {
       if (name === "dependabot-update-planner.md") {
-        assert.equal(issue.expires, undefined, `${name} keeps one durable issue across refreshes`);
-        assert.equal(issue["deduplicate-by-title"], undefined, `${name} discovers only open issues itself`);
+        assert.equal(issue.expires, undefined, `${name} keeps its parent durable across refreshes`);
+        assert.equal(issue["deduplicate-by-title"], true, `${name} deduplicates stable parent and child titles`);
       } else {
         assert.equal(issue["deduplicate-by-title"], true, name);
       }
       if (name === "dependabot-update-planner.md") {
-        assert.equal(issue["close-older-issues"], true, `${name} supersedes stale open plan issues`);
-        assert.match(issue["close-older-key"], /dependabot-update-plan/, `${name} scopes supersession to its target`);
+        assert.equal(issue["close-older-issues"], undefined, `${name} preserves its durable parent`);
+        assert.equal(issue["require-temporary-id"], true, `${name} links same-run children to a new parent`);
       } else {
         assert.match(String(issue.expires), /^[1-9][0-9]*d$/, name);
       }
@@ -121,31 +121,39 @@ test("self-care pages health worker creates a fix PR instead of a report issue",
   assert.match(source, /Fix only the selected quick wins/);
 });
 
-test("Dependabot worker maintains one agent-ready issue and never writes pull requests", () => {
+test("Dependabot worker maintains a durable parent and one-PR child tasks without writing pull requests", () => {
   const source = workflow("dependabot-update-planner.md");
   const frontmatter = /^---\n([\s\S]*?)\n---/.exec(source)?.[1];
   assert.ok(frontmatter, "Dependabot worker must have frontmatter");
   const outputs = parse(frontmatter)["safe-outputs"];
 
-  assert.deepEqual(Object.keys(outputs).sort(), ["add-comment", "create-issue", "update-issue"]);
-  assert.equal(outputs["create-issue"].max, 1);
-  assert.equal(outputs["create-issue"]["deduplicate-by-title"], undefined);
-  assert.equal(outputs["create-issue"]["close-older-issues"], true);
-  assert.match(outputs["create-issue"]["close-older-key"], /dependabot-update-plan/);
+  assert.deepEqual(Object.keys(outputs).sort(), ["add-comment", "close-issue", "create-issue", "update-issue"]);
+  assert.equal(outputs["create-issue"].max, 13);
+  assert.equal(outputs["create-issue"]["deduplicate-by-title"], true);
+  assert.equal(outputs["create-issue"]["require-temporary-id"], true);
+  assert.deepEqual(outputs["create-issue"].labels, ["dependabot", "dependabot:update-planner"]);
   assert.equal(outputs["create-issue"].expires, undefined);
-  assert.equal(outputs["create-issue"].labels, undefined);
   assert.equal(outputs["update-issue"].body, true);
-  assert.equal(outputs["update-issue"].max, 1);
+  assert.equal(outputs["update-issue"].max, 13);
   assert.equal(outputs["update-issue"]["required-labels"], undefined);
   assert.equal(outputs["update-issue"]["required-title-prefix"], "[dependabot:update-planner] ");
   assert.equal(outputs["add-comment"]["pull-requests"], false);
   assert.equal(outputs["add-comment"].max, 1);
   assert.equal(outputs["add-comment"]["required-labels"], undefined);
   assert.equal(outputs["add-comment"]["required-title-prefix"], "[dependabot:update-planner] ");
+  assert.equal(outputs["close-issue"].max, 12);
+  assert.match(outputs["close-issue"]["required-title-prefix"], /Dependency update task for/);
   assert.match(source, /Dependency update plan for <owner>\/<repository>/);
   assert.match(source, /Dependabot update plan refreshed\./);
   assert.match(source, /<summary><b>Agent prompt<\/b><\/summary>/);
-  assert.match(source, /complete every unchecked item/);
+  assert.match(source, /Do not assign this parent issue to a coding agent/);
+  assert.match(source, /produce exactly one pull request/);
+  assert.match(source, /at most twelve open child task issues/);
+  assert.match(source, /dependabot-update-task:repository=/);
+  assert.match(source, /peer dependency compatibility/);
+  assert.match(source, /golden fixtures/);
+  assert.match(source, /never close the parent issue from the pull request/);
+  assert.doesNotMatch(source, /Assign this issue to Copilot or another coding agent to complete every unchecked item/);
   assert.match(source, /repo-memory:/);
   assert.match(source, /issue-index\/<safe-output-owner>/);
   assert.match(source, /Do not call `search_issues`/);
@@ -158,7 +166,7 @@ test("Dependabot worker maintains one agent-ready issue and never writes pull re
   assert.match(source, /call `issue_read` for its comments/);
   assert.match(source, /List only open issues in `SAFE_OUTPUT_REPO` without requiring labels/);
   assert.match(source, /Do not list, search, match, or reuse closed issues/);
-  assert.match(source, /never let a closed issue prevent this creation/);
+  assert.match(source, /never let a closed parent prevent this creation/i);
   assert.match(source, /not all live targets allow this workflow to create missing labels/);
   assert.match(source, /Never create, update, push to, comment on, or otherwise mutate a pull request/);
 });

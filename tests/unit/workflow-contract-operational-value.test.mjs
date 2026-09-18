@@ -121,8 +121,8 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
   const optimizerEvaluator = readFileSync(join(gradersDirectory, "optimization-ai-credit-optimizer-operational-value.sh"), "utf8");
   assert.match(dependabotWorker, /checks: read/);
   assert.match(dependabotWorker, /statuses: read/);
-  assert.match(dependabotWorker, /create-issue:\n(?:    .*\n)*?    close-older-issues: true/);
-  assert.match(dependabotWorker, /close-older-key:.*dependabot-update-plan/);
+  assert.match(dependabotWorker, /create-issue:\n(?:    .*\n)*?    deduplicate-by-title: true/);
+  assert.match(dependabotWorker, /require-temporary-id: true/);
   assert.match(dependabotWorker, /canonical unprefixed subject/i);
   assert.match(dependabotWorker, /Use that exact subject on every run/);
   assert.match(dependabotWorker, /repo-memory:/);
@@ -132,10 +132,15 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
   assert.match(dependabotWorker, /Do not treat pull requests as required input/);
   assert.match(dependabotWorker, /Apply in this order/);
   assert.match(dependabotWorker, /Security and access boundaries/);
+  assert.match(dependabotWorker, /exactly one pull request/);
+  assert.match(dependabotWorker, /Do not assign this parent issue/);
   assert.match(dependabotWorker, /Respond to issue comments/);
   assert.match(dependabotEvaluator, /dependabot-plan-consumption/);
   assert.match(dependabotEvaluator, /--definition\|--metric\|--grade-run/);
   assert.match(dependabotEvaluator, /repos\/\$evidence_repo\/issues\/\$issue_number/);
+  assert.match(dependabotEvaluator, /issues\/\$issue_number\/sub_issues/);
+  assert.match(dependabotEvaluator, /child_count <= 12/);
+  assert.match(dependabotEvaluator, /parentAssigneeCount/);
   assert.match(auditorWorker, /window_start: \$windowStart/);
   assert.match(auditorWorker, /window_end: \$windowEnd/);
   assert.match(auditorEvaluator, /workflow_path \/\/ \.workflow_name/);
