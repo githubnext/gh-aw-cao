@@ -819,8 +819,11 @@ if (typeof document === 'undefined' && workerScope) {
           scheduleDashboardSubscriptions([subscriptionId]);
         }
       } catch (error) {
-        // Report the failure so the main thread's pending page load rejects
-        // instead of waiting forever for a snapshot that will never arrive.
+        // Remove any partially-registered subscription so it cannot linger
+        // as a stale, unusable entry, then report the failure so the main
+        // thread's pending page load rejects instead of waiting forever for
+        // a snapshot that will never arrive.
+        dashboardSubscriptions.delete(subscriptionId);
         workerScope.postMessage({
           subscriptionId,
           error: error instanceof Error ? error.message : String(error)
