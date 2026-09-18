@@ -312,7 +312,7 @@ jobs:
             echo "Activity snapshot contains no JSONL shards" >&2
             missing=1
           fi
-          for phase in runs events; do
+          for phase in runs records; do
             if ! find "$snapshot_root/gh-aw-logs-$phase" -maxdepth 1 -type f -name '*.json' -print -quit | grep -q .; then
               echo "Activity snapshot contains no $phase shards" >&2
               missing=1
