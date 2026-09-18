@@ -3124,6 +3124,19 @@ describe('presenter built-in and custom pages', () => {
         }
       },
       {
+        id: 'top-workflow-runs',
+        data: { source: 'top-workflow-runs' },
+        mark: 'chart',
+        chart: 'swimlane',
+        layout: 'full-view',
+        encoding: {
+          x: { field: 'started-at', type: 'temporal', format: 'human-friendly-timestamp', title: 'Started' },
+          y: { field: 'workflow-label', type: 'ordinal', format: 'workflow-identity-label', title: 'Workflow' },
+          color: { field: 'run-conclusion', type: 'nominal', title: 'Conclusion' },
+          href: { field: 'run-link', type: 'nominal' }
+        }
+      },
+      {
         id: 'workflows-inventory',
         data: { source: 'workflow-inventory' },
         mark: 'table',
