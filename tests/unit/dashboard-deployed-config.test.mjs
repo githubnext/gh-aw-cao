@@ -152,6 +152,23 @@ test("deployed dashboard failure tracking ignores only benign aborted probes", (
     errorText: "net::ERR_ABORTED",
   }), false);
   assert.equal(shouldIgnoreRequestFailure({
+    method: "GET",
+    url: `${deployedDashboardUrl}payload-hashes.json`,
+    errorText: "net::ERR_ABORTED",
+    hadSuccessResponse: true,
+  }), true);
+  assert.equal(shouldIgnoreRequestFailure({
+    method: "GET",
+    url: `${deployedDashboardUrl}payload-hashes.json`,
+    errorText: "net::ERR_ABORTED",
+  }), false);
+  assert.equal(shouldIgnoreRequestFailure({
+    method: "GET",
+    url: `${deployedDashboardUrl}payload-hashes.json`,
+    errorText: "net::ERR_FAILED",
+    hadSuccessResponse: true,
+  }), false);
+  assert.equal(shouldIgnoreRequestFailure({
     method: "HEAD",
     url: `${deployedDashboardUrl}gh-aw-logs-runs/shard.json`,
     errorText: "net::ERR_NAME_NOT_RESOLVED",

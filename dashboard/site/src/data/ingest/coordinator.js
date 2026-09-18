@@ -32,6 +32,23 @@ const GH_AW_JSONL_INGESTION_VERSION = 4;
 export const NORMALIZED_JSON_INGESTION_VERSION = 2;
 const MAX_QUOTA_RECOVERY_ATTEMPTS = 4;
 const MAX_USAGE_RECOVERY_ATTEMPTS = 4;
+const NORMALIZED_BATCH_COLLECTIONS = /** @type {const} */ ([
+  'campaigns',
+  'repositories',
+  'workflows',
+  'runs',
+  'domains',
+  'tools',
+  'audits',
+  'issues'
+]);
+const LEGACY_PACKAGE_FIELD_ALIASES = /** @type {const} */ ({
+  packageId: 'campaignId',
+  package: 'campaign',
+  packageName: 'campaignName',
+  packageIcon: 'campaignIcon',
+  packageLink: 'campaignLink'
+});
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 
 /**
@@ -43,6 +60,67 @@ function isQuotaExceededError(error) {
   return typeof error === 'object'
     && error !== null
     && /** @type {{ name?: unknown }} */ (error).name === 'QuotaExceededError';
+}
+
+/** @param {unknown} value */
+function migrateLegacyPackageId(value) {
+  return typeof value === 'string' && value.startsWith('package:')
+    ? `campaign:${value.slice('package:'.length)}`
+    : value;
+}
+
+/** @param {unknown} value */
+function hasLegacyPackageAliases(value) {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value) && (
+    (typeof /** @type {{ id?: unknown }} */ (value).id === 'string'
+      && /** @type {{ id: string }} */ (value).id.startsWith('package:'))
+    || (typeof /** @type {{ campaignId?: unknown }} */ (value).campaignId === 'string'
+      && /** @type {{ campaignId: string }} */ (value).campaignId.startsWith('package:'))
+    || Object.keys(LEGACY_PACKAGE_FIELD_ALIASES).some((field) => Object.hasOwn(value, field))
+  ));
+}
+
+/** @param {unknown} candidate */
+function migrateLegacyPackageAliases(candidate) {
+  if (!hasLegacyPackageAliases(candidate)) return candidate;
+  const record = { .../** @type {Record<string, unknown>} */ (candidate) };
+  record.id = migrateLegacyPackageId(record.id);
+  record.campaignId = migrateLegacyPackageId(record.campaignId);
+  for (const [legacyField, campaignField] of Object.entries(LEGACY_PACKAGE_FIELD_ALIASES)) {
+    if (record[campaignField] === undefined && record[legacyField] !== undefined) {
+      record[campaignField] = legacyField === 'packageId'
+        ? migrateLegacyPackageId(record[legacyField])
+        : record[legacyField];
+    }
+    delete record[legacyField];
+  }
+  return record;
+}
+
+/**
+ * Accepts normalized shards emitted shortly before the package-to-campaign
+ * vocabulary rename. The schema and ingestion versions did not change in that
+ * transition, so cached payloads may still contain the legacy collection and
+ * relationship field names.
+ *
+ * @param {Record<string, unknown>} batch
+ * @returns {import('../model/schema.js').CanonicalBatch}
+ */
+function migrateNormalizedBatch(batch) {
+  if (!Array.isArray(batch.packages)) {
+    return /** @type {import('../model/schema.js').CanonicalBatch} */ (batch);
+  }
+  const migrated = { ...batch };
+  if (!Array.isArray(migrated.campaigns) && Array.isArray(migrated.packages)) {
+    migrated.campaigns = migrated.packages.map(migrateLegacyPackageAliases);
+  }
+  for (const collection of NORMALIZED_BATCH_COLLECTIONS) {
+    if (Array.isArray(migrated[collection])) {
+      migrated[collection] = migrated[collection].map(migrateLegacyPackageAliases);
+    }
+  }
+  delete migrated.packages;
+  return /** @type {import('../model/schema.js').CanonicalBatch} */ (migrated);
 }
 
 /**
@@ -382,9 +460,9 @@ export function ingestNormalizedJson(indexedDB, input, options) {
       if (!payload.batch || typeof payload.batch !== 'object' || Array.isArray(payload.batch)) {
         throw new TypeError('Normalized activity payload must include a canonical batch');
       }
-      const batch = /** @type {import('../model/schema.js').CanonicalBatch} */ (payload.batch);
-      for (const collection of ['campaigns', 'repositories', 'workflows', 'runs', 'domains', 'tools', 'audits', 'issues']) {
-        if (!Array.isArray(batch[/** @type {keyof import('../model/schema.js').CanonicalBatch} */ (collection)])) {
+      const batch = migrateNormalizedBatch(/** @type {Record<string, unknown>} */ (payload.batch));
+      for (const collection of NORMALIZED_BATCH_COLLECTIONS) {
+        if (!Array.isArray(batch[collection])) {
           throw new TypeError(`Normalized activity payload is missing ${collection}`);
         }
       }

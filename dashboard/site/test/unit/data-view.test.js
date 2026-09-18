@@ -1045,6 +1045,58 @@ describe('data view renderer', () => {
     expect(rendered?.textContent).not.toContain('Showing partial results');
   });
 
+  it('stops swimlane continuation loading at the declared view limit', async () => {
+    const load = vi.fn(async () => ({
+      rows: [
+        { run: '2', 'started-at': '2026-08-31T12:49:37Z', 'run-conclusion': 'failure' },
+        { run: '3', 'started-at': '2026-08-31T12:50:37Z', 'run-conclusion': 'skipped' }
+      ],
+      continuationToken: 'page-3'
+    }));
+    const rendered = renderDataView('chart', {
+      pageId: 'runs',
+      title: 'Workflow runs',
+      view: {
+        mark: 'chart',
+        chart: 'swimlane',
+        data: { limit: 2 },
+        encoding: {
+          x: { field: 'started-at', type: 'temporal' },
+          y: { field: 'run-conclusion', type: 'ordinal' }
+        }
+      },
+      sourceName: 'runs-table',
+      rows: [{ run: '1', 'started-at': '2026-08-31T12:48:37Z', 'run-conclusion': 'success' }],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: () => [],
+      buildChartPoints: (_pageId, _title, chartRows) => chartRows.map((row) => ({
+        key: String(row.run),
+        x: String(row['started-at']),
+        y: Number.NaN,
+        category: String(row['run-conclusion']),
+        color: String(row['run-conclusion']),
+        link: null,
+        source: row
+      })),
+      prepareChartPoints: (points) => points,
+      toText: String,
+      continuation: {
+        token: 'page-2',
+        totalRows: 3,
+        load
+      }
+    });
+    document.body.append(/** @type {HTMLElement} */ (rendered));
+
+    await vi.waitFor(() => {
+      expect(rendered?.querySelectorAll('.swimlane-mark')).toHaveLength(2);
+      expect(rendered?.querySelector('.swimlane-chart-widget')?.getAttribute('aria-busy')).toBe('false');
+    });
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
   it('populates the runs-view swimlane within bounded time while yielding between continuation pages', async () => {
     const totalRuns = 20_000;
     const pageSize = 200;

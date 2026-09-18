@@ -83,9 +83,15 @@ test("workflow issue outputs are bounded, deduplicated, and centrally quiet on n
     const safeOutputs = config["safe-outputs"] ?? {};
     const issue = safeOutputs["create-issue"];
     if (issue) {
-      assert.equal(issue["deduplicate-by-title"], true, name);
       if (name === "dependabot-update-planner.md") {
         assert.equal(issue.expires, undefined, `${name} keeps one durable issue across refreshes`);
+        assert.equal(issue["deduplicate-by-title"], undefined, `${name} discovers only open issues itself`);
+      } else {
+        assert.equal(issue["deduplicate-by-title"], true, name);
+      }
+      if (name === "dependabot-update-planner.md") {
+        assert.equal(issue["close-older-issues"], true, `${name} supersedes stale open plan issues`);
+        assert.match(issue["close-older-key"], /dependabot-update-plan/, `${name} scopes supersession to its target`);
       } else {
         assert.match(String(issue.expires), /^[1-9][0-9]*d$/, name);
       }
@@ -123,7 +129,9 @@ test("Dependabot worker maintains one agent-ready issue and never writes pull re
 
   assert.deepEqual(Object.keys(outputs).sort(), ["add-comment", "create-issue", "update-issue"]);
   assert.equal(outputs["create-issue"].max, 1);
-  assert.equal(outputs["create-issue"]["deduplicate-by-title"], true);
+  assert.equal(outputs["create-issue"]["deduplicate-by-title"], undefined);
+  assert.equal(outputs["create-issue"]["close-older-issues"], true);
+  assert.match(outputs["create-issue"]["close-older-key"], /dependabot-update-plan/);
   assert.equal(outputs["create-issue"].expires, undefined);
   assert.equal(outputs["create-issue"].labels, undefined);
   assert.equal(outputs["update-issue"].body, true);
@@ -148,7 +156,9 @@ test("Dependabot worker maintains one agent-ready issue and never writes pull re
   assert.match(source, /### Security and access boundaries/);
   assert.match(source, /### Comment response/);
   assert.match(source, /call `issue_read` for its comments/);
-  assert.match(source, /List open issues in `SAFE_OUTPUT_REPO` without requiring labels/);
+  assert.match(source, /List only open issues in `SAFE_OUTPUT_REPO` without requiring labels/);
+  assert.match(source, /Do not list, search, match, or reuse closed issues/);
+  assert.match(source, /never let a closed issue prevent this creation/);
   assert.match(source, /not all live targets allow this workflow to create missing labels/);
   assert.match(source, /Never create, update, push to, comment on, or otherwise mutate a pull request/);
 });
