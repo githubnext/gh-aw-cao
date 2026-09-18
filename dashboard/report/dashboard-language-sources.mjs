@@ -2455,13 +2455,43 @@ function evidenceRecordRows(outcomes, findings, workItems) {
   return [...outcomeRecords, ...findingRecords];
 }
 
+function operationalValueDefinition(values, record) {
+  const definitions = Array.isArray(values.definitions) ? values.definitions : [];
+  return definitions.find((definition) => (
+    definition?.repository === record.repository
+    && definition?.workflowId === record.workflowId
+    && (!record.evaluatorDigest || definition?.evaluatorDigest === record.evaluatorDigest)
+  )) || {};
+}
+
+function operationalValueMetrics(values, record) {
+  if (Array.isArray(record.metrics)) return record.metrics;
+  const definition = operationalValueDefinition(values, record);
+  const primary = typeof definition.operationalValue === "string"
+    ? definition.operationalValue
+    : definition.operationalValue?.metric;
+  const diagnosticNames = Array.isArray(definition.diagnosticMetrics)
+    ? definition.diagnosticMetrics
+    : Object.keys(record.diagnostics || {});
+  return [
+    { id: primary || record.workflowId || "operational-value", value: record.value },
+    ...diagnosticNames.map((id) => ({ id, value: record.diagnostics?.[id] ?? null })),
+  ];
+}
+
+function hasOperationalValueResult(record) {
+  return record?.resultAvailable === true && Array.isArray(record.metrics)
+    || Boolean(record?.evaluatorDigest || record?.observation);
+}
+
 function operationalValueRows(values) {
-  return (values.records || []).filter((record) => record.resultAvailable === true).map((record) => {
+  return (values.records || []).filter(hasOperationalValueResult).map((record) => {
     const repository = repositoryParts(record.repository);
     const runAttempt = Number(record.runAttempt || record.run?.attempt || 1);
-    const metrics = Array.isArray(record.metrics) ? record.metrics : [];
+    const metrics = operationalValueMetrics(values, record);
     const primary = metrics[0] || {};
     const diagnostics = Object.fromEntries(metrics.slice(1).map((metric) => [metric.id, metric.value]));
+    const observedAt = record.observedAt || record.observation?.evidenceAt || record.run?.createdAt;
     return {
       ...repository,
       "repository-name": repository.repository,
@@ -2476,7 +2506,7 @@ function operationalValueRows(values) {
       "operational-value-direction": record.direction,
       diagnostics,
       "diagnostic-definitions": metrics.slice(1).map((metric) => ({ id: metric.id, name: metric.id })),
-      "observed-at": record.observedAt,
+      "observed-at": observedAt,
       "evidence-link": link("evidence", record.runUrl, `View run ${record.runId}`),
       "run-link": link("run", record.runUrl, `Run ${record.runId}`),
     };

@@ -289,9 +289,75 @@ test("operational-value collection degrades to an empty snapshot when the shared
         REPORT_VALUE_CACHE: cachePath,
       },
     });
+
     const output = JSON.parse(await readFile(outputPath, "utf8"));
     assert.equal(output.records[0].value, 8);
     assert.equal(output.records[0].status, "pass");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("operational-value collection retains legacy cached observations when logs are missing", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "dashboard-operational-values-"));
+  const inventoryPath = path.join(root, "deployed-workflows.json");
+  const logsPath = path.join(root, "gh-aw-logs-shards");
+  const outputPath = path.join(root, "operational-values.json");
+  const cachePath = path.join(root, "observations.json");
+  await writeFile(inventoryPath, JSON.stringify({
+    runHealth: { windowStart: "2026-09-01T00:00:00Z" },
+    workflows: [{
+      repository: "githubnext/gh-aw-cao",
+      path: ".github/workflows/example.lock.yml",
+      operationalValue: true,
+      runHealth: {
+        runIds: [42],
+        runRecords: [{ runId: 42, runAttempt: 1, createdAt: "2026-09-05T10:00:00Z" }],
+      },
+    }],
+  }));
+  await writeShard(logsPath, "");
+  await writeFile(cachePath, JSON.stringify({
+    schemaVersion: 1,
+    records: [{
+      schemaVersion: 1,
+      repository: "githubnext/gh-aw-cao",
+      workflowId: "example",
+      workflowPath: ".github/workflows/example.lock.yml",
+      runId: 42,
+      runAttempt: 1,
+      runUrl: "https://github.com/githubnext/gh-aw-cao/actions/runs/42",
+      status: "pass",
+      value: 0.8,
+      evaluatorDigest: "legacy-digest",
+      observation: {
+        evidenceAt: "2026-09-05T10:00:00Z",
+        subject: { createdAt: "2026-09-05T09:00:00Z" },
+      },
+      observationSource: "logs-jsonl",
+      diagnostics: { quality: 0.6 },
+    }],
+  }));
+
+  try {
+    await execFileAsync(process.execPath, [
+      path.resolve("dashboard/report/operational-values.mjs"),
+    ], {
+      cwd: path.resolve("."),
+      env: {
+        ...process.env,
+        REPORT_DEPLOYED_WORKFLOWS: inventoryPath,
+        REPORT_GH_AW_LOGS_SHARDS: logsPath,
+        REPORT_OPERATIONAL_VALUES: outputPath,
+        REPORT_VALUE_CACHE: cachePath,
+      },
+    });
+    const output = JSON.parse(await readFile(outputPath, "utf8"));
+    assert.equal(output.complete, true);
+    assert.equal(output.observedRuns, 1);
+    assert.equal(output.records.length, 1);
+    assert.equal(output.records[0].value, 0.8);
+    assert.equal(output.records[0].evaluatorDigest, "legacy-digest");
   } finally {
     await rm(root, { recursive: true, force: true });
   }

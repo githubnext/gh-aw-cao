@@ -25,11 +25,25 @@ function runIdentity(record) {
   ].join(":");
 }
 
+function recordHasResult(record) {
+  return record?.resultAvailable === true && Array.isArray(record.metrics)
+    || Boolean(record?.evaluatorDigest || record?.observation);
+}
+
+function recordTime(record) {
+  return record.observedAt || record.observation?.evidenceAt || record.run?.createdAt || "";
+}
+
 function mergeRecords(...recordSets) {
   const records = new Map();
-  for (const record of recordSets.flat()) records.set(runIdentity(record), record);
+  for (const record of recordSets.flat()) {
+    const key = runIdentity(record);
+    const existing = records.get(key);
+    if (existing && recordHasResult(existing) && !recordHasResult(record)) continue;
+    records.set(key, record);
+  }
   return [...records.values()].sort((left, right) => (
-    Date.parse(left.observedAt || left.run?.createdAt || "") - Date.parse(right.observedAt || right.run?.createdAt || "")
+    Date.parse(recordTime(left)) - Date.parse(recordTime(right))
       || runIdentity(left).localeCompare(runIdentity(right))
   ));
 }
@@ -135,7 +149,7 @@ export async function collectOperationalValues() {
       .map((run) => [logsRunId(run), run])
       .filter(([runId]) => Number.isFinite(runId)));
     const cachedRunKeys = new Set(cachedRecords
-      .filter((record) => record.resultAvailable === true && Array.isArray(record.metrics))
+      .filter(recordHasResult)
       .map(runIdentity));
     const currentRecords = [];
     let missingRuns = 0;
@@ -165,7 +179,7 @@ export async function collectOperationalValues() {
 
     const records = mergeRecords(cachedRecords, currentRecords);
     const evidenceTimes = records
-      .map((record) => record.observedAt || record.run?.createdAt)
+      .map(recordTime)
       .filter(Boolean)
       .sort();
     const output = {
@@ -178,7 +192,7 @@ export async function collectOperationalValues() {
       complete: missingRuns === 0,
       collectionMode: "logs-jsonl",
       selectedRuns: selectedRuns.length,
-      observedRuns: records.filter((record) => record.resultAvailable === true).length,
+      observedRuns: records.filter(recordHasResult).length,
       records,
     };
     await mkdir(path.dirname(outputPath), { recursive: true });

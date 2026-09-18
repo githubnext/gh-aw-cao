@@ -2901,6 +2901,63 @@ test("dashboard source bridge preserves ordered native metrics and historical co
   );
 });
 
+test("dashboard source bridge preserves legacy operational-value cache observations", () => {
+  const sources = buildDashboardLanguageSources({
+    deployed: {
+      generatedAt: "2026-09-01T12:00:00Z",
+      discovery: { complete: true },
+      runHealth: { available: true, complete: true },
+      bundles: [],
+      workflows: [],
+    },
+    usage: { available: true, complete: true, runs: [] },
+    operationalValues: {
+      schemaVersion: 1,
+      generatedAt: "2026-09-01T11:30:00Z",
+      complete: true,
+      definitions: [{
+        repository: "github/gh-aw",
+        workflowId: "daily-file-diet",
+        evaluatorDigest: "legacy-digest",
+        operationalValue: { metric: "attainment" },
+        diagnosticMetrics: ["quality"],
+      }],
+      records: [{
+        repository: "github/gh-aw",
+        workflowId: "daily-file-diet",
+        workflowPath: ".github/workflows/daily-file-diet.lock.yml",
+        runId: 42,
+        runAttempt: 2,
+        runUrl: "https://github.com/github/gh-aw/actions/runs/42",
+        status: "pass",
+        value: 0.8,
+        evaluatorDigest: "legacy-digest",
+        observation: {
+          evidenceAt: "2026-08-31T10:00:00Z",
+          subject: { createdAt: "2026-08-31T09:00:00Z" },
+        },
+        diagnostics: { quality: 0.6 },
+      }],
+    },
+    report: { generatedAt: "2026-09-01T12:00:00Z", records: [] },
+  });
+
+  assert.deepEqual(
+    sources["operational-values"].rows.map((row) => ({
+      value: row["operational-value"],
+      definition: row["operational-value-definition"],
+      diagnostics: row.diagnostics,
+      observedAt: row["observed-at"],
+    })),
+    [{
+      value: 0.8,
+      definition: "attainment",
+      diagnostics: { quality: 0.6 },
+      observedAt: "2026-08-31T10:00:00Z",
+    }],
+  );
+});
+
 test("dashboard source bridge carries outcome detail content and presentation metadata", () => {
   const sources = buildDashboardLanguageSources({
     deployed: {
