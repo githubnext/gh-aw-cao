@@ -34,10 +34,12 @@ function stubIntersectionObserver() {
     disconnect() {}
   }
   vi.stubGlobal('IntersectionObserver', IntersectionObserverStub);
-  return (element) => callbacks.get(element)?.(
+  /** @param {Element} element */
+  const intersect = (element) => callbacks.get(element)?.(
     /** @type {IntersectionObserverEntry[]} */ (/** @type {unknown} */ ([{ target: element, isIntersecting: true }])),
     /** @type {IntersectionObserver} */ (/** @type {unknown} */ ({}))
   );
+  return intersect;
 }
 
 describe('data view renderer', () => {
