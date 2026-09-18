@@ -103,14 +103,21 @@ describe('Audit dashboard view', () => {
       queries: dashboard.queries,
       sourceNames: ['audit-event-summary-buckets'],
       sources: {
-        events: {
-          source: 'events',
+        audits: {
+          source: 'audits',
           rows: [
             { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', event: '1', 'event-type': 'audit.finding', 'event-status': 'high', 'event-summary': 'Repeated finding' },
             { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', event: '2', 'event-type': 'audit.recommendation', 'event-status': 'medium', 'event-summary': 'Repeated finding' },
             { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', event: '3', 'event-type': 'audit.finding', 'event-status': 'info', 'event-summary': 'Repeated finding' },
             { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/review.md', event: '4', 'event-type': 'audit.finding', 'event-status': 'high', 'event-summary': 'Repeated finding' },
             { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', event: '5', 'event-type': 'tool.call', 'event-status': 'high', 'event-summary': 'Repeated finding' }
+          ],
+          metadata
+        },
+        tools: {
+          source: 'tools',
+          rows: [
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', event: '6', 'event-type': 'audit.skill_activation', 'event-status': 'medium', 'event-summary': 'Skill activation' }
           ],
           metadata
         },
@@ -131,6 +138,12 @@ describe('Audit dashboard view', () => {
         workflow: '.github/workflows/audit.md',
         'event-summary': 'Repeated finding',
         events: 2
+      },
+      {
+        package: 'audit-package',
+        workflow: '.github/workflows/audit.md',
+        'event-summary': 'Skill activation',
+        events: 1
       },
       {
         package: 'review-package',

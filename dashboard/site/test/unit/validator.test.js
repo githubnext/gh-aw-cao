@@ -349,7 +349,7 @@ describe('dashboard document validation', () => {
     issueList.list.drill = {
       type: 'query',
       page: 'issues',
-      query: 'issues',
+      query: 'issue-safe-outputs',
       'title-field': 'event-summary',
       arguments: [{ name: 'entity-url', field: 'entity-url' }]
     };
@@ -1722,6 +1722,7 @@ dashboard:
         color: { field: 'job-duration-seconds', type: 'quantitative', aggregate: 'mean' }
       }
     });
+
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
 
     heatmap.data.limit = 101;
@@ -1735,6 +1736,47 @@ dashboard:
         expect.objectContaining({ path: expect.stringContaining('.encoding.y.type') }),
         expect.objectContaining({ path: expect.stringContaining('.encoding.color.aggregate') })
       ]));
+    }
+  });
+
+  it('DLS-VIEW-005 accepts bounded horizontal bars and rejects invalid axes and limits', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const performance = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'performance');
+    const horizontalBar = {
+      id: 'job-duration-ranking',
+      data: { source: 'job-performance', limit: 100 },
+      mark: 'chart',
+      chart: 'horizontal-bar',
+      encoding: {
+        x: { field: 'job', type: 'nominal' },
+        y: { field: 'job-duration-seconds', type: 'quantitative', aggregate: 'mean' }
+      }
+    };
+    performance.views.push(horizontalBar);
+
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+
+    horizontalBar.data.limit = 101;
+    horizontalBar.encoding.x.type = 'temporal';
+    const rejected = validateDashboardDocument(JSON.stringify(document));
+    expect(rejected.ok).toBe(false);
+    if (!rejected.ok) {
+      expect(rejected.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ path: expect.stringContaining('.data.limit') }),
+        expect.objectContaining({ path: expect.stringContaining('.encoding.x.type') })
+      ]));
+    }
+
+    horizontalBar.data.limit = 100;
+    horizontalBar.data.source = 'usage';
+    horizontalBar.encoding.x = /** @type {any} */ ({ field: 'aic' });
+    horizontalBar.encoding.y = { field: 'output-tokens', type: 'quantitative', aggregate: 'sum' };
+    const inferredQuantitativeAxis = validateDashboardDocument(JSON.stringify(document));
+    expect(inferredQuantitativeAxis.ok).toBe(false);
+    if (!inferredQuantitativeAxis.ok) {
+      expect(inferredQuantitativeAxis.errors).toContainEqual(expect.objectContaining({
+        path: expect.stringContaining('.encoding.x.type')
+      }));
     }
   });
 
@@ -5647,7 +5689,7 @@ describe('declarative query validation', () => {
   it('accepts bounded aggregate-local filters over pre-aggregation scalar fields', () => {
     const result = validateDashboardDocument(queryDocument([{
       name: 'workflow-costs',
-      from: 'events',
+      from: 'audits',
       aggregate: {
         by: ['workflow'],
         values: [{
@@ -5670,7 +5712,7 @@ describe('declarative query validation', () => {
   it('accepts aggregate-local filters at every declared size ceiling', () => {
     const result = validateDashboardDocument(queryDocument([{
       name: 'workflow-costs',
-      from: 'events',
+      from: 'audits',
       aggregate: {
         by: ['workflow'],
         values: Array.from(

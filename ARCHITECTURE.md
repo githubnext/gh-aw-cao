@@ -72,7 +72,7 @@ flowchart LR
     Logs["gh aw logs"]
     Shards["Bounded JSONL shards"]
     Runs["Compact run-information shards"]
-    Events["Detailed event shards"]
+    Records["Detailed domain, tool, audit, and issue shards"]
     SQLite["SQLite projection"]
     Publisher["Dashboard publisher"]
     Worker["Browser data Web Worker"]
@@ -84,16 +84,16 @@ flowchart LR
     Logs --> Shards
     Shards --> SQLite --> CLI
     Shards --> Runs
-    Shards --> Events
+    Shards --> Records
     Runs --> Publisher
-    Events --> Publisher --> Worker
+    Records --> Publisher --> Worker
     Worker --> IndexedDB --> Query --> UI
 ```
 
 Activity collects a bounded snapshot once and publishes immutable cache
 artifacts. SQLite and IndexedDB are independently rebuildable projections of
 the authoritative inputs. It deterministically separates compact, immutable run
-information from detailed events so the browser data worker loads every run
+information from detailed run-linked records so the browser data worker loads every run
 before continuing with event shards. Browser download, normalization,
 persistence, and queries run in a dedicated Web Worker. The main thread receives
 only bounded view payloads.

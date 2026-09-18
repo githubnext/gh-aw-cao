@@ -330,6 +330,46 @@ function stableDigest(value) {
   return (hash >>> 0).toString(16).padStart(8, '0');
 }
 
+/**
+ * @param {string} type
+ * @param {Record<string, unknown>} fields
+ * @returns {'domain' | 'tool' | 'audit' | 'issue'}
+ */
+function recordKind(type, fields) {
+  if (fields.source === 'firewall' || type === 'net_allowed' || type === 'net_blocked') return 'domain';
+  if (type === 'safe_output.created'
+    && ['issue', 'pull_request'].includes(String(fields.githubEntityType))) return 'issue';
+  if (fields.source === 'mcp'
+    || type === 'tool_call'
+    || type === 'agent_tool_start'
+    || type === 'agent_tool_done'
+    || type === 'guard_blocked'
+    || type === 'difc_filtered'
+    || type === 'audit.skill_activation') return 'tool';
+  return 'audit';
+}
+
+/** @param {string} type @param {Record<string, unknown>} fields @param {'domain' | 'tool' | 'audit' | 'issue'} kind */
+function specializedFields(type, fields, kind) {
+  if (kind === 'issue') {
+    return {
+      isPullRequest: fields.githubEntityType === 'pull_request',
+      url: fields.correlationId
+    };
+  }
+  if (kind === 'tool') {
+    const name = optionalString(fields.mcpTool ?? fields.toolName ?? fields.summary) ?? 'unknown';
+    const isSkill = type === 'audit.skill_activation';
+    const isBash = /(^|[/.:_-])(bash|shell)(?:$|[/.:_-])/i.test(name);
+    return {
+      toolType: isSkill ? 'skill' : isBash ? 'bash' : 'mcp',
+      isSkill,
+      name
+    };
+  }
+  return {};
+}
+
 /** @param {string} repositoryName @param {string} [fallbackOwner] */
 function repositoryCoordinates(repositoryName, fallbackOwner = '') {
   const parts = repositoryName.split('/').filter(Boolean);
@@ -379,8 +419,10 @@ function logFiles(input) {
  * @param {Record<string, unknown>} [fields]
  */
 function eventObservation(runId, filePath, line, eventTimestamp, eventSource, type, fields = {}) {
+  const recordFields = { source: eventSource, ...fields };
+  const kind = recordKind(type, recordFields);
   return {
-    kind: /** @type {const} */ ('event'),
+    kind,
     source: OBSERVATION_SOURCE,
     sourceId: `${runId}:${filePath}:${line}`,
     observedAt: eventTimestamp,
@@ -391,7 +433,8 @@ function eventObservation(runId, filePath, line, eventTimestamp, eventSource, ty
       type,
       payloadRef: `${filePath}#L${line}`,
       sourceSequence: line,
-      ...fields
+      ...fields,
+      ...specializedFields(type, recordFields, kind)
     }
   };
 }
@@ -601,7 +644,7 @@ export function adaptGhAwLogs(input) {
  *   duplicateRawRunObservations: number,
  *   duplicateAgenticRunObservations: number,
  *   unenrichedRuns: number,
- *   events: number,
+ *   recordsByKind: Record<string, number>,
  *   safeOutputItems: number,
  *   mappedSafeOutputItems: number,
  *   rateLimits: number,
@@ -1118,7 +1161,6 @@ function createCachedGhAwJsonlAccumulator(options) {
 
   observations.unshift(...repositories.values(), ...workflows.values());
 
-  let derivedEvents = 0;
   for (const [id, enriched] of [...enrichedRuns.entries()].sort()) {
     const run = enriched.value;
     const awInfo = run.aw_info && typeof run.aw_info === 'object' && !Array.isArray(run.aw_info)
@@ -1140,8 +1182,14 @@ function createCachedGhAwJsonlAccumulator(options) {
      */
     const emitEvent = (type, eventTimestamp, summary, status, identity = type, fields = {}) => {
       if (!eventTimestamp) return;
+      const recordFields = {
+        source: fields.source ?? 'gh-aw-logs',
+        summary,
+        ...fields
+      };
+      const kind = recordKind(type, recordFields);
       observations.push({
-        kind: 'event',
+        kind,
         source: OBSERVATION_SOURCE,
         sourceId: `${eventScopeId}:${type}:${stableDigest(identity)}`,
         observedAt: enriched.observedAt,
@@ -1155,11 +1203,11 @@ function createCachedGhAwJsonlAccumulator(options) {
           correlationId: fields.correlationId,
           payloadRef: `gh-aw-logs-shards#L${enriched.line}`,
           sourceSequence,
-          ...fields
+          ...fields,
+          ...specializedFields(type, recordFields, kind)
         })
       });
       sourceSequence += 1;
-      derivedEvents += 1;
     };
 
     emitEvent(
@@ -1796,7 +1844,7 @@ function createCachedGhAwJsonlAccumulator(options) {
       const remaining = finiteNumber(end.remaining);
       const limit = finiteNumber(end.limit);
       observations.push({
-        kind: 'event',
+        kind: 'audit',
         source: OBSERVATION_SOURCE,
         sourceId: `${eventScopeId}:github_api_rate_limit:${line}`,
         observedAt,
@@ -1826,7 +1874,13 @@ function createCachedGhAwJsonlAccumulator(options) {
     duplicateRawRunObservations: rawPayloadRecords - rawRuns.size,
     duplicateAgenticRunObservations: agenticRunRecords - enrichedRuns.size,
     unenrichedRuns: runIds.size - enrichedRuns.size,
-    events: derivedEvents + mappedRateLimits,
+    recordsByKind: observations.reduce((counts, observation) => {
+      if (observation.kind === 'domain') counts.domains += 1;
+      if (observation.kind === 'tool') counts.tools += 1;
+      if (observation.kind === 'audit') counts.audits += 1;
+      if (observation.kind === 'issue') counts.issues += 1;
+      return counts;
+    }, { domains: 0, tools: 0, audits: 0, issues: 0 }),
     safeOutputItems,
     mappedSafeOutputItems: [...safeOutputItemsByRun.values()]
       .reduce((total, items) => total + items.length, 0),

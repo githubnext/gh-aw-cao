@@ -9,14 +9,14 @@ jobs:
             ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
             ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
             ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
-            ${{ runner.temp }}/cao-activity/gh-aw-logs-events
+            ${{ runner.temp }}/cao-activity/gh-aw-logs-records
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
             ${{ runner.temp }}/cao-activity/drain3_weights.json
-          key: cao-activity-v4-lookup-${{ github.run_id }}-${{ github.run_attempt }}-activation
+          key: cao-activity-v5-lookup-${{ github.run_id }}-${{ github.run_attempt }}-activation
           restore-keys: |
-            cao-activity-v4-
+            cao-activity-v5-
 
   agent:
     pre-steps:
@@ -27,14 +27,14 @@ jobs:
             ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
             ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
             ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
-            ${{ runner.temp }}/cao-activity/gh-aw-logs-events
+            ${{ runner.temp }}/cao-activity/gh-aw-logs-records
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
             ${{ runner.temp }}/cao-activity/drain3_weights.json
-          key: cao-activity-v4-lookup-${{ github.run_id }}-${{ github.run_attempt }}-agent
+          key: cao-activity-v5-lookup-${{ github.run_id }}-${{ github.run_attempt }}-agent
           restore-keys: |
-            cao-activity-v4-
+            cao-activity-v5-
 ---
 
 <!--
@@ -100,7 +100,7 @@ come from canonical `safe_output.created` events, and their `--repo` filter
 refers to the output target repository, not the executing repository.
 
 For collection-level access instead of the gh-shaped surface, use
-`cao query --database ... --collection {repositories,workflows,runs,events,transactions} [--id ID] [--where FIELD=VALUE] [--limit COUNT]`,
+`cao query --database ... --collection {repositories,workflows,runs,domains,tools,audits,issues,transactions} [--id ID] [--where FIELD=VALUE] [--limit COUNT]`,
 or `cao doctor --database ...` to check snapshot integrity before relying on
 its counts. Always validate cache scope, freshness, window, and completeness
 against the requested evidence before treating query results as authoritative,

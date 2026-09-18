@@ -49,16 +49,9 @@ function batch() {
         total_output_tokens: 20
       }
     }],
-    jobs: [],
-    sessions: [{
-      id: 'session:42',
-      runId: 'github:run:42:attempt:1',
-      kind: 'agentic',
-      status: 'completed',
-      startedAt: observedAt,
-      completedAt: observedAt
-    }],
-    events: [{
+    domains: [],
+    tools: [],
+    issues: [{
       id: 'event:safe-output',
       sessionId: 'session:42',
       runId: 'github:run:42:attempt:1',
@@ -67,12 +60,14 @@ function batch() {
       summary: 'Created issue',
       status: 'created',
       githubEntityType: 'issue',
+      isPullRequest: false,
       safeOutputType: 'create_issue',
       correlationId: 'https://github.com/owner/repo/issues/7',
       timestamp: observedAt,
       observedAt,
       sequence: 1
-    }, {
+    }],
+    audits: [{
       id: 'event:finding',
       sessionId: 'session:42',
       runId: 'github:run:42:attempt:1',

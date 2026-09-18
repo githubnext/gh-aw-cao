@@ -12,7 +12,10 @@ const sourceNames = [
   "repositories",
   "workflows",
   "runs",
-  "events",
+  "domains",
+  "tools",
+  "audits",
+  "issues",
   "admissions",
   "admission-checks",
   "run-performance",
@@ -887,6 +890,10 @@ function collectedLogRuns(usage) {
 
 const TRANSACTION_EVENT_FIELDS = {
   requestCount: "request-count",
+  domain: "domain",
+  decision: "decision",
+  mcpServer: "mcp-server",
+  mcpTool: "mcp-tool",
   safeOutputType: "safe-output-type",
   githubEntityType: "github-entity-type",
   targetRepo: "target-repo",
@@ -945,7 +952,7 @@ function transactionEventFields(event) {
 }
 
 export function transactionLogRows(usage) {
-  const events = [];
+  const records = [];
   for (const run of usage.securityRuns || []) {
     const timeline = Array.isArray(run.timeline) ? run.timeline : [];
     const names = repositoryParts(run.repository);
@@ -961,7 +968,7 @@ export function transactionLogRows(usage) {
       "run-attempt": attempt,
     };
     if (timeline.length === 0) {
-      events.push({
+      records.push({
         ...common,
         event: sourceId("event", "gh-aw-logs", `${canonicalRun}:run-observed`),
         "event-timestamp": timestamps[0],
@@ -972,7 +979,7 @@ export function transactionLogRows(usage) {
         "observed-at": observedAt,
       });
     }
-    timeline.forEach((event) => events.push({
+    timeline.forEach((event) => records.push({
       ...common,
       event: sourceId("event", "gh-aw-logs", event.sourceId),
       "event-timestamp": event.timestamp,
@@ -986,10 +993,27 @@ export function transactionLogRows(usage) {
       ...(event.payloadRef ? { "payload-ref": event.payloadRef } : {}),
       ...transactionEventFields(event),
       ...(event.sourceSequence !== undefined ? { "source-sequence": event.sourceSequence } : {}),
+      ...(event.githubEntityType === "pull_request" ? { "is-pull-request": true } : {}),
+      ...(event.githubEntityType === "issue" ? { "is-pull-request": false } : {}),
+      ...(event.type === "audit.skill_activation"
+        ? { "tool-type": "skill", "is-skill": true, name: event.summary }
+        : {}),
       "observed-at": run.createdAt || usage.generatedAt,
     }));
   }
-  return { events };
+  const kind = (event) => {
+    if (event["event-source"] === "firewall") return "domains";
+    if (event["event-type"] === "safe_output.created"
+      && ["issue", "pull_request"].includes(event["github-entity-type"])) return "issues";
+    if (event["event-source"] === "mcp"
+      || ["tool_call", "agent_tool_start", "agent_tool_done", "guard_blocked", "difc_filtered", "audit.skill_activation"]
+        .includes(event["event-type"])) return "tools";
+    return "audits";
+  };
+  return Object.fromEntries(["domains", "tools", "audits", "issues"].map((name) => [
+    name,
+    records.filter((record) => kind(record) === name),
+  ]));
 }
 
 function transactionLogRowsForCurrentRuns(transactionLogs, runs) {
@@ -999,9 +1023,10 @@ function transactionLogRowsForCurrentRuns(transactionLogs, runs) {
     Number(row["run-attempt"]) || 1,
   ].join(":");
   const runCoordinates = new Set(runs.map(runCoordinate));
-  return {
-    events: transactionLogs.events.filter((row) => runCoordinates.has(runCoordinate(row))),
-  };
+  return Object.fromEntries(["domains", "tools", "audits", "issues"].map((name) => [
+    name,
+    transactionLogs[name].filter((row) => runCoordinates.has(runCoordinate(row))),
+  ]));
 }
 
 function experimentTelemetryRows(usage) {
@@ -2718,13 +2743,15 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
   sources.repositories = source("repositories", [...repositories.values()], generatedAt, discoveryAvailable, workflowInventoryComplete);
   sources.workflows = source("workflows", workflows, generatedAt, workflowsAvailable, workflowInventoryComplete);
   sources.runs = source("runs", runs, generatedAt, runAvailable, runComplete);
-  sources.events = source(
-    "events",
-    transactionLogs.events,
-    generatedAt,
-    usage.securityAvailable === true,
-    usage.securityComplete === true,
-  );
+  for (const name of ["domains", "tools", "audits", "issues"]) {
+    sources[name] = source(
+      name,
+      transactionLogs[name],
+      generatedAt,
+      usage.securityAvailable === true,
+      usage.securityComplete === true,
+    );
+  }
   const admissionExpected = (deployed.workflows || [])
     .filter((workflow) => workflow.role === "orchestrator" || workflow.role === "worker")
     .flatMap((workflow) => workflow.runHealth?.runRecords || []);

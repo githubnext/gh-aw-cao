@@ -77,7 +77,7 @@ The cache contains:
 $RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite
 $RUNNER_TEMP/cao-activity/gh-aw-logs-shards/
 $RUNNER_TEMP/cao-activity/gh-aw-logs-runs/
-$RUNNER_TEMP/cao-activity/gh-aw-logs-events/
+$RUNNER_TEMP/cao-activity/gh-aw-logs-records/
 $RUNNER_TEMP/cao-activity/payload-hashes.json
 $RUNNER_TEMP/cao-activity/control-settings.json
 $RUNNER_TEMP/cao-activity/inventory-sources.json
@@ -85,13 +85,13 @@ $RUNNER_TEMP/cao-activity/drain3_weights.json
 ```
 
 `payload-hashes.json` maps the SQLite projection, retained source JSONL,
-`gh-aw-logs-runs/` run-information shards, and `gh-aw-logs-events/` event
+`gh-aw-logs-runs/` run-information shards, and `gh-aw-logs-records/` run-linked
 shards to their SHA-256 checksums. Run-information shards contain immutable
 agent/model identity and duration, firewall, MCP, operational-value, and audit
-priority aggregates. Every event includes its owning run identity. Empty phase
-shards are omitted, so the run and event directories can contain different
+priority aggregates. Every domain, tool, audit, and issue record includes its
+owning run identity. Empty phase shards are omitted, so the run and record directories can contain different
 filename stems. The dashboard imports all run-information shards before event
-shards so clients can query runs while detailed ingestion continues.
+record shards so clients can query runs while detailed ingestion continues.
 Each phase filename retains the source shard's sortable prefix before its
 content and normalization hashes, preserving observation precedence across
 repeated records.
@@ -110,8 +110,8 @@ Logging is a no-op by default; set `NODE_DEBUG=cao:*` (or a specific category)
 to see it.
 
 Snapshots use the immutable key
-`cao-activity-v4-${github.run_id}-${github.run_attempt}` and restore prefix
-`cao-activity-v4-`. Dispatching consumers wait for the exact Activity run and
+`cao-activity-v5-${github.run_id}-${github.run_attempt}` and restore prefix
+`cao-activity-v5-`. Dispatching consumers wait for the exact Activity run and
 reconstruct its immutable key from the returned run ID and attempt. Producers
 and consumers use this complete path list because GitHub includes paths in the
 cache version. When the current layout misses, Activity restores the preceding

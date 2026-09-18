@@ -96,6 +96,7 @@ export function applyTableQuerySafetyLimits(queries, tableSourceNames) {
     const joins = Array.isArray(definition.joins) ? definition.joins : [];
     return [
       definition.from,
+      ...(Array.isArray(definition.union) ? definition.union : []),
       ...joins.map((join) => (
         join && typeof join === 'object' && !Array.isArray(join)
           ? /** @type {Record<string, unknown>} */ (join).source

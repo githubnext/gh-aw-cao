@@ -1,12 +1,16 @@
-export const CANONICAL_SCHEMA_VERSION = 10;
+export const CANONICAL_SCHEMA_VERSION = 11;
 
 export const ENTITY_KINDS = /** @type {const} */ ([
   'package',
   'repository',
   'workflow',
   'run',
-  'event'
+  'domain',
+  'tool',
+  'audit',
+  'issue'
 ]);
+const RUN_LINKED_COLLECTIONS = /** @type {const} */ (['domains', 'tools', 'audits', 'issues']);
 
 /** @typedef {typeof ENTITY_KINDS[number]} EntityKind */
 
@@ -28,7 +32,10 @@ export const ENTITY_KINDS = /** @type {const} */ ([
  * @property {Record<string, unknown>[]} repositories
  * @property {Record<string, unknown>[]} workflows
  * @property {Record<string, unknown>[]} runs
- * @property {Record<string, unknown>[]} events
+ * @property {Record<string, unknown>[]} domains
+ * @property {Record<string, unknown>[]} tools
+ * @property {Record<string, unknown>[]} audits
+ * @property {Record<string, unknown>[]} issues
  */
 
 /**
@@ -112,8 +119,10 @@ export function relationshipErrors(batch) {
       errors.push(`${String(run.id ?? '<unknown>')}.workflowId references a workflow from another repository`);
     }
   }
-  for (const event of batch.events) {
-    requireReference(event, 'runId', 'runs');
+  for (const collection of RUN_LINKED_COLLECTIONS) {
+    for (const record of batch[collection]) {
+      requireReference(record, 'runId', 'runs');
+    }
   }
 
   return errors;

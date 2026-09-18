@@ -20,6 +20,7 @@ const MAX_INTERACTIVE_LINE_POINTS = 500;
 const MAX_RENDERED_LINE_POINTS = 2_000;
 const MAX_TIMELINE_TICKS = 5;
 const MAX_BAR_AXIS_TICKS = 5;
+const MAX_HORIZONTAL_BARS = 100;
 const BAR_CHART_LEFT = 12;
 const BAR_CHART_RIGHT = 100;
 const BAR_CHART_BOTTOM = 38;
@@ -428,7 +429,7 @@ function renderInteractiveChartMark({ className, entryIndex, label, shape, toolt
 export function renderChartWidget(chartType, points, series, pieSummary = null, totalLabel = 'Total', unit = null, timeRange = null, referenceField = null) {
   const pieData = chartType === 'pie' ? pieSummary ?? pieChartEntries(points) : null;
   const entryCount = pieData ? pieData.entries.length : points.length;
-  const minimumEntries = ['heatmap', 'pie', 'scatter'].includes(chartType) ? 1 : 2;
+  const minimumEntries = ['heatmap', 'horizontal-bar', 'pie', 'scatter'].includes(chartType) ? 1 : 2;
   if (entryCount < minimumEntries && chartType !== 'swimlane') {
     return renderChartWidgetEmptyState(
       chartType,
@@ -574,6 +575,50 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
 
   if (chartType === 'heatmap') {
     return renderHeatmapChart(points, totalLabel, unit);
+  }
+
+  if (chartType === 'horizontal-bar') {
+    if (points.length > MAX_HORIZONTAL_BARS) {
+      return renderChartWidgetEmptyState(
+        chartType,
+        `Horizontal bar charts support at most ${MAX_HORIZONTAL_BARS} bars.`
+      );
+    }
+    const maximum = Math.max(...points.map((point) => toNumber(point.y)).filter(Number.isFinite), 1);
+    const seriesClassNames = new Map(series.map((item) => [item.name, item.className]));
+    return renderChartWidgetShell(
+      chartType,
+      null,
+      h(
+        'ul',
+        { className: 'horizontal-bar-chart-list', 'aria-label': `Horizontal bar chart with ${points.length} bars` },
+        ...points.map((point, index) => {
+          const numericValue = toNumber(point.y);
+          const value = Number.isFinite(numericValue) ? numericValue : 0;
+          const barSize = Math.max(0, value);
+          const label = chartPointLabel(point, unit);
+          return h(
+            'li',
+            { className: 'horizontal-bar-chart-row' },
+            h('span', { className: 'horizontal-bar-chart-label', title: point.x }, point.x),
+            h(
+              'span',
+              { className: 'horizontal-bar-chart-track', 'aria-hidden': 'true' },
+              h('span', {
+                className: `bar-chart-bar horizontal-bar-chart-bar ${seriesClassNames.get(point.color ?? 'value') ?? 'chart-series-1'}`,
+                style: `--chart-entry-index: ${index}; --horizontal-bar-size: ${(barSize / maximum) * 100}%`
+              })
+            ),
+            h('span', {
+              className: 'horizontal-bar-chart-value',
+              tabIndex: 0,
+              role: 'img',
+              'aria-label': label
+            }, formatNumber(value, unit))
+          );
+        })
+      )
+    );
   }
 
   if (chartType === 'line' || chartType === 'dot' || chartType === 'scatter') {

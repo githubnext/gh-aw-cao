@@ -76,16 +76,22 @@ describe('canonical IndexedDB', () => {
     const database = await openCanonicalDatabase(indexedDB);
 
     expect([...database.objectStoreNames]).toEqual([
-      'events',
+      'audits',
+      'domains',
+      'issues',
       'packages',
       'repositories',
       'runs',
+      'tools',
       'transactions',
       'workflows'
     ]);
     expect(database.transaction('repositories').objectStore('repositories').keyPath).toBe('id');
     expect(database.transaction('runs').objectStore('runs').indexNames).toContain('byConclusion');
-    expect(database.transaction('events').objectStore('events').indexNames).toContain('byRunType');
+    expect([...database.transaction('domains').objectStore('domains').indexNames]).toEqual(['byDomain', 'byRun']);
+    expect([...database.transaction('tools').objectStore('tools').indexNames]).toEqual(['byRun', 'byType']);
+    expect([...database.transaction('audits').objectStore('audits').indexNames]).toEqual(['byRun', 'byType']);
+    expect([...database.transaction('issues').objectStore('issues').indexNames]).toEqual(['byRun']);
     database.close();
   });
 
@@ -107,10 +113,13 @@ describe('canonical IndexedDB', () => {
     const database = await openCanonicalDatabase(indexedDB);
 
     expect([...database.objectStoreNames]).toEqual([
-      'events',
+      'audits',
+      'domains',
+      'issues',
       'packages',
       'repositories',
       'runs',
+      'tools',
       'transactions',
       'workflows'
     ]);
@@ -163,7 +172,7 @@ describe('canonical IndexedDB', () => {
     indexedReads.mockRestore();
   });
 
-  it('uses compound indexes without changing filtered collection order', async () => {
+  it('uses run indexes without changing filtered collection order', async () => {
     const records = [
       { id: 'event:1', runId: 'run:1', type: 'tool.call' },
       { id: 'event:2', runId: 'run:2', type: 'tool.call' },
@@ -177,11 +186,11 @@ describe('canonical IndexedDB', () => {
         { field: 'type', equals: 'tool.call' }
       ]
     }]);
-    await writeRecords('events', records);
-    const stored = await readCollection(indexedDB, 'events');
+    await writeRecords('tools', records);
+    const stored = await readCollection(indexedDB, 'tools');
     const indexedReads = vi.spyOn(IDBIndex.prototype, 'getAll');
 
-    const result = await queryCollection(indexedDB, 'events', operators);
+    const result = await queryCollection(indexedDB, 'tools', operators);
 
     expect(result).toEqual(tidy(stored, operators));
     expect(indexedReads).toHaveBeenCalledTimes(1);
@@ -197,11 +206,11 @@ describe('canonical IndexedDB', () => {
       op: 'filter',
       predicates: [{ field: 'type', includes: 'github-api.' }]
     }]);
-    await writeRecords('events', records);
-    const stored = await readCollection(indexedDB, 'events');
+    await writeRecords('audits', records);
+    const stored = await readCollection(indexedDB, 'audits');
     const indexedReads = vi.spyOn(IDBIndex.prototype, 'getAll');
 
-    const result = await queryCollection(indexedDB, 'events', operators);
+    const result = await queryCollection(indexedDB, 'audits', operators);
 
     expect(result).toEqual(tidy(stored, operators));
     expect(indexedReads).not.toHaveBeenCalled();

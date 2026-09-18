@@ -37,7 +37,7 @@ Built-in pages carry renderer-defined semantic requirements and required source 
 | `packages` | Installed package inventory, registration, modes, runs, and utilization. |
 | `workflows` | Workflow inventory, role, rollout mode, activity, runs, and usage. |
 | `runs` | Workflow run status, conclusion, model, engine, timing, and repository context. |
-| `events` | Ordered execution event evidence linked directly to retained runs. |
+| `audits` | Ordered audit evidence linked directly to retained runs. |
 | `experiments` | Experiment definitions and observed variants. |
 | `graders` | Grader definitions and scored run observations. |
 | `evals` | Evaluation definitions and run-level results. |
@@ -66,6 +66,7 @@ Built-in pages carry renderer-defined semantic requirements and required source 
 | `dot` | Compare compact point values across categories. |
 | `heatmap` | Show intensity across two categorical or temporal dimensions. |
 | `histogram` | Show the distribution of a quantitative field. |
+| `horizontal-bar` | Compare up to 100 labeled quantitative values with labels on the left and bars aligned on the right. |
 | `line` | Show change across an ordered or temporal axis. |
 | `pie` | Show a bounded part-to-whole composition. |
 | `scatter` | Show relationships between two quantitative fields. |

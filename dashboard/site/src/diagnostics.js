@@ -5,7 +5,7 @@ import {
   readCollection
 } from './data/storage/indexeddb.js';
 
-const REQUIRED_POPULATED_STORES = ['repositories', 'workflows', 'runs', 'events'];
+const REQUIRED_POPULATED_STORES = ['repositories', 'workflows', 'runs', 'audits'];
 
 /** @param {string} name @param {boolean} passed @param {string} detail */
 function check(name, passed, detail) {

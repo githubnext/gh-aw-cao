@@ -34,7 +34,10 @@ const ENTITY_COLLECTIONS = [
   'repositories',
   'workflows',
   'runs',
-  'events'
+  'domains',
+  'tools',
+  'audits',
+  'issues'
 ];
 const QUERY_COLLECTIONS = [...ENTITY_COLLECTIONS, 'transactions'];
 const DEFAULT_DEPLOYED_DATA_URL = 'https://githubnext.github.io/gh-aw-cao/cao/payload-hashes.json';
@@ -61,13 +64,13 @@ const USAGE = `Usage:
   cao update [GH_AW_UPDATE_OPTIONS...]
   cao mode (live|preview) PACKAGE...
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
-  cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY|--runs-dir DIRECTORY --events-dir DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
+  cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY|--runs-dir DIRECTORY --records-dir DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input-dir SHARD_DIRECTORY]
   cao compact-jsonl --input-dir SHARD_DIRECTORY --group OWNER/REPOSITORY=SHARD_PREFIX [--group OWNER/REPOSITORY=SHARD_PREFIX...]
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
   cao download [--url URL] [--output DIRECTORY]
-  cao hash-payloads [--database FILE] [--shard-dir SHARD_DIRECTORY] [--normalized-dir DIRECTORY] [--runs-dir DIRECTORY] [--events-dir DIRECTORY] [--inventory FILE] [--output FILE]
+  cao hash-payloads [--database FILE] [--shard-dir SHARD_DIRECTORY] [--normalized-dir DIRECTORY] [--runs-dir DIRECTORY] [--records-dir DIRECTORY] [--inventory FILE] [--output FILE]
   cao activity-stats [--repo OWNER/REPO] [--workflow FILE] [--artifact NAME] [--limit COUNT] [--keep] [--output FILE]
   cao gh runs [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--status STATUS] [--since TIME] [--until TIME] [--limit COUNT]
   cao gh issues [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--since TIME] [--until TIME] [--limit COUNT]
@@ -1075,7 +1078,7 @@ async function hashActivityPayloads({
   shardDirectory,
   normalizedDirectory,
   runsDirectory,
-  eventsDirectory,
+  recordsDirectory,
   inventoryPath
 }) {
   const hashFile = async (filePath) => {
@@ -1110,11 +1113,11 @@ async function hashActivityPayloads({
     const retainedPayloads = {
       normalized: new Set(),
       runs: new Set(),
-      events: new Set()
+      records: new Set()
     };
     if (normalizedDirectory) await mkdir(normalizedDirectory, { recursive: true });
     if (runsDirectory) await mkdir(runsDirectory, { recursive: true });
-    if (eventsDirectory) await mkdir(eventsDirectory, { recursive: true });
+    if (recordsDirectory) await mkdir(recordsDirectory, { recursive: true });
     for (const name of shardNames) {
       const shardPath = path.join(shardDirectory, name);
       if ((await stat(shardPath)).size === 0) {
@@ -1124,13 +1127,13 @@ async function hashActivityPayloads({
       }
       const rawHash = await hashFile(shardPath);
       hashes[`${path.basename(shardDirectory)}/${name}`] = rawHash;
-      if (!normalizedDirectory && !runsDirectory && !eventsDirectory) continue;
+      if (!normalizedDirectory && !runsDirectory && !recordsDirectory) continue;
       const payloadName = `${rawHash}-${normalizationContext}.json`;
       const phasedPayloadName = `${path.parse(name).name}-${payloadName}`;
       const outputPaths = [
         normalizedDirectory ? ['normalized', path.join(normalizedDirectory, payloadName)] : null,
         runsDirectory ? ['runs', path.join(runsDirectory, phasedPayloadName)] : null,
-        eventsDirectory ? ['events', path.join(eventsDirectory, phasedPayloadName)] : null
+        recordsDirectory ? ['records', path.join(recordsDirectory, phasedPayloadName)] : null
       ].filter(Boolean);
       const missing = [];
       for (const output of outputPaths) {
@@ -1162,18 +1165,24 @@ async function hashActivityPayloads({
               repositories: batch.repositories,
               workflows: batch.workflows,
               runs: batch.runs,
-              events: []
+              domains: [],
+              tools: [],
+              audits: [],
+              issues: []
             }
           },
-          events: {
+          records: {
             ...metadata,
-            phase: 'events',
+            phase: 'records',
             batch: {
               packages: [],
               repositories: [],
               workflows: [],
               runs: [],
-              events: batch.events
+              domains: batch.domains,
+              tools: batch.tools,
+              audits: batch.audits,
+              issues: batch.issues
             }
           }
         };
@@ -1196,7 +1205,7 @@ async function hashActivityPayloads({
     for (const [phase, directory] of [
       ['normalized', normalizedDirectory],
       ['runs', runsDirectory],
-      ['events', eventsDirectory]
+      ['records', recordsDirectory]
     ].filter(([, directory]) => Boolean(directory))) {
       for (const name of await readdir(directory)) {
         if (name.endsWith('.json') && !retainedPayloads[phase].has(name)) {
@@ -1437,11 +1446,11 @@ function inTimeRange(timestamp, range) {
 
 export async function queryGhData(indexedDB, resource, options) {
   if (!GH_RESOURCES.has(resource)) throw new Error(`Unknown gh resource: ${resource}`);
-  const [repositories, workflows, runs, events] = await Promise.all([
+  const [repositories, workflows, runs, issues] = await Promise.all([
     readCollection(indexedDB, 'repositories'),
     readCollection(indexedDB, 'workflows'),
     readCollection(indexedDB, 'runs'),
-    readCollection(indexedDB, 'events')
+    readCollection(indexedDB, 'issues')
   ]);
   const repositoryFilter = option(options, 'repo', false)?.toLowerCase();
   const workflowFilter = option(options, 'workflow', false);
@@ -1467,12 +1476,11 @@ export async function queryGhData(indexedDB, resource, options) {
         && inTimeRange(timestamp, range);
     });
   } else {
-    const entityType = resource === 'issues' ? 'issue' : 'pull_request';
     const safeOutputType = resource === 'issues' ? 'create_issue' : 'create_pull_request';
-    records = events
+    records = issues
       .filter((event) => (
         event.type === 'safe_output.created'
-        && event.githubEntityType === entityType
+        && event.isPullRequest === (resource === 'prs')
         && event.safeOutputType === safeOutputType
       ))
       .map((event) => {
@@ -1570,10 +1578,11 @@ async function runLegacyIngestion(contextPath, logDirectory) {
     );
     const queries = createCanonicalQueries(indexedDB);
     const runs = await queries.runs.list();
-    const events = (await Promise.all(
-      runs.map((run) => queries.events.forRun(String(run.id)))
-    )).flat();
-    return { result, runs, events };
+    const records = (await Promise.all(
+      ['domains', 'tools', 'audits', 'issues'].map((collection) =>
+        Promise.all(runs.map((run) => queries[collection].forRun(String(run.id)))))
+    )).flat(2);
+    return { result, runs, records };
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -1624,7 +1633,7 @@ export async function runCli(arguments_, input = process.stdin) {
     );
   }
   if (command === 'hash-payloads') {
-    rejectUnknownOptions(options, ['database', 'shard-dir', 'normalized-dir', 'runs-dir', 'events-dir', 'inventory', 'output']);
+    rejectUnknownOptions(options, ['database', 'shard-dir', 'normalized-dir', 'runs-dir', 'records-dir', 'inventory', 'output']);
     const hashes = await hashActivityPayloads({
       databasePath: option(options, 'database', false) ? path.resolve(option(options, 'database', false)) : undefined,
       shardDirectory: option(options, 'shard-dir', false) ? path.resolve(option(options, 'shard-dir', false)) : undefined,
@@ -1634,8 +1643,8 @@ export async function runCli(arguments_, input = process.stdin) {
       runsDirectory: option(options, 'runs-dir', false)
         ? path.resolve(option(options, 'runs-dir', false))
         : undefined,
-      eventsDirectory: option(options, 'events-dir', false)
-        ? path.resolve(option(options, 'events-dir', false))
+      recordsDirectory: option(options, 'records-dir', false)
+        ? path.resolve(option(options, 'records-dir', false))
         : undefined,
       inventoryPath: option(options, 'inventory', false) ? path.resolve(option(options, 'inventory', false)) : undefined
     });
@@ -1695,7 +1704,7 @@ export async function runCli(arguments_, input = process.stdin) {
     return { result, counts: await databaseCounts(indexedDB) };
   }
   if (command === 'ingest-jsonl') {
-    rejectUnknownOptions(options, ['database', 'input', 'input-dir', 'runs-dir', 'events-dir', 'context', 'retention-days', 'run-retention-days']);
+    rejectUnknownOptions(options, ['database', 'input', 'input-dir', 'runs-dir', 'records-dir', 'context', 'retention-days', 'run-retention-days']);
     const inputPath = option(options, 'input', false);
     const inputDirectory = option(options, 'input-dir', false);
     if (inputPath && inputDirectory) throw new UsageError('Options --input and --input-dir cannot be combined');
@@ -1709,17 +1718,17 @@ export async function runCli(arguments_, input = process.stdin) {
       context
     };
     const runsDirectory = option(options, 'runs-dir', false);
-    const eventsDirectory = option(options, 'events-dir', false);
-    if (Boolean(runsDirectory) !== Boolean(eventsDirectory)) {
-      throw new Error('--runs-dir and --events-dir must be provided together');
+    const recordsDirectory = option(options, 'records-dir', false);
+    if (Boolean(runsDirectory) !== Boolean(recordsDirectory)) {
+      throw new Error('--runs-dir and --records-dir must be provided together');
     }
     if ((inputPath || inputDirectory) && runsDirectory) {
       throw new Error('Phased shard directories cannot be combined with --input or --input-dir');
     }
-    const result = runsDirectory && eventsDirectory
+    const result = runsDirectory && recordsDirectory
       ? await ingestNormalizedShardDirectories(indexedDB, [
           ['runs', path.resolve(runsDirectory)],
-          ['events', path.resolve(eventsDirectory)]
+          ['records', path.resolve(recordsDirectory)]
         ], ingestOptions)
       : inputPath
         ? await ingestJsonlFile(indexedDB, path.resolve(inputPath), ingestOptions)

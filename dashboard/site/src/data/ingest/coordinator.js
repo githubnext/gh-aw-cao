@@ -28,7 +28,7 @@ import { createDebug } from '../../debug.js';
 const debug = createDebug('data:ingestion');
 
 const DASHBOARD_SOURCE_INGESTION_VERSION = 4;
-const GH_AW_JSONL_INGESTION_VERSION = 3;
+const GH_AW_JSONL_INGESTION_VERSION = 4;
 export const NORMALIZED_JSON_INGESTION_VERSION = 2;
 const MAX_QUOTA_RECOVERY_ATTEMPTS = 4;
 const MAX_USAGE_RECOVERY_ATTEMPTS = 4;
@@ -331,7 +331,7 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
  *
  * @param {IDBFactory} indexedDB
  * @param {unknown} input
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, onLockWait?: () => void, payloadIdentity: string, payloadScope: string, expectedPhase?: 'runs' | 'events', signal?: AbortSignal }} options
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, onLockWait?: () => void, payloadIdentity: string, payloadScope: string, expectedPhase?: 'runs' | 'records', signal?: AbortSignal }} options
  */
 export function ingestNormalizedJson(indexedDB, input, options) {
   return serializeIngestion(indexedDB, async () => {
@@ -351,7 +351,7 @@ export function ingestNormalizedJson(indexedDB, input, options) {
         throw new TypeError('Normalized activity payload must include a canonical batch');
       }
       const batch = /** @type {import('../model/schema.js').CanonicalBatch} */ (payload.batch);
-      for (const collection of ['packages', 'repositories', 'workflows', 'runs', 'events']) {
+      for (const collection of ['packages', 'repositories', 'workflows', 'runs', 'domains', 'tools', 'audits', 'issues']) {
         if (!Array.isArray(batch[/** @type {keyof import('../model/schema.js').CanonicalBatch} */ (collection)])) {
           throw new TypeError(`Normalized activity payload is missing ${collection}`);
         }
@@ -361,7 +361,7 @@ export function ingestNormalizedJson(indexedDB, input, options) {
           throw new TypeError(`Normalized activity payload phase must be ${options.expectedPhase}`);
         }
         const excluded = options.expectedPhase === 'runs'
-          ? ['events']
+          ? ['domains', 'tools', 'audits', 'issues']
           : ['packages', 'repositories', 'workflows', 'runs'];
         for (const collection of excluded) {
           if (batch[/** @type {keyof import('../model/schema.js').CanonicalBatch} */ (collection)].length > 0) {
@@ -431,6 +431,19 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
   try {
     options.signal?.throwIfAborted();
     const adaptationContext = cachedJsonlAdaptationContext(options);
+    const scope = options.payloadScope ?? 'gh-aw-jsonl';
+    const publishedIdentity = options.payloadIdentity;
+    if (publishedIdentity) {
+      const current = await readCurrentIngestion(indexedDB, 'ingest-jsonl', scope);
+      if (current?.payloadHash === publishedIdentity
+          && current.adaptationContext === adaptationContext
+          && current.ingestionVersion === GH_AW_JSONL_INGESTION_VERSION) {
+        if (options.payloadEtag && current.payloadEtag !== options.payloadEtag) {
+          await recordTransaction(indexedDB, { ...current, payloadEtag: options.payloadEtag });
+        }
+        return { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 };
+      }
+    }
     const streamed = typeof content !== 'string'
       && !ArrayBuffer.isView(content)
       && Symbol.asyncIterator in Object(content)
@@ -448,8 +461,9 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       ?? streamed?.payloadIdentity
       ?? cachedJsonlPayloadIdentity(/** @type {string | Uint8Array} */ (content));
     const parsingMs = monotonicNow() - startedAt;
-    const scope = options.payloadScope ?? 'gh-aw-jsonl';
-    const current = await readCurrentIngestion(indexedDB, 'ingest-jsonl', scope);
+    const current = publishedIdentity
+      ? null
+      : await readCurrentIngestion(indexedDB, 'ingest-jsonl', scope);
     if (current?.payloadHash === payloadIdentity
         && current.adaptationContext === adaptationContext
         && current.ingestionVersion === GH_AW_JSONL_INGESTION_VERSION) {
@@ -479,7 +493,10 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
     debug('normalized JSONL stream', {
       sourceRecords: adapted.records,
       runs: batch.runs.length,
-      events: batch.events.length
+      domains: batch.domains.length,
+      tools: batch.tools.length,
+      audits: batch.audits.length,
+      issues: batch.issues.length
     });
     phase = 'writing';
     const storageStartedAt = monotonicNow();
@@ -526,7 +543,7 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       duplicateRawRunObservations: adapted.duplicateRawRunObservations,
       duplicateAgenticRunObservations: adapted.duplicateAgenticRunObservations,
       unenrichedRuns: adapted.unenrichedRuns,
-      events: adapted.events,
+      recordsByKind: adapted.recordsByKind,
       rateLimits: adapted.rateLimits,
       mappedRateLimits: adapted.mappedRateLimits,
       timings

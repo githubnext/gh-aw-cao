@@ -107,6 +107,9 @@ function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, eva
   const standalone = isPlainObject(declared)
     && typeof declared.from === 'string'
     && !declaredNames.has(declared.from)
+    && (!Array.isArray(declared.union) || declared.union.every((source) => (
+      typeof source === 'string' && !declaredNames.has(source)
+    )))
     && (!Array.isArray(declared.joins) || declared.joins.every((join) => (
       isPlainObject(join) && typeof join.source === 'string' && !declaredNames.has(join.source)
     )));
@@ -294,11 +297,15 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
       throw new TypeError(`Declared dashboard query "${name}" requires a source.`);
     }
     const from = definition.from;
-    const dependencyNames = [from, ...(Array.isArray(definition.joins)
+    const dependencyNames = [
+      from,
+      ...(Array.isArray(definition.union) ? definition.union : []),
+      ...(Array.isArray(definition.joins)
       ? definition.joins.flatMap((join) => (
           isPlainObject(join) && typeof join.source === 'string' ? [join.source] : []
         ))
-      : [])].filter((dependency) => byName.has(dependency));
+      : [])
+    ].filter((dependency) => byName.has(dependency));
     for (const dependency of dependencyNames) compile(dependency);
 
     const declaredFilter = isPlainObject(definition.filter) ? definition.filter : null;
@@ -318,6 +325,11 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
       ...definition,
       name: scopedName(name),
       from: byName.has(from) ? scopedName(from) : from,
+      ...(Array.isArray(definition.union) ? {
+        union: definition.union.map((source) => (
+          typeof source === 'string' && byName.has(source) ? scopedName(source) : source
+        ))
+      } : {}),
       ...(Array.isArray(definition.joins) ? {
         joins: definition.joins.map((join) => {
           if (!isPlainObject(join) || typeof join.source !== 'string' || !byName.has(join.source)) return join;

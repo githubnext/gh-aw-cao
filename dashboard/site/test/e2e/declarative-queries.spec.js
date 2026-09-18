@@ -254,12 +254,12 @@ test('entity cards drill through declared queries without a depth limit and set 
           }
         }]
       }, 'issues', {
-        queries: [{ name: 'safe-output-items', from: 'events' }],
+        queries: [{ name: 'safe-output-items', from: 'issues' }],
         routeParameters: Object.fromEntries(parameters)
       });
       const sources = executeDashboardQueries(payload.queries, {
-        events: {
-          source: 'events',
+        issues: {
+          source: 'issues',
           rows: drillLevels.map(([issueId]) => ({ 'correlation-id': String(issueId) })),
           metadata: { availability: 'available', completeness: 'complete', freshness: 'fresh' }
         }

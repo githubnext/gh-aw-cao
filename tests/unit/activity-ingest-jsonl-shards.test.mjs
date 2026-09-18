@@ -165,10 +165,10 @@ test('compact-jsonl consolidates exact-prefix shards without reordering observat
   assert.equal(await readFile(overlappingPrefixPath, 'utf8'), `${third}\n`);
 });
 
-test('ingest-jsonl injects every run shard before event shards', async () => {
+test('ingest-jsonl injects every run shard before record shards', async () => {
   const { root, shardDirectory, databasePath } = await fixture();
   const runsDirectory = path.join(root, 'gh-aw-logs-runs');
-  const eventsDirectory = path.join(root, 'gh-aw-logs-events');
+  const recordsDirectory = path.join(root, 'gh-aw-logs-records');
   await execFileAsync(process.execPath, [
     path.resolve('activity/cao.mjs'),
     'hash-payloads',
@@ -176,8 +176,8 @@ test('ingest-jsonl injects every run shard before event shards', async () => {
     shardDirectory,
     '--runs-dir',
     runsDirectory,
-    '--events-dir',
-    eventsDirectory,
+    '--records-dir',
+    recordsDirectory,
   ]);
 
   const { stdout } = await execFileAsync(process.execPath, [
@@ -187,19 +187,19 @@ test('ingest-jsonl injects every run shard before event shards', async () => {
     databasePath,
     '--runs-dir',
     runsDirectory,
-    '--events-dir',
-    eventsDirectory,
+    '--records-dir',
+    recordsDirectory,
   ]);
   const result = JSON.parse(stdout).result;
 
-  assert.deepEqual(result.shards.map((shard) => shard.phase), ['runs', 'events']);
+  assert.deepEqual(result.shards.map((shard) => shard.phase), ['runs', 'records']);
   const transactions = await queryTransactions(databasePath);
   const runShard = (await readdir(runsDirectory))[0];
-  const eventShard = (await readdir(eventsDirectory))[0];
+  const recordShard = (await readdir(recordsDirectory))[0];
   assert.deepEqual(
     transactions.map((transaction) => transaction.payloadScope).sort(),
     [
-      `gh-aw-events:${eventShard}`,
+      `gh-aw-records:${recordShard}`,
       `gh-aw-runs:${runShard}`,
     ].sort(),
   );
@@ -215,7 +215,7 @@ test('phased shard names preserve source order for non-empty phase pairs', async
     source
   );
   const runsDirectory = path.join(root, 'gh-aw-logs-runs');
-  const eventsDirectory = path.join(root, 'gh-aw-logs-events');
+  const recordsDirectory = path.join(root, 'gh-aw-logs-records');
   const { stdout } = await execFileAsync(process.execPath, [
     path.resolve('activity/cao.mjs'),
     'hash-payloads',
@@ -223,26 +223,26 @@ test('phased shard names preserve source order for non-empty phase pairs', async
     shardDirectory,
     '--runs-dir',
     runsDirectory,
-    '--events-dir',
-    eventsDirectory,
+    '--records-dir',
+    recordsDirectory,
   ]);
 
   const runs = (await readdir(runsDirectory)).sort();
-  const events = (await readdir(eventsDirectory)).sort();
+  const records = (await readdir(recordsDirectory)).sort();
   const hashes = JSON.parse(stdout);
   assert.equal(runs.length, 2);
-  assert.deepEqual(runs, events);
+  assert.deepEqual(runs, records);
   assert.match(runs[0], /^gh-aw-logs-1000000000-aaaa-/);
   assert.match(runs[1], /^gh-aw-logs-2000000000-bbbb-/);
   assert.ok(hashes[`gh-aw-logs-runs/${runs[0]}`]);
-  assert.ok(hashes[`gh-aw-logs-events/${events[1]}`]);
+  assert.ok(hashes[`gh-aw-logs-records/${records[1]}`]);
 });
 
 test('hash-payloads drops empty phased shards from files and hashes', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'activity-empty-phased-shards-'));
   const shardDirectory = path.join(root, 'gh-aw-logs-shards');
   const runsDirectory = path.join(root, 'gh-aw-logs-runs');
-  const eventsDirectory = path.join(root, 'gh-aw-logs-events');
+  const recordsDirectory = path.join(root, 'gh-aw-logs-records');
   await mkdir(shardDirectory, { recursive: true });
   await writeFile(
     path.join(shardDirectory, 'gh-aw-logs-1000000000-aaaa.jsonl'),
@@ -258,15 +258,15 @@ test('hash-payloads drops empty phased shards from files and hashes', async () =
     shardDirectory,
     '--runs-dir',
     runsDirectory,
-    '--events-dir',
-    eventsDirectory,
+    '--records-dir',
+    recordsDirectory,
   ]);
 
   const hashes = JSON.parse(stdout);
   assert.deepEqual(await readdir(runsDirectory), []);
-  assert.deepEqual(await readdir(eventsDirectory), []);
+  assert.deepEqual(await readdir(recordsDirectory), []);
   assert.equal(Object.keys(hashes).filter((name) => name.startsWith('gh-aw-logs-runs/')).length, 0);
-  assert.equal(Object.keys(hashes).filter((name) => name.startsWith('gh-aw-logs-events/')).length, 0);
+  assert.equal(Object.keys(hashes).filter((name) => name.startsWith('gh-aw-logs-records/')).length, 0);
   assert.equal(Object.hasOwn(hashes, 'gh-aw-logs-shards/empty.jsonl'), false);
   await assert.rejects(readFile(emptySourcePath), { code: 'ENOENT' });
 });
@@ -277,7 +277,7 @@ test('hash-payloads upgrades the legacy cached layout to phased shards', async (
   await mkdir(legacyNormalizedDirectory);
   await writeFile(path.join(legacyNormalizedDirectory, 'legacy.json'), '{}');
   const runsDirectory = path.join(root, 'gh-aw-logs-runs');
-  const eventsDirectory = path.join(root, 'gh-aw-logs-events');
+  const recordsDirectory = path.join(root, 'gh-aw-logs-records');
 
   await execFileAsync(process.execPath, [
     path.resolve('activity/cao.mjs'),
@@ -288,24 +288,24 @@ test('hash-payloads upgrades the legacy cached layout to phased shards', async (
     legacyNormalizedDirectory,
     '--runs-dir',
     runsDirectory,
-    '--events-dir',
-    eventsDirectory,
+    '--records-dir',
+    recordsDirectory,
   ]);
 
   const runs = await readdir(runsDirectory);
-  const events = await readdir(eventsDirectory);
+  const records = await readdir(recordsDirectory);
   const normalized = await readdir(legacyNormalizedDirectory);
   assert.equal(runs.length, 1);
-  assert.deepEqual(runs, events);
+  assert.deepEqual(runs, records);
   assert.equal(normalized.length, 1);
   const runPayload = JSON.parse(await readFile(path.join(runsDirectory, runs[0]), 'utf8'));
-  const eventPayload = JSON.parse(await readFile(path.join(eventsDirectory, events[0]), 'utf8'));
+  const recordPayload = JSON.parse(await readFile(path.join(recordsDirectory, records[0]), 'utf8'));
   const normalizedPayload = JSON.parse(await readFile(path.join(legacyNormalizedDirectory, normalized[0]), 'utf8'));
   assert.equal(runPayload.phase, 'runs');
-  assert.equal(eventPayload.phase, 'events');
+  assert.equal(recordPayload.phase, 'records');
   assert.ok(runPayload.batch.runs.length > 0);
-  assert.ok(eventPayload.batch.events.length > 0);
-  for (const payload of [normalizedPayload, runPayload, eventPayload]) {
+  assert.ok(['domains', 'tools', 'audits', 'issues'].some((name) => recordPayload.batch[name].length > 0));
+  for (const payload of [normalizedPayload, runPayload, recordPayload]) {
     assert.equal(Object.hasOwn(payload.batch, 'jobs'), false);
     assert.equal(Object.hasOwn(payload.batch, 'sessions'), false);
   }

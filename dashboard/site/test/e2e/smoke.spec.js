@@ -666,7 +666,10 @@ test('Transactions includes local database controls and a responsive transaction
         'database-repository-count': { source: 'database-repository-count', rows: [{ repositories: 3 }], metadata },
         'database-workflow-count': { source: 'database-workflow-count', rows: [{ workflows: 5 }], metadata },
         'database-run-count': { source: 'database-run-count', rows: [{ runs: 8 }], metadata },
-        'database-event-count': { source: 'database-event-count', rows: [{ events: 13 }], metadata }
+        'database-domain-count': { source: 'database-domain-count', rows: [{ domains: 7 }], metadata },
+        'database-tool-count': { source: 'database-tool-count', rows: [{ tools: 11 }], metadata },
+        'database-audit-count': { source: 'database-audit-count', rows: [{ audits: 13 }], metadata },
+        'database-issue-count': { source: 'database-issue-count', rows: [{ issues: 17 }], metadata }
       };
       window.location.hash = '#page-overview';
       document.querySelector('#root').append(renderDashboard({ document: ${JSON.stringify(documentModel)}, sources }));
@@ -683,12 +686,12 @@ test('Transactions includes local database controls and a responsive transaction
   const view = transactionsPage.locator('[data-view-layout="full-view"]');
   const scroll = view.locator('.table-scroll');
   await expect(transactionsPage.getByRole('heading', { name: 'Local database' })).toBeVisible();
-  await expect(transactionsPage.locator('.configuration-database-counts')).toContainText('13Events');
+  await expect(transactionsPage.locator('.configuration-database-counts')).toContainText('13Audits');
   await expect(transactionsPage.locator('.reset-dashboard-trigger')).toBeVisible();
   await expect(root).toHaveClass(/dashboard-full-view/);
   await expect(transactionsPage.locator('.line-chart-series')).toHaveCount(2);
   await expect(transactionsPage.locator('.chart-legend')).toContainText('Known runs');
-  await expect(transactionsPage.locator('.chart-legend')).toContainText('Runs with event data');
+  await expect(transactionsPage.locator('.chart-legend')).toContainText('Runs with record data');
   expect(await page.getByRole('button', { name: 'Show table view' }).evaluate(
     (toggle) => toggle.parentElement?.classList.contains('title-area')
   )).toBe(true);
@@ -1492,7 +1495,10 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
         'database-repository-count': { source: 'database-repository-count', rows: [{ repositories: 3 }], metadata },
         'database-workflow-count': { source: 'database-workflow-count', rows: [{ workflows: 5 }], metadata },
         'database-run-count': { source: 'database-run-count', rows: [{ runs: 8 }], metadata },
-        'database-event-count': { source: 'database-event-count', rows: [{ events: 13 }], metadata },
+        'database-domain-count': { source: 'database-domain-count', rows: [{ domains: 7 }], metadata },
+        'database-tool-count': { source: 'database-tool-count', rows: [{ tools: 11 }], metadata },
+        'database-audit-count': { source: 'database-audit-count', rows: [{ audits: 13 }], metadata },
+        'database-issue-count': { source: 'database-issue-count', rows: [{ issues: 17 }], metadata },
         'overview-failed-run-count': {
           source: 'overview-failed-run-count',
           rows: [{ count: 80 }],

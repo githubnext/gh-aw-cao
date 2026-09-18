@@ -280,27 +280,27 @@ function definedFields(record) {
 }
 
 /**
- * Projects retained canonical events with their run and repository
- * context so event-backed views survive partial collections.
+ * Projects retained run-linked records with their run and repository context.
  *
- * @param {Record<string, unknown>[]} events
+ * @param {string} sourceName
+ * @param {Record<string, unknown>[]} records
  * @param {Map<unknown, Record<string, unknown>>} runsById
  * @param {Record<string, unknown>} sources
  */
-function eventsSource(events, runsById, sources) {
-  const publishedEvents = new Map(sourceRows(sources.events).map((event) => [
+function recordsSource(sourceName, records, runsById, sources) {
+  const publishedRecords = new Map(sourceRows(sources[sourceName]).map((event) => [
     normalizedKey(event.event),
     event
   ]));
-  const ordered = [...events].sort((left, right) =>
+  const ordered = [...records].sort((left, right) =>
     String(left.runId).localeCompare(String(right.runId))
     || Number(left.sequence) - Number(right.sequence));
   return {
-    source: 'events',
+    source: sourceName,
     rows: ordered.map((event) => {
       const run = runsById.get(event.runId) ?? {};
       return {
-        ...(publishedEvents.get(normalizedKey(event.id)) ?? {}),
+        ...(publishedRecords.get(normalizedKey(event.id)) ?? {}),
         ...definedFields({
           organization: run.owner,
           repository: run.repository,
@@ -322,6 +322,10 @@ function eventsSource(events, runsById, sources) {
           'mcp-tool': event.mcpTool,
           'safe-output-type': event.safeOutputType,
           'github-entity-type': event.githubEntityType,
+          'is-pull-request': event.isPullRequest,
+          'tool-type': event.toolType,
+          'is-skill': event.isSkill,
+          name: event.name,
           'source-sequence': event.sourceSequence,
           'observed-at': event.observedAt,
           'run-link': run.runLink,
@@ -374,7 +378,7 @@ function eventsSource(events, runsById, sources) {
         })
       };
     }),
-    metadata: projectionMetadata(sources, 'events', 'events', true)
+    metadata: projectionMetadata(sources, sourceName, sourceName, true)
   };
 }
 
@@ -405,7 +409,7 @@ function mcpCallsSource(events, runsById, sources) {
   return {
     source: 'mcp-calls',
     rows,
-    metadata: canonicalProjectionMetadata(sources, 'events', 'mcp-calls', rows.length)
+    metadata: canonicalProjectionMetadata(sources, 'tools', 'mcp-calls', rows.length)
   };
 }
 
@@ -466,7 +470,7 @@ function graderObservationsSource(graders, sources) {
   return {
     source: 'grader-observations',
     rows: graders,
-    metadata: canonicalProjectionMetadata(sources, 'events', 'grader-observations', graders.length)
+    metadata: canonicalProjectionMetadata(sources, 'audits', 'grader-observations', graders.length)
   };
 }
 
@@ -516,7 +520,7 @@ function operationalValuesSource(graders, sources) {
   return {
     source: 'operational-values',
     rows,
-    metadata: canonicalProjectionMetadata(sources, 'events', 'operational-values', rows.length)
+    metadata: canonicalProjectionMetadata(sources, 'audits', 'operational-values', rows.length)
   };
 }
 
@@ -649,7 +653,7 @@ function outcomesSource(events, runsById, workflowsById, sources) {
   return {
     source: 'outcomes',
     rows,
-    metadata: canonicalProjectionMetadata(sources, 'events', 'outcomes', rows.length)
+    metadata: canonicalProjectionMetadata(sources, 'issues', 'outcomes', rows.length)
   };
 }
 
@@ -685,7 +689,7 @@ function findingsSource(events, runsById, sources) {
   return {
     source: 'findings',
     rows,
-    metadata: canonicalProjectionMetadata(sources, 'events', 'findings', rows.length)
+    metadata: canonicalProjectionMetadata(sources, 'audits', 'findings', rows.length)
   };
 }
 
@@ -709,7 +713,7 @@ function securityFindingsSource(findings, sources) {
   return {
     source: 'security-findings',
     rows,
-    metadata: canonicalProjectionMetadata(sources, 'events', 'security-findings', rows.length)
+    metadata: canonicalProjectionMetadata(sources, 'audits', 'security-findings', rows.length)
   };
 }
 
@@ -735,7 +739,7 @@ function detectionObservationsSource(securityFindings, sources) {
   return {
     source: 'detection-observations',
     rows,
-    metadata: canonicalProjectionMetadata(sources, 'events', 'detection-observations', rows.length)
+    metadata: canonicalProjectionMetadata(sources, 'audits', 'detection-observations', rows.length)
   };
 }
 
@@ -758,7 +762,7 @@ function safeOutputPerformanceSource(outcomes, sources) {
   return {
     source: 'safe-output-performance',
     rows,
-    metadata: canonicalProjectionMetadata(sources, 'events', 'safe-output-performance', rows.length)
+    metadata: canonicalProjectionMetadata(sources, 'issues', 'safe-output-performance', rows.length)
   };
 }
 
@@ -858,7 +862,7 @@ function gradersSource(graders, sources) {
   return {
     source: 'graders',
     rows,
-    metadata: canonicalProjectionMetadata(sources, 'events', 'graders', rows.length)
+    metadata: canonicalProjectionMetadata(sources, 'audits', 'graders', rows.length)
   };
 }
 
@@ -882,7 +886,7 @@ function experimentsSource(graders, sources) {
   return {
     source: 'experiments',
     rows,
-    metadata: canonicalProjectionMetadata(sources, 'events', 'experiments', rows.length)
+    metadata: canonicalProjectionMetadata(sources, 'audits', 'experiments', rows.length)
   };
 }
 
@@ -922,12 +926,12 @@ function evalSources(graders, sources) {
     evals: {
       source: 'evals',
       rows: definitions,
-      metadata: canonicalProjectionMetadata(sources, 'events', 'evals', definitions.length)
+      metadata: canonicalProjectionMetadata(sources, 'audits', 'evals', definitions.length)
     },
     observations: {
       source: 'eval-observations',
       rows: observations,
-      metadata: canonicalProjectionMetadata(sources, 'events', 'eval-observations', observations.length)
+      metadata: canonicalProjectionMetadata(sources, 'audits', 'eval-observations', observations.length)
     }
   };
 }
@@ -975,7 +979,7 @@ function firewallObservationsSource(events, runsById, sources) {
   return {
     source: 'firewall-observations',
     rows,
-    metadata: canonicalProjectionMetadata(sources, 'events', 'firewall-observations', rows.length)
+    metadata: canonicalProjectionMetadata(sources, 'domains', 'firewall-observations', rows.length)
   };
 }
 
@@ -1082,7 +1086,10 @@ export async function projectCanonicalViewSources(indexedDB, logicalSources) {
       'runs',
       'job-performance',
       'failed-runs',
-      'events',
+      'domains',
+      'tools',
+      'audits',
+      'issues',
       'transactions',
       'firewall-observations'
     ])
@@ -1124,7 +1131,8 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   if (needed.has('safe-output-performance')) needed.add('outcomes');
   if (needed.has('security-findings') || needed.has('detection-observations')) needed.add('findings');
   const queries = createCanonicalQueries(indexedDB);
-  const needsFirewall = needed.has('firewall-observations');
+  const needsFirewall = needed.has('firewall-observations')
+    && sourceRows(logicalSources['firewall-observations']).length === 0;
   const needsGraders = [
     'grader-observations',
     'operational-values',
@@ -1134,25 +1142,35 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
     'eval-observations'
   ].some((name) => needed.has(name));
   const needsMcpCalls = needed.has('mcp-calls') && !sourceRows(logicalSources['mcp-calls']).length;
-  const needsOutcomeEvents = ['outcomes', 'findings', 'security-findings', 'detection-observations']
-    .some((name) => needed.has(name));
-  const needsEvents = needed.has('events') || needsFirewall || needsGraders || needsMcpCalls || needsOutcomeEvents;
-  const needsRuns = needed.has('runs') || needed.has('usage') || needsEvents;
+  const needsDerivedFindings = needed.has('findings')
+    || (['security-findings', 'detection-observations'].some((name) => needed.has(name))
+      && sourceRows(logicalSources['security-findings']).length === 0);
+  const needsFindingRecords = needsDerivedFindings && sourceRows(logicalSources.findings).length === 0;
+  const needsOutcomeRecords = needed.has('outcomes') && sourceRows(logicalSources.outcomes).length === 0;
+  const needsDomains = needed.has('domains') || needsFirewall;
+  const needsTools = needed.has('tools') || needsMcpCalls;
+  const needsAudits = needed.has('audits') || needsGraders || needsFindingRecords || needsOutcomeRecords;
+  const needsIssues = needed.has('issues') || needsOutcomeRecords;
+  const needsRunLinkedRecords = needsDomains || needsTools || needsAudits || needsIssues;
+  const needsRuns = needed.has('runs') || needed.has('usage') || needsRunLinkedRecords;
   const needsWorkflows = needed.has('workflows') || needsRuns || needed.has('outcomes') || needed.has('work-items');
   const needsRepositories = needed.has('repositories') || needsWorkflows;
-  const [packages, repositories, workflows, runs, failedRuns, events, transactions] = await Promise.all([
+  const [packages, repositories, workflows, runs, failedRuns, domains, tools, audits, issues, transactions] = await Promise.all([
     needed.has('packages') ? queries.packages.list() : [],
     needsRepositories ? queries.repositories.list() : [],
     needsWorkflows ? queries.workflows.list() : [],
     needsRuns ? queries.runs.list() : [],
     needed.has('failed-runs') ? queries.runs.recentFailures() : [],
-    needsEvents ? queries.events.list() : [],
+    needsDomains ? queries.domains.list() : [],
+    needsTools ? queries.tools.list() : [],
+    needsAudits ? queries.audits.list() : [],
+    needsIssues ? queries.issues.list() : [],
     needed.has('transactions') ? queries.transactions.list() : []
   ]);
   const repositoriesById = new Map(repositories.map((repository) => [repository.id, repository]));
   const workflowsById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
   const runsById = new Map(runs.map((run) => [run.id, run]));
-  const graders = needsGraders ? graderRows(events, runsById) : [];
+  const graders = needsGraders ? graderRows(audits, runsById) : [];
   const sources = namedLogicalSources(logicalSources);
   const projectedWorkflows = workflowsSource(workflows, repositoriesById, sources).rows;
   const projectedRuns = runsSource(runs, workflowsById, sources).rows;
@@ -1160,13 +1178,18 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   const outcomes = needed.has('outcomes')
     ? publishedOutcomes.length > 0
       ? /** @type {import('../../presenter.js').LogicalSourceInput} */ (sources.outcomes)
-      : outcomesSource(events, runsById, workflowsById, sources)
+      : outcomesSource(
+          [...issues, ...audits.filter((record) => record.type === 'safe_output.created')],
+          runsById,
+          workflowsById,
+          sources
+        )
     : null;
   const publishedFindings = sourceRows(sources.findings);
   const findings = needed.has('findings')
     ? publishedFindings.length > 0
       ? /** @type {import('../../presenter.js').LogicalSourceInput} */ (sources.findings)
-      : findingsSource(events, runsById, sources)
+      : findingsSource(audits, runsById, sources)
     : null;
   const publishedSecurityFindings = sourceRows(sources['security-findings']);
   const securityFindings = needed.has('security-findings') || needed.has('detection-observations')
@@ -1201,8 +1224,12 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
     };
   }
   if (projectedNames.has('failed-runs')) projected['failed-runs'] = failedRunsSource(failedRuns, sources);
-  if (projectedNames.has('events')) projected.events = eventsSource(events, runsById, sources);
-  if (needsMcpCalls) projected['mcp-calls'] = mcpCallsSource(events, runsById, sources);
+  for (const [sourceName, records] of Object.entries({ domains, tools, audits, issues })) {
+    if (projectedNames.has(sourceName)) {
+      projected[sourceName] = recordsSource(sourceName, records, runsById, sources);
+    }
+  }
+  if (needsMcpCalls) projected['mcp-calls'] = mcpCallsSource(tools, runsById, sources);
   if (projectedNames.has('usage') && sourceRows(sources.usage).length === 0) {
     projected.usage = usageSource(runs, sources);
   }
@@ -1265,7 +1292,7 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
     };
   }
   if (needsFirewall) {
-    projected['firewall-observations'] = firewallObservationsSource(events, runsById, sources);
+    projected['firewall-observations'] = firewallObservationsSource(domains, runsById, sources);
   }
   return projected;
 }

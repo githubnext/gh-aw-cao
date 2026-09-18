@@ -2,7 +2,7 @@ import { repositoryId, runId, sourceId, workflowId } from '../model/ids.js';
 import { canonicalTimestamp, ENTITY_KINDS, requiredString } from '../model/schema.js';
 
 export const SQL_EXPORT_CONTRACT = 'gh-aw-cao.dashboard-sql-export';
-export const SQL_EXPORT_VERSION = 2;
+export const SQL_EXPORT_VERSION = 3;
 
 /** @param {unknown} value @param {string} field */
 function objectValue(value, field) {
@@ -150,7 +150,45 @@ export function adaptSqlExport(input) {
         };
         break;
       }
-      case 'event': {
+      case 'domain':
+        data = {
+          runId: runId(identifier(row.github_run_id, 'github_run_id'), positiveInteger(row.run_attempt, 'run_attempt')),
+          timestamp: canonicalTimestamp(row.observed_at ?? exportedAt, 'observed_at'),
+          source: optionalString(row.source) ?? 'firewall',
+          type: optionalString(row.type) ?? (row.decision === 'denied' ? 'net_blocked' : 'net_allowed'),
+          domain: requiredString(row.domain, 'domain'),
+          decision: optionalString(row.decision) ?? 'allowed',
+          requestCount: optionalNumber(row.request_count, 'request_count') ?? 1
+        };
+        break;
+      case 'tool':
+        data = {
+          runId: runId(identifier(row.github_run_id, 'github_run_id'), positiveInteger(row.run_attempt, 'run_attempt')),
+          timestamp: canonicalTimestamp(row.observed_at ?? exportedAt, 'observed_at'),
+          source: optionalString(row.source) ?? 'mcp',
+          type: optionalString(row.type) ?? 'tool.call',
+          toolType: optionalString(row.tool_type) ?? 'mcp',
+          isSkill: row.is_skill === true,
+          name: requiredString(row.name, 'name'),
+          mcpServer: optionalString(row.mcp_server),
+          mcpTool: optionalString(row.mcp_tool),
+          status: optionalString(row.status),
+          correlationId: optionalString(row.correlation_id)
+        };
+        break;
+      case 'issue':
+        data = {
+          runId: runId(identifier(row.github_run_id, 'github_run_id'), positiveInteger(row.run_attempt, 'run_attempt')),
+          timestamp: canonicalTimestamp(row.observed_at ?? exportedAt, 'observed_at'),
+          source: optionalString(row.source) ?? 'safe-output',
+          type: optionalString(row.type) ?? 'safe_output.created',
+          isPullRequest: row.is_pull_request === true,
+          url: requiredString(row.url, 'url'),
+          safeOutputType: optionalString(row.safe_output_type),
+          githubEntityType: optionalString(row.github_entity_type)
+        };
+        break;
+      case 'audit': {
         if (row.source_sequence !== undefined && row.source_sequence !== null
           && (!Number.isInteger(Number(row.source_sequence)) || Number(row.source_sequence) < 0)) {
           throw new TypeError('source_sequence must be a non-negative integer');

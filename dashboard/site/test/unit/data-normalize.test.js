@@ -61,13 +61,11 @@ describe('canonical normalization', () => {
     ]);
   });
 
-  it('orders heterogeneous run events independently of ingestion order', () => {
-    const events = [
+  it('orders run-linked records independently of ingestion order', () => {
+    const records = [
       ['result', '2026-09-09T03:00:03Z', 'tool.result', 30],
-      ['firewall', '2026-09-09T03:00:02Z', 'firewall.request.allowed', 20],
-      ['call', '2026-09-09T03:00:01Z', 'tool.call', 10],
-      ['future', '2026-09-09T03:00:04Z', 'vendor.new-event', 40]
-    ].map(([sourceId, timestamp, type, sourceSequence]) => observation('event', String(sourceId), String(timestamp), {
+      ['call', '2026-09-09T03:00:01Z', 'tool.call', 10]
+    ].map(([sourceId, timestamp, type, sourceSequence]) => observation('tool', String(sourceId), String(timestamp), {
       runId: 'github:run:456:attempt:1',
       timestamp: String(timestamp),
       type: String(type),
@@ -75,13 +73,11 @@ describe('canonical normalization', () => {
       sourceSequence: Number(sourceSequence)
     }, 'gh-aw-log'));
 
-    const batch = normalize(events.reverse());
+    const batch = normalize(records.reverse());
 
-    expect(batch.events.map((event) => [event.sequence, event.type])).toEqual([
+    expect(batch.tools.map((event) => [event.sequence, event.type])).toEqual([
       [0, 'tool.call'],
-      [1, 'firewall.request.allowed'],
-      [2, 'tool.result'],
-      [3, 'vendor.new-event']
+      [1, 'tool.result']
     ]);
   });
 

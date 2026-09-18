@@ -982,8 +982,8 @@
       },
       {
         "name": "token-efficiency-opportunities",
-        "intent": "Project stable token-efficiency opportunities from canonical events.",
-        "from": "events",
+        "intent": "Project stable token-efficiency opportunities from canonical audit records.",
+        "from": "audits",
         "filter": {
           "predicates": [{ "field": "event-type", "equals": "token_efficiency.opportunity" }]
         },
@@ -1028,8 +1028,8 @@
       },
       {
         "name": "token-efficiency-interventions",
-        "intent": "Project append-only token-efficiency intervention lifecycle observations from canonical events.",
-        "from": "events",
+        "intent": "Project append-only token-efficiency intervention lifecycle observations from canonical audit records.",
+        "from": "audits",
         "filter": {
           "predicates": [{ "field": "event-type", "equals": "token_efficiency.intervention" }]
         },

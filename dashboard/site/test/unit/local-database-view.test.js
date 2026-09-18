@@ -22,20 +22,27 @@ describe('Local database view', () => {
         'database-repository-count',
         'database-workflow-count',
         'database-run-count',
-        'database-event-count'
+        'database-domain-count',
+        'database-tool-count',
+        'database-audit-count',
+        'database-issue-count'
       ],
       sources: {
         'database-package-count': { source: 'database-package-count', rows: [{ packages: 2 }], metadata },
         'database-repository-count': { source: 'database-repository-count', rows: [{ repositories: 3 }], metadata },
         'database-workflow-count': { source: 'database-workflow-count', rows: [{ workflows: 5 }], metadata },
         'database-run-count': { source: 'database-run-count', rows: [{ runs: 8 }], metadata },
-        'database-event-count': { source: 'database-event-count', rows: [{ events: 13 }], metadata }
+        'database-domain-count': { source: 'database-domain-count', rows: [{ domains: 7 }], metadata },
+        'database-tool-count': { source: 'database-tool-count', rows: [{ tools: 11 }], metadata },
+        'database-audit-count': { source: 'database-audit-count', rows: [{ audits: 13 }], metadata },
+        'database-issue-count': { source: 'database-issue-count', rows: [{ issues: 17 }], metadata }
       },
       contextDetails: [],
       headingTag: 'h3'
     }));
 
-    expect(rendered.querySelector('.configuration-database-counts')?.textContent).toContain('13Events');
+    expect(rendered.querySelector('.configuration-database-counts')?.textContent).toContain('13Audits');
+    expect(rendered.querySelector('.configuration-database-counts')?.textContent).toContain('17Issues');
     expect(rendered.querySelector('.reset-dashboard-trigger')).not.toBeNull();
   });
 });

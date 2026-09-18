@@ -151,7 +151,10 @@ describe('current dashboard source adapter', () => {
       requestedModel: 'model-a',
       resolvedModel: 'model-b'
     });
-    expect(batch.events).toEqual([]);
+    expect(batch.domains).toEqual([]);
+    expect(batch.tools).toEqual([]);
+    expect(batch.audits).toEqual([]);
+    expect(batch.issues).toEqual([]);
   });
 
   it('accepts source documents without generation metadata', () => {
@@ -196,7 +199,7 @@ describe('current dashboard source adapter', () => {
         }],
         metadata
       },
-      events: {
+      audits: {
         rows: [{
           run: '303', 'run-attempt': 1, event: 'event-1',
           'event-timestamp': '2026-09-09T04:00:01Z',
@@ -239,7 +242,7 @@ describe('current dashboard source adapter', () => {
     expect(batch.runs).toEqual([expect.objectContaining({
       agentId: 'copilot', modelId: 'auto'
     })]);
-    expect(batch.events).toEqual([expect.objectContaining({
+    expect(batch.audits).toEqual([expect.objectContaining({
       runId: 'github:run:303:attempt:1',
       sequence: 0,
       source: 'token-intervention-lifecycle',
@@ -289,7 +292,7 @@ describe('current dashboard source adapter', () => {
         metadata
       },
       'job-performance': { rows: [], metadata },
-      events: {
+      audits: {
         rows: [
           {
             run: '302', 'run-attempt': 1, event: 'stale-event',
@@ -308,7 +311,7 @@ describe('current dashboard source adapter', () => {
     const batch = normalize(adapted.observations);
 
     expect(relationshipErrors(batch)).toEqual([]);
-    expect(batch.events).toEqual([expect.objectContaining({
+    expect(batch.audits).toEqual([expect.objectContaining({
       id: 'current-event', runId: 'github:run:303:attempt:1'
     })]);
   });

@@ -7,9 +7,9 @@ const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'gene
 
 /**
  * @param {string} generation
- * @param {Record<string, unknown>[]} eventRows
+ * @param {Record<string, unknown>[]} toolRows
  */
-function collection(generation, eventRows) {
+function collection(generation, toolRows) {
   const collected = { ...metadata, 'artifact-generation': generation };
   return {
     repositories: { rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }], metadata: collected },
@@ -25,28 +25,26 @@ function collection(generation, eventRows) {
       }],
       metadata: collected
     },
-    events: { rows: eventRows, metadata: collected }
+    domains: { rows: [], metadata: collected },
+    tools: { rows: toolRows, metadata: collected },
+    audits: { rows: [], metadata: collected },
+    issues: { rows: [], metadata: collected }
   };
 }
 
-const eventRows = [
+const toolRows = [
   {
     run: '42', 'run-attempt': 1, event: 'event:tool-call',
     'event-timestamp': '2026-09-09T04:00:10Z', 'event-source': 'mcp', 'event-type': 'tool.call',
     'event-summary': 'github.list_issues', 'source-sequence': 0, 'observed-at': '2026-09-09T04:00:10Z'
-  },
-  {
-    run: '42', 'run-attempt': 1, event: 'event:agent-turn',
-    'event-timestamp': '2026-09-09T04:00:20Z', 'event-source': 'agent', 'event-type': 'agent_turn',
-    'event-summary': 'Planned the change', 'source-sequence': 1, 'observed-at': '2026-09-09T04:00:20Z'
   }
 ];
 
 const context = {
   pages: [],
   queries: [{
-    name: 'event-inspection',
-    from: 'events',
+    name: 'tool-inspection',
+    from: 'tools',
     select: [{ field: 'event' }, { field: 'event-type' }],
     'order-by': [{ field: 'event', direction: 'asc' }]
   }]
@@ -71,7 +69,7 @@ beforeEach(async () => {
 });
 
 describe('canonical dashboard worker retention updates', () => {
-  it('publishes retained events to subscribers after a partial collection', async () => {
+  it('publishes retained tools to subscribers after a partial collection', async () => {
     /** @type {Map<string, (event: { data: Record<string, unknown> }) => void>} */
     const listeners = new Map();
     /** @type {Record<string, unknown>[]} */
@@ -96,41 +94,41 @@ describe('canonical dashboard worker retention updates', () => {
 
     dispatch({
       operation: 'subscribe-canonical-dashboard',
-      subscriptionId: 'events',
-      sourceNames: ['event-inspection'],
+      subscriptionId: 'tools',
+      sourceNames: ['tool-inspection'],
       context
     });
-    stubFetch(collection('generation-a', eventRows));
+    stubFetch(collection('generation-a', toolRows));
     dispatch({
       id: 1,
       operation: 'load-canonical-dashboard',
       sourceUrl: 'https://dashboard.example/sources.json',
-      sourceNames: ['event-inspection'],
+      sourceNames: ['tool-inspection'],
       context
     });
 
     const loaded = await settled((message) => message.id === 1);
     expect(loaded?.error).toBeUndefined();
-    const published = await settled((message) => message.subscriptionId === 'events');
-    expect(published).toMatchObject({ subscriptionId: 'events' });
+    const published = await settled((message) => message.subscriptionId === 'tools');
+    expect(published).toMatchObject({ subscriptionId: 'tools' });
 
     posted.length = 0;
-    stubFetch(collection('generation-b', [eventRows[1]]));
+    stubFetch(collection('generation-b', []));
     dispatch({
       id: 2,
       operation: 'load-canonical-dashboard',
       sourceUrl: 'https://dashboard.example/sources.json',
-      sourceNames: ['event-inspection'],
+      sourceNames: ['tool-inspection'],
       context
     });
 
     const refreshed = await settled((message) => message.id === 2);
     expect(refreshed?.error).toBeUndefined();
-    const republished = await settled((message) => message.subscriptionId === 'events');
+    const republished = await settled((message) => message.subscriptionId === 'tools');
     const rows = /** @type {{ data: Record<string, { rows: Record<string, unknown>[] }> }} */ (republished)
-      .data['event-inspection'].rows;
+      .data['tool-inspection'].rows;
 
-    expect(rows.map((row) => row.event)).toEqual(['event:agent-turn', 'event:tool-call']);
+    expect(rows.map((row) => row.event)).toEqual(['event:tool-call']);
 
     /** @type {(RequestInit | undefined)[]} */
     const jsonlRequests = [];
@@ -138,7 +136,7 @@ describe('canonical dashboard worker retention updates', () => {
     const requestUrls = [];
     const normalizedName = `gh-aw-logs-normalized/${'a'.repeat(64)}-${'b'.repeat(16)}.json`;
     const normalizedPayload = {
-      schemaVersion: 10,
+      schemaVersion: 11,
       ingestionVersion: 2,
       sourceRecords: 0,
       batch: {
@@ -146,7 +144,10 @@ describe('canonical dashboard worker retention updates', () => {
         repositories: [],
         workflows: [],
         runs: [],
-        events: []
+        domains: [],
+        tools: [],
+        audits: [],
+        issues: []
       }
     };
     const payloadHashes = {
@@ -165,7 +166,7 @@ describe('canonical dashboard worker retention updates', () => {
       id: 3,
       operation: 'load-canonical-dashboard',
       sourceUrl: 'https://dashboard.example/payload-hashes.json',
-      sourceNames: ['event-inspection'],
+      sourceNames: ['tool-inspection'],
       context,
       reportActivation: true
     });
@@ -175,7 +176,7 @@ describe('canonical dashboard worker retention updates', () => {
       id: 4,
       operation: 'load-canonical-dashboard',
       sourceUrl: 'https://dashboard.example/payload-hashes.json',
-      sourceNames: ['event-inspection'],
+      sourceNames: ['tool-inspection'],
       context,
       reportActivation: true
     });
@@ -223,7 +224,7 @@ describe('canonical dashboard worker retention updates', () => {
       id: 5,
       operation: 'load-canonical-dashboard',
       sourceUrl: 'https://dashboard.example/payload-hashes.json',
-      sourceNames: ['event-inspection'],
+      sourceNames: ['tool-inspection'],
       context,
       reportActivation: true
     });
@@ -236,7 +237,7 @@ describe('canonical dashboard worker retention updates', () => {
       id: 6,
       operation: 'load-canonical-dashboard',
       sourceUrl: 'https://dashboard.example/payload-hashes.json',
-      sourceNames: ['event-inspection'],
+      sourceNames: ['tool-inspection'],
       context,
       reportActivation: true
     });
@@ -252,7 +253,7 @@ describe('canonical dashboard worker retention updates', () => {
       id: 7,
       operation: 'load-canonical-dashboard',
       sourceUrl: 'https://dashboard.example/payload-hashes.json',
-      sourceNames: ['event-inspection'],
+      sourceNames: ['tool-inspection'],
       context,
       reportActivation: true
     });
@@ -265,8 +266,8 @@ describe('canonical dashboard worker retention updates', () => {
       operation: 'execute-dashboard-queries',
       queries: context.queries,
       sources: {
-        events: {
-          source: 'events',
+        tools: {
+          source: 'tools',
           /** @returns {Record<string, unknown>[]} */
           get rows() {
             throw new Error('source read failed');

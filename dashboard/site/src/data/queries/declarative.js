@@ -7,7 +7,7 @@
  * `data-operations.js` so the whole pipeline runs inside the data Web Worker.
  *
  * Clause execution order is fixed and deterministic:
- * `from` -> `joins` -> `filter` -> `compute` -> `aggregate` -> `predict` ->
+ * `from` -> `union` -> `joins` -> `filter` -> `compute` -> `aggregate` -> `predict` ->
  * `select` -> `order-by` -> `limit`.
  */
 
@@ -27,6 +27,7 @@ const debugQuery = createDebug('data:query');
  *   name: string,
  *   description?: string,
  *   from: string,
+ *   union?: string[],
  *   time?: { range?: string, start?: string, end?: string },
  *   joins?: Array<{ source: string, type?: 'inner'|'left', on: Array<{ left: string, right: string }>, fields: Array<{ field: string, as: string }> }>,
  *   filter?: { predicates?: Array<{ field: string, equals?: unknown, in?: unknown[], includes?: string, gte?: unknown, lt?: unknown, optional?: boolean }> },
@@ -339,6 +340,11 @@ export function dashboardQueryDefects(definitions) {
  * @returns {string | undefined}
  */
 function queryStructuralDefect(definition) {
+  if (definition.union !== undefined
+      && (!Array.isArray(definition.union) || definition.union.length === 0
+        || definition.union.some((source) => typeof source !== 'string'))) {
+    return 'union must contain one or more source names';
+  }
   const joins = definition.joins ?? [];
   if (joins.length > DASHBOARD_QUERY_LIMITS['max-joins']) {
     return `joins exceed the max-joins limit of ${DASHBOARD_QUERY_LIMITS['max-joins']}`;
@@ -476,8 +482,9 @@ export function resolveDashboardQuerySources(definitions, requested) {
  */
 export function queryInputNames(definition) {
   if (!definition) return [];
+  const unions = Array.isArray(definition.union) ? definition.union : [];
   const joins = Array.isArray(definition.joins) ? definition.joins : [];
-  return [definition.from, ...joins.map((join) => join.source)].filter((name) => typeof name === 'string');
+  return [definition.from, ...unions, ...joins.map((join) => join.source)].filter((name) => typeof name === 'string');
 }
 
 /**
@@ -490,8 +497,10 @@ export function queryInputNames(definition) {
 export function dashboardQueryOutputFields(definition, fieldsOf) {
   const inputFields = fieldsOf(definition.from);
   if (!inputFields) return undefined;
+  const unionFields = (definition.union ?? []).map((source) => fieldsOf(source));
+  if (unionFields.some((fields) => !fields)) return undefined;
   /** @type {string[]} */
-  let fields = [...inputFields];
+  let fields = [...new Set([...inputFields, ...unionFields.flatMap((candidate) => candidate ?? [])])];
   for (const join of definition.joins ?? []) {
     for (const field of join.fields ?? []) fields.push(field.as);
   }
@@ -636,6 +645,7 @@ function materializeDashboardQuery(definition, sources, defect, budget) {
     }
     const requiredInputs = new Set([
       definition.from,
+      ...(definition.union ?? []),
       ...(definition.joins ?? []).filter((join) => join.type !== 'left').map((join) => join.source)
     ]);
     const optionalInputs = new Set((definition.joins ?? [])
@@ -748,8 +758,9 @@ function lazyValue(consume) {
  * @returns {Row[]}
  */
 function runDashboardQuery(definition, sources, budget) {
-  const input = /** @type {Row[]} */ (sources[definition.from].rows);
-  enforceLimit(input.length, 'max-input-rows', definition.from);
+  const sourceNames = [definition.from, ...(definition.union ?? [])];
+  const input = sourceNames.flatMap((sourceName) => /** @type {Row[]} */ (sources[sourceName].rows));
+  enforceLimit(input.length, 'max-input-rows', sourceNames.join(', '));
   let rows = timeQueryStage(definition.name, 'from', input.length, budget, () => {
     budget.spend(input.length);
     return input.map((row) => ({ ...row }));

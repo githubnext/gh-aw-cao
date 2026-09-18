@@ -21,22 +21,36 @@ function files(directory) {
 }
 
 describe('gh-aw logs adapter', () => {
-  it('converts agent, gateway, and firewall JSONL into one ordered run event stream', () => {
+  it('splits agent, tool, and firewall JSONL into run-linked tables', () => {
     const context = JSON.parse(readFileSync(join(fixtureRoot, 'context.json'), 'utf8'));
     const adapted = adaptGhAwLogs({ ...context, files: files(fixtureRoot) });
     const batch = normalize(adapted.observations);
 
     expect(relationshipErrors(batch)).toEqual([]);
-    expect(batch.events.every((event) => event.runId === 'github:run:303:attempt:1')).toBe(true);
-    expect(batch.events.map((event) => [event.sequence, event.source, event.type])).toEqual([
-      [0, 'agent', 'agent_turn'],
-      [1, 'gateway', 'tool_call'],
-      [2, 'agent', 'agent_tool_start'],
-      [3, 'agent', 'agent_tool_done'],
-      [4, 'firewall', 'net_allowed'],
-      [5, 'agent', 'assistant_message']
+    expect([...batch.domains, ...batch.tools, ...batch.audits]
+      .every((record) => record.runId === 'github:run:303:attempt:1')).toBe(true);
+    expect(batch.domains.map((record) => record.type)).toEqual(['net_allowed']);
+    expect(batch.tools.map((record) => record.type)).toEqual([
+      'tool_call', 'agent_tool_start', 'agent_tool_done'
     ]);
-    expect(batch.events.filter((event) => event.correlationId === 'call-1')).toHaveLength(3);
+    expect(batch.audits.map((record) => record.type)).toEqual(['agent_turn', 'assistant_message']);
+    expect(batch.tools.filter((record) => record.correlationId === 'call-1')).toHaveLength(3);
+  });
+
+  it('stores gateway-denied tool calls in the tools table', () => {
+    const context = JSON.parse(readFileSync(join(fixtureRoot, 'context.json'), 'utf8'));
+    const content = [
+      { timestamp: '2026-09-09T04:00:02Z', type: 'DIFC_FILTERED', server_name: 'github', tool_name: 'get_file' },
+      { timestamp: '2026-09-09T04:00:03Z', type: 'GUARD_POLICY_BLOCKED', server_name: 'github', tool_name: 'create_issue' }
+    ].map((record) => JSON.stringify(record)).join('\n');
+
+    const batch = normalize(adaptGhAwLogs({
+      ...context,
+      files: [{ path: 'run-303/mcp-logs/gateway.jsonl', content }]
+    }).observations);
+
+    expect(batch.tools.map((record) => record.type)).toEqual(['difc_filtered', 'guard_blocked']);
+    expect(batch.audits).toEqual([]);
   });
 
   it('maps cached raw runs and agentic runs into unified runs and events', () => {
@@ -245,23 +259,17 @@ describe('gh-aw logs adapter', () => {
         firewallVersion: 'v0.28.15'
       })
     ]);
-    expect(batch.events.map((event) => event.type)).toEqual(expect.arrayContaining([
+    expect(batch.audits.map((event) => event.type)).toEqual(expect.arrayContaining([
       'workflow_run_started',
       'workflow_run_completed',
       'workflow_run_usage',
       'workflow_run_assessment',
       'agent.session',
-      'tool.call',
-      'tool.result',
       'audit.finding',
       'audit.missing_tool',
-      'audit.skill_activation',
-      'net_allowed',
-      'net_blocked',
-      'safe_output.created',
       'github_api_rate_limit'
     ]));
-    expect(batch.events).toEqual(expect.arrayContaining([
+    expect(batch.tools).toEqual(expect.arrayContaining([
       expect.objectContaining({
         source: 'mcp',
         type: 'tool.call',
@@ -275,14 +283,24 @@ describe('gh-aw logs adapter', () => {
         status: 'success'
       }),
       expect.objectContaining({
+        type: 'audit.skill_activation',
+        toolType: 'skill',
+        isSkill: true
+      })
+    ]));
+    expect(batch.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
         source: 'safe-output',
         type: 'safe_output.created',
         safeOutputType: 'create_pull_request',
         githubEntityType: 'pull_request',
         correlationId: 'https://github.com/githubnext/gh-aw-cao/pull/43',
         runId: 'github:run:303:attempt:1',
-        payloadRef: 'gh-aw-logs-shards#L4'
-      }),
+        payloadRef: 'gh-aw-logs-shards#L4',
+        isPullRequest: true
+      })
+    ]));
+    expect(batch.domains).toEqual(expect.arrayContaining([
       expect.objectContaining({
         source: 'firewall',
         type: 'net_allowed',
@@ -450,7 +468,7 @@ describe('gh-aw logs adapter', () => {
     expect(batch.runs).toEqual([
       expect.objectContaining({ githubRunId: '1186001', attempt: 1 })
     ]);
-    expect(batch.events.find((event) =>
+    expect(batch.audits.find((event) =>
       event.lifecycleObservationId === 'token-lifecycle:retained'
     )).toMatchObject({
       interventionState: 'running',
@@ -472,7 +490,7 @@ describe('gh-aw logs adapter', () => {
     }
   });
 
-  it('precomputes immutable run aggregates and gives every event a run identity', () => {
+  it('precomputes immutable run aggregates and gives every detail record a run identity', () => {
     const content = `${JSON.stringify({
       schema_version: 2,
       kind: 'run',
@@ -513,8 +531,9 @@ describe('gh-aw logs adapter', () => {
       highPriorityAuditItems: 1,
       mediumPriorityAuditItems: 1
     });
-    expect(batch.events.length).toBeGreaterThan(0);
-    expect(batch.events.every((event) => event.runId === batch.runs[0].id)).toBe(true);
+    const records = [...batch.domains, ...batch.tools, ...batch.audits, ...batch.issues];
+    expect(records.length).toBeGreaterThan(0);
+    expect(records.every((record) => record.runId === batch.runs[0].id)).toBe(true);
   });
 
   it('keeps null aggregate evidence unavailable', () => {

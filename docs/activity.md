@@ -44,7 +44,7 @@ refresh behind it.
 
 Runs collect a rolling 30-day window and recent artifact detail. The canonical
 stores preserve every run summary available in the collected JSONL while
-expiring detailed events after 30 days.
+expiring detailed run-owned records after 30 days.
 
 ## Cache contract
 
@@ -54,7 +54,7 @@ The cache holds:
 $RUNNER_TEMP/cao-activity/gh-aw-logs-shards/
 $RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite
 $RUNNER_TEMP/cao-activity/gh-aw-logs-runs/
-$RUNNER_TEMP/cao-activity/gh-aw-logs-events/
+$RUNNER_TEMP/cao-activity/gh-aw-logs-records/
 $RUNNER_TEMP/cao-activity/payload-hashes.json
 $RUNNER_TEMP/cao-activity/control-settings.json
 $RUNNER_TEMP/cao-activity/inventory-sources.json
@@ -62,8 +62,8 @@ $RUNNER_TEMP/cao-activity/drain3_weights.json
 ```
 
 `payload-hashes.json` maps the current JSONL source and SQLite projection
-filenames, plus each retained source, run-information, and event shard, to
-their SHA-256 checksums. Run and event shards use matching filename stems; an
+filenames, plus each retained source, run-information, and record shard, to
+their SHA-256 checksums. Run and record shards use matching filename stems; an
 unpaired phase set is incomplete and consumers fall back to a complete
 compatible transport. The dashboard publishes this small file beside the
 payloads so clients can detect unchanged data before downloading them.
@@ -73,8 +73,8 @@ usable.
 
 Run-information shards are intentionally small and become queryable before
 event ingestion completes. This improves time to first useful render, but does
-not reduce the bytes needed for a complete refresh. Until the event phase
-finishes, event-dependent views remain partial; background refresh is skipped
+not reduce the bytes needed for a complete refresh. Until the record phase
+finishes, record-dependent views remain partial; background refresh is skipped
 on metered or data-saver connections.
 
 Its immutable key is

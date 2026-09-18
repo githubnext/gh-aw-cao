@@ -327,7 +327,7 @@ test("transaction logs retain a run event when artifacts contain no timeline", (
     }],
   });
 
-  assert.deepEqual(rows.events.map(({ ["event-source"]: source, ["event-type"]: type }) => ({ source, type })), [{
+  assert.deepEqual(rows.audits.map(({ ["event-source"]: source, ["event-type"]: type }) => ({ source, type })), [{
     source: "workflow",
     type: "run_observed",
   }]);
@@ -354,9 +354,9 @@ test("transaction log events preserve correlation ids and request counts", () =>
     }],
   });
 
-  assert.equal(rows.events[0]["correlation-id"], "call-305");
-  assert.equal(rows.events[0]["event-type"], "firewall.request.blocked");
-  assert.equal(rows.events[0]["request-count"], 7);
+  assert.equal(rows.domains[0]["correlation-id"], "call-305");
+  assert.equal(rows.domains[0]["event-type"], "firewall.request.blocked");
+  assert.equal(rows.domains[0]["request-count"], 7);
 });
 
 test("transaction log events preserve token-efficiency lifecycle fields", () => {
@@ -391,7 +391,7 @@ test("transaction log events preserve token-efficiency lifecycle fields", () => 
     }],
   });
 
-  assert.deepEqual(rows.events[0], {
+  assert.deepEqual(rows.audits[0], {
     organization: "githubnext",
     repository: "gh-aw-cao",
     workflow: ".github/workflows/optimization-token-optimizer.md",
@@ -516,8 +516,9 @@ test("dashboard source bridge publishes normalized gh-aw events", () => {
   });
 
   assert.equal("sessions" in sources, false);
-  assert.equal(sources.events.rows[0]["event-type"], "agent_turn");
-  assert.equal(sources.events.rows[0]["event-source"], "agent");
+  assert.equal("events" in sources, false);
+  assert.equal(sources.audits.rows[0]["event-type"], "agent_turn");
+  assert.equal(sources.audits.rows[0]["event-source"], "agent");
 });
 
 test("dashboard source bridge excludes transaction logs outside the current run generation", () => {
@@ -590,7 +591,7 @@ test("dashboard source bridge excludes transaction logs outside the current run 
   });
 
   assert.equal("sessions" in sources, false);
-  assert.deepEqual(sources.events.rows.map((row) => row.run), ["303"]);
+  assert.deepEqual(sources.audits.rows.map((row) => row.run), ["303"]);
 });
 
 test("detection observations normalize conclusions and keep usable verdicts independent of job failures", () => {
