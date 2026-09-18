@@ -29,6 +29,7 @@
           { "field": "runs", "title": "Runs" },
           { "field": "successful-runs", "title": "Success" },
           { "field": "failed-runs", "title": "Failures" },
+          { "field": "aic-per-run", "title": "Average AIC", "unit": "aic-per-run" },
           { "field": "repository", "title": "Repository" },
           { "field": "campaign-name", "title": "Campaign" },
           { "field": "observed-at", "title": "Observed", "format": "human-friendly-timestamp" }
@@ -2726,6 +2727,11 @@
           },
           { "as": "total-aic", "function": "coalesce", "args": [{ "field": "observed-aic" }, { "value": 0 }] },
           {
+            "as": "aic-per-run",
+            "function": "quotient",
+            "args": [{ "field": "total-aic" }, { "field": "total-runs" }]
+          },
+          {
             "as": "total-imported-runs",
             "function": "coalesce",
             "args": [{ "field": "observed-imported-runs" }, { "value": 0 }]
@@ -2820,6 +2826,7 @@
           { "field": "total-runs", "as": "runs" },
           { "field": "total-successful-runs", "as": "successful-runs" },
           { "field": "total-failed-runs", "as": "failed-runs" },
+          { "field": "aic-per-run" },
           { "field": "ingestion" },
           { "field": "campaign-dashboard-link", "as": "campaign-link" },
           { "field": "repository-dashboard-link", "as": "repository-link" },
@@ -6529,6 +6536,12 @@
                     "field": "failed-runs",
                     "type": "quantitative",
                     "title": "Failures"
+                  },
+                  {
+                    "field": "aic-per-run",
+                    "type": "quantitative",
+                    "title": "Average AIC",
+                    "unit": "aic-per-run"
                   },
                   {
                     "field": "ingestion",

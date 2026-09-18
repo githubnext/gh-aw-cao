@@ -793,7 +793,8 @@ describe('data view renderer', () => {
             { field: 'workflow', type: 'nominal', title: 'Workflow file', format: 'workflow-relative-path' },
             { field: 'runs', type: 'quantitative', title: 'Runs' },
             { field: 'successful-runs', type: 'quantitative', title: 'Success' },
-            { field: 'failed-runs', type: 'quantitative', title: 'Failures' }
+            { field: 'failed-runs', type: 'quantitative', title: 'Failures' },
+            { field: 'aic-per-run', type: 'quantitative', title: 'Average AIC', unit: 'aic-per-run' }
           ]
         }
       },
@@ -803,7 +804,8 @@ describe('data view renderer', () => {
         workflow: '.github/workflows/cao-dashboard.md',
         runs: 14,
         'successful-runs': 11,
-        'failed-runs': 3
+        'failed-runs': 3,
+        'aic-per-run': 2.5
       }],
       cardTemplates: {
         workflow: {
@@ -814,10 +816,19 @@ describe('data view renderer', () => {
           details: [
             { field: 'runs', title: 'Runs' },
             { field: 'successful-runs', title: 'Success' },
-            { field: 'failed-runs', title: 'Failures' }
+            { field: 'failed-runs', title: 'Failures' },
+            { field: 'aic-per-run', title: 'Average AIC', unit: 'aic-per-run' }
           ]
         }
       },
+      units: /** @type {any} */ ({
+        'aic-per-run': {
+          name: 'AI Credits per run',
+          symbol: 'AIC/run',
+          significant: 0.01,
+          format: 'number'
+        }
+      }),
       metadata,
       contextDetails: [],
       headingTag: 'h3',
@@ -832,7 +843,7 @@ describe('data view renderer', () => {
     expect(card?.querySelector('.entity-card-list-subtitle')?.textContent).toBe('cao-dashboard.md');
     expect(card?.querySelector('.octicon-workflow')).not.toBeNull();
     expect([...card?.querySelectorAll('.entity-card-list-metric') ?? []].map((metric) => metric.textContent))
-      .toEqual(['14Runs', '11Success', '3Failures']);
+      .toEqual(['14Runs', '11Success', '3Failures', '2.50Average AIC']);
   });
 
   it('lets a mobile card continuation retry after a load failure', async () => {

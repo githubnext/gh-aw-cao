@@ -48,19 +48,20 @@ describe('entity card templates', () => {
       details: expect.arrayContaining([
         { field: 'runs', title: 'Runs' },
         { field: 'successful-runs', title: 'Success' },
-        { field: 'failed-runs', title: 'Failures' }
+        { field: 'failed-runs', title: 'Failures' },
+        { field: 'aic-per-run', title: 'Average AIC', unit: 'aic-per-run' }
       ])
     });
     const inventoryQuery = dashboard.queries.find(
       (/** @type {Record<string, any>} */ query) => query.name === 'workflow-inventory'
     );
     const selected = inventoryQuery.select.map((/** @type {Record<string, any>} */ field) => field.as ?? field.field);
-    expect(selected).toEqual(expect.arrayContaining(['workflow-name', 'workflow', 'runs', 'successful-runs', 'failed-runs']));
+    expect(selected).toEqual(expect.arrayContaining(['workflow-name', 'workflow', 'runs', 'successful-runs', 'failed-runs', 'aic-per-run']));
     const inventoryView = pages.workflows.definition.views.find(
       (/** @type {Record<string, any>} */ view) => view.id === 'workflows-inventory'
     );
     const columns = inventoryView.encoding.columns.map((/** @type {Record<string, any>} */ field) => field.field);
-    expect(columns).toEqual(expect.arrayContaining(['workflow-name', 'workflow', 'runs', 'successful-runs', 'failed-runs']));
+    expect(columns).toEqual(expect.arrayContaining(['workflow-name', 'workflow', 'runs', 'successful-runs', 'failed-runs', 'aic-per-run']));
   });
 
   it('declares a firewall domain card with allowed and blocked metrics', () => {
