@@ -2110,6 +2110,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .campaign-tabs a[aria-current="page"] > .octicon:first-child { color: var(--accent); }
   .campaign-tabs a[aria-current="page"]::after { display: none; }
   .campaign-tabs .tab-trailing-icon { width: 12px; height: 12px; display: block; margin-left: auto; color: var(--muted); }
+  .campaign-tabs:not([data-route-tabs-current="overview"]) { display: none; }
   :root[data-navigation-direction="forward"]::view-transition-old(root) { z-index: 1; animation-name: dashboard-view-slide-out-left; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
   :root[data-navigation-direction="forward"]::view-transition-new(root) { z-index: 2; animation-name: dashboard-view-slide-in-right; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
   :root[data-navigation-direction="backward"]::view-transition-old(root) { z-index: 2; animation-name: dashboard-view-slide-out-right; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }

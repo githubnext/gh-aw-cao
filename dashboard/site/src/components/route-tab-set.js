@@ -30,5 +30,10 @@ export function renderRouteTabSet(options) {
     }))
   });
   tabs.dataset.routeTabs = '';
+  tabs.dataset.routeTabsCurrent = options.currentTab;
+  for (const [index, link] of [...tabs.querySelectorAll('a')].entries()) {
+    const tab = options.tabs[index];
+    if (tab) link.dataset.navPageId = tab.id;
+  }
   return tabs;
 }

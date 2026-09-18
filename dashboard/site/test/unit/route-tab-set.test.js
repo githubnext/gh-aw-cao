@@ -15,10 +15,15 @@ describe('renderRouteTabSet', () => {
     });
 
     expect(rendered.getAttribute('aria-label')).toBe('Reusable route tabs');
+    expect(rendered.dataset.routeTabsCurrent).toBe('reports');
     expect(rendered.querySelector('[aria-current="page"]')?.textContent).toBe('Reports');
     expect([...rendered.querySelectorAll('a')].map((link) => link.getAttribute('href'))).toEqual([
       '#page-insights',
       '#page-reports'
+    ]);
+    expect([...rendered.querySelectorAll('a')].map((link) => link.getAttribute('data-nav-page-id'))).toEqual([
+      'insights',
+      'reports'
     ]);
   });
 });

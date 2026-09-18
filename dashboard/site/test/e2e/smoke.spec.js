@@ -3540,14 +3540,18 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   await campaignNavigation.getByRole('link', { name: 'Insights' }).click();
   const campaignInsights = page.locator('[data-page-id="campaign-insights"]');
   await expect(campaignInsights).toBeVisible();
-  await expect(campaignInsights.getByRole('navigation', { name: 'Ambient Context views' })
-    .getByRole('link', { name: 'Insights' })).toHaveAttribute('aria-current', 'page');
+  await expect(campaignInsights.getByRole('navigation', { name: 'Ambient Context views' })).toBeHidden();
+  const mobileBack = page.getByRole('button', { name: 'Go back' });
+  await expect(mobileBack).toBeVisible();
   await expect(page.locator('.overview-header')).toContainText('Audit events observed for the Ambient Context campaign.');
   await expect(campaignInsights.locator('.campaign-value-history [data-chart-widget="line"]')).toHaveCount(3);
   await expect(campaignInsights.locator('.campaign-value-history .chart-point')).toHaveCount(6);
   await expect(campaignInsights.locator('.campaign-value-history')).toContainText('Repository readiness');
   await expect(campaignInsights.locator('.campaign-value-history')).toContainText('Quality');
   await expect(campaignInsights.locator('.campaign-value-history')).toContainText('Efficiency');
+  await mobileBack.click();
+  await expect(page).toHaveURL(/#page-campaign-issues\?campaign=ambient-context$/);
+  await expect(page.locator('[data-page-id="campaign-issues"]')).toBeVisible();
 });
 
 test('DLS-PAGE-017 renders an editable filter bar and applies changes automatically', async ({ page }) => {
