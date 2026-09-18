@@ -4,6 +4,7 @@ import {
   ignoredDashboardPageIds,
   isExpectedPageCloseAbort,
   isIgnoredDashboardPageId,
+  isSpuriousAbortAfterSuccessResponse,
   withoutIgnoredDashboardPageIds,
 } from "../e2e/dashboard-view-assessment.mjs";
 
@@ -11,6 +12,12 @@ test("ignores request aborts caused by closing an assessed page", () => {
   assert.equal(isExpectedPageCloseAbort("net::ERR_ABORTED", true), true);
   assert.equal(isExpectedPageCloseAbort("net::ERR_ABORTED", false), false);
   assert.equal(isExpectedPageCloseAbort("net::ERR_FAILED", true), false);
+});
+
+test("ignores request aborts reported after a successful response", () => {
+  assert.equal(isSpuriousAbortAfterSuccessResponse("net::ERR_ABORTED", true), true);
+  assert.equal(isSpuriousAbortAfterSuccessResponse("net::ERR_ABORTED", false), false);
+  assert.equal(isSpuriousAbortAfterSuccessResponse("net::ERR_FAILED", true), false);
 });
 
 test("ignores the operations and readiness pages", () => {

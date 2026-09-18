@@ -6,6 +6,7 @@ import {
   ignoredDashboardPageIds,
   isExpectedPageCloseAbort,
   isIgnoredDashboardPageId,
+  isSpuriousAbortAfterSuccessResponse,
 } from "./dashboard-view-assessment.mjs";
 import { downloadDeployedDashboardData } from "./dashboard-view-data.mjs";
 
@@ -71,6 +72,7 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
       const failedRequests = [];
       let crashed = false;
       let closing = false;
+      const succeededRequests = new WeakSet();
 
       page.on("crash", () => {
         crashed = true;
@@ -82,12 +84,15 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
       page.on("requestfailed", (request) => {
         const errorText = request.failure()?.errorText || "failed";
         if (isExpectedPageCloseAbort(errorText, closing)) return;
+        if (isSpuriousAbortAfterSuccessResponse(errorText, succeededRequests.has(request))) return;
         failedRequests.push(`${request.method()} ${request.url()}: ${errorText}`);
       });
       page.on("response", (response) => {
         if (response.status() >= 400) {
           failedRequests.push(`${response.status()} ${response.url()}`);
+          return;
         }
+        succeededRequests.add(response.request());
       });
 
       const result = {
