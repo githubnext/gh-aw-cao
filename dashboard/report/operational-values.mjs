@@ -3,6 +3,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
 import { readGhAwLogShards } from "../../activity/gh-aw-logs.mjs";
+import { hasOperationalValueResult } from "./operational-value-records.mjs";
 
 function metricValue(value) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
@@ -25,11 +26,6 @@ function runIdentity(record) {
   ].join(":");
 }
 
-function recordHasResult(record) {
-  return (record?.resultAvailable === true && Array.isArray(record.metrics))
-    || Boolean(record?.evaluatorDigest || record?.observation);
-}
-
 function recordTime(record) {
   return record.observedAt || record.observation?.evidenceAt || record.run?.createdAt || "";
 }
@@ -41,7 +37,7 @@ function mergeRecords(...recordSets) {
     const existing = records.get(key);
     // Legacy cached observations may be the only retained result for a run
     // when the current logs shard no longer includes that run.
-    if (existing && recordHasResult(existing) && !recordHasResult(record)) continue;
+    if (existing && hasOperationalValueResult(existing) && !hasOperationalValueResult(record)) continue;
     records.set(key, record);
   }
   return [...records.values()].sort((left, right) => (
@@ -151,7 +147,7 @@ export async function collectOperationalValues() {
       .map((run) => [logsRunId(run), run])
       .filter(([runId]) => Number.isFinite(runId)));
     const cachedRunKeys = new Set(cachedRecords
-      .filter(recordHasResult)
+      .filter(hasOperationalValueResult)
       .map(runIdentity));
     const currentRecords = [];
     let missingRuns = 0;
@@ -194,7 +190,7 @@ export async function collectOperationalValues() {
       complete: missingRuns === 0,
       collectionMode: "logs-jsonl",
       selectedRuns: selectedRuns.length,
-      observedRuns: records.filter(recordHasResult).length,
+      observedRuns: records.filter(hasOperationalValueResult).length,
       records,
     };
     await mkdir(path.dirname(outputPath), { recursive: true });

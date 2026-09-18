@@ -166,7 +166,7 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   const activityLogs = readFileSync(join(root, "activity", "logs.mjs"), "utf8");
   const activityRunner = readFileSync(join(root, "activity", "run-activity.mjs"), "utf8");
   const operationalValues = readFileSync(join(root, "dashboard", "report", "operational-values.mjs"), "utf8");
-  const reportAssets = ["aic-usage.mjs", "activity-collectors.mjs", "bundle-dashboards.mjs", "compose-dashboard-documents.mjs", "configure-site.mjs", "dashboard-language-sources.mjs", "operational-values.mjs", "records.mjs", "text-utils.mjs"];
+  const reportAssets = ["aic-usage.mjs", "activity-collectors.mjs", "bundle-dashboards.mjs", "compose-dashboard-documents.mjs", "configure-site.mjs", "dashboard-language-sources.mjs", "operational-value-records.mjs", "operational-values.mjs", "records.mjs", "text-utils.mjs"];
   const activityEntrypoints = new Set(["activity-collectors.mjs"]);
   const buildEntrypoints = new Set(["bundle-dashboards.mjs", "configure-site.mjs"]);
   const normalizeInclude = (entry, sourcePrefix = "") => typeof entry === "string"

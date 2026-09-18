@@ -4,6 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
 import { runId as canonicalRunId, sourceId } from "../site/src/data/model/ids.js";
+import { hasOperationalValueResult } from "./operational-value-records.mjs";
 import { firstText } from "./text-utils.mjs";
 
 const sourceNames = [
@@ -2483,19 +2484,16 @@ function operationalValueMetrics(definitions, record) {
   const primary = typeof definition.operationalValue === "string"
     ? definition.operationalValue
     : definition.operationalValue?.metric;
+  const primaryId = primary || record.workflowId || "operational-value";
   const diagnosticNames = new Set([
     ...(Array.isArray(definition.diagnosticMetrics) ? definition.diagnosticMetrics : []),
     ...Object.keys(diagnostics),
   ]);
+  diagnosticNames.delete(primaryId);
   return [
-    { id: primary || record.workflowId || "operational-value", value: record.value },
+    { id: primaryId, value: record.value },
     ...[...diagnosticNames].map((id) => ({ id, value: diagnostics[id] ?? null })),
   ];
-}
-
-function hasOperationalValueResult(record) {
-  return (record?.resultAvailable === true && Array.isArray(record.metrics))
-    || Boolean(record?.evaluatorDigest || record?.observation);
 }
 
 function operationalValueRows(values) {
