@@ -1255,9 +1255,9 @@ describe('declarative dashboard queries', () => {
     const runs = {
       source: 'runs',
       rows: [
-        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1, event: 'workflow_dispatch', 'run-conclusion': 'failure', 'aic-total': 4 },
-        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1, event: 'schedule', 'run-conclusion': 'success', 'aic-total': 6 },
-        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'c.md', run: '3', 'run-attempt': 1, event: 'schedule', 'run-conclusion': 'success', 'aic-total': 0 }
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1, event: 'workflow_dispatch', 'run-conclusion': 'failure', 'aic-total': 4, 'started-at': '2026-09-01T01:00:00Z' },
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1, event: 'schedule', 'run-conclusion': 'success', 'aic-total': 6, 'started-at': '2026-09-02T01:00:00Z' },
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'c.md', run: '3', 'run-attempt': 1, event: 'schedule', 'run-conclusion': 'success', 'aic-total': 0, 'started-at': '2026-09-03T01:00:00Z' }
       ],
       metadata: metadata('runs')
     };
@@ -1284,7 +1284,7 @@ describe('declarative dashboard queries', () => {
     const derived = executeDashboardQueries(
       dashboardQueries,
       { ...emptyRunRecordSources, packages, repositories, workflows: queryWorkflows, runs, audits: events, outcomes, 'operational-values': operationalValues, usage },
-      ['repository-activity', 'workflow-inventory', 'package-operational-value-totals', 'package-inventory']
+      ['repository-activity', 'workflow-inventory', 'top-workflow-runs', 'package-operational-value-totals', 'package-inventory']
     );
 
     expect(derived['repository-activity'].rows).toEqual([expect.objectContaining({
@@ -1302,6 +1302,11 @@ describe('declarative dashboard queries', () => {
       expect.objectContaining({ workflow: 'a.md', runs: 2, ingestion: '50%' }),
       expect.objectContaining({ workflow: 'b.md', runs: 0, ingestion: null }),
       expect.objectContaining({ workflow: 'c.md', runs: 1, ingestion: '100%' })
+    ]);
+    expect(derived['top-workflow-runs'].rows).toEqual([
+      expect.objectContaining({ workflow: 'a.md', run: '1', 'workflow-label': 'githubnext/gh-aw-cao:a.md', 'workflow-runs': 2 }),
+      expect.objectContaining({ workflow: 'a.md', run: '2', 'workflow-label': 'githubnext/gh-aw-cao:a.md', 'workflow-runs': 2 }),
+      expect.objectContaining({ workflow: 'c.md', run: '3', 'workflow-label': 'githubnext/gh-aw-cao:c.md', 'workflow-runs': 1 })
     ]);
     expect(derived['package-operational-value-totals'].rows).toEqual([{
       package: 'aw-doctor',
