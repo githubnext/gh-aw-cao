@@ -34,7 +34,11 @@ test("grows the assessment timeout with the number of selected views", () => {
     dashboardAssessmentTimeout(68),
     dashboardAssessmentStartupBudgetMs + 68 * dashboardAssessmentPageBudgetMs,
   );
-  assert.ok(dashboardAssessmentTimeout(69) <= maximumDashboardAssessmentTimeoutMs);
+  assert.equal(
+    dashboardAssessmentTimeout(69),
+    dashboardAssessmentStartupBudgetMs + 69 * dashboardAssessmentPageBudgetMs,
+  );
+  assert.equal(dashboardAssessmentTimeout(74), maximumDashboardAssessmentTimeoutMs);
   assert.equal(dashboardAssessmentTimeout(10_000), maximumDashboardAssessmentTimeoutMs);
 });
 
