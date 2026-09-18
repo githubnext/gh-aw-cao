@@ -2,6 +2,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, expect, it } from 'vitest';
 import { adaptCachedGhAwJsonl } from '../../src/data/adapters/gh-aw-logs.js';
+import { CANONICAL_SCHEMA_VERSION } from '../../src/data/model/schema.js';
 import { normalize } from '../../src/data/normalize/index.js';
 import { DATABASE_NAME, readTransactions } from '../../src/data/storage/indexeddb.js';
 
@@ -44,7 +45,7 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
     }
   })}\n`).observations);
   const normalized = (/** @type {'runs' | 'records'} */ phase, /** @type {typeof batch} */ phaseBatch) => ({
-    schemaVersion: 11,
+    schemaVersion: CANONICAL_SCHEMA_VERSION,
     ingestionVersion: 2,
     sourceRecords: 1,
     phase,

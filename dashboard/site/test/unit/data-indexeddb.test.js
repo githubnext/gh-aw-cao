@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   canonicalDatabaseName,
   DATABASE_NAME,
+  DATABASE_VERSION,
   deleteCanonicalDatabase,
   openCanonicalDatabase,
   queryCollection,
@@ -17,6 +18,8 @@ import {
 } from '../../src/data/storage/indexeddb.js';
 import { normalize } from '../../src/data/normalize/index.js';
 import { tidy } from '../../src/data-operations.js';
+
+const LEGACY_PACKAGES_DATABASE_VERSION = 17;
 
 function batch() {
   return normalize([
@@ -125,6 +128,7 @@ describe('canonical IndexedDB', () => {
 
     const database = await openCanonicalDatabase(indexedDB);
 
+    expect(database.version).toBe(DATABASE_VERSION);
     expect([...database.objectStoreNames]).toEqual([
       'audits',
       'campaigns',
@@ -137,6 +141,44 @@ describe('canonical IndexedDB', () => {
       'workflows'
     ]);
     expect(await readCollection(indexedDB, 'repositories')).toEqual([]);
+    database.close();
+  });
+
+  it('rebuilds package-store caches during the campaigns schema upgrade', async () => {
+    const legacy = await new Promise((resolve, reject) => {
+      const request = indexedDB.open(DATABASE_NAME, LEGACY_PACKAGES_DATABASE_VERSION);
+      request.onupgradeneeded = () => {
+        const packages = request.result.createObjectStore('packages', { keyPath: 'id' });
+        packages.createIndex('bySlug', 'slug');
+        packages.put({
+          id: 'package:dashboard-sources:dashboard',
+          slug: 'dashboard'
+        });
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    expect(legacy.version).toBe(LEGACY_PACKAGES_DATABASE_VERSION);
+    expect([...legacy.objectStoreNames]).toContain('packages');
+    legacy.close();
+
+    const database = await openCanonicalDatabase(indexedDB);
+
+    expect(database.version).toBe(DATABASE_VERSION);
+    expect([...database.objectStoreNames]).toEqual([
+      'audits',
+      'campaigns',
+      'domains',
+      'issues',
+      'repositories',
+      'runs',
+      'tools',
+      'transactions',
+      'workflows'
+    ]);
+    expect([...database.objectStoreNames]).not.toContain('packages');
+    expect(() => database.transaction('packages')).toThrow();
+    expect(await readCollection(indexedDB, 'campaigns')).toEqual([]);
     database.close();
   });
 
