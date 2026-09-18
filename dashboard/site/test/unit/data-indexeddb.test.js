@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   canonicalDatabaseName,
   DATABASE_NAME,
+  DATABASE_VERSION,
   deleteCanonicalDatabase,
   openCanonicalDatabase,
   queryCollection,
@@ -125,6 +126,7 @@ describe('canonical IndexedDB', () => {
 
     const database = await openCanonicalDatabase(indexedDB);
 
+    expect(database.version).toBe(DATABASE_VERSION);
     expect([...database.objectStoreNames]).toEqual([
       'audits',
       'campaigns',
@@ -154,10 +156,13 @@ describe('canonical IndexedDB', () => {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
+    expect(legacy.version).toBe(17);
+    expect([...legacy.objectStoreNames]).toContain('packages');
     legacy.close();
 
     const database = await openCanonicalDatabase(indexedDB);
 
+    expect(database.version).toBe(DATABASE_VERSION);
     expect([...database.objectStoreNames]).toEqual([
       'audits',
       'campaigns',
