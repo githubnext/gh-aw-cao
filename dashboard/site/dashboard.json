@@ -127,21 +127,6 @@
           { "field": "workflow-count", "title": "Workflows" },
           { "field": "workflow-roles", "title": "Roles" }
         ]
-      },
-      {
-        "id": "campaign",
-        "icon": "goal",
-        "title": { "field": "campaign-name", "title": "Campaign" },
-        "labels": [
-          { "field": "modes", "title": "Modes", "display": "label" },
-          { "field": "registration", "title": "Registration", "display": "active-state" }
-        ],
-        "details": [
-          { "field": "workflows", "title": "Workflows" },
-          { "field": "runs", "title": "Runs" },
-          { "field": "dispatches", "title": "Dispatches" },
-          { "field": "aic", "title": "AIC", "unit": "aic" }
-        ]
       }
     ],
     "views": [
@@ -9266,7 +9251,8 @@
                 "overview-delivery-summary",
                 "overview-value-summary",
                 "overview-registered-repository-summary",
-                "overview-worker-summary"
+                "overview-worker-summary",
+                "campaign-inventory"
               ]
             },
             "mark": "element",
@@ -9293,39 +9279,6 @@
               }
             },
             "layout": "full"
-          },
-          {
-            "id": "overview-campaigns",
-            "title": "Campains",
-            "description": "Centrally managed campaigns and their observed execution totals.",
-            "data": {
-              "source": "campaign-inventory"
-            },
-            "mark": "list",
-            "list": {
-              "style": "entity-cards",
-              "layout": "grid",
-              "card": "campaign",
-              "icon": "goal",
-              "drill": {
-                "type": "external",
-                "field": "campaign-dashboard-link"
-              }
-            },
-            "empty-message": "No campaigns discovered.",
-            "layout": "full",
-            "encoding": {
-              "columns": [
-                { "field": "campaign-name", "type": "nominal", "title": "Campaign" },
-                { "field": "modes", "type": "nominal", "title": "Modes" },
-                { "field": "registration", "type": "nominal", "title": "Registration" },
-                { "field": "workflows", "type": "quantitative", "title": "Workflows" },
-                { "field": "runs", "type": "quantitative", "title": "Runs" },
-                { "field": "dispatches", "type": "quantitative", "title": "Dispatches" },
-                { "field": "aic", "type": "quantitative", "title": "AIC", "unit": "aic" },
-                { "field": "campaign-dashboard-link", "type": "nominal", "title": "Campaign link" }
-              ]
-            }
           }
         ]
       },

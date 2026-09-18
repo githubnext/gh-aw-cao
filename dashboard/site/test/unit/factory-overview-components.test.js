@@ -135,7 +135,21 @@ describe('Overview component boundaries', () => {
       'overview-registered-repository-summary': binding(),
       'overview-run-summary': binding(),
       'overview-dispatch-summary': binding(),
-      'overview-value-summary': binding()
+      'overview-value-summary': binding(),
+      'campaign-inventory': binding({
+        rows: [{
+          campaign: 'aw-doctor',
+          'campaign-name': 'AW Doctor',
+          'campaign-dashboard-link': {
+            'dashboard-href': '#page-campaign-detail?campaign=aw-doctor',
+            'dashboard-label': 'View AW Doctor campaign dashboard'
+          },
+          workflows: 3,
+          runs: 8,
+          dispatches: 7,
+          aic: 12
+        }]
+      })
     };
     /** @type {(name: string, count: number) => string} */
     const label = (name, count) => ({
@@ -150,6 +164,8 @@ describe('Overview component boundaries', () => {
     expect([...rendered.querySelectorAll('.factory-station strong')].map((element) => element.textContent)).toEqual(['6', '8', '7', '3']);
     expect(rendered.classList.contains('factory-floor-active')).toBe(true);
     expect(rendered.getAttribute('aria-label')).toContain('6 repositories registered with 4 delivered to');
+    expect(rendered.querySelector('.factory-campaigns h3')?.textContent).toBe('Campains');
+    expect(rendered.querySelector('.factory-campaigns a')?.textContent).toBe('AW Doctor');
     motion.set({ operations: 0, live: 0, review: 0 });
     expect(rendered.classList.contains('factory-floor-active')).toBe(false);
     controller.abort();
