@@ -1081,6 +1081,8 @@ test('a page combining a chart with a full-view table fills and scrolls in table
   await expect(cards).toBeVisible();
   await expect(cards.locator('.entity-card-list-card').first()).toBeVisible();
   await expect(cards.locator('.entity-card-list-card').first()).toContainText('copilot / model-1');
+  await expect(cards.getByRole('button', { name: 'Load more cards' })).toHaveCount(0);
+  await expect(cards.locator('.entity-card-list-card')).toHaveCount(25);
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
   await expect(page.getByRole('heading', { name: 'Engines and models', level: 3 })).toBeHidden();
   await expect.poll(async () => cards.evaluate((element) =>
@@ -1089,8 +1091,9 @@ test('a page combining a chart with a full-view table fills and scrolls in table
   await expect.poll(async () => cardScroll.evaluate((element) =>
     element.scrollHeight > element.clientHeight
   )).toBe(true);
-  await cardScroll.evaluate((element) => { element.scrollTop = 100; });
+  await cardScroll.evaluate((element) => { element.scrollTop = element.scrollHeight; });
   await expect.poll(async () => cardScroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  await expect(cards.locator('.entity-card-list-card')).toHaveCount(50);
 
   await page.getByRole('button', { name: 'Show chart view' }).click();
   await expect(chart).toBeVisible();

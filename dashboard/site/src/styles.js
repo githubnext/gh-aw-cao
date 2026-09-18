@@ -236,6 +236,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .dashboard-full-view .custom-view[data-view-layout="full-view"] > .mobile-table-card-list { min-height: 0; flex: 1; grid-template-rows: minmax(0, 1fr) auto; overflow: hidden; }
 .dashboard-full-view .mobile-table-card-list-items { min-height: 0; flex: 1; overflow-y: auto; }
 .mobile-table-card-list-items { display: grid; gap: 10px; border: 0; background: transparent; }
+.mobile-table-card-list-boundary { min-height: 1px; list-style: none; }
 .mobile-table-card-list-items .entity-card-list-card { border: 1px solid var(--border); border-radius: 0; background: var(--canvas); box-shadow: 0 1px 0 var(--border-muted); }
 .entity-card-list-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 14px; border: 0; background: transparent; }
 .entity-card-list-grid .entity-card-list-card { grid-template-columns: 20px minmax(0, 1fr); align-content: start; border: 1px solid var(--border); background: var(--canvas-subtle); }
