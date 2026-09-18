@@ -680,10 +680,17 @@
         "name": "entity-workflow-run-totals",
         "intent": "Summarize run outcomes and AI Credit consumption for reusable workflow cards.",
         "from": "runs",
+        "compute": [
+          {
+            "as": "run-attempt-identity",
+            "function": "concat",
+            "args": [{ "field": "run" }, { "value": ":" }, { "field": "run-attempt" }]
+          }
+        ],
         "aggregate": {
           "by": ["organization", "repository", "workflow"],
           "values": [
-            { "field": "run", "as": "runs", "reducer": "distinct-count" },
+            { "field": "run-attempt-identity", "as": "runs", "reducer": "distinct-count" },
             {
               "field": "run-conclusion",
               "as": "successful-runs",
@@ -2029,10 +2036,17 @@
         "intent": "Summarize observed run counts and imported runs by declared workflow.",
         "description": "Observed run and imported-run totals for each declared workflow.",
         "from": "run-import-status",
+        "compute": [
+          {
+            "as": "run-attempt-identity",
+            "function": "concat",
+            "args": [{ "field": "run" }, { "value": ":" }, { "field": "run-attempt" }]
+          }
+        ],
         "aggregate": {
           "by": ["organization", "repository", "workflow"],
           "values": [
-            { "field": "run", "as": "runs", "reducer": "distinct-count" },
+            { "field": "run-attempt-identity", "as": "runs", "reducer": "distinct-count" },
             {
               "field": "run-conclusion",
               "as": "successful-runs",

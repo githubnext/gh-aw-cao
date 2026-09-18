@@ -1335,6 +1335,32 @@ describe('declarative dashboard queries', () => {
     }]);
   });
 
+  it('includes rerun attempts in workflow run counts and average AIC', () => {
+    const rerunWorkflows = {
+      source: 'workflows',
+      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md' }],
+      metadata: metadata('workflows')
+    };
+    const reruns = {
+      source: 'runs',
+      rows: [
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1, 'run-conclusion': 'failure', 'aic-total': 4 },
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 2, 'run-conclusion': 'success', 'aic-total': 6 }
+      ],
+      metadata: metadata('runs')
+    };
+
+    const derived = executeDashboardQueries(
+      dashboardQueries,
+      { workflows: rerunWorkflows, runs: reruns },
+      ['entity-workflows']
+    );
+
+    expect(derived['entity-workflows'].rows).toEqual([
+      expect.objectContaining({ runs: 2, 'successful-runs': 1, 'failed-runs': 1, 'aic-per-run': 5 })
+    ]);
+  });
+
   it('keeps unavailable repository report and evaluation metrics unknown', () => {
     const repositories = {
       source: 'repositories',
