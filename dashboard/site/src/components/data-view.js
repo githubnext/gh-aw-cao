@@ -980,8 +980,8 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
       boundary.hidden = renderedCount >= availableRows.length && !token;
       boundary.dataset.loadState = boundary.hidden ? 'complete' : 'idle';
     } catch {
-      // A later intersection retries transient continuation failures.
       boundary.dataset.loadState = 'error';
+      list.addEventListener('scroll', () => void loadMore(), { once: true });
     } finally {
       loading = false;
     }

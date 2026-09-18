@@ -809,7 +809,7 @@ describe('data view renderer', () => {
     expect(metrics).toEqual(['4778Calls', '12Workflows']);
   });
 
-  it('lets a mobile card continuation retry at the next scroll intersection after a load failure', async () => {
+  it('lets a mobile card continuation retry on scroll after a load failure', async () => {
     const intersect = stubIntersectionObserver();
     const load = vi.fn()
       .mockRejectedValueOnce(new Error('worker unavailable'))
@@ -841,7 +841,7 @@ describe('data view renderer', () => {
     expect(rendered?.querySelector('[data-card-list-more]')).toBeNull();
     intersect(boundary);
     await vi.waitFor(() => expect(boundary.dataset.loadState).toBe('error'));
-    intersect(boundary);
+    rendered?.querySelector('.mobile-table-card-list-items')?.dispatchEvent(new Event('scroll'));
     await vi.waitFor(() => expect(rendered?.querySelectorAll('[data-mobile-card-list] .entity-card-list-card')).toHaveLength(26));
     expect(load).toHaveBeenCalledTimes(2);
   });
