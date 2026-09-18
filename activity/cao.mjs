@@ -512,7 +512,8 @@ export async function setCaoPackageWorkflowsEnabled(action, packageName, {
     ...Object.values(declaration.workers)
   ])];
   for (const workflow of workflows) {
-    const result = execute('gh', ['workflow', action, workflow], {
+    const workflowFile = `${workflow}.lock.yml`;
+    const result = execute('gh', ['workflow', action, workflowFile], {
       encoding: 'utf8',
       maxBuffer: 16 * 1024 * 1024
     });

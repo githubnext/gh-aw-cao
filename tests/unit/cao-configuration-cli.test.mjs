@@ -146,12 +146,12 @@ test("cao enable and disable update every workflow declared by an installed pack
     const disabled = await setCaoPackageWorkflowsEnabled("disable", "repo-assist", { execute });
 
     assert.deepEqual(calls, [
-      ["gh", ["workflow", "enable", "repo-assist"]],
-      ["gh", ["workflow", "enable", "repo-assist-issue-triage"]],
-      ["gh", ["workflow", "enable", "repo-assist-maintenance"]],
-      ["gh", ["workflow", "disable", "repo-assist"]],
-      ["gh", ["workflow", "disable", "repo-assist-issue-triage"]],
-      ["gh", ["workflow", "disable", "repo-assist-maintenance"]],
+      ["gh", ["workflow", "enable", "repo-assist.lock.yml"]],
+      ["gh", ["workflow", "enable", "repo-assist-issue-triage.lock.yml"]],
+      ["gh", ["workflow", "enable", "repo-assist-maintenance.lock.yml"]],
+      ["gh", ["workflow", "disable", "repo-assist.lock.yml"]],
+      ["gh", ["workflow", "disable", "repo-assist-issue-triage.lock.yml"]],
+      ["gh", ["workflow", "disable", "repo-assist-maintenance.lock.yml"]],
     ]);
     assert.deepEqual(enabled, {
       command: "enable",
@@ -188,7 +188,7 @@ test("cao enable and disable validate packages and report workflow failures", as
     );
     await assert.rejects(
       setCaoPackageWorkflowsEnabled("enable", "dependabot", {
-        execute: (_command, arguments_) => arguments_.at(-1) === "dependabot-planner"
+        execute: (_command, arguments_) => arguments_.at(-1) === "dependabot-planner.lock.yml"
           ? { status: 1, stdout: "", stderr: "workflow unavailable" }
           : { status: 0, stdout: "", stderr: "" },
       }),
