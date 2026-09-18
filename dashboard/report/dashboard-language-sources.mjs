@@ -2463,10 +2463,16 @@ function operationalValueDefinitionKey(record, evaluatorDigest = record.evaluato
 function operationalValueDefinitionLookup(values) {
   const definitions = Array.isArray(values.definitions) ? values.definitions : [];
   const lookup = new Map();
+  const definitionsByWorkflow = new Map();
   for (const definition of definitions) {
     lookup.set(operationalValueDefinitionKey(definition), definition);
-    const fallbackKey = operationalValueDefinitionKey(definition, "");
-    if (!lookup.has(fallbackKey)) lookup.set(fallbackKey, definition);
+    const workflowKey = operationalValueDefinitionKey(definition, "");
+    definitionsByWorkflow.set(workflowKey, [...(definitionsByWorkflow.get(workflowKey) ?? []), definition]);
+  }
+  for (const [workflowKey, workflowDefinitions] of definitionsByWorkflow) {
+    if (workflowDefinitions.length === 1) {
+      lookup.set(workflowKey, workflowDefinitions[0]);
+    }
   }
   return lookup;
 }
@@ -2484,7 +2490,7 @@ function operationalValueMetrics(definitions, record) {
   const primary = typeof definition.operationalValue === "string"
     ? definition.operationalValue
     : definition.operationalValue?.metric;
-  const primaryId = primary || record.workflowId || "operational-value";
+  const primaryId = primary || "operational-value";
   const diagnosticNames = new Set([
     ...(Array.isArray(definition.diagnosticMetrics) ? definition.diagnosticMetrics : []),
     ...Object.keys(diagnostics),

@@ -2920,7 +2920,7 @@ test("dashboard source bridge preserves legacy operational-value cache observati
         workflowId: "daily-file-diet",
         evaluatorDigest: "legacy-digest",
         operationalValue: { metric: "attainment" },
-        diagnosticMetrics: ["quality"],
+        diagnosticMetrics: ["attainment", "quality"],
       }],
       records: [{
         repository: "github/gh-aw",
@@ -2936,7 +2936,7 @@ test("dashboard source bridge preserves legacy operational-value cache observati
           evidenceAt: "2026-08-31T10:00:00Z",
           subject: { createdAt: "2026-08-31T09:00:00Z" },
         },
-        diagnostics: { quality: 0.6, extra: 0.4 },
+        diagnostics: { attainment: 0.1, quality: 0.6, extra: 0.4 },
       }],
     },
     report: { generatedAt: "2026-09-01T12:00:00Z", records: [] },
