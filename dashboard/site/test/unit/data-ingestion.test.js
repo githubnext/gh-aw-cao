@@ -138,6 +138,7 @@ describe('canonical source ingestion and queries', () => {
         workflows: [{
           id: 'workflow:githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fmaintenance.md',
           repositoryId,
+          campaignId: legacyPackageId,
           packageId: legacyPackageId,
           package: 'maintenance',
           packageName: 'Maintenance',

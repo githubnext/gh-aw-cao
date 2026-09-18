@@ -74,15 +74,9 @@ function hasLegacyPackageAliases(value) {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value) && (
     (typeof /** @type {{ id?: unknown }} */ (value).id === 'string'
       && /** @type {{ id: string }} */ (value).id.startsWith('package:'))
+    || (typeof /** @type {{ campaignId?: unknown }} */ (value).campaignId === 'string'
+      && /** @type {{ campaignId: string }} */ (value).campaignId.startsWith('package:'))
     || Object.keys(LEGACY_PACKAGE_FIELD_ALIASES).some((field) => Object.hasOwn(value, field))
-  ));
-}
-
-/** @param {Record<string, unknown>} batch */
-function hasLegacyPackageShape(batch) {
-  if (Array.isArray(batch.packages)) return true;
-  return Object.values(batch).some((records) => (
-    Array.isArray(records) && records.some(hasLegacyPackageAliases)
   ));
 }
 
@@ -91,6 +85,7 @@ function migrateLegacyPackageAliases(candidate) {
   if (!hasLegacyPackageAliases(candidate)) return candidate;
   const record = { .../** @type {Record<string, unknown>} */ (candidate) };
   record.id = migrateLegacyPackageId(record.id);
+  record.campaignId = migrateLegacyPackageId(record.campaignId);
   for (const [legacyField, campaignField] of Object.entries(LEGACY_PACKAGE_FIELD_ALIASES)) {
     if (record[campaignField] === undefined && record[legacyField] !== undefined) {
       record[campaignField] = legacyField === 'packageId'
@@ -112,7 +107,7 @@ function migrateLegacyPackageAliases(candidate) {
  * @returns {import('../model/schema.js').CanonicalBatch}
  */
 function migrateNormalizedBatch(batch) {
-  if (!hasLegacyPackageShape(batch)) {
+  if (!Array.isArray(batch.packages)) {
     return /** @type {import('../model/schema.js').CanonicalBatch} */ (batch);
   }
   const migrated = { ...batch };
