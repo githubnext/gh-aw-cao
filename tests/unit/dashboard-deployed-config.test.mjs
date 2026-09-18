@@ -105,7 +105,6 @@ test("deployed dashboard scrolling reports unexpected errors", async () => {
   assert.deepEqual(disposed, [0]);
 });
 
-
 test("deployed dashboard failure tracking ignores only benign aborted probes", () => {
   assert.equal(shouldIgnoreRequestFailure({
     method: "HEAD",
