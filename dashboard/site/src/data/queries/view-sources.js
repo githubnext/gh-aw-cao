@@ -1,5 +1,6 @@
 import { ingestDashboardSources } from '../ingest/coordinator.js';
 import { workflowSourcePath } from '../model/ids.js';
+import { readCollections } from '../storage/indexeddb.js';
 import { createCanonicalQueries } from './index.js';
 
 /**
@@ -1155,18 +1156,30 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   const needsRuns = needed.has('runs') || needed.has('usage') || needsRunLinkedRecords;
   const needsWorkflows = needed.has('workflows') || needsRuns || needed.has('outcomes') || needed.has('work-items');
   const needsRepositories = needed.has('repositories') || needsWorkflows;
-  const [packages, repositories, workflows, runs, failedRuns, domains, tools, audits, issues, transactions] = await Promise.all([
-    needed.has('packages') ? queries.packages.list() : [],
-    needsRepositories ? queries.repositories.list() : [],
-    needsWorkflows ? queries.workflows.list() : [],
-    needsRuns ? queries.runs.list() : [],
+  const stores = /** @type {const} */ ([
+    ['packages', needed.has('packages')],
+    ['repositories', needsRepositories],
+    ['workflows', needsWorkflows],
+    ['runs', needsRuns],
+    ['domains', needsDomains],
+    ['tools', needsTools],
+    ['audits', needsAudits],
+    ['issues', needsIssues]
+  ]);
+  const selectedStores = stores.filter(([, selected]) => selected).map(([storeName]) => storeName);
+  const [collections, failedRuns, transactions] = await Promise.all([
+    readCollections(indexedDB, selectedStores),
     needed.has('failed-runs') ? queries.runs.recentFailures() : [],
-    needsDomains ? queries.domains.list() : [],
-    needsTools ? queries.tools.list() : [],
-    needsAudits ? queries.audits.list() : [],
-    needsIssues ? queries.issues.list() : [],
     needed.has('transactions') ? queries.transactions.list() : []
   ]);
+  const packages = collections.packages ?? [];
+  const repositories = collections.repositories ?? [];
+  const workflows = collections.workflows ?? [];
+  const runs = collections.runs ?? [];
+  const domains = collections.domains ?? [];
+  const tools = collections.tools ?? [];
+  const audits = collections.audits ?? [];
+  const issues = collections.issues ?? [];
   const repositoriesById = new Map(repositories.map((repository) => [repository.id, repository]));
   const workflowsById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
   const runsById = new Map(runs.map((run) => [run.id, run]));

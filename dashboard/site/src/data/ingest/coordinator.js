@@ -187,12 +187,14 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
     previousBatch: retained,
     signal: options.signal
   });
+  /** @type {Awaited<ReturnType<typeof replaceCanonicalBatch>> | null} */
+  let writeMetrics = null;
   // Every write of a large batch costs minutes in a constrained browser, so
   // recovery halves the batch a bounded number of times and then reports the
   // quota failure instead of retrying until the tab looks stuck.
   for (let attempt = 0; ; attempt += 1) {
     try {
-      await write();
+      writeMetrics = await write();
       options.signal?.throwIfAborted();
       break;
     } catch (error) {
@@ -212,13 +214,14 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
       const reduced = capCanonicalBatchSize(batch, target);
       if (reduced.runs.length === batch.runs.length) break;
       batch = reduced;
-      await write();
+      writeMetrics = await write();
     }
   }
   return {
     updated: true,
-    committedBatches: 0,
-    committedRecords: Object.values(batch).reduce((total, records) => total + records.length, 0)
+    committedBatches: writeMetrics?.committedBatches ?? 0,
+    committedRecords: writeMetrics?.storedRecords ?? 0,
+    idb: writeMetrics
   };
 }
 
@@ -255,6 +258,7 @@ async function ingestDashboardSourcesNow(indexedDB, sources, options) {
       hash,
       DASHBOARD_SOURCE_INGESTION_VERSION
     )) {
+      debug('skipped unchanged dashboard source shard', { scope });
       return { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 };
     }
     const adapted = adaptDashboardSources(sources);
@@ -270,7 +274,8 @@ async function ingestDashboardSourcesNow(indexedDB, sources, options) {
       payloadScope: scope,
       payloadHash: hash,
       ingestionVersion: DASHBOARD_SOURCE_INGESTION_VERSION,
-      committedRecords: result.committedRecords
+      committedRecords: result.committedRecords,
+      storage: result.idb
     });
     return result;
   } catch (error) {
@@ -370,6 +375,7 @@ export function ingestNormalizedJson(indexedDB, input, options) {
         }
       }
       if (await isNormalizedJsonCurrent(indexedDB, options)) {
+        debug('skipped unchanged normalized activity shard', { scope: options.payloadScope });
         return { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 };
       }
       phase = 'writing';
@@ -390,6 +396,7 @@ export function ingestNormalizedJson(indexedDB, input, options) {
         ingestionVersion: NORMALIZED_JSON_INGESTION_VERSION,
         records: Number(payload.sourceRecords ?? 0),
         committedRecords: result.committedRecords,
+        storage: result.idb,
         timings
       });
       return { ...result, records: Number(payload.sourceRecords ?? 0), timings };
@@ -441,6 +448,7 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
         if (options.payloadEtag && current.payloadEtag !== options.payloadEtag) {
           await recordTransaction(indexedDB, { ...current, payloadEtag: options.payloadEtag });
         }
+        debug('skipped unchanged JSONL shard', { scope });
         return { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 };
       }
     }
@@ -519,6 +527,7 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       ingestionVersion: GH_AW_JSONL_INGESTION_VERSION,
       records: adapted.records,
       committedRecords: result.committedRecords,
+      storage: result.idb,
       rawPayloadRecords: adapted.rawPayloadRecords,
       rawRuns: adapted.rawRuns,
       agenticRunRecords: adapted.agenticRunRecords,
