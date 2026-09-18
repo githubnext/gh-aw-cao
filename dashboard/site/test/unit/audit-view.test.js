@@ -34,6 +34,15 @@ describe('Audit dashboard view', () => {
       expect.objectContaining({ source: 'audit-event-summary-buckets', 'route-field': 'campaign' }),
       expect.objectContaining({ source: 'audit-events', 'route-field': 'campaign' })
     ]);
+    expect(insights.views[1]).toMatchObject({
+      chart: 'horizontal-bar',
+      data: { limit: 20 },
+      encoding: {
+        x: { field: 'workflow', format: 'workflow-relative-path' },
+        y: { field: 'events' },
+        color: { field: 'event-summary' }
+      }
+    });
     expect(issues.views
       .filter((/** @type {{ data?: { source?: string } }} */ view) => view.data?.source === 'campaign-worker-issues')
       .map((/** @type {{ data: Record<string, string> }} */ view) => view.data['route-field'])).toEqual([
@@ -177,6 +186,22 @@ describe('Audit dashboard view', () => {
     expect(dashboard.queries.find(
       (/** @type {{ name: string }} */ query) => query.name === 'audit-event-summary-buckets'
     )).toMatchObject({ limit: 20 });
+    expect(dashboard['card-templates'].find(
+      (/** @type {{ id: string }} */ template) => template.id === 'audit'
+    )).toMatchObject({
+      icon: 'checklist',
+      title: { field: 'event-summary' },
+      labels: [
+        { field: 'event-status', display: 'status' },
+        { field: 'audit-kind', display: 'label' }
+      ],
+      details: [
+        { field: 'workflow', format: 'workflow-relative-path' },
+        { field: 'repository' },
+        { field: 'run', display: 'run-link' },
+        { field: 'observed-at', format: 'human-friendly-timestamp' }
+      ]
+    });
   });
 
   it('filters info events before grouping shared summaries by workflow', () => {

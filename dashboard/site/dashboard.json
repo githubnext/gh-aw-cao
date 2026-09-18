@@ -67,6 +67,21 @@
         ]
       },
       {
+        "id": "audit",
+        "icon": "checklist",
+        "title": { "field": "event-summary", "title": "Audit event" },
+        "labels": [
+          { "field": "event-status", "title": "Status", "display": "status" },
+          { "field": "audit-kind", "title": "Audit event", "display": "label" }
+        ],
+        "details": [
+          { "field": "workflow", "title": "Workflow", "format": "workflow-relative-path" },
+          { "field": "repository", "title": "Repository" },
+          { "field": "run", "title": "Run", "display": "run-link" },
+          { "field": "observed-at", "title": "Observed", "format": "human-friendly-timestamp" }
+        ]
+      },
+      {
         "id": "mcp-tool",
         "icon": "mcp",
         "title": { "field": "mcp-tool", "title": "MCP tool" },
@@ -6032,10 +6047,11 @@
             "description": "The 20 most frequent audit-event buckets for this campaign, grouped by workflow and shared summary after info-level events are excluded.",
             "data": {
               "source": "audit-event-summary-buckets",
-              "route-field": "campaign"
+              "route-field": "campaign",
+              "limit": 20
             },
             "mark": "chart",
-            "chart": "bar",
+            "chart": "horizontal-bar",
             "layout": "full",
             "empty-message": "No high- or medium-severity audit events were observed for this campaign in the current run window.",
             "encoding": {
