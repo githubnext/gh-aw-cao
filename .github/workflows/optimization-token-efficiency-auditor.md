@@ -408,7 +408,7 @@ safe-outputs:
   missing-tool: false
   report-incomplete: false
 
-source: github/gh-aw-cao/.github/workflows/optimization-token-efficiency-auditor.md@main
+source: githubnext/gh-aw-cao/.github/workflows/optimization-token-efficiency-auditor.md@main
 ---
 
 # AW Optimization / Token Auditor

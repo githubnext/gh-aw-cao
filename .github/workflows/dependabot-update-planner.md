@@ -183,7 +183,7 @@ safe-outputs:
 
 timeout-minutes: 60
 
-source: github/gh-aw-cao/.github/workflows/dependabot-update-planner.md@main
+source: githubnext/gh-aw-cao/.github/workflows/dependabot-update-planner.md@main
 ---
 
 You are a dependency reliability and supply-chain planning agent for one dispatched target repository.

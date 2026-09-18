@@ -133,7 +133,7 @@ tools:
 
 timeout-minutes: 10
 
-source: github/gh-aw-cao/.github/workflows/optimization-token-efficiency-verifier.md@main
+source: githubnext/gh-aw-cao/.github/workflows/optimization-token-efficiency-verifier.md@main
 ---
 
 # AW Optimization / Token Efficiency Verifier
