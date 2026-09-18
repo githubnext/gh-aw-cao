@@ -1724,6 +1724,19 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .insights-plot-panel .swimlane-chart-widget svg { max-height: 210px; }
 .insights-panel-stat { display: flex; align-items: baseline; gap: 7px; color: var(--muted); font-size: .75rem; }
 .insights-panel-stat strong { color: var(--fg); font-size: 1.125rem; font-variant-numeric: tabular-nums; }
+.insights-measure-rows { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; padding-top: 4px; }
+.insights-measure-row { padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+.insights-measure-row:last-child { padding-bottom: 0; border-bottom: 0; }
+.insights-measure-plot { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 4px 8px; }
+.insights-measure-canvas { min-width: 0; }
+.insights-measure-row .chart-widget { min-height: 240px; padding: 0; }
+.insights-axis-label { color: var(--muted); font-size: .6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: .02em; }
+.insights-axis-y { writing-mode: vertical-rl; transform: rotate(180deg); justify-self: center; text-align: center; }
+.insights-axis-x { grid-column: 2; text-align: center; }
+.insights-point-readout { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin: 0; color: var(--muted); font-size: .75rem; }
+.insights-point-readout strong { color: var(--fg); font-size: 1.125rem; font-variant-numeric: tabular-nums; }
+.insights-measure-row .chart-point[data-selected="true"] :is(.line-chart-point, .dot-chart-point) { stroke: var(--focus); stroke-width: calc(var(--chart-point-size, 4px) + 3px); }
+.insights-measure-row .chart-point[data-selected="true"] .point-tooltip { opacity: 1; }
 .insights-experiment-band { min-width: 0; display: grid; gap: 14px; padding-top: 4px; }
 .insights-experiment-band .chart-widget { min-height: 230px; padding: 0; }
 .insights-decision-count { font-size: 1.25rem; white-space: nowrap; }
@@ -2317,6 +2330,10 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .insights-lead-metrics dd, .insights-inline-metrics dd { font-size: 1rem; }
   .insights-value-lead > .chart-legend { display: none; }
   .insights-plot-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .insights-measure-rows { gap: 24px; }
+  .insights-measure-plot { grid-template-columns: minmax(0, 1fr); }
+  .insights-axis-y { writing-mode: horizontal-tb; transform: none; justify-self: start; }
+  .insights-axis-x { grid-column: 1; }
   .insights-value-lead .chart-widget, .insights-plot-panel .chart-widget, .insights-experiment-band .chart-widget { min-height: 190px; }
   .notifications-search { grid-column: 1; }
   .notifications-state-tabs { width: max-content; }

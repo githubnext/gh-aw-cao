@@ -3570,6 +3570,16 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   await expect(campaignInsights.locator('.campaign-value-history')).toContainText('Repository readiness');
   await expect(campaignInsights.locator('.campaign-value-history')).toContainText('Quality');
   await expect(campaignInsights.locator('.campaign-value-history')).toContainText('Efficiency');
+  await expect(campaignInsights.locator('.insights-measure-rows > .insights-measure-row')).toHaveCount(3);
+  await expect(campaignInsights.locator('.insights-measure-row').first().locator('.insights-axis-x')).toHaveText('Observation time (UTC)');
+  const measureReadout = campaignInsights.locator('.insights-measure-row').first().locator('.insights-point-readout');
+  await expect(measureReadout).toHaveText('Select a point to inspect that observation.');
+  const measurePoint = campaignInsights.locator('.insights-measure-row').first().locator('.chart-point[data-chart-point-key]').first();
+  await measurePoint.dispatchEvent('click');
+  await expect(measureReadout).not.toHaveText('Select a point to inspect that observation.');
+  await expect(campaignInsights.locator('.insights-measure-row .chart-point[aria-pressed="true"]')).toHaveCount(1);
+  await measurePoint.dispatchEvent('keydown', { key: 'Enter', bubbles: true });
+  await expect(measureReadout).toHaveText('Select a point to inspect that observation.');
   await mobileBack.click();
   await expect(page).toHaveURL(/#page-campaign-detail\?campaign=ambient-context$/);
   await expect(page.locator('[data-page-id="campaign-detail"]')).toBeVisible();
