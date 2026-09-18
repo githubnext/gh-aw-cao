@@ -118,7 +118,7 @@ Rank repositories by observed evidence that an operational-resilience advisory w
 
 Exclude archived or disabled repositories and repositories that the configured credential cannot read. Deprioritize repositories with no observed UK public-sector or published-code relevance, or an equivalent current advisory with no material change. AI is a threat accelerator, not an eligibility requirement. Missing metadata is not evidence that a repository is in or out of scope.
 
-Use bounded two-stage discovery. Rank the complete precomputed batch using trusted metadata, then inspect only the strongest candidates needed to fill `effective_max_repos`, plus at most two alternates per available slot. Prefer cheap repository-tree, topic, release, campaign, workflow, security-policy, and existing-report checks. Stop once selected targets and defensible alternates are established.
+Use bounded two-stage discovery. Rank the complete precomputed batch using trusted metadata, then inspect only the strongest candidates needed to fill `effective_max_repos`, plus at most two alternates per available slot. Prefer cheap repository-tree, topic, release, artifact, workflow, security-policy, and existing-report checks. Stop once selected targets and defensible alternates are established.
 
 ## Workers
 

@@ -113,7 +113,7 @@ Read `/tmp/gh-aw/agent/control-precompute.json` first and use its candidates, mo
 
 Rank active software repositories using:
 
-1. Recent commits, releases, campaigns, deployments, or supported software artifacts.
+1. Recent commits, releases, artifacts, deployments, or supported software artifacts.
 2. Build, test, release, deployment, dependency, and security workflows.
 3. Campaign manifests, source code, infrastructure as code, architecture records, `README`, `CONTRIBUTING`, `CODEOWNERS`, `SECURITY.md`, and support documentation.
 4. Open maintenance or security work that indicates actionable development-practice improvements.
@@ -129,7 +129,7 @@ Resolve enabled workers from precompute. Dispatch one repository-level responsib
 - `software-development-practices-github-well-architected` reviews observable evidence across the current GitHub Well-Architected pillars and produces one consolidated improvement issue.
 - `software-development-practices-nist-ssdf` reviews observable evidence against the current final NIST SSDF practices and produces one consolidated improvement issue.
 
-Dispatch `github-well-architected` when a repository has meaningful collaboration, workflow, GitHub configuration, or architecture evidence. Dispatch `nist-ssdf` when it ships or supports software with a security-relevant surface such as releases, campaigns, dependencies, builds, or vulnerability handling. Dispatch both only when both conditions hold.
+Dispatch `github-well-architected` when a repository has meaningful collaboration, workflow, GitHub configuration, or architecture evidence. Dispatch `nist-ssdf` when it ships or supports software with a security-relevant surface such as releases, artifacts, dependencies, builds, or vulnerability handling. Dispatch both only when both conditions hold.
 
 Calculate the proposed dispatch count across selected repositories and enabled workers. Keep the total at or below 20, reduce repository or worker selection if needed, and record every dispatch or skip rationale. Workers own source-aware duplicate detection because the orchestrator must not assess framework currency.
 

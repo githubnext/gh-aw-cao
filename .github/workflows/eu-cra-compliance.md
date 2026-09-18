@@ -116,13 +116,13 @@ Read `/tmp/gh-aw/agent/control-precompute.json` first and use its candidates and
 
 Rank repositories by evidence that they plausibly represent products with digital elements or components shipped in such products:
 
-1. Releases, campaigns, containers, distributed binaries, downloadable software, firmware, CLIs, desktop/mobile applications, server or network/security products, SDKs, or libraries used in downstream products.
-2. Campaign manifests, container files, release workflows, product documentation, EU-market terminology, and support or update-policy documentation.
+1. Releases, artifacts, containers, distributed binaries, downloadable software, firmware, CLIs, desktop/mobile applications, server or network/security products, SDKs, or libraries used in downstream products.
+2. Artifact manifests, container files, release workflows, product documentation, EU-market terminology, and support or update-policy documentation.
 3. `SECURITY.md`, vulnerability alerts or advisories, code scanning, Dependabot, SBOM configuration, and signed release or provenance configuration.
 
 Exclude archived or disabled repositories, repositories inaccessible to the credential, obvious documentation-only repositories with no distributed digital product or component, and generated mirrors where meaningful product ownership cannot be established. Discovery decides only whether assessment is useful. Never declare a repository out of CRA scope.
 
-Use bounded two-stage discovery. First rank the complete precomputed batch using only its trusted metadata. Then inspect repository contents and GitHub metadata only for the strongest candidates needed to fill `effective_max_repos`, plus at most two alternates per available slot. Prefer cheap repository-tree, release, campaign, workflow, security-policy, and existing CRA-report checks before deeper issue, advisory, alert, or run queries. Do not claim a positive or negative signal that was not actually observed, do not exhaustively inspect every candidate, and stop discovery once the selected targets and defensible alternates are established.
+Use bounded two-stage discovery. First rank the complete precomputed batch using only its trusted metadata. Then inspect repository contents and GitHub metadata only for the strongest candidates needed to fill `effective_max_repos`, plus at most two alternates per available slot. Prefer cheap repository-tree, release, artifact, workflow, security-policy, and existing CRA-report checks before deeper issue, advisory, alert, or run queries. Do not claim a positive or negative signal that was not actually observed, do not exhaustively inspect every candidate, and stop discovery once the selected targets and defensible alternates are established.
 
 ## Workers
 

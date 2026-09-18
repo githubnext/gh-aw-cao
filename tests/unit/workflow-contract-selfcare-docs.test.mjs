@@ -102,7 +102,7 @@ test("SelfCare accessibility checker audits the served docs site with axe-core e
   assert.match(source, /playwright-cli` is a pre-installed CLI binary already on `PATH`/);
   assert.match(source, /never call `missing_tool` for it based on assumption alone/);
   assert.match(source, /node_modules\/\.bin\/playwright install chromium/);
-  assert.match(source, /Node Playwright campaign launch preflight/);
+  assert.match(source, /Node Playwright package launch preflight/);
   assert.match(source, /preflight-node\.log/);
   assert.match(source, /colorScheme: "light"/);
   assert.match(source, /colorScheme: "dark"/);

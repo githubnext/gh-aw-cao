@@ -1,5 +1,5 @@
 ---
-emoji: ":campaign:"
+emoji: ":dart:"
 
 name: "ESLint Factory / Applier"
 

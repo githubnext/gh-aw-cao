@@ -220,11 +220,11 @@ steps:
           .filter((candidate) => !exists(candidate))
           .slice(0, MAX_LIST_ITEMS);
 
-        const campaignManifest = readFile('package.json');
+        const packageManifest = readFile('package.json');
         let missingScripts = [];
-        if (campaignManifest) {
+        if (packageManifest) {
           try {
-            const scripts = Object.keys(JSON.parse(campaignManifest).scripts || {});
+            const scripts = Object.keys(JSON.parse(packageManifest).scripts || {});
             const referenced = new Set(
               [...agentsMarkdown.matchAll(/(?:npm|pnpm|yarn)\s+run\s+([\w:-]+)/g)].map((match) => match[1]),
             );
@@ -246,19 +246,19 @@ steps:
 
         // Campaign-manager and command conflicts across instruction files are a top failure class:
         // an agent that reads two files with contradicting commands picks one at random.
-        const CAMPAIGN_MANAGERS = [
+        const PACKAGE_MANAGERS = [
           { name: 'npm', lockfile: 'package-lock.json', pattern: /\bnpm (?:ci|install|run|test)\b/ },
           { name: 'pnpm', lockfile: 'pnpm-lock.yaml', pattern: /\bpnpm (?:install|run|test)\b/ },
           { name: 'yarn', lockfile: 'yarn.lock', pattern: /\byarn (?:install|run|test)\b/ },
           { name: 'bun', lockfile: 'bun.lockb', pattern: /\bbun (?:install|run|test)\b/ },
         ];
-        const lockfilesPresent = CAMPAIGN_MANAGERS.filter((manager) => exists(manager.lockfile)).map((manager) => manager.name);
+        const lockfilesPresent = PACKAGE_MANAGERS.filter((manager) => exists(manager.lockfile)).map((manager) => manager.name);
         const instructionFiles = ['AGENTS.md', 'CLAUDE.md', 'GEMINI.md', '.github/copilot-instructions.md'];
         const managersByFile = {};
         for (const name of instructionFiles) {
           const content = name === 'AGENTS.md' ? agentsMarkdown : readFile(name);
           if (content === null) continue;
-          managersByFile[name] = CAMPAIGN_MANAGERS
+          managersByFile[name] = PACKAGE_MANAGERS
             .filter((manager) => manager.pattern.test(content))
             .map((manager) => manager.name);
         }
@@ -290,9 +290,9 @@ steps:
           .map((match) => ({ subject: match[1], version: match[2] }))
           .slice(0, MAX_LIST_ITEMS);
         const declaredDependencies = {};
-        if (campaignManifest) {
+        if (packageManifest) {
           try {
-            const parsed = JSON.parse(campaignManifest);
+            const parsed = JSON.parse(packageManifest);
             Object.assign(declaredDependencies, parsed.dependencies || {}, parsed.devDependencies || {});
           } catch {
             // An unparsable manifest is reported through missingScripts staying empty.
@@ -440,7 +440,7 @@ steps:
           verification: {
             referenced_paths_checked: referencedPaths.size,
             missing_referenced_paths: missingPaths,
-            missing_campaign_scripts: missingScripts,
+            missing_package_scripts: missingScripts,
             duplication,
             cross_file_conflicts: conflicts,
             lockfiles_present: lockfilesPresent,
@@ -497,7 +497,7 @@ Use the precomputed evidence first; use bounded `git` and `jq` calls in `target/
 | --- | --- | --- |
 | Size | `agents_md.lines`, `agents_md.bytes`, `agents_md.estimated_tokens` | under 200 lines and under 10 KB; every run pays this cost |
 | Freshness | `staleness.days_since_last_change`, `staleness.commits_since_last_change` | changed within 90 days, or unchanged because the repository is also unchanged |
-| Accuracy | `verification.missing_referenced_paths`, `verification.missing_campaign_scripts`, `staleness.deleted_paths_since_last_change` | no broken paths or commands |
+| Accuracy | `verification.missing_referenced_paths`, `verification.missing_package_scripts`, `staleness.deleted_paths_since_last_change` | no broken paths or commands |
 | Consistency | `verification.cross_file_conflicts`, `verification.lockfiles_present` | one package manager and one set of commands across every instruction file, matching the lockfiles actually committed |
 | Version accuracy | `verification.version_claims` against `verification.declared_dependencies` | prose version claims match the manifests |
 | Residue | `verification.stale_markers` | no unresolved `TODO`/`FIXME` markers and no year references that contradict current reality |

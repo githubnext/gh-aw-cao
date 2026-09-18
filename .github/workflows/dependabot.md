@@ -110,7 +110,7 @@ Campaign orchestrator for organization-wide Dependabot plan maintenance. Use the
 
 Prefer repositories with evidence of security risk or dependency repair need:
 
-1. Open dependency alerts, especially critical/high alerts, direct dependencies, and runtime-exposed campaigns.
+1. Open dependency alerts, especially critical/high alerts, direct dependencies, and runtime-exposed packages.
 2. Existing Dependabot update PRs that are conflicted, stale, duplicated, or failing because lockfiles or manifests drifted from the base branch.
 3. Recognizable manifests, lockfiles, workspace or solution roots, and CI paths that indicate a manageable manifest topology.
 4. Recent dependency-update failures, actionable Dependabot errors, or registry/toolchain/configuration defects blocking safe updates.

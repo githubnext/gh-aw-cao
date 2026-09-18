@@ -1,5 +1,5 @@
 ---
-emoji: ":campaign:"
+emoji: ":dart:"
 description: "Audits CRA supply-chain, component inventory, SBOM, dependency, and provenance evidence."
 name: "EU CRA / Supply Chain"
 max-ai-credits: 100
@@ -159,7 +159,7 @@ Assess:
 - processes for maintaining confidential SBOM evidence and supplying it to an authority when lawfully required, without publishing sensitive data;
 - evidence retention and traceability from released product versions to source, build, components, and fixes.
 
-Start with manifests, lockfiles, container definitions, release workflows, attestations, and SBOMs in `target/`, then use bounded read-only GitHub queries for releases, campaigns, alerts, and provenance only when needed. Repository configuration does not prove what a campaign registry actually contains. If campaign or container registry metadata cannot be read through the configured credential and tools, mark registry-dependent findings `NOT_ASSESSED` or `INCOMPLETE`; never infer publication, signatures, attestations, or SBOM attachment from workflow configuration alone.
+Start with manifests, lockfiles, container definitions, release workflows, attestations, and SBOMs in `target/`, then use bounded read-only GitHub queries for releases, artifacts, alerts, and provenance only when needed. Repository configuration does not prove what a artifact registry actually contains. If artifact or container registry metadata cannot be read through the configured credential and tools, mark registry-dependent findings `NOT_ASSESSED` or `INCOMPLETE`; never infer publication, signatures, attestations, or SBOM attachment from workflow configuration alone.
 
 Do not expose vulnerability details or confidential SBOM data in the output. Summarize sensitive gaps safely.
 
