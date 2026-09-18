@@ -118,7 +118,7 @@ describe('canonical source ingestion and queries', () => {
     const repositoryId = 'repository:githubnext%2Fgh-aw-cao';
     const legacyPackageId = 'package:dashboard-sources:maintenance';
     const payload = {
-      schemaVersion: 11,
+      schemaVersion: CANONICAL_SCHEMA_VERSION,
       ingestionVersion: 2,
       sourceRecords: 2,
       phase: 'runs',
