@@ -111,6 +111,14 @@ describe('canonical IndexedDB', () => {
     database.close();
   });
 
+  it('initializes the database for an empty collection request', async () => {
+    await expect(readCollections(indexedDB, [])).resolves.toEqual({});
+
+    const database = await openCanonicalDatabase(indexedDB);
+    expect([...database.objectStoreNames]).toContain('repositories');
+    database.close();
+  });
+
   it('rebuilds disposable canonical stores during upgrade', async () => {
     const legacy = await new Promise((resolve, reject) => {
       const request = indexedDB.open(DATABASE_NAME, 9);

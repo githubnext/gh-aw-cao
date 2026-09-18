@@ -324,10 +324,10 @@ export async function readCanonicalBatch(indexedDB) {
  * @param {readonly typeof ENTITY_STORES[number][]} storeNames
  */
 export async function readCollections(indexedDB, storeNames) {
-  if (storeNames.length === 0) return {};
   const startedAt = monotonicNow();
   const database = await openCanonicalDatabase(indexedDB);
   try {
+    if (storeNames.length === 0) return {};
     const transaction = database.transaction([...storeNames]);
     const done = transactionDone(transaction);
     const records = await Promise.all(storeNames.map((storeName) =>

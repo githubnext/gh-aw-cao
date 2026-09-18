@@ -48,6 +48,21 @@ test('shows a not-supported message instead of starting without IndexedDB', asyn
   await expect(alert).toContainText('This dashboard requires IndexedDB');
 });
 
+test('initializes IndexedDB during dashboard startup', async ({ page }) => {
+  await page.evaluate(async (mainModuleUrl) => {
+    await new Promise((resolve, reject) => {
+      const request = indexedDB.deleteDatabase('gh-aw-cao-dashboard-data');
+      request.onsuccess = () => resolve(undefined);
+      request.onerror = () => reject(request.error);
+    });
+    await import(mainModuleUrl);
+  }, 'http://dashboard.test/src/main.js');
+
+  await expect.poll(() => page.evaluate(async () => (
+    (await indexedDB.databases()).some(({ name }) => name === 'gh-aw-cao-dashboard-data')
+  ))).toBe(true);
+});
+
 /**
  * @param {string} pageId
  * @param {Record<string, unknown>} [overrides]
