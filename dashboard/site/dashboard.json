@@ -3623,6 +3623,46 @@
         }
       },
       {
+        "name": "campaign-operational-values",
+        "intent": "Retain every operational-value extract and diagnostic for campaign-scoped temporal analysis.",
+        "description": "Operational-value observations attributed to centrally managed campaigns by repository and workflow identity.",
+        "from": "operational-values",
+        "joins": [
+          {
+            "source": "workflows",
+            "type": "inner",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" }
+            ],
+            "fields": [
+              { "field": "campaign", "as": "campaign" },
+              { "field": "campaign-name", "as": "campaign-name" }
+            ]
+          }
+        ],
+        "order-by": [{ "field": "observed-at", "direction": "asc" }]
+      },
+      {
+        "name": "campaign-operational-value-series",
+        "intent": "Project campaign operational-value measures and diagnostics into reusable temporal series.",
+        "description": "Tidy temporal metric rows for campaign operational-value analysis.",
+        "from": "campaign-operational-values",
+        "temporal-series": {
+          "time": "observed-at",
+          "series": "workflow",
+          "shape": "groups",
+          "carry": ["campaign"],
+          "measures": [
+            { "field": "operational-value", "key": "operational-value-definition", "kind": "primary" }
+          ],
+          "maps": [
+            { "field": "diagnostics", "definitions": "diagnostic-definitions", "group": "operational-value-definition", "kind": "diagnostic" }
+          ]
+        }
+      },
+      {
         "name": "campaign-operational-value-totals",
         "intent": "Summarize the operational value created by each centrally managed campaign.",
         "description": "Observed operational value totals attributed to centrally managed campaign workflows.",
@@ -5354,7 +5394,10 @@
             "id": "campaign-insights-navigation",
             "title": "Campaign insights",
             "data": {
-              "sources": ["workflows"]
+              "sources": ["workflows", "campaign-operational-value-series"],
+              "arguments": [
+                { "name": "campaign", "field": "campaign" }
+              ]
             },
             "mark": "element",
             "element": "campaign-route",

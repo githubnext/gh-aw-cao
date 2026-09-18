@@ -1,0 +1,34 @@
+[
+  {
+    "name": "attained",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "1", "repository": "githubnext/gh-aw-cao", "workflow": "AW Optimization / AI Credit Savings"},
+      "event": {"inputs": {"target_repo": "octo/service"}},
+      "outputs": [{"type": "create_issue", "title": "Reduce AI Credit use in octo/service", "body": "### Spend profile\nObserved runs for octo/service.\n### Ranked recommendations\n1. Remove unused tools.\n### Caveats\nEvidence is bounded."}],
+      "config": {}
+    },
+    "expected": [{"id": "ai-credit-optimization-request-conformance", "value": 1}]
+  },
+  {
+    "name": "missed",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "2", "repository": "githubnext/gh-aw-cao", "workflow": "AW Optimization / AI Credit Savings"},
+      "event": {"inputs": {"target_repo": "octo/service"}},
+      "outputs": [{"type": "create_issue", "title": "Optimize", "body": "Generic recommendation."}],
+      "config": {}
+    },
+    "expected": [{"id": "ai-credit-optimization-request-conformance", "value": 0}]
+  },
+  {
+    "name": "noop",
+    "request": {"schemaVersion": 1, "run": {"id": "3"}, "event": {"inputs": {"target_repo": "octo/service"}}, "outputs": [{"type": "noop", "message": "No supported optimization."}], "config": {}},
+    "expected": [{"id": "ai-credit-optimization-request-conformance", "value": null}]
+  },
+  {
+    "name": "malformed",
+    "request": {"schemaVersion": 2, "run": {}, "event": [], "outputs": {}, "config": []},
+    "expected": [{"id": "ai-credit-optimization-request-conformance", "value": null}]
+  }
+]

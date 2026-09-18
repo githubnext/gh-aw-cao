@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { access, cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { access, cp, mkdir, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
@@ -20,11 +20,12 @@ export async function buildDashboardSite({
     throw new Error("resolved control settings are required");
   }
 
-  const destinationPath = destination instanceof URL ? fileURLToPath(destination) : resolve(destination);
+  const requestedDestinationPath = destination instanceof URL ? fileURLToPath(destination) : resolve(destination);
   const repositoryPath = repositoryRoot instanceof URL ? fileURLToPath(repositoryRoot) : resolve(repositoryRoot);
 
-  await rm(destinationPath, { force: true, recursive: true });
-  await mkdir(destinationPath, { recursive: true });
+  await rm(requestedDestinationPath, { force: true, recursive: true });
+  await mkdir(requestedDestinationPath, { recursive: true });
+  const destinationPath = await realpath(requestedDestinationPath);
   await Promise.all([
     cp(new URL("index.html", siteRoot), join(destinationPath, "index.html")),
     cp(new URL("favicon.svg", siteRoot), join(destinationPath, "favicon.svg")),

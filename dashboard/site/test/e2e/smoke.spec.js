@@ -3384,7 +3384,18 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
         'operational-values': {
           source: 'operational-values',
           rows: [
-            { workflow: '.github/workflows/ambient-context-worker.md', run: '4', 'operational-value': 0.75 },
+            {
+              organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/ambient-context-worker.md', run: '3',
+              'observed-at': '2026-09-13T14:00:00Z', 'operational-value': 0.5, 'operational-value-definition': 'repository-readiness',
+              diagnostics: { quality: 0.6, efficiency: 0.8 },
+              'diagnostic-definitions': [{ id: 'quality', name: 'Quality' }, { id: 'efficiency', name: 'Efficiency' }]
+            },
+            {
+              organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/ambient-context-worker.md', run: '4',
+              'observed-at': '2026-09-14T14:00:00Z', 'operational-value': 0.75, 'operational-value-definition': 'repository-readiness',
+              diagnostics: { quality: 0.85, efficiency: 0.7 },
+              'diagnostic-definitions': [{ id: 'quality', name: 'Quality' }, { id: 'efficiency', name: 'Efficiency' }]
+            },
             { workflow: '.github/workflows/aw-doctor.md', run: '1', 'operational-value': 0.25 }
           ],
           metadata
@@ -3532,6 +3543,11 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   await expect(campaignInsights.getByRole('navigation', { name: 'Ambient Context views' })
     .getByRole('link', { name: 'Insights' })).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('.overview-header')).toContainText('Audit events observed for the Ambient Context campaign.');
+  await expect(campaignInsights.locator('.campaign-value-history [data-chart-widget="line"]')).toHaveCount(3);
+  await expect(campaignInsights.locator('.campaign-value-history .chart-point')).toHaveCount(6);
+  await expect(campaignInsights.locator('.campaign-value-history')).toContainText('Repository readiness attainment');
+  await expect(campaignInsights.locator('.campaign-value-history')).toContainText('Quality');
+  await expect(campaignInsights.locator('.campaign-value-history')).toContainText('Efficiency');
 });
 
 test('DLS-PAGE-017 renders an editable filter bar and applies changes automatically', async ({ page }) => {

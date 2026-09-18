@@ -89,6 +89,10 @@ concurrency:
 
 graders:
   operational-value:
+    name: AGENTS.md Optimization Request Conformance
+    description: Whether the run requested a target-bound, evidence-complete AGENTS.md optimization issue
+    unit: ratio
+    direction: higher_is_better
     run: ./graders/optimization-agents-md-curator-operational-value.sh
 
 tracker-id: optimization-agents-md-curator

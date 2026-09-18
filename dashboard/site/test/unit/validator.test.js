@@ -3560,15 +3560,12 @@ dashboard:
                 - field: observed-at
                 - field: operational-value
                 - field: operational-value-definition
-                - field: operational-case
-                - field: evaluator-digest
-                - field: requested-evidence-at
-                - field: evidence-cutoff
-                - field: maturity-at
-                - field: maturity-status
-                - field: evidence-link
+                - field: operational-value-unit
+                - field: operational-value-direction
+                - field: diagnostics
+                - field: diagnostic-definitions
+                - field: run-link
                 - field: experiment
-                - field: delta-from-baseline
     - id: findings
       kind: built-in
       page: findings
@@ -5786,6 +5783,31 @@ describe('declarative query validation', () => {
 
   it('accepts a derived query used as a logical source', () => {
     expect(validateDashboardDocument(queryDocument([aicQuery, validQuery])).ok).toBe(true);
+  });
+
+  it('validates reusable temporal-series projections', () => {
+    const query = {
+      name: 'workflow-costs',
+      from: 'operational-values',
+      'temporal-series': {
+        time: 'observed-at',
+        series: 'workflow',
+        carry: ['workflow'],
+        measures: [{ field: 'operational-value', key: 'operational-value-definition', kind: 'primary' }],
+        maps: [{ field: 'diagnostics', definitions: 'diagnostic-definitions', group: 'operational-value-definition', kind: 'diagnostic' }]
+      }
+    };
+
+    expect(validateDashboardDocument(queryDocument([query])).ok).toBe(true);
+    query['temporal-series'].time = 'missing-time';
+    const invalid = validateDashboardDocument(queryDocument([query]));
+    expect(invalid.ok).toBe(false);
+    if (!invalid.ok) {
+      expect(invalid.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E010',
+        path: '$.dashboard.queries[0].temporal-series.time'
+      }));
+    }
   });
 
   it('accepts bounded aggregate-local filters over pre-aggregation scalar fields', () => {

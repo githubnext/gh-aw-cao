@@ -395,7 +395,7 @@ outcome quality.
 
 Activation requires a complete assignment, an authorized target Repository, an
 authoritative Workflow identity, a frozen evidence window, an assignment Run,
-and an experiment identity. The required effect is one replayable opportunity
+and an experiment identity. The required effect is one immutable opportunity
 observation and, when maintainers accept a recommendation, one intervention
 whose experiment can mature into a comparison. A complete analysis with no
 defensible opportunity is a no-op, not a zero-value intervention. Success is a
@@ -427,7 +427,7 @@ following source contract:
 | Recommendation disposition | Safe-output lifecycle, explicit supersession relation, implementation Run or pull request, and authoritative GitHub disposition; one optimizer recommendation | Preserve `applied`, `superseded`, `outdated`, `duplicate`, `unapplied`, `failed-start`, or `rejected`. A generated issue, assignment attempt, or open state alone does not establish acceptance or implementation. |
 | Optimization overhead | Invocation or non-overlapping Run-aggregate AIC for auditor, optimizer, verifier, and replacement recommendations attributable to one frozen opportunity and intervention lineage | Deduplicate by Run attempt, preserve cost grain, and exclude unrelated repositories, workflows, opportunities, and portfolio dispatches. |
 | Outcome quality | Frozen grader or eval observation with evaluator digest; one outcome or stable opportunity | Compare only observations produced by the same definition and evaluator digest. Missing quality evidence is unknown. |
-| Operational value | Schema-version-4 operational-value result; one stable opportunity at one evidence cutoff | Preserve value, maturity, evidence cutoff, accepted provenance, diagnostics, and evaluator digest. |
+| Operational value | Current gh-aw grader result; one ordered metric array per Run | Preserve metric IDs, order, native finite values or `null`, unit, and direction without normalization, clamping, replay, inferred maturity, or local baselines. |
 | Workflow declaration | Workflow inventory at the exact reviewed source revision | Supply configured tools, model, trigger, budget, and campaign classification. Static declarations MUST NOT prove runtime use. |
 
 Source provenance for every observation SHALL include collection scope, source
@@ -438,7 +438,7 @@ canonical fact but MUST NOT erase a known value with an absent field.
 ### 5.5.2 Identities and relationships
 
 The canonical opportunity identity SHALL encode the six fields frozen by the
-operational-value contract:
+token-optimization observation contract:
 
 ```text
 token-opportunity:
@@ -574,14 +574,10 @@ optimization overhead AIC =
 net realized savings AIC =
   gross realized savings AIC - optimization overhead AIC
 
-verified net gain =
-  clamp(
-    net realized savings AIC
-      / (baseline AIC per accepted outcome
-          * optimized accepted-outcome count),
-    0,
-    1
-  )
+verified net gain ratio =
+  net realized savings AIC
+    / (baseline AIC per accepted outcome
+        * optimized accepted-outcome count)
 ```
 
 `gross-realized-savings-aic` measures the non-negative counterfactual target
@@ -592,8 +588,9 @@ replacement recommendations in that lineage, but excludes unrelated portfolio
 discovery and recommendations for other targets. `net-realized-savings-aic` is
 gross savings less that overhead and MAY be negative for diagnostics.
 
-The operational-value metric is `verified-net-gain`, clamped to `[0,1]`. Gross,
-overhead, and net values are null unless evidence is complete. A non-applied
+`verified-net-gain` is a token-optimization comparison diagnostic, not a gh-aw
+operational-value metric. It retains the native ratio produced by the formula
+without clamping or rescaling. Gross, overhead, and net values are null unless evidence is complete. A non-applied
 recommendation, failed implementation start, reliability or quality regression,
 or non-positive net result records zero verified net gain. The underlying gross
 and overhead measurements remain visible so zero does not hide optimizer cost.
@@ -2436,7 +2433,7 @@ experiment produces a distinct opportunity.
 
 ### T-MODEL-010 — Token evidence comparability
 
-Complete matched variants produce a bounded verified gain. Incomplete,
+Complete matched variants produce a native verified gain ratio. Incomplete,
 incomparable, unmatured, and unavailable fixtures produce null attainment.
 Reliability or outcome-quality regression produces zero.
 

@@ -42,36 +42,15 @@ for (const entry of index.examples) {
   }
 
   const value = metadata.operationalValue;
-  for (const field of [
-    "statement",
-    "opportunity",
-    "opportunityKey",
-    "acceptedEvidence",
-    "evidenceRepositories",
-    "metric",
-    "maturation",
-    "zeroRule",
-    "missingRule",
-    "baseline",
-  ]) {
+  for (const field of ["upstream", "orderedMetrics", "preservation"]) {
     assert.ok(value?.[field] !== undefined, `${entry.id}: operationalValue.${field} is required`);
   }
-  assert.equal(value.metric.range, "[0,1]", `${entry.id}: operational value range must be [0,1]`);
-  assert.ok(
-    ["attainment-only", "baseline-comparable"].includes(value.baseline.mode),
-    `${entry.id}: unsupported baseline mode`,
-  );
-  if (value.baseline.mode === "attainment-only") {
-    assert.equal(value.baseline.value, null, `${entry.id}: attainment-only baseline value must be null`);
-    assert.equal(value.baseline.cutoff, null, `${entry.id}: attainment-only baseline cutoff must be null`);
-  } else {
-    assert.ok(
-      Number.isFinite(value.baseline.value)
-        && value.baseline.value >= 0
-        && value.baseline.value <= 1,
-      `${entry.id}: comparable baseline value must be in [0,1]`,
-    );
-    assert.ok(value.baseline.cutoff, `${entry.id}: comparable baseline cutoff is required`);
+  assert.equal(value.upstream, "gh-aw", `${entry.id}: operational value must identify gh-aw as its upstream`);
+  assert.ok(Array.isArray(value.orderedMetrics) && value.orderedMetrics.length > 0, `${entry.id}: ordered metrics are required`);
+  for (const metric of value.orderedMetrics) {
+    assert.match(metric.id, /^[a-z][a-z0-9-]*$/, `${entry.id}: invalid metric id`);
+    assert.ok(metric.unit, `${entry.id}: metric unit is required`);
+    assert.ok(metric.direction, `${entry.id}: metric direction is required`);
   }
 
   assert.equal(metadata.dashboard, `${entry.id}.dashboard.yml`, `${entry.id}: dashboard mismatch`);

@@ -30,7 +30,7 @@ export const MAX_CLI_ACTIONS = 20;
 export const MAX_CLI_ACTION_ARGUMENTS = 10;
 export const MAX_CLI_ACTION_COMMAND_LENGTH = 1000;
 
-export const QUERY_KEYS = ['name', 'intent', 'description', 'from', 'union', 'time', 'joins', 'filter', 'compute', 'aggregate', 'predict', 'select', 'order-by', 'limit'];
+export const QUERY_KEYS = ['name', 'intent', 'description', 'from', 'union', 'time', 'joins', 'filter', 'compute', 'temporal-series', 'aggregate', 'predict', 'select', 'order-by', 'limit'];
 export const QUERY_JOIN_KEYS = ['source', 'type', 'on', 'fields'];
 export const QUERY_JOIN_TYPE_VALUES = ['inner', 'left'];
 export const QUERY_JOIN_ON_KEYS = ['left', 'right'];
@@ -39,6 +39,9 @@ export const QUERY_FILTER_KEYS = ['predicates'];
 export const QUERY_PREDICATE_KEYS = ['field', 'equals', 'in', 'includes', 'gte', 'lt', 'optional'];
 export const QUERY_COMPUTE_KEYS = ['as', 'function', 'args'];
 export const QUERY_COMPUTE_ARGUMENT_KEYS = ['field', 'value', 'context'];
+export const QUERY_TEMPORAL_SERIES_KEYS = ['time', 'series', 'shape', 'carry', 'measures', 'maps'];
+export const QUERY_TEMPORAL_SERIES_MEASURE_KEYS = ['field', 'key', 'kind'];
+export const QUERY_TEMPORAL_SERIES_MAP_KEYS = ['field', 'definitions', 'group', 'kind'];
 export const QUERY_AGGREGATE_KEYS = ['by', 'values'];
 export const QUERY_AGGREGATE_VALUE_KEYS = ['field', 'as', 'reducer', 'filter'];
 export const QUERY_AGGREGATE_FILTER_PREDICATE_KEYS = ['field', 'equals', 'in'];
@@ -332,7 +335,7 @@ export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
     'run-aggregate-summary': ['engine', 'engine-version', 'requested-model', 'resolved-model', 'run-conclusion', 'runs', 'run-link']
   },
   'operational-value': {
-    'operational-values': ['observed-at', 'operational-value', 'operational-value-definition', 'operational-case', 'evaluator-digest', 'requested-evidence-at', 'evidence-cutoff', 'maturity-at', 'maturity-status', 'evidence-link', 'experiment', 'delta-from-baseline']
+    'operational-values': ['observed-at', 'operational-value', 'operational-value-definition', 'operational-value-unit', 'operational-value-direction', 'diagnostics', 'diagnostic-definitions', 'run-link', 'experiment']
   },
   findings: {
     findings: ['finding-summary', 'finding-severity', 'finding-status', 'organization', 'repository', 'workflow', 'observed-at', 'issue-link', 'pull-request-link', 'run-link']
@@ -471,7 +474,7 @@ export const SOURCE_FIELDS = {
   outcomes: ['organization', 'repository', 'campaign', 'runtime-repository', 'workflow', 'workflow-name', 'run', 'run-conclusion', 'safe-output', 'safe-output-kind', 'outcome-number', 'outcome-title', 'outcome-summary', 'outcome-body-html', 'outcome-category', 'outcome-status', 'outcome-state', 'outcome-warning', 'evidence-strength', 'rollout-mode', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'published-at', 'observed-at', 'issue-link', 'pull-request-link', 'run-link', 'external-link', 'organization-link', 'repository-link', 'workflow-link'],
   'safe-output-performance': ['organization', 'repository', 'workflow', 'run', 'run-conclusion', 'rollout-mode', 'safe-output-kind', 'safe-output-label', 'safe-output-status', 'safe-output-count', 'observed-at', 'run-link'],
   findings: ['organization', 'repository', 'workflow', 'run', 'safe-output', 'finding', 'finding-kind', 'finding-severity', 'finding-status', 'finding-summary', 'observed-at', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'issue-link', 'pull-request-link', 'run-link', 'external-link', 'organization-link', 'repository-link', 'workflow-link'],
-  'operational-values': ['organization', 'repository', 'repository-name', 'workflow', 'run', 'run-attempt', 'observation-id', 'experiment', 'operational-case', 'evaluator-digest', 'rollout-mode', 'operational-value', 'operational-value-definition', 'requested-evidence-at', 'evidence-cutoff', 'maturity-at', 'maturity-status', 'baseline-value', 'delta-from-baseline', 'accepted-evidence-provenance', 'diagnostics', 'diagnostic-definitions', 'observed-at', 'evidence-link', 'organization-link', 'repository-link', 'workflow-link', 'run-link'],
+  'operational-values': ['organization', 'repository', 'repository-name', 'workflow', 'run', 'run-attempt', 'observation-id', 'experiment', 'operational-case', 'evaluator-digest', 'rollout-mode', 'operational-value', 'operational-value-definition', 'operational-value-unit', 'operational-value-direction', 'requested-evidence-at', 'evidence-cutoff', 'maturity-at', 'maturity-status', 'baseline-value', 'delta-from-baseline', 'accepted-evidence-provenance', 'diagnostics', 'diagnostic-definitions', 'observed-at', 'evidence-link', 'organization-link', 'repository-link', 'workflow-link', 'run-link'],
   'github-api-rate-limits': ['observation-id', 'operation-execution-id', 'observed-at', 'phase', 'operation', 'outcome', 'credential', 'credential-type', 'resource', 'bucket', 'maximum-lane', 'history-series', 'has-history', 'limit', 'used', 'remaining', 'remaining-percent', 'reset-at', 'minutes-to-reset', 'consumed-since-previous', 'burn-rate-per-minute', 'projected-remaining-at-reset', 'projected-exhaustion-at', 'runway-ratio', 'risk-status', 'risk-order', 'is-unhealthy', 'is-current', 'attribution-status', 'operation-consumed', 'run-link'],
   'github-api-collector-health': ['observed-at', 'operation-execution-id', 'phase', 'operation', 'outcome', 'credential', 'cache-hydrated', 'cache-bytes', 'cache-entries', 'cache-folders', 'rate-limit-error'],
   'github-api-call-stacks': ['observed-at', 'operation-execution-id', 'phase', 'operation', 'outcome', 'credential', 'stack-frame-id', 'stack-parent-id', 'stack-depth', 'stack-frame'],

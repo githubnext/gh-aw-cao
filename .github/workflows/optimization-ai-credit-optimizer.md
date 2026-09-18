@@ -82,6 +82,10 @@ concurrency:
 
 graders:
   operational-value:
+    name: AI Credit Optimization Request Conformance
+    description: Whether the run requested a target-bound optimization backed by spend evidence and caveats
+    unit: ratio
+    direction: higher_is_better
     run: ./graders/optimization-ai-credit-optimizer-operational-value.sh
 
 tracker-id: optimization-ai-credit-optimizer

@@ -8,14 +8,15 @@ import { root, workflow } from "./workflow-contract.helpers.mjs";
 
 // Operational-value grader, smoke, and canary contracts.
 
-test("operational-value graders cap GitHub API usage while collecting logs", () => {
+test("one-shot operational-value graders consume only the gh-aw request", () => {
   for (const name of [
     "optimization-agents-md-curator-operational-value.sh",
     "optimization-ai-credit-auditor-operational-value.sh",
     "optimization-ai-credit-optimizer-operational-value.sh",
+    "optimization-token-optimizer-operational-value.sh",
   ]) {
     const source = readFileSync(join(root, ".github", "workflows", "graders", name), "utf8");
-    assert.match(source, /gh aw logs[\s\S]*--max-github-api-rate-limit -2000/, name);
+    assert.doesNotMatch(source, /gh aw logs|--definition|--metric|--grade-run/, name);
   }
 });
 
@@ -46,6 +47,10 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
     "software-development-practices-nist-ssdf-operational-value.sh",
   ]);
   const oneShotGraders = new Set([
+    "optimization-agents-md-curator-operational-value.sh",
+    "optimization-ai-credit-auditor-operational-value.sh",
+    "optimization-ai-credit-optimizer-operational-value.sh",
+    "optimization-token-optimizer-operational-value.sh",
     "repo-assist-issue-fix-operational-value.sh",
     "repo-assist-issue-triage-operational-value.sh",
     "repo-assist-maintenance-operational-value.sh",
@@ -103,9 +108,10 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
     }
   }
 
-  for (const name of [...oneShotGraders].filter((name) => name.startsWith("repo-assist-"))) {
+  for (const name of oneShotGraders) {
+    const packageName = name.startsWith("repo-assist-") ? "repo-assist" : "optimization";
     assert.equal(
-      readFileSync(join(root, "repo-assist", ".github", "graders", name), "utf8"),
+      readFileSync(join(root, packageName, ".github", "graders", name), "utf8"),
       readFileSync(join(gradersDirectory, name), "utf8"),
       `${name}: bundled evaluator must match the compiled source`,
     );
@@ -116,9 +122,7 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
   const dependabotEvaluator = readFileSync(join(gradersDirectory, dependabotName), "utf8");
   assert.match(dependabotWorker, new RegExp(`graders:\\s+operational-value:[\\s\\S]*run: \\.\\/graders\\/${dependabotName}`));
   const auditorWorker = workflow("optimization-ai-credit-auditor.md");
-  const auditorEvaluator = readFileSync(join(gradersDirectory, "optimization-ai-credit-auditor-operational-value.sh"), "utf8");
   const optimizerWorker = workflow("optimization-ai-credit-optimizer.md");
-  const optimizerEvaluator = readFileSync(join(gradersDirectory, "optimization-ai-credit-optimizer-operational-value.sh"), "utf8");
   assert.match(dependabotWorker, /checks: read/);
   assert.match(dependabotWorker, /statuses: read/);
   assert.match(dependabotWorker, /create-issue:\n(?:    .*\n)*?    deduplicate-by-title: true/);
@@ -137,14 +141,10 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
   assert.match(dependabotEvaluator, /repos\/\$evidence_repo\/issues\/\$issue_number/);
   assert.match(auditorWorker, /window_start: \$windowStart/);
   assert.match(auditorWorker, /window_end: \$windowEnd/);
-  assert.match(auditorEvaluator, /workflow_path \/\/ \.workflow_name/);
-  assert.match(auditorEvaluator, /evidenceRepo: \.run\.repository/);
   assert.match(optimizerWorker, /GH_REPO: \$\{\{ inputs\.target_repo \}\}/);
   assert.match(optimizerWorker, /gh aw logs \\\n\s+--repo "\$TARGET_REPO"/);
   assert.match(optimizerWorker, /\$\{TARGET_PREFIX\}__optimization-log\.json/);
   assert.match(optimizerWorker, /"optimizer_run_id":"\$\{\{ github\.run_id \}\}"/);
-  assert.match(optimizerEvaluator, /\.optimizer_run_id \| tostring/);
-  assert.match(optimizerEvaluator, /target-workflow:\$\{target_repo\}:\$\{workflow\}:\$\{optimizer_run_id\}/);
 });
 
 test("review smoke is manual, protected, bounded, and cannot change the target", () => {

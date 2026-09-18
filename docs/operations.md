@@ -184,8 +184,7 @@ The campaign installs the following components in the control-plane repository:
 - `.github/aw/activity/index.mjs`, the local-only deployed-workflow and run-health indexer;
 - `.github/aw/dashboard/report/aic-usage.mjs`, the bounded AI Credit usage collector;
 - `.github/aw/activity/inventory.mjs`, the dependency-free control-plane inventory extractor;
-- `.github/aw/dashboard/report/operational-values.mjs`, the fleet collector that invokes gh-aw history replay and falls back to recent run artifacts per workflow;
-- `.github/aw/dashboard/report/operational-value-history.mjs`, the report-contract normalizer and append-only observation identity merger;
+- `.github/aw/dashboard/report/operational-values.mjs`, the fleet collector that preserves ordered operational-value metrics from retained gh-aw run records;
 - `.github/aw/dashboard/report/records.mjs`, the durable issue, pull request, comment, and review-artifact normalizer with logs-derived run attribution;
 - `.github/aw/dashboard/report/dashboard-language-sources.mjs`, the trusted adapter from collected records to Dashboard Language `sources.json`;
 - `.github/aw/dashboard/site`, the bundled Dashboard Language configuration, validator, presenter, and browser runtime.

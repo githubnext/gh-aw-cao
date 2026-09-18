@@ -508,7 +508,7 @@ describe('gh-aw logs adapter', () => {
         completed_at: '2026-09-17T00:00:06Z',
         agent_id: 'copilot',
         model_id: 'gpt-5.4',
-        graders: { results: [{ id: 'operational-value', value: 0.8 }] },
+        graders: { results: [{ id: 'operational-value', value: 0.8, metrics: [{ id: 'accepted-outcomes', value: 8 }] }] },
         audit: {
           firewall_analysis: { requests_by_domain: { 'api.github.com:443': { allowed: 4, blocked: 2 } } },
           mcp_tool_usage: { tool_calls: [{ output_size: 128 }, { output_size: 64 }] },
@@ -527,7 +527,7 @@ describe('gh-aw logs adapter', () => {
       firewallBlockedCalls: 2,
       mcpToolCalls: 2,
       mcpResponseBytes: 192,
-      operationalValue: 0.8,
+      operationalValue: 8,
       highPriorityAuditItems: 1,
       mediumPriorityAuditItems: 1
     });

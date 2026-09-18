@@ -38,21 +38,14 @@ test("operational-value collection processes the shared gh-aw logs JSONL", async
           id: "operational-value",
           source: "operational-value",
           status: "pass",
-          value: 0.8,
-          implementation: {
-            digest: "digest",
-            definition: {
-              operationalValue: "Ship a verified outcome.",
-              baseline: { mode: "attainment-only" },
-              diagnostics: [{ metric: { id: "quality" } }],
-            },
-          },
-          observation: {
-            evidenceAt: "2026-09-06T10:00:00Z",
-            maturesAt: "2026-09-06T10:00:00Z",
-            mature: true,
-          },
-          diagnostics: { quality: 0.8 },
+          name: "Accepted maintenance outcomes",
+          unit: "count",
+          direction: "higher_is_better",
+          metrics: [
+            { id: "accepted-maintenance-outcomes", value: 8 },
+            { id: "eligible-maintenance-items", value: 65 },
+            { id: "unavailable-maintenance-items", value: null },
+          ],
         }],
       },
   } }) + "\n");
@@ -76,9 +69,14 @@ test("operational-value collection processes the shared gh-aw logs JSONL", async
     assert.equal(output.observedRuns, 1);
     assert.equal(output.records[0].runAttempt, 2);
     assert.equal(output.records[0].observationSource, "logs-jsonl");
-    assert.equal(output.records[0].value, 0.8);
-    assert.equal(output.definitions[0].operationalValue, "Ship a verified outcome.");
-    assert.deepEqual(output.definitions[0].diagnosticMetrics, [{ id: "quality" }]);
+    assert.equal(output.records[0].value, 8);
+    assert.deepEqual(output.records[0].metrics, [
+      { id: "accepted-maintenance-outcomes", value: 8 },
+      { id: "eligible-maintenance-items", value: 65 },
+      { id: "unavailable-maintenance-items", value: null },
+    ]);
+    assert.equal(output.records[0].unit, "count");
+    assert.equal(output.records[0].direction, "higher_is_better");
     assert.deepEqual(JSON.parse(await readFile(cachePath, "utf8")), output);
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -111,8 +109,7 @@ test("operational-value collection defaults its cache to the output path when RE
           source: "operational-value",
           status: "pass",
           value: 0.8,
-          implementation: { digest: "digest", definition: {} },
-          observation: { evidenceAt: "2026-09-06T10:00:00Z" },
+          metrics: [{ id: "accepted-maintenance-outcomes", value: 8 }],
         }],
       },
   } }) + "\n");
@@ -141,7 +138,7 @@ test("operational-value collection defaults its cache to the output path when RE
     await run();
     const secondOutput = JSON.parse(await readFile(outputPath, "utf8"));
     assert.equal(secondOutput.observedRuns, 1);
-    assert.equal(secondOutput.records[0].value, 0.8);
+    assert.equal(secondOutput.records[0].value, 8);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -190,7 +187,7 @@ test("operational-value collection treats non-array graders.results as no result
   }
 });
 
-test("operational-value collection ignores malformed diagnostics entries instead of crashing", async () => {
+test("operational-value collection ignores malformed metric entries instead of crashing", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "dashboard-operational-values-"));
   const inventoryPath = path.join(root, "deployed-workflows.json");
   const logsPath = path.join(root, "gh-aw-logs-shards");
@@ -214,23 +211,7 @@ test("operational-value collection ignores malformed diagnostics entries instead
           id: "operational-value",
           source: "operational-value",
           status: "pass",
-          value: 0.8,
-          implementation: {
-            digest: "digest",
-            // Simulates schema drift/external input where diagnostics entries
-            // are not all well-formed objects with a `metric` property.
-            definition: {
-              operationalValue: "Ship a verified outcome.",
-              baseline: { mode: "attainment-only" },
-              diagnostics: [null, "unexpected-string", 5, { metric: { id: "quality" } }],
-            },
-          },
-          observation: {
-            evidenceAt: "2026-09-06T10:00:00Z",
-            maturesAt: "2026-09-06T10:00:00Z",
-            mature: true,
-          },
-          diagnostics: { quality: 0.8 },
+          metrics: [null, "unexpected-string", 5, { id: "quality", value: 8 }],
         }],
       },
   } }) + "\n");
@@ -249,7 +230,7 @@ test("operational-value collection ignores malformed diagnostics entries instead
     });
     const output = JSON.parse(await readFile(outputPath, "utf8"));
     assert.equal(output.records[0].status, "pass");
-    assert.deepEqual(output.definitions[0].diagnosticMetrics, [{ id: "quality" }]);
+    assert.deepEqual(output.records[0].metrics, [{ id: "quality", value: 8 }]);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -286,10 +267,11 @@ test("operational-value collection degrades to an empty snapshot when the shared
       runId: 42,
       runAttempt: 1,
       status: "pass",
-      value: 0.8,
-      evaluatorDigest: "digest",
-      observation: { evidenceAt: "2026-09-05T10:00:00Z", mature: true },
+      value: 8,
+      metrics: [{ id: "accepted-maintenance-outcomes", value: 8 }],
+      observedAt: "2026-09-05T10:00:00Z",
       observationSource: "logs-jsonl",
+      resultAvailable: true,
     }],
     definitions: [],
   }));
@@ -308,7 +290,7 @@ test("operational-value collection degrades to an empty snapshot when the shared
       },
     });
     const output = JSON.parse(await readFile(outputPath, "utf8"));
-    assert.equal(output.records[0].value, 0.8);
+    assert.equal(output.records[0].value, 8);
     assert.equal(output.records[0].status, "pass");
   } finally {
     await rm(root, { recursive: true, force: true });

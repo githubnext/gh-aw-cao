@@ -480,8 +480,12 @@ function operationalValuesSource(graders, sources) {
   const rows = graders.flatMap((grader) => {
     if (grader.grader !== 'operational-value') return [];
     const event = recordValue(grader.__event);
+    const metrics = Array.isArray(event.metrics)
+      ? event.metrics.map(recordValue).filter((metric) => typeof metric.id === 'string')
+      : [];
+    const primaryMetric = metrics[0] ?? {};
+    const metricDiagnostics = Object.fromEntries(metrics.slice(1).map((metric) => [metric.id, nativeMetricValue(metric.value)]));
     const observation = recordValue(event.observation);
-    if (!Number.isFinite(grader.value) && Object.keys(observation).length === 0) return [];
     const implementation = recordValue(event.implementation);
     const subject = recordValue(observation.subject);
     const evidenceCase = recordValue(observation.case);
@@ -489,7 +493,7 @@ function operationalValuesSource(graders, sources) {
       ? evidenceCase.targetRepo
       : typeof subject.repository === 'string' ? subject.repository : '';
     const [targetOwner, targetRepository] = target.split('/');
-    return [{
+    return [definedFields({
       organization: targetRepository ? targetOwner : grader.organization,
       repository: targetRepository || grader.repository,
       'repository-name': targetRepository || grader.repository,
@@ -497,26 +501,26 @@ function operationalValuesSource(graders, sources) {
       run: grader.run,
       'run-attempt': grader['run-attempt'],
       'observation-id': event.id,
-      experiment: observation.experiment ?? '',
-      'operational-case': observation.opportunityKey ?? `run:${String(grader.run)}`,
-      'evaluator-digest': implementation.digest ?? '',
+      experiment: observation.experiment,
+      'operational-case': observation.opportunityKey,
+      'evaluator-digest': implementation.digest,
       'rollout-mode': grader['rollout-mode'],
-      'operational-value': grader.value,
-      'operational-value-definition': grader.workflow ?? 'operational-value',
-      'requested-evidence-at': subject.createdAt ?? observation.evidenceAt ?? event.timestamp,
-      'evidence-cutoff': observation.evidenceCutoff ?? observation.evidenceAt ?? event.timestamp,
-      'maturity-at': observation.maturesAt ?? observation.evidenceAt ?? event.timestamp,
-      'maturity-status': Object.keys(observation).length === 0
-        ? 'observed'
-        : observation.mature === true ? 'matured' : 'interim',
-      'baseline-value': grader['baseline-value'],
-      'delta-from-baseline': grader['delta-from-baseline'],
-      'accepted-evidence-provenance': observation.provenance ?? [],
-      diagnostics: event.diagnostics ?? {},
+      'operational-value': metrics.length > 0 ? nativeMetricValue(primaryMetric.value) : grader.value,
+      'operational-value-definition': primaryMetric.id ?? grader.workflow ?? 'operational-value',
+      'operational-value-unit': grader.unit,
+      'operational-value-direction': grader.direction,
+      'requested-evidence-at': subject.createdAt,
+      'evidence-cutoff': observation.evidenceCutoff,
+      'maturity-at': observation.maturesAt,
+      'maturity-status': observation.mature === true ? 'matured'
+        : observation.mature === false ? 'interim' : undefined,
+      'accepted-evidence-provenance': observation.provenance,
+      diagnostics: metrics.length > 1 ? metricDiagnostics : event.diagnostics,
+      'diagnostic-definitions': metrics.slice(1).map((metric) => ({ id: metric.id, name: metric.id })),
       'observed-at': observation.evidenceAt ?? event.timestamp,
       'evidence-link': grader['evidence-link'],
       'run-link': grader['run-link']
-    }];
+    })];
   });
   return {
     source: 'operational-values',
@@ -529,6 +533,11 @@ function operationalValuesSource(graders, sources) {
 function finiteNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
+}
+
+/** @param {unknown} value */
+function nativeMetricValue(value) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
 /** @param {unknown} value */

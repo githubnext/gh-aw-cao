@@ -348,6 +348,10 @@ concurrency:
 
 graders:
   operational-value:
+    name: Token Efficiency Request Conformance
+    description: Whether the run requested the assigned target-bound token-efficiency experiment
+    unit: ratio
+    direction: higher_is_better
     run: ./graders/optimization-token-optimizer-operational-value.sh
 
 tracker-id: optimization-token-optimizer

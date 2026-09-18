@@ -15,8 +15,6 @@ resources:
     destination: .github/aw/dashboard/report/text-utils.mjs
   - source: report/operational-values.mjs
     destination: .github/aw/dashboard/report/operational-values.mjs
-  - source: report/operational-value-history.mjs
-    destination: .github/aw/dashboard/report/operational-value-history.mjs
   - source: report/records.mjs
     destination: .github/aw/dashboard/report/records.mjs
   - source: report/dashboard-language-sources.mjs
@@ -65,6 +63,8 @@ resources:
     destination: .github/aw/dashboard/site/src/dashboard-chunks.js
   - source: site/src/dashboard-data-updates.js
     destination: .github/aw/dashboard/site/src/dashboard-data-updates.js
+  - source: site/src/data/analytics/temporal-series.js
+    destination: .github/aw/dashboard/site/src/data/analytics/temporal-series.js
   - source: site/src/data/adapters/dashboard-sources.js
     destination: .github/aw/dashboard/site/src/data/adapters/dashboard-sources.js
   - source: site/src/data/adapters/gh-aw-logs.js

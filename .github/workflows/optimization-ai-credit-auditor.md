@@ -91,6 +91,10 @@ concurrency:
 
 graders:
   operational-value:
+    name: AI Credit Audit Request Conformance
+    description: Whether the run requested a target-bound AI Credit audit with the required evidence summary
+    unit: ratio
+    direction: higher_is_better
     run: ./graders/optimization-ai-credit-auditor-operational-value.sh
 
 tracker-id: optimization-ai-credit-auditor

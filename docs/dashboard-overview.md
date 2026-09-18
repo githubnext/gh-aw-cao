@@ -51,7 +51,7 @@ score:
 - A dispatch records a workflow handoff; it does not prove that work reached a
   target repository.
 - A value gain records grader evidence; its meaning depends on the operation's
-  value contract, maturity rules, and accepted threshold.
+  metric identifier, native value, unit, direction, and evaluator.
 
 Missing evidence remains unavailable rather than becoming a healthy zero.
 

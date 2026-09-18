@@ -32,31 +32,15 @@
     ]
   },
   "operationalValue": {
-    "statement": "Operational value is the share of declared workflow cost-review opportunities whose observed AI Credit consumption is presented with matured usage evidence for the same workflow.",
-    "opportunity": "One declared workflow in githubnext/gh-aw-cao that is eligible for a cost review in the selected horizon.",
-    "opportunityKey": "repository + workflow opportunity represented by operational-case",
-    "acceptedEvidence": [
-      "A declared workflow row identifying the repository and workflow path.",
-      "Observed usage rows whose organization, repository, and workflow identify the same workflow opportunity.",
-      "An operational-value observation whose operational-case identifies the same workflow opportunity and whose accepted-evidence-provenance names the accepted usage evidence."
+    "upstream": "gh-aw",
+    "orderedMetrics": [
+      {
+        "id": "workflow-cost-visibility-attainment",
+        "unit": "ratio",
+        "direction": "higher_is_better"
+      }
     ],
-    "evidenceRepositories": [
-      "githubnext/gh-aw-cao"
-    ],
-    "metric": {
-      "name": "workflow-cost-visibility-attainment",
-      "range": "[0,1]",
-      "directness": "direct",
-      "definition": "1 when the workflow opportunity is presented with a matured observed AI Credit total for the same operational case; 0 when the matured evidence shows the total could not be attributed to the workflow by cutoff; null when required usage evidence has not matured."
-    },
-    "maturation": "An opportunity matures when the operational-value observation reaches maturity-status matured after the evidence-cutoff for the same operational case.",
-    "zeroRule": "Assign 0 only when mature evidence shows the observed consumption could not be attributed to the declared workflow by cutoff.",
-    "missingRule": "Use null when the usage evidence is absent, unavailable, or not yet matured for the workflow opportunity; do not substitute 0.",
-    "baseline": {
-      "mode": "attainment-only",
-      "value": null,
-      "cutoff": null
-    }
+    "preservation": "Preserve metric IDs, order, native finite values or null, units, and directions exactly as published by gh-aw."
   },
   "logicalSources": {
     "workflows": {

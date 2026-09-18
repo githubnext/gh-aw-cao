@@ -32,6 +32,7 @@ const debugQuery = createDebug('data:query');
  *   joins?: Array<{ source: string, type?: 'inner'|'left', on: Array<{ left: string, right: string }>, fields: Array<{ field: string, as: string }> }>,
  *   filter?: { predicates?: Array<{ field: string, equals?: unknown, in?: unknown[], includes?: string, gte?: unknown, lt?: unknown, optional?: boolean }> },
  *   compute?: import('../../data-operations.js').ComputedField[],
+ *   ['temporal-series']?: import('../../data-operations.js').TemporalSeriesDefinition,
  *   aggregate?: { by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'distinct-values'|'sum'|'mean'|'min'|'max', filter?: { predicates: Array<{ field: string, equals?: string|number|boolean, in?: Array<string|number|boolean> }> } }> },
  *   predict?: import('../../data-operations.js').PredictedField[],
  *   select?: Array<{ field: string, as?: string }>,
@@ -354,6 +355,23 @@ function queryStructuralDefect(definition) {
       return `join on "${String(join?.source)}" declares no equality keys`;
     }
   }
+  if (definition['temporal-series'] !== undefined) {
+    const series = definition['temporal-series'];
+    const measures = series?.measures ?? [];
+    const maps = series?.maps ?? [];
+    if (!isPlainObject(series)
+        || typeof series.time !== 'string'
+        || typeof series.series !== 'string'
+      || (series.shape !== undefined && !['tidy', 'groups'].includes(series.shape))
+        || (series.carry !== undefined && (!Array.isArray(series.carry) || series.carry.length > 16 || series.carry.some((field) => typeof field !== 'string')))
+        || (!Array.isArray(measures) || measures.length > 64)
+        || (!Array.isArray(maps) || maps.length > 64)
+        || measures.length + maps.length === 0
+        || measures.some((measure) => !isPlainObject(measure) || typeof measure.field !== 'string' || typeof measure.kind !== 'string')
+        || maps.some((map) => !isPlainObject(map) || typeof map.field !== 'string' || typeof map.kind !== 'string')) {
+      return 'temporal-series requires time, series, and between 1 and 64 bounded measure or map definitions';
+    }
+  }
   if (definition.aggregate) {
     if (!Array.isArray(definition.aggregate.values)
         || definition.aggregate.values.length === 0
@@ -505,6 +523,11 @@ export function dashboardQueryOutputFields(definition, fieldsOf) {
     for (const field of join.fields ?? []) fields.push(field.as);
   }
   for (const computed of definition.compute ?? []) fields.push(computed.as);
+  if (definition['temporal-series']) {
+    fields = definition['temporal-series'].shape === 'groups'
+      ? [...(definition['temporal-series'].carry ?? []), 'metric', 'metric-key', 'metric-name', 'metric-kind', 'metric-group', 'points']
+      : [...(definition['temporal-series'].carry ?? []), 'time', 'series', 'metric', 'metric-key', 'metric-name', 'metric-kind', 'metric-group', 'value'];
+  }
   if (definition.aggregate) {
     fields = [...(definition.aggregate.by ?? []), ...definition.aggregate.values.map((value) => value.as)];
   }
@@ -885,6 +908,7 @@ export function compileRowOperators(definition) {
     operators.push({ op: 'filter', predicates: definition.filter.predicates });
   }
   if (definition.compute?.length) operators.push({ op: 'compute', values: definition.compute });
+  if (definition['temporal-series']) operators.push({ op: 'temporal-series', ...definition['temporal-series'] });
   if (definition.aggregate) {
     operators.push({ op: 'summarize', by: definition.aggregate.by ?? [], values: definition.aggregate.values });
   }

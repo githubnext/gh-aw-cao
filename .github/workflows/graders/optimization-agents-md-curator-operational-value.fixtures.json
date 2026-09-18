@@ -1,0 +1,34 @@
+[
+  {
+    "name": "attained",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "1", "repository": "githubnext/gh-aw-cao", "workflow": "AW Optimization / AGENTS.md"},
+      "event": {"inputs": {"target_repo": "octo/service", "safe_output_repo": "octo/control", "safe_output_mode": "review"}},
+      "outputs": [{"type": "create_issue", "repo": "octo/control", "title": "Reduce ambient context for octo/service", "body": "### Ambient context health\nEvidence for octo/service.\n### Estimated gain\n12 percent.\n### Proposed edits\n1. Remove duplication.\n### Agentic update prompt\nApply the bounded edits.\n### Verification\nRun tests."}],
+      "config": {}
+    },
+    "expected": [{"id": "agents-md-optimization-request-conformance", "value": 1}]
+  },
+  {
+    "name": "missed",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "2", "repository": "githubnext/gh-aw-cao", "workflow": "AW Optimization / AGENTS.md"},
+      "event": {"inputs": {"target_repo": "octo/service", "safe_output_repo": "octo/control", "safe_output_mode": "review"}},
+      "outputs": [{"type": "create_issue", "repo": "octo/other", "title": "General cleanup", "body": "No target evidence."}],
+      "config": {}
+    },
+    "expected": [{"id": "agents-md-optimization-request-conformance", "value": 0}]
+  },
+  {
+    "name": "noop",
+    "request": {"schemaVersion": 1, "run": {"id": "3"}, "event": {"inputs": {"target_repo": "octo/service"}}, "outputs": [{"type": "noop", "message": "Ambient context is healthy."}], "config": {}},
+    "expected": [{"id": "agents-md-optimization-request-conformance", "value": null}]
+  },
+  {
+    "name": "malformed",
+    "request": {"schemaVersion": 2, "run": {}, "event": [], "outputs": {}, "config": []},
+    "expected": [{"id": "agents-md-optimization-request-conformance", "value": null}]
+  }
+]

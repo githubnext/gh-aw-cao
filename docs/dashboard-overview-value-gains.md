@@ -8,7 +8,8 @@ operational value. Select the count to open Operational value and inspect the
 underlying evidence.
 
 Treat the count as an evidence trail, not as a universal score. Its meaning
-depends on the operation's grader, value contract, and accepted thresholds.
+depends on the metric identifier, unit, direction, and evaluator maintained by
+gh-aw.
 
 ## Data it uses
 
@@ -24,4 +25,4 @@ follow the Operational value view before drawing a conclusion.
 
 Open Operational value when the count is absent, changes unexpectedly, or
 conflicts with observed outcomes. Review the operation-specific grader, value
-contract, evidence maturity, and accepted threshold together.
+identifier, native value, unit, direction, and run provenance together.

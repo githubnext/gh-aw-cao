@@ -167,7 +167,7 @@ describe('renderCampaignNavigation', () => {
     }));
 
     expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.textContent).toBe('Insights');
-    expect(rendered.querySelector('.campaign-insights-content')).toBeNull();
+  expect(rendered.querySelector('.campaign-value-history')?.textContent).toContain('No operational-value extracts were observed');
   });
 
   it('renders reusable navigation for the selected campaign workflow view', () => {

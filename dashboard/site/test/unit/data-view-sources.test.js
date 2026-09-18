@@ -408,7 +408,12 @@ describe('canonical view sources', () => {
             status: 'pass',
             unit: 'count',
             direction: 'higher_is_better',
-            value: 0
+            value: 0,
+            metrics: [
+              { id: 'accepted-maintenance-outcomes', value: 0 },
+              { id: 'eligible-maintenance-items', value: 3 },
+              { id: 'unavailable-maintenance-items', value: null }
+            ]
           }]
         }
       }
@@ -438,8 +443,17 @@ describe('canonical view sources', () => {
         repository: 'gh-aw-cao',
         run: '84',
         'operational-value': 0,
-        'operational-case': 'run:84',
-        'maturity-status': 'observed'
+        'operational-value-definition': 'accepted-maintenance-outcomes',
+        'operational-value-unit': 'count',
+        'operational-value-direction': 'higher_is_better',
+        diagnostics: {
+          'eligible-maintenance-items': 3,
+          'unavailable-maintenance-items': null
+        },
+        'diagnostic-definitions': [
+          { id: 'eligible-maintenance-items', name: 'eligible-maintenance-items' },
+          { id: 'unavailable-maintenance-items', name: 'unavailable-maintenance-items' }
+        ]
       })
     ]);
   });

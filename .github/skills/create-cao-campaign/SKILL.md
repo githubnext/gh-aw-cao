@@ -30,7 +30,7 @@ Add `copilot-requests: write` directly to every Copilot-backed orchestrator and 
    - required permissions, tools, network access, and safe outputs
    - evidence that constitutes completion or a no-op
 4. Ask only for decisions that cannot be inferred safely. If the strategy is broad, split it into workers by independently dispatchable responsibility, not by implementation step.
-5. Create the orchestrator and every worker under `.github/workflows/` in the same change. After each worker's intent and acceptance conditions are stable, use the upstream `github/gh-aw` `.github/skills/operational-value-designer/SKILL.md` through the router to design its deterministic per-run evaluator. Register the evaluator in the same adoption change when the skill identifies a meaningful measurable outcome; record an explicit not-measurable conclusion when it does not.
+5. Create the orchestrator and every worker under `.github/workflows/` in the same change. After each worker's intent and acceptance conditions are stable, use the upstream `github/gh-aw` `.github/skills/operational-value-designer/SKILL.md` through the router to design its deterministic per-run evaluator. Adopt a measurable worker and its evaluator together in one commit when the skill identifies a meaningful measurable outcome; record an explicit not-measurable conclusion when it does not.
 6. Compile and validate all new source workflows and verify every registered operational-value evaluator with the upstream skill's verifier. Repair failures before finishing.
 7. Before finalizing the campaign, compare the intended campaign state with the current `.github/workflows/cao.json` and the dashboard's live control-plane view. Confirm what is actually running, in which mode, and on which repositories. If the configuration drifts from reality, raise the mismatch to the user on the dashboard before proceeding.
 8. When an adopted worker already has an operational-value evaluator, preserve it under `.github/workflows/graders/` and keep its workflow-relative `graders.operational-value` registration. Update its evaluator only when the workflow's intent or acceptance criteria change, and update the workflow and evaluator together using the upstream operational-value designer.
@@ -162,13 +162,7 @@ Follow the GitHub/gh-aw report conventions for every human-facing durable worker
 
 ### Worker Value
 
-Measure operational value per worker because workers have independently dispatchable responsibilities and outcomes. gh-aw freezes each registered evaluator into the compiled workflow and publishes its observation with the workflow run artifacts.
-
-- Use the upstream `github/gh-aw` operational-value designer after the worker's intent is stable. Design from the worker's adoption-time intent and grading-boundary evidence. Never derive a measure from the orchestrator's dispatch activity or from later results unavailable when the run is graded.
-- Keep the canonical evaluator at `.github/workflows/graders/<worker-stem>-operational-value.sh` and register it as `./graders/<worker-stem>-operational-value.sh` under `graders.operational-value.run`.
-- Add exact semantic fixtures beside each file-backed evaluator using the upstream naming and payload contract, and run the upstream verifier before compiling the worker.
-- Adopt a measurable worker and its evaluator together in one commit. Never create placeholder commits, evidence, scores, reports, replay modes, maturity windows, or historical baselines while authoring a campaign.
-- A worker may be measurable or not measurable at the one-shot grading boundary. Preserve the upstream designer's independently determined conclusion rather than forcing every worker into the same campaign-level model.
+Operational-value evaluator design, protocol, metric semantics, and verification are owned by gh-aw. Invoke the upstream `github/gh-aw` operational-value designer and follow its current instructions exactly; do not restate or extend that contract in this skill. Keep any resulting evaluator and fixtures with the worker and compile them together.
 
 ## Shared Components
 
@@ -209,7 +203,7 @@ Before finishing:
 8. Check permissions, tools, network hosts, safe-output limits, credits, timeouts, and dispatch maximums against actual need; confirm issue- and pull-request-creating workers configure both their campaign and campaign-worker labels, every issue-creating worker configures `deduplicate-by-title: true`, explicit expiry, bounded `max`, stable subject, and existing-item reuse instructions, control-plane workflows inherit silent no-ops without local overrides, standalone workflows set `noop.report-as-issue: false`, and every other repeatable safe output has a stable identity and search-and-reuse or supersession rule.
 9. Confirm the orchestrator disables threat detection and every worker omits `evals`.
 10. Confirm dispatcher telemetry is inherited only through `shared/control.md`; require an explicit backend-routing need before adding a provider-specific observability import.
-11. Confirm every measurable worker has an operational-value evaluator under `.github/workflows/graders/`, exact semantic fixtures, a workflow-relative registration, and a successful upstream verifier result. For any worker without an evaluator, record the upstream designer's explicit not-measurable conclusion and the unavailable grading-boundary evidence.
+11. For operational-value work, confirm the current upstream gh-aw designer and verifier were used without adding local protocol or metric rules.
 12. Run `gh aw compile <workflow.md>` for every new orchestrator and worker. Then run the repository's narrowest relevant tests or validation command if one exists.
 13. Review the generated diff for accidental lockfile churn, secret exposure, unsafe live defaults, fabricated value evidence, and deviations from the nearest campaign that are not justified by the strategy.
 14. Confirm every orchestrator and worker uses the same optional `.github/cao/<campaign-slug>.md` runtime import and that no campaign-owned steering file was added.

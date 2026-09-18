@@ -2456,47 +2456,27 @@ function evidenceRecordRows(outcomes, findings, workItems) {
 }
 
 function operationalValueRows(values) {
-  const definitions = new Map((values.definitions || []).map((definition) => [
-    `${definition.repository}:${definition.workflowId}:${definition.evaluatorDigest || ""}`,
-    definition,
-  ]));
-  return (values.records || []).filter((record) => record.observation).map((record) => {
-    const target = record.observation.case?.targetRepo || record.observation.subject?.repository || record.repository;
-    const repository = repositoryParts(target);
+  return (values.records || []).filter((record) => record.resultAvailable === true).map((record) => {
+    const repository = repositoryParts(record.repository);
     const runAttempt = Number(record.runAttempt || record.run?.attempt || 1);
-    const observationId = record.observationId || ([
-      record.repository,
-      record.workflowId,
-      record.runId,
-      runAttempt,
-      record.evaluatorDigest,
-    ].every((part) => part !== undefined && part !== null && String(part) !== "")
-      ? `${record.repository}:${record.workflowId}:${record.runId}:${runAttempt}:${record.evaluatorDigest}`
-      : undefined);
-    const definition = definitions.get(`${record.repository}:${record.workflowId}:${record.evaluatorDigest || ""}`);
+    const metrics = Array.isArray(record.metrics) ? record.metrics : [];
+    const primary = metrics[0] || {};
+    const diagnostics = Object.fromEntries(metrics.slice(1).map((metric) => [metric.id, metric.value]));
     return {
       ...repository,
       "repository-name": repository.repository,
       workflow: record.workflowPath?.replace(/\.lock\.yml$/, ".md") || record.workflowId || "",
       run: String(record.runId),
       "run-attempt": runAttempt,
-      "observation-id": observationId,
-      experiment: record.observation.experiment || "",
-      "operational-case": record.observation.opportunityKey || record.workflowId || "unknown",
-      "evaluator-digest": record.evaluatorDigest || "",
+      "observation-id": `${record.repository}:${record.workflowId}:${record.runId}:${runAttempt}`,
       "rollout-mode": "unknown",
-      "operational-value": record.value,
-      "operational-value-definition": record.workflowId || "operational-value",
-      "requested-evidence-at": record.observation.subject?.createdAt || record.observation.evidenceAt,
-      "evidence-cutoff": record.observation.evidenceCutoff || record.observation.evidenceAt,
-      "maturity-at": record.observation.maturesAt || record.observation.evidenceAt,
-      "maturity-status": record.observation.mature ? "matured" : "interim",
-      "baseline-value": record.baselineValue,
-      "delta-from-baseline": record.deltaFromBaseline,
-      "observed-at": record.observation.evidenceAt,
-      "accepted-evidence-provenance": record.observation.provenance || [],
-      diagnostics: record.diagnostics || {},
-      "diagnostic-definitions": definition?.diagnosticMetrics || [],
+      "operational-value": metrics.length > 0 ? primary.value : record.value,
+      "operational-value-definition": primary.id || record.workflowId || "operational-value",
+      "operational-value-unit": record.unit,
+      "operational-value-direction": record.direction,
+      diagnostics,
+      "diagnostic-definitions": metrics.slice(1).map((metric) => ({ id: metric.id, name: metric.id })),
+      "observed-at": record.observedAt,
       "evidence-link": link("evidence", record.runUrl, `View run ${record.runId}`),
       "run-link": link("run", record.runUrl, `Run ${record.runId}`),
     };
@@ -2517,23 +2497,17 @@ function operationalValueSource(name, rows, values, generatedAt, available) {
 
 function operationalValueGraderRows(values) {
   return (values.records || []).map((record) => {
-    const target = record.observation?.case?.targetRepo
-      || record.observation?.subject?.repository
-      || record.repository;
     return {
-      ...repositoryParts(target),
+      ...repositoryParts(record.repository),
       workflow: record.workflowPath?.replace(/\.lock\.yml$/, ".md") || record.workflowId || "",
       run: record.runId == null ? "Unavailable" : String(record.runId),
-      grader: record.workflowId || "Unknown workflow",
+      grader: "operational-value",
+      "grader-name": record.graderName || "Operational value",
       status: record.status || "unavailable",
       value: record.value,
-      "maturity-status": !record.observation
-        ? "unavailable"
-        : record.observation.mature ? "matured" : "interim",
-      "baseline-value": record.baselineValue,
-      "delta-from-baseline": record.deltaFromBaseline,
-      "evaluator-digest": record.evaluatorDigest || "",
-      "observed-at": record.observation?.evidenceAt || record.run?.createdAt,
+      unit: record.unit,
+      direction: record.direction,
+      "observed-at": record.observedAt || record.run?.createdAt,
       "run-link": link(
         "run",
         record.runUrl || workflowRunUrl(record.repository, record.runId),

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -409,7 +409,7 @@ printf '%s\\n' "$@" > "$CAO_NODE_ARGS"
       });
       assert.deepEqual(
         readFileSync(nodeArgsPath, "utf8").trimEnd().split("\n"),
-        [join(temporaryRoot, "activity", "cao.mjs"), "status", "with spaces"],
+        [join(realpathSync(temporaryRoot), "activity", "cao.mjs"), "status", "with spaces"],
         label,
       );
     };
