@@ -778,6 +778,63 @@ describe('data view renderer', () => {
     expect(metrics).toEqual(['4778Calls', '12Workflows']);
   });
 
+  it('renders workflow cards with their file, Octicon, and run outcome metrics', () => {
+    const rendered = renderDataView('table', {
+      pageId: 'workflows',
+      title: 'Workflows',
+      view: {
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        layout: 'full-view',
+        encoding: {
+          columns: [
+            { field: 'workflow-name', type: 'nominal', title: 'Workflow' },
+            { field: 'workflow', type: 'nominal', title: 'Workflow file', format: 'workflow-relative-path' },
+            { field: 'runs', type: 'quantitative', title: 'Runs' },
+            { field: 'successful-runs', type: 'quantitative', title: 'Success' },
+            { field: 'failed-runs', type: 'quantitative', title: 'Failures' }
+          ]
+        }
+      },
+      sourceName: 'workflow-inventory',
+      rows: [{
+        'workflow-name': 'Dashboard',
+        workflow: '.github/workflows/cao-dashboard.md',
+        runs: 14,
+        'successful-runs': 11,
+        'failed-runs': 3
+      }],
+      cardTemplates: {
+        workflow: {
+          icon: 'workflow',
+          title: { field: 'workflow-name', title: 'Workflow' },
+          subtitle: { field: 'workflow', title: 'Workflow file', format: 'workflow-relative-path' },
+          labels: [],
+          details: [
+            { field: 'runs', title: 'Runs' },
+            { field: 'successful-runs', title: 'Success' },
+            { field: 'failed-runs', title: 'Failures' }
+          ]
+        }
+      },
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const card = rendered?.querySelector('[data-mobile-card-list] .entity-card-list-card');
+    expect(card?.querySelector('.entity-card-list-title')?.textContent).toBe('Dashboard');
+    expect(card?.querySelector('.entity-card-list-subtitle')?.textContent).toBe('cao-dashboard.md');
+    expect(card?.querySelector('.octicon-workflow')).not.toBeNull();
+    expect([...card?.querySelectorAll('.entity-card-list-metric') ?? []].map((metric) => metric.textContent))
+      .toEqual(['14Runs', '11Success', '3Failures']);
+  });
+
   it('lets a mobile card continuation retry after a load failure', async () => {
     const load = vi.fn()
       .mockRejectedValueOnce(new Error('worker unavailable'))

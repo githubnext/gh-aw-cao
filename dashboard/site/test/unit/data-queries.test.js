@@ -1299,9 +1299,9 @@ describe('declarative dashboard queries', () => {
       status: 'Needs attention'
     })]);
     expect(derived['workflow-inventory'].rows).toEqual([
-      expect.objectContaining({ workflow: 'a.md', runs: 2, ingestion: '50%' }),
-      expect.objectContaining({ workflow: 'b.md', runs: 0, ingestion: null }),
-      expect.objectContaining({ workflow: 'c.md', runs: 1, ingestion: '100%' })
+      expect.objectContaining({ workflow: 'a.md', runs: 2, 'successful-runs': 1, 'failed-runs': 1, ingestion: '50%' }),
+      expect.objectContaining({ workflow: 'b.md', runs: 0, 'successful-runs': 0, 'failed-runs': 0, ingestion: null }),
+      expect.objectContaining({ workflow: 'c.md', runs: 1, 'successful-runs': 1, 'failed-runs': 0, ingestion: '100%' })
     ]);
     expect(derived['top-workflow-runs'].rows).toEqual([
       expect.objectContaining({ workflow: 'a.md', run: '1', 'workflow-label': 'githubnext/gh-aw-cao:a.md', 'workflow-runs': 2 }),

@@ -40,6 +40,29 @@ describe('entity card templates', () => {
     expect(selected).toEqual(expect.arrayContaining(['run-title', 'branch', 'event', 'duration', 'started-at']));
   });
 
+  it('presents workflow inventory cards with identity and run outcome totals', () => {
+    expect(templates.workflow).toMatchObject({
+      icon: 'workflow',
+      title: { field: 'workflow-name' },
+      subtitle: { field: 'workflow', format: 'workflow-relative-path' },
+      details: expect.arrayContaining([
+        { field: 'runs', title: 'Runs' },
+        { field: 'successful-runs', title: 'Success' },
+        { field: 'failed-runs', title: 'Failures' }
+      ])
+    });
+    const inventoryQuery = dashboard.queries.find(
+      (/** @type {Record<string, any>} */ query) => query.name === 'workflow-inventory'
+    );
+    const selected = inventoryQuery.select.map((/** @type {Record<string, any>} */ field) => field.as ?? field.field);
+    expect(selected).toEqual(expect.arrayContaining(['workflow-name', 'workflow', 'runs', 'successful-runs', 'failed-runs']));
+    const inventoryView = pages.workflows.definition.views.find(
+      (/** @type {Record<string, any>} */ view) => view.id === 'workflows-inventory'
+    );
+    const columns = inventoryView.encoding.columns.map((/** @type {Record<string, any>} */ field) => field.field);
+    expect(columns).toEqual(expect.arrayContaining(['workflow-name', 'workflow', 'runs', 'successful-runs', 'failed-runs']));
+  });
+
   it('declares a firewall domain card with allowed and blocked metrics', () => {
     expect(templates['firewall-domain']).toEqual({
       id: 'firewall-domain',
