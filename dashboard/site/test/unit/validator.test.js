@@ -278,6 +278,18 @@ describe('dashboard document validation', () => {
         presentation: 'cli-action',
         context: ['package'],
         when: { field: 'package-mode', equals: 'live' }
+      }),
+      expect.objectContaining({
+        action: 'enable-package',
+        presentation: 'cli-action',
+        context: ['package'],
+        when: { field: 'package-enabled', equals: false }
+      }),
+      expect.objectContaining({
+        action: 'disable-package',
+        presentation: 'cli-action',
+        context: ['package'],
+        when: { field: 'package-enabled', equals: true }
       })
     ]);
     expect(document.dashboard['cli-actions']).toEqual(expect.arrayContaining([
@@ -289,6 +301,16 @@ describe('dashboard document validation', () => {
       expect.objectContaining({
         id: 'set-package-preview',
         command: './.github/aw/cao.sh mode preview {{package}}',
+        placement: 'row'
+      }),
+      expect.objectContaining({
+        id: 'enable-package',
+        command: './.github/aw/cao.sh enable {{package}}',
+        placement: 'row'
+      }),
+      expect.objectContaining({
+        id: 'disable-package',
+        command: './.github/aw/cao.sh disable {{package}}',
         placement: 'row'
       })
     ]));

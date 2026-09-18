@@ -565,6 +565,22 @@
         "icon": "eye",
         "command": "./.github/aw/cao.sh mode preview {{package}}",
         "placement": "row"
+      },
+      {
+        "id": "enable-package",
+        "label": "Enable package",
+        "description": "Enable this package's orchestrator and worker workflows.",
+        "icon": "play",
+        "command": "./.github/aw/cao.sh enable {{package}}",
+        "placement": "row"
+      },
+      {
+        "id": "disable-package",
+        "label": "Disable package",
+        "description": "Disable this package's orchestrator and worker workflows.",
+        "icon": "stop",
+        "command": "./.github/aw/cao.sh disable {{package}}",
+        "placement": "row"
       }
     ],
     "callouts": [
@@ -8091,6 +8107,32 @@
                   "when": {
                     "field": "package-mode",
                     "equals": "live"
+                  }
+                },
+                {
+                  "action": "enable-package",
+                  "presentation": "cli-action",
+                  "icon": "play",
+                  "label": "Enable",
+                  "context": [
+                    "package"
+                  ],
+                  "when": {
+                    "field": "package-enabled",
+                    "equals": false
+                  }
+                },
+                {
+                  "action": "disable-package",
+                  "presentation": "cli-action",
+                  "icon": "stop",
+                  "label": "Disable",
+                  "context": [
+                    "package"
+                  ],
+                  "when": {
+                    "field": "package-enabled",
+                    "equals": true
                   }
                 }
               ]
