@@ -54,11 +54,17 @@ export function ensureOcticonSprite() {
  * @returns {SVGElement}
  */
 export function octicon(name, className = '') {
-  const glyph = name === 'issue'
-    ? h('path', {
+  let glyphs;
+  if (name === 'issue') {
+    glyphs = [h('path', {
       d: 'M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 12.5a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11Zm-.75-9.25a.75.75 0 0 1 1.5 0v3a.75.75 0 0 1-1.5 0ZM8 9.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z'
-    })
-    : h('use', { href: `#octicon-${name}` });
+    })];
+  } else {
+    const symbol = document.getElementById(`octicon-${name}`);
+    glyphs = symbol
+      ? [...symbol.childNodes].map((node) => node.cloneNode(true))
+      : [h('use', { href: `#octicon-${name}` })];
+  }
   return /** @type {SVGElement} */ (/** @type {unknown} */ (h(
     'svg',
     {
@@ -67,7 +73,7 @@ export function octicon(name, className = '') {
       'aria-hidden': 'true',
       focusable: 'false'
     },
-    glyph
+    ...glyphs
   )));
 }
 
