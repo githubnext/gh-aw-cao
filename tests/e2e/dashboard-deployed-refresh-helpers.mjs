@@ -26,6 +26,7 @@ function isFlatDeployedActivityShardPath(relativePath) {
   return deployedActivityShardDirectories.has(directory)
     && extraSegments.length === 0
     && typeof filename === "string"
+    && filename.length > 0
     && filename.endsWith(".json");
 }
 

@@ -81,6 +81,20 @@ test("deployed dashboard scrolling tolerates lazy view replacement only", async 
   assert.deepEqual(disposed, [0, 1]);
 });
 
+test("deployed dashboard scrolling tolerates empty view snapshots", async () => {
+  const activePage = {
+    locator() {
+      return {
+        async elementHandles() {
+          return [];
+        },
+      };
+    },
+  };
+
+  await scrollRenderedViewsIntoView(activePage);
+});
+
 test("deployed dashboard scrolling reports unexpected errors", async () => {
   const disposed = [];
   const evaluated = [];
