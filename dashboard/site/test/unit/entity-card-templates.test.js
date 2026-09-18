@@ -43,12 +43,12 @@ describe('entity card templates', () => {
     });
     expect(templates.campaign.details).not.toContainEqual(expect.objectContaining({ field: 'runs' }));
     expect(pages.overview.views[2]).toMatchObject({
-      title: 'Campains',
+      title: 'Campaigns',
       data: { source: 'campaign-inventory' },
       mark: 'list',
       list: {
         style: 'entity-cards',
-        layout: 'grid',
+        appearance: 'grouped',
         card: 'campaign',
         drill: { type: 'external', field: 'campaign-dashboard-link' }
       }

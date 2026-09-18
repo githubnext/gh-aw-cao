@@ -112,6 +112,7 @@ import {
   VIEW_LIST_DRILL_KEYS,
   VIEW_LIST_DRILL_TYPE_VALUES,
   VIEW_LIST_LAYOUT_VALUES,
+  VIEW_LIST_APPEARANCE_VALUES,
   VIEW_DISCLOSURE_VALUES,
   VIEW_ENCODING_KEYS,
   VIEW_ELEMENT_CONFIG_KEYS,
@@ -2623,6 +2624,14 @@ function validateView(view, viewNode, path, viewIds, errors) {
         validateStringField(view.list.layout, `${listPath}.layout`, true, errors);
         if (typeof view.list.layout === 'string' && !VIEW_LIST_LAYOUT_VALUES.includes(view.list.layout)) {
           errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, `list.layout must be one of ${VIEW_LIST_LAYOUT_VALUES.join(', ')}.`, `${listPath}.layout`));
+        }
+      }
+      if (view.list.appearance !== undefined) {
+        validateStringField(view.list.appearance, `${listPath}.appearance`, true, errors);
+        if (view.list.style !== 'entity-cards') {
+          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'list.appearance is supported only for entity-cards lists.', `${listPath}.appearance`));
+        } else if (typeof view.list.appearance === 'string' && !VIEW_LIST_APPEARANCE_VALUES.includes(view.list.appearance)) {
+          errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, `list.appearance must be one of ${VIEW_LIST_APPEARANCE_VALUES.join(', ')}.`, `${listPath}.appearance`));
         }
       }
       validateStringField(view.list.icon, `${listPath}.icon`, true, errors);

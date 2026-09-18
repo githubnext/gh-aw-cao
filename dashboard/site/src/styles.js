@@ -257,6 +257,13 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .entity-card-list-timing-icon .octicon { width: 14px; height: 14px; }
 .entity-card-list-timing-value { font-variant-numeric: tabular-nums; }
 .entity-card-list-timing-value time { color: inherit; }
+.entity-card-list-grouped { overflow: hidden; border: 1px solid var(--border); border-radius: 14px; background: var(--canvas); }
+.entity-card-list-grouped .entity-card-list-card { grid-template-columns: 20px minmax(0, 1fr) auto auto; align-items: center; padding: 12px 16px; }
+.entity-card-list-grouped .entity-card-list-card:first-child { border-top: 0; }
+.entity-card-list-grouped .entity-card-list-card:has([data-card-drill]):hover { background: var(--neutral-muted); }
+.entity-card-list-grouped .issue-list-labels { justify-content: flex-end; }
+.entity-card-list-chevron { display: flex; align-items: center; color: var(--muted); }
+.entity-card-list-chevron .octicon { width: 14px; height: 14px; }
 .mobile-brand-name { display: none; }
 .sidebar-collapsed { grid-template-columns: 64px minmax(0, 1fr); }
 .sidebar-collapsed .org-sidebar { padding-inline: 8px 7px; }

@@ -318,13 +318,15 @@ function renderListView(context) {
 function renderEntityCardListView(options) {
   const { pageId, title, view, rows, metadata, contextDetails, headingTag, renderValue, toText, definition, listAction } = options;
   const drill = isPlainObject(view.list) && isPlainObject(view.list.drill) ? view.list.drill : null;
+  const grouped = isPlainObject(view.list) && view.list.appearance === 'grouped';
   const cards = renderEntityCardItems(rows, {
     pageId,
     title,
     renderValue,
     toText,
     definition,
-    drill
+    drill,
+    chevron: grouped
   });
   const emptyMessage = metadata.availability === 'unavailable'
     ? 'Data is unavailable for this view.'
@@ -337,7 +339,7 @@ function renderEntityCardListView(options) {
       h('header', { className: 'document-list-header' }, view.description ? h('p', null, view.description) : null, listAction),
       cards.length > 0
         ? h('ul', {
-          className: `document-list issue-list entity-card-list${isPlainObject(view.list) && view.list.layout === 'grid' ? ' entity-card-list-grid' : ''}`,
+          className: `document-list issue-list entity-card-list${isPlainObject(view.list) && view.list.layout === 'grid' ? ' entity-card-list-grid' : ''}${grouped ? ' entity-card-list-grouped' : ''}`,
           'data-custom-view-mark': 'list'
         }, cards)
         : h('p', { className: 'document-list-empty' }, emptyMessage)
@@ -356,11 +358,12 @@ function renderEntityCardListView(options) {
  *   toText: (value: unknown) => string,
  *   definition: { icon: string, 'icon-field'?: string, status?: { field: string, 'fallback-field'?: string, title?: string }, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], metrics?: TableField[], timing?: Array<TableField & { icon: string }> },
  *   drill?: Record<string, unknown> | null,
- *   keyOffset?: number
+ *   keyOffset?: number,
+ *   chevron?: boolean
  * }} options
  */
 function renderEntityCardItems(rows, options) {
-  const { pageId, title, renderValue, toText, definition, drill = null, keyOffset = 0 } = options;
+  const { pageId, title, renderValue, toText, definition, drill = null, keyOffset = 0, chevron = false } = options;
   return rows.map((row, index) => {
     const titleText = toText(row[definition.title.field]);
     const subtitle = definition.subtitle;
@@ -437,7 +440,7 @@ function renderEntityCardItems(rows, options) {
         : h(
           'span',
           { className: 'issue-list-card-icon', 'aria-hidden': 'true' },
-          octicon(toText(definition['icon-field'] ? row[definition['icon-field']] : '') || definition.icon)
+          octicon(resolveEntityCardIcon(definition, row, toText))
         ),
       h(
         'div',
@@ -476,9 +479,26 @@ function renderEntityCardItems(rows, options) {
           { className: 'entity-card-list-timing', 'aria-label': `${titleText || 'Item'} timing` },
           ...timing
         )
+        : null,
+      chevron && target
+        ? h('span', { className: 'entity-card-list-chevron', 'aria-hidden': 'true' }, octicon('chevron-right'))
         : null
     );
   });
+}
+
+/**
+ * Resolves the canonical Octicon name for an entity card row, preferring a
+ * declared `icon-field` value when the row provides one and otherwise
+ * falling back to the card template's static `icon`.
+ * @param {{ icon: string, 'icon-field'?: string }} definition
+ * @param {Record<string, unknown>} row
+ * @param {(value: unknown) => string} toText
+ * @returns {string}
+ */
+function resolveEntityCardIcon(definition, row, toText) {
+  const rawValue = definition['icon-field'] ? row[definition['icon-field']] : undefined;
+  return rawValue === undefined || rawValue === null || rawValue === '' ? definition.icon : toText(rawValue);
 }
 
 /** @param {MouseEvent} event */

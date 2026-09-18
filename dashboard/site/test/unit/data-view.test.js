@@ -523,6 +523,50 @@ describe('data view renderer', () => {
       .toBe('#page-campaign-detail?campaign=doctor');
   });
 
+  it('renders grouped entity-card lists with a trailing disclosure chevron', () => {
+    const rendered = renderDataView('list', {
+      pageId: 'overview',
+      title: 'Campaigns',
+      sourceName: 'campaign-inventory',
+      view: {
+        mark: 'list',
+        list: {
+          style: 'entity-cards',
+          appearance: 'grouped',
+          card: 'campaign',
+          drill: { type: 'external', field: 'campaign-dashboard-link' }
+        },
+        encoding: { columns: [{ field: 'campaign-name' }] }
+      },
+      rows: [{
+        'campaign-name': 'Daily ops',
+        'campaign-dashboard-link': {
+          'dashboard-href': '#page-campaign-detail?campaign=daily-ops',
+          'dashboard-label': 'View Daily ops campaign dashboard'
+        }
+      }],
+      cardTemplates: {
+        campaign: {
+          icon: 'goal',
+          title: { field: 'campaign-name' },
+          labels: [],
+          details: []
+        }
+      },
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    expect(rendered?.querySelector('.entity-card-list-grouped')).not.toBeNull();
+    expect(rendered?.querySelector('.entity-card-list-grid')).toBeNull();
+    expect(rendered?.querySelector('.entity-card-list-chevron .octicon-chevron-right')).not.toBeNull();
+  });
+
   it('keeps a list action available when its source is unavailable', () => {
     setDeclaredCliActions([{
       id: 'upgrade-repository',

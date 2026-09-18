@@ -118,7 +118,7 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(factory.locator(':scope > [data-view-id="overview-floor"]')).toHaveClass(/factory-floor/);
     await expect(factory.locator(':scope > [data-view-id="overview-campaigns"]')).toHaveClass(/custom-view/);
     await expect(factory.locator(':scope > .factory-intro + .factory-floor')).toHaveCount(1);
-    await expect(factory.getByRole('heading', { name: 'Campains' })).toBeVisible();
+    await expect(factory.getByRole('heading', { name: 'Campaigns' })).toBeVisible();
     await expect(factory.getByRole('link', { name: 'AW Doctor' }))
       .toHaveAttribute('href', '#page-campaign-detail?campaign=aw-doctor');
     await expect(factory.locator('.entity-card-list-card')).toHaveCount(1);

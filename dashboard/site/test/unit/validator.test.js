@@ -1128,12 +1128,12 @@ describe('dashboard document validation', () => {
     }),
       expect.objectContaining({
       id: 'overview-campaigns',
-      title: 'Campains',
+      title: 'Campaigns',
       data: { source: 'campaign-inventory' },
       mark: 'list',
       list: {
         style: 'entity-cards',
-        layout: 'grid',
+        appearance: 'grouped',
         card: 'campaign',
         icon: 'goal',
         drill: { type: 'external', field: 'campaign-dashboard-link' }
