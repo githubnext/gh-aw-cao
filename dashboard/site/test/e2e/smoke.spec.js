@@ -198,8 +198,64 @@ test('issue card labels stay compact with centered text and balanced padding', a
       textY: textBounds.y + textBounds.height / 2,
     };
   });
+
   expect(Math.abs(centers.textX - centers.labelX)).toBeLessThanOrEqual(1);
   expect(Math.abs(centers.textY - centers.labelY)).toBeLessThanOrEqual(1);
+});
+
+test('package card actions wrap together on narrow screens', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(async (moduleUrls) => {
+    const [stylesUrl, dataViewUrl, cliActionsUrl] = moduleUrls;
+    const [{ getPrimerStyles }, { renderDataView }, { setDeclaredCliActions }] = await Promise.all([
+      import(stylesUrl),
+      import(dataViewUrl),
+      import(cliActionsUrl)
+    ]);
+    document.head.append(Object.assign(document.createElement('style'), { textContent: getPrimerStyles() }));
+    setDeclaredCliActions([
+      { id: 'update', label: 'Update', icon: 'sync', command: 'gh aw update {{package}}', placement: 'row' },
+      { id: 'live', label: 'Switch to live', icon: 'play', command: 'gh aw mode live {{package}}', placement: 'row' },
+      { id: 'enable', label: 'Enable', icon: 'play', command: 'gh aw enable {{package}}', placement: 'row' },
+      { id: 'disable', label: 'Disable', icon: 'stop', command: 'gh aw disable {{package}}', placement: 'row' }
+    ], { canExecute: false });
+    const view = renderDataView('list', {
+      pageId: 'maintenance',
+      title: 'Packages',
+      view: {
+        mark: 'list',
+        list: { style: 'cards', icon: 'package' },
+        encoding: {
+          columns: [{ field: 'package-name', title: 'Package' }],
+          actions: [
+            { action: 'update', presentation: 'cli-action', icon: 'sync', label: 'Update', context: ['package'] },
+            { action: 'live', presentation: 'cli-action', icon: 'play', label: 'Switch to live', context: ['package'] },
+            { action: 'enable', presentation: 'cli-action', icon: 'play', label: 'Enable', context: ['package'] },
+            { action: 'disable', presentation: 'cli-action', icon: 'stop', label: 'Disable', context: ['package'] }
+          ]
+        }
+      },
+      sourceName: 'packages',
+      rows: [{ package: 'aw-optimization', 'package-name': 'AW Optimization' }],
+      metadata: { 'source-id': 'fixture', 'source-kind': 'fixture', 'as-of': '2026-09-18T00:00:00Z', 'retrieved-at': '2026-09-18T00:00:00Z', completeness: 'complete', freshness: 'fresh', availability: 'available' },
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (/** @type {Array<Record<string, unknown>>} */ rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+    document.body.append(view);
+  }, [
+    'http://dashboard.test/src/styles.js',
+    'http://dashboard.test/src/components/data-view.js',
+    'http://dashboard.test/src/components/cli-actions.js'
+  ]);
+
+  const actions = page.locator('.document-list-card-actions');
+  await expect(actions).toHaveCount(1);
+  await expect(actions.locator('.table-cli-action-control')).toHaveCount(4);
+  expect((await actions.boundingBox())?.height).toBeLessThanOrEqual(70);
 });
 
 test('ingestion notifications reveal scrollable progress history on click', async ({ page }) => {

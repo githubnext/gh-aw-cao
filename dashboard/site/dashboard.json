@@ -8166,12 +8166,12 @@
         "kind": "custom",
         "title": "Maintenance",
         "icon": "workflow",
-        "description": "Update installed starter packages and upgrade repository compiler versions.",
+        "description": "Update installed packages and upgrade repository compiler versions.",
         "views": [
           {
             "id": "starter-updates",
-            "title": "Starter updates",
-            "description": "Update installed starter packages when a newer package revision is available.",
+            "title": "Packages",
+            "description": "Update installed packages when a newer package revision is available.",
             "data": {
               "source": "packages",
               "order-by": [

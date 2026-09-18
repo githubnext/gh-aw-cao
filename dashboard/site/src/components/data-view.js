@@ -242,6 +242,9 @@ function renderListView(context) {
   const cards = preparedRows.map((row, index) => {
     const titleColumn = columns[0];
     const titleField = typeof titleColumn?.as === 'string' ? titleColumn.as : titleColumn?.field;
+    const rowActions = actions.flatMap((action) => actionMatches(action, row)
+      ? [renderTableAction(action, row)]
+      : []);
     return h(
       'li',
       { className: 'document-list-card', 'data-custom-row-key': `${pageId}-${title}-${index}` },
@@ -264,9 +267,9 @@ function renderListView(context) {
           })
         )
       ),
-      ...actions.flatMap((action) => actionMatches(action, row)
-        ? [renderTableAction(action, row)]
-        : [])
+      rowActions.length > 0
+        ? h('div', { className: 'document-list-card-actions' }, ...rowActions)
+        : null
     );
   });
   const emptyMessage = metadata.availability === 'unavailable'

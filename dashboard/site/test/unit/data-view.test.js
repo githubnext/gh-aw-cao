@@ -157,10 +157,10 @@ describe('data view renderer', () => {
 
     const rendered = renderDataView('list', {
       pageId: 'maintenance',
-      title: 'Starter updates',
+      title: 'Packages',
       view: {
         mark: 'list',
-        description: 'Update installed starter packages.',
+        description: 'Update installed packages.',
         list: { style: 'cards', icon: 'package', action: 'update-repository' },
         encoding: {
           columns: [
@@ -239,7 +239,10 @@ describe('data view renderer', () => {
     });
 
     expect(rendered?.querySelectorAll('.document-list-card')).toHaveLength(2);
+    expect(rendered?.querySelector('h3')?.textContent).toBe('Packages');
     expect(rendered?.querySelector('.document-list-header .declared-cli-action')?.textContent).toContain('Update all');
+    expect(rendered?.querySelectorAll('.document-list-card-actions')).toHaveLength(2);
+    expect(rendered?.querySelectorAll('.document-list-card-actions .table-cli-action-control')).toHaveLength(7);
     expect(rendered?.querySelectorAll('.document-list-card .table-cli-action-control')).toHaveLength(7);
     expect(rendered?.textContent).toContain('Switch to live');
     expect(rendered?.textContent).toContain('Switch to preview');

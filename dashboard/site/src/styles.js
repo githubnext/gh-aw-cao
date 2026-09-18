@@ -326,6 +326,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .document-list-card-details > div { display: contents; }
 .document-list-card-details dt { color: var(--muted); font-size: .6875rem; }
 .document-list-card-details dd { margin: 0 8px 0 -11px; font-size: .6875rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.document-list-card-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; }
 .document-list-card .table-cli-action-button { width: auto; min-height: 32px; padding: 7px; border: 1px solid var(--border); }
 .document-list-empty { margin: 0; padding: 16px; color: var(--muted); font-size: .75rem; }
 .issue-list { display: block; }
@@ -2459,7 +2460,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .document-list-header { align-items: stretch; flex-direction: column; }
   .document-list-header .declared-cli-action, .document-list-header .cli-action-trigger { width: 100%; }
   .document-list-card { grid-template-columns: auto minmax(0, 1fr); }
-  .document-list-card > .table-cli-action-control { grid-column: 2; justify-self: start; }
+  .document-list-card-actions { grid-column: 2; justify-content: flex-start; }
   .issue-list-card { grid-template-columns: 20px minmax(0, 1fr); padding: 10px 14px; }
   .issue-list-labels { grid-column: 2; justify-content: flex-start; }
   .entity-card-list-card:has(.entity-card-list-timing) { grid-template-columns: 20px minmax(0, 1fr); }
