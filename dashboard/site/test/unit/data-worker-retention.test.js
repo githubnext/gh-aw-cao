@@ -1,6 +1,7 @@
 // @vitest-environment node
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { CANONICAL_SCHEMA_VERSION } from '../../src/data/model/schema.js';
 import { DATABASE_NAME, readTransactions } from '../../src/data/storage/indexeddb.js';
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
@@ -136,7 +137,7 @@ describe('canonical dashboard worker retention updates', () => {
     const requestUrls = [];
     const normalizedName = `gh-aw-logs-normalized/${'a'.repeat(64)}-${'b'.repeat(16)}.json`;
     const normalizedPayload = {
-      schemaVersion: 11,
+      schemaVersion: CANONICAL_SCHEMA_VERSION,
       ingestionVersion: 2,
       sourceRecords: 0,
       batch: {

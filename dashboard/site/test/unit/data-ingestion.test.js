@@ -10,6 +10,7 @@ import {
   ingestSqlExport
 } from '../../src/data/ingest/coordinator.js';
 import { createCanonicalQueries } from '../../src/data/queries/index.js';
+import { CANONICAL_SCHEMA_VERSION } from '../../src/data/model/schema.js';
 import {
   DATABASE_NAME,
   readCanonicalBatch,
@@ -78,7 +79,7 @@ beforeEach(async () => {
 describe('canonical source ingestion and queries', () => {
   it('imports pre-normalized JSON with a published identity and skips repeats', async () => {
     const payload = {
-      schemaVersion: 11,
+      schemaVersion: CANONICAL_SCHEMA_VERSION,
       ingestionVersion: 2,
       sourceRecords: 1,
       batch: {
@@ -115,7 +116,7 @@ describe('canonical source ingestion and queries', () => {
 
   it('rejects mislabeled or mixed phased payloads', async () => {
     const payload = {
-      schemaVersion: 11,
+      schemaVersion: CANONICAL_SCHEMA_VERSION,
       ingestionVersion: 2,
       sourceRecords: 1,
       phase: 'records',
