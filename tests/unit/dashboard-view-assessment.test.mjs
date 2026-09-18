@@ -1,12 +1,37 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  dashboardAssessmentPageBudgetMs,
+  dashboardAssessmentStartupBudgetMs,
+  dashboardAssessmentTimeout,
   ignoredDashboardPageIds,
   isExpectedPageCloseAbort,
   isIgnoredDashboardPageId,
   isSpuriousAbortAfterSuccessResponse,
+  maximumDashboardAssessmentTimeoutMs,
+  visibleBusyViewSelector,
+  visibleViewSelector,
   withoutIgnoredDashboardPageIds,
 } from "../e2e/dashboard-view-assessment.mjs";
+
+test("assesses only the views a reader can see", () => {
+  assert.equal(visibleViewSelector, "[data-view-id]:visible");
+  assert.equal(visibleBusyViewSelector, '[aria-busy="true"]:visible');
+});
+
+test("grows the assessment timeout with the number of selected views", () => {
+  assert.equal(
+    dashboardAssessmentTimeout(1),
+    dashboardAssessmentStartupBudgetMs + dashboardAssessmentPageBudgetMs,
+  );
+  assert.equal(
+    dashboardAssessmentTimeout(10),
+    dashboardAssessmentStartupBudgetMs + 10 * dashboardAssessmentPageBudgetMs,
+  );
+  assert.equal(dashboardAssessmentTimeout(0), dashboardAssessmentStartupBudgetMs);
+  assert.equal(dashboardAssessmentTimeout(undefined), dashboardAssessmentStartupBudgetMs);
+  assert.equal(dashboardAssessmentTimeout(10_000), maximumDashboardAssessmentTimeoutMs);
+});
 
 test("ignores request aborts caused by closing an assessed page", () => {
   assert.equal(isExpectedPageCloseAbort("net::ERR_ABORTED", true), true);

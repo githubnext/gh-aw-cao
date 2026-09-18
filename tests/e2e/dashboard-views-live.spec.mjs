@@ -3,10 +3,13 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
 import {
+  dashboardAssessmentTimeout,
   ignoredDashboardPageIds,
   isExpectedPageCloseAbort,
   isIgnoredDashboardPageId,
   isSpuriousAbortAfterSuccessResponse,
+  visibleBusyViewSelector,
+  visibleViewSelector,
 } from "./dashboard-view-assessment.mjs";
 import { downloadDeployedDashboardData } from "./dashboard-view-data.mjs";
 
@@ -65,6 +68,7 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
       if (summary.selectionMode === "affected") return;
       throw new Error("No selected page IDs exist in the composed dashboard.");
     }
+    test.setTimeout(dashboardAssessmentTimeout(pages.length));
 
     for (const pageDefinition of pages) {
       const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -124,11 +128,15 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
           for (const disclosure of disclosures) disclosure.open = true;
         });
 
-        const views = activePage.locator("[data-view-id]");
-        for (let index = 0; index < await views.count(); index += 1) {
-          await views.nth(index).scrollIntoViewIfNeeded().catch(() => {});
+        // Rendered-view accounting covers every declared view, including views the
+        // page's view-mode selection currently hides; only visible views are scrolled
+        // into view and awaited.
+        const renderedViewElements = activePage.locator("[data-view-id]");
+        const visibleViews = activePage.locator(visibleViewSelector);
+        for (let index = 0; index < await visibleViews.count(); index += 1) {
+          await visibleViews.nth(index).scrollIntoViewIfNeeded().catch(() => {});
         }
-        const busyViews = activePage.locator('[aria-busy="true"]');
+        const busyViews = activePage.locator(visibleBusyViewSelector);
         const hydrationDeadline = Date.now() + 30_000;
         while (await busyViews.count() > 0 && Date.now() < hydrationDeadline) {
           await busyViews.first().scrollIntoViewIfNeeded().catch(() => {});
@@ -136,7 +144,7 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
         }
         await expect(busyViews).toHaveCount(0);
 
-        result.renderedViews = (await views.evaluateAll((elements) =>
+        result.renderedViews = (await renderedViewElements.evaluateAll((elements) =>
           elements.map((element) => element.getAttribute("data-view-id")).filter(Boolean)
         ));
         result.missingViews = result.declaredViews.filter(
