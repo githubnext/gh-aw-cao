@@ -11,7 +11,7 @@ function isDeployedDashboardShardProbe({ method, url }) {
   if (method !== "HEAD" || typeof url !== "string") return false;
   try {
     const parsed = new URL(url);
-    // Match deployed activity JSON shard probes in the run-information and record shard directories.
+    // Match flat deployed activity JSON shard filenames in the run-information and record shard directories.
     return parsed.origin === deployedDashboardBase.origin
       && parsed.pathname.startsWith(deployedDashboardBase.pathname)
       && /^gh-aw-logs-(?:runs|records)\/[^/]+\.json$/.test(
