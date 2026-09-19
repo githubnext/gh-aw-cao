@@ -134,6 +134,13 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
   assert.match(dependabotWorker, /target\/\.github\/dependabot\.md/);
   assert.match(dependabotWorker, /GET \/orgs\/\{org\}\/dependabot\/repository-access/);
   assert.match(dependabotWorker, /Do not treat pull requests as required input/);
+  assert.match(dependabotWorker, /Build the current update inventory from Dependabot-native service evidence/);
+  assert.match(dependabotWorker, /Pull requests are not the source of truth for the update inventory/);
+  assert.match(dependabotWorker, /call `missing_tool` or `report_incomplete`/);
+  assert.match(dependabotWorker, /summarize unavailable alert evidence as "zero open alerts/);
+  assert.match(dependabotWorker, /After direct Dependabot evidence has produced the update inventory/);
+  assert.match(dependabotWorker, /not proof of a current update unless direct Dependabot evidence still identifies that update/);
+  assert.match(dependabotWorker, /pull-request evidence was not used as a substitute update inventory/);
   assert.match(dependabotWorker, /Apply in this order/);
   assert.match(dependabotWorker, /Security and access boundaries/);
   assert.match(dependabotWorker, /exactly one pull request/);
