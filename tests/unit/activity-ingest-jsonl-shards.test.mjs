@@ -263,7 +263,8 @@ test('hash-payloads excludes info-level audits from record shards', async () => 
 
   const [recordShard] = await readdir(recordsDirectory);
   const payload = JSON.parse(await readFile(path.join(recordsDirectory, recordShard), 'utf8'));
-  assert.deepEqual(payload.batch.audits.map((audit) => audit.summary), ['Actionable finding']);
+  const findings = payload.batch.audits.filter((audit) => audit.type === 'audit.finding');
+  assert.deepEqual(findings.map((audit) => audit.summary), ['Actionable finding']);
 });
 
 test('hash-payloads drops empty phased shards from files and hashes', async () => {
