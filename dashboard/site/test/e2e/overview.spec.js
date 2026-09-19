@@ -158,7 +158,7 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(factory.getByRole('link', { name: 'AW Doctor' }))
       .toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
     await expect(factory.locator('.entity-card-list-card')).toHaveCount(1);
-    await expect(factory.locator('.entity-card-list-card dt')).toHaveText(['Workflows', 'Value', 'Dispatches', 'AIC']);
+    await expect(factory.locator('.entity-card-list-card dt')).toHaveText(['# dispatches', '# value', '# aic']);
     await expect(factory.getByRole('heading', { name: 'Your factory is delivering value.' })).toBeVisible();
     await expect(factory.locator('.factory-running-active')).toBeVisible();
     await expect(factory.locator('.factory-rhythm-day')).toHaveCount(7);
