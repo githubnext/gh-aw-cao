@@ -343,16 +343,20 @@ function renderChartWidgetEmptyState(chartType, message) {
 function elideCommonLabelPrefix(labels) {
   if (labels.length < 2 || labels.some((label) => label.length === 0)) return labels;
 
-  let commonLength = labels[0].length;
-  for (const label of labels.slice(1)) {
+  const firstLabel = labels[0];
+  if (firstLabel === undefined) return labels;
+  let commonLength = firstLabel.length;
+  for (let labelIndex = 1; labelIndex < labels.length; labelIndex += 1) {
+    const label = labels[labelIndex];
+    if (label === undefined) return labels;
     commonLength = Math.min(commonLength, label.length);
     let index = 0;
-    while (index < commonLength && labels[0][index] === label[index]) index += 1;
+    while (index < commonLength && firstLabel[index] === label[index]) index += 1;
     commonLength = index;
     if (commonLength < MIN_COMMON_LABEL_PREFIX) return labels;
   }
 
-  const commonPrefix = labels[0].slice(0, commonLength);
+  const commonPrefix = firstLabel.slice(0, commonLength);
   const separatorMatches = [...commonPrefix.matchAll(/[/:\\._ -]+/g)];
   const lastSeparator = separatorMatches.at(-1);
   const prefixLength = lastSeparator?.index !== undefined
@@ -619,7 +623,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
     }
     const maximum = Math.max(...points.map((point) => toNumber(point.y)).filter(Number.isFinite), 1);
     const seriesClassNames = new Map(series.map((item) => [item.name, item.className]));
-    const displayLabels = elideCommonLabelPrefix(points.map((point) => point.x));
+    const displayLabels = elideCommonLabelPrefix(points.map((point) => String(point.x ?? '')));
     return renderChartWidgetShell(
       chartType,
       null,
