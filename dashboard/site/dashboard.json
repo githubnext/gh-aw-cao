@@ -1452,9 +1452,35 @@
         "aggregate": { "values": [{ "field": "run", "as": "count", "reducer": "count" }] }
       },
       {
+        "name": "overview-failing-workflows",
+        "intent": "Identify only workflows that have at least one failed run in the selected snapshot horizon before computing streaks.",
+        "from": "runs",
+        "filter": {
+          "predicates": [{ "field": "run-conclusion", "in": ["failure", "startup-failure", "stale", "timed-out"] }]
+        },
+        "aggregate": {
+          "by": ["organization", "repository", "workflow"],
+          "values": [
+            { "field": "run", "as": "failing-runs", "reducer": "distinct-count" }
+          ]
+        }
+      },
+      {
         "name": "overview-repeated-failure-groups",
         "intent": "Group each workflow's latest consecutive failing run sequence in the selected snapshot horizon, resetting the group after any successful run.",
         "from": "runs",
+        "joins": [
+          {
+            "source": "overview-failing-workflows",
+            "type": "inner",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" }
+            ],
+            "fields": [{ "field": "failing-runs", "as": "failing-runs" }]
+          }
+        ],
         "compute": [
           {
             "as": "failure-streak-point",

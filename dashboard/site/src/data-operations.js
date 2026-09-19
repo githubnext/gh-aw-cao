@@ -520,6 +520,11 @@ function latestFailureStreak(input) {
   });
   points.sort((left, right) => {
     if (right[0] !== left[0]) return right[0] - left[0];
+    const leftRunId = Number(left[1]);
+    const rightRunId = Number(right[1]);
+    if (Number.isFinite(leftRunId) && Number.isFinite(rightRunId) && rightRunId !== leftRunId) {
+      return rightRunId - leftRunId;
+    }
     return String(right[1]).localeCompare(String(left[1]));
   });
   const seenRuns = new Set();

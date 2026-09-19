@@ -72,13 +72,13 @@ const emptyRunRecordSources = Object.fromEntries(['domains', 'tools', 'audits', 
 
 describe('declarative dashboard queries', () => {
   it('groups unresolved repeated failures, includes review outputs, and caps the Overview preview', () => {
-    const run = (/** @type {string} */ workflow, /** @type {string} */ id, conclusion = 'failure') => ({
+    const run = (/** @type {string} */ workflow, /** @type {string} */ id, conclusion = 'failure', startedAt = `2026-09-${String(Number(id)).padStart(2, '0')}T00:00:00Z`) => ({
       organization: 'githubnext',
       repository: 'gh-aw-cao',
       workflow,
       run: id,
       'run-conclusion': conclusion,
-      'started-at': `2026-09-${String(Number(id)).padStart(2, '0')}T00:00:00Z`
+      'started-at': startedAt
     });
     const workItem = (/** @type {string} */ workflow, /** @type {string} */ state, /** @type {string} */ id) => ({
       organization: 'githubnext',
@@ -103,6 +103,8 @@ describe('declarative dashboard queries', () => {
           run('reset.md', '3'),
           run('reset.md', '4', 'success'),
           run('reset.md', '5'),
+          run('tie-reset.md', '9', 'failure', '2026-09-09T00:00:00Z'),
+          run('tie-reset.md', '10', 'success', '2026-09-09T00:00:00Z'),
           run('single.md', '3'),
           run('resolved.md', '4'),
           run('resolved.md', '5')
@@ -114,6 +116,7 @@ describe('declarative dashboard queries', () => {
         rows: [
           workItem('repeated.md', 'blocked', '10'),
           workItem('reset.md', 'blocked', '16'),
+          workItem('tie-reset.md', 'blocked', '17'),
           workItem('single.md', 'blocked', '11'),
           workItem('resolved.md', 'completed', '12'),
           workItem('review-a.md', 'review', '13'),
@@ -138,6 +141,7 @@ describe('declarative dashboard queries', () => {
     ]);
     expect(results['overview-needs-attention'].rows.some((row) => row.title === 'single.md')).toBe(false);
     expect(results['overview-needs-attention'].rows.some((row) => row.title === 'reset.md')).toBe(false);
+    expect(results['overview-needs-attention'].rows.some((row) => row.title === 'tie-reset.md')).toBe(false);
     expect(results['overview-needs-attention'].rows.some((row) => row.title === 'resolved.md')).toBe(false);
     expect(results['overview-needs-attention'].rows.filter((row) => row.kind === 'Human review required')).toHaveLength(3);
     expect(results['overview-needs-attention-preview'].rows).toHaveLength(3);
