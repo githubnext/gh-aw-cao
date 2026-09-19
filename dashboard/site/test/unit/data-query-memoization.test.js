@@ -5,32 +5,38 @@ import {
 } from '../../src/data/queries/memoization.js';
 
 describe('dashboard query memoization', () => {
-  it('reuses a materialized result within its short lifetime', async () => {
-    let now = 100;
-    const memoization = createDashboardQueryMemoization({ ttlMs: 50, now: () => now });
+  it('reuses a materialized result for the lifetime of its database revision', async () => {
+    const memoization = createDashboardQueryMemoization();
     const compute = vi.fn(async () => ({ rows: [{ run: '1' }] }));
 
     const first = await memoization.get(1, 'overview', compute);
-    now = 149;
     const second = await memoization.get(1, 'overview', compute);
 
     expect(second).toBe(first);
     expect(compute).toHaveBeenCalledOnce();
   });
 
-  it('recomputes expired results', async () => {
-    let now = 100;
-    const memoization = createDashboardQueryMemoization({ ttlMs: 50, now: () => now });
-    const compute = vi.fn(async () => ({ computedAt: now }));
+  it('retains an older revision as stale data while recomputing it', async () => {
+    const memoization = createDashboardQueryMemoization();
+    const stale = { revision: 1 };
+    await memoization.get(1, 'overview', async () => stale);
+    /** @type {(value: { revision: number }) => void} */
+    let resolveFresh = () => {};
+    const fresh = memoization.get(2, 'overview', () => new Promise((resolve) => {
+      resolveFresh = resolve;
+    }));
 
-    await memoization.get(1, 'overview', compute);
-    now = 150;
+    expect(memoization.peek('overview')).toEqual({ revision: 1, value: stale });
+    resolveFresh({ revision: 2 });
+    await fresh;
 
-    await expect(memoization.get(1, 'overview', compute)).resolves.toEqual({ computedAt: 150 });
-    expect(compute).toHaveBeenCalledTimes(2);
+    expect(memoization.peek('overview')).toEqual({
+      revision: 2,
+      value: { revision: 2 }
+    });
   });
 
-  it('invalidates every cached query when the database revision changes', async () => {
+  it('invalidates cached queries when the database revision changes', async () => {
     const memoization = createDashboardQueryMemoization();
     const compute = vi.fn(async () => ({ sequence: compute.mock.calls.length }));
 
@@ -40,6 +46,25 @@ describe('dashboard query memoization', () => {
     await memoization.get(2, 'repositories', compute);
 
     expect(compute).toHaveBeenCalledTimes(4);
+  });
+
+  it('shares an in-flight computation for the same view and revision', async () => {
+    const memoization = createDashboardQueryMemoization();
+    /** @type {(value: { revision: number }) => void} */
+    let resolve = () => {};
+    const compute = vi.fn(() => new Promise((done) => {
+      resolve = done;
+    }));
+
+    const first = memoization.get(1, 'overview', compute);
+    const second = memoization.get(1, 'overview', compute);
+    resolve({ revision: 1 });
+
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      { revision: 1 },
+      { revision: 1 }
+    ]);
+    expect(compute).toHaveBeenCalledOnce();
   });
 
   it('does not insert an older result after a newer database revision starts', async () => {

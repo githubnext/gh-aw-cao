@@ -1,20 +1,45 @@
-export const DASHBOARD_QUERY_CACHE_TTL_MS = 30_000;
 export const DASHBOARD_QUERY_CACHE_MAX_ENTRIES = 24;
 
 /**
  * Creates a bounded, revision-aware in-memory cache for materialized query results.
- * @param {{ ttlMs?: number, maxEntries?: number, now?: () => number }} [options]
+ * Results remain reusable for the lifetime of their database revision. Older
+ * revisions remain available as stale-while-revalidate snapshots until the
+ * worker replaces or evicts them.
+ * @param {{ maxEntries?: number }} [options]
  */
 export function createDashboardQueryMemoization(options = {}) {
-  const ttlMs = options.ttlMs ?? DASHBOARD_QUERY_CACHE_TTL_MS;
   const maxEntries = options.maxEntries ?? DASHBOARD_QUERY_CACHE_MAX_ENTRIES;
-  const now = options.now ?? Date.now;
-  /** @type {Map<string, { expiresAt: number, value: unknown }>} */
+  /** @type {Map<string, { revision: number, value: unknown }>} */
   const entries = new Map();
-  /** @type {number | null} */
-  let revision = null;
+  /** @type {Map<string, Promise<unknown>>} */
+  const pendingEntries = new Map();
+  let latestRevision = Number.NEGATIVE_INFINITY;
+
+  /** @param {string} key @param {{ revision: number, value: unknown }} entry */
+  const touch = (key, entry) => {
+    entries.delete(key);
+    entries.set(key, entry);
+    while (entries.size > maxEntries) {
+      const oldest = entries.keys().next().value;
+      if (oldest === undefined) break;
+      entries.delete(oldest);
+    }
+  };
 
   return {
+    /**
+     * Returns the most recent materialized value for a view, including one
+     * produced from an older database revision.
+     * @param {string} key
+     * @returns {{ revision: number, value: unknown } | null}
+     */
+    peek(key) {
+      const cached = entries.get(key);
+      if (!cached) return null;
+      touch(key, cached);
+      return { revision: cached.revision, value: cached.value };
+    },
+
     /**
      * @template T
      * @param {number} databaseRevision
@@ -23,30 +48,32 @@ export function createDashboardQueryMemoization(options = {}) {
      * @returns {Promise<T>}
      */
     async get(databaseRevision, key, compute) {
-      if (revision !== databaseRevision) {
-        entries.clear();
-        revision = databaseRevision;
-      }
-      const timestamp = now();
-      for (const [candidate, entry] of entries) {
-        if (entry.expiresAt <= timestamp) entries.delete(candidate);
-      }
+      latestRevision = Math.max(latestRevision, databaseRevision);
       const cached = entries.get(key);
-      if (cached) {
-        entries.delete(key);
-        entries.set(key, cached);
+      if (cached?.revision === databaseRevision) {
+        touch(key, cached);
         return /** @type {T} */ (cached.value);
       }
 
-      const value = await compute();
-      if (revision !== databaseRevision) return value;
-      entries.set(key, { value, expiresAt: now() + ttlMs });
-      while (entries.size > maxEntries) {
-        const oldest = entries.keys().next().value;
-        if (oldest === undefined) break;
-        entries.delete(oldest);
+      const pendingKey = `${databaseRevision}:${key}`;
+      const existing = pendingEntries.get(pendingKey);
+      if (existing) return /** @type {Promise<T>} */ (existing);
+      const pending = compute().then((value) => {
+        if (latestRevision === databaseRevision) {
+          touch(key, { revision: databaseRevision, value });
+        }
+        return value;
+      }).finally(() => {
+        if (pendingEntries.get(pendingKey) === pending) pendingEntries.delete(pendingKey);
+      });
+      pendingEntries.set(pendingKey, pending);
+      try {
+        return /** @type {T} */ (await pending);
+      } finally {
+        if (latestRevision > databaseRevision && entries.get(key)?.revision === databaseRevision) {
+          entries.delete(key);
+        }
       }
-      return value;
     }
   };
 }
