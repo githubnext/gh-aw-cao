@@ -3474,7 +3474,8 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   const awDoctorCard = page.locator('[data-page-id="campaigns"] [data-mobile-card-list] .entity-card-list-card').filter({ hasText: 'AW Doctor' });
   await expect(awDoctorCard.locator('[data-card-drill]')).toHaveAttribute('href', '#page-campaign-detail?campaign=aw-doctor');
   await awDoctorCard.click({ position: { x: 6, y: 6 } });
-  await expect(page).toHaveURL(/#page-campaign-insights\?campaign=aw-doctor$/);
+  await expect(page).toHaveURL(/#page-campaign-detail\?campaign=aw-doctor$/);
+  await expect(page.locator('[data-page-id="campaign-detail"] .campaign-tabs')).toBeVisible();
   await page.evaluate(() => {
     window.location.hash = '#page-operational-value';
   });
