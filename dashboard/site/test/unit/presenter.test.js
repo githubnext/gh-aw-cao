@@ -196,6 +196,7 @@ describe('dashboard DOM provenance', () => {
     const scroller = rendered.querySelector('main.dashboard-prototype');
     const onRefresh = vi.fn();
     window.addEventListener('dashboard-refresh-request', onRefresh);
+    /** @param {string} type @param {number} clientY */
     const touch = (type, clientY) => {
       const event = new Event(type, { bubbles: true });
       Object.defineProperty(event, 'touches', {
