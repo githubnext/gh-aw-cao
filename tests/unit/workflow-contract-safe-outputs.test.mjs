@@ -240,6 +240,8 @@ test("repository PR automation remains bounded and adapted to CAO", () => {
   assert.doesNotMatch(finisher, /\bmake (?:fmt|lint|test|recompile)\b/);
 
   assert.match(sousChef, /push-to-pull-request-branch:/);
+  assert.match(sousChef, /required-labels: \[sous-chef\]/);
+  assert.match(sousChef, /is:pr is:open -is:draft label:sous-chef/);
   assert.match(sousChef, /bash:\n\s+- "\*"/);
   assert.match(sousChef, /npm ci/);
   assert.match(sousChef, /browsers: \[chrome, chromium\]/);

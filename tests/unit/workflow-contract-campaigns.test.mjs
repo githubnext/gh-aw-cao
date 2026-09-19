@@ -427,10 +427,13 @@ test("root campaign composes its operational campaigns through manifests", () =>
   const rootManifest = parse(readFileSync(join(root, "aw.yml"), "utf8"));
 
   assert.deepEqual(rootManifest.includes, [
-    ".github/workflows/aw.json",
     "activity/aw.yml",
     "dashboard/aw.yml",
   ]);
+  assert.deepEqual(rootManifest.resources[0], {
+    source: ".github/workflows/aw.json",
+    destination: ".github/workflows/aw.json",
+  });
   const project = JSON.parse(readFileSync(join(root, ".github", "workflows", "aw.json"), "utf8"));
   assert.deepEqual(project.auto_upgrade.options, ["--pre-releases"]);
 });
