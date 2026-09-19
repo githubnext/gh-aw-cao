@@ -341,6 +341,25 @@ describe('dashboard document validation', () => {
         expect.objectContaining({ path: expect.stringContaining('list.view-all') })
       ])
     });
+
+    attention.list['view-all'] = { page: 'undeclared-attention-page' };
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({ message: 'list view-all page must reference a declared dashboard page id.' })
+      ])
+    });
+
+    attention.list['view-all'] = { page: 'overview-needs-attention' };
+    const starterList = document.dashboard.pages
+      .find((/** @type {{ id: string }} */ page) => page.id === 'maintenance').views[0];
+    starterList.list['view-all'] = { page: 'overview-needs-attention' };
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({ message: 'list.view-all is supported only for entity-cards lists.' })
+      ])
+    });
   });
 
   it('validates declarative card lists and their view actions', () => {

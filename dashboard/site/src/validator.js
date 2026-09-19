@@ -1125,6 +1125,16 @@ function validateDashboard(dashboard, dashboardNode, errors) {
             `${viewPath}.metric.navigation-page`
           ));
         }
+        const viewAllPage = isPlainObject(view) && isPlainObject(view.list) && isPlainObject(view.list['view-all'])
+          ? view.list['view-all'].page
+          : undefined;
+        if (typeof viewAllPage === 'string' && IDENTIFIER_PATTERN.test(viewAllPage) && !pageIds.has(viewAllPage)) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'list view-all page must reference a declared dashboard page id.',
+            `${viewPath}.list.view-all.page`
+          ));
+        }
         const drill = isPlainObject(view) && isPlainObject(view.list) && isPlainObject(view.list.drill)
           ? view.list.drill
           : null;
@@ -2681,7 +2691,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
         errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'list.card is supported only for entity-cards lists.', `${listPath}.card`));
       }
       validateListDrill(view.list.drill, getValueNodeByKey(getValueNodeByKey(viewNode, 'list'), 'drill'), listPath, view.list.style, errors);
-      validateListViewAll(view.list['view-all'], getValueNodeByKey(getValueNodeByKey(viewNode, 'list'), 'view-all'), listPath, errors);
+      validateListViewAll(view.list['view-all'], getValueNodeByKey(getValueNodeByKey(viewNode, 'list'), 'view-all'), listPath, view.list.style, errors);
     }
     if (view.mark !== 'list') {
       errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list is allowed only when mark is "list".', listPath));
@@ -3030,11 +3040,16 @@ function validateListDrill(drill, drillNode, listPath, style, errors) {
  * @param {unknown} viewAll
  * @param {unknown} viewAllNode
  * @param {string} listPath
+ * @param {unknown} style
  * @param {ValidationError[]} errors
  */
-function validateListViewAll(viewAll, viewAllNode, listPath, errors) {
+function validateListViewAll(viewAll, viewAllNode, listPath, style, errors) {
   const path = `${listPath}.view-all`;
   if (viewAll === undefined) return;
+  if (style !== 'entity-cards') {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'list.view-all is supported only for entity-cards lists.', path));
+    return;
+  }
   if (!isPlainObject(viewAll)) {
     errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'list.view-all must be a mapping.', path));
     return;
