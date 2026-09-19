@@ -938,7 +938,7 @@
             "as": "campaign-dashboard-href",
             "function": "concat",
             "args": [
-              { "value": "#page-campaign-detail?campaign=" },
+              { "value": "#page-campaign-insights?campaign=" },
               { "field": "encoded-operation-id" }
             ]
           },
@@ -2843,7 +2843,7 @@
           {
             "as": "campaign-dashboard-href",
             "function": "concat",
-            "args": [{ "value": "#page-campaign-detail?campaign=" }, { "field": "encoded-campaign" }]
+            "args": [{ "value": "#page-campaign-insights?campaign=" }, { "field": "encoded-campaign" }]
           },
           {
             "as": "campaign-dashboard-label",
@@ -3217,7 +3217,7 @@
           {
             "as": "campaign-dashboard-href",
             "function": "concat",
-            "args": [{ "value": "#page-campaign-detail?campaign=" }, { "field": "encoded-campaign" }]
+            "args": [{ "value": "#page-campaign-insights?campaign=" }, { "field": "encoded-campaign" }]
           },
           {
             "as": "campaign-dashboard-label",
@@ -3943,7 +3943,7 @@
           {
             "as": "campaign-dashboard-href",
             "function": "concat",
-            "args": [{ "value": "#page-campaign-detail?campaign=" }, { "field": "encoded-campaign" }]
+            "args": [{ "value": "#page-campaign-insights?campaign=" }, { "field": "encoded-campaign" }]
           },
           {
             "as": "campaign-dashboard-label",

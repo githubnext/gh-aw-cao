@@ -176,21 +176,21 @@ describe('campaign detail route', () => {
     }));
 
     expect(rendered.dataset.campaign).toBe('ambient-context');
-    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('OverviewInsightsWorkflowsRunsIssues');
+    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('InsightsWorkflowsRunsIssuesInformation');
     expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-campaign-detail?campaign=ambient-context');
     expect([...rendered.querySelectorAll('.campaign-tabs a')].map((link) => link.getAttribute('href'))).toEqual([
-      '#page-campaign-detail?campaign=ambient-context',
       '#page-campaign-insights?campaign=ambient-context',
       '#page-campaign-workflows?campaign=ambient-context',
       '#page-campaign-runs?campaign=ambient-context',
-      '#page-campaign-issues?campaign=ambient-context'
+      '#page-campaign-issues?campaign=ambient-context',
+      '#page-campaign-detail?campaign=ambient-context'
     ]);
     expect([...rendered.querySelectorAll('.campaign-tabs a')].map((link) => link.getAttribute('data-nav-page-id'))).toEqual([
-      'campaign-detail',
       'campaign-insights',
       'campaign-workflows',
       'campaign-runs',
-      'campaign-issues'
+      'campaign-issues',
+      'campaign-detail'
     ]);
     expect(rendered.querySelector('.campaign-readme h1')?.textContent).toBe('Ambient Context');
     expect(rendered.querySelector('.campaign-readme h2')?.textContent).toBe('Capabilities');
@@ -217,7 +217,7 @@ describe('campaign detail route', () => {
     }));
 
     expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-campaign-workflows?campaign=ambient-context');
-    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('OverviewInsightsWorkflowsRunsIssues');
+    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('InsightsWorkflowsRunsIssuesInformation');
   });
 
   describe('workflow run navigation', () => {

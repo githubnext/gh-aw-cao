@@ -3351,8 +3351,8 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
         campaigns: {
           source: 'campaigns',
           rows: [
-            { campaign: 'ambient-context', 'campaign-name': 'Ambient Context', 'campaign-icon': 'workflow', 'campaign-link': { 'dashboard-href': '#page-campaign-detail?campaign=ambient-context', 'dashboard-label': 'View Ambient Context campaign dashboard' } },
-            { campaign: 'aw-doctor', 'campaign-name': 'AW Doctor', 'campaign-icon': 'gear', 'campaign-link': { 'dashboard-href': '#page-campaign-detail?campaign=aw-doctor', 'dashboard-label': 'View AW Doctor campaign dashboard' } }
+            { campaign: 'ambient-context', 'campaign-name': 'Ambient Context', 'campaign-icon': 'workflow', 'campaign-link': { 'dashboard-href': '#page-campaign-insights?campaign=ambient-context', 'dashboard-label': 'View Ambient Context campaign dashboard' } },
+            { campaign: 'aw-doctor', 'campaign-name': 'AW Doctor', 'campaign-icon': 'gear', 'campaign-link': { 'dashboard-href': '#page-campaign-insights?campaign=aw-doctor', 'dashboard-label': 'View AW Doctor campaign dashboard' } }
           ],
           metadata
         },
@@ -3467,14 +3467,14 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   await expect(awDoctorSummary).toContainText('23.9');
   await expect(awDoctorSummary.locator('[data-field="value-created"]')).toHaveText('0.25');
   await expect(awDoctorSummary.getByRole('button', { name: 'Update campaign' })).toHaveCount(0);
-  await expect(awDoctorSummary.getByRole('link', { name: 'View AW Doctor campaign dashboard' })).toHaveAttribute('href', '#page-campaign-detail?campaign=aw-doctor');
+  await expect(awDoctorSummary.getByRole('link', { name: 'View AW Doctor campaign dashboard' })).toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
   await expect(awDoctorSummary.locator('[data-field="modes"] .mode-badge')).toHaveText('review');
   await expect(awDoctorSummary.locator('[data-field="registration"] .status')).toHaveText('true');
   await page.getByRole('button', { name: 'Cards' }).click();
   const awDoctorCard = page.locator('[data-page-id="campaigns"] [data-mobile-card-list] .entity-card-list-card').filter({ hasText: 'AW Doctor' });
-  await expect(awDoctorCard.locator('[data-card-drill]')).toHaveAttribute('href', '#page-campaign-detail?campaign=aw-doctor');
+  await expect(awDoctorCard.locator('[data-card-drill]')).toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
   await awDoctorCard.click({ position: { x: 6, y: 6 } });
-  await expect(page).toHaveURL(/#page-campaign-detail\?campaign=aw-doctor$/);
+  await expect(page).toHaveURL(/#page-campaign-insights\?campaign=aw-doctor$/);
   await page.evaluate(() => {
     window.location.hash = '#page-operational-value';
   });
@@ -3496,10 +3496,10 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   await expect(page.locator('[data-page-mode]')).toHaveText('Review');
   await expect(page.locator('[data-nav-page-id="campaigns"]')).toHaveAttribute('aria-current', 'page');
   const campaignNavigation = page.getByRole('navigation', { name: 'Ambient Context views' });
-  await expect(campaignNavigation).toContainText('OverviewInsightsWorkflowsRunsIssues');
+  await expect(campaignNavigation).toContainText('InsightsWorkflowsRunsIssuesInformation');
   await expect(campaignNavigation).toHaveCSS('display', 'flex');
   await expect(campaignNavigation).toHaveCSS('border-bottom-style', 'solid');
-  const currentCampaignLink = campaignNavigation.getByRole('link', { name: 'Overview' });
+  const currentCampaignLink = campaignNavigation.getByRole('link', { name: 'Information' });
   await expect(currentCampaignLink).toHaveAttribute('aria-current', 'page');
   expect(await currentCampaignLink.evaluate((link) => {
     const token = document.createElement('span');
@@ -3548,7 +3548,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   await expect(page.locator('[data-page-id="campaign-issues"] [data-view-id="campaign-issue-table"]')).toContainText('Review worker finding');
   await expect(page.locator('[data-page-id="campaign-issues"] [data-view-id="campaign-issue-table"]')).not.toContainText('Review ambient context proposal');
   await page.getByRole('button', { name: 'Chart' }).click();
-  await campaignNavigation.getByRole('link', { name: 'Overview' }).click();
+  await campaignNavigation.getByRole('link', { name: 'Information' }).click();
   await expect(page.locator('[data-page-id="campaign-detail"]')).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });

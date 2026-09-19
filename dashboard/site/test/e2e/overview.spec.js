@@ -36,7 +36,7 @@ const sources = {
     campaign: 'aw-doctor',
     'campaign-name': 'AW Doctor',
     'campaign-dashboard-link': {
-      'dashboard-href': '#page-campaign-detail?campaign=aw-doctor',
+      'dashboard-href': '#page-campaign-insights?campaign=aw-doctor',
       'dashboard-label': 'View AW Doctor campaign dashboard'
     },
     workflows: 3,
@@ -120,7 +120,7 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(factory.locator(':scope > .factory-intro + .factory-floor')).toHaveCount(1);
     await expect(factory.getByRole('heading', { name: 'Campaigns' })).toBeVisible();
     await expect(factory.getByRole('link', { name: 'AW Doctor' }))
-      .toHaveAttribute('href', '#page-campaign-detail?campaign=aw-doctor');
+      .toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
     await expect(factory.locator('.entity-card-list-card')).toHaveCount(1);
     await expect(factory.locator('.entity-card-list-card dt')).toHaveText(['Workflows', 'Value', 'Dispatches', 'AIC']);
     await expect(factory.getByRole('heading', { name: 'Your factory is delivering value.' })).toBeVisible();
