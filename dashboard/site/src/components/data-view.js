@@ -345,8 +345,8 @@ function renderEntityCardListView(options) {
           'data-custom-view-mark': 'list'
         }, cards)
         : h('p', { className: 'document-list-empty' }, emptyMessage),
-      viewAllPage
-        ? h(
+      ...(viewAllPage
+        ? [h(
           'footer',
           { className: 'document-list-footer' },
           h(
@@ -358,8 +358,8 @@ function renderEntityCardListView(options) {
             typeof viewAll?.label === 'string' && viewAll.label ? viewAll.label : 'View all',
             octicon('arrow-right')
           )
-        )
-        : null
+        )]
+        : [])
     ],
     headingTag,
     view.description

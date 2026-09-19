@@ -567,6 +567,56 @@ describe('data view renderer', () => {
     expect(rendered?.querySelector('.entity-card-list-chevron .octicon-chevron-right')).not.toBeNull();
   });
 
+  it('renders a declared entity-card view-all route beneath the list', () => {
+    const rendered = renderDataView('list', {
+      pageId: 'overview',
+      title: 'Needs attention',
+      sourceName: 'overview-needs-attention-preview',
+      view: {
+        mark: 'list',
+        list: {
+          style: 'entity-cards',
+          appearance: 'grouped',
+          card: 'attention-signal',
+          drill: { type: 'external', field: 'evidence-link' },
+          'view-all': { page: 'overview-needs-attention', label: 'View all' }
+        },
+        encoding: { columns: [{ field: 'title' }] }
+      },
+      rows: [{
+        title: '.github/workflows/doctor.md',
+        kind: 'Repeated workflow failures',
+        reason: '2 failed runs in the selected horizon',
+        'evidence-link': {
+          href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/42',
+          label: 'View run 42'
+        }
+      }],
+      cardTemplates: {
+        'attention-signal': {
+          icon: 'issue-opened',
+          title: { field: 'title' },
+          subtitle: { field: 'reason' },
+          labels: [{ field: 'kind', display: 'label' }],
+          details: []
+        }
+      },
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const viewAll = rendered?.querySelector('.document-list-footer a');
+    expect(viewAll?.getAttribute('href')).toBe('#page-overview-needs-attention');
+    expect(viewAll?.textContent).toContain('View all');
+    expect(rendered?.querySelector('.entity-card-list-title a')?.getAttribute('href'))
+      .toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/42');
+  });
+
   it('keeps a list action available when its source is unavailable', () => {
     setDeclaredCliActions([{
       id: 'upgrade-repository',

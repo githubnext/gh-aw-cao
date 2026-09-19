@@ -153,7 +153,7 @@
         "details": [
           { "field": "scope", "title": "Scope" },
           { "field": "action", "title": "Next step" },
-          { "field": "observed-at", "title": "Observed", "format": "human-friendly-timestamp" }
+          { "field": "observed-at", "title": "Observed", "type": "temporal", "format": "human-friendly-timestamp" }
         ]
       },
       {

@@ -314,6 +314,35 @@ describe('dashboard document validation', () => {
     ]));
   });
 
+  it('validates the declared entity-card view-all route', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const overviewPage = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'overview'
+    );
+    const attention = overviewPage.views.find(
+      (/** @type {{ id: string }} */ view) => view.id === 'overview-needs-attention'
+    );
+
+    expect(attention.list['view-all']).toEqual({ page: 'overview-needs-attention', label: 'View all' });
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+
+    attention.list['view-all'] = { label: 'View all' };
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({ path: expect.stringContaining('list.view-all.page') })
+      ])
+    });
+
+    attention.list['view-all'] = { page: 'overview-needs-attention', route: 'overview' };
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({ path: expect.stringContaining('list.view-all') })
+      ])
+    });
+  });
+
   it('validates declarative card lists and their view actions', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const maintenancePage = document.dashboard.pages.find(
@@ -1128,12 +1157,15 @@ describe('dashboard document validation', () => {
     }),
       expect.objectContaining({
       id: 'overview-needs-attention',
-      data: { sources: ['overview-needs-attention-preview'] },
-      mark: 'element',
-      element: 'needs-attention-list',
-      config: {
-        'view-all-page': 'overview-needs-attention',
-        'view-all-label': 'View all'
+      data: { source: 'overview-needs-attention-preview' },
+      mark: 'list',
+      list: {
+        style: 'entity-cards',
+        appearance: 'grouped',
+        card: 'attention-signal',
+        icon: 'issue-opened',
+        drill: { type: 'external', field: 'evidence-link' },
+        'view-all': { page: 'overview-needs-attention', label: 'View all' }
       },
       layout: 'full'
     }),

@@ -148,17 +148,18 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(factory.getByRole('heading', { name: 'Campaigns' })).toBeVisible();
     const attention = factory.locator(':scope > [data-view-id="overview-needs-attention"]');
     await expect(attention).toBeVisible();
-    await expect(attention.locator('.signal-item')).toHaveCount(3);
-    await expect(attention.getByRole('link', { name: 'View run 42' }))
+    await expect(attention.locator('.entity-card-list-card')).toHaveCount(3);
+    await expect(attention.getByRole('link', { name: '.github/workflows/doctor.md' }))
       .toHaveAttribute('href', 'https://github.com/githubnext/gh-aw-cao/actions/runs/42');
     await expect(attention.getByRole('link', { name: 'View all' }))
       .toHaveAttribute('href', '#page-overview-needs-attention');
     await expect(attention.locator('time').first()).toHaveAttribute('datetime', '2026-09-16T11:30:00Z');
-    await expect(attention.locator('.count-badge').first()).toHaveText('2');
+    await expect(attention.locator('.entity-card-list-card dt').first()).toHaveText('Scope');
     await expect(factory.getByRole('link', { name: 'AW Doctor' }))
       .toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
-    await expect(factory.locator('.entity-card-list-card')).toHaveCount(1);
-    await expect(factory.locator('.entity-card-list-card dt')).toHaveText(['Workflows', 'Value', 'Dispatches', 'AIC']);
+    const campaigns = factory.locator(':scope > [data-view-id="overview-campaigns"]');
+    await expect(campaigns.locator('.entity-card-list-card')).toHaveCount(1);
+    await expect(campaigns.locator('.entity-card-list-card dt')).toHaveText(['Workflows', 'Value', 'Dispatches', 'AIC']);
     await expect(factory.getByRole('heading', { name: 'Your factory is delivering value.' })).toBeVisible();
     await expect(factory.locator('.factory-running-active')).toBeVisible();
     await expect(factory.locator('.factory-rhythm-day')).toHaveCount(7);
