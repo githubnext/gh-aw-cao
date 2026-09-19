@@ -2029,7 +2029,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toBeVisible();
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(overviewPage.locator('.factory-intro')).toBeInViewport();
-  await expect(overviewPage.locator('.custom-view')).toHaveCount(3);
+  await expect(overviewPage.locator('.custom-view')).toHaveCount(4);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   await expect(overviewPage.locator('.table-scroll')).toHaveCount(0);
 

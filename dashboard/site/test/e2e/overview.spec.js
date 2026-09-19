@@ -32,6 +32,32 @@ const sources = {
   'overview-factory-status': source('overview-factory-status', [{ 'factory-heading': 'Your factory is delivering value.' }]),
   'overview-registered-repository-summary': source('overview-registered-repository-summary', [{ 'registered-repositories': 6 }]),
   'overview-worker-summary': source('overview-worker-summary', [{ workers: 3 }]),
+  'overview-needs-attention-preview': source('overview-needs-attention-preview', [
+    {
+      kind: 'Repeated workflow failures',
+      title: '.github/workflows/doctor.md',
+      scope: 'githubnext/gh-aw-cao',
+      reason: '2 failed runs in the selected horizon',
+      action: 'Open latest failed run on GitHub',
+      'observed-at': '2026-09-16T11:30:00Z',
+      'evidence-link': {
+        href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/42',
+        label: 'View run 42'
+      }
+    },
+    ...['101', '102'].map((id) => ({
+      kind: 'Human review required',
+      title: `Review output ${id}`,
+      scope: 'githubnext/gh-aw-cao',
+      reason: 'Output awaits approval',
+      action: 'Open review item on GitHub',
+      'observed-at': '2026-09-16T10:00:00Z',
+      'evidence-link': {
+        href: `https://github.com/githubnext/gh-aw-cao/issues/${id}`,
+        label: `View issue ${id}`
+      }
+    }))
+  ]),
   'campaign-inventory': source('campaign-inventory', [{
     campaign: 'aw-doctor',
     'campaign-name': 'AW Doctor',
@@ -119,6 +145,14 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(factory.locator(':scope > [data-view-id="overview-campaigns"]')).toHaveClass(/custom-view/);
     await expect(factory.locator(':scope > .factory-intro + .factory-floor')).toHaveCount(1);
     await expect(factory.getByRole('heading', { name: 'Campaigns' })).toBeVisible();
+    const attention = factory.locator(':scope > [data-view-id="overview-needs-attention"]');
+    await expect(attention).toBeVisible();
+    await expect(attention.locator('.signal-item')).toHaveCount(3);
+    await expect(attention.getByRole('link', { name: 'View run 42' }))
+      .toHaveAttribute('href', 'https://github.com/githubnext/gh-aw-cao/actions/runs/42');
+    await expect(attention.getByRole('link', { name: 'View all' }))
+      .toHaveAttribute('href', '#page-overview-needs-attention');
+    await expect(attention.locator('time').first()).toHaveAttribute('datetime', '2026-09-16T11:30:00Z');
     await expect(factory.getByRole('link', { name: 'AW Doctor' }))
       .toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
     await expect(factory.locator('.entity-card-list-card')).toHaveCount(1);
