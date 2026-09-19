@@ -1421,7 +1421,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .signal-item > a:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 .signal-evidence > span { color: var(--muted); font-size: .6875rem; }
 .signal-list-footer { display: flex; justify-content: flex-end; padding: 8px 14px; border: 1px solid var(--border); border-top: 0; border-radius: 0 0 6px 6px; }
-.signal-list-footer a, .table-external-action { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; }
+.signal-list-footer a, .table-external-action { min-height: 24px; display: inline-flex; align-items: center; gap: 5px; font-weight: 600; }
 .signal-rank { color: var(--muted); font-size: .6875rem; font-variant-numeric: tabular-nums; text-align: center; }
 .signal-icon { width: 20px; display: grid; place-items: center; color: var(--attention); }
 .signal-critical .signal-icon { color: var(--danger); }
