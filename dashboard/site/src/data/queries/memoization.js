@@ -1,19 +1,21 @@
 export const DASHBOARD_QUERY_CACHE_MAX_ENTRIES = 24;
 
 /**
- * Creates a bounded, revision-aware in-memory cache for materialized query results.
- * Results remain reusable for the lifetime of their database revision. Older
- * revisions remain available as stale-while-revalidate snapshots until the
- * worker replaces or evicts them.
- * @param {{ maxEntries?: number }} [options]
+ * Creates a bounded, revision-aware weak cache for materialized query results.
+ * Results remain reusable while another owner keeps them alive. Older revisions
+ * may provide stale-while-revalidate snapshots, but never prevent collection.
+ * @param {{ maxEntries?: number, weakRef?: (value: object) => { deref: () => object | undefined } | null }} [options]
  */
 export function createDashboardQueryMemoization(options = {}) {
   const maxEntries = options.maxEntries ?? DASHBOARD_QUERY_CACHE_MAX_ENTRIES;
-  /** @type {Map<string, { revision: number, value: unknown }>} */
+  const weakRef = options.weakRef ?? ((value) => (
+    typeof WeakRef === 'function' ? new WeakRef(value) : null
+  ));
+  /** @type {Map<string, { revision: number, reference: { deref: () => object | undefined } }>} */
   const entries = new Map();
   let latestRevision = Number.NEGATIVE_INFINITY;
 
-  /** @param {string} key @param {{ revision: number, value: unknown }} entry */
+  /** @param {string} key @param {{ revision: number, reference: { deref: () => object | undefined } }} entry */
   const touch = (key, entry) => {
     entries.delete(key);
     entries.set(key, entry);
@@ -34,8 +36,13 @@ export function createDashboardQueryMemoization(options = {}) {
     peek(key) {
       const cached = entries.get(key);
       if (!cached) return null;
+      const value = cached.reference.deref();
+      if (value === undefined) {
+        entries.delete(key);
+        return null;
+      }
       touch(key, cached);
-      return { revision: cached.revision, value: cached.value };
+      return { revision: cached.revision, value };
     },
 
     /**
@@ -49,13 +56,18 @@ export function createDashboardQueryMemoization(options = {}) {
       latestRevision = Math.max(latestRevision, databaseRevision);
       const cached = entries.get(key);
       if (cached?.revision === databaseRevision) {
-        touch(key, cached);
-        return /** @type {T} */ (cached.value);
+        const value = cached.reference.deref();
+        if (value !== undefined) {
+          touch(key, cached);
+          return /** @type {T} */ (value);
+        }
+        entries.delete(key);
       }
 
       const pending = compute().then((value) => {
-        if (latestRevision === databaseRevision) {
-          touch(key, { revision: databaseRevision, value });
+        if (latestRevision === databaseRevision && value !== null && typeof value === 'object') {
+          const reference = weakRef(value);
+          if (reference) touch(key, { revision: databaseRevision, reference });
         }
         return value;
       });

@@ -5,6 +5,27 @@ import {
 } from '../../src/data/queries/memoization.js';
 
 describe('dashboard query memoization', () => {
+  function controllableWeakReferences() {
+    /** @type {Array<{ clear: () => void }>} */
+    const references = [];
+    return {
+      references,
+      /** @param {object} value */
+      weakRef: (value) => {
+        /** @type {object | undefined} */
+        let target = value;
+        const reference = {
+          deref: () => target,
+          clear: () => {
+            target = undefined;
+          }
+        };
+        references.push(reference);
+        return reference;
+      }
+    };
+  }
+
   it('reuses a materialized result for the lifetime of its database revision', async () => {
     const memoization = createDashboardQueryMemoization();
     const compute = vi.fn(async () => ({ rows: [{ run: '1' }] }));
@@ -81,7 +102,7 @@ describe('dashboard query memoization', () => {
 
   it('evicts the least recently used result when bounded capacity is reached', async () => {
     const memoization = createDashboardQueryMemoization({ maxEntries: 2 });
-    const compute = vi.fn(async () => compute.mock.calls.length);
+    const compute = vi.fn(async () => ({ sequence: compute.mock.calls.length }));
 
     await memoization.get(1, 'overview', compute);
     await memoization.get(1, 'repositories', compute);
@@ -90,6 +111,30 @@ describe('dashboard query memoization', () => {
     await memoization.get(1, 'repositories', compute);
 
     expect(compute).toHaveBeenCalledTimes(4);
+  });
+
+  it('recomputes a query after its weakly cached result is collected', async () => {
+    const weakReferences = controllableWeakReferences();
+    const memoization = createDashboardQueryMemoization({ weakRef: weakReferences.weakRef });
+    const compute = vi.fn(async () => ({ sequence: compute.mock.calls.length }));
+
+    await memoization.get(1, 'overview', compute);
+    weakReferences.references[0].clear();
+
+    expect(memoization.peek('overview')).toBeNull();
+    await expect(memoization.get(1, 'overview', compute)).resolves.toEqual({ sequence: 2 });
+    expect(compute).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retain query results when weak references are unavailable', async () => {
+    const memoization = createDashboardQueryMemoization({ weakRef: () => null });
+    const compute = vi.fn(async () => ({ sequence: compute.mock.calls.length }));
+
+    await memoization.get(1, 'overview', compute);
+    expect(memoization.peek('overview')).toBeNull();
+    await memoization.get(1, 'overview', compute);
+
+    expect(compute).toHaveBeenCalledTimes(2);
   });
 
   it('creates the same key for equivalent requested-source sets', () => {
