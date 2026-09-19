@@ -67,6 +67,21 @@
         ]
       },
       {
+        "id": "audit",
+        "icon": "checklist",
+        "title": { "field": "event-summary", "title": "Audit event" },
+        "labels": [
+          { "field": "event-status", "title": "Status", "display": "status" },
+          { "field": "audit-kind", "title": "Audit event", "display": "label" }
+        ],
+        "details": [
+          { "field": "workflow", "title": "Workflow", "format": "workflow-relative-path" },
+          { "field": "repository", "title": "Repository" },
+          { "field": "run", "title": "Run", "display": "run-link" },
+          { "field": "observed-at", "title": "Observed", "format": "human-friendly-timestamp" }
+        ]
+      },
+      {
         "id": "mcp-tool",
         "icon": "mcp",
         "title": { "field": "mcp-tool", "title": "MCP tool" },
@@ -126,6 +141,21 @@
           { "field": "owner", "title": "Owner" },
           { "field": "workflow-count", "title": "Workflows" },
           { "field": "workflow-roles", "title": "Roles" }
+        ]
+      },
+      {
+        "id": "campaign",
+        "icon": "goal",
+        "title": { "field": "campaign-name", "title": "Campaign" },
+        "labels": [
+          { "field": "modes", "title": "Modes", "display": "label" },
+          { "field": "registration", "title": "Registration", "display": "active-state" }
+        ],
+        "details": [
+          { "field": "workflows", "title": "Workflows" },
+          { "field": "value-created", "title": "Value", "unit": "ops-value" },
+          { "field": "dispatches", "title": "Dispatches" },
+          { "field": "aic", "title": "AIC", "unit": "aic" }
         ]
       }
     ],
@@ -580,9 +610,9 @@
       },
       {
         "id": "disable-campaign",
-        "label": "Disable campaign",
-        "description": "Disable this campaign's orchestrator and worker workflows.",
-        "icon": "stop",
+        "label": "Pause campaign",
+        "description": "Disable future campaign workflow runs. Active runs continue until separately cancelled on GitHub.",
+        "icon": "pause",
         "command": "./.github/aw/cao.sh disable {{campaign}}",
         "placement": "row"
       }
@@ -908,7 +938,7 @@
             "as": "campaign-dashboard-href",
             "function": "concat",
             "args": [
-              { "value": "#page-campaign-detail?campaign=" },
+              { "value": "#page-campaign-insights?campaign=" },
               { "field": "encoded-operation-id" }
             ]
           },
@@ -1420,6 +1450,185 @@
           "predicates": [{ "field": "run-conclusion", "in": ["failure", "startup-failure", "stale", "timed-out"] }]
         },
         "aggregate": { "values": [{ "field": "run", "as": "count", "reducer": "count" }] }
+      },
+      {
+        "name": "overview-failing-runs",
+        "intent": "Identify failed runs in the selected snapshot horizon so subsequent streak logic can use the same declarative failure definition.",
+        "from": "runs",
+        "filter": {
+          "predicates": [{ "field": "run-conclusion", "in": ["failure", "startup-failure", "stale", "timed-out"] }]
+        },
+        "aggregate": {
+          "by": ["organization", "repository", "workflow", "run"],
+          "values": [
+            { "field": "run", "as": "failing-runs", "reducer": "distinct-count" }
+          ]
+        }
+      },
+      {
+        "name": "overview-failing-workflows",
+        "intent": "Identify only workflows that have at least one failed run in the selected snapshot horizon before computing streaks.",
+        "from": "overview-failing-runs",
+        "aggregate": {
+          "by": ["organization", "repository", "workflow"],
+          "values": [
+            { "field": "run", "as": "failing-runs", "reducer": "distinct-count" }
+          ]
+        }
+      },
+      {
+        "name": "overview-repeated-failure-groups",
+        "intent": "Group each workflow's latest consecutive failing run sequence in the selected snapshot horizon, resetting the group after any successful run.",
+        "from": "runs",
+        "joins": [
+          {
+            "source": "overview-failing-workflows",
+            "type": "inner",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" }
+            ],
+            "fields": [{ "field": "failing-runs", "as": "failing-runs" }]
+          },
+          {
+            "source": "overview-failing-runs",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" },
+              { "left": "run", "right": "run" }
+            ],
+            "fields": [{ "field": "failing-runs", "as": "run-failing-count" }]
+          }
+        ],
+        "compute": [
+          {
+            "as": "failure-streak-point",
+            "function": "failure-streak-point",
+            "args": [{ "field": "started-at" }, { "field": "run" }, { "field": "run-failing-count" }]
+          }
+        ],
+        "aggregate": {
+          "by": ["organization", "repository", "workflow"],
+          "values": [
+            { "field": "failure-streak-point", "as": "failure-count", "reducer": "latest-failure-streak" }
+          ]
+        }
+      },
+      {
+        "name": "overview-repeated-failure-candidates",
+        "intent": "Attach selected-horizon failure counts to each workflow's latest canonical work item.",
+        "from": "work-items",
+        "joins": [
+          {
+            "source": "overview-repeated-failure-groups",
+            "type": "inner",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" }
+            ],
+            "fields": [{ "field": "failure-count", "as": "failure-count" }]
+          }
+        ],
+        "filter": {
+          "predicates": [{ "field": "lifecycle-state", "equals": "blocked" }]
+        },
+        "compute": [
+          { "as": "is-repeated", "function": "greater-than", "args": [{ "field": "failure-count" }, { "value": 1 }] },
+          { "as": "attention-signal-id", "function": "concat", "args": [{ "value": "repeated-failure:" }, { "field": "organization" }, { "value": "/" }, { "field": "repository" }, { "value": ":" }, { "field": "workflow" }] },
+          { "as": "kind", "function": "coalesce", "args": [{ "value": "Repeated workflow failures" }, { "value": "Repeated workflow failures" }] },
+          { "as": "title", "function": "coalesce", "args": [{ "field": "workflow" }, { "value": "Workflow" }] },
+          { "as": "attention-reason", "function": "concat", "args": [{ "field": "failure-count" }, { "value": " failed runs in the selected horizon" }] },
+          { "as": "action", "function": "coalesce", "args": [{ "value": "Open latest failed run on GitHub" }, { "value": "Open latest failed run on GitHub" }] },
+          { "as": "icon", "function": "coalesce", "args": [{ "value": "x-circle" }, { "value": "x-circle" }] },
+          { "as": "tone", "function": "coalesce", "args": [{ "value": "critical" }, { "value": "critical" }] },
+          { "as": "priority", "function": "number", "args": [{ "value": 0 }] }
+        ],
+        "select": [
+          { "field": "is-repeated" },
+          { "field": "attention-signal-id" },
+          { "field": "kind" },
+          { "field": "title" },
+          { "field": "scope" },
+          { "field": "attention-reason", "as": "reason" },
+          { "field": "observed-at" },
+          { "field": "action" },
+          { "field": "evidence-link" },
+          { "field": "run-link" },
+          { "field": "icon" },
+          { "field": "tone" },
+          { "field": "priority" },
+          { "field": "failure-count" }
+        ]
+      },
+      {
+        "name": "overview-repeated-failure-attention",
+        "intent": "Keep only unresolved workflows with two or more failures in the selected horizon.",
+        "from": "overview-repeated-failure-candidates",
+        "filter": { "predicates": [{ "field": "is-repeated", "equals": true }] },
+        "select": [
+          { "field": "attention-signal-id" },
+          { "field": "kind" },
+          { "field": "title" },
+          { "field": "scope" },
+          { "field": "reason" },
+          { "field": "observed-at" },
+          { "field": "action" },
+          { "field": "evidence-link" },
+          { "field": "run-link" },
+          { "field": "icon" },
+          { "field": "tone" },
+          { "field": "priority" },
+          { "field": "failure-count" }
+        ]
+      },
+      {
+        "name": "overview-review-attention",
+        "intent": "Select only unresolved outputs explicitly awaiting human review with their retained GitHub evidence destination.",
+        "from": "work-items",
+        "filter": { "predicates": [{ "field": "lifecycle-state", "equals": "review" }] },
+        "compute": [
+          { "as": "kind", "function": "coalesce", "args": [{ "value": "Human review required" }, { "value": "Human review required" }] },
+          { "as": "title", "function": "coalesce", "args": [{ "field": "objective" }, { "value": "Produced output" }] },
+          { "as": "action", "function": "coalesce", "args": [{ "value": "Open review item on GitHub" }, { "value": "Open review item on GitHub" }] },
+          { "as": "icon", "function": "coalesce", "args": [{ "value": "eye" }, { "value": "eye" }] },
+          { "as": "tone", "function": "coalesce", "args": [{ "value": "action" }, { "value": "action" }] },
+          { "as": "priority", "function": "number", "args": [{ "value": 1 }] }
+        ],
+        "select": [
+          { "field": "work-item-id", "as": "attention-signal-id" },
+          { "field": "kind" },
+          { "field": "title" },
+          { "field": "scope" },
+          { "field": "reason" },
+          { "field": "observed-at" },
+          { "field": "action" },
+          { "field": "evidence-link" },
+          { "field": "run-link" },
+          { "field": "icon" },
+          { "field": "tone" },
+          { "field": "priority" }
+        ]
+      },
+      {
+        "name": "overview-needs-attention",
+        "intent": "Combine grouped repeated failures and unresolved review outputs without introducing ordinary activity or duplicate work items.",
+        "from": "overview-repeated-failure-attention",
+        "union": ["overview-review-attention"],
+        "order-by": [
+          { "field": "priority", "direction": "asc" },
+          { "field": "observed-at", "direction": "desc" },
+          { "field": "attention-signal-id", "direction": "asc" }
+        ]
+      },
+      {
+        "name": "overview-needs-attention-preview",
+        "intent": "Limit the Overview attention preview to its three highest-priority grouped items.",
+        "from": "overview-needs-attention",
+        "limit": 3
       },
       {
         "name": "overview-blocked-work-count",
@@ -2813,7 +3022,7 @@
           {
             "as": "campaign-dashboard-href",
             "function": "concat",
-            "args": [{ "value": "#page-campaign-detail?campaign=" }, { "field": "encoded-campaign" }]
+            "args": [{ "value": "#page-campaign-insights?campaign=" }, { "field": "encoded-campaign" }]
           },
           {
             "as": "campaign-dashboard-label",
@@ -2966,6 +3175,33 @@
           { "field": "gh-aw-version" },
           { "field": "requested-model" },
           { "field": "resolved-model" },
+          { "field": "run-link" }
+        ],
+        "order-by": [{ "field": "started-at", "direction": "desc" }, { "field": "run", "direction": "desc" }]
+      },
+      {
+        "name": "repository-runs",
+        "intent": "Project canonical runs into repository-addressable run evidence.",
+        "description": "Workflow runs with a stable repository route key.",
+        "from": "runs",
+        "compute": [
+          {
+            "as": "repository-coordinate",
+            "function": "concat",
+            "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }]
+          }
+        ],
+        "select": [
+          { "field": "repository-coordinate" },
+          { "field": "workflow" },
+          { "field": "run" },
+          { "field": "run-title" },
+          { "field": "event" },
+          { "field": "started-at" },
+          { "field": "run-status" },
+          { "field": "run-conclusion" },
+          { "field": "rollout-mode" },
+          { "field": "aic-total" },
           { "field": "run-link" }
         ],
         "order-by": [{ "field": "started-at", "direction": "desc" }, { "field": "run", "direction": "desc" }]
@@ -3160,7 +3396,7 @@
           {
             "as": "campaign-dashboard-href",
             "function": "concat",
-            "args": [{ "value": "#page-campaign-detail?campaign=" }, { "field": "encoded-campaign" }]
+            "args": [{ "value": "#page-campaign-insights?campaign=" }, { "field": "encoded-campaign" }]
           },
           {
             "as": "campaign-dashboard-label",
@@ -3697,6 +3933,27 @@
             "as": "status",
             "function": "if",
             "args": [{ "field": "has-failures" }, { "value": "Needs attention" }, { "field": "action-status" }]
+          },
+          { "as": "encoded-repository", "function": "url-encode", "args": [{ "field": "repository-slug" }] },
+          {
+            "as": "repository-dashboard-href",
+            "function": "concat",
+            "args": [{ "value": "#page-repository-detail?repository=" }, { "field": "encoded-repository" }]
+          },
+          {
+            "as": "repository-dashboard-label",
+            "function": "concat",
+            "args": [{ "value": "View " }, { "field": "repository-slug" }, { "value": " repository dashboard" }]
+          },
+          {
+            "as": "repository-dashboard-link",
+            "function": "dashboard-link",
+            "args": [
+              { "field": "repository-link" },
+              { "field": "repository-dashboard-href" },
+              { "field": "repository-dashboard-label" },
+              { "field": "repository-slug" }
+            ]
           }
         ],
         "select": [
@@ -3709,7 +3966,7 @@
           { "field": "failure-summary" },
           { "field": "aic" },
           { "field": "status" },
-          { "field": "repository-link" },
+          { "field": "repository-dashboard-link", "as": "repository-link" },
           { "field": "failed" }
         ],
         "order-by": [
@@ -3865,7 +4122,7 @@
           {
             "as": "campaign-dashboard-href",
             "function": "concat",
-            "args": [{ "value": "#page-campaign-detail?campaign=" }, { "field": "encoded-campaign" }]
+            "args": [{ "value": "#page-campaign-insights?campaign=" }, { "field": "encoded-campaign" }]
           },
           {
             "as": "campaign-dashboard-label",
@@ -4825,12 +5082,267 @@
         "id": "repository-detail",
         "kind": "custom",
         "title": "Repository",
-        "description": "Authored GitHub Agentic Workflows owned by this repository.",
+        "description": "Observed workflow health and AI Credit usage for this repository.",
         "icon": "repo",
         "class-name": "repository-detail-page",
         "route": {
           "hash-query-parameter": "repository",
-          "navigation-page": "repositories"
+          "navigation-page": "repositories",
+          "tab": "overview",
+          "tabs": [
+            {
+              "id": "overview",
+              "label": "Overview",
+              "icon": "repo",
+              "page": "repository-detail"
+            },
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "repository-insights"
+            },
+            {
+              "id": "workflows",
+              "label": "Workflows",
+              "icon": "workflow",
+              "page": "repository-workflow-inventory"
+            },
+            {
+              "id": "runs",
+              "label": "Runs",
+              "icon": "play",
+              "page": "repository-runs"
+            },
+            {
+              "id": "settings",
+              "label": "Settings",
+              "icon": "gear",
+              "page": "repository-settings"
+            }
+          ]
+        },
+        "views": [
+          {
+            "id": "repository-workflow-count",
+            "title": "Workflows",
+            "description": "Answers how many Agentic Workflows this repository declares.",
+            "data": {
+              "source": "repository-activity",
+              "route-field": "repository"
+            },
+            "mark": "metric",
+            "encoding": {
+              "value": {
+                "field": "workflows",
+                "type": "quantitative",
+                "aggregate": "max"
+              }
+            },
+            "layout": "third"
+          },
+          {
+            "id": "repository-run-count",
+            "title": "Runs",
+            "description": "Answers how many runs were observed for this repository.",
+            "data": {
+              "source": "repository-activity",
+              "route-field": "repository"
+            },
+            "mark": "metric",
+            "encoding": {
+              "value": {
+                "field": "runs",
+                "type": "quantitative",
+                "aggregate": "max"
+              }
+            },
+            "layout": "third"
+          },
+          {
+            "id": "repository-aic-total",
+            "title": "AI Credits",
+            "description": "Answers how many AI Credits this repository consumed.",
+            "data": {
+              "source": "repository-activity",
+              "route-field": "repository"
+            },
+            "mark": "metric",
+            "encoding": {
+              "value": {
+                "field": "aic",
+                "type": "quantitative",
+                "aggregate": "sum",
+                "unit": "aic"
+              }
+            },
+            "layout": "third"
+          },
+          {
+            "id": "repository-health-summary",
+            "title": "Repository health",
+            "description": "Answers whether this repository needs attention, how often its runs fail, and how complete its ingestion is.",
+            "data": {
+              "source": "repository-activity",
+              "route-field": "repository"
+            },
+            "mark": "table",
+            "controls": "static",
+            "empty-message": "No activity has been observed for this repository.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository",
+                  "display": "repository-link"
+                },
+                {
+                  "field": "status",
+                  "type": "nominal",
+                  "title": "Status",
+                  "display": "status"
+                },
+                {
+                  "field": "failure-summary",
+                  "type": "nominal",
+                  "title": "Failures"
+                },
+                {
+                  "field": "evaluated-workflows",
+                  "type": "quantitative",
+                  "title": "Evaluated workflows"
+                }
+              ],
+              "href": {
+                "field": "repository-link",
+                "type": "nominal"
+              }
+            },
+            "layout": "full"
+          }
+        ]
+      },
+{
+        "id": "repository-insights",
+        "kind": "custom",
+        "title": "Repository",
+        "description": "Execution health observed for the workflows in this repository.",
+        "icon": "graph",
+        "class-name": "repository-insights-page",
+        "route": {
+          "hash-query-parameter": "repository",
+          "navigation-page": "repositories",
+          "tab": "insights",
+          "tabs": [
+            {
+              "id": "overview",
+              "label": "Overview",
+              "icon": "repo",
+              "page": "repository-detail"
+            },
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "repository-insights"
+            },
+            {
+              "id": "workflows",
+              "label": "Workflows",
+              "icon": "workflow",
+              "page": "repository-workflow-inventory"
+            },
+            {
+              "id": "runs",
+              "label": "Runs",
+              "icon": "play",
+              "page": "repository-runs"
+            },
+            {
+              "id": "settings",
+              "label": "Settings",
+              "icon": "gear",
+              "page": "repository-settings"
+            }
+          ]
+        },
+        "views": [
+          {
+            "id": "repository-run-health",
+            "title": "Run health trend",
+            "description": "Daily run conclusions show this repository's execution health at a glance.",
+            "data": {
+              "source": "repository-runs",
+              "route-field": "repository-coordinate"
+            },
+            "mark": "chart",
+            "chart": "line",
+            "layout": "full",
+            "empty-message": "No runs have been observed for this repository.",
+            "encoding": {
+              "x": {
+                "field": "started-at",
+                "type": "temporal",
+                "format": "human-friendly-timestamp",
+                "time-unit": "day"
+              },
+              "y": {
+                "field": "run",
+                "type": "quantitative",
+                "aggregate": "count"
+              },
+              "color": {
+                "field": "run-conclusion",
+                "type": "nominal"
+              }
+            }
+          }
+        ]
+      },
+{
+        "id": "repository-workflow-inventory",
+        "kind": "custom",
+        "title": "Repository",
+        "description": "Authored GitHub Agentic Workflows owned by this repository.",
+        "icon": "workflow",
+        "class-name": "repository-workflow-inventory-page",
+        "route": {
+          "hash-query-parameter": "repository",
+          "navigation-page": "repositories",
+          "tab": "workflows",
+          "tabs": [
+            {
+              "id": "overview",
+              "label": "Overview",
+              "icon": "repo",
+              "page": "repository-detail"
+            },
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "repository-insights"
+            },
+            {
+              "id": "workflows",
+              "label": "Workflows",
+              "icon": "workflow",
+              "page": "repository-workflow-inventory"
+            },
+            {
+              "id": "runs",
+              "label": "Runs",
+              "icon": "play",
+              "page": "repository-runs"
+            },
+            {
+              "id": "settings",
+              "label": "Settings",
+              "icon": "gear",
+              "page": "repository-settings"
+            }
+          ]
         },
         "views": [
           {
@@ -4893,7 +5405,212 @@
                 "type": "nominal"
               }
             },
-            "layout": "full-view"
+            "layout": "full"
+          }
+        ]
+      },
+{
+        "id": "repository-runs",
+        "kind": "custom",
+        "title": "Repository",
+        "description": "Observed GitHub Actions runs for the workflows in this repository.",
+        "icon": "play",
+        "class-name": "repository-runs-page",
+        "route": {
+          "hash-query-parameter": "repository",
+          "navigation-page": "repositories",
+          "tab": "runs",
+          "tabs": [
+            {
+              "id": "overview",
+              "label": "Overview",
+              "icon": "repo",
+              "page": "repository-detail"
+            },
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "repository-insights"
+            },
+            {
+              "id": "workflows",
+              "label": "Workflows",
+              "icon": "workflow",
+              "page": "repository-workflow-inventory"
+            },
+            {
+              "id": "runs",
+              "label": "Runs",
+              "icon": "play",
+              "page": "repository-runs"
+            },
+            {
+              "id": "settings",
+              "label": "Settings",
+              "icon": "gear",
+              "page": "repository-settings"
+            }
+          ]
+        },
+        "views": [
+          {
+            "id": "repository-run-table",
+            "title": "Runs",
+            "description": "Answers which recent runs in this repository succeeded, failed, or remain in progress.",
+            "data": {
+              "source": "repository-runs",
+              "route-field": "repository-coordinate"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "empty-message": "No runs have been observed for this repository.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "format": "workflow-relative-path",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "run",
+                  "type": "nominal",
+                  "title": "Run",
+                  "display": "run-link"
+                },
+                {
+                  "field": "run-status",
+                  "type": "nominal",
+                  "title": "Status",
+                  "display": "status"
+                },
+                {
+                  "field": "run-conclusion",
+                  "type": "nominal",
+                  "title": "Conclusion",
+                  "display": "status"
+                },
+                {
+                  "field": "rollout-mode",
+                  "type": "nominal",
+                  "title": "Mode",
+                  "display": "mode"
+                },
+                {
+                  "field": "started-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Started"
+                }
+              ],
+              "href": {
+                "field": "run-link",
+                "type": "nominal"
+              },
+              "actions": [
+                {
+                  "intent": "Open the precise GitHub Actions run page without executing an action.",
+                  "presentation": "external-link",
+                  "icon": "mark-github",
+                  "label": "Open run on GitHub",
+                  "context": ["run-link"]
+                }
+              ]
+            },
+            "layout": "full"
+          }
+        ]
+      },
+{
+        "id": "repository-settings",
+        "kind": "custom",
+        "title": "Repository",
+        "description": "Agentic workflow maintenance actions for this repository.",
+        "icon": "gear",
+        "class-name": "repository-settings-page",
+        "route": {
+          "hash-query-parameter": "repository",
+          "navigation-page": "repositories",
+          "tab": "settings",
+          "tabs": [
+            {
+              "id": "overview",
+              "label": "Overview",
+              "icon": "repo",
+              "page": "repository-detail"
+            },
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "repository-insights"
+            },
+            {
+              "id": "workflows",
+              "label": "Workflows",
+              "icon": "workflow",
+              "page": "repository-workflow-inventory"
+            },
+            {
+              "id": "runs",
+              "label": "Runs",
+              "icon": "play",
+              "page": "repository-runs"
+            },
+            {
+              "id": "settings",
+              "label": "Settings",
+              "icon": "gear",
+              "page": "repository-settings"
+            }
+          ]
+        },
+        "views": [
+          {
+            "id": "repository-compiler-versions",
+            "title": "Compiler version",
+            "description": "Installed and current gh-aw compiler versions observed for this repository.",
+            "data": {
+              "source": "maintenance-repositories",
+              "route-field": "repository"
+            },
+            "mark": "table",
+            "controls": "static",
+            "empty-message": "No Agentic Workflows were observed for this repository.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "gh-aw-version",
+                  "type": "nominal",
+                  "title": "Installed"
+                },
+                {
+                  "field": "gh-aw-current-version",
+                  "type": "nominal",
+                  "title": "Latest"
+                },
+                {
+                  "field": "upgrade-state",
+                  "type": "nominal",
+                  "title": "Upgrade",
+                  "display": "status"
+                }
+              ],
+              "actions": [
+                {
+                  "action": "upgrade-target-repository",
+                  "presentation": "cli-action",
+                  "icon": "download",
+                  "label": "Update agentic workflows",
+                  "context": [
+                    "repository"
+                  ]
+                }
+              ]
+            },
+            "layout": "full"
           }
         ]
       },
@@ -5092,7 +5809,16 @@
               "href": {
                 "field": "run-link",
                 "type": "nominal"
-              }
+              },
+              "actions": [
+                {
+                  "intent": "Open the precise GitHub Actions run page without executing an action.",
+                  "presentation": "external-link",
+                  "icon": "mark-github",
+                  "label": "Open run on GitHub",
+                  "context": ["run-link"]
+                }
+              ]
             },
             "layout": "full"
           },
@@ -5518,10 +6244,11 @@
             "description": "The 20 most frequent audit-event buckets for this campaign, grouped by workflow and shared summary after info-level events are excluded.",
             "data": {
               "source": "audit-event-summary-buckets",
-              "route-field": "campaign"
+              "route-field": "campaign",
+              "limit": 20
             },
             "mark": "chart",
-            "chart": "bar",
+            "chart": "horizontal-bar",
             "layout": "full",
             "empty-message": "No high- or medium-severity audit events were observed for this campaign in the current run window.",
             "encoding": {
@@ -5727,6 +6454,15 @@
                   "type": "nominal",
                   "title": "Registration",
                   "display": "active-state"
+                }
+              ],
+              "actions": [
+                {
+                  "intent": "Open the precise authored workflow on GitHub without running or disabling it.",
+                  "presentation": "external-link",
+                  "icon": "mark-github",
+                  "label": "Open workflow on GitHub",
+                  "context": ["workflow-link"]
                 }
               ]
             },
@@ -6074,6 +6810,13 @@
               ],
               "actions": [
                 {
+                  "intent": "Open the precise GitHub Actions run page without executing an action.",
+                  "presentation": "external-link",
+                  "icon": "mark-github",
+                  "label": "Open run on GitHub",
+                  "context": ["run-link"]
+                },
+                {
                   "intent": "Debug this failed workflow dispatch. Explain the retained failure reason, verify it against the linked GitHub Actions run, and propose the safest next action.",
                   "presentation": "copy-prompt",
                   "icon": "search",
@@ -6236,6 +6979,15 @@
                   "type": "nominal",
                   "title": "Status",
                   "display": "status"
+                }
+              ],
+              "actions": [
+                {
+                  "intent": "Open the precise GitHub Actions run page without executing an action.",
+                  "presentation": "external-link",
+                  "icon": "mark-github",
+                  "label": "Open run on GitHub",
+                  "context": ["run-link"]
                 }
               ]
             },
@@ -8453,8 +9205,8 @@
                 {
                   "action": "disable-campaign",
                   "presentation": "cli-action",
-                  "icon": "stop",
-                  "label": "Disable",
+                  "icon": "pause",
+                  "label": "Pause",
                   "context": [
                     "campaign"
                   ]
@@ -8779,6 +9531,77 @@
               }
             },
             "layout": "full"
+          },
+          {
+            "id": "overview-needs-attention",
+            "title": "Needs attention",
+            "description": "Grouped repeated failures and unresolved outputs explicitly awaiting human review. Evidence reflects the selected snapshot and time horizon.",
+            "data": {
+              "sources": ["overview-needs-attention-preview"]
+            },
+            "mark": "element",
+            "element": "needs-attention-list",
+            "config": {
+              "view-all-page": "overview-needs-attention",
+              "view-all-label": "View all"
+            },
+            "layout": "full"
+          },
+          {
+            "id": "overview-campaigns",
+            "title": "Campaigns",
+            "description": "Centrally managed campaigns and their observed execution totals.",
+            "data": {
+              "source": "campaign-inventory"
+            },
+            "mark": "list",
+            "list": {
+              "style": "entity-cards",
+              "appearance": "grouped",
+              "card": "campaign",
+              "icon": "goal",
+              "drill": {
+                "type": "external",
+                "field": "campaign-dashboard-link"
+              }
+            },
+            "empty-message": "No campaigns discovered.",
+            "layout": "full",
+            "encoding": {
+              "columns": [
+                { "field": "campaign-name", "type": "nominal", "title": "Campaign" },
+                { "field": "modes", "type": "nominal", "title": "Modes" },
+                { "field": "registration", "type": "nominal", "title": "Registration" },
+                { "field": "workflows", "type": "quantitative", "title": "Workflows" },
+                { "field": "value-created", "type": "quantitative", "title": "Value", "unit": "ops-value" },
+                { "field": "dispatches", "type": "quantitative", "title": "Dispatches" },
+                { "field": "aic", "type": "quantitative", "title": "AIC", "unit": "aic" },
+                { "field": "campaign-dashboard-link", "type": "nominal", "title": "Campaign link" }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "overview-needs-attention",
+        "kind": "custom",
+        "title": "Needs attention",
+        "icon": "issue-opened",
+        "description": "Grouped repeated workflow failures and unresolved outputs explicitly awaiting human review in the selected snapshot horizon.",
+        "route": {
+          "navigation-page": "overview"
+        },
+        "views": [
+          {
+            "id": "overview-needs-attention-list",
+            "title": "Needs attention",
+            "description": "Open the retained GitHub evidence to investigate or complete the indicated review. Opening a link does not execute an action.",
+            "data": {
+              "sources": ["overview-needs-attention"]
+            },
+            "mark": "element",
+            "element": "needs-attention-list",
+            "layout": "full-view"
           }
         ]
       },
@@ -9188,8 +10011,8 @@
       {
         "pages": [
           "overview",
-          "repositories",
           "campaigns",
+          "repositories",
           "configuration"
         ]
       },

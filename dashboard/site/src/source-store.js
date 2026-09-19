@@ -25,7 +25,7 @@ const IDLE_ENTRY = { status: 'idle', origin: 'query', source: null };
 
 /** @type {Map<string, import('./reactive.js').State<SourceEntry>>} */
 const entries = new Map();
-/** @typedef {{ pageId?: string, viewId?: string, sourceIndex?: number, bindingKey?: string, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} SourceRequestOptions */
+/** @typedef {{ pageId?: string, viewId?: string, sourceIndex?: number, bindingKey?: string, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' } }} SourceRequestOptions */
 
 /** @type {Set<string>} */
 const requested = new Set();

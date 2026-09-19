@@ -49,7 +49,7 @@ let dashboardActivated = false;
 let runPhaseOnly = false;
 const dashboardQueryMemoization = createDashboardQueryMemoization();
 /**
- * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, emitted: boolean, pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} DashboardSubscription
+ * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, emitted: boolean, pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' } }} DashboardSubscription
  */
 /** @type {Map<string, DashboardSubscription>} */
 const dashboardSubscriptions = new Map();
@@ -118,7 +118,7 @@ function pageScopedSources(sources, requested) {
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
  * @param {string} [pageId]
  * @param {Record<string, string>} [routeParameters]
- * @param {{ filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } }} [queryContext]
+ * @param {{ filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' }} [queryContext]
  * @param {string} [viewId]
  * @param {typeof liveDashboard} [dashboard]
  */
@@ -892,10 +892,10 @@ function routeParameters(value) {
     .map(([key, item]) => [key, String(item)]));
 }
 
-/** @param {unknown} value */
+/** @param {unknown} value @returns {DashboardSubscription['queryContext']} */
 function queryContext(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
-  const context = /** @type {{ filters?: unknown, search?: unknown, orderBy?: unknown, timeWindow?: unknown }} */ (value);
+  const context = /** @type {{ filters?: unknown, search?: unknown, orderBy?: unknown, timeWindow?: unknown, viewMode?: unknown }} */ (value);
   const filters = context.filters && typeof context.filters === 'object' && !Array.isArray(context.filters)
     ? Object.fromEntries(Object.entries(context.filters)
       .map(([field, candidates]) => [field, Array.isArray(candidates)
@@ -931,10 +931,14 @@ function queryContext(value) {
         end: typeof rawTimeWindow.end === 'string' ? rawTimeWindow.end : undefined
       }
     : undefined;
+  const viewMode = context.viewMode === 'chart' || context.viewMode === 'table' || context.viewMode === 'card'
+    ? context.viewMode
+    : undefined;
   return {
     ...(filters ? { filters } : {}),
     ...(search ? { search } : {}),
     ...(orderBy.length > 0 ? { orderBy } : {}),
-    ...(timeWindow?.start || timeWindow?.end ? { timeWindow } : {})
+    ...(timeWindow?.start || timeWindow?.end ? { timeWindow } : {}),
+    ...(viewMode ? { viewMode } : {})
   };
 }

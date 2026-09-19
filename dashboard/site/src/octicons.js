@@ -3,49 +3,19 @@
  */
 
 import { h } from './dom.js';
+import { OCTICON_SPRITE } from './octicon-sprite.js';
 
-const OCTICONS_URL = new URL('./octicons.svg', import.meta.url).href;
-const SPRITE_ELEMENT_ID = 'octicon-sprite';
-const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
+/** @type {Map<string, Element> | undefined} */
+let symbols;
 
-/** @type {Promise<void> | undefined} */
-let spriteLoad;
-
-/**
- * Inlines the Octicon sprite into the document once.
- *
- * WebKit never resolves `<use>` references that point into an external SVG
- * document, so icons referencing `octicons.svg#octicon-name` render empty on
- * Safari and iOS. Fetching the deployed sprite and inlining it keeps the sprite
- * a separately cached asset while turning every icon into a same-document
- * reference that all browsers resolve.
- * @returns {Promise<void>}
- */
-export function ensureOcticonSprite() {
-  if (spriteLoad) return spriteLoad;
-  if (typeof document === 'undefined' || typeof fetch !== 'function') return Promise.resolve();
-  spriteLoad = (async () => {
-    try {
-      const response = await fetch(OCTICONS_URL, { credentials: 'same-origin' });
-      if (!response.ok) throw new Error(`Octicon sprite request returned ${response.status}.`);
-      const sprite = new DOMParser()
-        .parseFromString(await response.text(), 'image/svg+xml')
-        .documentElement;
-      if (sprite.nodeName !== 'svg') throw new Error('Octicon sprite is not an SVG document.');
-      if (document.getElementById(SPRITE_ELEMENT_ID)) return;
-      const inlined = document.createElementNS(SVG_NAMESPACE, 'svg');
-      inlined.id = SPRITE_ELEMENT_ID;
-      inlined.setAttribute('aria-hidden', 'true');
-      inlined.setAttribute('focusable', 'false');
-      inlined.setAttribute('style', 'position:absolute;width:0;height:0;overflow:hidden');
-      inlined.append(...[...sprite.querySelectorAll('symbol')].map((symbol) => document.importNode(symbol, true)));
-      (document.body ?? document.documentElement).prepend(inlined);
-    } catch (error) {
-      spriteLoad = undefined;
-      throw error;
-    }
-  })();
-  return spriteLoad;
+function octiconSymbols() {
+  if (symbols) return symbols;
+  const sprite = new DOMParser().parseFromString(OCTICON_SPRITE, 'image/svg+xml');
+  symbols = new Map([...sprite.querySelectorAll('symbol')].map((symbol) => [
+    symbol.id.replace(/^octicon-/, ''),
+    symbol
+  ]));
+  return symbols;
 }
 
 /**
@@ -60,10 +30,9 @@ export function octicon(name, className = '') {
       d: 'M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 12.5a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11Zm-.75-9.25a.75.75 0 0 1 1.5 0v3a.75.75 0 0 1-1.5 0ZM8 9.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z'
     })];
   } else {
-    const symbol = document.getElementById(`octicon-${name}`);
-    glyphs = symbol
-      ? [...symbol.childNodes].map((node) => node.cloneNode(true))
-      : [h('use', { href: `#octicon-${name}` })];
+    const symbol = octiconSymbols().get(name) ?? octiconSymbols().get('question');
+    if (!symbol) throw new Error('The fallback Octicon is missing.');
+    glyphs = [...symbol.childNodes].map((node) => document.importNode(node, true));
   }
   return /** @type {SVGElement} */ (/** @type {unknown} */ (h(
     'svg',

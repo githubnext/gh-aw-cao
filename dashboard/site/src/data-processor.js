@@ -25,7 +25,7 @@ const pending = new Map();
  *   context: { githubUrlBase?: string, dashboardRepository?: string | null, pages: unknown[], queries?: unknown[] },
  *   pageId?: string,
  *   routeParameters?: Record<string, string>,
- *   queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } },
+ *   queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' },
  *   pagination?: Record<string, { limit: number, continuationToken?: string }>,
  *   listeners: Set<SubscriptionListener>,
  *   registeredWorker: Worker | null,
@@ -419,7 +419,8 @@ function sameQueryContext(left, right) {
   return sameSearch
     && sameOrder
     && left?.timeWindow?.start === right?.timeWindow?.start
-    && left?.timeWindow?.end === right?.timeWindow?.end;
+    && left?.timeWindow?.end === right?.timeWindow?.end
+    && left?.viewMode === right?.viewMode;
 }
 
 /** @param {ViewSubscription['context']} left @param {ViewSubscription['context']} right */

@@ -66,7 +66,31 @@ function sampleDocument() {
 describe('dashboard-chunks source discovery', () => {
   it('collects the source names a page renders, including callouts', () => {
     expect(dashboardPageSourceNames(sampleDocument(), 'alpha-page')).toEqual(['alpha-source', 'callout-source']);
+    expect(dashboardPageSourceNames(sampleDocument(), 'alpha-page', 'table')).toEqual(['alpha-source', 'callout-source']);
     expect(dashboardPageSourceNames(sampleDocument(), 'nonexistent-page')).toEqual([]);
+  });
+
+  it('requests only sources used by the selected view mode', () => {
+    const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ ({
+      languageVersion: '0.1.0',
+      dashboard: {
+        id: 'view-modes',
+        title: 'View modes',
+        pages: [{
+          id: 'runs',
+          kind: 'custom',
+          title: 'Runs',
+          views: [
+            { id: 'trend', mark: 'chart', data: { source: 'run-trend' } },
+            { id: 'rows', mark: 'table', data: { source: 'runs' } }
+          ]
+        }]
+      }
+    });
+
+    expect(dashboardPageSourceNames(document, 'runs', 'chart')).toEqual(['run-trend']);
+    expect(dashboardPageSourceNames(document, 'runs', 'table')).toEqual(['runs']);
+    expect(dashboardPageSourceNames(document, 'runs', 'card')).toEqual(['runs']);
   });
 
   it('collects lazy-list source names separately from eager sources', () => {

@@ -12,7 +12,7 @@ import { formatPercent } from './view-formatters.js';
  * @typedef {Record<string, unknown>} Row
  * @typedef {{ field: string, equals?: unknown, in?: unknown[], includes?: string, gte?: unknown, lt?: unknown, optional?: boolean }} Predicate
  * @typedef {{ op: 'filter', predicates?: Predicate[], search?: { fields: string[], query: string } }} FilterOperator
- * @typedef {{ op: 'summarize', by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'distinct-values'|'calendar-week-rhythm'|'sum'|'mean'|'min'|'max', filter?: { predicates: Predicate[] } }> }} SummarizeOperator
+ * @typedef {{ op: 'summarize', by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'distinct-values'|'calendar-week-rhythm'|'latest-failure-streak'|'sum'|'mean'|'min'|'max', filter?: { predicates: Predicate[] } }> }} SummarizeOperator
  * @typedef {{ op: 'arrange', by: Array<{ field: string, direction?: 'asc'|'desc' }> }} ArrangeOperator
  * @typedef {{ op: 'slice', offset?: number, limit: number }} SliceOperator
  * @typedef {{ field: string } | { value: string|number|boolean|null }} ComputeArgument
@@ -47,6 +47,7 @@ export const COMPUTE_FUNCTION_ARITY = {
   if: [3, 3],
   'format-count': [1, 1],
   'format-percent': [1, 1],
+  'failure-streak-point': [3, 3],
   number: [1, 1],
   sum: [2, 8],
   difference: [2, 2],
@@ -56,7 +57,7 @@ export const COMPUTE_FUNCTION_ARITY = {
 
 /** Computed-field functions whose result is always text or null. */
 export const TEXT_COMPUTE_FUNCTIONS = [
-  'concat', 'lower', 'upper', 'title-case', 'trim', 'url-encode', 'date-day', 'calendar-week-point', 'format-count', 'format-percent'
+  'concat', 'lower', 'upper', 'title-case', 'trim', 'url-encode', 'date-day', 'calendar-week-point', 'format-count', 'format-percent', 'failure-streak-point'
 ];
 
 /** Computed-field functions whose result is always a finite number or null. */
@@ -322,6 +323,14 @@ export function computeValue(row, definition) {
     const value = numericValue(values[0]);
     return value === null ? null : formatPercent(value);
   }
+  if (definition.function === 'failure-streak-point') {
+    const timestamp = parseTimestamp(values[0]);
+    const run = textValue(values[1]).trim();
+    const failed = values[2] === true || (numericValue(values[2]) ?? 0) > 0;
+    return timestamp === null || !run
+      ? null
+      : JSON.stringify([timestamp, run, failed]);
+  }
   const numbers = values.map(numericValue);
   if (numbers.some((value) => value === null)) return null;
   const finite = /** @type {number[]} */ (numbers);
@@ -484,12 +493,49 @@ function reduceValues(input, reducer) {
   if (reducer === 'distinct-list') return [...new Set(present.map(String))].sort().join(', ');
   if (reducer === 'distinct-values') return [...new Set(present.map(String))].sort();
   if (reducer === 'calendar-week-rhythm') return calendarWeekRhythm(present);
+  if (reducer === 'latest-failure-streak') return latestFailureStreak(present);
   const values = present.map(Number).filter(Number.isFinite);
   if (reducer === 'sum') return values.reduce((total, value) => total + value, 0);
   if (values.length === 0) return null;
   if (reducer === 'mean') return values.reduce((total, value) => total + value, 0) / values.length;
   if (reducer === 'min') return Math.min(...values);
   return Math.max(...values);
+}
+
+/** @param {unknown[]} input */
+function latestFailureStreak(input) {
+  const points = input.flatMap((value) => {
+    try {
+      const point = JSON.parse(String(value));
+      return Array.isArray(point)
+        && point.length === 3
+        && Number.isFinite(point[0])
+        && typeof point[1] === 'string'
+        && typeof point[2] === 'boolean'
+        ? [/** @type {[number, string, boolean]} */ (point)]
+        : [];
+    } catch {
+      return [];
+    }
+  });
+  points.sort((left, right) => {
+    if (right[0] !== left[0]) return right[0] - left[0];
+    const leftRunId = Number(left[1]);
+    const rightRunId = Number(right[1]);
+    if (Number.isFinite(leftRunId) && Number.isFinite(rightRunId) && rightRunId !== leftRunId) {
+      return rightRunId - leftRunId;
+    }
+    return String(right[1]).localeCompare(String(left[1]));
+  });
+  const seenRuns = new Set();
+  let streak = 0;
+  for (const [, run, failed] of points) {
+    if (seenRuns.has(run)) continue;
+    seenRuns.add(run);
+    if (!failed) break;
+    streak += 1;
+  }
+  return streak;
 }
 
 /** @param {unknown[]} input */

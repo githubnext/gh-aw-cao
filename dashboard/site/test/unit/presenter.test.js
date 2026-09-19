@@ -118,8 +118,10 @@ async function activatePage(rendered, pageId) {
 }
 
 describe('dashboard DOM provenance', () => {
-  it('leaves factory queries to independently bound reactive elements', () => {
+  it('includes the declarative campaign view in the Overview page subscription', () => {
     expect(dashboardPageSourceNames(authoritativeDashboardDocument, 'overview')).toEqual([
+      'overview-needs-attention-preview',
+      'campaign-inventory',
       'data-health-collections'
     ]);
     const rendered = renderDashboardView({
@@ -128,13 +130,13 @@ describe('dashboard DOM provenance', () => {
       loadPageSources: () => new Promise(() => {})
     });
     const overview = rendered.querySelector('[data-page-id="overview"]');
-    expect(overview?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(2);
+    expect(overview?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(0);
     expect(overview?.querySelector('.dashboard-lazy-view')).toBeNull();
-    expect(overview?.querySelector('.dashboard-view-skeleton')).toBeNull();
+    expect(overview?.querySelector('.dashboard-view-skeleton')).not.toBeNull();
     disposeDashboard(rendered);
   });
 
-  it('keeps independently bound Overview elements mounted when the page subscription resolves', async () => {
+  it('renders the factory and declarative campaign cards when the page subscription resolves', async () => {
     let resolvePageSources = () => {};
     const loadPageSources = vi.fn(() => new Promise((resolve) => {
       resolvePageSources = () => resolve({
@@ -143,6 +145,19 @@ describe('dashboard DOM provenance', () => {
           rows: [],
           metadata: {
             'source-id': 'data-health-collections',
+            'source-kind': 'canonical-query',
+            'as-of': '2026-09-17T00:00:00Z',
+            'retrieved-at': '2026-09-17T00:00:00Z',
+            availability: 'empty',
+            completeness: 'complete',
+            freshness: 'fresh'
+          }
+        },
+        'campaign-inventory': {
+          source: 'campaign-inventory',
+          rows: [],
+          metadata: {
+            'source-id': 'campaign-inventory',
             'source-kind': 'canonical-query',
             'as-of': '2026-09-17T00:00:00Z',
             'retrieved-at': '2026-09-17T00:00:00Z',
@@ -159,15 +174,16 @@ describe('dashboard DOM provenance', () => {
       loadPageSources
     });
     const overviewBefore = rendered.querySelector('[data-page-id="overview"]');
-    const floorBefore = overviewBefore?.querySelector('.factory-floor');
+    expect(overviewBefore?.querySelector('.dashboard-view-skeleton')).not.toBeNull();
 
     await vi.waitFor(() => expect(loadPageSources).toHaveBeenCalled());
     resolvePageSources();
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(rendered.querySelector('[data-page-id="overview"]')).toBe(overviewBefore);
-    expect(rendered.querySelector('.factory-floor')).toBe(floorBefore);
+    expect(rendered.querySelector('[data-page-id="overview"]')).not.toBe(overviewBefore);
+    expect(rendered.querySelector('.factory-floor')).not.toBeNull();
+    expect(rendered.querySelector('[data-view-id="overview-campaigns"]')).not.toBeNull();
     disposeDashboard(rendered);
   });
 
@@ -630,7 +646,7 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.textContent).toContain('gpt-5.6-sol');
     expect(page?.textContent).toContain('claude-sonnet-5');
     expect(page?.textContent).not.toContain('Requested model');
-    expect(page?.textContent).not.toContain('Mode');
+    expect(page?.querySelector('.view-mode-control')).not.toBeNull();
     expect(page?.textContent).not.toContain('Agent event');
     expect(page?.textContent).not.toContain('Summary');
     expect(page?.querySelectorAll('tbody tr')).toHaveLength(2);
@@ -860,7 +876,8 @@ describe('presenter built-in and custom pages', () => {
     expect([...(page?.querySelectorAll('[data-view-id="workflows-by-runs"] .chart-legend-pie strong') ?? [])].map((value) => value.textContent)).toEqual(['2', '1']);
     expect(page?.querySelector('[data-view-id="workflows-inventory"][data-view-layout="full-view"]')).not.toBeNull();
     const rocket = rendered.querySelector('[data-nav-page-id="workflows"] .octicon-rocket');
-    expect(rocket?.querySelector('use')?.getAttribute('href')).toBe('#octicon-rocket');
+    expect(rocket?.classList.contains('octicon-rocket')).toBe(true);
+    expect(rocket?.querySelector('path')).not.toBeNull();
   });
 
   it('uses declared workflow identities for inventory navigation', () => {
@@ -1196,12 +1213,7 @@ describe('presenter built-in and custom pages', () => {
     window.history.replaceState(null, '', '/');
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
-      sources: {},
-      viewer: {
-        login: 'octocat',
-        name: 'The Octocat',
-        avatarUrl: 'https://avatars.githubusercontent.com/u/583231?v=4'
-      }
+      sources: {}
     });
 
     document.body.append(rendered);
@@ -1212,8 +1224,8 @@ describe('presenter built-in and custom pages', () => {
     expect([...rendered.querySelectorAll('.mobile-nav-section-label')].map((node) => node.textContent?.trim())).toEqual(['Data', 'Experimental']);
     expect([...rendered.querySelectorAll('.primary-nav > [data-nav-page-id] .nav-label')].map((node) => node.textContent)).toEqual([
       'Overview',
-      'Repositories',
       'Campaigns',
+      'Repositories',
       'Settings'
     ]);
     expect(rendered.querySelector('[data-nav-page-id="workflows"] .octicon-workflow')).not.toBeNull();
@@ -1221,15 +1233,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-mobile-nav-page-id="agents"] .octicon-sparkles-fill')).not.toBeNull();
     expect(rendered.querySelector('[data-nav-page-id="configuration"]')?.textContent).toContain('Settings');
     expect(rendered.querySelector('.account-menu')).toBeNull();
-    const viewerAvatar = rendered.querySelector('.viewer-avatar-image');
-    expect(viewerAvatar?.getAttribute('src')).toBe('https://avatars.githubusercontent.com/u/583231?v=4');
-    expect(viewerAvatar?.getAttribute('alt')).toBe('The Octocat avatar');
-    const unsafeViewer = renderDashboard({
-      document: authoritativeDashboardDocument,
-      sources: {},
-      viewer: { login: 'octocat', name: 'The Octocat', avatarUrl: 'javascript:alert(1)' }
-    });
-    expect(unsafeViewer.querySelector('.viewer-avatar-image')).toBeNull();
+    expect(rendered.querySelector('.viewer-avatar')).toBeNull();
     expect(rendered.querySelector('.appearance-settings')).toBeNull();
     expect(rendered.querySelector('.database-counts')).toBeNull();
     expect(rendered.querySelector('.reset-dashboard-control')).toBeNull();
@@ -1244,8 +1248,8 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-nav-page-id="uk-ai-advisory-dashboard"]')?.closest('.nav-section')).toBe(sections[1]);
     expect([...rendered.querySelectorAll('.nav-label')].map((node) => node.textContent)).toEqual([
       'Overview',
-      'Repositories',
       'Campaigns',
+      'Repositories',
       'Settings',
       'Workflows',
       'Runs',
@@ -1370,7 +1374,7 @@ describe('presenter built-in and custom pages', () => {
 
     const page = await activatePage(rendered, 'overview');
     expect(page?.querySelector(':scope > .custom-view-grid')).not.toBeNull();
-    expect(page?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(2);
+    expect(page?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(4);
     expect(page?.querySelectorAll('.factory-station')).toHaveLength(4);
     expect(page?.querySelector('.factory-intro h2')?.textContent).toBe('Your factory is idle.');
     expect(page?.querySelector('.notifications-inbox')).toBeNull();
@@ -1596,29 +1600,18 @@ describe('presenter built-in and custom pages', () => {
     }
   });
 
-  it('persists the selected view mode and paints a skeleton before hydrating a revealed table', async () => {
-    window.localStorage.clear();
-    const observerDescriptor = Object.getOwnPropertyDescriptor(window, 'IntersectionObserver');
-    Object.defineProperty(window, 'IntersectionObserver', {
-      configurable: true,
-      value: class {
-        observe() {}
-        unobserve() {}
-        disconnect() {}
-      }
-    });
-    /** @type {FrameRequestCallback[]} */
-    const animationFrames = [];
-    const requestAnimationFrame = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
-      animationFrames.push(callback);
-      return animationFrames.length;
-    });
+  it('renders view modes in each non-overview page filter bar and emits worker query context', async () => {
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
         id: 'mobile-view-mode-dashboard',
         title: 'Mobile View Mode',
         pages: [{
+          id: 'overview',
+          kind: /** @type {'custom'} */ ('custom'),
+          title: 'Overview',
+          views: [{ id: 'summary', title: 'Summary', data: { source: 'runs' }, mark: 'metric', encoding: { value: { field: 'run-count', aggregate: 'sum' } } }]
+        }, {
           id: 'runs',
           kind: /** @type {'custom'} */ ('custom'),
           title: 'Runs',
@@ -1666,58 +1659,55 @@ describe('presenter built-in and custom pages', () => {
       }
     });
 
-    try {
-      const rendered = renderDashboard({ document, sources });
-      const toggle = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('.mobile-view-mode-toggle'));
-      const page = rendered.querySelector('[data-page-id="runs"]');
+    const rendered = renderDashboard({ document, sources });
+    expect(rendered.querySelector('[data-page-id="overview"] .filter-bar')).toBeNull();
 
-      expect(rendered.dataset.mobileViewMode).toBe('chart');
-      expect(page?.hasAttribute('data-mobile-view-mode-page')).toBe(true);
-      expect(page?.querySelector('[data-view-id="runs-chart"]')?.getAttribute('data-mobile-view-mode')).toBe('chart');
-      expect(page?.querySelector('[data-view-id="runs-table"]')?.getAttribute('data-mobile-view-mode')).toBe('table');
-      expect(toggle?.hidden).toBe(false);
-      expect(toggle?.parentElement?.classList.contains('title-area')).toBe(true);
-      expect(rendered.querySelector('.org-sidebar')?.contains(toggle)).toBe(false);
-      expect(toggle?.getAttribute('aria-label')).toBe('Show table view');
-      expect(toggle?.querySelector('.octicon-table')).not.toBeNull();
+    const page = await activatePage(rendered, 'runs');
+    const filterBar = page?.querySelector(':scope > .filter-bar');
+    const modeButtons = [...filterBar?.querySelectorAll('[data-view-mode-value]') ?? []];
+    /** @type {unknown[]} */
+    const contexts = [];
+    rendered.addEventListener('dashboard-query-context-change', (event) => {
+      if (event instanceof CustomEvent) contexts.push(event.detail);
+    });
 
-      toggle?.click();
+    expect(modeButtons.map((button) => button.textContent)).toEqual(['Chart', 'Table', 'Cards']);
+    expect(modeButtons[0]?.getAttribute('aria-pressed')).toBe('true');
+    expect(page?.querySelector('[data-view-id="runs-chart"]')?.getAttribute('data-view-mode-content')).toBe('chart');
+    expect(page?.querySelector('[data-view-id="runs-table"]')?.getAttribute('data-view-mode-content')).toBe('table');
+    expect(rendered.querySelector('.mobile-view-mode-toggle')).toBeNull();
+    /** @type {HTMLButtonElement} */ (modeButtons[1]).click();
+    expect(contexts.at(-1)).toMatchObject({ pageId: 'runs', queryContext: { viewMode: 'table' } });
+  });
 
-      expect(rendered.dataset.mobileViewMode).toBe('table');
-      expect(page?.querySelector('[data-view-id="runs-table"] .dashboard-lazy-view-skeleton')).not.toBeNull();
-      expect(toggle?.getAttribute('aria-label')).toBe('Show card list view');
-      expect(toggle?.getAttribute('aria-pressed')).toBe('true');
-      expect(toggle?.querySelector('.octicon-stack')).not.toBeNull();
-      expect(window.localStorage.getItem('central-agentic-ops.dashboard.mobile-view-mode')).toBe('table');
+  it('includes the template default view mode in the initial page source request', async () => {
+    const loadPageSources = vi.fn(
+      /** @type {NonNullable<Parameters<typeof renderDashboard>[0]['loadPageSources']>} */ (async () => ({}))
+    );
+    renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'initial-view-mode',
+          title: 'Initial view mode',
+          pages: [{
+            id: 'runs',
+            kind: /** @type {'custom'} */ ('custom'),
+            title: 'Runs',
+            views: [
+              { id: 'trend', mark: 'chart', data: { source: 'run-trend' } },
+              { id: 'rows', mark: 'table', data: { source: 'runs' } }
+            ]
+          }]
+        }
+      },
+      sources: {},
+      loadPageSources
+    });
 
-      await vi.waitFor(() => expect(animationFrames).toHaveLength(1));
-      animationFrames.shift()?.(0);
-      expect(page?.querySelector('[data-view-id="runs-table"] .dashboard-lazy-view-skeleton')).not.toBeNull();
-      expect(animationFrames).toHaveLength(1);
-      animationFrames.shift()?.(0);
-      await vi.waitFor(() => {
-        expect(page?.querySelector('[data-view-id="runs-table"] .dashboard-lazy-view-skeleton')).toBeNull();
-      });
-      expect(page?.querySelector('[data-mobile-card-list] .entity-card-list-card')?.textContent).toContain('1');
-
-      toggle?.click();
-      expect(rendered.dataset.mobileViewMode).toBe('card');
-      expect(toggle?.getAttribute('aria-label')).toBe('Show chart view');
-      expect(toggle?.querySelector('.octicon-graph')).not.toBeNull();
-      expect(window.localStorage.getItem('central-agentic-ops.dashboard.mobile-view-mode')).toBe('card');
-
-      const restored = renderDashboard({ document, sources });
-      expect(restored.dataset.mobileViewMode).toBe('card');
-      expect(restored.querySelector('.mobile-view-mode-toggle')?.getAttribute('aria-label')).toBe('Show chart view');
-    } finally {
-      requestAnimationFrame.mockRestore();
-      if (observerDescriptor) {
-        Object.defineProperty(window, 'IntersectionObserver', observerDescriptor);
-      } else {
-        Reflect.deleteProperty(window, 'IntersectionObserver');
-      }
-      window.localStorage.clear();
-    }
+    await vi.waitFor(() => expect(loadPageSources).toHaveBeenCalled());
+    const initialOptions = loadPageSources.mock.calls.at(0)?.[1];
+    expect(initialOptions?.queryContext).toEqual({ viewMode: 'chart' });
   });
 
   it('switches a standalone full-view lazy table between table and card-list modes', () => {
@@ -1774,21 +1764,12 @@ describe('presenter built-in and custom pages', () => {
         }
       }
     });
-    const toggle = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('.mobile-view-mode-toggle'));
+    const modeButtons = [...rendered.querySelectorAll('[data-view-mode-value]')];
 
-    expect(rendered.dataset.mobileViewMode).toBe('table');
-    expect(toggle?.hidden).toBe(false);
-    expect(toggle?.getAttribute('aria-label')).toBe('Show card list view');
+    expect(rendered.querySelector('[data-page-id="repositories"]')?.getAttribute('data-view-mode')).toBe('table');
+    expect(modeButtons.map((button) => button.textContent)).toEqual(['Table', 'Cards']);
+    expect(modeButtons[0]?.getAttribute('aria-pressed')).toBe('true');
     expect(rendered.querySelector('[data-mobile-card-list] .entity-card-list-card')?.textContent).toContain('githubnext/gh-aw-cao');
-
-    toggle?.click();
-    expect(rendered.dataset.mobileViewMode).toBe('card');
-    expect(toggle?.getAttribute('aria-label')).toBe('Show table view');
-    expect(toggle?.querySelector('.octicon-table')).not.toBeNull();
-
-    toggle?.click();
-    expect(rendered.dataset.mobileViewMode).toBe('table');
-    window.localStorage.clear();
   });
 
   it('renders a mobile view menu with full labels and closes it after selection', () => {
@@ -1804,8 +1785,8 @@ describe('presenter built-in and custom pages', () => {
     expect(menuLinks.every((link) => link.querySelector('.octicon') !== null)).toBe(true);
     expect(menuLinks.map((link) => link.textContent?.trim())).toEqual([
       'Overview',
-      'Repositories',
       'Campaigns',
+      'Repositories',
       'Settings',
       'Workflows',
       'Runs',
@@ -2021,7 +2002,7 @@ describe('presenter built-in and custom pages', () => {
 
     for (const pageId of ['runtime', 'security', 'firewall', 'operational-value']) {
       await activatePage(rendered, pageId);
-      const filterBar = rendered.querySelector('.report-actions > .filter-bar');
+      const filterBar = rendered.querySelector(`[data-page-id="${pageId}"] > .filter-bar`);
       expect(filterBar?.querySelector('input')?.value).toBe('');
       expect(/** @type {HTMLSelectElement | null} */ (
         filterBar?.querySelector('[aria-label="Time window"]')
@@ -2031,10 +2012,9 @@ describe('presenter built-in and custom pages', () => {
         (input) => /** @type {HTMLInputElement} */ (input).checked
       )).toBe(true);
       const filterControl = filterBar?.querySelector('.filter-control');
-      const horizon = rendered.querySelector('.dashboard-horizon');
       expect(filterControl).not.toBeNull();
-      expect(horizon).not.toBeNull();
-      expect(filterBar?.contains(horizon)).toBe(true);
+      expect(filterBar?.querySelector('.view-mode-control')).not.toBeNull();
+      expect(rendered.querySelector('.report-actions > .dashboard-horizon')).not.toBeNull();
       expect(filterBar?.querySelector('.scope-period')).toBeNull();
       expect(filterBar?.querySelector('.export-control')).toBeNull();
     }
@@ -2152,11 +2132,11 @@ describe('presenter built-in and custom pages', () => {
     expect(table?.textContent).not.toContain('expired');
     expect(rendered.querySelector('.dashboard-horizon')?.getAttribute('data-dashboard-evaluated-at')).toBe('2026-09-01T12:00:00.000Z');
     expect(rendered.querySelector('.horizon-toggle')?.getAttribute('aria-label')).toContain('2 days');
-    expect(rendered.querySelector('.filter-tuning-controls .horizon-details')?.textContent).toBe(
+    expect(rendered.querySelector('.dashboard-horizon .horizon-details')?.textContent).toBe(
       'Data is included from the start up to the exclusive end.StartAug 30, 2026, 12:30 PM UTCEndSep 1, 2026, 12:00 PM UTCDuration2 days'
     );
-    expect(rendered.querySelector('.filter-tuning-controls .horizon-details time:first-of-type')?.getAttribute('datetime')).toBe('2026-08-30T12:30:00.000Z');
-    expect(rendered.querySelectorAll('.filter-tuning-controls .horizon-details time')[1]?.getAttribute('datetime')).toBe('2026-09-01T12:00:00.000Z');
+    expect(rendered.querySelector('.dashboard-horizon .horizon-details time:first-of-type')?.getAttribute('datetime')).toBe('2026-08-30T12:30:00.000Z');
+    expect(rendered.querySelectorAll('.dashboard-horizon .horizon-details time')[1]?.getAttribute('datetime')).toBe('2026-09-01T12:00:00.000Z');
     expect(rendered.querySelector('.horizon-tooltip-counts')).toBeNull();
   });
 
@@ -2197,7 +2177,7 @@ describe('presenter built-in and custom pages', () => {
     expect(horizon?.classList.contains('dashboard-horizon-skeleton')).toBe(false);
     expect(horizon?.querySelector('.horizon-toggle')?.getAttribute('aria-label')).toContain('1 day');
     expect(horizon?.getAttribute('data-dashboard-evaluated-at')).toBe('2026-09-01T12:00:00.000Z');
-    expect(rendered.querySelector('.filter-tuning-controls .horizon-details')).not.toBeNull();
+    expect(rendered.querySelector('.dashboard-horizon .horizon-details')).not.toBeNull();
 
     optionsOnUpdateWithNoSources();
     expect(horizon?.classList.contains('dashboard-horizon-skeleton')).toBe(false);

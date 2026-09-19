@@ -21,8 +21,42 @@ describe('entity card templates', () => {
       'workflow',
       'run',
       'event',
+      'campaign',
       'operation'
     ]));
+  });
+
+  it('declares the factory campaign cards in JSON', () => {
+    expect(templates.campaign).toMatchObject({
+      icon: 'goal',
+      title: { field: 'campaign-name' },
+      labels: [
+        { field: 'modes', display: 'label' },
+        { field: 'registration', display: 'active-state' }
+      ],
+      details: [
+        { field: 'workflows', title: 'Workflows' },
+        { field: 'value-created', title: 'Value', unit: 'ops-value' },
+        { field: 'dispatches', title: 'Dispatches' },
+        { field: 'aic', title: 'AIC', unit: 'aic' }
+      ]
+    });
+    expect(templates.campaign.details).not.toContainEqual(expect.objectContaining({ field: 'runs' }));
+    expect(
+      pages.overview.views.find(
+        (/** @type {Record<string, any>} */ view) => view.id === 'overview-campaigns'
+      )
+    ).toMatchObject({
+      title: 'Campaigns',
+      data: { source: 'campaign-inventory' },
+      mark: 'list',
+      list: {
+        style: 'entity-cards',
+        appearance: 'grouped',
+        card: 'campaign',
+        drill: { type: 'external', field: 'campaign-dashboard-link' }
+      }
+    });
   });
 
   it('presents runs like a GitHub Actions run row', () => {

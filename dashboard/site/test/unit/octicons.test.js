@@ -1,12 +1,6 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ensureOcticonSprite, octicon } from '../../src/octicons.js';
-
-const sprite = '<svg xmlns="http://www.w3.org/2000/svg"><symbol id="octicon-alert" viewBox="0 0 16 16"><path d="M0 0h16v16H0z"/></symbol></svg>';
-
-afterEach(() => {
-  vi.restoreAllMocks();
-});
+import { describe, expect, it } from 'vitest';
+import { octicon } from '../../src/octicons.js';
 
 describe('octicons', () => {
   it('renders the report-compatible issue glyph without a missing sprite reference', () => {
@@ -19,29 +13,15 @@ describe('octicons', () => {
     expect(rendered.querySelector('use')).toBeNull();
   });
 
-  it('references bundled Octicons through a same-document sprite reference', () => {
+  it('renders bundled Octicons directly from JavaScript', () => {
     const rendered = octicon('alert');
 
-    expect(rendered.querySelector('use')?.getAttribute('href')).toBe('#octicon-alert');
+    expect(rendered.querySelector('path')).not.toBeNull();
+    expect(rendered.querySelector('use')).toBeNull();
   });
 
-  it('inlines the deployed sprite once so external references are never required', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(sprite, {
-      status: 200,
-      headers: { 'content-type': 'image/svg+xml' }
-    }));
-    vi.stubGlobal('fetch', fetchMock);
-
-    await ensureOcticonSprite();
-    await ensureOcticonSprite();
-
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0][0]).toMatch(/\/src\/octicons\.svg$/);
-    const inlined = document.getElementById('octicon-sprite');
-    expect(inlined?.querySelector('symbol')?.id).toBe('octicon-alert');
-    expect(inlined?.getAttribute('aria-hidden')).toBe('true');
-
-    const rendered = octicon('alert');
+  it('uses an inlined fallback for unknown icon names', () => {
+    const rendered = octicon('not-an-octicon');
     expect(rendered.querySelector('path')).not.toBeNull();
     expect(rendered.querySelector('use')).toBeNull();
   });

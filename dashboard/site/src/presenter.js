@@ -16,7 +16,7 @@ import { enableHorizonOutsideClickDismissal, renderFilterBar, setTimeWindowFilte
 import { renderSiteCallouts } from './components/site-callout.js';
 import { renderDashboardHorizon } from './components/dashboard-horizon.js';
 import { restoreDashboardTheme } from './components/theme-settings.js';
-import { cancelLazyViewHydration, disconnectLazyViews, enableLazyViews, hydrateLazyViewAfterPaint, renderLazyView } from './components/lazy-view.js';
+import { disconnectLazyViews, enableLazyViews, renderLazyView } from './components/lazy-view.js';
 import { enableFullViewScrollForwarding, syncFullViewMode as syncFullViewModeForPage } from './components/full-view-scroll.js';
 import { DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from './debug-events.js';
 import { dashboardViewAliasName } from './data/queries/view-payload-compiler.js';
@@ -26,7 +26,7 @@ import { renderDashboardNavigation, enableDashboardNavigation } from './componen
 import { renderDashboardHeader } from './components/dashboard-header.js';
 import { renderDashboardFooter } from './components/dashboard-footer.js';
 import { renderDashboardFrame } from './components/dashboard-frame.js';
-import { scopedStorageKey } from './storage-scope.js';
+import { declaredRouteTabs, renderDeclaredRouteTabs } from './components/route-tabs.js';
 import { buildChartPoints, prepareChartPoints, prepareTableRows, toViewText } from './components/view-data.js';
 import { enableDashboardKeyboardNavigation, updateWithViewTransition } from './components/dashboard-interactions.js';
 import { publishSource } from './source-store.js';
@@ -80,15 +80,11 @@ import {
  */
 
 /**
- * @typedef {{ login: string, name: string, avatarUrl: string }} LocalViewer
+ * @typedef {{ signal: AbortSignal, onUpdate: (sources: Record<string, LogicalSourceInput>) => void, syncPageChrome?: () => void, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' } }} PageSourceLoadOptions
  */
 
 /**
- * @typedef {{ signal: AbortSignal, onUpdate: (sources: Record<string, LogicalSourceInput>) => void, syncPageChrome?: () => void, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} PageSourceLoadOptions
- */
-
-/**
- * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, commitSha?: string | null, viewer?: LocalViewer | null, prepared?: boolean, loading?: boolean, tableRowLimit?: number, loadPageSources?: (pageId: string, options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>> }} PresentationInput
+ * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, commitSha?: string | null, prepared?: boolean, loading?: boolean, tableRowLimit?: number, loadPageSources?: (pageId: string, options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>> }} PresentationInput
  */
 
 /**
@@ -97,7 +93,6 @@ import {
 
 const DEFAULT_GITHUB_URL_BASE = 'https://github.com';
 const TABLE_ROW_LIMIT = Symbol('table-row-limit');
-const MOBILE_VIEW_MODE_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.mobile-view-mode');
 const NAVIGATION_INDEX_STATE_KEY = 'centralAgenticOpsNavigationIndex';
 /** @type {WeakMap<HTMLElement, () => void>} */
 const dashboardDisposals = new WeakMap();
@@ -113,10 +108,11 @@ function getBuiltInPagePayload(page, reusableViews = []) {
 /**
  * @param {PresentationDocument} document
  * @param {string} pageId
+ * @param {'chart'|'table'|'card'} [viewMode]
  * @returns {string[]}
  */
-export function dashboardPageSourceNames(document, pageId) {
-  return collectDashboardPageSourceNames(document, pageId);
+export function dashboardPageSourceNames(document, pageId, viewMode) {
+  return collectDashboardPageSourceNames(document, pageId, viewMode);
 }
 
 /**
@@ -163,7 +159,7 @@ export function dashboardTableSourceNames(document) {
  * @returns {HTMLElement}
  */
 export function renderDashboard(input) {
-  const { document, sources: rawSources, viewer = null } = input;
+  const { document, sources: rawSources } = input;
   const pages = document.dashboard.pages;
   const cardTemplates = Object.fromEntries((document.dashboard['card-templates'] ?? []).map((template) => [template.id, template]));
   const reusableViews = document.dashboard.views ?? [];
@@ -206,8 +202,7 @@ export function renderDashboard(input) {
       overviewPageHref: overviewPage ? `#page-${encodeURIComponent(overviewPage.id)}` : initialPageHref,
       dashboardHorizon: dashboardHorizon.element,
       githubUrlBase,
-      dashboardRepository,
-      viewer
+      dashboardRepository
     }),
     callouts: renderSiteCallouts(document.dashboard.callouts, sources),
     pages: pages.map((page) => renderPagePlaceholder(page)),
@@ -243,6 +238,10 @@ export function renderDashboard(input) {
       const pageIndex = pages.findIndex((candidate) => candidate.id === pageId);
       const resolvedPage = () => pages[pageIndex] ?? pages.find((candidate) => candidate.id === pageId);
       if (!resolvedPage()) return null;
+      const pagePayload = getBuiltInPagePayload(resolvedPage(), reusableViews);
+      const defaultViewMode = pageId === 'overview' ? undefined : availableViewModes(pagePayload.views ?? [])[0];
+      const effectiveQueryContext = options.queryContext ?? (defaultViewMode ? { viewMode: defaultViewMode } : undefined);
+      options.queryContext = effectiveQueryContext;
       const rendersBeforePageSources = pageUsesIndependentSourceElements(resolvedPage(), reusableViews);
       /** @param {Record<string, LogicalSourceInput>} pageSources */
       const updateHorizon = (pageSources) => {
@@ -270,7 +269,7 @@ export function renderDashboard(input) {
         updateHorizon(pageSources);
         return showInitialLoadingSkeleton && !rendersBeforePageSources
           ? renderPageLoadingSkeleton(page)
-          : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, options.queryContext);
+          : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, effectiveQueryContext);
       };
       if (input.loadPageSources) {
         options.onUpdate = rendersBeforePageSources
@@ -454,8 +453,8 @@ function inferOrganizationName(sources) {
 /**
  * Keeps global dashboard controls inside the mobile hamburger menu while
  * preserving the single control instances and their filter-bar event
- * relationships. On narrow viewports the page title and its view-mode control
- * move into the compact mobile header row (replacing the app brand) so the page
+ * relationships. On narrow viewports the page title moves into the compact
+ * mobile header row (replacing the app brand) so the page
  * no longer shows a full-width secondary header that repeats the current page
  * title, matching the title bar used by the GitHub mobile app. The factory name
  * stays visible as a secondary line below that page title.
@@ -469,10 +468,6 @@ function enableResponsiveReportActions(root, signal) {
   const overviewHeader = root.querySelector('.overview-header');
   const mobileHeaderSlot = root.querySelector('.mobile-page-header');
   const headerDesktopSlot = overviewHeader?.parentElement;
-  const viewModeToggle = root.querySelector('.mobile-view-mode-toggle');
-  const mobileToggleSlot = root.querySelector('.sidebar-header');
-  const mobileToggleAnchor = root.querySelector('.mobile-nav-menu');
-  const desktopToggleSlot = overviewHeader?.querySelector('.title-area');
   const view = root.ownerDocument.defaultView;
   const media = view?.matchMedia?.('(max-width: 700px)');
   if (!(actions instanceof HTMLElement) || !(mobileSlot instanceof HTMLElement) || !desktopSlot || !media) return;
@@ -490,20 +485,6 @@ function enableResponsiveReportActions(root, signal) {
       if (headerDescription instanceof HTMLElement) {
         if (media.matches) headerDescription.setAttribute('aria-hidden', 'true');
         else headerDescription.removeAttribute('aria-hidden');
-      }
-    }
-    if (
-      viewModeToggle instanceof HTMLElement
-      && mobileToggleSlot
-      && mobileToggleAnchor instanceof HTMLElement
-      && desktopToggleSlot instanceof HTMLElement
-    ) {
-      if (media.matches || root.classList.contains('dashboard-full-view-scrolled')) {
-        if (viewModeToggle.parentElement !== mobileToggleSlot) {
-          mobileToggleSlot.insertBefore(viewModeToggle, mobileToggleAnchor);
-        }
-      } else if (viewModeToggle.parentElement !== desktopToggleSlot) {
-        desktopToggleSlot.append(viewModeToggle);
       }
     }
   };
@@ -670,12 +651,10 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
   const views = Array.isArray(page.views)
     ? page.views.map((view) => applyDashboardDefaults(view, effectiveDashboardDefaults))
     : [];
-  const mobileTableViewIndex = views.findIndex((view) => (
-    isPlainObject(view)
-    && view.layout === 'full-view'
-    && view['lazy-list'] === true
-  ));
-  const supportsMobileViewMode = mobileTableViewIndex >= 0;
+  const viewModes = page.id === 'overview' ? [] : availableViewModes(views);
+  const selectedViewMode = /** @type {'chart'|'table'|'card'|undefined} */ (viewModes.includes(queryContext?.viewMode ?? 'chart')
+    ? queryContext?.viewMode ?? 'chart'
+    : viewModes[0]);
   const sections = Array.isArray(page.sections) ? page.sections : [];
   const standaloneCalloutViewIds = new Set(sections.flatMap((section) => {
     if (!Array.isArray(section.views) || section.views.length !== 1) return [];
@@ -723,9 +702,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       if (isPlainObject(view) && view['lazy-list'] === true) {
         rendered.setAttribute('data-view-lazy-list', '');
       }
-      if (supportsMobileViewMode) {
-        rendered.dataset.mobileViewMode = index === mobileTableViewIndex ? 'table' : 'chart';
-      }
+      rendered.dataset.viewModeContent = viewModeForView(view);
       return rendered;
     };
     const rendered = isRouteView
@@ -747,6 +724,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
     if (isPlainObject(view) && view['lazy-list'] === true) {
       rendered.setAttribute('data-view-lazy-list', '');
     }
+    rendered.dataset.viewModeContent = viewModeForView(view);
     if (disclosure === 'essential') {
       return rendered;
     }
@@ -766,14 +744,22 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       ...sections.map((section) => renderLayoutSection(page.id, section, renderedViewsById, sources))
     )
     : h('div', { className: 'custom-view-grid' }, ...renderedViews);
+  const routeTabs = routeParameter ? declaredRouteTabs(page.route) : null;
+  const renderedRouteTabs = routeTabs && routeParameter
+    ? renderDeclaredRouteTabs({
+      routeParameter,
+      currentTab: routeTabs.currentTab,
+      tabs: routeTabs.tabs
+    })
+    : null;
   const pageClassName = typeof page['class-name'] === 'string' && page['class-name'].length > 0
     ? ` ${page['class-name']}`
     : '';
 
   /** @type {HTMLElement} */
   let root;
-  const filterBar = withFilterBar && !inventoryPage(page.id)
-    ? renderFilterBar((filters, timeWindow) => {
+  const filterBar = withFilterBar && page.id !== 'overview'
+    ? renderFilterBar((filters, timeWindow, viewMode) => {
       root.dispatchEvent(new CustomEvent('dashboard-query-context-change', {
         bubbles: true,
         detail: {
@@ -782,7 +768,8 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
             filters: Object.fromEntries([...filters.entries()]),
             ...(page.id === 'readiness' || !timeWindow
               ? {}
-              : { timeWindow: { start: timeWindow.start, end: timeWindow.end } })
+              : { timeWindow: { start: timeWindow.start, end: timeWindow.end } }),
+            ...(viewMode ? { viewMode } : {})
           }
         }
       }));
@@ -792,7 +779,9 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
         : 'all',
       referenceEnd: latestSourceCoverageEnd(page.id === 'readiness'
         ? [sources.runs, sources.findings, sources.outcomes]
-        : [...pageSources.values()])
+        : [...pageSources.values()]),
+      viewModes,
+      viewMode: selectedViewMode
     })
     : null;
   root = h(
@@ -807,14 +796,31 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       'data-page-description': page.description ?? '',
       'data-route-parameter': routeParameter,
       'data-route-navigation-page': routeNavigationPage,
-      'data-mobile-view-mode-page': supportsMobileViewMode ? '' : undefined
+      'data-view-mode': selectedViewMode
     },
     filterBar,
+    renderedRouteTabs,
     ...(renderedViews.length > 0
       ? [renderHiddenDataStateMetrics(summarizeDataState(pageSources)), renderedContent]
       : [h('p', null, 'No custom views available.')])
   );
   return root;
+}
+
+/** @param {Array<unknown>} views @returns {Array<'chart'|'table'|'card'>} */
+function availableViewModes(views) {
+  const modes = new Set(views.map(viewModeForView));
+  if (modes.has('table')) modes.add('card');
+  const orderedModes = /** @type {const} */ (['chart', 'table', 'card']);
+  return orderedModes.filter((mode) => modes.has(mode));
+}
+
+/** @param {unknown} view @returns {'chart'|'table'|'card'} */
+function viewModeForView(view) {
+  if (!isPlainObject(view)) return 'chart';
+  if (view.mark === 'table') return 'table';
+  if (view.mark === 'list') return 'card';
+  return 'chart';
 }
 
 /**
@@ -924,7 +930,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     navigationOwner.abort();
     pageOwner.abort();
   };
-  /** @type {Map<string, { filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } }>} */
+  /** @type {Map<string, NonNullable<PageSourceLoadOptions['queryContext']>>} */
   const pageQueryContext = new Map();
   const overviewPage = pages.find((page) => page.dataset.pageId === 'overview');
   const links = [...root.querySelectorAll('[data-nav-page-id], [data-mobile-nav-page-id]')]
@@ -936,83 +942,11 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   const pageTitleLink = root.querySelector('[data-page-title-link]');
   const pageDescription = root.querySelector('.overview-header [data-page-description]');
   const pageMode = root.querySelector('[data-page-mode]');
-  const reportActions = root.querySelector('.report-actions');
   const pageScroller = root.querySelector('main.dashboard-prototype');
-  const mobileViewModeToggle = root.querySelector('.mobile-view-mode-toggle');
-  /** @type {'chart'|'table'|'card'} */
-  let mobileViewMode = 'chart';
-  try {
-    const storedMode = globalThis.window?.localStorage?.getItem(MOBILE_VIEW_MODE_STORAGE_KEY);
-    mobileViewMode = storedMode === 'table' || storedMode === 'card' ? storedMode : 'chart';
-  } catch {
-    // Storage can be unavailable in embedded or privacy-restricted contexts.
-  }
-  root.dataset.mobileViewMode = mobileViewMode;
-  /** @type {'chart'|'table'|'card'} */
-  let nextMobileViewMode = 'table';
-  /** @param {'chart'|'table'|'card'} mode @param {HTMLElement | undefined} page */
-  const setMobileViewMode = (mode, page) => {
-    const pendingTable = page?.querySelector('[data-mobile-view-mode="table"][data-lazy-view]');
-    if (pendingTable instanceof HTMLElement) {
-      if (mode === 'table' || mode === 'card') void hydrateLazyViewAfterPaint(pendingTable);
-      else cancelLazyViewHydration(pendingTable);
-    }
-    mobileViewMode = mode;
-    root.dataset.mobileViewMode = mode;
-    try {
-      globalThis.window?.localStorage?.setItem(MOBILE_VIEW_MODE_STORAGE_KEY, mode);
-    } catch {
-      // The display mode still works for the current page when storage is unavailable.
-    }
-    syncFullViewMode(page);
-  };
   /** @param {HTMLElement | undefined} page */
   const syncFullViewMode = (page) => {
-    const views = page
-      ? [...page.querySelectorAll('.custom-view')].filter((view) => view instanceof HTMLElement)
-      : [];
-    const tableView = views.find((view) => (
-      view.dataset.viewLayout === 'full-view'
-      && (view.hasAttribute('data-view-lazy-list') || view.querySelector('[data-lazy-list]'))
-    ));
-    const supportsModeSelection = Boolean(tableView);
-    const hasChartMode = Boolean(tableView) && views.some((view) => view !== tableView);
-    if (supportsModeSelection && !hasChartMode && mobileViewMode === 'chart') {
-      mobileViewMode = 'table';
-      root.dataset.mobileViewMode = mobileViewMode;
-    }
-    page?.toggleAttribute('data-mobile-view-mode-page', supportsModeSelection);
-    for (const view of views) {
-      if (supportsModeSelection) {
-        view.dataset.mobileViewMode = view === tableView ? 'table' : 'chart';
-      } else {
-        delete view.dataset.mobileViewMode;
-      }
-    }
-    if (mobileViewModeToggle instanceof HTMLButtonElement) {
-      mobileViewModeToggle.hidden = !supportsModeSelection;
-      nextMobileViewMode = hasChartMode
-        ? mobileViewMode === 'chart' ? 'table' : mobileViewMode === 'table' ? 'card' : 'chart'
-        : mobileViewMode === 'card' ? 'table' : 'card';
-      const label = `Show ${nextMobileViewMode === 'card' ? 'card list' : nextMobileViewMode} view`;
-      mobileViewModeToggle.setAttribute('aria-label', label);
-      mobileViewModeToggle.setAttribute('aria-pressed', String(mobileViewMode !== 'chart'));
-      mobileViewModeToggle.setAttribute('title', label);
-      mobileViewModeToggle.replaceChildren(octicon(
-        nextMobileViewMode === 'table' ? 'table' : nextMobileViewMode === 'card' ? 'stack' : 'graph'
-      ));
-    }
     syncFullViewModeForPage(root, page);
   };
-  if (mobileViewModeToggle instanceof HTMLButtonElement) {
-    mobileViewModeToggle.addEventListener('click', () => {
-      const page = pages.find((candidate) => candidate.dataset.pageId === activePageId);
-      setMobileViewMode(nextMobileViewMode, page);
-    }, { signal: navigationOwner.signal });
-    root.ownerDocument.defaultView?.matchMedia?.('(max-width: 700px)')?.addEventListener?.('change', () => {
-      syncFullViewMode(pages.find((candidate) => candidate.dataset.pageId === activePageId));
-    }, { signal: navigationOwner.signal });
-  }
   const defaultBreadcrumbs = [breadcrumbRoot, breadcrumbDashboard].map((link) => ({
     label: link?.textContent ?? '',
     href: link instanceof HTMLAnchorElement ? link.getAttribute('href') ?? '' : '',
@@ -1108,30 +1042,6 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     pageOwner.abort();
     pageOwner = new AbortController();
     let pagePopulated = false;
-    const dashboardHorizon = root.querySelector('.dashboard-horizon');
-    let activeFilterBar = root.querySelector('.report-actions > .filter-bar');
-    /**
-     * @param {HTMLElement | undefined} page
-     */
-    const placeDashboardHorizon = (page) => {
-      const filterBar = page?.querySelector('.filter-bar');
-      if (dashboardHorizon && filterBar && reportActions) {
-        if (activeFilterBar && activeFilterBar !== filterBar) {
-          // Reclaim component-owned details before discarding the stale filter bar.
-          const previousDetails = activeFilterBar.querySelector('.horizon-details');
-          if (previousDetails) dashboardHorizon.append(previousDetails);
-          activeFilterBar.remove();
-        }
-        filterBar.prepend(dashboardHorizon);
-        const horizonDetails = dashboardHorizon.querySelector('.horizon-details');
-        const tuningControls = filterBar.querySelector('.filter-tuning-controls');
-        if (horizonDetails && tuningControls) tuningControls.append(horizonDetails);
-        reportActions.prepend(filterBar);
-        activeFilterBar = filterBar;
-      } else if (dashboardHorizon && reportActions && !reportActions.contains(dashboardHorizon)) {
-        reportActions.prepend(dashboardHorizon);
-      }
-    };
     /**
      * @param {HTMLElement | undefined} page
      */
@@ -1155,11 +1065,6 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       const activePage = pages.find((candidate) => candidate.dataset.pageId === activePageId);
       if (activePage) {
         retainedRouteTabs = cloneRouteTabsForPage(activePage, pageId, parameters);
-        const horizonDetails = activeFilterBar?.querySelector('.horizon-details');
-        if (dashboardHorizon && horizonDetails) dashboardHorizon.append(horizonDetails);
-        if (dashboardHorizon && activeFilterBar?.contains(dashboardHorizon)) dashboardHorizon.remove();
-        activeFilterBar?.remove();
-        activeFilterBar = null;
         pageState.set(activePageId, {
           details: [...activePage.querySelectorAll('details')].map((details) => details.open),
           scrollTop: pageScroller instanceof HTMLElement
@@ -1202,7 +1107,6 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
             status: 'completed'
           });
           pagePopulated = true;
-          placeDashboardHorizon(renderedPage);
           syncFullViewMode(renderedPage);
           if (routeInitialized) {
             dispatchPageRoute(renderedPage, renderedPage.dataset.routeParameter ?? '', renderedPage.dataset.routeValue);
@@ -1215,9 +1119,6 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
           signal: pageOwner.signal,
           onUpdate: () => {},
           syncPageChrome: () => {
-            const horizonDetails = dashboardHorizon?.querySelector('.horizon-details');
-            const tuningControls = activeFilterBar?.querySelector('.filter-tuning-controls');
-            if (horizonDetails && tuningControls) tuningControls.append(horizonDetails);
             syncFullViewMode(currentPage);
           },
           routeParameters,
@@ -1265,7 +1166,6 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     }
     updateNavigationLinks(links, pageId);
     const page = pages.find((candidate) => candidate.dataset.pageId === pageId);
-    placeDashboardHorizon(page);
     syncFullViewMode(page);
     const routeNavigationPage = page?.dataset.routeNavigationPage;
     if (routeNavigationPage && availableIds.has(routeNavigationPage)) {
@@ -1383,6 +1283,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     if (sameDashboardQueryContext(pageQueryContext.get(pageId), nextContext)) return;
     if (nextContext) pageQueryContext.set(pageId, nextContext);
     else pageQueryContext.delete(pageId);
+    pages.find((page) => page.dataset.pageId === pageId)?.setAttribute('data-page-pending', '');
     const route = routeFromHash();
     activate(route?.pageId ?? pageId, route?.parameters ?? new URLSearchParams(), true);
   }, { signal: navigationOwner.signal });
@@ -1574,11 +1475,15 @@ function normalizeDashboardQueryContext(value) {
         end: typeof value.timeWindow.end === 'string' ? value.timeWindow.end : undefined
       }
     : undefined;
+  const viewMode = value.viewMode === 'chart' || value.viewMode === 'table' || value.viewMode === 'card'
+    ? value.viewMode
+    : undefined;
   return {
     ...(filters && Object.keys(filters).length > 0 ? { filters } : {}),
     ...(search && search.fields.length > 0 && search.query ? { search } : {}),
     ...(orderBy.length > 0 ? { orderBy } : {}),
-    ...(timeWindow?.start || timeWindow?.end ? { timeWindow } : {})
+    ...(timeWindow?.start || timeWindow?.end ? { timeWindow } : {}),
+    ...(viewMode ? { viewMode } : {})
   };
 }
 

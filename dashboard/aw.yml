@@ -1,6 +1,6 @@
 name: CAO Dashboard
 description: Deploy an access-controlled, read-only Central Agentic Ops report with GitHub Pages and optional background data updates. Requires the activity campaign.
-min-version: v0.89.15
+min-version: v0.89.17
 experimental: true
 includes:
   - .github/workflows/cao-dashboard.yml
@@ -153,8 +153,8 @@ resources:
     destination: .github/aw/dashboard/site/src/octicon-names.json
   - source: site/src/octicons.js
     destination: .github/aw/dashboard/site/src/octicons.js
-  - source: site/src/octicons.svg
-    destination: .github/aw/dashboard/site/src/octicons.svg
+  - source: site/src/octicon-sprite.js
+    destination: .github/aw/dashboard/site/src/octicon-sprite.js
   - source: site/src/presenter.js
     destination: .github/aw/dashboard/site/src/presenter.js
   - source: site/src/query-type-checker.js
@@ -301,6 +301,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/route-body-specification.js
   - source: site/src/components/route-tab-set.js
     destination: .github/aw/dashboard/site/src/components/route-tab-set.js
+  - source: site/src/components/route-tabs.js
+    destination: .github/aw/dashboard/site/src/components/route-tabs.js
   - source: site/src/components/run-classification.js
     destination: .github/aw/dashboard/site/src/components/run-classification.js
   - source: site/src/components/run-conclusion-classification.json

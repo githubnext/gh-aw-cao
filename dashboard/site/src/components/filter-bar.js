@@ -2,6 +2,7 @@ import { h } from '../dom.js';
 import { debounce } from '../debounce.js';
 import { dashboardHorizonHours, formatDashboardHorizon } from '../horizon.js';
 import { octicon } from '../octicons.js';
+import { effect, state } from '../reactive.js';
 import { scopedStorageKey } from '../storage-scope.js';
 import { renderCountBadge, renderLabeledControl } from './ui-primitives.js';
 
@@ -11,11 +12,13 @@ const TIME_RANGE_OPTIONS = ['1h', '6h', '24h', '3d', '1w', '2w', '4w', '30d'];
 const MODE_OPTIONS = ['review', 'live', 'unknown'];
 const ALL_RECORDED = 'all';
 const TIME_WINDOW_SELECT_LABEL = 'Time window';
+const VIEW_MODE_LABELS = { chart: 'Chart', table: 'Table', card: 'Cards' };
+const VIEW_MODE_ICONS = { chart: 'graph', table: 'table', card: 'stack' };
 export const HORIZON_FILTER_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.horizon-filter-settings');
 
 /**
- * @param {(filters: Map<string, string[]>, timeWindow?: TimeWindow) => void} onChange
- * @param {{ defaultRange?: string, referenceEnd?: string }} [options]
+ * @param {(filters: Map<string, string[]>, timeWindow?: TimeWindow, viewMode?: 'chart'|'table'|'card') => void} onChange
+ * @param {{ defaultRange?: string, referenceEnd?: string, viewModes?: Array<'chart'|'table'|'card'>, viewMode?: 'chart'|'table'|'card' }} [options]
  * @returns {HTMLElement}
  */
 export function renderFilterBar(onChange, options = {}) {
@@ -28,6 +31,11 @@ export function renderFilterBar(onChange, options = {}) {
   }));
   const count = renderCountBadge(0, '0 filters');
   const applyFilters = debounce(onChange, FILTER_DEBOUNCE_MS);
+  const viewModes = options.viewModes ?? [];
+  const initialViewMode = /** @type {'chart'|'table'|'card'|undefined} */ (viewModes.includes(options.viewMode ?? 'chart')
+    ? options.viewMode ?? 'chart'
+    : viewModes[0]);
+  const selectedViewMode = state(initialViewMode);
   /** @type {ReturnType<typeof renderHorizonControl>} */
   let horizonControl;
   const emit = () => {
@@ -36,7 +44,9 @@ export function renderFilterBar(onChange, options = {}) {
     const parsed = parseFilters(filters.value);
     parsed.set('mode', horizonControl.modes());
     updateCount(parsed);
-    onChange(parsed, horizonControl.value());
+    const viewMode = selectedViewMode.get();
+    if (viewMode) onChange(parsed, horizonControl.value(), viewMode);
+    else onChange(parsed, horizonControl.value());
   };
   horizonControl = renderHorizonControl(options.defaultRange ?? ALL_RECORDED, options.referenceEnd, emit);
   const root = h(
@@ -53,7 +63,8 @@ export function renderFilterBar(onChange, options = {}) {
         count
       ),
       horizonControl.element
-    )
+    ),
+    viewModes.length > 0 ? renderViewModeControl(viewModes, selectedViewMode, emit) : null
   );
   /** @param {boolean} expanded */
   const setExpanded = (expanded) => {
@@ -78,7 +89,9 @@ export function renderFilterBar(onChange, options = {}) {
     const parsed = parseFilters(filters.value);
     parsed.set('mode', horizonControl.modes());
     updateCount(parsed);
-    applyFilters(parsed, horizonControl.value());
+    const viewMode = selectedViewMode.get();
+    if (viewMode) applyFilters(parsed, horizonControl.value(), viewMode);
+    else applyFilters(parsed, horizonControl.value());
   });
   /** Strips `mode:` / `rollout-mode:` tokens from the freeform filter input, since applied
    * mode values always come from the horizon control's checkboxes, not this text field. */
@@ -124,16 +137,51 @@ export function renderFilterBar(onChange, options = {}) {
 }
 
 /**
+ * @param {Array<'chart'|'table'|'card'>} modes
+ * @param {import('../reactive.js').State<'chart'|'table'|'card'|undefined>} selectedMode
+ * @param {() => void} onChange
+ */
+function renderViewModeControl(modes, selectedMode, onChange) {
+  const root = h('div', { className: 'view-mode-control', role: 'group', 'aria-label': 'View mode' });
+  const buttons = new Map(modes.map((mode) => {
+    const button = h(
+      'button',
+      { type: 'button', className: 'view-mode-option', 'data-view-mode-value': mode },
+      octicon(VIEW_MODE_ICONS[mode]),
+      h('span', null, VIEW_MODE_LABELS[mode])
+    );
+    button.addEventListener('click', () => {
+      if (selectedMode.get() === mode) return;
+      selectedMode.set(mode);
+      onChange();
+    });
+    return [mode, button];
+  }));
+  root.append(...buttons.values());
+  effect(() => {
+    const activeMode = selectedMode.get();
+    for (const [mode, button] of buttons) {
+      button.setAttribute('aria-pressed', String(mode === activeMode));
+    }
+  });
+  return root;
+}
+
+/**
  * Closes an expanded horizon control when a click occurs outside its filter bar.
  * @param {HTMLElement} root
  */
 export function enableHorizonOutsideClickDismissal(root) {
   root.addEventListener('click', (event) => {
-    if (!(event.target instanceof Element)) return;
-    const filterBar = root.querySelector('.filter-bar-expanded');
-    if (!(filterBar instanceof HTMLElement) || filterBar.contains(event.target)) return;
-    filterBar.querySelector('.horizon-toggle')?.setAttribute('aria-expanded', 'false');
-    filterBar.classList.remove('filter-bar-expanded');
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const expanded = [...root.querySelectorAll('.filter-bar-expanded')]
+      .filter((element) => element instanceof HTMLElement);
+    if (expanded.length === 0 || expanded.some((element) => element.contains(target))) return;
+    for (const element of expanded) {
+      element.querySelector('.horizon-toggle')?.setAttribute('aria-expanded', 'false');
+      element.classList.remove('filter-bar-expanded');
+    }
   });
 }
 

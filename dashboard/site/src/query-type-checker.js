@@ -437,7 +437,7 @@ function validateUsage(field, type, usage, path, errors) {
 
 /** @param {unknown} reducer @param {unknown} field @param {Map<string, FieldType> | undefined} fields @returns {FieldType} */
 function aggregateType(reducer, field, fields) {
-  if (typeof reducer === 'string' && ['count', 'distinct-count', ...QUERY_NUMERIC_REDUCER_VALUES].includes(reducer)) {
+  if (typeof reducer === 'string' && ['count', 'distinct-count', 'latest-failure-streak', ...QUERY_NUMERIC_REDUCER_VALUES].includes(reducer)) {
     return 'numeric';
   }
   if (reducer === 'distinct-list') return 'text';

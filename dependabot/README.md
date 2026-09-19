@@ -70,7 +70,7 @@ The omitted fields default to an enabled campaign and worker, `review` mode, one
 
 The App installation or PAT must cover every private or internal target, alternate review repository, and live target the campaign needs to read or update. Public review runs may use `GITHUB_TOKEN`, but unavailable target Actions, security, or Dependabot data makes the run incomplete rather than broadening access or guessing. See the [authentication guide](../docs/authentication.md) for the permission model and credential precedence.
 
-The update-planner rename preserves previously created plan issues. Existing issues with the former `dependabot:release-train-updater` label are recovered by the `dependabot` campaign label and canonical repository marker; newly created issues use `dependabot:update-planner`.
+The update-planner rename preserves previously created plan issues. Existing issues with the former `dependabot:release-train-updater` label are recovered by the `dependabot` campaign label and canonical repository marker. Newly created issues use the portable `dependabot` label and retain worker identity through the `[dependabot:update-planner]` title prefix because live-target credentials may not be allowed to create missing labels.
 
 Grant the credential read access to Dependabot alerts, Dependabot repository access, and security events. The workflows already declare `vulnerability-alerts: read` and `security-events: read`; they do not request security write access and never change Dependabot repository-access settings. Dependabot alerts and access boundaries can therefore be inspected directly without treating Dependabot pull requests as the source of truth.
 

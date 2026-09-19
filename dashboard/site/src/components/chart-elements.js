@@ -796,7 +796,9 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
                 style: `--chart-entry-index: ${pointIndex}`,
                 tabIndex: 0,
                 role: 'img',
-                'aria-label': `${chartPointLabel(point, unit)}${point.highlighted === false ? ' (context)' : point.highlighted ? ' (selected window)' : ''}`
+                'aria-label': `${chartPointLabel(point, unit)}${point.highlighted === false ? ' (context)' : point.highlighted ? ' (selected window)' : ''}`,
+                ...(typeof point.key === 'string' && point.key ? { 'data-chart-point-key': point.key } : {}),
+                'data-chart-point-series': seriesName
               },
               h('title', null, chartPointLabel(point, unit)),
               isAreaChart

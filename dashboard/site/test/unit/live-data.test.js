@@ -31,7 +31,7 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain("dashboardPagePaginatedSourceBindings, dashboardPageSourceNames");
     expect(startup).not.toContain("drainSourceContinuation");
     expect(startup).not.toContain("drainChartSources");
-    expect(startup).toContain("pageSourceNames(pageId)");
+    expect(startup).toContain("pageSourceNames(pageId, pageOptions.queryContext?.viewMode)");
     expect(startup).toContain("pagePaginatedSourceBindings(pageId)");
     expect(startup).toContain("refreshCanonicalDashboardSources(\n      sourceUrl,\n      []");
     expect(startup).not.toContain("loadInitialSources");
@@ -56,8 +56,8 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain('renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader)');
     expect(preview).toContain('event: "preview.rendered"');
     expect(preview).toContain('get("local-preview")');
-    expect(preview).toMatch(/previewMode\s*\?\s*await fetch\("\.\/viewer\.json"\)/);
-    expect(preview).toContain('viewer: localViewer');
+    expect(preview).not.toContain('viewer.json');
+    expect(preview).not.toContain('localViewer');
     expect(preview).toContain('new URL("./__dashboard_socket", window.location.href)');
     expect(preview).toContain('previewMode === "copilot"');
     expect(preview).toContain('await import("./copilot-prompt.js")');

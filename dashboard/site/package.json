@@ -5,7 +5,7 @@
   "scripts": {
     "build": "node ./scripts/build.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint . && npm run validate:dashboards",
+    "lint": "eslint . && node ./scripts/lint-octicons.mjs && npm run validate:dashboards",
     "test": "vitest run --environment jsdom",
     "test:e2e": "npx playwright test --config=playwright.config.mjs",
     "test:performance": "node ./scripts/build.mjs dist test/performance/fixtures/control-settings.json && node ./test/performance/lighthouse.mjs",

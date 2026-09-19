@@ -127,7 +127,7 @@ safe-outputs:
     max: 1
     expires: 14d
     if-no-changes: ignore
-    protected-files: request_review
+    protected-files: request-review
     max-patch-files: 50
     allowed-files:
       - "**"

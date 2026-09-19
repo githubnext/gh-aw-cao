@@ -130,14 +130,36 @@ describe('UI elements', () => {
     }));
 
     expect(rendered?.querySelectorAll('[data-chart-widget="line"]')).toHaveLength(3);
-    expect([...rendered?.querySelectorAll('.insights-plot-panel h2') ?? []].map((heading) => heading.textContent)).toEqual([
+    expect([...rendered?.querySelectorAll('.insights-measure-row h3') ?? []].map((heading) => heading.textContent)).toEqual([
       'Repository readiness',
       'Quality',
       'Efficiency'
     ]);
     expect(rendered?.querySelectorAll('.chart-point')).toHaveLength(6);
-    expect(rendered?.textContent).toContain('Primary metric · 2 extracts');
-    expect(rendered?.textContent).toContain('Diagnostic · 2 extracts');
+    expect(rendered?.querySelectorAll('.insights-measure-rows > .insights-measure-row')).toHaveLength(3);
+    expect([...rendered?.querySelectorAll('.insights-measure-row .insights-axis-y') ?? []].map((label) => label.textContent)).toEqual([
+      'Repository readiness (measured value)',
+      'Quality (measured value)',
+      'Efficiency (measured value)'
+    ]);
+    expect([...rendered?.querySelectorAll('.insights-measure-row .insights-axis-x') ?? []].map((label) => label.textContent))
+      .toEqual(['Observation time (UTC)', 'Observation time (UTC)', 'Observation time (UTC)']);
+    expect(rendered?.textContent).toContain('Primary operational-value measure “Repository readiness”');
+    expect(rendered?.textContent).toContain('Diagnostic measure “Quality”');
+    expect(rendered?.textContent).toContain('2 extracts across 1 workflow series');
+
+    const readout = rendered?.querySelector('.insights-measure-row .insights-point-readout');
+    expect(readout?.textContent).toBe('Select a point to inspect that observation.');
+    const point = rendered?.querySelector('.insights-measure-row .chart-point[data-chart-point-key]');
+    expect(point?.getAttribute('aria-pressed')).toBe('false');
+    point?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(point?.getAttribute('aria-pressed')).toBe('true');
+    expect(point?.getAttribute('data-selected')).toBe('true');
+    expect(readout?.textContent).toContain('40');
+    expect(readout?.textContent).toContain('.github/workflows/worker.md');
+    point?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(point?.getAttribute('aria-pressed')).toBe('false');
+    expect(readout?.textContent).toBe('Select a point to inspect that observation.');
   });
 
   it('renders the routed Work roadmap as a Projects-style timeline', () => {
@@ -449,6 +471,71 @@ describe('UI elements', () => {
     expect(rendered?.querySelectorAll('a')).toHaveLength(1);
   });
 
+  it('renders compact attention evidence with an observation time and View all route', () => {
+    const rendered = renderUiElement('needs-attention-list', {
+      pageId: 'overview',
+      title: 'Needs attention',
+      sourceNames: ['overview-needs-attention-preview'],
+      sources: {
+        'overview-needs-attention-preview': {
+          source: 'overview-needs-attention-preview',
+          rows: [{
+            kind: 'Repeated workflow failures',
+            title: '.github/workflows/doctor.md',
+            scope: 'githubnext/gh-aw-cao',
+            reason: '2 failed runs in the selected horizon',
+            'failure-count': 2,
+            action: 'Open latest failed run on GitHub',
+            'observed-at': '2026-09-16T12:00:00Z',
+            'evidence-link': {
+              href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/42',
+              label: 'View run 42'
+            }
+          }],
+          metadata
+        }
+      },
+      contextDetails: [],
+      elementConfig: {
+        'view-all-page': 'overview-needs-attention',
+        'view-all-label': 'View all'
+      },
+      headingTag: 'h3'
+    });
+
+    const evidence = rendered?.querySelector('.signal-item > a');
+    expect(evidence?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/42');
+    expect(evidence?.getAttribute('target')).toBe('_blank');
+    expect(rendered?.querySelector('time')?.getAttribute('datetime')).toBe('2026-09-16T12:00:00Z');
+    expect(rendered?.textContent).toContain('githubnext/gh-aw-cao');
+    expect(rendered?.textContent).toContain('2 failed runs in the selected horizon');
+    expect(rendered?.querySelector('.count-badge')?.textContent).toBe('2');
+    expect(rendered?.querySelector('.count-badge')?.getAttribute('aria-label')).toBe('2 consecutive failed runs');
+    expect(rendered?.textContent).toContain('Open latest failed run on GitHub');
+    expect(rendered?.querySelector('.signal-list-footer a')?.getAttribute('href')).toBe('#page-overview-needs-attention');
+  });
+
+  it('renders an honest empty attention state without hiding View all', () => {
+    const rendered = renderUiElement('needs-attention-list', {
+      pageId: 'overview',
+      title: 'Needs attention',
+      sourceNames: ['overview-needs-attention-preview'],
+      sources: {
+        'overview-needs-attention-preview': {
+          source: 'overview-needs-attention-preview',
+          rows: [],
+          metadata: { ...metadata, availability: /** @type {'empty'} */ ('empty') }
+        }
+      },
+      contextDetails: [],
+      elementConfig: { 'view-all-page': 'overview-needs-attention' },
+      headingTag: 'h3'
+    });
+
+    expect(rendered?.textContent).toContain('No signals require attention');
+    expect(rendered?.querySelector('.signal-list-footer a')?.textContent).toContain('View all');
+  });
+
   it('renders a blocked readiness verdict with the next unblock action', () => {
     const rendered = renderUiElement('readiness-verdict', {
       pageId: 'readiness',
@@ -682,8 +769,8 @@ describe('UI elements', () => {
       detail: { parameter: 'campaign', value: 'sample-campaign' }
     }));
 
-    expect(rendered?.querySelector('.campaign-tabs [aria-current="page"]')?.textContent).toBe('Overview');
-    expect(rendered?.querySelector('.campaign-tabs')?.textContent).toBe('OverviewInsightsWorkflowsRunsIssues');
+    expect(rendered?.querySelector('.campaign-tabs [aria-current="page"]')?.textContent).toBe('Information');
+    expect(rendered?.querySelector('.campaign-tabs')?.textContent).toBe('InsightsWorkflowsRunsIssuesInformation');
   });
 
   it('renders the campaigns page shell through one declarative element composition', () => {

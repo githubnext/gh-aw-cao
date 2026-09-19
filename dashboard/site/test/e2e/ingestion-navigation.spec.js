@@ -159,7 +159,7 @@ test('Runs lazy list loads on scroll during and after activity ingestion', async
   await page.locator('.dashboard-notification-toggle').click();
   await page.getByRole('button', { name: 'Sync queries', exact: true }).click();
   await navigateToPage(page, 'runs');
-  await page.getByRole('button', { name: 'Show table view' }).click();
+  await page.getByRole('button', { name: 'Table' }).click();
   await expect(page.locator('td[data-field="run"]', { hasText: '1001' })).toBeVisible();
   expect(completedShards).toBeLessThan(shardCount);
   await expect(page.locator('.loading-progress')).toBeVisible();
@@ -175,6 +175,7 @@ test('Runs lazy list loads on scroll during and after activity ingestion', async
   releaseFinalShard();
   await expect.poll(() => storedRunCount(page)).toBe(shardCount * runsPerShard);
   await navigateToPage(page, 'runs');
+  await page.getByRole('button', { name: 'Table' }).click();
   expect(requestedShards).toBe(shardCount);
   await expectRunsLoadOnScroll(page, shardCount * runsPerShard);
 });

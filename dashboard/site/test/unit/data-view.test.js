@@ -523,6 +523,50 @@ describe('data view renderer', () => {
       .toBe('#page-campaign-detail?campaign=doctor');
   });
 
+  it('renders grouped entity-card lists with a trailing disclosure chevron', () => {
+    const rendered = renderDataView('list', {
+      pageId: 'overview',
+      title: 'Campaigns',
+      sourceName: 'campaign-inventory',
+      view: {
+        mark: 'list',
+        list: {
+          style: 'entity-cards',
+          appearance: 'grouped',
+          card: 'campaign',
+          drill: { type: 'external', field: 'campaign-dashboard-link' }
+        },
+        encoding: { columns: [{ field: 'campaign-name' }] }
+      },
+      rows: [{
+        'campaign-name': 'Daily ops',
+        'campaign-dashboard-link': {
+          'dashboard-href': '#page-campaign-detail?campaign=daily-ops',
+          'dashboard-label': 'View Daily ops campaign dashboard'
+        }
+      }],
+      cardTemplates: {
+        campaign: {
+          icon: 'goal',
+          title: { field: 'campaign-name' },
+          labels: [],
+          details: []
+        }
+      },
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    expect(rendered?.querySelector('.entity-card-list-grouped')).not.toBeNull();
+    expect(rendered?.querySelector('.entity-card-list-grid')).toBeNull();
+    expect(rendered?.querySelector('.entity-card-list-chevron .octicon-chevron-right')).not.toBeNull();
+  });
+
   it('keeps a list action available when its source is unavailable', () => {
     setDeclaredCliActions([{
       id: 'upgrade-repository',
@@ -1916,6 +1960,47 @@ describe('data view renderer', () => {
     expect(links).toHaveLength(1);
     expect(links?.[0].textContent).toBe(linkText);
     expect(links?.[0].getAttribute('href')).toBe(href);
+  });
+
+  it('renders an external row action without implying that navigation executes it', () => {
+    const rendered = renderDataView('table', {
+      pageId: 'workflow-runs',
+      title: 'Runs',
+      view: {
+        mark: 'table',
+        encoding: {
+          columns: [{ field: 'run', type: 'nominal', title: 'Run' }],
+          actions: [{
+            intent: 'Open the precise GitHub Actions run page without executing an action.',
+            presentation: 'external-link',
+            icon: 'mark-github',
+            label: 'Open run on GitHub',
+            context: ['run-link']
+          }]
+        }
+      },
+      sourceName: 'workflow-runs',
+      rows: [{
+        run: '42',
+        'run-link': {
+          href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/42',
+          label: 'Run 42'
+        }
+      }],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const action = rendered?.querySelector('.table-external-action');
+    expect(action?.textContent).toContain('Open run on GitHub');
+    expect(action?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/42');
+    expect(action?.getAttribute('target')).toBe('_blank');
+    expect(rendered?.querySelector('button[aria-label="Open run on GitHub"]')).toBeNull();
   });
 
   it('preserves complete output evidence while marking it for visual ellipsis', () => {

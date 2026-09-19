@@ -76,6 +76,8 @@ import {
   ORDER_DIRECTION_VALUES,
   OUTCOME_STATE_VALUES,
   PAGE_ROUTE_KEYS,
+  PAGE_ROUTE_TAB_KEYS,
+  MAX_PAGE_ROUTE_TABS,
   PAGE_ICON_VALUES,
   PAGE_KIND_VALUES,
   PAGE_SECTION_KEYS,
@@ -110,6 +112,7 @@ import {
   VIEW_LIST_DRILL_KEYS,
   VIEW_LIST_DRILL_TYPE_VALUES,
   VIEW_LIST_LAYOUT_VALUES,
+  VIEW_LIST_APPEARANCE_VALUES,
   VIEW_DISCLOSURE_VALUES,
   VIEW_ENCODING_KEYS,
   VIEW_ELEMENT_CONFIG_KEYS,
@@ -375,7 +378,6 @@ export function validateLogicalSources(sources) {
         `${path}.workflow-role`
       ));
     }
-
     const campaignId = candidate.campaign;
     const hasCampaign = typeof campaignId === 'string' && campaignId.length > 0;
     if ((role === 'orchestrator' || role === 'worker') && !hasCampaign) {
@@ -1091,6 +1093,18 @@ function validateDashboard(dashboard, dashboardNode, errors) {
           ));
         }
       }
+    }
+    if (isPlainObject(page.route) && Array.isArray(page.route.tabs)) {
+      page.route.tabs.forEach((tab, tabIndex) => {
+        if (!isPlainObject(tab) || typeof tab.page !== 'string' || !IDENTIFIER_PATTERN.test(tab.page)) return;
+        if (!pageIds.has(tab.page)) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'route tab page must reference a declared dashboard page id.',
+            `$.dashboard.pages[${index}].route.tabs[${tabIndex}].page`
+          ));
+        }
+      });
     }
     const views = page.kind === 'built-in' && isPlainObject(page.definition)
       ? page.definition.views
@@ -2049,6 +2063,77 @@ function collectFieldDefinitionCoverage(fieldDefinition, coveredFields) {
 }
 
 /**
+ * Validates the optional tab set of a routed custom page.
+ * @param {Record<string, unknown>} route
+ * @param {string} routePath
+ * @param {ValidationError[]} errors
+ */
+function validateRouteTabs(route, routePath, errors) {
+  if (route.tabs === undefined) {
+    if (route.tab !== undefined) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'route tab requires a route tabs sequence.',
+        `${routePath}.tab`
+      ));
+    }
+    return;
+  }
+  if (route['hash-query-parameter'] === undefined) {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      'route tabs require hash-query-parameter.',
+      `${routePath}.tabs`
+    ));
+  }
+  if (!Array.isArray(route.tabs) || route.tabs.length === 0 || route.tabs.length > MAX_PAGE_ROUTE_TABS) {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      `route tabs must be a sequence of 1 to ${MAX_PAGE_ROUTE_TABS} tabs.`,
+      `${routePath}.tabs`
+    ));
+    return;
+  }
+  const identifiers = new Set();
+  for (const [index, tab] of route.tabs.entries()) {
+    const tabPath = `${routePath}.tabs[${index}]`;
+    if (!isPlainObject(tab)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'route tab must be a mapping.', tabPath));
+      continue;
+    }
+    for (const key of Object.keys(tab)) {
+      if (!PAGE_ROUTE_TAB_KEYS.includes(key)) {
+        errors.push(createError(ERROR_CODES.unknownOrDuplicateKey, `Unknown key "${key}" is not allowed at ${tabPath}.`, `${tabPath}.${key}`));
+      }
+    }
+    validateRequiredIdentifier(tab.id, `${tabPath}.id`, 'route tab id', errors);
+    validateRequiredIdentifier(tab.page, `${tabPath}.page`, 'route tab page', errors);
+    validateStringField(tab.label, `${tabPath}.label`, true, errors);
+    validateStringField(tab.icon, `${tabPath}.icon`, true, errors);
+    if (typeof tab.icon === 'string' && !PAGE_ICON_VALUES.includes(tab.icon)) {
+      errors.push(createError(
+        ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+        'route tab icon must use one canonical Octicon name.',
+        `${tabPath}.icon`
+      ));
+    }
+    if (typeof tab.id === 'string') {
+      if (identifiers.has(tab.id)) {
+        errors.push(createError(ERROR_CODES.unknownOrDuplicateKey, 'route tab ids must be unique.', `${tabPath}.id`));
+      }
+      identifiers.add(tab.id);
+    }
+  }
+  if (typeof route.tab !== 'string' || !identifiers.has(route.tab)) {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      'route tab must name one declared route tab id.',
+      `${routePath}.tab`
+    ));
+  }
+}
+
+/**
  * @param {Record<string, unknown>} page
  * @param {unknown} pageNode
  * @param {string} path
@@ -2096,6 +2181,7 @@ function validateCustomPage(page, pageNode, path, errors) {
           errors
         );
       }
+      validateRouteTabs(page.route, routePath, errors);
     }
   }
 
@@ -2435,7 +2521,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
          : view.element === 'campaign-route'
            ? CAMPAIGN_ROUTE_BODY_VALUES
            : view.element === 'work-project-view'
-               ? WORK_VIEW_BODY_VALUES
+             ? WORK_VIEW_BODY_VALUES
              : OUTCOME_DETAIL_SECTION_BODY_VALUES;
        if (typeof view.config.body === 'string' && !allowedBodies.includes(view.config.body)) {
          errors.push(createError(
@@ -2450,6 +2536,26 @@ function validateView(view, viewNode, path, viewIds, errors) {
          'config.body is supported only for the workflow-route, workflow-route-page, campaign-route, outcome-detail-section, and work-project-view elements.',
          `${path}.config.body`
        ));
+      }
+      if (view.config['view-all-page'] !== undefined) {
+        validateStringField(view.config['view-all-page'], `${path}.config.view-all-page`, true, errors);
+        if (view.element !== 'signal-list' && view.element !== 'needs-attention-list') {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'config.view-all-page is supported only for the signal-list element.',
+            `${path}.config.view-all-page`
+          ));
+        }
+      }
+      if (view.config['view-all-label'] !== undefined) {
+        validateStringField(view.config['view-all-label'], `${path}.config.view-all-label`, true, errors);
+        if (view.element !== 'signal-list' && view.element !== 'needs-attention-list') {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'config.view-all-label is supported only for the signal-list element.',
+            `${path}.config.view-all-label`
+          ));
+        }
       }
       const allowedSections = view.element === 'work-project-view'
         ? WORK_VIEW_BODY_VALUES
@@ -2537,6 +2643,14 @@ function validateView(view, viewNode, path, viewIds, errors) {
         validateStringField(view.list.layout, `${listPath}.layout`, true, errors);
         if (typeof view.list.layout === 'string' && !VIEW_LIST_LAYOUT_VALUES.includes(view.list.layout)) {
           errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, `list.layout must be one of ${VIEW_LIST_LAYOUT_VALUES.join(', ')}.`, `${listPath}.layout`));
+        }
+      }
+      if (view.list.appearance !== undefined) {
+        validateStringField(view.list.appearance, `${listPath}.appearance`, true, errors);
+        if (view.list.style !== 'entity-cards') {
+          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'list.appearance is supported only for entity-cards lists.', `${listPath}.appearance`));
+        } else if (typeof view.list.appearance === 'string' && !VIEW_LIST_APPEARANCE_VALUES.includes(view.list.appearance)) {
+          errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, `list.appearance must be one of ${VIEW_LIST_APPEARANCE_VALUES.join(', ')}.`, `${listPath}.appearance`));
         }
       }
       validateStringField(view.list.icon, `${listPath}.icon`, true, errors);
@@ -2938,7 +3052,7 @@ function validateTableActions(encoding, encodingNode, mark, sourceName, path, er
     validateObjectKeys(actionNode, TABLE_ACTION_KEYS, actionPath, errors);
     validateStringField(action.presentation, `${actionPath}.presentation`, true, errors);
     if (typeof action.presentation === 'string' && !TABLE_ACTION_PRESENTATION_VALUES.includes(action.presentation)) {
-      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'action presentation must be copy-prompt or cli-action.', `${actionPath}.presentation`));
+      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'action presentation must be copy-prompt, cli-action, or external-link.', `${actionPath}.presentation`));
     }
     if (action.presentation === 'cli-action') {
       validateRequiredIdentifier(action.action, `${actionPath}.action`, 'CLI action reference', errors);
@@ -2959,6 +3073,16 @@ function validateTableActions(encoding, encodingNode, mark, sourceName, path, er
         errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'copy-prompt table actions must not declare action.', `${actionPath}.action`));
       }
     }
+    if (action.presentation === 'external-link' && (
+      !Array.isArray(action.context)
+      || action.context.length !== 1
+    )) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'external-link action context must contain exactly one link field.',
+        `${actionPath}.context`
+      ));
+    }
     validateStringField(action.icon, `${actionPath}.icon`, true, errors);
     if (typeof action.icon === 'string' && !PAGE_ICON_VALUES.includes(action.icon)) {
       errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'action icon must use one canonical icon value.', `${actionPath}.icon`));
@@ -2978,6 +3102,9 @@ function validateTableActions(encoding, encodingNode, mark, sourceName, path, er
         contextFields.add(field);
         if (sourceName && !sourceFieldNames(sourceName)?.includes(field)) {
           errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'action context field must be declared by data.source.', fieldPath));
+        }
+        if (action.presentation === 'external-link' && !LINK_FIELD_NAMES.includes(field)) {
+          errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'external-link action context must reference a link field.', fieldPath));
         }
       });
       if (action.presentation === 'cli-action' && typeof action.action === 'string') {
