@@ -326,10 +326,10 @@ export function computeValue(row, definition) {
   if (definition.function === 'failure-streak-point') {
     const timestamp = parseTimestamp(values[0]);
     const run = textValue(values[1]).trim();
-    const conclusion = textValue(values[2]).trim();
-    return timestamp === null || !run || !conclusion
+    const failed = values[2] === true || (numericValue(values[2]) ?? 0) > 0;
+    return timestamp === null || !run
       ? null
-      : JSON.stringify([timestamp, run, ['failure', 'startup-failure', 'stale', 'timed-out'].includes(conclusion)]);
+      : JSON.stringify([timestamp, run, failed]);
   }
   const numbers = values.map(numericValue);
   if (numbers.some((value) => value === null)) return null;
