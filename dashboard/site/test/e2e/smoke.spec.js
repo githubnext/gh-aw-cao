@@ -38,6 +38,17 @@ function buildPresenterModuleUrl() {
   return 'http://dashboard.test/src/presenter.js';
 }
 
+function metadataFixture(sourceId, overrides = {}) {
+  return JSON.stringify({
+    'source-id': sourceId,
+    'source-kind': 'fixture',
+    completeness: 'complete',
+    freshness: 'fresh',
+    availability: 'available',
+    ...overrides
+  });
+}
+
 for (const deviceName of ['Desktop Chrome', 'iPhone 13', 'Pixel 7']) {
   test.describe(`GitHub navigation on ${deviceName}`, () => {
     const device = devices[deviceName];
@@ -401,15 +412,7 @@ test('Settings disables hourly dashboard downloads when unsupported', async ({ p
     <div id="root"></div>
     <script type="module">
       import { renderConfigurationView } from 'http://dashboard.test/src/components/configuration-view.js';
-      const metadata = {
-        'source-id': 'configuration-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-09-12T00:00:00Z',
-        'retrieved-at': '2026-09-12T00:00:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
+      const metadata = ${metadataFixture('configuration-fixture', { 'as-of': '2026-09-12T00:00:00Z', 'retrieved-at': '2026-09-12T00:00:00Z' })};
       document.querySelector('#root').append(renderConfigurationView({
         pageId: 'configuration',
         title: 'Settings',
@@ -446,15 +449,7 @@ test('production Settings view loads without an unsupported-view warning', async
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
       const documentModel = ${JSON.stringify(documentModel)};
-      const metadata = {
-        'source-id': 'configuration-integration-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-09-12T00:00:00Z',
-        'retrieved-at': '2026-09-12T00:00:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
+      const metadata = ${metadataFixture('configuration-integration-fixture', { 'as-of': '2026-09-12T00:00:00Z', 'retrieved-at': '2026-09-12T00:00:00Z' })};
       const sources = {
         'configuration-policy': {
           source: 'configuration-policy',
@@ -643,14 +638,7 @@ test('production pages expose a responsive executive chart', async ({ page }) =>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
       const documentModel = ${JSON.stringify(documentModel)};
-      const metadata = {
-        'source-id': 'mobile-summary-fixture',
-        'source-kind': 'fixture',
-        'retrieved-at': '2026-09-03T12:00:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
+      const metadata = ${metadataFixture('mobile-summary-fixture', { 'retrieved-at': '2026-09-03T12:00:00Z' })};
       const sources = {
         runs: {
           source: 'runs',
@@ -701,15 +689,7 @@ test('GitHub API events table remains operable at desktop and narrow widths', as
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
       const documentModel = ${JSON.stringify(documentModel)};
-      const metadata = {
-        'source-id': 'github-api-event-viewport-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-09-04T12:00:00Z',
-        'retrieved-at': '2026-09-04T12:01:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
+      const metadata = ${metadataFixture('github-api-event-viewport-fixture', { 'as-of': '2026-09-04T12:00:00Z', 'retrieved-at': '2026-09-04T12:01:00Z' })};
       const row = {
         'observed-at': '2026-09-04T12:00:00Z',
         'event-type': 'github-api.response',
@@ -782,15 +762,7 @@ test('Transactions includes local database controls and a responsive transaction
         'duplicate-agentic-run-observations': index,
         'unenriched-runs': index
       }));
-      const metadata = {
-        'source-id': 'transactions-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-09-12T12:00:00Z',
-        'retrieved-at': '2026-09-12T12:01:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
+      const metadata = ${metadataFixture('transactions-fixture', { 'as-of': '2026-09-12T12:00:00Z', 'retrieved-at': '2026-09-12T12:01:00Z' })};
       const sources = {
         'transactions-table': { source: 'transactions-table', rows, metadata },
         'configuration-policy': {
@@ -889,15 +861,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
       const documentModel = ${JSON.stringify(documentModel)};
-      const metadata = {
-        'source-id': 'runs-viewport-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-09-10T12:00:00Z',
-        'retrieved-at': '2026-09-10T12:01:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
+      const metadata = ${metadataFixture('runs-viewport-fixture', { 'as-of': '2026-09-10T12:00:00Z', 'retrieved-at': '2026-09-10T12:01:00Z' })};
       const sources = {
         'runs-table': {
           source: 'runs-table',
@@ -1084,15 +1048,7 @@ test('a page combining a chart with a full-view table fills and scrolls in table
           navigation: [{ label: 'Data', pages: ['engines-models'] }]
         }
       };
-      const metadata = {
-        'source-id': 'models-scroll-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-09-15T12:00:00Z',
-        'retrieved-at': '2026-09-15T12:01:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
+      const metadata = ${metadataFixture('models-scroll-fixture', { 'as-of': '2026-09-15T12:00:00Z', 'retrieved-at': '2026-09-15T12:01:00Z' })};
       const chartRows = Array.from({ length: 6 }, (_, index) => ({
         summary: 'copilot / model-' + (index + 1),
         events: 6 - index
@@ -1176,15 +1132,7 @@ test('Runs renders the worker-projected table for an active time window', async 
         'central-agentic-ops.dashboard.horizon-filter-settings',
         JSON.stringify({ range: 'custom', start: '2020-01-01T00:00:00.000Z', end: '2020-01-02T00:00:00.000Z' })
       );
-      const metadata = {
-        'source-id': 'runs-empty-time-filter-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-09-10T12:00:00Z',
-        'retrieved-at': '2026-09-10T12:01:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
+      const metadata = ${metadataFixture('runs-empty-time-filter-fixture', { 'as-of': '2026-09-10T12:00:00Z', 'retrieved-at': '2026-09-10T12:01:00Z' })};
       const sources = {
         runs: {
           source: 'runs',
@@ -1291,15 +1239,7 @@ test('Safe Outputs renders every retained outcome in one progressive full-view t
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
       const documentModel = ${JSON.stringify(documentModel)};
-      const metadata = {
-        'source-id': 'safe-output-usage-fixture',
-        'source-kind': 'derived',
-        'query-name': 'safe-output-usage',
-        'as-of': '2026-09-10T05:00:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
+      const metadata = ${metadataFixture('safe-output-usage-fixture', { 'source-kind': 'derived', 'query-name': 'safe-output-usage', 'as-of': '2026-09-10T05:00:00Z' })};
       const sources = {
         'safe-output-usage': {
           source: 'safe-output-usage',
@@ -1369,14 +1309,7 @@ test('control-plane readiness presents operational evidence in one lazy table', 
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
       import { prepareDashboardViewSources } from 'http://dashboard.test/test/e2e/helpers/dashboard-view-sources.js';
       const documentModel = ${JSON.stringify(documentModel)};
-      const metadata = {
-        'source-id': 'readiness-fixture',
-        'source-kind': 'fixture',
-        'retrieved-at': '2026-09-03T12:00:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
+      const metadata = ${metadataFixture('readiness-fixture', { 'retrieved-at': '2026-09-03T12:00:00Z' })};
       const sources = {
         workflows: {
           source: 'workflows',
@@ -1482,15 +1415,7 @@ test('experiments query renders as one full-view declarative table', async ({ pa
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
       import { processDashboardQueries } from ${JSON.stringify('http://dashboard.test/src/data-processor.js')};
       const documentModel = ${JSON.stringify(documentModel)};
-      const metadata = {
-        'source-id': 'experiments-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-09-05T12:00:00Z',
-        'retrieved-at': '2026-09-05T12:01:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
+      const metadata = ${metadataFixture('experiments-fixture', { 'as-of': '2026-09-05T12:00:00Z', 'retrieved-at': '2026-09-05T12:01:00Z' })};
       const sources = {
         experiments: {
           source: 'experiments',
@@ -1612,15 +1537,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
       import { prepareDashboardViewSources } from 'http://dashboard.test/test/e2e/helpers/dashboard-view-sources.js';
       const documentModel = ${JSON.stringify(documentModel)};
-      const metadata = {
-        'source-id': 'dashboard-next-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-08-29T10:00:00Z',
-        'retrieved-at': '2026-08-29T10:01:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
+      const metadata = ${metadataFixture('dashboard-next-fixture', { 'as-of': '2026-08-29T10:00:00Z', 'retrieved-at': '2026-08-29T10:01:00Z' })};
       const evidenceLink = {
         relation: 'evidence',
         href: 'https://example.com/evidence/release-train',
@@ -2099,15 +2016,7 @@ test('Work uses focused mobile Board, Table, Roadmap, and detail interactions', 
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
       import { processDashboardQueries } from ${JSON.stringify('http://dashboard.test/src/data-processor.js')};
       const documentModel = ${JSON.stringify(documentModel)};
-      const metadata = {
-        'source-id': 'mobile-work-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-09-07T12:00:00Z',
-        'retrieved-at': '2026-09-07T12:01:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
+      const metadata = ${metadataFixture('mobile-work-fixture', { 'as-of': '2026-09-07T12:00:00Z', 'retrieved-at': '2026-09-07T12:01:00Z' })};
       const sources = {
         'work-items': {
           source: 'work-items',
@@ -2188,15 +2097,7 @@ test('performance page renders an SVG heatmap before its full-view lazy job tabl
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
       const documentModel = ${JSON.stringify(documentModel)};
-      const metadata = {
-        'source-id': 'performance-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-09-03T12:00:00Z',
-        'retrieved-at': '2026-09-03T12:01:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
+      const metadata = ${metadataFixture('performance-fixture', { 'as-of': '2026-09-03T12:00:00Z', 'retrieved-at': '2026-09-03T12:01:00Z' })};
       const sources = {
         'run-performance': {
           source: 'run-performance',
@@ -2242,15 +2143,7 @@ test('mobile navigation menu paints above a full-view page instead of being clip
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
       const documentModel = ${JSON.stringify(documentModel)};
-      const metadata = {
-        'source-id': 'mobile-nav-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-09-03T12:00:00Z',
-        'retrieved-at': '2026-09-03T12:01:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
+      const metadata = ${metadataFixture('mobile-nav-fixture', { 'as-of': '2026-09-03T12:00:00Z', 'retrieved-at': '2026-09-03T12:01:00Z' })};
       const sources = {
         'run-performance': {
           source: 'run-performance',
@@ -2670,17 +2563,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
-      const metadata = {
-        'source-id': 'repositories-layout-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-09-01T03:00:00Z',
-        'retrieved-at': '2026-09-01T03:01:00Z',
-        'coverage-start': '2026-08-31T03:00:00Z',
-        'coverage-end': '2026-09-01T03:00:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
+      const metadata = ${metadataFixture('repositories-layout-fixture', { 'as-of': '2026-09-01T03:00:00Z', 'retrieved-at': '2026-09-01T03:01:00Z', 'coverage-start': '2026-08-31T03:00:00Z', 'coverage-end': '2026-09-01T03:00:00Z' })};
       const emptySource = (source) => ({ source, rows: [], metadata });
       const campaigns = ['EU CRA', 'Repository Ops', 'AW Optimization'];
       const roles = ['orchestrator', 'worker'];
@@ -2877,17 +2760,7 @@ test('full-view scrolling with a small overscroll range does not jitter the app 
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
 
-      const metadata = {
-        'source-id': 'small-overscroll-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-09-01T03:00:00Z',
-        'retrieved-at': '2026-09-01T03:01:00Z',
-        'coverage-start': '2026-08-31T03:00:00Z',
-        'coverage-end': '2026-09-01T03:00:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
+      const metadata = ${metadataFixture('small-overscroll-fixture', { 'as-of': '2026-09-01T03:00:00Z', 'retrieved-at': '2026-09-01T03:01:00Z', 'coverage-start': '2026-08-31T03:00:00Z', 'coverage-end': '2026-09-01T03:00:00Z' })};
       const sources = {
         inventory: {
           source: 'inventory',
@@ -2961,17 +2834,7 @@ test('full-view mobile chrome stays stable while a repositories table scrolls', 
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
 
-      const metadata = {
-        'source-id': 'mobile-full-view-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-09-01T03:00:00Z',
-        'retrieved-at': '2026-09-01T03:01:00Z',
-        'coverage-start': '2026-08-31T03:00:00Z',
-        'coverage-end': '2026-09-01T03:00:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
+      const metadata = ${metadataFixture('mobile-full-view-fixture', { 'as-of': '2026-09-01T03:00:00Z', 'retrieved-at': '2026-09-01T03:01:00Z', 'coverage-start': '2026-08-31T03:00:00Z', 'coverage-end': '2026-09-01T03:00:00Z' })};
       const sources = {
         inventory: {
           source: 'inventory',
@@ -3193,15 +3056,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
         placement: 'row'
       }], { canExecute: false });
 
-      const metadata = {
-        'source-id': 'campaigns-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-09-14T16:00:00Z',
-        'retrieved-at': '2026-09-14T16:01:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
+      const metadata = ${metadataFixture('campaigns-fixture', { 'as-of': '2026-09-14T16:00:00Z', 'retrieved-at': '2026-09-14T16:01:00Z' })};
       const documentModel = {
         languageVersion: '0.1.0',
         dashboard: {
@@ -4313,15 +4168,7 @@ test('repository page template follows its JSON-declared hash query route in bro
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
       import { prepareDashboardViewSources } from 'http://dashboard.test/test/e2e/helpers/dashboard-view-sources.js';
       const dashboardDocument = ${JSON.stringify(dashboardDocument)};
-      const metadata = {
-        'source-id': 'workflows-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-08-30T08:00:00Z',
-        'retrieved-at': '2026-08-30T08:01:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
+      const metadata = ${metadataFixture('workflows-fixture', { 'as-of': '2026-08-30T08:00:00Z', 'retrieved-at': '2026-08-30T08:01:00Z' })};
       const sources = {
         workflows: {
           source: 'workflows',
@@ -4388,15 +4235,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
       import { prepareDashboardViewSources } from 'http://dashboard.test/test/e2e/helpers/dashboard-view-sources.js';
-      const metadata = {
-        'source-id': 'workflow-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-08-31T20:00:00Z',
-        'retrieved-at': '2026-08-31T20:01:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
+      const metadata = ${metadataFixture('workflow-fixture', { 'as-of': '2026-08-31T20:00:00Z', 'retrieved-at': '2026-08-31T20:01:00Z' })};
       const dashboardDocument = {
         languageVersion: '0.1.0',
         dashboard: {
@@ -4603,15 +4442,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
-      const metadata = {
-        'source-id': 'workflow-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-08-31T20:00:00Z',
-        'retrieved-at': '2026-08-31T20:01:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
+      const metadata = ${metadataFixture('workflow-fixture', { 'as-of': '2026-08-31T20:00:00Z', 'retrieved-at': '2026-08-31T20:01:00Z' })};
       const dashboardDocument = {
         languageVersion: '0.1.0',
         dashboard: {
@@ -4801,17 +4632,7 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
       import { prepareDashboardViewSources } from 'http://dashboard.test/test/e2e/helpers/dashboard-view-sources.js';
-      const metadata = {
-        'source-id': 'workflow-runtime-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-08-31T19:00:00Z',
-        'retrieved-at': '2026-08-31T19:01:00Z',
-        'coverage-start': '2026-08-30T19:00:00Z',
-        'coverage-end': '2026-08-31T19:00:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
+      const metadata = ${metadataFixture('workflow-runtime-fixture', { 'as-of': '2026-08-31T19:00:00Z', 'retrieved-at': '2026-08-31T19:01:00Z', 'coverage-start': '2026-08-30T19:00:00Z', 'coverage-end': '2026-08-31T19:00:00Z' })};
       const workflow = '.github/workflows/multi-device-docs-tester.md';
       const dashboardDocument = {
         languageVersion: '0.1.0',
@@ -4929,15 +4750,7 @@ test('outcome page template follows its JSON-declared hash query route in browse
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
-      const metadata = {
-        'source-id': 'outcomes-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-08-31T08:00:00Z',
-        'retrieved-at': '2026-08-31T08:01:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
+      const metadata = ${metadataFixture('outcomes-fixture', { 'as-of': '2026-08-31T08:00:00Z', 'retrieved-at': '2026-08-31T08:01:00Z' })};
       const dashboardDocument = {
         languageVersion: '0.1.0',
         dashboard: {
