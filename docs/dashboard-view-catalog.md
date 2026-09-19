@@ -19,7 +19,7 @@ These are the default product destinations. They are custom pages composed from 
 
 | Page ID | Navigation title | Named element | Purpose |
 | --- | --- | --- | --- |
-| `overview` | Overview | `factory-header`, `factory-floor` | Summarizes current motion, outcomes, delivery, runs, dispatches, value, and weekly rhythm. |
+| `overview` | Overview | `factory-header`, `factory-floor`, `needs-attention-list` | Summarizes current motion, grouped attention evidence, outcomes, delivery, runs, dispatches, value, and weekly rhythm. |
 | `work` | Work | `work-project-view` | Presents delegated work as board, task, and roadmap modes. |
 | `agents` | Operations | `agent-marketplace-view` | Presents the policy-scoped campaign and agent marketplace. |
 | `insights` | Insights | `insights-overview` | Composes outcomes, value, usage, runtime, security, and experiment evidence. |
@@ -86,6 +86,7 @@ Named elements own specialized DOM, accessibility, interaction, local state, and
 | `context-summary` | Summarizes the active scope and contextual evidence. |
 | `anomaly-readiness` | Presents anomaly-detection readiness and gaps. |
 | `signal-list` | Presents a compact list of evidence-backed signals. |
+| `needs-attention-list` | Presents grouped unresolved evidence with observation time, one GitHub action link, and an optional full-list route. |
 | `campaign-activity` | Composes campaign activity views. |
 | `campaign-activity-shell` | Coordinates campaign activity modes and shared chrome. |
 | `campaign-utilization` | Presents campaign utilization measures. |

@@ -42,7 +42,11 @@ describe('entity card templates', () => {
       ]
     });
     expect(templates.campaign.details).not.toContainEqual(expect.objectContaining({ field: 'runs' }));
-    expect(pages.overview.views[2]).toMatchObject({
+    expect(
+      pages.overview.views.find(
+        (/** @type {Record<string, any>} */ view) => view.id === 'overview-campaigns'
+      )
+    ).toMatchObject({
       title: 'Campaigns',
       data: { source: 'campaign-inventory' },
       mark: 'list',

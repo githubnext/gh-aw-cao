@@ -302,17 +302,24 @@ Also determine the repository-declared package-manager and toolchain versions fr
 
 Build a complete snapshot from Dependabot service evidence, without requiring Dependabot pull requests to exist:
 
-1. Find every open Dependabot security alert visible to this workflow with `list_dependabot_alerts`, including alerts not represented by an open pull request.
-2. Inspect Dependabot repository-access state when available:
+1. Build the current update inventory from Dependabot-native service evidence before inspecting pull requests. Use every available read-only Dependabot tool or API exposed to the workflow for pending security updates, version updates, update jobs, repository-access blockers, and Dependabot-identified configuration failures.
+   - Pull requests are not the source of truth for the update inventory. Do not infer that an update exists, is absent, or is resolved solely from open, closed, merged, or missing Dependabot pull requests.
+   - If the workflow lacks a Dependabot-native read path for non-security version updates or update jobs, call `missing_tool` or `report_incomplete` with the missing evidence path instead of substituting pull-request search results.
+2. Find every open Dependabot security alert visible to this workflow with `list_dependabot_alerts`, including alerts not represented by an open pull request.
+   - Distinguish an empty result from unavailable evidence. Tool denial, DIFC filtering, missing tools, authentication failures, permission failures, or API errors mean alert evidence is unavailable; do not summarize unavailable alert evidence as "zero open alerts."
+   - If alert evidence is unavailable and no other Dependabot evidence is sufficient to produce a bounded plan, call `report_incomplete` instead of `noop`.
+3. Inspect Dependabot repository-access state when available:
    - Preferred tool: if a GitHub MCP Dependabot repository-access read tool is available, use it.
    - Organization fallback: otherwise, for organization-owned targets, use authenticated read-only GitHub CLI access with `gh api -X GET /orgs/{org}/dependabot/repository-access`.
    - Enterprise fallback: for enterprise-wide operations, use `gh api -X GET /enterprises/{enterprise}/dependabot/repository-access` only when runtime steering provides an explicit enterprise slug.
    - Unavailable evidence: if neither tool path is available, or if the API returns 403/404, record repository-access evidence as unavailable instead of guessing.
    - Prohibited mutations: never call repository-access PATCH or PUT endpoints. Reference https://docs.github.com/en/rest/dependabot/repository-access for the read-only API contract.
-3. Inspect Dependabot configuration and recent Dependabot failures only to explain blocked identified updates or repository-access gaps. Do not invent general freshness work that Dependabot has not identified.
-4. List open Dependabot-authored dependency update pull requests only as supplementary evidence for status, conflicts, CI failures, grouping, branch names, and links. Do not treat pull requests as required input or the source of truth for the update list.
-5. Reconcile duplicates by ecosystem, package, manifest, vulnerable version range, target version, advisory, access blocker, and existing pull request. One update or blocker appears once in the checklist, with all related links.
-6. Sort the plan by critical/high security, Dependabot access blockers that prevent security updates, broken or conflicted updates, other security updates, major updates, then compatible minor and patch updates.
+4. Inspect Dependabot configuration and recent Dependabot failures only to explain blocked identified updates, repository-access gaps, or open Dependabot pull-request queue problems. Do not invent general freshness work that Dependabot has not identified.
+5. After direct Dependabot evidence has produced the update inventory, list Dependabot-authored dependency update pull requests only as supplementary queue/status evidence for conflicts, CI failures, grouping, branch names, links, and stale duplicate cleanup. Do not treat pull requests as required input or the sole source of truth for the update list.
+   - A still-open Dependabot dependency update pull request is actionable queue hygiene until it is merged, closed, or superseded, but it is not proof of a current update unless direct Dependabot evidence still identifies that update.
+   - For stale or duplicate open Dependabot pull requests that require no coding-agent changes, include a human-only blocker/task that names the pull requests to close, supersede, or ask Dependabot to refresh.
+6. Reconcile duplicates by ecosystem, package, manifest, vulnerable version range, target version, advisory, access blocker, Dependabot-native update identity when available, and existing pull request. One update or blocker appears once in the checklist, with all related links.
+7. Sort the plan by critical/high security, Dependabot access blockers that prevent security updates, broken or conflicted updates, other security updates, major updates, then compatible minor and patch updates.
 
 Include all current identified updates and blockers, even when they should not be applied together. For each item, specify whether the assigned agent should update or supersede an existing Dependabot pull request, create a replacement pull request, request a Dependabot access/configuration change from a human owner, or stop and report a blocker. Never ask the worker itself to perform those actions.
 
@@ -376,7 +383,7 @@ After identifying an existing canonical issue, ensure its current number is stor
 - If one matching issue exists and no work remains, keep the durable issue open and call `update_issue` once with a completed description that preserves the repository marker, states that Dependabot identifies no current updates, access gaps, or actionable blockers, and contains `**Action:** None.` Then call `add_comment` once beginning `Dependabot update plan refreshed.` This clears obsolete unchecked tasks without breaking issue continuity.
 - If no matching open parent exists and at least one current update or actionable Dependabot blocker exists, call `create_issue` once for the parent with its canonical unprefixed subject, complete body, and a temporary ID. Then create the bounded child set with stable subjects and parent references. Never let a closed parent prevent this creation.
 - If multiple matching issues exist, update the oldest canonical issue, mention the duplicate issue numbers in its refresh comment, and do not create another issue.
-- If no matching issue has ever existed and Dependabot identifies no current update or actionable blocker, call `noop`. Do not create an empty tracking issue.
+- If no matching issue has ever existed, all required direct Dependabot evidence was successfully checked, any pull-request evidence was used only supplementally, and Dependabot identifies no current update or actionable blocker, call `noop`. Do not create an empty tracking issue.
 
 Never create more than one parent plan issue for the target repository or more than one open child for a stable task boundary. Never assign the parent to Copilot. Never create, update, push to, comment on, or otherwise mutate a pull request.
 
@@ -396,7 +403,7 @@ At the end of every run, produce exactly one of these terminal outcome sequences
 
 - `create_issue` for a new parent, followed by the bounded child creates or updates;
 - `update_issue` for an existing parent, followed by bounded child creates, updates, or closures and then one parent `add_comment`;
-- `noop` when Dependabot identifies no current work, access gap, or blocker and no plan issue exists.
+- `noop` when all required direct Dependabot evidence was successfully checked, pull-request evidence was not used as a substitute update inventory, Dependabot identifies no current work, access gap, or blocker, and no plan issue exists.
 
 For every `create_issue`, provide only its canonical unprefixed subject and a temporary ID. The configured `title-prefix` is added automatically; do not repeat it or add a semantically equivalent category prefix.
 

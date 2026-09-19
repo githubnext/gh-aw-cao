@@ -120,6 +120,7 @@ async function activatePage(rendered, pageId) {
 describe('dashboard DOM provenance', () => {
   it('includes the declarative campaign view in the Overview page subscription', () => {
     expect(dashboardPageSourceNames(authoritativeDashboardDocument, 'overview')).toEqual([
+      'overview-needs-attention-preview',
       'campaign-inventory',
       'data-health-collections'
     ]);
@@ -1373,7 +1374,7 @@ describe('presenter built-in and custom pages', () => {
 
     const page = await activatePage(rendered, 'overview');
     expect(page?.querySelector(':scope > .custom-view-grid')).not.toBeNull();
-    expect(page?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(3);
+    expect(page?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(4);
     expect(page?.querySelectorAll('.factory-station')).toHaveLength(4);
     expect(page?.querySelector('.factory-intro h2')?.textContent).toBe('Your factory is idle.');
     expect(page?.querySelector('.notifications-inbox')).toBeNull();

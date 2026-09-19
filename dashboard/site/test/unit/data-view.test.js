@@ -1962,6 +1962,47 @@ describe('data view renderer', () => {
     expect(links?.[0].getAttribute('href')).toBe(href);
   });
 
+  it('renders an external row action without implying that navigation executes it', () => {
+    const rendered = renderDataView('table', {
+      pageId: 'workflow-runs',
+      title: 'Runs',
+      view: {
+        mark: 'table',
+        encoding: {
+          columns: [{ field: 'run', type: 'nominal', title: 'Run' }],
+          actions: [{
+            intent: 'Open the precise GitHub Actions run page without executing an action.',
+            presentation: 'external-link',
+            icon: 'mark-github',
+            label: 'Open run on GitHub',
+            context: ['run-link']
+          }]
+        }
+      },
+      sourceName: 'workflow-runs',
+      rows: [{
+        run: '42',
+        'run-link': {
+          href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/42',
+          label: 'Run 42'
+        }
+      }],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const action = rendered?.querySelector('.table-external-action');
+    expect(action?.textContent).toContain('Open run on GitHub');
+    expect(action?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/42');
+    expect(action?.getAttribute('target')).toBe('_blank');
+    expect(rendered?.querySelector('button[aria-label="Open run on GitHub"]')).toBeNull();
+  });
+
   it('preserves complete output evidence while marking it for visual ellipsis', () => {
     const evidence = 'Workflow failure evidence with complete diagnostic context';
     const rendered = renderDataView('table', {

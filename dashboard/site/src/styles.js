@@ -1415,9 +1415,13 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .signal-boundary-note { margin: 0; padding: 8px 15px; border: 1px solid var(--border); border-top: 0; color: var(--muted); font-size: .6875rem; }
 .signal-list { margin: 0; padding: 0; overflow: hidden; border: 1px solid var(--border); border-top: 0; border-radius: 0 0 6px 6px; list-style: none; }
 .signal-list > li + li { border-top: 1px solid var(--border-muted); }
-.signal-item > :is(a, div) { min-height: 68px; display: grid; grid-template-columns: 24px 20px minmax(0, 1fr) minmax(150px, auto); align-items: center; gap: 10px; padding: 9px 14px; color: var(--fg); text-decoration: none; }
+.signal-item > :is(a, div), .signal-link-content { min-height: 68px; display: grid; grid-template-columns: 24px 20px minmax(0, 1fr) minmax(150px, auto); align-items: center; gap: 10px; padding: 9px 14px; color: var(--fg); text-decoration: none; }
+.signal-item > a > .signal-link-content { min-height: auto; padding: 0; }
 .signal-item > a:hover { background: var(--canvas-subtle); }
 .signal-item > a:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.signal-evidence > span { color: var(--muted); font-size: .6875rem; }
+.signal-list-footer { display: flex; justify-content: flex-end; padding: 8px 14px; border: 1px solid var(--border); border-top: 0; border-radius: 0 0 6px 6px; }
+.signal-list-footer a, .table-external-action { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; }
 .signal-rank { color: var(--muted); font-size: .6875rem; font-variant-numeric: tabular-nums; text-align: center; }
 .signal-icon { width: 20px; display: grid; place-items: center; color: var(--attention); }
 .signal-critical .signal-icon { color: var(--danger); }
@@ -2287,7 +2291,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .readiness-block + .readiness-block { border-top: 1px solid var(--border); border-left: 0; }
   .readiness-snapshot-meta { gap: 8px 16px; }
   .dashboard-callout { grid-template-columns: 1fr; gap: 10px; }
-  .signal-item > :is(a, div) { grid-template-columns: 20px minmax(0, 1fr); }
+  .signal-item > :is(a, div), .signal-link-content { grid-template-columns: 20px minmax(0, 1fr); }
   .signal-rank { display: none; }
   .signal-copy { grid-column: 2; }
   .signal-evidence { grid-column: 2; justify-items: start; text-align: left; }

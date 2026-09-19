@@ -71,6 +71,82 @@ const emptyRunRecordSources = Object.fromEntries(['domains', 'tools', 'audits', 
 ]));
 
 describe('declarative dashboard queries', () => {
+  it('groups unresolved repeated failures, includes review outputs, and caps the Overview preview', () => {
+    const run = (/** @type {string} */ workflow, /** @type {string} */ id, conclusion = 'failure', startedAt = `2026-09-${String(Number(id)).padStart(2, '0')}T00:00:00Z`) => ({
+      organization: 'githubnext',
+      repository: 'gh-aw-cao',
+      workflow,
+      run: id,
+      'run-conclusion': conclusion,
+      'started-at': startedAt
+    });
+    const workItem = (/** @type {string} */ workflow, /** @type {string} */ state, /** @type {string} */ id) => ({
+      organization: 'githubnext',
+      repository: 'gh-aw-cao',
+      workflow,
+      'work-item-id': id,
+      'lifecycle-state': state,
+      objective: `${workflow} output`,
+      scope: `githubnext/gh-aw-cao · ${workflow}`,
+      reason: state === 'review' ? 'Output awaits approval' : 'Latest run failed',
+      'observed-at': `2026-09-0${id.length}T00:00:00Z`,
+      'run-link': { href: `https://github.com/githubnext/gh-aw-cao/actions/runs/${id}` },
+      'evidence-link': { href: `https://github.com/githubnext/gh-aw-cao/issues/${id}` }
+    });
+    const sources = {
+      runs: {
+        source: 'runs',
+        rows: [
+          run('repeated.md', '1'),
+          run('repeated.md', '2'),
+          run('repeated.md', '2'),
+          run('reset.md', '3'),
+          run('reset.md', '4', 'success'),
+          run('reset.md', '5'),
+          run('tie-reset.md', '9', 'failure', '2026-09-09T00:00:00Z'),
+          run('tie-reset.md', '10', 'success', '2026-09-09T00:00:00Z'),
+          run('single.md', '3'),
+          run('resolved.md', '4'),
+          run('resolved.md', '5')
+        ],
+        metadata: metadata('runs')
+      },
+      'work-items': {
+        source: 'work-items',
+        rows: [
+          workItem('repeated.md', 'blocked', '10'),
+          workItem('reset.md', 'blocked', '16'),
+          workItem('tie-reset.md', 'blocked', '17'),
+          workItem('single.md', 'blocked', '11'),
+          workItem('resolved.md', 'completed', '12'),
+          workItem('review-a.md', 'review', '13'),
+          workItem('review-b.md', 'review', '14'),
+          workItem('review-c.md', 'review', '15')
+        ],
+        metadata: metadata('work-items')
+      }
+    };
+
+    const results = executeDashboardQueries(dashboardQueries, sources, [
+      'overview-needs-attention',
+      'overview-needs-attention-preview'
+    ]);
+
+    expect(results['overview-needs-attention'].rows).toHaveLength(4);
+    expect(results['overview-needs-attention'].rows.filter((row) => row.kind === 'Repeated workflow failures')).toEqual([
+      expect.objectContaining({
+        title: 'repeated.md',
+        reason: '2 failed runs in the selected horizon'
+      })
+    ]);
+    expect(results['overview-needs-attention'].rows.some((row) => row.title === 'single.md')).toBe(false);
+    expect(results['overview-needs-attention'].rows.some((row) => row.title === 'reset.md')).toBe(false);
+    expect(results['overview-needs-attention'].rows.some((row) => row.title === 'tie-reset.md')).toBe(false);
+    expect(results['overview-needs-attention'].rows.some((row) => row.title === 'resolved.md')).toBe(false);
+    expect(results['overview-needs-attention'].rows.filter((row) => row.kind === 'Human review required')).toHaveLength(3);
+    expect(results['overview-needs-attention-preview'].rows).toHaveLength(3);
+  });
+
   it('unions specialized run records before applying query clauses', () => {
     const result = executeDashboardQuery(
       {
@@ -1321,7 +1397,7 @@ describe('declarative dashboard queries', () => {
       campaign: 'aw-doctor',
       'campaign-name': 'AW Doctor',
       'campaign-dashboard-link': {
-        'dashboard-href': '#page-campaign-detail?campaign=aw-doctor',
+        'dashboard-href': '#page-campaign-insights?campaign=aw-doctor',
         'dashboard-label': 'View AW Doctor campaign dashboard'
       },
       workflows: 3,
@@ -2301,7 +2377,7 @@ describe('computed field vocabulary', () => {
     });
     expect(compute('dashboard-link', [
       { field: 'missing' },
-      { value: '#page-campaign-detail?campaign=' },
+      { value: '#page-campaign-insights?campaign=' },
       { value: 'View campaign dashboard' },
       { value: '' }
     ])).toBeNull();

@@ -6,6 +6,8 @@ import { applyDashboardQueries } from '../workflow-inventory-query.js';
 
 const dashboard = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8'));
 const dispatchPage = dashboard.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'dispatches');
+const campaignDispatchPage = dashboard.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'campaign-dispatches');
+const campaignRunsPage = dashboard.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'campaign-runs');
 const metadata = {
   'source-id': 'fixture',
   'source-kind': 'fixture',
@@ -17,6 +19,27 @@ const metadata = {
 };
 
 describe('declarative dispatch view', () => {
+  it('links campaign dispatch rows to their precise GitHub Actions runs', () => {
+    const failedDispatchTable = campaignRunsPage.views.find(
+      (/** @type {{ id: string }} */ view) => view.id === 'campaign-failed-dispatch-table'
+    );
+    const dispatchTable = campaignDispatchPage.views.find(
+      (/** @type {{ id: string }} */ view) => view.id === 'campaign-dispatch-compatibility-table'
+    );
+
+    for (const view of [failedDispatchTable, dispatchTable]) {
+      expect(view).toMatchObject({
+        data: { source: 'dispatches', 'route-field': 'campaign' },
+        encoding: { href: { field: 'run-link' } }
+      });
+      expect(view.encoding.actions).toContainEqual(expect.objectContaining({
+        presentation: 'external-link',
+        label: 'Open run on GitHub',
+        context: ['run-link']
+      }));
+    }
+  });
+
   it('renders dispatch JSON through the generic table and cell elements', () => {
     const rendered = renderDashboard({
       document: {
