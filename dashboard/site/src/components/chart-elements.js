@@ -40,6 +40,7 @@ const PIE_CHART_STROKE_WIDTH = 6;
 const PIE_CHART_SEGMENT_GAP = 0.03;
 const PIE_CHART_CENTER_TEXT_LENGTH = 21;
 const MAX_SWIMLANE_SECTIONS_PER_LANE = 120;
+const MIN_COMMON_LABEL_PREFIX = 8;
 /** @type {Array<[string, string]>} */
 const SWIMLANE_DEFINITIONS = [
   ['action-required', 'Action required'],
@@ -333,6 +334,34 @@ function renderChartWidgetEmptyState(chartType, message) {
 }
 
 /**
+ * @param {string[]} labels
+ * @returns {string[]}
+ */
+function elideCommonLabelPrefix(labels) {
+  if (labels.length < 2 || labels.some((label) => label.length === 0)) return labels;
+
+  let commonLength = labels[0].length;
+  for (const label of labels.slice(1)) {
+    commonLength = Math.min(commonLength, label.length);
+    let index = 0;
+    while (index < commonLength && labels[0][index] === label[index]) index += 1;
+    commonLength = index;
+    if (commonLength < MIN_COMMON_LABEL_PREFIX) return labels;
+  }
+
+  const commonPrefix = labels[0].slice(0, commonLength);
+  const separatorMatches = [...commonPrefix.matchAll(/[/:\\._ -]+/g)];
+  const lastSeparator = separatorMatches.at(-1);
+  const prefixLength = lastSeparator?.index !== undefined
+    ? lastSeparator.index + lastSeparator[0].length
+    : commonLength;
+  if (prefixLength < MIN_COMMON_LABEL_PREFIX) return labels;
+  const suffixes = labels.map((label) => label.slice(prefixLength).trimStart());
+  if (suffixes.some((suffix) => suffix.length === 0)) return labels;
+  return suffixes.map((suffix) => `…${suffix}`);
+}
+
+/**
  * Renders the small `<g><rect/><text/></g>` tooltip shell shown alongside a
  * chart point, segment, or bar on hover/focus. Shared by the pie, histogram,
  * and line/scatter/dot chart renderers, which otherwise duplicated the same
@@ -587,6 +616,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
     }
     const maximum = Math.max(...points.map((point) => toNumber(point.y)).filter(Number.isFinite), 1);
     const seriesClassNames = new Map(series.map((item) => [item.name, item.className]));
+    const displayLabels = elideCommonLabelPrefix(points.map((point) => point.x));
     return renderChartWidgetShell(
       chartType,
       null,
@@ -598,10 +628,11 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
           const value = Number.isFinite(numericValue) ? numericValue : 0;
           const barSize = Math.max(0, value);
           const label = chartPointLabel(point, unit);
+          const displayLabel = displayLabels[index] ?? point.x;
           return h(
             'li',
             { className: 'horizontal-bar-chart-row' },
-            h('span', { className: 'horizontal-bar-chart-label', title: point.x }, point.x),
+            h('span', { className: 'horizontal-bar-chart-label', title: point.x }, displayLabel),
             h(
               'span',
               { className: 'horizontal-bar-chart-track', 'aria-hidden': 'true' },
