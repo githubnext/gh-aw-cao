@@ -378,7 +378,6 @@ export function validateLogicalSources(sources) {
         `${path}.workflow-role`
       ));
     }
-
     const campaignId = candidate.campaign;
     const hasCampaign = typeof campaignId === 'string' && campaignId.length > 0;
     if ((role === 'orchestrator' || role === 'worker') && !hasCampaign) {
@@ -2538,6 +2537,26 @@ function validateView(view, viewNode, path, viewIds, errors) {
          `${path}.config.body`
        ));
       }
+      if (view.config['view-all-page'] !== undefined) {
+        validateStringField(view.config['view-all-page'], `${path}.config.view-all-page`, true, errors);
+        if (view.element !== 'signal-list' && view.element !== 'needs-attention-list') {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'config.view-all-page is supported only for the signal-list element.',
+            `${path}.config.view-all-page`
+          ));
+        }
+      }
+      if (view.config['view-all-label'] !== undefined) {
+        validateStringField(view.config['view-all-label'], `${path}.config.view-all-label`, true, errors);
+        if (view.element !== 'signal-list' && view.element !== 'needs-attention-list') {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'config.view-all-label is supported only for the signal-list element.',
+            `${path}.config.view-all-label`
+          ));
+        }
+      }
       const allowedSections = view.element === 'work-project-view'
         ? WORK_VIEW_BODY_VALUES
         : view.element === 'outcomes-overview'
@@ -3033,7 +3052,7 @@ function validateTableActions(encoding, encodingNode, mark, sourceName, path, er
     validateObjectKeys(actionNode, TABLE_ACTION_KEYS, actionPath, errors);
     validateStringField(action.presentation, `${actionPath}.presentation`, true, errors);
     if (typeof action.presentation === 'string' && !TABLE_ACTION_PRESENTATION_VALUES.includes(action.presentation)) {
-      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'action presentation must be copy-prompt or cli-action.', `${actionPath}.presentation`));
+      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'action presentation must be copy-prompt, cli-action, or external-link.', `${actionPath}.presentation`));
     }
     if (action.presentation === 'cli-action') {
       validateRequiredIdentifier(action.action, `${actionPath}.action`, 'CLI action reference', errors);
@@ -3054,6 +3073,16 @@ function validateTableActions(encoding, encodingNode, mark, sourceName, path, er
         errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'copy-prompt table actions must not declare action.', `${actionPath}.action`));
       }
     }
+    if (action.presentation === 'external-link' && (
+      !Array.isArray(action.context)
+      || action.context.length !== 1
+    )) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'external-link action context must contain exactly one link field.',
+        `${actionPath}.context`
+      ));
+    }
     validateStringField(action.icon, `${actionPath}.icon`, true, errors);
     if (typeof action.icon === 'string' && !PAGE_ICON_VALUES.includes(action.icon)) {
       errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'action icon must use one canonical icon value.', `${actionPath}.icon`));
@@ -3073,6 +3102,9 @@ function validateTableActions(encoding, encodingNode, mark, sourceName, path, er
         contextFields.add(field);
         if (sourceName && !sourceFieldNames(sourceName)?.includes(field)) {
           errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'action context field must be declared by data.source.', fieldPath));
+        }
+        if (action.presentation === 'external-link' && !LINK_FIELD_NAMES.includes(field)) {
+          errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'external-link action context must reference a link field.', fieldPath));
         }
       });
       if (action.presentation === 'cli-action' && typeof action.action === 'string') {

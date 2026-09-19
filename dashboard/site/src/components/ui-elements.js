@@ -4,8 +4,8 @@
 
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
-import { formatClockDuration } from '../view-formatters.js';
-import { findLink } from './link-content.js';
+import { formatClockDuration, formatHumanFriendlyTimestamp } from '../view-formatters.js';
+import { findLink, renderSafeLink } from './link-content.js';
 import { renderCampaignsView, renderCampaignSummary, renderCampaignUtilization, renderRunTrend } from './campaigns-view.js';
 import { renderCampaignRouteVariant, renderCampaignRouteView } from './campaign-route-view.js';
 import { renderOutcomeDetail } from './outcome-detail.js';
@@ -58,6 +58,7 @@ const ELEMENT_RENDERERS = new Map([
   ['context-summary', renderContextSummaryElement],
   ['anomaly-readiness', renderAnomalyReadinessElement],
   ['signal-list', renderSignalListElement],
+  ['needs-attention-list', (context) => renderSignalListElement(context, true)],
   ['campaign-activity', ({ sources, pageId }) => renderCampaignsView(sources, pageId)],
   ['campaign-utilization', ({ sources }) => renderCampaignUtilization(sources)],
   ['campaign-run-trend', ({ sources }) => renderRunTrend(sources)],
@@ -94,7 +95,7 @@ export function elementLoadsSourcesAsync(name) {
   return ASYNC_SOURCE_ELEMENTS.has(name);
 }
 
-const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'campaign-insights', 'campaign-detail', 'campaign-dispatches', 'campaign-reports', 'campaign-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'campaign-activity-shell', 'work-project-view', 'insights-overview', 'factory-header', 'factory-floor', 'outcomes-overview', 'local-database']);
+const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'needs-attention-list', 'campaign-insights', 'campaign-detail', 'campaign-dispatches', 'campaign-reports', 'campaign-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'campaign-activity-shell', 'work-project-view', 'insights-overview', 'factory-header', 'factory-floor', 'outcomes-overview', 'local-database']);
 const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy']);
 
 /**
@@ -618,10 +619,12 @@ function renderContextSummaryValue(row) {
   });
 }
 
-/** @param {ElementRenderContext} context */
-function renderSignalListElement(context) {
+/** @param {ElementRenderContext} context @param {boolean} [isCanonicalAttention] */
+function renderSignalListElement(context, isCanonicalAttention = false) {
   const sourceName = context.sourceNames[0];
   const rows = rowsFor(context, sourceName);
+  const viewAllPage = stringValue(context.elementConfig?.['view-all-page']);
+  const viewAllLabel = stringValue(context.elementConfig?.['view-all-label']) || 'View all';
   const list = h(
     'div',
     { className: 'signal-list-region' },
@@ -630,14 +633,29 @@ function renderSignalListElement(context) {
       'ol',
       { className: 'signal-list' },
       ...(rows.length > 0
-        ? rows.map((row, index) => renderSignal(row, index, false))
+        ? rows.map((row, index) => renderSignal(row, index, isCanonicalAttention))
         : [h(
           'li',
           { className: 'signal-clear' },
           renderIconSpan('signal-icon', 'check-circle'),
           h('span', { className: 'signal-copy' }, h('strong', null, 'No signals require attention'))
         )])
-    )
+    ),
+    viewAllPage
+      ? h(
+          'footer',
+          { className: 'signal-list-footer' },
+          h(
+            'a',
+            {
+              href: `#page-${encodeURIComponent(viewAllPage)}`,
+              dataset: { navPageId: viewAllPage }
+            },
+            viewAllLabel,
+            octicon('arrow-right')
+          )
+        )
+      : null
   );
   return list;
 }
@@ -663,6 +681,17 @@ function renderSignal(row, index, isCanonicalAttention = false) {
   const age = isCanonicalAttention && Number.isFinite(ageSeconds)
     ? `${formatClockDuration(ageSeconds * 1000)} old`
     : '';
+  const observedAt = stringValue(row['observed-at']);
+  const observed = observedAt && Number.isFinite(Date.parse(observedAt))
+    ? h(
+        'time',
+        {
+          dateTime: observedAt,
+          title: `${new Date(observedAt).toISOString().replace('.000Z', 'Z')} UTC`
+        },
+        formatHumanFriendlyTimestamp(observedAt)
+      )
+    : null;
   const evidence = stringValue(row.evidence) || (isCanonicalAttention
     ? [stringValue(row['expected-actor']), age].filter(Boolean).join(' · ')
     : '');
@@ -687,13 +716,14 @@ function renderSignal(row, index, isCanonicalAttention = false) {
     h(
       'span',
       { className: 'signal-evidence' },
-      h('strong', null, evidence),
+      h('strong', null, observed ? ['Observed ', observed] : evidence),
+      observed && evidence ? h('span', null, evidence) : null,
       h('small', null, stringValue(row.action) || 'View details')
     )
   ];
   const className = `signal-item signal-${tone || 'informational'}${isCanonicalAttention ? ' canonical-attention-item' : ''}`;
   if (link) {
-    return h('li', { className }, h('a', { href: link.href, 'aria-label': link.label }, ...content));
+    return h('li', { className }, renderSafeLink(h('span', { className: 'signal-link-content' }, ...content), link));
   }
   if (navigationPage) {
     return h('li', { className }, h('a', { href: `#page-${navigationPage}`, dataset: { navPageId: navigationPage } }, ...content));

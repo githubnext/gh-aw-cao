@@ -9,7 +9,7 @@ import { formatCount, titleCase } from './count-formatters.js';
 import { renderCellDisplay } from './cell-display.js';
 import { resolveCardStatus } from './card-status.js';
 import { listChartSeries, pieChartEntries, renderChartLegend, renderPieChartLayout, renderPieLegend, renderChartWidget } from './chart-elements.js';
-import { findFirstLink, findLink, renderExternalLink, renderLinkedValue, renderOutcomeLink, renderWorkflowRunLink } from './link-content.js';
+import { externalAnchorAttrs, findFirstLink, findLink, renderExternalLink, renderLinkedValue, renderOutcomeLink, renderWorkflowRunLink } from './link-content.js';
 import { createEntityAwareCellRenderer } from './linked-text.js';
 import { renderTableRegion } from './table-region.js';
 import { renderPageSection, renderViewSectionChrome } from './view-chrome.js';
@@ -1469,6 +1469,20 @@ export function renderIntentAction(action, row) {
  * @param {Record<string, unknown>} row
  */
 function renderTableAction(action, row) {
+  if (action.presentation === 'external-link') {
+    const link = findLink(row, action.context[0]);
+    const href = link?.externalHref ?? link?.href;
+    if (!link || !href?.startsWith('https://')) return '';
+    return h(
+      'a',
+      {
+        ...externalAnchorAttrs(href, action.label),
+        className: 'table-external-action'
+      },
+      octicon(action.icon),
+      h('span', null, action.label)
+    );
+  }
   if (action.presentation !== 'cli-action') return renderIntentAction(action, row);
   const values = Object.fromEntries(action.context.flatMap((field) => {
     const value = row[field];

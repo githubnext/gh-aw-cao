@@ -471,6 +471,68 @@ describe('UI elements', () => {
     expect(rendered?.querySelectorAll('a')).toHaveLength(1);
   });
 
+  it('renders compact attention evidence with an observation time and View all route', () => {
+    const rendered = renderUiElement('needs-attention-list', {
+      pageId: 'overview',
+      title: 'Needs attention',
+      sourceNames: ['overview-needs-attention-preview'],
+      sources: {
+        'overview-needs-attention-preview': {
+          source: 'overview-needs-attention-preview',
+          rows: [{
+            kind: 'Repeated workflow failures',
+            title: '.github/workflows/doctor.md',
+            scope: 'githubnext/gh-aw-cao',
+            reason: '2 failed runs in the selected horizon',
+            action: 'Open latest failed run on GitHub',
+            'observed-at': '2026-09-16T12:00:00Z',
+            'evidence-link': {
+              href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/42',
+              label: 'View run 42'
+            }
+          }],
+          metadata
+        }
+      },
+      contextDetails: [],
+      elementConfig: {
+        'view-all-page': 'overview-needs-attention',
+        'view-all-label': 'View all'
+      },
+      headingTag: 'h3'
+    });
+
+    const evidence = rendered?.querySelector('.signal-item > a');
+    expect(evidence?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/42');
+    expect(evidence?.getAttribute('target')).toBe('_blank');
+    expect(rendered?.querySelector('time')?.getAttribute('datetime')).toBe('2026-09-16T12:00:00Z');
+    expect(rendered?.textContent).toContain('githubnext/gh-aw-cao');
+    expect(rendered?.textContent).toContain('2 failed runs in the selected horizon');
+    expect(rendered?.textContent).toContain('Open latest failed run on GitHub');
+    expect(rendered?.querySelector('.signal-list-footer a')?.getAttribute('href')).toBe('#page-overview-needs-attention');
+  });
+
+  it('renders an honest empty attention state without hiding View all', () => {
+    const rendered = renderUiElement('needs-attention-list', {
+      pageId: 'overview',
+      title: 'Needs attention',
+      sourceNames: ['overview-needs-attention-preview'],
+      sources: {
+        'overview-needs-attention-preview': {
+          source: 'overview-needs-attention-preview',
+          rows: [],
+          metadata: { ...metadata, availability: /** @type {'empty'} */ ('empty') }
+        }
+      },
+      contextDetails: [],
+      elementConfig: { 'view-all-page': 'overview-needs-attention' },
+      headingTag: 'h3'
+    });
+
+    expect(rendered?.textContent).toContain('No signals require attention');
+    expect(rendered?.querySelector('.signal-list-footer a')?.textContent).toContain('View all');
+  });
+
   it('renders a blocked readiness verdict with the next unblock action', () => {
     const rendered = renderUiElement('readiness-verdict', {
       pageId: 'readiness',

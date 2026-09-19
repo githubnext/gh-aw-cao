@@ -69,7 +69,7 @@ export const MAX_PAGE_ROUTE_TABS = 8;
 export const VIEW_KEYS = ['id', 'title', 'description', 'intent', 'locked', 'data', 'mark', 'element', 'config', 'callout', 'chart', 'metric', 'list', 'tree', 'layout', 'disclosure', 'disclosure-label', 'controls', 'lazy-list', 'column-summaries', 'empty-message', 'title-link', 'encoding'];
 export const VIEW_DATA_KEYS = ['source', 'sources', 'scope', 'time', 'filters', 'arguments', 'route-field', 'limit', 'order-by', 'source-metadata'];
 export const VIEW_DATA_ARGUMENT_KEYS = ['name', 'field'];
-export const VIEW_ELEMENT_CONFIG_KEYS = ['body', 'sections', 'labels', 'animate'];
+export const VIEW_ELEMENT_CONFIG_KEYS = ['body', 'sections', 'labels', 'animate', 'view-all-page', 'view-all-label'];
 export const VIEW_ELEMENT_ANIMATION_VALUES = ['number'];
 export const FACTORY_OVERVIEW_SECTION_VALUES = ['header', 'floor'];
 export const PLURAL_TEXT_KEYS = ['singular', 'plural'];
@@ -85,6 +85,7 @@ export const VIEW_ELEMENT_VALUES = [
   'context-summary',
   'anomaly-readiness',
   'signal-list',
+  'needs-attention-list',
   'campaign-activity',
   'campaign-activity-shell',
   'campaign-utilization',
@@ -140,7 +141,7 @@ export const GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS = new Set([
 ]);
 export const VIEW_ENCODING_KEYS = ['value', 'columns', 'x', 'y', 'color', 'reference', 'href', 'actions'];
 export const TABLE_ACTION_KEYS = ['intent', 'action', 'presentation', 'icon', 'label', 'context', 'when'];
-export const TABLE_ACTION_PRESENTATION_VALUES = ['copy-prompt', 'cli-action'];
+export const TABLE_ACTION_PRESENTATION_VALUES = ['copy-prompt', 'cli-action', 'external-link'];
 export const TABLE_ACTION_WHEN_KEYS = ['field', 'equals'];
 export const TREE_TABLE_KEYS = ['id-field', 'parent-field'];
 export const FIELD_DEFINITION_KEYS = ['field', 'type', 'aggregate', 'time-unit', 'title', 'as', 'display', 'filter', 'format', 'unit'];

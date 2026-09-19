@@ -1127,6 +1127,17 @@ describe('dashboard document validation', () => {
       layout: 'full'
     }),
       expect.objectContaining({
+      id: 'overview-needs-attention',
+      data: { sources: ['overview-needs-attention-preview'] },
+      mark: 'element',
+      element: 'needs-attention-list',
+      config: {
+        'view-all-page': 'overview-needs-attention',
+        'view-all-label': 'View all'
+      },
+      layout: 'full'
+    }),
+      expect.objectContaining({
       id: 'overview-campaigns',
       title: 'Campaigns',
       data: { source: 'campaign-inventory' },
