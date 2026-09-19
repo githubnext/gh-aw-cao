@@ -169,6 +169,11 @@ test("Dependabot worker maintains a durable parent and one-PR child tasks withou
   assert.match(source, /never let a closed parent prevent this creation/i);
   assert.match(source, /not all live targets allow this workflow to create missing labels/);
   assert.match(source, /Never create, update, push to, comment on, or otherwise mutate a pull request/);
+  assert.match(source, /visible Dependabot-authored open pull requests, repository-access findings, or Dependabot configuration\/failure evidence are sufficient to create a bounded queue-hygiene or blocker plan/);
+  assert.match(source, /add a human-only blocker or visible evidence limitation for the unavailable alert inventory/);
+  assert.match(source, /visible Dependabot-authored open dependency update pull requests may still seed a bounded queue-hygiene plan/);
+  assert.match(source, /do not report incomplete solely because parent discovery is unavailable/);
+  assert.match(source, /rely on the configured `deduplicate-by-title` safe-output guard to avoid a duplicate/);
 });
 
 test("workers with title prefixes provide unprefixed safe-output titles", () => {
