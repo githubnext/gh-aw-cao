@@ -9,7 +9,7 @@ import { renderDataStateMetrics } from './components/data-state.js';
 import { titleCase } from './components/count-formatters.js';
 import { formatMediumUtcDateTime, renderEmptyMessage, renderLoadingPlaceholderBlocks } from './components/ui-primitives.js';
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection, renderViewDisclosure } from './components/view-chrome.js';
-import { findLink } from './components/link-content.js';
+import { externalAnchorAttrs, findLink } from './components/link-content.js';
 import { elementHandlesEmptyRows, elementHandlesUnavailableSource, elementLoadsSourcesAsync, renderUiElement } from './components/ui-elements.js';
 import { renderDataView, supportsIncrementalChartContinuation } from './components/data-view.js';
 import { enableHorizonOutsideClickDismissal, renderFilterBar, setTimeWindowFilter, setTimeWindowRange } from './components/filter-bar.js';
@@ -1834,10 +1834,11 @@ function renderPageTitleLink(target, candidate) {
     return;
   }
   target.hidden = false;
-  target.href = link.href;
-  target.target = '_blank';
-  target.rel = 'noopener noreferrer';
-  target.setAttribute('aria-label', `View ${link.label} on GitHub`);
+  const attrs = externalAnchorAttrs(link.href, `View ${link.label} on GitHub`);
+  for (const [name, value] of Object.entries(attrs)) {
+    if (value === undefined) target.removeAttribute(name);
+    else target.setAttribute(name, value);
+  }
   target.textContent = link.label;
 }
 

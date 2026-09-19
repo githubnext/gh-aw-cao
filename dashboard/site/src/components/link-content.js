@@ -70,9 +70,34 @@ function isExternalLink(link) {
 }
 
 /**
+ * Device context is not part of Dashboard Language; keep this navigation
+ * behavior in the shared renderer, not in individual views or link data.
+ * @returns {boolean}
+ */
+function isMobileDevice() {
+  if (typeof navigator === 'undefined') return false;
+  const browser = /** @type {Navigator & { userAgentData?: { mobile?: boolean } }} */ (navigator);
+  return browser.userAgentData?.mobile === true
+    || /Android|iPhone|iPad|iPod/i.test(browser.userAgent)
+    || (/Macintosh/i.test(browser.userAgent) && browser.maxTouchPoints > 1);
+}
+
+/**
+ * @param {string} href
+ * @returns {boolean}
+ */
+function isGitHubAppLink(href) {
+  if (!isSafeHttpsUrl(href)) return false;
+  const url = new URL(href);
+  return url.hostname === 'github.com' && url.port === '';
+}
+
+/**
  * Builds the shared anchor attribute set used by every safe-link renderer in
- * this module: an internal (`#`-prefixed) href renders a plain anchor, while
- * an external href adds `target="_blank"` and `rel="noopener noreferrer"`.
+ * this module. Mobile GitHub links use HTTPS Universal Links / Android App
+ * Links in the current context so the OS can open GitHub Mobile when enabled,
+ * or fall back to the browser without custom schemes, timers, or redirects.
+ * Other external links retain a new tab; internal navigation stays unchanged.
  * @param {SafeLink} link
  * @param {boolean} external
  * @returns {{ href: string, target: string | undefined, rel: string | undefined, 'aria-label': string }}
@@ -80,15 +105,15 @@ function isExternalLink(link) {
 function safeLinkAnchorAttrs(link, external) {
   return {
     href: link.href,
-    target: external ? '_blank' : undefined,
+    target: external ? (isMobileDevice() && isGitHubAppLink(link.href) ? '_self' : '_blank') : undefined,
     rel: external ? 'noopener noreferrer' : undefined,
     'aria-label': link.label
   };
 }
 
 /**
- * Builds the attribute set for a plain external anchor (`target="_blank"`,
- * `rel="noopener noreferrer"`) for callers that already hold a raw href/label
+ * Builds the device-aware attribute set for an external anchor with
+ * `rel="noopener noreferrer"` for callers that already hold a raw href/label
  * pair rather than a resolved {@link SafeLink}. Shares the same
  * target/rel/aria-label wiring as every other safe-link anchor in this
  * module.

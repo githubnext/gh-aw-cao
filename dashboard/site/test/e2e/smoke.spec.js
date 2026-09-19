@@ -2,7 +2,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { test, expect } from '@playwright/test';
+import { test, expect, devices } from '@playwright/test';
 import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
@@ -36,6 +36,49 @@ test.beforeEach(async ({ page, context }) => {
 
 function buildPresenterModuleUrl() {
   return 'http://dashboard.test/src/presenter.js';
+}
+
+for (const deviceName of ['Desktop Chrome', 'iPhone 13', 'Pixel 7']) {
+  test.describe(`GitHub navigation on ${deviceName}`, () => {
+    const device = devices[deviceName];
+    test.use({ userAgent: device.userAgent, isMobile: device.isMobile, hasTouch: device.hasTouch });
+
+    test('preserves deep links and browser fallback using native anchor navigation', async ({ page, context }) => {
+      const href = 'https://github.com/octo-org/platform/pull/42?diff=split#discussion_r123';
+      await context.route('https://github.com/**', (route) => route.fulfill({
+        contentType: 'text/html', body: '<h1>GitHub browser fallback</h1>'
+      }));
+      await page.evaluate(async (href) => {
+        const { renderExternalLink } = await import(new URL('/src/components/link-content.js', window.location.href).href);
+        document.querySelector('#root')?.append(
+          renderExternalLink({ href, label: 'Review pull request' }),
+          renderExternalLink({ href: '#page-runs', label: 'Dashboard runs' })
+        );
+      }, href);
+
+      const link = page.getByRole('link', { name: 'Review pull request' });
+      await expect(link).toHaveAttribute('href', href);
+      await expect(link).toHaveAttribute('target', device.isMobile ? '_self' : '_blank');
+      await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+      await page.getByRole('link', { name: 'Dashboard runs' }).click();
+      await expect(page).toHaveURL('http://dashboard.test/#page-runs');
+
+      await link.focus();
+      if (device.isMobile) {
+        await page.keyboard.press('Enter');
+        await expect(page).toHaveURL(href);
+        await expect(page.getByRole('heading', { name: 'GitHub browser fallback' })).toBeVisible();
+        expect(context.pages()).toHaveLength(1);
+      } else {
+        const popupPromise = page.waitForEvent('popup');
+        await page.keyboard.press('Enter');
+        const popup = await popupPromise;
+        await expect(popup).toHaveURL(href);
+        await expect(page).toHaveURL('http://dashboard.test/#page-runs');
+        await popup.close();
+      }
+    });
+  });
 }
 
 test('shows a not-supported message instead of starting without IndexedDB', async ({ page }) => {

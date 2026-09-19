@@ -1,8 +1,71 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { externalAnchorAttrs, findFirstLink, findLink, renderExternalLink, renderExternalLinkOrFallback, renderLinkedValue, renderOutcomeLink, renderSafeLink, renderWorkflowRunLink, resolveTitleLink } from '../../src/components/link-content.js';
 
 describe('link content helpers', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it.each([
+    ['iPhone', { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)' }, '_self'],
+    ['iPad', { userAgent: 'Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X)' }, '_self'],
+    ['desktop-mode iPad', { userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15)', maxTouchPoints: 5 }, '_self'],
+    ['Android phone', { userAgent: 'Mozilla/5.0 (Linux; Android 15) Mobile' }, '_self'],
+    ['Android tablet', { userAgent: 'Mozilla/5.0 (Linux; Android 15)', userAgentData: { mobile: false } }, '_self'],
+    ['mobile client hint', { userAgent: '', userAgentData: { mobile: true } }, '_self'],
+    ['Mac desktop', { userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15)', maxTouchPoints: 0 }, '_blank'],
+    ['Windows touchscreen', { userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', maxTouchPoints: 10 }, '_blank'],
+    ['Linux desktop', { userAgent: 'Mozilla/5.0 (X11; Linux x86_64)', userAgentData: { mobile: false } }, '_blank'],
+    ['unknown device', { userAgent: '' }, '_blank'],
+    ['no navigator', undefined, '_blank']
+  ])('uses device-aware GitHub navigation on %s', (_device, browser, target) => {
+    vi.stubGlobal('navigator', browser);
+    const href = 'https://github.com/octo-org/platform/pull/42?diff=split#discussion_r123';
+    expect(externalAnchorAttrs(href, 'Review pull request')).toEqual({
+      href, target, rel: 'noopener noreferrer', 'aria-label': 'Review pull request'
+    });
+  });
+
+  it('applies mobile navigation to every shared link renderer without rewriting deep links', () => {
+    vi.stubGlobal('navigator', { userAgent: 'iPhone' });
+    const link = { href: 'https://github.com/octo-org/platform/issues/42#issuecomment-123', label: 'Issue 42' };
+    const anchors = [
+      renderExternalLink(link),
+      renderSafeLink('Review', link),
+      renderLinkedValue('Issue', link),
+      renderWorkflowRunLink({ 'run-link': link }, '42'),
+      renderExternalLinkOrFallback(link)
+    ];
+    for (const anchor of anchors) {
+      const element = /** @type {HTMLElement} */ (anchor);
+      expect(element.getAttribute('href')).toBe(link.href);
+      expect(element.getAttribute('target')).toBe('_self');
+      expect(element.getAttribute('rel')).toBe('noopener noreferrer');
+    }
+  });
+
+  it.each([
+    'https://example.com/issues/42',
+    'https://github.example.com/issues/42',
+    'https://github.com.example.com/issues/42',
+    'https://gist.github.com/octo/42',
+    'https://github.com:8443/octo/repo',
+    'https://github.com@evil.example/issues/42',
+    'http://github.com/octo/repo',
+    'github://github.com/octo/repo',
+    'not a URL'
+  ])('does not apply mobile app handling to %s', (href) => {
+    vi.stubGlobal('navigator', { userAgent: 'Android' });
+    expect(externalAnchorAttrs(href, 'Link').target).toBe('_blank');
+  });
+
+  it('preserves internal dashboard navigation on mobile', () => {
+    vi.stubGlobal('navigator', { userAgent: 'iPhone' });
+    const anchor = renderExternalLink({ href: '#page-outcome-detail?outcome=issue%2F42', label: 'Issue' });
+    expect(anchor.getAttribute('href')).toBe('#page-outcome-detail?outcome=issue%2F42');
+    expect(anchor.getAttribute('target')).toBeNull();
+    expect(anchor.getAttribute('rel')).toBeNull();
+  });
+
   it('renderSafeLink renders a plain-text fallback and an internal or external anchor', () => {
     expect(renderSafeLink('Summary', null)).toBe('Summary');
 
