@@ -1883,6 +1883,23 @@ describe('presenter built-in and custom pages', () => {
     window.history.replaceState(null, '', '/');
   });
 
+  it('keeps logical parent navigation available when a secondary page is loaded directly', () => {
+    window.history.replaceState(null, '', '/#page-overview-failed-runs');
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {}
+    });
+    const back = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('.mobile-history-back'));
+
+    expect(back?.hidden).toBe(false);
+    expect(back?.getAttribute('aria-label')).toBe('Back to Overview');
+    back?.click();
+
+    expect(window.location.hash).toBe('#page-overview');
+    expect(rendered.querySelector('[data-page-id="overview"]')?.hasAttribute('hidden')).toBe(false);
+    window.history.replaceState(null, '', '/');
+  });
+
   it('sets forward and backward transition directions from browser history', async () => {
     window.history.replaceState(null, '', '/');
     /** @type {Array<string | undefined>} */

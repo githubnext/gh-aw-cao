@@ -1291,8 +1291,23 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       return false;
     }
   };
+  const logicalParentPageId = () => {
+    const parentPageId = pages.find((page) => page.dataset.pageId === activePageId)
+      ?.dataset.routeNavigationPage;
+    return parentPageId && availableIds.has(parentPageId) ? parentPageId : undefined;
+  };
   const syncHistoryBack = () => {
-    if (historyBack instanceof HTMLButtonElement) historyBack.hidden = !previousEntryIsDashboard();
+    if (!(historyBack instanceof HTMLButtonElement)) return;
+    const parentPageId = logicalParentPageId();
+    historyBack.hidden = !parentPageId && !previousEntryIsDashboard();
+    const parentLink = parentPageId
+      ? links.find((link) => getNavigationPageId(link) === parentPageId)
+      : undefined;
+    const label = parentPageId
+      ? `Back to ${parentLink?.textContent?.trim() || parentPageId.replaceAll('-', ' ')}`
+      : 'Go back';
+    historyBack.setAttribute('aria-label', label);
+    historyBack.title = label;
   };
   if (defaultView && initialNavigationIndex !== navigationIndex) {
     const state = defaultView.history.state && typeof defaultView.history.state === 'object'
@@ -1305,7 +1320,26 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     );
   }
   syncHistoryBack();
-  historyBack?.addEventListener('click', () => defaultView?.history.back(), { signal: navigationOwner.signal });
+  historyBack?.addEventListener('click', () => {
+    const parentPageId = logicalParentPageId();
+    if (!parentPageId) {
+      defaultView?.history.back();
+      return;
+    }
+    navigationIndex += 1;
+    defaultView?.history.pushState(
+      { [NAVIGATION_INDEX_STATE_KEY]: navigationIndex },
+      '',
+      `#page-${parentPageId}`
+    );
+    syncHistoryBack();
+    updateWithViewTransition(
+      root.ownerDocument,
+      () => activate(parentPageId, new URLSearchParams(), true),
+      'backward'
+    );
+    if (pageTitle instanceof HTMLElement) pageTitle.focus();
+  }, { signal: navigationOwner.signal });
   root.addEventListener('click', (event) => {
     if (!(event.target instanceof Element)) return;
     const link = event.target.closest('[data-nav-page-id], [data-mobile-nav-page-id]');
