@@ -125,6 +125,7 @@ describe('DLS-CONF-004 scaffold gates', () => {
     expect(styles).toContain('.table-summary-boolean .chart-widget .chart-series-2 { stroke: var(--attention); }');
     expect(styles).toContain('.table-summary-boolean .chart-widget .chart-series-3 { stroke: var(--muted); }');
     expect(styles).toContain('.table-summary-boolean .chart-widget .chart-series-semantic-failure { stroke: var(--danger); }');
+    expect(styles).toContain('.horizontal-bar-chart-row { min-width: 0; display: grid; grid-template-columns: minmax(120px, 52%) minmax(48px, 1fr) auto;');
     expect(styles).toContain('.chart-widget .chart-series-12 { stroke: var(--violet); }');
     expect(styles).toContain('transition: color 120ms ease;');
     expect(styles).toContain('transition: background-color 120ms ease, color 120ms ease;');

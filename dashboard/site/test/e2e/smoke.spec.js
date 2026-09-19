@@ -3467,14 +3467,15 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   await expect(awDoctorSummary).toContainText('23.9');
   await expect(awDoctorSummary.locator('[data-field="value-created"]')).toHaveText('0.25');
   await expect(awDoctorSummary.getByRole('button', { name: 'Update campaign' })).toHaveCount(0);
-  await expect(awDoctorSummary.getByRole('link', { name: 'View AW Doctor campaign dashboard' })).toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
+  await expect(awDoctorSummary.getByRole('link', { name: 'View AW Doctor campaign dashboard' })).toHaveAttribute('href', '#page-campaign-detail?campaign=aw-doctor');
   await expect(awDoctorSummary.locator('[data-field="modes"] .mode-badge')).toHaveText('review');
   await expect(awDoctorSummary.locator('[data-field="registration"] .status')).toHaveText('true');
   await page.getByRole('button', { name: 'Cards' }).click();
   const awDoctorCard = page.locator('[data-page-id="campaigns"] [data-mobile-card-list] .entity-card-list-card').filter({ hasText: 'AW Doctor' });
-  await expect(awDoctorCard.locator('[data-card-drill]')).toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
+  await expect(awDoctorCard.locator('[data-card-drill]')).toHaveAttribute('href', '#page-campaign-detail?campaign=aw-doctor');
   await awDoctorCard.click({ position: { x: 6, y: 6 } });
-  await expect(page).toHaveURL(/#page-campaign-insights\?campaign=aw-doctor$/);
+  await expect(page).toHaveURL(/#page-campaign-detail\?campaign=aw-doctor$/);
+  await expect(page.locator('[data-page-id="campaign-detail"] .campaign-tabs')).toBeVisible();
   await page.evaluate(() => {
     window.location.hash = '#page-operational-value';
   });

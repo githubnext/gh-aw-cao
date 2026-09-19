@@ -455,6 +455,8 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .reset-dashboard-confirm:hover { filter: brightness(1.08); }
 .reset-dashboard-cancel:disabled, .reset-dashboard-confirm:disabled { cursor: default; opacity: .6; }
 main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 24px 24px 40px; }
+.overview-pull-refresh { width: max-content; max-width: calc(100% - 32px); position: sticky; top: 0; z-index: 10; margin: -16px auto 8px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--canvas); color: var(--muted); font-size: .75rem; font-weight: 600; text-align: center; box-shadow: 0 2px 8px color-mix(in srgb, var(--fg) 12%, transparent); }
+.overview-pull-refresh-armed { color: var(--accent); border-color: var(--accent); }
 .lede { color: var(--muted); }
 .overview-header { min-width: 0; flex: 1; }
 .overview-header h1 { margin: 0; font-size: 1.25rem; font-weight: 500; line-height: 1.25; }
@@ -659,7 +661,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .heatmap-cell:focus-visible rect { stroke: var(--focus); stroke-width: 1; }
 .horizontal-bar-chart-widget { min-width: 0; max-height: 560px; place-items: stretch; overflow-y: auto; padding: 8px 4px; }
 .horizontal-bar-chart-list { display: grid; gap: 6px; width: 100%; margin: 0; padding: 0; list-style: none; }
-.horizontal-bar-chart-row { min-width: 0; display: grid; grid-template-columns: minmax(80px, 32%) minmax(80px, 1fr) auto; align-items: center; gap: 8px; }
+.horizontal-bar-chart-row { min-width: 0; display: grid; grid-template-columns: minmax(120px, 52%) minmax(48px, 1fr) auto; align-items: center; gap: 8px; }
 .horizontal-bar-chart-label { overflow: hidden; color: var(--fg); font-size: .75rem; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
 .horizontal-bar-chart-track { height: 14px; overflow: hidden; border-radius: 3px; background: var(--canvas-subtle); }
 .horizontal-bar-chart-bar { display: block; width: var(--horizontal-bar-size); height: 100%; transform-origin: left center; background: var(--accent); }

@@ -161,14 +161,12 @@
         "icon": "goal",
         "title": { "field": "campaign-name", "title": "Campaign" },
         "labels": [
-          { "field": "modes", "title": "Modes", "display": "label" },
-          { "field": "registration", "title": "Registration", "display": "active-state" }
+          { "field": "modes", "title": "Modes", "display": "label" }
         ],
         "details": [
-          { "field": "workflows", "title": "Workflows" },
-          { "field": "value-created", "title": "Value", "unit": "ops-value" },
-          { "field": "dispatches", "title": "Dispatches" },
-          { "field": "aic", "title": "AIC", "unit": "aic" }
+          { "field": "dispatches", "title": "# dispatches" },
+          { "field": "value-created", "title": "# value", "unit": "ops-value" },
+          { "field": "aic", "title": "# aic", "unit": "aic" }
         ]
       }
     ],
@@ -951,7 +949,7 @@
             "as": "campaign-dashboard-href",
             "function": "concat",
             "args": [
-              { "value": "#page-campaign-insights?campaign=" },
+              { "value": "#page-campaign-detail?campaign=" },
               { "field": "encoded-operation-id" }
             ]
           },
@@ -3035,7 +3033,7 @@
           {
             "as": "campaign-dashboard-href",
             "function": "concat",
-            "args": [{ "value": "#page-campaign-insights?campaign=" }, { "field": "encoded-campaign" }]
+            "args": [{ "value": "#page-campaign-detail?campaign=" }, { "field": "encoded-campaign" }]
           },
           {
             "as": "campaign-dashboard-label",
@@ -3409,7 +3407,7 @@
           {
             "as": "campaign-dashboard-href",
             "function": "concat",
-            "args": [{ "value": "#page-campaign-insights?campaign=" }, { "field": "encoded-campaign" }]
+            "args": [{ "value": "#page-campaign-detail?campaign=" }, { "field": "encoded-campaign" }]
           },
           {
             "as": "campaign-dashboard-label",
@@ -4135,7 +4133,7 @@
           {
             "as": "campaign-dashboard-href",
             "function": "concat",
-            "args": [{ "value": "#page-campaign-insights?campaign=" }, { "field": "encoded-campaign" }]
+            "args": [{ "value": "#page-campaign-detail?campaign=" }, { "field": "encoded-campaign" }]
           },
           {
             "as": "campaign-dashboard-label",

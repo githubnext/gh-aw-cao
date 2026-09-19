@@ -63,7 +63,7 @@ const sources = {
     campaign: 'aw-doctor',
     'campaign-name': 'AW Doctor',
     'campaign-dashboard-link': {
-      'dashboard-href': '#page-campaign-insights?campaign=aw-doctor',
+      'dashboard-href': '#page-campaign-detail?campaign=aw-doctor',
       'dashboard-label': 'View AW Doctor campaign dashboard'
     },
     workflows: 3,
@@ -156,10 +156,10 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(attention.locator('time').first()).toHaveAttribute('datetime', '2026-09-16T11:30:00Z');
     await expect(attention.locator('.entity-card-list-card dt').first()).toHaveText('Scope');
     await expect(factory.getByRole('link', { name: 'AW Doctor' }))
-      .toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
+      .toHaveAttribute('href', '#page-campaign-detail?campaign=aw-doctor');
     const campaigns = factory.locator(':scope > [data-view-id="overview-campaigns"]');
     await expect(campaigns.locator('.entity-card-list-card')).toHaveCount(1);
-    await expect(campaigns.locator('.entity-card-list-card dt')).toHaveText(['Workflows', 'Value', 'Dispatches', 'AIC']);
+    await expect(campaigns.locator('.entity-card-list-card dt')).toHaveText(['# dispatches', '# value', '# aic']);
     await expect(factory.getByRole('heading', { name: 'Your factory is delivering value.' })).toBeVisible();
     await expect(factory.locator('.factory-running-active')).toBeVisible();
     await expect(factory.locator('.factory-rhythm-day')).toHaveCount(7);
@@ -201,7 +201,7 @@ test('disables Overview rhythm animation when reduced motion is preferred', asyn
   await expect(page.locator('.factory-rhythm-bar-pair i:not([hidden])').first()).toHaveCSS('animation-name', 'none');
 });
 
-test('waits for page data before rendering mixed factory and campaign views', async ({ page }) => {
+test('renders the Overview structure before mixed page data resolves', async ({ page }) => {
   const immediate = await page.evaluate(async ({ documentModel, presenterModuleUrl, sourceStoreModuleUrl }) => {
     const [{ renderDashboard }, { configureSourceLoader }] = await Promise.all([
       import(presenterModuleUrl),
@@ -251,17 +251,17 @@ test('waits for page data before rendering mixed factory and campaign views', as
   });
 
   expect(immediate).toEqual({
-    sourceLoadCalls: 0,
+    sourceLoadCalls: 11,
     pageLoadCalls: 1,
-    header: false,
-    floor: false,
-    pageSkeletons: 1,
-    pageBusy: 'true',
-    headerBusy: undefined,
-    floorBusy: undefined,
-    runningPending: 0,
-    headingPending: 0,
-    rhythmPending: 0,
-    stationsPending: 0
+    header: true,
+    floor: true,
+    pageSkeletons: 0,
+    pageBusy: null,
+    headerBusy: null,
+    floorBusy: null,
+    runningPending: 1,
+    headingPending: 1,
+    rhythmPending: 1,
+    stationsPending: 4
   });
 });

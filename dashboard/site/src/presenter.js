@@ -29,7 +29,7 @@ import { renderDashboardFrame } from './components/dashboard-frame.js';
 import { declaredRouteTabs, renderDeclaredRouteTabs } from './components/route-tabs.js';
 import { buildChartPoints, prepareChartPoints, prepareTableRows, toViewText } from './components/view-data.js';
 import { enableDashboardKeyboardNavigation, updateWithViewTransition } from './components/dashboard-interactions.js';
-import { publishSource } from './source-store.js';
+import { requestDashboardRefresh } from './dashboard-data-updates.js';
 
 export { enableDashboardKeyboardNavigation, updateWithViewTransition };
 import {
@@ -231,6 +231,7 @@ export function renderDashboard(input) {
     setTimeWindowRange(event.detail?.range, root);
   }, { signal: dashboardOwner.signal });
   enableResponsiveReportActions(root, dashboardOwner.signal);
+  enableOverviewPullRefresh(root, dashboardOwner.signal);
   const disposeNavigation = enableDashboardPageNavigation(
     root,
     document.dashboard.title,
@@ -242,7 +243,7 @@ export function renderDashboard(input) {
       const defaultViewMode = pageId === 'overview' ? undefined : availableViewModes(pagePayload.views ?? [])[0];
       const effectiveQueryContext = options.queryContext ?? (defaultViewMode ? { viewMode: defaultViewMode } : undefined);
       options.queryContext = effectiveQueryContext;
-      const rendersBeforePageSources = pageUsesIndependentSourceElements(resolvedPage(), reusableViews);
+      const rendersBeforePageSources = pageHasIndependentSourceElements(resolvedPage(), reusableViews);
       /** @param {Record<string, LogicalSourceInput>} pageSources */
       const updateHorizon = (pageSources) => {
         if (options.signal?.aborted !== true) {
@@ -255,14 +256,6 @@ export function renderDashboard(input) {
         }
       };
       /** @param {Record<string, LogicalSourceInput>} pageSources */
-      const updateIndependentElements = (pageSources) => {
-        updateHorizon(pageSources);
-        for (const [bindingKey, source] of Object.entries(pageSources)) {
-          publishSource(bindingKey, source, bindingKey);
-        }
-        options.syncPageChrome?.();
-      };
-      /** @param {Record<string, LogicalSourceInput>} pageSources */
       const render = (pageSources) => {
         const page = resolvedPage();
         if (!page) throw new Error(`Dashboard page "${pageId}" is not available.`);
@@ -272,13 +265,11 @@ export function renderDashboard(input) {
           : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, effectiveQueryContext);
       };
       if (input.loadPageSources) {
-        options.onUpdate = rendersBeforePageSources
-          ? updateIndependentElements
-          : (pageSources) => options.renderUpdate(render(pageSources));
+        options.onUpdate = (pageSources) => options.renderUpdate(render(pageSources));
         if (rendersBeforePageSources) {
           const renderedPage = render(sources);
           void input.loadPageSources(pageId, options)
-            .then(updateIndependentElements)
+            .then((pageSources) => options.renderUpdate(render(pageSources)))
             .catch((error) => {
               if (!options.signal?.aborted) {
                 console.error(`Unable to load dashboard page ${pageId}: ${error instanceof Error ? error.message : String(error)}`);
@@ -315,22 +306,80 @@ export function renderDashboard(input) {
 }
 
 /**
- * Pages composed entirely from independently bound elements can mount before
- * their companion page subscription resolves.
+ * Pages containing independently bound elements can mount those elements and
+ * the rest of their authored structure before the companion subscription resolves.
  * @param {PresentableBuiltInPage | PresentableCustomPage | undefined} page
  * @param {Array<Record<string, unknown>>} reusableViews
  */
-function pageUsesIndependentSourceElements(page, reusableViews) {
+function pageHasIndependentSourceElements(page, reusableViews) {
   if (!page) return false;
   const reusableById = new Map(reusableViews.map((view) => [view.id, view]));
   const configuredViews = page.kind === 'built-in' ? page.definition?.views : page.views;
   if (!Array.isArray(configuredViews) || configuredViews.length === 0) return false;
-  return configuredViews.every((configured) => {
+  return configuredViews.some((configured) => {
     const view = typeof configured === 'string' ? reusableById.get(configured) : configured;
     return isPlainObject(view)
       && typeof view.element === 'string'
       && elementLoadsSourcesAsync(view.element);
   });
+}
+
+/**
+ * Enables the mobile pull-down gesture only while Overview is active and the
+ * page is already scrolled to its top.
+ * @param {HTMLElement} root
+ * @param {AbortSignal} signal
+ */
+function enableOverviewPullRefresh(root, signal) {
+  const scroller = root.querySelector('main.dashboard-prototype');
+  const view = root.ownerDocument.defaultView;
+  if (!(scroller instanceof HTMLElement) || !view) return;
+  const indicator = h('div', {
+    className: 'overview-pull-refresh',
+    role: 'status',
+    'aria-live': 'polite',
+    hidden: true
+  }, 'Pull down to refresh');
+  scroller.prepend(indicator);
+  /** @type {{ startY: number, armed: boolean } | null} */
+  let gesture = null;
+  const scrollTop = () => Math.max(
+    scroller.scrollTop,
+    root.ownerDocument.scrollingElement?.scrollTop ?? 0
+  );
+  const overviewIsActive = () => {
+    const overview = root.querySelector('[data-page-id="overview"]');
+    return overview instanceof HTMLElement && !overview.hidden;
+  };
+  const reset = () => {
+    gesture = null;
+    indicator.hidden = true;
+    indicator.classList.remove('overview-pull-refresh-armed');
+  };
+  scroller.addEventListener('touchstart', (event) => {
+    const touch = event.touches[0];
+    gesture = touch && event.touches.length === 1 && overviewIsActive() && scrollTop() <= 0
+      ? { startY: touch.clientY, armed: false }
+      : null;
+  }, { passive: true, signal });
+  scroller.addEventListener('touchmove', (event) => {
+    const touch = event.touches[0];
+    if (!gesture || !touch || scrollTop() > 0) return reset();
+    const distance = Math.max(0, touch.clientY - gesture.startY);
+    if (distance < 12) return;
+    gesture.armed = distance >= 72;
+    indicator.hidden = false;
+    indicator.classList.toggle('overview-pull-refresh-armed', gesture.armed);
+    indicator.textContent = gesture.armed ? 'Release to refresh' : 'Pull down to refresh';
+  }, { passive: true, signal });
+  scroller.addEventListener('touchend', () => {
+    if (!gesture?.armed) return reset();
+    indicator.textContent = 'Refreshing dashboard';
+    requestDashboardRefresh(view);
+    view.setTimeout(reset, 600);
+    gesture = null;
+  }, { signal });
+  scroller.addEventListener('touchcancel', reset, { signal });
 }
 
 /** @param {HTMLElement} root */

@@ -9,6 +9,7 @@ const dataProcessor = vi.hoisted(() => ({
   subscribeCanonicalDashboardView: vi.fn(),
 }));
 const updates = vi.hoisted(() => ({
+  DASHBOARD_REFRESH_REQUEST_EVENT: "dashboard-refresh-request",
   startAutomaticDashboardDataUpdates: vi.fn(),
 }));
 
@@ -100,6 +101,16 @@ describe("dashboard data startup", () => {
       "automatic",
       "refresh",
     ]);
+  });
+
+  it("downloads current deployed data when a refresh is requested", async () => {
+    dataProcessor.refreshCanonicalDashboardSources.mockResolvedValue({ changed: false });
+    await startDashboardData(options());
+    dataProcessor.refreshCanonicalDashboardSources.mockClear();
+
+    window.dispatchEvent(new Event("dashboard-refresh-request"));
+
+    expect(dataProcessor.refreshCanonicalDashboardSources).toHaveBeenCalledOnce();
   });
 
   it("paginates view aliases and reloads only the originating view", async () => {

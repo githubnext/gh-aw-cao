@@ -31,14 +31,12 @@ describe('entity card templates', () => {
       icon: 'goal',
       title: { field: 'campaign-name' },
       labels: [
-        { field: 'modes', display: 'label' },
-        { field: 'registration', display: 'active-state' }
+        { field: 'modes', display: 'label' }
       ],
       details: [
-        { field: 'workflows', title: 'Workflows' },
-        { field: 'value-created', title: 'Value', unit: 'ops-value' },
-        { field: 'dispatches', title: 'Dispatches' },
-        { field: 'aic', title: 'AIC', unit: 'aic' }
+        { field: 'dispatches', title: '# dispatches' },
+        { field: 'value-created', title: '# value', unit: 'ops-value' },
+        { field: 'aic', title: '# aic', unit: 'aic' }
       ]
     });
     expect(templates.campaign.details).not.toContainEqual(expect.objectContaining({ field: 'runs' }));

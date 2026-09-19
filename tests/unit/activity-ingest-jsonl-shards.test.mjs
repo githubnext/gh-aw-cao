@@ -238,6 +238,35 @@ test('phased shard names preserve source order for non-empty phase pairs', async
   assert.ok(hashes[`gh-aw-logs-records/${records[1]}`]);
 });
 
+test('hash-payloads excludes info-level audits from record shards', async () => {
+  const { root, shardDirectory } = await fixture();
+  const sourcePath = path.join(shardDirectory, 'gh-aw-logs-1000000000-aaaa.jsonl');
+  const source = (await readFile(sourcePath, 'utf8')).trim().split('\n');
+  const run = JSON.parse(source[1]);
+  run.run.audit = {
+    key_findings: [
+      { title: 'Informational finding', severity: 'info' },
+      { title: 'Actionable finding', severity: 'high' },
+    ],
+  };
+  await writeFile(sourcePath, `${source[0]}\n${JSON.stringify(run)}\n${source[2]}\n`);
+  const recordsDirectory = path.join(root, 'gh-aw-logs-records');
+
+  await execFileAsync(process.execPath, [
+    path.resolve('activity/cao.mjs'),
+    'hash-payloads',
+    '--shard-dir',
+    shardDirectory,
+    '--records-dir',
+    recordsDirectory,
+  ]);
+
+  const [recordShard] = await readdir(recordsDirectory);
+  const payload = JSON.parse(await readFile(path.join(recordsDirectory, recordShard), 'utf8'));
+  const findings = payload.batch.audits.filter((audit) => audit.type === 'audit.finding');
+  assert.deepEqual(findings.map((audit) => audit.summary), ['Actionable finding']);
+});
+
 test('hash-payloads drops empty phased shards from files and hashes', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'activity-empty-phased-shards-'));
   const shardDirectory = path.join(root, 'gh-aw-logs-shards');

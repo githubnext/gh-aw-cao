@@ -130,9 +130,9 @@ describe('dashboard DOM provenance', () => {
       loadPageSources: () => new Promise(() => {})
     });
     const overview = rendered.querySelector('[data-page-id="overview"]');
-    expect(overview?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(0);
-    expect(overview?.querySelector('.dashboard-lazy-view')).toBeNull();
-    expect(overview?.querySelector('.dashboard-view-skeleton')).not.toBeNull();
+    expect(overview?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(4);
+    expect(overview?.querySelector('.factory-intro')).not.toBeNull();
+    expect(overview?.querySelector('.factory-floor')).not.toBeNull();
     disposeDashboard(rendered);
   });
 
@@ -174,7 +174,7 @@ describe('dashboard DOM provenance', () => {
       loadPageSources
     });
     const overviewBefore = rendered.querySelector('[data-page-id="overview"]');
-    expect(overviewBefore?.querySelector('.dashboard-view-skeleton')).not.toBeNull();
+    expect(overviewBefore?.querySelector('.factory-intro')).not.toBeNull();
 
     await vi.waitFor(() => expect(loadPageSources).toHaveBeenCalled());
     resolvePageSources();
@@ -184,6 +184,34 @@ describe('dashboard DOM provenance', () => {
     expect(rendered.querySelector('[data-page-id="overview"]')).not.toBe(overviewBefore);
     expect(rendered.querySelector('.factory-floor')).not.toBeNull();
     expect(rendered.querySelector('[data-view-id="overview-campaigns"]')).not.toBeNull();
+    disposeDashboard(rendered);
+  });
+
+  it('requests a refresh after pulling down from the top of Overview', () => {
+    const rendered = renderDashboardView({
+      document: authoritativeDashboardDocument,
+      sources: {}
+    });
+    document.body.replaceChildren(rendered);
+    const scroller = rendered.querySelector('main.dashboard-prototype');
+    const onRefresh = vi.fn();
+    window.addEventListener('dashboard-refresh-request', onRefresh);
+    /** @param {string} type @param {number} clientY */
+    const touch = (type, clientY) => {
+      const event = new Event(type, { bubbles: true });
+      Object.defineProperty(event, 'touches', {
+        value: type === 'touchend' ? [] : [{ clientY }]
+      });
+      scroller?.dispatchEvent(event);
+    };
+
+    touch('touchstart', 100);
+    touch('touchmove', 180);
+    expect(rendered.querySelector('.overview-pull-refresh')?.textContent).toBe('Release to refresh');
+    touch('touchend', 180);
+
+    expect(onRefresh).toHaveBeenCalledOnce();
+    window.removeEventListener('dashboard-refresh-request', onRefresh);
     disposeDashboard(rendered);
   });
 

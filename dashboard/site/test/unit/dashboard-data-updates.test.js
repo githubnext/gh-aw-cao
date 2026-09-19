@@ -8,6 +8,7 @@ import {
   dashboardDataUpdateBlockedReason,
   ensureHealthyDashboardServiceWorker,
   periodicBackgroundSyncSupported,
+  requestDashboardRefresh,
   setAutomaticDashboardDataUpdatesEnabled,
   startDashboardAppUpdates,
   startAutomaticDashboardDataUpdates
@@ -86,6 +87,7 @@ describe('automatic dashboard data updates', () => {
       controller: worker,
       register: vi.fn().mockResolvedValue(currentRegistration)
     });
+
     const reload = vi.fn();
     const setTimer = vi.fn();
 
@@ -102,6 +104,26 @@ describe('automatic dashboard data updates', () => {
 
     expect(reload).toHaveBeenCalledOnce();
     expect(worker.messages).toContainEqual(expect.objectContaining({ type: 'CACHE_APP_ASSETS' }));
+    stop();
+  });
+
+  it('checks deployed application assets when a refresh is requested', async () => {
+    const worker = new FakeWorker();
+    const currentRegistration = registration(worker);
+    const serviceWorkers = new EventTarget();
+    Object.assign(serviceWorkers, {
+      controller: worker,
+      register: vi.fn().mockResolvedValue(currentRegistration)
+    });
+    const stop = startDashboardAppUpdates({
+      serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
+      scriptUrl: new URL('https://example.test/service-worker.js')
+    });
+    await vi.waitFor(() => expect(worker.messages).toContainEqual(expect.objectContaining({ type: 'CACHE_APP_ASSETS' })));
+
+    requestDashboardRefresh(window);
+
+    await vi.waitFor(() => expect(currentRegistration.update).toHaveBeenCalledTimes(2));
     stop();
   });
 

@@ -601,8 +601,8 @@ function summarizeCampaigns(workflows) {
 }
 
 /** @param {string} campaignId */
-function campaignInsightsHref(campaignId) {
-  return `#page-campaign-insights?campaign=${encodeURIComponent(campaignId)}`;
+function campaignOverviewHref(campaignId) {
+  return `#page-campaign-detail?campaign=${encodeURIComponent(campaignId)}`;
 }
 
 /**
@@ -614,7 +614,7 @@ function campaignInsightsHref(campaignId) {
  * @returns {HTMLElement}
  */
 function renderCampaignIdentityLink(entry, nameTag) {
-  return renderIdentityLink({ href: campaignInsightsHref(entry.id), icon: entry.icon, label: entry.name, labelTag: nameTag });
+  return renderIdentityLink({   href: campaignOverviewHref(entry.id), icon: entry.icon, label: entry.name, labelTag: nameTag });
 }
 
 /**
