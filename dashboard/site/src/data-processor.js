@@ -365,8 +365,8 @@ export function subscribeCanonicalDashboardView(viewId, sourceNames, context, li
     current.listeners.delete(listenerEntry);
     if (current.listeners.size > 0) return;
     subscriptions.delete(viewId);
-    // The worker memoization cache owns stale replay. Release this structured
-    // clone so navigation does not retain a second copy of every page payload.
+    // The worker memoization cache may replay a still-live result. Release this
+    // structured clone so navigation never retains a second page payload.
     current.latest = null;
     current.snapshot = null;
     current.snapshotRevision = null;
