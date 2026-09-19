@@ -15,6 +15,12 @@ const CANARY_TIMEOUT_MS = 3000;
 const DOWNLOAD_TIMEOUT_MS = 2 * 60 * 1000;
 const PERIODIC_SYNC_TAG = 'central-agentic-ops-dashboard-data';
 const APP_UPDATE_INTERVAL_MS = 60 * 60 * 1000;
+export const DASHBOARD_REFRESH_REQUEST_EVENT = 'dashboard-refresh-request';
+
+/** Requests both a fresh data download and a deployed application version check. */
+export function requestDashboardRefresh(eventTarget = window) {
+  eventTarget.dispatchEvent(new Event(DASHBOARD_REFRESH_REQUEST_EVENT));
+}
 
 /** @typedef {{ saveData?: boolean, metered?: boolean, type?: string, addEventListener?: EventTarget['addEventListener'], removeEventListener?: EventTarget['removeEventListener'] }} ConnectionState */
 /** @typedef {{ charging: boolean, level: number, addEventListener?: EventTarget['addEventListener'], removeEventListener?: EventTarget['removeEventListener'] }} BatteryState */
@@ -374,6 +380,7 @@ export function startDashboardAppUpdates(dependencies = {}) {
   let controlled = Boolean(serviceWorkers.controller);
   let reloading = false;
   let stopped = false;
+  let checking = false;
   /** @type {number | undefined} */
   let timer;
 
@@ -394,6 +401,8 @@ export function startDashboardAppUpdates(dependencies = {}) {
     timer = setTimer(() => void checkForUpdate(), delay);
   };
   const checkForUpdate = async () => {
+    if (checking || stopped) return;
+    checking = true;
     try {
       const { worker } = await ensureHealthyDashboardServiceWorker(serviceWorkers, scriptUrl);
       worker.postMessage({
@@ -408,14 +417,19 @@ export function startDashboardAppUpdates(dependencies = {}) {
     } catch (error) {
       console.error(`Unable to update dashboard application assets: ${error instanceof Error ? error.message : String(error)}`);
       schedule(RETRY_INTERVAL_MS);
+    } finally {
+      checking = false;
     }
   };
+  const onRefreshRequest = () => void checkForUpdate();
+  window.addEventListener(DASHBOARD_REFRESH_REQUEST_EVENT, onRefreshRequest);
   void checkForUpdate();
 
   return () => {
     stopped = true;
     if (timer !== undefined) clearTimer(timer);
     serviceWorkers.removeEventListener?.('controllerchange', onControllerChange);
+    window.removeEventListener(DASHBOARD_REFRESH_REQUEST_EVENT, onRefreshRequest);
   };
 }
 

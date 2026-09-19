@@ -200,7 +200,7 @@ test('disables Overview rhythm animation when reduced motion is preferred', asyn
   await expect(page.locator('.factory-rhythm-bar-pair i:not([hidden])').first()).toHaveCSS('animation-name', 'none');
 });
 
-test('waits for page data before rendering mixed factory and campaign views', async ({ page }) => {
+test('renders the Overview structure before mixed page data resolves', async ({ page }) => {
   const immediate = await page.evaluate(async ({ documentModel, presenterModuleUrl, sourceStoreModuleUrl }) => {
     const [{ renderDashboard }, { configureSourceLoader }] = await Promise.all([
       import(presenterModuleUrl),
@@ -252,15 +252,15 @@ test('waits for page data before rendering mixed factory and campaign views', as
   expect(immediate).toEqual({
     sourceLoadCalls: 0,
     pageLoadCalls: 1,
-    header: false,
-    floor: false,
-    pageSkeletons: 1,
-    pageBusy: 'true',
-    headerBusy: undefined,
-    floorBusy: undefined,
-    runningPending: 0,
-    headingPending: 0,
-    rhythmPending: 0,
-    stationsPending: 0
+    header: true,
+    floor: true,
+    pageSkeletons: 0,
+    pageBusy: null,
+    headerBusy: null,
+    floorBusy: null,
+    runningPending: 1,
+    headingPending: 1,
+    rhythmPending: 1,
+    stationsPending: 4
   });
 });

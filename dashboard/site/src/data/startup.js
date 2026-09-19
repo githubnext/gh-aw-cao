@@ -5,7 +5,10 @@ import {
 } from "../data-processor.js";
 import { bindSourceContinuations, continuationRequests } from "./continuation.js";
 import { DASHBOARD_DATA_EVENT, emitDashboardDebugEvent } from "../debug-events.js";
-import { startAutomaticDashboardDataUpdates } from "../dashboard-data-updates.js";
+import {
+  DASHBOARD_REFRESH_REQUEST_EVENT,
+  startAutomaticDashboardDataUpdates,
+} from "../dashboard-data-updates.js";
 import { configureSourceLoader, refreshSources as refreshBoundSources } from "../source-store.js";
 import { dashboardViewAliasName } from "./queries/view-payload-compiler.js";
 
@@ -217,6 +220,9 @@ export async function startDashboardData(options) {
       showStaleSources,
     );
   };
+  browserWindow.addEventListener(DASHBOARD_REFRESH_REQUEST_EVENT, () => refreshSources(), {
+    signal: cleanup.signal,
+  });
 
   await settleUi();
   if (!cleanup.signal.aborted) {

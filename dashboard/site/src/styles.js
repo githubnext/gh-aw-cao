@@ -453,6 +453,8 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .reset-dashboard-confirm:hover { filter: brightness(1.08); }
 .reset-dashboard-cancel:disabled, .reset-dashboard-confirm:disabled { cursor: default; opacity: .6; }
 main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 24px 24px 40px; }
+.overview-pull-refresh { width: max-content; max-width: calc(100% - 32px); position: sticky; top: 0; z-index: 10; margin: -16px auto 8px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--canvas); color: var(--muted); font-size: .75rem; font-weight: 600; text-align: center; box-shadow: 0 2px 8px color-mix(in srgb, var(--fg) 12%, transparent); }
+.overview-pull-refresh-armed { color: var(--accent); border-color: var(--accent); }
 .lede { color: var(--muted); }
 .overview-header { min-width: 0; flex: 1; }
 .overview-header h1 { margin: 0; font-size: 1.25rem; font-weight: 500; line-height: 1.25; }
