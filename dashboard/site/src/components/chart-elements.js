@@ -40,6 +40,7 @@ const PIE_CHART_STROKE_WIDTH = 6;
 const PIE_CHART_SEGMENT_GAP = 0.03;
 const PIE_CHART_CENTER_TEXT_LENGTH = 21;
 const MAX_SWIMLANE_SECTIONS_PER_LANE = 120;
+// Avoid hiding short incidental overlaps such as "QA " or "run " prefixes.
 const MIN_COMMON_LABEL_PREFIX = 8;
 /** @type {Array<[string, string]>} */
 const SWIMLANE_DEFINITIONS = [
@@ -334,6 +335,8 @@ function renderChartWidgetEmptyState(chartType, message) {
 }
 
 /**
+ * Strips a shared, separator-aligned label prefix and prepends an ellipsis,
+ * returning the original labels when no substantial prefix can be removed.
  * @param {string[]} labels
  * @returns {string[]}
  */
