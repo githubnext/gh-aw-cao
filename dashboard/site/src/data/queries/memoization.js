@@ -11,8 +11,6 @@ export function createDashboardQueryMemoization(options = {}) {
   const maxEntries = options.maxEntries ?? DASHBOARD_QUERY_CACHE_MAX_ENTRIES;
   /** @type {Map<string, { revision: number, value: unknown }>} */
   const entries = new Map();
-  /** @type {Map<string, Promise<unknown>>} */
-  const pendingEntries = new Map();
   let latestRevision = Number.NEGATIVE_INFINITY;
 
   /** @param {string} key @param {{ revision: number, value: unknown }} entry */
@@ -55,18 +53,12 @@ export function createDashboardQueryMemoization(options = {}) {
         return /** @type {T} */ (cached.value);
       }
 
-      const pendingKey = `${databaseRevision}:${key}`;
-      const existing = pendingEntries.get(pendingKey);
-      if (existing) return /** @type {Promise<T>} */ (existing);
       const pending = compute().then((value) => {
         if (latestRevision === databaseRevision) {
           touch(key, { revision: databaseRevision, value });
         }
         return value;
-      }).finally(() => {
-        if (pendingEntries.get(pendingKey) === pending) pendingEntries.delete(pendingKey);
       });
-      pendingEntries.set(pendingKey, pending);
       try {
         return /** @type {T} */ (await pending);
       } finally {

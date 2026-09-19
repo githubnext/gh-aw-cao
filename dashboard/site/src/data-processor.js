@@ -324,7 +324,8 @@ export function subscribeCanonicalDashboardView(viewId, sourceNames, context, li
     }
   } else {
     const cached = cachedSubscriptions.get(viewId);
-    const reusable = cached
+    const reusable = options.emitCurrent !== false
+      && cached
       && sameSubscription(cached, sourceNames, context, pagination, options)
       ? cached
       : null;

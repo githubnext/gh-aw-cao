@@ -45,7 +45,6 @@ async function* responseChunks(body) {
 
 /** @type {{ logicalSources: Record<string, import('./presenter.js').LogicalSourceInput>, revision: number } | null} */
 let liveDashboard = null;
-let dashboardActivated = false;
 let runPhaseOnly = false;
 const dashboardQueryMemoization = createDashboardQueryMemoization();
 /**
@@ -348,7 +347,6 @@ function refreshDashboardSubscriptions(logicalSources, runsOnly) {
     logicalSources,
     revision: (liveDashboard?.revision ?? 0) + 1
   };
-  dashboardActivated = true;
   runPhaseOnly = runsOnly;
   scheduleDashboardSubscriptions(runsOnly
     ? [...dashboardSubscriptions]
@@ -733,13 +731,14 @@ export function processDataRequest(request, signal) {
         }
         if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
         progress.log('Refreshing active dashboard queries.');
-        const nextRevision = (liveDashboard?.revision ?? 0)
-          + (!dashboardActivated || changed ? 1 : 0);
+        // A different tab may have committed the current payload to IndexedDB,
+        // leaving this worker's in-memory query results stale even when this
+        // ingestion reports no local writes.
+        const nextRevision = (liveDashboard?.revision ?? 0) + 1;
         liveDashboard = {
           logicalSources: /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
           revision: nextRevision
         };
-        dashboardActivated = true;
         runPhaseOnly = false;
         scheduleDashboardSubscriptions();
         progress.complete();

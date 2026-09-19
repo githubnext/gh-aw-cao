@@ -48,23 +48,18 @@ describe('dashboard query memoization', () => {
     expect(compute).toHaveBeenCalledTimes(4);
   });
 
-  it('shares an in-flight computation for the same view and revision', async () => {
+  it('keeps independently cancellable in-flight requests separate', async () => {
     const memoization = createDashboardQueryMemoization();
-    /** @type {(value: { revision: number }) => void} */
-    let resolve = () => {};
-    const compute = vi.fn(() => new Promise((done) => {
-      resolve = done;
-    }));
+    const compute = vi.fn(async () => ({ revision: 1 }));
 
     const first = memoization.get(1, 'overview', compute);
     const second = memoization.get(1, 'overview', compute);
-    resolve({ revision: 1 });
 
     await expect(Promise.all([first, second])).resolves.toEqual([
       { revision: 1 },
       { revision: 1 }
     ]);
-    expect(compute).toHaveBeenCalledOnce();
+    expect(compute).toHaveBeenCalledTimes(2);
   });
 
   it('does not insert an older result after a newer database revision starts', async () => {

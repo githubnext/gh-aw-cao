@@ -220,6 +220,37 @@ describe('canonical dashboard view subscriptions', () => {
     unsubscribeSecond();
   });
 
+  it('does not replay a detached snapshot when current rows are disabled', () => {
+    vi.stubGlobal('Worker', SubscriptionWorker);
+    /** @type {FrameRequestCallback | undefined} */
+    let flushFrame;
+    vi.stubGlobal('requestAnimationFrame', (/** @type {FrameRequestCallback} */ callback) => {
+      flushFrame = callback;
+      return 1;
+    });
+    const first = vi.fn();
+    const second = vi.fn();
+    const context = { pages: [] };
+    const unsubscribeFirst = subscribeCanonicalDashboardView('next-update', ['runs'], context, first);
+    const worker = SubscriptionWorker.current;
+    if (!worker) throw new Error('Subscription worker was not created.');
+
+    worker.emit({ subscriptionId: 'next-update', revision: 1, data: { runs: { rows: [{ id: 1 }] } } });
+    flushFrame?.(0);
+    unsubscribeFirst();
+    const unsubscribeSecond = subscribeCanonicalDashboardView(
+      'next-update',
+      ['runs'],
+      context,
+      second,
+      undefined,
+      { emitCurrent: false }
+    );
+
+    expect(second).not.toHaveBeenCalled();
+    unsubscribeSecond();
+  });
+
   it('rejects conflicting query parameters for the same view', () => {
     vi.stubGlobal('Worker', SubscriptionWorker);
     const unsubscribe = subscribeCanonicalDashboardView('overview', ['runs'], { pages: [] }, () => {});
