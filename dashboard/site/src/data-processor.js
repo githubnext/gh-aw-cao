@@ -356,7 +356,7 @@ export function subscribeCanonicalDashboardView(viewId, sourceNames, context, li
   subscription.listeners.add(listenerEntry);
   if (subscription.snapshot && subscription.frame === null) {
     const snapshot = subscription.snapshot;
-    scheduleSubscriber(listenerEntry, subscription, () => listener(snapshot));
+    invokeSubscriber(() => listener(snapshot));
   }
   const unsubscribeFromSignal = () => unsubscribe();
   options.signal?.addEventListener('abort', unsubscribeFromSignal, { once: true });
@@ -489,6 +489,7 @@ function registerSubscription(processor, subscription) {
  * Retains only the newest worker payload until the current microtask completes.
  * @param {ViewSubscription} subscription
  * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
+ * @param {unknown} revision
  */
 function enqueueSubscriptionUpdate(subscription, sources, revision) {
   if (Number.isSafeInteger(revision)
@@ -503,7 +504,7 @@ function enqueueSubscriptionUpdate(subscription, sources, revision) {
     subscription.latest = null;
     if (!latest || subscriptions.get(subscription.id) !== subscription) return;
     subscription.snapshot = latest;
-    subscription.snapshotRevision = Number.isSafeInteger(revision) ? revision : null;
+    subscription.snapshotRevision = Number.isSafeInteger(revision) ? Number(revision) : null;
     batch(() => {
       for (const listener of [...subscription.listeners]) {
         if (subscription.listeners.has(listener)) invokeSubscriber(() => listener.notify(latest));
@@ -514,26 +515,6 @@ function enqueueSubscriptionUpdate(subscription, sources, revision) {
     subscription.frame = globalThis.requestAnimationFrame(flush);
   } else {
     subscription.frame = 0;
-    queueMicrotask(flush);
-  }
-}
-
-/** @param {SubscriptionListener} listener @param {ViewSubscription} subscription @param {() => void} notify */
-function scheduleSubscriber(listener, subscription, notify) {
-  let scheduledFrame = 0;
-  const flush = () => {
-    if (listener.frame !== scheduledFrame) return;
-    listener.frame = null;
-    if (subscriptions.get(subscription.id) === subscription
-        && subscription.listeners.has(listener)) {
-      batch(() => invokeSubscriber(notify));
-    }
-  };
-  if (typeof globalThis.requestAnimationFrame === 'function') {
-    scheduledFrame = globalThis.requestAnimationFrame(flush);
-    listener.frame = scheduledFrame;
-  } else {
-    listener.frame = 0;
     queueMicrotask(flush);
   }
 }

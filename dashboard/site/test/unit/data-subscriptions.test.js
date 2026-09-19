@@ -180,12 +180,44 @@ describe('canonical dashboard view subscriptions', () => {
     worker.emit({ subscriptionId: 'live-table', data: snapshot });
     frames.shift()?.(0);
     const unsubscribeSecond = subscribeCanonicalDashboardView('live-table', ['runs'], context, second);
-    frames.shift()?.(1);
 
     expect(first).toHaveBeenCalledOnce();
     expect(second).toHaveBeenCalledWith(snapshot);
     unsubscribeSecond();
     unsubscribeFirst();
+  });
+
+  it('reuses a detached view snapshot and repaints only after worker invalidation', () => {
+    vi.stubGlobal('Worker', SubscriptionWorker);
+    /** @type {FrameRequestCallback[]} */
+    const frames = [];
+    vi.stubGlobal('requestAnimationFrame', (/** @type {FrameRequestCallback} */ callback) => {
+      frames.push(callback);
+      return frames.length;
+    });
+    const context = { pages: [] };
+    const first = vi.fn();
+    const second = vi.fn();
+    const unsubscribeFirst = subscribeCanonicalDashboardView('cached-view', ['runs'], context, first);
+    const worker = SubscriptionWorker.current;
+    if (!worker) throw new Error('Subscription worker was not created.');
+    const stale = { runs: { rows: [{ id: 'stale' }] } };
+    const fresh = { runs: { rows: [{ id: 'fresh' }] } };
+
+    worker.emit({ subscriptionId: 'cached-view', revision: 1, data: stale });
+    frames.shift()?.(0);
+    unsubscribeFirst();
+    const unsubscribeSecond = subscribeCanonicalDashboardView('cached-view', ['runs'], context, second);
+    expect(second).toHaveBeenCalledWith(stale);
+
+    worker.emit({ subscriptionId: 'cached-view', revision: 1, data: stale });
+    expect(frames).toHaveLength(0);
+    worker.emit({ subscriptionId: 'cached-view', revision: 2, data: fresh });
+    frames.shift()?.(1);
+    expect(second).toHaveBeenLastCalledWith(fresh);
+    expect(second).toHaveBeenCalledTimes(2);
+
+    unsubscribeSecond();
   });
 
   it('rejects conflicting query parameters for the same view', () => {

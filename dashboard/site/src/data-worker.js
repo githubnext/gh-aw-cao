@@ -121,6 +121,7 @@ function pageScopedSources(sources, requested) {
  * @param {{ filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' }} [queryContext]
  * @param {string} [viewId]
  * @param {typeof liveDashboard} [dashboard]
+ * @param {string} [cacheId]
  */
 async function queryLiveDashboard(
   requested,
@@ -133,7 +134,7 @@ async function queryLiveDashboard(
   queryContext,
   viewId,
   dashboard = liveDashboard,
-  cacheId
+  cacheId = undefined
 ) {
   dashboard ??= await loadActiveDashboard();
   if (signal?.aborted) throw new DashboardQueryCancelledError('dashboard queries were cancelled', 'aborted');
