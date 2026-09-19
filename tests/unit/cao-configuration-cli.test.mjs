@@ -14,7 +14,7 @@ import {
 
 const versionResult = {
   status: 0,
-  stdout: "gh aw version v0.89.15\n",
+  stdout: "gh aw version v0.89.17\n",
   stderr: "",
 };
 
@@ -34,10 +34,10 @@ test("cao init writes the minimal control-plane policy", async () => {
     assert.deepEqual(policy, {
       $schema: "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json",
       version: 1,
-      "gh-aw-version": "v0.89.15",
+      "gh-aw-version": "v0.89.17",
       "control-plane": { campaigns: {} },
     });
-    assert.equal(result["gh-aw-version"], "v0.89.15");
+    assert.equal(result["gh-aw-version"], "v0.89.17");
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -65,7 +65,7 @@ test("cao mode changes configured campaigns between live and preview atomically"
     await mkdir(path.dirname(policyPath), { recursive: true });
     await writeFile(policyPath, `${JSON.stringify({
       version: 1,
-      "gh-aw-version": "v0.89.15",
+      "gh-aw-version": "v0.89.17",
       "control-plane": {
         campaigns: {
           dependabot: { mode: "review", icon: "dependabot" },
@@ -94,7 +94,7 @@ test("cao mode changes configured campaigns between live and preview atomically"
 test("cao mode validates every campaign before changing the policy", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-mode-invalid-"));
   const policyPath = path.join(root, "cao.json");
-  const original = '{"version":1,"gh-aw-version":"v0.89.15","control-plane":{"campaigns":{"dependabot":{"mode":"review"}}}}\n';
+  const original = '{"version":1,"gh-aw-version":"v0.89.17","control-plane":{"campaigns":{"dependabot":{"mode":"review"}}}}\n';
   try {
     await writeFile(policyPath, original);
     await assert.rejects(
@@ -241,7 +241,7 @@ test("cao add installs a campaign and merges its declaration safely", async () =
     await mkdir(path.dirname(policyPath), { recursive: true });
     await writeFile(policyPath, `${JSON.stringify({
       version: 1,
-      "gh-aw-version": "v0.89.15",
+      "gh-aw-version": "v0.89.17",
       "control-plane": {
         scope: { "allowed-owners": ["acme"] },
         campaigns: {
@@ -344,7 +344,7 @@ test("cao update upgrades gh-aw, updates installed campaigns, and merges declara
     await mkdir(path.dirname(policyPath), { recursive: true });
     await writeFile(policyPath, `${JSON.stringify({
       version: 1,
-      "gh-aw-version": "v0.89.15",
+      "gh-aw-version": "v0.89.17",
       "control-plane": {
         campaigns: {
           dependabot: {
@@ -370,7 +370,7 @@ test("cao update upgrades gh-aw, updates installed campaigns, and merges declara
           versionCalls += 1;
           return {
             status: 0,
-            stdout: versionCalls === 1 ? "gh aw version v0.88.0\n" : "gh aw version v0.89.15\n",
+            stdout: versionCalls === 1 ? "gh aw version v0.88.0\n" : "gh aw version v0.89.17\n",
             stderr: "",
           };
         }
@@ -380,7 +380,7 @@ test("cao update upgrades gh-aw, updates installed campaigns, and merges declara
     const policy = JSON.parse(await readFile(policyPath, "utf8"));
     assert.deepEqual(calls, [
       ["gh", ["aw", "version"]],
-      ["bash", ["-c", "curl --fail --silent --show-error --location https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- \"$1\"", "cao-gh-aw-install", "v0.89.15"]],
+      ["bash", ["-c", "curl --fail --silent --show-error --location https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- \"$1\"", "cao-gh-aw-install", "v0.89.17"]],
       ["gh", ["aw", "version"]],
       ["gh", ["aw", "update", "githubnext/gh-aw-cao", "--force"]],
       ["gh", ["aw", "update", "githubnext/gh-aw-cao/dependabot", "--force"]],
@@ -415,7 +415,7 @@ test("cao update leaves current gh-aw versions that meet the minimum in place", 
   const policyPath = path.join(root, "cao.json");
   const calls = [];
   try {
-    await writeFile(policyPath, '{"version":1,"gh-aw-version":"v0.89.15","control-plane":{"campaigns":{}}}\n');
+    await writeFile(policyPath, '{"version":1,"gh-aw-version":"v0.89.17","control-plane":{"campaigns":{}}}\n');
     const result = await ensureGhAwMinimumVersion({
       policyPath,
       execute(command, arguments_) {
@@ -425,7 +425,7 @@ test("cao update leaves current gh-aw versions that meet the minimum in place", 
     });
     assert.deepEqual(calls, [["gh", ["aw", "version"]]]);
     assert.deepEqual(result, {
-      required: "v0.89.15",
+      required: "v0.89.17",
       previous: "v0.90.0",
       current: "v0.90.0",
       updated: false,

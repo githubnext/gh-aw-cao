@@ -19,7 +19,7 @@ test("install.sh installs gh-aw, adds the core campaign, and is idempotent", asy
 set -euo pipefail
 if [[ "\${1:-} \${2:-}" == "aw version" ]]; then
   [[ -f "$FAKE_GH_AW_INSTALLED" ]] || exit 1
-  echo "gh aw version v0.89.15"
+  echo "gh aw version v0.89.17"
   exit 0
 fi
 if [[ "\${1:-} \${2:-} \${3:-}" == "aw add githubnext/gh-aw-cao" ]]; then
@@ -29,7 +29,7 @@ if [[ "\${1:-} \${2:-} \${3:-}" == "aw add githubnext/gh-aw-cao" ]]; then
   cat > .github/aw/activity/cao.mjs <<'EOF'
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 mkdirSync(".github/workflows", { recursive: true });
-writeFileSync(".github/workflows/cao.json", '{"version":1,"gh-aw-version":"v0.89.15","control-plane":{"campaigns":{}}}\\n');
+writeFileSync(".github/workflows/cao.json", '{"version":1,"gh-aw-version":"v0.89.17","control-plane":{"campaigns":{}}}\\n');
 appendFileSync(process.env.FAKE_COMMAND_LOG, "init\\n");
 EOF
   exit 0

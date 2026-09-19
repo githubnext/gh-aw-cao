@@ -308,7 +308,7 @@ test.beforeEach(async ({ context, page }) => {
         'campaign-mode': 'review',
         'campaign-enabled': true,
         'campaign-worker-count': 4,
-        'campaign-min-version': 'v0.89.15',
+        'campaign-min-version': 'v0.89.17',
         'campaign-experimental': true,
         'observed-at': '2026-09-09T05:00:00Z'
       });

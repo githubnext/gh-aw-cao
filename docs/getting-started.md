@@ -108,7 +108,7 @@ Add the target owner to the generated `.github/workflows/cao.json`. The campaign
 ```json title=".github/workflows/cao.json"
 {
 	"version": 1,
-	"gh-aw-version": "v0.89.15",
+	"gh-aw-version": "v0.89.17",
 	"control-plane": {
 		"scope": {
 			"allowed-owners": ["acme"]

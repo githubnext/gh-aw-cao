@@ -19,7 +19,7 @@ test("discover-workflows collects a bounded repository set locally", async () =>
   const server = createServer((request, response) => {
     requests.push(request.url);
     const payload = request.url === "/repos/github/gh-aw/releases?per_page=100&page=1"
-      ? [{ tag_name: "v0.89.15", prerelease: false, draft: false }]
+      ? [{ tag_name: "v0.89.17", prerelease: false, draft: false }]
       : request.url?.includes("/actions/workflows")
         ? {
             total_count: 1,

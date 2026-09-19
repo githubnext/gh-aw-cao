@@ -1,6 +1,6 @@
 name: Dependabot
 description: Durable repository-scoped Dependabot update planning with human-consumption evidence.
-min-version: v0.89.15
+min-version: v0.89.17
 experimental: true
 includes:
   - ../aw.yml
