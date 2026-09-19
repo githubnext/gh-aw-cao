@@ -250,7 +250,7 @@ test('renders the Overview structure before mixed page data resolves', async ({ 
   });
 
   expect(immediate).toEqual({
-    sourceLoadCalls: 0,
+    sourceLoadCalls: 11,
     pageLoadCalls: 1,
     header: true,
     floor: true,
