@@ -144,6 +144,19 @@
         ]
       },
       {
+        "id": "attention-signal",
+        "icon": "issue-opened",
+        "icon-field": "icon",
+        "title": { "field": "title", "title": "Signal" },
+        "subtitle": { "field": "reason", "title": "Reason" },
+        "labels": [{ "field": "kind", "title": "Kind", "display": "label" }],
+        "details": [
+          { "field": "scope", "title": "Scope" },
+          { "field": "action", "title": "Next step" },
+          { "field": "observed-at", "title": "Observed", "format": "human-friendly-timestamp" }
+        ]
+      },
+      {
         "id": "campaign",
         "icon": "goal",
         "title": { "field": "campaign-name", "title": "Campaign" },
@@ -9537,15 +9550,36 @@
             "title": "Needs attention",
             "description": "Grouped repeated failures and unresolved outputs explicitly awaiting human review. Evidence reflects the selected snapshot and time horizon.",
             "data": {
-              "sources": ["overview-needs-attention-preview"]
+              "source": "overview-needs-attention-preview"
             },
-            "mark": "element",
-            "element": "needs-attention-list",
-            "config": {
-              "view-all-page": "overview-needs-attention",
-              "view-all-label": "View all"
+            "mark": "list",
+            "list": {
+              "style": "entity-cards",
+              "appearance": "grouped",
+              "card": "attention-signal",
+              "icon": "issue-opened",
+              "drill": {
+                "type": "external",
+                "field": "evidence-link"
+              },
+              "view-all": {
+                "page": "overview-needs-attention",
+                "label": "View all"
+              }
             },
-            "layout": "full"
+            "empty-message": "No signals require attention.",
+            "layout": "full",
+            "encoding": {
+              "columns": [
+                { "field": "title", "type": "nominal", "title": "Signal" },
+                { "field": "kind", "type": "nominal", "title": "Kind" },
+                { "field": "scope", "type": "nominal", "title": "Scope" },
+                { "field": "reason", "type": "nominal", "title": "Reason" },
+                { "field": "action", "type": "nominal", "title": "Next step" },
+                { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
+                { "field": "evidence-link", "type": "nominal", "title": "Evidence" }
+              ]
+            }
           },
           {
             "id": "overview-campaigns",
@@ -9597,11 +9631,32 @@
             "title": "Needs attention",
             "description": "Open the retained GitHub evidence to investigate or complete the indicated review. Opening a link does not execute an action.",
             "data": {
-              "sources": ["overview-needs-attention"]
+              "source": "overview-needs-attention"
             },
-            "mark": "element",
-            "element": "needs-attention-list",
-            "layout": "full-view"
+            "mark": "list",
+            "list": {
+              "style": "entity-cards",
+              "appearance": "grouped",
+              "card": "attention-signal",
+              "icon": "issue-opened",
+              "drill": {
+                "type": "external",
+                "field": "evidence-link"
+              }
+            },
+            "empty-message": "No signals require attention.",
+            "layout": "full-view",
+            "encoding": {
+              "columns": [
+                { "field": "title", "type": "nominal", "title": "Signal" },
+                { "field": "kind", "type": "nominal", "title": "Kind" },
+                { "field": "scope", "type": "nominal", "title": "Scope" },
+                { "field": "reason", "type": "nominal", "title": "Reason" },
+                { "field": "action", "type": "nominal", "title": "Next step" },
+                { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
+                { "field": "evidence-link", "type": "nominal", "title": "Evidence" }
+              ]
+            }
           }
         ]
       },

@@ -113,6 +113,7 @@ import {
   VIEW_LIST_DRILL_TYPE_VALUES,
   VIEW_LIST_LAYOUT_VALUES,
   VIEW_LIST_APPEARANCE_VALUES,
+  VIEW_LIST_VIEW_ALL_KEYS,
   VIEW_DISCLOSURE_VALUES,
   VIEW_ENCODING_KEYS,
   VIEW_ELEMENT_CONFIG_KEYS,
@@ -2680,6 +2681,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
         errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'list.card is supported only for entity-cards lists.', `${listPath}.card`));
       }
       validateListDrill(view.list.drill, getValueNodeByKey(getValueNodeByKey(viewNode, 'list'), 'drill'), listPath, view.list.style, errors);
+      validateListViewAll(view.list['view-all'], getValueNodeByKey(getValueNodeByKey(viewNode, 'list'), 'view-all'), listPath, errors);
     }
     if (view.mark !== 'list') {
       errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list is allowed only when mark is "list".', listPath));
@@ -3021,6 +3023,26 @@ function validateListDrill(drill, drillNode, listPath, style, errors) {
       errors.push(createError(ERROR_CODES.unknownOrDuplicateKey, 'query drill argument names must be unique.', `${argumentPath}.name`));
     }
     names.add(argument.name);
+  }
+}
+
+/**
+ * @param {unknown} viewAll
+ * @param {unknown} viewAllNode
+ * @param {string} listPath
+ * @param {ValidationError[]} errors
+ */
+function validateListViewAll(viewAll, viewAllNode, listPath, errors) {
+  const path = `${listPath}.view-all`;
+  if (viewAll === undefined) return;
+  if (!isPlainObject(viewAll)) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'list.view-all must be a mapping.', path));
+    return;
+  }
+  validateObjectKeys(viewAllNode, VIEW_LIST_VIEW_ALL_KEYS, path, errors);
+  validateRequiredIdentifier(viewAll.page, `${path}.page`, 'list view-all page', errors);
+  if (viewAll.label !== undefined) {
+    validateStringField(viewAll.label, `${path}.label`, true, errors);
   }
 }
 

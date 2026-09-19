@@ -335,6 +335,8 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .document-list-card-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; }
 .document-list-card .table-cli-action-button { width: auto; min-height: 32px; padding: 7px; border: 1px solid var(--border); }
 .document-list-empty { margin: 0; padding: 16px; color: var(--muted); font-size: .75rem; }
+.document-list-footer { display: flex; justify-content: flex-end; padding: 8px 14px; }
+.document-list-footer a { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; }
 .issue-list { display: block; }
 .issue-list-card { min-width: 0; display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 8px; padding: 8px 16px; border-top: 1px solid var(--border); list-style: none; }
 .issue-list-card:first-child { border-top: 0; }

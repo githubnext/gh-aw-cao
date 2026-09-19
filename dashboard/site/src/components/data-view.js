@@ -331,6 +331,8 @@ function renderEntityCardListView(options) {
   const emptyMessage = metadata.availability === 'unavailable'
     ? 'Data is unavailable for this view.'
     : typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No items available.';
+  const viewAll = isPlainObject(view.list) && isPlainObject(view.list['view-all']) ? view.list['view-all'] : null;
+  const viewAllPage = typeof viewAll?.page === 'string' ? viewAll.page : '';
   return renderPageSection(
     pageId,
     title,
@@ -342,7 +344,22 @@ function renderEntityCardListView(options) {
           className: `document-list issue-list entity-card-list${isPlainObject(view.list) && view.list.layout === 'grid' ? ' entity-card-list-grid' : ''}${grouped ? ' entity-card-list-grouped' : ''}`,
           'data-custom-view-mark': 'list'
         }, cards)
-        : h('p', { className: 'document-list-empty' }, emptyMessage)
+        : h('p', { className: 'document-list-empty' }, emptyMessage),
+      viewAllPage
+        ? h(
+          'footer',
+          { className: 'document-list-footer' },
+          h(
+            'a',
+            {
+              href: `#page-${encodeURIComponent(viewAllPage)}`,
+              dataset: { navPageId: viewAllPage }
+            },
+            typeof viewAll?.label === 'string' && viewAll.label ? viewAll.label : 'View all',
+            octicon('arrow-right')
+          )
+        )
+        : null
     ],
     headingTag,
     view.description
