@@ -1453,15 +1453,19 @@
       },
       {
         "name": "overview-repeated-failure-groups",
-        "intent": "Group repeated workflow failures in the selected snapshot horizon and retain the latest observation time.",
+        "intent": "Group each workflow's latest consecutive failing run sequence in the selected snapshot horizon, resetting the group after any successful run.",
         "from": "runs",
-        "filter": {
-          "predicates": [{ "field": "run-conclusion", "in": ["failure", "startup-failure", "stale", "timed-out"] }]
-        },
+        "compute": [
+          {
+            "as": "failure-streak-point",
+            "function": "failure-streak-point",
+            "args": [{ "field": "started-at" }, { "field": "run" }, { "field": "run-conclusion" }]
+          }
+        ],
         "aggregate": {
           "by": ["organization", "repository", "workflow"],
           "values": [
-            { "field": "run", "as": "failure-count", "reducer": "distinct-count" }
+            { "field": "failure-streak-point", "as": "failure-count", "reducer": "latest-failure-streak" }
           ]
         }
       },
@@ -1508,7 +1512,8 @@
           { "field": "run-link" },
           { "field": "icon" },
           { "field": "tone" },
-          { "field": "priority" }
+          { "field": "priority" },
+          { "field": "failure-count" }
         ]
       },
       {
@@ -1528,7 +1533,8 @@
           { "field": "run-link" },
           { "field": "icon" },
           { "field": "tone" },
-          { "field": "priority" }
+          { "field": "priority" },
+          { "field": "failure-count" }
         ]
       },
       {

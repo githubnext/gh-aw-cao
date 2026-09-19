@@ -484,6 +484,7 @@ describe('UI elements', () => {
             title: '.github/workflows/doctor.md',
             scope: 'githubnext/gh-aw-cao',
             reason: '2 failed runs in the selected horizon',
+            'failure-count': 2,
             action: 'Open latest failed run on GitHub',
             'observed-at': '2026-09-16T12:00:00Z',
             'evidence-link': {
@@ -508,6 +509,8 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('time')?.getAttribute('datetime')).toBe('2026-09-16T12:00:00Z');
     expect(rendered?.textContent).toContain('githubnext/gh-aw-cao');
     expect(rendered?.textContent).toContain('2 failed runs in the selected horizon');
+    expect(rendered?.querySelector('.count-badge')?.textContent).toBe('2');
+    expect(rendered?.querySelector('.count-badge')?.getAttribute('aria-label')).toBe('2 consecutive failed runs');
     expect(rendered?.textContent).toContain('Open latest failed run on GitHub');
     expect(rendered?.querySelector('.signal-list-footer a')?.getAttribute('href')).toBe('#page-overview-needs-attention');
   });

@@ -72,12 +72,13 @@ const emptyRunRecordSources = Object.fromEntries(['domains', 'tools', 'audits', 
 
 describe('declarative dashboard queries', () => {
   it('groups unresolved repeated failures, includes review outputs, and caps the Overview preview', () => {
-    const run = (/** @type {string} */ workflow, /** @type {string} */ id) => ({
+    const run = (/** @type {string} */ workflow, /** @type {string} */ id, conclusion = 'failure') => ({
       organization: 'githubnext',
       repository: 'gh-aw-cao',
       workflow,
       run: id,
-      'run-conclusion': 'failure'
+      'run-conclusion': conclusion,
+      'started-at': `2026-09-${String(Number(id)).padStart(2, '0')}T00:00:00Z`
     });
     const workItem = (/** @type {string} */ workflow, /** @type {string} */ state, /** @type {string} */ id) => ({
       organization: 'githubnext',
@@ -99,6 +100,9 @@ describe('declarative dashboard queries', () => {
           run('repeated.md', '1'),
           run('repeated.md', '2'),
           run('repeated.md', '2'),
+          run('reset.md', '3'),
+          run('reset.md', '4', 'success'),
+          run('reset.md', '5'),
           run('single.md', '3'),
           run('resolved.md', '4'),
           run('resolved.md', '5')
@@ -109,6 +113,7 @@ describe('declarative dashboard queries', () => {
         source: 'work-items',
         rows: [
           workItem('repeated.md', 'blocked', '10'),
+          workItem('reset.md', 'blocked', '16'),
           workItem('single.md', 'blocked', '11'),
           workItem('resolved.md', 'completed', '12'),
           workItem('review-a.md', 'review', '13'),
@@ -132,6 +137,7 @@ describe('declarative dashboard queries', () => {
       })
     ]);
     expect(results['overview-needs-attention'].rows.some((row) => row.title === 'single.md')).toBe(false);
+    expect(results['overview-needs-attention'].rows.some((row) => row.title === 'reset.md')).toBe(false);
     expect(results['overview-needs-attention'].rows.some((row) => row.title === 'resolved.md')).toBe(false);
     expect(results['overview-needs-attention'].rows.filter((row) => row.kind === 'Human review required')).toHaveLength(3);
     expect(results['overview-needs-attention-preview'].rows).toHaveLength(3);

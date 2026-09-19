@@ -38,6 +38,7 @@ const sources = {
       title: '.github/workflows/doctor.md',
       scope: 'githubnext/gh-aw-cao',
       reason: '2 failed runs in the selected horizon',
+      'failure-count': 2,
       action: 'Open latest failed run on GitHub',
       'observed-at': '2026-09-16T11:30:00Z',
       'evidence-link': {
@@ -153,6 +154,7 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(attention.getByRole('link', { name: 'View all' }))
       .toHaveAttribute('href', '#page-overview-needs-attention');
     await expect(attention.locator('time').first()).toHaveAttribute('datetime', '2026-09-16T11:30:00Z');
+    await expect(attention.locator('.count-badge').first()).toHaveText('2');
     await expect(factory.getByRole('link', { name: 'AW Doctor' }))
       .toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
     await expect(factory.locator('.entity-card-list-card')).toHaveCount(1);

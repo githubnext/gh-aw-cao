@@ -10,7 +10,7 @@ import { renderCampaignsView, renderCampaignSummary, renderCampaignUtilization, 
 import { renderCampaignRouteVariant, renderCampaignRouteView } from './campaign-route-view.js';
 import { renderOutcomeDetail } from './outcome-detail.js';
 import { isOutcomeDetailSectionConfig, renderOutcomeDetailSection } from './outcome-detail-sections.js';
-import { renderSectionHeading, isPlainObject, renderIdentityLink, renderDlRow, renderIconSpan, renderLabeledSpan, renderListOrEmptyMessage } from './ui-primitives.js';
+import { renderSectionHeading, isPlainObject, renderIdentityLink, renderDlRow, renderIconSpan, renderLabeledSpan, renderListOrEmptyMessage, renderCountBadge } from './ui-primitives.js';
 import { slugify, clampPercent, text as stringValue } from './count-formatters.js';
 import { renderDefinitionList } from './view-chrome.js';
 import { renderAnomalyReadiness } from './anomaly-readiness.js';
@@ -676,6 +676,10 @@ function renderSignal(row, index, isCanonicalAttention = false) {
   const kind = stringValue(row.kind) || humanizeSignalLabel(row['signal-type']);
   const title = stringValue(row.title) || stringValue(row.objective);
   const reason = stringValue(row.detail) || stringValue(row.reason);
+  const count = Number(row['failure-count']);
+  const countBadge = isCanonicalAttention && Number.isInteger(count) && count > 1
+    ? renderCountBadge(count, `${count} consecutive failed runs`)
+    : null;
   const scope = isCanonicalAttention ? stringValue(row.scope) : '';
   const ageSeconds = Number(row['age-seconds']);
   const age = isCanonicalAttention && Number.isFinite(ageSeconds)
@@ -709,7 +713,7 @@ function renderSignal(row, index, isCanonicalAttention = false) {
     h(
       'span',
       { className: 'signal-copy' },
-      h('span', null, [urgency, kind].filter(Boolean).join(' · ')),
+      h('span', null, [urgency, kind].filter(Boolean).join(' · '), countBadge),
       h('strong', null, title),
       h('small', null, [scope, reason].filter(Boolean).join(' · '))
     ),
