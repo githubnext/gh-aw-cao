@@ -187,7 +187,7 @@ describe('canonical dashboard view subscriptions', () => {
     unsubscribeFirst();
   });
 
-  it('reuses a detached view snapshot and repaints only after worker invalidation', () => {
+  it('releases detached view snapshots and accepts worker-backed stale replay', () => {
     vi.stubGlobal('Worker', SubscriptionWorker);
     /** @type {FrameRequestCallback[]} */
     const frames = [];
@@ -208,12 +208,13 @@ describe('canonical dashboard view subscriptions', () => {
     frames.shift()?.(0);
     unsubscribeFirst();
     const unsubscribeSecond = subscribeCanonicalDashboardView('cached-view', ['runs'], context, second);
-    expect(second).toHaveBeenCalledWith(stale);
+    expect(second).not.toHaveBeenCalled();
 
     worker.emit({ subscriptionId: 'cached-view', revision: 1, data: stale });
-    expect(frames).toHaveLength(0);
-    worker.emit({ subscriptionId: 'cached-view', revision: 2, data: fresh });
     frames.shift()?.(1);
+    expect(second).toHaveBeenCalledWith(stale);
+    worker.emit({ subscriptionId: 'cached-view', revision: 2, data: fresh });
+    frames.shift()?.(2);
     expect(second).toHaveBeenLastCalledWith(fresh);
     expect(second).toHaveBeenCalledTimes(2);
 

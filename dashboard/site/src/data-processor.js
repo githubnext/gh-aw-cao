@@ -38,9 +38,6 @@ const pending = new Map();
  */
 /** @type {Map<string, ViewSubscription>} */
 const subscriptions = new Map();
-/** @type {Map<string, ViewSubscription>} */
-const cachedSubscriptions = new Map();
-const MAX_CACHED_VIEW_SUBSCRIPTIONS = 24;
 /** @type {Map<string, ReturnType<typeof publishNotification>>} */
 const workerNotificationHandles = new Map();
 /** @type {Set<string>} */
@@ -323,13 +320,6 @@ export function subscribeCanonicalDashboardView(viewId, sourceNames, context, li
       throw new Error(`Canonical dashboard view ${viewId} is already subscribed with different query parameters.`);
     }
   } else {
-    const cached = cachedSubscriptions.get(viewId);
-    const reusable = options.emitCurrent !== false
-      && cached
-      && sameSubscription(cached, sourceNames, context, pagination, options)
-      ? cached
-      : null;
-    cachedSubscriptions.delete(viewId);
     subscription = {
       id: viewId,
       sourceNames: [...sourceNames],
@@ -341,8 +331,8 @@ export function subscribeCanonicalDashboardView(viewId, sourceNames, context, li
       listeners: new Set(),
       registeredWorker: null,
       latest: null,
-      snapshot: reusable?.snapshot ?? null,
-      snapshotRevision: reusable?.snapshotRevision ?? null,
+      snapshot: null,
+      snapshotRevision: null,
       frame: null,
       emitCurrent: options.emitCurrent !== false
     };
@@ -375,20 +365,11 @@ export function subscribeCanonicalDashboardView(viewId, sourceNames, context, li
     current.listeners.delete(listenerEntry);
     if (current.listeners.size > 0) return;
     subscriptions.delete(viewId);
-    cachedSubscriptions.delete(viewId);
-    cachedSubscriptions.set(viewId, current);
-    while (cachedSubscriptions.size > MAX_CACHED_VIEW_SUBSCRIPTIONS) {
-      const oldest = cachedSubscriptions.keys().next().value;
-      if (oldest === undefined) break;
-      const evicted = cachedSubscriptions.get(oldest);
-      cachedSubscriptions.delete(oldest);
-      evicted?.registeredWorker?.postMessage({
-        operation: 'unsubscribe-canonical-dashboard',
-        subscriptionId: oldest
-      });
-      if (evicted) evicted.registeredWorker = null;
-    }
+    // The worker memoization cache owns stale replay. Release this structured
+    // clone so navigation does not retain a second copy of every page payload.
     current.latest = null;
+    current.snapshot = null;
+    current.snapshotRevision = null;
     if (current.frame !== null && typeof globalThis.cancelAnimationFrame === 'function') {
       globalThis.cancelAnimationFrame(current.frame);
     }
