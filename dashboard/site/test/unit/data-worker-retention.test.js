@@ -114,6 +114,17 @@ describe('canonical dashboard worker retention updates', () => {
     expect(published).toMatchObject({ subscriptionId: 'tools' });
 
     posted.length = 0;
+    dispatch({ operation: 'unsubscribe-canonical-dashboard', subscriptionId: 'tools' });
+    dispatch({
+      operation: 'subscribe-canonical-dashboard',
+      subscriptionId: 'tools',
+      sourceNames: ['tool-inspection'],
+      context
+    });
+    const replayed = await settled((message) => message.subscriptionId === 'tools');
+    expect(replayed).toEqual(published);
+
+    posted.length = 0;
     stubFetch(collection('generation-b', []));
     dispatch({
       id: 2,
