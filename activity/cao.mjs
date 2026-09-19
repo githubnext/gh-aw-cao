@@ -1226,7 +1226,9 @@ async function hashActivityPayloads({
               runs: [],
               domains: batch.domains,
               tools: batch.tools,
-              audits: batch.audits,
+              audits: batch.audits.filter((audit) =>
+                String(audit.status ?? '').trim().toLowerCase() !== 'info'
+              ),
               issues: batch.issues
             }
           }
