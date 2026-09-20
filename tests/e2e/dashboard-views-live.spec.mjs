@@ -113,34 +113,38 @@ test("each selected dashboard view renders with live data", async ({ page }, tes
           (window.__dashboardPageRenderCounts[pageId] || 0) + 1;
       });
     });
-    let errors = [];
-    let failedRequests = [];
+    let activeResult;
     let crashed = false;
     const succeededRequests = new WeakSet();
+    const requestOwners = new WeakMap();
     page.on("crash", () => {
       crashed = true;
     });
     page.on("console", (message) => {
-      if (message.type() === "error") errors.push(message.text());
+      if (message.type() === "error") activeResult?.errors.push(message.text());
     });
-    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("pageerror", (error) => activeResult?.errors.push(error.message));
+    page.on("request", (request) => {
+      if (activeResult) requestOwners.set(request, activeResult);
+    });
     page.on("requestfailed", (request) => {
       const errorText = request.failure()?.errorText || "failed";
       if (isSpuriousAbortAfterSuccessResponse(errorText, succeededRequests.has(request))) return;
-      failedRequests.push(`${request.method()} ${request.url()}: ${errorText}`);
+      requestOwners.get(request)?.failedRequests.push(
+        `${request.method()} ${request.url()}: ${errorText}`,
+      );
     });
     page.on("response", (response) => {
       if (response.status() >= 400) {
-        failedRequests.push(`${response.status()} ${response.url()}`);
+        requestOwners.get(response.request())?.failedRequests.push(
+          `${response.status()} ${response.url()}`,
+        );
         return;
       }
       succeededRequests.add(response.request());
     });
 
     for (const [pageIndex, pageDefinition] of pages.entries()) {
-      errors = [];
-      failedRequests = [];
-
       const result = {
         pageId: pageDefinition.id,
         title: pageDefinition.title || pageDefinition.page || pageDefinition.id,
@@ -152,9 +156,10 @@ test("each selected dashboard view renders with live data", async ({ page }, tes
         missingData: [],
         loadingViews: [],
         crashed: false,
-        errors,
-        failedRequests,
+        errors: [],
+        failedRequests: [],
       };
+      activeResult = result;
 
       try {
         if (pageIndex === 0) {
@@ -227,28 +232,30 @@ test("each selected dashboard view renders with live data", async ({ page }, tes
           ));
         result.domNodes = await page.locator("*").count();
         result.crashed = crashed;
-        result.errors = [...errors];
-        result.failedRequests = [...failedRequests];
         result.status = (
           !crashed
-          && errors.length === 0
-          && failedRequests.length === 0
+          && result.errors.length === 0
+          && result.failedRequests.length === 0
           && result.missingViews.length === 0
           && result.missingData.length === 0
           && result.loadingViews.length === 0
           && result.domNodes <= maximumDomNodes
         ) ? "passed" : "failed";
       } catch (error) {
-        errors.push(messageText(error));
+        result.errors.push(messageText(error));
         result.crashed = crashed;
         result.status = "failed";
       } finally {
-        result.errors = [...errors];
-        result.failedRequests = [...failedRequests];
         summary.results.push(result);
       }
       if (summary.results.filter((entry) => entry.status !== "passed").length >= maximumFailedViews) {
         break;
+      }
+    }
+    for (const result of summary.results) {
+      if (result.status === "passed"
+          && (result.errors.length > 0 || result.failedRequests.length > 0)) {
+        result.status = "failed";
       }
     }
   } catch (error) {
