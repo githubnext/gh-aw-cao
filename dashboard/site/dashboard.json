@@ -9542,91 +9542,23 @@
               }
             },
             "layout": "full"
-          },
-          {
-            "id": "overview-needs-attention",
-            "title": "Needs attention",
-            "description": "Grouped repeated failures and unresolved outputs explicitly awaiting human review. Evidence reflects the selected snapshot and time horizon.",
-            "data": {
-              "source": "overview-needs-attention-preview"
-            },
-            "mark": "list",
-            "list": {
-              "style": "entity-cards",
-              "appearance": "grouped",
-              "card": "attention-signal",
-              "icon": "issue-opened",
-              "drill": {
-                "type": "external",
-                "field": "evidence-link"
-              },
-              "view-all": {
-                "page": "overview-needs-attention",
-                "label": "View all"
-              }
-            },
-            "empty-message": "No signals require attention.",
-            "layout": "full",
-            "encoding": {
-              "columns": [
-                { "field": "title", "type": "nominal", "title": "Signal" },
-                { "field": "kind", "type": "nominal", "title": "Kind" },
-                { "field": "scope", "type": "nominal", "title": "Scope" },
-                { "field": "reason", "type": "nominal", "title": "Reason" },
-                { "field": "action", "type": "nominal", "title": "Next step" },
-                { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
-                { "field": "evidence-link", "type": "nominal", "title": "Evidence" }
-              ]
-            }
-          },
-          {
-            "id": "overview-campaigns",
-            "title": "Campaigns",
-            "description": "Centrally managed campaigns and their observed execution totals.",
-            "data": {
-              "source": "campaign-inventory"
-            },
-            "mark": "list",
-            "list": {
-              "style": "entity-cards",
-              "appearance": "grouped",
-              "card": "campaign",
-              "icon": "goal",
-              "drill": {
-                "type": "external",
-                "field": "campaign-dashboard-link"
-              }
-            },
-            "empty-message": "No campaigns discovered.",
-            "layout": "full",
-            "encoding": {
-              "columns": [
-                { "field": "campaign-name", "type": "nominal", "title": "Campaign" },
-                { "field": "modes", "type": "nominal", "title": "Modes" },
-                { "field": "registration", "type": "nominal", "title": "Registration" },
-                { "field": "workflows", "type": "quantitative", "title": "Workflows" },
-                { "field": "value-created", "type": "quantitative", "title": "Value", "unit": "ops-value" },
-                { "field": "dispatches", "type": "quantitative", "title": "Dispatches" },
-                { "field": "aic", "type": "quantitative", "title": "AIC", "unit": "aic" },
-                { "field": "campaign-dashboard-link", "type": "nominal", "title": "Campaign link" }
-              ]
-            }
           }
         ]
       },
       {
-        "id": "overview-needs-attention",
+        "id": "notifications",
         "kind": "custom",
-        "title": "Needs attention",
-        "icon": "issue-opened",
+        "title": "Notifications",
+        "navigation-label": "Notifications",
+        "icon": "bell",
         "description": "Grouped repeated workflow failures and unresolved outputs explicitly awaiting human review in the selected snapshot horizon.",
         "route": {
           "navigation-page": "overview"
         },
         "views": [
           {
-            "id": "overview-needs-attention-list",
-            "title": "Needs attention",
+            "id": "notifications-list",
+            "title": "Notifications",
             "description": "Open the retained GitHub evidence to investigate or complete the indicated review. Opening a link does not execute an action.",
             "data": {
               "source": "overview-needs-attention"
@@ -9636,13 +9568,13 @@
               "style": "entity-cards",
               "appearance": "grouped",
               "card": "attention-signal",
-              "icon": "issue-opened",
+              "icon": "bell",
               "drill": {
                 "type": "external",
                 "field": "evidence-link"
               }
             },
-            "empty-message": "No signals require attention.",
+            "empty-message": "No notifications require attention.",
             "layout": "full-view",
             "encoding": {
               "columns": [

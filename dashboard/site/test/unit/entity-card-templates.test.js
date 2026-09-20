@@ -40,20 +40,12 @@ describe('entity card templates', () => {
       ]
     });
     expect(templates.campaign.details).not.toContainEqual(expect.objectContaining({ field: 'runs' }));
-    expect(
-      pages.overview.views.find(
-        (/** @type {Record<string, any>} */ view) => view.id === 'overview-campaigns'
-      )
-    ).toMatchObject({
+    expect(pages.campaigns.definition.views.find(
+      (/** @type {Record<string, any>} */ view) => view.id === 'campaigns-inventory'
+    )).toMatchObject({
       title: 'Campaigns',
       data: { source: 'campaign-inventory' },
-      mark: 'list',
-      list: {
-        style: 'entity-cards',
-        appearance: 'grouped',
-        card: 'campaign',
-        drill: { type: 'external', field: 'campaign-dashboard-link' }
-      }
+      mark: 'table'
     });
   });
 

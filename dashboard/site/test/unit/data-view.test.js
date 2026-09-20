@@ -579,7 +579,7 @@ describe('data view renderer', () => {
           appearance: 'grouped',
           card: 'attention-signal',
           drill: { type: 'external', field: 'evidence-link' },
-          'view-all': { page: 'overview-needs-attention', label: 'View all' }
+          'view-all': { page: 'notifications', label: 'View all' }
         },
         encoding: { columns: [{ field: 'title' }] }
       },
@@ -611,7 +611,7 @@ describe('data view renderer', () => {
     });
 
     const viewAll = rendered?.querySelector('.document-list-footer a');
-    expect(viewAll?.getAttribute('href')).toBe('#page-overview-needs-attention');
+    expect(viewAll?.getAttribute('href')).toBe('#page-notifications');
     expect(viewAll?.textContent).toContain('View all');
     expect(rendered?.querySelector('.entity-card-list-title a')?.getAttribute('href'))
       .toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/42');
