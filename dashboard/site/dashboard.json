@@ -1406,17 +1406,10 @@
       },
       {
         "name": "overview-registered-repository-summary",
-        "intent": "Count the distinct target repositories registered in the resolved control-plane scope.",
+        "intent": "Count canonical repository identities registered in the resolved control-plane scope.",
         "from": "repositories",
-        "compute": [
-          {
-            "as": "registered-repository",
-            "function": "concat",
-            "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }]
-          }
-        ],
         "aggregate": {
-          "values": [{ "field": "registered-repository", "as": "registered-repositories", "reducer": "distinct-count" }]
+          "values": [{ "field": "id", "as": "registered-repositories", "reducer": "count" }]
         }
       },
       {
@@ -9592,12 +9585,12 @@
             "intent": "Compare registered repositories, successful runs, dispatches, and value gains while preserving their investigation routes.",
             "data": {
               "sources": [
+                "overview-registered-repository-summary",
                 "overview-outcome-summary",
                 "overview-run-summary",
                 "overview-dispatch-summary",
                 "overview-delivery-summary",
                 "overview-value-summary",
-                "overview-registered-repository-summary",
                 "overview-worker-summary"
               ]
             },

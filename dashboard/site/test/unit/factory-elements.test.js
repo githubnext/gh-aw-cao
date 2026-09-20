@@ -137,12 +137,12 @@ it('renders both elements immediately and updates only widgets whose query resol
     'overview-run-summary',
     'overview-factory-status',
     'overview-rhythm',
+    'overview-registered-repository-summary',
     'overview-outcome-summary',
     'overview-run-summary',
     'overview-dispatch-summary',
     'overview-delivery-summary',
     'overview-value-summary',
-    'overview-registered-repository-summary',
     'overview-worker-summary'
   ]);
   expect(requests.every(({ pageId }) => pageId === 'overview')).toBe(true);

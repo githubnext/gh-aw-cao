@@ -18,6 +18,9 @@ const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'gene
 const optimizationDashboardQueries = JSON.parse(
   readFileSync(`${process.cwd()}/../../optimization/dashboard.json`, 'utf8')
 ).dashboard.queries;
+const dashboardQueries = JSON.parse(
+  readFileSync(`${process.cwd()}/dashboard.json`, 'utf8')
+).dashboard.queries;
 const sources = {
   campaigns: {
     rows: [{
@@ -208,6 +211,25 @@ describe('canonical view sources', () => {
       expect(native[name].rows).toEqual([{ count: 0 }]);
       expect(native[name].rows).toEqual(declarative[name].rows);
     }
+  });
+
+  it('resolves the Overview repository metric with native IndexedDB count', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+    const collectionReads = vi.spyOn(IDBObjectStore.prototype, 'getAll');
+    const nativeCounts = vi.spyOn(IDBObjectStore.prototype, 'count');
+
+    const result = await queryNativeCountSources(
+      indexedDB,
+      sources,
+      dashboardQueries,
+      ['overview-registered-repository-summary']
+    );
+
+    expect(result['overview-registered-repository-summary'].rows).toEqual([
+      { 'registered-repositories': 1 }
+    ]);
+    expect(nativeCounts).toHaveBeenCalledOnce();
+    expect(collectionReads).not.toHaveBeenCalled();
   });
 
   it('falls back for joins, transformed counts, invalid queries, and non-table sources', async () => {

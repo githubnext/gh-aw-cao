@@ -103,12 +103,12 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
 }
 
 const FLOOR_SOURCE_NAMES = [
+  'overview-registered-repository-summary',
   'overview-outcome-summary',
   'overview-run-summary',
   'overview-dispatch-summary',
   'overview-delivery-summary',
   'overview-value-summary',
-  'overview-registered-repository-summary',
   'overview-worker-summary'
 ];
 

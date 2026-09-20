@@ -229,16 +229,19 @@ describe('declarative dashboard queries', () => {
     expect(result['overview-factory-status'].rows).toEqual([{ 'factory-heading': 'Your factory is humming.' }]);
   });
 
-  it('counts the distinct repositories registered in the resolved control-plane scope', () => {
+  it('counts canonical repository identities registered in the resolved control-plane scope', () => {
     const repositories = [
       ['github', 'gh-aw'],
       ['github', 'gh-aw-firewall'],
       ['github', 'gh-aw-mcpg'],
       ['github', 'gh-aw-actions'],
       ['github', 'gh-aw-threat-detection'],
-      ['githubnext', 'gh-aw-cao'],
       ['githubnext', 'gh-aw-cao']
-    ].map(([organization, repository]) => ({ organization, repository }));
+    ].map(([organization, repository], index) => ({
+      id: `repository:${index}`,
+      organization,
+      repository
+    }));
 
     const result = executeDashboardQueries(
       dashboardQueries,

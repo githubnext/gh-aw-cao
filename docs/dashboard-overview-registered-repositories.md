@@ -3,9 +3,10 @@ title: Repositories registered
 description: Understand the repository-scope count in Overview.
 ---
 
-Repositories registered shows how many distinct repositories are represented
-in the dashboard's retained control-plane scope. It describes scope, not how
-many repositories received work during the selected period.
+Repositories registered shows how many canonical repository identities are
+represented in the dashboard's retained control-plane scope. IndexedDB resolves
+this inventory count directly, before historical Overview queries. It describes
+scope, not how many repositories received work during the selected period.
 
 Select the count to open the Repositories view and inspect the inventory.
 
