@@ -145,15 +145,9 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(factory.locator(':scope > [data-view-id="overview-floor"]')).toHaveClass(/factory-floor/);
     await expect(factory.locator(':scope > [data-view-id="overview-campaigns"]')).toHaveCount(0);
     await expect(factory.locator(':scope > .factory-intro + .factory-floor')).toHaveCount(1);
-    const attention = factory.locator(':scope > [data-view-id="overview-needs-attention"]');
-    await expect(attention).toBeVisible();
-    await expect(attention.locator('.entity-card-list-card')).toHaveCount(3);
-    await expect(attention.getByRole('link', { name: '.github/workflows/doctor.md' }))
-      .toHaveAttribute('href', 'https://github.com/githubnext/gh-aw-cao/actions/runs/42');
-    await expect(attention.getByRole('link', { name: 'View all' }))
-      .toHaveAttribute('href', '#page-overview-needs-attention');
-    await expect(attention.locator('time').first()).toHaveAttribute('datetime', '2026-09-16T11:30:00Z');
-    await expect(attention.locator('.entity-card-list-card dt').first()).toHaveText('Scope');
+    const notifications = page.locator('[data-page-id="notifications"]');
+    await expect(notifications).toHaveCount(0);
+    await expect(notifications.locator('.entity-card-list-card')).toHaveCount(0);
     await expect(factory.getByRole('heading', { name: 'Your factory is delivering value.' })).toBeVisible();
     await expect(factory.locator('.factory-running-active')).toBeVisible();
     await expect(factory.locator('.factory-rhythm-day')).toHaveCount(7);

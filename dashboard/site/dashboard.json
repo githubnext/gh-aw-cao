@@ -9542,7 +9542,7 @@
               }
             },
             "layout": "full"
-          },
+          }
         ]
       },
       {
@@ -9575,50 +9575,6 @@
               }
             },
             "empty-message": "No notifications require attention.",
-            "layout": "full-view",
-            "encoding": {
-              "columns": [
-                { "field": "title", "type": "nominal", "title": "Signal" },
-                { "field": "kind", "type": "nominal", "title": "Kind" },
-                { "field": "scope", "type": "nominal", "title": "Scope" },
-                { "field": "reason", "type": "nominal", "title": "Reason" },
-                { "field": "action", "type": "nominal", "title": "Next step" },
-                { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
-                { "field": "evidence-link", "type": "nominal", "title": "Evidence" }
-              ]
-            }
-          }
-        ]
-      },
-      {
-        "id": "overview-needs-attention",
-        "kind": "custom",
-        "title": "Needs attention",
-        "icon": "issue-opened",
-        "description": "Grouped repeated workflow failures and unresolved outputs explicitly awaiting human review in the selected snapshot horizon.",
-        "route": {
-          "navigation-page": "overview"
-        },
-        "views": [
-          {
-            "id": "overview-needs-attention-list",
-            "title": "Needs attention",
-            "description": "Open the retained GitHub evidence to investigate or complete the indicated review. Opening a link does not execute an action.",
-            "data": {
-              "source": "overview-needs-attention"
-            },
-            "mark": "list",
-            "list": {
-              "style": "entity-cards",
-              "appearance": "grouped",
-              "card": "attention-signal",
-              "icon": "issue-opened",
-              "drill": {
-                "type": "external",
-                "field": "evidence-link"
-              }
-            },
-            "empty-message": "No signals require attention.",
             "layout": "full-view",
             "encoding": {
               "columns": [

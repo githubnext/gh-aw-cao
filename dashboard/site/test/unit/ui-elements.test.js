@@ -497,7 +497,7 @@ describe('UI elements', () => {
       },
       contextDetails: [],
       elementConfig: {
-        'view-all-page': 'overview-needs-attention',
+        'view-all-page': 'notifications',
         'view-all-label': 'View all'
       },
       headingTag: 'h3'
@@ -512,7 +512,7 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('.count-badge')?.textContent).toBe('2');
     expect(rendered?.querySelector('.count-badge')?.getAttribute('aria-label')).toBe('2 consecutive failed runs');
     expect(rendered?.textContent).toContain('Open latest failed run on GitHub');
-    expect(rendered?.querySelector('.signal-list-footer a')?.getAttribute('href')).toBe('#page-overview-needs-attention');
+    expect(rendered?.querySelector('.signal-list-footer a')?.getAttribute('href')).toBe('#page-notifications');
   });
 
   it('renders an honest empty attention state without hiding View all', () => {
@@ -528,7 +528,7 @@ describe('UI elements', () => {
         }
       },
       contextDetails: [],
-      elementConfig: { 'view-all-page': 'overview-needs-attention' },
+      elementConfig: { 'view-all-page': 'notifications' },
       headingTag: 'h3'
     });
 

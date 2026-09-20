@@ -316,14 +316,14 @@ describe('dashboard document validation', () => {
 
   it('validates the declared entity-card view-all route', () => {
     const document = JSON.parse(authoritativeDashboardSource);
-    const overviewPage = document.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'overview'
+    const notificationsPage = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'notifications'
     );
-    const attention = overviewPage.views.find(
-      (/** @type {{ id: string }} */ view) => view.id === 'overview-needs-attention'
+    const attention = notificationsPage.views.find(
+      (/** @type {{ id: string }} */ view) => view.id === 'notifications-list'
     );
 
-    expect(attention.list['view-all']).toEqual({ page: 'overview-needs-attention', label: 'View all' });
+    attention.list['view-all'] = { page: 'notifications', label: 'View all' };
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
 
     attention.list['view-all'] = { label: 'View all' };
@@ -334,7 +334,7 @@ describe('dashboard document validation', () => {
       ])
     });
 
-    attention.list['view-all'] = { page: 'overview-needs-attention', route: 'overview' };
+    attention.list['view-all'] = { page: 'notifications', route: 'overview' };
     expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
       ok: false,
       errors: expect.arrayContaining([
@@ -350,10 +350,10 @@ describe('dashboard document validation', () => {
       ])
     });
 
-    attention.list['view-all'] = { page: 'overview-needs-attention' };
+    attention.list['view-all'] = { page: 'notifications' };
     const starterList = document.dashboard.pages
       .find((/** @type {{ id: string }} */ page) => page.id === 'maintenance').views[0];
-    starterList.list['view-all'] = { page: 'overview-needs-attention' };
+    starterList.list['view-all'] = { page: 'notifications' };
     expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
       ok: false,
       errors: expect.arrayContaining([
@@ -1172,20 +1172,6 @@ describe('dashboard document validation', () => {
         mark: 'element',
         element: 'factory-floor',
         config: expect.objectContaining({ animate: 'number' }),
-        layout: 'full'
-      }),
-      expect.objectContaining({
-        id: 'overview-needs-attention',
-        data: { source: 'overview-needs-attention-preview' },
-        mark: 'list',
-        list: {
-          style: 'entity-cards',
-          appearance: 'grouped',
-          card: 'attention-signal',
-          icon: 'issue-opened',
-          drill: { type: 'external', field: 'evidence-link' },
-          'view-all': { page: 'overview-needs-attention', label: 'View all' }
-        },
         layout: 'full'
       })
     ]);
