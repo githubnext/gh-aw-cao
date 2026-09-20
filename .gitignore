@@ -17,3 +17,6 @@ public/cao/
 
 # CAO control modules checked out during pre-activation
 /.cao/
+
+# Playwright MCP session artifacts
+/.playwright-mcp/
