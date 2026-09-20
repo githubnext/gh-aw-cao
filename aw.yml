@@ -3,7 +3,6 @@ description: Central agentic workflow control plane for reusable campaigns at th
 min-version: v0.89.17
 experimental: true
 includes:
-  - .github/workflows/aw.json
   - activity/aw.yml
   - dashboard/aw.yml
 resources:

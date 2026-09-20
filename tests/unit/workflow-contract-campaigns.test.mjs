@@ -427,7 +427,6 @@ test("root campaign composes its operational campaigns through manifests", () =>
   const rootManifest = parse(readFileSync(join(root, "aw.yml"), "utf8"));
 
   assert.deepEqual(rootManifest.includes, [
-    ".github/workflows/aw.json",
     "activity/aw.yml",
     "dashboard/aw.yml",
   ]);

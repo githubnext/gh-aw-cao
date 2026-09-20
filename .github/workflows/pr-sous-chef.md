@@ -9,7 +9,7 @@ on:
     strategy: centralized
     name: souschef
     events: [pull_request_comment]
-  skip-if-no-match: "is:pr is:open -is:draft"
+  skip-if-no-match: "is:pr is:open -is:draft label:sous-chef"
 permissions:
   actions: read
   contents: read
@@ -49,6 +49,7 @@ safe-outputs:
     target: "*"
   push-to-pull-request-branch:
     target: "*"
+    required-labels: [sous-chef]
     max: 4
     allowed-files:
       - "**"
@@ -74,7 +75,7 @@ steps:
       if ! gh pr list \
           --repo "$REPOSITORY" \
           --state open \
-          --search "is:pr is:open -is:draft sort:updated-asc" \
+          --search "is:pr is:open -is:draft label:sous-chef sort:updated-asc" \
           --limit 50 \
           --json number,title,url,headRefOid,updatedAt,mergeStateStatus,statusCheckRollup \
           > /tmp/gh-aw/agent/pr-sous-chef-queue.json; then
@@ -84,12 +85,12 @@ steps:
 
 # PR Sous Chef
 
-Move open pull requests toward merge by fixing actionable code blockers and pushing validated commits to at most four pull request branches.
+Move open pull requests labeled `sous-chef` toward merge by fixing actionable code blockers and pushing validated commits to at most four pull request branches.
 
 ## Required process
 
 1. Read `/tmp/gh-aw/agent/pr-sous-chef-queue.json`.
-2. For a `/souschef` invocation, inspect only the pull request that received the command.
+2. For a `/souschef` invocation, inspect only the pull request that received the command, and call `noop` if it does not have the `sous-chef` label.
 3. Otherwise, inspect the oldest updated candidates first and select at most four that have an actionable blocker:
    - merge conflicts;
    - completed failed checks;
