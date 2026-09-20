@@ -158,7 +158,6 @@ test("benchmarks every dashboard query against settled deployed data", async ({ 
       for (const definition of context.queries) {
         const name = definition?.name;
         if (typeof name !== "string" || !name) continue;
-        const fillStartedAt = performance.now();
         let chunkStartedAt = performance.now();
         let sources = await loadCanonicalDashboardPage(
           [name],
@@ -168,31 +167,29 @@ test("benchmarks every dashboard query against settled deployed data", async ({ 
         const firstChunkMs = performance.now() - chunkStartedAt;
         let source = sources[name];
         if (!source) throw new Error(`Query "${name}" did not return its named source.`);
-        let rows = source.rows.length;
-        const continuationChunkMs = [];
-        while (source.continuationToken) {
+        let continuationChunkMs = null;
+        if (source.continuationToken) {
           chunkStartedAt = performance.now();
           sources = await loadCanonicalDashboardPage(
             [name],
             context,
             { [name]: { limit: chunkSize, continuationToken: source.continuationToken } },
           );
-          continuationChunkMs.push(performance.now() - chunkStartedAt);
+          continuationChunkMs = performance.now() - chunkStartedAt;
           source = sources[name];
           if (!source) throw new Error(`Query "${name}" continuation omitted its named source.`);
-          rows += source.rows.length;
         }
+        const fillStartedAt = performance.now();
+        const filledSources = await loadCanonicalDashboardPage([name], context);
+        const filled = filledSources[name];
+        if (!filled) throw new Error(`Query "${name}" fill omitted its named source.`);
         timings.push({
           query: name,
-          rows,
-          chunks: 1 + continuationChunkMs.length,
+          rows: filled.rows.length,
+          chunks: Math.max(1, Math.ceil(filled.rows.length / chunkSize)),
           firstChunkMs: rounded(firstChunkMs),
-          meanContinuationChunkMs: continuationChunkMs.length > 0
-            ? rounded(continuationChunkMs.reduce((total, duration) => total + duration, 0)
-              / continuationChunkMs.length)
-            : null,
-          fillMs: rounded(performance.now() - fillStartedAt),
-          continuationChunkMs: continuationChunkMs.map(rounded),
+          continuationChunkMs: continuationChunkMs === null ? null : rounded(continuationChunkMs),
+          fillIterationMs: rounded(performance.now() - fillStartedAt),
         });
       }
       return timings;
@@ -201,7 +198,7 @@ test("benchmarks every dashboard query against settled deployed data", async ({ 
     const report = {
       generatedAt: new Date().toISOString(),
       dashboardUrl: deployedDashboardUrl,
-      methodology: "Fresh Chromium profile running the checkout's dashboard and query worker; proxy current deployed data; wait for refresh completion and two animation frames; drain 25-row continuations sequentially.",
+      methodology: "Fresh Chromium profile running the checkout's dashboard and query worker; proxy current deployed data; wait for refresh completion and two animation frames; measure a 25-row first chunk, one continuation chunk when present, and one unpaginated fill iteration.",
       chunkSize: QUERY_CHUNK_SIZE,
       populateMs: Math.round(populateMs * 100) / 100,
       queries: results,

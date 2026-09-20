@@ -25,17 +25,16 @@ test("dashboard query timing summary distinguishes initial, continuation, and fi
   assert.deepEqual(summarizeQueryTiming({
     name: "recent-runs",
     firstChunkMs: 10.126,
-    continuationChunkMs: [4.333, 5.667],
-    fillMs: 20.555,
+    continuationChunkMs: 4.333,
+    fillIterationMs: 20.555,
     rows: 75,
   }), {
     query: "recent-runs",
     rows: 75,
     chunks: 3,
     firstChunkMs: 10.13,
-    meanContinuationChunkMs: 5,
-    fillMs: 20.56,
-    continuationChunkMs: [4.33, 5.67],
+    continuationChunkMs: 4.33,
+    fillIterationMs: 20.56,
   });
 });
 
@@ -48,8 +47,8 @@ test("dashboard query Markdown keeps unpaginated results explicit", () => {
       rows: 4,
       chunks: 1,
       firstChunkMs: 2.5,
-      meanContinuationChunkMs: null,
-      fillMs: 2.75,
+      continuationChunkMs: null,
+      fillIterationMs: 2.75,
     }],
   });
   assert.match(markdown, /Population time: \*\*123\.45 ms\*\*/);

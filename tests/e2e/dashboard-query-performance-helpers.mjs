@@ -4,19 +4,14 @@ export function roundMilliseconds(value) {
   return Math.round(value * 100) / 100;
 }
 
-export function summarizeQueryTiming({ name, firstChunkMs, continuationChunkMs, fillMs, rows }) {
-  const chunks = 1 + continuationChunkMs.length;
-  const meanChunkMs = continuationChunkMs.length > 0
-    ? continuationChunkMs.reduce((total, duration) => total + duration, 0) / continuationChunkMs.length
-    : null;
+export function summarizeQueryTiming({ name, firstChunkMs, continuationChunkMs, fillIterationMs, rows }) {
   return {
     query: name,
     rows,
-    chunks,
+    chunks: Math.max(1, Math.ceil(rows / QUERY_CHUNK_SIZE)),
     firstChunkMs: roundMilliseconds(firstChunkMs),
-    meanContinuationChunkMs: meanChunkMs === null ? null : roundMilliseconds(meanChunkMs),
-    fillMs: roundMilliseconds(fillMs),
-    continuationChunkMs: continuationChunkMs.map(roundMilliseconds),
+    continuationChunkMs: continuationChunkMs === null ? null : roundMilliseconds(continuationChunkMs),
+    fillIterationMs: roundMilliseconds(fillIterationMs),
   };
 }
 
@@ -26,7 +21,7 @@ export function queryPerformanceMarkdown(report) {
     "",
     `Chunk size: **${report.chunkSize} rows**`,
     "",
-    "| Query | Rows | Chunks | First chunk (ms) | Mean continuation chunk (ms) | Full fill (ms) |",
+    "| Query | Rows | Chunks | First chunk (ms) | Continuation chunk (ms) | Fill iteration (ms) |",
     "|---|---:|---:|---:|---:|---:|",
   ];
   for (const result of report.queries) {
@@ -35,8 +30,8 @@ export function queryPerformanceMarkdown(report) {
       result.rows,
       result.chunks,
       result.firstChunkMs.toFixed(2),
-      result.meanContinuationChunkMs === null ? "—" : result.meanContinuationChunkMs.toFixed(2),
-      result.fillMs.toFixed(2),
+      result.continuationChunkMs === null ? "—" : result.continuationChunkMs.toFixed(2),
+      result.fillIterationMs.toFixed(2),
     ].join(" | ")} |`);
   }
   return `${lines.join("\n")}\n`;
