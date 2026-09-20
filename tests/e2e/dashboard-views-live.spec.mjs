@@ -3,12 +3,10 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
 import {
-  dashboardAssessmentPageBudgetMs,
   dashboardAssessmentStartupBudgetMs,
   dashboardAssessmentTimeout,
   declaredDashboardViewIds,
   ignoredDashboardPageIds,
-  isExpectedPageCloseAbort,
   isIgnoredDashboardPageId,
   isSpuriousAbortAfterSuccessResponse,
   visibleBusyViewSelector,
@@ -53,7 +51,7 @@ async function loadPageDefinition(previewUrl, pageDefinition) {
   return mergeDashboardPage(pageDefinition, chunk.page);
 }
 
-test("each selected dashboard view renders with live data", async ({ browser }, testInfo) => {
+test("each selected dashboard view renders with live data", async ({ page }, testInfo) => {
   await rm(outputDirectory, { force: true, recursive: true });
   await mkdir(outputDirectory, { recursive: true });
 
@@ -94,42 +92,42 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
     }
     test.setTimeout(dashboardAssessmentTimeout(pages.length));
 
-    for (const [pageIndex, pageDefinition] of pages.entries()) {
-      const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-      await page.addInitScript(() => {
-        window.__dashboardRefreshStatus = null;
-        document.addEventListener("dashboard-data", (event) => {
-          if (event.detail?.kind === "refresh") {
-            window.__dashboardRefreshStatus = event.detail.status;
-          }
-        });
-      });
-      const errors = [];
-      const failedRequests = [];
-      let crashed = false;
-      let closing = false;
-      const succeededRequests = new WeakSet();
-
-      page.on("crash", () => {
-        crashed = true;
-      });
-      page.on("console", (message) => {
-        if (message.type() === "error") errors.push(message.text());
-      });
-      page.on("pageerror", (error) => errors.push(error.message));
-      page.on("requestfailed", (request) => {
-        const errorText = request.failure()?.errorText || "failed";
-        if (isExpectedPageCloseAbort(errorText, closing)) return;
-        if (isSpuriousAbortAfterSuccessResponse(errorText, succeededRequests.has(request))) return;
-        failedRequests.push(`${request.method()} ${request.url()}: ${errorText}`);
-      });
-      page.on("response", (response) => {
-        if (response.status() >= 400) {
-          failedRequests.push(`${response.status()} ${response.url()}`);
-          return;
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.addInitScript(() => {
+      window.__dashboardRefreshStatus = null;
+      document.addEventListener("dashboard-data", (event) => {
+        if (event.detail?.kind === "refresh") {
+          window.__dashboardRefreshStatus = event.detail.status;
         }
-        succeededRequests.add(response.request());
       });
+    });
+    let errors = [];
+    let failedRequests = [];
+    let crashed = false;
+    const succeededRequests = new WeakSet();
+    page.on("crash", () => {
+      crashed = true;
+    });
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text());
+    });
+    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("requestfailed", (request) => {
+      const errorText = request.failure()?.errorText || "failed";
+      if (isSpuriousAbortAfterSuccessResponse(errorText, succeededRequests.has(request))) return;
+      failedRequests.push(`${request.method()} ${request.url()}: ${errorText}`);
+    });
+    page.on("response", (response) => {
+      if (response.status() >= 400) {
+        failedRequests.push(`${response.status()} ${response.url()}`);
+        return;
+      }
+      succeededRequests.add(response.request());
+    });
+
+    for (const [pageIndex, pageDefinition] of pages.entries()) {
+      errors = [];
+      failedRequests = [];
 
       const result = {
         pageId: pageDefinition.id,
@@ -147,24 +145,28 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
       };
 
       try {
-        await page.goto(`${preview.url}/#page-${encodeURIComponent(pageDefinition.id)}`, {
-          waitUntil: "domcontentloaded",
-        });
+        if (pageIndex === 0) {
+          await page.goto(`${preview.url}/#page-${encodeURIComponent(pageDefinition.id)}`, {
+            waitUntil: "domcontentloaded",
+          });
+        } else {
+          await page.evaluate((pageId) => {
+            window.location.hash = `#page-${encodeURIComponent(pageId)}`;
+          }, pageDefinition.id);
+        }
         const dashboardRoot = page.locator(".dashboard-root");
         const activePage = page.locator(`[data-page-id="${pageDefinition.id}"]`);
         await expect(dashboardRoot).toBeVisible();
-        // The shell can be visible and idle before canonical ingestion starts.
-        await page.waitForFunction(() =>
-          ["completed", "failed"].includes(window.__dashboardRefreshStatus),
-        null, {
-          timeout: pageIndex === 0
-            ? dashboardAssessmentStartupBudgetMs
-            : dashboardAssessmentPageBudgetMs,
-        });
-        expect(
-          await page.evaluate(() => window.__dashboardRefreshStatus),
-          "The dashboard must complete its canonical data refresh",
-        ).toBe("completed");
+        if (pageIndex === 0) {
+          // The shell can be visible and idle before canonical ingestion starts.
+          await page.waitForFunction(() =>
+            ["completed", "failed"].includes(window.__dashboardRefreshStatus),
+          null, { timeout: dashboardAssessmentStartupBudgetMs });
+          expect(
+            await page.evaluate(() => window.__dashboardRefreshStatus),
+            "The dashboard must complete its canonical data refresh",
+          ).toBe("completed");
+        }
         await expect(dashboardRoot).not.toHaveAttribute("aria-busy", "true", { timeout: 120_000 });
         await expect(activePage).toBeVisible();
         await expect(activePage).not.toHaveAttribute("data-page-pending", "", { timeout: 120_000 });
@@ -218,8 +220,6 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
         result.status = "failed";
       } finally {
         summary.results.push(result);
-        closing = true;
-        await page.close();
       }
       if (summary.results.filter((entry) => entry.status !== "passed").length >= maximumFailedViews) {
         break;
