@@ -1042,7 +1042,9 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     }
   }, { signal: navigationOwner.signal });
 
-  const availableIds = new Set(pages.map((page) => page.dataset.pageId));
+  const availableIds = /** @type {Set<string>} */ (
+    new Set(pages.map((page) => page.dataset.pageId).filter((pageId) => typeof pageId === 'string'))
+  );
   const routeFromHash = () => {
     const hash = root.ownerDocument.defaultView?.location.hash ?? '';
     if (!hash.startsWith('#page-')) return null;
