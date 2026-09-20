@@ -158,6 +158,11 @@ describe('canonical view sources', () => {
         from: 'runs',
         filter: { predicates: [{ field: 'run-status', equals: 'completed' }] },
         aggregate: { values: [{ field: 'run', as: 'runs', reducer: 'count' }] }
+      },
+      {
+        name: 'events-count',
+        from: 'events',
+        aggregate: { values: [{ field: 'id', as: 'events', reducer: 'count' }] }
       }
     ];
 
@@ -165,7 +170,7 @@ describe('canonical view sources', () => {
       indexedDB,
       sources,
       definitions,
-      ['repository-count', 'filtered-run-count']
+      ['repository-count', 'filtered-run-count', 'events-count']
     );
 
     expect(projected).toEqual({

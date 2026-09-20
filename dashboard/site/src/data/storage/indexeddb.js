@@ -24,6 +24,7 @@ export const ENTITY_STORES = /** @type {const} */ ([
   'issues'
 ]);
 export const TRANSACTION_STORE = 'transactions';
+export const DATABASE_STORES = /** @type {const} */ ([...ENTITY_STORES, TRANSACTION_STORE]);
 export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
  * string, { keyPath: string, indexes: Record<string, string | string[]> }
  * >} */ ({
@@ -352,7 +353,7 @@ export async function readCollections(indexedDB, storeNames) {
 /**
  * Counts multiple stores through one connection and one readonly transaction.
  * @param {IDBFactory} indexedDB
- * @param {readonly typeof ENTITY_STORES[number][]} storeNames
+ * @param {readonly typeof DATABASE_STORES[number][]} storeNames
  */
 export async function countCollections(indexedDB, storeNames) {
   const startedAt = monotonicNow();

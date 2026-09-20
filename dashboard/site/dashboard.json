@@ -1085,25 +1085,25 @@
         "name": "database-domain-count",
         "intent": "Count domains in the dashboard database.",
         "from": "domains",
-        "aggregate": { "values": [{ "field": "event", "as": "domains", "reducer": "count" }] }
+        "aggregate": { "values": [{ "field": "id", "as": "domains", "reducer": "count" }] }
       },
       {
         "name": "database-tool-count",
         "intent": "Count tools in the dashboard database.",
         "from": "tools",
-        "aggregate": { "values": [{ "field": "event", "as": "tools", "reducer": "count" }] }
+        "aggregate": { "values": [{ "field": "id", "as": "tools", "reducer": "count" }] }
       },
       {
         "name": "database-audit-count",
         "intent": "Count audits in the dashboard database.",
         "from": "audits",
-        "aggregate": { "values": [{ "field": "event", "as": "audits", "reducer": "count" }] }
+        "aggregate": { "values": [{ "field": "id", "as": "audits", "reducer": "count" }] }
       },
       {
         "name": "database-issue-count",
         "intent": "Count issues and pull requests in the dashboard database.",
         "from": "issues",
-        "aggregate": { "values": [{ "field": "event", "as": "issues", "reducer": "count" }] }
+        "aggregate": { "values": [{ "field": "id", "as": "issues", "reducer": "count" }] }
       },
       {
         "name": "transactions-table",

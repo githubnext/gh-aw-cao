@@ -1,19 +1,12 @@
 import { ingestDashboardSources } from '../ingest/coordinator.js';
 import { workflowSourcePath } from '../model/ids.js';
-import { countCollections, readCollections } from '../storage/indexeddb.js';
+import {
+  CANONICAL_DATABASE_SCHEMA,
+  countCollections,
+  readCollections
+} from '../storage/indexeddb.js';
 import { dashboardQueryDefects, dashboardQueryIndex } from './declarative.js';
 import { createCanonicalQueries } from './index.js';
-
-const NATIVE_COUNT_FIELDS = /** @type {const} */ ({
-  campaigns: 'id',
-  repositories: 'id',
-  workflows: 'id',
-  runs: 'id',
-  domains: 'event',
-  tools: 'event',
-  audits: 'event',
-  issues: 'event'
-});
 
 /**
  * @param {Record<string, unknown>} sources
@@ -75,9 +68,10 @@ export async function queryNativeCountSources(indexedDB, logicalSources, definit
   const plans = [...requested].flatMap((name) => {
     const definition = index.get(name);
     if (!definition || defects.has(name)) return [];
-    const field = NATIVE_COUNT_FIELDS[/** @type {keyof typeof NATIVE_COUNT_FIELDS} */ (definition.from)];
+    const table = CANONICAL_DATABASE_SCHEMA[definition.from];
     const values = definition.aggregate?.values;
-    if (!field
+    if (!table
+        || typeof table.keyPath !== 'string'
         || definition.union?.length
         || definition.joins?.length
         || definition.filter
@@ -90,7 +84,9 @@ export async function queryNativeCountSources(indexedDB, logicalSources, definit
         || definition.aggregate?.by?.length
         || !Array.isArray(values)
         || values.length === 0
-        || values.some((value) => value.reducer !== 'count' || value.field !== field || value.filter)) {
+        || values.some((value) => (
+          value.reducer !== 'count' || value.field !== table.keyPath || value.filter
+        ))) {
       return [];
     }
     return [{ name, source: definition.from, values }];
@@ -99,7 +95,7 @@ export async function queryNativeCountSources(indexedDB, logicalSources, definit
   if (storeNames.length === 0) return {};
   const counts = await countCollections(
     indexedDB,
-    /** @type {typeof import('../storage/indexeddb.js').ENTITY_STORES[number][]} */ (storeNames)
+    /** @type {typeof import('../storage/indexeddb.js').DATABASE_STORES[number][]} */ (storeNames)
   );
   return Object.fromEntries(plans.map((plan) => {
     const inputMetadata = projectionMetadata(logicalSources, plan.source, plan.source, true);
@@ -381,6 +377,7 @@ function recordsSource(sourceName, records, runsById, sources) {
       return {
         ...(publishedRecords.get(normalizedKey(event.id)) ?? {}),
         ...definedFields({
+          id: event.id,
           organization: run.owner,
           repository: run.repository,
           workflow: run.workflowPath,
