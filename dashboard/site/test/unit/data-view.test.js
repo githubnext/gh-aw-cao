@@ -497,7 +497,7 @@ describe('data view renderer', () => {
       rows: [{
         'operation-name': 'Doctor',
         'operation-icon': 'gear',
-        'operation-link': '#page-campaign-detail?campaign=doctor'
+        'operation-link': '#page-campaign-insights?campaign=doctor'
       }],
       cardTemplates: {
         operation: {
@@ -520,7 +520,7 @@ describe('data view renderer', () => {
     expect(rendered?.querySelector('.entity-card-list-grid')).not.toBeNull();
     expect(rendered?.querySelector('.issue-list-card-icon .octicon-gear')).not.toBeNull();
     expect(rendered?.querySelector('[data-card-drill]')?.getAttribute('href'))
-      .toBe('#page-campaign-detail?campaign=doctor');
+      .toBe('#page-campaign-insights?campaign=doctor');
   });
 
   it('renders grouped entity-card lists with a trailing disclosure chevron', () => {
@@ -541,7 +541,7 @@ describe('data view renderer', () => {
       rows: [{
         'campaign-name': 'Daily ops',
         'campaign-dashboard-link': {
-          'dashboard-href': '#page-campaign-detail?campaign=daily-ops',
+          'dashboard-href': '#page-campaign-insights?campaign=daily-ops',
           'dashboard-label': 'View Daily ops campaign dashboard'
         }
       }],
@@ -811,7 +811,7 @@ describe('data view renderer', () => {
       rows: [{
         'campaign-name': 'Daily ops',
         'campaign-dashboard-link': {
-          'dashboard-href': '#page-campaign-detail?campaign=daily-ops',
+          'dashboard-href': '#page-campaign-insights?campaign=daily-ops',
           'dashboard-label': 'View Daily ops campaign dashboard'
         },
         workflows: 2,
@@ -847,7 +847,7 @@ describe('data view renderer', () => {
     expect(labels?.textContent).toContain('active');
     expect(labels?.getAttribute('aria-label')).toBe('Daily ops labels and metrics');
     const campaignLink = /** @type {HTMLAnchorElement} */ (card?.querySelector('[data-card-drill]'));
-    expect(campaignLink.getAttribute('href')).toBe('#page-campaign-detail?campaign=daily-ops');
+    expect(campaignLink.getAttribute('href')).toBe('#page-campaign-insights?campaign=daily-ops');
     const activate = vi.spyOn(campaignLink, 'click');
     card?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(activate).toHaveBeenCalledOnce();

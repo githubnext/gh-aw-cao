@@ -1397,7 +1397,7 @@ describe('declarative dashboard queries', () => {
       campaign: 'aw-doctor',
       'campaign-name': 'AW Doctor',
       'campaign-dashboard-link': {
-        'dashboard-href': '#page-campaign-detail?campaign=aw-doctor',
+        'dashboard-href': '#page-campaign-insights?campaign=aw-doctor',
         'dashboard-label': 'View AW Doctor campaign dashboard'
       },
       workflows: 3,

@@ -63,7 +63,7 @@ const sources = {
     campaign: 'aw-doctor',
     'campaign-name': 'AW Doctor',
     'campaign-dashboard-link': {
-      'dashboard-href': '#page-campaign-detail?campaign=aw-doctor',
+      'dashboard-href': '#page-campaign-insights?campaign=aw-doctor',
       'dashboard-label': 'View AW Doctor campaign dashboard'
     },
     workflows: 3,
@@ -156,7 +156,7 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(attention.locator('time').first()).toHaveAttribute('datetime', '2026-09-16T11:30:00Z');
     await expect(attention.locator('.entity-card-list-card dt').first()).toHaveText('Scope');
     await expect(factory.getByRole('link', { name: 'AW Doctor' }))
-      .toHaveAttribute('href', '#page-campaign-detail?campaign=aw-doctor');
+      .toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
     const campaigns = factory.locator(':scope > [data-view-id="overview-campaigns"]');
     await expect(campaigns.locator('.entity-card-list-card')).toHaveCount(1);
     await expect(campaigns.locator('.entity-card-list-card dt')).toHaveText(['# dispatches', '# value', '# aic']);

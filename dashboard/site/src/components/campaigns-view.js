@@ -602,7 +602,7 @@ function summarizeCampaigns(workflows) {
 
 /** @param {string} campaignId */
 function campaignOverviewHref(campaignId) {
-  return `#page-campaign-detail?campaign=${encodeURIComponent(campaignId)}`;
+  return `#page-campaign-insights?campaign=${encodeURIComponent(campaignId)}`;
 }
 
 /**
