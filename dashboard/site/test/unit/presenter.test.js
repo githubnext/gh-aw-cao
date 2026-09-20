@@ -1251,6 +1251,7 @@ describe('presenter built-in and custom pages', () => {
     expect([...rendered.querySelectorAll('.mobile-nav-section-label')].map((node) => node.textContent?.trim())).toEqual(['Data', 'Experimental']);
     expect([...rendered.querySelectorAll('.primary-nav > [data-nav-page-id] .nav-label')].map((node) => node.textContent)).toEqual([
       'Overview',
+      'Notifications',
       'Campaigns',
       'Repositories',
       'Settings'
@@ -1275,6 +1276,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-nav-page-id="uk-ai-advisory-dashboard"]')?.closest('.nav-section')).toBe(sections[1]);
     expect([...rendered.querySelectorAll('.nav-label')].map((node) => node.textContent)).toEqual([
       'Overview',
+      'Notifications',
       'Campaigns',
       'Repositories',
       'Settings',
@@ -1812,6 +1814,7 @@ describe('presenter built-in and custom pages', () => {
     expect(menuLinks.every((link) => link.querySelector('.octicon') !== null)).toBe(true);
     expect(menuLinks.map((link) => link.textContent?.trim())).toEqual([
       'Overview',
+      'Notifications',
       'Campaigns',
       'Repositories',
       'Settings',
