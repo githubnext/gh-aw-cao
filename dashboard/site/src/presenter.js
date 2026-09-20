@@ -1044,10 +1044,9 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const activeNavigationPageId = determineActiveNavigationPageId(
       page.dataset.pageId,
       navigationPage,
-      page.dataset.pageId,
       links,
       availableIds,
-      page.dataset.routeParameter ?? ''
+      page.dataset.routeValue ?? ''
     );
     if (activeNavigationPageId) {
       updateNavigationLinks(links, activeNavigationPageId);
@@ -1221,11 +1220,12 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     if (breadcrumbDashboard instanceof HTMLAnchorElement && pageId === overviewPage?.dataset.pageId) {
       breadcrumbDashboard.hidden = true;
     }
-    updateNavigationLinks(links, pageId);
     const page = pages.find((candidate) => candidate.dataset.pageId === pageId);
     syncFullViewMode(page);
     const routeNavigationPage = page?.dataset.routeNavigationPage;
-    const activeNavigationPageId = determineActiveNavigationPageId(pageId, routeNavigationPage, '', links, availableIds, page?.dataset.routeParameter ?? '');
+    const routeParameter = page?.dataset.routeParameter;
+    const routeValue = routeParameter ? parameters.get(routeParameter)?.trim() ?? '' : '';
+    const activeNavigationPageId = determineActiveNavigationPageId(pageId, routeNavigationPage, links, availableIds, routeValue);
     if (activeNavigationPageId) {
       updateNavigationLinks(links, activeNavigationPageId);
     }
@@ -1237,13 +1237,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
         breadcrumbRoot.href = `#page-${routeNavigationPage}`;
       }
       if (breadcrumbDashboard instanceof HTMLAnchorElement) breadcrumbDashboard.hidden = true;
-      const hasDirectNavigationLink = pageId && availableIds.has(pageId) && links.some((link) => getNavigationPageId(link) === pageId);
-      if (!hasDirectNavigationLink) {
-        updateNavigationLinks(links, routeNavigationPage);
-      }
     }
-    const routeParameter = page?.dataset.routeParameter;
-    const routeValue = routeParameter ? parameters.get(routeParameter)?.trim() ?? '' : '';
     if (page) page.dataset.routeValue = routeValue;
     const queryTitle = resolveQueryDrillPageTitle(parameters, knownQueries);
     const title = queryTitle || routeValue || page?.dataset.pageTitle || '';
@@ -1494,20 +1488,15 @@ function updateNavigationLinks(links, pageId) {
  * page selection such as Notifications.
  * @param {string | undefined} pageId
  * @param {string | undefined} routeNavigationPage
- * @param {string | undefined} directPageId
  * @param {HTMLAnchorElement[]} links
  * @param {Set<string>} availableIds
- * @param {string} [routeParameter]
+ * @param {string} [routeValue]
  * @returns {string | undefined}
  */
-function determineActiveNavigationPageId(pageId, routeNavigationPage, directPageId, links, availableIds, routeParameter = '') {
+function determineActiveNavigationPageId(pageId, routeNavigationPage, links, availableIds, routeValue = '') {
   const hasRouteNavigationLink = routeNavigationPage && availableIds.has(routeNavigationPage) && links.some((link) => getNavigationPageId(link) === routeNavigationPage);
-  if (hasRouteNavigationLink && routeParameter.length > 0) {
+  if (hasRouteNavigationLink && routeValue.length > 0) {
     return routeNavigationPage;
-  }
-  const hasDirectPageLink = directPageId && availableIds.has(directPageId) && links.some((link) => getNavigationPageId(link) === directPageId);
-  if (hasDirectPageLink) {
-    return directPageId;
   }
   const hasPageLink = pageId && availableIds.has(pageId) && links.some((link) => getNavigationPageId(link) === pageId);
   if (hasPageLink) {
