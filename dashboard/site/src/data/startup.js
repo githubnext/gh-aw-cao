@@ -15,7 +15,7 @@ import { dashboardViewAliasName } from "./queries/view-payload-compiler.js";
 /** @typedef {Record<string, import('../presenter.js').LogicalSourceInput>} DashboardSources */
 /** @typedef {{ filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc' | 'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' }} DashboardQueryContext */
 /** @typedef {{ signal: AbortSignal, onUpdate: (sources: DashboardSources) => void, routeParameters?: Record<string, string>, queryContext?: DashboardQueryContext }} PageLoadOptions */
-/** @typedef {(pageId: string, options: PageLoadOptions) => Promise<DashboardSources>} PageSourceLoader */
+/** @typedef {((pageId: string, options: PageLoadOptions) => Promise<DashboardSources>) & { prepare?: (pageId: string) => Promise<void> }} PageSourceLoader */
 
 /**
  * Gives a cached render two animation frames to commit before network activity starts.
@@ -142,6 +142,9 @@ export async function startDashboardData(options) {
         },
       );
     });
+  };
+  loadPageSources.prepare = async (pageId) => {
+    await preparePage?.(pageId);
   };
   configureSourceLoader(async (name, options) => {
     const sources = await loadCanonicalDashboardPage(

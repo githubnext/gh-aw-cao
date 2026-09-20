@@ -36,6 +36,7 @@ import { publishSource } from './source-store.js';
 export { enableDashboardKeyboardNavigation, updateWithViewTransition };
 import {
   dashboardPageLazySourceNames as collectDashboardPageLazySourceNames,
+  dashboardPageIsLoaded,
   dashboardPagePayload,
   dashboardPageSourcesAreIndependentlyBound,
   dashboardPageSourceNames as collectDashboardPageSourceNames,
@@ -87,7 +88,11 @@ import {
  */
 
 /**
- * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, commitSha?: string | null, prepared?: boolean, loading?: boolean, tableRowLimit?: number, loadPageSources?: (pageId: string, options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>> }} PresentationInput
+ * @typedef {((pageId: string, options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>>) & { prepare?: (pageId: string) => Promise<void> }} PageSourceLoader
+ */
+
+/**
+ * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, commitSha?: string | null, prepared?: boolean, loading?: boolean, tableRowLimit?: number, loadPageSources?: PageSourceLoader }} PresentationInput
  */
 
 /**
@@ -242,65 +247,71 @@ export function renderDashboard(input) {
       const pageIndex = pages.findIndex((candidate) => candidate.id === pageId);
       const resolvedPage = () => pages[pageIndex] ?? pages.find((candidate) => candidate.id === pageId);
       if (!resolvedPage()) return null;
-      const pagePayload = getBuiltInPagePayload(resolvedPage(), reusableViews);
-      const defaultViewMode = pageId === 'overview' ? undefined : availableViewModes(pagePayload.views ?? [])[0];
-      const effectiveQueryContext = options.queryContext ?? (defaultViewMode ? { viewMode: defaultViewMode } : undefined);
-      options.queryContext = effectiveQueryContext;
-      const rendersBeforePageSources = dashboardPageSourcesAreIndependentlyBound(resolvedPage(), reusableViews);
-      /** @param {Record<string, LogicalSourceInput>} pageSources */
-      const updateHorizon = (pageSources) => {
-        if (options.signal?.aborted !== true) {
-          dashboardHorizon.update(resolveDashboardHorizonViewModel(
-            pageSources,
-            dashboardDefaults,
-            horizonRange,
-            evaluatedAt
-          ));
-        }
-      };
-      /** @param {Record<string, LogicalSourceInput>} pageSources */
-      const render = (pageSources) => {
-        const page = resolvedPage();
-        if (!page) throw new Error(`Dashboard page "${pageId}" is not available.`);
-        updateHorizon(pageSources);
-        return showInitialLoadingSkeleton && !rendersBeforePageSources
-          ? renderPageLoadingSkeleton(page)
-          : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, effectiveQueryContext);
-      };
-      if (input.loadPageSources) {
-        if (rendersBeforePageSources) {
-          const renderedPage = render(sources);
-          /** @param {Record<string, LogicalSourceInput>} pageSources */
-          const updateBoundSources = (pageSources) => {
-            updateHorizon(pageSources);
-            for (const [name, source] of Object.entries(pageSources)) {
-              publishSource(name, source, name);
-            }
-          };
-          options.onUpdate = updateBoundSources;
-          void input.loadPageSources(pageId, options)
-            .then(updateBoundSources)
-            .catch((error) => {
-              if (!options.signal?.aborted) {
-                console.error(`Unable to load dashboard page ${pageId}: ${error instanceof Error ? error.message : String(error)}`);
+      const renderPreparedPage = () => {
+        const pagePayload = getBuiltInPagePayload(resolvedPage(), reusableViews);
+        const defaultViewMode = pageId === 'overview' ? undefined : availableViewModes(pagePayload.views ?? [])[0];
+        const effectiveQueryContext = options.queryContext ?? (defaultViewMode ? { viewMode: defaultViewMode } : undefined);
+        options.queryContext = effectiveQueryContext;
+        const rendersBeforePageSources = dashboardPageSourcesAreIndependentlyBound(resolvedPage(), reusableViews);
+        /** @param {Record<string, LogicalSourceInput>} pageSources */
+        const updateHorizon = (pageSources) => {
+          if (options.signal?.aborted !== true) {
+            dashboardHorizon.update(resolveDashboardHorizonViewModel(
+              pageSources,
+              dashboardDefaults,
+              horizonRange,
+              evaluatedAt
+            ));
+          }
+        };
+        /** @param {Record<string, LogicalSourceInput>} pageSources */
+        const render = (pageSources) => {
+          const page = resolvedPage();
+          if (!page) throw new Error(`Dashboard page "${pageId}" is not available.`);
+          updateHorizon(pageSources);
+          return showInitialLoadingSkeleton && !rendersBeforePageSources
+            ? renderPageLoadingSkeleton(page)
+            : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, effectiveQueryContext);
+        };
+        if (input.loadPageSources) {
+          if (rendersBeforePageSources) {
+            const renderedPage = render(sources);
+            /** @param {Record<string, LogicalSourceInput>} pageSources */
+            const updateBoundSources = (pageSources) => {
+              updateHorizon(pageSources);
+              for (const [name, source] of Object.entries(pageSources)) {
+                publishSource(name, source, name);
               }
-            });
-          return renderedPage;
+            };
+            options.onUpdate = updateBoundSources;
+            void input.loadPageSources(pageId, options)
+              .then(updateBoundSources)
+              .catch((error) => {
+                if (!options.signal?.aborted) {
+                  console.error(`Unable to load dashboard page ${pageId}: ${error instanceof Error ? error.message : String(error)}`);
+                }
+              });
+            return renderedPage;
+          }
+          options.onUpdate = (pageSources) => options.renderUpdate(render(pageSources));
+          return input.loadPageSources(pageId, options).then(render);
         }
-        options.onUpdate = (pageSources) => options.renderUpdate(render(pageSources));
-        return input.loadPageSources(pageId, options).then(render);
-      }
-      const renderedPage = render(sources);
-      /** @param {HTMLElement} rendered */
-      const annotate = (rendered) => {
-        const page = resolvedPage();
-        if (!page) return rendered;
-        void annotateLazyPageDomWhenDebugging(root, rendered, page, pageIndex).catch((error) => {
-          root.dataset.domProvenanceError = String(error?.message ?? error);
-        });
-        return rendered;
+        const renderedPage = render(sources);
+        /** @param {HTMLElement} rendered */
+        const annotate = (rendered) => {
+          const page = resolvedPage();
+          if (!page) return rendered;
+          void annotateLazyPageDomWhenDebugging(root, rendered, page, pageIndex).catch((error) => {
+            root.dataset.domProvenanceError = String(error?.message ?? error);
+          });
+          return rendered;
+        };
+        return renderedPage instanceof Promise ? renderedPage.then(annotate) : annotate(renderedPage);
       };
-      return renderedPage instanceof Promise ? renderedPage.then(annotate) : annotate(renderedPage);
+      const page = resolvedPage();
+      return input.loadPageSources?.prepare && page && !dashboardPageIsLoaded(page)
+        ? input.loadPageSources.prepare(pageId).then(renderPreparedPage)
+        : renderPreparedPage();
     },
     sidebar.dataset.defaultPageId,
     Boolean(input.loadPageSources),

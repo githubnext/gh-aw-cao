@@ -186,6 +186,52 @@ describe('dashboard DOM provenance', () => {
     disposeDashboard(rendered);
   });
 
+  it('loads a page chunk before mounting its independently bound elements', async () => {
+    const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ (/** @type {unknown} */ ({
+      languageVersion: '0.1.0',
+      dashboard: {
+        id: 'chunked-binding-dashboard',
+        title: 'Chunked binding dashboard',
+        pages: [{
+          id: 'overview',
+          kind: /** @type {'custom'} */ ('custom'),
+          title: 'Overview',
+          chunk: 'dashboard-pages/overview.json',
+          'independent-source-bindings': true
+        }]
+      }
+    }));
+    const loadPageSources = /** @type {NonNullable<Parameters<typeof renderDashboardView>[0]['loadPageSources']>} */ (
+      () => new Promise(() => {})
+    );
+    loadPageSources.prepare = async () => {
+      Object.assign(document.dashboard.pages[0], {
+        views: [{
+          id: 'overview-header',
+          title: 'Overview header',
+          data: {
+            sources: [
+              'overview-outcome-summary',
+              'overview-run-summary',
+              'overview-factory-status',
+              'overview-rhythm'
+            ]
+          },
+          mark: 'element',
+          element: 'factory-header'
+        }]
+      });
+    };
+
+    const rendered = renderDashboardView({ document, sources: {}, loadPageSources });
+
+    await vi.waitFor(() => {
+      expect(rendered.querySelector('.factory-intro')).not.toBeNull();
+    });
+    expect(rendered.querySelector('[data-page-id="overview"]')?.getAttribute('aria-busy')).not.toBe('true');
+    disposeDashboard(rendered);
+  });
+
   it('waits for page sources when a page mixes bound elements with ordinary views', async () => {
     const rendered = renderDashboardView({
       document: {
