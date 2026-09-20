@@ -232,6 +232,31 @@ describe('dashboard DOM provenance', () => {
     disposeDashboard(rendered);
   });
 
+  it('selects a route drilldown parent when its route has a value', async () => {
+    const root = document.createElement('div');
+    root.innerHTML = `
+      <a data-nav-page-id="overview" href="#page-overview">Overview</a>
+      <a data-nav-page-id="repositories" href="#page-repositories">Repositories</a>
+      <main class="dashboard-prototype">
+        <section class="dashboard-page" id="page-overview" data-page-id="overview"></section>
+        <section class="dashboard-page" id="page-repositories" data-page-id="repositories"></section>
+        <section class="dashboard-page" id="page-repository-detail" data-page-id="repository-detail" data-route-navigation-page="repositories" data-route-parameter="repository"></section>
+      </main>
+    `;
+    document.body.append(root);
+    window.history.replaceState(null, '', '/#page-repository-detail?repository=octo-org%2Fplatform');
+    try {
+      const disposeNavigation = enableDashboardPageNavigation(root, 'Dashboard', () => null, 'overview');
+      await vi.waitFor(() => {
+        expect(root.querySelector('[data-nav-page-id="repositories"]')?.getAttribute('aria-current')).toBe('page');
+      });
+      disposeNavigation();
+    } finally {
+      root.remove();
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
   it('keeps Settings useful while the policy source is unavailable', async () => {
     const rendered = renderDashboardView({
       document: authoritativeDashboardDocument,

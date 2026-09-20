@@ -1225,7 +1225,8 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const routeNavigationPage = page?.dataset.routeNavigationPage;
     const routeParameter = page?.dataset.routeParameter;
     const routeValue = routeParameter ? parameters.get(routeParameter)?.trim() ?? '' : '';
-    const activeNavigationPageId = determineActiveNavigationPageId(pageId, routeNavigationPage, links, availableIds, routeValue);
+    if (page) page.dataset.routeValue = routeValue;
+    const activeNavigationPageId = determineActiveNavigationPageId(pageId, routeNavigationPage, links, availableIds, page?.dataset.routeValue ?? '');
     if (activeNavigationPageId) {
       updateNavigationLinks(links, activeNavigationPageId);
     }
@@ -1238,7 +1239,6 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       }
       if (breadcrumbDashboard instanceof HTMLAnchorElement) breadcrumbDashboard.hidden = true;
     }
-    if (page) page.dataset.routeValue = routeValue;
     const queryTitle = resolveQueryDrillPageTitle(parameters, knownQueries);
     const title = queryTitle || routeValue || page?.dataset.pageTitle || '';
     const description = page?.dataset.pageDescription ?? '';
