@@ -399,7 +399,12 @@
         const shouldKeepOverviewLoadingVisible = overviewPageIsActive() && (
           state === "loading" || (state === "ready" && hasPendingOverviewSources())
         );
-        if (initialLoadingSettled || shouldKeepOverviewLoadingVisible) {
+        if (!shouldKeepOverviewLoadingVisible) {
+          initialLoadingSettled = true;
+          renderSources(sources, state, prepared, loadPageSources, retryRefresh);
+          return;
+        }
+        if (initialLoadingSettled) {
           renderSources(sources, state, prepared, loadPageSources, retryRefresh);
           return;
         }
