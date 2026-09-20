@@ -112,6 +112,16 @@ describe('dashboard view query contracts', () => {
         aggregate: { by: ['repository-coordinate'] }
       });
     }
+    expect(queries.find((/** @type {{ name: string }} */ query) => query.name === 'repository-value-created-top'))
+      .toMatchObject({
+        from: 'operational-values',
+        aggregate: { values: [{ field: 'operational-value', as: 'value-created', reducer: 'count' }] }
+      });
+    expect(queries.find((/** @type {{ name: string }} */ query) => query.name === 'repository-audit-issues-top'))
+      .toMatchObject({
+        from: 'findings',
+        aggregate: { values: [{ field: 'finding', as: 'audit-issues', reducer: 'count' }] }
+      });
     expect(dashboard.views.find((/** @type {{ id: string }} */ view) => view.id === 'entity-repositories'))
       .toMatchObject({ data: { source: 'repositories' } });
   });
