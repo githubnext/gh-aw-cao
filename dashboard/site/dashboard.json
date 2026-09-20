@@ -9543,30 +9543,39 @@
             },
             "layout": "full"
           },
+        ]
+      },
+      {
+        "id": "notifications",
+        "kind": "custom",
+        "title": "Notifications",
+        "navigation-label": "Notifications",
+        "icon": "bell",
+        "description": "Grouped repeated workflow failures and unresolved outputs explicitly awaiting human review in the selected snapshot horizon.",
+        "route": {
+          "navigation-page": "overview"
+        },
+        "views": [
           {
-            "id": "overview-needs-attention",
-            "title": "Needs attention",
-            "description": "Grouped repeated failures and unresolved outputs explicitly awaiting human review. Evidence reflects the selected snapshot and time horizon.",
+            "id": "notifications-list",
+            "title": "Notifications",
+            "description": "Open the retained GitHub evidence to investigate or complete the indicated review. Opening a link does not execute an action.",
             "data": {
-              "source": "overview-needs-attention-preview"
+              "source": "overview-needs-attention"
             },
             "mark": "list",
             "list": {
               "style": "entity-cards",
               "appearance": "grouped",
               "card": "attention-signal",
-              "icon": "issue-opened",
+              "icon": "bell",
               "drill": {
                 "type": "external",
                 "field": "evidence-link"
-              },
-              "view-all": {
-                "page": "overview-needs-attention",
-                "label": "View all"
               }
             },
-            "empty-message": "No signals require attention.",
-            "layout": "full",
+            "empty-message": "No notifications require attention.",
+            "layout": "full-view",
             "encoding": {
               "columns": [
                 { "field": "title", "type": "nominal", "title": "Signal" },
