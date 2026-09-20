@@ -30,15 +30,14 @@ export function queryPerformanceMarkdown(report) {
     "|---|---:|---:|---:|---:|---:|",
   ];
   for (const result of report.queries) {
-    lines.push([
-      `| \`${result.query}\``,
+    lines.push(`| ${[
+      `\`${result.query}\``,
       result.rows,
       result.chunks,
       result.firstChunkMs.toFixed(2),
       result.meanContinuationChunkMs === null ? "—" : result.meanContinuationChunkMs.toFixed(2),
       result.fillMs.toFixed(2),
-      "|",
-    ].join(" | "));
+    ].join(" | ")} |`);
   }
   return `${lines.join("\n")}\n`;
 }

@@ -11,6 +11,7 @@ import {
 } from "./dashboard-query-performance-helpers.mjs";
 
 const outputDirectory = resolve("test-results/dashboard-query-performance");
+const dashboardUrl = process.env.DASHBOARD_QUERY_PERFORMANCE_URL || deployedDashboardUrl;
 const dashboardDocument = JSON.parse(
   await readFile(resolve("dashboard/site/dashboard.json"), "utf8"),
 ).dashboard;
@@ -56,7 +57,7 @@ test("benchmarks every dashboard query against settled deployed data", async ({ 
     });
   });
 
-  await page.goto(deployedDashboardUrl, { waitUntil: "domcontentloaded" });
+  await page.goto(dashboardUrl, { waitUntil: "domcontentloaded" });
   await expect(page.locator(".dashboard-root")).toBeVisible({ timeout: 120_000 });
   await page.waitForFunction(() => {
     const events = window.__dashboardPerformanceEvents ?? [];
@@ -132,7 +133,7 @@ test("benchmarks every dashboard query against settled deployed data", async ({ 
 
   const report = {
     generatedAt: new Date().toISOString(),
-    dashboardUrl: deployedDashboardUrl,
+    dashboardUrl,
     methodology: "Fresh Chromium profile; wait for deployed refresh completion and two animation frames; query current dashboard.json through the deployed data worker; drain 25-row continuations sequentially.",
     chunkSize: QUERY_CHUNK_SIZE,
     populateMs: Math.round(populateMs * 100) / 100,
@@ -141,7 +142,9 @@ test("benchmarks every dashboard query against settled deployed data", async ({ 
   const jsonPath = resolve(outputDirectory, "summary.json");
   const markdownPath = resolve(outputDirectory, "summary.md");
   await writeFile(jsonPath, `${JSON.stringify(report, null, 2)}\n`);
-  await writeFile(markdownPath, queryPerformanceMarkdown(report));
+  const markdown = queryPerformanceMarkdown(report);
+  await writeFile(markdownPath, markdown);
+  console.log(markdown);
   await testInfo.attach("dashboard-query-performance-json", {
     path: jsonPath,
     contentType: "application/json",
