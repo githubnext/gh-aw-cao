@@ -25,7 +25,10 @@ test("deployed integration isolates query benchmark reporting from test permissi
   assert.match(workflow, /test-results\/dashboard-query-performance\//);
   assert.match(workflow, /query-performance:\n[\s\S]*permissions:\n\s+contents: read/);
   assert.match(workflow, /query-performance-comment:\n[\s\S]*needs: query-performance/);
-  assert.match(workflow, /query-performance-comment:[\s\S]*issues: write/);
+  assert.match(
+    workflow,
+    /query-performance-comment:[\s\S]*pull-requests: write/,
+  );
   assert.match(workflow, /name: dashboard-query-performance/);
   assert.match(workflow, /dashboard-query-performance-results/);
 });
