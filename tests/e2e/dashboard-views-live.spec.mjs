@@ -3,6 +3,8 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
 import {
+  dashboardAssessmentPageBudgetMs,
+  dashboardAssessmentStartupBudgetMs,
   dashboardAssessmentTimeout,
   declaredDashboardViewIds,
   ignoredDashboardPageIds,
@@ -92,7 +94,7 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
     }
     test.setTimeout(dashboardAssessmentTimeout(pages.length));
 
-    for (const pageDefinition of pages) {
+    for (const [pageIndex, pageDefinition] of pages.entries()) {
       const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
       await page.addInitScript(() => {
         window.__dashboardRefreshStatus = null;
@@ -154,7 +156,11 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
         // The shell can be visible and idle before canonical ingestion starts.
         await page.waitForFunction(() =>
           ["completed", "failed"].includes(window.__dashboardRefreshStatus),
-        null, { timeout: 120_000 });
+        null, {
+          timeout: pageIndex === 0
+            ? dashboardAssessmentStartupBudgetMs
+            : dashboardAssessmentPageBudgetMs,
+        });
         expect(
           await page.evaluate(() => window.__dashboardRefreshStatus),
           "The dashboard must complete its canonical data refresh",
