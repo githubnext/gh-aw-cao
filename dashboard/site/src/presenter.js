@@ -1040,9 +1040,10 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     renderPageMode(pageMode, mode);
     const navigationPage = typeof event.detail?.navigationPage === 'string'
       ? event.detail.navigationPage
-      : '';
-    if (navigationPage && availableIds.has(navigationPage)) {
-      updateNavigationLinks(links, navigationPage);
+      : page.dataset.routeNavigationPage ?? '';
+    const activeNavigationPageId = determineActiveNavigationPageId(page.dataset.pageId, navigationPage, links, availableIds);
+    if (activeNavigationPageId) {
+      updateNavigationLinks(links, activeNavigationPageId);
     }
   }, { signal: navigationOwner.signal });
 
@@ -1217,12 +1218,10 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const page = pages.find((candidate) => candidate.dataset.pageId === pageId);
     syncFullViewMode(page);
     const routeNavigationPage = page?.dataset.routeNavigationPage;
-    const hasNavigationPageLink = links.some((link) => getNavigationPageId(link) === pageId);
-    const activeNavigationPageId = hasNavigationPageLink ? pageId : routeNavigationPage;
-    if (activeNavigationPageId && availableIds.has(activeNavigationPageId)) {
-      updateNavigationLinks(links, activeNavigationPageId);
-    }
-    if (routeNavigationPage && availableIds.has(routeNavigationPage)) {
+    const isDirectNavigationPage = links.some((link) => getNavigationPageId(link) === pageId);
+    const activeNavigationPageId = determineActiveNavigationPageId(pageId, routeNavigationPage, links, availableIds);
+    updateNavigationLinks(links, activeNavigationPageId);
+    if (!isDirectNavigationPage && routeNavigationPage && availableIds.has(routeNavigationPage)) {
       const navigationLink = links.find((link) => getNavigationPageId(link) === routeNavigationPage);
       if (breadcrumbRoot instanceof HTMLAnchorElement && navigationLink) {
         breadcrumbRoot.hidden = false;
@@ -1474,6 +1473,26 @@ function updateNavigationLinks(links, pageId) {
     }
     else link.removeAttribute('aria-current');
   }
+}
+
+/**
+ * Prefer the actual page in the sidebar when it is a direct navigation target.
+ * Route-based parent links still inform breadcrumbs but should not override a
+ * direct nav decision like Notifications -> Overview.
+ * @param {string | undefined} pageId
+ * @param {string | undefined} routeNavigationPage
+ * @param {HTMLAnchorElement[]} links
+ * @param {Set<string>} availableIds
+ * @returns {string | undefined}
+ */
+function determineActiveNavigationPageId(pageId, routeNavigationPage, links, availableIds) {
+  if (pageId && availableIds.has(pageId) && links.some((link) => getNavigationPageId(link) === pageId)) {
+    return pageId;
+  }
+  if (routeNavigationPage && availableIds.has(routeNavigationPage)) {
+    return routeNavigationPage;
+  }
+  return pageId && availableIds.has(pageId) ? pageId : undefined;
 }
 
 /**
