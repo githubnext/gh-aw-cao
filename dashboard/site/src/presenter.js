@@ -1041,7 +1041,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const navigationPage = typeof event.detail?.navigationPage === 'string'
       ? event.detail.navigationPage
       : page.dataset.routeNavigationPage ?? '';
-    const activeNavigationPageId = determineActiveNavigationPageId(page.dataset.pageId, navigationPage, links, availableIds);
+    const activeNavigationPageId = determineActiveNavigationPageId(page.dataset.pageId, navigationPage, '', links, availableIds);
     if (activeNavigationPageId) {
       updateNavigationLinks(links, activeNavigationPageId);
     }
@@ -1219,7 +1219,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     syncFullViewMode(page);
     const routeNavigationPage = page?.dataset.routeNavigationPage;
     const isDirectNavigationPage = links.some((link) => getNavigationPageId(link) === pageId);
-    const activeNavigationPageId = determineActiveNavigationPageId(pageId, routeNavigationPage, links, availableIds);
+    const activeNavigationPageId = determineActiveNavigationPageId(pageId, routeNavigationPage, isDirectNavigationPage ? pageId : '', links, availableIds);
     updateNavigationLinks(links, activeNavigationPageId);
     if (!isDirectNavigationPage && routeNavigationPage && availableIds.has(routeNavigationPage)) {
       const navigationLink = links.find((link) => getNavigationPageId(link) === routeNavigationPage);
@@ -1481,18 +1481,23 @@ function updateNavigationLinks(links, pageId) {
  * direct nav decision like Notifications -> Overview.
  * @param {string | undefined} pageId
  * @param {string | undefined} routeNavigationPage
+ * @param {string | undefined} directPageId
  * @param {HTMLAnchorElement[]} links
  * @param {Set<string>} availableIds
  * @returns {string | undefined}
  */
-function determineActiveNavigationPageId(pageId, routeNavigationPage, links, availableIds) {
+function determineActiveNavigationPageId(pageId, routeNavigationPage, directPageId, links, availableIds) {
+  const hasDirectPageLink = directPageId && availableIds.has(directPageId) && links.some((link) => getNavigationPageId(link) === directPageId);
+  if (directPageId && hasDirectPageLink) {
+    return directPageId;
+  }
   if (pageId && availableIds.has(pageId) && links.some((link) => getNavigationPageId(link) === pageId)) {
     return pageId;
   }
   if (routeNavigationPage && availableIds.has(routeNavigationPage)) {
     return routeNavigationPage;
   }
-  return pageId && availableIds.has(pageId) ? pageId : undefined;
+  return undefined;
 }
 
 /**
