@@ -3051,8 +3051,8 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
           queries: ${JSON.stringify(queryDefinitions)},
           pages: [
             ${JSON.stringify(builtInPage('campaigns', {
-              id: 'campaigns',
-              title: 'Campaigns',
+              id: 'overview',
+              title: 'Overview',
               description: 'Activity from centrally managed campaigns.',
             }))},
             ${JSON.stringify(operationalValuePage)},
@@ -3323,19 +3323,19 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
     </script>
   `);
 
-  await expect(page.getByRole('heading', { name: 'Campaigns', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible();
   const valueChart = page.locator('[data-view-id="campaigns-value-created"]');
   await expect(valueChart.locator('[data-chart-widget="pie"]')).toBeVisible();
   await expect(valueChart.locator('.chart-legend-pie')).toContainText('Ambient Context');
   await expect(valueChart.locator('.chart-legend-pie')).toContainText('AW Doctor');
   await page.getByRole('button', { name: 'Table' }).click();
-  await expect(page.locator('[data-page-id="campaigns"] [data-view-layout="full-view"]')).toBeVisible();
-  await expect(page.locator('[data-page-id="campaigns"] [data-lazy-list]')).toBeVisible();
-  await expect(page.locator('[data-page-id="campaigns"] [data-table-filter]')).toBeVisible();
-  await expect(page.locator('[data-page-id="campaigns"] .table-summary-row')).toBeVisible();
-  const campaignRows = page.locator('[data-page-id="campaigns"] .custom-table tbody tr');
+  await expect(page.locator('[data-page-id="overview"] [data-view-layout="full-view"]')).toBeVisible();
+  await expect(page.locator('[data-page-id="overview"] [data-lazy-list]')).toBeVisible();
+  await expect(page.locator('[data-page-id="overview"] [data-table-filter]')).toBeVisible();
+  await expect(page.locator('[data-page-id="overview"] .table-summary-row')).toBeVisible();
+  const campaignRows = page.locator('[data-page-id="overview"] .custom-table tbody tr');
   await expect(campaignRows).toHaveCount(2);
-  await expect(page.locator('[data-page-id="campaigns"] .custom-table thead tr').first().locator('th')).toHaveText([
+  await expect(page.locator('[data-page-id="overview"] .custom-table thead tr').first().locator('th')).toHaveText([
     'Campaign',
     'Workflows',
     'Roles',
@@ -3355,7 +3355,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   await expect(awDoctorSummary.locator('[data-field="modes"] .mode-badge')).toHaveText('review');
   await expect(awDoctorSummary.locator('[data-field="registration"] .status')).toHaveText('true');
   await page.getByRole('button', { name: 'Cards' }).click();
-  const awDoctorCard = page.locator('[data-page-id="campaigns"] [data-mobile-card-list] .entity-card-list-card').filter({ hasText: 'AW Doctor' });
+  const awDoctorCard = page.locator('[data-page-id="overview"] [data-mobile-card-list] .entity-card-list-card').filter({ hasText: 'AW Doctor' });
   await expect(awDoctorCard.locator('[data-card-drill]')).toHaveAttribute('href', '#page-campaign-detail?campaign=aw-doctor');
   await awDoctorCard.click({ position: { x: 6, y: 6 } });
   await expect(page).toHaveURL(/#page-campaign-detail\?campaign=aw-doctor$/);
@@ -3379,7 +3379,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   });
   await expect(page.locator('[data-breadcrumb-page]')).toHaveText('Ambient Context');
   await expect(page.locator('[data-page-mode]')).toHaveText('Review');
-  await expect(page.locator('[data-nav-page-id="campaigns"]')).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('[data-nav-page-id="overview"]')).toHaveAttribute('aria-current', 'page');
   const campaignNavigation = page.getByRole('navigation', { name: 'Ambient Context views' });
   await expect(campaignNavigation).toContainText('InsightsWorkflowsRunsIssuesInformation');
   await expect(campaignNavigation).toHaveCSS('display', 'flex');

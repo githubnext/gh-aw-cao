@@ -35,12 +35,12 @@ describe('workflow-badges', () => {
       containerClassName: 'repository-workflow-badges',
       roleClassName: 'workflow-badge',
       membershipClassName: 'workflow-badge workflow-badge-operation',
-      campaignPage: 'campaigns'
+      campaignPage: 'campaign-insights'
     });
 
     expect(element.className).toBe('repository-workflow-badges');
     expect(element.querySelector('.workflow-badge-worker')?.textContent).toBe('Worker');
-    expect(element.querySelector('a')?.getAttribute('href')).toBe('#page-campaigns?campaign=maintenance');
+    expect(element.querySelector('a')?.getAttribute('href')).toBe('#page-campaign-insights?campaign=maintenance');
   });
 
   it('derives operation and unknown roles conservatively', () => {

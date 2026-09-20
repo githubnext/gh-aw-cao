@@ -2872,30 +2872,30 @@ describe('presenter built-in and custom pages', () => {
     expect(overviewPage?.querySelector('.campaign-status-card')).toBeNull();
   });
 
-  it('DLS-PAGE-014 DLS-PAGE-015 renders mode-filtered campaign AIC utilization and campaign-run trends', () => {
+  it('DLS-PAGE-014 DLS-PAGE-015 renders mode-filtered campaign AIC utilization and campaign-run trends in Overview', () => {
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
         id: 'campaigns-dashboard',
         title: 'Campaigns Dashboard',
         pages: [{
-          id: 'campaigns',
-          kind: /** @type {'built-in'} */ ('built-in'),
-          page: 'campaigns',
-          title: 'Campaigns',
-          description: 'Activity from centrally managed campaigns.',
-          definition: {
-            'data-state': { availability: true },
-            views: [
-              { id: 'campaign-workflows', data: { source: 'workflows' } },
-              { id: 'campaign-runs', data: { source: 'runs' } },
-              { id: 'campaign-outcomes', data: { source: 'outcomes' } },
-              { id: 'campaign-usage', data: { source: 'usage' } },
-              { id: 'campaigns-utilization', title: 'Campaign AIC utilization', data: { sources: ['workflows', 'usage'] }, mark: 'element', element: 'campaign-utilization' },
-              { id: 'campaigns-run-trend', title: 'All runs over time', data: { sources: ['workflows', 'runs', 'outcomes'] }, mark: 'element', element: 'campaign-run-trend' },
-              { id: 'campaigns-summary', title: 'All output by campaign', data: { sources: ['workflows', 'usage', 'findings', 'outcomes', 'runs'] }, mark: 'element', element: 'campaign-summary-table' }
-            ]
-          }
+          id: 'overview',
+          kind: /** @type {'custom'} */ ('custom'),
+          title: 'Overview',
+          sections: [{ id: 'campaigns', layout: 'full', views: ['overview-campaigns'] }],
+          views: [{
+            id: 'overview-campaigns',
+            title: 'Campaigns',
+            data: { source: 'campaigns' },
+            mark: 'table',
+            layout: 'full-view',
+            encoding: {
+              columns: [
+                { field: 'campaign-name', type: 'nominal', title: 'Campaign' },
+                { field: 'campaign-value-created', type: 'nominal', title: 'Value created' }
+              ]
+            }
+          }]
         }]
       }
     };
@@ -3043,11 +3043,11 @@ describe('presenter built-in and custom pages', () => {
       metadata
     };
     const rendered = renderDashboard({ document, sources: { campaigns, workflows, runs, usage } });
-    const campaignsPage = rendered.querySelector('[data-page-name="campaigns"]');
-    const rows = [...(campaignsPage?.querySelectorAll('.custom-table tbody tr') ?? [])];
+    const overviewPage = rendered.querySelector('[data-page-name="overview"]');
+    const rows = [...(overviewPage?.querySelectorAll('[data-view-id="overview-campaigns"] .custom-table tbody tr') ?? [])];
     expect(rows).toHaveLength(1);
     expect(rows[0]?.textContent).toContain('30');
-    expect(campaignsPage?.querySelector('[data-table-filter]')).not.toBeNull();
+    expect(overviewPage?.querySelector('[data-view-id="overview-campaigns"] [data-table-filter]')).not.toBeNull();
 
     const unavailable = renderDashboard({
       document,
@@ -3058,8 +3058,8 @@ describe('presenter built-in and custom pages', () => {
         usage
       }
     });
-    const unavailableCampaignsPage = unavailable.querySelector('[data-page-name="campaigns"]');
-    expect(unavailableCampaignsPage?.querySelector('.custom-table')).not.toBeNull();
+    const unavailableOverviewPage = unavailable.querySelector('[data-page-name="overview"]');
+    expect(unavailableOverviewPage?.querySelector('[data-view-id="overview-campaigns"] .custom-table')).not.toBeNull();
   });
 
   it('DLS-PAGE-001 DLS-PAGE-002 DLS-PAGE-003 DLS-PAGE-004 DLS-PAGE-005 DLS-PAGE-006 DLS-PAGE-007 DLS-PAGE-008 DLS-PAGE-009 DLS-PAGE-010 DLS-PAGE-011 DLS-PAGE-012 DLS-PAGE-013 DLS-PAGE-014 DLS-PAGE-015 DLS-PAGE-017 authoritative dashboard.json keeps the remaining built-in pages declarative', () => {
@@ -3067,12 +3067,11 @@ describe('presenter built-in and custom pages', () => {
       (/** @type {{ kind: string }} */ page) => page.kind === 'built-in'
     );
     expect(Array.isArray(pages)).toBe(true);
-    expect(pages).toHaveLength(12);
+    expect(pages).toHaveLength(11);
     expect(pages.map((/** @type {{ page: string }} */ page) => page.page)).toEqual([
       'overview',
       'organizations',
       'repositories',
-      'campaigns',
       'workflows',
       'runs',
       'experiments',
