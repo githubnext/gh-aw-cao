@@ -396,15 +396,14 @@
        * @param {() => void} [retryRefresh]
        */
       const renderAfterInitialLoading = (sources, state, prepared, loadPageSources, retryRefresh) => {
-        const shouldKeepOverviewLoadingVisible = overviewPageIsActive() && (
-          state === "loading" || (state === "ready" && hasPendingOverviewSources())
-        );
-        if (!shouldKeepOverviewLoadingVisible) {
-          initialLoadingSettled = true;
+        if (!overviewPageIsActive()) {
           renderSources(sources, state, prepared, loadPageSources, retryRefresh);
           return;
         }
-        if (initialLoadingSettled) {
+        const shouldKeepOverviewLoadingVisible = overviewPageIsActive() && (
+          state === "loading" || (state === "ready" && hasPendingOverviewSources())
+        );
+        if (initialLoadingSettled || shouldKeepOverviewLoadingVisible) {
           renderSources(sources, state, prepared, loadPageSources, retryRefresh);
           return;
         }
