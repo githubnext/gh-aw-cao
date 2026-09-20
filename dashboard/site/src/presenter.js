@@ -31,6 +31,7 @@ import { declaredRouteTabs, renderDeclaredRouteTabs } from './components/route-t
 import { buildChartPoints, prepareChartPoints, prepareTableRows, toViewText } from './components/view-data.js';
 import { enableDashboardKeyboardNavigation, updateWithViewTransition } from './components/dashboard-interactions.js';
 import { requestDashboardRefresh } from './dashboard-data-updates.js';
+import { publishSource } from './source-store.js';
 
 export { enableDashboardKeyboardNavigation, updateWithViewTransition };
 import {
@@ -268,9 +269,15 @@ export function renderDashboard(input) {
       if (input.loadPageSources) {
         if (rendersBeforePageSources) {
           const renderedPage = render(sources);
-          options.onUpdate = updateHorizon;
+          const updateBoundSources = (pageSources) => {
+            updateHorizon(pageSources);
+            for (const [name, source] of Object.entries(pageSources)) {
+              publishSource(name, source, name);
+            }
+          };
+          options.onUpdate = updateBoundSources;
           void input.loadPageSources(pageId, options)
-            .then(updateHorizon)
+            .then(updateBoundSources)
             .catch((error) => {
               if (!options.signal?.aborted) {
                 console.error(`Unable to load dashboard page ${pageId}: ${error instanceof Error ? error.message : String(error)}`);
