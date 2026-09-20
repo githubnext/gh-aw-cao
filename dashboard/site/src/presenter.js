@@ -1217,9 +1217,13 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const page = pages.find((candidate) => candidate.dataset.pageId === pageId);
     syncFullViewMode(page);
     const routeNavigationPage = page?.dataset.routeNavigationPage;
+    const hasNavigationPageLink = links.some((link) => getNavigationPageId(link) === pageId);
+    const activeNavigationPageId = hasNavigationPageLink ? pageId : routeNavigationPage;
+    if (activeNavigationPageId && availableIds.has(activeNavigationPageId)) {
+      updateNavigationLinks(links, activeNavigationPageId);
+    }
     if (routeNavigationPage && availableIds.has(routeNavigationPage)) {
       const navigationLink = links.find((link) => getNavigationPageId(link) === routeNavigationPage);
-      updateNavigationLinks(links, routeNavigationPage);
       if (breadcrumbRoot instanceof HTMLAnchorElement && navigationLink) {
         breadcrumbRoot.hidden = false;
         breadcrumbRoot.textContent = navigationLink.textContent ?? routeNavigationPage;
