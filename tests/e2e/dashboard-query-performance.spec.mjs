@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { createServer } from "node:http";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { extname, resolve, sep } from "node:path";
 import {
   deployedDashboardUrl,
   shouldIgnoreRequestFailure,
@@ -11,9 +12,17 @@ import {
 } from "./dashboard-query-performance-helpers.mjs";
 
 const outputDirectory = resolve("test-results/dashboard-query-performance");
-const dashboardUrl = process.env.DASHBOARD_QUERY_PERFORMANCE_URL || deployedDashboardUrl;
+const siteRoot = resolve("dashboard/site");
+const contentTypes = new Map([
+  [".css", "text/css; charset=utf-8"],
+  [".html", "text/html; charset=utf-8"],
+  [".js", "text/javascript; charset=utf-8"],
+  [".json", "application/json; charset=utf-8"],
+  [".svg", "image/svg+xml"],
+  [".webmanifest", "application/manifest+json"],
+]);
 const dashboardDocument = JSON.parse(
-  await readFile(resolve("dashboard/site/dashboard.json"), "utf8"),
+  await readFile(resolve(siteRoot, "dashboard.json"), "utf8"),
 ).dashboard;
 const dashboardContext = {
   pages: dashboardDocument.pages,
@@ -21,8 +30,56 @@ const dashboardContext = {
   views: dashboardDocument.views ?? [],
 };
 
+async function serveDashboard(request, response) {
+  const requestUrl = new URL(request.url || "/", "http://127.0.0.1");
+  const pathname = decodeURIComponent(requestUrl.pathname === "/" ? "/index.html" : requestUrl.pathname);
+  const localPath = resolve(siteRoot, `.${pathname}`);
+  if (localPath !== siteRoot && !localPath.startsWith(`${siteRoot}${sep}`)) {
+    response.writeHead(403).end();
+    return;
+  }
+  try {
+    if (!(await stat(localPath)).isFile()) throw new Error("Not a file");
+    response.writeHead(200, {
+      "cache-control": "no-store",
+      "content-type": contentTypes.get(extname(localPath)) || "application/octet-stream",
+    });
+    response.end(await readFile(localPath));
+    return;
+  } catch (error) {
+    if (error?.code !== "ENOENT" && error?.message !== "Not a file") throw error;
+  }
+
+  const deployedResponse = await fetch(new URL(pathname.slice(1), deployedDashboardUrl));
+  response.writeHead(deployedResponse.status, {
+    "cache-control": "no-store",
+    "content-type": deployedResponse.headers.get("content-type") || "application/octet-stream",
+  });
+  response.end(Buffer.from(await deployedResponse.arrayBuffer()));
+}
+
+async function startDashboardServer() {
+  const server = createServer((request, response) => {
+    void serveDashboard(request, response).catch((error) => {
+      response.writeHead(502).end(error instanceof Error ? error.message : String(error));
+    });
+  });
+  await new Promise((resolvePromise, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolvePromise);
+  });
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("Unable to resolve dashboard server port.");
+  return {
+    server,
+    url: `http://127.0.0.1:${address.port}/`,
+  };
+}
+
 test("benchmarks every dashboard query against settled deployed data", async ({ page }, testInfo) => {
   await mkdir(outputDirectory, { recursive: true });
+  const proxy = await startDashboardServer();
+  const dashboardUrl = process.env.DASHBOARD_QUERY_PERFORMANCE_URL || proxy.url;
   const browserErrors = [];
   const failedRequests = [];
   const succeededRequests = new WeakSet();
@@ -57,106 +114,112 @@ test("benchmarks every dashboard query against settled deployed data", async ({ 
     });
   });
 
-  await page.goto(dashboardUrl, { waitUntil: "domcontentloaded" });
-  await expect(page.locator(".dashboard-root")).toBeVisible({ timeout: 120_000 });
-  await page.waitForFunction(() => {
-    const events = window.__dashboardPerformanceEvents ?? [];
-    return events.some(({ detail }) => detail?.kind === "refresh" && detail?.status === "completed");
-  }, null, { timeout: 300_000 });
-  await expect(page.locator(".dashboard-root")).not.toHaveAttribute("aria-busy", "true", {
-    timeout: 120_000,
-  });
-  await page.evaluate(() => new Promise((resolvePromise) => {
-    requestAnimationFrame(() => requestAnimationFrame(resolvePromise));
-  }));
+  try {
+    await page.goto(dashboardUrl, { waitUntil: "domcontentloaded" });
+    await expect(page.locator(".dashboard-root")).toBeVisible({ timeout: 120_000 });
+    await page.waitForFunction(() => {
+      const events = window.__dashboardPerformanceEvents ?? [];
+      return events.some(({ detail }) => detail?.kind === "refresh" && detail?.status === "completed");
+    }, null, { timeout: 300_000 });
+    await expect(page.locator(".dashboard-root")).not.toHaveAttribute("aria-busy", "true", {
+      timeout: 120_000,
+    });
+    await page.evaluate(() => new Promise((resolvePromise) => {
+      requestAnimationFrame(() => requestAnimationFrame(resolvePromise));
+    }));
 
-  const populateMs = await page.evaluate(() => {
-    const events = window.__dashboardPerformanceEvents ?? [];
-    const started = events.find(({ detail }) =>
-      detail?.kind === "refresh" && detail?.status === "started"
-    );
-    const completed = events.findLast(({ detail }) =>
-      detail?.kind === "refresh" && detail?.status === "completed"
-    );
-    if (!started || !completed || completed.at < started.at) {
-      throw new Error("Dashboard refresh timing events are incomplete.");
-    }
-    return completed.at - started.at;
-  });
-
-  const results = await page.evaluate(async ({ context, chunkSize }) => {
-    const { loadCanonicalDashboardPage } = await import("./src/data-processor.js");
-    const rounded = (value) => Math.round(value * 100) / 100;
-    const timings = [];
-    for (const definition of context.queries) {
-      const name = definition?.name;
-      if (typeof name !== "string" || !name) continue;
-      const fillStartedAt = performance.now();
-      let chunkStartedAt = performance.now();
-      let sources = await loadCanonicalDashboardPage(
-        [name],
-        context,
-        { [name]: { limit: chunkSize } },
+    const populateMs = await page.evaluate(() => {
+      const events = window.__dashboardPerformanceEvents ?? [];
+      const started = events.find(({ detail }) =>
+        detail?.kind === "refresh" && detail?.status === "started"
       );
-      const firstChunkMs = performance.now() - chunkStartedAt;
-      let source = sources[name];
-      if (!source) throw new Error(`Query "${name}" did not return its named source.`);
-      let rows = source.rows.length;
-      const continuationChunkMs = [];
-      while (source.continuationToken) {
-        chunkStartedAt = performance.now();
-        sources = await loadCanonicalDashboardPage(
+      const completed = events.findLast(({ detail }) =>
+        detail?.kind === "refresh" && detail?.status === "completed"
+      );
+      if (!started || !completed || completed.at < started.at) {
+        throw new Error("Dashboard refresh timing events are incomplete.");
+      }
+      return completed.at - started.at;
+    });
+
+    const results = await page.evaluate(async ({ context, chunkSize }) => {
+      const { loadCanonicalDashboardPage } = await import("./src/data-processor.js");
+      const rounded = (value) => Math.round(value * 100) / 100;
+      const timings = [];
+      for (const definition of context.queries) {
+        const name = definition?.name;
+        if (typeof name !== "string" || !name) continue;
+        const fillStartedAt = performance.now();
+        let chunkStartedAt = performance.now();
+        let sources = await loadCanonicalDashboardPage(
           [name],
           context,
-          { [name]: { limit: chunkSize, continuationToken: source.continuationToken } },
+          { [name]: { limit: chunkSize } },
         );
-        continuationChunkMs.push(performance.now() - chunkStartedAt);
-        source = sources[name];
-        if (!source) throw new Error(`Query "${name}" continuation omitted its named source.`);
-        rows += source.rows.length;
+        const firstChunkMs = performance.now() - chunkStartedAt;
+        let source = sources[name];
+        if (!source) throw new Error(`Query "${name}" did not return its named source.`);
+        let rows = source.rows.length;
+        const continuationChunkMs = [];
+        while (source.continuationToken) {
+          chunkStartedAt = performance.now();
+          sources = await loadCanonicalDashboardPage(
+            [name],
+            context,
+            { [name]: { limit: chunkSize, continuationToken: source.continuationToken } },
+          );
+          continuationChunkMs.push(performance.now() - chunkStartedAt);
+          source = sources[name];
+          if (!source) throw new Error(`Query "${name}" continuation omitted its named source.`);
+          rows += source.rows.length;
+        }
+        timings.push({
+          query: name,
+          rows,
+          chunks: 1 + continuationChunkMs.length,
+          firstChunkMs: rounded(firstChunkMs),
+          meanContinuationChunkMs: continuationChunkMs.length > 0
+            ? rounded(continuationChunkMs.reduce((total, duration) => total + duration, 0)
+              / continuationChunkMs.length)
+            : null,
+          fillMs: rounded(performance.now() - fillStartedAt),
+          continuationChunkMs: continuationChunkMs.map(rounded),
+        });
       }
-      timings.push({
-        query: name,
-        rows,
-        chunks: 1 + continuationChunkMs.length,
-        firstChunkMs: rounded(firstChunkMs),
-        meanContinuationChunkMs: continuationChunkMs.length > 0
-          ? rounded(continuationChunkMs.reduce((total, duration) => total + duration, 0)
-            / continuationChunkMs.length)
-          : null,
-        fillMs: rounded(performance.now() - fillStartedAt),
-        continuationChunkMs: continuationChunkMs.map(rounded),
-      });
-    }
-    return timings;
-  }, { context: dashboardContext, chunkSize: QUERY_CHUNK_SIZE });
+      return timings;
+    }, { context: dashboardContext, chunkSize: QUERY_CHUNK_SIZE });
 
-  const report = {
-    generatedAt: new Date().toISOString(),
-    dashboardUrl,
-    methodology: "Fresh Chromium profile; wait for deployed refresh completion and two animation frames; query current dashboard.json through the deployed data worker; drain 25-row continuations sequentially.",
-    chunkSize: QUERY_CHUNK_SIZE,
-    populateMs: Math.round(populateMs * 100) / 100,
-    queries: results,
-  };
-  const jsonPath = resolve(outputDirectory, "summary.json");
-  const markdownPath = resolve(outputDirectory, "summary.md");
-  await writeFile(jsonPath, `${JSON.stringify(report, null, 2)}\n`);
-  const markdown = queryPerformanceMarkdown(report);
-  await writeFile(markdownPath, markdown);
-  console.log(markdown);
-  await testInfo.attach("dashboard-query-performance-json", {
-    path: jsonPath,
-    contentType: "application/json",
-  });
-  await testInfo.attach("dashboard-query-performance-markdown", {
-    path: markdownPath,
-    contentType: "text/markdown",
-  });
+    const report = {
+      generatedAt: new Date().toISOString(),
+      dashboardUrl: deployedDashboardUrl,
+      methodology: "Fresh Chromium profile running the checkout's dashboard and query worker; proxy current deployed data; wait for refresh completion and two animation frames; drain 25-row continuations sequentially.",
+      chunkSize: QUERY_CHUNK_SIZE,
+      populateMs: Math.round(populateMs * 100) / 100,
+      queries: results,
+    };
+    const jsonPath = resolve(outputDirectory, "summary.json");
+    const markdownPath = resolve(outputDirectory, "summary.md");
+    await writeFile(jsonPath, `${JSON.stringify(report, null, 2)}\n`);
+    const markdown = queryPerformanceMarkdown(report);
+    await writeFile(markdownPath, markdown);
+    console.log(markdown);
+    await testInfo.attach("dashboard-query-performance-json", {
+      path: jsonPath,
+      contentType: "application/json",
+    });
+    await testInfo.attach("dashboard-query-performance-markdown", {
+      path: markdownPath,
+      contentType: "text/markdown",
+    });
 
-  expect(results.map(({ query }) => query)).toEqual(
-    dashboardContext.queries.map(({ name }) => name),
-  );
-  expect(browserErrors).toEqual([]);
-  expect(failedRequests).toEqual([]);
+    expect(results.map(({ query }) => query)).toEqual(
+      dashboardContext.queries.map(({ name }) => name),
+    );
+    expect(browserErrors).toEqual([]);
+    expect(failedRequests).toEqual([]);
+  } finally {
+    await new Promise((resolvePromise, reject) => {
+      proxy.server.close((error) => error ? reject(error) : resolvePromise());
+    });
+  }
 });
