@@ -266,11 +266,11 @@ export function renderDashboard(input) {
           : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, effectiveQueryContext);
       };
       if (input.loadPageSources) {
-        options.onUpdate = (pageSources) => options.renderUpdate(render(pageSources));
         if (rendersBeforePageSources) {
           const renderedPage = render(sources);
+          options.onUpdate = updateHorizon;
           void input.loadPageSources(pageId, options)
-            .then((pageSources) => options.renderUpdate(render(pageSources)))
+            .then(updateHorizon)
             .catch((error) => {
               if (!options.signal?.aborted) {
                 console.error(`Unable to load dashboard page ${pageId}: ${error instanceof Error ? error.message : String(error)}`);
@@ -278,6 +278,7 @@ export function renderDashboard(input) {
             });
           return renderedPage;
         }
+        options.onUpdate = (pageSources) => options.renderUpdate(render(pageSources));
         return input.loadPageSources(pageId, options).then(render);
       }
       const renderedPage = render(sources);

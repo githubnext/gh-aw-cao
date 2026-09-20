@@ -180,7 +180,7 @@ describe('dashboard DOM provenance', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(rendered.querySelector('[data-page-id="overview"]')).not.toBe(overviewBefore);
+    expect(rendered.querySelector('[data-page-id="overview"]')).toBe(overviewBefore);
     expect(rendered.querySelector('.factory-floor')).not.toBeNull();
     expect(rendered.querySelector('[data-view-id="overview-campaigns"]')).toBeNull();
     disposeDashboard(rendered);

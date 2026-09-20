@@ -55,22 +55,6 @@ it('forwards query context and reloads a source when that context changes', asyn
       pageId: options?.pageId,
       query: options?.queryContext?.search?.query
     });
-
-    it('keeps separate view bindings for the same canonical source', async () => {
-      configureSourceLoader((name, options) => Promise.resolve({
-        source: name,
-        rows: [{ view: options?.viewId }],
-        metadata
-      }));
-
-      requestSource('runs', { pageId: 'overview', viewId: 'header', bindingKey: 'header-runs' });
-      requestSource('runs', { pageId: 'overview', viewId: 'floor', bindingKey: 'floor-runs' });
-      await Promise.resolve();
-      await Promise.resolve();
-
-      expect(sourceState('header-runs').get().source?.rows).toEqual([{ view: 'header' }]);
-      expect(sourceState('floor-runs').get().source?.rows).toEqual([{ view: 'floor' }]);
-    });
     return Promise.resolve({ source: name, rows: [], metadata });
   });
 
@@ -85,6 +69,22 @@ it('forwards query context and reloads a source when that context changes', asyn
     { pageId: 'overview', query: 'first' },
     { pageId: 'overview', query: 'second' }
   ]);
+});
+
+it('keeps separate view bindings for the same canonical source', async () => {
+  configureSourceLoader((name, options) => Promise.resolve({
+    source: name,
+    rows: [{ view: options?.viewId }],
+    metadata
+  }));
+
+  requestSource('runs', { pageId: 'overview', viewId: 'header', bindingKey: 'header-runs' });
+  requestSource('runs', { pageId: 'overview', viewId: 'floor', bindingKey: 'floor-runs' });
+  await Promise.resolve();
+  await Promise.resolve();
+
+  expect(sourceState('header-runs').get().source?.rows).toEqual([{ view: 'header' }]);
+  expect(sourceState('floor-runs').get().source?.rows).toEqual([{ view: 'floor' }]);
 });
 
 it('marks a source failed when its query rejects', async () => {
