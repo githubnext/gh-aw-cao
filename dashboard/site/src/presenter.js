@@ -1041,7 +1041,13 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const navigationPage = typeof event.detail?.navigationPage === 'string'
       ? event.detail.navigationPage
       : page.dataset.routeNavigationPage ?? '';
-    const activeNavigationPageId = determineActiveNavigationPageId(page.dataset.pageId, navigationPage, '', links, availableIds);
+    const activeNavigationPageId = determineActiveNavigationPageId(
+      page.dataset.pageId,
+      navigationPage,
+      '',
+      links,
+      availableIds
+    );
     if (activeNavigationPageId) {
       updateNavigationLinks(links, activeNavigationPageId);
     }
@@ -1218,10 +1224,9 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const page = pages.find((candidate) => candidate.dataset.pageId === pageId);
     syncFullViewMode(page);
     const routeNavigationPage = page?.dataset.routeNavigationPage;
-    const isDirectNavigationPage = links.some((link) => getNavigationPageId(link) === pageId);
-    const activeNavigationPageId = determineActiveNavigationPageId(pageId, routeNavigationPage, isDirectNavigationPage ? pageId : '', links, availableIds);
+    const activeNavigationPageId = determineActiveNavigationPageId(pageId, routeNavigationPage, '', links, availableIds);
     updateNavigationLinks(links, activeNavigationPageId);
-    if (!isDirectNavigationPage && routeNavigationPage && availableIds.has(routeNavigationPage)) {
+    if (page?.dataset.routeParameter && routeNavigationPage && availableIds.has(routeNavigationPage)) {
       const navigationLink = links.find((link) => getNavigationPageId(link) === routeNavigationPage);
       if (breadcrumbRoot instanceof HTMLAnchorElement && navigationLink) {
         breadcrumbRoot.hidden = false;
@@ -1229,6 +1234,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
         breadcrumbRoot.href = `#page-${routeNavigationPage}`;
       }
       if (breadcrumbDashboard instanceof HTMLAnchorElement) breadcrumbDashboard.hidden = true;
+      updateNavigationLinks(links, routeNavigationPage);
     }
     const routeParameter = page?.dataset.routeParameter;
     const routeValue = routeParameter ? parameters.get(routeParameter)?.trim() ?? '' : '';
@@ -1476,9 +1482,9 @@ function updateNavigationLinks(links, pageId) {
 }
 
 /**
- * Prefer the actual page in the sidebar when it is a direct navigation target.
- * Route-based parent links still inform breadcrumbs but should not override a
- * direct nav decision like Notifications -> Overview.
+ * Prefer the actual page whenever it is a direct sidebar destination. Route
+ * metadata still informs breadcrumbs and historical back-navigation for drilldown
+ * pages, but it should not override a real direct selection like Notifications.
  * @param {string | undefined} pageId
  * @param {string | undefined} routeNavigationPage
  * @param {string | undefined} directPageId
@@ -1488,7 +1494,7 @@ function updateNavigationLinks(links, pageId) {
  */
 function determineActiveNavigationPageId(pageId, routeNavigationPage, directPageId, links, availableIds) {
   const hasDirectPageLink = directPageId && availableIds.has(directPageId) && links.some((link) => getNavigationPageId(link) === directPageId);
-  if (directPageId && hasDirectPageLink) {
+  if (hasDirectPageLink) {
     return directPageId;
   }
   if (pageId && availableIds.has(pageId) && links.some((link) => getNavigationPageId(link) === pageId)) {
