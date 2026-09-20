@@ -15,11 +15,19 @@ test("dashboard query benchmark runs serially with enough time for deployed data
   assert.equal(QUERY_CHUNK_SIZE, 25);
 });
 
-test("deployed integration runs and uploads the query benchmark", () => {
+test("deployed integration isolates query benchmark reporting from test permissions", () => {
   const workflow = readFileSync(".github/workflows/dashboard-deployed-integration.yml", "utf8");
+  assert.match(workflow, /pull_request:\n\s+paths:/);
+  assert.match(workflow, /group: dashboard-deployed-integration-\$\{\{[\s\S]*github\.event\.pull_request\.number/);
+  assert.match(workflow, /tests\/e2e\/dashboard-deployed-refresh-helpers\.mjs/);
+  assert.match(workflow, /tests\/e2e\/dashboard-view-assessment\.mjs/);
   assert.match(workflow, /run: npm run test:performance:dashboard-queries/);
   assert.match(workflow, /test-results\/dashboard-query-performance\//);
-  assert.match(workflow, /steps\.performance\.outcome == 'failure'/);
+  assert.match(workflow, /query-performance:\n[\s\S]*permissions:\n\s+contents: read/);
+  assert.match(workflow, /query-performance-comment:\n[\s\S]*needs: query-performance/);
+  assert.match(workflow, /query-performance-comment:[\s\S]*issues: write/);
+  assert.match(workflow, /name: dashboard-query-performance/);
+  assert.match(workflow, /dashboard-query-performance-results/);
 });
 
 test("deployed proxy targets remain under the trusted dashboard URL", () => {
