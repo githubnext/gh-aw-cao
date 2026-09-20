@@ -22,6 +22,8 @@ import { createDebug, debugShardLimit } from './debug.js';
 import { withRetries } from './retry.js';
 
 const debugIngestion = createDebug('data:ingestion');
+const debugPerformance = createDebug('data:performance');
+const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 const workerScope = typeof self !== 'undefined' && 'postMessage' in self ? self : null;
 
 /** @param {ReadableStream<Uint8Array>} body */
@@ -149,11 +151,15 @@ async function queryLiveDashboard(
     cacheId
   );
   return dashboardQueryMemoization.get(dashboard.revision, key, async () => {
+    const startedAt = monotonicNow();
     const required = resolveDashboardQuerySources(context.queries, requested);
+    /** @type {{ databaseMs: number, projectionMs: number, totalMs: number, recordsRead: number, stores: string[] } | undefined} */
+    let canonicalMetrics;
     const canonicalPayload = await queryCanonicalViewSources(
       indexedDB,
       dashboard.logicalSources,
-      required
+      required,
+      { onMetrics: (metrics) => { canonicalMetrics = metrics; } }
     );
     const healthPayload = required.some((name) => (
       name === 'data-health-collections' || name === 'data-health-coverage'
@@ -191,11 +197,26 @@ async function queryLiveDashboard(
       : {};
     const selected = pageScopedSources(querySources, requested);
     const responseSources = { ...selected, ...viewAliases };
-    return paginateDashboardSources(
+    const response = paginateDashboardSources(
       responseSources,
       /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (pagination ?? {}),
       continuationRevision(context.queries, dashboard.revision)
     );
+    const totalMs = monotonicNow() - startedAt;
+    const databaseMs = canonicalMetrics?.databaseMs ?? 0;
+    debugPerformance('page query', {
+      pageId: pageId ?? null,
+      viewId: viewId ?? null,
+      databaseMs,
+      queryMs: Math.max(0, totalMs - databaseMs),
+      projectionMs: canonicalMetrics?.projectionMs ?? 0,
+      totalMs,
+      recordsRead: canonicalMetrics?.recordsRead ?? 0,
+      stores: canonicalMetrics?.stores ?? [],
+      requestedSources: [...requested],
+      returnedRows: Object.fromEntries(Object.entries(response).map(([name, source]) => [name, source.rows.length]))
+    });
+    return response;
   });
 }
 

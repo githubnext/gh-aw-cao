@@ -175,7 +175,7 @@
         "id": "entity-repositories",
         "title": "Repositories",
         "description": "Select a repository to inspect its declared workflows.",
-        "data": { "source": "entity-repositories" },
+        "data": { "source": "repositories" },
         "mark": "list",
         "list": {
           "style": "entity-cards",
@@ -703,19 +703,6 @@
       }
     },
     "queries": [
-      {
-        "name": "entity-repositories",
-        "intent": "Project repository entities for reusable repository cards.",
-        "from": "repositories",
-        "select": [
-          { "field": "organization" },
-          { "field": "repository" },
-          { "field": "repository-coordinate" },
-          { "field": "observed-at" },
-          { "field": "repository-link" }
-        ],
-        "order-by": [{ "field": "repository-coordinate", "direction": "asc" }]
-      },
       {
         "name": "entity-workflow-run-totals",
         "intent": "Summarize run outcomes and AI Credit consumption for reusable workflow cards.",
@@ -3697,6 +3684,50 @@
         "order-by": [{ "field": "priority", "direction": "asc" }, { "field": "domain", "direction": "asc" }]
       },
       {
+        "name": "repository-value-created-top",
+        "intent": "Rank the ten repositories with the most observed operational value.",
+        "description": "Top repositories by summed operational value.",
+        "from": "operational-values",
+        "compute": [
+          {
+            "as": "repository-coordinate",
+            "function": "concat",
+            "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }]
+          }
+        ],
+        "aggregate": {
+          "by": ["repository-coordinate"],
+          "values": [{ "field": "operational-value", "as": "value-created", "reducer": "sum" }]
+        },
+        "order-by": [
+          { "field": "value-created", "direction": "desc" },
+          { "field": "repository-coordinate", "direction": "asc" }
+        ],
+        "limit": 10
+      },
+      {
+        "name": "repository-audit-issues-top",
+        "intent": "Rank the ten repositories with the most audit issues.",
+        "description": "Top repositories by observed audit issue count.",
+        "from": "issues",
+        "compute": [
+          {
+            "as": "repository-coordinate",
+            "function": "concat",
+            "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }]
+          }
+        ],
+        "aggregate": {
+          "by": ["repository-coordinate"],
+          "values": [{ "field": "repository-coordinate", "as": "audit-issues", "reducer": "count" }]
+        },
+        "order-by": [
+          { "field": "audit-issues", "direction": "desc" },
+          { "field": "repository-coordinate", "direction": "asc" }
+        ],
+        "limit": 10
+      },
+      {
         "name": "repository-workflow-totals",
         "intent": "Summarize declared and disabled workflow counts by repository.",
         "description": "Declared and disabled workflow totals for each repository.",
@@ -4266,6 +4297,59 @@
             "availability": true
           },
           "views": [
+           {
+             "id": "repositories-value-created",
+             "title": "Top repositories by Ops Value",
+             "description": "The share of observed operational value created by the ten highest-value repositories.",
+             "data": {
+               "source": "repository-value-created-top"
+             },
+             "mark": "chart",
+             "chart": "pie",
+             "layout": "half",
+             "empty-message": "No repository operational value was observed in the selected horizon.",
+             "encoding": {
+               "x": {
+                 "field": "repository-coordinate",
+                 "type": "nominal",
+                 "title": "Repository"
+               },
+               "y": {
+                 "field": "value-created",
+                 "type": "quantitative",
+                 "aggregate": "sum",
+                 "as": "total-value-created",
+                 "title": "Ops Value",
+                 "unit": "ops-value"
+               }
+             }
+           },
+           {
+             "id": "repositories-audit-issues",
+             "title": "Top repositories by audit issues",
+             "description": "The share of observed audit issues attributed to the ten repositories with the most issues.",
+             "data": {
+               "source": "repository-audit-issues-top"
+             },
+             "mark": "chart",
+             "chart": "pie",
+             "layout": "half",
+             "empty-message": "No repository audit issues were observed in the selected horizon.",
+             "encoding": {
+               "x": {
+                 "field": "repository-coordinate",
+                 "type": "nominal",
+                 "title": "Repository"
+               },
+               "y": {
+                 "field": "audit-issues",
+                 "type": "quantitative",
+                 "aggregate": "sum",
+                 "as": "total-audit-issues",
+                 "title": "Audit issues"
+               }
+             }
+           },
             {
               "id": "overview-run-health",
               "locked": true,

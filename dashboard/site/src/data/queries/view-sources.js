@@ -3,6 +3,8 @@ import { workflowSourcePath } from '../model/ids.js';
 import { readCollections } from '../storage/indexeddb.js';
 import { createCanonicalQueries } from './index.js';
 
+const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
+
 /**
  * @param {Record<string, unknown>} sources
  * @param {string} sourceName
@@ -1112,8 +1114,10 @@ export async function projectCanonicalViewSources(indexedDB, logicalSources) {
  * @param {IDBFactory} indexedDB
  * @param {Record<string, unknown>} logicalSources
  * @param {string[]} sourceNames
+ * @param {{ onMetrics?: (metrics: { databaseMs: number, projectionMs: number, totalMs: number, recordsRead: number, stores: string[] }) => void }} [options]
  */
-export async function queryCanonicalViewSources(indexedDB, logicalSources, sourceNames) {
+export async function queryCanonicalViewSources(indexedDB, logicalSources, sourceNames, options = {}) {
+  const startedAt = monotonicNow();
   if (!Array.isArray(sourceNames) || sourceNames.some((name) => typeof name !== 'string')) {
     throw new TypeError('Canonical view source names must be an array of strings.');
   }
@@ -1176,11 +1180,13 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
     ['issues', needsIssues]
   ]);
   const selectedStores = stores.filter(([, selected]) => selected).map(([storeName]) => storeName);
+  const databaseStartedAt = monotonicNow();
   const [collections, failedRuns, transactions] = await Promise.all([
     readCollections(indexedDB, selectedStores),
     needed.has('failed-runs') ? queries.runs.recentFailures() : [],
     needed.has('transactions') ? queries.transactions.list() : []
   ]);
+  const databaseMs = monotonicNow() - databaseStartedAt;
   const campaigns = collections.campaigns ?? [];
   const repositories = collections.repositories ?? [];
   const workflows = collections.workflows ?? [];
@@ -1316,5 +1322,15 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   if (needsFirewall) {
     projected['firewall-observations'] = firewallObservationsSource(domains, runsById, sources);
   }
+  const totalMs = monotonicNow() - startedAt;
+  options.onMetrics?.({
+    databaseMs,
+    projectionMs: Math.max(0, totalMs - databaseMs),
+    totalMs,
+    recordsRead: Object.values(collections).reduce((total, records) => total + records.length, 0)
+      + failedRuns.length
+      + transactions.length,
+    stores: selectedStores
+  });
   return projected;
 }
