@@ -4,6 +4,7 @@ import {
   dashboardAssessmentPageBudgetMs,
   dashboardAssessmentStartupBudgetMs,
   dashboardAssessmentTimeout,
+  dashboardPageRendersBeforeSources,
   declaredDashboardViewIds,
   ignoredDashboardPageIds,
   isExpectedPageCloseAbort,
@@ -35,6 +36,21 @@ test("finds declared views in loaded custom and built-in page definitions", () =
     definition: { views: [{ id: "details" }] },
   }), ["details"]);
   assert.deepEqual(declaredDashboardViewIds({ kind: "custom" }), []);
+});
+
+test("identifies pages that render before companion sources resolve", () => {
+  assert.equal(dashboardPageRendersBeforeSources({
+    kind: "custom",
+    views: [{ element: "factory-header" }],
+  }), true);
+  assert.equal(dashboardPageRendersBeforeSources({
+    kind: "custom",
+    views: ["shared-table"],
+  }, [{ id: "shared-table", mark: "table" }]), false);
+  assert.equal(dashboardPageRendersBeforeSources({
+    kind: "built-in",
+    definition: { views: [{ mark: "table" }] },
+  }), false);
 });
 
 test("grows the assessment timeout with the number of selected views", () => {

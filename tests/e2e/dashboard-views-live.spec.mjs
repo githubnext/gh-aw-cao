@@ -3,8 +3,10 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
 import {
+  dashboardAssessmentPageBudgetMs,
   dashboardAssessmentStartupBudgetMs,
   dashboardAssessmentTimeout,
+  dashboardPageRendersBeforeSources,
   declaredDashboardViewIds,
   ignoredDashboardPageIds,
   isIgnoredDashboardPageId,
@@ -95,10 +97,20 @@ test("each selected dashboard view renders with live data", async ({ page }, tes
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.addInitScript(() => {
       window.__dashboardRefreshStatus = null;
+      window.__dashboardPageRenderCounts = {};
       document.addEventListener("dashboard-data", (event) => {
         if (event.detail?.kind === "refresh") {
           window.__dashboardRefreshStatus = event.detail.status;
+          if (event.detail.status === "completed") {
+            window.__dashboardPageRenderCounts = {};
+          }
         }
+      });
+      document.addEventListener("dashboard-render", (event) => {
+        if (event.detail?.kind !== "page" || event.detail?.status !== "completed") return;
+        const pageId = event.detail.pageId;
+        window.__dashboardPageRenderCounts[pageId] =
+          (window.__dashboardPageRenderCounts[pageId] || 0) + 1;
       });
     });
     let errors = [];
@@ -151,6 +163,7 @@ test("each selected dashboard view renders with live data", async ({ page }, tes
           });
         } else {
           await page.evaluate((pageId) => {
+            window.__dashboardPageRenderCounts[pageId] = 0;
             window.location.hash = `#page-${encodeURIComponent(pageId)}`;
           }, pageDefinition.id);
         }
@@ -167,6 +180,15 @@ test("each selected dashboard view renders with live data", async ({ page }, tes
             "The dashboard must complete its canonical data refresh",
           ).toBe("completed");
         }
+        const expectedPageRenders = dashboardPageRendersBeforeSources(
+          pageDefinition,
+          dashboard.dashboard.views,
+        ) ? 2 : 1;
+        await page.waitForFunction(({ pageId, expected }) =>
+          (window.__dashboardPageRenderCounts[pageId] || 0) >= expected,
+        { pageId: pageDefinition.id, expected: expectedPageRenders }, {
+          timeout: dashboardAssessmentPageBudgetMs,
+        });
         await expect(dashboardRoot).not.toHaveAttribute("aria-busy", "true", { timeout: 120_000 });
         await expect(activePage).toBeVisible();
         await expect(activePage).not.toHaveAttribute("data-page-pending", "", { timeout: 120_000 });
@@ -205,6 +227,8 @@ test("each selected dashboard view renders with live data", async ({ page }, tes
           ));
         result.domNodes = await page.locator("*").count();
         result.crashed = crashed;
+        result.errors = [...errors];
+        result.failedRequests = [...failedRequests];
         result.status = (
           !crashed
           && errors.length === 0
@@ -219,6 +243,8 @@ test("each selected dashboard view renders with live data", async ({ page }, tes
         result.crashed = crashed;
         result.status = "failed";
       } finally {
+        result.errors = [...errors];
+        result.failedRequests = [...failedRequests];
         summary.results.push(result);
       }
       if (summary.results.filter((entry) => entry.status !== "passed").length >= maximumFailedViews) {
