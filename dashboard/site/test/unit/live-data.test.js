@@ -20,7 +20,7 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain("const AGENTIC_LOADER_REVEAL_DELAY_MS = 300");
     expect(preview).toContain("const AGENTIC_LOADER_MIN_VISIBLE_MS = 700");
     expect(preview).toContain("renderAfterInitialLoading(sources, state, true, loadPageSources, retryRefresh)");
-    expect(preview).toContain('loading: state === "loading"');
+    expect(preview).toContain("loading: keepOverviewLoaderVisible");
     expect(preview).toContain("dashboard-loading-skeleton");
     expect(preview).not.toContain("Loading dashboard data…");
     expect(preview).not.toContain("startLoadingProgress(document)");
