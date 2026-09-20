@@ -310,7 +310,12 @@ export function renderDashboard(input) {
       };
       const page = resolvedPage();
       return input.loadPageSources?.prepare && page && !dashboardPageIsLoaded(page)
-        ? input.loadPageSources.prepare(pageId).then(renderPreparedPage)
+        ? input.loadPageSources.prepare(pageId).then(() => {
+            if (options.signal.aborted) {
+              throw new DOMException('Dashboard page preparation was cancelled.', 'AbortError');
+            }
+            return renderPreparedPage();
+          })
         : renderPreparedPage();
     },
     sidebar.dataset.defaultPageId,

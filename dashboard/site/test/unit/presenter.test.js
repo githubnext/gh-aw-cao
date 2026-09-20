@@ -232,6 +232,58 @@ describe('dashboard DOM provenance', () => {
     disposeDashboard(rendered);
   });
 
+  it('does not mount or query a prepared page after its navigation lifetime ends', async () => {
+    const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ (/** @type {unknown} */ ({
+      languageVersion: '0.1.0',
+      dashboard: {
+        id: 'cancelled-chunk-dashboard',
+        title: 'Cancelled chunk dashboard',
+        pages: [{
+          id: 'overview',
+          kind: 'custom',
+          title: 'Overview',
+          chunk: 'dashboard-pages/overview.json',
+          'independent-source-bindings': true
+        }]
+      }
+    }));
+    let finishPreparation = () => {};
+    const loadPageSources = vi.fn(
+      /** @type {NonNullable<Parameters<typeof renderDashboardView>[0]['loadPageSources']>} */ (
+        () => new Promise(() => {})
+      )
+    );
+    loadPageSources.prepare = () => new Promise((resolve) => {
+      finishPreparation = () => {
+        Object.assign(document.dashboard.pages[0], {
+          views: [{
+            id: 'overview-header',
+            data: {
+              sources: [
+                'overview-outcome-summary',
+                'overview-run-summary',
+                'overview-factory-status',
+                'overview-rhythm'
+              ]
+            },
+            mark: 'element',
+            element: 'factory-header'
+          }]
+        });
+        resolve();
+      };
+    });
+
+    const rendered = renderDashboardView({ document, sources: {}, loadPageSources });
+    disposeDashboard(rendered);
+    finishPreparation();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(loadPageSources).not.toHaveBeenCalled();
+    expect(rendered.querySelector('.factory-intro')).toBeNull();
+  });
+
   it('waits for page sources when a page mixes bound elements with ordinary views', async () => {
     const rendered = renderDashboardView({
       document: {
