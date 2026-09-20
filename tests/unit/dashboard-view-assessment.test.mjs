@@ -4,12 +4,14 @@ import {
   dashboardAssessmentPageBudgetMs,
   dashboardAssessmentStartupBudgetMs,
   dashboardAssessmentTimeout,
+  declaredDashboardViewIds,
   ignoredDashboardPageIds,
   isExpectedPageCloseAbort,
   isIgnoredDashboardPageId,
   isSpuriousAbortAfterSuccessResponse,
   maximumDashboardAssessmentTimeoutMs,
   visibleBusyViewSelector,
+  visibleLoadingViewSelector,
   visibleViewSelector,
   withoutIgnoredDashboardPageIds,
 } from "../e2e/dashboard-view-assessment.mjs";
@@ -17,6 +19,22 @@ import {
 test("assesses only the views a reader can see", () => {
   assert.equal(visibleViewSelector, "[data-view-id]:visible");
   assert.equal(visibleBusyViewSelector, '[aria-busy="true"]:visible');
+  assert.equal(
+    visibleLoadingViewSelector,
+    ".dashboard-view-skeleton:visible, .dashboard-lazy-view-skeleton:visible",
+  );
+});
+
+test("finds declared views in loaded custom and built-in page definitions", () => {
+  assert.deepEqual(declaredDashboardViewIds({
+    kind: "custom",
+    views: [{ id: "summary" }, { mark: "table" }, "shared-view"],
+  }, [{ id: "shared-view" }]), ["summary", "view-2", "shared-view"]);
+  assert.deepEqual(declaredDashboardViewIds({
+    kind: "built-in",
+    definition: { views: [{ id: "details" }] },
+  }), ["details"]);
+  assert.deepEqual(declaredDashboardViewIds({ kind: "custom" }), []);
 });
 
 test("grows the assessment timeout with the number of selected views", () => {

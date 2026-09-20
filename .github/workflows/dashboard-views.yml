@@ -146,6 +146,9 @@ jobs:
                   ...((result.missingData || []).length > 0
                     ? [`${result.missingData.length} missing data source(s)`]
                     : []),
+                  ...((result.loadingViews || []).length > 0
+                    ? [`${result.loadingViews.length} loading skeleton(s)`]
+                    : []),
                   ...(result.domNodes > summary.maximumDomNodes
                     ? [`DOM budget exceeded: ${result.domNodes}/${summary.maximumDomNodes}`]
                     : []),

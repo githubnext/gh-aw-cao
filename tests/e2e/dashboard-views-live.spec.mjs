@@ -4,14 +4,21 @@ import { join, resolve } from "node:path";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
 import {
   dashboardAssessmentTimeout,
+  declaredDashboardViewIds,
   ignoredDashboardPageIds,
   isExpectedPageCloseAbort,
   isIgnoredDashboardPageId,
   isSpuriousAbortAfterSuccessResponse,
   visibleBusyViewSelector,
+  visibleLoadingViewSelector,
   visibleViewSelector,
 } from "./dashboard-view-assessment.mjs";
 import { downloadDeployedDashboardData } from "./dashboard-view-data.mjs";
+import {
+  dashboardPageChunkPath,
+  mergeDashboardPage,
+  normalizeDashboardPageChunk,
+} from "../../dashboard/site/src/dashboard-chunks.js";
 
 const outputDirectory = resolve(
   process.env.DASHBOARD_VIEWS_OUTPUT_DIR || "test-results/dashboard-views",
@@ -29,6 +36,19 @@ function selectedPages(dashboard) {
 
 function messageText(value) {
   return value instanceof Error ? value.message : String(value);
+}
+
+async function loadPageDefinition(previewUrl, pageDefinition) {
+  const chunkPath = dashboardPageChunkPath(pageDefinition);
+  if (!chunkPath) return pageDefinition;
+  const response = await fetch(new URL(chunkPath, `${previewUrl.replace(/\/$/, "")}/`));
+  if (!response.ok) {
+    throw new Error(
+      `Unable to load dashboard page definition "${pageDefinition.id}": HTTP ${response.status}.`,
+    );
+  }
+  const chunk = normalizeDashboardPageChunk(await response.json());
+  return mergeDashboardPage(pageDefinition, chunk.page);
 }
 
 test("each selected dashboard view renders with live data", async ({ browser }, testInfo) => {
@@ -62,7 +82,9 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
       throw new Error(`Unable to load composed dashboard.json: HTTP ${dashboardResponse.status}.`);
     }
     const dashboard = await dashboardResponse.json();
-    const pages = selectedPages(dashboard);
+    const pages = await Promise.all(
+      selectedPages(dashboard).map((page) => loadPageDefinition(preview.url, page)),
+    );
     summary.selectedPageIds = pages.map((page) => page.id);
     if (pages.length === 0) {
       if (summary.selectionMode === "affected") return;
@@ -72,6 +94,14 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
 
     for (const pageDefinition of pages) {
       const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+      await page.addInitScript(() => {
+        window.__dashboardRefreshStatus = null;
+        document.addEventListener("dashboard-data", (event) => {
+          if (event.detail?.kind === "refresh") {
+            window.__dashboardRefreshStatus = event.detail.status;
+          }
+        });
+      });
       const errors = [];
       const failedRequests = [];
       let crashed = false;
@@ -104,11 +134,11 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
         title: pageDefinition.title || pageDefinition.page || pageDefinition.id,
         status: "incomplete",
         domNodes: null,
-        declaredViews: (pageDefinition.views || pageDefinition.definition?.views || [])
-          .map((view, index) => view.id || `view-${index + 1}`),
+        declaredViews: declaredDashboardViewIds(pageDefinition, dashboard.dashboard.views),
         renderedViews: [],
         missingViews: [],
         missingData: [],
+        loadingViews: [],
         crashed: false,
         errors,
         failedRequests,
@@ -121,8 +151,17 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
         const dashboardRoot = page.locator(".dashboard-root");
         const activePage = page.locator(`[data-page-id="${pageDefinition.id}"]`);
         await expect(dashboardRoot).toBeVisible();
+        // The shell can be visible and idle before canonical ingestion starts.
+        await page.waitForFunction(() =>
+          ["completed", "failed"].includes(window.__dashboardRefreshStatus),
+        null, { timeout: 120_000 });
+        expect(
+          await page.evaluate(() => window.__dashboardRefreshStatus),
+          "The dashboard must complete its canonical data refresh",
+        ).toBe("completed");
         await expect(dashboardRoot).not.toHaveAttribute("aria-busy", "true", { timeout: 120_000 });
         await expect(activePage).toBeVisible();
+        await expect(activePage).not.toHaveAttribute("data-page-pending", "", { timeout: 120_000 });
         await expect(activePage).not.toHaveAttribute("aria-busy", "true", { timeout: 120_000 });
         await activePage.locator("details.view-disclosure").evaluateAll((disclosures) => {
           for (const disclosure of disclosures) disclosure.open = true;
@@ -152,6 +191,10 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
         );
         result.missingData = await activePage.locator('[aria-label^="Unable to load "]')
           .evaluateAll((elements) => elements.map((element) => element.getAttribute("aria-label")));
+        result.loadingViews = await activePage.locator(visibleLoadingViewSelector)
+          .evaluateAll((elements) => elements.map((element) =>
+            element.closest("[data-view-id]")?.getAttribute("data-view-id") || "page"
+          ));
         result.domNodes = await page.locator("*").count();
         result.crashed = crashed;
         result.status = (
@@ -160,6 +203,7 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
           && failedRequests.length === 0
           && result.missingViews.length === 0
           && result.missingData.length === 0
+          && result.loadingViews.length === 0
           && result.domNodes <= maximumDomNodes
         ) ? "passed" : "failed";
       } catch (error) {

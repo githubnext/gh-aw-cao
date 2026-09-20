@@ -16,6 +16,25 @@ export function withoutIgnoredDashboardPageIds(pageIds) {
 // consume the assessment's time budget.
 export const visibleViewSelector = "[data-view-id]:visible";
 export const visibleBusyViewSelector = '[aria-busy="true"]:visible';
+export const visibleLoadingViewSelector =
+  ".dashboard-view-skeleton:visible, .dashboard-lazy-view-skeleton:visible";
+
+export function declaredDashboardViewIds(pageDefinition, reusableViews = []) {
+  const views = pageDefinition?.kind === "built-in"
+    ? pageDefinition.definition?.views
+    : pageDefinition?.views;
+  const reusableViewIds = new Set(
+    reusableViews.flatMap((view) => (
+      typeof view === "object" && view !== null && typeof view.id === "string" ? [view.id] : []
+    )),
+  );
+  return (Array.isArray(views) ? views : [])
+    .map((view, index) => (
+      typeof view === "object" && view !== null && typeof view.id === "string"
+        ? view.id
+        : typeof view === "string" && reusableViewIds.has(view) ? view : `view-${index + 1}`
+    ));
+}
 
 // The assessment loads every selected page in its own browser page, so the test
 // budget has to grow with the number of selected pages. The 26-minute, 40-second
