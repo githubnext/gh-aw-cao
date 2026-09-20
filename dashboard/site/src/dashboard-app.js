@@ -318,6 +318,8 @@
 
       /** @returns {boolean} */
       const hasPendingOverviewSources = () => pendingSourceNames((name) => name.startsWith("overview-")).length > 0;
+      /** @returns {boolean} */
+      const overviewPageIsActive = () => document.querySelector('[data-page-id="overview"]:not([hidden])') instanceof HTMLElement;
       /**
       * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
       * @param {'ready' | 'loading' | 'cached' | 'stale'} [state]
@@ -327,7 +329,9 @@
       */
       const renderSources = (sources, state = "ready", prepared = false, loadPageSources, retryRefresh) => {
         const canExecuteCliActions = previewMode === "canvas";
-        const keepOverviewLoaderVisible = state === "loading" || (state === "ready" && hasPendingOverviewSources());
+        const keepOverviewLoaderVisible = overviewPageIsActive() && (
+          state === "loading" || (state === "ready" && hasPendingOverviewSources())
+        );
         renderedSources = sources;
         renderedSourcesPrepared = prepared;
         renderedPageSourceLoader = loadPageSources;
@@ -392,7 +396,10 @@
        * @param {() => void} [retryRefresh]
        */
       const renderAfterInitialLoading = (sources, state, prepared, loadPageSources, retryRefresh) => {
-        if (initialLoadingSettled || state === "loading" || (state === "ready" && hasPendingOverviewSources())) {
+        const shouldKeepOverviewLoadingVisible = overviewPageIsActive() && (
+          state === "loading" || (state === "ready" && hasPendingOverviewSources())
+        );
+        if (initialLoadingSettled || shouldKeepOverviewLoadingVisible) {
           renderSources(sources, state, prepared, loadPageSources, retryRefresh);
           return;
         }
