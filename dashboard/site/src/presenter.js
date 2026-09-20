@@ -1044,7 +1044,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const activeNavigationPageId = determineActiveNavigationPageId(
       page.dataset.pageId,
       navigationPage,
-      '',
+      page.dataset.pageId,
       links,
       availableIds
     );
@@ -1226,7 +1226,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const routeNavigationPage = page?.dataset.routeNavigationPage;
     const activeNavigationPageId = determineActiveNavigationPageId(pageId, routeNavigationPage, '', links, availableIds);
     updateNavigationLinks(links, activeNavigationPageId);
-    if (page?.dataset.routeParameter && routeNavigationPage && availableIds.has(routeNavigationPage)) {
+    if (routeNavigationPage && availableIds.has(routeNavigationPage)) {
       const navigationLink = links.find((link) => getNavigationPageId(link) === routeNavigationPage);
       if (breadcrumbRoot instanceof HTMLAnchorElement && navigationLink) {
         breadcrumbRoot.hidden = false;
@@ -1234,7 +1234,10 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
         breadcrumbRoot.href = `#page-${routeNavigationPage}`;
       }
       if (breadcrumbDashboard instanceof HTMLAnchorElement) breadcrumbDashboard.hidden = true;
-      updateNavigationLinks(links, routeNavigationPage);
+      const hasDirectNavigationLink = pageId && availableIds.has(pageId) && links.some((link) => getNavigationPageId(link) === pageId);
+      if (!hasDirectNavigationLink) {
+        updateNavigationLinks(links, routeNavigationPage);
+      }
     }
     const routeParameter = page?.dataset.routeParameter;
     const routeValue = routeParameter ? parameters.get(routeParameter)?.trim() ?? '' : '';
