@@ -1640,7 +1640,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
         },
         repositories: {
           source: 'repositories',
-          rows: [{ repository: 'gh-aw', 'rollout-mode': 'review', 'observed-at': '2026-08-29T09:30:00Z' }],
+          rows: [{ id: 'repository:github/gh-aw', repository: 'gh-aw', 'rollout-mode': 'review', 'observed-at': '2026-08-29T09:30:00Z' }],
           metadata
         },
         workflows: {

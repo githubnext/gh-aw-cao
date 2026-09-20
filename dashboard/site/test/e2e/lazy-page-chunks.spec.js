@@ -31,7 +31,7 @@ const inventory = {
     metadata: { 'as-of': '2026-09-15T10:00:00Z', 'retrieved-at': '2026-09-15T10:00:00Z', completeness: 'complete', freshness: 'fresh', availability: 'available' },
   },
   repositories: {
-    rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }],
+    rows: [{ id: 'repository:githubnext/gh-aw-cao', organization: 'githubnext', repository: 'gh-aw-cao' }],
     metadata: { 'as-of': '2026-09-15T10:00:00Z', 'retrieved-at': '2026-09-15T10:00:00Z', completeness: 'complete', freshness: 'fresh', availability: 'available' },
   },
   workflows: {

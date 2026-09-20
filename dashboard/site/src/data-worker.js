@@ -187,7 +187,7 @@ async function queryLiveDashboard(
           queries: context.queries,
           views: context.views,
           viewId,
-          sourceNames: requested
+          sourceNames: [...requested].filter((name) => !nativeSourceNames.has(name))
         })
       : { aliases: [], queries: [], replacedSources: [] };
     const replacedSources = new Set(viewPayload.replacedSources);
