@@ -10,7 +10,7 @@ import {
   isNormalizedJsonCurrent
 } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
-import { queryCanonicalViewSources } from './data/queries/view-sources.js';
+import { queryCanonicalViewSources, queryNativeCountSources } from './data/queries/view-sources.js';
 import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-compiler.js';
 import { createDashboardQueryMemoization, dashboardQueryMemoizationKey } from './data/queries/memoization.js';
 import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
@@ -149,7 +149,17 @@ async function queryLiveDashboard(
     cacheId
   );
   return dashboardQueryMemoization.get(dashboard.revision, key, async () => {
-    const required = resolveDashboardQuerySources(context.queries, requested);
+    const nativeSources = await queryNativeCountSources(
+      indexedDB,
+      dashboard.logicalSources,
+      context.queries,
+      requested
+    );
+    const nativeSourceNames = new Set(Object.keys(nativeSources));
+    const required = resolveDashboardQuerySources(
+      context.queries,
+      [...requested].filter((name) => !nativeSourceNames.has(name))
+    );
     const canonicalPayload = await queryCanonicalViewSources(
       indexedDB,
       dashboard.logicalSources,
@@ -175,10 +185,13 @@ async function queryLiveDashboard(
         })
       : { aliases: [], queries: [], replacedSources: [] };
     const replacedSources = new Set(viewPayload.replacedSources);
-    const directRequests = new Set([...requested].filter((name) => !replacedSources.has(name)));
+    const directRequests = new Set([...requested].filter((name) => (
+      !replacedSources.has(name) && !nativeSourceNames.has(name)
+    )));
     const querySources = {
       ...canonicalPayload,
       ...healthPayload,
+      ...nativeSources,
       ...executeDashboardQueries(
         context.queries,
         { ...canonicalPayload, ...healthPayload },

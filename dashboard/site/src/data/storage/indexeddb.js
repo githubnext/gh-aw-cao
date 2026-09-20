@@ -350,6 +350,37 @@ export async function readCollections(indexedDB, storeNames) {
 }
 
 /**
+ * Counts multiple stores through one connection and one readonly transaction.
+ * @param {IDBFactory} indexedDB
+ * @param {readonly typeof ENTITY_STORES[number][]} storeNames
+ */
+export async function countCollections(indexedDB, storeNames) {
+  const startedAt = monotonicNow();
+  const database = await openCanonicalDatabase(indexedDB);
+  try {
+    const counts = storeNames.length === 0
+      ? []
+      : await (async () => {
+          const transaction = database.transaction([...storeNames]);
+          const done = transactionDone(transaction);
+          const values = await Promise.all(storeNames.map((storeName) =>
+            requestResult(transaction.objectStore(storeName).count())
+          ));
+          await done;
+          return values;
+        })();
+    debug('completed multi-store collection count', {
+      storeCount: storeNames.length,
+      requestCount: storeNames.length,
+      durationMs: monotonicNow() - startedAt
+    });
+    return Object.fromEntries(storeNames.map((storeName, index) => [storeName, counts[index]]));
+  } finally {
+    database.close();
+  }
+}
+
+/**
  * @param {IDBFactory} indexedDB
  * @param {typeof ENTITY_STORES[number]} storeName
  */
