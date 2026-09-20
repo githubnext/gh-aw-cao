@@ -1,8 +1,12 @@
 import 'fake-indexeddb/auto';
 import { readFileSync } from 'node:fs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ingestCachedGhAwJsonl } from '../../src/data/ingest/coordinator.js';
-import { DATABASE_NAME, recordTransaction } from '../../src/data/storage/indexeddb.js';
+import {
+  CANONICAL_DATABASE_SCHEMA,
+  DATABASE_NAME,
+  recordTransaction
+} from '../../src/data/storage/indexeddb.js';
 import {
   loadCanonicalViewSources,
   queryCanonicalViewSources,
@@ -142,11 +146,72 @@ beforeEach(async () => {
   });
 });
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe('canonical view sources', () => {
-  it('uses native counts for eligible join-free table queries', async () => {
+  it('matches declarative counts for every canonical database table', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+    const tableNames = Object.keys(CANONICAL_DATABASE_SCHEMA);
+    const canonical = await queryCanonicalViewSources(indexedDB, sources, tableNames);
+    const definitions = tableNames.map((table) => ({
+      name: `${table}-count`,
+      from: table,
+      aggregate: {
+        values: [{ field: String(CANONICAL_DATABASE_SCHEMA[table].keyPath), as: 'count', reducer: 'count' }]
+      }
+    }));
     const collectionReads = vi.spyOn(IDBObjectStore.prototype, 'getAll');
     const nativeCounts = vi.spyOn(IDBObjectStore.prototype, 'count');
+    const requested = definitions.map(({ name }) => name);
+
+    const native = await queryNativeCountSources(indexedDB, sources, definitions, requested);
+    const declarative = executeDashboardQueries(definitions, canonical, requested);
+
+    expect(Object.keys(native)).toEqual(requested);
+    for (const name of requested) {
+      expect(native[name].rows).toEqual(declarative[name].rows);
+    }
+    expect(nativeCounts).toHaveBeenCalledTimes(tableNames.length);
+    expect(collectionReads).not.toHaveBeenCalled();
+  });
+
+  it('returns the same zero counts as declarative execution for empty tables', async () => {
+    const tableNames = Object.keys(CANONICAL_DATABASE_SCHEMA);
+    const definitions = tableNames.map((table) => ({
+      name: `${table}-count`,
+      from: table,
+      aggregate: {
+        values: [{ field: String(CANONICAL_DATABASE_SCHEMA[table].keyPath), as: 'count', reducer: 'count' }]
+      }
+    }));
+    const requested = definitions.map(({ name }) => name);
+    const emptyMetadata = /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
+      'source-id': 'empty',
+      'source-kind': 'canonical-query',
+      'as-of': metadata['as-of'],
+      'retrieved-at': metadata['as-of'],
+      completeness: 'complete',
+      freshness: 'fresh',
+      availability: 'empty'
+    });
+    const emptySources = Object.fromEntries(tableNames.map((table) => [
+      table,
+      { source: table, rows: [], metadata: emptyMetadata }
+    ]));
+
+    const native = await queryNativeCountSources(indexedDB, emptySources, definitions, requested);
+    const declarative = executeDashboardQueries(definitions, emptySources, requested);
+
+    for (const name of requested) {
+      expect(native[name].rows).toEqual([{ count: 0 }]);
+      expect(native[name].rows).toEqual(declarative[name].rows);
+    }
+  });
+
+  it('falls back for joins, transformed counts, invalid queries, and non-table sources', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
     const definitions = [
       {
         name: 'repository-count',
@@ -157,35 +222,82 @@ describe('canonical view sources', () => {
         name: 'filtered-run-count',
         from: 'runs',
         filter: { predicates: [{ field: 'run-status', equals: 'completed' }] },
-        aggregate: { values: [{ field: 'run', as: 'runs', reducer: 'count' }] }
+        aggregate: { values: [{ field: 'id', as: 'runs', reducer: 'count' }] }
+      },
+      {
+        name: 'joined-run-count',
+        from: 'runs',
+        joins: [{
+          source: 'workflows',
+          type: 'left',
+          on: [{ left: 'workflowId', right: 'id' }],
+          fields: [{ field: 'id', as: 'workflow-id' }]
+        }],
+        aggregate: { values: [{ field: 'id', as: 'runs', reducer: 'count' }] }
+      },
+      {
+        name: 'grouped-run-count',
+        from: 'runs',
+        aggregate: {
+          by: ['conclusion'],
+          values: [{ field: 'id', as: 'runs', reducer: 'count' }]
+        }
+      },
+      {
+        name: 'non-key-run-count',
+        from: 'runs',
+        aggregate: { values: [{ field: 'githubRunId', as: 'runs', reducer: 'count' }] }
+      },
+      {
+        name: 'distinct-run-count',
+        from: 'runs',
+        aggregate: { values: [{ field: 'id', as: 'runs', reducer: 'distinct-count' }] }
+      },
+      {
+        name: 'limited-run-count',
+        from: 'runs',
+        aggregate: { values: [{ field: 'id', as: 'runs', reducer: 'count' }] },
+        limit: 1
+      },
+      {
+        name: 'selected-run-count',
+        from: 'runs',
+        aggregate: { values: [{ field: 'id', as: 'runs', reducer: 'count' }] },
+        select: [{ field: 'runs' }]
       },
       {
         name: 'events-count',
         from: 'events',
         aggregate: { values: [{ field: 'id', as: 'events', reducer: 'count' }] }
+      },
+      {
+        name: 'missing-aggregate',
+        from: 'runs'
       }
     ];
+    const requested = definitions.map(({ name }) => name);
+    const nativeCounts = vi.spyOn(IDBObjectStore.prototype, 'count');
 
     const projected = await queryNativeCountSources(
       indexedDB,
       sources,
       definitions,
-      ['repository-count', 'filtered-run-count', 'events-count']
+      requested
     );
 
-    expect(projected).toEqual({
-      'repository-count': {
-        source: 'repository-count',
-        rows: [{ repositories: 1 }],
-        metadata: expect.objectContaining({
-          'source-kind': 'derived',
-          availability: 'available',
-          'query-name': 'repository-count'
-        })
+    expect(Object.keys(projected)).toEqual(['repository-count']);
+    expect(projected['repository-count']).toMatchObject({
+      source: 'repository-count',
+      rows: [{ repositories: 1 }],
+      metadata: {
+        'source-kind': 'derived',
+        availability: 'available',
+        'query-name': 'repository-count'
       }
     });
-    expect(nativeCounts).toHaveBeenCalledTimes(1);
-    expect(collectionReads).not.toHaveBeenCalled();
+    expect(nativeCounts.mock.instances.map((store) => (
+      /** @type {IDBObjectStore} */ (store).name
+    ))).toEqual(['repositories']);
   });
 
   it('projects retained ingestion transactions for dashboard inspection', async () => {
