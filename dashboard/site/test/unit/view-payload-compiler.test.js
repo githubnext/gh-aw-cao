@@ -74,6 +74,30 @@ it('omits view aliases whose sources are not requested by a page subscription', 
   expect(payload.queries[0].from).toBe('health');
 });
 
+it('keeps unmodified canonical row listings on the native source path', () => {
+  const page = {
+    views: [{ id: 'repositories', mark: 'list', data: { source: 'repositories' } }]
+  };
+
+  const native = compileDashboardViewPayloadQueries(page, 'repositories', {
+    queries: [{ name: 'derived', from: 'repositories' }],
+    queryContext: { viewMode: 'card' }
+  });
+  const filtered = compileDashboardViewPayloadQueries(page, 'repositories', {
+    queries: [{ name: 'derived', from: 'repositories' }],
+    queryContext: {
+      viewMode: 'card',
+      search: { fields: ['repository'], query: 'cao' }
+    }
+  });
+
+  expect(native).toEqual({ aliases: [], queries: [], replacedSources: [] });
+  expect(filtered.aliases).toEqual([
+    dashboardViewAliasName('repositories', page.views[0], 0, 'repositories')
+  ]);
+  expect(filtered.queries).toHaveLength(1);
+});
+
 it('compiles only views selected by the page view mode', () => {
   const page = {
     views: [
@@ -90,8 +114,7 @@ it('compiles only views selected by the page view mode', () => {
   expect(chart.aliases).toEqual([dashboardViewAliasName('runs', page.views[0], 0, 'run-trend')]);
   expect(table.aliases).toEqual([dashboardViewAliasName('runs', page.views[1], 1, 'runs')]);
   expect(card.aliases).toEqual([
-    dashboardViewAliasName('runs', page.views[1], 1, 'runs'),
-    dashboardViewAliasName('runs', page.views[2], 2, 'notices')
+    dashboardViewAliasName('runs', page.views[1], 1, 'runs')
   ]);
 });
 

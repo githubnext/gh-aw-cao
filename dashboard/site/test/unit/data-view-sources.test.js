@@ -187,11 +187,14 @@ describe('canonical view sources', () => {
 
   it('queries only the canonical payload requested by a view', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+    /** @type {{ databaseMs: number, projectionMs: number, totalMs: number, recordsRead: number, stores: string[] } | undefined} */
+    let metrics;
 
     const projected = await queryCanonicalViewSources(
       indexedDB,
       sources,
-      ['failed-runs']
+      ['failed-runs'],
+      { onMetrics: (value) => { metrics = value; } }
     );
 
     expect(Object.keys(projected)).toEqual(['failed-runs']);
@@ -200,6 +203,14 @@ describe('canonical view sources', () => {
       rows: [{ repository: 'gh-aw-cao', run: '42', 'run-conclusion': 'failure' }],
       metadata: { 'source-kind': 'canonical-query' }
     });
+    expect(metrics).toMatchObject({
+      databaseMs: expect.any(Number),
+      projectionMs: expect.any(Number),
+      totalMs: expect.any(Number),
+      recordsRead: expect.any(Number),
+      stores: []
+    });
+    expect(metrics?.totalMs).toBeGreaterThanOrEqual(metrics?.databaseMs ?? 0);
   });
 
   it('projects campaign rows and workflow membership from canonical records', async () => {

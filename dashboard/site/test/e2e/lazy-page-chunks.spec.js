@@ -186,6 +186,9 @@ test('core dashboard stays small and page chunks load on demand with in-memory c
   expect(core.value.dashboard.pages.some((/** @type {{ definition?: { views?: unknown[] } }} */ entry) => Array.isArray(entry.definition?.views))).toBe(false);
 
   await expect(page.getByRole('heading', { name: 'Repositories' })).toBeVisible();
+  await expect.poll(() => pageText(page, 'repositories')).toMatch(/Top repositories with value created/);
+  await expect.poll(() => pageText(page, 'repositories')).toMatch(/Top repositories by audit issues/);
+  await page.getByRole('button', { name: 'Table' }).click();
   await expect.poll(() => pageText(page, 'repositories')).toMatch(/Ingestion %|No repositories discovered\.|gh-aw-cao/);
   await expect.poll(() => chunkRequests.filter((id) => id === 'repositories').length).toBe(1);
 
@@ -235,7 +238,7 @@ test('deep links and redirect routes fetch only the requested initial page chunk
   await page.goto(`${origin}/repositories/`);
   await expect(page).toHaveURL(`${origin}/#page-repositories`);
   await expect(page.getByRole('heading', { name: 'Repositories' })).toBeVisible();
-  await expect.poll(() => pageText(page, 'repositories')).toMatch(/Ingestion %|No repositories discovered\.|gh-aw-cao/);
+  await expect.poll(() => pageText(page, 'repositories')).toMatch(/Top repositories with value created/);
   await expect.poll(() => [...new Set(routeChunkRequests)].sort()).toEqual(['repositories']);
 });
 

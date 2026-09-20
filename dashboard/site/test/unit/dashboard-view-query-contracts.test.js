@@ -88,6 +88,44 @@ describe('dashboard view query contracts', () => {
     }
   });
 
+  it('defaults repositories to bounded worker-computed pie charts', () => {
+    const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'repositories');
+    const views = viewsOf(page);
+
+    expect(views.slice(0, 2)).toMatchObject([
+      {
+        id: 'repositories-value-created',
+        data: { source: 'repository-value-created-top' },
+        mark: 'chart',
+        chart: 'pie'
+      },
+      {
+        id: 'repositories-audit-issues',
+        data: { source: 'repository-audit-issues-top' },
+        mark: 'chart',
+        chart: 'pie'
+      }
+    ]);
+    for (const name of ['repository-value-created-top', 'repository-audit-issues-top']) {
+      expect(queries.find((/** @type {{ name: string }} */ query) => query.name === name)).toMatchObject({
+        limit: 10,
+        aggregate: { by: ['repository-coordinate'] }
+      });
+    }
+    expect(queries.find((/** @type {{ name: string }} */ query) => query.name === 'repository-value-created-top'))
+      .toMatchObject({
+        from: 'operational-values',
+        aggregate: { values: [{ field: 'operational-value', as: 'value-created', reducer: 'count' }] }
+      });
+    expect(queries.find((/** @type {{ name: string }} */ query) => query.name === 'repository-audit-issues-top'))
+      .toMatchObject({
+        from: 'findings',
+        aggregate: { values: [{ field: 'finding', as: 'audit-issues', reducer: 'count' }] }
+      });
+    expect(dashboard.views.find((/** @type {{ id: string }} */ view) => view.id === 'entity-repositories'))
+      .toMatchObject({ data: { source: 'repositories' } });
+  });
+
   it('resolves every authored view source through canonical data or Dashboard Language', () => {
     const unresolved = dashboard.pages.flatMap((/** @type {Record<string, unknown>} */ page) => viewsOf(page).flatMap((view) => (
       sourceNamesOf(view)
