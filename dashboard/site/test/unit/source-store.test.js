@@ -1,6 +1,6 @@
 import { afterEach, expect, it } from 'vitest';
 import { effect } from '../../src/reactive.js';
-import { configureSourceLoader, publishSource, refreshSources, requestSource, resetSourceStore, sourceState } from '../../src/source-store.js';
+import { configureSourceLoader, pendingSourceNames, publishSource, refreshSources, requestSource, resetSourceStore, sourceState } from '../../src/source-store.js';
 
 /** @type {import('../../src/presenter.js').SourceMetadata} */
 const metadata = {
@@ -95,6 +95,22 @@ it('marks a source failed when its query rejects', async () => {
   await Promise.resolve();
 
   expect(sourceState('outcomes').get()).toEqual({ status: 'failed', origin: 'query', source: null });
+});
+
+it('tracks which overview fields are still loading', async () => {
+  configureSourceLoader(() => new Promise(() => {}));
+
+  requestSource('overview-outcome-summary');
+  requestSource('overview-run-summary');
+  requestSource('campaign-inventory');
+  await Promise.resolve();
+  await Promise.resolve();
+
+  expect(pendingSourceNames((name) => name.startsWith('overview-'))).toEqual([
+    'overview-outcome-summary',
+    'overview-run-summary'
+  ]);
+  expect(pendingSourceNames((name) => name.startsWith('overview-'))).not.toContain('campaign-inventory');
 });
 
 it('re-runs requested queries when live data refreshes', async () => {
