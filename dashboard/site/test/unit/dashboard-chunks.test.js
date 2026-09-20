@@ -3,6 +3,7 @@ import {
   dashboardPageChunkPath,
   dashboardPageIsLoaded,
   dashboardPageLazySourceNames,
+  dashboardPageSourcesAreIndependentlyBound,
   dashboardPageSourceNames,
   dashboardTableSourceNames,
   mergeDashboardPage,
@@ -132,6 +133,16 @@ describe('dashboard-chunks source discovery', () => {
   it('resolves built-in page payloads from their definition, not top-level views', () => {
     expect(dashboardPageSourceNames(sampleDocument(), 'templated-page')).toEqual(['alpha-source', 'callout-source']);
   });
+
+  it('identifies pages whose source-backed views all bind independently', () => {
+    const document = sampleDocument();
+    expect(dashboardPageSourcesAreIndependentlyBound(
+      document.dashboard.pages.find((page) => page.id === 'factory-page')
+    )).toBe(true);
+    expect(dashboardPageSourcesAreIndependentlyBound(
+      document.dashboard.pages.find((page) => page.id === 'alpha-page')
+    )).toBe(false);
+  });
 });
 
 describe('dashboardPageIsLoaded', () => {
@@ -157,6 +168,8 @@ describe('splitDashboardDocument / resolveDashboardDocument round-trip', () => {
       expect(typeof dashboardPageChunkPath(page)).toBe('string');
     }
     expect(pageChunks.size).toBe(4);
+    expect(core.dashboard.pages.find((page) => page.id === 'factory-page')?.['independent-source-bindings']).toBe(true);
+    expect(core.dashboard.pages.find((page) => page.id === 'alpha-page')?.['independent-source-bindings']).toBe(false);
   });
 
   it('only includes the queries a page actually needs in its chunk', () => {
@@ -207,11 +220,13 @@ describe('mergeDashboardPage', () => {
       'source-names': ['alpha-source'],
       'lazy-source-names': [],
       'table-source-names': ['alpha-source'],
+      'independent-source-bindings': true,
     };
     const loaded = { id: 'alpha-page', kind: 'custom', views: [{ element: 'chart' }] };
     const merged = mergeDashboardPage(stub, loaded);
     expect(merged.views).toEqual(loaded.views);
     expect(merged.chunk).toBe(stub.chunk);
     expect(merged['source-names']).toEqual(stub['source-names']);
+    expect(merged['independent-source-bindings']).toBe(true);
   });
 });

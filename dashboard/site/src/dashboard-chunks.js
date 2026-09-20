@@ -2,7 +2,7 @@ import { resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { elementLoadsSourcesAsync } from './components/ui-elements.js';
 
 /**
- * @typedef {{ id?: string, kind?: string, title?: string, description?: string, icon?: string, ['navigation-label']?: string, ['class-name']?: string, route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string }, views?: unknown[], sections?: unknown[], definition?: { views?: unknown[], sections?: unknown[] }, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[] } & Record<string, unknown>} DashboardPage
+ * @typedef {{ id?: string, kind?: string, title?: string, description?: string, icon?: string, ['navigation-label']?: string, ['class-name']?: string, route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string }, views?: unknown[], sections?: unknown[], definition?: { views?: unknown[], sections?: unknown[] }, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], ['independent-source-bindings']?: boolean } & Record<string, unknown>} DashboardPage
  */
 
 /**
@@ -94,6 +94,26 @@ function isAsyncElementView(view) {
   return isPlainObject(view)
     && typeof view.element === 'string'
     && elementLoadsSourcesAsync(view.element);
+}
+
+/**
+ * Reports whether every source-backed view on a page owns its query lifecycle.
+ * Section counts remain page-bound because their chrome is rendered once.
+ * @param {DashboardPage | undefined} page
+ * @param {unknown} reusableViews
+ */
+export function dashboardPageSourcesAreIndependentlyBound(page, reusableViews = []) {
+  if (!page) return false;
+  if (page['independent-source-bindings'] === true) return true;
+  const payload = dashboardPagePayload(page, reusableViews);
+  if ((payload.sections ?? []).some((section) => (
+    isPlainObject(section) && (
+      typeof section['count-source'] === 'string'
+      || Array.isArray(section['count-sources']) && section['count-sources'].length > 0
+    )
+  ))) return false;
+  const sourceViews = (payload.views ?? []).filter((view) => getViewSources(view).length > 0);
+  return sourceViews.length > 0 && sourceViews.every(isAsyncElementView);
 }
 
 /**
@@ -216,7 +236,7 @@ export function resolveBuiltInPages(document, templateDocument) {
 /**
  * @param {DashboardPage} page
  * @param {string} chunkPath
- * @param {{ sourceNames: string[], lazySourceNames: string[], tableSourceNames: string[] }} index
+ * @param {{ sourceNames: string[], lazySourceNames: string[], tableSourceNames: string[], independentSourceBindings: boolean }} index
  * @returns {DashboardPage}
  */
 function stubDashboardPage(page, chunkPath, index) {
@@ -226,6 +246,7 @@ function stubDashboardPage(page, chunkPath, index) {
     'source-names': index.sourceNames,
     'lazy-source-names': index.lazySourceNames,
     'table-source-names': index.tableSourceNames,
+    'independent-source-bindings': index.independentSourceBindings,
   };
   if (page.kind === 'built-in') {
     delete base.definition;
@@ -250,6 +271,7 @@ export function mergeDashboardPage(stub, page) {
       'source-names': stub?.['source-names'],
       'lazy-source-names': stub?.['lazy-source-names'],
       'table-source-names': stub?.['table-source-names'],
+      'independent-source-bindings': stub?.['independent-source-bindings'],
     } : {}),
   };
 }
@@ -306,6 +328,7 @@ export function splitDashboardDocument(source, options = {}) {
     const sourceNames = dashboardPageSourceNames(document, page.id ?? '');
     const lazySourceNames = dashboardPageLazySourceNames(document, page.id ?? '');
     const tableSourceNames = dashboardTableSourceNames(document, page.id ?? '');
+    const independentSourceBindings = dashboardPageSourcesAreIndependentlyBound(page, document.dashboard.views);
     const payload = dashboardPagePayload(page, document.dashboard.views);
     const querySourceNames = new Set([
       ...sourceNames,
@@ -317,7 +340,12 @@ export function splitDashboardDocument(source, options = {}) {
     ));
     const chunkPath = buildDashboardPageChunkPath(page.id ?? '', chunkDirectory);
     pageChunks.set(page.id ?? '', { page, queries });
-    return stubDashboardPage(page, chunkPath, { sourceNames, lazySourceNames, tableSourceNames });
+    return stubDashboardPage(page, chunkPath, {
+      sourceNames,
+      lazySourceNames,
+      tableSourceNames,
+      independentSourceBindings
+    });
   });
   const dashboard = { ...document.dashboard, pages: corePages };
   delete dashboard.queries;

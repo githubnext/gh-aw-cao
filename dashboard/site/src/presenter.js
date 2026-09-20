@@ -37,6 +37,7 @@ export { enableDashboardKeyboardNavigation, updateWithViewTransition };
 import {
   dashboardPageLazySourceNames as collectDashboardPageLazySourceNames,
   dashboardPagePayload,
+  dashboardPageSourcesAreIndependentlyBound,
   dashboardPageSourceNames as collectDashboardPageSourceNames,
   dashboardTableSourceNames as collectDashboardTableSourceNames,
 } from './dashboard-chunks.js';
@@ -245,7 +246,7 @@ export function renderDashboard(input) {
       const defaultViewMode = pageId === 'overview' ? undefined : availableViewModes(pagePayload.views ?? [])[0];
       const effectiveQueryContext = options.queryContext ?? (defaultViewMode ? { viewMode: defaultViewMode } : undefined);
       options.queryContext = effectiveQueryContext;
-      const rendersBeforePageSources = pageSourcesAreIndependentlyBound(resolvedPage(), reusableViews);
+      const rendersBeforePageSources = dashboardPageSourcesAreIndependentlyBound(resolvedPage(), reusableViews);
       /** @param {Record<string, LogicalSourceInput>} pageSources */
       const updateHorizon = (pageSources) => {
         if (options.signal?.aborted !== true) {
@@ -313,33 +314,6 @@ export function renderDashboard(input) {
     dashboardHorizon.dispose();
   });
   return root;
-}
-
-/**
- * Pages whose source-backed views all bind independently can mount their
- * authored structure before the companion subscription resolves.
- * @param {PresentableBuiltInPage | PresentableCustomPage | undefined} page
- * @param {Array<Record<string, unknown>>} reusableViews
- */
-function pageSourcesAreIndependentlyBound(page, reusableViews) {
-  if (!page) return false;
-  const reusableById = new Map(reusableViews.map((view) => [view.id, view]));
-  const configuredViews = page.kind === 'built-in' ? page.definition?.views : page.views;
-  if (!Array.isArray(configuredViews) || configuredViews.length === 0) return false;
-  const configuredSections = page.kind === 'built-in' ? page.definition?.sections : page.sections;
-  if (configuredSections?.some((section) => (
-    typeof section?.['count-source'] === 'string'
-    || Array.isArray(section?.['count-sources']) && section['count-sources'].length > 0
-  ))) return false;
-  const sourceViews = configuredViews.flatMap((configured) => {
-    const view = typeof configured === 'string' ? reusableById.get(configured) : configured;
-    return getViewSources(view).length > 0 ? [view] : [];
-  });
-  return sourceViews.length > 0 && sourceViews.every((view) => (
-    isPlainObject(view)
-    && typeof view.element === 'string'
-    && elementLoadsSourcesAsync(view.element)
-  ));
 }
 
 /**
