@@ -316,14 +316,15 @@
         setOpen(copilotPanelOpen);
       };
 
-      /**
-       * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
-       * @param {'ready' | 'loading' | 'cached' | 'stale'} [state]
-       * @param {boolean} [prepared]
-      * @param {(pageId: string, options: { signal: AbortSignal, onUpdate: (sources: Record<string, import('./presenter.js').LogicalSourceInput>) => void }) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} [loadPageSources]
-       * @param {() => void} [retryRefresh]
-       */
+      /** @returns {boolean} */
       const hasPendingOverviewSources = () => pendingSourceNames((name) => name.startsWith("overview-")).length > 0;
+      /**
+      * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
+      * @param {'ready' | 'loading' | 'cached' | 'stale'} [state]
+      * @param {boolean} [prepared]
+      * @param {(pageId: string, options: { signal: AbortSignal, onUpdate: (sources: Record<string, import('./presenter.js').LogicalSourceInput>) => void }) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} [loadPageSources]
+      * @param {() => void} [retryRefresh]
+      */
       const renderSources = (sources, state = "ready", prepared = false, loadPageSources, retryRefresh) => {
         const canExecuteCliActions = previewMode === "canvas";
         const keepOverviewLoaderVisible = state === "loading" || (state === "ready" && hasPendingOverviewSources());
