@@ -186,6 +186,47 @@ describe('dashboard DOM provenance', () => {
     disposeDashboard(rendered);
   });
 
+  it('waits for page sources when a page mixes bound elements with ordinary views', async () => {
+    const rendered = renderDashboardView({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'mixed-binding-dashboard',
+          title: 'Mixed binding dashboard',
+          pages: [{
+            id: 'overview',
+            kind: 'custom',
+            title: 'Overview',
+            views: [
+              {
+                id: 'overview-header',
+                title: 'Overview header',
+                data: { sources: ['overview-run-summary'] },
+                mark: 'element',
+                element: 'factory-header'
+              },
+              {
+                id: 'runs-table',
+                title: 'Runs',
+                data: { source: 'runs' },
+                mark: 'table',
+                encoding: { columns: [{ field: 'run' }] }
+              }
+            ]
+          }]
+        }
+      },
+      sources: {},
+      loadPageSources: () => new Promise(() => {})
+    });
+
+    await vi.waitFor(() => {
+      expect(rendered.querySelector('[data-page-id="overview"]')?.getAttribute('aria-busy')).toBe('true');
+    });
+    expect(rendered.querySelector('.factory-intro')).toBeNull();
+    disposeDashboard(rendered);
+  });
+
   it('requests a refresh after pulling down from the top of Overview', () => {
     const rendered = renderDashboardView({
       document: authoritativeDashboardDocument,

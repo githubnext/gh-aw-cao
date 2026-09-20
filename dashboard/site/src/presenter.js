@@ -245,7 +245,7 @@ export function renderDashboard(input) {
       const defaultViewMode = pageId === 'overview' ? undefined : availableViewModes(pagePayload.views ?? [])[0];
       const effectiveQueryContext = options.queryContext ?? (defaultViewMode ? { viewMode: defaultViewMode } : undefined);
       options.queryContext = effectiveQueryContext;
-      const rendersBeforePageSources = pageHasIndependentSourceElements(resolvedPage(), reusableViews);
+      const rendersBeforePageSources = pageSourcesAreIndependentlyBound(resolvedPage(), reusableViews);
       /** @param {Record<string, LogicalSourceInput>} pageSources */
       const updateHorizon = (pageSources) => {
         if (options.signal?.aborted !== true) {
@@ -315,22 +315,25 @@ export function renderDashboard(input) {
 }
 
 /**
- * Pages containing independently bound elements can mount those elements and
- * the rest of their authored structure before the companion subscription resolves.
+ * Pages whose source-backed views all bind independently can mount their
+ * authored structure before the companion subscription resolves.
  * @param {PresentableBuiltInPage | PresentableCustomPage | undefined} page
  * @param {Array<Record<string, unknown>>} reusableViews
  */
-function pageHasIndependentSourceElements(page, reusableViews) {
+function pageSourcesAreIndependentlyBound(page, reusableViews) {
   if (!page) return false;
   const reusableById = new Map(reusableViews.map((view) => [view.id, view]));
   const configuredViews = page.kind === 'built-in' ? page.definition?.views : page.views;
   if (!Array.isArray(configuredViews) || configuredViews.length === 0) return false;
-  return configuredViews.some((configured) => {
+  const sourceViews = configuredViews.flatMap((configured) => {
     const view = typeof configured === 'string' ? reusableById.get(configured) : configured;
-    return isPlainObject(view)
-      && typeof view.element === 'string'
-      && elementLoadsSourcesAsync(view.element);
+    return getViewSources(view).length > 0 ? [view] : [];
   });
+  return sourceViews.length > 0 && sourceViews.every((view) => (
+    isPlainObject(view)
+    && typeof view.element === 'string'
+    && elementLoadsSourcesAsync(view.element)
+  ));
 }
 
 /**
