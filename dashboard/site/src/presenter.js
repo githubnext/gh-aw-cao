@@ -269,6 +269,7 @@ export function renderDashboard(input) {
       if (input.loadPageSources) {
         if (rendersBeforePageSources) {
           const renderedPage = render(sources);
+          /** @param {Record<string, LogicalSourceInput>} pageSources */
           const updateBoundSources = (pageSources) => {
             updateHorizon(pageSources);
             for (const [name, source] of Object.entries(pageSources)) {
