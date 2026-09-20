@@ -4297,59 +4297,6 @@
             "availability": true
           },
           "views": [
-           {
-             "id": "repositories-value-created",
-             "title": "Top repositories by Ops Value",
-             "description": "The share of observed operational value created by the ten highest-value repositories.",
-             "data": {
-               "source": "repository-value-created-top"
-             },
-             "mark": "chart",
-             "chart": "pie",
-             "layout": "half",
-             "empty-message": "No repository operational value was observed in the selected horizon.",
-             "encoding": {
-               "x": {
-                 "field": "repository-coordinate",
-                 "type": "nominal",
-                 "title": "Repository"
-               },
-               "y": {
-                 "field": "value-created",
-                 "type": "quantitative",
-                 "aggregate": "sum",
-                 "as": "total-value-created",
-                 "title": "Ops Value",
-                 "unit": "ops-value"
-               }
-             }
-           },
-           {
-             "id": "repositories-audit-issues",
-             "title": "Top repositories by audit issues",
-             "description": "The share of observed audit issues attributed to the ten repositories with the most issues.",
-             "data": {
-               "source": "repository-audit-issues-top"
-             },
-             "mark": "chart",
-             "chart": "pie",
-             "layout": "half",
-             "empty-message": "No repository audit issues were observed in the selected horizon.",
-             "encoding": {
-               "x": {
-                 "field": "repository-coordinate",
-                 "type": "nominal",
-                 "title": "Repository"
-               },
-               "y": {
-                 "field": "audit-issues",
-                 "type": "quantitative",
-                 "aggregate": "sum",
-                 "as": "total-audit-issues",
-                 "title": "Audit issues"
-               }
-             }
-           },
             {
               "id": "overview-run-health",
               "locked": true,
@@ -5098,6 +5045,59 @@
             "availability": true
           },
           "views": [
+            {
+              "id": "repositories-value-created",
+              "title": "Top repositories by Ops Value",
+              "description": "The share of observed operational value created by the ten highest-value repositories.",
+              "data": {
+                "source": "repository-value-created-top"
+              },
+              "mark": "chart",
+              "chart": "pie",
+              "layout": "half",
+              "empty-message": "No repository operational value was observed in the selected horizon.",
+              "encoding": {
+                "x": {
+                  "field": "repository-coordinate",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                "y": {
+                  "field": "value-created",
+                  "type": "quantitative",
+                  "aggregate": "sum",
+                  "as": "total-value-created",
+                  "title": "Ops Value",
+                  "unit": "ops-value"
+                }
+              }
+            },
+            {
+              "id": "repositories-audit-issues",
+              "title": "Top repositories by audit issues",
+              "description": "The share of observed audit issues attributed to the ten repositories with the most issues.",
+              "data": {
+                "source": "repository-audit-issues-top"
+              },
+              "mark": "chart",
+              "chart": "pie",
+              "layout": "half",
+              "empty-message": "No repository audit issues were observed in the selected horizon.",
+              "encoding": {
+                "x": {
+                  "field": "repository-coordinate",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                "y": {
+                  "field": "audit-issues",
+                  "type": "quantitative",
+                  "aggregate": "sum",
+                  "as": "total-audit-issues",
+                  "title": "Audit issues"
+                }
+              }
+            },
             {
               "id": "repositories-activity",
               "title": "Repositories",

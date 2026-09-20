@@ -208,7 +208,7 @@ describe('canonical view sources', () => {
       projectionMs: expect.any(Number),
       totalMs: expect.any(Number),
       recordsRead: expect.any(Number),
-      stores: ['repositories', 'workflows', 'runs']
+      stores: []
     });
     expect(metrics?.totalMs).toBeGreaterThanOrEqual(metrics?.databaseMs ?? 0);
   });

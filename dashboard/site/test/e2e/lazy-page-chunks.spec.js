@@ -188,6 +188,8 @@ test('core dashboard stays small and page chunks load on demand with in-memory c
   await expect(page.getByRole('heading', { name: 'Repositories' })).toBeVisible();
   await expect.poll(() => pageText(page, 'repositories')).toMatch(/Top repositories by Ops Value/);
   await expect.poll(() => pageText(page, 'repositories')).toMatch(/Top repositories by audit issues/);
+  await page.getByRole('button', { name: 'Table' }).click();
+  await expect.poll(() => pageText(page, 'repositories')).toMatch(/Ingestion %|No repositories discovered\.|gh-aw-cao/);
   await expect.poll(() => chunkRequests.filter((id) => id === 'repositories').length).toBe(1);
 
   await navigateToPage(page, 'runs');
