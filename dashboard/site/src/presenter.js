@@ -1046,7 +1046,8 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       navigationPage,
       page.dataset.pageId,
       links,
-      availableIds
+      availableIds,
+      page.dataset.routeParameter ?? ''
     );
     if (activeNavigationPageId) {
       updateNavigationLinks(links, activeNavigationPageId);
@@ -1224,7 +1225,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const page = pages.find((candidate) => candidate.dataset.pageId === pageId);
     syncFullViewMode(page);
     const routeNavigationPage = page?.dataset.routeNavigationPage;
-    const activeNavigationPageId = determineActiveNavigationPageId(pageId, routeNavigationPage, '', links, availableIds);
+    const activeNavigationPageId = determineActiveNavigationPageId(pageId, routeNavigationPage, '', links, availableIds, page?.dataset.routeParameter ?? '');
     updateNavigationLinks(links, activeNavigationPageId);
     if (routeNavigationPage && availableIds.has(routeNavigationPage)) {
       const navigationLink = links.find((link) => getNavigationPageId(link) === routeNavigationPage);
@@ -1494,9 +1495,14 @@ function updateNavigationLinks(links, pageId) {
  * @param {string | undefined} directPageId
  * @param {HTMLAnchorElement[]} links
  * @param {Set<string>} availableIds
+ * @param {string} [routeParameter]
  * @returns {string | undefined}
  */
-function determineActiveNavigationPageId(pageId, routeNavigationPage, directPageId, links, availableIds) {
+function determineActiveNavigationPageId(pageId, routeNavigationPage, directPageId, links, availableIds, routeParameter = '') {
+  const hasRouteNavigationLink = routeNavigationPage && availableIds.has(routeNavigationPage) && links.some((link) => getNavigationPageId(link) === routeNavigationPage);
+  if (hasRouteNavigationLink && routeParameter.length > 0) {
+    return routeNavigationPage;
+  }
   const hasDirectPageLink = directPageId && availableIds.has(directPageId) && links.some((link) => getNavigationPageId(link) === directPageId);
   if (hasDirectPageLink) {
     return directPageId;
@@ -1505,7 +1511,6 @@ function determineActiveNavigationPageId(pageId, routeNavigationPage, directPage
   if (hasPageLink) {
     return pageId;
   }
-  const hasRouteNavigationLink = routeNavigationPage && availableIds.has(routeNavigationPage) && links.some((link) => getNavigationPageId(link) === routeNavigationPage);
   if (hasRouteNavigationLink) {
     return routeNavigationPage;
   }
