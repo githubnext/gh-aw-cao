@@ -48,8 +48,11 @@ it('compiles only the independently requested view payload', () => {
 
   const payload = compileDashboardViewPayloadQueries(page, 'overview', { viewId: 'floor' });
 
-  expect(payload.aliases).toEqual([]);
-  expect(payload.queries).toEqual([]);
+  expect(payload.aliases).toEqual([
+    dashboardViewAliasName('overview', page.views[1], 1, 'runs', 0),
+    dashboardViewAliasName('overview', page.views[1], 1, 'dispatches', 1)
+  ]);
+  expect(payload.aliases.every((alias) => alias.includes(':floor:'))).toBe(true);
 });
 
 it('omits view aliases whose sources are not requested by a page subscription', () => {
@@ -64,8 +67,11 @@ it('omits view aliases whose sources are not requested by a page subscription', 
     sourceNames: new Set(['health'])
   });
 
-  expect(payload.aliases).toEqual([]);
-  expect(payload.queries).toEqual([]);
+  expect(payload.aliases).toEqual([
+    dashboardViewAliasName('overview', page.views[1], 1, 'health')
+  ]);
+  expect(payload.queries).toHaveLength(1);
+  expect(payload.queries[0].from).toBe('health');
 });
 
 it('keeps unmodified canonical row listings on the native source path', () => {
@@ -105,9 +111,11 @@ it('compiles only views selected by the page view mode', () => {
   const table = compileDashboardViewPayloadQueries(page, 'runs', { queryContext: { viewMode: 'table' } });
   const card = compileDashboardViewPayloadQueries(page, 'runs', { queryContext: { viewMode: 'card' } });
 
-  expect(chart.aliases).toEqual([]);
-  expect(table.aliases).toEqual([]);
-  expect(card.aliases).toEqual([]);
+  expect(chart.aliases).toEqual([dashboardViewAliasName('runs', page.views[0], 0, 'run-trend')]);
+  expect(table.aliases).toEqual([dashboardViewAliasName('runs', page.views[1], 1, 'runs')]);
+  expect(card.aliases).toEqual([
+    dashboardViewAliasName('runs', page.views[1], 1, 'runs')
+  ]);
 });
 
 it('binds every named drill argument to a worker query predicate and fails closed when missing', () => {
