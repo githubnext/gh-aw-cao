@@ -474,6 +474,8 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(campaignDocument.scripts["dashboard:local:mobile"], /MOBILE_MEMORY_MB=256/);
   assert.match(campaignDocument.scripts["dashboard:local:mobile"], /tests\/playwright\/configs\/mobile\.config\.mjs/);
   const mobileTest = readFileSync(join(root, "tests", "e2e", "dashboard-mobile-live.spec.mjs"), "utf8");
+  assert.match(mobileTest, /await page\.addInitScript\([\s\S]*?document\.addEventListener\("dashboard-data"[\s\S]*?event\.detail\?\.kind === "refresh"[\s\S]*?await page\.goto/);
+  assert.match(mobileTest, /await page\.waitForFunction\([\s\S]*?\["completed", "failed"\]\.includes\(window\.__dashboardRefreshStatus\)[\s\S]*?toBe\("completed"\)[\s\S]*?\[\.\.\.shardResponses\.keys\(\)\]/);
   assert.match(mobileTest, /Network\.emulateNetworkConditions/);
   assert.match(mobileTest, /Performance\.getMetrics/);
   assert.match(mobileTest, /HeapProfiler\.collectGarbage/);

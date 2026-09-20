@@ -297,6 +297,15 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
     if (pathname.endsWith("/inventory-sources.json")) inventoryResponse = response;
   });
 
+  await page.addInitScript(() => {
+    window.__dashboardRefreshStatus = null;
+    document.addEventListener("dashboard-data", (event) => {
+      if (event.detail?.kind === "refresh") {
+        window.__dashboardRefreshStatus = event.detail.status;
+      }
+    });
+  });
+
   const parameters = new URLSearchParams({ debug: "1" });
   const shardLimit = optionalPositiveInteger("MOBILE_DEBUG_SHARD_LIMIT");
   if (shardLimit !== undefined) parameters.set("debug-shard-limit", String(shardLimit));
@@ -304,6 +313,14 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
   const dashboard = page.locator(".dashboard-root");
   await expect(dashboard).toBeVisible();
   await memoryInvestigation.mark("dashboard-visible");
+  // The shell can be visible and not busy before canonical ingestion starts.
+  await page.waitForFunction(() =>
+    ["completed", "failed"].includes(window.__dashboardRefreshStatus),
+  null, { timeout: 540_000 });
+  expect(
+    await page.evaluate(() => window.__dashboardRefreshStatus),
+    "The dashboard must complete its canonical data refresh",
+  ).toBe("completed");
   await expect(dashboard).not.toHaveAttribute("aria-busy", "true", { timeout: 540_000 });
   await memoryInvestigation.mark("dashboard-idle");
   // DOM provenance annotation (`data-json-path`/`data-js-view`) is lazily
