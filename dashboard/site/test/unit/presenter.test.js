@@ -121,7 +121,6 @@ describe('dashboard DOM provenance', () => {
   it('includes the declarative campaign view in the Overview page subscription', () => {
     expect(dashboardPageSourceNames(authoritativeDashboardDocument, 'overview')).toEqual([
       'overview-needs-attention-preview',
-      'campaign-inventory',
       'data-health-collections'
     ]);
     const rendered = renderDashboardView({
@@ -130,13 +129,14 @@ describe('dashboard DOM provenance', () => {
       loadPageSources: () => new Promise(() => {})
     });
     const overview = rendered.querySelector('[data-page-id="overview"]');
-    expect(overview?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(4);
+    expect(overview?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(3);
     expect(overview?.querySelector('.factory-intro')).not.toBeNull();
     expect(overview?.querySelector('.factory-floor')).not.toBeNull();
+    expect(overview?.querySelector('[data-view-id="overview-campaigns"]')).toBeNull();
     disposeDashboard(rendered);
   });
 
-  it('renders the factory and declarative campaign cards when the page subscription resolves', async () => {
+  it('renders the factory without the detached campaign list while the page subscription resolves', async () => {
     let resolvePageSources = () => {};
     const loadPageSources = vi.fn(() => new Promise((resolve) => {
       resolvePageSources = () => resolve({
@@ -183,7 +183,7 @@ describe('dashboard DOM provenance', () => {
 
     expect(rendered.querySelector('[data-page-id="overview"]')).not.toBe(overviewBefore);
     expect(rendered.querySelector('.factory-floor')).not.toBeNull();
-    expect(rendered.querySelector('[data-view-id="overview-campaigns"]')).not.toBeNull();
+    expect(rendered.querySelector('[data-view-id="overview-campaigns"]')).toBeNull();
     disposeDashboard(rendered);
   });
 
@@ -1402,7 +1402,7 @@ describe('presenter built-in and custom pages', () => {
 
     const page = await activatePage(rendered, 'overview');
     expect(page?.querySelector(':scope > .custom-view-grid')).not.toBeNull();
-    expect(page?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(4);
+    expect(page?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(3);
     expect(page?.querySelectorAll('.factory-station')).toHaveLength(4);
     expect(page?.querySelector('.factory-intro h2')?.textContent).toBe('Your factory is idle.');
     expect(page?.querySelector('.notifications-inbox')).toBeNull();

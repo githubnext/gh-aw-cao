@@ -9578,39 +9578,6 @@
                 { "field": "evidence-link", "type": "nominal", "title": "Evidence" }
               ]
             }
-          },
-          {
-            "id": "overview-campaigns",
-            "title": "Campaigns",
-            "description": "Centrally managed campaigns and their observed execution totals.",
-            "data": {
-              "source": "campaign-inventory"
-            },
-            "mark": "list",
-            "list": {
-              "style": "entity-cards",
-              "appearance": "grouped",
-              "card": "campaign",
-              "icon": "goal",
-              "drill": {
-                "type": "external",
-                "field": "campaign-dashboard-link"
-              }
-            },
-            "empty-message": "No campaigns discovered.",
-            "layout": "full",
-            "encoding": {
-              "columns": [
-                { "field": "campaign-name", "type": "nominal", "title": "Campaign" },
-                { "field": "modes", "type": "nominal", "title": "Modes" },
-                { "field": "registration", "type": "nominal", "title": "Registration" },
-                { "field": "workflows", "type": "quantitative", "title": "Workflows" },
-                { "field": "value-created", "type": "quantitative", "title": "Value", "unit": "ops-value" },
-                { "field": "dispatches", "type": "quantitative", "title": "Dispatches" },
-                { "field": "aic", "type": "quantitative", "title": "AIC", "unit": "aic" },
-                { "field": "campaign-dashboard-link", "type": "nominal", "title": "Campaign link" }
-              ]
-            }
           }
         ]
       },

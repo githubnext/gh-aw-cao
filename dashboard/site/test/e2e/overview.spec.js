@@ -143,9 +143,8 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(factory).toBeVisible();
     await expect(factory.locator(':scope > [data-view-id="overview-header"]')).toHaveClass(/factory-intro/);
     await expect(factory.locator(':scope > [data-view-id="overview-floor"]')).toHaveClass(/factory-floor/);
-    await expect(factory.locator(':scope > [data-view-id="overview-campaigns"]')).toHaveClass(/custom-view/);
+    await expect(factory.locator(':scope > [data-view-id="overview-campaigns"]')).toHaveCount(0);
     await expect(factory.locator(':scope > .factory-intro + .factory-floor')).toHaveCount(1);
-    await expect(factory.getByRole('heading', { name: 'Campaigns' })).toBeVisible();
     const attention = factory.locator(':scope > [data-view-id="overview-needs-attention"]');
     await expect(attention).toBeVisible();
     await expect(attention.locator('.entity-card-list-card')).toHaveCount(3);
@@ -155,11 +154,6 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
       .toHaveAttribute('href', '#page-overview-needs-attention');
     await expect(attention.locator('time').first()).toHaveAttribute('datetime', '2026-09-16T11:30:00Z');
     await expect(attention.locator('.entity-card-list-card dt').first()).toHaveText('Scope');
-    await expect(factory.getByRole('link', { name: 'AW Doctor' }))
-      .toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
-    const campaigns = factory.locator(':scope > [data-view-id="overview-campaigns"]');
-    await expect(campaigns.locator('.entity-card-list-card')).toHaveCount(1);
-    await expect(campaigns.locator('.entity-card-list-card dt')).toHaveText(['# dispatches', '# value', '# aic']);
     await expect(factory.getByRole('heading', { name: 'Your factory is delivering value.' })).toBeVisible();
     await expect(factory.locator('.factory-running-active')).toBeVisible();
     await expect(factory.locator('.factory-rhythm-day')).toHaveCount(7);
