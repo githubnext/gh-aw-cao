@@ -70,8 +70,6 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
 
     sources.forEach((sourceName, sourceIndex) => {
       if (requestedSources && !requestedSources.has(sourceName)) return;
-      const alias = dashboardViewAliasName(pageId, view, viewIndex, sourceName, sourceIndex);
-      aliases.push(alias);
       const predicates = [
         ...compileScopePredicates(viewData?.scope),
         ...compileViewFilterPredicates(viewData?.filters),
@@ -81,6 +79,9 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
         ...compileTimePredicates(options.queryContext?.timeWindow),
         ...compileRoutePredicates(routeField, routeValue)
       ];
+      if (usesNativeSource(view, sourceName, predicates, options.queryContext, options.queries)) return;
+      const alias = dashboardViewAliasName(pageId, view, viewIndex, sourceName, sourceIndex);
+      aliases.push(alias);
       const compiled = compileAliasedQuery(sourceName, alias, predicates, options.queryContext?.search, options.queryContext?.orderBy, options.evaluatedAt, options.queries);
       queries.push(...compiled.dependencies, compiled.query);
       if (compiled.replacesSource) replacedSources.add(sourceName);
@@ -88,6 +89,27 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
   });
 
   return { aliases, queries, replacedSources: [...replacedSources] };
+}
+
+/**
+ * Leaves an unmodified canonical source on its native IndexedDB read path.
+ * The presenter already resolves the source directly when no view alias exists.
+ * @param {unknown} view
+ * @param {string} sourceName
+ * @param {Array<Record<string, unknown>>} predicates
+ * @param {GlobalQueryContext | undefined} queryContext
+ * @param {unknown} definitions
+ */
+function usesNativeSource(view, sourceName, predicates, queryContext, definitions) {
+  const declared = Array.isArray(definitions)
+    && definitions.some((definition) => isPlainObject(definition) && definition.name === sourceName);
+  return isPlainObject(view)
+    && view.mark === 'list'
+    && view['lazy-list'] !== true
+    && !declared
+    && predicates.length === 0
+    && !(queryContext?.search?.query.trim())
+    && !(queryContext?.orderBy?.length);
 }
 
 /** @param {unknown} view @param {'chart'|'table'|'card'} mode */

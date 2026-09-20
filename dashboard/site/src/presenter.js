@@ -31,8 +31,12 @@ import { declaredRouteTabs, renderDeclaredRouteTabs } from './components/route-t
 import { buildChartPoints, prepareChartPoints, prepareTableRows, toViewText } from './components/view-data.js';
 import { enableDashboardKeyboardNavigation, updateWithViewTransition } from './components/dashboard-interactions.js';
 import { requestDashboardRefresh } from './dashboard-data-updates.js';
+import { createDebug } from './debug.js';
 
 export { enableDashboardKeyboardNavigation, updateWithViewTransition };
+
+const debugPerformance = createDebug('render:performance');
+const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 import {
   dashboardPageLazySourceNames as collectDashboardPageLazySourceNames,
   dashboardPagePayload,
@@ -237,6 +241,8 @@ export function renderDashboard(input) {
     root,
     document.dashboard.title,
     (pageId, options) => {
+      const pageStartedAt = monotonicNow();
+      let renderCount = 0;
       const pageIndex = pages.findIndex((candidate) => candidate.id === pageId);
       const resolvedPage = () => pages[pageIndex] ?? pages.find((candidate) => candidate.id === pageId);
       if (!resolvedPage()) return null;
@@ -258,12 +264,21 @@ export function renderDashboard(input) {
       };
       /** @param {Record<string, LogicalSourceInput>} pageSources */
       const render = (pageSources) => {
+        const renderStartedAt = monotonicNow();
         const page = resolvedPage();
         if (!page) throw new Error(`Dashboard page "${pageId}" is not available.`);
         updateHorizon(pageSources);
-        return showInitialLoadingSkeleton && !rendersBeforePageSources
+        const rendered = showInitialLoadingSkeleton && !rendersBeforePageSources
           ? renderPageLoadingSkeleton(page)
           : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, effectiveQueryContext);
+        debugPerformance('page render', {
+          pageId,
+          phase: renderCount++ === 0 ? 'initial' : 'update',
+          renderMs: monotonicNow() - renderStartedAt,
+          elapsedMs: monotonicNow() - pageStartedAt,
+          sourceRows: Object.fromEntries(Object.entries(pageSources).map(([name, source]) => [name, source.rows.length]))
+        });
+        return rendered;
       };
       if (input.loadPageSources) {
         options.onUpdate = (pageSources) => options.renderUpdate(render(pageSources));

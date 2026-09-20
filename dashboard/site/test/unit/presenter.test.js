@@ -3145,6 +3145,18 @@ describe('presenter built-in and custom pages', () => {
     const repositoriesPage = pages.find((/** @type {{ page: string }} */ page) => page.page === 'repositories');
     expect(repositoriesPage?.definition.views).toMatchObject([
       {
+        id: 'repositories-value-created',
+        data: { source: 'repository-value-created-top' },
+        mark: 'chart',
+        chart: 'pie'
+      },
+      {
+        id: 'repositories-audit-issues',
+        data: { source: 'repository-audit-issues-top' },
+        mark: 'chart',
+        chart: 'pie'
+      },
+      {
         id: 'repositories-activity',
         title: 'Repositories',
         description: 'Repository-local execution health and all attributed campaign or local-workflow outcomes.',
