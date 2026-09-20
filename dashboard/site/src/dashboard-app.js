@@ -23,7 +23,7 @@
       } from "./dashboard-chunks.js";
 
       const AGENTIC_LOADER_REVEAL_DELAY_MS = 300;
-      const AGENTIC_LOADER_MIN_VISIBLE_MS = 700;
+      const AGENTIC_LOADER_MIN_VISIBLE_MS = 19_800;
 
       /** @typedef {{ name?: string } & Record<string, unknown>} DashboardQueryDefinition */
       /** @typedef {{ 'language-version': string, dashboard: import('./presenter.js').PresentableDashboard }} DashboardSchema */

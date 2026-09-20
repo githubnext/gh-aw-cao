@@ -73,6 +73,7 @@ export function agenticLoaderStylesheet() {
 .agentic-loader-rider-duck { color: var(--yellow); offset-path: path("M 20 40 L 428 40"); animation-delay: 0s; }
 .agentic-loader-rider-octocat { color: var(--agentic-logo-purple); offset-path: path("M 20 40 L 428 40"); animation-delay: -13.2s; }
 .agentic-loader-rider-copilot { color: var(--accent); offset-path: path("M 20 40 L 428 40"); animation-delay: -6.6s; }
+.agentic-loader-rider[style*="animation-delay"] { animation-delay: var(--agentic-rider-delay, 0s); }
 .agentic-loader-rider-icon { width: 36px; height: 30px; overflow: visible; }
 .agentic-loader-caption { display: inline-flex; min-height: 38px; flex-direction: column; align-items: center; gap: 1px; color: var(--fgColor-default, #f0f6fc); text-align: center; }
 .agentic-loader-caption-eyebrow { color: var(--fgColor-muted, #8b949e); font-size: 10px; font-weight: 600; line-height: 14px; letter-spacing: .12em; text-transform: uppercase; }

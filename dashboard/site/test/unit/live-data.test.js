@@ -18,7 +18,7 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain('fetch("./dashboard.json", { cache: "no-store" })');
     expect(preview).toContain('renderSources({}, "loading")');
     expect(preview).toContain("const AGENTIC_LOADER_REVEAL_DELAY_MS = 300");
-    expect(preview).toContain("const AGENTIC_LOADER_MIN_VISIBLE_MS = 700");
+    expect(preview).toContain("const AGENTIC_LOADER_MIN_VISIBLE_MS = 19_800");
     expect(preview).toContain("renderAfterInitialLoading(sources, state, true, loadPageSources, retryRefresh)");
     expect(preview).toContain("overviewPageIsActive() && (");
     expect(preview).toContain("loading: keepOverviewLoaderVisible");

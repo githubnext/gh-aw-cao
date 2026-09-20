@@ -33,6 +33,18 @@ export function renderAgenticLoader({
     .filter(Boolean)
     .join(' ');
 
+  const riderCycle = [...RIDERS];
+  const cycleStart = Math.floor(Math.random() * riderCycle.length);
+  const riders = [...riderCycle.slice(cycleStart), ...riderCycle.slice(0, cycleStart)]
+    .map(({ name, label }) => h(
+      'span',
+      {
+        className: `agentic-loader-rider agentic-loader-rider-${name}`,
+        title: label
+      },
+      renderRiderIcon(/** @type {'duck'|'octocat'|'copilot'} */ (name))
+    ));
+
   return h(
     'div',
     {
@@ -50,14 +62,7 @@ export function renderAgenticLoader({
         h(
           'div',
           { className: 'agentic-loader-riders' },
-          ...RIDERS.map(({ name, label }) => h(
-            'span',
-            {
-              className: `agentic-loader-rider agentic-loader-rider-${name}`,
-              title: label
-            },
-            renderRiderIcon(/** @type {'duck'|'octocat'|'copilot'} */ (name))
-          ))
+          ...riders
         ),
         ...Array.from({ length: 13 }, () => h('i', {}))
       ),
