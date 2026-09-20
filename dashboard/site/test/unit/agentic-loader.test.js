@@ -69,9 +69,9 @@ describe('agentic loader', () => {
     expect(styles).toContain('32.535% { opacity: 0; offset-distance: 100%; }');
     expect(styles).toContain('animation: agentic-loader-reveal 0s linear 300ms forwards');
     expect(styles).toContain('animation: agentic-loader-caption-dot 1.2s ease-in-out infinite');
-    expect(styles).toContain('color: var(--fgColor-default, #f0f6fc)');
+    expect(styles).toContain('color: var(--fg, #1f2328)');
     expect(styles).toContain('text-transform: uppercase');
-    expect(styles).toContain('background: var(--fgColor-default, #f0f6fc)');
+    expect(styles).toContain('background: var(--fg, #1f2328)');
     expect(styles).toContain('@keyframes agentic-loader-rider-cruise');
     expect(styles).toContain('> .factory-stations { visibility: hidden; }');
   });
