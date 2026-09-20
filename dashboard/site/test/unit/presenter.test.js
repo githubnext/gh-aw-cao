@@ -227,6 +227,45 @@ describe('dashboard DOM provenance', () => {
     disposeDashboard(rendered);
   });
 
+  it('waits for section count sources that are not independently bound', async () => {
+    const rendered = renderDashboardView({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'section-count-dashboard',
+          title: 'Section count dashboard',
+          pages: [{
+            id: 'overview',
+            kind: 'custom',
+            title: 'Overview',
+            views: [{
+              id: 'overview-header',
+              title: 'Overview header',
+              data: { sources: ['overview-run-summary'] },
+              mark: 'element',
+              element: 'factory-header'
+            }],
+            sections: [{
+              id: 'overview-section',
+              title: 'Overview',
+              layout: 'full',
+              views: ['overview-header'],
+              'count-source': 'overview-count'
+            }]
+          }]
+        }
+      },
+      sources: {},
+      loadPageSources: () => new Promise(() => {})
+    });
+
+    await vi.waitFor(() => {
+      expect(rendered.querySelector('[data-page-id="overview"]')?.getAttribute('aria-busy')).toBe('true');
+    });
+    expect(rendered.querySelector('.factory-intro')).toBeNull();
+    disposeDashboard(rendered);
+  });
+
   it('requests a refresh after pulling down from the top of Overview', () => {
     const rendered = renderDashboardView({
       document: authoritativeDashboardDocument,

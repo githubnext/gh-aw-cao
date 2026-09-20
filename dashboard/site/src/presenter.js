@@ -326,6 +326,11 @@ function pageSourcesAreIndependentlyBound(page, reusableViews) {
   const reusableById = new Map(reusableViews.map((view) => [view.id, view]));
   const configuredViews = page.kind === 'built-in' ? page.definition?.views : page.views;
   if (!Array.isArray(configuredViews) || configuredViews.length === 0) return false;
+  const configuredSections = page.kind === 'built-in' ? page.definition?.sections : page.sections;
+  if (configuredSections?.some((section) => (
+    typeof section?.['count-source'] === 'string'
+    || Array.isArray(section?.['count-sources']) && section['count-sources'].length > 0
+  ))) return false;
   const sourceViews = configuredViews.flatMap((configured) => {
     const view = typeof configured === 'string' ? reusableById.get(configured) : configured;
     return getViewSources(view).length > 0 ? [view] : [];
