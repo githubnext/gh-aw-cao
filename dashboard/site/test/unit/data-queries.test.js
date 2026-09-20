@@ -38,8 +38,8 @@ function metadata(id, overrides = {}) {
 const workflows = {
   source: 'workflows',
   rows: [
-    { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', campaign: 'aw-doctor' },
-    { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'b.md' }
+    { id: 'workflow:a', organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', campaign: 'aw-doctor' },
+    { id: 'workflow:b', organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'b.md' }
   ],
   metadata: metadata('workflows')
 };
@@ -433,20 +433,24 @@ describe('declarative dashboard queries', () => {
     const sources = {
       campaigns: {
         source: 'campaigns',
-        rows: [{ campaign: 'activity' }, { campaign: 'dashboard' }],
+        rows: [{ id: 'campaign:activity', campaign: 'activity' }, { id: 'campaign:dashboard', campaign: 'dashboard' }],
         metadata: metadata('campaigns')
       },
       repositories: {
         source: 'repositories',
-        rows: [{ repository: 'gh-aw' }, { repository: 'gh-aw-cao' }, { repository: 'next' }],
+        rows: [
+          { id: 'repository:gh-aw', repository: 'gh-aw' },
+          { id: 'repository:gh-aw-cao', repository: 'gh-aw-cao' },
+          { id: 'repository:next', repository: 'next' }
+        ],
         metadata: metadata('repositories')
       },
       workflows,
-      runs: { source: 'runs', rows: [{ run: '1' }, { run: '2' }], metadata: metadata('runs') },
-      domains: { source: 'domains', rows: [{ event: 'd' }], metadata: metadata('domains') },
-      tools: { source: 'tools', rows: [{ event: 't1' }, { event: 't2' }], metadata: metadata('tools') },
-      audits: { source: 'audits', rows: [{ event: 'a' }, { event: 'b' }, { event: 'c' }], metadata: metadata('audits') },
-      issues: { source: 'issues', rows: [{ event: 'i' }], metadata: metadata('issues') }
+      runs: { source: 'runs', rows: [{ id: 'run:1', run: '1' }, { id: 'run:2', run: '2' }], metadata: metadata('runs') },
+      domains: { source: 'domains', rows: [{ id: 'domain:d', event: 'd' }], metadata: metadata('domains') },
+      tools: { source: 'tools', rows: [{ id: 'tool:t1', event: 't1' }, { id: 'tool:t2', event: 't2' }], metadata: metadata('tools') },
+      audits: { source: 'audits', rows: [{ id: 'audit:a', event: 'a' }, { id: 'audit:b', event: 'b' }, { id: 'audit:c', event: 'c' }], metadata: metadata('audits') },
+      issues: { source: 'issues', rows: [{ id: 'issue:i', event: 'i' }], metadata: metadata('issues') }
     };
 
     const result = executeDashboardQueries(
