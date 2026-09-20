@@ -1054,7 +1054,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     }
   }, { signal: navigationOwner.signal });
 
-  const availableIds = new Set(pages.map((page) => page.dataset.pageId));
+  const availableIds = new Set(pages.flatMap((page) => page.dataset.pageId ? [page.dataset.pageId] : []));
   const routeFromHash = () => {
     const hash = root.ownerDocument.defaultView?.location.hash ?? '';
     if (!hash.startsWith('#page-')) return null;
@@ -1226,7 +1226,9 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     syncFullViewMode(page);
     const routeNavigationPage = page?.dataset.routeNavigationPage;
     const activeNavigationPageId = determineActiveNavigationPageId(pageId, routeNavigationPage, '', links, availableIds, page?.dataset.routeParameter ?? '');
-    updateNavigationLinks(links, activeNavigationPageId);
+    if (activeNavigationPageId) {
+      updateNavigationLinks(links, activeNavigationPageId);
+    }
     if (routeNavigationPage && availableIds.has(routeNavigationPage)) {
       const navigationLink = links.find((link) => getNavigationPageId(link) === routeNavigationPage);
       if (breadcrumbRoot instanceof HTMLAnchorElement && navigationLink) {
