@@ -1036,9 +1036,16 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     renderPageMode(pageMode, mode);
     const navigationPage = typeof event.detail?.navigationPage === 'string'
       ? event.detail.navigationPage
-      : '';
-    if (navigationPage && availableIds.has(navigationPage)) {
-      updateNavigationLinks(links, navigationPage);
+      : page.dataset.routeNavigationPage ?? '';
+    const activeNavigationPageId = determineActiveNavigationPageId(
+      page.dataset.pageId,
+      navigationPage,
+      links,
+      availableIds,
+      page.dataset.routeValue ?? ''
+    );
+    if (activeNavigationPageId) {
+      updateNavigationLinks(links, activeNavigationPageId);
     }
   }, { signal: navigationOwner.signal });
 
@@ -1211,13 +1218,18 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     if (breadcrumbDashboard instanceof HTMLAnchorElement && pageId === overviewPage?.dataset.pageId) {
       breadcrumbDashboard.hidden = true;
     }
-    updateNavigationLinks(links, pageId);
     const page = pages.find((candidate) => candidate.dataset.pageId === pageId);
     syncFullViewMode(page);
     const routeNavigationPage = page?.dataset.routeNavigationPage;
+    const routeParameter = page?.dataset.routeParameter;
+    const routeValue = routeParameter ? parameters.get(routeParameter)?.trim() ?? '' : '';
+    if (page) page.dataset.routeValue = routeValue;
+    const activeNavigationPageId = determineActiveNavigationPageId(pageId, routeNavigationPage, links, availableIds, page?.dataset.routeValue ?? '');
+    if (activeNavigationPageId) {
+      updateNavigationLinks(links, activeNavigationPageId);
+    }
     if (routeNavigationPage && availableIds.has(routeNavigationPage)) {
       const navigationLink = links.find((link) => getNavigationPageId(link) === routeNavigationPage);
-      updateNavigationLinks(links, routeNavigationPage);
       if (breadcrumbRoot instanceof HTMLAnchorElement && navigationLink) {
         breadcrumbRoot.hidden = false;
         breadcrumbRoot.textContent = navigationLink.textContent ?? routeNavigationPage;
@@ -1225,9 +1237,6 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       }
       if (breadcrumbDashboard instanceof HTMLAnchorElement) breadcrumbDashboard.hidden = true;
     }
-    const routeParameter = page?.dataset.routeParameter;
-    const routeValue = routeParameter ? parameters.get(routeParameter)?.trim() ?? '' : '';
-    if (page) page.dataset.routeValue = routeValue;
     const queryTitle = resolveQueryDrillPageTitle(parameters, knownQueries);
     const title = queryTitle || routeValue || page?.dataset.pageTitle || '';
     const description = page?.dataset.pageDescription ?? '';
@@ -1468,6 +1477,33 @@ function updateNavigationLinks(links, pageId) {
     }
     else link.removeAttribute('aria-current');
   }
+}
+
+/**
+ * Prefer the currently displayed page when it is a direct sidebar destination.
+ * For route-driven drilldowns, fall back to the route parent so breadcrumb and
+ * context links still stay highlighted without overriding an explicit sidebar
+ * page selection such as Notifications.
+ * @param {string | undefined} pageId
+ * @param {string | undefined} routeNavigationPage
+ * @param {HTMLAnchorElement[]} links
+ * @param {Set<string>} availableIds
+ * @param {string} [routeValue]
+ * @returns {string | undefined}
+ */
+function determineActiveNavigationPageId(pageId, routeNavigationPage, links, availableIds, routeValue = '') {
+  const hasRouteNavigationLink = routeNavigationPage && availableIds.has(routeNavigationPage) && links.some((link) => getNavigationPageId(link) === routeNavigationPage);
+  if (hasRouteNavigationLink && routeValue.length > 0) {
+    return routeNavigationPage;
+  }
+  const hasPageLink = pageId && availableIds.has(pageId) && links.some((link) => getNavigationPageId(link) === pageId);
+  if (hasPageLink) {
+    return pageId;
+  }
+  if (hasRouteNavigationLink) {
+    return routeNavigationPage;
+  }
+  return undefined;
 }
 
 /**
