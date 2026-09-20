@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   canonicalDatabaseName,
+  countCollections,
   DATABASE_NAME,
   DATABASE_VERSION,
   deleteCanonicalDatabase,
@@ -117,6 +118,27 @@ describe('canonical IndexedDB', () => {
     const database = await openCanonicalDatabase(indexedDB);
     expect([...database.objectStoreNames]).toContain('repositories');
     database.close();
+  });
+
+  it('counts multiple collections without materializing their records', async () => {
+    await writeRecords('repositories', [
+      { id: 'repository:1' },
+      { id: 'repository:2' }
+    ]);
+    await writeRecords('runs', [
+      { id: 'run:1' },
+      { id: 'run:2' },
+      { id: 'run:3' }
+    ]);
+    const nativeCounts = vi.spyOn(IDBObjectStore.prototype, 'count');
+    const collectionReads = vi.spyOn(IDBObjectStore.prototype, 'getAll');
+
+    await expect(countCollections(indexedDB, ['repositories', 'runs'])).resolves.toEqual({
+      repositories: 2,
+      runs: 3
+    });
+    expect(nativeCounts).toHaveBeenCalledTimes(2);
+    expect(collectionReads).not.toHaveBeenCalled();
   });
 
   it('rebuilds disposable canonical stores during upgrade', async () => {

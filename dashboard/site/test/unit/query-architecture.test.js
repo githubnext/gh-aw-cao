@@ -26,6 +26,7 @@ describe('dashboard query architecture', () => {
     const dashboard = JSON.parse(read('dashboard.json')).dashboard;
     const optimizationDashboard = JSON.parse(read('../../optimization/dashboard.json')).dashboard;
 
+    expect(worker).toContain('queryNativeCountSources(');
     expect(worker).toMatch(/executeDashboardQueries\(\s*context\.queries,\s*\{ \.\.\.canonicalPayload, \.\.\.healthPayload \},\s*directRequests/);
     expect(worker).toContain('const replacedSources = new Set(viewPayload.replacedSources)');
     expect(worker).toContain('deriveDataHealthCalloutSources(canonicalPayload)');

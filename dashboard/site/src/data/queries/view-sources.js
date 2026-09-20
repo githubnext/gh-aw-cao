@@ -5,10 +5,10 @@ import { dashboardQueryDefects, dashboardQueryIndex } from './declarative.js';
 import { createCanonicalQueries } from './index.js';
 
 const NATIVE_COUNT_FIELDS = /** @type {const} */ ({
-  campaigns: 'campaign',
-  repositories: 'repository',
-  workflows: 'workflow',
-  runs: 'run',
+  campaigns: 'id',
+  repositories: 'id',
+  workflows: 'id',
+  runs: 'id',
   domains: 'event',
   tools: 'event',
   audits: 'event',
@@ -182,6 +182,7 @@ function projectedRun(run, publishedRuns, workflowsById) {
   const workflow = workflowsById.get(run.workflowId) ?? {};
   return {
     ...(publishedRuns.get(runKey(run)) ?? {}),
+    id: run.id,
     organization: run.owner,
     repository: run.repository,
     workflow: run.workflowPath ?? workflow.path,
@@ -249,6 +250,7 @@ function repositoriesSource(repositories, sources) {
     source: 'repositories',
     rows: repositories.map((repository) => ({
       ...(publishedRepositories.get([repository.owner, repository.name].map(normalizedKey).join(':')) ?? {}),
+      id: repository.id,
       organization: repository.owner,
       repository: repository.name,
       'repository-name': repository.name,
@@ -267,6 +269,7 @@ function campaignsSource(campaigns, sources) {
   return {
     source: 'campaigns',
     rows: campaigns.map((campaignRecord) => ({
+      id: campaignRecord.id,
       campaign: campaignRecord.slug,
       'campaign-name': campaignRecord.name,
       'campaign-description': campaignRecord.description,
@@ -321,6 +324,7 @@ function workflowsSource(workflows, repositoriesById, sources) {
       ].map(normalizedKey).join(':'));
       return {
         ...(publishedWorkflow ?? {}),
+        id: workflow.id,
         organization: repository.owner,
         repository: repository.name,
         workflow: workflow.path,

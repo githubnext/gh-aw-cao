@@ -1061,25 +1061,25 @@
         "name": "database-campaign-count",
         "intent": "Count campaigns in the dashboard database.",
         "from": "campaigns",
-        "aggregate": { "values": [{ "field": "campaign", "as": "campaigns", "reducer": "count" }] }
+        "aggregate": { "values": [{ "field": "id", "as": "campaigns", "reducer": "count" }] }
       },
       {
         "name": "database-repository-count",
         "intent": "Count repositories in the dashboard database.",
         "from": "repositories",
-        "aggregate": { "values": [{ "field": "repository", "as": "repositories", "reducer": "count" }] }
+        "aggregate": { "values": [{ "field": "id", "as": "repositories", "reducer": "count" }] }
       },
       {
         "name": "database-workflow-count",
         "intent": "Count workflows in the dashboard database.",
         "from": "workflows",
-        "aggregate": { "values": [{ "field": "workflow", "as": "workflows", "reducer": "count" }] }
+        "aggregate": { "values": [{ "field": "id", "as": "workflows", "reducer": "count" }] }
       },
       {
         "name": "database-run-count",
         "intent": "Count runs in the dashboard database.",
         "from": "runs",
-        "aggregate": { "values": [{ "field": "run", "as": "runs", "reducer": "count" }] }
+        "aggregate": { "values": [{ "field": "id", "as": "runs", "reducer": "count" }] }
       },
       {
         "name": "database-domain-count",

@@ -1,9 +1,13 @@
 import 'fake-indexeddb/auto';
 import { readFileSync } from 'node:fs';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ingestCachedGhAwJsonl } from '../../src/data/ingest/coordinator.js';
 import { DATABASE_NAME, recordTransaction } from '../../src/data/storage/indexeddb.js';
-import { loadCanonicalViewSources, queryCanonicalViewSources } from '../../src/data/queries/view-sources.js';
+import {
+  loadCanonicalViewSources,
+  queryCanonicalViewSources,
+  queryNativeCountSources
+} from '../../src/data/queries/view-sources.js';
 import { createDashboardQueryBudget, executeDashboardQueries } from '../../src/data/queries/declarative.js';
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
@@ -139,6 +143,46 @@ beforeEach(async () => {
 });
 
 describe('canonical view sources', () => {
+  it('uses native counts for eligible join-free table queries', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+    const collectionReads = vi.spyOn(IDBObjectStore.prototype, 'getAll');
+    const nativeCounts = vi.spyOn(IDBObjectStore.prototype, 'count');
+    const definitions = [
+      {
+        name: 'repository-count',
+        from: 'repositories',
+        aggregate: { values: [{ field: 'id', as: 'repositories', reducer: 'count' }] }
+      },
+      {
+        name: 'filtered-run-count',
+        from: 'runs',
+        filter: { predicates: [{ field: 'run-status', equals: 'completed' }] },
+        aggregate: { values: [{ field: 'run', as: 'runs', reducer: 'count' }] }
+      }
+    ];
+
+    const projected = await queryNativeCountSources(
+      indexedDB,
+      sources,
+      definitions,
+      ['repository-count', 'filtered-run-count']
+    );
+
+    expect(projected).toEqual({
+      'repository-count': {
+        source: 'repository-count',
+        rows: [{ repositories: 1 }],
+        metadata: expect.objectContaining({
+          'source-kind': 'derived',
+          availability: 'available',
+          'query-name': 'repository-count'
+        })
+      }
+    });
+    expect(nativeCounts).toHaveBeenCalledTimes(1);
+    expect(collectionReads).not.toHaveBeenCalled();
+  });
+
   it('projects retained ingestion transactions for dashboard inspection', async () => {
     await recordTransaction(indexedDB, {
       id: 'ingest-jsonl:current:test',
