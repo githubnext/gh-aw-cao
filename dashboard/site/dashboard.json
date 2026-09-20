@@ -9996,6 +9996,7 @@
       {
         "pages": [
           "overview",
+          "notifications",
           "campaigns",
           "repositories",
           "configuration"

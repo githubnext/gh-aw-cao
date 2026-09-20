@@ -1312,6 +1312,7 @@ dashboard:
     expect(runsPage.definition.views).toHaveLength(2);
     expect(document.dashboard.navigation.find((/** @type {{ label?: string }} */ section) => !section.label).pages).toEqual([
       'overview',
+      'notifications',
       'campaigns',
       'repositories',
       'configuration'
