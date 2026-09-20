@@ -1252,7 +1252,6 @@ describe('presenter built-in and custom pages', () => {
     expect([...rendered.querySelectorAll('.mobile-nav-section-label')].map((node) => node.textContent?.trim())).toEqual(['Data', 'Experimental']);
     expect([...rendered.querySelectorAll('.primary-nav > [data-nav-page-id] .nav-label')].map((node) => node.textContent)).toEqual([
       'Overview',
-      'Campaigns',
       'Repositories',
       'Settings'
     ]);
@@ -1276,7 +1275,6 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-nav-page-id="uk-ai-advisory-dashboard"]')?.closest('.nav-section')).toBe(sections[1]);
     expect([...rendered.querySelectorAll('.nav-label')].map((node) => node.textContent)).toEqual([
       'Overview',
-      'Campaigns',
       'Repositories',
       'Settings',
       'Workflows',
@@ -1813,7 +1811,6 @@ describe('presenter built-in and custom pages', () => {
     expect(menuLinks.every((link) => link.querySelector('.octicon') !== null)).toBe(true);
     expect(menuLinks.map((link) => link.textContent?.trim())).toEqual([
       'Overview',
-      'Campaigns',
       'Repositories',
       'Settings',
       'Workflows',
@@ -2970,15 +2967,15 @@ describe('presenter built-in and custom pages', () => {
       }
     });
 
-    const campaignsPage = rendered.querySelector('[data-page-name="campaigns"]');
-    expect(campaignsPage?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
-    expect(campaignsPage?.querySelector('[data-table-filter]')).not.toBeNull();
-    const campaignSummaryRows = [...(campaignsPage?.querySelectorAll('.custom-table tbody tr') ?? [])];
+    const campaignsSection = rendered.querySelector('[data-view-id="overview-campaigns"]');
+    expect(campaignsSection?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
+    expect(campaignsSection?.querySelector('[data-table-filter]')).not.toBeNull();
+    const campaignSummaryRows = [...(campaignsSection?.querySelectorAll('.custom-table tbody tr') ?? [])];
     expect(campaignSummaryRows).toHaveLength(2);
     expect(campaignSummaryRows[0]?.textContent).toContain('Daily Ops');
     expect(campaignSummaryRows[0]?.textContent).toContain('40');
     expect(campaignSummaryRows[1]?.textContent).toContain('Empty Ops');
-    expect(/** @type {HTMLElement | null} */ (campaignsPage?.querySelector('.data-state-summary'))?.hidden).toBe(true);
+    expect(/** @type {HTMLElement | null} */ (campaignsSection?.querySelector('.data-state-summary'))?.hidden).toBe(true);
 
   });
 
@@ -2989,10 +2986,18 @@ describe('presenter built-in and custom pages', () => {
         id: 'repository-scoped-campaigns',
         title: 'Repository-scoped campaigns',
         pages: [{
-          id: 'campaigns',
-          kind: /** @type {'built-in'} */ ('built-in'),
-          page: 'campaigns',
-          title: 'Campaigns'
+          id: 'overview',
+          kind: /** @type {'custom'} */ ('custom'),
+          title: 'Overview',
+          views: [{
+            id: 'overview-campaigns',
+            title: 'Campaigns',
+            data: { source: 'campaign-inventory' },
+            mark: 'list',
+            list: { style: 'entity-cards', card: 'campaign', icon: 'goal' },
+            layout: 'full-view',
+            encoding: { columns: [{ field: 'campaign-name', type: 'nominal', title: 'Campaign' }] }
+          }]
         }]
       }
     };
