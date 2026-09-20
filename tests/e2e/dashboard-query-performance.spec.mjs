@@ -53,11 +53,18 @@ async function serveDashboard(request, response) {
   const deployedResponse = await fetch(new URL(pathname.slice(1), deployedDashboardUrl), {
     method: request.method,
   });
+  const body = request.method === "HEAD"
+    ? undefined
+    : Buffer.from(await deployedResponse.arrayBuffer());
+  const contentLength = request.method === "HEAD"
+    ? deployedResponse.headers.get("content-length")
+    : String(body.length);
   response.writeHead(deployedResponse.status, {
     "cache-control": "no-store",
     "content-type": deployedResponse.headers.get("content-type") || "application/octet-stream",
+    ...(contentLength ? { "content-length": contentLength } : {}),
   });
-  response.end(request.method === "HEAD" ? undefined : Buffer.from(await deployedResponse.arrayBuffer()));
+  response.end(body);
 }
 
 async function startDashboardServer() {
