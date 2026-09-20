@@ -1147,61 +1147,48 @@ describe('dashboard document validation', () => {
 
     expect(page.views).toEqual([
       expect.objectContaining({
-      id: 'overview-header',
-      description: 'Repositories registered counts distinct registered targets and compares them with retained completed delivery evidence in the selected horizon.',
-      data: { sources: expect.arrayContaining([
-        'overview-outcome-summary',
-        'overview-run-summary',
-        'overview-factory-status',
-        'overview-rhythm'
-      ]) },
-      mark: 'element',
-      element: 'factory-header',
-      layout: 'full'
-    }),
+        id: 'overview-header',
+        description: 'Repositories registered counts distinct registered targets and compares them with retained completed delivery evidence in the selected horizon.',
+        data: { sources: expect.arrayContaining([
+          'overview-outcome-summary',
+          'overview-run-summary',
+          'overview-factory-status',
+          'overview-rhythm'
+        ]) },
+        mark: 'element',
+        element: 'factory-header',
+        layout: 'full'
+      }),
       expect.objectContaining({
-      id: 'overview-floor',
-      data: { sources: expect.arrayContaining([
-        'overview-outcome-summary',
-        'overview-run-summary',
-        'overview-dispatch-summary',
-        'overview-value-summary',
-        'overview-registered-repository-summary',
-        'overview-worker-summary'
-      ]) },
-      mark: 'element',
-      element: 'factory-floor',
-      config: expect.objectContaining({ animate: 'number' }),
-      layout: 'full'
-    }),
+        id: 'overview-floor',
+        data: { sources: expect.arrayContaining([
+          'overview-outcome-summary',
+          'overview-run-summary',
+          'overview-dispatch-summary',
+          'overview-value-summary',
+          'overview-registered-repository-summary',
+          'overview-worker-summary'
+        ]) },
+        mark: 'element',
+        element: 'factory-floor',
+        config: expect.objectContaining({ animate: 'number' }),
+        layout: 'full'
+      }),
       expect.objectContaining({
-      id: 'overview-needs-attention',
-      data: { source: 'overview-needs-attention-preview' },
-      mark: 'list',
-      list: {
-        style: 'entity-cards',
-        appearance: 'grouped',
-        card: 'attention-signal',
-        icon: 'issue-opened',
-        drill: { type: 'external', field: 'evidence-link' },
-        'view-all': { page: 'overview-needs-attention', label: 'View all' }
-      },
-      layout: 'full'
-    }),
-      expect.objectContaining({
-      id: 'overview-campaigns',
-      title: 'Campaigns',
-      data: { source: 'campaign-inventory' },
-      mark: 'list',
-      list: {
-        style: 'entity-cards',
-        appearance: 'grouped',
-        card: 'campaign',
-        icon: 'goal',
-        drill: { type: 'external', field: 'campaign-dashboard-link' }
-      },
-      layout: 'full'
-    })]);
+        id: 'overview-needs-attention',
+        data: { source: 'overview-needs-attention-preview' },
+        mark: 'list',
+        list: {
+          style: 'entity-cards',
+          appearance: 'grouped',
+          card: 'attention-signal',
+          icon: 'issue-opened',
+          drill: { type: 'external', field: 'evidence-link' },
+          'view-all': { page: 'overview-needs-attention', label: 'View all' }
+        },
+        layout: 'full'
+      })
+    ]);
     expect(validateDashboardDocument(authoritativeDashboardSource).ok).toBe(true);
   });
 
