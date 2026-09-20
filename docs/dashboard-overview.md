@@ -64,7 +64,7 @@ defines the snapshot and its requirements.
 | Source | How Overview uses it |
 | --- | --- |
 | `runs` | Counts successful, failed, active, review, live, and dispatched runs; builds Factory rhythm. |
-| `repositories` | Counts distinct repositories in the observed control-plane scope. |
+| `repositories` | Counts canonical repository identities in the observed control-plane scope. |
 | `workflows` | Identifies declared workers and enriches run context. |
 | `outcomes` | Counts retained issue and pull request outputs and repositories with accepted delivery evidence. |
 | `grader-observations` | Counts evidence associated with operational value. |
