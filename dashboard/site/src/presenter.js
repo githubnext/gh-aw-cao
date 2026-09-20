@@ -1482,9 +1482,10 @@ function updateNavigationLinks(links, pageId) {
 }
 
 /**
- * Prefer the actual page whenever it is a direct sidebar destination. Route
- * metadata still informs breadcrumbs and historical back-navigation for drilldown
- * pages, but it should not override a real direct selection like Notifications.
+ * Prefer the currently displayed page when it is a direct sidebar destination.
+ * For route-driven drilldowns, fall back to the route parent so breadcrumb and
+ * context links still stay highlighted without overriding an explicit sidebar
+ * page selection such as Notifications.
  * @param {string | undefined} pageId
  * @param {string | undefined} routeNavigationPage
  * @param {string | undefined} directPageId
@@ -1497,10 +1498,12 @@ function determineActiveNavigationPageId(pageId, routeNavigationPage, directPage
   if (hasDirectPageLink) {
     return directPageId;
   }
-  if (pageId && availableIds.has(pageId) && links.some((link) => getNavigationPageId(link) === pageId)) {
+  const hasPageLink = pageId && availableIds.has(pageId) && links.some((link) => getNavigationPageId(link) === pageId);
+  if (hasPageLink) {
     return pageId;
   }
-  if (routeNavigationPage && availableIds.has(routeNavigationPage)) {
+  const hasRouteNavigationLink = routeNavigationPage && availableIds.has(routeNavigationPage) && links.some((link) => getNavigationPageId(link) === routeNavigationPage);
+  if (hasRouteNavigationLink) {
     return routeNavigationPage;
   }
   return undefined;
