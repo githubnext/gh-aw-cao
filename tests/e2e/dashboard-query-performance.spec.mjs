@@ -50,12 +50,14 @@ async function serveDashboard(request, response) {
     if (error?.code !== "ENOENT" && error?.message !== "Not a file") throw error;
   }
 
-  const deployedResponse = await fetch(new URL(pathname.slice(1), deployedDashboardUrl));
+  const deployedResponse = await fetch(new URL(pathname.slice(1), deployedDashboardUrl), {
+    method: request.method,
+  });
   response.writeHead(deployedResponse.status, {
     "cache-control": "no-store",
     "content-type": deployedResponse.headers.get("content-type") || "application/octet-stream",
   });
-  response.end(Buffer.from(await deployedResponse.arrayBuffer()));
+  response.end(request.method === "HEAD" ? undefined : Buffer.from(await deployedResponse.arrayBuffer()));
 }
 
 async function startDashboardServer() {
