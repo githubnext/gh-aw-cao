@@ -1,5 +1,14 @@
 export const QUERY_CHUNK_SIZE = 25;
 
+export function deployedProxyTarget(pathname, baseUrl) {
+  const base = new URL(baseUrl);
+  const target = new URL(base);
+  target.pathname = `${base.pathname}${pathname.replace(/^\/+/, "")}`;
+  return target.pathname.startsWith(base.pathname)
+    ? target
+    : null;
+}
+
 export function roundMilliseconds(value) {
   return Math.round(value * 100) / 100;
 }

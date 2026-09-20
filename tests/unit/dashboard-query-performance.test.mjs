@@ -4,6 +4,7 @@ import test from "node:test";
 import config from "../playwright/configs/dashboard-query-performance.config.mjs";
 import {
   QUERY_CHUNK_SIZE,
+  deployedProxyTarget,
   queryPerformanceMarkdown,
   summarizeQueryTiming,
 } from "../e2e/dashboard-query-performance-helpers.mjs";
@@ -19,6 +20,19 @@ test("deployed integration runs and uploads the query benchmark", () => {
   assert.match(workflow, /run: npm run test:performance:dashboard-queries/);
   assert.match(workflow, /test-results\/dashboard-query-performance\//);
   assert.match(workflow, /steps\.performance\.outcome == 'failure'/);
+});
+
+test("deployed proxy targets remain under the trusted dashboard URL", () => {
+  const base = "https://githubnext.github.io/gh-aw-cao/cao/";
+  assert.equal(
+    deployedProxyTarget("/gh-aw-logs-runs/shard.json", base)?.href,
+    `${base}gh-aw-logs-runs/shard.json`,
+  );
+  assert.equal(
+    deployedProxyTarget("/https://example.com/private", base)?.origin,
+    "https://githubnext.github.io",
+  );
+  assert.equal(deployedProxyTarget("/../private", base), null);
 });
 
 test("dashboard query timing summary distinguishes initial, continuation, and fill timings", () => {

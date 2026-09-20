@@ -8,6 +8,7 @@ import {
 } from "./dashboard-deployed-refresh-helpers.mjs";
 import {
   QUERY_CHUNK_SIZE,
+  deployedProxyTarget,
   queryPerformanceMarkdown,
 } from "./dashboard-query-performance-helpers.mjs";
 
@@ -50,8 +51,14 @@ async function serveDashboard(request, response) {
     if (error?.code !== "ENOENT" && error?.message !== "Not a file") throw error;
   }
 
-  const deployedResponse = await fetch(new URL(pathname.slice(1), deployedDashboardUrl), {
+  const deployedUrl = deployedProxyTarget(pathname, deployedDashboardUrl);
+  if (!deployedUrl) {
+    response.writeHead(403).end();
+    return;
+  }
+  const deployedResponse = await fetch(deployedUrl, {
     method: request.method,
+    redirect: "error",
   });
   const body = request.method === "HEAD"
     ? undefined
