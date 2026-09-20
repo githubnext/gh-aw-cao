@@ -7,7 +7,8 @@ import { getPrimerStyles } from './styles.js';
 import { octicon } from './octicons.js';
 import { renderDataStateMetrics } from './components/data-state.js';
 import { titleCase } from './components/count-formatters.js';
-import { formatMediumUtcDateTime, renderEmptyMessage, renderLoadingPlaceholderBlocks } from './components/ui-primitives.js';
+import { formatMediumUtcDateTime, renderEmptyMessage } from './components/ui-primitives.js';
+import { renderAgenticLoader } from './components/agentic-loader.js';
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection, renderViewDisclosure } from './components/view-chrome.js';
 import { externalAnchorAttrs, findLink } from './components/link-content.js';
 import { elementHandlesEmptyRows, elementHandlesUnavailableSource, elementLoadsSourcesAsync, renderUiElement } from './components/ui-elements.js';
@@ -654,16 +655,11 @@ function renderPageLoadingSkeleton(page) {
  * @returns {HTMLElement}
  */
 function renderPageSkeleton() {
-  return h(
-    'div',
-    {
-      className: 'dashboard-view-skeleton',
-      role: 'status',
-      'aria-label': 'Loading view'
-    },
-    h('span', { className: 'sr-only' }, 'Loading view'),
-    ...renderLoadingPlaceholderBlocks()
-  );
+  return renderAgenticLoader({
+    className: 'dashboard-view-skeleton',
+    label: 'Loading view',
+    compact: true
+  });
 }
 
 /**

@@ -7,7 +7,7 @@
       import { octicon } from "./octicons.js";
       import { renderRefreshError } from "./components/refresh-error.js";
       import { collectFullDiagnostics } from "./diagnostics.js";
-      import { renderLoadingPlaceholderBlocks } from "./components/ui-primitives.js";
+      import { renderAgenticLoader } from "./components/agentic-loader.js";
       import { startDashboardAppUpdates } from "./dashboard-data-updates.js";
       import { attachCliActions, setDeclaredCliActions } from "./components/cli-actions.js";
       import { applyTableQuerySafetyLimits, browserTableCapacityDecision, logTableCapacityDecision } from "./data/table-capacity.js";
@@ -20,6 +20,9 @@
         normalizeDashboardPageChunk,
         splitDashboardDocument,
       } from "./dashboard-chunks.js";
+
+      const AGENTIC_LOADER_REVEAL_DELAY_MS = 300;
+      const AGENTIC_LOADER_MIN_VISIBLE_MS = 700;
 
       /** @typedef {{ name?: string } & Record<string, unknown>} DashboardQueryDefinition */
       /** @typedef {{ 'language-version': string, dashboard: import('./presenter.js').PresentableDashboard }} DashboardSchema */
@@ -342,14 +345,16 @@
         if (state === "loading") {
           dashboard.classList.add("dashboard-loading");
           dashboard.setAttribute("aria-busy", "true");
-
-          const skeleton = document.createElement("div");
-          skeleton.className = "dashboard-loading-skeleton";
-          skeleton.setAttribute("aria-hidden", "true");
-          for (const block of renderLoadingPlaceholderBlocks()) {
-            skeleton.append(block);
+          const loader = renderAgenticLoader({
+            className: "dashboard-loading-skeleton"
+          });
+          const loaderHost = dashboard.querySelector(".factory-floor") ?? dashboard.querySelector(".report-body");
+          if (loaderHost?.classList.contains("factory-floor")) {
+            loader.classList.add("agentic-loader-factory-overlay");
+            loaderHost.append(loader);
+          } else {
+            loaderHost?.prepend(loader);
           }
-          dashboard.querySelector(".report-body")?.prepend(skeleton);
         } else if (state === "cached") {
           dashboard.classList.add("dashboard-refreshing");
           dashboard.setAttribute("aria-busy", "true");
@@ -368,6 +373,37 @@
         if (previousDashboard instanceof HTMLElement) disposeDashboard(previousDashboard);
         root.replaceChildren(dashboard);
         return dashboard;
+      };
+      let initialLoadingStartedAt = 0;
+      let initialLoadingSettled = false;
+      let initialLoadingRenderTimer = 0;
+
+      /**
+       * Avoids flashing the branded loader for fast startup while preventing a
+       * visible loader from disappearing before its transition can settle.
+       * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
+       * @param {'ready' | 'loading' | 'cached' | 'stale'} state
+       * @param {boolean} prepared
+       * @param {(pageId: string, options: { signal: AbortSignal, onUpdate: (sources: Record<string, import('./presenter.js').LogicalSourceInput>) => void }) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} [loadPageSources]
+       * @param {() => void} [retryRefresh]
+       */
+      const renderAfterInitialLoading = (sources, state, prepared, loadPageSources, retryRefresh) => {
+        if (initialLoadingSettled || state === "loading") {
+          renderSources(sources, state, prepared, loadPageSources, retryRefresh);
+          return;
+        }
+        const elapsed = performance.now() - initialLoadingStartedAt;
+        const minimumEnd = AGENTIC_LOADER_REVEAL_DELAY_MS + AGENTIC_LOADER_MIN_VISIBLE_MS;
+        if (elapsed < AGENTIC_LOADER_REVEAL_DELAY_MS || elapsed >= minimumEnd) {
+          initialLoadingSettled = true;
+          renderSources(sources, state, prepared, loadPageSources, retryRefresh);
+          return;
+        }
+        window.clearTimeout(initialLoadingRenderTimer);
+        initialLoadingRenderTimer = window.setTimeout(() => {
+          initialLoadingSettled = true;
+          renderSources(sources, state, prepared, loadPageSources, retryRefresh);
+        }, minimumEnd - elapsed);
       };
       window.addEventListener("dashboard-preview-update", (event) => {
         const previewEvent = /** @type {CustomEvent<{ dashboard: { 'language-version': string, dashboard: import('./presenter.js').PresentableDashboard }, traceId?: string }>} */ (event);
@@ -1055,6 +1091,7 @@
         });
         cancelCommand.complete();
       } else {
+        initialLoadingStartedAt = performance.now();
         renderSources({}, "loading");
         const sourceUrl = new URL("./payload-hashes.json", window.location.href).href;
         try {
@@ -1067,10 +1104,11 @@
             pageSourceNames: (pageId, viewMode) => dashboardPageSourceNames(dashboardDocument, pageId, viewMode),
             pagePaginatedSourceBindings: (pageId) => dashboardPagePaginatedSourceBindings(dashboardDocument, pageId),
             render: (sources, state, loadPageSources, retryRefresh) => {
-              renderSources(sources, state, true, loadPageSources, retryRefresh);
+              renderAfterInitialLoading(sources, state, true, loadPageSources, retryRefresh);
             },
           });
         } catch (error) {
+          window.clearTimeout(initialLoadingRenderTimer);
           const message = error instanceof Error ? error.message : String(error);
           const failure = new Error(`Unable to load live dashboard data: ${message}`, { cause: error });
           root.textContent = failure.message;
