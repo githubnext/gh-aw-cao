@@ -34,6 +34,7 @@
     "test:e2e:docs": "npm run docs:build && playwright test --config=tests/playwright/configs/docs.config.mjs",
     "test:e2e:dashboard-views": "playwright test --config=tests/playwright/configs/dashboard-views.config.mjs",
     "test:e2e:dashboard-deployed": "playwright test --config=tests/playwright/configs/dashboard-deployed.config.mjs",
+    "test:performance:dashboard-queries": "playwright test --config=tests/playwright/configs/dashboard-query-performance.config.mjs",
     "test:e2e:dashboard-ingestion": "playwright test --config=tests/playwright/configs/dashboard-ingestion.config.mjs",
     "test:stress:dashboard": "playwright test --config=tests/playwright/configs/dashboard-massive-scale.config.mjs",
     "test:e2e:copilot-loop": "playwright test --config=tests/playwright/configs/copilot-loop.config.mjs",
