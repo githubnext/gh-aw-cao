@@ -1,8 +1,7 @@
       import { dashboardPagePaginatedSourceBindings, dashboardPageSourceNames, disposeDashboard, renderDashboard, updateWithViewTransition } from "./presenter.js";
       import { setLoadingProgressState } from "./loading-progress.js";
       import { offerCancelCommand } from "./cancel-command.js";
-      import { processDashboardQueries, subscribeWorkerLoadingProgress } from "./data-processor.js";
-      import { loadDatabaseQuerySources } from "./data/queries/database.js";
+      import { loadDashboardQuerySources, processDashboardQueries, subscribeWorkerLoadingProgress } from "./data-processor.js";
       import { startDashboardData } from "./data/startup.js";
       import { octicon } from "./octicons.js";
       import { renderRefreshError } from "./components/refresh-error.js";
@@ -1031,12 +1030,11 @@
         const sourceNames = [...new Set(dashboardDocument.dashboard.pages.flatMap((page) =>
           dashboardPageSourceNames(dashboardDocument, page.id)
         ))];
-        return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (loadDatabaseQuerySources(window.indexedDB, sources, {
+        return loadDashboardQuerySources(sources, {
           ingest,
-          storage: navigator.storage,
           sourceNames,
           queries: dashboardQueries,
-        }));
+        });
       }
 
       if (new URLSearchParams(window.location.search).has("fixtures")) {

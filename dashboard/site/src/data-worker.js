@@ -12,7 +12,6 @@ import {
 import { normalize } from './data/normalize/index.js';
 import { queryDatabaseSources, queryIndexedDatabaseSources } from './data/queries/database.js';
 import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-compiler.js';
-import { createDashboardQueryMemoization, dashboardQueryMemoizationKey } from './data/queries/memoization.js';
 import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { deriveDataHealthCalloutSources } from './data-health.js';
@@ -48,7 +47,6 @@ async function* responseChunks(body) {
 /** @type {{ logicalSources: Record<string, import('./presenter.js').LogicalSourceInput>, revision: number } | null} */
 let liveDashboard = null;
 let runPhaseOnly = false;
-const dashboardQueryMemoization = createDashboardQueryMemoization();
 /**
  * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, emitted: boolean, pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' } }} DashboardSubscription
  */
@@ -122,7 +120,6 @@ function pageScopedSources(sources, requested) {
  * @param {{ filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' }} [queryContext]
  * @param {string} [viewId]
  * @param {typeof liveDashboard} [dashboard]
- * @param {string} [cacheId]
  */
 async function queryLiveDashboard(
   requested,
@@ -134,24 +131,11 @@ async function queryLiveDashboard(
   routeParameters,
   queryContext,
   viewId,
-  dashboard = liveDashboard,
-  cacheId = undefined
+  dashboard = liveDashboard
 ) {
   dashboard ??= await loadActiveDashboard();
   if (signal?.aborted) throw new DashboardQueryCancelledError('dashboard queries were cancelled', 'aborted');
-  const key = dashboardQueryKey(
-    requested,
-    context,
-    requestContext,
-    pagination,
-    pageId,
-    routeParameters,
-    queryContext,
-    viewId,
-    cacheId
-  );
-  return dashboardQueryMemoization.get(dashboard.revision, key, async () => {
-    const startedAt = monotonicNow();
+  const startedAt = monotonicNow();
     const nativeSources = await queryIndexedDatabaseSources(
       indexedDB,
       dashboard.logicalSources,
@@ -229,43 +213,7 @@ async function queryLiveDashboard(
       requestedSources: [...requested],
       returnedRows: Object.fromEntries(Object.entries(response).map(([name, source]) => [name, source.rows.length]))
     });
-    return response;
-  });
-}
-
-/**
- * @param {Set<string>} requested
- * @param {ReturnType<typeof dashboardContext>} context
- * @param {{ githubUrlBase?: string, dashboardRepository?: string | null }} requestContext
- * @param {Record<string, { limit: number, continuationToken?: string }>} pagination
- * @param {string | undefined} pageId
- * @param {Record<string, string> | undefined} routeParameters
- * @param {DashboardSubscription['queryContext']} queryContext
- * @param {string | undefined} viewId
- * @param {string | undefined} cacheId
- */
-function dashboardQueryKey(
-  requested,
-  context,
-  requestContext,
-  pagination,
-  pageId,
-  routeParameters,
-  queryContext,
-  viewId,
-  cacheId
-) {
-  return dashboardQueryMemoizationKey([
-    cacheId,
-    [...requested].sort(),
-    context,
-    requestContext,
-    pagination,
-    pageId,
-    routeParameters,
-    queryContext,
-    viewId
-  ]);
+  return response;
 }
 
 /** @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources */
@@ -333,8 +281,7 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
             subscription.routeParameters,
             subscription.queryContext,
             subscription.viewId,
-            dashboard,
-            id
+            dashboard
           );
           if (dashboardSubscriptions.get(id) === subscription && liveDashboard === dashboard) {
             subscription.emitted = true;
@@ -470,7 +417,7 @@ export function publishedPhasedActivityShards(hashes) {
 }
 
 /**
- * @param {{ id?: unknown, operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, pageId?: unknown, viewId?: unknown, routeParameters?: unknown, queryContext?: unknown }} request
+ * @param {{ id?: unknown, operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, ingest?: unknown, pageId?: unknown, viewId?: unknown, routeParameters?: unknown, queryContext?: unknown }} request
  * @param {AbortSignal} [signal] cancels declarative query execution
  * @returns {unknown}
  */
@@ -819,6 +766,25 @@ export function processDataRequest(request, signal) {
     );
     return querySources;
   }
+  if (request?.operation === 'load-dashboard-query-sources') {
+    if (!request.sources || typeof request.sources !== 'object' || Array.isArray(request.sources)) {
+      throw new TypeError('Dashboard database query requests require a sources object.');
+    }
+    return (async () => {
+      const sources = /** @type {Record<string, unknown>} */ (request.sources);
+      if (request.ingest === true) await ingestDashboardSources(indexedDB, sources);
+      const sourceNames = request.sourceNames === undefined
+        ? Object.keys(sources)
+        : [...requestedSourceNames(request.sourceNames)];
+      const queries = Array.isArray(request.queries) ? request.queries : [];
+      const required = resolveDashboardQuerySources(queries, sourceNames);
+      const database = await queryDatabaseSources(indexedDB, sources, required);
+      return {
+        ...database,
+        ...executeDashboardQueries(queries, database, sourceNames, { signal })
+      };
+    })();
+  }
   if (request?.operation === 'summarize-table-columns') {
     if (!Array.isArray(request.columns)) {
       throw new TypeError('Table summary requests require a columns array.');
@@ -886,25 +852,7 @@ if (typeof document === 'undefined' && workerScope) {
         };
         dashboardSubscriptions.set(subscriptionId, subscription);
         if (liveDashboard && event.data.emitCurrent !== false) {
-          const key = dashboardQueryKey(
-            new Set(subscription.sourceNames),
-            subscription.context,
-            subscription.requestContext,
-            subscription.pagination,
-            subscription.pageId,
-            subscription.routeParameters,
-            subscription.queryContext,
-            subscription.viewId,
-            subscriptionId
-          );
-          const cached = dashboardQueryMemoization.peek(key);
-          if (cached) {
-            subscription.emitted = true;
-            subscription.revision = cached.revision;
-            workerScope.postMessage({ subscriptionId, revision: cached.revision, data: cached.value });
-          }
-          if ((!cached || cached.revision !== liveDashboard.revision)
-              && (!runPhaseOnly || isRunPhaseSubscription(subscription))) {
+          if (!runPhaseOnly || isRunPhaseSubscription(subscription)) {
             scheduleDashboardSubscriptions([subscriptionId]);
           }
         }

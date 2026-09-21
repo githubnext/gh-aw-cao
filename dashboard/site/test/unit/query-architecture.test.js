@@ -34,6 +34,9 @@ describe('dashboard query architecture', () => {
     expect(worker).toContain('deriveDataHealthCalloutSources(databasePayload)');
     expect(worker).not.toMatch(/deriveOverviewSources|deriveRepositorySources|deriveRuntimeSources|deriveWorkflowSources/);
     expect(worker).toContain("operation === 'subscribe-canonical-dashboard'");
+    expect(worker).not.toContain('createDashboardQueryMemoization');
+    expect(existsSync(resolve('src/data/queries/memoization.js'))).toBe(false);
+    expect(databaseQueries.every((/** @type {{ stores?: unknown }} */ query) => Array.isArray(query.stores))).toBe(true);
     expect(startup).toContain('subscribeCanonicalDashboardView(');
     expect(startup).toContain('signal: pageOptions.signal');
     expect(startup).toContain('bindContinuations(pageId, sources, paginatedSources, pageOptions)');

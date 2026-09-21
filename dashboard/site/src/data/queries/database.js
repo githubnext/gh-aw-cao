@@ -14,6 +14,7 @@ import {
   executeDashboardQueries,
   resolveDashboardQuerySources
 } from './declarative.js';
+import { SOURCE_FIELDS } from '../../specification.js';
 
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 const databaseQueryIndex = dashboardQueryIndex(databaseQueries);
@@ -272,16 +273,11 @@ function indexedRunOperators(definition) {
 
 /** @param {string} name */
 function queryStores(name) {
-  if (name === 'campaigns') return ['campaigns'];
-  if (name === 'repositories') return ['repositories'];
-  if (name === 'workflows') return ['repositories', 'workflows'];
-  if (name === 'runs') return ['workflows', 'runs'];
-  if (RUN_RECORD_STORES.has(name)) return ['runs', name];
-  if (name === 'mcp-calls') return ['runs', 'tools'];
-  if (name === 'findings') return ['runs', 'audits'];
-  if (name === 'firewall-observations') return ['runs', 'domains'];
-  if (name === 'transactions') return ['transactions'];
-  return [];
+  const definition = databaseQueryIndex.get(name) ?? databaseQueryIndex.get('run-records');
+  const configured = definition?.['stores-by-source']?.[name] ?? definition?.stores;
+  return Array.isArray(configured)
+    ? configured.filter((store) => typeof store === 'string')
+    : [];
 }
 
 /**
@@ -332,8 +328,8 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
         source: name,
         rows: [],
         metadata: {
-          ...queryMetadata(sources, name, name, true),
-          availability: 'empty'
+          ...queryMetadata(sources, name, name, Object.hasOwn(SOURCE_FIELDS, name)),
+          availability: Object.hasOwn(SOURCE_FIELDS, name) ? 'empty' : 'unavailable'
         }
       };
       continue;

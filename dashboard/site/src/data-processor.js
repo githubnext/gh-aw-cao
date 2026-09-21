@@ -239,6 +239,20 @@ export function processDashboardQueries(queries, sources, options = {}) {
 }
 
 /**
+ * Ingests optional published rows and executes their declarative database
+ * projections entirely in the data worker.
+ * @param {Record<string, unknown>} sources
+ * @param {{ ingest?: boolean, sourceNames?: string[], queries?: unknown[] }} [options]
+ */
+export function loadDashboardQuerySources(sources, options = {}) {
+  return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (processRequest(
+    { operation: 'load-dashboard-query-sources', sources, ...options },
+    () => Promise.reject(new Error('Dashboard database queries require a data worker.')),
+    false
+  ));
+}
+
+/**
  * Loads and hydrates the live canonical dashboard entirely in the data worker.
  * The main thread sends only a URL and receives the query projection needed by
  * the renderer.
@@ -365,8 +379,6 @@ export function subscribeCanonicalDashboardView(viewId, sourceNames, context, li
     current.listeners.delete(listenerEntry);
     if (current.listeners.size > 0) return;
     subscriptions.delete(viewId);
-    // The worker memoization cache may replay a still-live result. Release this
-    // structured clone so navigation never retains a second page payload.
     current.latest = null;
     current.snapshot = null;
     current.snapshotRevision = null;

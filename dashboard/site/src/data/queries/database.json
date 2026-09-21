@@ -1,6 +1,7 @@
 [
   {
     "name": "campaigns",
+    "stores": ["campaigns"],
     "from": "$campaigns",
     "compute": [
       {
@@ -43,6 +44,7 @@
   },
   {
     "name": "repositories",
+    "stores": ["repositories"],
     "from": "$repositories",
     "compute": [
       {
@@ -70,6 +72,7 @@
   },
   {
     "name": "workflows",
+    "stores": ["repositories", "workflows"],
     "from": "$workflows",
     "joins": [
       {
@@ -150,6 +153,7 @@
   },
   {
     "name": "runs",
+    "stores": ["workflows", "runs"],
     "from": "$runs",
     "joins": [
       {
@@ -245,6 +249,13 @@
   },
   {
     "name": "run-records",
+    "stores": ["runs"],
+    "stores-by-source": {
+      "domains": ["runs", "domains"],
+      "tools": ["runs", "tools"],
+      "audits": ["runs", "audits"],
+      "issues": ["runs", "issues"]
+    },
     "from": "$records",
     "joins": [
       {
@@ -406,6 +417,7 @@
   },
   {
     "name": "mcp-calls",
+    "stores": ["runs", "tools"],
     "from": "run-records",
     "filter": {
       "predicates": [
@@ -434,6 +446,7 @@
   },
   {
     "name": "findings",
+    "stores": ["runs", "audits"],
     "from": "run-records",
     "filter": {
       "predicates": [
@@ -494,6 +507,7 @@
   },
   {
     "name": "detection-observations",
+    "stores": [],
     "from": "$security-findings",
     "compute": [
       {
@@ -571,6 +585,7 @@
   },
   {
     "name": "safe-output-performance",
+    "stores": [],
     "from": "$outcomes",
     "compute": [
       {
@@ -596,6 +611,7 @@
   },
   {
     "name": "firewall-observations",
+    "stores": ["runs", "domains"],
     "from": "run-records",
     "filter": {
       "predicates": [
@@ -680,6 +696,7 @@
   },
   {
     "name": "transactions",
+    "stores": ["transactions"],
     "from": "$transactions",
     "select": [
       { "field": "id" },

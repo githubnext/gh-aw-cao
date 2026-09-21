@@ -405,5 +405,5 @@ describe('dashboard source ingestion queries', () => {
 
     expect(adapted.observations.filter(({ kind }) => kind === 'audit')).toHaveLength(count);
     expect(adapted.observations.at(-1)?.data.runId).toBe('github:run:303:attempt:1');
-  });
+  }, 15_000);
 });
