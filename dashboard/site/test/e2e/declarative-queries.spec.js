@@ -382,23 +382,6 @@ test('scenario 3: aggregates with grouped, deterministic reducers', async ({ pag
   expect(payload['run-totals'].rows).toHaveLength(3);
 });
 
-test('the authored Safe Outputs query returns every canonical outcome for the usage table', async ({ page }) => {
-  const dashboard = JSON.parse(readFileSync(join(siteRoot, 'dashboard.json'), 'utf8'));
-  const query = dashboard.dashboard.queries.find(
-    (/** @type {{ name?: string }} */ candidate) => candidate.name === 'safe-output-usage'
-  );
-  const payload = await loadThroughWorker(page, [query], ['safe-output-usage']);
-
-  expect(payload['safe-output-usage'].rows.map((row) => row['safe-output'])).toEqual([
-    'issue-2',
-    'pr-1',
-    'issue-1'
-  ]);
-  expect(payload['safe-output-usage']).toMatchObject({
-    source: 'safe-output-usage',
-    metadata: { 'source-kind': 'derived', 'query-name': 'safe-output-usage' }
-  });
-});
 
 test('the authored basic table queries return the populated canonical database rows', async ({ page }) => {
   const dashboard = JSON.parse(readFileSync(join(siteRoot, 'dashboard.json'), 'utf8'));

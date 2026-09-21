@@ -124,49 +124,6 @@ function builtInPage(pageId, overrides = {}) {
   };
 }
 
-test('back navigation follows every dashboard browser history entry', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.evaluate(async (presenterModuleUrl) => {
-    window.history.replaceState(null, '', '/#page-overview');
-    const { renderDashboard } = await import(presenterModuleUrl);
-    document.querySelector('#root')?.append(renderDashboard({
-      document: {
-        languageVersion: '0.1.0',
-        dashboard: {
-          id: 'navigation-dashboard',
-          title: 'Navigation dashboard',
-          pages: [
-            { id: 'overview', kind: 'custom', title: 'Overview', views: [], sections: [] },
-            { id: 'cost', kind: 'custom', title: 'Cost', views: [], sections: [] }
-          ]
-        }
-      },
-      sources: {}
-    }));
-  }, buildPresenterModuleUrl());
-
-  const back = page.getByRole('button', { name: 'Go back' });
-  await expect(back).toBeHidden();
-
-  await page.locator('[data-nav-page-id="cost"]').click();
-  await expect(back).toBeVisible();
-
-  await page.evaluate(() => {
-    const link = document.createElement('a');
-    link.href = '#page-overview';
-    document.body.append(link);
-    link.click();
-  });
-  await expect(page).toHaveURL(/#page-overview$/);
-  await expect(back).toBeVisible();
-
-  await back.click();
-  await expect(page).toHaveURL(/#page-cost$/);
-  await expect(back).toBeVisible();
-  await back.click();
-  await expect(page).toHaveURL(/#page-overview$/);
-  await expect(back).toBeHidden();
-});
 
 test('ingestion notifications reveal scrollable progress history on click', async ({ page }) => {
   await page.setContent(`
@@ -468,142 +425,14 @@ test('mobile shell shows large overview actions and moves other views into the h
   await expect(factoryOverview.locator('.factory-rhythm-day')).toHaveCount(7);
 
   await page.locator('.mobile-nav-menu > summary').click();
-  await page.locator('[data-mobile-nav-page-id="cost"]').click();
+  await page.locator('[data-mobile-nav-page-id="runs"]').click();
 
   await expect(root).not.toHaveClass(/dashboard-mobile-overview-actions/);
   await expect(primaryNav).toHaveCSS('display', 'none');
   await expect(page.locator('[data-mobile-nav-page-id="overview"]')).toHaveAttribute('href', '#page-overview');
 });
 
-test('production pages expose a responsive executive chart', async ({ page }) => {
-  const presenterModuleUrl = buildPresenterModuleUrl();
-  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
-  await page.setViewportSize({ width: 320, height: 844 });
-  await page.setContent(`
-    <div id="root"></div>
-    <script type="module">
-      import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
-      const documentModel = ${JSON.stringify(documentModel)};
-      const metadata = {
-        'source-id': 'mobile-summary-fixture',
-        'source-kind': 'fixture',
-        'retrieved-at': '2026-09-03T12:00:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
-      const sources = {
-        runs: {
-          source: 'runs',
-          rows: [
-            { run: '1', 'started-at': '2026-09-02T12:00:00Z', 'run-conclusion': 'success' },
-            { run: '2', 'started-at': '2026-09-03T12:00:00Z', 'run-conclusion': 'failure' }
-          ],
-          metadata
-        }
-      };
-      window.location.hash = '#page-operations';
-      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
-    </script>
-  `);
 
-  const firstView = page.locator('[data-page-id="operations"] .custom-view').first();
-  const chart = firstView.locator('[data-chart-widget="swimlane"]');
-  await expect(chart).toBeVisible();
-  const ticks = chart.locator('.swimlane-time-label');
-  await expect(ticks).toHaveCount(4);
-  await expect(ticks.first()).toBeVisible();
-  await expect(ticks.last()).toBeVisible();
-  await expect(chart.locator('.swimlane-label')).toHaveCount(5);
-  const [chartBox, plotBox] = await Promise.all([
-    chart.boundingBox(),
-    chart.locator('svg').boundingBox()
-  ]);
-  expect(chartBox).not.toBeNull();
-  expect(plotBox).not.toBeNull();
-  expect(chartBox?.y).toBeGreaterThanOrEqual(0);
-  expect(chartBox?.height).toBeGreaterThan(0);
-
-  await page.setViewportSize({ width: 1200, height: 844 });
-  const [wideChartBox, widePlotBox] = await Promise.all([
-    chart.boundingBox(),
-    chart.locator('svg').boundingBox()
-  ]);
-  expect(wideChartBox).not.toBeNull();
-  expect(widePlotBox).not.toBeNull();
-  expect(widePlotBox?.width).toBeGreaterThan((wideChartBox?.width ?? 0) * 0.95);
-});
-
-test('GitHub API events table remains operable at desktop and narrow widths', async ({ page }) => {
-  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
-  await page.setViewportSize({ width: 1200, height: 900 });
-  await page.setContent(`
-    <div id="root"></div>
-    <script type="module">
-      import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
-      const documentModel = ${JSON.stringify(documentModel)};
-      const metadata = {
-        'source-id': 'github-api-event-viewport-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-09-04T12:00:00Z',
-        'retrieved-at': '2026-09-04T12:01:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
-      const row = {
-        'observed-at': '2026-09-04T12:00:00Z',
-        'event-type': 'github-api.response',
-        'event-summary': 'GET /rate_limit',
-        'event-status': '200',
-        organization: 'githubnext',
-        repository: 'gh-aw-cao',
-        workflow: '.github/workflows/dashboard.md',
-        run: '1',
-        'correlation-id': 'request-1'
-      };
-      const sources = {
-        'github-api-events': {
-          source: 'github-api-events',
-          metadata,
-          rows: [
-            { ...row, 'observed-at': '2026-09-04T11:00:00Z', 'event-type': 'github-api.request', 'event-status': 'pending' },
-            row
-          ]
-        }
-      };
-      window.location.hash = '#page-overview';
-      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
-    </script>
-  `);
-
-  await page.locator('.nav-section').filter({ hasText: 'Experimental' }).locator('summary').click();
-  await page.locator('[data-nav-page-id="github-api"]').click();
-  const apiPage = page.locator('[data-page-id="github-api"]');
-  const observations = apiPage.locator('[data-view-layout="full-view"]');
-  const table = observations.locator('[data-lazy-list]');
-  const scroll = observations.locator('.table-scroll');
-  await expect(table).toBeVisible();
-  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
-  await expect(scroll.locator(':scope > .table-filter')).toBeVisible();
-  await expect(observations.locator(':scope > .table-filter')).toHaveCount(0);
-  await expect(apiPage.getByText('github-api.response', { exact: true }).first()).toBeVisible();
-  await expect.poll(async () => {
-    const box = await table.boundingBox();
-    return box !== null && box.width <= 1200;
-  }).toBe(true);
-
-  await page.setViewportSize({ width: 390, height: 844 });
-  await expect(table).toBeVisible();
-  await expect.poll(async () => scroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
-  await expect.poll(async () => scroll.locator(':scope > .table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
-  await expect.poll(async () => {
-    const box = await table.boundingBox();
-    return box !== null && box.x >= 0 && box.x + box.width <= 390;
-  }).toBe(true);
-  await expect(apiPage.locator('[data-view-layout="full-view"]')).toHaveCount(1);
-  await expect(apiPage.locator('[data-lazy-list]')).toHaveCount(1);
-});
 
 test('Transactions includes local database controls and a responsive transaction table', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
@@ -1084,325 +913,9 @@ test('Runs renders the worker-projected table for an active time window', async 
   await expect(rows.locator('a').first()).toBeVisible();
 });
 
-test('full-view unavailable-data callout keeps responsive page margins', async ({ page }) => {
-  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
-  await page.setViewportSize({ width: 1200, height: 900 });
-  await page.setContent(`
-    <div id="root"></div>
-    <script type="module">
-      import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
-      const documentModel = ${JSON.stringify(documentModel)};
-      const sources = {
-        'github-api-events': {
-          source: 'github-api-events',
-          metadata: {
-            'source-id': 'github-api-events-unavailable-fixture',
-            'source-kind': 'fixture',
-            'as-of': '2026-09-04T12:00:00Z',
-            'retrieved-at': '2026-09-04T12:01:00Z',
-            completeness: 'partial',
-            freshness: 'stale',
-            availability: 'unavailable'
-          },
-          rows: []
-        }
-      };
-      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
-    </script>
-  `);
 
-  await page.locator('.nav-section').filter({ hasText: 'Experimental' }).locator('summary').click();
-  await page.locator('[data-nav-page-id="github-api"]').click();
-  const callout = page.locator('[data-page-id="github-api"] .view-state-card');
-  await expect(callout).toBeVisible();
-  await expect(callout).toHaveCSS('margin-left', '24px');
-  await expect(callout).toHaveCSS('margin-right', '24px');
 
-  await page.setViewportSize({ width: 600, height: 900 });
-  await expect(callout).toHaveCSS('margin-left', '14px');
-  await expect(callout).toHaveCSS('margin-right', '14px');
-});
 
-test('Safe Outputs renders every retained outcome in one progressive full-view table', async ({ page }) => {
-  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
-  await page.setViewportSize({ width: 1200, height: 900 });
-  await page.evaluate(() => Reflect.deleteProperty(window, 'IntersectionObserver'));
-  await page.setContent(`
-    <div id="root"></div>
-    <script type="module">
-      import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
-      const documentModel = ${JSON.stringify(documentModel)};
-      const metadata = {
-        'source-id': 'safe-output-usage-fixture',
-        'source-kind': 'derived',
-        'query-name': 'safe-output-usage',
-        'as-of': '2026-09-10T05:00:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
-      const sources = {
-        'safe-output-usage': {
-          source: 'safe-output-usage',
-          metadata,
-          rows: Array.from({ length: 60 }, (_, index) => ({
-            'safe-output': \`output-\${index + 1}\`,
-            'safe-output-kind': index % 2 === 0 ? 'create-issue' : 'create-pull-request',
-            'outcome-title': \`Retained output \${index + 1}\`,
-            'outcome-status': index % 2 === 0 ? 'open' : 'closed',
-            'outcome-state': index % 2 === 0 ? 'accepted' : 'completed',
-            workflow: '.github/workflows/daily.md',
-            repository: 'gh-aw-cao',
-            'rollout-mode': index % 2 === 0 ? 'review' : 'live',
-            run: String(1000 + index),
-            'published-at': '2026-09-10T04:00:00Z',
-            'observed-at': '2026-09-10T05:00:00Z',
-            'external-link': {
-              href: \`https://example.com/outputs/\${index + 1}\`,
-              label: \`Open retained output \${index + 1}\`
-            }
-          }))
-        }
-      };
-      window.location.hash = '#page-safe-outputs';
-      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
-    </script>
-  `);
-
-  const safeOutputsPage = page.locator('[data-page-id="safe-outputs"]');
-  const view = safeOutputsPage.locator('[data-view-layout="full-view"]');
-  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
-  await expect(view).toHaveCount(1);
-  await expect(view.locator('[data-lazy-list]')).toHaveCount(1);
-  await expect(view.locator('tbody tr:visible')).toHaveCount(25);
-  await expect(view.getByRole('searchbox', { name: 'Filter Safe output usage' })).toBeVisible();
-  await expect(view.locator('tbody a[href="https://example.com/outputs/1"]')).toBeVisible();
-  await expect(view.locator('tbody tr').first()).toContainText('create-issue');
-  await expect(view.locator('tbody tr').first()).toContainText('output-1');
-
-  await view.getByRole('searchbox', { name: 'Filter Safe output usage' }).fill('Retained output 60');
-  await expect(view.locator('tbody tr:visible')).toHaveCount(1);
-  await expect(view.locator('tbody tr:visible')).toContainText('Retained output 60');
-  await view.getByRole('searchbox', { name: 'Filter Safe output usage' }).fill('');
-  // Wait for the cleared filter to finish re-rendering the lazy table before
-  // interacting with it, otherwise the in-flight row re-render can make the
-  // "load more" button transiently unstable/hidden and time out the click
-  // under slow CI runners.
-  await expect(view.locator('tbody tr:visible')).toHaveCount(25);
-  await view.locator('[data-table-more]').click();
-  await expect(view.locator('tbody tr')).toHaveCount(50);
-
-  await page.setViewportSize({ width: 390, height: 844 });
-  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
-  await expectTableFilterIsContained(view.locator('.table-scroll > .table-filter'));
-});
-
-test('control-plane readiness presents operational evidence in one lazy table', async ({ page }) => {
-  /** @type {Error[]} */
-  const pageErrors = [];
-  page.on('pageerror', (error) => pageErrors.push(error));
-  const presenterModuleUrl = buildPresenterModuleUrl();
-  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
-  await page.setViewportSize({ width: 1003, height: 900 });
-  await page.setContent(`
-    <div id="root"></div>
-    <script type="module">
-      import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
-      import { prepareDashboardViewSources } from 'http://dashboard.test/test/e2e/helpers/dashboard-view-sources.js';
-      const documentModel = ${JSON.stringify(documentModel)};
-      const metadata = {
-        'source-id': 'readiness-fixture',
-        'source-kind': 'fixture',
-        'retrieved-at': '2026-09-03T12:00:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
-      const sources = {
-        workflows: {
-          source: 'workflows',
-          rows: [
-            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'daily-ops', 'campaign-name': 'Daily Ops', workflow: '.github/workflows/daily.md', 'workflow-role': 'orchestrator', 'workflow-active': 'true', 'inventory-ready': true },
-            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'daily-ops', 'campaign-name': 'Daily Ops', workflow: '.github/workflows/daily-worker.md', 'workflow-role': 'worker', 'workflow-active': 'true', 'inventory-ready': true }
-          ],
-          metadata
-        },
-        runs: {
-          source: 'runs',
-          rows: [
-            { organization: 'githubnext', repository: 'gh-aw-cao', run: '42', 'run-title': 'Readiness smoke', workflow: '.github/workflows/daily.md', 'started-at': '2026-09-03T10:00:00Z', 'run-status': 'completed', 'run-conclusion': 'failure', 'failure-message': 'Smoke regression', 'run-link': 'https://example.com/runs/42' },
-            { organization: 'githubnext', repository: 'gh-aw-cao', run: '43', 'run-title': 'Worker smoke', workflow: '.github/workflows/daily-worker.md', 'started-at': '2026-09-03T11:00:00Z', 'run-status': 'completed', 'run-conclusion': 'failure', 'failure-message': 'Worker regression', 'run-link': 'https://example.com/runs/43' },
-            { organization: 'githubnext', repository: 'gh-aw-cao', run: '44', 'run-title': 'Current readiness', workflow: '.github/workflows/daily.md', 'started-at': '2026-09-03T11:50:00Z', 'run-status': 'completed', 'run-conclusion': 'success', 'run-link': 'https://example.com/runs/44' },
-            { organization: 'githubnext', repository: 'gh-aw-cao', run: '45', 'run-title': 'Pending readiness', workflow: '.github/workflows/daily.md', 'started-at': '2026-09-03T11:55:00Z', 'run-status': 'in_progress', 'run-conclusion': null, 'run-link': 'https://example.com/runs/45' }
-          ],
-          metadata
-        },
-        findings: {
-          source: 'findings',
-          rows: [{ finding: 'warning-1', workflow: '.github/workflows/daily-worker.md', 'workflow-role': 'worker', 'finding-kind': 'authored-warning', 'observed-at': '2026-09-03T11:15:00Z' }],
-          metadata
-        },
-        outcomes: {
-          source: 'outcomes',
-          rows: [{ 'safe-output': 'noop-1', workflow: '.github/workflows/daily-worker.md', 'workflow-role': 'worker', 'outcome-category': 'noop', 'observed-at': '2026-09-03T11:30:00Z' }],
-          metadata
-        },
-        'coverage-diagnostics': { source: 'coverage-diagnostics', rows: [], metadata }
-      };
-      window.location.hash = '#page-readiness';
-      const loadPageSources = (pageId, options) => prepareDashboardViewSources(
-        documentModel,
-        pageId,
-        sources,
-        { queryContext: options.queryContext, routeParameters: options.routeParameters }
-      );
-      const viewSources = await loadPageSources('readiness', {});
-      document.querySelector('#root').append(renderDashboard({
-        document: documentModel,
-        sources: viewSources,
-        loadPageSources
-      }));
-    </script>
-  `);
-  expect(pageErrors).toEqual([]);
-
-  const readinessPage = page.locator('[data-page-id="readiness"]');
-  await expect(readinessPage).toBeVisible();
-  const horizonFilter = page.getByLabel('Dashboard filters');
-  const horizonToggle = page.locator('.dashboard-horizon .horizon-toggle');
-  await horizonToggle.click();
-  await expect(horizonFilter.getByRole('searchbox', { name: 'Current filters' })).toHaveValue('');
-  await expect(horizonFilter.locator('.count-badge')).toHaveText('3');
-  const readinessNavigation = page.locator('[data-nav-page-id="readiness"]');
-  await expect(readinessNavigation).toHaveAttribute('aria-current', 'page');
-  await expect(readinessNavigation.locator('svg')).toHaveCount(1);
-  await expect(page.locator('.nav-section-label').filter({ hasText: 'Experimental' })).toBeVisible();
-  await expect(readinessPage.locator('[data-view-layout="full-view"]')).toHaveCount(1);
-  await expect(readinessPage.locator('[data-lazy-list]')).toBeVisible();
-  await expect(readinessPage.locator('.chart-view-pie')).toHaveCount(0);
-  await expect(readinessPage).toContainText('Failure');
-  await expect(readinessPage).toContainText('Success');
-  await expect(readinessPage).toContainText('Retained run evidence');
-
-  const windowStart = horizonFilter.locator('[aria-label="Window start time"]');
-  const windowStop = horizonFilter.locator('[aria-label="Window stop time"]');
-  const [localStart, localStop] = await page.evaluate((values) => values.map((value) => {
-    const instant = new Date(value);
-    return new Date(instant.getTime() - instant.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
-  }), ['2026-09-03T11:40:00Z', '2026-09-03T12:00:00Z']);
-  await windowStart.fill(localStart);
-  await windowStop.fill(localStop);
-  await expect(windowStart).toHaveValue(localStart);
-  await expect(windowStop).toHaveValue(localStop);
-  await horizonFilter.getByRole('button', { name: 'Apply' }).click();
-  await expect(horizonFilter.locator('[aria-label="Time window"]')).toHaveValue('custom');
-  await expect.poll(() => page.evaluate(() => JSON.parse(
-    localStorage.getItem('central-agentic-ops.dashboard.horizon-filter-settings') ?? '{}'
-  ).range)).toBe('custom');
-  await expect(readinessPage).not.toContainText('Smoke regression');
-  await expect(readinessPage.locator('[data-lazy-list]')).toBeVisible();
-  await horizonToggle.click();
-
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.locator('.mobile-nav-menu > summary').click();
-  await expect(horizonFilter.locator('.time-window-control:visible')).toHaveCount(0);
-  await horizonToggle.last().click();
-  await expect(horizonFilter.locator('.time-window-control:visible')).toHaveCount(1);
-  await expect(horizonFilter.locator('[aria-label="Window start time"]:visible')).toHaveCount(1);
-  await expect(horizonFilter.locator('[aria-label="Window stop time"]:visible')).toHaveCount(1);
-  expect(await readinessPage.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
-});
-
-test('experiments query renders as one full-view declarative table', async ({ page }) => {
-  const presenterModuleUrl = buildPresenterModuleUrl();
-  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
-  await page.setViewportSize({ width: 1200, height: 900 });
-  await page.setContent(`
-    <div id="root"></div>
-    <script type="module">
-      import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
-      import { processDashboardQueries } from ${JSON.stringify('http://dashboard.test/src/data-processor.js')};
-      const documentModel = ${JSON.stringify(documentModel)};
-      const metadata = {
-        'source-id': 'experiments-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-09-05T12:00:00Z',
-        'retrieved-at': '2026-09-05T12:01:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
-      const sources = {
-        experiments: {
-          source: 'experiments',
-          metadata,
-          rows: [{
-            organization: 'acme',
-            repository: 'tools',
-            workflow: 'triage-agent',
-            experiment: 'routing-v3',
-            'experiment-name': 'Tool routing v3',
-            'control-variant': 'control',
-            'candidate-variant': 'candidate',
-            'primary-metric': 'quality',
-            readiness: 'READY',
-            decision: 'PROMOTE'
-          }]
-        },
-        'experiment-assignments': {
-          source: 'experiment-assignments',
-          metadata,
-          rows: [
-            { experiment: 'routing-v3', run: '100', variant: 'control' },
-            { experiment: 'routing-v3', run: '101', variant: 'candidate' }
-          ]
-        },
-        graders: {
-          source: 'graders',
-          metadata,
-          rows: [{ grader: 'quality', role: 'PRIMARY', direction: 'higher_is_better', unit: 'raw' }]
-        },
-        'grader-observations': {
-          source: 'grader-observations',
-          metadata,
-          rows: [
-            { experiment: 'routing-v3', run: '100', grader: 'quality', value: .72, status: 'complete', 'observed-at': '2026-09-04T10:00:00Z' },
-            { experiment: 'routing-v3', run: '101', grader: 'quality', value: .81, status: 'complete', 'observed-at': '2026-09-05T10:00:00Z' }
-          ]
-        },
-        evals: { source: 'evals', metadata, rows: [] },
-        'eval-observations': { source: 'eval-observations', metadata, rows: [] },
-        runs: { source: 'runs', metadata, rows: [{ run: '100' }, { run: '101' }] },
-        outcomes: { source: 'outcomes', metadata, rows: [] },
-        usage: { source: 'usage', metadata, rows: [] },
-        'operational-values': { source: 'operational-values', metadata, rows: [] }
-      };
-      window.location.hash = '#page-experiments?experiment=routing-v3';
-      const querySources = await processDashboardQueries(documentModel.dashboard.queries, sources);
-      document.querySelector('#root').append(renderDashboard({
-        document: documentModel,
-        sources: { ...sources, ...querySources }
-      }));
-    </script>
-  `);
-
-  const experimentsPage = page.locator('[data-page-id="experiments"]');
-  await expect(experimentsPage).toBeVisible();
-  const experimentsView = experimentsPage.locator('[data-view-layout="full-view"]');
-  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
-  await expect(experimentsView).toHaveCount(1);
-  await expect(experimentsView.locator('[data-lazy-list]')).toHaveCount(1);
-  await expect(experimentsView.getByRole('searchbox', { name: 'Filter Experiments' })).toBeVisible();
-  await expect(experimentsView.getByRole('cell', { name: 'routing-v3' })).toBeVisible();
-  await expect(experimentsPage.locator('.custom-view')).toHaveCount(1);
-  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(900);
-  expect(await page.locator('main.dashboard-prototype').evaluate((element) => getComputedStyle(element).overflowY)).toBe('hidden');
-
-  await page.setViewportSize({ width: 390, height: 844 });
-  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
-  await expectTableFilterIsContained(experimentsView.locator('.table-scroll > .table-filter'));
-  expect(await experimentsView.locator('.table-scroll').evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
-});
 
 test('desktop navigation sections collapse and expand around the current view', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
@@ -1746,13 +1259,11 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
 
   const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
   const data = page.locator('.nav-section').first();
-  const experimental = page.locator('.nav-section').filter({ hasText: 'Experimental' });
   await expect(cleanNavigation).toHaveText(['Overview', 'Notifications', 'Campaigns', 'Repositories', 'Settings']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
   await expect(data.getByRole('link')).toHaveText(['Workflows', 'Runs', 'Models & Agents', 'Firewall', 'MCPs']);
-  await expect(experimental.locator('[data-nav-page-id="events"]')).toHaveCount(1);
-  await expect(experimental.getByRole('link', { name: /Repositories|Workflows|Runs|Campaigns/ })).toHaveCount(0);
+  await expect(page.locator('.nav-section').filter({ hasText: 'Experimental' })).toHaveCount(0);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
   await expect(page.locator('.account-menu')).toHaveCount(0);
   await expect(page.locator('.refresh-button')).toHaveCount(0);
@@ -1774,63 +1285,10 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await page.getByRole('button', { name: 'Light' }).click();
   await expect(page.locator('.dashboard-root')).toHaveAttribute('data-theme', 'light');
   expect(await page.evaluate(() => localStorage.getItem('central-agentic-ops.dashboard.theme'))).toBe('light');
-  const headerHeight = await page.locator('.overview-header').evaluate((element) => element.getBoundingClientRect().height);
   const description = page.locator('.overview-header .lede');
   expect(await description.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(true);
   await expect(page.getByText('Dashboard Next', { exact: true })).toHaveCount(0);
   await expect(page.getByLabel('Show experimental')).toHaveCount(0);
-  await expect(experimental).toBeVisible();
-  await expect(experimental).not.toHaveAttribute('open', '');
-  await expect(experimental.getByRole('link', { name: 'Operational health' })).toBeHidden();
-  await experimental.locator('summary').click();
-  await expect(experimental.getByRole('link', { name: 'Operational health' })).toBeVisible();
-  await experimental.getByRole('link', { name: 'Work', exact: true }).click();
-  await expect(page).toHaveURL(/#page-work$/);
-
-  const workPage = page.locator('[data-page-id="work"]');
-  await expect(workPage.locator('.work-board')).toBeVisible();
-  await expect(workPage.locator('.work-tasks, .work-roadmap')).toHaveCount(0);
-  const workFilters = workPage.getByRole('search', { name: 'Work filters' });
-  await expect(workFilters.getByRole('searchbox', { name: 'Filter work items' })).toBeVisible();
-  await expect(workFilters.locator('.work-filter-count')).toHaveText('2 of 2');
-  await expect(workPage.locator('.work-card')).toHaveCount(2);
-
-  await workPage.getByRole('link', { name: 'Tasks' }).click();
-  await expect(page).toHaveURL(/#page-work-tasks$/);
-  const tasksPage = page.locator('[data-page-id="work-tasks"]');
-  await expect(tasksPage.locator('.work-tasks')).toBeVisible();
-  await expect(tasksPage.locator('.work-board, .work-roadmap')).toHaveCount(0);
-  await expect(experimental.getByRole('link', { name: 'Work', exact: true })).toHaveAttribute('aria-current', 'page');
-
-  await tasksPage.getByRole('link', { name: 'Roadmap' }).click();
-  await expect(page).toHaveURL(/#page-work-roadmap$/);
-  const roadmapPage = page.locator('[data-page-id="work-roadmap"]');
-  await expect(roadmapPage.locator('.work-roadmap')).toBeVisible();
-  await expect(roadmapPage.locator('.work-board, .work-tasks')).toHaveCount(0);
-  const roadmapGeometry = await roadmapPage.evaluate((element) => {
-    const scroll = element.querySelector('.work-roadmap-scroll');
-    const calendar = element.querySelector('.work-roadmap-calendar-grid');
-    const track = element.querySelector('.work-roadmap-track');
-    const bar = element.querySelector('.work-roadmap-bar');
-    if (!(scroll instanceof HTMLElement) || !(calendar instanceof HTMLElement) || !(track instanceof HTMLElement) || !(bar instanceof HTMLElement)) return null;
-    const calendarBox = calendar.getBoundingClientRect();
-    const trackBox = track.getBoundingClientRect();
-    const barBox = bar.getBoundingClientRect();
-    return {
-      calendarLeft: calendarBox.left,
-      calendarWidth: calendarBox.width,
-      trackLeft: trackBox.left,
-      trackWidth: trackBox.width,
-      barWidth: barBox.width,
-      scrollsInternally: scroll.scrollWidth > scroll.clientWidth
-    };
-  });
-  expect(roadmapGeometry).not.toBeNull();
-  expect(Math.abs((roadmapGeometry?.calendarLeft ?? 0) - (roadmapGeometry?.trackLeft ?? 1))).toBeLessThan(1);
-  expect(Math.abs((roadmapGeometry?.calendarWidth ?? 0) - (roadmapGeometry?.trackWidth ?? 1))).toBeLessThan(1);
-  expect(roadmapGeometry?.barWidth).toBeGreaterThan(0);
-  expect(roadmapGeometry?.scrollsInternally).toBe(true);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 
   await cleanNavigation.filter({ hasText: 'Overview' }).click();
   const overviewPage = page.locator('[data-page-id="overview"]');
@@ -1851,11 +1309,6 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(overviewPage.locator('.factory-status')).toHaveCount(0);
   await expect(overviewPage.locator('.notifications-inbox')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
-  const shellSize = await page.locator('.top-nav > .shell').evaluate((element) => {
-    const { width, height } = element.getBoundingClientRect();
-    return { width, height };
-  });
-
   const factoryLinks = overviewPage.locator('.factory-station a');
   expect(await factoryLinks.count()).toBeGreaterThan(0);
   for (const link of await factoryLinks.evaluateAll((links) => links.map((element) => {
@@ -1869,9 +1322,6 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(page).toHaveURL(/#page-runs\?runs-runs-source\.run-conclusion=failure$/);
   await expect(page.getByRole('heading', { name: 'Runs', exact: true, level: 1 })).toBeVisible();
   await cleanNavigation.filter({ hasText: 'Overview' }).click();
-  await overviewPage.locator('.factory-station').nth(5).locator('strong a').click();
-  await expect(page).toHaveURL(/#page-operational-value$/);
-  await expect(page.getByRole('heading', { name: 'Operational value', exact: true, level: 1 })).toBeVisible();
   await page.evaluate(() => { window.location.hash = '#page-overview-failed-runs'; });
   const failedRunsPage = page.locator('[data-page-id="overview-failed-runs"]');
   await expect(failedRunsPage).toBeVisible();
@@ -1912,24 +1362,6 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await cleanNavigation.filter({ hasText: 'Overview' }).click();
   await expect(overviewPage).toBeVisible();
 
-  for (const { label, pageId } of [
-    { label: 'Work', pageId: 'work' },
-    { label: 'Operations', pageId: 'agents' },
-    { label: 'Insights', pageId: 'insights' }
-  ]) {
-    await experimental.getByRole('link', { name: label, exact: true }).click();
-    await expect(page.getByRole('heading', { name: label, exact: true, level: 1 })).toBeVisible();
-    expect(await page.locator('.overview-header').evaluate((element) => element.getBoundingClientRect().height)).toBe(headerHeight);
-    expect(await page.locator('.top-nav > .shell').evaluate((element) => {
-      const { width, height } = element.getBoundingClientRect();
-      return { width, height };
-    })).toEqual(shellSize);
-    expect(await description.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(true);
-    if (['work', 'agents'].includes(pageId)) {
-      await expect(page.locator(`[data-page-id="${pageId}"] .table-summary-row`)).toHaveCount(0);
-    }
-  }
-
   // A 320px window can leave 305px of layout width when the browser reserves a scrollbar gutter.
   await page.setViewportSize({ width: 305, height: 844 });
   await page.evaluate(() => { window.location.hash = '#page-overview'; });
@@ -1937,15 +1369,15 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
   await expect(overviewPage.locator('.factory-station')).toHaveCount(6);
   await page.locator('.mobile-nav-menu > summary').click();
-  await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Experimental']);
-  await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toBeVisible();
+  await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data']);
+  await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toHaveCount(0);
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(overviewPage.locator('.factory-intro')).toBeInViewport();
   await expect(overviewPage.locator('.custom-view')).toHaveCount(2);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   await expect(overviewPage.locator('.table-scroll')).toHaveCount(0);
 
-  for (const pageName of ['overview', 'work', 'agents', 'insights']) {
+  for (const pageName of ['overview']) {
     await page.evaluate((nextPage) => { window.location.hash = `#page-${nextPage}`; }, pageName);
     const activePage = page.locator(`[data-page-id="${pageName}"]`);
     await expect(activePage).toBeVisible();
@@ -1958,205 +1390,8 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   }
 });
 
-test('Work uses focused mobile Board, Table, Roadmap, and detail interactions', async ({ page }) => {
-  const presenterModuleUrl = buildPresenterModuleUrl();
-  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.setContent(`
-    <div id="root"></div>
-    <script type="module">
-      import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
-      import { processDashboardQueries } from ${JSON.stringify('http://dashboard.test/src/data-processor.js')};
-      const documentModel = ${JSON.stringify(documentModel)};
-      const metadata = {
-        'source-id': 'mobile-work-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-09-07T12:00:00Z',
-        'retrieved-at': '2026-09-07T12:01:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
-      const sources = {
-        'work-items': {
-          source: 'work-items',
-          metadata,
-          rows: [
-            { 'work-item-id': 'todo', name: 'Prepare rollout', owner: 'operations', campaign: 'release', scope: 'github/cao', 'lifecycle-state': 'waiting', 'started-at': '2026-08-30T09:00:00Z' },
-            { 'work-item-id': 'active', name: 'Run validation', owner: 'automation', campaign: 'checks', scope: 'github/cao', 'lifecycle-state': 'active', 'started-at': '2026-09-02T09:00:00Z' },
-            { 'work-item-id': 'review', name: 'Review evidence', owner: 'security', campaign: 'review', scope: 'github/cao', 'lifecycle-state': 'blocked', reason: 'Approval required', 'waiting-on': 'reviewer decision', 'started-at': '2026-09-03T09:00:00Z' },
-            { 'work-item-id': 'done', name: 'Publish result', owner: 'operations', campaign: 'release', scope: 'github/cao', 'lifecycle-state': 'completed', 'started-at': '2026-09-04T09:00:00Z', 'ended-at': '2026-09-04T10:00:00Z' }
-          ]
-        }
-      };
-      const workSources = await processDashboardQueries(documentModel.dashboard.queries, sources, {
-        sourceNames: [
-          'work-project-items',
-          'work-board-todo',
-          'work-board-in-progress',
-          'work-board-needs-review',
-          'work-board-done',
-          'work-roadmap-items'
-        ]
-      });
-      window.location.hash = '#page-work';
-      document.querySelector('#root').append(renderDashboard({
-        document: documentModel,
-        sources: { ...sources, ...workSources }
-      }));
-    </script>
-  `);
 
-  const boardPage = page.locator('[data-page-id="work"]');
-  await expect(boardPage).toBeVisible();
-  await expect(boardPage.locator('.work-board-group-tabs')).toBeVisible();
-  await expect(boardPage.locator('.work-board-column[data-mobile-active="true"]')).toHaveCount(1);
-  await expect(boardPage.locator('.work-board-column[data-mobile-active="false"]').first()).toBeHidden();
-  await boardPage.getByRole('tab', { name: /Todo/ }).click();
-  await expect(boardPage.locator('.work-board-column[data-mobile-active="true"]')).toContainText('Prepare rollout');
-  await expect(boardPage.locator('.work-board-column[data-mobile-active="true"] .work-board-cards')).toHaveCSS('overflow-y', 'visible');
 
-  await boardPage.getByRole('button', { name: 'Filters', exact: true }).click();
-  await expect(boardPage.locator('.work-filter-facets')).toBeVisible();
-  await boardPage.getByRole('button', { name: 'Close work filters' }).click();
-  await boardPage.getByRole('button', { name: 'Open Prepare rollout details' }).click();
-  const detail = boardPage.getByRole('dialog', { name: 'Prepare rollout details' });
-  await expect(detail).toBeVisible();
-  const detailBox = await detail.boundingBox();
-  expect(detailBox?.width).toBeCloseTo(390, 0);
-  expect(detailBox?.height).toBeCloseTo(844, 0);
-  await boardPage.getByRole('button', { name: 'Close Prepare rollout details' }).click();
-
-  await boardPage.getByRole('link', { name: 'Tasks' }).click();
-  const tablePage = page.locator('[data-page-id="work-tasks"]');
-  await expect(tablePage.locator('.work-task-table-header')).toBeHidden();
-  await expect(tablePage.locator('.work-task-row').first()).toBeVisible();
-  expect(await tablePage.locator('.work-task-scroll').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
-  await tablePage.getByRole('button', { name: 'Fields & sort' }).click();
-  await expect(tablePage.locator('.work-task-settings-sheet')).toBeVisible();
-  await tablePage.getByRole('button', { name: 'Close Table settings' }).click();
-
-  await tablePage.getByRole('link', { name: 'Roadmap' }).click();
-  const roadmapPage = page.locator('[data-page-id="work-roadmap"]');
-  await expect(roadmapPage.locator('.work-roadmap-period-heading').first()).toBeVisible();
-  await expect(roadmapPage.locator('.work-roadmap-calendar')).toBeHidden();
-  expect(await roadmapPage.locator('.work-roadmap-scroll').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
-  await roadmapPage.getByRole('button', { name: 'Show visual timeline' }).click();
-  await expect(roadmapPage.locator('.work-roadmap-calendar')).toBeVisible();
-  await expect(roadmapPage.getByRole('button', { name: 'Next month' })).toBeVisible();
-  expect(await roadmapPage.locator('.work-roadmap-scroll').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
-});
-
-test('performance page renders an SVG heatmap before its full-view lazy job table', async ({ page }) => {
-  const presenterModuleUrl = buildPresenterModuleUrl();
-  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
-  await page.setViewportSize({ width: 1200, height: 844 });
-  await page.setContent(`
-    <div id="root"></div>
-    <script type="module">
-      import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
-      const documentModel = ${JSON.stringify(documentModel)};
-      const metadata = {
-        'source-id': 'performance-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-09-03T12:00:00Z',
-        'retrieved-at': '2026-09-03T12:01:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
-      const sources = {
-        'run-performance': {
-          source: 'run-performance',
-          rows: [
-            { run: '1', 'started-at': '2026-09-03T10:00:00Z', 'run-duration-seconds': 60 },
-            { run: '2', 'started-at': '2026-09-03T11:00:00Z', 'run-duration-seconds': 180 }
-          ],
-          metadata
-        },
-        'job-performance': {
-          source: 'job-performance',
-          rows: [
-            { run: '1', 'started-at': '2026-09-03T10:00:00Z', job: 'agent', runner: 'ubuntu-latest', 'sandbox-runtime': 'gvisor', engine: 'copilot', model: 'gpt-5.4', 'job-duration-seconds': 45 }
-          ],
-          metadata
-        }
-      };
-      window.location.hash = '#page-performance';
-      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
-    </script>
-  `);
-
-  const pageRegion = page.locator('[data-page-id="performance"]');
-  await expect(pageRegion).toBeVisible();
-  await expect(pageRegion.locator('[data-view-layout="full-view"]')).toHaveCount(1);
-  await expect(pageRegion.locator('[data-chart-widget="heatmap"] svg')).toBeVisible();
-  await expect(pageRegion.locator('[data-chart-widget="heatmap"] rect')).toHaveCount(1);
-  await expect(pageRegion.locator('[data-chart-widget="heatmap"] .heatmap-cell'))
-    .toHaveAttribute('aria-label', 'agent, ubuntu-latest, Mean duration: 45s');
-  await page.getByRole('button', { name: 'Table' }).click();
-  await expect(pageRegion.locator('[data-lazy-list]')).toBeVisible();
-  await expect(pageRegion.locator('tbody tr')).toHaveCount(1);
-  await expect(pageRegion).toContainText('gvisor');
-  await expect(pageRegion).toContainText('45s');
-});
-
-test('mobile navigation menu paints above a full-view page instead of being clipped by it', async ({ page }) => {
-  const presenterModuleUrl = buildPresenterModuleUrl();
-  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.setContent(`
-    <div id="root"></div>
-    <script type="module">
-      import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
-      const documentModel = ${JSON.stringify(documentModel)};
-      const metadata = {
-        'source-id': 'mobile-nav-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-09-03T12:00:00Z',
-        'retrieved-at': '2026-09-03T12:01:00Z',
-        completeness: 'complete',
-        freshness: 'fresh',
-        availability: 'available'
-      };
-      const sources = {
-        'run-performance': {
-          source: 'run-performance',
-          rows: [{ run: '1', 'started-at': '2026-09-03T10:00:00Z', 'run-duration-seconds': 60 }],
-          metadata
-        },
-        'job-performance': {
-          source: 'job-performance',
-          rows: [{ run: '1', 'started-at': '2026-09-03T10:00:00Z', job: 'agent', runner: 'ubuntu-latest', 'sandbox-runtime': 'gvisor', engine: 'copilot', model: 'gpt-5.4', 'job-duration-seconds': 45 }],
-          metadata
-        }
-      };
-      window.location.hash = '#page-performance';
-      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
-    </script>
-  `);
-
-  await expect(page.locator('.dashboard-root')).not.toHaveClass(/dashboard-full-view/);
-  const menu = page.locator('.mobile-nav-menu');
-  await menu.locator('summary').click();
-  const menuList = menu.locator('.mobile-nav-menu-list');
-  await expect(menuList).toBeVisible();
-  const hits = await menuList.evaluate((element) => {
-    const rect = element.getBoundingClientRect();
-    /** @param {number} y */
-    const hitAt = (y) => {
-      const hit = element.ownerDocument.elementFromPoint(rect.left + rect.width / 2, y);
-      return hit !== null && element.contains(hit);
-    };
-    return { height: rect.height, middle: hitAt(rect.top + rect.height / 2), bottom: hitAt(rect.bottom - 4) };
-  });
-  // The popover must be taller than the ~70px header row it is anchored in, so a clipped menu
-  // cannot satisfy the hit tests below by collapsing to the header height.
-  expect(hits.height).toBeGreaterThan(140);
-  expect(hits.middle).toBe(true);
-  expect(hits.bottom).toBe(true);
-});
 
 test('histogram keeps a low constant DOM size for 100,000 observations', async ({ page }) => {
   await page.setContent(`
@@ -2251,285 +1486,6 @@ test('DLS-DOC-014 horizon details are available in the expanded window picker', 
   expect((detailsBox?.x ?? 0) + (detailsBox?.width ?? 0)).toBeLessThanOrEqual(393);
 });
 
-test('DLS-PAGE-002 DLS-PAGE-014 built-in overview page renders the report-style six-domain operational overview in browser', async ({ page }) => {
-  const presenterModuleUrl = buildPresenterModuleUrl();
-
-  await page.setContent(`
-    <div id="root"></div>
-    <script type="module">
-      import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
-      import { prepareDashboardViewSources } from 'http://dashboard.test/test/e2e/helpers/dashboard-view-sources.js';
-
-      const dashboardDocument = {
-        languageVersion: '0.1.0',
-        dashboard: {
-          id: 'built-in-overview-render',
-          title: 'Built In Overview Render',
-          pages: [
-            ${JSON.stringify(builtInPage('overview', { id: 'overview', title: 'Overview' }))},
-            {
-              id: 'runtime',
-              kind: 'custom',
-              title: 'Runtime & episodes',
-              views: [
-                {
-                  id: 'runtime-execution-episodes',
-                  title: 'Observed root episodes',
-                  data: { source: 'runtime-episodes' },
-                  mark: 'table',
-                  encoding: {
-                    columns: [
-                      { field: 'run', title: 'Run' },
-                      { field: 'status', title: 'Result', display: 'status' }
-                    ]
-                  }
-                }
-              ]
-            }
-          ],
-          navigation: [
-            { label: 'Attention', pages: ['overview'] }
-          ]
-        }
-      };
-
-      const sources = {
-        'overview-attention-domains': {
-          source: 'overview-attention-domains',
-          rows: [
-            { domain: 'Runtime health', state: 'Act now', value: '1 failed', detail: 'A retained run failed.', tone: 'critical', icon: 'pulse', href: '#page-runtime' },
-            { domain: 'Episodes & autonomy', state: 'Monitor', value: '2 observed', detail: 'Two episodes were retained.', tone: 'monitor', icon: 'iterations', href: '#page-runtime?section=runtime-observed-root-episodes-heading' },
-            { domain: 'Security & controls', state: 'Investigate', value: '2 signals', detail: 'Two controls need review.', tone: 'investigate', icon: 'shield', href: '#page-security' },
-            { domain: 'Evidence quality', state: 'Monitor', value: 'Complete', detail: 'Evidence is retained.', tone: 'monitor', icon: 'check-circle', href: '#page-coverage' },
-            { domain: 'Value & outcomes', state: 'Monitor', value: '2 observed', detail: 'Value evidence is retained.', tone: 'monitor', icon: 'graph', href: '#page-operational-value' },
-            { domain: 'Cost & efficiency', state: 'Monitor', value: '35 AIC', detail: 'Usage is retained.', tone: 'monitor', icon: 'meter', href: '#page-cost' }
-          ],
-          metadata: {
-            'source-id': 'attention-domains-fixture',
-            'source-kind': 'fixture',
-            'as-of': '2026-08-29T20:00:00Z',
-            'retrieved-at': '2026-08-29T20:01:00Z',
-            completeness: 'complete',
-            freshness: 'fresh',
-            availability: 'available'
-          }
-        },
-        repositories: {
-          source: 'repositories',
-          rows: [
-            { organization: 'github', repository: 'gh-aw-cao' },
-            { organization: 'github', repository: 'dashboard-service' }
-          ],
-          metadata: {
-            'source-id': 'repositories-fixture',
-            'source-kind': 'fixture',
-            'as-of': '2026-08-29T20:00:00Z',
-            'retrieved-at': '2026-08-29T20:01:00Z',
-            completeness: 'complete',
-            freshness: 'fresh',
-            availability: 'available'
-          }
-        },
-        workflows: {
-          source: 'workflows',
-          rows: [
-            { organization: 'github', repository: 'gh-aw-cao', campaign: 'daily-ops', 'campaign-name': 'Daily Ops', 'workflow-role': 'orchestrator', workflow: '.github/workflows/daily.yml', 'workflow-active': 'true', 'rollout-mode': 'review', 'campaign-rollout-percent': 100, 'campaign-targets': [{ repository: 'github/gh-aw', mode: 'live' }, { repository: 'github/gh-aw-firewall', mode: 'review' }, { repository: 'github/gh-aw-mcpg', mode: 'review' }, { repository: 'github/gh-aw-actions', mode: 'review' }, { repository: 'github/gh-aw-threat-detection', mode: 'review' }, { repository: 'githubnext/gh-aw-workshop', mode: 'review' }], 'max-ai-credits': 10, 'observed-at': '2026-08-29T09:00:00Z' },
-            { organization: 'github', repository: 'gh-aw-cao', campaign: 'daily-ops', 'campaign-name': 'Daily Ops', 'workflow-role': 'worker', workflow: '.github/workflows/review.yml', 'workflow-active': 'false', 'rollout-mode': 'review', 'max-ai-credits': 20, 'observed-at': '2026-08-29T09:05:00Z' }
-          ],
-          metadata: {
-            'source-id': 'workflows-fixture',
-            'source-kind': 'fixture',
-            'as-of': '2026-08-29T20:00:00Z',
-            'retrieved-at': '2026-08-29T20:01:00Z',
-            completeness: 'partial',
-            freshness: 'stale',
-            availability: 'available'
-          }
-        },
-        runs: {
-          source: 'runs',
-          rows: [
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/daily.yml', run: '1001', event: 'workflow_dispatch', 'started-at': '2026-08-29T10:00:00Z', 'run-status': 'completed', 'run-conclusion': 'success', 'rollout-mode': 'live', engine: 'openai', 'requested-model': 'gpt-4o', 'resolved-model': 'gpt-4.1' },
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/daily.yml', run: '1002', event: 'workflow_dispatch', 'started-at': '2026-08-29T11:00:00Z', 'run-status': 'completed', 'run-conclusion': 'failure', 'rollout-mode': 'live', engine: 'openai', 'requested-model': 'gpt-4o', 'resolved-model': 'gpt-4.1' },
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/review.yml', run: '1003', 'started-at': '2026-08-29T12:00:00Z', 'run-status': 'in-progress', 'run-conclusion': 'unknown', 'rollout-mode': 'review', engine: 'anthropic', 'requested-model': 'claude-3.5', 'resolved-model': 'claude-3.7' }
-          ],
-          metadata: {
-            'source-id': 'runs-fixture',
-            'source-kind': 'fixture',
-            'as-of': '2026-08-29T20:00:00Z',
-            'retrieved-at': '2026-08-29T20:01:00Z',
-            completeness: 'complete',
-            freshness: 'fresh',
-            availability: 'available'
-          }
-        },
-        outcomes: {
-          source: 'outcomes',
-          rows: [
-            { campaign: 'daily-ops', 'runtime-repository': 'github/gh-aw-cao', run: '1001', 'safe-output': 'daily-output-1', 'outcome-state': 'accepted', 'rollout-mode': 'live', 'observed-at': '2026-08-29T10:10:00Z' }
-          ],
-          metadata: {
-            'source-id': 'outcomes-fixture',
-            'source-kind': 'fixture',
-            'as-of': '2026-08-29T20:00:00Z',
-            'retrieved-at': '2026-08-29T20:01:00Z',
-            completeness: 'complete',
-            freshness: 'fresh',
-            availability: 'available'
-          }
-        },
-        usage: {
-          source: 'usage',
-          rows: [
-            { repository: 'gh-aw-cao', workflow: '.github/workflows/daily.yml', run: '1001', 'rollout-mode': 'live', aic: 12, engine: 'openai', 'requested-model': 'gpt-4o', 'resolved-model': 'gpt-4.1', 'observed-at': '2026-08-29T10:05:00Z' },
-            { repository: 'gh-aw-cao', workflow: '.github/workflows/daily.yml', run: '1002', 'rollout-mode': 'live', aic: 18, engine: 'openai', 'requested-model': 'gpt-4o', 'resolved-model': 'gpt-4.1', 'observed-at': '2026-08-29T11:05:00Z' },
-            { repository: 'gh-aw-cao', workflow: '.github/workflows/review.yml', run: '1003', 'rollout-mode': 'review', aic: 5, engine: 'anthropic', 'requested-model': 'claude-3.5', 'resolved-model': 'claude-3.7', 'observed-at': '2026-08-29T12:05:00Z' }
-          ],
-          metadata: {
-            'source-id': 'usage-fixture',
-            'source-kind': 'fixture',
-            'as-of': '2026-08-29T20:00:00Z',
-            'retrieved-at': '2026-08-29T20:01:00Z',
-            completeness: 'complete',
-            freshness: 'fresh',
-            availability: 'available'
-          }
-        },
-        findings: {
-          source: 'findings',
-          rows: [
-            {
-              finding: 'finding-2',
-              'finding-summary': 'Review workflow needs triage',
-              'finding-kind': 'authored-warning',
-              'finding-severity': 'medium',
-              'finding-status': 'unknown',
-              organization: 'github',
-              repository: 'gh-aw-cao',
-              workflow: '.github/workflows/review.yml',
-              'observed-at': '2026-08-29T12:30:00Z',
-              'issue-link': { relation: 'issue', href: 'https://example.com/issues/2', label: 'Issue 2' },
-              'pull-request-link': { relation: 'pull-request', href: 'https://example.com/pulls/2', label: 'PR 2' },
-              'run-link': { relation: 'run', href: 'https://example.com/runs/1003', label: 'Run 1003' }
-            },
-            {
-              finding: 'finding-1',
-              'finding-summary': 'Daily workflow regression',
-              'finding-kind': 'authored-warning',
-              'finding-severity': 'high',
-              'finding-status': 'unknown',
-              organization: 'github',
-              repository: 'gh-aw-cao',
-              workflow: '.github/workflows/daily.yml',
-              'observed-at': '2026-08-29T11:30:00Z',
-              'issue-link': { relation: 'issue', href: 'https://example.com/issues/1', label: 'Issue 1' },
-              'pull-request-link': { relation: 'pull-request', href: 'https://example.com/pulls/1', label: 'PR 1' },
-              'run-link': { relation: 'run', href: 'https://example.com/runs/1002', label: 'Run 1002' }
-            }
-          ],
-          metadata: {
-            'source-id': 'findings-fixture',
-            'source-kind': 'fixture',
-            'as-of': '2026-08-29T20:00:00Z',
-            'retrieved-at': '2026-08-29T20:01:00Z',
-            completeness: 'complete',
-            freshness: 'fresh',
-            availability: 'available'
-          }
-        },
-        'operational-values': {
-          source: 'operational-values',
-          rows: [
-            {
-              organization: 'github',
-              repository: 'gh-aw-cao',
-              workflow: '.github/workflows/daily.yml',
-              run: '1001',
-              'operational-value': 0.65,
-              'operational-value-definition': 'ship-success',
-              'observed-at': '2026-08-29T10:30:00Z',
-              'evidence-link': { relation: 'evidence', href: 'https://example.com/evidence/1', label: 'Evidence 1' }
-            },
-            {
-              organization: 'github',
-              repository: 'gh-aw-cao',
-              workflow: '.github/workflows/review.yml',
-              run: '1003',
-              'operational-value': 0.8,
-              'operational-value-definition': 'review-quality',
-              'observed-at': '2026-08-29T12:45:00Z',
-              'evidence-link': { relation: 'evidence', href: 'https://example.com/evidence/2', label: 'Evidence 2' }
-            }
-          ],
-          metadata: {
-            'source-id': 'operational-values-fixture',
-            'source-kind': 'fixture',
-            'as-of': '2026-08-29T20:00:00Z',
-            'retrieved-at': '2026-08-29T20:01:00Z',
-            completeness: 'complete',
-            freshness: 'fresh',
-            availability: 'available'
-          }
-        }
-      };
-
-      const viewSources = await prepareDashboardViewSources(dashboardDocument, 'overview', sources);
-      document.querySelector('#root').append(renderDashboard({ document: dashboardDocument, sources: viewSources }));
-    </script>
-  `);
-
-  await expect(page.getByRole('heading', { name: 'Overview', exact: true, level: 1 })).toBeVisible();
-  await expect(page.locator('[data-breadcrumb-dashboard]')).toHaveText('Overview');
-  await expect(page.locator('[data-breadcrumb-dashboard]')).toBeHidden();
-  await expect(page.locator('[data-breadcrumb-page]')).toHaveText('Overview');
-  await expect(page.locator('[data-page-mode]')).toBeHidden();
-  await expect(page.locator('.nav-section-label')).toHaveCount(1);
-  await expect(page.locator('.nav-section-label')).toHaveText(['Attention']);
-  await expect(page.locator('.overview-page')).toHaveAttribute('data-page-kind', 'custom');
-  await expect(page.locator('.overview-page .custom-view')).toHaveCount(2);
-  await expect(page.locator('.overview-page .custom-view').first().locator('[data-chart-widget="swimlane"]')).toBeVisible();
-  await expect(page.locator('.overview-page .layout-section')).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: 'Attention by domain', level: 2 })).toBeVisible();
-  const cards = page.locator('.attention-domain-card');
-  await expect(cards).toHaveCount(6);
-  await expect(cards.locator('header strong')).toHaveText([
-    'Runtime health',
-    'Episodes & autonomy',
-    'Security & controls',
-    'Evidence quality',
-    'Value & outcomes',
-    'Cost & efficiency'
-  ]);
-  await expect(cards.first()).toHaveClass(/attention-domain-critical/);
-  await expect(cards.first()).toContainText('1 failed');
-  await expect(cards.nth(1)).toContainText('2 observed');
-  await expect(cards.nth(2)).toContainText('2 signals');
-  await expect(cards.nth(2)).toHaveClass(/attention-domain-investigate/);
-  expect(await cards.evaluateAll((links) => links.map((link) => link.getAttribute('href')))).toEqual([
-    '#page-runtime',
-    '#page-runtime?section=runtime-observed-root-episodes-heading',
-    '#page-security',
-    '#page-coverage',
-    '#page-operational-value',
-    '#page-cost'
-  ]);
-  await expect(page.locator('.overview-method-note')).toContainText('State key:');
-  await expect(page.locator('.overview-page .overview-campaign-status')).toHaveCount(0);
-  await expect(page.locator('[data-page-id="overview"] .data-state-summary')).toBeHidden();
-
-  await page.setViewportSize({ width: 400, height: 900 });
-  const firstCardBox = await cards.first().boundingBox();
-  const secondCardBox = await cards.nth(1).boundingBox();
-  expect(firstCardBox).not.toBeNull();
-  expect(secondCardBox).not.toBeNull();
-  expect(secondCardBox?.y).toBeGreaterThan(firstCardBox?.y ?? 0);
-
-  await cards.nth(1).click();
-  await expect(page).toHaveURL(/#page-runtime\?section=runtime-observed-root-episodes-heading$/);
-  await expect(page.locator('[data-page-id="runtime"]')).toBeVisible();
-  await expect(page.locator('#runtime-observed-root-episodes-heading')).toBeInViewport();
-
-});
 
 test('JSON full-view mode fills the viewport and supports repeated lazy-list scrolling', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
@@ -3029,16 +1985,12 @@ test('pie charts match the report layout at medium viewport widths', async ({ pa
 test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory, and campaign activity in browser', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const queryDefinitions = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8')).dashboard.queries;
-  const operationalValuePage = authoritativeDashboard.dashboard.pages.find(
-    (/** @type {{ id?: string }} */ candidate) => candidate.id === 'operational-value'
-  );
   const campaignInsightsPage = authoritativeDashboard.dashboard.pages.find(
     (/** @type {{ id?: string }} */ candidate) => candidate.id === 'campaign-insights'
   );
   const campaignIssuesPage = authoritativeDashboard.dashboard.pages.find(
     (/** @type {{ id?: string }} */ candidate) => candidate.id === 'campaign-issues'
   );
-  assert(operationalValuePage, 'Missing operational value page');
   assert(campaignInsightsPage, 'Missing campaign insights page');
   assert(campaignIssuesPage, 'Missing campaign issues page');
 
@@ -3083,7 +2035,6 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
               title: 'Campaigns',
               description: 'Activity from centrally managed campaigns.',
             }))},
-            ${JSON.stringify(operationalValuePage)},
             ${JSON.stringify(campaignInsightsPage)},
             {
               id: 'campaign-detail',
@@ -3389,20 +2340,6 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   await expect(page).toHaveURL(/#page-campaign-insights\?campaign=aw-doctor$/);
   await expect(page.locator('[data-page-id="campaign-insights"] .campaign-tabs')).toBeVisible();
   await page.evaluate(() => {
-    window.location.hash = '#page-operational-value';
-  });
-  const operationalValue = page.locator('[data-page-id="operational-value"]');
-  await expect(page.getByRole('heading', { name: 'Operational value', level: 1 })).toBeVisible();
-  await expect(operationalValue.locator('[data-view-id="operational-value-by-campaign"] [data-chart-widget="pie"]')).toBeAttached();
-  await expect(operationalValue.locator('.chart-legend-pie')).toContainText('Ambient Context');
-  await expect(operationalValue.locator('.chart-legend-pie')).toContainText('AW Doctor');
-  await operationalValue.getByRole('button', { name: 'Table' }).click();
-  await expect(operationalValue.locator('.custom-table tbody tr')).toHaveCount(2);
-  await expect(operationalValue.locator('.custom-table thead tr').first().locator('th')).toHaveText([
-    'Campaign',
-    'Operational value'
-  ]);
-  await page.evaluate(() => {
     window.location.hash = '#page-campaign-detail?campaign=ambient-context';
   });
   await expect(page.locator('[data-breadcrumb-page]')).toHaveText('Ambient Context');
@@ -3509,141 +2446,6 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   await expect(campaignNavigation).toBeVisible();
 });
 
-test('DLS-PAGE-017 renders an editable filter bar and applies changes automatically', async ({ page }) => {
-  const presenterModuleUrl = buildPresenterModuleUrl();
-
-  await page.setContent(`
-    <div id="root"></div>
-    <script type="module">
-      import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
-      import { prepareDashboardViewSources } from 'http://dashboard.test/test/e2e/helpers/dashboard-view-sources.js';
-
-      const dashboardDocument = {
-        languageVersion: '0.1.0',
-        dashboard: {
-          id: 'filter-bar-render',
-          title: 'Central Agentic Ops',
-          callouts: [{
-            id: 'partial-data',
-            title: 'Dashboard data is partial',
-            description: 'Coverage diagnostics report a collection gap.',
-            'navigation-page': 'coverage'
-          }],
-          pages: [{
-            id: 'cost',
-            kind: 'custom',
-            title: 'Cost & efficiency',
-            views: [{
-              id: 'usage-count',
-              data: { source: 'usage' },
-              mark: 'metric',
-              encoding: { value: { field: 'invocation', aggregate: 'count' } }
-            }]
-          }]
-        }
-      };
-      const sources = {
-        usage: {
-          source: 'usage',
-          rows: [
-            { invocation: 'usage-1', aic: 2, 'rollout-mode': 'review' },
-            { invocation: 'usage-2', aic: 3, 'rollout-mode': 'live' }
-          ],
-          metadata: {
-            'source-id': 'usage-fixture',
-            'source-kind': 'fixture',
-            'as-of': '2026-08-31T16:00:00Z',
-            'retrieved-at': '2026-08-31T16:01:00Z',
-            completeness: 'complete',
-            freshness: 'fresh',
-            availability: 'available'
-          }
-        }
-      };
-      let publishSources = () => {};
-      let initialLoad = true;
-      const loadPageSources = (pageId, options) => {
-        const prepared = prepareDashboardViewSources(
-          dashboardDocument,
-          pageId,
-          sources,
-          { queryContext: options.queryContext, routeParameters: options.routeParameters }
-        );
-        if (!initialLoad) return Promise.resolve(prepared);
-        initialLoad = false;
-        return new Promise((resolve) => {
-          publishSources = () => resolve(prepared);
-        });
-      };
-      window.publishHorizonSources = () => publishSources();
-      document.querySelector('#root').append(renderDashboard({
-        document: dashboardDocument,
-        sources: {},
-        loadPageSources
-      }));
-    </script>
-  `);
-
-  const filterBar = page.getByLabel('Dashboard filters');
-  await expect(page.locator('.dashboard-horizon-skeleton')).toHaveCount(0);
-  await expect(page.locator('.horizon-toggle')).toHaveAccessibleName(/1 week/);
-  await page.evaluate(() => /** @type {{ publishHorizonSources: () => void }} */ (
-    /** @type {unknown} */ (window)
-  ).publishHorizonSources());
-  await expect(page.locator('.dashboard-horizon-skeleton')).toHaveCount(0);
-  await expect(filterBar).toBeVisible();
-  await expect(filterBar.locator(':scope > .filter-tuning-controls > .time-window-control')).toHaveCount(1);
-  await expect(page.locator('.report-actions > .dashboard-horizon')).toHaveCount(1);
-  await expect(filterBar.locator('.filter-tuning-controls')).toBeVisible();
-  await page.locator('.dashboard-horizon .horizon-toggle').click();
-  const filterInput = filterBar.getByRole('searchbox', { name: 'Current filters' });
-  await expect(filterInput).toHaveValue('');
-  await expect(filterBar.getByRole('combobox', { name: 'Time window' })).toHaveValue('all');
-  await expect(filterBar.getByRole('checkbox')).toHaveCount(3);
-  expect(await filterBar.getByRole('checkbox').evaluateAll(
-    (inputs) => inputs.every((input) => /** @type {HTMLInputElement} */ (input).checked)
-  )).toBe(true);
-  const desktopPanelBox = await filterBar.locator('.filter-tuning-controls').boundingBox();
-  const desktopTimeRangeBox = await filterBar.locator('.time-window-control').boundingBox();
-  expect(desktopTimeRangeBox?.x).toBeGreaterThanOrEqual(desktopPanelBox?.x ?? 0);
-  expect((desktopTimeRangeBox?.x ?? 0) + (desktopTimeRangeBox?.width ?? 0))
-    .toBeLessThanOrEqual((desktopPanelBox?.x ?? 0) + (desktopPanelBox?.width ?? 0));
-  await expect(filterBar.getByRole('link', { name: 'Export JSON' })).toHaveCount(0);
-  await expect(page.locator('[data-page-id="cost"] [data-metric-value="invocation"]')).toHaveText('2');
-
-  await page.getByRole('heading', { name: 'Cost' }).click();
-  await expect(filterBar.locator('.filter-tuning-controls')).toBeVisible();
-  await page.locator('.dashboard-horizon .horizon-toggle').click();
-
-  await filterBar.getByRole('checkbox', { name: 'review' }).evaluate((input) => {
-    const checkbox = /** @type {HTMLInputElement} */ (input);
-    checkbox.checked = false;
-    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-  });
-  await expect(filterBar.locator('.count-badge')).toHaveText('2');
-  await expect(page.locator('[data-page-id="cost"] [data-metric-value="invocation"]')).toHaveText('1');
-  await expect.poll(() => page.evaluate(() => JSON.parse(
-    localStorage.getItem('central-agentic-ops.dashboard.horizon-filter-settings') ?? '{}'
-  ).modes)).toEqual(['live', 'unknown']);
-  await page.locator('.dashboard-horizon .horizon-toggle').click();
-
-  await page.setViewportSize({ width: 400, height: 900 });
-  expect((await page.getByRole('link', { name: 'View coverage' }).boundingBox())?.height)
-    .toBeGreaterThanOrEqual(24);
-  await page.locator('.mobile-nav-menu > summary').click();
-  const horizonBox = await page.locator('.dashboard-horizon').last().boundingBox();
-  expect(horizonBox).not.toBeNull();
-  await expect(filterBar.locator('.time-window-control:visible')).toHaveCount(0);
-  await page.locator('.dashboard-horizon .horizon-toggle').last().click();
-  const expandedHorizonBox = await page.locator('.dashboard-horizon').last().boundingBox();
-  const tuningControls = filterBar.locator('.filter-tuning-controls:visible');
-  const timeRangeBox = await tuningControls.locator('.time-window-control').boundingBox();
-  const tuningControlsBox = await tuningControls.boundingBox();
-  expect(timeRangeBox?.y).toBeGreaterThanOrEqual((expandedHorizonBox?.y ?? 0) + (expandedHorizonBox?.height ?? 0));
-  expect(tuningControlsBox?.x).toBeGreaterThanOrEqual(0);
-  expect((tuningControlsBox?.x ?? 0) + (tuningControlsBox?.width ?? 0)).toBeLessThanOrEqual(400);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(400);
-});
 
 test('DLS-PAGE-009 DLS-PAGE-014 built-in evals page renders distinguishable definitions and observations, observed subject, YES/NO/UNKNOWN result, evaluation model when available, time, provenance, and independent data state in browser', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();

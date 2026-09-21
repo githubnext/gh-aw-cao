@@ -76,6 +76,12 @@ function declaredQueryReferences(value) {
 }
 
 describe('dashboard view query contracts', () => {
+  it('does not retain core experimental navigation sections', () => {
+    expect(dashboard.navigation.filter(
+      (/** @type {{ experimental?: boolean }} */ section) => section.experimental === true
+    )).toEqual([]);
+  });
+
   it('keeps assessment-sensitive high-cardinality views declaratively bounded', () => {
     const pagesById = new Map(dashboard.pages.map((/** @type {Record<string, unknown>} */ page) => [page.id, page]));
     const boundedViews = [
@@ -160,11 +166,16 @@ describe('dashboard view query contracts', () => {
       ...dashboard,
       queries: undefined
     }));
+    const queryByName = new Map(queries.map((/** @type {{ name: string }} */ query) => [query.name, query]));
+    const pending = [...retained];
 
-    for (let index = queries.length - 1; index >= 0; index -= 1) {
-      const query = queries[index];
-      if (!retained.has(query.name)) continue;
-      for (const dependency of declaredQueryReferences(query)) retained.add(dependency);
+    while (pending.length > 0) {
+      const query = queryByName.get(pending.pop());
+      for (const dependency of declaredQueryReferences(query)) {
+        if (retained.has(dependency)) continue;
+        retained.add(dependency);
+        pending.push(dependency);
+      }
     }
 
     expect([...queryNames].filter((name) => !retained.has(name))).toEqual([]);

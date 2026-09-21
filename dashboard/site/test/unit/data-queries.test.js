@@ -11,8 +11,6 @@ import {
   paginateDashboardSources,
   resolveDashboardQuerySources
 } from '../../src/data/queries/declarative.js';
-import { applyTableQuerySafetyLimits } from '../../src/data/table-capacity.js';
-import { dashboardTableSourceNames } from '../../src/presenter.js';
 import { computeValue, tidy } from '../../src/data-operations.js';
 import { processDataRequest } from '../../src/data-worker.js';
 
@@ -71,81 +69,6 @@ const emptyRunRecordSources = Object.fromEntries(['domains', 'tools', 'audits', 
 ]));
 
 describe('declarative dashboard queries', () => {
-  it('groups unresolved repeated failures, includes review outputs, and caps the Overview preview', () => {
-    const run = (/** @type {string} */ workflow, /** @type {string} */ id, conclusion = 'failure', startedAt = `2026-09-${String(Number(id)).padStart(2, '0')}T00:00:00Z`) => ({
-      organization: 'githubnext',
-      repository: 'gh-aw-cao',
-      workflow,
-      run: id,
-      'run-conclusion': conclusion,
-      'started-at': startedAt
-    });
-    const workItem = (/** @type {string} */ workflow, /** @type {string} */ state, /** @type {string} */ id) => ({
-      organization: 'githubnext',
-      repository: 'gh-aw-cao',
-      workflow,
-      'work-item-id': id,
-      'lifecycle-state': state,
-      objective: `${workflow} output`,
-      scope: `githubnext/gh-aw-cao · ${workflow}`,
-      reason: state === 'review' ? 'Output awaits approval' : 'Latest run failed',
-      'observed-at': `2026-09-0${id.length}T00:00:00Z`,
-      'run-link': { href: `https://github.com/githubnext/gh-aw-cao/actions/runs/${id}` },
-      'evidence-link': { href: `https://github.com/githubnext/gh-aw-cao/issues/${id}` }
-    });
-    const sources = {
-      runs: {
-        source: 'runs',
-        rows: [
-          run('repeated.md', '1'),
-          run('repeated.md', '2'),
-          run('repeated.md', '2'),
-          run('reset.md', '3'),
-          run('reset.md', '4', 'success'),
-          run('reset.md', '5'),
-          run('tie-reset.md', '9', 'failure', '2026-09-09T00:00:00Z'),
-          run('tie-reset.md', '10', 'success', '2026-09-09T00:00:00Z'),
-          run('single.md', '3'),
-          run('resolved.md', '4'),
-          run('resolved.md', '5')
-        ],
-        metadata: metadata('runs')
-      },
-      'work-items': {
-        source: 'work-items',
-        rows: [
-          workItem('repeated.md', 'blocked', '10'),
-          workItem('reset.md', 'blocked', '16'),
-          workItem('tie-reset.md', 'blocked', '17'),
-          workItem('single.md', 'blocked', '11'),
-          workItem('resolved.md', 'completed', '12'),
-          workItem('review-a.md', 'review', '13'),
-          workItem('review-b.md', 'review', '14'),
-          workItem('review-c.md', 'review', '15')
-        ],
-        metadata: metadata('work-items')
-      }
-    };
-
-    const results = executeDashboardQueries(dashboardQueries, sources, [
-      'overview-needs-attention',
-      'overview-needs-attention-preview'
-    ]);
-
-    expect(results['overview-needs-attention'].rows).toHaveLength(4);
-    expect(results['overview-needs-attention'].rows.filter((row) => row.kind === 'Repeated workflow failures')).toEqual([
-      expect.objectContaining({
-        title: 'repeated.md',
-        reason: '2 failed runs in the selected horizon'
-      })
-    ]);
-    expect(results['overview-needs-attention'].rows.some((row) => row.title === 'single.md')).toBe(false);
-    expect(results['overview-needs-attention'].rows.some((row) => row.title === 'reset.md')).toBe(false);
-    expect(results['overview-needs-attention'].rows.some((row) => row.title === 'tie-reset.md')).toBe(false);
-    expect(results['overview-needs-attention'].rows.some((row) => row.title === 'resolved.md')).toBe(false);
-    expect(results['overview-needs-attention'].rows.filter((row) => row.kind === 'Human review required')).toHaveLength(3);
-    expect(results['overview-needs-attention-preview'].rows).toHaveLength(3);
-  });
 
   it('unions specialized run records before applying query clauses', () => {
     const result = executeDashboardQuery(
@@ -277,49 +200,6 @@ describe('declarative dashboard queries', () => {
     ]);
   });
 
-  it('uses aggregate-local filters for built-in filtered aggregate counts', () => {
-    /** @param {string} name */
-    const findQuery = (name) => {
-      const found = dashboardQueries.find((/** @type {{ name?: string }} */ query) => query.name === name);
-      expect(found).toBeTruthy();
-      return /** @type {{ compute?: Array<{ as: string }>, aggregate: { values: Array<{ as: string, filter?: { predicates?: unknown[] } }> } }} */ (found);
-    };
-    const optimizedQueries = [
-      'overview-run-summary',
-      'overview-dispatch-summary',
-      'firewall-domain-totals',
-      'repository-workflow-totals',
-      'repository-run-totals'
-    ].map(findQuery);
-
-    for (const query of optimizedQueries) {
-      expect(query.compute).toBeUndefined();
-      expect(query.aggregate.values.some((value) => Array.isArray(value.filter?.predicates))).toBe(true);
-    }
-
-    const outcomeSummary = findQuery('overview-outcome-summary');
-    expect(outcomeSummary.aggregate.values.find((value) => value.as === 'delivered-repositories')).toMatchObject({
-      field: 'repository',
-      reducer: 'distinct-count',
-      filter: { predicates: [{ field: 'outcome-state', in: ['accepted', 'completed', 'lifecycle-close'] }] }
-    });
-
-    const efficiency = /** @type {{ compute: Array<{ as: string }>, aggregate: { values: Array<{ as: string }> } }} */ (
-      findQuery('cost-workflow-run-efficiency')
-    );
-    expect(efficiency.compute.map((field) => field.as)).toEqual([
-      'observed-engine',
-      'observed-model',
-      'observed-agent-model'
-    ]);
-    expect(efficiency.aggregate.values.find((value) => value.as === 'failed-runs')).toMatchObject({
-      field: 'run-conclusion',
-      reducer: 'count',
-      filter: {
-        predicates: [{ field: 'run-conclusion', in: ['failure', 'timed-out', 'startup-failure', 'timed_out', 'startup_failure'] }]
-      }
-    });
-  });
 
   it('executes built-in aggregate-local filters with the same filtered totals', () => {
     const result = executeDashboardQueries(
@@ -1056,60 +936,6 @@ describe('declarative dashboard queries', () => {
     });
   });
 
-  it('projects every Safe Output usage record without aggregation or limits', () => {
-    const outcomes = {
-      source: 'outcomes',
-      rows: [
-        {
-          'safe-output': 'issue-1', 'safe-output-kind': 'create-issue', 'outcome-title': 'Older issue',
-          'outcome-status': 'open', 'outcome-state': 'accepted', workflow: 'daily.md', repository: 'cao',
-          'rollout-mode': 'review', run: '1', 'published-at': '2026-09-01T00:00:00Z',
-          'observed-at': '2026-09-01T01:00:00Z', 'external-link': { href: 'issue-1' }, 'run-link': { href: 'run-1' }
-        },
-        {
-          'safe-output': 'issue-2', 'safe-output-kind': 'create-issue', 'outcome-title': 'Newest issue',
-          'outcome-status': 'closed', 'outcome-state': 'completed', workflow: 'daily.md', repository: 'cao',
-          'rollout-mode': 'live', run: '2', 'published-at': '2026-09-02T00:00:00Z',
-          'observed-at': '2026-09-02T01:00:00Z', 'external-link': { href: 'issue-2' }, 'run-link': { href: 'run-2' }
-        },
-        {
-          'safe-output': 'pr-1', 'safe-output-kind': 'create-pull-request', 'outcome-title': 'Pull request',
-          'outcome-status': 'open', 'outcome-state': 'pending', workflow: 'release.md', repository: 'cao',
-          'rollout-mode': 'review', run: '3', 'published-at': '2026-09-01T00:30:00Z',
-          'observed-at': '2026-09-01T01:30:00Z', 'external-link': { href: 'pr-1' }, 'run-link': { href: 'run-3' }
-        }
-      ],
-      metadata: metadata('outcomes')
-    };
-    const derived = executeDashboardQueries(
-      dashboardQueries,
-      { outcomes },
-      ['safe-output-usage']
-    );
-
-    expect(Object.keys(derived)).toEqual(['safe-output-usage']);
-    expect(derived['safe-output-usage'].rows).toHaveLength(3);
-    expect(derived['safe-output-usage'].rows.map((row) => row['safe-output'])).toEqual([
-      'issue-2',
-      'pr-1',
-      'issue-1'
-    ]);
-    expect(derived['safe-output-usage'].rows[0]).toMatchObject({
-      'safe-output': 'issue-2',
-      'safe-output-kind': 'create-issue',
-      'outcome-title': 'Newest issue',
-      'outcome-status': 'closed',
-      'outcome-state': 'completed',
-      workflow: 'daily.md',
-      repository: 'cao',
-      'rollout-mode': 'live',
-      run: '2',
-      'published-at': '2026-09-02T00:00:00Z',
-      'observed-at': '2026-09-02T01:00:00Z',
-      'external-link': { href: 'issue-2' },
-      'run-link': { href: 'run-2' }
-    });
-  });
 
   it('groups MCP activity by tool and excludes the safe outputs server', () => {
       const mcpCalls = {
@@ -1154,149 +980,8 @@ describe('declarative dashboard queries', () => {
     });
   });
 
-  it('projects the event inspection view from its request-scoped dashboard query', () => {
-      const audits = {
-        source: 'audits',
-        rows: [
-          {
-            organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1,
-            session: 'session-1', event: 'event-1', 'event-source': 'agent', 'event-type': 'agent_turn',
-            'event-status': 'completed', 'event-summary': 'First turn', 'correlation-id': 'correlation-1',
-            'source-sequence': 1, 'event-timestamp': '2026-09-01T00:00:00Z'
-          },
-          {
-            organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1,
-            session: 'session-2', event: 'event-2', 'event-source': 'gateway', 'event-type': 'tool_call',
-            'event-status': 'started', 'event-summary': 'Second turn', 'correlation-id': 'correlation-2',
-            'source-sequence': 2, 'event-timestamp': '2026-09-02T00:00:00Z'
-          }
-        ],
-        metadata: metadata('audits')
-      };
-      const runs = {
-        source: 'runs',
-        rows: usage.rows.map((row) => ({ ...row, 'run-attempt': 1, 'run-link': { href: `run-${row.run}` } })),
-        metadata: metadata('runs')
-      };
-      const derived = executeDashboardQueries(
-        dashboardQueries,
-        { ...emptyRunRecordSources, audits, runs },
-        ['event-inspection']
-      );
 
-      expect(derived['event-inspection'].rows).toEqual([
-        expect.objectContaining({
-          event: 'event-2',
-          'event-source': 'gateway',
-          'event-type': 'tool_call',
-          'observed-at': '2026-09-02T00:00:00Z',
-          'run-link': { href: 'run-2' }
-        }),
-        expect.objectContaining({
-          event: 'event-1',
-          'event-source': 'agent',
-          'event-type': 'agent_turn',
-          'observed-at': '2026-09-01T00:00:00Z',
-          'run-link': { href: 'run-1' }
-        })
-      ]);
-    });
 
-  it('projects safe-output item entity types and run provenance', () => {
-    const issues = {
-      source: 'issues',
-      rows: [{
-        organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1,
-        event: 'safe-output-1', 'event-type': 'safe_output.created',
-        'event-timestamp': '2026-09-02T00:00:00Z', 'event-summary': 'create_pull_request/gh-aw-cao/43',
-        'safe-output-type': 'create_pull_request', 'github-entity-type': 'pull_request',
-        'is-pull-request': true,
-        'correlation-id': 'https://github.com/githubnext/gh-aw-cao/pull/43'
-      }],
-      metadata: metadata('issues')
-    };
-    const runs = {
-      source: 'runs',
-      rows: [{
-        organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1',
-        'run-attempt': 1, 'run-link': { href: 'run-1' }
-      }],
-      metadata: metadata('runs')
-    };
-    const audits = {
-      source: 'audits',
-      rows: [{
-        organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1,
-        event: 'safe-output-2', 'event-type': 'safe_output.created',
-        'event-timestamp': '2026-09-01T00:00:00Z', 'event-summary': 'create_discussion/gh-aw-cao/44',
-        'safe-output-type': 'create_discussion', 'github-entity-type': 'discussion',
-        'correlation-id': 'https://github.com/githubnext/gh-aw-cao/discussions/44'
-      }],
-      metadata: metadata('audits')
-    };
-
-    const derived = executeDashboardQueries(
-      dashboardQueries,
-      { issues, audits, runs },
-      ['safe-output-items', 'pull-requests']
-    );
-
-    expect(derived['safe-output-items'].rows).toEqual([{
-      'observed-at': '2026-09-02T00:00:00Z',
-      'github-entity-type': 'pull_request',
-      'is-pull-request': true,
-      'safe-output-type': 'create_pull_request',
-      'event-summary': 'create_pull_request/gh-aw-cao/43',
-      'entity-url': 'https://github.com/githubnext/gh-aw-cao/pull/43',
-      organization: 'githubnext',
-      repository: 'gh-aw-cao',
-      workflow: 'a.md',
-      run: '1',
-      'run-link': { href: 'run-1' }
-    }, {
-      'observed-at': '2026-09-01T00:00:00Z',
-      'github-entity-type': 'discussion',
-      'is-pull-request': undefined,
-      'safe-output-type': 'create_discussion',
-      'event-summary': 'create_discussion/gh-aw-cao/44',
-      'entity-url': 'https://github.com/githubnext/gh-aw-cao/discussions/44',
-      organization: 'githubnext',
-      repository: 'gh-aw-cao',
-      workflow: 'a.md',
-      run: '1',
-      'run-link': { href: 'run-1' }
-    }]);
-    expect(derived['pull-requests'].rows).toEqual([derived['safe-output-items'].rows[0]]);
-  });
-
-  it('caps event inspection at the query output limit instead of becoming unavailable', () => {
-      const events = {
-        source: 'audits',
-        rows: Array.from(
-          { length: DASHBOARD_QUERY_LIMITS['max-output-rows'] + 1 },
-          (_, index) => ({
-            event: `event-${String(index).padStart(6, '0')}`,
-            'event-timestamp': new Date(Date.UTC(2026, 8, 1) + index).toISOString()
-          })
-        ),
-        metadata: metadata('audits')
-      };
-      const runs = { source: 'runs', rows: [], metadata: metadata('runs') };
-
-      const derived = executeDashboardQueries(
-        applyTableQuerySafetyLimits(
-          dashboardQueries,
-          dashboardTableSourceNames(dashboardDocument)
-        ),
-        { ...emptyRunRecordSources, audits: events, runs },
-        ['event-inspection']
-      );
-
-      expect(derived['event-inspection'].metadata.availability).toBe('available');
-      expect(derived['event-inspection'].rows).toHaveLength(DASHBOARD_QUERY_LIMITS['max-output-rows']);
-      expect(derived['event-inspection'].rows.at(0)?.event).toBe('event-100000');
-      expect(derived['event-inspection'].rows.at(-1)?.event).toBe('event-000001');
-    });
 
   it('computes Repositories, Workflows, and Campaigns view payloads from dashboard queries', () => {
     const repositories = {

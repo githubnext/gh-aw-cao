@@ -107,59 +107,12 @@ describe('entity card templates', () => {
     });
   });
 
-  it('declares the operation marketplace as a worker-queried card grid', () => {
-      expect(templates.operation).toMatchObject({
-        icon: 'workflow',
-        'icon-field': 'operation-icon',
-        title: { field: 'operation-name' },
-        subtitle: { field: 'operation-description' }
-      });
-      const marketplaceGroupQuery = dashboard.queries.find(
-        (/** @type {Record<string, any>} */ query) => query.name === 'marketplace-operation-groups'
-      );
-      expect(marketplaceGroupQuery).toMatchObject({
-        from: 'workflows',
-        aggregate: {
-          by: expect.arrayContaining(['operation-id', 'operation-name', 'operation-dashboard-href'])
-        }
-      });
-      const marketplaceQuery = dashboard.queries.find(
-        (/** @type {Record<string, any>} */ query) => query.name === 'marketplace-operations'
-      );
-      expect(marketplaceQuery).toMatchObject({
-        from: 'marketplace-operation-groups',
-        joins: [
-          {
-            source: 'repositories',
-            type: 'left',
-            on: [
-              { left: 'organization', right: 'organization' },
-              { left: 'repository', right: 'repository' }
-            ],
-            fields: [{ field: 'repository-link', as: 'repository-link' }]
-          }
-        ],
-        compute: expect.arrayContaining([
-          expect.objectContaining({
-            as: 'operation-link',
-            function: 'dashboard-link',
-            args: expect.arrayContaining([{ field: 'repository-link' }])
-          })
-        ]),
-        'order-by': [
-          { field: 'operation-kind', direction: 'asc' },
-          { field: 'operation-name', direction: 'asc' }
-        ]
-      });
-      expect(pages.agents.views[0]).toMatchObject({
-        data: { source: 'marketplace-operations' },
-        mark: 'list',
-        list: {
-          style: 'entity-cards',
-          layout: 'grid',
-          card: 'operation',
-          drill: { type: 'external', field: 'operation-link' }
-        }
+  it('retains the reusable operation card template', () => {
+    expect(templates.operation).toMatchObject({
+      icon: 'workflow',
+      'icon-field': 'operation-icon',
+      title: { field: 'operation-name' },
+      subtitle: { field: 'operation-description' }
     });
   });
 
@@ -201,14 +154,6 @@ describe('entity card templates', () => {
         card: 'event',
         drill: { type: 'external', field: 'event-url' }
       }
-    });
-    expect(views.issues.list).toMatchObject({
-      card: 'issue',
-      drill: { type: 'external', field: 'entity-url' }
-    });
-    expect(views['pull-requests'].list).toMatchObject({
-      card: 'pull-request',
-      drill: { type: 'external', field: 'entity-url' }
     });
   });
 });

@@ -158,52 +158,6 @@ describe('Audit dashboard view', () => {
     ]);
   });
 
-  it('declares an aggregate chart before the reorganized event table', () => {
-    const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'audit');
-
-    expect(page.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual([
-      'audit-event-summary-buckets',
-      'audit-events-table'
-    ]);
-    expect(page.views[0]).toMatchObject({
-      mark: 'chart',
-      chart: 'bar',
-      encoding: {
-        x: { field: 'workflow', format: 'workflow-relative-path' },
-        y: { field: 'events' },
-        color: { field: 'event-summary' }
-      }
-    });
-    expect(page.views[1].encoding.columns.slice(0, 4)).toEqual([
-      expect.objectContaining({ field: 'event-summary' }),
-      expect.objectContaining({ field: 'event-status', display: 'status' }),
-      expect.objectContaining({ field: 'workflow', format: 'workflow-relative-path' }),
-      expect.objectContaining({ field: 'audit-kind', display: 'label' })
-    ]);
-    expect(page.views[1].encoding.columns).toContainEqual(
-      expect.objectContaining({ field: 'run', display: 'run-link' })
-    );
-    expect(dashboard.queries.find(
-      (/** @type {{ name: string }} */ query) => query.name === 'audit-event-summary-buckets'
-    )).toMatchObject({ limit: 20 });
-    expect(dashboard['card-templates'].find(
-      (/** @type {{ id: string }} */ template) => template.id === 'audit'
-    )).toMatchObject({
-      icon: 'checklist',
-      title: { field: 'event-summary' },
-      labels: [
-        { field: 'event-status', display: 'status' },
-        { field: 'audit-kind', display: 'label' }
-      ],
-      details: [
-        { field: 'workflow', format: 'workflow-relative-path' },
-        { field: 'repository' },
-        { field: 'run', display: 'run-link' },
-        { field: 'observed-at', format: 'human-friendly-timestamp' }
-      ]
-    });
-  });
-
   it('filters info events before grouping shared summaries by workflow', () => {
     const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',

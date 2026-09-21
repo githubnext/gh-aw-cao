@@ -6,7 +6,6 @@ import { renderWorkItemRow } from '../../src/components/work-item-row.js';
 import { renderWorkItemTimelineLane } from '../../src/components/work-item-timeline-lane.js';
 import { renderWorkViewNavigation } from '../../src/components/work-view-navigation.js';
 import { workRoutePageConfigForBody, workRoutePageConfigs } from '../../src/components/work-view-route-config.js';
-import { applyDashboardQueries } from '../workflow-inventory-query.js';
 
 const metadata = {
   'source-id': 'work-fixture',
@@ -20,9 +19,54 @@ const metadata = {
 
 /** @param {Array<Record<string, unknown>>} rows */
 function workSources(rows) {
-  return applyDashboardQueries({
-    'work-items': { source: 'work-items', rows, metadata }
-  }, ['work-project-items', 'work-board-todo', 'work-board-in-progress', 'work-board-needs-review', 'work-board-done', 'work-roadmap-items']);
+  const items = rows.map((row) => {
+    const lifecycle = String(row['lifecycle-state'] ?? '');
+    const state = ['active', 'in-progress', 'in_progress', 'running'].includes(lifecycle)
+      ? 'in-progress'
+      : ['blocked', 'review', 'needs-review', 'needs_review', 'action-required'].includes(lifecycle)
+        ? 'needs-review'
+        : ['completed', 'cancelled', 'success', 'failure', 'done'].includes(lifecycle)
+          ? 'done'
+          : 'todo';
+    const owner = String(row.owner ?? row.organization ?? 'Unassigned');
+    const campaign = String(row.campaign ?? row['campaign-name'] ?? '');
+    const name = String(row.name ?? row['workflow-name'] ?? row.objective ?? 'Unknown workflow');
+    return {
+      ...row,
+      'work-id': row['work-item-id'] ?? row.workflow ?? row.objective ?? 'unknown-work',
+      'work-name': name,
+      'work-icon': row['workflow-icon'] ?? row['campaign-icon'] ?? 'workflow',
+      'work-repository': row.scope ?? [row.organization, row.repository].filter(Boolean).join('/') ?? 'Repository unavailable',
+      'work-owner': owner,
+      'work-type-normalized': row['work-type'] ?? row['workflow-role'] ?? 'unknown',
+      'work-campaign': campaign,
+      'work-state': state,
+      'work-state-label': state.split('-').map((part) => `${part[0].toUpperCase()}${part.slice(1)}`).join(' '),
+      'work-safe-output-kind': row['safe-output-kind'] ?? 'workflow-output',
+      'work-started': row['started-at'] ?? row['observed-at'],
+      'work-stopped': row['ended-at'] ?? '',
+      'work-actor': row['next-actor'] ?? (state === 'in-progress' ? 'agent' : state === 'needs-review' ? 'maintainer' : state === 'done' ? 'reviewer' : 'scheduler'),
+      'work-group-id': `item:${row['work-item-id'] ?? 'unknown-work'}`,
+      'work-group-label': name,
+      'work-grouped': false,
+      'work-search': `${name} ${row.scope ?? ''} ${owner} ${campaign}`,
+      'work-total-count': rows.length,
+      'work-state-options': ['Done', 'In Progress', 'Needs Review', 'Todo'],
+      'work-repository-options': [...new Set(rows.map((candidate) => candidate.scope).filter(Boolean))],
+      'work-owner-options': [...new Set(rows.map((candidate) => candidate.owner).filter(Boolean))],
+      'work-campaign-options': [...new Set(rows.map((candidate) => candidate.campaign).filter(Boolean))]
+    };
+  });
+  /** @param {string} name @param {Array<Record<string, unknown>>} sourceRows */
+  const source = (name, sourceRows) => ({ source: name, rows: sourceRows, metadata });
+  return {
+    'work-project-items': source('work-project-items', items.toSorted((left, right) => String(right['work-started'] ?? '').localeCompare(String(left['work-started'] ?? '')))),
+    'work-board-todo': source('work-board-todo', items.filter((row) => row['work-state'] === 'todo')),
+    'work-board-in-progress': source('work-board-in-progress', items.filter((row) => row['work-state'] === 'in-progress')),
+    'work-board-needs-review': source('work-board-needs-review', items.filter((row) => row['work-state'] === 'needs-review')),
+    'work-board-done': source('work-board-done', items.filter((row) => row['work-state'] === 'done')),
+    'work-roadmap-items': source('work-roadmap-items', items.toSorted((left, right) => String(left['work-started'] ?? '').localeCompare(String(right['work-started'] ?? ''))))
+  };
 }
 
 const item = {

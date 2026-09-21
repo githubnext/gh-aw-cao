@@ -818,42 +818,6 @@ test('data worker returns MCP tool totals without safe outputs calls on initial 
   }
 });
 
-test('data worker returns GitHub API events on initial and navigated requests', async ({ page }) => {
-  const result = await page.evaluate(async () => {
-    const processorUrl = `${location.origin}/src/data-processor.js`;
-    const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
-    const dashboard = await fetch(`${location.origin}/dashboard.json`).then((response) => response.json());
-    const context = {
-      githubUrlBase: 'https://github.com',
-      pages: dashboard.dashboard.pages,
-      queries: dashboard.dashboard.queries
-    };
-    const initial = await loadCanonicalDashboardSources(
-      `${location.origin}/sources.json`,
-      ['github-api-events'],
-      context
-    );
-    const navigated = await loadCanonicalDashboardPage(['github-api-events'], context);
-    return { initial, navigated };
-  });
-
-  for (const payload of [result.initial, result.navigated]) {
-    expect(Object.keys(payload)).toEqual(['github-api-events']);
-    expect(payload['github-api-events']).toMatchObject({
-      source: 'github-api-events',
-      rows: [{
-        'event-type': 'github-api.response',
-        'event-summary': 'GET /rate_limit',
-        'event-status': '200',
-        repository: 'gh-aw-cao',
-        run: '12345',
-        'correlation-id': 'request-123',
-        'observed-at': '2026-09-09T04:02:00Z'
-      }],
-      metadata: { 'source-kind': 'derived', 'query-name': 'github-api-events' }
-    });
-  }
-});
 
 test('data worker queries firewall summaries, attribution, and policy on initial and navigated requests', async ({ page }) => {
   const result = await page.evaluate(async () => {

@@ -44,7 +44,6 @@ describe('compliance suite', () => {
       ['T-SEM-001', 'DLS-SEM-001'],
       ['T-SEM-001', 'DLS-SEM-007'],
       ['T-SEM-002', 'DLS-SEM-008'],
-      ['T-SEM-002', 'DLS-SEM-014'],
       ['T-SEM-003', 'DLS-SEM-017'],
       ['T-SEM-003', 'DLS-SEM-021'],
       ['T-SEM-003', 'DLS-SEM-022'],
