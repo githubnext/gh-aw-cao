@@ -253,6 +253,18 @@ export function loadDashboardQuerySources(sources, options = {}) {
 }
 
 /**
+ * Queries a bounded canonical-database consistency summary exclusively in the
+ * data worker.
+ */
+export function queryCanonicalDatabaseDiagnostics() {
+  return /** @type {Promise<import('./diagnostics.js').DatabaseDiagnostics>} */ (processRequest(
+    { operation: 'query-canonical-database-diagnostics' },
+    () => Promise.reject(new Error('Database diagnostics require a data worker.')),
+    false
+  ));
+}
+
+/**
  * Loads and hydrates the live canonical dashboard entirely in the data worker.
  * The main thread sends only a URL and receives the query projection needed by
  * the renderer.

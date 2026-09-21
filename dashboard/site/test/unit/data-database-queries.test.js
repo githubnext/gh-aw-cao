@@ -10,6 +10,7 @@ import {
 } from '../../src/data/storage/indexeddb.js';
 import {
   loadDatabaseQuerySources,
+  queryCanonicalDatabaseDiagnostics,
   queryDatabaseSources,
   queryIndexedDatabaseSources
 } from '../../src/data/queries/database.js';
@@ -165,6 +166,25 @@ afterEach(() => {
 });
 
 describe('canonical view sources', () => {
+  it('summarizes canonical database diagnostics inside the query layer', async () => {
+    const diagnostics = await queryCanonicalDatabaseDiagnostics(indexedDB);
+
+    expect(diagnostics.schemaVersion).toBeGreaterThan(0);
+    expect(diagnostics.counts).toEqual(expect.objectContaining({
+      campaigns: 0,
+      repositories: 0,
+      workflows: 0,
+      runs: 0
+    }));
+    expect(diagnostics.relationshipErrors).toEqual([]);
+    expect(diagnostics.duplicateRecordIds).toEqual(expect.objectContaining({
+      campaigns: [],
+      repositories: [],
+      workflows: [],
+      runs: []
+    }));
+  });
+
   it('matches declarative counts for every canonical database table', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
     const tableNames = [...DATABASE_STORES];

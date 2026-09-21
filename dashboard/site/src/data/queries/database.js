@@ -2,11 +2,14 @@ import { ingestDashboardSources } from '../ingest/coordinator.js';
 import databaseQueries from './database.json' with { type: 'json' };
 import {
   CANONICAL_DATABASE_SCHEMA,
+  DATABASE_VERSION,
+  ENTITY_STORES,
   countCollections,
   queryCollection,
   readCollections,
   readTransactions
 } from '../storage/indexeddb.js';
+import { relationshipErrors } from '../model/schema.js';
 import {
   DASHBOARD_QUERY_LIMITS,
   dashboardQueryDefects,
@@ -27,6 +30,40 @@ const DATABASE_TABLE_SOURCES = new Set([
   ...RUN_RECORD_STORES,
   'transactions'
 ]);
+
+/**
+ * Returns a bounded consistency summary without exposing canonical records to
+ * the main thread.
+ *
+ * @param {IDBFactory} indexedDB
+ */
+export async function queryCanonicalDatabaseDiagnostics(indexedDB) {
+  const collections = await readCollections(indexedDB, ENTITY_STORES);
+  const records = Object.fromEntries(
+    ENTITY_STORES.map((store, index) => [store, collections[index]])
+  );
+  const counts = Object.fromEntries(
+    ENTITY_STORES.map((store) => [store, records[store].length])
+  );
+  const duplicateRecordIds = Object.fromEntries(ENTITY_STORES.map((store) => {
+    const seen = new Set();
+    const duplicates = new Set();
+    for (const record of records[store]) {
+      if (typeof record.id !== 'string') continue;
+      if (seen.has(record.id)) duplicates.add(record.id);
+      seen.add(record.id);
+    }
+    return [store, [...duplicates]];
+  }));
+  return {
+    schemaVersion: DATABASE_VERSION,
+    counts,
+    relationshipErrors: relationshipErrors(
+      /** @type {import('../model/schema.js').CanonicalBatch} */ (records)
+    ),
+    duplicateRecordIds
+  };
+}
 const HEALTH_DATABASE_SOURCES = [
   'repositories',
   'workflows',

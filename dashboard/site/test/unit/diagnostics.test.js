@@ -1,12 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { indexedDB } from 'fake-indexeddb';
 import { collectFullDiagnostics } from '../../src/diagnostics.js';
-import { deleteCanonicalDatabase } from '../../src/data/storage/indexeddb.js';
 
-afterEach(async () => {
+afterEach(() => {
   document.body.replaceChildren();
-  await deleteCanonicalDatabase(indexedDB);
   vi.restoreAllMocks();
 });
 
@@ -24,8 +21,33 @@ describe('full dashboard diagnostics', () => {
     vi.spyOn(console, 'info').mockImplementation(() => {});
     vi.spyOn(console, 'table').mockImplementation(() => {});
 
-    const report = await collectFullDiagnostics({ indexedDB });
+    const queryDatabase = vi.fn().mockResolvedValue({
+      schemaVersion: 12,
+      counts: {
+        campaigns: 0,
+        repositories: 0,
+        workflows: 0,
+        runs: 0,
+        domains: 0,
+        tools: 0,
+        audits: 0,
+        issues: 0
+      },
+      relationshipErrors: [],
+      duplicateRecordIds: {
+        campaigns: [],
+        repositories: [],
+        workflows: [],
+        runs: [],
+        domains: [],
+        tools: [],
+        audits: [],
+        issues: []
+      }
+    });
+    const report = await collectFullDiagnostics({ queryDatabase });
 
+    expect(queryDatabase).toHaveBeenCalledOnce();
     expect(report.passed).toBe(false);
     expect(report.database.counts.campaigns).toBe(0);
     expect(report.database.counts.audits).toBe(0);

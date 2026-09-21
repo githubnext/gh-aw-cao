@@ -10,7 +10,11 @@ import {
   isNormalizedJsonCurrent
 } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
-import { queryDatabaseSources, queryIndexedDatabaseSources } from './data/queries/database.js';
+import {
+  queryCanonicalDatabaseDiagnostics,
+  queryDatabaseSources,
+  queryIndexedDatabaseSources
+} from './data/queries/database.js';
 import { queryDailyOverviewAggregateSources } from './data/queries/daily-aggregate-fast-path.js';
 import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-compiler.js';
 import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
@@ -798,6 +802,9 @@ export function processDataRequest(request, signal) {
         ...executeDashboardQueries(queries, database, sourceNames, { signal })
       };
     })();
+  }
+  if (request?.operation === 'query-canonical-database-diagnostics') {
+    return queryCanonicalDatabaseDiagnostics(indexedDB);
   }
   if (request?.operation === 'summarize-table-columns') {
     if (!Array.isArray(request.columns)) {

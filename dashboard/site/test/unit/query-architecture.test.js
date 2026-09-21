@@ -111,4 +111,17 @@ describe('dashboard query architecture', () => {
       expect(existsSync(resolve('src', legacyModule))).toBe(false);
     }
   });
+
+  it('keeps canonical database reads out of the UI JavaScript layer', () => {
+    const diagnostics = read('src/diagnostics.js');
+    const configurationView = read('src/components/configuration-view.js');
+    const processor = read('src/data-processor.js');
+    const worker = read('src/data-worker.js');
+
+    expect(diagnostics).not.toMatch(/data\/storage\/indexeddb|indexedDB|readCollection/);
+    expect(configurationView).not.toMatch(/data\/storage\/indexeddb|indexedDB|readCollection/);
+    expect(processor).toContain("operation: 'query-canonical-database-diagnostics'");
+    expect(worker).toContain("operation === 'query-canonical-database-diagnostics'");
+    expect(worker).toContain('queryCanonicalDatabaseDiagnostics(indexedDB)');
+  });
 });

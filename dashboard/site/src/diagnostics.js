@@ -1,11 +1,15 @@
-import { relationshipErrors } from './data/model/schema.js';
-import {
-  DATABASE_VERSION,
-  ENTITY_STORES,
-  readCollection
-} from './data/storage/indexeddb.js';
+import { queryCanonicalDatabaseDiagnostics } from './data-processor.js';
 
 const REQUIRED_POPULATED_STORES = ['repositories', 'workflows', 'runs', 'audits'];
+
+/**
+ * @typedef {{
+ *   schemaVersion: number,
+ *   counts: Record<string, number>,
+ *   relationshipErrors: string[],
+ *   duplicateRecordIds: Record<string, string[]>
+ * }} DatabaseDiagnostics
+ */
 
 /** @param {string} name @param {boolean} passed @param {string} detail */
 function check(name, passed, detail) {
@@ -15,32 +19,28 @@ function check(name, passed, detail) {
 /**
  * Runs database, relationship, and rendered-UI consistency checks intended for
  * browser debugging and deployed-dashboard health tests.
- * @param {{ indexedDB?: IDBFactory, document?: Document, location?: Location }} [options]
+ * @param {{
+ *   queryDatabase?: () => Promise<DatabaseDiagnostics>,
+ *   document?: Document,
+ *   location?: Location
+ * }} [options]
  */
 export async function collectFullDiagnostics(options = {}) {
-  const indexedDB = options.indexedDB ?? globalThis.indexedDB;
   const document = options.document ?? globalThis.document;
   const location = options.location ?? globalThis.location;
-  if (!indexedDB) throw new Error('IndexedDB is unavailable.');
   if (!document) throw new Error('Document is unavailable.');
 
-  const collections = await Promise.all(
-    ENTITY_STORES.map((store) => readCollection(indexedDB, store))
-  );
-  const records = Object.fromEntries(ENTITY_STORES.map((store, index) => [store, collections[index]]));
-  const counts = Object.fromEntries(ENTITY_STORES.map((store) => [store, records[store].length]));
-  const relationships = relationshipErrors(/** @type {import('./data/model/schema.js').CanonicalBatch} */ (records));
+  const database = await (options.queryDatabase ?? queryCanonicalDatabaseDiagnostics)();
+  const counts = database.counts;
+  const relationships = database.relationshipErrors;
   const activePage = document.querySelector('[data-page-id]:not([hidden])');
   const renderedViews = [...document.querySelectorAll('[data-view-id]')];
   const unavailableViews = [...document.querySelectorAll('[aria-label^="Unable to load "]')]
     .map((element) => element.getAttribute('aria-label'));
   const busyElements = document.querySelectorAll('[aria-busy="true"]');
-  const duplicateRecordIds = Object.fromEntries(ENTITY_STORES.map((store) => {
-    const ids = records[store].map((record) => record.id).filter((id) => typeof id === 'string');
-    return [store, ids.filter((id, index) => ids.indexOf(id) !== index)];
-  }));
+  const duplicateRecordIds = database.duplicateRecordIds;
   const checks = [
-    check('canonical database is available', true, `Schema version ${DATABASE_VERSION}`),
+    check('canonical database is available', true, `Schema version ${database.schemaVersion}`),
     ...REQUIRED_POPULATED_STORES.map((store) =>
       check(`${store} populated`, counts[store] > 0, `${counts[store]} record(s)`)),
     check('canonical relationships are valid', relationships.length === 0, `${relationships.length} error(s)`),
@@ -61,7 +61,7 @@ export async function collectFullDiagnostics(options = {}) {
     passed: checks.every((item) => item.passed),
     checks,
     database: {
-      schemaVersion: DATABASE_VERSION,
+      schemaVersion: database.schemaVersion,
       counts,
       relationshipErrors: relationships,
       duplicateRecordIds
