@@ -5,7 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from '@playwright/test';
 import {
   dashboardPageIds,
-  eventsPerformanceJourney,
+  runsPerformanceJourney,
   lighthouseArguments,
   profiles,
   routeUrl
@@ -136,21 +136,21 @@ async function visitPage(browser, siteUrl, pageId, expectedViews, profile) {
       }
       window.scrollTo(0, root.scrollHeight);
     });
-    if (pageId === eventsPerformanceJourney.pageId) {
+    if (pageId === runsPerformanceJourney.pageId) {
       let currentPageId = pageId;
-      for (const nextPageId of eventsPerformanceJourney.routes) {
+      for (const nextPageId of runsPerformanceJourney.routes) {
         const swap = await swapPage(page, currentPageId, nextPageId);
         pageSwaps.push(swap);
         currentPageId = nextPageId;
       }
-      const slowEventsReturns = pageSwaps.filter(({ to, durationMs }) => (
-        to === eventsPerformanceJourney.pageId
-        && durationMs > eventsPerformanceJourney.maxEventsReturnMs
+      const slowRunsReturns = pageSwaps.filter(({ to, durationMs }) => (
+        to === runsPerformanceJourney.pageId
+        && durationMs > runsPerformanceJourney.maxRunsReturnMs
       ));
-      if (slowEventsReturns.length > 0) {
+      if (slowRunsReturns.length > 0) {
         throw new Error(
-          `Events page return exceeded ${eventsPerformanceJourney.maxEventsReturnMs}ms: `
-          + slowEventsReturns.map(({ durationMs }) => `${durationMs}ms`).join(', ')
+          `Runs page return exceeded ${runsPerformanceJourney.maxRunsReturnMs}ms: `
+          + slowRunsReturns.map(({ durationMs }) => `${durationMs}ms`).join(', ')
         );
       }
     }
@@ -257,7 +257,7 @@ async function main() {
     declaredPages: pageIds,
     declaredViews,
     methodology: 'Every declared page and rendered view scrolled with Playwright; cold Lighthouse performance audit per page and profile',
-    eventsPerformanceJourney,
+    runsPerformanceJourney,
     profiles: results
   };
   await writeFile(join(outputRoot, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`);

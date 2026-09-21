@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   dashboardPageIds,
-  eventsPerformanceJourney,
+  runsPerformanceJourney,
   lighthouseArguments,
   profiles,
   routeUrl
@@ -31,11 +31,11 @@ describe('Pages health collector', () => {
     expect(desktop.lighthouse).toContain('--preset=desktop');
   });
 
-  it('returns to the deployed Events page twice within a warm-navigation budget', () => {
-    expect(eventsPerformanceJourney).toEqual({
-      pageId: 'events',
-      routes: ['runs', 'events', 'events'],
-      maxEventsReturnMs: 1500
+  it('returns to the deployed Runs page twice within a warm-navigation budget', () => {
+    expect(runsPerformanceJourney).toEqual({
+      pageId: 'runs',
+      routes: ['overview', 'runs', 'runs'],
+      maxRunsReturnMs: 1500
     });
   });
 
