@@ -240,19 +240,19 @@
       }
     },
     {
-      "query": "domain-records", "input": "$domains", "kind": "domain", "sourceId": "event", "observedAt": "_observed-at", "required": ["event", "event-timestamp", "event-source", "event-type"],
+      "query": "domain-records", "input": "$domains", "chunkInputs": ["$published-runs"], "kind": "domain", "sourceId": "event", "observedAt": "_observed-at", "required": ["event", "event-timestamp", "event-source", "event-type"],
       "data": {}
     },
     {
-      "query": "tool-records", "input": "$tools", "kind": "tool", "sourceId": "event", "observedAt": "_observed-at", "required": ["event", "event-timestamp", "event-source", "event-type"],
+      "query": "tool-records", "input": "$tools", "chunkInputs": ["$published-runs"], "kind": "tool", "sourceId": "event", "observedAt": "_observed-at", "required": ["event", "event-timestamp", "event-source", "event-type"],
       "data": {}
     },
     {
-      "query": "audit-records", "input": "$audits", "kind": "audit", "sourceId": "event", "observedAt": "_observed-at", "required": ["event", "event-timestamp", "event-source", "event-type"],
+      "query": "audit-records", "input": "$audits", "chunkInputs": ["$published-runs"], "kind": "audit", "sourceId": "event", "observedAt": "_observed-at", "required": ["event", "event-timestamp", "event-source", "event-type"],
       "data": {}
     },
     {
-      "query": "issue-records", "input": "$issues", "kind": "issue", "sourceId": "event", "observedAt": "_observed-at", "required": ["event", "event-timestamp", "event-source", "event-type"],
+      "query": "issue-records", "input": "$issues", "chunkInputs": ["$published-runs"], "kind": "issue", "sourceId": "event", "observedAt": "_observed-at", "required": ["event", "event-timestamp", "event-source", "event-type"],
       "data": {}
     }
   ],

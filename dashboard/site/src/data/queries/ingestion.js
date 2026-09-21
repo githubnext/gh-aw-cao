@@ -73,23 +73,47 @@ export function queryDashboardSourceObservations(sources) {
   const inputs = queryInputs(sources);
   const observations = mappings.observations.flatMap((mapping) => {
     const input = inputs[mapping.input];
+    if (input.metadata.availability === 'unavailable') {
+      throw new Error(typeof input.metadata.error === 'string'
+        ? input.metadata.error
+        : `${mapping.input} is unavailable`);
+    }
     const chunkSize = DASHBOARD_QUERY_LIMITS['max-output-rows'];
-    const chunks = input.rows.length > chunkSize
+    /**
+     * @param {import('../../presenter.js').LogicalSourceInput} source
+     * @param {boolean} includeEmpty
+     */
+    const chunks = (source, includeEmpty = false) => source.rows.length > chunkSize
       ? Array.from(
-          { length: Math.ceil(input.rows.length / chunkSize) },
-          (_, index) => input.rows.slice(index * chunkSize, (index + 1) * chunkSize)
+          { length: Math.ceil(source.rows.length / chunkSize) },
+          (_, index) => source.rows.slice(index * chunkSize, (index + 1) * chunkSize)
         )
-      : [input.rows];
-    const results = chunks.map((rows) => executeDashboardQueries(
+      : source.rows.length > 0 || includeEmpty ? [source.rows] : [];
+    let executions = chunks(input, true).map((rows) => ({
+      ...inputs,
+      [mapping.input]: { ...input, rows }
+    }));
+    for (const sourceName of mapping.chunkInputs ?? []) {
+      const source = inputs[sourceName];
+      executions = executions.flatMap((execution) => chunks(source).map((rows) => ({
+        ...execution,
+        [sourceName]: { ...source, rows }
+      })));
+    }
+    const results = executions.map((execution) => executeDashboardQueries(
       mappings.queries,
-      { ...inputs, [mapping.input]: { ...input, rows } },
+      execution,
       [mapping.query]
     )[mapping.query]);
     const failed = results.find((result) => result.metadata.availability === 'unavailable');
     if (failed) throw new Error(requiredString(failed.metadata.error, `${mapping.query} query error`));
     const rows = results.flatMap((result) => result.rows);
     if (mapping.publishAs) {
-      inputs[mapping.publishAs] = { ...results[0], source: mapping.publishAs, rows };
+      inputs[mapping.publishAs] = {
+        ...(results[0] ?? input),
+        source: mapping.publishAs,
+        rows
+      };
     }
     return rows.map((row) => {
       const sourceId = requiredString(row[mapping.sourceId], `${mapping.kind}.source-id`);

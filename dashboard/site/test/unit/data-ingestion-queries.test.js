@@ -227,6 +227,15 @@ describe('dashboard source ingestion queries', () => {
     expect(queryDashboardSourceObservations(sources)).toEqual({ observations: [] });
   });
 
+  it('fails closed when a published source is unavailable', () => {
+    expect(() => queryDashboardSourceObservations({
+      runs: {
+        rows: [],
+        metadata: { ...metadata, availability: 'unavailable', error: 'refresh failed' }
+      }
+    })).toThrow('refresh failed');
+  });
+
   it('joins published transaction logs directly to canonical runs', () => {
     const sources = {
       repositories: {
