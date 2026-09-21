@@ -385,27 +385,63 @@ async function patchCaoReleaseCheckout(workflow, packageRecord, root = process.c
 
   const patched = `${content.slice(0, stepStart)}${lines.join(newline)}${content.slice(stepEnd)}`;
   if (patched !== content) await writeFile(workflowPath, patched);
-  if (Array.isArray(packageRecord.record?.files)) {
-    const destination = path.relative(root, workflowPath).split(path.sep).join('/');
-    const file = packageRecord.record.files.find((entry) => entry?.destination === destination);
-    if (file) {
-      file.sha256 = createHash('sha256').update(patched).digest('hex');
-      await writeJsonAtomically(packageRecord.recordPath, packageRecord.record);
-    }
-  }
-  return true;
+  return path.relative(root, workflowPath).split(path.sep).join('/');
 }
 
 async function patchInstalledCaoReleaseCheckouts(records, root = process.cwd()) {
   const rootRecord = records.find(({ campaign }) => campaign === 'githubnext/gh-aw-cao');
+  const patchedDestinations = [];
   for (const workflow of ['activity', 'dashboard']) {
     const record = records.find(({ campaign }) => campaign === `githubnext/gh-aw-cao/${workflow}`) ?? rootRecord;
-    if (record) await patchCaoReleaseCheckout(workflow, record, root);
+    if (record) {
+      const destination = await patchCaoReleaseCheckout(workflow, record, root);
+      if (destination) patchedDestinations.push(destination);
+    }
+  }
+  for (const record of records) {
+    if (!Array.isArray(record.record?.files)) continue;
+    let changed = false;
+    for (const file of record.record.files) {
+      if (!patchedDestinations.includes(file?.destination)) continue;
+      const content = await readFile(path.resolve(root, file.destination));
+      file.sha256 = createHash('sha256').update(content).digest('hex');
+      changed = true;
+    }
+    if (changed) await writeJsonAtomically(record.recordPath, record.record);
   }
 }
 
 function installedPackageUpdateTarget(campaign) {
   return `https://github.com/${campaign}`;
+}
+
+async function prepareInstalledPackageReleaseSource(record, releaseTags, execute) {
+  if (!record.record || !record.recordPath || !/^[0-9a-f]{40}$/i.test(record.source.split('@').at(-1))) return undefined;
+  if (!/^[0-9a-f]{40}$/i.test(record.resolvedCommit)) {
+    throw new Error(`Installed CAO package record has an invalid resolvedCommit: ${record.resolvedCommit || '(missing)'}`);
+  }
+  let releaseTag = releaseTags.get(record.resolvedCommit);
+  if (!releaseTag) {
+    const release = execute('gh', [
+      'api',
+      '--paginate',
+      '/repos/githubnext/gh-aw-cao/releases',
+      '--jq',
+      `.[] | select(.draft == false and .prerelease == false and .target_commitish == "${record.resolvedCommit}") | .tag_name`
+    ], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+    if (release.error || release.status !== 0) {
+      throw new Error(`Unable to resolve CAO release for ${record.resolvedCommit}: ${commandFailureMessage(release, 'gh api failed')}`);
+    }
+    releaseTag = String(release.stdout || '').trim().split(/\s+/)[0];
+    if (!/^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/.test(releaseTag)) {
+      throw new Error(`No published CAO release found for ${record.resolvedCommit}`);
+    }
+    releaseTags.set(record.resolvedCommit, releaseTag);
+  }
+  const original = structuredClone(record.record);
+  record.record.source = `${record.campaign}@${releaseTag}`;
+  await writeJsonAtomically(record.recordPath, record.record);
+  return original;
 }
 
 async function readInstalledCaoDeclaration(campaignName) {
@@ -512,12 +548,15 @@ export async function updateCaoCampaigns(ghAwOptions = [], {
 
   const updatedCampaigns = [];
   const mergedDeclarations = [];
+  const releaseTags = new Map();
   for (const record of campaigns) {
+    const originalRecord = await prepareInstalledPackageReleaseSource(record, releaseTags, execute);
     const update = execute('gh', ['aw', 'update', installedPackageUpdateTarget(record.campaign), ...ghAwOptions], {
       encoding: 'utf8',
       maxBuffer: 16 * 1024 * 1024
     });
     if (update.error || update.status !== 0) {
+      if (originalRecord) await writeJsonAtomically(record.recordPath, originalRecord);
       throw new Error(`gh aw update failed for ${record.campaign}: ${commandFailureMessage(update, 'unknown error')}`);
     }
     const declaration = await readInstalledCaoDeclaration(record.campaign);

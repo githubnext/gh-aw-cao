@@ -373,7 +373,10 @@ test("cao update upgrades gh-aw, updates installed campaigns, and merges declara
       package: "githubnext/gh-aw-cao/dependabot",
       source: "githubnext/gh-aw-cao/dependabot@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       resolvedCommit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      files: [],
+      files: [
+        { destination: ".github/workflows/cao-activity.yml", sha256: "old" },
+        { destination: ".github/workflows/cao-dashboard.yml", sha256: "old" },
+      ],
     }));
     await mkdir(declarationDirectory, { recursive: true });
     await mkdir(path.join(root, ".github", "workflows"), { recursive: true });
@@ -424,6 +427,9 @@ test("cao update upgrades gh-aw, updates installed campaigns, and merges declara
             stderr: "",
           };
         }
+        if (command === "gh" && arguments_[0] === "api") {
+          return { status: 0, stdout: "v0.0.1\n", stderr: "" };
+        }
         if (command === "gh" && arguments_[0] === "aw" && arguments_[1] === "update"
           && arguments_[2] === "https://github.com/githubnext/gh-aw-cao") {
           writeFileSync(path.join(campaignRecords, "root.json"), JSON.stringify({
@@ -445,6 +451,7 @@ test("cao update upgrades gh-aw, updates installed campaigns, and merges declara
       ["gh", ["aw", "version"]],
       ["bash", ["-c", "curl --fail --silent --show-error --location https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- \"$1\"", "cao-gh-aw-install", "v0.89.17"]],
       ["gh", ["aw", "version"]],
+      ["gh", ["api", "--paginate", "/repos/githubnext/gh-aw-cao/releases", "--jq", ".[] | select(.draft == false and .prerelease == false and .target_commitish == \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\") | .tag_name"]],
       ["gh", ["aw", "update", "https://github.com/githubnext/gh-aw-cao", "--force"]],
       ["gh", ["aw", "update", "https://github.com/githubnext/gh-aw-cao/dependabot", "--force"]],
     ]);
@@ -466,6 +473,11 @@ test("cao update upgrades gh-aw, updates installed campaigns, and merges declara
     }
     const ownership = JSON.parse(await readFile(path.join(campaignRecords, "root.json"), "utf8"));
     for (const file of ownership.files) {
+      const content = await readFile(path.join(root, file.destination));
+      assert.equal(file.sha256, createHash("sha256").update(content).digest("hex"));
+    }
+    const dependabotOwnership = JSON.parse(await readFile(path.join(campaignRecords, "dependabot.json"), "utf8"));
+    for (const file of dependabotOwnership.files) {
       const content = await readFile(path.join(root, file.destination));
       assert.equal(file.sha256, createHash("sha256").update(content).digest("hex"));
     }
