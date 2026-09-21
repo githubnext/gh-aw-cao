@@ -91,6 +91,8 @@ test('notifications move in at the lower right and center on mobile', async ({ p
 });
 
 test('mobile horizontal bar labels preserve readable suffixes beside bounded bars', async ({ page }) => {
+  // Mirrors the mobile .horizontal-bar-chart-row track rule: minmax(56px, 32%).
+  const mobileTrackMinWidthPx = 56;
   await page.setViewportSize({ width: 390, height: 844 });
   await page.setContent(`
     <style id="dashboard-styles"></style>
@@ -132,7 +134,7 @@ test('mobile horizontal bar labels preserve readable suffixes beside bounded bar
   });
 
   expect(layout.labelWidth).toBeGreaterThan(layout.trackWidth);
-  expect(layout.trackWidth).toBeGreaterThanOrEqual(56);
+  expect(layout.trackWidth).toBeGreaterThanOrEqual(mobileTrackMinWidthPx);
   expect(layout.labelRight).toBeLessThanOrEqual(layout.trackLeft);
   expect(layout.valueRight).toBeLessThanOrEqual(layout.rowRight);
 });
