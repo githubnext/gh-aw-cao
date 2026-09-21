@@ -484,7 +484,7 @@ export async function updateCaoCampaigns(ghAwOptions = [], {
   const ghAw = await ensureGhAwMinimumVersion({ policyPath, execute });
   const campaigns = await installedCampaignRecords();
   if (campaigns.length === 0) {
-    throw new Error('No installed gh-aw campaign records found under .github/aw/campaigns');
+    throw new Error('No installed gh-aw package records found under .github/aw/packages');
   }
 
   const updatedCampaigns = [];

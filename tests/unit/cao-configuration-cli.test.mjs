@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { writeFileSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -318,20 +319,25 @@ test("cao update upgrades gh-aw, updates installed campaigns, and merges declara
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-update-"));
   const previousDirectory = process.cwd();
   const policyPath = path.join(root, ".github", "workflows", "cao.json");
-  const campaignRecords = path.join(root, ".github", "aw", "campaigns");
+  const campaignRecords = path.join(root, ".github", "aw", "packages");
   const declarationDirectory = path.join(root, ".github", "aw", "dependabot");
   const calls = [];
   let versionCalls = 0;
   try {
     await mkdir(campaignRecords, { recursive: true });
     await writeFile(path.join(campaignRecords, "root.json"), JSON.stringify({
-      campaign: "githubnext/gh-aw-cao",
-      source: "githubnext/gh-aw-cao@v1",
-      resolvedCommit: "1234567890abcdef1234567890abcdef12345678",
+      schemaVersion: 1,
+      package: "githubnext/gh-aw-cao",
+      source: "githubnext/gh-aw-cao@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      resolvedCommit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      files: [],
     }));
     await writeFile(path.join(campaignRecords, "dependabot.json"), JSON.stringify({
-      campaign: "githubnext/gh-aw-cao/dependabot",
-      source: "githubnext/gh-aw-cao/dependabot@v1",
+      schemaVersion: 1,
+      package: "githubnext/gh-aw-cao/dependabot",
+      source: "githubnext/gh-aw-cao/dependabot@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      resolvedCommit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      files: [],
     }));
     await mkdir(declarationDirectory, { recursive: true });
     await mkdir(path.join(root, ".github", "workflows"), { recursive: true });
@@ -381,6 +387,16 @@ test("cao update upgrades gh-aw, updates installed campaigns, and merges declara
             stdout: versionCalls === 1 ? "gh aw version v0.88.0\n" : "gh aw version v0.89.17\n",
             stderr: "",
           };
+        }
+        if (command === "gh" && arguments_[0] === "aw" && arguments_[1] === "update"
+          && arguments_[2] === "githubnext/gh-aw-cao") {
+          writeFileSync(path.join(campaignRecords, "root.json"), JSON.stringify({
+            schemaVersion: 1,
+            package: "githubnext/gh-aw-cao",
+            source: "githubnext/gh-aw-cao@1234567890abcdef1234567890abcdef12345678",
+            resolvedCommit: "1234567890abcdef1234567890abcdef12345678",
+            files: [],
+          }));
         }
         return { status: 0, stdout: "", stderr: "" };
       },
