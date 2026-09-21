@@ -88,4 +88,35 @@ describe('daily-aggregate fast path parity with canonical execution', () => {
 
     expect(fastPathResult['overview-dispatch-summary'].rows).toEqual(canonicalResult['overview-dispatch-summary'].rows);
   });
+
+  it('produces identical rows to canonical execution for overview-failed-run-count', async () => {
+    const runs = [
+      canonicalRun({ id: 'r1', event: 'schedule', conclusion: 'success', startedAt: '2026-09-10T01:00:00Z' }),
+      canonicalRun({ id: 'r2', event: 'schedule', conclusion: 'failure', startedAt: '2026-09-10T02:00:00Z' }),
+      canonicalRun({ id: 'r3', event: 'workflow_dispatch', conclusion: 'timed-out', startedAt: '2026-09-11T00:00:00Z' }),
+      canonicalRun({ id: 'r4', event: 'schedule', conclusion: 'stale', startedAt: '2026-09-11T00:00:00Z' }),
+      canonicalRun({ id: 'r5', event: 'workflow_dispatch', conclusion: 'success', startedAt: '2026-09-12T00:00:00Z' })
+    ];
+
+    const canonicalResult = executeDashboardQueries(
+      dashboardQueries,
+      { runs: { source: 'runs', rows: runs.map(projectedRunRow), metadata: runsMetadata } },
+      ['overview-failed-run-count']
+    );
+
+    const indexedDB = new IDBFactory();
+    const dailyAggregates = buildDailyOverviewAggregates(runs);
+    await publishDailyOverviewAggregates(indexedDB, {
+      generation: 'generation-a',
+      builtAt: '2026-09-21T00:00:00Z',
+      dailyAggregates
+    });
+    const fastPathResult = await queryDailyOverviewAggregateSources(
+      indexedDB,
+      dashboardQueries,
+      ['overview-failed-run-count']
+    );
+
+    expect(fastPathResult['overview-failed-run-count'].rows).toEqual(canonicalResult['overview-failed-run-count'].rows);
+  });
 });

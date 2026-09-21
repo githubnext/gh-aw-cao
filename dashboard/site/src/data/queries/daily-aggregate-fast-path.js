@@ -100,6 +100,31 @@ function isDispatchSummaryShape(definition) {
 }
 
 /**
+ * Recognizes the exact shape of `overview-failed-run-count` (dashboard.json):
+ * `from: runs`, filtered to `run-conclusion in FAILED_RUN_CONCLUSIONS`, with
+ * exactly one unfiltered `count` aggregate value — matching
+ * `buildDailyOverviewAggregates`'s `failedRuns` field one for one.
+ *
+ * @param {import('./declarative.js').DashboardQuery} definition
+ */
+function isFailedRunCountShape(definition) {
+  if (definition.from !== 'runs') return false;
+  if (definition.joins?.length || definition.union?.length || definition.compute?.length
+      || definition.select?.length || definition['order-by']?.length || definition.limit !== undefined
+      || definition.aggregate?.by?.length || definition['temporal-series'] || definition.predict?.length) {
+    return false;
+  }
+  if (!matchesSinglePredicate(definition.filter?.predicates, { field: 'run-conclusion', in: FAILED_RUN_CONCLUSIONS })) {
+    return false;
+  }
+  const values = definition.aggregate?.values;
+  if (!Array.isArray(values) || values.length !== 1) return false;
+  const [total] = values;
+  if (!isPlainObject(total) || total.reducer !== 'count' || total.filter) return false;
+  return { countAs: String(total.as) };
+}
+
+/**
  * Eligible query names mapped to their shape validator and daily-record
  * summarizer. A query is only ever fast-pathed if the live definition still
  * matches the validator; otherwise it is left for canonical execution.
@@ -119,6 +144,20 @@ const ELIGIBLE_QUERIES = /** @type {const} */ ({
         failedDispatches += record.failedDispatches ?? 0;
       }
       return { [shape.totalAs]: dispatches, [shape.failedAs]: failedDispatches };
+    }
+  },
+  'overview-failed-run-count': {
+    matchShape: isFailedRunCountShape,
+    /**
+     * @param {import('../analytics/daily-overview-aggregates.js').DailyOverviewAggregateRecord[]} records
+     * @param {{ countAs: string }} shape
+     */
+    summarize: (records, shape) => {
+      let failedRuns = 0;
+      for (const record of records) {
+        failedRuns += record.failedRuns ?? 0;
+      }
+      return { [shape.countAs]: failedRuns };
     }
   }
 });
