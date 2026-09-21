@@ -41,7 +41,7 @@ test("add-cao-campaign requires discovery, consent, and review-safe installation
   assert.match(skill, /Exclude campaigns with `private: true`/);
   assert.match(skill, /no more than three installable campaigns/);
   assert.match(skill, /explicit approval/);
-  assert.match(skill, /\.\/\.github\/aw\/cao\.sh add githubnext\/gh-aw-cao\/<campaign-slug>@<catalog-commit>/);
+  assert.match(skill, /\.\/cao\.sh add githubnext\/gh-aw-cao\/<campaign-slug>@<catalog-commit>/);
   assert.match(skill, /must remain in review/);
   assert.match(skill, /did not broaden or change/);
 });

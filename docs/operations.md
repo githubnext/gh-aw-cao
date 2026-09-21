@@ -304,7 +304,7 @@ Update campaign-owned workflows and runtime resources through a reviewable updat
 From the control repository:
 
 ```bash
-./.github/aw/cao.sh update --major --cool-down 0
+./cao.sh update --major --cool-down 0
 ```
 
 The command installs or upgrades `gh-aw` to the minimum version declared by `.github/workflows/cao.json`, resolves published GitHub releases, updates each installed CAO campaign to its latest compatible release, and refreshes CAO campaign worker declarations in policy without widening operator-owned rollout settings. Commit the resulting campaign-owned workflows, generated locks, shared runtime modules, ownership records, and policy declaration refresh as one atomic runtime revision. Do not point updates at `main`, fetch control files separately, or copy them with a script. Parse `.github/workflows/cao.json`, reject unresolved placeholders, and run one bounded review target before restoring scheduled or live operation. Never edit generated `.lock.yml` files or `.github/aw/campaigns/*.json` ownership records by hand.

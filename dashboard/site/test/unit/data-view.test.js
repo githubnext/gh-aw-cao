@@ -158,28 +158,28 @@ describe('data view renderer', () => {
         id: 'set-campaign-live',
         label: 'Switch to live',
         icon: 'play',
-        command: './.github/aw/cao.sh mode live {{campaign}}',
+        command: './cao.sh mode live {{campaign}}',
         placement: 'row'
       },
       {
         id: 'set-campaign-preview',
         label: 'Switch to preview',
         icon: 'eye',
-        command: './.github/aw/cao.sh mode preview {{campaign}}',
+        command: './cao.sh mode preview {{campaign}}',
         placement: 'row'
       },
       {
         id: 'enable-campaign',
         label: 'Enable',
         icon: 'play',
-        command: './.github/aw/cao.sh enable {{campaign}}',
+        command: './cao.sh enable {{campaign}}',
         placement: 'row'
       },
       {
         id: 'disable-campaign',
         label: 'Disable',
         icon: 'stop',
-        command: './.github/aw/cao.sh disable {{campaign}}',
+        command: './cao.sh disable {{campaign}}',
         placement: 'row'
       }
     ], { canExecute: false });
@@ -279,8 +279,8 @@ describe('data view renderer', () => {
     expect(rendered?.textContent).toContain('Disable');
     expect([...rendered?.querySelectorAll('.cli-action-command') ?? []].map((element) => element.textContent)).toEqual(
       expect.arrayContaining([
-        './.github/aw/cao.sh enable remote-agent',
-        './.github/aw/cao.sh disable ci-doctor'
+        './cao.sh enable remote-agent',
+        './cao.sh disable ci-doctor'
       ])
     );
     expect(rendered?.textContent).not.toContain('update-available');

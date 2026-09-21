@@ -114,7 +114,7 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
 
     delete addedAction.arguments;
-    addedAction.command = './.github/aw/cao.sh update';
+    addedAction.command = './cao.sh update';
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
 
     addedAction.command = 'gh workflow run maintenance.yml --repo {{repository}}';
@@ -156,7 +156,7 @@ describe('dashboard document validation', () => {
     expect(rejected.ok).toBe(false);
     expect(rejected.errors).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        message: 'CLI action command must start with "./.github/aw/cao.sh", "gh aw", or "gh workflow run".'
+        message: 'CLI action command must start with "./cao.sh", "gh aw", or "gh workflow run".'
       })
     ]));
 
@@ -165,7 +165,7 @@ describe('dashboard document validation', () => {
       ok: false,
       errors: expect.arrayContaining([
         expect.objectContaining({
-          message: 'CLI action command must start with "./.github/aw/cao.sh", "gh aw", or "gh workflow run".'
+          message: 'CLI action command must start with "./cao.sh", "gh aw", or "gh workflow run".'
         })
       ])
     });

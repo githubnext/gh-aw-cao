@@ -902,7 +902,7 @@ function validateDashboard(dashboard, dashboardNode, errors) {
         const isGhAwCommand =
           commandTokens?.[0] === 'gh' && commandTokens[1] === 'aw' && commandTokens.length >= 3;
         const isCaoCommand =
-          commandTokens?.[0] === './.github/aw/cao.sh' && commandTokens.length >= 2;
+          commandTokens?.[0] === './cao.sh' && commandTokens.length >= 2;
         const isWorkflowDispatchCommand =
           commandTokens?.[0] === 'gh'
           && commandTokens[1] === 'workflow'
@@ -910,7 +910,7 @@ function validateDashboard(dashboard, dashboardNode, errors) {
         if (!isCaoCommand && !isGhAwCommand && !isWorkflowDispatchCommand) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
-            'CLI action command must start with "./.github/aw/cao.sh", "gh aw", or "gh workflow run".',
+            'CLI action command must start with "./cao.sh", "gh aw", or "gh workflow run".',
             `${path}.command`
           ));
         }

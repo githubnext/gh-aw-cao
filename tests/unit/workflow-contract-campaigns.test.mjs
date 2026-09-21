@@ -293,10 +293,11 @@ test("root campaign installs the CAO CLI helper", () => {
 
   assert.deepEqual(
     rootManifest.resources.find(({ source }) => source === "cao.sh"),
-    { source: "cao.sh", destination: ".github/aw/cao.sh" },
+    { source: "cao.sh", destination: "cao.sh" },
   );
   assert.match(helper, /^#!\/bin\/sh/);
   assert.match(helper, /activity\/cao\.mjs/);
+  assert.match(helper, /\.github\/aw\/activity\/cao\.mjs/);
 });
 
 test("root campaign resolves the single CAO bootstrap runtime", () => {
@@ -353,7 +354,7 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   assert.match(installer, /gh aw add githubnext\/gh-aw-cao/);
   assert.match(installer, /chmod \+x "\$cao_command"/);
   assert.match(installer, /"\$cao_command" init/);
-  assert.match(updateSection, /\.\/\.github\/aw\/cao\.sh update --major --cool-down 0/);
+  assert.match(updateSection, /\.\/cao\.sh update --major --cool-down 0/);
   assert.match(updateSection, /upgrades `gh-aw` to the minimum version declared by `\.github\/workflows\/cao\.json`/);
   assert.match(updateSection, /resolves published GitHub releases[\s\S]*?updates each installed CAO campaign to its latest compatible release/);
   assert.match(updateSection, /Do not point updates at `main`, fetch control files separately, or copy them with a script/);
@@ -399,7 +400,7 @@ printf '%s\\n' "$@" > "$CAO_NODE_ARGS"
     });
     assert.ok(shells.some(({ name }) => name === "sh"), "sh must be available for the POSIX portability contract");
 
-    const runHelper = (command, args, label) => {
+    const runHelper = (command, args, expectedCli, label) => {
       writeFileSync(nodeArgsPath, "");
       execFileSync(command, args, {
         cwd: temporaryRoot,
@@ -411,15 +412,23 @@ printf '%s\\n' "$@" > "$CAO_NODE_ARGS"
       });
       assert.deepEqual(
         readFileSync(nodeArgsPath, "utf8").trimEnd().split("\n"),
-        [join(realpathSync(temporaryRoot), "activity", "cao.mjs"), "status", "with spaces"],
+        [expectedCli, "status", "with spaces"],
         label,
       );
     };
 
-    runHelper(helperPath, ["status", "with spaces"], "shebang");
+    const sourceCli = join(realpathSync(temporaryRoot), "activity", "cao.mjs");
+    runHelper(helperPath, ["status", "with spaces"], sourceCli, "shebang");
     for (const shell of shells) {
-      runHelper(shell.path, [helperPath, "status", "with spaces"], shell.name);
+      runHelper(shell.path, [helperPath, "status", "with spaces"], sourceCli, shell.name);
     }
+
+    rmSync(activityDirectory, { force: true, recursive: true });
+    const installedActivityDirectory = join(temporaryRoot, ".github", "aw", "activity");
+    mkdirSync(installedActivityDirectory, { recursive: true });
+    const installedCli = join(installedActivityDirectory, "cao.mjs");
+    writeFileSync(installedCli, "");
+    runHelper(helperPath, ["status", "with spaces"], installedCli, "installed layout");
   } finally {
     rmSync(temporaryRoot, { force: true, recursive: true });
   }
@@ -523,7 +532,7 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /every installed Copilot-backed source declares `copilot-requests: write`/);
   assert.match(setupSkill, /no generated lock declares `\$\{\{ secrets\.COPILOT_GITHUB_TOKEN \}\}`/);
   assert.match(setupSkill, /do not replace `auto` with an explicit model/);
-  assert.match(setupSkill, /\.\/\.github\/aw\/cao\.sh add githubnext\/gh-aw-cao\/<campaign-slug>/);
+  assert.match(setupSkill, /\.\/cao\.sh add githubnext\/gh-aw-cao\/<campaign-slug>/);
   assert.match(setupSkill, /consumer-owned policy/);
   assert.match(setupSkill, /edit only `control-plane\.scope` to add `target-owner` and `target-owner\/target-repository`/);
   assert.match(setupSkill, /Do not put `control-owner` or `control-repository` into this policy unless the selected target is the control repository/);

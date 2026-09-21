@@ -4,7 +4,7 @@ set -euo pipefail
 
 policy_path=".github/workflows/cao.json"
 cao_cli=".github/aw/activity/cao.mjs"
-cao_command=".github/aw/cao.sh"
+cao_command="./cao.sh"
 control_runtime=".github/workflows/shared/control.mjs"
 
 if ! gh aw version >/dev/null 2>&1; then

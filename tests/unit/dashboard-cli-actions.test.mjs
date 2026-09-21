@@ -22,8 +22,8 @@ test("CLI actions parse quoted gh aw arguments without a shell", () => {
 
 test("CLI actions parse CAO helper commands without a shell", () => {
   assert.deepEqual(
-    parseDashboardCommand("./.github/aw/cao.sh add githubnext/gh-aw-cao/dependabot"),
-    ["./.github/aw/cao.sh", "add", "githubnext/gh-aw-cao/dependabot"],
+    parseDashboardCommand("./cao.sh add githubnext/gh-aw-cao/dependabot"),
+    ["./cao.sh", "add", "githubnext/gh-aw-cao/dependabot"],
   );
 });
 
@@ -32,7 +32,7 @@ test("CLI actions reject commands outside supported GitHub CLI commands", () => 
     () => parseDashboardCommand("gh api user"),
     {
       message:
-        'CLI action command must be an explicit "./.github/aw/cao.sh <command>" or "gh aw <command>" or "gh workflow run <workflow>" invocation.',
+        'CLI action command must be an explicit "./cao.sh <command>" or "gh aw <command>" or "gh workflow run <workflow>" invocation.',
     },
   );
   assert.throws(() => parseDashboardCommand("gh workflow view"), /must be an explicit/);
@@ -56,7 +56,7 @@ test("CLI actions reject commands outside supported GitHub CLI commands", () => 
 test("CLI actions execute the CAO helper with the approved token and Git identity", async () => {
   const calls = [];
   const result = await executeDashboardCommand({
-    command: "./.github/aw/cao.sh update --major",
+    command: "./cao.sh update --major",
     workingDirectory: "/workspace",
     githubToken: "token-value",
     execute: async (...args) => {
@@ -74,7 +74,7 @@ test("CLI actions execute the CAO helper with the approved token and Git identit
 
   assert.equal(result.ok, true);
   assert.deepEqual(calls[2].slice(0, 2), [
-    "./.github/aw/cao.sh",
+    "./cao.sh",
     ["update", "--major"],
   ]);
   assert.equal(calls[2][2].cwd, "/workspace");

@@ -81,7 +81,7 @@ curl --fail --silent --show-error --location \
   bash
 ```
 
-The script installs `gh-aw` when needed, adds the latest published core CAO campaign, initializes the minimal control policy, and makes the repository-local `./.github/aw/cao.sh` CLI executable. Rerunning it after those files are installed makes no changes. Use the individual `gh aw` and CAO CLI commands when you intentionally need an older campaign release.
+The script installs `gh-aw` when needed, adds the latest published core CAO campaign, initializes the minimal control policy, and makes the repository-local `./cao.sh` CLI executable. Rerunning it after those files are installed makes no changes. Use the individual `gh aw` and CAO CLI commands when you intentionally need an older campaign release.
 
 The root campaign installs:
 
@@ -93,10 +93,10 @@ The root campaign installs:
 Use the `add-cao-campaign` skill to discover and compare catalog operations when you do not already know which campaign fits. After explicit selection, it installs through CAO so the campaign declaration is merged automatically. For example, install Dependabot with:
 
 ```bash
-./.github/aw/cao.sh add githubnext/gh-aw-cao/dependabot
+./cao.sh add githubnext/gh-aw-cao/dependabot
 ```
 
-Run CAO commands from the control repository with `./.github/aw/cao.sh`. Its `init` command creates the minimal `.github/workflows/cao.json` and refuses to overwrite an existing policy. `add` invokes `gh aw add`, reads the installed campaign's CAO declaration, and adds its worker identities without enabling live mode or broadening repository scope. `update` upgrades `gh-aw` to the policy's minimum version, updates installed campaigns, and refreshes declared worker identities while preserving operator-owned rollout settings. Use `mode live CAMPAIGN...` to promote configured campaigns or `mode preview CAMPAIGN...` to return them to review mode; the command validates every campaign name before updating `.github/workflows/cao.json`. Use `enable CAMPAIGN...` or `disable CAMPAIGN...` to run the corresponding GitHub workflow action for each campaign's orchestrator and every declared worker workflow.
+Run CAO commands from the control repository with `./cao.sh`. Its `init` command creates the minimal `.github/workflows/cao.json` and refuses to overwrite an existing policy. `add` invokes `gh aw add`, reads the installed campaign's CAO declaration, and adds its worker identities without enabling live mode or broadening repository scope. `update` upgrades `gh-aw` to the policy's minimum version, updates installed campaigns, and refreshes declared worker identities while preserving operator-owned rollout settings. Use `mode live CAMPAIGN...` to promote configured campaigns or `mode preview CAMPAIGN...` to return them to review mode; the command validates every campaign name before updating `.github/workflows/cao.json`. Use `enable CAMPAIGN...` or `disable CAMPAIGN...` to run the corresponding GitHub workflow action for each campaign's orchestrator and every declared worker workflow.
 
 > [!WARNING]
 > Do not edit generated `.lock.yml` files directly. Update their Markdown sources and regenerate them with `gh aw compile`.

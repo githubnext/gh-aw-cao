@@ -32,10 +32,10 @@ mkdirSync(".github/workflows", { recursive: true });
 writeFileSync(".github/workflows/cao.json", '{"version":1,"gh-aw-version":"v0.89.17","control-plane":{"campaigns":{}}}\\n');
 appendFileSync(process.env.FAKE_COMMAND_LOG, "init\\n");
 EOF
-  cat > .github/aw/cao.sh <<'EOF'
+  cat > cao.sh <<'EOF'
 #!/bin/sh
 root="$(CDPATH= cd -P "$(dirname "$0")" && pwd)"
-exec node "$root/activity/cao.mjs" "$@"
+exec node "$root/.github/aw/activity/cao.mjs" "$@"
 EOF
   exit 0
 fi
@@ -57,7 +57,7 @@ printf '%s\\n' '#!/usr/bin/env bash' 'touch "$FAKE_GH_AW_INSTALLED"'
   try {
     await executeFile("bash", [installScript], { cwd: root, env });
     assert.match(await readFile(path.join(root, ".github", "workflows", "cao.json"), "utf8"), /"campaigns":\{\}/);
-    const installedCommand = path.join(root, ".github", "aw", "cao.sh");
+    const installedCommand = path.join(root, "cao.sh");
     assert.notEqual((await stat(installedCommand)).mode & 0o111, 0);
     assert.equal(await readFile(log, "utf8"), "curl\nadd\ninit\n");
 

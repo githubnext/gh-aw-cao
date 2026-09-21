@@ -1208,7 +1208,7 @@
         "label": "Update all",
         "description": "Update all installed Agentic Workflow campaigns in this repository.",
         "icon": "sync",
-        "command": "./.github/aw/cao.sh update --repo {{repository}}",
+        "command": "./cao.sh update --repo {{repository}}",
         "placement": "view",
         "arguments": [
           {
@@ -1278,7 +1278,7 @@
         "label": "Update campaign",
         "description": "Update this campaign's agentic workflow.",
         "icon": "sync",
-        "command": "./.github/aw/cao.sh add {{campaign}}",
+        "command": "./cao.sh add {{campaign}}",
         "placement": "row"
       },
       {
@@ -1286,7 +1286,7 @@
         "label": "Switch to live",
         "description": "Switch this campaign's workflows to live mode.",
         "icon": "play",
-        "command": "./.github/aw/cao.sh mode live {{campaign}}",
+        "command": "./cao.sh mode live {{campaign}}",
         "placement": "row"
       },
       {
@@ -1294,7 +1294,7 @@
         "label": "Switch to preview",
         "description": "Switch this campaign's workflows to preview mode.",
         "icon": "eye",
-        "command": "./.github/aw/cao.sh mode preview {{campaign}}",
+        "command": "./cao.sh mode preview {{campaign}}",
         "placement": "row"
       },
       {
@@ -1302,7 +1302,7 @@
         "label": "Enable campaign",
         "description": "Enable this campaign's orchestrator and worker workflows.",
         "icon": "play",
-        "command": "./.github/aw/cao.sh enable {{campaign}}",
+        "command": "./cao.sh enable {{campaign}}",
         "placement": "row"
       },
       {
@@ -1310,7 +1310,7 @@
         "label": "Pause campaign",
         "description": "Disable future campaign workflow runs. Active runs continue until separately cancelled on GitHub.",
         "icon": "pause",
-        "command": "./.github/aw/cao.sh disable {{campaign}}",
+        "command": "./cao.sh disable {{campaign}}",
         "placement": "row"
       }
     ],
