@@ -56,6 +56,25 @@ function sourceNamesOf(view) {
   return typeof configured.source === 'string' ? [configured.source] : [];
 }
 
+/**
+ * @param {unknown} value
+ * @returns {string[]}
+ */
+function declaredQueryReferences(value) {
+  if (!value || typeof value !== 'object') return [];
+  if (Array.isArray(value)) return value.flatMap(declaredQueryReferences);
+  const configured = /** @type {Record<string, unknown>} */ (value);
+  return Object.entries(configured).flatMap(([key, nested]) => {
+    if ((key === 'from' || key === 'source' || key === 'query') && typeof nested === 'string' && queryNames.has(nested)) {
+      return [nested];
+    }
+    if ((key === 'sources' || key === 'union') && Array.isArray(nested)) {
+      return nested.filter((name) => typeof name === 'string' && queryNames.has(name));
+    }
+    return declaredQueryReferences(nested);
+  });
+}
+
 describe('dashboard view query contracts', () => {
   it('keeps assessment-sensitive high-cardinality views declaratively bounded', () => {
     const pagesById = new Map(dashboard.pages.map((/** @type {Record<string, unknown>} */ page) => [page.id, page]));
@@ -134,6 +153,21 @@ describe('dashboard view query contracts', () => {
     )));
 
     expect(unresolved).toEqual([]);
+  });
+
+  it('does not retain queries unused by dashboard content or another retained query', () => {
+    const retained = new Set(declaredQueryReferences({
+      ...dashboard,
+      queries: undefined
+    }));
+
+    for (let index = queries.length - 1; index >= 0; index -= 1) {
+      const query = queries[index];
+      if (!retained.has(query.name)) continue;
+      for (const dependency of declaredQueryReferences(query)) retained.add(dependency);
+    }
+
+    expect([...queryNames].filter((name) => !retained.has(name))).toEqual([]);
   });
 
   it('materializes every declared view query through the production worker handler', () => {
