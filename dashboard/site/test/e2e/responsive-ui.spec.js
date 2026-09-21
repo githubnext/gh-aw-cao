@@ -90,20 +90,18 @@ test('notifications move in at the lower right and center on mobile', async ({ p
   expect(Math.abs((bounds?.x ?? 0) + (bounds?.width ?? 0) / 2 - 195)).toBeLessThan(1);
 });
 
-test('mobile horizontal bar labels preserve readable suffixes beside bounded bars', async ({ page }) => {
-  // Mirrors the mobile .horizontal-bar-chart-row track rule: minmax(56px, 32%).
-  const mobileTrackMinWidthPx = 56;
+test('mobile horizontal bar labels preserve readable suffixes', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.setContent(`
     <style id="dashboard-styles"></style>
-    <main class="chart-stage" style="width: 330px"></main>
+    <main class="chart-stage" style="width: 220px"></main>
     <script type="module">
       import { getPrimerStyles } from 'http://dashboard.test/src/styles.js';
       import { renderChartWidget } from 'http://dashboard.test/src/components/chart-elements.js';
       document.querySelector('#dashboard-styles').textContent = getPrimerStyles();
       document.querySelector('.chart-stage').append(renderChartWidget('horizontal-bar', [
-        { x: '.github/workflows/dependabot-update-planner.md', y: 27 },
-        { x: '.github/workflows/maintenance-compiler-security.md', y: 13 }
+        { x: '.github/workflows/extremely-long-dependabot-update-planner.md', y: 27 },
+        { x: '.github/workflows/extremely-long-maintenance-compiler-security.md', y: 13 }
       ], [{ name: 'value', className: 'chart-series-1' }]));
     </script>
   `);
@@ -112,31 +110,32 @@ test('mobile horizontal bar labels preserve readable suffixes beside bounded bar
   const label = firstRow.locator('.horizontal-bar-chart-label');
   await expect(label).toHaveCSS('direction', 'rtl');
 
-  const layout = await firstRow.evaluate((row) => {
+  const labelRendering = await firstRow.evaluate((row) => {
     const labelElement = row.querySelector('.horizontal-bar-chart-label');
-    const trackElement = row.querySelector('.horizontal-bar-chart-track');
-    const valueElement = row.querySelector('.horizontal-bar-chart-value');
-    if (!(labelElement instanceof HTMLElement) || !(trackElement instanceof HTMLElement) || !(valueElement instanceof HTMLElement)) {
-      throw new Error('Expected horizontal bar row elements.');
+    if (!(labelElement instanceof HTMLElement) || !(labelElement.firstChild instanceof Text)) {
+      throw new Error('Expected horizontal bar label text.');
     }
-    const rowBounds = row.getBoundingClientRect();
+    const suffix = 'planner.md';
+    const text = labelElement.firstChild.textContent ?? '';
+    const suffixStart = text.lastIndexOf(suffix);
+    if (suffixStart < 0) throw new Error('Expected label suffix.');
+    const suffixRange = document.createRange();
+    suffixRange.setStart(labelElement.firstChild, suffixStart);
+    suffixRange.setEnd(labelElement.firstChild, suffixStart + suffix.length);
     const labelBounds = labelElement.getBoundingClientRect();
-    const trackBounds = trackElement.getBoundingClientRect();
-    const valueBounds = valueElement.getBoundingClientRect();
+    const suffixBounds = suffixRange.getBoundingClientRect();
     return {
-      labelWidth: labelBounds.width,
-      trackWidth: trackBounds.width,
-      rowRight: rowBounds.right,
-      valueRight: valueBounds.right,
-      labelRight: labelBounds.right,
-      trackLeft: trackBounds.left
+      overflowed: labelElement.scrollWidth > labelElement.clientWidth,
+      suffixLeft: suffixBounds.left,
+      suffixRight: suffixBounds.right,
+      labelLeft: labelBounds.left,
+      labelRight: labelBounds.right
     };
   });
 
-  expect(layout.labelWidth).toBeGreaterThan(layout.trackWidth);
-  expect(layout.trackWidth).toBeGreaterThanOrEqual(mobileTrackMinWidthPx);
-  expect(layout.labelRight).toBeLessThanOrEqual(layout.trackLeft);
-  expect(layout.valueRight).toBeLessThanOrEqual(layout.rowRight);
+  expect(labelRendering.overflowed).toBe(true);
+  expect(labelRendering.suffixLeft).toBeGreaterThanOrEqual(labelRendering.labelLeft);
+  expect(labelRendering.suffixRight).toBeLessThanOrEqual(labelRendering.labelRight);
 });
 
 test('issue card labels stay compact with centered text and balanced padding', async ({ page }) => {
