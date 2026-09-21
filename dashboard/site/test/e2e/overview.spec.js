@@ -252,6 +252,8 @@ test('renders the Overview structure before mixed page data resolves', async ({ 
       pageBusy: overview?.getAttribute('aria-busy'),
       headerBusy: overview?.querySelector('.factory-intro')?.getAttribute('aria-busy'),
       floorBusy: overview?.querySelector('.factory-floor')?.getAttribute('aria-busy'),
+      campaigns: Boolean(overview?.querySelector('.link-button-list-view')),
+      campaignsBusy: overview?.querySelector('.link-button-list-view')?.getAttribute('aria-busy'),
       runningPending: overview?.querySelectorAll('.factory-running-pending').length,
       headingPending: overview?.querySelectorAll('.factory-heading-pending').length,
       rhythmPending: overview?.querySelectorAll('.factory-rhythm-pending').length,
@@ -271,14 +273,16 @@ test('renders the Overview structure before mixed page data resolves', async ({ 
   });
 
   expect(immediate).toEqual({
-    sourceLoadCalls: 13,
+    sourceLoadCalls: 14,
     pageLoadCalls: 0,
     header: true,
     floor: true,
+    campaigns: true,
     pageSkeletons: 0,
     pageBusy: null,
     headerBusy: null,
     floorBusy: null,
+    campaignsBusy: 'true',
     runningPending: 1,
     headingPending: 1,
     rhythmPending: 1,

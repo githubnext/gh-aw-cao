@@ -1850,12 +1850,15 @@ function renderElementView(pageId, title, view, viewIndex, sources, contextDetai
   if (sourceNames.length === 1) {
     const sourceName = sourceNames[0];
     const source = selectedSources[sourceName];
-    if (!source && !elementHandlesUnavailableSource(elementName)) {
+    if (!source
+        && !elementLoadsSourcesAsync(elementName)
+        && !elementHandlesUnavailableSource(elementName)) {
       return renderCustomViewState(pageId, title, sourceName, 'unavailable', contextDetails, headingTag);
     }
     const state = source?.metadata?.availability ?? (source ? inferAvailability(source.rows) : 'unavailable');
     if (state !== 'available'
         && !(state === 'empty' && elementHandlesEmptyRows(elementName))
+        && !(state === 'unavailable' && elementLoadsSourcesAsync(elementName))
         && !(state === 'unavailable' && elementHandlesUnavailableSource(elementName))) {
       return renderCustomViewState(pageId, title, sourceName, state, contextDetails, headingTag);
     }
