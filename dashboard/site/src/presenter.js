@@ -660,7 +660,11 @@ function renderPagePlaceholder(page) {
  * @returns {HTMLElement}
  */
 function renderPageSkeleton() {
-  return renderSkeletonBars('dashboard-view-skeleton');
+  const skeleton = renderSkeletonBars('dashboard-view-skeleton');
+  skeleton.removeAttribute('aria-hidden');
+  skeleton.setAttribute('role', 'status');
+  skeleton.setAttribute('aria-label', 'Loading view');
+  return skeleton;
 }
 
 /**

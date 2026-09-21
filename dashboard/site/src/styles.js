@@ -2110,8 +2110,9 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
 .source-refresh-dismiss:hover { background: var(--neutral-muted); color: var(--fg); }
 .source-loading-warning { color: var(--attention); }
 .dashboard-lazy-view { min-height: var(--dashboard-lazy-view-min-height); display: grid; align-content: stretch; }
-.dashboard-lazy-view-skeleton { min-height: inherit; display: grid; align-content: start; gap: 12px; padding: 16px; border: 1px solid var(--border-muted); border-radius: 6px; background: var(--canvas); }
-.dashboard-lazy-view-skeleton > span { height: 16px; border-radius: 4px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite; }
+.dashboard-lazy-view-skeleton, .dashboard-view-skeleton { min-height: inherit; display: grid; align-content: start; gap: 12px; padding: 16px; border: 1px solid var(--border-muted); border-radius: 6px; background: var(--canvas); }
+.dashboard-lazy-view-skeleton > span, .dashboard-view-skeleton > span { height: 16px; border-radius: 4px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite; }
+.dashboard-view-skeleton { min-height: 280px; }
 .dashboard-lazy-view-skeleton > span:first-child { width: 38%; height: 20px; }
 .dashboard-lazy-view-skeleton > span:last-child { width: 72%; }
 .skeleton-card { min-height: 104px; }
@@ -2542,7 +2543,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   html { scroll-behavior: auto; }
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
   ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
-  .dashboard-lazy-view-skeleton > span, .dashboard-horizon-skeleton > span, .table-summary-skeleton span, .home-catchup-mobile-card, .factory-running-pending, .factory-heading-pending, .factory-rhythm-pending .factory-rhythm-bars { animation: none; }
+  .dashboard-lazy-view-skeleton > span, .dashboard-view-skeleton > span, .dashboard-horizon-skeleton > span, .table-summary-skeleton span, .home-catchup-mobile-card, .factory-running-pending, .factory-heading-pending, .factory-rhythm-pending .factory-rhythm-bars { animation: none; }
 }
 @media (prefers-contrast: more) {
   :root {

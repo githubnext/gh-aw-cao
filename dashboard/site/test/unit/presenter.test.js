@@ -4161,6 +4161,8 @@ describe('presenter built-in and custom pages', () => {
     expect(second.hasAttribute('data-page-pending')).toBe(true);
     expect(second.getAttribute('aria-busy')).toBe('true');
     expect(second.querySelector('.dashboard-view-skeleton')).not.toBeNull();
+    expect(second.querySelector('.dashboard-view-skeleton')?.getAttribute('role')).toBe('status');
+    expect(second.querySelector('.dashboard-view-skeleton')?.getAttribute('aria-label')).toBe('Loading view');
     expect(secondLink.getAttribute('aria-current')).toBe('page');
     expect(rendered.ownerDocument.defaultView?.location.hash).toBe('#page-second');
     expect(rendered.querySelector('#page-title')?.textContent).toBe('Second');
