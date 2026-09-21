@@ -107,6 +107,7 @@ export const VIEW_ELEMENT_VALUES = [
   'insights-overview',
   'factory-header',
   'factory-floor',
+  'campaign-shortcuts',
   'outcomes-overview'
 ];
 export const VIEW_CHART_VALUES = ['area', 'bar', 'dot', 'heatmap', 'histogram', 'horizontal-bar', 'line', 'pie', 'scatter', 'swimlane'];

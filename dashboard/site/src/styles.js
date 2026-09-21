@@ -263,6 +263,21 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .entity-card-list-grouped .issue-list-labels { justify-content: flex-end; }
 .entity-card-list-chevron { display: flex; align-items: center; color: var(--muted); }
 .entity-card-list-chevron .octicon { width: 14px; height: 14px; }
+.factory-campaigns { display: grid; gap: 12px; }
+.factory-campaigns > header { display: grid; gap: 4px; }
+.factory-campaigns > header :is(h2, p) { margin: 0; }
+.factory-campaigns > header h2 { font-size: 1rem; }
+.factory-campaigns > header p, .factory-campaign-shortcuts-empty { color: var(--muted); font-size: .75rem; }
+.factory-campaign-shortcuts { overflow: hidden; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 14px; background: var(--canvas); list-style: none; }
+.factory-campaign-shortcut + .factory-campaign-shortcut { border-top: 1px solid var(--border); }
+.factory-campaign-shortcut > a { min-height: 48px; display: grid; grid-template-columns: 20px minmax(0, 1fr) 14px; align-items: center; gap: 10px; padding: 10px 16px; color: var(--fg); font-weight: 600; text-decoration: none; }
+.factory-campaign-shortcut-content { display: contents; }
+.factory-campaign-shortcut > a:hover { background: var(--neutral-muted); }
+.factory-campaign-shortcut > a:focus-visible { position: relative; outline: 2px solid var(--focus, Highlight); outline-offset: -3px; }
+.factory-campaign-shortcut-icon, .factory-campaign-shortcut-chevron { display: inline-flex; color: var(--muted); }
+.factory-campaign-shortcut-icon .octicon { width: 18px; height: 18px; }
+.factory-campaign-shortcut-chevron .octicon { width: 14px; height: 14px; }
+.factory-campaign-shortcuts-empty { margin: 0; padding: 16px; border: 1px solid var(--border); border-radius: 14px; }
 .mobile-brand-name { display: none; }
 .sidebar-collapsed { grid-template-columns: 64px minmax(0, 1fr); }
 .sidebar-collapsed .org-sidebar { padding-inline: 8px 7px; }

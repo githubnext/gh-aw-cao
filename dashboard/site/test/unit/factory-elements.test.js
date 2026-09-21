@@ -33,7 +33,7 @@ beforeEach(resetSourceStore);
 afterEach(resetSourceStore);
 
 /**
- * @param {'factory-header'|'factory-floor'} element
+ * @param {'factory-header'|'factory-floor'|'campaign-shortcuts'} element
  * @param {Record<string, import('../../src/presenter.js').LogicalSourceInput>} sources
  * @param {Record<string, unknown>} [elementConfig]
  * @returns {import('../../src/components/ui-elements.js').ElementRenderContext}
@@ -41,9 +41,9 @@ afterEach(resetSourceStore);
 function context(element, sources, elementConfig) {
   return {
     pageId: 'overview',
-    viewId: element === 'factory-header' ? 'overview-header' : 'overview-floor',
-    viewIndex: element === 'factory-header' ? 0 : 1,
-    title: element === 'factory-header' ? 'How are we doing?' : 'Factory floor',
+    viewId: element === 'factory-header' ? 'overview-header' : element === 'factory-floor' ? 'overview-floor' : 'overview-campaigns',
+    viewIndex: element === 'factory-header' ? 0 : element === 'factory-floor' ? 1 : 2,
+    title: element === 'factory-header' ? 'How are we doing?' : element === 'factory-floor' ? 'Factory floor' : 'Campaigns',
     sourceNames: Object.keys(sources),
     sources,
     elementConfig,
@@ -51,6 +51,28 @@ function context(element, sources, elementConfig) {
     headingTag: /** @type {const} */ ('h3')
   };
 }
+
+it('renders campaign shortcuts from only the canonical campaigns source', () => {
+  const rendered = renderUiElement('campaign-shortcuts', context('campaign-shortcuts', {
+    campaigns: source('campaigns', [
+      {
+        campaign: 'aw-doctor',
+        'campaign-name': 'AW Doctor',
+        'campaign-icon': 'gear',
+        'campaign-link': {
+          'dashboard-href': '#page-campaign-insights?campaign=aw-doctor',
+          'dashboard-label': 'View AW Doctor campaign dashboard'
+        }
+      }
+    ])
+  }));
+
+  expect(rendered?.querySelectorAll('.factory-campaign-shortcut')).toHaveLength(1);
+  expect(rendered?.querySelector('.factory-campaign-shortcut a')?.getAttribute('href'))
+    .toBe('#page-campaign-insights?campaign=aw-doctor');
+  expect(rendered?.querySelector('.factory-campaign-shortcut a')?.getAttribute('aria-label'))
+    .toBe('View AW Doctor campaign dashboard');
+});
 
 it('renders the factory header from only its declared JSON sources', () => {
   const rendered = renderUiElement('factory-header', context('factory-header', {

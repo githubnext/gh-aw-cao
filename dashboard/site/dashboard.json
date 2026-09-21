@@ -439,17 +439,6 @@
             "unit": "aic"
           }
         ]
-      },
-      {
-        "id": "campaign-shortcut",
-        "icon": "goal",
-        "icon-field": "campaign-icon",
-        "title": {
-          "field": "campaign-name",
-          "title": "Campaign"
-        },
-        "labels": [],
-        "details": []
       }
     ],
     "views": [
@@ -7900,35 +7889,6 @@
               }
             },
             "layout": "full"
-          },
-          {
-            "id": "overview-campaigns",
-            "title": "Campaigns",
-            "description": "Open a campaign to view its activity and insights.",
-            "data": {
-              "source": "campaigns"
-            },
-            "mark": "list",
-            "list": {
-              "style": "entity-cards",
-              "appearance": "grouped",
-              "card": "campaign-shortcut",
-              "drill": {
-                "type": "external",
-                "field": "campaign-link"
-              }
-            },
-            "empty-message": "No campaigns are registered.",
-            "layout": "full",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "campaign-name",
-                  "type": "nominal",
-                  "title": "Campaign"
-                }
-              ]
-            }
           }
         ]
       },
@@ -11113,6 +11073,20 @@
                 }
               }
             },
+            "layout": "full"
+          },
+          {
+            "id": "overview-campaigns",
+            "title": "Campaigns",
+            "intent": "Provide direct navigation to every registered campaign without requesting supporting metrics.",
+            "description": "Open a campaign to view its activity and insights.",
+            "data": {
+              "sources": [
+                "campaigns"
+              ]
+            },
+            "mark": "element",
+            "element": "campaign-shortcuts",
             "layout": "full"
           }
         ]
