@@ -548,6 +548,53 @@ test("cao update uses current package records and validates the release commit",
   }
 });
 
+test("cao update can select a prerelease without forwarding its CAO flag", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cao-update-prerelease-"));
+  const previousDirectory = process.cwd();
+  const policyPath = path.join(root, ".github", "workflows", "cao.json");
+  const packageRecords = path.join(root, ".github", "aw", "packages");
+  const calls = [];
+  try {
+    await mkdir(packageRecords, { recursive: true });
+    await writeFile(path.join(packageRecords, "root.json"), JSON.stringify({
+      schemaVersion: 1,
+      package: "githubnext/gh-aw-cao",
+      source: "githubnext/gh-aw-cao@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      resolvedCommit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      files: [],
+    }));
+    await mkdir(path.dirname(policyPath), { recursive: true });
+    await writeFile(policyPath, '{"version":1,"gh-aw-version":"v0.89.17","control-plane":{"campaigns":{}}}\n');
+    process.chdir(root);
+
+    await updateCaoCampaigns(["--pre-releases", "--force"], {
+      policyPath,
+      execute(command, arguments_) {
+        calls.push([command, arguments_]);
+        if (arguments_[0] === "aw" && arguments_[1] === "version") return versionResult;
+        if (arguments_[1] === "--paginate") {
+          return { status: 0, stdout: "v0.0.2-rc.1\n", stderr: "" };
+        }
+        if (arguments_[1] === "/repos/githubnext/gh-aw-cao/releases/tags/v0.0.2-rc.1") {
+          return { status: 0, stdout: "v0.0.2-rc.1\n", stderr: "" };
+        }
+        return { status: 0, stdout: "", stderr: "" };
+      },
+    });
+
+    assert.deepEqual(calls.at(-1), [
+      "gh",
+      ["aw", "update", "https://github.com/githubnext/gh-aw-cao", "--force"],
+    ]);
+    assert.ok(calls.some(([, arguments_]) => arguments_.includes(
+      "select(.draft == false and true) | .tag_name",
+    )));
+  } finally {
+    process.chdir(previousDirectory);
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("cao update leaves current gh-aw versions that meet the minimum in place", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-update-gh-aw-current-"));
   const policyPath = path.join(root, "cao.json");

@@ -63,7 +63,7 @@ class UsageError extends Error {}
 const USAGE = `Usage:
   cao init
   cao add CAMPAIGN [GH_AW_ADD_OPTIONS...]
-  cao update [GH_AW_UPDATE_OPTIONS...]
+  cao update [--pre-releases] [GH_AW_UPDATE_OPTIONS...]
   cao mode (live|preview) CAMPAIGN...
   cao enable CAMPAIGN...
   cao disable CAMPAIGN...
@@ -472,7 +472,7 @@ function installedPackageUpdateTarget(campaign) {
   return `https://github.com/${campaign}`;
 }
 
-async function prepareInstalledPackageReleaseSource(record, releaseTags, execute) {
+async function prepareInstalledPackageReleaseSource(record, releaseTags, execute, includePrereleases = false) {
   if (!record.record || !record.recordPath || !/^[0-9a-f]{40}$/i.test(record.source.split('@').at(-1))) return undefined;
   if (!/^[0-9a-f]{40}$/i.test(record.resolvedCommit)) {
     throw new Error(`Installed CAO package record has an invalid resolvedCommit: ${record.resolvedCommit || '(missing)'}`);
@@ -492,11 +492,12 @@ async function prepareInstalledPackageReleaseSource(record, releaseTags, execute
     const candidates = String(tags.stdout || '').trim().split(/\s+/)
       .filter((tag) => /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/.test(tag));
     for (const candidate of candidates) {
+      const prereleaseFilter = includePrereleases ? 'true' : '.prerelease == false';
       const release = execute('gh', [
         'api',
         `/repos/githubnext/gh-aw-cao/releases/tags/${encodeURIComponent(candidate)}`,
         '--jq',
-        'select(.draft == false and .prerelease == false) | .tag_name'
+        `select(.draft == false and ${prereleaseFilter}) | .tag_name`
       ], { encoding: 'utf8' });
       if (!release.error && release.status === 0 && String(release.stdout || '').trim() === candidate) {
         releaseTag = candidate;
@@ -663,6 +664,8 @@ export async function updateCaoCampaigns(ghAwOptions = [], {
   policyPath = DEFAULT_POLICY_PATH,
   execute = spawnSync
 } = {}) {
+  const includePrereleases = ghAwOptions.includes('--pre-releases');
+  const updateOptions = ghAwOptions.filter((option) => option !== '--pre-releases');
   const policy = await readCaoPolicy(policyPath);
   const ghAw = await ensureGhAwMinimumVersion({ policyPath, execute });
   const campaigns = await installedCampaignRecords();
@@ -680,8 +683,8 @@ export async function updateCaoCampaigns(ghAwOptions = [], {
   const mergedDeclarations = [];
   const releaseTags = new Map();
   for (const record of campaigns) {
-    const preparedSource = await prepareInstalledPackageReleaseSource(record, releaseTags, execute);
-    const update = execute('gh', ['aw', 'update', installedPackageUpdateTarget(record.campaign), ...ghAwOptions], {
+    const preparedSource = await prepareInstalledPackageReleaseSource(record, releaseTags, execute, includePrereleases);
+    const update = execute('gh', ['aw', 'update', installedPackageUpdateTarget(record.campaign), ...updateOptions], {
       encoding: 'utf8',
       maxBuffer: 16 * 1024 * 1024
     });
