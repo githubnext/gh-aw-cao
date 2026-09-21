@@ -1468,6 +1468,12 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
         label: 'Review dependency evidence'
       };
       const sources = {
+        campaigns: { source: 'campaigns', rows: [{ id: 'campaign-1' }, { id: 'campaign-2' }], metadata },
+        issues: {
+          source: 'issues',
+          rows: Array.from({ length: 17 }, (_, index) => ({ id: \`issue-\${index + 1}\` })),
+          metadata
+        },
         'configuration-policy': {
           source: 'configuration-policy',
           rows: [{ document: { version: 1 }, raw: '', diagnostics: [] }],
@@ -1811,9 +1817,11 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
   await expect(overviewPage.getByRole('heading', { name: 'Your factory is humming.' })).toBeVisible();
   await expect(overviewPage.locator('.factory-running-active > span')).toHaveText('Work in motion');
-  await expect(overviewPage.locator('.factory-station')).toHaveCount(4);
-  await expect(overviewPage.locator('.factory-station strong')).toHaveText(['1', '20', '12', '0']);
+  await expect(overviewPage.locator('.factory-station')).toHaveCount(6);
+  await expect(overviewPage.locator('.factory-station strong')).toHaveText(['2', '1', '17', '20', '12', '0']);
   await expect(overviewPage.locator('.factory-station small')).toHaveText([
+    '',
+    '',
     '',
     '80 failed',
     '0 failed',
@@ -1841,7 +1849,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(page).toHaveURL(/#page-runs\?runs-runs-source\.run-conclusion=failure$/);
   await expect(page.getByRole('heading', { name: 'Runs', exact: true, level: 1 })).toBeVisible();
   await cleanNavigation.filter({ hasText: 'Overview' }).click();
-  await overviewPage.locator('.factory-station').nth(3).locator('strong a').click();
+  await overviewPage.locator('.factory-station').nth(5).locator('strong a').click();
   await expect(page).toHaveURL(/#page-operational-value$/);
   await expect(page.getByRole('heading', { name: 'Operational value', exact: true, level: 1 })).toBeVisible();
   await page.evaluate(() => { window.location.hash = '#page-overview-failed-runs'; });
@@ -1907,7 +1915,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await page.evaluate(() => { window.location.hash = '#page-overview'; });
   await expect(overviewPage).toBeVisible();
   await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
-  await expect(overviewPage.locator('.factory-station')).toHaveCount(4);
+  await expect(overviewPage.locator('.factory-station')).toHaveCount(6);
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Experimental']);
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toBeVisible();

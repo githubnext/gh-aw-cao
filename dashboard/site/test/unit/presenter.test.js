@@ -1620,7 +1620,7 @@ describe('presenter built-in and custom pages', () => {
     const page = await activatePage(rendered, 'overview');
     expect(page?.querySelector(':scope > .custom-view-grid')).not.toBeNull();
     expect(page?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(2);
-    expect(page?.querySelectorAll('.factory-station')).toHaveLength(4);
+    expect(page?.querySelectorAll('.factory-station')).toHaveLength(6);
     expect(page?.querySelector('.factory-intro h2')?.textContent).toBe('Your factory is idle.');
     expect(page?.querySelector('.notifications-inbox')).toBeNull();
     expect(page?.querySelector('.factory-status')).toBeNull();
