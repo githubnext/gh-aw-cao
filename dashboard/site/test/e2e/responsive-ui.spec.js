@@ -93,6 +93,10 @@ test('notifications move in at the lower right and center on mobile', async ({ p
 test('mobile horizontal bar labels preserve readable suffixes', async ({ page }) => {
   const firstWorkflowLabel = '.github/workflows/extremely-long-dependabot-update-planner.md';
   const expectedVisibleSuffix = 'planner.md';
+  // Keep the fixture narrow enough that the prefix is substantially clipped,
+  // while allowing a subpixel edge tolerance for browser font rendering.
+  const meaningfulPrefixOverflowPx = 20;
+  const clippingTolerancePx = 1;
   await page.setViewportSize({ width: 390, height: 844 });
   await page.setContent(`
     <style id="dashboard-styles"></style>
@@ -116,8 +120,11 @@ test('mobile horizontal bar labels preserve readable suffixes', async ({ page })
     const labelElement = row.querySelector('.horizontal-bar-chart-label');
     const textElement = row.querySelector('.horizontal-bar-chart-label-text');
     const textNode = [...(textElement?.childNodes ?? [])].find((node) => node.nodeType === Node.TEXT_NODE);
-    if (!labelElement || typeof labelElement.getBoundingClientRect !== 'function' || textNode?.nodeType !== Node.TEXT_NODE) {
-      throw new Error('Expected horizontal bar label text.');
+    if (!labelElement || typeof labelElement.getBoundingClientRect !== 'function') {
+      throw new Error('Expected horizontal bar label element.');
+    }
+    if (!textNode) {
+      throw new Error('Expected horizontal bar label text node.');
     }
     const text = textNode.textContent ?? '';
     const suffixStart = text.lastIndexOf(suffix);
@@ -143,8 +150,8 @@ test('mobile horizontal bar labels preserve readable suffixes', async ({ page })
   }, expectedVisibleSuffix);
 
   expect(labelRendering.overflowed).toBe(true);
-  expect(labelRendering.overflowAmount).toBeGreaterThan(20);
-  expect(labelRendering.prefixRight).toBeLessThanOrEqual(labelRendering.labelLeft + 1);
+  expect(labelRendering.overflowAmount).toBeGreaterThan(meaningfulPrefixOverflowPx);
+  expect(labelRendering.prefixRight).toBeLessThanOrEqual(labelRendering.labelLeft + clippingTolerancePx);
   expect(labelRendering.suffixLeft).toBeGreaterThanOrEqual(labelRendering.labelLeft);
   expect(labelRendering.suffixRight).toBeLessThanOrEqual(labelRendering.labelRight);
 });
