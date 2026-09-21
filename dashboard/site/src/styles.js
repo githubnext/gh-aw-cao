@@ -2149,6 +2149,8 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   :root[data-navigation-direction="backward"]::view-transition-new(root) { z-index: 1; animation-name: dashboard-view-slide-in-left; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
   .source-refresh-error { align-items: flex-start; flex-direction: column; }
   .timeline-chart-axis span:not(:first-child):not(:last-child):nth-child(even) { display: none; }
+  .horizontal-bar-chart-row { grid-template-columns: minmax(0, 1fr) minmax(56px, 32%) auto; gap: 6px; }
+  .horizontal-bar-chart-label { direction: rtl; unicode-bidi: plaintext; }
   :is(.mode-badge, .mode-indicator) .octicon { display: none; }
   .dashboard-root { --dashboard-mobile-page-padding-top: 16px; --dashboard-mobile-page-padding-inline: 14px; --dashboard-mobile-page-padding-bottom: 28px; height: auto; min-height: 100vh; overflow: visible; }
   .app-shell { height: auto; min-height: 100vh; display: block; overflow: visible; }

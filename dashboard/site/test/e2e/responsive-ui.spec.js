@@ -90,6 +90,54 @@ test('notifications move in at the lower right and center on mobile', async ({ p
   expect(Math.abs((bounds?.x ?? 0) + (bounds?.width ?? 0) / 2 - 195)).toBeLessThan(1);
 });
 
+test('mobile horizontal bar labels preserve readable suffixes beside bounded bars', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setContent(`
+    <style id="dashboard-styles"></style>
+    <main class="chart-stage" style="width: 330px"></main>
+    <script type="module">
+      import { getPrimerStyles } from 'http://dashboard.test/src/styles.js';
+      import { renderChartWidget } from 'http://dashboard.test/src/components/chart-elements.js';
+      document.querySelector('#dashboard-styles').textContent = getPrimerStyles();
+      document.querySelector('.chart-stage').append(renderChartWidget('horizontal-bar', [
+        { x: '.github/workflows/dependabot-update-planner.md', y: 27 },
+        { x: '.github/workflows/maintenance-compiler-security.md', y: 13 }
+      ], [{ name: 'value', className: 'chart-series-1' }]));
+    </script>
+  `);
+
+  const firstRow = page.locator('.horizontal-bar-chart-row').first();
+  const label = firstRow.locator('.horizontal-bar-chart-label');
+  const track = firstRow.locator('.horizontal-bar-chart-track');
+  await expect(label).toHaveCSS('direction', 'rtl');
+
+  const layout = await firstRow.evaluate((row) => {
+    const labelElement = row.querySelector('.horizontal-bar-chart-label');
+    const trackElement = row.querySelector('.horizontal-bar-chart-track');
+    const valueElement = row.querySelector('.horizontal-bar-chart-value');
+    if (!(labelElement instanceof HTMLElement) || !(trackElement instanceof HTMLElement) || !(valueElement instanceof HTMLElement)) {
+      throw new Error('Expected horizontal bar row elements.');
+    }
+    const rowBounds = row.getBoundingClientRect();
+    const labelBounds = labelElement.getBoundingClientRect();
+    const trackBounds = trackElement.getBoundingClientRect();
+    const valueBounds = valueElement.getBoundingClientRect();
+    return {
+      labelWidth: labelBounds.width,
+      trackWidth: trackBounds.width,
+      rowRight: rowBounds.right,
+      valueRight: valueBounds.right,
+      labelRight: labelBounds.right,
+      trackLeft: trackBounds.left
+    };
+  });
+
+  expect(layout.labelWidth).toBeGreaterThan(layout.trackWidth);
+  expect(layout.trackWidth).toBeGreaterThanOrEqual(56);
+  expect(layout.labelRight).toBeLessThanOrEqual(layout.trackLeft);
+  expect(layout.valueRight).toBeLessThanOrEqual(layout.rowRight);
+});
+
 test('issue card labels stay compact with centered text and balanced padding', async ({ page }) => {
   await page.setContent(`
     <style id="dashboard-styles"></style>
