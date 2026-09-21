@@ -96,6 +96,9 @@ test('mobile horizontal bar labels preserve readable suffixes', async ({ page })
   // Keep the fixture narrow enough that the prefix is substantially clipped,
   // while allowing a subpixel edge tolerance for browser font rendering.
   const meaningfulPrefixOverflowPx = 20;
+  // Require visible clipping proportional to measured overflow without tying
+  // the assertion to exact glyph widths.
+  const minimumFirstCharClipOverflowRatio = 4;
   await page.setViewportSize({ width: 390, height: 844 });
   await page.setContent(`
     <style id="dashboard-styles"></style>
@@ -150,7 +153,8 @@ test('mobile horizontal bar labels preserve readable suffixes', async ({ page })
 
   expect(labelRendering.overflowed).toBe(true);
   expect(labelRendering.overflowAmount).toBeGreaterThan(meaningfulPrefixOverflowPx);
-  expect(labelRendering.firstCharClipDistance).toBeGreaterThan(labelRendering.overflowAmount / 4);
+  expect(labelRendering.firstCharClipDistance)
+    .toBeGreaterThan(labelRendering.overflowAmount / minimumFirstCharClipOverflowRatio);
   expect(labelRendering.suffixLeft).toBeGreaterThanOrEqual(labelRendering.labelLeft);
   expect(labelRendering.suffixRight).toBeLessThanOrEqual(labelRendering.labelRight);
 });
