@@ -115,6 +115,7 @@ test('mobile horizontal bar labels preserve readable suffixes', async ({ page })
 
   const firstRow = page.locator('.horizontal-bar-chart-row').first();
   const label = firstRow.locator('.horizontal-bar-chart-label');
+  await expect(label).toBeVisible();
   await expect(label).toHaveCSS('direction', 'rtl');
   await expect(label.locator('.horizontal-bar-chart-label-text')).toHaveCSS('direction', 'ltr');
 
@@ -157,6 +158,61 @@ test('mobile horizontal bar labels preserve readable suffixes', async ({ page })
     .toBeGreaterThan(labelRendering.overflowAmount / minimumFirstCharClipOverflowRatio);
   expect(labelRendering.suffixLeft).toBeGreaterThanOrEqual(labelRendering.labelLeft);
   expect(labelRendering.suffixRight).toBeLessThanOrEqual(labelRendering.labelRight);
+});
+
+test('desktop horizontal bar labels keep standard end truncation', async ({ page }) => {
+  const firstWorkflowLabel = '.github/workflows/extremely-long-dependabot-update-planner.md';
+  const expectedVisiblePrefix = '.github';
+  const expectedClippedSuffix = 'planner.md';
+  await page.setViewportSize({ width: 900, height: 700 });
+  await page.setContent(`
+    <style id="dashboard-styles"></style>
+    <main class="chart-stage" style="width: 220px"></main>
+    <script type="module">
+      import { getPrimerStyles } from 'http://dashboard.test/src/styles.js';
+      import { renderChartWidget } from 'http://dashboard.test/src/components/chart-elements.js';
+      document.querySelector('#dashboard-styles').textContent = getPrimerStyles();
+      document.querySelector('.chart-stage').append(renderChartWidget('horizontal-bar', [
+        { x: ${JSON.stringify(firstWorkflowLabel)}, y: 27 }
+      ], [{ name: 'value', className: 'chart-series-1' }]));
+    </script>
+  `);
+
+  const firstRow = page.locator('.horizontal-bar-chart-row').first();
+  const label = firstRow.locator('.horizontal-bar-chart-label');
+  await expect(label).toBeVisible();
+  await expect(label).toHaveCSS('direction', 'ltr');
+  await expect(label.locator('.horizontal-bar-chart-label-text')).toHaveCSS('display', 'block');
+
+  const labelRendering = await firstRow.evaluate((row, suffix) => {
+    const labelElement = row.querySelector('.horizontal-bar-chart-label');
+    const textElement = row.querySelector('.horizontal-bar-chart-label-text');
+    const textNode = [...(textElement?.childNodes ?? [])].find((node) => node.nodeType === Node.TEXT_NODE);
+    if (!labelElement || typeof labelElement.getBoundingClientRect !== 'function') {
+      throw new Error('Expected horizontal bar label element.');
+    }
+    if (!textElement || typeof textElement.getBoundingClientRect !== 'function' || !textNode) {
+      throw new Error('Expected horizontal bar label text node.');
+    }
+    const text = textNode.textContent ?? '';
+    const suffixStart = text.lastIndexOf(suffix);
+    if (suffixStart < 0) throw new Error('Expected label suffix.');
+    const suffixRange = document.createRange();
+    suffixRange.setStart(textNode, suffixStart);
+    suffixRange.setEnd(textNode, suffixStart + suffix.length);
+    const textBounds = textElement.getBoundingClientRect();
+    const suffixBounds = suffixRange.getBoundingClientRect();
+    return {
+      text: textElement.textContent ?? '',
+      overflowed: textElement.scrollWidth > textElement.clientWidth,
+      suffixRight: suffixBounds.right,
+      textRight: textBounds.right
+    };
+  }, expectedClippedSuffix);
+
+  expect(labelRendering.text.startsWith(expectedVisiblePrefix)).toBe(true);
+  expect(labelRendering.overflowed).toBe(true);
+  expect(labelRendering.suffixRight).toBeGreaterThan(labelRendering.textRight);
 });
 
 test('issue card labels stay compact with centered text and balanced padding', async ({ page }) => {
