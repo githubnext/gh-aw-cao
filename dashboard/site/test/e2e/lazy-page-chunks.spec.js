@@ -185,7 +185,7 @@ test('core dashboard stays small and page chunks load on demand with in-memory c
   expect(core.value.dashboard.pages.some((/** @type {{ views?: unknown[] }} */ entry) => Array.isArray(entry.views))).toBe(false);
   expect(core.value.dashboard.pages.some((/** @type {{ definition?: { views?: unknown[] } }} */ entry) => Array.isArray(entry.definition?.views))).toBe(false);
 
-  await expect(page.getByRole('heading', { name: 'Repositories' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Repositories', exact: true, level: 1 })).toBeVisible();
   await expect.poll(() => pageText(page, 'repositories')).toMatch(/Top repositories with value created/);
   await expect.poll(() => pageText(page, 'repositories')).toMatch(/Top repositories by audit issues/);
   await page.getByRole('button', { name: 'Table' }).click();
@@ -193,17 +193,17 @@ test('core dashboard stays small and page chunks load on demand with in-memory c
   await expect.poll(() => chunkRequests.filter((id) => id === 'repositories').length).toBe(1);
 
   await navigateToPage(page, 'runs');
-  await expect(page.getByRole('heading', { name: 'Runs' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Runs', exact: true, level: 1 })).toBeVisible();
   await expect.poll(() => pageText(page, 'runs')).toMatch(/Runs in the last week/);
   await expect.poll(() => pageText(page, 'runs')).toMatch(/No runs observed\.|1001|Runs/);
   await expect.poll(() => chunkRequests.filter((id) => id === 'runs').length).toBe(1);
 
   await navigateToPage(page, 'repositories');
-  await expect(page.getByRole('heading', { name: 'Repositories' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Repositories', exact: true, level: 1 })).toBeVisible();
   await expect.poll(() => chunkRequests.filter((id) => id === 'repositories').length).toBe(1);
 
   await navigateToPage(page, 'configuration');
-  await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Settings', exact: true, level: 1 })).toBeVisible();
   await expect(page.locator('[data-page-id="configuration"] .configuration-view')).toBeVisible();
   await expect(page.locator('[data-page-id="configuration"]')).not.toContainText('Affected source: configuration-policy');
   await expect.poll(() => chunkRequests.filter((id) => id === 'configuration').length).toBe(1);
@@ -232,14 +232,14 @@ test('async Factory Overview elements receive their chunked query definitions', 
 test('deep links and redirect routes fetch only the requested initial page chunk', async ({ page }) => {
   const hashChunkRequests = captureChunkRequests(page);
   await page.goto(`${origin}/#page-runs`);
-  await expect(page.getByRole('heading', { name: 'Runs' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Runs', exact: true, level: 1 })).toBeVisible();
   await expect.poll(() => pageText(page, 'runs')).toMatch(/Runs in the last week/);
   await expect.poll(() => [...new Set(hashChunkRequests)].sort()).toEqual(['runs']);
 
   const routeChunkRequests = captureChunkRequests(page);
   await page.goto(`${origin}/repositories/`);
   await expect(page).toHaveURL(`${origin}/#page-repositories`);
-  await expect(page.getByRole('heading', { name: 'Repositories' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Repositories', exact: true, level: 1 })).toBeVisible();
   await expect.poll(() => pageText(page, 'repositories')).toMatch(/Top repositories with value created/);
   await expect.poll(() => [...new Set(routeChunkRequests)].sort()).toEqual(['repositories']);
 });
