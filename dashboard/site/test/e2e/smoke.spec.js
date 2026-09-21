@@ -953,6 +953,7 @@ test('Issues switches between its top-repository chart, table, and cards', async
         issue('1', 'alpha', 'Alpha issue 1', '2026-09-18T12:00:00Z')
       ];
       const sources = {
+        audits: { source: 'audits', metadata, rows: [] },
         issues: { source: 'issues', metadata, rows: issues },
         runs: {
           source: 'runs',
@@ -1003,7 +1004,7 @@ test('Issues switches between its top-repository chart, table, and cards', async
   await page.getByRole('button', { name: 'Cards' }).click();
   await expect(cards.locator('.entity-card-list-card')).toHaveCount(3);
   await expect(cards.locator('.entity-card-list-card').first()).toContainText('Alpha issue 2');
-  await expect(cards.locator('.entity-card-list-card').first().locator('a')).toHaveAttribute(
+  await expect(cards.locator('.entity-card-list-card').first().locator('[data-card-drill="external"]')).toHaveAttribute(
     'href',
     'https://github.com/githubnext/alpha/issues/3'
   );
@@ -1358,7 +1359,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(cleanNavigation).toHaveText(['Overview', 'Notifications', 'Campaigns', 'Repositories', 'Settings']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
-  await expect(data.getByRole('link')).toHaveText(['Workflows', 'Runs', 'Models & Agents', 'Firewall', 'MCPs']);
+  await expect(data.getByRole('link')).toHaveText(['Workflows', 'Runs', 'Issues', 'Models & Agents', 'Firewall', 'MCPs']);
   await expect(page.locator('.nav-section').filter({ hasText: 'Experimental' })).toHaveCount(0);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
   await expect(page.locator('.account-menu')).toHaveCount(0);
