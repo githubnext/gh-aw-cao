@@ -300,7 +300,18 @@ function resolvePathWithinRoot(root, destination) {
     canonicalPath = realpathSync(resolved);
   } catch (error) {
     if (error?.code !== 'ENOENT') throw error;
-    canonicalPath = path.join(realpathSync(path.dirname(resolved)), path.basename(resolved));
+    const missingSegments = [];
+    let existingAncestor = resolved;
+    while (true) {
+      missingSegments.unshift(path.basename(existingAncestor));
+      existingAncestor = path.dirname(existingAncestor);
+      try {
+        canonicalPath = path.join(realpathSync(existingAncestor), ...missingSegments);
+        break;
+      } catch (ancestorError) {
+        if (ancestorError?.code !== 'ENOENT') throw ancestorError;
+      }
+    }
   }
   const relative = path.relative(canonicalRoot, canonicalPath);
   if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
@@ -346,7 +357,11 @@ async function installedCampaignRecords(root = process.cwd(), { caoOnly = true }
       records.set(campaignName, {
         campaign: campaignName,
         source: typeof record.source === 'string' ? record.source : campaignName,
-        resolvedCommit: typeof record.resolvedCommit === 'string' ? record.resolvedCommit.trim() : '',
+        resolvedCommit: typeof record.resolvedCommit === 'string' && record.resolvedCommit.trim()
+          ? record.resolvedCommit.trim()
+          : typeof record.source === 'string'
+            ? record.source.split('@').at(-1).trim()
+            : '',
         record,
         recordPath
       });
@@ -472,12 +487,21 @@ function installedPackageUpdateTarget(campaign) {
   return `https://github.com/${campaign}`;
 }
 
-async function prepareInstalledPackageReleaseSource(record, releaseTags, execute, includePrereleases = false) {
-  if (!record.record || !record.recordPath || !/^[0-9a-f]{40}$/i.test(record.source.split('@').at(-1))) return undefined;
-  if (!/^[0-9a-f]{40}$/i.test(record.resolvedCommit)) {
+async function prepareInstalledPackageReleaseSource(
+  record,
+  releaseTags,
+  execute,
+  { includePrereleases = false, allowMajor = false } = {}
+) {
+  if (!record.record || !record.recordPath) return undefined;
+  const sourceRef = record.source.split('@').at(-1);
+  const sourceIsCommit = /^[0-9a-f]{40}$/i.test(sourceRef);
+  const sourceIsRelease = /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/.test(sourceRef);
+  if (!sourceIsCommit && !(includePrereleases && sourceIsRelease)) return undefined;
+  if (sourceIsCommit && !/^[0-9a-f]{40}$/i.test(record.resolvedCommit)) {
     throw new Error(`Installed CAO package record has an invalid resolvedCommit: ${record.resolvedCommit || '(missing)'}`);
   }
-  let releaseTag = releaseTags.get(record.resolvedCommit);
+  let releaseTag = sourceIsRelease ? sourceRef : releaseTags.get(record.resolvedCommit);
   if (!releaseTag) {
     const tags = execute('gh', [
       'api',
@@ -508,6 +532,25 @@ async function prepareInstalledPackageReleaseSource(record, releaseTags, execute
       throw new Error(`No CAO release tag found for ${record.resolvedCommit}`);
     }
     releaseTags.set(record.resolvedCommit, releaseTag);
+  }
+  if (includePrereleases) {
+    const releases = execute('gh', [
+      'api',
+      '--paginate',
+      '/repos/githubnext/gh-aw-cao/releases?per_page=100',
+      '--jq',
+      '.[] | select(.draft == false) | .tag_name'
+    ], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+    if (releases.error || releases.status !== 0) {
+      throw new Error(`Unable to list CAO releases: ${commandFailureMessage(releases, 'gh api failed')}`);
+    }
+    const currentMajor = ghAwVersionParts(releaseTag).numbers[0];
+    releaseTag = String(releases.stdout || '').trim().split(/\s+/)
+      .filter((tag) => /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/.test(tag))
+      .filter((tag) => allowMajor || ghAwVersionParts(tag).numbers[0] === currentMajor)
+      .filter((tag) => compareGhAwVersions(tag, releaseTag) >= 0)
+      .sort(compareGhAwVersions)
+      .at(-1) ?? releaseTag;
   }
   const prepared = {
     record: structuredClone(record.record),
@@ -683,7 +726,10 @@ export async function updateCaoCampaigns(ghAwOptions = [], {
   const mergedDeclarations = [];
   const releaseTags = new Map();
   for (const record of campaigns) {
-    const preparedSource = await prepareInstalledPackageReleaseSource(record, releaseTags, execute, includePrereleases);
+    const preparedSource = await prepareInstalledPackageReleaseSource(record, releaseTags, execute, {
+      includePrereleases,
+      allowMajor: updateOptions.includes('--major')
+    });
     const update = execute('gh', ['aw', 'update', installedPackageUpdateTarget(record.campaign), ...updateOptions], {
       encoding: 'utf8',
       maxBuffer: 16 * 1024 * 1024

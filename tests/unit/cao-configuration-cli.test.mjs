@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -91,6 +91,20 @@ test("cao init does not overwrite an existing policy", async () => {
     );
     assert.equal(await readFile(policyPath, "utf8"), '{"version":1}\n');
   } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("cao init supports a repository without installed package records", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cao-init-empty-"));
+  const previousDirectory = process.cwd();
+  const policyPath = path.join(root, ".github", "workflows", "cao.json");
+  try {
+    process.chdir(root);
+    await initializeCaoPolicy({ policyPath, execute: () => versionResult });
+    assert.equal(JSON.parse(await readFile(policyPath, "utf8"))["gh-aw-version"], "v0.89.17");
+  } finally {
+    process.chdir(previousDirectory);
     await rm(root, { recursive: true, force: true });
   }
 });
@@ -548,7 +562,48 @@ test("cao update uses current package records and validates the release commit",
   }
 });
 
-test("cao update can select a prerelease without forwarding its CAO flag", async () => {
+test("cao update supports legacy campaign records without resolvedCommit", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cao-update-legacy-record-"));
+  const previousDirectory = process.cwd();
+  const policyPath = path.join(root, ".github", "workflows", "cao.json");
+  const campaignRecords = path.join(root, ".github", "aw", "campaigns");
+  const installedCommit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  try {
+    await mkdir(campaignRecords, { recursive: true });
+    await writeFile(path.join(campaignRecords, "root.json"), JSON.stringify({
+      campaign: "githubnext/gh-aw-cao",
+      source: `githubnext/gh-aw-cao@${installedCommit}`,
+      files: [],
+    }));
+    await mkdir(path.dirname(policyPath), { recursive: true });
+    await writeFile(policyPath, '{"version":1,"gh-aw-version":"v0.89.17","control-plane":{"campaigns":{}}}\n');
+    process.chdir(root);
+
+    const result = await updateCaoCampaigns([], {
+      policyPath,
+      execute(command, arguments_) {
+        if (arguments_[0] === "aw" && arguments_[1] === "version") return versionResult;
+        if (arguments_[1] === "--paginate") {
+          return { status: 0, stdout: "v0.0.1\n", stderr: "" };
+        }
+        if (arguments_[1] === "/repos/githubnext/gh-aw-cao/releases/tags/v0.0.1") {
+          return { status: 0, stdout: "v0.0.1\n", stderr: "" };
+        }
+        if (arguments_[1] === "/repos/githubnext/gh-aw-cao/commits/v0.0.1") {
+          return { status: 0, stdout: `${installedCommit}\n`, stderr: "" };
+        }
+        return { status: 0, stdout: "", stderr: "" };
+      },
+    });
+
+    assert.deepEqual(result.campaigns, ["githubnext/gh-aw-cao"]);
+  } finally {
+    process.chdir(previousDirectory);
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("cao update advances a prerelease without forwarding its CAO flag", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-update-prerelease-"));
   const previousDirectory = process.cwd();
   const policyPath = path.join(root, ".github", "workflows", "cao.json");
@@ -559,36 +614,38 @@ test("cao update can select a prerelease without forwarding its CAO flag", async
     await writeFile(path.join(packageRecords, "root.json"), JSON.stringify({
       schemaVersion: 1,
       package: "githubnext/gh-aw-cao",
-      source: "githubnext/gh-aw-cao@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      resolvedCommit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      source: "githubnext/gh-aw-cao@v0.0.2-rc.1",
+      resolvedCommit: "v0.0.2-rc.1",
       files: [],
     }));
     await mkdir(path.dirname(policyPath), { recursive: true });
     await writeFile(policyPath, '{"version":1,"gh-aw-version":"v0.89.17","control-plane":{"campaigns":{}}}\n');
     process.chdir(root);
+    let preparedSource;
 
     await updateCaoCampaigns(["--pre-releases", "--force"], {
       policyPath,
       execute(command, arguments_) {
         calls.push([command, arguments_]);
         if (arguments_[0] === "aw" && arguments_[1] === "version") return versionResult;
-        if (arguments_[1] === "--paginate") {
-          return { status: 0, stdout: "v0.0.2-rc.1\n", stderr: "" };
+        if (arguments_[2] === "/repos/githubnext/gh-aw-cao/releases?per_page=100") {
+          return { status: 0, stdout: "v0.0.2-rc.1\nv0.0.2-rc.2\nv1.0.0-rc.1\n", stderr: "" };
         }
-        if (arguments_[1] === "/repos/githubnext/gh-aw-cao/releases/tags/v0.0.2-rc.1") {
-          return { status: 0, stdout: "v0.0.2-rc.1\n", stderr: "" };
+        if (arguments_[0] === "aw" && arguments_[1] === "update") {
+          preparedSource = JSON.parse(readFileSync(path.join(packageRecords, "root.json"), "utf8")).source;
+        }
+        if (arguments_[1] === "/repos/githubnext/gh-aw-cao/commits/v0.0.2-rc.1") {
+          return { status: 0, stdout: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n", stderr: "" };
         }
         return { status: 0, stdout: "", stderr: "" };
       },
     });
 
-    assert.deepEqual(calls.at(-1), [
+    assert.deepEqual(calls.find(([, arguments_]) => arguments_[0] === "aw" && arguments_[1] === "update"), [
       "gh",
       ["aw", "update", "https://github.com/githubnext/gh-aw-cao", "--force"],
     ]);
-    assert.ok(calls.some(([, arguments_]) => arguments_.includes(
-      "select(.draft == false and true) | .tag_name",
-    )));
+    assert.equal(preparedSource, "githubnext/gh-aw-cao@v0.0.2-rc.2");
   } finally {
     process.chdir(previousDirectory);
     await rm(root, { recursive: true, force: true });
