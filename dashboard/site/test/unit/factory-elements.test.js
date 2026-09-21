@@ -33,7 +33,7 @@ beforeEach(resetSourceStore);
 afterEach(resetSourceStore);
 
 /**
- * @param {'factory-header'|'factory-floor'|'campaign-shortcuts'} element
+ * @param {'factory-header'|'factory-floor'|'link-button-list'} element
  * @param {Record<string, import('../../src/presenter.js').LogicalSourceInput>} sources
  * @param {Record<string, unknown>} [elementConfig]
  * @returns {import('../../src/components/ui-elements.js').ElementRenderContext}
@@ -52,8 +52,9 @@ function context(element, sources, elementConfig) {
   };
 }
 
-it('renders campaign shortcuts from only the canonical campaigns source', () => {
-  const rendered = renderUiElement('campaign-shortcuts', context('campaign-shortcuts', {
+it('renders campaign shortcuts through the reusable link button list', () => {
+  const rendered = renderUiElement('link-button-list', {
+    ...context('link-button-list', {
     campaigns: source('campaigns', [
       {
         campaign: 'aw-doctor',
@@ -65,12 +66,19 @@ it('renders campaign shortcuts from only the canonical campaigns source', () => 
         }
       }
     ])
-  }));
+    }),
+    elementConfig: {
+      'label-field': 'campaign-name',
+      'link-field': 'campaign-link',
+      'icon-field': 'campaign-icon',
+      'fallback-icon': 'goal'
+    }
+  });
 
-  expect(rendered?.querySelectorAll('.factory-campaign-shortcut')).toHaveLength(1);
-  expect(rendered?.querySelector('.factory-campaign-shortcut a')?.getAttribute('href'))
+  expect(rendered?.querySelectorAll('.link-button-list-item')).toHaveLength(1);
+  expect(rendered?.querySelector('.link-button-list-item a')?.getAttribute('href'))
     .toBe('#page-campaign-insights?campaign=aw-doctor');
-  expect(rendered?.querySelector('.factory-campaign-shortcut a')?.getAttribute('aria-label'))
+  expect(rendered?.querySelector('.link-button-list-item a')?.getAttribute('aria-label'))
     .toBe('View AW Doctor campaign dashboard');
 });
 

@@ -11086,7 +11086,14 @@
               ]
             },
             "mark": "element",
-            "element": "campaign-shortcuts",
+            "element": "link-button-list",
+            "config": {
+              "label-field": "campaign-name",
+              "link-field": "campaign-link",
+              "icon-field": "campaign-icon",
+              "fallback-icon": "goal",
+              "empty-message": "No campaigns are registered."
+            },
             "layout": "full"
           }
         ]

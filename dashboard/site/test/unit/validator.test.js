@@ -667,7 +667,7 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('defines Overview as declarative factory header and floor elements', () => {
+  it('defines Overview as declarative factory and campaign navigation elements', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const page = document.dashboard.pages.find((/** @type {{ id: string }} */ candidate) =>
       candidate.id === 'overview'
@@ -700,6 +700,18 @@ describe('dashboard document validation', () => {
         mark: 'element',
         element: 'factory-floor',
         config: expect.objectContaining({ animate: 'number' }),
+        layout: 'full'
+      }),
+      expect.objectContaining({
+        id: 'overview-campaigns',
+        data: { sources: ['campaigns'] },
+        mark: 'element',
+        element: 'link-button-list',
+        config: expect.objectContaining({
+          'label-field': 'campaign-name',
+          'link-field': 'campaign-link',
+          'fallback-icon': 'goal'
+        }),
         layout: 'full'
       })
     ]);

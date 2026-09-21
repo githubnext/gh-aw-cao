@@ -19,7 +19,7 @@ These are the default product destinations. They are custom pages composed from 
 
 | Page ID | Navigation title | Named element | Purpose |
 | --- | --- | --- | --- |
-| `overview` | Overview | `factory-header`, `factory-floor` | Summarizes current motion, grouped attention evidence as reusable entity cards, outcomes, delivery, runs, dispatches, value, and weekly rhythm. |
+| `overview` | Overview | `factory-header`, `factory-floor`, `link-button-list` | Summarizes current motion, outcomes, delivery, runs, dispatches, value, weekly rhythm, and campaign shortcuts. |
 | `work` | Work | `work-project-view` | Presents delegated work as board, task, and roadmap modes. |
 | `agents` | Operations | `agent-marketplace-view` | Presents the policy-scoped campaign and agent marketplace. |
 | `insights` | Insights | `insights-overview` | Composes outcomes, value, usage, runtime, security, and experiment evidence. |
@@ -109,6 +109,7 @@ Named elements own specialized DOM, accessibility, interaction, local state, and
 | `insights-overview` | Composes the primary cross-domain Insights experience. |
 | `factory-header` | Presents factory status, retained-output context, work in motion, and weekly rhythm. |
 | `factory-floor` | Presents linked repository, run, dispatch, and value stations. |
+| `link-button-list` | Presents one source as a compact grouped list of Octicon navigation links. |
 | `outcomes-overview` | Compatibility alias that composes the factory header and floor for existing version 0.1.0 documents. |
 
 ## Testing standard

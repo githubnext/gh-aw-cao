@@ -45,7 +45,13 @@ describe('entity card templates', () => {
     )).toMatchObject({
       data: { sources: ['campaigns'] },
       mark: 'element',
-      element: 'campaign-shortcuts'
+      element: 'link-button-list',
+      config: {
+        'label-field': 'campaign-name',
+        'link-field': 'campaign-link',
+        'icon-field': 'campaign-icon',
+        'fallback-icon': 'goal'
+      }
     });
     expect(pages.campaigns.definition.views.find(
       (/** @type {Record<string, any>} */ view) => view.id === 'campaigns-inventory'

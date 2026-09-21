@@ -243,6 +243,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/factory-rhythm.js
   - source: site/src/components/factory-station.js
     destination: .github/aw/dashboard/site/src/components/factory-station.js
+  - source: site/src/components/link-button-list.js
+    destination: .github/aw/dashboard/site/src/components/link-button-list.js
   - source: site/src/components/graph-widget.js
     destination: .github/aw/dashboard/site/src/components/graph-widget.js
   - source: site/src/components/panel.js

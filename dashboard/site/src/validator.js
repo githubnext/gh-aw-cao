@@ -2637,7 +2637,36 @@ function validateView(view, viewNode, path, viewIds, errors) {
           ));
         }
       }
+      const linkButtonConfigKeys = ['label-field', 'link-field', 'icon-field', 'fallback-icon', 'empty-message'];
+      for (const key of linkButtonConfigKeys) {
+        if (view.config[key] === undefined) continue;
+        validateStringField(view.config[key], `${path}.config.${key}`, true, errors);
+        if (view.element !== 'link-button-list') {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            `config.${key} is supported only for the link-button-list element.`,
+            `${path}.config.${key}`
+          ));
+        }
+      }
+      if (view.element === 'link-button-list') {
+        for (const key of ['label-field', 'link-field', 'fallback-icon']) {
+          if (view.config[key] === undefined) {
+            errors.push(createError(
+              ERROR_CODES.missingOrInvalidRequiredField,
+              `link-button-list config.${key} is required.`,
+              `${path}.config.${key}`
+            ));
+          }
+        }
+      }
     }
+  } else if (view.element === 'link-button-list') {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      'link-button-list requires config.',
+      `${path}.config`
+    ));
   }
 
   if (view.list !== undefined) {

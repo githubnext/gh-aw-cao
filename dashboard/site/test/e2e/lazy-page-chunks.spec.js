@@ -221,7 +221,7 @@ test('async Factory Overview elements receive their chunked query definitions', 
 
   const overview = page.locator('[data-page-id="overview"]');
   await expect(overview).not.toContainText('No custom views available.');
-  await expect(overview.locator(':scope > .custom-view-grid > .custom-view')).toHaveCount(2);
+  await expect(overview.locator(':scope > .custom-view-grid > .custom-view')).toHaveCount(3);
   await expect(overview.getByRole('heading', { name: 'Your factory is humming.' })).toBeVisible();
   await expect(overview.locator('.factory-station').nth(0)).toContainText('1');
   await expect(overview.locator('.factory-station').nth(1)).toContainText('1');

@@ -167,8 +167,8 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(factory.locator(':scope > [data-view-id="overview-floor"]')).toHaveClass(/factory-floor/);
     const campaigns = factory.locator(':scope > [data-view-id="overview-campaigns"]');
     await expect(campaigns).toBeVisible();
-    await expect(campaigns.locator('.factory-campaign-shortcuts')).toBeVisible();
-    await expect(campaigns.locator('.factory-campaign-shortcut')).toHaveCount(2);
+    await expect(campaigns.locator('.link-button-list')).toBeVisible();
+    await expect(campaigns.locator('.link-button-list-item')).toHaveCount(2);
     await expect(campaigns.getByRole('link', { name: 'View AW Doctor campaign dashboard' }))
       .toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
     await expect(factory.locator(':scope > .factory-intro + .factory-floor')).toHaveCount(1);

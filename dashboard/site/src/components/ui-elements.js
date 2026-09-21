@@ -2,8 +2,7 @@
  * Registry for JSON-selected dashboard UI elements.
  */
 
-import { h, keyed } from '../dom.js';
-import { effect } from '../reactive.js';
+import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { formatClockDuration, formatHumanFriendlyTimestamp } from '../view-formatters.js';
 import { findLink, renderSafeLink } from './link-content.js';
@@ -28,7 +27,7 @@ import { renderFactoryFloorElement } from './factory-floor.js';
 import { renderFactoryHeaderElement } from './factory-header.js';
 import { renderLocalDatabaseView } from './local-database-view.js';
 import { renderPanel } from './panel.js';
-import { bindFactorySources, createFactoryMetrics, createFactoryScope } from './factory-elements.js';
+import { renderLinkButtonList } from './link-button-list.js';
 /**
  * @typedef {{
  *   pageId: string,
@@ -45,7 +44,7 @@ import { bindFactorySources, createFactoryMetrics, createFactoryScope } from './
  *   element?: string,
  *   viewId?: string,
  *   viewIndex?: number,
- *   elementConfig?: { body?: string, sections?: string[], section?: string, labels?: Record<string, unknown>, animate?: string, 'view-all-page'?: string, 'view-all-label'?: string },
+ *   elementConfig?: { body?: string, sections?: string[], section?: string, labels?: Record<string, unknown>, animate?: string, 'view-all-page'?: string, 'view-all-label'?: string, 'label-field'?: string, 'link-field'?: string, 'icon-field'?: string, 'fallback-icon'?: string, 'empty-message'?: string },
  *   headingTag: 'h3'|'h4'
  * }} ElementRenderContext
  */
@@ -81,13 +80,13 @@ const ELEMENT_RENDERERS = new Map([
   ['insights-overview', renderInsightsOverview],
   ['factory-header', renderFactoryHeaderElement],
   ['factory-floor', renderFactoryFloorElement],
-  ['campaign-shortcuts', renderCampaignShortcutsElement],
+  ['link-button-list', renderLinkButtonList],
   ['outcomes-overview', renderLegacyFactoryOverview],
   ['local-database', renderLocalDatabaseView]
 ]);
 
 /** Elements that load declared sources independently of the active page subscription. */
-const ASYNC_SOURCE_ELEMENTS = new Set(['factory-header', 'factory-floor', 'campaign-shortcuts', 'outcomes-overview']);
+const ASYNC_SOURCE_ELEMENTS = new Set(['factory-header', 'factory-floor', 'link-button-list', 'outcomes-overview']);
 
 /**
  * Reports whether an element loads its declared sources on its own.
@@ -98,7 +97,7 @@ export function elementLoadsSourcesAsync(name) {
   return ASYNC_SOURCE_ELEMENTS.has(name);
 }
 
-const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'needs-attention-list', 'campaign-insights', 'campaign-detail', 'campaign-dispatches', 'campaign-reports', 'campaign-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'campaign-activity-shell', 'work-project-view', 'insights-overview', 'factory-header', 'factory-floor', 'campaign-shortcuts', 'outcomes-overview', 'local-database']);
+const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'needs-attention-list', 'campaign-insights', 'campaign-detail', 'campaign-dispatches', 'campaign-reports', 'campaign-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'campaign-activity-shell', 'work-project-view', 'insights-overview', 'factory-header', 'factory-floor', 'link-button-list', 'outcomes-overview', 'local-database']);
 const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy']);
 
 /**
@@ -214,58 +213,6 @@ function renderLegacyFactoryOverview(context) {
       ? renderFactoryHeaderElement(context)
       : renderFactoryFloorElement(context))
   });
-}
-
-/**
- * @param {ElementRenderContext} context
- * @returns {HTMLElement}
- */
-function renderCampaignShortcutsElement(context) {
-  const bindings = bindFactorySources(context.sources, ['campaigns'], context);
-  const scope = createFactoryScope(createFactoryMetrics(bindings));
-  const campaignSource = bindings.campaigns;
-  const items = keyed(
-    campaignSource.rows(),
-    (row) => {
-      const name = stringValue(row['campaign-name']) || stringValue(row.campaign) || 'Campaign';
-      const link = findLink(row, 'campaign-link');
-      return h(
-        'li',
-        { className: 'factory-campaign-shortcut' },
-        renderSafeLink(
-          h('span', { className: 'factory-campaign-shortcut-content' },
-            renderIconSpan('factory-campaign-shortcut-icon', stringValue(row['campaign-icon']) || 'goal', { ariaHidden: true }),
-            h('span', null, name),
-            renderIconSpan('factory-campaign-shortcut-chevron', 'chevron-right', { ariaHidden: true })
-          ),
-          link
-        )
-      );
-    },
-    (row, index) => stringValue(row.campaign) || String(index)
-  );
-  const list = h('ul', { className: 'factory-campaign-shortcuts' }, items);
-  const empty = h('p', { className: 'factory-campaign-shortcuts-empty' }, 'No campaigns are registered.');
-  const root = h(
-    'section',
-    { className: 'factory-campaigns', 'aria-labelledby': 'factory-campaigns-heading' },
-    h('header', null,
-      h('h2', { id: 'factory-campaigns-heading' }, context.title || 'Campaigns'),
-      context.description ? h('p', null, context.description) : null),
-    list,
-    empty
-  );
-  effect(() => {
-    items.items = campaignSource.rows();
-    items.render();
-    const pending = campaignSource.pending();
-    const hasRows = items.items.length > 0;
-    list.hidden = !hasRows;
-    empty.hidden = hasRows || pending;
-    root.toggleAttribute('aria-busy', pending);
-  }, { signal: scope.signal });
-  scope.bind(root);
-  return root;
 }
 
 /**
