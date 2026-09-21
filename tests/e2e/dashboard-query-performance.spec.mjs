@@ -11,6 +11,7 @@ import {
   deployedProxyTarget,
   queryPerformanceMarkdown,
 } from "./dashboard-query-performance-helpers.mjs";
+import { dashboardPageSourceNames } from "../../dashboard/site/src/dashboard-chunks.js";
 
 const outputDirectory = resolve("test-results/dashboard-query-performance");
 const siteRoot = resolve("dashboard/site");
@@ -30,6 +31,10 @@ const dashboardContext = {
   queries: dashboardDocument.queries,
   views: dashboardDocument.views ?? [],
 };
+const overviewSourceNames = dashboardPageSourceNames(
+  { dashboard: dashboardDocument },
+  "overview",
+);
 
 async function serveDashboard(request, response) {
   const requestUrl = new URL(request.url || "/", "http://127.0.0.1");
@@ -99,8 +104,24 @@ test("benchmarks every dashboard query against settled deployed data", async ({ 
   const browserErrors = [];
   const failedRequests = [];
   const succeededRequests = new WeakSet();
+  let resolveOverviewWorkerMetrics;
+  let rejectOverviewWorkerMetrics;
+  const overviewWorkerMetrics = new Promise((resolvePromise, rejectPromise) => {
+    resolveOverviewWorkerMetrics = resolvePromise;
+    rejectOverviewWorkerMetrics = rejectPromise;
+  });
   page.on("console", (message) => {
     if (message.type() === "error") browserErrors.push(message.text());
+    if (message.type() !== "debug") return;
+    void Promise.all(message.args().map((argument) => argument.jsonValue()))
+      .then(([prefix, label, detail]) => {
+        if (prefix === "[cao:data:performance]"
+            && label === "page query"
+            && detail?.viewId === "overview-performance") {
+          resolveOverviewWorkerMetrics(detail);
+        }
+      })
+      .catch(rejectOverviewWorkerMetrics);
   });
   page.on("pageerror", (error) => browserErrors.push(error.message));
   page.on("requestfailed", (request) => {
@@ -131,8 +152,15 @@ test("benchmarks every dashboard query against settled deployed data", async ({ 
   });
 
   try {
-    await page.goto(dashboardUrl, { waitUntil: "domcontentloaded" });
+    const benchmarkUrl = new URL(dashboardUrl);
+    benchmarkUrl.searchParams.set("debug", "data:performance");
+    benchmarkUrl.hash = "page-overview";
+    await page.goto(benchmarkUrl.href, { waitUntil: "domcontentloaded" });
     await expect(page.locator(".dashboard-root")).toBeVisible({ timeout: 120_000 });
+    await expect(page.locator(".dashboard-root")).not.toHaveAttribute("aria-busy", "true", {
+      timeout: 120_000,
+    });
+    const initialOverviewReadyMs = await page.evaluate(() => performance.now());
     await page.waitForFunction(() => {
       const events = window.__dashboardPerformanceEvents ?? [];
       return events.some(({ detail }) => detail?.kind === "refresh" && detail?.status === "completed");
@@ -201,13 +229,46 @@ test("benchmarks every dashboard query against settled deployed data", async ({ 
       }
       return timings;
     }, { context: dashboardContext, chunkSize: QUERY_CHUNK_SIZE });
+    const overviewRequest = await page.evaluate(async ({ context, sourceNames }) => {
+      const { loadCanonicalDashboardPage } = await import("./src/data-processor.js");
+      const startedAt = performance.now();
+      const sources = await loadCanonicalDashboardPage(
+        sourceNames,
+        context,
+        undefined,
+        { pageId: "overview", viewId: "overview-performance" },
+      );
+      return {
+        requestMs: Math.round((performance.now() - startedAt) * 100) / 100,
+        returnedRows: Object.fromEntries(
+          Object.entries(sources).map(([name, source]) => [name, source.rows.length]),
+        ),
+      };
+    }, { context: dashboardContext, sourceNames: overviewSourceNames });
+    const worker = await Promise.race([
+      overviewWorkerMetrics,
+      new Promise((_, rejectPromise) => {
+        setTimeout(() => rejectPromise(new Error("Overview worker metrics were not emitted.")), 5_000);
+      }),
+    ]);
+    const slowestSources = results
+      .filter(({ query }) => overviewSourceNames.includes(query))
+      .sort((left, right) => right.firstChunkMs - left.firstChunkMs)
+      .slice(0, 5);
 
     const report = {
       generatedAt: new Date().toISOString(),
       dashboardUrl: deployedDashboardUrl,
-      methodology: "Fresh Chromium profile running the checkout's dashboard and query worker; proxy current deployed data; wait for refresh completion and two animation frames; measure a 25-row first chunk, one continuation chunk when present, and one unpaginated fill iteration.",
+      methodology: "Fresh Chromium profile running the checkout's dashboard and query worker; proxy current deployed data; measure initial Overview readiness, wait for refresh completion and two animation frames, profile the settled Overview request by worker phase, then measure a 25-row first chunk, one continuation chunk when present, and one unpaginated fill iteration.",
       chunkSize: QUERY_CHUNK_SIZE,
       populateMs: Math.round(populateMs * 100) / 100,
+      overview: {
+        initialReadyMs: Math.round(initialOverviewReadyMs * 100) / 100,
+        requestMs: overviewRequest.requestMs,
+        worker,
+        returnedRows: overviewRequest.returnedRows,
+        slowestSources,
+      },
       queries: results,
     };
     const jsonPath = resolve(outputDirectory, "summary.json");

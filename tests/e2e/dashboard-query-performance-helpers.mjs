@@ -24,9 +24,59 @@ export function summarizeQueryTiming({ name, firstChunkMs, continuationChunkMs, 
   };
 }
 
+export function overviewPhaseBreakdown(overview) {
+  const worker = overview.worker;
+  const phases = [
+    { phase: "IndexedDB reads", durationMs: worker.databaseMs },
+    {
+      phase: "Canonical projection",
+      durationMs: worker.projectionMs,
+    },
+    {
+      phase: "Declarative queries",
+      durationMs: Math.max(0, worker.queryMs - worker.projectionMs),
+    },
+    {
+      phase: "Worker messaging",
+      durationMs: Math.max(0, overview.requestMs - worker.totalMs),
+    },
+  ].map((phase) => ({
+    ...phase,
+    durationMs: roundMilliseconds(phase.durationMs),
+    percent: overview.requestMs > 0
+      ? roundMilliseconds(phase.durationMs / overview.requestMs * 100)
+      : 0,
+  }));
+  return phases.sort((left, right) => right.durationMs - left.durationMs);
+}
+
 export function queryPerformanceMarkdown(report) {
+  const overviewPhases = overviewPhaseBreakdown(report.overview);
   const lines = [
     `Population time: **${report.populateMs.toFixed(2)} ms**`,
+    "",
+    "### Overview critical path",
+    "",
+    `Initial Overview ready: **${report.overview.initialReadyMs.toFixed(2)} ms**`,
+    "",
+    `Settled deployed-data query: **${report.overview.requestMs.toFixed(2)} ms** `
+      + `(${report.overview.worker.recordsRead.toLocaleString("en-US")} records read)`,
+    "",
+    "| Phase | Duration (ms) | Share |",
+    "|---|---:|---:|",
+    ...overviewPhases.map((phase) =>
+      `| ${phase.phase} | ${phase.durationMs.toFixed(2)} | ${phase.percent.toFixed(2)}% |`
+    ),
+    "",
+    "Slowest standalone Overview sources:",
+    "",
+    "| Source | First result (ms) | Rows |",
+    "|---|---:|---:|",
+    ...report.overview.slowestSources.map((source) =>
+      `| \`${source.query}\` | ${source.firstChunkMs.toFixed(2)} | ${source.rows} |`
+    ),
+    "",
+    "### All dashboard queries",
     "",
     `Chunk size: **${report.chunkSize} rows**`,
     "",

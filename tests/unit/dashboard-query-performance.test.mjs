@@ -5,6 +5,7 @@ import config from "../playwright/configs/dashboard-query-performance.config.mjs
 import {
   QUERY_CHUNK_SIZE,
   deployedProxyTarget,
+  overviewPhaseBreakdown,
   queryPerformanceMarkdown,
   summarizeQueryTiming,
 } from "../e2e/dashboard-query-performance-helpers.mjs";
@@ -67,6 +68,22 @@ test("dashboard query Markdown keeps unpaginated results explicit", () => {
   const markdown = queryPerformanceMarkdown({
     populateMs: 123.45,
     chunkSize: 25,
+    overview: {
+      initialReadyMs: 350.25,
+      requestMs: 100,
+      worker: {
+        databaseMs: 20,
+        projectionMs: 30,
+        queryMs: 70,
+        totalMs: 90,
+        recordsRead: 1234,
+      },
+      slowestSources: [{
+        query: "overview-outcome-summary",
+        rows: 1,
+        firstChunkMs: 75,
+      }],
+    },
     queries: [{
       query: "repositories",
       rows: 4,
@@ -77,5 +94,26 @@ test("dashboard query Markdown keeps unpaginated results explicit", () => {
     }],
   });
   assert.match(markdown, /Population time: \*\*123\.45 ms\*\*/);
+  assert.match(markdown, /Initial Overview ready: \*\*350\.25 ms\*\*/);
+  assert.match(markdown, /Settled deployed-data query: \*\*100\.00 ms\*\* \(1,234 records read\)/);
+  assert.match(markdown, /\| Declarative queries \| 40\.00 \| 40\.00% \|/);
+  assert.match(markdown, /\| `overview-outcome-summary` \| 75\.00 \| 1 \|/);
   assert.match(markdown, /\n\| `repositories` \| 4 \| 1 \| 2\.50 \| — \| 2\.75 \|\n/);
+});
+
+test("overview phase breakdown attributes worker and messaging time", () => {
+  assert.deepEqual(overviewPhaseBreakdown({
+    requestMs: 100,
+    worker: {
+      databaseMs: 20,
+      projectionMs: 30,
+      queryMs: 70,
+      totalMs: 90,
+    },
+  }), [
+    { phase: "Declarative queries", durationMs: 40, percent: 40 },
+    { phase: "Canonical projection", durationMs: 30, percent: 30 },
+    { phase: "IndexedDB reads", durationMs: 20, percent: 20 },
+    { phase: "Worker messaging", durationMs: 10, percent: 10 },
+  ]);
 });
