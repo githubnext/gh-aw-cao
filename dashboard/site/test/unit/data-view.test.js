@@ -617,6 +617,42 @@ describe('data view renderer', () => {
       .toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/42');
   });
 
+  it('colors attention-signal icons from their declared tone', () => {
+    const rendered = renderDataView('list', {
+      pageId: 'notifications',
+      title: 'Notifications',
+      sourceName: 'overview-needs-attention',
+      view: {
+        mark: 'list',
+        list: { style: 'entity-cards', card: 'attention-signal' },
+        encoding: { columns: [{ field: 'title' }] }
+      },
+      rows: [
+        { title: 'Failed workflow', tone: 'critical' },
+        { title: 'Review output', tone: 'action' }
+      ],
+      cardTemplates: {
+        'attention-signal': {
+          icon: 'issue-opened',
+          status: { field: 'tone' },
+          title: { field: 'title' },
+          labels: [],
+          details: []
+        }
+      },
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    expect(rendered?.querySelector('.entity-card-list-status-danger .octicon-x-circle-fill')).not.toBeNull();
+    expect(rendered?.querySelector('.entity-card-list-status-accent .octicon-eye')).not.toBeNull();
+  });
+
   it('keeps a list action available when its source is unavailable', () => {
     setDeclaredCliActions([{
       id: 'upgrade-repository',

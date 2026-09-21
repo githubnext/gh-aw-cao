@@ -248,6 +248,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .entity-card-list-status-success { color: var(--success); }
 .entity-card-list-status-danger { color: var(--danger); }
 .entity-card-list-status-attention { color: var(--attention); }
+.entity-card-list-status-accent { color: var(--accent); }
 .entity-card-list-status-muted { color: var(--cancelled); }
 .issue-list-labels .entity-card-list-ref, .ref-label { max-width: 240px; border-color: var(--accent-muted); background: var(--accent-muted); color: var(--accent); font-family: var(--font-mono, ui-monospace, monospace); font-size: .6875rem; font-weight: 400; }
 .ref-label { display: inline-block; padding: 0 7px; border: 1px solid var(--accent-muted); border-radius: 999px; line-height: 18px; }
@@ -2132,6 +2133,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .dashboard-root.dashboard-full-view-scrolled .org-sidebar { display: none; }
 }
 @media (max-width: 700px) {
+  .dashboard-page.notifications-page > .filter-bar { display: none; }
   body, .dashboard-root { font-size: 1rem; }
   .campaign-tabs { min-height: 0; display: grid; gap: 0; padding-top: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
   .campaign-tabs a { min-height: 44px; padding: 10px 12px; border-radius: 0; background: transparent; font-size: .875rem; }

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
+const dashboardDocument = JSON.parse(readFileSync(join(siteRoot, 'dashboard.json'), 'utf8'));
 
 test.beforeEach(async ({ page, context }) => {
   await context.route('http://dashboard.test/**', async (route) => {
@@ -64,6 +65,55 @@ test('mobile title bar keeps the dashboard subtitle adjacent to the page title',
     return subtitle.top - title.bottom;
   });
   expect(titleGap).toBeLessThanOrEqual(adjacentTitleGapTolerancePx);
+});
+
+test('notification filters and view controls are hidden on mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(async ({ documentModel, presenterModuleUrl }) => {
+    const { renderDashboard } = await import(presenterModuleUrl);
+    document.querySelector('#root')?.append(renderDashboard({
+      document: documentModel,
+      sources: {
+        'overview-needs-attention': {
+          source: 'overview-needs-attention',
+          rows: [{
+            title: 'Failed workflow',
+            reason: 'Two runs failed.',
+            tone: 'critical'
+          }],
+          metadata: {
+            'source-id': 'fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-20T00:00:00Z',
+            'retrieved-at': '2026-09-20T00:00:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'available'
+          }
+        }
+      }
+    }));
+  }, {
+    documentModel: {
+      'language-version': dashboardDocument['language-version'],
+      dashboard: {
+        id: 'notifications-mobile',
+        title: 'Notifications',
+        'card-templates': dashboardDocument.dashboard['card-templates'],
+        pages: [dashboardDocument.dashboard.pages.find(
+          /** @param {{ id?: string }} page */
+          (page) => page.id === 'notifications'
+        )]
+      }
+    },
+    presenterModuleUrl: 'http://dashboard.test/src/presenter.js'
+  });
+
+  const notifications = page.locator('[data-page-id="notifications"]');
+  await expect(notifications).toHaveClass(/notifications-page/);
+  await expect(notifications.locator(':scope > .filter-bar')).toBeHidden();
+  await expect(notifications.locator('.view-mode-control')).toBeHidden();
+  await expect(notifications.locator('.entity-card-list-status-danger .octicon-x-circle-fill')).toBeVisible();
 });
 
 test('notifications move in at the lower right and center on mobile', async ({ page }) => {

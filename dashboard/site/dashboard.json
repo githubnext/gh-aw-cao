@@ -147,6 +147,7 @@
         "id": "attention-signal",
         "icon": "issue-opened",
         "icon-field": "icon",
+        "status": { "field": "tone" },
         "title": { "field": "title", "title": "Signal" },
         "subtitle": { "field": "reason", "title": "Reason" },
         "labels": [{ "field": "kind", "title": "Kind", "display": "label" }],
@@ -9624,6 +9625,7 @@
       {
         "id": "notifications",
         "kind": "custom",
+        "class-name": "notifications-page",
         "title": "Notifications",
         "navigation-label": "Notifications",
         "icon": "bell",
