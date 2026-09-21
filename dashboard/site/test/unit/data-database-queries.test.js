@@ -472,7 +472,10 @@ describe('canonical view sources', () => {
   it('projects run records and MCP calls through declarative canonical queries', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
 
-    const projected = await queryCanonicalViewSources(indexedDB, sources, ['tools', 'mcp-calls']);
+    const projected = await queryCanonicalViewSources(indexedDB, {
+      ...sources,
+      'mcp-calls': { rows: [], metadata }
+    }, ['tools', 'mcp-calls']);
 
     expect(projected.tools).toMatchObject({
       source: 'tools',

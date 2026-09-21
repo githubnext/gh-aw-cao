@@ -8,6 +8,7 @@ import {
   readTransactions
 } from '../storage/indexeddb.js';
 import {
+  DASHBOARD_QUERY_LIMITS,
   dashboardQueryDefects,
   dashboardQueryIndex,
   executeDashboardQueries,
@@ -82,11 +83,28 @@ function namedSources(sources) {
 function executeDatabaseQuery(queryName, inputs, sources, metadataSource) {
   const definition = databaseQueryIndex.get(queryName);
   if (!definition) throw new Error(`Missing database query: ${queryName}`);
-  const result = executeDashboardQueries([definition], inputs, [queryName])[queryName];
-  const failed = result.metadata.availability === 'unavailable';
+  const primary = inputs[definition.from];
+  const chunkSize = DASHBOARD_QUERY_LIMITS['max-output-rows'];
+  const chunks = primary?.rows.length > chunkSize
+    ? Array.from(
+        { length: Math.ceil(primary.rows.length / chunkSize) },
+        (_, index) => primary.rows.slice(index * chunkSize, (index + 1) * chunkSize)
+      )
+    : [primary?.rows ?? []];
+  const results = chunks.map((rows) => executeDashboardQueries(
+    [definition],
+    primary ? { ...inputs, [definition.from]: { ...primary, rows } } : inputs,
+    [queryName]
+  )[queryName]);
+  const failed = results.find((result) => result.metadata.availability === 'unavailable');
+  const result = failed ?? {
+    ...results[0],
+    rows: results.flatMap((source) => source.rows)
+  };
+  const unavailable = result.metadata.availability === 'unavailable';
   return /** @type {import('../../presenter.js').LogicalSourceInput} */ ({
     ...result,
-    metadata: failed
+    metadata: unavailable
       ? result.metadata
       : {
           ...queryMetadata(sources, metadataSource, queryName, true),
@@ -288,7 +306,9 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
   const result = {};
   for (const name of requested) {
     const logical = /** @type {import('../../presenter.js').LogicalSourceInput | undefined} */ (sources[name]);
-    if (logical && !DATABASE_TABLE_SOURCES.has(name)) {
+    if (logical
+        && !DATABASE_TABLE_SOURCES.has(name)
+        && (!databaseQueryIndex.has(name) || logical.rows.length > 0)) {
       result[name] = logical;
       continue;
     }
