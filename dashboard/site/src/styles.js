@@ -2150,6 +2150,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .source-refresh-error { align-items: flex-start; flex-direction: column; }
   .timeline-chart-axis span:not(:first-child):not(:last-child):nth-child(even) { display: none; }
   .horizontal-bar-chart-row { grid-template-columns: minmax(0, 1fr) minmax(56px, 32%) auto; gap: 6px; }
+  /* Flip only the clipping container so mobile ellipses drop the prefix; the inner bdi preserves LTR path order. */
   .horizontal-bar-chart-label { direction: rtl; }
   .horizontal-bar-chart-label-text { direction: ltr; unicode-bidi: isolate; }
   :is(.mode-badge, .mode-indicator) .octicon { display: none; }

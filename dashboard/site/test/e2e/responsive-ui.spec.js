@@ -91,6 +91,9 @@ test('notifications move in at the lower right and center on mobile', async ({ p
 });
 
 test('mobile horizontal bar labels preserve readable suffixes', async ({ page }) => {
+  const firstWorkflowLabel = '.github/workflows/extremely-long-dependabot-update-planner.md';
+  const secondWorkflowLabel = '.github/workflows/extremely-long-maintenance-compiler-security.md';
+  const expectedVisibleSuffix = firstWorkflowLabel.split('-').at(-1);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.setContent(`
     <style id="dashboard-styles"></style>
@@ -100,8 +103,8 @@ test('mobile horizontal bar labels preserve readable suffixes', async ({ page })
       import { renderChartWidget } from 'http://dashboard.test/src/components/chart-elements.js';
       document.querySelector('#dashboard-styles').textContent = getPrimerStyles();
       document.querySelector('.chart-stage').append(renderChartWidget('horizontal-bar', [
-        { x: '.github/workflows/extremely-long-dependabot-update-planner.md', y: 27 },
-        { x: '.github/workflows/extremely-long-maintenance-compiler-security.md', y: 13 }
+        { x: ${JSON.stringify(firstWorkflowLabel)}, y: 27 },
+        { x: ${JSON.stringify(secondWorkflowLabel)}, y: 13 }
       ], [{ name: 'value', className: 'chart-series-1' }]));
     </script>
   `);
@@ -111,14 +114,13 @@ test('mobile horizontal bar labels preserve readable suffixes', async ({ page })
   await expect(label).toHaveCSS('direction', 'rtl');
   await expect(label.locator('.horizontal-bar-chart-label-text')).toHaveCSS('direction', 'ltr');
 
-  const labelRendering = await firstRow.evaluate((row) => {
+  const labelRendering = await firstRow.evaluate((row, suffix) => {
     const labelElement = row.querySelector('.horizontal-bar-chart-label');
     const textElement = row.querySelector('.horizontal-bar-chart-label-text');
     const textNode = textElement?.firstChild;
     if (!labelElement || typeof labelElement.getBoundingClientRect !== 'function' || textNode?.nodeType !== Node.TEXT_NODE) {
       throw new Error('Expected horizontal bar label text.');
     }
-    const suffix = 'planner.md';
     const text = textNode.textContent ?? '';
     const suffixStart = text.lastIndexOf(suffix);
     if (suffixStart < 0) throw new Error('Expected label suffix.');
@@ -139,7 +141,7 @@ test('mobile horizontal bar labels preserve readable suffixes', async ({ page })
       labelLeft: labelBounds.left,
       labelRight: labelBounds.right
     };
-  });
+  }, expectedVisibleSuffix);
 
   expect(labelRendering.overflowed).toBe(true);
   expect(labelRendering.prefixRight).toBeLessThanOrEqual(labelRendering.labelLeft);
