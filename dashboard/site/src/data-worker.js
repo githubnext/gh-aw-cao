@@ -1,7 +1,7 @@
 import { tidy } from './data-operations.js';
 import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
-import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
+import { queryDashboardSourceObservations } from './data/queries/ingestion.js';
 import {
   ingestCachedGhAwJsonl,
   ingestDashboardSources,
@@ -10,10 +10,9 @@ import {
   isNormalizedJsonCurrent
 } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
-import { queryCanonicalViewSources, queryNativeCountSources } from './data/queries/view-sources.js';
+import { queryDatabaseSources, queryIndexedDatabaseSources } from './data/queries/database.js';
 import { queryDailyOverviewAggregateSources } from './data/queries/daily-aggregate-fast-path.js';
 import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-compiler.js';
-import { createDashboardQueryMemoization, dashboardQueryMemoizationKey } from './data/queries/memoization.js';
 import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { deriveDataHealthCalloutSources } from './data-health.js';
@@ -49,7 +48,6 @@ async function* responseChunks(body) {
 /** @type {{ logicalSources: Record<string, import('./presenter.js').LogicalSourceInput>, revision: number } | null} */
 let liveDashboard = null;
 let runPhaseOnly = false;
-const dashboardQueryMemoization = createDashboardQueryMemoization();
 /**
  * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, emitted: boolean, pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' } }} DashboardSubscription
  */
@@ -91,7 +89,7 @@ function requestedSourceNames(sourceNames) {
   return new Set(sourceNames);
 }
 
-const RUN_PHASE_CANONICAL_SOURCES = new Set(['campaigns', 'repositories', 'workflows', 'runs']);
+const RUN_PHASE_DATABASE_SOURCES = new Set(['campaigns', 'repositories', 'workflows', 'runs']);
 
 /** @param {{ sourceNames: string[], context: ReturnType<typeof dashboardContext> }} subscription */
 function isRunPhaseSubscription(subscription) {
@@ -101,7 +99,7 @@ function isRunPhaseSubscription(subscription) {
     .filter((name) => typeof name === 'string'));
   return resolveDashboardQuerySources(subscription.context.queries, subscription.sourceNames)
     .filter((name) => !queryNames.has(name))
-    .every((name) => RUN_PHASE_CANONICAL_SOURCES.has(name));
+    .every((name) => RUN_PHASE_DATABASE_SOURCES.has(name));
 }
 
 /**
@@ -123,7 +121,6 @@ function pageScopedSources(sources, requested) {
  * @param {{ filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' }} [queryContext]
  * @param {string} [viewId]
  * @param {typeof liveDashboard} [dashboard]
- * @param {string} [cacheId]
  */
 async function queryLiveDashboard(
   requested,
@@ -135,25 +132,12 @@ async function queryLiveDashboard(
   routeParameters,
   queryContext,
   viewId,
-  dashboard = liveDashboard,
-  cacheId = undefined
+  dashboard = liveDashboard
 ) {
   dashboard ??= await loadActiveDashboard();
   if (signal?.aborted) throw new DashboardQueryCancelledError('dashboard queries were cancelled', 'aborted');
-  const key = dashboardQueryKey(
-    requested,
-    context,
-    requestContext,
-    pagination,
-    pageId,
-    routeParameters,
-    queryContext,
-    viewId,
-    cacheId
-  );
-  return dashboardQueryMemoization.get(dashboard.revision, key, async () => {
-    const startedAt = monotonicNow();
-    const nativeSources = await queryNativeCountSources(
+  const startedAt = monotonicNow();
+    const nativeSources = await queryIndexedDatabaseSources(
       indexedDB,
       dashboard.logicalSources,
       context.queries,
@@ -177,17 +161,17 @@ async function queryLiveDashboard(
       nonNativeRequested.filter((name) => !dailyAggregateSourceNames.has(name))
     );
     /** @type {{ databaseMs: number, projectionMs: number, totalMs: number, recordsRead: number, stores: string[] } | undefined} */
-    let canonicalMetrics;
-    const canonicalPayload = await queryCanonicalViewSources(
+    let databaseMetrics;
+    const databasePayload = await queryDatabaseSources(
       indexedDB,
       dashboard.logicalSources,
       required,
-      { onMetrics: (metrics) => { canonicalMetrics = metrics; } }
+      { onMetrics: (metrics) => { databaseMetrics = metrics; } }
     );
     const healthPayload = required.some((name) => (
       name === 'data-health-collections' || name === 'data-health-coverage'
     ))
-      ? deriveDataHealthCalloutSources(canonicalPayload)
+      ? deriveDataHealthCalloutSources(databasePayload)
       : {};
     const page = pageId
       ? context.pages.find((candidate) => candidate?.id === pageId)
@@ -196,7 +180,7 @@ async function queryLiveDashboard(
       ? compileDashboardViewPayloadQueries(page, pageId, {
           routeParameters,
           queryContext,
-          evaluatedAt: queryContext?.timeWindow?.end ?? latestCanonicalInstant(canonicalPayload),
+          evaluatedAt: queryContext?.timeWindow?.end ?? latestCanonicalInstant(databasePayload),
           queries: context.queries,
           views: context.views,
           viewId,
@@ -208,13 +192,13 @@ async function queryLiveDashboard(
       !replacedSources.has(name) && !nativeSourceNames.has(name) && !dailyAggregateSourceNames.has(name)
     )));
     const querySources = {
-      ...canonicalPayload,
+      ...databasePayload,
       ...healthPayload,
       ...nativeSources,
       ...dailyAggregateSources,
       ...executeDashboardQueries(
         context.queries,
-        { ...canonicalPayload, ...healthPayload },
+        { ...databasePayload, ...healthPayload },
         directRequests,
         { signal }
       )
@@ -230,56 +214,20 @@ async function queryLiveDashboard(
       continuationRevision(context.queries, dashboard.revision)
     );
     const totalMs = monotonicNow() - startedAt;
-    const databaseMs = canonicalMetrics?.databaseMs ?? 0;
+    const databaseMs = databaseMetrics?.databaseMs ?? 0;
     debugPerformance('page query', {
       pageId: pageId ?? null,
       viewId: viewId ?? null,
       databaseMs,
       queryMs: Math.max(0, totalMs - databaseMs),
-      projectionMs: canonicalMetrics?.projectionMs ?? 0,
+      projectionMs: databaseMetrics?.projectionMs ?? 0,
       totalMs,
-      recordsRead: canonicalMetrics?.recordsRead ?? 0,
-      stores: canonicalMetrics?.stores ?? [],
+      recordsRead: databaseMetrics?.recordsRead ?? 0,
+      stores: databaseMetrics?.stores ?? [],
       requestedSources: [...requested],
       returnedRows: Object.fromEntries(Object.entries(response).map(([name, source]) => [name, source.rows.length]))
     });
-    return response;
-  });
-}
-
-/**
- * @param {Set<string>} requested
- * @param {ReturnType<typeof dashboardContext>} context
- * @param {{ githubUrlBase?: string, dashboardRepository?: string | null }} requestContext
- * @param {Record<string, { limit: number, continuationToken?: string }>} pagination
- * @param {string | undefined} pageId
- * @param {Record<string, string> | undefined} routeParameters
- * @param {DashboardSubscription['queryContext']} queryContext
- * @param {string | undefined} viewId
- * @param {string | undefined} cacheId
- */
-function dashboardQueryKey(
-  requested,
-  context,
-  requestContext,
-  pagination,
-  pageId,
-  routeParameters,
-  queryContext,
-  viewId,
-  cacheId
-) {
-  return dashboardQueryMemoizationKey([
-    cacheId,
-    [...requested].sort(),
-    context,
-    requestContext,
-    pagination,
-    pageId,
-    routeParameters,
-    queryContext,
-    viewId
-  ]);
+  return response;
 }
 
 /** @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources */
@@ -347,8 +295,7 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
             subscription.routeParameters,
             subscription.queryContext,
             subscription.viewId,
-            dashboard,
-            id
+            dashboard
           );
           if (dashboardSubscriptions.get(id) === subscription && liveDashboard === dashboard) {
             subscription.emitted = true;
@@ -484,7 +431,7 @@ export function publishedPhasedActivityShards(hashes) {
 }
 
 /**
- * @param {{ id?: unknown, operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, pageId?: unknown, viewId?: unknown, routeParameters?: unknown, queryContext?: unknown }} request
+ * @param {{ id?: unknown, operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, ingest?: unknown, pageId?: unknown, viewId?: unknown, routeParameters?: unknown, queryContext?: unknown }} request
  * @param {AbortSignal} [signal] cancels declarative query execution
  * @returns {unknown}
  */
@@ -833,6 +780,25 @@ export function processDataRequest(request, signal) {
     );
     return querySources;
   }
+  if (request?.operation === 'load-dashboard-query-sources') {
+    if (!request.sources || typeof request.sources !== 'object' || Array.isArray(request.sources)) {
+      throw new TypeError('Dashboard database query requests require a sources object.');
+    }
+    return (async () => {
+      const sources = /** @type {Record<string, unknown>} */ (request.sources);
+      if (request.ingest === true) await ingestDashboardSources(indexedDB, sources);
+      const sourceNames = request.sourceNames === undefined
+        ? Object.keys(sources)
+        : [...requestedSourceNames(request.sourceNames)];
+      const queries = Array.isArray(request.queries) ? request.queries : [];
+      const required = resolveDashboardQuerySources(queries, sourceNames);
+      const database = await queryDatabaseSources(indexedDB, sources, required);
+      return {
+        ...database,
+        ...executeDashboardQueries(queries, database, sourceNames, { signal })
+      };
+    })();
+  }
   if (request?.operation === 'summarize-table-columns') {
     if (!Array.isArray(request.columns)) {
       throw new TypeError('Table summary requests require a columns array.');
@@ -853,7 +819,7 @@ export function processDataRequest(request, signal) {
     if (!request.sources || typeof request.sources !== 'object' || Array.isArray(request.sources)) {
       throw new TypeError('Canonical source requests require a sources object.');
     }
-    const adapted = adaptDashboardSources(/** @type {Record<string, unknown>} */ (request.sources));
+    const adapted = queryDashboardSourceObservations(/** @type {Record<string, unknown>} */ (request.sources));
     return normalize(adapted.observations);
   }
   if (!Array.isArray(request?.data) || !Array.isArray(request?.operators)) {
@@ -900,25 +866,7 @@ if (typeof document === 'undefined' && workerScope) {
         };
         dashboardSubscriptions.set(subscriptionId, subscription);
         if (liveDashboard && event.data.emitCurrent !== false) {
-          const key = dashboardQueryKey(
-            new Set(subscription.sourceNames),
-            subscription.context,
-            subscription.requestContext,
-            subscription.pagination,
-            subscription.pageId,
-            subscription.routeParameters,
-            subscription.queryContext,
-            subscription.viewId,
-            subscriptionId
-          );
-          const cached = dashboardQueryMemoization.peek(key);
-          if (cached) {
-            subscription.emitted = true;
-            subscription.revision = cached.revision;
-            workerScope.postMessage({ subscriptionId, revision: cached.revision, data: cached.value });
-          }
-          if ((!cached || cached.revision !== liveDashboard.revision)
-              && (!runPhaseOnly || isRunPhaseSubscription(subscription))) {
+          if (!runPhaseOnly || isRunPhaseSubscription(subscription)) {
             scheduleDashboardSubscriptions([subscriptionId]);
           }
         }

@@ -1,8 +1,7 @@
 import { IDBFactory } from 'fake-indexeddb';
 import { describe, expect, it } from 'vitest';
 
-import { deriveDataHealthCalloutSources } from '../../src/data-health.js';
-import { queryCanonicalViewSources } from '../../src/data/queries/view-sources.js';
+import { queryDatabaseSources } from '../../src/data/queries/database.js';
 import { replaceCanonicalBatch } from '../../src/data/storage/indexeddb.js';
 
 const observedAt = '2026-09-17T12:00:00.000Z';
@@ -96,12 +95,12 @@ function batch() {
   };
 }
 
-describe('canonical warning source projections', () => {
-  it('returns source-shaped payloads instead of unavailable results', async () => {
+describe('database warning source queries', () => {
+  it('does not synthesize undeclared sources in JavaScript', async () => {
     const indexedDB = new IDBFactory();
     await replaceCanonicalBatch(indexedDB, batch());
 
-    const sources = await queryCanonicalViewSources(indexedDB, {}, [
+    const sources = await queryDatabaseSources(indexedDB, {}, [
       'usage',
       'outcomes',
       'findings',
@@ -116,50 +115,25 @@ describe('canonical warning source projections', () => {
       'safe-output-performance'
     ]);
 
-    expect(Object.keys(sources).sort()).toEqual([
-      'admissions',
-      'detection-observations',
-      'eval-observations',
-      'evals',
-      'experiments',
-      'findings',
-      'graders',
-      'outcomes',
-      'safe-output-performance',
-      'security-findings',
+    expect(Object.keys(sources)).toEqual([
       'usage',
-      'work-items'
+      'outcomes',
+      'findings',
+      'security-findings',
+      'detection-observations',
+      'work-items',
+      'graders',
+      'experiments',
+      'evals',
+      'eval-observations',
+      'admissions',
+      'safe-output-performance'
     ]);
-    expect(sources.usage.rows[0]).toMatchObject({
-      aic: 3.5,
-      'input-tokens': 100,
-      'output-tokens': 20
-    });
-    expect(sources.outcomes.rows[0]).toMatchObject({
-      campaign: 'sample',
-      'outcome-category': 'issue',
-      'outcome-number': 7
-    });
     expect(sources.findings.rows).toHaveLength(1);
-    expect(sources['security-findings'].rows).toHaveLength(1);
-    expect(sources['detection-observations'].rows).toHaveLength(1);
-    expect(sources['safe-output-performance'].rows[0]).toMatchObject({
-      'safe-output-kind': 'create_issue',
-      'safe-output-count': 1
-    });
-    expect(sources['work-items'].rows[0]['lifecycle-state']).toBe('review');
-    expect(sources.graders.rows).toHaveLength(1);
-    expect(sources.experiments.rows).toHaveLength(1);
-    expect(sources.evals.metadata.availability).toBe('empty');
-    expect(sources['eval-observations'].metadata.availability).toBe('empty');
-    expect(sources.admissions.metadata.availability).toBe('empty');
-
-    for (const source of Object.values(sources)) {
-      expect(source.metadata.availability).not.toBe('unavailable');
+    expect(sources.findings.metadata.availability).not.toBe('unavailable');
+    for (const name of Object.keys(sources).filter((name) => name !== 'findings')) {
+      expect(sources[name].rows).toEqual([]);
+      expect(sources[name].metadata.availability).toBe('empty');
     }
-
-    const health = deriveDataHealthCalloutSources(sources);
-    expect(health['data-health-collections'].metadata.availability).toBe('available');
-    expect(health['data-health-coverage'].metadata.availability).toBe('available');
   });
 });

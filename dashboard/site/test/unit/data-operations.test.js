@@ -19,6 +19,40 @@ describe('dashboard data operations', () => {
     ]);
   });
 
+  it('normalizes suffixes and positive integers through declarative computes', () => {
+    expect(tidy([
+      { path: '.github/workflows/example.lock.yml', attempt: '2' },
+      { path: '.github/workflows/example.md', attempt: 0 }
+    ], [{
+      op: 'compute',
+      values: [
+        {
+          as: 'source-path',
+          function: 'replace-suffix',
+          args: [{ field: 'path' }, { value: '.lock.yml' }, { value: '.md' }]
+        },
+        {
+          as: 'normalized-attempt',
+          function: 'positive-integer',
+          args: [{ field: 'attempt' }, { value: 1 }]
+        }
+      ]
+    }])).toEqual([
+      {
+        path: '.github/workflows/example.lock.yml',
+        attempt: '2',
+        'source-path': '.github/workflows/example.md',
+        'normalized-attempt': 2
+      },
+      {
+        path: '.github/workflows/example.md',
+        attempt: 0,
+        'source-path': '.github/workflows/example.md',
+        'normalized-attempt': 1
+      }
+    ]);
+  });
+
   it('summarizes groups and computes means without mutating its input', () => {
     expect(tidy(rows, [{
       op: 'summarize',

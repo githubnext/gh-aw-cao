@@ -51,8 +51,8 @@ describe("live Dashboard Language sources", () => {
     expect(preview).not.toContain('./source-cache.js');
     expect(preview).not.toContain("Showing cached data…");
     expect(preview).not.toContain("Showing cached data while loading the latest dashboard data…");
-    expect(preview).toContain('loadCanonicalViewSources(window.indexedDB, sources, {');
-    expect(preview).toContain('storage: navigator.storage');
+    expect(preview).toContain('loadDashboardQuerySources(sources, {');
+    expect(preview).not.toContain('window.indexedDB');
     expect(preview).toContain('has("fixtures")');
     expect(preview).toContain("Unable to load live dashboard data:");
     expect(preview).toContain('window.addEventListener("dashboard-preview-update"');

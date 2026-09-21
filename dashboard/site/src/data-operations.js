@@ -38,6 +38,7 @@ export const COMPUTE_FUNCTION_ARITY = {
   upper: [1, 1],
   'title-case': [1, 1],
   trim: [1, 1],
+  'replace-suffix': [3, 3],
   'url-encode': [1, 1],
   'date-day': [1, 1],
   'calendar-week-point': [3, 3],
@@ -49,6 +50,7 @@ export const COMPUTE_FUNCTION_ARITY = {
   'format-percent': [1, 1],
   'failure-streak-point': [3, 3],
   number: [1, 1],
+  'positive-integer': [2, 2],
   sum: [2, 8],
   difference: [2, 2],
   product: [2, 8],
@@ -57,11 +59,11 @@ export const COMPUTE_FUNCTION_ARITY = {
 
 /** Computed-field functions whose result is always text or null. */
 export const TEXT_COMPUTE_FUNCTIONS = [
-  'concat', 'lower', 'upper', 'title-case', 'trim', 'url-encode', 'date-day', 'calendar-week-point', 'format-count', 'format-percent', 'failure-streak-point'
+  'concat', 'lower', 'upper', 'title-case', 'trim', 'replace-suffix', 'url-encode', 'date-day', 'calendar-week-point', 'format-count', 'format-percent', 'failure-streak-point'
 ];
 
 /** Computed-field functions whose result is always a finite number or null. */
-export const NUMERIC_COMPUTE_FUNCTIONS = ['number', 'sum', 'difference', 'product', 'quotient'];
+export const NUMERIC_COMPUTE_FUNCTIONS = ['number', 'positive-integer', 'sum', 'difference', 'product', 'quotient'];
 
 /** Vega regression method names supported without an external model registry. */
 export const PREDICTION_METHODS = ['linear', 'log', 'exp', 'pow', 'quad', 'poly'];
@@ -291,6 +293,13 @@ export function computeValue(row, definition) {
   if (definition.function === 'upper') return textValue(values[0]).toLocaleUpperCase('en');
   if (definition.function === 'title-case') return titleCase(textValue(values[0]));
   if (definition.function === 'trim') return textValue(values[0]).trim();
+  if (definition.function === 'replace-suffix') {
+    const input = textValue(values[0]);
+    const suffix = textValue(values[1]);
+    return suffix && input.endsWith(suffix)
+      ? `${input.slice(0, -suffix.length)}${textValue(values[2])}`
+      : input;
+  }
   if (definition.function === 'url-encode') return encodeURIComponent(textValue(values[0]));
   if (definition.function === 'date-day') {
     const timestamp = parseTimestamp(values[0]);
@@ -330,6 +339,11 @@ export function computeValue(row, definition) {
     return timestamp === null || !run
       ? null
       : JSON.stringify([timestamp, run, failed]);
+  }
+  if (definition.function === 'positive-integer') {
+    const value = numericValue(values[0]);
+    const fallback = numericValue(values[1]);
+    return value !== null && Number.isInteger(value) && value > 0 ? value : fallback;
   }
   const numbers = values.map(numericValue);
   if (numbers.some((value) => value === null)) return null;

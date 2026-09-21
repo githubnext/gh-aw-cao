@@ -63,7 +63,7 @@ class UsageError extends Error {}
 const USAGE = `Usage:
   cao init
   cao add CAMPAIGN [GH_AW_ADD_OPTIONS...]
-  cao update [GH_AW_UPDATE_OPTIONS...]
+  cao update [--pre-releases] [GH_AW_UPDATE_OPTIONS...]
   cao mode (live|preview) CAMPAIGN...
   cao enable CAMPAIGN...
   cao disable CAMPAIGN...
@@ -224,6 +224,7 @@ export async function initializeCaoPolicy({
     if (error?.code !== 'ENOENT') throw error;
   }
   const version = parseGhAwVersion(execute('gh', ['aw', 'version'], { encoding: 'utf8' }));
+  await patchInstalledCaoReleaseCheckouts(await installedCampaignRecords(), process.cwd(), execute);
   await writeJsonAtomically(absolutePath, minimalPolicy(version));
   return { command: 'init', policy: policyPath, 'gh-aw-version': version };
 }
@@ -291,38 +292,324 @@ function campaignSlugFromSpec(spec) {
   return slug;
 }
 
-async function installedCampaignRecords(root = process.cwd()) {
-  const recordsDirectory = path.resolve(root, '.github', 'aw', 'campaigns');
-  let entries;
+function resolvePathWithinRoot(root, destination) {
+  const resolved = path.resolve(root, destination);
+  const canonicalRoot = realpathSync(root);
+  let canonicalPath;
   try {
-    entries = await readdir(recordsDirectory, { withFileTypes: true });
+    canonicalPath = realpathSync(resolved);
   } catch (error) {
-    if (error?.code === 'ENOENT') return [];
-    throw error;
+    if (error?.code !== 'ENOENT') throw error;
+    const missingSegments = [];
+    let existingAncestor = resolved;
+    while (true) {
+      missingSegments.unshift(path.basename(existingAncestor));
+      existingAncestor = path.dirname(existingAncestor);
+      try {
+        canonicalPath = path.join(realpathSync(existingAncestor), ...missingSegments);
+        break;
+      } catch (ancestorError) {
+        if (ancestorError?.code !== 'ENOENT') throw ancestorError;
+      }
+    }
   }
+  const relative = path.relative(canonicalRoot, canonicalPath);
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new Error(`Installed package destination escapes the repository: ${destination}`);
+  }
+  return resolved;
+}
+
+async function installedCampaignRecords(root = process.cwd(), { caoOnly = true } = {}) {
   const records = new Map();
-  for (const entry of entries) {
-    if (entry.isDirectory() || !entry.name.endsWith('.json')) continue;
-    const source = path.join(recordsDirectory, entry.name);
-    let record;
+  for (const directory of ['campaigns', 'packages']) {
+    let recordsDirectory;
+    let entries;
     try {
-      record = JSON.parse(await readFile(source, 'utf8'));
+      recordsDirectory = resolvePathWithinRoot(root, path.join('.github', 'aw', directory));
+      entries = await readdir(recordsDirectory, { withFileTypes: true });
     } catch (error) {
-      if (error instanceof SyntaxError) throw new Error(`${path.relative(root, source)} contains invalid JSON: ${error.message}`);
+      if (error?.code === 'ENOENT') continue;
       throw error;
     }
-    const campaignName = typeof record.campaign === 'string' && record.campaign.trim()
-      ? record.campaign.trim()
-      : typeof record.source === 'string'
-        ? record.source.split('@')[0].trim()
-        : '';
-    if (!campaignName) throw new Error(`${path.relative(root, source)} does not identify an installed campaign`);
-    records.set(campaignName, {
-      campaign: campaignName,
-      source: typeof record.source === 'string' ? record.source : campaignName
-    });
+    for (const entry of entries) {
+      if (entry.isDirectory() || !entry.name.endsWith('.json')) continue;
+      const recordPath = resolvePathWithinRoot(root, path.join(recordsDirectory, entry.name));
+      let record;
+      try {
+        record = JSON.parse(await readFile(recordPath, 'utf8'));
+      } catch (error) {
+        if (error instanceof SyntaxError) throw new Error(`${path.relative(root, recordPath)} contains invalid JSON: ${error.message}`);
+        throw error;
+      }
+      const campaignName = typeof record.package === 'string' && record.package.trim()
+        ? record.package.trim()
+        : typeof record.campaign === 'string' && record.campaign.trim()
+          ? record.campaign.trim()
+          : typeof record.source === 'string'
+            ? record.source.split('@')[0].trim()
+            : '';
+      if (!campaignName || (caoOnly
+        && campaignName !== 'githubnext/gh-aw-cao'
+        && !campaignName.startsWith('githubnext/gh-aw-cao/'))) {
+        continue;
+      }
+      records.set(campaignName, {
+        campaign: campaignName,
+        source: typeof record.source === 'string' ? record.source : campaignName,
+        resolvedCommit: typeof record.resolvedCommit === 'string' && record.resolvedCommit.trim()
+          ? record.resolvedCommit.trim()
+          : typeof record.source === 'string'
+            ? record.source.split('@').at(-1).trim()
+            : '',
+        record,
+        recordPath
+      });
+    }
   }
   return [...records.values()].sort((left, right) => left.campaign.localeCompare(right.campaign));
+}
+
+async function patchCaoReleaseCheckout(workflow, releaseCommit, root = process.cwd()) {
+  if (!/^[0-9a-f]{40}$/i.test(releaseCommit)) {
+    throw new Error(`Installed CAO package record has an invalid resolvedCommit: ${releaseCommit || '(missing)'}`);
+  }
+  const workflowPath = resolvePathWithinRoot(root, path.join('.github', 'workflows', `cao-${workflow}.yml`));
+  let content;
+  try {
+    content = await readFile(workflowPath, 'utf8');
+  } catch (error) {
+    if (error?.code === 'ENOENT') return false;
+    throw error;
+  }
+
+  const stepMarker = `      - name: Checkout trusted ${workflow} source`;
+  const stepStart = content.indexOf(stepMarker);
+  if (stepStart === -1) throw new Error(`${path.relative(root, workflowPath)} is missing its trusted source checkout`);
+  const nextStep = content.indexOf('\n      - name:', stepStart + stepMarker.length);
+  const stepEnd = nextStep === -1 ? content.length : nextStep;
+  const step = content.slice(stepStart, stepEnd);
+  if (!/\n {8}uses: actions\/checkout@/.test(step)) {
+    throw new Error(`${path.relative(root, workflowPath)} trusted source step must use actions/checkout`);
+  }
+
+  const newline = content.includes('\r\n') ? '\r\n' : '\n';
+  const lines = step.split(/\r?\n/);
+  const withIndex = lines.findIndex((line) => line === '        with:');
+  if (withIndex === -1) throw new Error(`${path.relative(root, workflowPath)} trusted source checkout is missing with`);
+  const managedComment = '          # Managed by cao init/update; do not edit this file directly.';
+  const existingCommentIndex = lines.indexOf(managedComment);
+  if (existingCommentIndex !== -1) lines.splice(existingCommentIndex, 1);
+  let repositoryIndex = lines.findIndex((line, index) => index > withIndex && line.startsWith('          repository:'));
+  let refIndex = lines.findIndex((line, index) => index > withIndex && line.startsWith('          ref:'));
+  if (repositoryIndex === -1) {
+    repositoryIndex = withIndex + 1;
+    lines.splice(repositoryIndex, 0, managedComment, '          repository: githubnext/gh-aw-cao');
+    repositoryIndex += 1;
+    if (refIndex !== -1) refIndex += 2;
+  } else {
+    lines.splice(repositoryIndex, 0, managedComment);
+    repositoryIndex += 1;
+    if (refIndex !== -1) refIndex += 1;
+    lines[repositoryIndex] = '          repository: githubnext/gh-aw-cao';
+  }
+  if (refIndex === -1) {
+    lines.splice(repositoryIndex + 1, 0, `          ref: ${releaseCommit}`);
+  } else {
+    lines[refIndex] = `          ref: ${releaseCommit}`;
+  }
+
+  const patched = `${content.slice(0, stepStart)}${lines.join(newline)}${content.slice(stepEnd)}`;
+  if (patched !== content) await writeFile(workflowPath, patched);
+  return path.relative(root, workflowPath).split(path.sep).join('/');
+}
+
+async function refreshOwnershipHashes(records, destinations, root = process.cwd()) {
+  const destinationSet = new Set(destinations);
+  for (const record of records) {
+    if (!Array.isArray(record.record?.files)) continue;
+    let changed = false;
+    for (const file of record.record.files) {
+      if (!destinationSet.has(file?.destination)) continue;
+      const content = await readFile(resolvePathWithinRoot(root, file.destination));
+      file.sha256 = createHash('sha256').update(content).digest('hex');
+      changed = true;
+    }
+    if (changed) await writeJsonAtomically(record.recordPath, record.record);
+  }
+}
+
+function resolveInstalledReleaseCommit(record, execute) {
+  if (/^[0-9a-f]{40}$/i.test(record.resolvedCommit)) return record.resolvedCommit;
+  if (!/^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/.test(record.resolvedCommit)) {
+    throw new Error(`Installed CAO package record has an invalid resolvedCommit: ${record.resolvedCommit || '(missing)'}`);
+  }
+  const commit = execute('gh', [
+    'api',
+    `/repos/githubnext/gh-aw-cao/commits/${record.resolvedCommit}`,
+    '--jq',
+    '.sha'
+  ], { encoding: 'utf8' });
+  if (commit.error || commit.status !== 0) {
+    throw new Error(`Unable to resolve CAO release commit for ${record.resolvedCommit}: ${commandFailureMessage(commit, 'gh api failed')}`);
+  }
+  const sha = String(commit.stdout || '').trim();
+  if (!/^[0-9a-f]{40}$/i.test(sha)) {
+    throw new Error(`CAO release ${record.resolvedCommit} did not resolve to a commit SHA`);
+  }
+  return sha;
+}
+
+async function patchInstalledCaoReleaseCheckouts(records, root = process.cwd(), execute = spawnSync) {
+  const rootRecord = records.find(({ campaign }) => campaign === 'githubnext/gh-aw-cao');
+  const patchedDestinations = [];
+  const releaseCommits = new Map();
+  for (const workflow of ['activity', 'dashboard']) {
+    const record = records.find(({ campaign }) => campaign === `githubnext/gh-aw-cao/${workflow}`) ?? rootRecord;
+    if (record) {
+      let releaseCommit = releaseCommits.get(record.resolvedCommit);
+      if (!releaseCommit) {
+        releaseCommit = resolveInstalledReleaseCommit(record, execute);
+        releaseCommits.set(record.resolvedCommit, releaseCommit);
+      }
+      const destination = await patchCaoReleaseCheckout(workflow, releaseCommit, root);
+      if (destination) patchedDestinations.push(destination);
+    }
+  }
+  await refreshOwnershipHashes(
+    await installedCampaignRecords(root, { caoOnly: false }),
+    patchedDestinations,
+    root
+  );
+}
+
+function installedPackageUpdateTarget(campaign) {
+  return `https://github.com/${campaign}`;
+}
+
+async function prepareInstalledPackageReleaseSource(
+  record,
+  releaseTags,
+  execute,
+  { includePrereleases = false, allowMajor = false } = {}
+) {
+  if (!record.record || !record.recordPath) return undefined;
+  const sourceRef = record.source.split('@').at(-1);
+  const sourceIsCommit = /^[0-9a-f]{40}$/i.test(sourceRef);
+  const sourceIsRelease = /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/.test(sourceRef);
+  if (!sourceIsCommit && !(includePrereleases && sourceIsRelease)) return undefined;
+  if (sourceIsCommit && !/^[0-9a-f]{40}$/i.test(record.resolvedCommit)) {
+    throw new Error(`Installed CAO package record has an invalid resolvedCommit: ${record.resolvedCommit || '(missing)'}`);
+  }
+  let releaseTag = sourceIsRelease ? sourceRef : releaseTags.get(record.resolvedCommit);
+  if (!releaseTag) {
+    const tags = execute('gh', [
+      'api',
+      '--paginate',
+      '/repos/githubnext/gh-aw-cao/tags',
+      '--jq',
+      `.[] | select(.commit.sha == "${record.resolvedCommit}") | .name`
+    ], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+    if (tags.error || tags.status !== 0) {
+      throw new Error(`Unable to resolve CAO tag for ${record.resolvedCommit}: ${commandFailureMessage(tags, 'gh api failed')}`);
+    }
+    const candidates = String(tags.stdout || '').trim().split(/\s+/)
+      .filter((tag) => /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/.test(tag));
+    for (const candidate of candidates) {
+      const prereleaseFilter = includePrereleases ? 'true' : '.prerelease == false';
+      const release = execute('gh', [
+        'api',
+        `/repos/githubnext/gh-aw-cao/releases/tags/${encodeURIComponent(candidate)}`,
+        '--jq',
+        `select(.draft == false and ${prereleaseFilter}) | .tag_name`
+      ], { encoding: 'utf8' });
+      if (!release.error && release.status === 0 && String(release.stdout || '').trim() === candidate) {
+        releaseTag = candidate;
+        break;
+      }
+    }
+    if (!releaseTag) {
+      throw new Error(`No CAO release tag found for ${record.resolvedCommit}`);
+    }
+    releaseTags.set(record.resolvedCommit, releaseTag);
+  }
+  if (includePrereleases) {
+    const releases = execute('gh', [
+      'api',
+      '--paginate',
+      '/repos/githubnext/gh-aw-cao/releases?per_page=100',
+      '--jq',
+      '.[] | select(.draft == false) | .tag_name'
+    ], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+    if (releases.error || releases.status !== 0) {
+      throw new Error(`Unable to list CAO releases: ${commandFailureMessage(releases, 'gh api failed')}`);
+    }
+    const currentMajor = ghAwVersionParts(releaseTag).numbers[0];
+    releaseTag = String(releases.stdout || '').trim().split(/\s+/)
+      .filter((tag) => /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/.test(tag))
+      .filter((tag) => allowMajor || ghAwVersionParts(tag).numbers[0] === currentMajor)
+      .filter((tag) => compareGhAwVersions(tag, releaseTag) >= 0)
+      .sort(compareGhAwVersions)
+      .at(-1) ?? releaseTag;
+  }
+  const prepared = {
+    record: structuredClone(record.record),
+    writtenRecord: undefined,
+    workflows: new Map()
+  };
+  try {
+    record.record.source = `${record.campaign}@${releaseTag}`;
+    for (const file of record.record.files ?? []) {
+      if (!file.destination?.endsWith('.md')) continue;
+      const workflowPath = resolvePathWithinRoot(process.cwd(), file.destination);
+      let content;
+      try {
+        content = await readFile(workflowPath, 'utf8');
+      } catch (error) {
+        if (error?.code === 'ENOENT') continue;
+        throw error;
+      }
+      const sourcePrefix = `source: ${record.campaign}@`;
+      const lines = content.split(/\r?\n/);
+      const sourceIndex = lines.findIndex((line) => line.startsWith(sourcePrefix));
+      if (sourceIndex === -1) continue;
+      lines[sourceIndex] = `${sourcePrefix}${releaseTag}`;
+      const updated = lines.join(content.includes('\r\n') ? '\r\n' : '\n');
+      prepared.workflows.set(workflowPath, { original: content, written: updated });
+      await writeFile(workflowPath, updated);
+      file.sha256 = createHash('sha256').update(updated).digest('hex');
+    }
+    prepared.writtenRecord = structuredClone(record.record);
+    await writeJsonAtomically(record.recordPath, record.record);
+    return prepared;
+  } catch (error) {
+    for (const [workflowPath, content] of prepared.workflows) await writeFile(workflowPath, content.original);
+    await writeJsonAtomically(record.recordPath, prepared.record);
+    throw error;
+  }
+}
+
+async function restorePreparedPackageSource(record, prepared) {
+  if (!prepared) return;
+  for (const [workflowPath, content] of prepared.workflows) {
+    let current;
+    try {
+      current = await readFile(workflowPath, 'utf8');
+    } catch (error) {
+      if (error?.code === 'ENOENT') continue;
+      throw error;
+    }
+    if (current === content.written) await writeFile(workflowPath, content.original);
+  }
+  let currentRecord;
+  try {
+    currentRecord = JSON.parse(await readFile(record.recordPath, 'utf8'));
+  } catch {
+    return;
+  }
+  if (JSON.stringify(currentRecord) === JSON.stringify(prepared.writtenRecord)) {
+    await writeJsonAtomically(record.recordPath, prepared.record);
+  }
 }
 
 async function readInstalledCaoDeclaration(campaignName) {
@@ -420,23 +707,43 @@ export async function updateCaoCampaigns(ghAwOptions = [], {
   policyPath = DEFAULT_POLICY_PATH,
   execute = spawnSync
 } = {}) {
+  const includePrereleases = ghAwOptions.includes('--pre-releases');
+  const updateOptions = ghAwOptions.filter((option) => option !== '--pre-releases');
   const policy = await readCaoPolicy(policyPath);
   const ghAw = await ensureGhAwMinimumVersion({ policyPath, execute });
   const campaigns = await installedCampaignRecords();
   if (campaigns.length === 0) {
-    throw new Error('No installed gh-aw campaign records found under .github/aw/campaigns');
+    throw new Error('No installed gh-aw package records found under .github/aw/packages');
+  }
+  for (const record of campaigns) {
+    if (!/^[0-9a-f]{40}$/i.test(record.resolvedCommit)
+      && !/^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/.test(record.resolvedCommit)) {
+      throw new Error(`Installed CAO package record has an invalid resolvedCommit: ${record.resolvedCommit || '(missing)'}`);
+    }
   }
 
   const updatedCampaigns = [];
   const mergedDeclarations = [];
+  const releaseTags = new Map();
   for (const record of campaigns) {
-    const update = execute('gh', ['aw', 'update', record.campaign, ...ghAwOptions], {
+    const preparedSource = await prepareInstalledPackageReleaseSource(record, releaseTags, execute, {
+      includePrereleases,
+      allowMajor: updateOptions.includes('--major')
+    });
+    const update = execute('gh', ['aw', 'update', installedPackageUpdateTarget(record.campaign), ...updateOptions], {
       encoding: 'utf8',
       maxBuffer: 16 * 1024 * 1024
     });
     if (update.error || update.status !== 0) {
+      await restorePreparedPackageSource(record, preparedSource);
       throw new Error(`gh aw update failed for ${record.campaign}: ${commandFailureMessage(update, 'unknown error')}`);
     }
+    const refreshedRecords = await installedCampaignRecords(process.cwd(), { caoOnly: false });
+    const refreshedRecord = refreshedRecords.find(({ campaign }) => campaign === record.campaign);
+    await refreshOwnershipHashes(
+      refreshedRecords,
+      refreshedRecord?.record?.files?.map(({ destination }) => destination) ?? []
+    );
     const declaration = await readInstalledCaoDeclaration(record.campaign);
     if (declaration) {
       mergeCaoCampaignDeclaration(policy, declaration);
@@ -445,6 +752,7 @@ export async function updateCaoCampaigns(ghAwOptions = [], {
     updatedCampaigns.push(record.campaign);
   }
   if (mergedDeclarations.length > 0) await writeJsonAtomically(path.resolve(policyPath), policy);
+  await patchInstalledCaoReleaseCheckouts(await installedCampaignRecords(), process.cwd(), execute);
   return {
     command: 'update',
     policy: policyPath,

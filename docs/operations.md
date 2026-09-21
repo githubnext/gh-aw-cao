@@ -309,6 +309,8 @@ node .github/aw/activity/cao.mjs update --major --cool-down 0
 
 The command installs or upgrades `gh-aw` to the minimum version declared by `.github/workflows/cao.json`, resolves published GitHub releases, updates each installed CAO campaign to its latest compatible release, and refreshes CAO campaign worker declarations in policy without widening operator-owned rollout settings. Commit the resulting campaign-owned workflows, generated locks, shared runtime modules, ownership records, and policy declaration refresh as one atomic runtime revision. Do not point updates at `main`, fetch control files separately, or copy them with a script. Parse `.github/workflows/cao.json`, reject unresolved placeholders, and run one bounded review target before restoring scheduled or live operation. Never edit generated `.lock.yml` files or `.github/aw/campaigns/*.json` ownership records by hand.
 
+Stable releases are used by default. Pass `--pre-releases` to include published prereleases when selecting the latest compatible release.
+
 Existing installations whose campaign records predate the campaign-owned `.github/workflows/shared/` runtime must update before running CAO so `control.mjs` and `policy.mjs` are materialized beside `control.md`. Admission intentionally fails closed when those installed files are missing.
 
 ### Catalog Release Revocation

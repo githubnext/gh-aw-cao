@@ -1,8 +1,7 @@
       import { dashboardPagePaginatedSourceBindings, dashboardPageSourceNames, disposeDashboard, renderDashboard, updateWithViewTransition } from "./presenter.js";
       import { setLoadingProgressState } from "./loading-progress.js";
       import { offerCancelCommand } from "./cancel-command.js";
-      import { processDashboardQueries, subscribeWorkerLoadingProgress } from "./data-processor.js";
-      import { loadCanonicalViewSources } from "./data/queries/view-sources.js";
+      import { loadDashboardQuerySources, processDashboardQueries, subscribeWorkerLoadingProgress } from "./data-processor.js";
       import { startDashboardData } from "./data/startup.js";
       import { octicon } from "./octicons.js";
       import { renderRefreshError } from "./components/refresh-error.js";
@@ -1027,16 +1026,20 @@
        * @param {boolean} [ingest]
        * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
        */
-      async function withCanonicalViewSources(sources, ingest = false) {
-        return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (loadCanonicalViewSources(window.indexedDB, sources, {
+      async function withDatabaseQuerySources(sources, ingest = false) {
+        const sourceNames = [...new Set(dashboardDocument.dashboard.pages.flatMap((page) =>
+          dashboardPageSourceNames(dashboardDocument, page.id)
+        ))];
+        return loadDashboardQuerySources(sources, {
           ingest,
-          storage: navigator.storage,
-        }));
+          sourceNames,
+          queries: dashboardQueries,
+        });
       }
 
       if (new URLSearchParams(window.location.search).has("fixtures")) {
         await ensureAllDashboardPagesLoaded();
-        const fixtureProjection = await withCanonicalViewSources(fixtureSources, true);
+        const fixtureProjection = await withDatabaseQuerySources(fixtureSources, true);
         renderSources({
           ...fixtureProjection,
           ...await processDashboardQueries(dashboardQueries, fixtureProjection),

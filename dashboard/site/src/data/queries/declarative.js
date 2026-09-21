@@ -27,6 +27,8 @@ const debugQuery = createDebug('data:query');
  *   name: string,
  *   description?: string,
  *   from: string,
+ *   stores?: string[],
+ *   ['stores-by-source']?: Record<string, string[]>,
  *   union?: string[],
  *   time?: { range?: string, start?: string, end?: string },
  *   joins?: Array<{ source: string, type?: 'inner'|'left', on: Array<{ left: string, right: string }>, fields: Array<{ field: string, as: string }> }>,

@@ -9,11 +9,15 @@ import {
   recordTransaction
 } from '../../src/data/storage/indexeddb.js';
 import {
-  loadCanonicalViewSources,
-  queryCanonicalViewSources,
-  queryNativeCountSources
-} from '../../src/data/queries/view-sources.js';
+  loadDatabaseQuerySources,
+  queryDatabaseSources,
+  queryIndexedDatabaseSources
+} from '../../src/data/queries/database.js';
 import { createDashboardQueryBudget, executeDashboardQueries } from '../../src/data/queries/declarative.js';
+
+const loadCanonicalViewSources = loadDatabaseQuerySources;
+const queryCanonicalViewSources = queryDatabaseSources;
+const queryNativeCountSources = queryIndexedDatabaseSources;
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
 const optimizationDashboardQueries = JSON.parse(
@@ -31,13 +35,17 @@ const sources = {
     }],
     metadata
   },
-  repositories: { rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }], metadata },
+  repositories: {
+    rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', 'rollout-mode': 'review' }],
+    metadata
+  },
   workflows: {
     rows: [{
       organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.lock.yml',
       campaign: 'dashboard', 'campaign-name': 'CAO Dashboard', 'workflow-id': '501',
       'workflow-name': 'Published registry name', 'workflow-role': 'worker',
       'workflow-registry-state': 'active', 'workflow-active': 'true',
+      'admission-status': 'admitted', 'inventory-ready': true,
       'workflow-link': {
         relation: 'workflow',
         href: 'https://github.com/githubnext/gh-aw-cao/actions/workflows/501'
@@ -52,6 +60,7 @@ const sources = {
       organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
       run: '42', 'run-attempt': 2, 'run-status': 'completed', 'run-conclusion': 'failure',
       'started-at': '2026-09-09T04:00:00Z', 'failure-detail': 'Build failed',
+      'admission-status': 'admitted', resource: 'actions', 'resource-wait-hours': 2,
       'rollout-mode': 'review', engine: 'copilot', 'engine-version': '1.2.3',
       'gh-aw-version': 'v0.89.4',
       'requested-model': 'model-a', 'resolved-model': 'model-b',
@@ -106,6 +115,7 @@ const sources = {
         'event-summary': 'github.list_issues', 'event-status': 'requested',
         'request-count': 7,
         'correlation-id': 'call-1', 'safe-output-type': 'create_issue',
+        'mcp-server-version': '1.0.0', 'mcp-protocol-version': '2025-06-18', 'response-bytes': 256,
         'github-entity-type': 'issue', 'source-sequence': 0, 'observed-at': '2026-09-09T04:00:10Z'
       }
     ],
@@ -193,7 +203,7 @@ describe('canonical view sources', () => {
     const requested = definitions.map(({ name }) => name);
     const emptyMetadata = /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
       'source-id': 'empty',
-      'source-kind': 'canonical-query',
+      'source-kind': 'database-query',
       'as-of': metadata['as-of'],
       'retrieved-at': metadata['as-of'],
       completeness: 'complete',
@@ -230,6 +240,27 @@ describe('canonical view sources', () => {
       { 'registered-repositories': 1 }
     ]);
     expect(nativeCounts).toHaveBeenCalledOnce();
+    expect(collectionReads).not.toHaveBeenCalled();
+  });
+
+  it('pushes declarative failed-run predicates into the canonical run index', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+    const collectionReads = vi.spyOn(IDBObjectStore.prototype, 'getAll');
+    const indexedReads = vi.spyOn(IDBIndex.prototype, 'getAll');
+
+    const result = await queryNativeCountSources(
+      indexedDB,
+      sources,
+      dashboardQueries,
+      ['failed-runs']
+    );
+
+    expect(result['failed-runs']).toMatchObject({
+      source: 'failed-runs',
+      rows: [{ repository: 'gh-aw-cao', run: '42', 'run-conclusion': 'failure' }],
+      metadata: { 'source-kind': 'derived', 'query-name': 'failed-runs' }
+    });
+    expect(indexedReads).toHaveBeenCalledTimes(4);
     expect(collectionReads).not.toHaveBeenCalled();
   });
 
@@ -346,7 +377,7 @@ describe('canonical view sources', () => {
 
     expect(projected.transactions).toMatchObject({
       source: 'transactions',
-      metadata: { 'source-kind': 'canonical-query', availability: 'available' },
+      metadata: { 'source-kind': 'database-query', availability: 'available' },
       rows: [
         {
           id: 'ingest-jsonl:current:newer',
@@ -374,25 +405,30 @@ describe('canonical view sources', () => {
     /** @type {{ databaseMs: number, projectionMs: number, totalMs: number, recordsRead: number, stores: string[] } | undefined} */
     let metrics;
 
-    const projected = await queryCanonicalViewSources(
+    const canonical = await queryCanonicalViewSources(
       indexedDB,
       sources,
-      ['failed-runs'],
+      ['runs'],
       { onMetrics: (value) => { metrics = value; } }
+    );
+    const projected = executeDashboardQueries(
+      dashboardQueries,
+      canonical,
+      ['failed-runs']
     );
 
     expect(Object.keys(projected)).toEqual(['failed-runs']);
     expect(projected['failed-runs']).toMatchObject({
       source: 'failed-runs',
       rows: [{ repository: 'gh-aw-cao', run: '42', 'run-conclusion': 'failure' }],
-      metadata: { 'source-kind': 'canonical-query' }
+      metadata: { 'source-kind': 'derived' }
     });
     expect(metrics).toMatchObject({
       databaseMs: expect.any(Number),
       projectionMs: expect.any(Number),
       totalMs: expect.any(Number),
       recordsRead: expect.any(Number),
-      stores: []
+      stores: ['workflows', 'runs']
     });
     expect(metrics?.totalMs).toBeGreaterThanOrEqual(metrics?.databaseMs ?? 0);
   });
@@ -411,7 +447,7 @@ describe('canonical view sources', () => {
         'campaign-mode': 'review',
         'campaign-worker-count': 1
       }],
-      metadata: { 'source-kind': 'canonical-query' }
+      metadata: { 'source-kind': 'database-query' }
     });
     expect(projected.workflows.rows).toEqual([
       expect.objectContaining({
@@ -422,6 +458,8 @@ describe('canonical view sources', () => {
         'workflow-name': 'Published registry name',
         'workflow-role': 'worker',
         'workflow-registry-state': 'active',
+        'admission-status': 'admitted',
+        'inventory-ready': true,
         'created-at': '2026-09-01T00:00:00Z',
         'updated-at': '2026-09-08T00:00:00Z',
         'workflow-link': {
@@ -432,8 +470,72 @@ describe('canonical view sources', () => {
     ]);
   });
 
+  it('projects run records and MCP calls through declarative canonical queries', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+
+    const projected = await queryCanonicalViewSources(indexedDB, {
+      ...sources,
+      'mcp-calls': { rows: [], metadata }
+    }, ['tools', 'mcp-calls']);
+
+    expect(projected.tools).toMatchObject({
+      source: 'tools',
+      rows: [{
+        organization: 'githubnext',
+        repository: 'gh-aw-cao',
+        run: '42',
+        event: 'event:tool-call',
+        'event-type': 'tool.call'
+      }],
+      metadata: { 'source-kind': 'database-query' }
+    });
+    expect(projected['mcp-calls']).toMatchObject({
+      source: 'mcp-calls',
+      rows: [{
+        organization: 'githubnext',
+        repository: 'gh-aw-cao',
+        run: '42',
+        'mcp-observation': 'event:tool-call',
+        'mcp-status': 'requested',
+        'mcp-server-version': '1.0.0',
+        'mcp-protocol-version': '2025-06-18',
+        'response-bytes': 256
+      }],
+      metadata: { 'source-kind': 'database-query' }
+    });
+  });
+
+  it('does not read database stores for a populated published source', async () => {
+    const collectionReads = vi.spyOn(IDBObjectStore.prototype, 'getAll');
+    const published = { rows: [{ 'mcp-observation': 'published-call' }], metadata };
+
+    const projected = await queryDatabaseSources(
+      indexedDB,
+      { 'mcp-calls': published },
+      ['mcp-calls']
+    );
+
+    expect(projected['mcp-calls'].rows).toEqual(published.rows);
+    expect(collectionReads).not.toHaveBeenCalled();
+  });
+
+  it('does not read database stores for a missing logical source', async () => {
+    const collectionReads = vi.spyOn(IDBObjectStore.prototype, 'getAll');
+
+    const projected = await queryDatabaseSources(indexedDB, {}, ['usage']);
+
+    expect(projected.usage).toMatchObject({
+      rows: [],
+      metadata: { availability: 'empty' }
+    });
+    expect(collectionReads).not.toHaveBeenCalled();
+  });
+
   it('returns requested authoritative sources through the canonical query boundary', async () => {
-    const loaded = await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+    const loaded = await loadCanonicalViewSources(indexedDB, sources, {
+      ingest: true,
+      sourceNames: ['work-items', 'security-findings']
+    });
 
     const projected = await queryCanonicalViewSources(
       indexedDB,
@@ -461,12 +563,16 @@ describe('canonical view sources', () => {
   });
 
   it('projects failed-run evidence from the active canonical generation', async () => {
-    const projected = await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+    const projected = await loadCanonicalViewSources(indexedDB, sources, {
+      ingest: true,
+      sourceNames: ['failed-runs', 'runs', 'repositories', 'workflows'],
+      queries: dashboardQueries
+    });
 
     expect(projected['failed-runs']).toMatchObject({
       source: 'failed-runs',
       rows: [{ repository: 'gh-aw-cao', run: '42', 'run-attempt': 2, 'run-conclusion': 'failure', 'failure-detail': 'Build failed' }],
-      metadata: { 'source-kind': 'canonical-query', availability: 'available' }
+      metadata: { 'source-kind': 'derived', availability: 'available' }
     });
     expect(projected.runs).toMatchObject({
       source: 'runs',
@@ -474,14 +580,15 @@ describe('canonical view sources', () => {
         repository: 'gh-aw-cao', run: '42', 'run-attempt': 2,
         'rollout-mode': 'review', engine: 'copilot', 'engine-version': '1.2.3',
         'gh-aw-version': 'v0.89.4',
-        'requested-model': 'model-a', 'resolved-model': 'model-b'
+        'requested-model': 'model-a', 'resolved-model': 'model-b',
+        'admission-status': 'admitted', resource: 'actions', 'resource-wait-hours': 2
       }],
-      metadata: { 'source-kind': 'canonical-query', availability: 'available' }
+      metadata: { 'source-kind': 'database-query', availability: 'available' }
     });
     expect(projected.repositories).toMatchObject({
       source: 'repositories',
       rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }],
-      metadata: { 'source-kind': 'canonical-query', availability: 'available' }
+      metadata: { 'source-kind': 'database-query', availability: 'available' }
     });
     expect(projected.workflows).toMatchObject({
       source: 'workflows',
@@ -489,7 +596,7 @@ describe('canonical view sources', () => {
         organization: 'githubnext', repository: 'gh-aw-cao',
         workflow: '.github/workflows/dashboard.md'
       }],
-      metadata: { 'source-kind': 'canonical-query', availability: 'available' }
+      metadata: { 'source-kind': 'database-query', availability: 'available' }
     });
     expect(projected['job-performance']).toMatchObject({
       source: 'job-performance',
@@ -534,7 +641,7 @@ describe('canonical view sources', () => {
     expect(Object.keys(projected)).toEqual(['tools', 'audits']);
     expect(projected.tools).toMatchObject({
       source: 'tools',
-      metadata: { 'source-kind': 'canonical-query', availability: 'available' }
+      metadata: { 'source-kind': 'database-query', availability: 'available' }
     });
     expect(projected.tools.rows).toEqual([
       expect.objectContaining({
@@ -580,7 +687,7 @@ describe('canonical view sources', () => {
     ]);
   });
 
-  it('projects current gh-aw grader summaries without treating zero as missing', async () => {
+  it('does not synthesize undeclared grader sources in JavaScript', async () => {
     const content = JSON.stringify({
       schema_version: 2,
       kind: 'run',
@@ -623,34 +730,8 @@ describe('canonical view sources', () => {
       ['grader-observations', 'operational-values']
     );
 
-    expect(projected['grader-observations'].rows).toEqual([
-      expect.objectContaining({
-        repository: 'gh-aw-cao',
-        run: '84',
-        grader: 'operational-value',
-        status: 'pass',
-        included: true,
-        value: 0
-      })
-    ]);
-    expect(projected['operational-values'].rows).toEqual([
-      expect.objectContaining({
-        repository: 'gh-aw-cao',
-        run: '84',
-        'operational-value': 0,
-        'operational-value-definition': 'accepted-maintenance-outcomes',
-        'operational-value-unit': 'count',
-        'operational-value-direction': 'higher_is_better',
-        diagnostics: {
-          'eligible-maintenance-items': 3,
-          'unavailable-maintenance-items': null
-        },
-        'diagnostic-definitions': [
-          { id: 'eligible-maintenance-items', name: 'eligible-maintenance-items' },
-          { id: 'unavailable-maintenance-items', name: 'unavailable-maintenance-items' }
-        ]
-      })
-    ]);
+    expect(projected['grader-observations'].rows).toEqual([]);
+    expect(projected['operational-values'].rows).toEqual([]);
   });
 
   it('projects token optimizer artifacts without parsing issue display text', async () => {

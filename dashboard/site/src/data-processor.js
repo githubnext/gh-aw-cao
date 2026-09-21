@@ -1,7 +1,7 @@
 import { tidy } from './data-operations.js';
 import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
-import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
+import { queryDashboardSourceObservations } from './data/queries/ingestion.js';
 import { normalize } from './data/normalize/index.js';
 import { batch } from './reactive.js';
 import { publishNotification } from './notification-service.js';
@@ -218,7 +218,7 @@ export function processScatterPoints(points, limit) {
  * @returns {import('./data/model/schema.js').CanonicalBatch|Promise<import('./data/model/schema.js').CanonicalBatch>}
  */
 export function processCanonicalDashboardSources(sources) {
-  return normalize(adaptDashboardSources(sources).observations);
+  return normalize(queryDashboardSourceObservations(sources).observations);
 }
 
 /**
@@ -235,6 +235,20 @@ export function processDashboardQueries(queries, sources, options = {}) {
     () => Promise.reject(new Error('Declarative dashboard queries require a data worker.')),
     false,
     options.signal
+  ));
+}
+
+/**
+ * Ingests optional published rows and executes their declarative database
+ * projections entirely in the data worker.
+ * @param {Record<string, unknown>} sources
+ * @param {{ ingest?: boolean, sourceNames?: string[], queries?: unknown[] }} [options]
+ */
+export function loadDashboardQuerySources(sources, options = {}) {
+  return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (processRequest(
+    { operation: 'load-dashboard-query-sources', sources, ...options },
+    () => Promise.reject(new Error('Dashboard database queries require a data worker.')),
+    false
   ));
 }
 
@@ -365,8 +379,6 @@ export function subscribeCanonicalDashboardView(viewId, sourceNames, context, li
     current.listeners.delete(listenerEntry);
     if (current.listeners.size > 0) return;
     subscriptions.delete(viewId);
-    // The worker memoization cache may replay a still-live result. Release this
-    // structured clone so navigation never retains a second page payload.
     current.latest = null;
     current.snapshot = null;
     current.snapshotRevision = null;

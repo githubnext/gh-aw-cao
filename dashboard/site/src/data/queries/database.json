@@ -1,0 +1,720 @@
+[
+  {
+    "name": "campaigns",
+    "stores": ["campaigns"],
+    "from": "$campaigns",
+    "compute": [
+      {
+        "as": "campaign-registration",
+        "function": "if",
+        "args": [
+          { "field": "enabled" },
+          { "value": "true" },
+          { "value": "false" }
+        ]
+      }
+    ],
+    "select": [
+      { "field": "id" },
+      { "field": "slug", "as": "campaign" },
+      { "field": "name", "as": "campaign-name" },
+      { "field": "description", "as": "campaign-description" },
+      { "field": "icon", "as": "campaign-icon" },
+      { "field": "mode", "as": "campaign-mode" },
+      { "field": "enabled", "as": "campaign-enabled" },
+      { "field": "campaign-registration" },
+      { "field": "maxRepositories", "as": "campaign-max-repositories" },
+      { "field": "rolloutPercent", "as": "campaign-rollout-percent" },
+      { "field": "monthlyAiCreditBudget", "as": "campaign-monthly-ai-credit-budget" },
+      { "field": "aiCreditAllowance", "as": "campaign-aic-allowance" },
+      { "field": "workerCount", "as": "campaign-worker-count" },
+      { "field": "inventoryWarnings", "as": "campaign-inventory-warnings" },
+      { "field": "workers", "as": "campaign-workers" },
+      { "field": "targets", "as": "campaign-targets" },
+      { "field": "minVersion", "as": "campaign-min-version" },
+      { "field": "version", "as": "campaign-version" },
+      { "field": "currentVersion", "as": "campaign-current-version" },
+      { "field": "updateState", "as": "campaign-update-state" },
+      { "field": "experimental", "as": "campaign-experimental" },
+      { "field": "readmePath", "as": "campaign-readme-path" },
+      { "field": "readme", "as": "campaign-readme" },
+      { "field": "observedAt", "as": "observed-at" },
+      { "field": "campaignLink", "as": "campaign-link" }
+    ]
+  },
+  {
+    "name": "repositories",
+    "stores": ["repositories"],
+    "from": "$repositories",
+    "compute": [
+      {
+        "as": "repository-coordinate",
+        "function": "concat",
+        "args": [
+          { "field": "owner" },
+          { "value": "/" },
+          { "field": "name" }
+        ]
+      }
+    ],
+    "select": [
+      { "field": "id" },
+      { "field": "owner", "as": "organization" },
+      { "field": "name", "as": "repository" },
+      { "field": "name", "as": "repository-name" },
+      { "field": "repository-coordinate" },
+      { "field": "visibility" },
+      { "field": "rolloutMode", "as": "rollout-mode" },
+      { "field": "observedAt", "as": "observed-at" },
+      { "field": "organizationLink", "as": "organization-link" },
+      { "field": "repositoryLink", "as": "repository-link" }
+    ]
+  },
+  {
+    "name": "workflows",
+    "stores": ["repositories", "workflows"],
+    "from": "$workflows",
+    "joins": [
+      {
+        "source": "$repositories",
+        "type": "left",
+        "on": [{ "left": "repositoryId", "right": "id" }],
+        "fields": [
+          { "field": "owner", "as": "organization" },
+          { "field": "name", "as": "repository" }
+        ]
+      }
+    ],
+    "compute": [
+      {
+        "as": "_workflow-active",
+        "function": "equals-any",
+        "args": [{ "field": "state" }, { "value": "active" }]
+      },
+      {
+        "as": "_workflow-disabled",
+        "function": "equals-any",
+        "args": [{ "field": "state" }, { "value": "disabled" }]
+      },
+      {
+        "as": "_workflow-inactive-label",
+        "function": "if",
+        "args": [
+          { "field": "_workflow-disabled" },
+          { "value": "false" },
+          { "value": "unknown" }
+        ]
+      },
+      {
+        "as": "workflow-active",
+        "function": "if",
+        "args": [
+          { "field": "_workflow-active" },
+          { "value": "true" },
+          { "field": "_workflow-inactive-label" }
+        ]
+      }
+    ],
+    "select": [
+      { "field": "id" },
+      { "field": "organization" },
+      { "field": "repository" },
+      { "field": "path", "as": "workflow" },
+      { "field": "githubId", "as": "workflow-id" },
+      { "field": "name", "as": "workflow-name" },
+      { "field": "workflow-active" },
+      { "field": "registryState", "as": "workflow-registry-state" },
+      { "field": "admissionStatus", "as": "admission-status" },
+      { "field": "admissionReason", "as": "admission-reason" },
+      { "field": "createdAt", "as": "created-at" },
+      { "field": "updatedAt", "as": "updated-at" },
+      { "field": "campaign" },
+      { "field": "campaignName", "as": "campaign-name" },
+      { "field": "campaignIcon", "as": "campaign-icon" },
+      { "field": "role", "as": "workflow-role" },
+      { "field": "rolloutMode", "as": "rollout-mode" },
+      { "field": "maxAiCredits", "as": "max-ai-credits" },
+      { "field": "observedAt", "as": "observed-at" },
+      { "field": "ghAwVersion", "as": "gh-aw-version" },
+      { "field": "ghAwCurrentVersion", "as": "gh-aw-current-version" },
+      { "field": "ghAwVersionLabel", "as": "gh-aw-version-label" },
+      { "field": "ghAwUpdateState", "as": "gh-aw-update-state" },
+      { "field": "ghAwMetadata", "as": "gh-aw-metadata" },
+      { "field": "ghAwManifest", "as": "gh-aw-manifest" },
+      { "field": "campaignAiCreditAllowance", "as": "campaign-aic-allowance" },
+      { "field": "campaignWorkerCount", "as": "campaign-worker-count" },
+      { "field": "campaignInventoryWarnings", "as": "campaign-inventory-warnings" },
+      { "field": "inventoryReady", "as": "inventory-ready" },
+      { "field": "organizationLink", "as": "organization-link" },
+      { "field": "repositoryLink", "as": "repository-link" },
+      { "field": "workflowLink", "as": "workflow-link" },
+      { "field": "externalLink", "as": "external-link" }
+    ]
+  },
+  {
+    "name": "runs",
+    "stores": ["workflows", "runs"],
+    "from": "$runs",
+    "joins": [
+      {
+        "source": "$workflows",
+        "type": "left",
+        "on": [{ "left": "workflowId", "right": "id" }],
+        "fields": [
+          { "field": "path", "as": "_workflow-path" },
+          { "field": "rolloutMode", "as": "_workflow-rollout-mode" }
+        ]
+      }
+    ],
+    "compute": [
+      {
+        "as": "workflow",
+        "function": "coalesce",
+        "args": [{ "field": "workflowPath" }, { "field": "_workflow-path" }]
+      },
+      {
+        "as": "run",
+        "function": "concat",
+        "args": [{ "field": "githubRunId" }]
+      },
+      {
+        "as": "_rollout-unknown",
+        "function": "equals-any",
+        "args": [{ "field": "rolloutMode" }, { "value": "unknown" }, { "value": null }]
+      },
+      {
+        "as": "effective-rollout-mode",
+        "function": "if",
+        "args": [
+          { "field": "_rollout-unknown" },
+          { "field": "_workflow-rollout-mode" },
+          { "field": "rolloutMode" }
+        ]
+      }
+    ],
+    "select": [
+      { "field": "id" },
+      { "field": "owner", "as": "organization" },
+      { "field": "repository" },
+      { "field": "workflow" },
+      { "field": "run" },
+      { "field": "attempt", "as": "run-attempt" },
+      { "field": "title", "as": "run-title" },
+      { "field": "targetRepository", "as": "target-repository" },
+      { "field": "event" },
+      { "field": "branch" },
+      { "field": "headSha", "as": "head-sha" },
+      { "field": "createdAt", "as": "created-at" },
+      { "field": "startedAt", "as": "started-at" },
+      { "field": "completedAt", "as": "ended-at" },
+      { "field": "updatedAt", "as": "updated-at" },
+      { "field": "status", "as": "run-status" },
+      { "field": "conclusion", "as": "run-conclusion" },
+      { "field": "classification" },
+      { "field": "duration" },
+      { "field": "actionMinutes", "as": "action-minutes" },
+      { "field": "githubApiCalls", "as": "github-api-calls" },
+      { "field": "safeItemsCount", "as": "safe-items-count" },
+      { "field": "errorCount", "as": "error-count" },
+      { "field": "admissionStatus", "as": "admission-status" },
+      { "field": "admissionReason", "as": "admission-reason" },
+      { "field": "failureJob", "as": "failure-job" },
+      { "field": "failureMessage", "as": "failure-message" },
+      { "field": "failureStep", "as": "failure-step" },
+      { "field": "failureDetail", "as": "failure-detail" },
+      { "field": "resource" },
+      { "field": "resourceResetAt", "as": "resource-reset-at" },
+      { "field": "resourceWaitHours", "as": "resource-wait-hours" },
+      { "field": "runLink", "as": "run-link" },
+      { "field": "effective-rollout-mode", "as": "rollout-mode" },
+      { "field": "agentId", "as": "agent-id" },
+      { "field": "agentVersion", "as": "agent-version" },
+      { "field": "modelId", "as": "model-id" },
+      { "field": "ghAwVersion", "as": "gh-aw-version" },
+      { "field": "aicTotal", "as": "aic-total" },
+      { "field": "engine" },
+      { "field": "engineId", "as": "engine-id" },
+      { "field": "engineVersion", "as": "engine-version" },
+      { "field": "requestedModel", "as": "requested-model" },
+      { "field": "resolvedModel", "as": "resolved-model" },
+      { "field": "agentRuntime", "as": "agent-runtime" },
+      { "field": "firewallVersion", "as": "firewall-version" },
+      { "field": "gatewayVersion", "as": "gateway-version" },
+      { "field": "data" },
+      { "field": "logsPayload", "as": "logs-payload" },
+      { "field": "organizationLink", "as": "organization-link" },
+      { "field": "repositoryLink", "as": "repository-link" },
+      { "field": "workflowLink", "as": "workflow-link" }
+    ]
+  },
+  {
+    "name": "run-records",
+    "stores": ["runs"],
+    "stores-by-source": {
+      "domains": ["runs", "domains"],
+      "tools": ["runs", "tools"],
+      "audits": ["runs", "audits"],
+      "issues": ["runs", "issues"]
+    },
+    "from": "$records",
+    "joins": [
+      {
+        "source": "$runs",
+        "type": "left",
+        "on": [{ "left": "runId", "right": "id" }],
+        "fields": [
+          { "field": "owner", "as": "organization" },
+          { "field": "repository", "as": "repository" },
+          { "field": "workflowPath", "as": "workflow" },
+          { "field": "githubRunId", "as": "_github-run-id" },
+          { "field": "attempt", "as": "run-attempt" },
+          { "field": "runLink", "as": "run-link" },
+          { "field": "engine", "as": "engine" },
+          { "field": "engineVersion", "as": "engine-version" },
+          { "field": "requestedModel", "as": "requested-model" },
+          { "field": "resolvedModel", "as": "resolved-model" },
+          { "field": "modelId", "as": "model-id" },
+          { "field": "rolloutMode", "as": "rollout-mode" },
+          { "field": "ghAwVersion", "as": "gh-aw-version" },
+          { "field": "conclusion", "as": "run-conclusion" },
+          { "field": "agentId", "as": "agent-id" },
+          { "field": "agentVersion", "as": "agent-version" },
+          { "field": "agentRuntime", "as": "agent-runtime" },
+          { "field": "organizationLink", "as": "organization-link" },
+          { "field": "repositoryLink", "as": "repository-link" },
+          { "field": "workflowLink", "as": "workflow-link" }
+        ]
+      }
+    ],
+    "compute": [
+      {
+        "as": "run",
+        "function": "concat",
+        "args": [{ "field": "_github-run-id" }]
+      },
+      {
+        "as": "_firewall-allowed",
+        "function": "equals-any",
+        "args": [{ "field": "type" }, { "value": "net_allowed" }]
+      },
+      {
+        "as": "_firewall-blocked",
+        "function": "equals-any",
+        "args": [{ "field": "type" }, { "value": "net_blocked" }]
+      },
+      {
+        "as": "_allowed-event-type",
+        "function": "if",
+        "args": [
+          { "field": "_firewall-allowed" },
+          { "value": "firewall.request.allowed" },
+          { "field": "type" }
+        ]
+      },
+      {
+        "as": "event-type",
+        "function": "if",
+        "args": [
+          { "field": "_firewall-blocked" },
+          { "value": "firewall.request.blocked" },
+          { "field": "_allowed-event-type" }
+        ]
+      }
+    ],
+    "select": [
+      { "field": "id" },
+      { "field": "organization" },
+      { "field": "repository" },
+      { "field": "workflow" },
+      { "field": "run" },
+      { "field": "run-attempt" },
+      { "field": "id", "as": "event" },
+      { "field": "timestamp", "as": "event-timestamp" },
+      { "field": "source", "as": "event-source" },
+      { "field": "event-type" },
+      { "field": "summary", "as": "event-summary" },
+      { "field": "status", "as": "event-status" },
+      { "field": "requestCount", "as": "request-count" },
+      { "field": "correlationId", "as": "correlation-id" },
+      { "field": "payloadRef", "as": "payload-ref" },
+      { "field": "mcpServer", "as": "mcp-server" },
+      { "field": "mcpServerVersion", "as": "mcp-server-version" },
+      { "field": "mcpProtocolVersion", "as": "mcp-protocol-version" },
+      { "field": "mcpTool", "as": "mcp-tool" },
+      { "field": "responseBytes", "as": "response-bytes" },
+      { "field": "safeOutputType", "as": "safe-output-type" },
+      { "field": "githubEntityType", "as": "github-entity-type" },
+      { "field": "isPullRequest", "as": "is-pull-request" },
+      { "field": "toolType", "as": "tool-type" },
+      { "field": "isSkill", "as": "is-skill" },
+      { "field": "name" },
+      { "field": "domain" },
+      { "field": "decision" },
+      { "field": "sourceSequence", "as": "source-sequence" },
+      { "field": "observedAt", "as": "observed-at" },
+      { "field": "run-link" },
+      { "field": "engine" },
+      { "field": "engine-version" },
+      { "field": "requested-model" },
+      { "field": "resolved-model" },
+      { "field": "model-id" },
+      { "field": "rollout-mode" },
+      { "field": "gh-aw-version" },
+      { "field": "run-conclusion" },
+      { "field": "agent-id" },
+      { "field": "agent-version" },
+      { "field": "agent-runtime" },
+      { "field": "organization-link" },
+      { "field": "repository-link" },
+      { "field": "workflow-link" },
+      { "field": "targetRepo", "as": "target-repo" },
+      { "field": "targetOrganization", "as": "target-organization" },
+      { "field": "targetRepository", "as": "target-repository" },
+      { "field": "targetWorkflowPath", "as": "target-workflow-path" },
+      { "field": "optimizerRunAttempt", "as": "optimizer-run-attempt" },
+      { "field": "optimizerWorkflowPath", "as": "optimizer-workflow-path" },
+      { "field": "optimizerWorkflowName", "as": "optimizer-workflow-name" },
+      { "field": "claimRunId", "as": "claim-run-id" },
+      { "field": "claimRunAttempt", "as": "claim-run-attempt" },
+      { "field": "actor" },
+      { "field": "sourceProvenance", "as": "source-provenance" },
+      { "field": "opportunityId", "as": "opportunity-id" },
+      { "field": "opportunityKind", "as": "opportunity-kind" },
+      { "field": "assignmentRunId", "as": "assignment-run" },
+      { "field": "experimentId", "as": "experiment" },
+      { "field": "evidenceWindowStart", "as": "evidence-window-start" },
+      { "field": "evidenceWindowEnd", "as": "evidence-window-end" },
+      { "field": "evidenceState", "as": "evidence-state" },
+      { "field": "evidenceConfidence", "as": "evidence-confidence" },
+      { "field": "costGrain", "as": "cost-grain" },
+      { "field": "evidenceProvenance", "as": "evidence-provenance" },
+      { "field": "attributableRunIds", "as": "attributable-run-ids" },
+      { "field": "interventionId", "as": "intervention-id" },
+      { "field": "lifecycleObservationId", "as": "lifecycle-observation-id" },
+      { "field": "previousInterventionState", "as": "previous-intervention-state" },
+      { "field": "interventionState", "as": "intervention-state" },
+      { "field": "previousRecommendationDisposition", "as": "previous-recommendation-disposition" },
+      { "field": "recommendationDisposition", "as": "recommendation-disposition" },
+      { "field": "supersedesInterventionId", "as": "supersedes-intervention-id" },
+      { "field": "supersededByInterventionId", "as": "superseded-by-intervention-id" },
+      { "field": "recommendationChurnCount", "as": "recommendation-churn-count" },
+      { "field": "recommendationChurnRate", "as": "recommendation-churn-rate" },
+      { "field": "controlVariant", "as": "control-variant" },
+      { "field": "optimizedVariant", "as": "optimized-variant" },
+      { "field": "proposedSavingsAic", "as": "proposed-savings-aic" },
+      { "field": "missingReason", "as": "missing-reason" },
+      { "field": "safeOutputId", "as": "safe-output-id" },
+      { "field": "safeOutputUrl", "as": "safe-output-url" },
+      { "field": "implementationChangeId", "as": "implementation-change-id" },
+      { "field": "implementationPullRequestUrl", "as": "implementation-pull-request-url" },
+      { "field": "implementationRunIds", "as": "implementation-run-ids" },
+      { "field": "acceptedAt", "as": "accepted-at" },
+      { "field": "implementationStartedAt", "as": "implementation-started-at" },
+      { "field": "implementationCompletedAt", "as": "implementation-completed-at" },
+      { "field": "rejectedAt", "as": "rejected-at" },
+      { "field": "supersededAt", "as": "superseded-at" }
+    ]
+  },
+  {
+    "name": "mcp-calls",
+    "stores": ["runs", "tools"],
+    "from": "run-records",
+    "filter": {
+      "predicates": [
+        { "field": "event-source", "equals": "mcp" },
+        { "field": "event-type", "equals": "tool.call" }
+      ]
+    },
+    "select": [
+      { "field": "organization" },
+      { "field": "repository" },
+      { "field": "workflow" },
+      { "field": "run" },
+      { "field": "event", "as": "mcp-observation" },
+      { "field": "mcp-server" },
+      { "field": "mcp-server-version" },
+      { "field": "mcp-protocol-version" },
+      { "field": "mcp-tool" },
+      { "field": "event-status", "as": "mcp-status" },
+      { "field": "response-bytes" },
+      { "field": "rollout-mode" },
+      { "field": "engine-version" },
+      { "field": "gh-aw-version" },
+      { "field": "observed-at" },
+      { "field": "run-link" }
+    ]
+  },
+  {
+    "name": "findings",
+    "stores": ["runs", "audits"],
+    "from": "run-records",
+    "filter": {
+      "predicates": [
+        { "field": "event-type", "equals": "audit.finding" }
+      ]
+    },
+    "compute": [
+      {
+        "as": "observed-at",
+        "function": "coalesce",
+        "args": [{ "field": "observed-at" }, { "field": "event-timestamp" }]
+      },
+      {
+        "as": "requested-model",
+        "function": "coalesce",
+        "args": [{ "field": "requested-model" }, { "field": "model-id" }]
+      },
+      {
+        "as": "resolved-model",
+        "function": "coalesce",
+        "args": [{ "field": "resolved-model" }, { "field": "model-id" }]
+      },
+      {
+        "as": "finding-kind",
+        "function": "coalesce",
+        "args": [{ "value": "audit-finding" }]
+      },
+      {
+        "as": "finding-status",
+        "function": "coalesce",
+        "args": [{ "value": "observed" }]
+      }
+    ],
+    "select": [
+      { "field": "organization" },
+      { "field": "repository" },
+      { "field": "workflow" },
+      { "field": "run" },
+      { "field": "event", "as": "safe-output" },
+      { "field": "event", "as": "finding" },
+      { "field": "finding-kind" },
+      { "field": "event-status", "as": "finding-severity" },
+      { "field": "finding-status" },
+      { "field": "event-summary", "as": "finding-summary" },
+      { "field": "observed-at" },
+      { "field": "engine" },
+      { "field": "engine-version" },
+      { "field": "requested-model" },
+      { "field": "resolved-model" },
+      { "field": "run-link" },
+      { "field": "run-link", "as": "external-link" },
+      { "field": "issue-link" },
+      { "field": "pull-request-link" },
+      { "field": "organization-link" },
+      { "field": "repository-link" },
+      { "field": "workflow-link" }
+    ]
+  },
+  {
+    "name": "detection-observations",
+    "stores": [],
+    "from": "$security-findings",
+    "compute": [
+      {
+        "as": "detection-expected",
+        "function": "coalesce",
+        "args": [{ "value": "yes" }]
+      },
+      {
+        "as": "detection-applicable",
+        "function": "coalesce",
+        "args": [{ "value": "yes" }]
+      },
+      {
+        "as": "detection-executed",
+        "function": "coalesce",
+        "args": [{ "value": "yes" }]
+      },
+      {
+        "as": "verdict-available",
+        "function": "coalesce",
+        "args": [{ "value": "yes" }]
+      },
+      {
+        "as": "detection-state",
+        "function": "coalesce",
+        "args": [{ "value": "threat" }]
+      },
+      {
+        "as": "detection-state-label",
+        "function": "coalesce",
+        "args": [{ "value": "Threat detected" }]
+      },
+      {
+        "as": "detection-count",
+        "function": "coalesce",
+        "args": [{ "value": 1 }]
+      },
+      {
+        "as": "attention-priority",
+        "function": "coalesce",
+        "args": [{ "value": "high" }]
+      }
+    ],
+    "select": [
+      { "field": "organization" },
+      { "field": "repository" },
+      { "field": "workflow" },
+      { "field": "run" },
+      { "field": "observed-at" },
+      { "field": "run-link" },
+      { "field": "rollout-mode" },
+      { "field": "detection-expected" },
+      { "field": "detection-applicable" },
+      { "field": "detection-executed" },
+      { "field": "verdict-available" },
+      { "field": "detection-state" },
+      { "field": "detection-state-label" },
+      { "field": "detection-count" },
+      { "field": "usable-verdict-percent" },
+      { "field": "prompt-injection-detected" },
+      { "field": "secret-leak-detected" },
+      { "field": "malicious-patch-detected" },
+      { "field": "inspection-warning-count" },
+      { "field": "inspection-warning" },
+      { "field": "smell-summary", "as": "detection-signal" },
+      { "field": "attention-priority" },
+      { "field": "job-status" },
+      { "field": "job-conclusion" },
+      { "field": "job-duration-seconds" },
+      { "field": "runner" },
+      { "field": "engine" },
+      { "field": "requested-model" },
+      { "field": "resolved-model" }
+    ]
+  },
+  {
+    "name": "safe-output-performance",
+    "stores": [],
+    "from": "$outcomes",
+    "compute": [
+      {
+        "as": "safe-output-count",
+        "function": "coalesce",
+        "args": [{ "value": 1 }]
+      }
+    ],
+    "select": [
+      { "field": "organization" },
+      { "field": "repository" },
+      { "field": "workflow" },
+      { "field": "run" },
+      { "field": "run-conclusion" },
+      { "field": "rollout-mode" },
+      { "field": "safe-output-kind" },
+      { "field": "outcome-title", "as": "safe-output-label" },
+      { "field": "outcome-status", "as": "safe-output-status" },
+      { "field": "safe-output-count" },
+      { "field": "observed-at" },
+      { "field": "run-link" }
+    ]
+  },
+  {
+    "name": "firewall-observations",
+    "stores": ["runs", "domains"],
+    "from": "run-records",
+    "filter": {
+      "predicates": [
+        { "field": "event-source", "equals": "firewall" },
+        { "field": "event-type", "in": ["firewall.request.allowed", "firewall.request.blocked"] }
+      ]
+    },
+    "compute": [
+      {
+        "as": "request-count-value",
+        "function": "coalesce",
+        "args": [{ "field": "request-count" }, { "value": 1 }]
+      }
+    ],
+    "select": [
+      { "field": "organization" },
+      { "field": "repository" },
+      { "field": "workflow" },
+      { "field": "run" },
+      { "field": "event", "as": "firewall-observation" },
+      { "field": "run-conclusion" },
+      { "field": "rollout-mode" },
+      { "field": "agent-id" },
+      { "field": "agent-version" },
+      { "field": "engine" },
+      { "field": "engine-version" },
+      { "field": "requested-model" },
+      { "field": "resolved-model" },
+      { "field": "agent-runtime" },
+      { "field": "event-timestamp", "as": "observed-at" },
+      { "field": "firewall-expected" },
+      { "field": "firewall-enabled" },
+      { "field": "enforcement-label" },
+      { "field": "firewall-evidence-available" },
+      { "field": "evidence-state" },
+      { "field": "evidence-label" },
+      { "field": "evidence-completeness" },
+      { "field": "evidence-freshness" },
+      { "field": "evidence-error" },
+      { "field": "evidence-source" },
+      { "field": "evidence-reference" },
+      { "field": "evidence-horizon-start" },
+      { "field": "evidence-horizon-end" },
+      { "field": "requested-horizon-start" },
+      { "field": "requested-horizon-end" },
+      { "field": "evidence-coverage-percent" },
+      { "field": "last-successful-collection-at" },
+      { "field": "gh-aw-firewall-version" },
+      { "field": "policy-manifest-available" },
+      { "field": "policy-source" },
+      { "field": "policy-manifest-identity" },
+      { "field": "domain" },
+      { "field": "host" },
+      { "field": "port" },
+      { "field": "protocol" },
+      { "field": "decision" },
+      { "field": "decision-label" },
+      { "field": "request-count-value", "as": "request-count" },
+      { "field": "policy-rule-id" },
+      { "field": "policy-rule-order" },
+      { "field": "policy-rule-action" },
+      { "field": "policy-rule-protocol" },
+      { "field": "policy-domain-pattern" },
+      { "field": "policy-rule-description" },
+      { "field": "baseline-request-count" },
+      { "field": "request-volume-change" },
+      { "field": "previous-decision" },
+      { "field": "current-decision" },
+      { "field": "is-new-destination" },
+      { "field": "is-removed-destination" },
+      { "field": "decision-changed" },
+      { "field": "first-seen-at" },
+      { "field": "last-seen-at" },
+      { "field": "drift-state" },
+      { "field": "drift-label" },
+      { "field": "review-state" },
+      { "field": "review-label" },
+      { "field": "review-priority" },
+      { "field": "run-link" },
+      { "field": "evidence-link" }
+    ]
+  },
+  {
+    "name": "transactions",
+    "stores": ["transactions"],
+    "from": "$transactions",
+    "select": [
+      { "field": "id" },
+      { "field": "kind" },
+      { "field": "createdAt" },
+      { "field": "payloadScope" },
+      { "field": "payloadHash" },
+      { "field": "payloadEtag" },
+      { "field": "records" },
+      { "field": "committedRecords" },
+      { "field": "rawPayloadRecords" },
+      { "field": "rawRuns" },
+      { "field": "agenticRunRecords" },
+      { "field": "agenticRuns" },
+      { "field": "duplicateRawRunObservations" },
+      { "field": "duplicateAgenticRunObservations" },
+      { "field": "unenrichedRuns" },
+      { "field": "error" }
+    ]
+  }
+]

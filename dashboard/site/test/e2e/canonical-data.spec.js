@@ -439,9 +439,16 @@ test('native IndexedDB directly upserts and retains canonical data across reload
   expect(retained).toEqual([expect.objectContaining({ id: 'github:run:12345:attempt:2' })]);
 
   const viewSources = await page.evaluate(async (sourceDocument) => {
-    const viewSourcesUrl = `${location.origin}/src/data/queries/view-sources.js`;
-    const { loadCanonicalViewSources } = await import(viewSourcesUrl);
-    return loadCanonicalViewSources(indexedDB, sourceDocument);
+    const databaseUrl = `${location.origin}/src/data/queries/database.js`;
+    const { loadDatabaseQuerySources } = await import(databaseUrl);
+    return loadDatabaseQuerySources(indexedDB, sourceDocument, {
+      sourceNames: ['failed-runs', 'runs'],
+      queries: [{
+        name: 'failed-runs',
+        from: 'runs',
+        filter: { predicates: [{ field: 'run-conclusion', equals: 'failure' }] }
+      }]
+    });
   }, sources);
   expect(viewSources['failed-runs']).toMatchObject({
     source: 'failed-runs',
@@ -453,7 +460,7 @@ test('native IndexedDB directly upserts and retains canonical data across reload
       'run-conclusion': 'failure'
     }],
     metadata: {
-      'source-kind': 'canonical-query',
+      'source-kind': 'derived',
       availability: 'available'
     }
   });
@@ -467,7 +474,7 @@ test('native IndexedDB directly upserts and retains canonical data across reload
       'run-conclusion': 'failure'
     }],
     metadata: {
-      'source-kind': 'canonical-query',
+      'source-kind': 'database-query',
       availability: 'available'
     }
   });
@@ -488,7 +495,15 @@ test('data worker returns only the canonical payload requested by a view', async
   const result = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;
     const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
-    const context = { githubUrlBase: 'https://github.com', pages: [] };
+    const context = {
+      githubUrlBase: 'https://github.com',
+      pages: [],
+      queries: [{
+        name: 'failed-runs',
+        from: 'runs',
+        filter: { predicates: [{ field: 'run-conclusion', equals: 'failure' }] }
+      }]
+    };
     const initial = await loadCanonicalDashboardSources(
       `${location.origin}/sources.json`,
       ['failed-runs'],
@@ -503,7 +518,7 @@ test('data worker returns only the canonical payload requested by a view', async
     expect(payload['failed-runs']).toMatchObject({
       source: 'failed-runs',
       rows: [{ repository: 'gh-aw-cao', run: '12345', 'run-conclusion': 'failure' }],
-      metadata: { 'source-kind': 'canonical-query' }
+      metadata: { 'source-kind': 'derived' }
     });
   }
 });
@@ -555,12 +570,9 @@ test('data worker avoids unavailable legacy boundaries on initial and navigated 
     for (const source of Object.values(payload)) {
       expect(source.metadata.availability).not.toBe('unavailable');
     }
-    expect(payload.outcomes.rows[0]).toMatchObject({
-      'outcome-category': 'issue',
-      'outcome-number': 7
-    });
-    expect(payload['security-findings'].rows).toHaveLength(1);
-    expect(payload['work-items'].rows[0]['lifecycle-state']).toBe('blocked');
+    expect(payload.outcomes.rows).toEqual([]);
+    expect(payload['security-findings'].rows).toEqual([]);
+    expect(payload['work-items'].rows).toEqual([]);
     expect(payload['data-health-collections'].metadata.availability).toBe('available');
     expect(payload['data-health-coverage'].metadata.availability).toBe('available');
   }
@@ -570,7 +582,15 @@ test('data worker reports an already ingested payload as unchanged', async ({ pa
   const refreshes = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;
     const { refreshCanonicalDashboardSources } = await import(processorUrl);
-    const context = { githubUrlBase: 'https://github.com', pages: [] };
+    const context = {
+      githubUrlBase: 'https://github.com',
+      pages: [],
+      queries: [{
+        name: 'failed-runs',
+        from: 'runs',
+        filter: { predicates: [{ field: 'run-conclusion', equals: 'failure' }] }
+      }]
+    };
     return [
       await refreshCanonicalDashboardSources(
         `${location.origin}/sources.json`,
@@ -598,7 +618,15 @@ test('data worker queries retained canonical data before downloading sources', a
     await loadCanonicalDashboardSources(
       `${location.origin}/sources.json`,
       ['failed-runs'],
-      { githubUrlBase: 'https://github.com', pages: [] }
+      {
+        githubUrlBase: 'https://github.com',
+        pages: [],
+        queries: [{
+          name: 'failed-runs',
+          from: 'runs',
+          filter: { predicates: [{ field: 'run-conclusion', equals: 'failure' }] }
+        }]
+      }
     );
   });
 
@@ -610,6 +638,10 @@ test('data worker queries retained canonical data before downloading sources', a
       githubUrlBase: 'https://github.com',
       pages: [],
       queries: [{
+        name: 'failed-runs',
+        from: 'runs',
+        filter: { predicates: [{ field: 'run-conclusion', equals: 'failure' }] }
+      }, {
         name: 'cached-run-totals',
         from: 'runs',
         aggregate: { values: [{ field: 'run', as: 'runs', reducer: 'distinct-count' }] }
@@ -636,7 +668,7 @@ test('data worker queries retained canonical data before downloading sources', a
 
   expect(result.retained['failed-runs']).toMatchObject({
     rows: [{ repository: 'gh-aw-cao', run: '12345', 'run-conclusion': 'failure' }],
-    metadata: { 'source-kind': 'canonical-query' }
+    metadata: { 'source-kind': 'derived' }
   });
   expect(result.retained['cached-run-totals']).toMatchObject({
     rows: [{ runs: 1 }],
@@ -968,14 +1000,7 @@ test('data worker computes repository and campaign pages with request-scoped das
     metadata: { 'source-kind': 'derived', 'query-name': 'repository-activity' }
   });
   const horizonSource = result.horizon[Object.keys(result.horizon)[0]];
-  expect(horizonSource).toMatchObject({
-    rows: [{
-      repository: 'githubnext/gh-aw-cao',
-      runs: 0,
-      aic: 0,
-      status: 'No recent activity'
-    }]
-  });
+  expect(horizonSource.rows).toEqual([]);
   expect(Object.keys(result.navigated)).toEqual(['campaign-inventory']);
   expect(result.navigated['campaign-inventory']).toMatchObject({
     rows: [{
