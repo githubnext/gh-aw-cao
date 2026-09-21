@@ -1,7 +1,7 @@
 import { tidy } from './data-operations.js';
 import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
-import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
+import { queryDashboardSourceObservations } from './data/queries/ingestion.js';
 import { normalize } from './data/normalize/index.js';
 import { batch } from './reactive.js';
 import { publishNotification } from './notification-service.js';
@@ -218,7 +218,7 @@ export function processScatterPoints(points, limit) {
  * @returns {import('./data/model/schema.js').CanonicalBatch|Promise<import('./data/model/schema.js').CanonicalBatch>}
  */
 export function processCanonicalDashboardSources(sources) {
-  return normalize(adaptDashboardSources(sources).observations);
+  return normalize(queryDashboardSourceObservations(sources).observations);
 }
 
 /**

@@ -67,8 +67,6 @@ resources:
     destination: .github/aw/dashboard/site/src/dashboard-data-updates.js
   - source: site/src/data/analytics/temporal-series.js
     destination: .github/aw/dashboard/site/src/data/analytics/temporal-series.js
-  - source: site/src/data/adapters/dashboard-sources.js
-    destination: .github/aw/dashboard/site/src/data/adapters/dashboard-sources.js
   - source: site/src/data/adapters/gh-aw-logs.js
     destination: .github/aw/dashboard/site/src/data/adapters/gh-aw-logs.js
   - source: site/src/data/adapters/sql-export.js
@@ -101,6 +99,10 @@ resources:
     destination: .github/aw/dashboard/site/src/data/queries/database.json
   - source: site/src/data/queries/database.js
     destination: .github/aw/dashboard/site/src/data/queries/database.js
+  - source: site/src/data/queries/ingestion.js
+    destination: .github/aw/dashboard/site/src/data/queries/ingestion.js
+  - source: site/src/data/queries/ingestion.json
+    destination: .github/aw/dashboard/site/src/data/queries/ingestion.json
   - source: site/src/data/storage/indexeddb.js
     destination: .github/aw/dashboard/site/src/data/storage/indexeddb.js
   - source: site/src/data/package.json

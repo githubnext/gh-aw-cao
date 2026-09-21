@@ -1,4 +1,4 @@
-import { adaptDashboardSources } from '../adapters/dashboard-sources.js';
+import { queryDashboardSourceObservations } from '../queries/ingestion.js';
 import {
   adaptCachedGhAwJsonl,
   adaptCachedGhAwJsonlStream,
@@ -366,7 +366,7 @@ async function ingestDashboardSourcesNow(indexedDB, sources, options) {
       debug('skipped unchanged dashboard source shard', { scope });
       return { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 };
     }
-    const adapted = adaptDashboardSources(sources);
+    const adapted = queryDashboardSourceObservations(sources);
     phase = 'normalizing';
     const batch = normalize(adapted.observations);
     phase = 'writing';

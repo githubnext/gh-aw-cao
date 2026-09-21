@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adaptDashboardSources } from '../../src/data/adapters/dashboard-sources.js';
+import { queryDashboardSourceObservations } from '../../src/data/queries/ingestion.js';
 import { relationshipErrors } from '../../src/data/model/schema.js';
 import { normalize } from '../../src/data/normalize/index.js';
 
@@ -8,9 +8,9 @@ const metadata = {
   'artifact-generation': 'abc123'
 };
 
-describe('current dashboard source adapter', () => {
+describe('dashboard source ingestion queries', () => {
   it('converts real source-shaped repository, workflow, and run rows', () => {
-    const adapted = adaptDashboardSources({
+    const adapted = queryDashboardSourceObservations({
       campaigns: {
         rows: [{
           campaign: 'dashboard',
@@ -158,7 +158,7 @@ describe('current dashboard source adapter', () => {
   });
 
   it('maps legacy package inventory to canonical campaigns during rollout', () => {
-    const adapted = adaptDashboardSources({
+    const adapted = queryDashboardSourceObservations({
       packages: {
         rows: [{
           package: 'optimization',
@@ -211,7 +211,7 @@ describe('current dashboard source adapter', () => {
   });
 
   it('accepts source documents without generation metadata', () => {
-    expect(adaptDashboardSources({ repositories: { rows: [], metadata: {} } }))
+    expect(queryDashboardSourceObservations({ repositories: { rows: [], metadata: {} } }))
       .toEqual({ observations: [] });
   });
 
@@ -224,7 +224,7 @@ describe('current dashboard source adapter', () => {
       }
     };
 
-    expect(adaptDashboardSources(sources)).toEqual({ observations: [] });
+    expect(queryDashboardSourceObservations(sources)).toEqual({ observations: [] });
   });
 
   it('joins published transaction logs directly to canonical runs', () => {
@@ -288,7 +288,7 @@ describe('current dashboard source adapter', () => {
       }
     };
 
-    const adapted = adaptDashboardSources(sources);
+    const adapted = queryDashboardSourceObservations(sources);
     const batch = normalize(adapted.observations);
 
     expect(relationshipErrors(batch)).toEqual([]);
@@ -360,7 +360,7 @@ describe('current dashboard source adapter', () => {
       }
     };
 
-    const adapted = adaptDashboardSources(sources);
+    const adapted = queryDashboardSourceObservations(sources);
     const batch = normalize(adapted.observations);
 
     expect(relationshipErrors(batch)).toEqual([]);

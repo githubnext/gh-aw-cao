@@ -8,7 +8,7 @@ import {
   discoverWorkflowRegistries,
   discoverWorkflowVersions,
 } from "../../activity/inventory-sources.mjs";
-import { adaptDashboardSources } from "../../dashboard/site/src/data/adapters/dashboard-sources.js";
+import { queryDashboardSourceObservations } from "../../dashboard/site/src/data/queries/ingestion.js";
 import { adaptGhAwLogs } from "../../dashboard/site/src/data/adapters/gh-aw-logs.js";
 import { normalize } from "../../dashboard/site/src/data/normalize/index.js";
 
@@ -556,7 +556,7 @@ test("remote registry and run-derived workflows share one canonical identity", (
       }],
     }],
   });
-  const inventoryObservations = adaptDashboardSources(sources).observations;
+  const inventoryObservations = queryDashboardSourceObservations(sources).observations;
   const runObservations = adaptGhAwLogs({
     observedAt: generatedAt,
     repository: { githubId: 1, owner: "acme", name: "app", visibility: "public" },

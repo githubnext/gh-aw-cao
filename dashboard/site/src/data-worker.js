@@ -1,7 +1,7 @@
 import { tidy } from './data-operations.js';
 import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
-import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
+import { queryDashboardSourceObservations } from './data/queries/ingestion.js';
 import {
   ingestCachedGhAwJsonl,
   ingestDashboardSources,
@@ -839,7 +839,7 @@ export function processDataRequest(request, signal) {
     if (!request.sources || typeof request.sources !== 'object' || Array.isArray(request.sources)) {
       throw new TypeError('Canonical source requests require a sources object.');
     }
-    const adapted = adaptDashboardSources(/** @type {Record<string, unknown>} */ (request.sources));
+    const adapted = queryDashboardSourceObservations(/** @type {Record<string, unknown>} */ (request.sources));
     return normalize(adapted.observations);
   }
   if (!Array.isArray(request?.data) || !Array.isArray(request?.operators)) {
