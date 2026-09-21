@@ -17,12 +17,10 @@ describe("live Dashboard Language sources", () => {
     expect(main).toContain('await import("./dashboard-app.js")');
     expect(preview).toContain('fetch("./dashboard.json", { cache: "no-store" })');
     expect(preview).toContain('renderSources({}, "loading")');
-    expect(preview).toContain("const AGENTIC_LOADER_REVEAL_DELAY_MS = 300");
-    expect(preview).toContain("const AGENTIC_LOADER_MIN_VISIBLE_MS = 19_800");
-    expect(preview).toContain("renderAfterInitialLoading(sources, state, true, loadPageSources, retryRefresh)");
-    expect(preview).toContain("overviewPageIsActive() && (");
-    expect(preview).toContain("loading: keepOverviewLoaderVisible");
-    expect(preview).toContain("dashboard-loading-skeleton");
+    expect(preview).toContain("subscribeWorkerLoadingProgress");
+    expect(preview).toContain("setLoadingProgressState(document, state)");
+    expect(preview).not.toContain("renderAgenticLoader");
+    expect(preview).not.toContain("AGENTIC_LOADER");
     expect(preview).not.toContain("Loading dashboard data…");
     expect(preview).not.toContain("startLoadingProgress(document)");
     expect(preview).not.toContain("runWithLoadingProgress");

@@ -2,8 +2,6 @@
  * GitHub Primer CSS tokens and element styles cloned from CAO dashboard.
  */
 
-import { agenticLoaderStylesheet } from './components/agentic-loader-styles.js';
-
 /**
  * @returns {string}
  */
@@ -2306,7 +2304,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .overview-observability > .section-heading { align-items: flex-start; flex-direction: column; }
   .attention-domain-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .campaign-status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .dashboard-loading-skeleton, .dashboard-view-skeleton { grid-template-columns: 1fr; }
+  .dashboard-view-skeleton { grid-template-columns: 1fr; }
   .skeleton-panel { grid-column: auto; }
   .workflow-attention > .section-heading, .anomaly-readiness { align-items: flex-start; flex-direction: column; }
   .anomaly-readiness { gap: 4px; }
@@ -2582,7 +2580,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   main.dashboard-prototype { width: 100%; overflow: visible; padding: 0; }
   a { color: inherit; text-decoration: underline; }
 }
-${agenticLoaderStylesheet()}`;
+`;
 }
 
 export const getPrimerStyles = primerStylesheet;

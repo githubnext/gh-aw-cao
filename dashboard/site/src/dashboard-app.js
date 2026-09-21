@@ -7,8 +7,6 @@
       import { octicon } from "./octicons.js";
       import { renderRefreshError } from "./components/refresh-error.js";
       import { collectFullDiagnostics } from "./diagnostics.js";
-      import { renderAgenticLoader } from "./components/agentic-loader.js";
-      import { pendingSourceNames } from "./source-store.js";
       import { startDashboardAppUpdates } from "./dashboard-data-updates.js";
       import { attachCliActions, setDeclaredCliActions } from "./components/cli-actions.js";
       import { applyTableQuerySafetyLimits, browserTableCapacityDecision, logTableCapacityDecision } from "./data/table-capacity.js";
@@ -21,9 +19,6 @@
         normalizeDashboardPageChunk,
         splitDashboardDocument,
       } from "./dashboard-chunks.js";
-
-      const AGENTIC_LOADER_REVEAL_DELAY_MS = 300;
-      const AGENTIC_LOADER_MIN_VISIBLE_MS = 19_800;
 
       /** @typedef {{ name?: string } & Record<string, unknown>} DashboardQueryDefinition */
       /** @typedef {{ 'language-version': string, dashboard: import('./presenter.js').PresentableDashboard }} DashboardSchema */
@@ -316,10 +311,6 @@
         setOpen(copilotPanelOpen);
       };
 
-      /** @returns {boolean} */
-      const hasPendingOverviewSources = () => pendingSourceNames((name) => name.startsWith("overview-")).length > 0;
-      /** @returns {boolean} */
-      const overviewPageIsActive = () => document.querySelector('[data-page-id="overview"]:not([hidden])') instanceof HTMLElement;
       /**
       * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
       * @param {'ready' | 'loading' | 'cached' | 'stale'} [state]
@@ -329,9 +320,6 @@
       */
       const renderSources = (sources, state = "ready", prepared = false, loadPageSources, retryRefresh) => {
         const canExecuteCliActions = previewMode === "canvas";
-        const keepOverviewLoaderVisible = overviewPageIsActive() && (
-          state === "loading" || (state === "ready" && hasPendingOverviewSources())
-        );
         renderedSources = sources;
         renderedSourcesPrepared = prepared;
         renderedPageSourceLoader = loadPageSources;
@@ -346,24 +334,10 @@
           sources,
           commitSha: document.querySelector('meta[name="dashboard-version"]')?.getAttribute("content"),
           prepared,
-          loading: keepOverviewLoaderVisible,
           loadPageSources,
           tableRowLimit,
         });
-        if (keepOverviewLoaderVisible) {
-          dashboard.classList.add("dashboard-loading");
-          dashboard.setAttribute("aria-busy", "true");
-          const loader = renderAgenticLoader({
-            className: "dashboard-loading-skeleton"
-          });
-          const loaderHost = dashboard.querySelector(".factory-floor") ?? dashboard.querySelector(".report-body");
-          if (loaderHost?.classList.contains("factory-floor")) {
-            loader.classList.add("agentic-loader-factory-overlay");
-            loaderHost.append(loader);
-          } else {
-            loaderHost?.prepend(loader);
-          }
-        } else if (state === "cached") {
+        if (state === "cached") {
           dashboard.classList.add("dashboard-refreshing");
           dashboard.setAttribute("aria-busy", "true");
         } else if (state === "stale") {
@@ -381,44 +355,6 @@
         if (previousDashboard instanceof HTMLElement) disposeDashboard(previousDashboard);
         root.replaceChildren(dashboard);
         return dashboard;
-      };
-      let initialLoadingStartedAt = 0;
-      let initialLoadingSettled = false;
-      let initialLoadingRenderTimer = 0;
-
-      /**
-       * Avoids flashing the branded loader for fast startup while preventing a
-       * visible loader from disappearing before its transition can settle.
-       * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
-       * @param {'ready' | 'loading' | 'cached' | 'stale'} state
-       * @param {boolean} prepared
-       * @param {(pageId: string, options: { signal: AbortSignal, onUpdate: (sources: Record<string, import('./presenter.js').LogicalSourceInput>) => void }) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} [loadPageSources]
-       * @param {() => void} [retryRefresh]
-       */
-      const renderAfterInitialLoading = (sources, state, prepared, loadPageSources, retryRefresh) => {
-        if (!overviewPageIsActive()) {
-          renderSources(sources, state, prepared, loadPageSources, retryRefresh);
-          return;
-        }
-        const shouldKeepOverviewLoadingVisible = overviewPageIsActive() && (
-          state === "loading" || (state === "ready" && hasPendingOverviewSources())
-        );
-        if (initialLoadingSettled || shouldKeepOverviewLoadingVisible) {
-          renderSources(sources, state, prepared, loadPageSources, retryRefresh);
-          return;
-        }
-        const elapsed = performance.now() - initialLoadingStartedAt;
-        const minimumEnd = AGENTIC_LOADER_REVEAL_DELAY_MS + AGENTIC_LOADER_MIN_VISIBLE_MS;
-        if (elapsed < AGENTIC_LOADER_REVEAL_DELAY_MS || elapsed >= minimumEnd) {
-          initialLoadingSettled = true;
-          renderSources(sources, state, prepared, loadPageSources, retryRefresh);
-          return;
-        }
-        window.clearTimeout(initialLoadingRenderTimer);
-        initialLoadingRenderTimer = window.setTimeout(() => {
-          initialLoadingSettled = true;
-          renderSources(sources, state, prepared, loadPageSources, retryRefresh);
-        }, minimumEnd - elapsed);
       };
       window.addEventListener("dashboard-preview-update", (event) => {
         const previewEvent = /** @type {CustomEvent<{ dashboard: { 'language-version': string, dashboard: import('./presenter.js').PresentableDashboard }, traceId?: string }>} */ (event);
@@ -1106,7 +1042,6 @@
         });
         cancelCommand.complete();
       } else {
-        initialLoadingStartedAt = performance.now();
         renderSources({}, "loading");
         const sourceUrl = new URL("./payload-hashes.json", window.location.href).href;
         try {
@@ -1118,12 +1053,10 @@
             preparePage: ensureDashboardPageLoaded,
             pageSourceNames: (pageId, viewMode) => dashboardPageSourceNames(dashboardDocument, pageId, viewMode),
             pagePaginatedSourceBindings: (pageId) => dashboardPagePaginatedSourceBindings(dashboardDocument, pageId),
-            render: (sources, state, loadPageSources, retryRefresh) => {
-              renderAfterInitialLoading(sources, state, true, loadPageSources, retryRefresh);
-            },
+            render: (sources, state, loadPageSources, retryRefresh) =>
+              renderSources(sources, state, true, loadPageSources, retryRefresh),
           });
         } catch (error) {
-          window.clearTimeout(initialLoadingRenderTimer);
           const message = error instanceof Error ? error.message : String(error);
           const failure = new Error(`Unable to load live dashboard data: ${message}`, { cause: error });
           root.textContent = failure.message;

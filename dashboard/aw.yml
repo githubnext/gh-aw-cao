@@ -167,12 +167,6 @@ resources:
     destination: .github/aw/dashboard/site/src/scatter-clustering.js
   - source: site/src/smells.svg
     destination: .github/aw/dashboard/site/src/smells.svg
-  - source: site/src/assets/loaders/copilot.svg
-    destination: .github/aw/dashboard/site/src/assets/loaders/copilot.svg
-  - source: site/src/assets/loaders/duck.svg
-    destination: .github/aw/dashboard/site/src/assets/loaders/duck.svg
-  - source: site/src/assets/loaders/octocat.svg
-    destination: .github/aw/dashboard/site/src/assets/loaders/octocat.svg
   - source: site/src/specification.js
     destination: .github/aw/dashboard/site/src/specification.js
   - source: site/src/source-loader.js
@@ -189,10 +183,6 @@ resources:
     destination: .github/aw/dashboard/site/src/validator.js
   - source: site/src/view-formatters.js
     destination: .github/aw/dashboard/site/src/view-formatters.js
-  - source: site/src/components/agentic-loader.js
-    destination: .github/aw/dashboard/site/src/components/agentic-loader.js
-  - source: site/src/components/agentic-loader-styles.js
-    destination: .github/aw/dashboard/site/src/components/agentic-loader-styles.js
   - source: site/src/components/anomaly-readiness.js
     destination: .github/aw/dashboard/site/src/components/anomaly-readiness.js
   - source: site/src/components/animated-number.js

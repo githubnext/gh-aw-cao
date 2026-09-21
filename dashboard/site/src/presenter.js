@@ -7,8 +7,7 @@ import { getPrimerStyles } from './styles.js';
 import { octicon } from './octicons.js';
 import { renderDataStateMetrics } from './components/data-state.js';
 import { titleCase } from './components/count-formatters.js';
-import { formatMediumUtcDateTime, renderEmptyMessage } from './components/ui-primitives.js';
-import { renderAgenticLoader } from './components/agentic-loader.js';
+import { formatMediumUtcDateTime, renderEmptyMessage, renderSkeletonBars } from './components/ui-primitives.js';
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection, renderViewDisclosure } from './components/view-chrome.js';
 import { externalAnchorAttrs, findLink } from './components/link-content.js';
 import { elementHandlesEmptyRows, elementHandlesUnavailableSource, elementLoadsSourcesAsync, renderUiElement } from './components/ui-elements.js';
@@ -96,7 +95,7 @@ import {
  */
 
 /**
- * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, commitSha?: string | null, prepared?: boolean, loading?: boolean, tableRowLimit?: number, loadPageSources?: PageSourceLoader }} PresentationInput
+ * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, commitSha?: string | null, prepared?: boolean, tableRowLimit?: number, loadPageSources?: PageSourceLoader }} PresentationInput
  */
 
 /**
@@ -176,8 +175,6 @@ export function renderDashboard(input) {
   const cardTemplates = Object.fromEntries((document.dashboard['card-templates'] ?? []).map((template) => [template.id, template]));
   const reusableViews = document.dashboard.views ?? [];
   const horizonRange = resolveDashboardHorizon(document.dashboard);
-  const hasData = Object.values(rawSources).some((source) => Array.isArray(source?.rows) && source.rows.length > 0);
-  const showInitialLoadingSkeleton = input.loading === true && !hasData;
   const dataHorizon = resolveDataHorizon(rawSources);
   const githubUrlBase = typeof document.dashboard['github-url-base'] === 'string' && document.dashboard['github-url-base'].length > 0
     ? document.dashboard['github-url-base']
@@ -276,9 +273,7 @@ export function renderDashboard(input) {
           const page = resolvedPage();
           if (!page) throw new Error(`Dashboard page "${pageId}" is not available.`);
           updateHorizon(pageSources);
-          const rendered = showInitialLoadingSkeleton && !rendersBeforePageSources
-            ? renderPageLoadingSkeleton(page)
-            : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, effectiveQueryContext);
+          const rendered = renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, effectiveQueryContext);
           debugPerformance('page render', {
             pageId,
             phase: renderCount++ === 0 ? 'initial' : 'update',
@@ -662,26 +657,10 @@ function renderPagePlaceholder(page) {
 }
 
 /**
- * @param {PresentableBuiltInPage | PresentableCustomPage} page
- * @returns {HTMLElement}
- */
-function renderPageLoadingSkeleton(page) {
-  const placeholder = renderPagePlaceholder(page);
-  placeholder.removeAttribute('data-page-pending');
-  placeholder.setAttribute('aria-busy', 'true');
-  placeholder.append(renderPageSkeleton());
-  return placeholder;
-}
-
-/**
  * @returns {HTMLElement}
  */
 function renderPageSkeleton() {
-  return renderAgenticLoader({
-    className: 'dashboard-view-skeleton',
-    label: 'Loading view',
-    compact: true
-  });
+  return renderSkeletonBars('dashboard-view-skeleton');
 }
 
 /**
