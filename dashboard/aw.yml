@@ -67,6 +67,8 @@ resources:
     destination: .github/aw/dashboard/site/src/dashboard-data-updates.js
   - source: site/src/data/analytics/temporal-series.js
     destination: .github/aw/dashboard/site/src/data/analytics/temporal-series.js
+  - source: site/src/data/analytics/daily-overview-aggregates.js
+    destination: .github/aw/dashboard/site/src/data/analytics/daily-overview-aggregates.js
   - source: site/src/data/adapters/dashboard-sources.js
     destination: .github/aw/dashboard/site/src/data/adapters/dashboard-sources.js
   - source: site/src/data/adapters/gh-aw-logs.js
