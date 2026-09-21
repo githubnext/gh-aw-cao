@@ -282,7 +282,7 @@ test('renders the Overview structure before mixed page data resolves', async ({ 
     pageBusy: null,
     headerBusy: null,
     floorBusy: null,
-    campaignsBusy: 'true',
+    campaignsBusy: '',
     runningPending: 1,
     headingPending: 1,
     rhythmPending: 1,
