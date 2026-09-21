@@ -4265,6 +4265,7 @@ describe('presenter built-in and custom pages', () => {
       });
       const page = /** @type {HTMLElement} */ (root.querySelector('#page-second'));
       expect(page.getAttribute('aria-busy')).toBeNull();
+      expect(page.getAttribute('aria-label')).toBeNull();
       expect(page.querySelector('.empty')?.getAttribute('role')).toBe('alert');
     } finally {
       root.remove();

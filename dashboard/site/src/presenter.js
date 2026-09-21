@@ -1207,6 +1207,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
             if (revision !== activationRevision || activePageId !== pageId || !currentPage.parentNode) return;
             currentPage.replaceChildren(renderEmptyMessage('Unable to load this page.', { role: 'alert' }));
             currentPage.removeAttribute('aria-busy');
+            currentPage.removeAttribute('aria-label');
           });
         } else {
           replacePage(rendered);

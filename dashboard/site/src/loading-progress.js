@@ -66,11 +66,14 @@ function renderActiveProgress(target) {
   const current = [...target.operations.values()].at(-1);
   const total = Number(current?.total);
   const completed = Number(current?.completed);
-  const progress = Number.isFinite(total) && total > 0 && Number.isFinite(completed)
-    ? INITIAL_PROGRESS + (MAX_PROGRESS - INITIAL_PROGRESS) * Math.min(1, Math.max(0, completed / total))
+  const determinate = Number.isFinite(total) && total > 0 && Number.isFinite(completed);
+  const completion = determinate ? Math.min(1, Math.max(0, completed / total)) : 0;
+  const progress = determinate
+    ? INITIAL_PROGRESS + (MAX_PROGRESS - INITIAL_PROGRESS) * completion
     : INITIAL_PROGRESS;
   target.bar.style.transform = `scaleX(${progress})`;
-  target.bar.setAttribute('aria-valuenow', String(Math.round(progress * 100)));
+  if (determinate) target.bar.setAttribute('aria-valuenow', String(Math.round(completion * 100)));
+  else target.bar.removeAttribute('aria-valuenow');
 }
 
 /**

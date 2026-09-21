@@ -19,7 +19,7 @@ describe('loading progress', () => {
     expect(bar?.style.transform).toBe('scaleX(0.08)');
     expect(bar?.getAttribute('role')).toBe('progressbar');
     expect(bar?.getAttribute('aria-label')).toBe('Loading dashboard data');
-    expect(bar?.getAttribute('aria-valuenow')).toBe('8');
+    expect(bar?.hasAttribute('aria-valuenow')).toBe(false);
   });
 
   it('keeps a shimmer animation running while progress waits to complete', () => {
@@ -39,12 +39,13 @@ describe('loading progress', () => {
 
     setLoadingProgressState(document, { id: 'ingestion-1', phase: 'start' });
     setLoadingProgressState(document, { id: 'ingestion-1', phase: 'update', completed: 2, total: 4 });
+    const bar = /** @type {HTMLElement | null} */ (document.querySelector('.loading-progress'));
+    expect(bar?.getAttribute('aria-valuenow')).toBe('50');
     setLoadingProgressState(document, { id: 'ingestion-1', phase: 'update', completed: 0, total: 4 });
     vi.advanceTimersByTime(60_000);
 
-    const bar = /** @type {HTMLElement | null} */ (document.querySelector('.loading-progress'));
     expect(bar?.style.transform).toBe('scaleX(0.08)');
-    expect(bar?.getAttribute('aria-valuenow')).toBe('8');
+    expect(bar?.getAttribute('aria-valuenow')).toBe('0');
   });
 
   it('waits for every worker operation before completing', () => {
