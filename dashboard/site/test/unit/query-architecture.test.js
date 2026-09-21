@@ -65,7 +65,7 @@ describe('dashboard query architecture', () => {
     ]) {
       expect(canonicalSources).not.toContain(`function ${projection}`);
     }
-    expect(canonicalQueries.map((query) => query.name)).toEqual(expect.arrayContaining([
+    expect(canonicalQueries.map((/** @type {{ name?: string }} */ query) => query.name)).toEqual(expect.arrayContaining([
       'campaigns',
       'repositories',
       'workflows',

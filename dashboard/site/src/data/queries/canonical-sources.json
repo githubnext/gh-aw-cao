@@ -400,6 +400,16 @@
         "as": "resolved-model",
         "function": "coalesce",
         "args": [{ "field": "resolved-model" }, { "field": "model-id" }]
+      },
+      {
+        "as": "finding-kind",
+        "function": "coalesce",
+        "args": [{ "value": "audit-finding" }]
+      },
+      {
+        "as": "finding-status",
+        "function": "coalesce",
+        "args": [{ "value": "observed" }]
       }
     ],
     "select": [
@@ -409,9 +419,9 @@
       { "field": "run" },
       { "field": "event", "as": "safe-output" },
       { "field": "event", "as": "finding" },
-      { "value": "audit-finding", "as": "finding-kind" },
+      { "field": "finding-kind" },
       { "field": "event-status", "as": "finding-severity" },
-      { "value": "observed", "as": "finding-status" },
+      { "field": "finding-status" },
       { "field": "event-summary", "as": "finding-summary" },
       { "field": "observed-at" },
       { "field": "engine" },
@@ -425,6 +435,48 @@
   {
     "name": "detection-observations",
     "from": "$security-findings",
+    "compute": [
+      {
+        "as": "detection-expected",
+        "function": "coalesce",
+        "args": [{ "value": "yes" }]
+      },
+      {
+        "as": "detection-applicable",
+        "function": "coalesce",
+        "args": [{ "value": "yes" }]
+      },
+      {
+        "as": "detection-executed",
+        "function": "coalesce",
+        "args": [{ "value": "yes" }]
+      },
+      {
+        "as": "verdict-available",
+        "function": "coalesce",
+        "args": [{ "value": "yes" }]
+      },
+      {
+        "as": "detection-state",
+        "function": "coalesce",
+        "args": [{ "value": "threat" }]
+      },
+      {
+        "as": "detection-state-label",
+        "function": "coalesce",
+        "args": [{ "value": "Threat detected" }]
+      },
+      {
+        "as": "detection-count",
+        "function": "coalesce",
+        "args": [{ "value": 1 }]
+      },
+      {
+        "as": "attention-priority",
+        "function": "coalesce",
+        "args": [{ "value": "high" }]
+      }
+    ],
     "select": [
       { "field": "organization" },
       { "field": "repository" },
@@ -432,20 +484,27 @@
       { "field": "run" },
       { "field": "observed-at" },
       { "field": "run-link" },
-      { "value": "yes", "as": "detection-expected" },
-      { "value": "yes", "as": "detection-applicable" },
-      { "value": "yes", "as": "detection-executed" },
-      { "value": "yes", "as": "verdict-available" },
-      { "value": "threat", "as": "detection-state" },
-      { "value": "Threat detected", "as": "detection-state-label" },
-      { "value": 1, "as": "detection-count" },
+      { "field": "detection-expected" },
+      { "field": "detection-applicable" },
+      { "field": "detection-executed" },
+      { "field": "verdict-available" },
+      { "field": "detection-state" },
+      { "field": "detection-state-label" },
+      { "field": "detection-count" },
       { "field": "smell-summary", "as": "detection-signal" },
-      { "value": "high", "as": "attention-priority" }
+      { "field": "attention-priority" }
     ]
   },
   {
     "name": "safe-output-performance",
     "from": "$outcomes",
+    "compute": [
+      {
+        "as": "safe-output-count",
+        "function": "coalesce",
+        "args": [{ "value": 1 }]
+      }
+    ],
     "select": [
       { "field": "organization" },
       { "field": "repository" },
@@ -456,7 +515,7 @@
       { "field": "safe-output-kind" },
       { "field": "outcome-title", "as": "safe-output-label" },
       { "field": "outcome-status", "as": "safe-output-status" },
-      { "value": 1, "as": "safe-output-count" },
+      { "field": "safe-output-count" },
       { "field": "observed-at" },
       { "field": "run-link" }
     ]
