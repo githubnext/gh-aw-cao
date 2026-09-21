@@ -696,14 +696,13 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
   assert(facetControlBox);
   assert(scrolledSummaryBox);
   expect(scrolledSummaryBox.y - (facetControlBox.y + facetControlBox.height)).toBeGreaterThanOrEqual(4);
-  const mobileViewModeToggle = page.locator('.mobile-view-mode-toggle');
-  await expect(page.locator('[data-page-id="repositories"] > .filter-bar')).toBeHidden();
-  await expect(mobileViewModeToggle).toHaveAttribute('aria-label', 'Switch to Cards view');
-  await mobileViewModeToggle.click();
+  await page.getByRole('button', { name: 'Cards' }).click();
   await page.getByRole('button', { name: 'Chart' }).click();
   await expect(swimlane).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
+  const mobileViewModeToggle = page.locator('.mobile-view-mode-toggle');
+  await expect(runsPage.locator(':scope > .filter-bar')).toBeHidden();
   await expect(swimlane).toBeVisible();
   await expect(table).toBeHidden();
   await expect(mobileViewModeToggle).toHaveAttribute('aria-label', 'Switch to Table view');
@@ -4152,30 +4151,33 @@ test('phone pages toggle between chart, full-view table, and card-list modes', a
   const root = page.locator('.dashboard-root');
   const chart = page.locator('[data-view-id="runs-chart"]');
   const table = page.locator('[data-view-id="runs-table"]');
-  const tableMode = page.getByRole('button', { name: 'Table' });
-  await expect(tableMode).toBeVisible();
-  await expect(tableMode.locator('.octicon-table')).toBeVisible();
+  const viewModeToggle = page.locator('.mobile-view-mode-toggle');
+  await expect(page.locator('[data-page-id="runs"] > .filter-bar')).toBeHidden();
+  await expect(viewModeToggle).toBeVisible();
+  await expect(viewModeToggle).toHaveAttribute('aria-label', 'Switch to Table view');
+  await expect(viewModeToggle.locator('.octicon-graph')).toBeVisible();
   await expect(chart).toBeVisible();
   await expect(table).toBeHidden();
   await expect(root).not.toHaveClass(/dashboard-full-view/);
 
-  await tableMode.click();
+  await viewModeToggle.click();
 
-  await expect(page.getByRole('button', { name: 'Cards' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Cards' }).locator('.octicon-stack')).toBeVisible();
+  await expect(viewModeToggle).toHaveAttribute('aria-label', 'Switch to Cards view');
+  await expect(viewModeToggle.locator('.octicon-table')).toBeVisible();
   await expect(chart).toBeHidden();
   await expect(table).toBeVisible();
   await expect(root).toHaveClass(/dashboard-full-view/);
-  await expect(tableMode).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('[data-page-id="runs"] [data-view-mode-value="table"]')).toHaveAttribute('aria-pressed', 'true');
 
-  await page.getByRole('button', { name: 'Cards' }).click();
-  await expect(page.getByRole('button', { name: 'Chart' }).locator('.octicon-graph')).toBeVisible();
+  await viewModeToggle.click();
+  await expect(viewModeToggle).toHaveAttribute('aria-label', 'Switch to Chart view');
+  await expect(viewModeToggle.locator('.octicon-stack')).toBeVisible();
   await expect(chart).toBeHidden();
   await expect(table.locator('.table-region')).toBeHidden();
   await expect(table.locator('[data-mobile-card-list]')).toBeVisible();
   await expect(root).toHaveClass(/dashboard-full-view/);
   await expect(table.getByRole('heading', { name: 'Runs', level: 3 })).toBeHidden();
-  await expect(page.getByRole('button', { name: 'Cards' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('[data-page-id="runs"] [data-view-mode-value="card"]')).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('phone Workflows page cycles through chart, table, and card-list views', async ({ page }) => {
@@ -4223,19 +4225,23 @@ test('phone Workflows page cycles through chart, table, and card-list views', as
 
   const chart = page.locator('[data-view-id="workflows-by-runs"]');
   const table = page.locator('[data-view-id="workflows-inventory"]');
+  const viewModeToggle = page.locator('.mobile-view-mode-toggle');
   await expect(chart).toBeVisible();
   await expect(table).toBeHidden();
 
-  await page.locator('[data-page-id="workflows"] > .filter-bar').getByRole('button', { name: 'Table' }).click();
+  await expect(page.locator('[data-page-id="workflows"] > .filter-bar')).toBeHidden();
+  await expect(viewModeToggle).toHaveAttribute('aria-label', 'Switch to Table view');
+  await viewModeToggle.click();
   await expect(chart).toBeHidden();
   await expect(table.locator('.table-region')).toBeVisible();
   await expect(table.locator('tbody')).toContainText('AW Maintenance');
 
-  await page.locator('[data-page-id="workflows"] > .filter-bar').getByRole('button', { name: 'Cards' }).click();
+  await expect(viewModeToggle).toHaveAttribute('aria-label', 'Switch to Cards view');
+  await viewModeToggle.click();
   await expect(table.locator('.table-region')).toBeHidden();
   await expect(table.locator('[data-mobile-card-list]')).toBeVisible();
   await expect(table.locator('[data-mobile-card-list]')).toContainText('AW Maintenance');
-  await expect(page.locator('[data-page-id="workflows"] > .filter-bar').getByRole('button', { name: 'Chart' })).toBeVisible();
+  await expect(viewModeToggle).toHaveAttribute('aria-label', 'Switch to Chart view');
 });
 
 test('phone full-view lazy tables switch between table and card-list modes', async ({ page }) => {

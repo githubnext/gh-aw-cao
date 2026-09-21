@@ -54,7 +54,7 @@ describe('dashboard sidebar', () => {
   });
 
   it('cycles the active page view from the mobile header control', () => {
-    const sidebar = renderDashboardNavigation([{ id: 'runs', title: 'Runs' }], 'Example');
+    const sidebar = renderDashboardNavigation([{ id: 'runs', title: 'Runs' }], 'Example', undefined);
     const page = document.createElement('section');
     page.className = 'dashboard-page';
     for (const [mode, pressed] of [['chart', 'true'], ['table', 'false'], ['card', 'false']]) {
