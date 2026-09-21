@@ -8,7 +8,9 @@ import {
   DATABASE_NAME,
   DATABASE_VERSION,
   openCanonicalDatabase,
+  publishDailyOverviewAggregates,
   readCollection,
+  readDailyOverviewAggregates,
   readIndex,
   readTransactions,
   recordTransaction,
@@ -100,6 +102,28 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     await replaceCanonicalBatch(reopened, replacement);
     expect(await readCollection(reopened, 'audits')).toEqual([]);
     expect(readFileSync(filename, 'utf8').slice(0, 15)).toBe('SQLite format 3');
+  });
+
+  it('publishes and range-reads daily overview aggregates through the compound generation/day index', async () => {
+    const filename = temporaryDatabase();
+    const indexedDB = installSqliteIndexedDB(filename);
+
+    await publishDailyOverviewAggregates(indexedDB, {
+      generation: 'generation-a',
+      builtAt: '2026-09-21T00:00:00Z',
+      dailyAggregates: [
+        { day: '2026-09-10', runs: 5, successfulRuns: 4, failedRuns: 1, dispatches: 2, failedDispatches: 0 },
+        { day: '2026-09-11', runs: 6, successfulRuns: 6, failedRuns: 0, dispatches: 3, failedDispatches: 1 }
+      ]
+    });
+
+    const reopened = createSqliteIndexedDB(filename);
+    const result = await readDailyOverviewAggregates(reopened, { startDay: '2026-09-10', endDay: '2026-09-10' });
+    expect(result.available).toBe(true);
+    expect(result.generation).toBe('generation-a');
+    expect(result.records).toEqual([
+      expect.objectContaining({ day: '2026-09-10', runs: 5, generation: 'generation-a' })
+    ]);
   });
 
   it('deletes the named IndexedDB database without deleting the SQLite file', async () => {

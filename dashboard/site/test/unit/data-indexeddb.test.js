@@ -7,9 +7,12 @@ import {
   DATABASE_VERSION,
   deleteCanonicalDatabase,
   openCanonicalDatabase,
+  publishDailyOverviewAggregates,
+  pruneStaleDailyOverviewAggregates,
   queryCollection,
   readCollection,
   readCollections,
+  readDailyOverviewAggregates,
   readRecord,
   readTransactions,
   recordTransaction,
@@ -91,8 +94,10 @@ describe('canonical IndexedDB', () => {
     expect([...database.objectStoreNames]).toEqual([
       'audits',
       'campaigns',
+      'dailyOverviewAggregates',
       'domains',
       'issues',
+      'overviewAggregateMetadata',
       'repositories',
       'runs',
       'tools',
@@ -109,6 +114,10 @@ describe('canonical IndexedDB', () => {
     expect([...database.transaction('audits').objectStore('audits').indexNames]).toEqual(['byRun']);
     expect([...database.transaction('issues').objectStore('issues').indexNames]).toEqual(['byRun']);
     expect([...database.transaction('transactions').objectStore('transactions').indexNames]).toEqual(['byCreatedAt']);
+    expect([...database.transaction('dailyOverviewAggregates').objectStore('dailyOverviewAggregates').indexNames])
+      .toEqual(['byGenerationDay']);
+    expect([...database.transaction('overviewAggregateMetadata').objectStore('overviewAggregateMetadata').indexNames])
+      .toEqual([]);
     database.close();
   });
 
@@ -162,8 +171,10 @@ describe('canonical IndexedDB', () => {
     expect([...database.objectStoreNames]).toEqual([
       'audits',
       'campaigns',
+      'dailyOverviewAggregates',
       'domains',
       'issues',
+      'overviewAggregateMetadata',
       'repositories',
       'runs',
       'tools',
@@ -198,8 +209,10 @@ describe('canonical IndexedDB', () => {
     expect([...database.objectStoreNames]).toEqual([
       'audits',
       'campaigns',
+      'dailyOverviewAggregates',
       'domains',
       'issues',
+      'overviewAggregateMetadata',
       'repositories',
       'runs',
       'tools',
@@ -898,5 +911,194 @@ describe('canonical IndexedDB', () => {
     expect(waiting).toBe(1);
     release();
     await holder;
+  });
+});
+
+describe('daily overview aggregates', () => {
+  /** @param {string} day @param {Partial<Record<string, number>>} [overrides] */
+  function dailyAggregate(day, overrides = {}) {
+    return {
+      day,
+      runs: 10,
+      successfulRuns: 8,
+      failedRuns: 2,
+      dispatches: 4,
+      failedDispatches: 1,
+      ...overrides
+    };
+  }
+
+  it('fails closed when no generation has ever been published', async () => {
+    const result = await readDailyOverviewAggregates(indexedDB, { startDay: '2026-09-01', endDay: '2026-09-30' });
+
+    expect(result).toMatchObject({
+      available: false,
+      fallbackReason: 'metadata-missing',
+      generation: null,
+      records: []
+    });
+  });
+
+  it('publishes a generation and range-reads only the requested days', async () => {
+    await publishDailyOverviewAggregates(indexedDB, {
+      generation: 'generation-a',
+      builtAt: '2026-09-21T00:00:00Z',
+      dailyAggregates: [
+        dailyAggregate('2026-09-10'),
+        dailyAggregate('2026-09-11'),
+        dailyAggregate('2026-09-12')
+      ]
+    });
+
+    const result = await readDailyOverviewAggregates(indexedDB, { startDay: '2026-09-10', endDay: '2026-09-11' });
+
+    expect(result.available).toBe(true);
+    expect(result.generation).toBe('generation-a');
+    expect(result.records.map((record) => record.day)).toEqual(['2026-09-10', '2026-09-11']);
+    expect(result.recordsReturned).toBe(2);
+  });
+
+  it('resolves the active generation via a compound generation/day range index', async () => {
+    await publishDailyOverviewAggregates(indexedDB, {
+      generation: 'generation-a',
+      dailyAggregates: [dailyAggregate('2026-09-10')]
+    });
+    // A stale, unpublished generation with overlapping days must never leak
+    // into a range read scoped to the active generation.
+    await new Promise((resolve, reject) => {
+      openCanonicalDatabase(indexedDB).then((database) => {
+        const transaction = database.transaction('dailyOverviewAggregates', 'readwrite');
+        transaction.objectStore('dailyOverviewAggregates').put({
+          id: 'generation-b:2026-09-10',
+          generation: 'generation-b',
+          day: '2026-09-10',
+          runs: 999,
+          successfulRuns: 999,
+          failedRuns: 0,
+          dispatches: 0,
+          failedDispatches: 0
+        });
+        transaction.oncomplete = () => { database.close(); resolve(undefined); };
+        transaction.onerror = () => reject(transaction.error);
+      });
+    });
+
+    const result = await readDailyOverviewAggregates(indexedDB, { startDay: '2026-09-01', endDay: '2026-09-30' });
+
+    expect(result.records).toHaveLength(1);
+    expect(result.records[0]).toMatchObject({ generation: 'generation-a', runs: 10 });
+  });
+
+  it('leaves the previous generation active and readable when publication is interrupted', async () => {
+    await publishDailyOverviewAggregates(indexedDB, {
+      generation: 'generation-a',
+      dailyAggregates: [dailyAggregate('2026-09-10', { runs: 5 })]
+    });
+
+    // Simulate a crash: generation-b's records are written directly to the
+    // store (as publishDailyOverviewAggregates would, before it reaches the
+    // metadata-publication step) without ever updating the metadata record.
+    const database = await openCanonicalDatabase(indexedDB);
+    const transaction = database.transaction('dailyOverviewAggregates', 'readwrite');
+    transaction.objectStore('dailyOverviewAggregates').put({
+      id: 'generation-b:2026-09-10',
+      generation: 'generation-b',
+      day: '2026-09-10',
+      runs: 999,
+      successfulRuns: 0,
+      failedRuns: 0,
+      dispatches: 0,
+      failedDispatches: 0
+    });
+    await new Promise((resolve, reject) => {
+      transaction.oncomplete = () => resolve(undefined);
+      transaction.onerror = () => reject(transaction.error);
+    });
+    database.close();
+
+    const result = await readDailyOverviewAggregates(indexedDB, { startDay: '2026-09-01', endDay: '2026-09-30' });
+
+    expect(result.generation).toBe('generation-a');
+    expect(result.records).toEqual([expect.objectContaining({ generation: 'generation-a', runs: 5 })]);
+  });
+
+  it('activates the new generation only after every record has committed', async () => {
+    await publishDailyOverviewAggregates(indexedDB, {
+      generation: 'generation-a',
+      dailyAggregates: [dailyAggregate('2026-09-10', { runs: 5 })]
+    });
+
+    await publishDailyOverviewAggregates(indexedDB, {
+      generation: 'generation-b',
+      dailyAggregates: [dailyAggregate('2026-09-10', { runs: 7 }), dailyAggregate('2026-09-11', { runs: 3 })]
+    });
+
+    const result = await readDailyOverviewAggregates(indexedDB, { startDay: '2026-09-01', endDay: '2026-09-30' });
+
+    expect(result.generation).toBe('generation-b');
+    expect(result.records.map((record) => record.runs).sort((a, b) => a - b)).toEqual([3, 7]);
+  });
+
+  it('falls back when the published metadata version does not match this build', async () => {
+    await publishDailyOverviewAggregates(indexedDB, {
+      generation: 'generation-a',
+      dailyAggregates: [dailyAggregate('2026-09-10')]
+    });
+    const database = await openCanonicalDatabase(indexedDB);
+    const transaction = database.transaction('overviewAggregateMetadata', 'readwrite');
+    const store = transaction.objectStore('overviewAggregateMetadata');
+    const existing = await new Promise((resolve, reject) => {
+      const request = store.get('daily-overview-aggregates');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    store.put({ ...existing, version: existing.version + 1 });
+    await new Promise((resolve, reject) => {
+      transaction.oncomplete = () => resolve(undefined);
+      transaction.onerror = () => reject(transaction.error);
+    });
+    database.close();
+
+    const result = await readDailyOverviewAggregates(indexedDB, { startDay: '2026-09-01', endDay: '2026-09-30' });
+
+    expect(result).toMatchObject({ available: false, fallbackReason: 'version-mismatch' });
+  });
+
+  it('prunes stale generations without touching the active generation', async () => {
+    await publishDailyOverviewAggregates(indexedDB, {
+      generation: 'generation-a',
+      dailyAggregates: [dailyAggregate('2026-09-10')]
+    });
+    await publishDailyOverviewAggregates(indexedDB, {
+      generation: 'generation-b',
+      dailyAggregates: [dailyAggregate('2026-09-10'), dailyAggregate('2026-09-11')]
+    });
+
+    const { deletedRecords } = await pruneStaleDailyOverviewAggregates(indexedDB);
+    expect(deletedRecords).toBe(1);
+
+    const database = await openCanonicalDatabase(indexedDB);
+    const remaining = await new Promise((resolve, reject) => {
+      const request = database.transaction('dailyOverviewAggregates').objectStore('dailyOverviewAggregates').getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    database.close();
+    expect(remaining.every((/** @type {{ generation: string }} */ record) => record.generation === 'generation-b')).toBe(true);
+    expect(remaining).toHaveLength(2);
+  });
+
+  it('writes generation records in bounded batches', async () => {
+    const dailyAggregates = Array.from({ length: 5 }, (_, index) =>
+      dailyAggregate(`2026-09-${String(10 + index).padStart(2, '0')}`));
+
+    await publishDailyOverviewAggregates(indexedDB, {
+      generation: 'generation-a',
+      dailyAggregates,
+      batchSize: 2
+    });
+
+    const result = await readDailyOverviewAggregates(indexedDB, { startDay: '2026-09-01', endDay: '2026-09-30' });
+    expect(result.recordsReturned).toBe(5);
   });
 });
