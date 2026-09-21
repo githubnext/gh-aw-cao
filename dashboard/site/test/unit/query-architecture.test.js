@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { SOURCE_FIELDS } from '../../src/specification.js';
 
 /** @param {string} path */
 const read = (path) => readFileSync(resolve(path), 'utf8');
@@ -76,6 +77,15 @@ describe('dashboard query architecture', () => {
       'detection-observations',
       'safe-output-performance'
     ]));
+    for (const query of /** @type {Array<{
+      name: keyof typeof SOURCE_FIELDS,
+      select: Array<{ field: string, as?: string }>
+    }>} */ (canonicalQueries)) {
+      const expectedFields = SOURCE_FIELDS[query.name];
+      if (!expectedFields) continue;
+      const selectedFields = new Set(query.select.map((field) => field.as ?? field.field));
+      expect(expectedFields.filter((field) => !selectedFields.has(field)), query.name).toEqual([]);
+    }
     expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'failed-runs'))
       .toMatchObject({ from: 'runs' });
     expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-opportunities'))

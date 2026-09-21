@@ -264,7 +264,10 @@
           { "field": "resolvedModel", "as": "resolved-model" },
           { "field": "modelId", "as": "model-id" },
           { "field": "rolloutMode", "as": "rollout-mode" },
-          { "field": "ghAwVersion", "as": "gh-aw-version" }
+          { "field": "ghAwVersion", "as": "gh-aw-version" },
+          { "field": "organizationLink", "as": "organization-link" },
+          { "field": "repositoryLink", "as": "repository-link" },
+          { "field": "workflowLink", "as": "workflow-link" }
         ]
       }
     ],
@@ -342,6 +345,9 @@
       { "field": "model-id" },
       { "field": "rollout-mode" },
       { "field": "gh-aw-version" },
+      { "field": "organization-link" },
+      { "field": "repository-link" },
+      { "field": "workflow-link" },
       { "field": "targetRepo", "as": "target-repo" },
       { "field": "targetOrganization", "as": "target-organization" },
       { "field": "targetRepository", "as": "target-repository" },
@@ -470,7 +476,12 @@
       { "field": "requested-model" },
       { "field": "resolved-model" },
       { "field": "run-link" },
-      { "field": "run-link", "as": "external-link" }
+      { "field": "run-link", "as": "external-link" },
+      { "field": "issue-link" },
+      { "field": "pull-request-link" },
+      { "field": "organization-link" },
+      { "field": "repository-link" },
+      { "field": "workflow-link" }
     ]
   },
   {
@@ -525,6 +536,7 @@
       { "field": "run" },
       { "field": "observed-at" },
       { "field": "run-link" },
+      { "field": "rollout-mode" },
       { "field": "detection-expected" },
       { "field": "detection-applicable" },
       { "field": "detection-executed" },
@@ -532,8 +544,21 @@
       { "field": "detection-state" },
       { "field": "detection-state-label" },
       { "field": "detection-count" },
+      { "field": "usable-verdict-percent" },
+      { "field": "prompt-injection-detected" },
+      { "field": "secret-leak-detected" },
+      { "field": "malicious-patch-detected" },
+      { "field": "inspection-warning-count" },
+      { "field": "inspection-warning" },
       { "field": "smell-summary", "as": "detection-signal" },
-      { "field": "attention-priority" }
+      { "field": "attention-priority" },
+      { "field": "job-status" },
+      { "field": "job-conclusion" },
+      { "field": "job-duration-seconds" },
+      { "field": "runner" },
+      { "field": "engine" },
+      { "field": "requested-model" },
+      { "field": "resolved-model" }
     ]
   },
   {
