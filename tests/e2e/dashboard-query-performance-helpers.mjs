@@ -55,6 +55,12 @@ export function queryPerformanceMarkdown(report) {
   const lines = [
     `Population time: **${report.populateMs.toFixed(2)} ms**`,
     "",
+    "### IndexedDB count()",
+    "",
+    `Counted **${report.indexedDbCount.records.toLocaleString("en-US")} records** across `
+      + `**${report.indexedDbCount.stores.toLocaleString("en-US")} stores** in `
+      + `**${report.indexedDbCount.durationMs.toFixed(2)} ms**.`,
+    "",
     "### Overview critical path",
     "",
     `Initial Overview ready: **${report.overview.initialReadyMs.toFixed(2)} ms**`,
