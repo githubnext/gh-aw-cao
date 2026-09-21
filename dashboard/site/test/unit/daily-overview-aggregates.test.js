@@ -28,6 +28,10 @@ describe('resolveRunUtcDay', () => {
     expect(resolveRunUtcDay(run({ startedAt: 'not-a-date', createdAt: null }))).toBeNull();
   });
 
+  it('falls back to createdAt when startedAt is present but unparsable', () => {
+    expect(resolveRunUtcDay(run({ startedAt: 'not-a-date', createdAt: '2026-09-12T00:00:00Z' }))).toBe('2026-09-12');
+  });
+
   it('normalizes a boundary timestamp in a non-UTC offset to its UTC day', () => {
     // 2026-09-10T23:30:00-01:00 is 2026-09-11T00:30:00Z.
     expect(resolveRunUtcDay(run({ startedAt: '2026-09-10T23:30:00-01:00' }))).toBe('2026-09-11');

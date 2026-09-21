@@ -37,11 +37,13 @@ const DISPATCH_EVENT = 'workflow_dispatch';
  * @returns {string | null}
  */
 export function resolveRunUtcDay(run) {
-  const candidate = run?.startedAt ?? run?.createdAt;
-  if (typeof candidate !== 'string' || !candidate) return null;
-  const milliseconds = Date.parse(candidate);
-  if (!Number.isFinite(milliseconds)) return null;
-  return new Date(milliseconds).toISOString().slice(0, 10);
+  for (const candidate of [run?.startedAt, run?.createdAt]) {
+    if (typeof candidate !== 'string' || !candidate) continue;
+    const milliseconds = Date.parse(candidate);
+    if (!Number.isFinite(milliseconds)) continue;
+    return new Date(milliseconds).toISOString().slice(0, 10);
+  }
+  return null;
 }
 
 /**

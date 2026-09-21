@@ -3174,8 +3174,8 @@ fast path:
 The projection is a pure function of the canonical `runs` collection: no
 IndexedDB read-back is required or permitted at build time. Given the
 normalized batch already produced by ingestion, aggregation groups runs
-by UTC calendar day (`YYYY-MM-DD`, `Date.parse(...).toISOString().slice(0, 10)`)
-and reduces the additive metrics from 73.2. Runs with duplicate `id`
+by UTC calendar day (`YYYY-MM-DD`, `new Date(Date.parse(...)).toISOString().slice(0, 10)`)
+and reduces the additive metrics from §72.2. Runs with duplicate `id`
 values are deduplicated with replace-by-id (last observation wins),
 consistent with canonical replace semantics. Runs without a parseable
 `startedAt`/`createdAt` are excluded from the projection rather than
@@ -3252,7 +3252,7 @@ unsupported joins, no unsupported compute operation, no distinct
 semantics, and a compatible aggregate metadata version. If any condition
 fails, the query MUST fall back to the existing canonical path.
 Consumers of the query API MUST NOT be able to observe which path was
-used except through diagnostic instrumentation (73.7); results MUST be
+used except through diagnostic instrumentation (§72.7); results MUST be
 identical.
 
 ## 72.7 Diagnostics
