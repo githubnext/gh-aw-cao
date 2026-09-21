@@ -109,19 +109,21 @@ test('mobile horizontal bar labels preserve readable suffixes', async ({ page })
   const firstRow = page.locator('.horizontal-bar-chart-row').first();
   const label = firstRow.locator('.horizontal-bar-chart-label');
   await expect(label).toHaveCSS('direction', 'rtl');
+  await expect(label.locator('.horizontal-bar-chart-label-text')).toHaveCSS('direction', 'ltr');
 
   const labelRendering = await firstRow.evaluate((row) => {
     const labelElement = row.querySelector('.horizontal-bar-chart-label');
-    if (!(labelElement instanceof HTMLElement) || !(labelElement.firstChild instanceof Text)) {
+    const textElement = row.querySelector('.horizontal-bar-chart-label-text');
+    if (!(labelElement instanceof HTMLElement) || !(textElement instanceof HTMLElement) || !(textElement.firstChild instanceof Text)) {
       throw new Error('Expected horizontal bar label text.');
     }
     const suffix = 'planner.md';
-    const text = labelElement.firstChild.textContent ?? '';
+    const text = textElement.firstChild.textContent ?? '';
     const suffixStart = text.lastIndexOf(suffix);
     if (suffixStart < 0) throw new Error('Expected label suffix.');
     const suffixRange = document.createRange();
-    suffixRange.setStart(labelElement.firstChild, suffixStart);
-    suffixRange.setEnd(labelElement.firstChild, suffixStart + suffix.length);
+    suffixRange.setStart(textElement.firstChild, suffixStart);
+    suffixRange.setEnd(textElement.firstChild, suffixStart + suffix.length);
     const labelBounds = labelElement.getBoundingClientRect();
     const suffixBounds = suffixRange.getBoundingClientRect();
     return {
