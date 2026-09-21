@@ -343,7 +343,7 @@ describe('canonical IndexedDB', () => {
     ]);
     await writeRecords('runs', records);
     const stored = await readCollection(indexedDB, 'runs');
-    const indexedReads = vi.spyOn(IDBIndex.prototype, 'getAll');
+    const indexedReads = vi.spyOn(IDBIndex.prototype, 'openCursor');
 
     const result = await queryCollection(indexedDB, 'runs', operators);
 
@@ -392,7 +392,7 @@ describe('canonical IndexedDB', () => {
     }]);
     await writeRecords('tools', records);
     const stored = await readCollection(indexedDB, 'tools');
-    const indexedReads = vi.spyOn(IDBIndex.prototype, 'getAll');
+    const indexedReads = vi.spyOn(IDBIndex.prototype, 'openCursor');
 
     const result = await queryCollection(indexedDB, 'tools', operators);
 
@@ -412,7 +412,7 @@ describe('canonical IndexedDB', () => {
     }]);
     await writeRecords('audits', records);
     const stored = await readCollection(indexedDB, 'audits');
-    const indexedReads = vi.spyOn(IDBIndex.prototype, 'getAll');
+    const indexedReads = vi.spyOn(IDBIndex.prototype, 'openCursor');
 
     const result = await queryCollection(indexedDB, 'audits', operators);
 
@@ -449,8 +449,8 @@ describe('canonical IndexedDB', () => {
       conclusion: `conclusion:${String(index).padStart(2, '0')}`
     }));
     await writeRecords('runs', records);
-    const indexedReads = vi.spyOn(IDBIndex.prototype, 'getAll');
-    const storeReads = vi.spyOn(IDBObjectStore.prototype, 'getAll');
+    const indexedReads = vi.spyOn(IDBIndex.prototype, 'openCursor');
+    const storeReads = vi.spyOn(IDBObjectStore.prototype, 'openCursor');
     const indexedOperators = /** @type {import('../../src/data-operations.js').DataOperator[]} */ ([{
       op: 'filter',
       predicates: [{ field: 'conclusion', in: records.slice(0, 32).map(({ conclusion }) => conclusion) }]

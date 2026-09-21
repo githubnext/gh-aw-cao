@@ -373,25 +373,30 @@ describe('canonical view sources', () => {
     /** @type {{ databaseMs: number, projectionMs: number, totalMs: number, recordsRead: number, stores: string[] } | undefined} */
     let metrics;
 
-    const projected = await queryCanonicalViewSources(
+    const canonical = await queryCanonicalViewSources(
       indexedDB,
       sources,
-      ['failed-runs'],
+      ['runs'],
       { onMetrics: (value) => { metrics = value; } }
+    );
+    const projected = executeDashboardQueries(
+      dashboardQueries,
+      canonical,
+      ['failed-runs']
     );
 
     expect(Object.keys(projected)).toEqual(['failed-runs']);
     expect(projected['failed-runs']).toMatchObject({
       source: 'failed-runs',
       rows: [{ repository: 'gh-aw-cao', run: '42', 'run-conclusion': 'failure' }],
-      metadata: { 'source-kind': 'canonical-query' }
+      metadata: { 'source-kind': 'derived' }
     });
     expect(metrics).toMatchObject({
       databaseMs: expect.any(Number),
       projectionMs: expect.any(Number),
       totalMs: expect.any(Number),
       recordsRead: expect.any(Number),
-      stores: []
+      stores: ['repositories', 'workflows', 'runs']
     });
     expect(metrics?.totalMs).toBeGreaterThanOrEqual(metrics?.databaseMs ?? 0);
   });
@@ -432,7 +437,10 @@ describe('canonical view sources', () => {
   });
 
   it('returns requested authoritative sources through the canonical query boundary', async () => {
-    const loaded = await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+    const loaded = await loadCanonicalViewSources(indexedDB, sources, {
+      ingest: true,
+      sourceNames: ['work-items', 'security-findings']
+    });
 
     const projected = await queryCanonicalViewSources(
       indexedDB,
@@ -460,12 +468,16 @@ describe('canonical view sources', () => {
   });
 
   it('projects failed-run evidence from the active canonical generation', async () => {
-    const projected = await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+    const projected = await loadCanonicalViewSources(indexedDB, sources, {
+      ingest: true,
+      sourceNames: ['failed-runs', 'runs', 'repositories', 'workflows'],
+      queries: dashboardQueries
+    });
 
     expect(projected['failed-runs']).toMatchObject({
       source: 'failed-runs',
       rows: [{ repository: 'gh-aw-cao', run: '42', 'run-attempt': 2, 'run-conclusion': 'failure', 'failure-detail': 'Build failed' }],
-      metadata: { 'source-kind': 'canonical-query', availability: 'available' }
+      metadata: { 'source-kind': 'derived', availability: 'available' }
     });
     expect(projected.runs).toMatchObject({
       source: 'runs',

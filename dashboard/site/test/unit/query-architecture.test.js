@@ -49,6 +49,10 @@ describe('dashboard query architecture', () => {
     expect(presentationQueryFixture).toContain("operation: 'execute-dashboard-queries'");
     expect(presentationQueryFixture).not.toMatch(/executeDashboardQueries|compileDashboardViewPayloadQueries|deriveDashboardLinkSources/);
     expect(canonicalSources).not.toContain('tokenEfficiencySources');
+    expect(canonicalSources).not.toContain('projectCanonicalViewSources');
+    expect(canonicalSources).not.toContain('failedRunsSource');
+    expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'failed-runs'))
+      .toMatchObject({ from: 'runs' });
     expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-opportunities'))
       .toBeUndefined();
     expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-interventions'))

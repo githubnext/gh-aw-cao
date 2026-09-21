@@ -1028,9 +1028,14 @@
        * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
        */
       async function withCanonicalViewSources(sources, ingest = false) {
+        const sourceNames = [...new Set(dashboardDocument.dashboard.pages.flatMap((page) =>
+          dashboardPageSourceNames(dashboardDocument, page.id)
+        ))];
         return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (loadCanonicalViewSources(window.indexedDB, sources, {
           ingest,
           storage: navigator.storage,
+          sourceNames,
+          queries: dashboardQueries,
         }));
       }
 

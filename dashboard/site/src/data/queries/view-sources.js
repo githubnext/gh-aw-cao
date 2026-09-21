@@ -3,10 +3,15 @@ import { workflowSourcePath } from '../model/ids.js';
 import {
   CANONICAL_DATABASE_SCHEMA,
   countCollections,
-  readCollections
+  readCollections,
+  readTransactions
 } from '../storage/indexeddb.js';
-import { dashboardQueryDefects, dashboardQueryIndex } from './declarative.js';
-import { createCanonicalQueries } from './index.js';
+import {
+  dashboardQueryDefects,
+  dashboardQueryIndex,
+  executeDashboardQueries,
+  resolveDashboardQuerySources
+} from './declarative.js';
 
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 
@@ -135,28 +140,6 @@ function emptyCanonicalSource(sourceName, sources, reason) {
       'collection-state': 'not-collected',
       'collection-reason': reason
     })
-  };
-}
-
-/** @param {Record<string, unknown>[]} runs @param {Record<string, unknown>} sources */
-function failedRunsSource(runs, sources) {
-  return {
-    source: 'failed-runs',
-    rows: runs.map((run) => ({
-      organization: run.owner,
-      repository: run.repository,
-      workflow: run.workflowPath,
-      run: String(run.githubRunId ?? ''),
-      'run-attempt': run.attempt,
-      'run-title': run.title,
-      'started-at': run.startedAt,
-      'ended-at': run.completedAt,
-      'run-status': run.status,
-      'run-conclusion': run.conclusion,
-      'failure-detail': run.failureDetail,
-      'run-link': run.runLink
-    })),
-    metadata: projectionMetadata(sources, 'runs', 'failed-runs', true)
   };
 }
 
@@ -1147,39 +1130,21 @@ function sourceMetadataSource(sources) {
 /**
  * @param {IDBFactory} indexedDB
  * @param {Record<string, unknown>} sources
- * @param {{ ingest?: boolean, storage?: StorageManager }} [options]
+ * @param {{ ingest?: boolean, storage?: StorageManager, sourceNames?: string[], queries?: unknown[] }} [options]
  */
 export async function loadCanonicalViewSources(indexedDB, sources, options = {}) {
   if (options.ingest) {
     await ingestDashboardSources(indexedDB, sources, { storage: options.storage });
   }
-  return projectCanonicalViewSources(indexedDB, sources);
-}
-
-/**
- * Projects freshly downloaded logical sources through one active canonical
- * database. Source-shaped rows remain transient and are never cached in IndexedDB.
- *
- * @param {IDBFactory} indexedDB
- * @param {Record<string, unknown>} logicalSources
- */
-export async function projectCanonicalViewSources(indexedDB, logicalSources) {
+  const sourceNames = Array.isArray(options.sourceNames)
+    ? options.sourceNames
+    : Object.keys(sources);
+  const required = resolveDashboardQuerySources(options.queries ?? [], sourceNames);
+  const canonical = await queryCanonicalViewSources(indexedDB, sources, required);
   return {
-    ...namedLogicalSources(logicalSources),
-    ...await queryCanonicalViewSources(indexedDB, logicalSources, [
-      'repositories',
-      'campaigns',
-      'workflows',
-      'runs',
-      'job-performance',
-      'failed-runs',
-      'domains',
-      'tools',
-      'audits',
-      'issues',
-      'transactions',
-      'firewall-observations'
-    ])
+    ...namedLogicalSources(sources),
+    ...canonical,
+    ...executeDashboardQueries(options.queries ?? [], canonical, sourceNames)
   };
 }
 
@@ -1219,7 +1184,6 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   }
   if (needed.has('safe-output-performance')) needed.add('outcomes');
   if (needed.has('security-findings') || needed.has('detection-observations')) needed.add('findings');
-  const queries = createCanonicalQueries(indexedDB);
   const needsFirewall = needed.has('firewall-observations')
     && sourceRows(logicalSources['firewall-observations']).length === 0;
   const needsGraders = [
@@ -1256,10 +1220,9 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   ]);
   const selectedStores = stores.filter(([, selected]) => selected).map(([storeName]) => storeName);
   const databaseStartedAt = monotonicNow();
-  const [collections, failedRuns, transactions] = await Promise.all([
+  const [collections, transactions] = await Promise.all([
     readCollections(indexedDB, selectedStores),
-    needed.has('failed-runs') ? queries.runs.recentFailures() : [],
-    needed.has('transactions') ? queries.transactions.list() : []
+    needed.has('transactions') ? readTransactions(indexedDB) : []
   ]);
   const databaseMs = monotonicNow() - databaseStartedAt;
   const campaigns = collections.campaigns ?? [];
@@ -1270,13 +1233,23 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   const tools = collections.tools ?? [];
   const audits = collections.audits ?? [];
   const issues = collections.issues ?? [];
-  const repositoriesById = new Map(repositories.map((repository) => [repository.id, repository]));
-  const workflowsById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
-  const runsById = new Map(runs.map((run) => [run.id, run]));
+  const repositoriesById = needsWorkflows
+    ? new Map(repositories.map((repository) => [repository.id, repository]))
+    : new Map();
+  const workflowsById = needsRuns || needed.has('outcomes')
+    ? new Map(workflows.map((workflow) => [workflow.id, workflow]))
+    : new Map();
+  const runsById = needsRunLinkedRecords
+    ? new Map(runs.map((run) => [run.id, run]))
+    : new Map();
   const graders = needsGraders ? graderRows(audits, runsById) : [];
   const sources = namedLogicalSources(logicalSources);
-  const projectedWorkflows = workflowsSource(workflows, repositoriesById, sources).rows;
-  const projectedRuns = runsSource(runs, workflowsById, sources).rows;
+  const projectedWorkflows = projectedNames.has('workflows') || needed.has('work-items')
+    ? workflowsSource(workflows, repositoriesById, sources).rows
+    : [];
+  const projectedRuns = projectedNames.has('runs') || needed.has('work-items')
+    ? runsSource(runs, workflowsById, sources).rows
+    : [];
   const publishedOutcomes = sourceRows(sources.outcomes);
   const outcomes = needed.has('outcomes')
     ? publishedOutcomes.length > 0
@@ -1326,7 +1299,6 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
       metadata: canonicalProjectionMetadata(sources, 'runs', 'runs', projectedRuns.length)
     };
   }
-  if (projectedNames.has('failed-runs')) projected['failed-runs'] = failedRunsSource(failedRuns, sources);
   for (const [sourceName, records] of Object.entries({ domains, tools, audits, issues })) {
     if (projectedNames.has(sourceName)) {
       projected[sourceName] = recordsSource(sourceName, records, runsById, sources);
@@ -1403,7 +1375,6 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
     projectionMs: Math.max(0, totalMs - databaseMs),
     totalMs,
     recordsRead: Object.values(collections).reduce((total, records) => total + records.length, 0)
-      + failedRuns.length
       + transactions.length,
     stores: selectedStores
   });

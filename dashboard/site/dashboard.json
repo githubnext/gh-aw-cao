@@ -1435,6 +1435,15 @@
         "aggregate": { "values": [{ "field": "rhythm-point", "as": "rhythm", "reducer": "calendar-week-rhythm" }] }
       },
       {
+        "name": "failed-runs",
+        "intent": "List failed workflow runs that need operator attention.",
+        "from": "runs",
+        "filter": {
+          "predicates": [{ "field": "run-conclusion", "in": ["failure", "startup-failure", "stale", "timed-out"] }]
+        },
+        "order-by": [{ "field": "started-at", "direction": "desc" }]
+      },
+      {
         "name": "overview-failed-run-count",
         "intent": "Count failed workflow runs that need operator attention.",
         "from": "runs",
