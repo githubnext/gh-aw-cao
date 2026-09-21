@@ -27,6 +27,22 @@ const optimizationDashboardQueries = JSON.parse(
 const dashboardQueries = JSON.parse(
   readFileSync(`${process.cwd()}/dashboard.json`, 'utf8')
 ).dashboard.queries;
+
+/** @param {string} storeName @param {Record<string, unknown>} record */
+async function putCanonicalRecord(storeName, record) {
+  const database = await new Promise((resolve, reject) => {
+    const request = indexedDB.open(DATABASE_NAME);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  await new Promise((resolve, reject) => {
+    const transaction = database.transaction(storeName, 'readwrite');
+    transaction.objectStore(storeName).put(record);
+    transaction.oncomplete = () => resolve(undefined);
+    transaction.onerror = () => reject(transaction.error);
+  });
+  database.close();
+}
 const sources = {
   campaigns: {
     rows: [{
@@ -183,6 +199,21 @@ describe('canonical view sources', () => {
       workflows: [],
       runs: []
     }));
+  });
+
+  it('finds canonical relationship failures through declarative database queries', async () => {
+    await queryCanonicalDatabaseDiagnostics(indexedDB);
+    await putCanonicalRecord('workflows', {
+      id: 'workflow:orphan',
+      repositoryId: 'repository:missing'
+    });
+
+    const diagnostics = await queryCanonicalDatabaseDiagnostics(indexedDB);
+
+    expect(diagnostics.counts.workflows).toBe(1);
+    expect(diagnostics.relationshipErrors).toEqual([
+      'workflow:orphan.repositoryId does not reference an existing repository'
+    ]);
   });
 
   it('matches declarative counts for every canonical database table', async () => {

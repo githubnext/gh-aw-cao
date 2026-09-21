@@ -695,6 +695,307 @@
     ]
   },
   {
+    "name": "database-diagnostics-campaigns-count",
+    "stores": ["campaigns"],
+    "from": "$campaigns",
+    "aggregate": {
+      "values": [{ "field": "id", "as": "count", "reducer": "count" }]
+    }
+  },
+  {
+    "name": "database-diagnostics-repositories-count",
+    "stores": ["repositories"],
+    "from": "$repositories",
+    "aggregate": {
+      "values": [{ "field": "id", "as": "count", "reducer": "count" }]
+    }
+  },
+  {
+    "name": "database-diagnostics-workflows-count",
+    "stores": ["workflows"],
+    "from": "$workflows",
+    "aggregate": {
+      "values": [{ "field": "id", "as": "count", "reducer": "count" }]
+    }
+  },
+  {
+    "name": "database-diagnostics-runs-count",
+    "stores": ["runs"],
+    "from": "$runs",
+    "aggregate": {
+      "values": [{ "field": "id", "as": "count", "reducer": "count" }]
+    }
+  },
+  {
+    "name": "database-diagnostics-domains-count",
+    "stores": ["domains"],
+    "from": "$domains",
+    "aggregate": {
+      "values": [{ "field": "id", "as": "count", "reducer": "count" }]
+    }
+  },
+  {
+    "name": "database-diagnostics-tools-count",
+    "stores": ["tools"],
+    "from": "$tools",
+    "aggregate": {
+      "values": [{ "field": "id", "as": "count", "reducer": "count" }]
+    }
+  },
+  {
+    "name": "database-diagnostics-audits-count",
+    "stores": ["audits"],
+    "from": "$audits",
+    "aggregate": {
+      "values": [{ "field": "id", "as": "count", "reducer": "count" }]
+    }
+  },
+  {
+    "name": "database-diagnostics-issues-count",
+    "stores": ["issues"],
+    "from": "$issues",
+    "aggregate": {
+      "values": [{ "field": "id", "as": "count", "reducer": "count" }]
+    }
+  },
+  {
+    "name": "database-diagnostics-workflow-repository",
+    "stores": ["workflows", "repositories"],
+    "from": "$workflows",
+    "joins": [{
+      "source": "$repositories",
+      "type": "left",
+      "on": [{ "left": "repositoryId", "right": "id" }],
+      "fields": [{ "field": "id", "as": "_related-id" }]
+    }],
+    "filter": { "predicates": [{ "field": "_related-id", "equals": null }] },
+    "compute": [{
+      "as": "error",
+      "function": "concat",
+      "args": [
+        { "field": "id" },
+        { "value": ".repositoryId does not reference an existing repository" }
+      ]
+    }],
+    "select": [{ "field": "error" }]
+  },
+  {
+    "name": "database-diagnostics-workflow-campaign",
+    "stores": ["workflows", "campaigns"],
+    "from": "$workflows",
+    "joins": [{
+      "source": "$campaigns",
+      "type": "left",
+      "on": [{ "left": "campaignId", "right": "id" }],
+      "fields": [{ "field": "id", "as": "_related-id" }]
+    }],
+    "filter": {
+      "predicates": [
+        { "field": "campaignId", "gte": "" },
+        { "field": "_related-id", "equals": null }
+      ]
+    },
+    "compute": [{
+      "as": "error",
+      "function": "concat",
+      "args": [
+        { "field": "id" },
+        { "value": ".campaignId does not reference an existing campaign" }
+      ]
+    }],
+    "select": [{ "field": "error" }]
+  },
+  {
+    "name": "database-diagnostics-workflow-campaign-slug",
+    "stores": ["workflows", "campaigns"],
+    "from": "$workflows",
+    "joins": [
+      {
+        "source": "$campaigns",
+        "type": "inner",
+        "on": [{ "left": "campaignId", "right": "id" }],
+        "fields": [{ "field": "id", "as": "_campaign-id" }]
+      },
+      {
+        "source": "$campaigns",
+        "type": "left",
+        "on": [
+          { "left": "campaignId", "right": "id" },
+          { "left": "campaign", "right": "slug" }
+        ],
+        "fields": [{ "field": "id", "as": "_matching-campaign-id" }]
+      }
+    ],
+    "filter": { "predicates": [{ "field": "_matching-campaign-id", "equals": null }] },
+    "compute": [{
+      "as": "error",
+      "function": "concat",
+      "args": [
+        { "field": "id" },
+        { "value": ".campaignId references a different campaign slug" }
+      ]
+    }],
+    "select": [{ "field": "error" }]
+  },
+  {
+    "name": "database-diagnostics-run-repository",
+    "stores": ["runs", "repositories"],
+    "from": "$runs",
+    "joins": [{
+      "source": "$repositories",
+      "type": "left",
+      "on": [{ "left": "repositoryId", "right": "id" }],
+      "fields": [{ "field": "id", "as": "_related-id" }]
+    }],
+    "filter": { "predicates": [{ "field": "_related-id", "equals": null }] },
+    "compute": [{
+      "as": "error",
+      "function": "concat",
+      "args": [
+        { "field": "id" },
+        { "value": ".repositoryId does not reference an existing repository" }
+      ]
+    }],
+    "select": [{ "field": "error" }]
+  },
+  {
+    "name": "database-diagnostics-run-workflow",
+    "stores": ["runs", "workflows"],
+    "from": "$runs",
+    "joins": [{
+      "source": "$workflows",
+      "type": "left",
+      "on": [{ "left": "workflowId", "right": "id" }],
+      "fields": [{ "field": "id", "as": "_related-id" }]
+    }],
+    "filter": { "predicates": [{ "field": "_related-id", "equals": null }] },
+    "compute": [{
+      "as": "error",
+      "function": "concat",
+      "args": [
+        { "field": "id" },
+        { "value": ".workflowId does not reference an existing workflow" }
+      ]
+    }],
+    "select": [{ "field": "error" }]
+  },
+  {
+    "name": "database-diagnostics-run-workflow-repository",
+    "stores": ["runs", "workflows"],
+    "from": "$runs",
+    "joins": [
+      {
+        "source": "$workflows",
+        "type": "inner",
+        "on": [{ "left": "workflowId", "right": "id" }],
+        "fields": [{ "field": "id", "as": "_workflow-id" }]
+      },
+      {
+        "source": "$workflows",
+        "type": "left",
+        "on": [
+          { "left": "workflowId", "right": "id" },
+          { "left": "repositoryId", "right": "repositoryId" }
+        ],
+        "fields": [{ "field": "id", "as": "_matching-workflow-id" }]
+      }
+    ],
+    "filter": { "predicates": [{ "field": "_matching-workflow-id", "equals": null }] },
+    "compute": [{
+      "as": "error",
+      "function": "concat",
+      "args": [
+        { "field": "id" },
+        { "value": ".workflowId references a workflow from another repository" }
+      ]
+    }],
+    "select": [{ "field": "error" }]
+  },
+  {
+    "name": "database-diagnostics-domains-run",
+    "stores": ["domains", "runs"],
+    "from": "$domains",
+    "joins": [{
+      "source": "$runs",
+      "type": "left",
+      "on": [{ "left": "runId", "right": "id" }],
+      "fields": [{ "field": "id", "as": "_related-id" }]
+    }],
+    "filter": { "predicates": [{ "field": "_related-id", "equals": null }] },
+    "compute": [{
+      "as": "error",
+      "function": "concat",
+      "args": [
+        { "field": "id" },
+        { "value": ".runId does not reference an existing run" }
+      ]
+    }],
+    "select": [{ "field": "error" }]
+  },
+  {
+    "name": "database-diagnostics-tools-run",
+    "stores": ["tools", "runs"],
+    "from": "$tools",
+    "joins": [{
+      "source": "$runs",
+      "type": "left",
+      "on": [{ "left": "runId", "right": "id" }],
+      "fields": [{ "field": "id", "as": "_related-id" }]
+    }],
+    "filter": { "predicates": [{ "field": "_related-id", "equals": null }] },
+    "compute": [{
+      "as": "error",
+      "function": "concat",
+      "args": [
+        { "field": "id" },
+        { "value": ".runId does not reference an existing run" }
+      ]
+    }],
+    "select": [{ "field": "error" }]
+  },
+  {
+    "name": "database-diagnostics-audits-run",
+    "stores": ["audits", "runs"],
+    "from": "$audits",
+    "joins": [{
+      "source": "$runs",
+      "type": "left",
+      "on": [{ "left": "runId", "right": "id" }],
+      "fields": [{ "field": "id", "as": "_related-id" }]
+    }],
+    "filter": { "predicates": [{ "field": "_related-id", "equals": null }] },
+    "compute": [{
+      "as": "error",
+      "function": "concat",
+      "args": [
+        { "field": "id" },
+        { "value": ".runId does not reference an existing run" }
+      ]
+    }],
+    "select": [{ "field": "error" }]
+  },
+  {
+    "name": "database-diagnostics-issues-run",
+    "stores": ["issues", "runs"],
+    "from": "$issues",
+    "joins": [{
+      "source": "$runs",
+      "type": "left",
+      "on": [{ "left": "runId", "right": "id" }],
+      "fields": [{ "field": "id", "as": "_related-id" }]
+    }],
+    "filter": { "predicates": [{ "field": "_related-id", "equals": null }] },
+    "compute": [{
+      "as": "error",
+      "function": "concat",
+      "args": [
+        { "field": "id" },
+        { "value": ".runId does not reference an existing run" }
+      ]
+    }],
+    "select": [{ "field": "error" }]
+  },
+  {
     "name": "transactions",
     "stores": ["transactions"],
     "from": "$transactions",

@@ -9,7 +9,6 @@ import {
   readCollections,
   readTransactions
 } from '../storage/indexeddb.js';
-import { relationshipErrors } from '../model/schema.js';
 import {
   DASHBOARD_QUERY_LIMITS,
   dashboardQueryDefects,
@@ -21,6 +20,20 @@ import { SOURCE_FIELDS } from '../../specification.js';
 
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 const databaseQueryIndex = dashboardQueryIndex(databaseQueries);
+const DIAGNOSTIC_COUNT_QUERIES = Object.fromEntries(
+  ENTITY_STORES.map((store) => [store, `database-diagnostics-${store}-count`])
+);
+const DIAGNOSTIC_RELATIONSHIP_QUERIES = [
+  'database-diagnostics-workflow-repository',
+  'database-diagnostics-workflow-campaign',
+  'database-diagnostics-workflow-campaign-slug',
+  'database-diagnostics-run-repository',
+  'database-diagnostics-run-workflow',
+  'database-diagnostics-run-workflow-repository',
+  ...['domains', 'tools', 'audits', 'issues'].map(
+    (store) => `database-diagnostics-${store}-run`
+  )
+];
 const RUN_RECORD_STORES = new Set(['domains', 'tools', 'audits', 'issues']);
 const DATABASE_TABLE_SOURCES = new Set([
   'campaigns',
@@ -38,27 +51,26 @@ const DATABASE_TABLE_SOURCES = new Set([
  * @param {IDBFactory} indexedDB
  */
 export async function queryCanonicalDatabaseDiagnostics(indexedDB) {
-  const records = await readCollections(indexedDB, ENTITY_STORES);
-  const counts = Object.fromEntries(
-    ENTITY_STORES.map((store) => [store, records[store].length])
+  const requested = [
+    ...Object.values(DIAGNOSTIC_COUNT_QUERIES),
+    ...DIAGNOSTIC_RELATIONSHIP_QUERIES
+  ];
+  const diagnostics = await queryDatabaseSources(indexedDB, {}, requested);
+  const unavailable = requested.find(
+    (name) => diagnostics[name]?.metadata.availability === 'unavailable'
   );
-  const duplicateRecordIds = Object.fromEntries(ENTITY_STORES.map((store) => {
-    const seen = new Set();
-    const duplicates = new Set();
-    for (const record of records[store]) {
-      if (typeof record.id !== 'string') continue;
-      if (seen.has(record.id)) duplicates.add(record.id);
-      seen.add(record.id);
-    }
-    return [store, [...duplicates]];
-  }));
+  if (unavailable) throw new Error(`Database diagnostic query unavailable: ${unavailable}`);
   return {
     schemaVersion: DATABASE_VERSION,
-    counts,
-    relationshipErrors: relationshipErrors(
-      /** @type {import('../model/schema.js').CanonicalBatch} */ (records)
-    ),
-    duplicateRecordIds
+    counts: Object.fromEntries(ENTITY_STORES.map((store) => [
+      store,
+      Number(diagnostics[DIAGNOSTIC_COUNT_QUERIES[store]]?.rows[0]?.count ?? 0)
+    ])),
+    relationshipErrors: DIAGNOSTIC_RELATIONSHIP_QUERIES.flatMap((name) => (
+      diagnostics[name]?.rows.map((row) => String(row.error)) ?? []
+    )),
+    // IndexedDB object-store key paths enforce unique canonical record IDs.
+    duplicateRecordIds: Object.fromEntries(ENTITY_STORES.map((store) => [store, []]))
   };
 }
 const HEALTH_DATABASE_SOURCES = [
@@ -371,16 +383,6 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
       };
       continue;
     }
-    if (name === 'transactions') {
-      result.transactions = executeDatabaseQuery('transactions', {
-        $transactions: {
-          source: '$transactions',
-          rows: transactions,
-          metadata: queryMetadata(sources, 'transactions', 'transactions', true)
-        }
-      }, sources, 'transactions');
-      continue;
-    }
     if (RUN_RECORD_STORES.has(name)) {
       result[name] = executeRunRecordsQuery(name, collections[name] ?? [], collections.runs ?? [], sources);
       continue;
@@ -410,7 +412,7 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
       `$${store}`,
       {
         source: `$${store}`,
-        rows: collections[store] ?? [],
+        rows: store === 'transactions' ? transactions : collections[store] ?? [],
         metadata: queryMetadata(sources, store, store, true)
       }
     ]));

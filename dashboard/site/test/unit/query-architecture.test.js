@@ -115,6 +115,8 @@ describe('dashboard query architecture', () => {
   it('keeps canonical database reads out of the UI JavaScript layer', () => {
     const diagnostics = read('src/diagnostics.js');
     const configurationView = read('src/components/configuration-view.js');
+    const databaseQueries = JSON.parse(read('src/data/queries/database.json'));
+    const databaseQueryLayer = read('src/data/queries/database.js');
     const processor = read('src/data-processor.js');
     const worker = read('src/data-worker.js');
 
@@ -123,5 +125,12 @@ describe('dashboard query architecture', () => {
     expect(processor).toContain("operation: 'query-canonical-database-diagnostics'");
     expect(worker).toContain("operation === 'query-canonical-database-diagnostics'");
     expect(worker).toContain('queryCanonicalDatabaseDiagnostics(indexedDB)');
+    expect(databaseQueryLayer).not.toContain('relationshipErrors(');
+    expect(databaseQueries.find(({ name }) => name === 'transactions')).toMatchObject({
+      from: '$transactions',
+      stores: ['transactions']
+    });
+    expect(databaseQueries.filter(({ name }) => name.startsWith('database-diagnostics-'))
+      .every((query) => Boolean(query.aggregate || query.joins))).toBe(true);
   });
 });
