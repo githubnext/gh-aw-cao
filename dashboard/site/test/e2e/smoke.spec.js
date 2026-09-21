@@ -504,7 +504,7 @@ test('Transactions is a responsive table of retained transaction data', async ({
   await expect(transactionsPage.locator('.line-chart-series')).toHaveCount(0);
   await expect(view).toBeVisible();
   await expect(view.locator('[data-lazy-list]')).toHaveCount(1);
-  await expect(view.getByRole('searchbox', { name: 'Filter Transaction entries' })).toBeVisible();
+  await expect(view.getByRole('searchbox', { name: 'Filter Transactions' })).toBeVisible();
   await expect(view.getByRole('cell', { name: 'ingest-jsonl' }).first()).toBeVisible();
   const headings = await view.locator('thead tr').first().getByRole('columnheader').allTextContents();
   expect(headings.at(-1)?.trim()).toBe('Created');
@@ -516,8 +516,8 @@ test('Transactions is a responsive table of retained transaction data', async ({
     'Payload hash',
     'Payload ETag'
   ]));
-  const scope = view.getByRole('link', { name: 'https://dashboard.example/.../logs-0.jsonl' }).first();
-  await expect(scope).toHaveAttribute('href', 'https://dashboard.example/gh-aw-logs-shards/logs-0.jsonl');
+  const scope = view.getByRole('link', { name: 'https://dashboard.example/.../logs-99.jsonl' }).first();
+  await expect(scope).toHaveAttribute('href', 'https://dashboard.example/gh-aw-logs-shards/logs-99.jsonl');
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(900);
 
   await scroll.evaluate((element) => {
