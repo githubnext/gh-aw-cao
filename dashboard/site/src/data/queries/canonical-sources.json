@@ -62,6 +62,7 @@
       { "field": "name", "as": "repository-name" },
       { "field": "repository-coordinate" },
       { "field": "visibility" },
+      { "field": "rolloutMode", "as": "rollout-mode" },
       { "field": "observedAt", "as": "observed-at" },
       { "field": "organizationLink", "as": "organization-link" },
       { "field": "repositoryLink", "as": "repository-link" }
@@ -120,6 +121,8 @@
       { "field": "name", "as": "workflow-name" },
       { "field": "workflow-active" },
       { "field": "registryState", "as": "workflow-registry-state" },
+      { "field": "admissionStatus", "as": "admission-status" },
+      { "field": "admissionReason", "as": "admission-reason" },
       { "field": "createdAt", "as": "created-at" },
       { "field": "updatedAt", "as": "updated-at" },
       { "field": "campaign" },
@@ -131,8 +134,18 @@
       { "field": "observedAt", "as": "observed-at" },
       { "field": "ghAwVersion", "as": "gh-aw-version" },
       { "field": "ghAwCurrentVersion", "as": "gh-aw-current-version" },
+      { "field": "ghAwVersionLabel", "as": "gh-aw-version-label" },
       { "field": "ghAwUpdateState", "as": "gh-aw-update-state" },
-      { "field": "workflowLink", "as": "workflow-link" }
+      { "field": "ghAwMetadata", "as": "gh-aw-metadata" },
+      { "field": "ghAwManifest", "as": "gh-aw-manifest" },
+      { "field": "campaignAiCreditAllowance", "as": "campaign-aic-allowance" },
+      { "field": "campaignWorkerCount", "as": "campaign-worker-count" },
+      { "field": "campaignInventoryWarnings", "as": "campaign-inventory-warnings" },
+      { "field": "inventoryReady", "as": "inventory-ready" },
+      { "field": "organizationLink", "as": "organization-link" },
+      { "field": "repositoryLink", "as": "repository-link" },
+      { "field": "workflowLink", "as": "workflow-link" },
+      { "field": "externalLink", "as": "external-link" }
     ]
   },
   {
@@ -199,7 +212,15 @@
       { "field": "githubApiCalls", "as": "github-api-calls" },
       { "field": "safeItemsCount", "as": "safe-items-count" },
       { "field": "errorCount", "as": "error-count" },
+      { "field": "admissionStatus", "as": "admission-status" },
+      { "field": "admissionReason", "as": "admission-reason" },
+      { "field": "failureJob", "as": "failure-job" },
+      { "field": "failureMessage", "as": "failure-message" },
+      { "field": "failureStep", "as": "failure-step" },
       { "field": "failureDetail", "as": "failure-detail" },
+      { "field": "resource" },
+      { "field": "resourceResetAt", "as": "resource-reset-at" },
+      { "field": "resourceWaitHours", "as": "resource-wait-hours" },
       { "field": "runLink", "as": "run-link" },
       { "field": "effective-rollout-mode", "as": "rollout-mode" },
       { "field": "agentId", "as": "agent-id" },
@@ -214,7 +235,12 @@
       { "field": "resolvedModel", "as": "resolved-model" },
       { "field": "agentRuntime", "as": "agent-runtime" },
       { "field": "firewallVersion", "as": "firewall-version" },
-      { "field": "gatewayVersion", "as": "gateway-version" }
+      { "field": "gatewayVersion", "as": "gateway-version" },
+      { "field": "data" },
+      { "field": "logsPayload", "as": "logs-payload" },
+      { "field": "organizationLink", "as": "organization-link" },
+      { "field": "repositoryLink", "as": "repository-link" },
+      { "field": "workflowLink", "as": "workflow-link" }
     ]
   },
   {
@@ -236,7 +262,9 @@
           { "field": "engineVersion", "as": "engine-version" },
           { "field": "requestedModel", "as": "requested-model" },
           { "field": "resolvedModel", "as": "resolved-model" },
-          { "field": "modelId", "as": "model-id" }
+          { "field": "modelId", "as": "model-id" },
+          { "field": "rolloutMode", "as": "rollout-mode" },
+          { "field": "ghAwVersion", "as": "gh-aw-version" }
         ]
       }
     ],
@@ -292,13 +320,18 @@
       { "field": "correlationId", "as": "correlation-id" },
       { "field": "payloadRef", "as": "payload-ref" },
       { "field": "mcpServer", "as": "mcp-server" },
+      { "field": "mcpServerVersion", "as": "mcp-server-version" },
+      { "field": "mcpProtocolVersion", "as": "mcp-protocol-version" },
       { "field": "mcpTool", "as": "mcp-tool" },
+      { "field": "responseBytes", "as": "response-bytes" },
       { "field": "safeOutputType", "as": "safe-output-type" },
       { "field": "githubEntityType", "as": "github-entity-type" },
       { "field": "isPullRequest", "as": "is-pull-request" },
       { "field": "toolType", "as": "tool-type" },
       { "field": "isSkill", "as": "is-skill" },
       { "field": "name" },
+      { "field": "domain" },
+      { "field": "decision" },
       { "field": "sourceSequence", "as": "source-sequence" },
       { "field": "observedAt", "as": "observed-at" },
       { "field": "run-link" },
@@ -307,6 +340,8 @@
       { "field": "requested-model" },
       { "field": "resolved-model" },
       { "field": "model-id" },
+      { "field": "rollout-mode" },
+      { "field": "gh-aw-version" },
       { "field": "targetRepo", "as": "target-repo" },
       { "field": "targetOrganization", "as": "target-organization" },
       { "field": "targetRepository", "as": "target-repository" },
@@ -371,8 +406,14 @@
       { "field": "run" },
       { "field": "event", "as": "mcp-observation" },
       { "field": "mcp-server" },
+      { "field": "mcp-server-version" },
+      { "field": "mcp-protocol-version" },
       { "field": "mcp-tool" },
       { "field": "event-status", "as": "mcp-status" },
+      { "field": "response-bytes" },
+      { "field": "rollout-mode" },
+      { "field": "engine-version" },
+      { "field": "gh-aw-version" },
       { "field": "observed-at" },
       { "field": "run-link" }
     ]

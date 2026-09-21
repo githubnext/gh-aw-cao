@@ -30,13 +30,17 @@ const sources = {
     }],
     metadata
   },
-  repositories: { rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }], metadata },
+  repositories: {
+    rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', 'rollout-mode': 'review' }],
+    metadata
+  },
   workflows: {
     rows: [{
       organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.lock.yml',
       campaign: 'dashboard', 'campaign-name': 'CAO Dashboard', 'workflow-id': '501',
       'workflow-name': 'Published registry name', 'workflow-role': 'worker',
       'workflow-registry-state': 'active', 'workflow-active': 'true',
+      'admission-status': 'admitted', 'inventory-ready': true,
       'workflow-link': {
         relation: 'workflow',
         href: 'https://github.com/githubnext/gh-aw-cao/actions/workflows/501'
@@ -51,6 +55,7 @@ const sources = {
       organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
       run: '42', 'run-attempt': 2, 'run-status': 'completed', 'run-conclusion': 'failure',
       'started-at': '2026-09-09T04:00:00Z', 'failure-detail': 'Build failed',
+      'admission-status': 'admitted', resource: 'actions', 'resource-wait-hours': 2,
       'rollout-mode': 'review', engine: 'copilot', 'engine-version': '1.2.3',
       'gh-aw-version': 'v0.89.4',
       'requested-model': 'model-a', 'resolved-model': 'model-b',
@@ -105,6 +110,7 @@ const sources = {
         'event-summary': 'github.list_issues', 'event-status': 'requested',
         'request-count': 7,
         'correlation-id': 'call-1', 'safe-output-type': 'create_issue',
+        'mcp-server-version': '1.0.0', 'mcp-protocol-version': '2025-06-18', 'response-bytes': 256,
         'github-entity-type': 'issue', 'source-sequence': 0, 'observed-at': '2026-09-09T04:00:10Z'
       }
     ],
@@ -447,6 +453,8 @@ describe('canonical view sources', () => {
         'workflow-name': 'Published registry name',
         'workflow-role': 'worker',
         'workflow-registry-state': 'active',
+        'admission-status': 'admitted',
+        'inventory-ready': true,
         'created-at': '2026-09-01T00:00:00Z',
         'updated-at': '2026-09-08T00:00:00Z',
         'workflow-link': {
@@ -480,7 +488,10 @@ describe('canonical view sources', () => {
         repository: 'gh-aw-cao',
         run: '42',
         'mcp-observation': 'event:tool-call',
-        'mcp-status': 'requested'
+        'mcp-status': 'requested',
+        'mcp-server-version': '1.0.0',
+        'mcp-protocol-version': '2025-06-18',
+        'response-bytes': 256
       }],
       metadata: { 'source-kind': 'canonical-query' }
     });
@@ -535,7 +546,8 @@ describe('canonical view sources', () => {
         repository: 'gh-aw-cao', run: '42', 'run-attempt': 2,
         'rollout-mode': 'review', engine: 'copilot', 'engine-version': '1.2.3',
         'gh-aw-version': 'v0.89.4',
-        'requested-model': 'model-a', 'resolved-model': 'model-b'
+        'requested-model': 'model-a', 'resolved-model': 'model-b',
+        'admission-status': 'admitted', resource: 'actions', 'resource-wait-hours': 2
       }],
       metadata: { 'source-kind': 'canonical-query', availability: 'available' }
     });
