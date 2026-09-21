@@ -80,6 +80,9 @@ export function buildDailyOverviewAggregates(runs) {
 
   for (const run of runsById.values()) {
     const day = resolveRunUtcDay(run);
+    // Intentionally excluded from every metric (spec §72.3) rather than
+    // attributed to a fallback bucket: a run without any parseable timestamp
+    // cannot be placed on the UTC day axis this projection is keyed by.
     if (!day) continue;
     const record = dayRecord(day);
     const conclusion = typeof run.conclusion === 'string' ? run.conclusion : null;
