@@ -264,21 +264,22 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .entity-card-list-grouped .issue-list-labels { justify-content: flex-end; }
 .entity-card-list-chevron { display: flex; align-items: center; color: var(--muted); }
 .entity-card-list-chevron .octicon { width: 14px; height: 14px; }
-.link-button-list-view { display: grid; gap: 12px; }
-.link-button-list-view > header { display: grid; gap: 4px; }
+.link-button-list-view { display: grid; gap: 8px; }
+.link-button-list-view > header { display: grid; gap: 4px; padding-inline: 16px; }
 .link-button-list-view > header :is(h2, p) { margin: 0; }
-.link-button-list-view > header h2 { font-size: 1rem; }
+.link-button-list-view > header h2 { font-size: .75rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .link-button-list-view > header p, .link-button-list-empty { color: var(--muted); font-size: .75rem; }
-.link-button-list { overflow: hidden; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 14px; background: var(--canvas); list-style: none; }
-.link-button-list-item + .link-button-list-item { border-top: 1px solid var(--border); }
-.link-button-list-item > a { min-height: 48px; display: grid; grid-template-columns: 20px minmax(0, 1fr) 14px; align-items: center; gap: 10px; padding: 10px 16px; color: var(--fg); font-weight: 600; text-decoration: none; }
+.link-button-list { overflow: hidden; margin: 0; padding: 0; border: 1px solid var(--border-muted); border-radius: 12px; background: var(--canvas-subtle); list-style: none; }
+.link-button-list-item > a { position: relative; min-height: 44px; display: grid; grid-template-columns: 28px minmax(0, 1fr) 12px; align-items: center; gap: 12px; padding: 8px 16px; color: var(--fg); text-decoration: none; -webkit-tap-highlight-color: transparent; }
+.link-button-list-item:not(:last-child) > a::after { content: ""; position: absolute; inset-inline: 56px 0; bottom: 0; height: 1px; background: var(--border-muted); }
 .link-button-list-content { display: contents; }
-.link-button-list-item > a:hover { background: var(--neutral-muted); }
-.link-button-list-item > a:focus-visible { position: relative; outline: 2px solid var(--focus, Highlight); outline-offset: -3px; }
-.link-button-list-icon, .link-button-list-chevron { display: inline-flex; color: var(--muted); }
-.link-button-list-icon .octicon { width: 18px; height: 18px; }
-.link-button-list-chevron .octicon { width: 14px; height: 14px; }
-.link-button-list-empty { margin: 0; padding: 16px; border: 1px solid var(--border); border-radius: 14px; }
+.link-button-list-item > a:is(:hover, :active) { background: var(--neutral-muted); }
+.link-button-list-item > a:focus-visible { outline: 2px solid var(--focus, Highlight); outline-offset: -3px; }
+.link-button-list-icon { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--accent-muted); color: var(--accent); }
+.link-button-list-chevron { display: inline-flex; color: color-mix(in srgb, var(--muted) 70%, transparent); }
+.link-button-list-icon .octicon { width: 16px; height: 16px; }
+.link-button-list-chevron .octicon { width: 12px; height: 12px; }
+.link-button-list-empty { margin: 0; padding: 16px; border: 1px solid var(--border-muted); border-radius: 12px; background: var(--canvas-subtle); }
 .mobile-brand-name { display: none; }
 .sidebar-collapsed { grid-template-columns: 64px minmax(0, 1fr); }
 .sidebar-collapsed .org-sidebar { padding-inline: 8px 7px; }

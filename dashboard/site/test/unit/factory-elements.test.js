@@ -55,12 +55,12 @@ function context(element, sources, elementConfig) {
 it('renders campaign shortcuts through the reusable link button list', () => {
   const rendered = renderUiElement('link-button-list', {
     ...context('link-button-list', {
-    campaigns: source('campaigns', [
+    'overview-campaign-links': source('overview-campaign-links', [
       {
         campaign: 'aw-doctor',
         'campaign-name': 'AW Doctor',
         'campaign-icon': 'gear',
-        'campaign-link': {
+        'campaign-dashboard-link': {
           'dashboard-href': '#page-campaign-insights?campaign=aw-doctor',
           'dashboard-label': 'View AW Doctor campaign dashboard'
         }
@@ -69,7 +69,7 @@ it('renders campaign shortcuts through the reusable link button list', () => {
     }),
     elementConfig: {
       'label-field': 'campaign-name',
-      'link-field': 'campaign-link',
+      'link-field': 'campaign-dashboard-link',
       'icon-field': 'campaign-icon',
       'fallback-icon': 'goal'
     }

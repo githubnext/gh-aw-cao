@@ -43,12 +43,12 @@ describe('entity card templates', () => {
     expect(pages.overview.views.find(
       (/** @type {Record<string, any>} */ view) => view.id === 'overview-campaigns'
     )).toMatchObject({
-      data: { sources: ['campaigns'] },
+      data: { sources: ['overview-campaign-links'] },
       mark: 'element',
       element: 'link-button-list',
       config: {
         'label-field': 'campaign-name',
-        'link-field': 'campaign-link',
+        'link-field': 'campaign-dashboard-link',
         'icon-field': 'campaign-icon',
         'fallback-icon': 'goal'
       }

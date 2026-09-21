@@ -24,12 +24,12 @@ function source(name, rows) {
 }
 
 const sources = {
-  campaigns: source('campaigns', [
+  'overview-campaign-links': source('overview-campaign-links', [
     {
       campaign: 'aw-doctor',
       'campaign-name': 'AW Doctor',
       'campaign-icon': 'gear',
-      'campaign-link': {
+      'campaign-dashboard-link': {
         'dashboard-href': '#page-campaign-insights?campaign=aw-doctor',
         'dashboard-label': 'View AW Doctor campaign dashboard'
       }
@@ -38,7 +38,7 @@ const sources = {
       campaign: 'dependabot',
       'campaign-name': 'Dependabot',
       'campaign-icon': 'dependabot',
-      'campaign-link': {
+      'campaign-dashboard-link': {
         'dashboard-href': '#page-campaign-insights?campaign=dependabot',
         'dashboard-label': 'View Dependabot campaign dashboard'
       }

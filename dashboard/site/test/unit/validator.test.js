@@ -704,12 +704,12 @@ describe('dashboard document validation', () => {
       }),
       expect.objectContaining({
         id: 'overview-campaigns',
-        data: { sources: ['campaigns'] },
+        data: { sources: ['overview-campaign-links'] },
         mark: 'element',
         element: 'link-button-list',
         config: expect.objectContaining({
           'label-field': 'campaign-name',
-          'link-field': 'campaign-link',
+          'link-field': 'campaign-dashboard-link',
           'fallback-icon': 'goal'
         }),
         layout: 'full'

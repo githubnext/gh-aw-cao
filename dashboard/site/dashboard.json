@@ -6736,6 +6736,88 @@
         }
       },
       {
+        "name": "overview-campaign-links",
+        "intent": "Provide one navigation row per registered campaign that opens its dedicated campaign view.",
+        "description": "Registered campaigns with a resolved dashboard link to their dedicated campaign view.",
+        "from": "campaigns",
+        "compute": [
+          {
+            "as": "encoded-campaign",
+            "function": "url-encode",
+            "args": [
+              {
+                "field": "campaign"
+              }
+            ]
+          },
+          {
+            "as": "campaign-dashboard-href",
+            "function": "concat",
+            "args": [
+              {
+                "value": "#page-campaign-insights?campaign="
+              },
+              {
+                "field": "encoded-campaign"
+              }
+            ]
+          },
+          {
+            "as": "campaign-dashboard-label",
+            "function": "concat",
+            "args": [
+              {
+                "value": "View "
+              },
+              {
+                "field": "campaign-name"
+              },
+              {
+                "value": " campaign dashboard"
+              }
+            ]
+          },
+          {
+            "as": "campaign-dashboard-link",
+            "function": "dashboard-link",
+            "args": [
+              {
+                "value": ""
+              },
+              {
+                "field": "campaign-dashboard-href"
+              },
+              {
+                "field": "campaign-dashboard-label"
+              },
+              {
+                "field": "campaign"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "campaign"
+          },
+          {
+            "field": "campaign-name"
+          },
+          {
+            "field": "campaign-icon"
+          },
+          {
+            "field": "campaign-dashboard-link"
+          }
+        ],
+        "order-by": [
+          {
+            "field": "campaign-name",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
         "name": "campaign-inventory",
         "intent": "List centrally managed campaigns with their observed workflow and execution totals.",
         "description": "Canonical campaign inventory enriched with observed workflow, rollout, run, and AI Credit totals.",
@@ -10931,14 +11013,14 @@
             "description": "Open a campaign to view its activity and insights.",
             "data": {
               "sources": [
-                "campaigns"
+                "overview-campaign-links"
               ]
             },
             "mark": "element",
             "element": "link-button-list",
             "config": {
               "label-field": "campaign-name",
-              "link-field": "campaign-link",
+              "link-field": "campaign-dashboard-link",
               "icon-field": "campaign-icon",
               "fallback-icon": "goal",
               "empty-message": "No campaigns are registered."
