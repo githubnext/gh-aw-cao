@@ -11,10 +11,15 @@ import {
 } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
 import {
-  queryCanonicalDatabaseDiagnostics,
   queryDatabaseSources,
   queryIndexedDatabaseSources
 } from './data/queries/database.js';
+import { relationshipErrors } from './data/model/schema.js';
+import {
+  DATABASE_VERSION,
+  ENTITY_STORES,
+  readCollections
+} from './data/storage/indexeddb.js';
 import { queryDailyOverviewAggregateSources } from './data/queries/daily-aggregate-fast-path.js';
 import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-compiler.js';
 import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
@@ -29,6 +34,21 @@ const debugIngestion = createDebug('data:ingestion');
 const debugPerformance = createDebug('data:performance');
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 const workerScope = typeof self !== 'undefined' && 'postMessage' in self ? self : null;
+
+/** Returns one self-contained database diagnostics payload to the main thread. */
+async function collectCanonicalDatabaseDiagnostics() {
+  const records = await readCollections(indexedDB, ENTITY_STORES);
+  return {
+    schemaVersion: DATABASE_VERSION,
+    counts: Object.fromEntries(
+      ENTITY_STORES.map((store) => [store, records[store].length])
+    ),
+    relationshipErrors: relationshipErrors(
+      /** @type {import('./data/model/schema.js').CanonicalBatch} */ (records)
+    ),
+    duplicateRecordIds: Object.fromEntries(ENTITY_STORES.map((store) => [store, []]))
+  };
+}
 
 /** @param {ReadableStream<Uint8Array>} body */
 async function* responseChunks(body) {
@@ -804,7 +824,7 @@ export function processDataRequest(request, signal) {
     })();
   }
   if (request?.operation === 'query-canonical-database-diagnostics') {
-    return queryCanonicalDatabaseDiagnostics(indexedDB);
+    return collectCanonicalDatabaseDiagnostics();
   }
   if (request?.operation === 'summarize-table-columns') {
     if (!Array.isArray(request.columns)) {

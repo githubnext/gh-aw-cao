@@ -2,8 +2,6 @@ import { ingestDashboardSources } from '../ingest/coordinator.js';
 import databaseQueries from './database.json' with { type: 'json' };
 import {
   CANONICAL_DATABASE_SCHEMA,
-  DATABASE_VERSION,
-  ENTITY_STORES,
   countCollections,
   queryCollection,
   readCollections,
@@ -19,20 +17,6 @@ import { SOURCE_FIELDS } from '../../specification.js';
 
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 const databaseQueryIndex = dashboardQueryIndex(databaseQueries);
-const DIAGNOSTIC_COUNT_QUERIES = Object.fromEntries(
-  ENTITY_STORES.map((store) => [store, `database-diagnostics-${store}-count`])
-);
-const DIAGNOSTIC_RELATIONSHIP_QUERIES = [
-  'database-diagnostics-workflow-repository',
-  'database-diagnostics-workflow-campaign',
-  'database-diagnostics-workflow-campaign-slug',
-  'database-diagnostics-run-repository',
-  'database-diagnostics-run-workflow',
-  'database-diagnostics-run-workflow-repository',
-  ...['domains', 'tools', 'audits', 'issues'].map(
-    (store) => `database-diagnostics-${store}-run`
-  )
-];
 const RUN_RECORD_STORES = new Set(['domains', 'tools', 'audits', 'issues']);
 const DATABASE_TABLE_SOURCES = new Set([
   'campaigns',
@@ -43,35 +27,6 @@ const DATABASE_TABLE_SOURCES = new Set([
   'transactions'
 ]);
 
-/**
- * Returns a bounded consistency summary without exposing canonical records to
- * the main thread.
- *
- * @param {IDBFactory} indexedDB
- */
-export async function queryCanonicalDatabaseDiagnostics(indexedDB) {
-  const requested = [
-    ...Object.values(DIAGNOSTIC_COUNT_QUERIES),
-    ...DIAGNOSTIC_RELATIONSHIP_QUERIES
-  ];
-  const diagnostics = await queryDatabaseSources(indexedDB, {}, requested);
-  const unavailable = requested.find(
-    (name) => diagnostics[name]?.metadata.availability === 'unavailable'
-  );
-  if (unavailable) throw new Error(`Database diagnostic query unavailable: ${unavailable}`);
-  return {
-    schemaVersion: DATABASE_VERSION,
-    counts: Object.fromEntries(ENTITY_STORES.map((store) => [
-      store,
-      Number(diagnostics[DIAGNOSTIC_COUNT_QUERIES[store]]?.rows[0]?.count ?? 0)
-    ])),
-    relationshipErrors: DIAGNOSTIC_RELATIONSHIP_QUERIES.flatMap((name) => (
-      diagnostics[name]?.rows.map((row) => String(row.error)) ?? []
-    )),
-    // IndexedDB object-store key paths enforce unique canonical record IDs.
-    duplicateRecordIds: Object.fromEntries(ENTITY_STORES.map((store) => [store, []]))
-  };
-}
 const HEALTH_DATABASE_SOURCES = [
   'repositories',
   'workflows',

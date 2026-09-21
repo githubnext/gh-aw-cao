@@ -132,13 +132,14 @@ describe('dashboard query architecture', () => {
     expect(configurationView).not.toMatch(/data\/storage\/indexeddb|indexedDB|readCollection/);
     expect(processor).toContain("operation: 'query-canonical-database-diagnostics'");
     expect(worker).toContain("operation === 'query-canonical-database-diagnostics'");
-    expect(worker).toContain('queryCanonicalDatabaseDiagnostics(indexedDB)');
-    expect(databaseQueryLayer).not.toContain('relationshipErrors(');
+    expect(worker).toContain('return collectCanonicalDatabaseDiagnostics()');
+    expect(databaseQueryLayer).not.toMatch(/diagnostic|relationshipErrors/);
+    expect(worker).toContain('relationshipErrors(');
+    expect(worker).toContain('readCollections(indexedDB, ENTITY_STORES)');
     expect(databaseQueries.find(({ name }) => name === 'transactions')).toMatchObject({
       from: '$transactions',
       stores: ['transactions']
     });
-    expect(databaseQueries.filter(({ name }) => name.startsWith('database-diagnostics-'))
-      .every((query) => Boolean(query.aggregate || query.joins))).toBe(true);
+    expect(databaseQueries.some(({ name }) => name.startsWith('database-diagnostics-'))).toBe(false);
   });
 });

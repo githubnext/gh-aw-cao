@@ -10,10 +10,10 @@ import {
 } from '../../src/data/storage/indexeddb.js';
 import {
   loadDatabaseQuerySources,
-  queryCanonicalDatabaseDiagnostics,
   queryDatabaseSources,
   queryIndexedDatabaseSources
 } from '../../src/data/queries/database.js';
+import { processDataRequest } from '../../src/data-worker.js';
 import { createDashboardQueryBudget, executeDashboardQueries } from '../../src/data/queries/declarative.js';
 
 const loadCanonicalViewSources = loadDatabaseQuerySources;
@@ -183,7 +183,9 @@ afterEach(() => {
 
 describe('canonical view sources', () => {
   it('summarizes canonical database diagnostics inside the query layer', async () => {
-    const diagnostics = await queryCanonicalDatabaseDiagnostics(indexedDB);
+    const diagnostics = /** @type {import('../../src/diagnostics.js').DatabaseDiagnostics} */ (await processDataRequest({
+      operation: 'query-canonical-database-diagnostics'
+    }));
 
     expect(diagnostics.schemaVersion).toBeGreaterThan(0);
     expect(diagnostics.counts).toEqual(expect.objectContaining({
@@ -202,13 +204,15 @@ describe('canonical view sources', () => {
   });
 
   it('finds canonical relationship failures through declarative database queries', async () => {
-    await queryCanonicalDatabaseDiagnostics(indexedDB);
+    await processDataRequest({ operation: 'query-canonical-database-diagnostics' });
     await putCanonicalRecord('workflows', {
       id: 'workflow:orphan',
       repositoryId: 'repository:missing'
     });
 
-    const diagnostics = await queryCanonicalDatabaseDiagnostics(indexedDB);
+    const diagnostics = /** @type {import('../../src/diagnostics.js').DatabaseDiagnostics} */ (await processDataRequest({
+      operation: 'query-canonical-database-diagnostics'
+    }));
 
     expect(diagnostics.counts.workflows).toBe(1);
     expect(diagnostics.relationshipErrors).toEqual([
