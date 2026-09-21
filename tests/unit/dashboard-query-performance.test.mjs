@@ -70,6 +70,7 @@ test("dashboard query Markdown keeps unpaginated results explicit", () => {
     chunkSize: 25,
     overview: {
       initialReadyMs: 350.25,
+      cachedCounterReadyMs: 125.5,
       requestMs: 100,
       worker: {
         databaseMs: 20,
@@ -95,6 +96,7 @@ test("dashboard query Markdown keeps unpaginated results explicit", () => {
   });
   assert.match(markdown, /Population time: \*\*123\.45 ms\*\*/);
   assert.match(markdown, /Initial Overview ready: \*\*350\.25 ms\*\*/);
+  assert.match(markdown, /Fully cached Overview counters ready: \*\*125\.50 ms\*\*/);
   assert.match(markdown, /Settled deployed-data query: \*\*100\.00 ms\*\* \(1,234 records read\)/);
   assert.match(markdown, /\| Declarative queries \| 40\.00 \| 40\.00% \|/);
   assert.match(markdown, /\| `overview-outcome-summary` \| 75\.00 \| 1 \|/);

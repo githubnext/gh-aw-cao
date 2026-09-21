@@ -25,7 +25,7 @@ const IDLE_ENTRY = { status: 'idle', origin: 'query', source: null };
 
 /** @type {Map<string, import('./reactive.js').State<SourceEntry>>} */
 const entries = new Map();
-/** @typedef {{ pageId?: string, viewId?: string, sourceIndex?: number, bindingKey?: string, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' } }} SourceRequestOptions */
+/** @typedef {{ pageId?: string, viewId?: string, viewIndex?: number, sourceIndex?: number, bindingKey?: string, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' } }} SourceRequestOptions */
 
 /** @type {Set<string>} */
 const requested = new Set();
@@ -121,6 +121,11 @@ export function requestSources(requests) {
     requestOptions.set(bindingKey, options);
     requestKeys.set(bindingKey, key);
     pendingBatch.add(bindingKey);
+    const entry = sourceState(bindingKey);
+    const current = untracked(() => entry.get());
+    if (current.origin !== 'view' && current.status !== 'ready' && current.status !== 'loading') {
+      entry.set({ status: 'loading', origin: 'query', source: null });
+    }
   }
   scheduleBatch();
 }

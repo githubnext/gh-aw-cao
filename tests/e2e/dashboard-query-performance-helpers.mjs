@@ -59,6 +59,8 @@ export function queryPerformanceMarkdown(report) {
     "",
     `Initial Overview ready: **${report.overview.initialReadyMs.toFixed(2)} ms**`,
     "",
+    `Fully cached Overview counters ready: **${report.overview.cachedCounterReadyMs.toFixed(2)} ms**`,
+    "",
     `Settled deployed-data query: **${report.overview.requestMs.toFixed(2)} ms** `
       + `(${report.overview.worker.recordsRead.toLocaleString("en-US")} records read)`,
     "",

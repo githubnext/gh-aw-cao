@@ -88,6 +88,7 @@ it('keeps separate view bindings for the same canonical source', async () => {
 });
 
 it('batches independently bound sources while updating each binding', async () => {
+  /** @type {string[][]} */
   const batches = [];
   configureSourceLoader(
     () => Promise.reject(new Error('single loader should not run')),

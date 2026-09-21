@@ -132,6 +132,7 @@ it('renders both elements immediately and updates only widgets whose query resol
   const header = renderUiElement('factory-header', context('factory-header', {}));
   const floor = renderUiElement('factory-floor', context('factory-floor', {}));
   floor?.classList.add('custom-view');
+  await Promise.resolve();
 
   expect(header?.classList.contains('factory-intro')).toBe(true);
   expect(header?.querySelector('.factory-heading-pending')).not.toBeNull();

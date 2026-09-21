@@ -162,7 +162,7 @@ export async function startDashboardData(options) {
         ? dashboardViewAliasName(
             options.pageId,
             { id: options.viewId },
-            0,
+            options.viewIndex ?? 0,
             name,
             options.sourceIndex ?? 0,
           )
@@ -170,10 +170,15 @@ export async function startDashboardData(options) {
       return sources[alias] ?? sources[name];
     },
     async (requests) => {
-      const groups = Map.groupBy(requests, ({ options }) => JSON.stringify({
-        pageId: options.pageId,
-        queryContext: options.queryContext,
-      }));
+      /** @type {Map<string, typeof requests>} */
+      const groups = new Map();
+      for (const request of requests) {
+        const key = JSON.stringify({
+          pageId: request.options.pageId,
+          queryContext: request.options.queryContext,
+        });
+        groups.set(key, [...(groups.get(key) ?? []), request]);
+      }
       const entries = await Promise.all([...groups.values()].map(async (group) => {
         const first = group[0];
         const sources = await loadCanonicalDashboardPage(
@@ -190,7 +195,7 @@ export async function startDashboardData(options) {
             ? dashboardViewAliasName(
                 options.pageId,
                 { id: options.viewId },
-                0,
+                options.viewIndex ?? 0,
                 name,
                 options.sourceIndex ?? 0,
               )

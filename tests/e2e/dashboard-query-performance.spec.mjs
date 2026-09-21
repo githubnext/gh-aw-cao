@@ -35,6 +35,7 @@ const overviewSourceNames = dashboardPageSourceNames(
   { dashboard: dashboardDocument },
   "overview",
 );
+const MAX_CACHED_OVERVIEW_COUNTERS_MS = 200;
 
 async function serveDashboard(request, response) {
   const requestUrl = new URL(request.url || "/", "http://127.0.0.1");
@@ -97,6 +98,46 @@ async function startDashboardServer() {
   };
 }
 
+test("renders preingested Overview counters within 200 ms", async ({ page }) => {
+  const proxy = await startDashboardServer();
+  await page.addInitScript(() => {
+    window.__cachedOverviewCountersReadyAt = null;
+    document.addEventListener("DOMContentLoaded", () => {
+      let countersStartedAt = null;
+      const observer = new MutationObserver(() => {
+        if (document.querySelectorAll(".factory-station").length !== 6) return;
+        if (document.querySelector(".factory-station-pending")) {
+          countersStartedAt ??= performance.now();
+          return;
+        }
+        const readyAt = performance.now();
+        window.__cachedOverviewCountersReadyAt = countersStartedAt === null ? 0 : readyAt - countersStartedAt;
+        observer.disconnect();
+      });
+      observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["class"],
+      });
+    }, { once: true });
+  });
+
+  try {
+    await page.goto(`${proxy.url}?fixtures#page-overview`);
+    await page.waitForFunction(() => typeof window.__cachedOverviewCountersReadyAt === "number");
+    await page.goto(`${proxy.url}#page-overview`, { waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => typeof window.__cachedOverviewCountersReadyAt === "number");
+    const cachedCounterReadyMs = await page.evaluate(() => window.__cachedOverviewCountersReadyAt);
+
+    expect(cachedCounterReadyMs).toBeLessThanOrEqual(MAX_CACHED_OVERVIEW_COUNTERS_MS);
+  } finally {
+    await new Promise((resolvePromise, reject) => {
+      proxy.server.close((error) => error ? reject(error) : resolvePromise());
+    });
+  }
+});
+
 test("benchmarks every dashboard query against settled deployed data", async ({ page }, testInfo) => {
   await mkdir(outputDirectory, { recursive: true });
   const proxy = await startDashboardServer();
@@ -143,12 +184,32 @@ test("benchmarks every dashboard query against settled deployed data", async ({ 
   });
   await page.addInitScript(() => {
     window.__dashboardPerformanceEvents = [];
+    window.__cachedOverviewCountersReadyAt = null;
     document.addEventListener("dashboard-data", (event) => {
       window.__dashboardPerformanceEvents.push({
         at: performance.now(),
         detail: event.detail,
       });
     });
+    document.addEventListener("DOMContentLoaded", () => {
+      let countersStartedAt = null;
+      const observer = new MutationObserver(() => {
+        if (document.querySelectorAll(".factory-station").length !== 6) return;
+        if (document.querySelector(".factory-station-pending")) {
+          countersStartedAt ??= performance.now();
+          return;
+        }
+        const readyAt = performance.now();
+        window.__cachedOverviewCountersReadyAt = countersStartedAt === null ? 0 : readyAt - countersStartedAt;
+        observer.disconnect();
+      });
+      observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["class"],
+      });
+    }, { once: true });
   });
 
   try {
@@ -185,6 +246,9 @@ test("benchmarks every dashboard query against settled deployed data", async ({ 
       }
       return completed.at - started.at;
     });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => typeof window.__cachedOverviewCountersReadyAt === "number");
+    const cachedCounterReadyMs = await page.evaluate(() => window.__cachedOverviewCountersReadyAt);
 
     const results = await page.evaluate(async ({ context, chunkSize }) => {
       const { loadCanonicalDashboardPage } = await import("./src/data-processor.js");
@@ -259,11 +323,12 @@ test("benchmarks every dashboard query against settled deployed data", async ({ 
     const report = {
       generatedAt: new Date().toISOString(),
       dashboardUrl: deployedDashboardUrl,
-      methodology: "Fresh Chromium profile running the checkout's dashboard and query worker; proxy current deployed data; measure initial Overview readiness, wait for refresh completion and two animation frames, profile the settled Overview request by worker phase, then measure a 25-row first chunk, one continuation chunk when present, and one unpaginated fill iteration.",
+      methodology: "Fresh Chromium profile running the checkout's dashboard and query worker; proxy current deployed data; measure initial Overview readiness, wait for refresh completion, reload the fully cached dashboard and measure Overview counter readiness, profile the settled Overview request by worker phase, then measure a 25-row first chunk, one continuation chunk when present, and one unpaginated fill iteration.",
       chunkSize: QUERY_CHUNK_SIZE,
       populateMs: Math.round(populateMs * 100) / 100,
       overview: {
         initialReadyMs: Math.round(initialOverviewReadyMs * 100) / 100,
+        cachedCounterReadyMs: Math.round(cachedCounterReadyMs * 100) / 100,
         requestMs: overviewRequest.requestMs,
         worker,
         returnedRows: overviewRequest.returnedRows,
@@ -289,6 +354,7 @@ test("benchmarks every dashboard query against settled deployed data", async ({ 
     expect(results.map(({ query }) => query)).toEqual(
       dashboardContext.queries.map(({ name }) => name),
     );
+    expect(cachedCounterReadyMs).toBeLessThanOrEqual(MAX_CACHED_OVERVIEW_COUNTERS_MS);
     expect(browserErrors).toEqual([]);
     expect(failedRequests).toEqual([]);
   } finally {
