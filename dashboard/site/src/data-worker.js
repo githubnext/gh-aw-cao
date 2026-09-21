@@ -11,6 +11,7 @@ import {
 } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
 import { queryDatabaseSources, queryIndexedDatabaseSources } from './data/queries/database.js';
+import { queryDailyOverviewAggregateSources } from './data/queries/daily-aggregate-fast-path.js';
 import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-compiler.js';
 import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
@@ -143,9 +144,21 @@ async function queryLiveDashboard(
       requested
     );
     const nativeSourceNames = new Set(Object.keys(nativeSources));
+    const nonNativeRequested = [...requested].filter((name) => !nativeSourceNames.has(name));
+    // The daily-aggregate fast path only ever satisfies a query name when its
+    // live definition still matches a known-safe additive shape (spec §72.6);
+    // any query it does not recognize, or whose materialized projection is
+    // unavailable, is simply absent here and falls through to the canonical
+    // path below unchanged.
+    const dailyAggregateSources = await queryDailyOverviewAggregateSources(
+      indexedDB,
+      context.queries,
+      nonNativeRequested
+    );
+    const dailyAggregateSourceNames = new Set(Object.keys(dailyAggregateSources));
     const required = resolveDashboardQuerySources(
       context.queries,
-      [...requested].filter((name) => !nativeSourceNames.has(name))
+      nonNativeRequested.filter((name) => !dailyAggregateSourceNames.has(name))
     );
     /** @type {{ databaseMs: number, projectionMs: number, totalMs: number, recordsRead: number, stores: string[] } | undefined} */
     let databaseMetrics;
@@ -171,17 +184,18 @@ async function queryLiveDashboard(
           queries: context.queries,
           views: context.views,
           viewId,
-          sourceNames: [...requested].filter((name) => !nativeSourceNames.has(name))
+          sourceNames: nonNativeRequested.filter((name) => !dailyAggregateSourceNames.has(name))
         })
       : { aliases: [], queries: [], replacedSources: [] };
     const replacedSources = new Set(viewPayload.replacedSources);
     const directRequests = new Set([...requested].filter((name) => (
-      !replacedSources.has(name) && !nativeSourceNames.has(name)
+      !replacedSources.has(name) && !nativeSourceNames.has(name) && !dailyAggregateSourceNames.has(name)
     )));
     const querySources = {
       ...databasePayload,
       ...healthPayload,
       ...nativeSources,
+      ...dailyAggregateSources,
       ...executeDashboardQueries(
         context.queries,
         { ...databasePayload, ...healthPayload },

@@ -3127,7 +3127,165 @@ The implementation SHALL be guided by the following rules:
 
 ---
 
-# 72. Change Log
+# 72. Daily Overview Aggregate Projection
+
+## 72.1 Purpose
+
+Overview time-window aggregates currently require scanning every canonical
+record in the requested window (`O(records in window)`). This section
+defines a derived, disposable daily projection that lets eligible
+Overview queries scan `O(days in window)` instead, without weakening any
+invariant in this document. IndexedDB remains reconstructable derived
+state (INV-004); this projection is additional derived state, not a new
+authoritative source.
+
+## 72.2 Aggregate classification
+
+Every Overview source MUST be classified before it is eligible for the
+fast path:
+
+* **Additive** — safe to sum per-day scalar values across the requested
+  window. Initial eligible metrics: `runs`, `successful-runs`,
+  `failed-runs`, `dispatches`, `failed-dispatches` (all derived from the
+  `runs` canonical collection, bucketed by the UTC day of
+  `startedAt`, falling back to `createdAt`).
+* **Snapshot/global** — not a time-window aggregate. Examples:
+  `database-campaign-count`, `overview-registered-repository-summary`,
+  `overview-worker-summary`. These MUST continue to use the existing
+  canonical/native-count query path unless measurement justifies
+  materializing them separately.
+* **Non-additive** — cannot be derived by summing daily scalars.
+  Examples: `overview-delivery-summary` (distinct delivered
+  repositories), and any other distinct-count or average whose
+  numerator/denominator is not itself stored. These MUST stay on the
+  canonical query path. A distinct count MUST NOT be approximated by
+  summing daily distinct counts. If a distinct-count query becomes a
+  proven bottleneck, the remedy is a separate per-day membership
+  projection (day → set of distinct keys), unioned and re-distincted at
+  read time over a much smaller derived set — never a sum of daily
+  distinct counts.
+* `database-issue-count` has no time predicate in its current
+  definition and remains a snapshot/global count; it becomes eligible
+  for the additive path only if a time-bounded issue query is
+  introduced.
+
+## 72.3 Daily aggregate projection
+
+The projection is a pure function of the canonical `runs` collection: no
+IndexedDB read-back is required or permitted at build time. Given the
+normalized batch already produced by ingestion, aggregation groups runs
+by UTC calendar day (`YYYY-MM-DD`, `new Date(Date.parse(...)).toISOString().slice(0, 10)`)
+and reduces the additive metrics from §72.2. Runs with duplicate `id`
+values are deduplicated with replace-by-id (last observation wins),
+consistent with canonical replace semantics. Runs without a parseable
+`startedAt`/`createdAt` are excluded from the projection rather than
+assigned to a fallback bucket. The function is deterministic and
+independent of input ordering.
+
+Only days with at least one contributing run are emitted; a day absent
+from the projection is equivalent to a zero-valued day and MUST be
+treated as such by readers reconstructing a requested date range.
+
+## 72.4 Storage schema
+
+A derived object store holds one record per generation and UTC day:
+
+```json
+{
+  "id": "generation-id:2026-09-21",
+  "generation": "generation-id",
+  "day": "2026-09-21",
+  "runs": 18234,
+  "successfulRuns": 17102,
+  "failedRuns": 1032,
+  "dispatches": 8412,
+  "failedDispatches": 203
+}
+```
+
+A compound index `byGenerationDay: [generation, day]` supports
+range-reading a contiguous day interval for a single generation.
+
+A separate metadata record describes the currently usable projection:
+
+```json
+{
+  "id": "daily-overview-aggregates",
+  "version": 1,
+  "activeGeneration": "...",
+  "builtAt": "...",
+  "firstDay": "2026-01-01",
+  "lastDay": "2026-09-21"
+}
+```
+
+`version` identifies the semantics of the materialized aggregates (field
+meaning, eligibility rules, time bucketing, canonical derivation,
+normalization). Any change to these semantics MUST bump `version` and
+invalidate metadata written under a prior version; readers MUST treat a
+version mismatch as absent metadata and fail closed to the canonical
+query path.
+
+## 72.5 Generations and crash safety
+
+Publication follows the same generation discipline defined in
+§§29–31 (Generation-Aware Browser Storage, Generation Lifecycle,
+Fail-Safe Generation Replacement): a
+refresh constructs a new generation, persists it in bounded
+transactions, validates it, and only then atomically republishes the
+metadata record's `activeGeneration`. The previously active generation
+remains readable and untouched throughout. A crash at any point before
+the atomic metadata update leaves the previous generation active and
+usable; an interrupted generation MUST NOT become active and MAY be
+garbage-collected on a later successful ingestion. The currently
+published generation MUST NOT be mutated incrementally during a full
+rebuild.
+
+## 72.6 Query-layer integration
+
+The daily aggregate fast path is owned by the query/storage execution
+boundary defined in §43 (Query Layer), not by Overview view or component code. Before
+using materialized data for a query, the planner MUST prove
+compatibility: supported canonical source, supported aggregate,
+compatible time field and UTC day semantics, supported predicates, no
+unsupported joins, no unsupported compute operation, no distinct
+semantics, and a compatible aggregate metadata version. If any condition
+fails, the query MUST fall back to the existing canonical path.
+Consumers of the query API MUST NOT be able to observe which path was
+used except through diagnostic instrumentation (§72.7); results MUST be
+identical.
+
+## 72.7 Diagnostics
+
+Query/storage instrumentation MUST distinguish `executionPath: canonical`
+from `executionPath: daily-aggregate` and MUST include `query`,
+`durationMs`, `requestCount`, `recordsScanned`, `recordsReturned`,
+`aggregateVersion`, `generation`, and `fallbackReason` (when applicable).
+Instrumentation MUST NOT emit high-cardinality or sensitive canonical
+data.
+
+## 72.8 Failure behavior
+
+Absent, incompatible, or incomplete aggregate metadata (missing
+metadata record, unresolvable `activeGeneration`, version mismatch,
+schema-version mismatch, quota error, or transaction abort while
+reading) MUST cause the reader to fall back to the canonical query path
+rather than return partial or incorrect materialized results. Database
+or schema deletion MUST allow the projection and its metadata to be
+fully reconstructed from a subsequent canonical ingestion, consistent
+with INV-004 and §59 (Full Rebuild Requirement).
+
+---
+
+# 73. Change Log
+
+## Version 1.3.0 — Daily Overview aggregate projection
+
+* Classified Overview sources as additive, snapshot/global, or
+  non-additive for daily-aggregate eligibility.
+* Defined the daily overview aggregate projection, its storage schema,
+  generation/versioning discipline, query-layer eligibility rules,
+  diagnostics, and fail-closed behavior.
 
 ## Version 1.2.0 — Specialized run-owned records
 

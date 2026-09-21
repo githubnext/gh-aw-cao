@@ -6,7 +6,7 @@ import { tidy } from '../../data-operations.js';
 const debug = createDebug('data:indexeddb');
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 18;
+export const DATABASE_VERSION = 19;
 
 /** @param {string} [pathname] */
 export function canonicalDatabaseName(pathname) {
@@ -25,6 +25,22 @@ export const ENTITY_STORES = /** @type {const} */ ([
 ]);
 export const TRANSACTION_STORE = 'transactions';
 export const DATABASE_STORES = /** @type {const} */ ([...ENTITY_STORES, TRANSACTION_STORE]);
+/**
+ * Derived, disposable daily-aggregate projection stores (spec §72). These
+ * are reconstructable from the canonical `runs` collection and are never
+ * treated as authoritative data; they exist solely to accelerate eligible
+ * additive Overview time-window queries.
+ */
+export const DAILY_OVERVIEW_AGGREGATE_STORE = 'dailyOverviewAggregates';
+export const OVERVIEW_AGGREGATE_METADATA_STORE = 'overviewAggregateMetadata';
+export const OVERVIEW_AGGREGATE_METADATA_ID = 'daily-overview-aggregates';
+/**
+ * Semantic version of the daily overview aggregate projection: field
+ * meaning, eligibility rules, UTC day bucketing, and canonical derivation.
+ * Any change to those semantics MUST bump this version so readers treat
+ * previously published metadata as absent (spec §72.4).
+ */
+export const DAILY_OVERVIEW_AGGREGATE_VERSION = 1;
 export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
  * string, { keyPath: string, indexes: Record<string, string | string[]> }
  * >} */ ({
@@ -69,6 +85,14 @@ export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
   transactions: {
     keyPath: 'id',
     indexes: { byCreatedAt: 'createdAt' }
+  },
+  dailyOverviewAggregates: {
+    keyPath: 'id',
+    indexes: { byGenerationDay: ['generation', 'day'] }
+  },
+  overviewAggregateMetadata: {
+    keyPath: 'id',
+    indexes: {}
   }
 });
 const DEFAULT_WRITE_BATCH_SIZE = 1000;
@@ -687,6 +711,280 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
   const metrics = currentMetrics();
   debug('completed canonical batch replacement', metrics);
   options.onMetrics?.(metrics);
+}
+
+/** @param {string} generation @param {string} day */
+function dailyOverviewAggregateId(generation, day) {
+  return `${generation}:${day}`;
+}
+
+/**
+ * Publishes a complete daily overview aggregate generation (spec §72.5).
+ *
+ * Crash-safe by construction: every record for the new `generation` is
+ * written under its own id (`generation:day`) without touching any existing
+ * generation's records. Only after every record has committed does a final,
+ * separate transaction atomically republish the metadata record so that
+ * `activeGeneration` starts pointing at the new generation. A crash at any
+ * point before that final transaction leaves the previously active
+ * generation (if any) completely untouched and readable; an interrupted
+ * generation is never referenced by metadata and can be garbage-collected by
+ * a later call to {@link pruneStaleDailyOverviewAggregates}.
+ *
+ * @param {IDBFactory} indexedDB
+ * @param {{
+ *   generation: string,
+ *   builtAt?: string,
+ *   dailyAggregates: import('../analytics/daily-overview-aggregates.js').DailyOverviewAggregateRecord[],
+ *   batchSize?: number
+ * }} options
+ * @returns {Promise<{ id: string, version: number, activeGeneration: string, builtAt: string, firstDay: string | null, lastDay: string | null }>}
+ */
+export async function publishDailyOverviewAggregates(indexedDB, options) {
+  const { generation, dailyAggregates } = options;
+  if (typeof generation !== 'string' || !generation) {
+    throw new TypeError('generation is required to publish daily overview aggregates');
+  }
+  const builtAt = options.builtAt ?? new Date().toISOString();
+  const batchSize = options.batchSize ?? DEFAULT_WRITE_BATCH_SIZE;
+  if (!Number.isInteger(batchSize) || batchSize < 1) {
+    throw new TypeError('Write batch size must be a positive integer');
+  }
+  const records = dailyAggregates.map((record) => ({
+    ...record,
+    id: dailyOverviewAggregateId(generation, record.day),
+    generation
+  }));
+  const database = await openCanonicalDatabase(indexedDB);
+  try {
+    for (let offset = 0; offset < records.length; offset += batchSize) {
+      const chunk = records.slice(offset, offset + batchSize);
+      const transaction = readwriteTransaction(database, DAILY_OVERVIEW_AGGREGATE_STORE);
+      const done = transactionDone(transaction);
+      const store = transaction.objectStore(DAILY_OVERVIEW_AGGREGATE_STORE);
+      for (const record of chunk) store.put(record);
+      commitTransaction(transaction);
+      await done;
+    }
+    const days = [...dailyAggregates.map((record) => record.day)].sort();
+    const metadata = {
+      id: OVERVIEW_AGGREGATE_METADATA_ID,
+      version: DAILY_OVERVIEW_AGGREGATE_VERSION,
+      activeGeneration: generation,
+      builtAt,
+      firstDay: days[0] ?? null,
+      lastDay: days[days.length - 1] ?? null
+    };
+    // Atomic activation: this is the only write that changes which
+    // generation readers observe as active.
+    const publish = readwriteTransaction(database, OVERVIEW_AGGREGATE_METADATA_STORE);
+    const publishDone = transactionDone(publish);
+    publish.objectStore(OVERVIEW_AGGREGATE_METADATA_STORE).put(metadata);
+    commitTransaction(publish);
+    await publishDone;
+    debug('published daily overview aggregate generation', {
+      generation,
+      records: records.length,
+      firstDay: metadata.firstDay,
+      lastDay: metadata.lastDay
+    });
+    return metadata;
+  } finally {
+    database.close();
+  }
+}
+
+/**
+ * Deletes daily overview aggregate records left behind by any generation
+ * other than the currently active one (superseded rebuilds, or a rebuild
+ * that was interrupted before publication). Never touches the active
+ * generation's records.
+ *
+ * @param {IDBFactory} indexedDB
+ * @returns {Promise<{ deletedRecords: number }>}
+ */
+export async function pruneStaleDailyOverviewAggregates(indexedDB) {
+  const database = await openCanonicalDatabase(indexedDB);
+  try {
+    const metadata = await requestResult(
+      database.transaction(OVERVIEW_AGGREGATE_METADATA_STORE)
+        .objectStore(OVERVIEW_AGGREGATE_METADATA_STORE)
+        .get(OVERVIEW_AGGREGATE_METADATA_ID)
+    );
+    const activeGeneration = metadata && typeof metadata === 'object' ? metadata.activeGeneration : undefined;
+    const transaction = readwriteTransaction(database, DAILY_OVERVIEW_AGGREGATE_STORE);
+    const done = transactionDone(transaction);
+    const store = transaction.objectStore(DAILY_OVERVIEW_AGGREGATE_STORE);
+    const all = await requestResult(store.getAll());
+    let deletedRecords = 0;
+    for (const record of all) {
+      if (record.generation !== activeGeneration) {
+        store.delete(record.id);
+        deletedRecords += 1;
+      }
+    }
+    commitTransaction(transaction);
+    await done;
+    debug('pruned stale daily overview aggregate generations', { activeGeneration, deletedRecords });
+    return { deletedRecords };
+  } finally {
+    database.close();
+  }
+}
+
+/**
+ * Reads the daily overview aggregate metadata record without range-reading
+ * any day records. Callers that need the full available day range (e.g. a
+ * query-planner fast path summing over "all retained history") use this to
+ * discover `firstDay`/`lastDay` before issuing a bounded range read, instead
+ * of guessing a range. Fails closed exactly like {@link readDailyOverviewAggregates}.
+ *
+ * @param {IDBFactory} indexedDB
+ * @returns {Promise<{
+ *   available: boolean,
+ *   fallbackReason: string | null,
+ *   generation: string | null,
+ *   version: number | null,
+ *   firstDay: string | null,
+ *   lastDay: string | null
+ * }>}
+ */
+export async function readOverviewAggregateMetadata(indexedDB) {
+  const database = await openCanonicalDatabase(indexedDB);
+  try {
+    const metadata = await requestResult(
+      database.transaction(OVERVIEW_AGGREGATE_METADATA_STORE)
+        .objectStore(OVERVIEW_AGGREGATE_METADATA_STORE)
+        .get(OVERVIEW_AGGREGATE_METADATA_ID)
+    );
+    const activeGeneration = metadata && typeof metadata === 'object' ? metadata.activeGeneration : null;
+    const version = metadata && typeof metadata === 'object' ? metadata.version ?? null : null;
+    if (!metadata || typeof activeGeneration !== 'string' || !activeGeneration) {
+      return {
+        available: false,
+        fallbackReason: 'metadata-missing',
+        generation: null,
+        version,
+        firstDay: null,
+        lastDay: null
+      };
+    }
+    if (version !== DAILY_OVERVIEW_AGGREGATE_VERSION) {
+      return {
+        available: false,
+        fallbackReason: 'version-mismatch',
+        generation: activeGeneration,
+        version,
+        firstDay: null,
+        lastDay: null
+      };
+    }
+    return {
+      available: true,
+      fallbackReason: null,
+      generation: activeGeneration,
+      version,
+      firstDay: typeof metadata.firstDay === 'string' ? metadata.firstDay : null,
+      lastDay: typeof metadata.lastDay === 'string' ? metadata.lastDay : null
+    };
+  } finally {
+    database.close();
+  }
+}
+
+/**
+ * Range-reads daily overview aggregate records for the currently active
+ * generation (spec §72.8). Fails closed: returns `available: false` with a
+ * `fallbackReason` whenever the metadata record is absent or its version
+ * does not match the version this build understands, so callers always have
+ * a safe canonical query fallback instead of trusting an incompatible or
+ * partially materialized projection.
+ *
+ * @param {IDBFactory} indexedDB
+ * @param {{ startDay: string, endDay: string }} range
+ * @returns {Promise<{
+ *   available: boolean,
+ *   fallbackReason: string | null,
+ *   generation: string | null,
+ *   version: number | null,
+ *   records: import('../analytics/daily-overview-aggregates.js').DailyOverviewAggregateRecord[],
+ *   recordsScanned: number,
+ *   recordsReturned: number,
+ *   requestCount: number,
+ *   durationMs: number
+ * }>}
+ */
+export async function readDailyOverviewAggregates(indexedDB, range) {
+  const startedAt = monotonicNow();
+  let requestCount = 0;
+  const database = await openCanonicalDatabase(indexedDB);
+  try {
+    requestCount += 1;
+    const metadata = await requestResult(
+      database.transaction(OVERVIEW_AGGREGATE_METADATA_STORE)
+        .objectStore(OVERVIEW_AGGREGATE_METADATA_STORE)
+        .get(OVERVIEW_AGGREGATE_METADATA_ID)
+    );
+    const activeGeneration = metadata && typeof metadata === 'object' ? metadata.activeGeneration : null;
+    const version = metadata && typeof metadata === 'object' ? metadata.version ?? null : null;
+    if (!metadata || typeof activeGeneration !== 'string' || !activeGeneration) {
+      const result = {
+        available: false,
+        fallbackReason: 'metadata-missing',
+        generation: null,
+        version,
+        records: [],
+        recordsScanned: 0,
+        recordsReturned: 0,
+        requestCount,
+        durationMs: monotonicNow() - startedAt
+      };
+      debug('daily overview aggregate metadata unavailable; falling back', result);
+      return result;
+    }
+    if (version !== DAILY_OVERVIEW_AGGREGATE_VERSION) {
+      const result = {
+        available: false,
+        fallbackReason: 'version-mismatch',
+        generation: activeGeneration,
+        version,
+        records: [],
+        recordsScanned: 0,
+        recordsReturned: 0,
+        requestCount,
+        durationMs: monotonicNow() - startedAt
+      };
+      debug('daily overview aggregate version mismatch; falling back', result);
+      return result;
+    }
+    requestCount += 1;
+    const store = database.transaction(DAILY_OVERVIEW_AGGREGATE_STORE)
+      .objectStore(DAILY_OVERVIEW_AGGREGATE_STORE);
+    const index = store.index('byGenerationDay');
+    const records = await requestResult(index.getAll(
+      IDBKeyRange.bound([activeGeneration, range.startDay], [activeGeneration, range.endDay])
+    ));
+    const result = {
+      available: true,
+      fallbackReason: null,
+      generation: activeGeneration,
+      version,
+      records,
+      recordsScanned: records.length,
+      recordsReturned: records.length,
+      requestCount,
+      durationMs: monotonicNow() - startedAt
+    };
+    debug('completed daily overview aggregate read', {
+      generation: activeGeneration,
+      recordsReturned: records.length,
+      requestCount,
+      durationMs: result.durationMs
+    });
+    return result;
+  } finally {
+    database.close();
+  }
 }
 
 /**

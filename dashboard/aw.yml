@@ -67,6 +67,8 @@ resources:
     destination: .github/aw/dashboard/site/src/dashboard-data-updates.js
   - source: site/src/data/analytics/temporal-series.js
     destination: .github/aw/dashboard/site/src/data/analytics/temporal-series.js
+  - source: site/src/data/analytics/daily-overview-aggregates.js
+    destination: .github/aw/dashboard/site/src/data/analytics/daily-overview-aggregates.js
   - source: site/src/data/adapters/gh-aw-logs.js
     destination: .github/aw/dashboard/site/src/data/adapters/gh-aw-logs.js
   - source: site/src/data/adapters/sql-export.js
@@ -89,6 +91,8 @@ resources:
     destination: .github/aw/dashboard/site/src/data/normalize/index.js
   - source: site/src/data/queries/declarative.js
     destination: .github/aw/dashboard/site/src/data/queries/declarative.js
+  - source: site/src/data/queries/daily-aggregate-fast-path.js
+    destination: .github/aw/dashboard/site/src/data/queries/daily-aggregate-fast-path.js
   - source: site/src/data/queries/index.js
     destination: .github/aw/dashboard/site/src/data/queries/index.js
   - source: site/src/data/queries/view-payload-compiler.js

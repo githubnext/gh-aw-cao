@@ -6,6 +6,7 @@ import { relationshipErrors } from '../model/schema.js';
 import {
   CANONICAL_DATABASE_SCHEMA,
   DATABASE_NAME,
+  DATABASE_STORES,
   DATABASE_VERSION,
   ENTITY_STORES
 } from './indexeddb.js';
@@ -14,6 +15,14 @@ import { SQLITE_INDEXEDDB_METADATA_SCHEMA } from './sqlite-indexeddb.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const EXPECTED_STORES = Object.keys(CANONICAL_DATABASE_SCHEMA);
+// Derived projections (e.g. daily overview aggregates) are not part of the
+// canonical batch shape the doctor scans/repairs: they are reconstructable
+// derived state (INV-004), not canonical entities, so a repair pass is
+// allowed to drop and lazily rebuild them on the next ingestion rather than
+// preserving them across `writeCanonicalDatabase`.
+const DERIVED_STORES = EXPECTED_STORES.filter(
+  (store) => !/** @type {readonly string[]} */ (DATABASE_STORES).includes(store)
+);
 
 /** @typedef {{ id: string, kind: string, createdAt: string, [field: string]: unknown }} DoctorTransaction */
 
@@ -175,6 +184,12 @@ function scanRecordsFromConnection(connection) {
       });
       continue;
     }
+    // Derived projection records (e.g. daily overview aggregates) are
+    // reconstructable derived state, not canonical entities: they are
+    // intentionally excluded from the canonical batch/relationship checks
+    // below and are dropped (and lazily rebuilt) whenever a repair rewrites
+    // the database.
+    if (DERIVED_STORES.includes(store)) continue;
     let key;
     let value;
     let reason = '';

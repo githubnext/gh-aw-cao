@@ -5,6 +5,7 @@ import { ingestCachedGhAwJsonl } from '../../src/data/ingest/coordinator.js';
 import {
   CANONICAL_DATABASE_SCHEMA,
   DATABASE_NAME,
+  DATABASE_STORES,
   recordTransaction
 } from '../../src/data/storage/indexeddb.js';
 import {
@@ -166,7 +167,7 @@ afterEach(() => {
 describe('canonical view sources', () => {
   it('matches declarative counts for every canonical database table', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
-    const tableNames = Object.keys(CANONICAL_DATABASE_SCHEMA);
+    const tableNames = [...DATABASE_STORES];
     const canonical = await queryCanonicalViewSources(indexedDB, sources, tableNames);
     const definitions = tableNames.map((table) => ({
       name: `${table}-count`,
@@ -191,7 +192,7 @@ describe('canonical view sources', () => {
   });
 
   it('returns the same zero counts as declarative execution for empty tables', async () => {
-    const tableNames = Object.keys(CANONICAL_DATABASE_SCHEMA);
+    const tableNames = [...DATABASE_STORES];
     const definitions = tableNames.map((table) => ({
       name: `${table}-count`,
       from: table,
