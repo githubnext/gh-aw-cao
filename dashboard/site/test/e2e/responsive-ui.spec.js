@@ -93,6 +93,7 @@ test('notifications move in at the lower right and center on mobile', async ({ p
 const horizontalBarFixtureLabel = '.github/workflows/extremely-long-dependabot-update-planner.md';
 const horizontalBarFixtureSuffix = 'planner.md';
 
+/** @param {import('@playwright/test').Page} page */
 async function renderHorizontalBarFixture(page) {
   await page.setContent(`
     <style id="dashboard-styles"></style>
@@ -108,8 +109,27 @@ async function renderHorizontalBarFixture(page) {
   `);
 }
 
+/**
+ * @param {import('@playwright/test').Locator} row
+ * @param {string} suffix
+ * @returns {Promise<{
+ *   overflowed: boolean,
+ *   overflowAmount: number,
+ *   firstCharClipDistance: number,
+ *   suffixLeft: number,
+ *   suffixRight: number,
+ *   labelLeft: number,
+ *   labelRight: number,
+ *   text: string,
+ *   textOverflowed: boolean,
+ *   textRight: number
+ * }>}
+ */
 async function measureHorizontalBarLabel(row, suffix) {
-  return row.evaluate((rowElement, expectedSuffix) => {
+  return row.evaluate((
+    /** @type {Element} */ rowElement,
+    /** @type {string} */ expectedSuffix
+  ) => {
     const labelElement = rowElement.querySelector('.horizontal-bar-chart-label');
     const textElement = rowElement.querySelector('.horizontal-bar-chart-label-text');
     const textNode = [...(textElement?.childNodes ?? [])].find((node) => node.nodeType === Node.TEXT_NODE);
@@ -118,6 +138,9 @@ async function measureHorizontalBarLabel(row, suffix) {
     }
     if (!textNode) {
       throw new Error('Expected horizontal bar label text node.');
+    }
+    if (!textElement || typeof textElement.getBoundingClientRect !== 'function') {
+      throw new Error('Expected horizontal bar label text element.');
     }
     const text = textNode.textContent ?? '';
     const suffixStart = text.lastIndexOf(expectedSuffix);
