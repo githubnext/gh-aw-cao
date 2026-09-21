@@ -232,6 +232,27 @@ describe('canonical view sources', () => {
     expect(collectionReads).not.toHaveBeenCalled();
   });
 
+  it('pushes declarative failed-run predicates into the canonical run index', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+    const collectionReads = vi.spyOn(IDBObjectStore.prototype, 'getAll');
+    const indexedReads = vi.spyOn(IDBIndex.prototype, 'getAll');
+
+    const result = await queryNativeCountSources(
+      indexedDB,
+      sources,
+      dashboardQueries,
+      ['failed-runs']
+    );
+
+    expect(result['failed-runs']).toMatchObject({
+      source: 'failed-runs',
+      rows: [{ repository: 'gh-aw-cao', run: '42', 'run-conclusion': 'failure' }],
+      metadata: { 'source-kind': 'derived', 'query-name': 'failed-runs' }
+    });
+    expect(indexedReads).toHaveBeenCalledTimes(4);
+    expect(collectionReads).not.toHaveBeenCalled();
+  });
+
   it('falls back for joins, transformed counts, invalid queries, and non-table sources', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
     const definitions = [

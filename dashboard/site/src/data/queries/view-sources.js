@@ -3,6 +3,7 @@ import { workflowSourcePath } from '../model/ids.js';
 import {
   CANONICAL_DATABASE_SCHEMA,
   countCollections,
+  queryCollection,
   readCollections,
   readTransactions
 } from '../storage/indexeddb.js';
@@ -59,9 +60,9 @@ function canonicalProjectionMetadata(sources, sourceName, projectionName, rowCou
 }
 
 /**
- * Executes simple whole-table counts with IndexedDB's native count operation.
- * Queries with row transforms, grouping, joins, unions, or nullable count
- * fields retain the general declarative execution path.
+ * Executes declarative queries with safe IndexedDB pushdown. Whole-table counts
+ * use the native count operation, while indexed filters read only candidates
+ * before the query engine applies the complete declaration.
  *
  * @param {IDBFactory} indexedDB
  * @param {Record<string, unknown>} logicalSources
@@ -72,7 +73,7 @@ function canonicalProjectionMetadata(sources, sourceName, projectionName, rowCou
 export async function queryNativeCountSources(indexedDB, logicalSources, definitions, requested) {
   const index = dashboardQueryIndex(definitions);
   const defects = dashboardQueryDefects(definitions);
-  const plans = [...requested].flatMap((name) => {
+  const countPlans = [...requested].flatMap((name) => {
     const definition = index.get(name);
     if (!definition || defects.has(name)) return [];
     const table = CANONICAL_DATABASE_SCHEMA[definition.from];
@@ -98,13 +99,19 @@ export async function queryNativeCountSources(indexedDB, logicalSources, definit
     }
     return [{ name, source: definition.from, values }];
   });
-  const storeNames = [...new Set(plans.map((plan) => plan.source))];
-  if (storeNames.length === 0) return {};
+  const filterPlans = [...requested].flatMap((name) => {
+    const definition = index.get(name);
+    const operators = definition && !defects.has(name)
+      ? indexedRunQueryOperators(definition)
+      : null;
+    return operators ? [{ name, definition, operators }] : [];
+  });
+  const storeNames = [...new Set(countPlans.map((plan) => plan.source))];
   const counts = await countCollections(
     indexedDB,
     /** @type {typeof import('../storage/indexeddb.js').DATABASE_STORES[number][]} */ (storeNames)
   );
-  return Object.fromEntries(plans.map((plan) => {
+  const counted = Object.fromEntries(countPlans.map((plan) => {
     const inputMetadata = projectionMetadata(logicalSources, plan.source, plan.source, true);
     return [plan.name, {
       source: plan.name,
@@ -121,6 +128,60 @@ export async function queryNativeCountSources(indexedDB, logicalSources, definit
       }
     }];
   }));
+  const filtered = await Promise.all(filterPlans.map(async ({ name, definition, operators }) => {
+    const records = await queryCollection(indexedDB, 'runs', operators);
+    const runs = runsSource(records, new Map(), logicalSources);
+    const result = executeDashboardQueries([definition], { runs }, [name]);
+    return [name, result[name]];
+  }));
+  return { ...counted, ...Object.fromEntries(filtered) };
+}
+
+const RUN_QUERY_FIELDS = new Map([
+  ['run-conclusion', 'conclusion'],
+  ['started-at', 'startedAt']
+]);
+
+/**
+ * Compiles the indexed subset of a declarative run query without changing its
+ * final query-engine execution.
+ * @param {Record<string, any>} definition
+ * @returns {import('../../data-operations.js').DataOperator[] | null}
+ */
+function indexedRunQueryOperators(definition) {
+  if (definition.from !== 'runs'
+      || definition.union?.length
+      || definition.joins?.length
+      || definition.compute?.length
+      || definition.aggregate
+      || definition['temporal-series']
+      || definition.predict?.length
+      || definition.select?.length
+      || definition.filter?.search) return null;
+  const predicates = definition.filter?.predicates;
+  if (!Array.isArray(predicates)
+      || !predicates.some((predicate) => predicate.field === 'run-conclusion')
+      || predicates.some((predicate) => !RUN_QUERY_FIELDS.has(predicate.field))) return null;
+  const order = definition['order-by'];
+  if (order !== undefined
+      && (!Array.isArray(order) || order.some((field) => !RUN_QUERY_FIELDS.has(field.field)))) return null;
+  return [
+    {
+      op: 'filter',
+      predicates: predicates.map((predicate) => ({
+        ...predicate,
+        field: RUN_QUERY_FIELDS.get(predicate.field)
+      }))
+    },
+    ...(Array.isArray(order) ? [{
+      op: /** @type {const} */ ('arrange'),
+      by: order.map((field) => ({ ...field, field: RUN_QUERY_FIELDS.get(field.field) }))
+    }] : []),
+    ...(Number.isInteger(definition.limit) ? [{
+      op: /** @type {const} */ ('slice'),
+      limit: definition.limit
+    }] : [])
+  ];
 }
 
 /**

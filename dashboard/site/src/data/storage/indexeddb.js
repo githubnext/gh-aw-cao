@@ -100,34 +100,6 @@ function requestResult(request) {
   });
 }
 
-/**
- * Streams matching records instead of asking IndexedDB to allocate a second
- * full result array with getAll().
- * @param {IDBObjectStore | IDBIndex} source
- * @param {IDBValidKey | IDBKeyRange | null} [query]
- * @returns {Promise<any[]>}
- */
-function cursorValues(source, query = null) {
-  if (typeof source.openCursor !== 'function') {
-    return requestResult(source.getAll(query ?? undefined));
-  }
-  return new Promise((resolve, reject) => {
-    /** @type {any[]} */
-    const values = [];
-    const request = source.openCursor(query);
-    request.onsuccess = () => {
-      const cursor = request.result;
-      if (!cursor) {
-        resolve(values);
-        return;
-      }
-      values.push(cursor.value);
-      cursor.continue();
-    };
-    request.onerror = () => reject(request.error ?? new Error('IndexedDB cursor failed'));
-  });
-}
-
 /** @param {IDBTransaction} transaction */
 function transactionDone(transaction) {
   return new Promise((resolve, reject) => {
@@ -362,7 +334,7 @@ export async function readCollections(indexedDB, storeNames) {
         const transaction = database.transaction([...storeNames]);
         const done = transactionDone(transaction);
         const values = await Promise.all(storeNames.map((storeName) =>
-          cursorValues(transaction.objectStore(storeName))
+          requestResult(transaction.objectStore(storeName).getAll())
         ));
         await done;
         return values;
@@ -416,7 +388,7 @@ export async function countCollections(indexedDB, storeNames) {
 export async function readCollection(indexedDB, storeName) {
   const database = await openCanonicalDatabase(indexedDB);
   try {
-    return await cursorValues(database.transaction(storeName).objectStore(storeName));
+    return await requestResult(database.transaction(storeName).objectStore(storeName).getAll());
   } finally {
     database.close();
   }
@@ -441,9 +413,9 @@ export async function queryCollection(indexedDB, storeName, operators, options =
     const plan = indexedQueryPlan(store, operators);
     let records;
     if (!plan) {
-      records = await cursorValues(store);
+      records = await requestResult(store.getAll());
     } else {
-      const matches = await Promise.all(plan.keys.map((key) => cursorValues(plan.index, key)));
+      const matches = await Promise.all(plan.keys.map((key) => requestResult(plan.index.getAll(key))));
       const keyPath = String(store.keyPath);
       records = [...new Map(matches.flat().map((record) => [record[keyPath], record])).values()]
         .sort((left, right) => indexedDB.cmp(left[keyPath], right[keyPath]));
@@ -531,11 +503,11 @@ export async function readIndex(indexedDB, storeName, indexName, key) {
   try {
     const index = database.transaction(storeName).objectStore(storeName).index(indexName);
     if (key.length === 1 && !Array.isArray(index.keyPath)) {
-      return await cursorValues(index, key[0]);
+      return await requestResult(index.getAll(key[0]));
     }
-    return await cursorValues(index,
+    return await requestResult(index.getAll(
       IDBKeyRange.bound(key, [...key, []], false, true)
-    );
+    ));
   } finally {
     database.close();
   }
@@ -926,7 +898,7 @@ export async function withCanonicalIngestionLock(indexedDB, task, options = {}) 
 export async function readTransactions(indexedDB) {
   const database = await openCanonicalDatabase(indexedDB);
   try {
-    return await cursorValues(database.transaction(TRANSACTION_STORE).objectStore(TRANSACTION_STORE));
+    return await requestResult(database.transaction(TRANSACTION_STORE).objectStore(TRANSACTION_STORE).getAll());
   } finally {
     database.close();
   }
