@@ -348,7 +348,8 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   assert.doesNotMatch(quickstart, /base64 -d|contents\/\.github\/cao/);
   assert.match(installer, /^#!\/usr\/bin\/env bash/);
   assert.match(installer, /install-gh-aw\.sh/);
-  assert.match(installer, /install-gh-aw\.sh[\s\S]*if \[\[ -f "\$policy_path" && -f "\$cao_cli" && -f "\$control_runtime" \]\]; then\s+exit 0/);
+  assert.match(installer, /if \[\[ -f "\$cao_command" \]\]; then\s+chmod \+x "\$cao_command"\s+fi/);
+  assert.match(installer, /if \[\[ -f "\$policy_path" && -f "\$cao_cli" && -f "\$cao_command" && -f "\$control_runtime" \]\]; then\s+exit 0/);
   assert.match(installer, /gh aw add githubnext\/gh-aw-cao/);
   assert.match(installer, /chmod \+x "\$cao_command"/);
   assert.match(installer, /"\$cao_command" init/);
@@ -522,7 +523,7 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /every installed Copilot-backed source declares `copilot-requests: write`/);
   assert.match(setupSkill, /no generated lock declares `\$\{\{ secrets\.COPILOT_GITHUB_TOKEN \}\}`/);
   assert.match(setupSkill, /do not replace `auto` with an explicit model/);
-  assert.match(setupSkill, /node \.github\/aw\/activity\/cao\.mjs add githubnext\/gh-aw-cao\/<campaign-slug>/);
+  assert.match(setupSkill, /\.\/\.github\/aw\/cao\.sh add githubnext\/gh-aw-cao\/<campaign-slug>/);
   assert.match(setupSkill, /consumer-owned policy/);
   assert.match(setupSkill, /edit only `control-plane\.scope` to add `target-owner` and `target-owner\/target-repository`/);
   assert.match(setupSkill, /Do not put `control-owner` or `control-repository` into this policy unless the selected target is the control repository/);

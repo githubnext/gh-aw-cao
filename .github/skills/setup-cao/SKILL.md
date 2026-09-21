@@ -94,7 +94,7 @@ Do not leave angle-bracket placeholders in authored files or pass placeholders t
       bash
     ```
 
-    The installer verifies or installs gh-aw, adds the latest published root campaign, creates a minimal review-safe `.github/workflows/cao.json`, and makes the repository-local `./.github/aw/cao.sh` CLI executable. It exits without changing CAO files when the core runtime and policy are already installed. Run `gh aw doctor --repo <organization>/<control-repository> --dir .` after installation. In a source-managed control repository, do not run the installer over workflows maintained directly in-tree; verify its committed runtime and policy instead.
+    The installer verifies or installs gh-aw, adds the latest published root campaign, and creates a minimal review-safe `.github/workflows/cao.json`. It also makes the repository-local `./.github/aw/cao.sh` CLI executable. It exits without changing CAO files when the core runtime and policy are already installed. Run `gh aw doctor --repo <organization>/<control-repository> --dir .` after installation. In a source-managed control repository, do not run the installer over workflows maintained directly in-tree; verify its committed runtime and policy instead.
 
     When the selected authentication profile requires GitHub Apps and the user wants automated creation, run the credential-only helper installed with the campaign:
 
