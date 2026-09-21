@@ -68,6 +68,17 @@ test("dashboard query Markdown keeps unpaginated results explicit", () => {
   const markdown = queryPerformanceMarkdown({
     populateMs: 123.45,
     chunkSize: 25,
+    indexedDbCount: {
+      durationMs: 3.21,
+      stores: 8,
+      records: 12345,
+      counts: {
+        campaigns: 3,
+        repositories: 42,
+        workflows: 100,
+        runs: 12200,
+      },
+    },
     overview: {
       initialReadyMs: 350.25,
       requestMs: 100,
@@ -94,6 +105,8 @@ test("dashboard query Markdown keeps unpaginated results explicit", () => {
     }],
   });
   assert.match(markdown, /Population time: \*\*123\.45 ms\*\*/);
+  assert.match(markdown, /### IndexedDB count\(\)/);
+  assert.match(markdown, /Counted \*\*12,345 records\*\* across \*\*8 stores\*\* in \*\*3\.21 ms\*\*\./);
   assert.match(markdown, /Initial Overview ready: \*\*350\.25 ms\*\*/);
   assert.match(markdown, /Settled deployed-data query: \*\*100\.00 ms\*\* \(1,234 records read\)/);
   assert.match(markdown, /\| Declarative queries \| 40\.00 \| 40\.00% \|/);
