@@ -16,7 +16,10 @@ describe("live Dashboard Language sources", () => {
     expect(main).toContain('renderIndexedDBUnsupported()');
     expect(main).toContain('await import("./dashboard-app.js")');
     expect(preview).toContain('fetch("./dashboard.json", { cache: "no-store" })');
+    expect(preview).toContain('await ensureDashboardPageLoaded(initialDashboardPageId());');
     expect(preview).toContain('renderSources({}, "loading")');
+    expect(preview.indexOf('await ensureDashboardPageLoaded(initialDashboardPageId());'))
+      .toBeLessThan(preview.indexOf('renderSources({}, "loading")'));
     expect(preview).toContain("subscribeWorkerLoadingProgress");
     expect(preview).toContain("setLoadingProgressState(document, state)");
     expect(preview).toContain('loading: state === "loading"');

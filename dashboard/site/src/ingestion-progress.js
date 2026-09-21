@@ -1,6 +1,5 @@
 import { createElapsedStepTracker } from './elapsed-step-tracker.js';
 
-const INGESTION_PROGRESS_DELAY_MS = 3_000;
 const INGESTION_PROGRESS_INTERVAL_MS = 1_000;
 const INGESTION_PROGRESS_HISTORY_LIMIT = 100;
 let nextIngestionProgressId = 0;
@@ -77,18 +76,13 @@ export function startIngestionProgress(target = self, requestId) {
   };
   /** @type {ReturnType<typeof setInterval> | undefined} */
   let interval;
-  /** @type {ReturnType<typeof setTimeout> | undefined} */
-  let delay;
   return {
     start() {
       if (started || completed) return;
       started = true;
       publishWorkerLoadingProgress({ id, phase: 'start' }, target);
-      delay = setTimeout(() => {
-        if (completed) return;
-        report();
-        interval = setInterval(report, INGESTION_PROGRESS_INTERVAL_MS);
-      }, INGESTION_PROGRESS_DELAY_MS);
+      report();
+      interval = setInterval(report, INGESTION_PROGRESS_INTERVAL_MS);
     },
     /** @param {number | undefined} bytes */
     setWorkload(bytes) {
@@ -138,7 +132,6 @@ export function startIngestionProgress(target = self, requestId) {
     complete() {
       if (completed) return;
       completed = true;
-      if (delay) clearTimeout(delay);
       if (interval) clearInterval(interval);
       if (!started) return;
       publishWorkerLoadingProgress({ id, phase: 'complete' }, target);

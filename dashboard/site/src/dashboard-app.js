@@ -218,6 +218,18 @@
           if (typeof page?.id === "string" && page.id) await ensureDashboardPageLoaded(page.id);
         }
       };
+      const initialDashboardPageId = () => {
+        const hash = window.location.hash;
+        if (!hash.startsWith("#page-")) return "overview";
+        try {
+          const route = hash.slice("#page-".length);
+          const queryIndex = route.indexOf("?");
+          const pageId = decodeURIComponent(queryIndex === -1 ? route : route.slice(0, queryIndex));
+          return dashboardDocument.dashboard.pages.some((page) => page.id === pageId) ? pageId : "overview";
+        } catch {
+          return "overview";
+        }
+      };
       resetDashboardState(dashboardSchema);
       const root = document.querySelector("#root");
       if (!(root instanceof HTMLElement)) throw new Error("Dashboard root element is missing.");
@@ -1046,6 +1058,7 @@
         });
         cancelCommand.complete();
       } else {
+        await ensureDashboardPageLoaded(initialDashboardPageId());
         renderSources({}, "loading");
         const sourceUrl = new URL("./payload-hashes.json", window.location.href).href;
         try {
