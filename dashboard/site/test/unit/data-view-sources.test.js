@@ -457,6 +457,35 @@ describe('canonical view sources', () => {
     ]);
   });
 
+  it('projects run records and MCP calls through declarative canonical queries', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+
+    const projected = await queryCanonicalViewSources(indexedDB, sources, ['tools', 'mcp-calls']);
+
+    expect(projected.tools).toMatchObject({
+      source: 'tools',
+      rows: [{
+        organization: 'githubnext',
+        repository: 'gh-aw-cao',
+        run: '42',
+        event: 'event:tool-call',
+        'event-type': 'tool.call'
+      }],
+      metadata: { 'source-kind': 'canonical-query' }
+    });
+    expect(projected['mcp-calls']).toMatchObject({
+      source: 'mcp-calls',
+      rows: [{
+        organization: 'githubnext',
+        repository: 'gh-aw-cao',
+        run: '42',
+        'mcp-observation': 'event:tool-call',
+        'mcp-status': 'requested'
+      }],
+      metadata: { 'source-kind': 'canonical-query' }
+    });
+  });
+
   it('returns requested authoritative sources through the canonical query boundary', async () => {
     const loaded = await loadCanonicalViewSources(indexedDB, sources, {
       ingest: true,

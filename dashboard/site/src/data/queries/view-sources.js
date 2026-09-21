@@ -1,5 +1,5 @@
 import { ingestDashboardSources } from '../ingest/coordinator.js';
-import { workflowSourcePath } from '../model/ids.js';
+import canonicalSourceQueries from './canonical-sources.json' with { type: 'json' };
 import {
   CANONICAL_DATABASE_SCHEMA,
   countCollections,
@@ -15,6 +15,7 @@ import {
 } from './declarative.js';
 
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
+const canonicalSourceQueryIndex = dashboardQueryIndex(canonicalSourceQueries);
 
 /**
  * @param {Record<string, unknown>} sources
@@ -130,7 +131,10 @@ export async function queryNativeCountSources(indexedDB, logicalSources, definit
   }));
   const filtered = await Promise.all(filterPlans.map(async ({ name, definition, operators }) => {
     const records = await queryCollection(indexedDB, 'runs', operators);
-    const runs = runsSource(records, new Map(), logicalSources);
+    const runs = declarativeCanonicalSource('runs', {
+      runs: records,
+      workflows: []
+    }, logicalSources);
     const result = executeDashboardQueries([definition], { runs }, [name]);
     return [name, result[name]];
   }));
@@ -204,335 +208,81 @@ function emptyCanonicalSource(sourceName, sources, reason) {
   };
 }
 
-/** @param {unknown} value */
-function normalizedKey(value) {
-  return String(value ?? '').toLowerCase();
-}
-
-/** @param {Record<string, unknown>} run */
-function runKey(run) {
-  return [run.organization ?? run.owner, run.repository, run.run ?? run.githubRunId, run['run-attempt'] ?? run.attempt ?? 1]
-    .map(normalizedKey).join(':');
-}
-
 /**
- * @param {Record<string, unknown>} run
- * @param {Map<string, Record<string, unknown>>} publishedRuns
- * @param {Map<unknown, Record<string, unknown>>} workflowsById
+ * @param {'campaigns'|'repositories'|'workflows'|'runs'} sourceName
+ * @param {Record<string, Record<string, unknown>[]>} collections
+ * @param {Record<string, unknown>} sources
  */
-function projectedRun(run, publishedRuns, workflowsById) {
-  const workflow = workflowsById.get(run.workflowId) ?? {};
+function declarativeCanonicalSource(sourceName, collections, sources) {
+  const definition = canonicalSourceQueryIndex.get(sourceName);
+  if (!definition) throw new Error(`Missing canonical source query: ${sourceName}`);
+  const inputs = Object.fromEntries(Object.entries(collections).map(([name, rows]) => [
+    `$${name}`,
+    {
+      source: `$${name}`,
+      rows,
+      metadata: projectionMetadata(sources, name, name, true)
+    }
+  ]));
+  const projected = executeDashboardQueries(
+    canonicalSourceQueries,
+    inputs,
+    [sourceName]
+  )[sourceName];
   return {
-    ...(publishedRuns.get(runKey(run)) ?? {}),
-    id: run.id,
-    organization: run.owner,
-    repository: run.repository,
-    workflow: run.workflowPath ?? workflow.path,
-    run: String(run.githubRunId ?? ''),
-    'run-attempt': run.attempt,
-    'run-title': run.title,
-    'target-repository': run.targetRepository,
-    event: run.event,
-    branch: run.branch,
-    'head-sha': run.headSha,
-    'created-at': run.createdAt,
-    'started-at': run.startedAt,
-    'ended-at': run.completedAt,
-    'updated-at': run.updatedAt,
-    'run-status': run.status,
-    'run-conclusion': run.conclusion,
-    classification: run.classification,
-    duration: run.duration,
-    'action-minutes': run.actionMinutes,
-    'github-api-calls': run.githubApiCalls,
-    'safe-items-count': run.safeItemsCount,
-    'error-count': run.errorCount,
-    'failure-detail': run.failureDetail,
-    'run-link': run.runLink,
-    'rollout-mode': run.rolloutMode && run.rolloutMode !== 'unknown'
-      ? run.rolloutMode
-      : workflow.rolloutMode,
-    'agent-id': run.agentId,
-    'agent-version': run.agentVersion,
-    'model-id': run.modelId,
-    'gh-aw-version': run.ghAwVersion,
-    'aic-total': run.aicTotal,
-    engine: run.engine,
-    'engine-id': run.engineId,
-    'engine-version': run.engineVersion,
-    'requested-model': run.requestedModel,
-    'resolved-model': run.resolvedModel,
-    'agent-runtime': run.agentRuntime,
-    'firewall-version': run.firewallVersion,
-    'gateway-version': run.gatewayVersion
+    ...projected,
+    metadata: canonicalProjectionMetadata(sources, sourceName, sourceName, projected.rows.length)
   };
 }
 
 /**
+ * @param {string} sourceName
+ * @param {Record<string, unknown>[]} records
  * @param {Record<string, unknown>[]} runs
- * @param {Map<unknown, Record<string, unknown>>} workflowsById
  * @param {Record<string, unknown>} sources
  */
-function runsSource(runs, workflowsById, sources) {
-  const publishedRuns = new Map(sourceRows(sources.runs).map((run) => [runKey(run), run]));
-  return {
-    source: 'runs',
-    rows: runs.map((run) => projectedRun(run, publishedRuns, workflowsById)),
-    metadata: projectionMetadata(sources, 'runs', 'runs', true)
+function declarativeRunRecords(sourceName, records, runs, sources) {
+  const inputs = {
+    $records: {
+      source: '$records',
+      rows: records,
+      metadata: projectionMetadata(sources, sourceName, sourceName, true)
+    },
+    $runs: {
+      source: '$runs',
+      rows: runs,
+      metadata: projectionMetadata(sources, 'runs', 'runs', true)
+    }
   };
-}
-
-/** @param {Record<string, unknown>[]} repositories @param {Record<string, unknown>} sources */
-function repositoriesSource(repositories, sources) {
-  const publishedRepositories = new Map(sourceRows(sources.repositories).map((repository) => [
-    [repository.organization, repository.repository].map(normalizedKey).join(':'),
-    repository
-  ]));
+  const projected = executeDashboardQueries(
+    canonicalSourceQueries,
+    inputs,
+    ['run-records']
+  )['run-records'];
   return {
-    source: 'repositories',
-    rows: repositories.map((repository) => ({
-      ...(publishedRepositories.get([repository.owner, repository.name].map(normalizedKey).join(':')) ?? {}),
-      id: repository.id,
-      organization: repository.owner,
-      repository: repository.name,
-      'repository-name': repository.name,
-      'repository-coordinate': `${String(repository.owner ?? '')}/${String(repository.name ?? '')}`,
-      visibility: repository.visibility,
-      'observed-at': repository.observedAt,
-      'organization-link': repository.organizationLink,
-      'repository-link': repository.repositoryLink
-    })),
-    metadata: projectionMetadata(sources, 'repositories', 'repositories', true)
-  };
-}
-
-/** @param {Record<string, unknown>[]} campaigns @param {Record<string, unknown>} sources */
-function campaignsSource(campaigns, sources) {
-  return {
-    source: 'campaigns',
-    rows: campaigns.map((campaignRecord) => ({
-      id: campaignRecord.id,
-      campaign: campaignRecord.slug,
-      'campaign-name': campaignRecord.name,
-      'campaign-description': campaignRecord.description,
-      'campaign-icon': campaignRecord.icon,
-      'campaign-mode': campaignRecord.mode,
-      'campaign-enabled': campaignRecord.enabled,
-      'campaign-registration': campaignRecord.enabled ? 'true' : 'false',
-      'campaign-max-repositories': campaignRecord.maxRepositories,
-      'campaign-rollout-percent': campaignRecord.rolloutPercent,
-      'campaign-monthly-ai-credit-budget': campaignRecord.monthlyAiCreditBudget,
-      'campaign-aic-allowance': campaignRecord.aiCreditAllowance,
-      'campaign-worker-count': campaignRecord.workerCount,
-      'campaign-inventory-warnings': campaignRecord.inventoryWarnings,
-      'campaign-workers': campaignRecord.workers,
-      'campaign-targets': campaignRecord.targets,
-      'campaign-min-version': campaignRecord.minVersion,
-      'campaign-version': campaignRecord.version,
-      'campaign-current-version': campaignRecord.currentVersion,
-      'campaign-update-state': campaignRecord.updateState,
-      'campaign-experimental': campaignRecord.experimental,
-      'campaign-readme-path': campaignRecord.readmePath,
-      'campaign-readme': campaignRecord.readme,
-      'observed-at': campaignRecord.observedAt,
-      ...(campaignRecord.campaignLink ? { 'campaign-link': campaignRecord.campaignLink } : {})
-    })),
-    metadata: projectionMetadata(sources, 'campaigns', 'campaigns', true)
+    ...projected,
+    source: sourceName,
+    metadata: canonicalProjectionMetadata(sources, sourceName, sourceName, projected.rows.length)
   };
 }
 
 /**
- * @param {Record<string, unknown>[]} workflows
- * @param {Map<unknown, Record<string, unknown>>} repositoriesById
+ * @param {string} queryName
+ * @param {Record<string, import('../../presenter.js').LogicalSourceInput>} inputs
  * @param {Record<string, unknown>} sources
+ * @param {string} metadataSource
  */
-function workflowsSource(workflows, repositoriesById, sources) {
-  const publishedWorkflows = new Map(sourceRows(sources.workflows).map((workflow) => [
-    [
-      workflow.organization,
-      workflow.repository,
-      workflowSourcePath(String(workflow.workflow ?? ''))
-    ].map(normalizedKey).join(':'),
-    workflow
-  ]));
+function declarativeDerivedSource(queryName, inputs, sources, metadataSource) {
+  const projected = executeDashboardQueries(canonicalSourceQueries, inputs, [queryName])[queryName];
   return {
-    source: 'workflows',
-    rows: workflows.map((workflow) => {
-      const repository = repositoriesById.get(workflow.repositoryId) ?? {};
-      const publishedWorkflow = publishedWorkflows.get([
-        repository.owner,
-        repository.name,
-        workflow.path
-      ].map(normalizedKey).join(':'));
-      return {
-        ...(publishedWorkflow ?? {}),
-        id: workflow.id,
-        organization: repository.owner,
-        repository: repository.name,
-        workflow: workflow.path,
-        'workflow-id': publishedWorkflow?.['workflow-id'] ?? workflow.githubId,
-        'workflow-name': publishedWorkflow?.['workflow-name'] ?? workflow.name,
-        'workflow-active': publishedWorkflow?.['workflow-active']
-          ?? (workflow.state === 'active' ? 'true'
-            : workflow.state === 'disabled' ? 'false' : 'unknown'),
-        'workflow-registry-state': publishedWorkflow?.['workflow-registry-state'] ?? workflow.registryState,
-        'created-at': publishedWorkflow?.['created-at'] ?? workflow.createdAt,
-        'updated-at': publishedWorkflow?.['updated-at'] ?? workflow.updatedAt,
-        campaign: workflow.campaign,
-        'campaign-name': workflow.campaignName,
-        'campaign-icon': workflow.campaignIcon,
-        'workflow-role': workflow.role,
-        'rollout-mode': workflow.rolloutMode,
-        'max-ai-credits': workflow.maxAiCredits,
-        'observed-at': workflow.observedAt,
-        'gh-aw-version': workflow.ghAwVersion,
-        'gh-aw-current-version': workflow.ghAwCurrentVersion,
-        'gh-aw-update-state': workflow.ghAwUpdateState,
-        'workflow-link': publishedWorkflow?.['workflow-link'] ?? workflow.workflowLink
-      };
-    }),
-    metadata: projectionMetadata(sources, 'workflows', 'workflows', true)
+    ...projected,
+    metadata: canonicalProjectionMetadata(sources, metadataSource, queryName, projected.rows.length)
   };
 }
 
 /** @param {Record<string, unknown>} record */
 function definedFields(record) {
   return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined));
-}
-
-/**
- * Projects retained run-linked records with their run and repository context.
- *
- * @param {string} sourceName
- * @param {Record<string, unknown>[]} records
- * @param {Map<unknown, Record<string, unknown>>} runsById
- * @param {Record<string, unknown>} sources
- */
-function recordsSource(sourceName, records, runsById, sources) {
-  const publishedRecords = new Map(sourceRows(sources[sourceName]).map((event) => [
-    normalizedKey(event.event),
-    event
-  ]));
-  const ordered = [...records].sort((left, right) =>
-    String(left.runId).localeCompare(String(right.runId))
-    || Number(left.sequence) - Number(right.sequence));
-  return {
-    source: sourceName,
-    rows: ordered.map((event) => {
-      const run = runsById.get(event.runId) ?? {};
-      return {
-        ...(publishedRecords.get(normalizedKey(event.id)) ?? {}),
-        ...definedFields({
-          id: event.id,
-          organization: run.owner,
-          repository: run.repository,
-          workflow: run.workflowPath,
-          run: run.githubRunId === undefined ? undefined : String(run.githubRunId),
-          'run-attempt': run.attempt,
-          event: event.id,
-          'event-timestamp': event.timestamp,
-          'event-source': event.source,
-          'event-type': event.source === 'firewall'
-            ? { net_allowed: 'firewall.request.allowed', net_blocked: 'firewall.request.blocked' }[String(event.type)] ?? event.type
-            : event.type,
-          'event-summary': event.summary,
-          'event-status': event.status,
-          'request-count': event.requestCount,
-          'correlation-id': event.correlationId,
-          'payload-ref': event.payloadRef,
-          'mcp-server': event.mcpServer,
-          'mcp-tool': event.mcpTool,
-          'safe-output-type': event.safeOutputType,
-          'github-entity-type': event.githubEntityType,
-          'is-pull-request': event.isPullRequest,
-          'tool-type': event.toolType,
-          'is-skill': event.isSkill,
-          name: event.name,
-          'source-sequence': event.sourceSequence,
-          'observed-at': event.observedAt,
-          'run-link': run.runLink,
-          'target-repo': event.targetRepo,
-          'target-organization': event.targetOrganization,
-          'target-repository': event.targetRepository,
-          'target-workflow-path': event.targetWorkflowPath,
-          'optimizer-run-attempt': event.optimizerRunAttempt,
-          'optimizer-workflow-path': event.optimizerWorkflowPath,
-          'optimizer-workflow-name': event.optimizerWorkflowName,
-          'claim-run-id': event.claimRunId,
-          'claim-run-attempt': event.claimRunAttempt,
-          actor: event.actor,
-          'source-provenance': event.sourceProvenance,
-          'opportunity-id': event.opportunityId,
-          'opportunity-kind': event.opportunityKind,
-          'assignment-run': event.assignmentRunId,
-          experiment: event.experimentId,
-          'evidence-window-start': event.evidenceWindowStart,
-          'evidence-window-end': event.evidenceWindowEnd,
-          'evidence-state': event.evidenceState,
-          'evidence-confidence': event.evidenceConfidence,
-          'cost-grain': event.costGrain,
-          'evidence-provenance': event.evidenceProvenance,
-          'attributable-run-ids': event.attributableRunIds,
-          'intervention-id': event.interventionId,
-          'lifecycle-observation-id': event.lifecycleObservationId,
-          'previous-intervention-state': event.previousInterventionState,
-          'intervention-state': event.interventionState,
-          'previous-recommendation-disposition': event.previousRecommendationDisposition,
-          'recommendation-disposition': event.recommendationDisposition,
-          'supersedes-intervention-id': event.supersedesInterventionId,
-          'superseded-by-intervention-id': event.supersededByInterventionId,
-          'recommendation-churn-count': event.recommendationChurnCount,
-          'recommendation-churn-rate': event.recommendationChurnRate,
-          'control-variant': event.controlVariant,
-          'optimized-variant': event.optimizedVariant,
-          'proposed-savings-aic': event.proposedSavingsAic,
-          'missing-reason': event.missingReason,
-          'safe-output-id': event.safeOutputId,
-          'safe-output-url': event.safeOutputUrl,
-          'implementation-change-id': event.implementationChangeId,
-          'implementation-pull-request-url': event.implementationPullRequestUrl,
-          'implementation-run-ids': event.implementationRunIds,
-          'accepted-at': event.acceptedAt,
-          'implementation-started-at': event.implementationStartedAt,
-          'implementation-completed-at': event.implementationCompletedAt,
-          'rejected-at': event.rejectedAt,
-          'superseded-at': event.supersededAt
-        })
-      };
-    }),
-    metadata: projectionMetadata(sources, sourceName, sourceName, true)
-  };
-}
-
-/**
- * Projects retained canonical MCP call events when no published MCP source is available.
- *
- * @param {Record<string, unknown>[]} events
- * @param {Map<unknown, Record<string, unknown>>} runsById
- * @param {Record<string, unknown>} sources
- */
-function mcpCallsSource(events, runsById, sources) {
-  const rows = events.flatMap((event) => {
-    if (event.source !== 'mcp' || event.type !== 'tool.call') return [];
-    const run = runsById.get(event.runId) ?? {};
-    return [definedFields({
-      organization: run.owner,
-      repository: run.repository,
-      workflow: run.workflowPath,
-      run: run.githubRunId === undefined ? undefined : String(run.githubRunId),
-      'mcp-observation': event.id,
-      'mcp-server': event.mcpServer,
-      'mcp-tool': event.mcpTool,
-      'mcp-status': event.status,
-      'observed-at': event.observedAt,
-      'run-link': run.runLink
-    })];
-  });
-  return {
-    source: 'mcp-calls',
-    rows,
-    metadata: canonicalProjectionMetadata(sources, 'tools', 'mcp-calls', rows.length)
-  };
 }
 
 /** @param {unknown} value */
@@ -788,42 +538,6 @@ function outcomesSource(events, runsById, workflowsById, sources) {
   };
 }
 
-/**
- * @param {Record<string, unknown>[]} events
- * @param {Map<unknown, Record<string, unknown>>} runsById
- * @param {Record<string, unknown>} sources
- */
-function findingsSource(events, runsById, sources) {
-  const rows = events.flatMap((event) => {
-    if (event.type !== 'audit.finding') return [];
-    const run = runsById.get(event.runId) ?? {};
-    return [definedFields({
-      organization: run.owner,
-      repository: run.repository,
-      workflow: run.workflowPath,
-      run: String(run.githubRunId ?? ''),
-      'safe-output': event.id,
-      finding: event.id,
-      'finding-kind': 'audit-finding',
-      'finding-severity': event.status ?? 'unknown',
-      'finding-status': 'observed',
-      'finding-summary': event.summary,
-      'observed-at': event.observedAt ?? event.timestamp,
-      engine: run.engine,
-      'engine-version': run.engineVersion,
-      'requested-model': run.requestedModel ?? run.modelId,
-      'resolved-model': run.resolvedModel ?? run.modelId,
-      'run-link': run.runLink,
-      'external-link': run.runLink
-    })];
-  });
-  return {
-    source: 'findings',
-    rows,
-    metadata: canonicalProjectionMetadata(sources, 'audits', 'findings', rows.length)
-  };
-}
-
 /** @param {Record<string, unknown>[]} findings @param {Record<string, unknown>} sources */
 function securityFindingsSource(findings, sources) {
   const rows = findings
@@ -845,55 +559,6 @@ function securityFindingsSource(findings, sources) {
     source: 'security-findings',
     rows,
     metadata: canonicalProjectionMetadata(sources, 'audits', 'security-findings', rows.length)
-  };
-}
-
-/** @param {Record<string, unknown>[]} securityFindings @param {Record<string, unknown>} sources */
-function detectionObservationsSource(securityFindings, sources) {
-  const rows = securityFindings.map((finding) => ({
-    organization: finding.organization,
-    repository: finding.repository,
-    workflow: finding.workflow,
-    run: finding.run,
-    'observed-at': finding['observed-at'],
-    'run-link': finding['run-link'],
-    'detection-expected': 'yes',
-    'detection-applicable': 'yes',
-    'detection-executed': 'yes',
-    'verdict-available': 'yes',
-    'detection-state': 'threat',
-    'detection-state-label': 'Threat detected',
-    'detection-count': 1,
-    'detection-signal': finding['smell-summary'],
-    'attention-priority': 'high'
-  }));
-  return {
-    source: 'detection-observations',
-    rows,
-    metadata: canonicalProjectionMetadata(sources, 'audits', 'detection-observations', rows.length)
-  };
-}
-
-/** @param {Record<string, unknown>[]} outcomes @param {Record<string, unknown>} sources */
-function safeOutputPerformanceSource(outcomes, sources) {
-  const rows = outcomes.map((outcome) => ({
-    organization: outcome.organization,
-    repository: outcome.repository,
-    workflow: outcome.workflow,
-    run: outcome.run,
-    'run-conclusion': outcome['run-conclusion'],
-    'rollout-mode': outcome['rollout-mode'],
-    'safe-output-kind': outcome['safe-output-kind'],
-    'safe-output-label': outcome['outcome-title'],
-    'safe-output-status': outcome['outcome-status'],
-    'safe-output-count': 1,
-    'observed-at': outcome['observed-at'],
-    'run-link': outcome['run-link']
-  }));
-  return {
-    source: 'safe-output-performance',
-    rows,
-    metadata: canonicalProjectionMetadata(sources, 'issues', 'safe-output-performance', rows.length)
   };
 }
 
@@ -1294,9 +959,6 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   const tools = collections.tools ?? [];
   const audits = collections.audits ?? [];
   const issues = collections.issues ?? [];
-  const repositoriesById = needsWorkflows
-    ? new Map(repositories.map((repository) => [repository.id, repository]))
-    : new Map();
   const workflowsById = needsRuns || needed.has('outcomes')
     ? new Map(workflows.map((workflow) => [workflow.id, workflow]))
     : new Map();
@@ -1306,10 +968,10 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   const graders = needsGraders ? graderRows(audits, runsById) : [];
   const sources = namedLogicalSources(logicalSources);
   const projectedWorkflows = projectedNames.has('workflows') || needed.has('work-items')
-    ? workflowsSource(workflows, repositoriesById, sources).rows
+    ? declarativeCanonicalSource('workflows', { workflows, repositories }, sources).rows
     : [];
   const projectedRuns = projectedNames.has('runs') || needed.has('work-items')
-    ? runsSource(runs, workflowsById, sources).rows
+    ? declarativeCanonicalSource('runs', { runs, workflows }, sources).rows
     : [];
   const publishedOutcomes = sourceRows(sources.outcomes);
   const outcomes = needed.has('outcomes')
@@ -1326,7 +988,14 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   const findings = needed.has('findings')
     ? publishedFindings.length > 0
       ? /** @type {import('../../presenter.js').LogicalSourceInput} */ (sources.findings)
-      : findingsSource(audits, runsById, sources)
+      : declarativeDerivedSource('findings', {
+          $records: {
+            source: '$records',
+            rows: audits,
+            metadata: projectionMetadata(sources, 'audits', 'audits', true)
+          },
+          $runs: { source: '$runs', rows: runs, metadata: projectionMetadata(sources, 'runs', 'runs', true) }
+        }, sources, 'audits')
     : null;
   const publishedSecurityFindings = sourceRows(sources['security-findings']);
   const securityFindings = needed.has('security-findings') || needed.has('detection-observations')
@@ -1344,8 +1013,12 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
     if (source) projected[sourceName] = source;
   }
   if (projectedNames.has('source-metadata')) projected['source-metadata'] = sourceMetadataSource(logicalSources);
-  if (projectedNames.has('campaigns')) projected.campaigns = campaignsSource(campaigns, sources);
-  if (projectedNames.has('repositories')) projected.repositories = repositoriesSource(repositories, sources);
+  if (projectedNames.has('campaigns')) {
+    projected.campaigns = declarativeCanonicalSource('campaigns', { campaigns }, sources);
+  }
+  if (projectedNames.has('repositories')) {
+    projected.repositories = declarativeCanonicalSource('repositories', { repositories }, sources);
+  }
   if (projectedNames.has('workflows')) {
     projected.workflows = {
       source: 'workflows',
@@ -1362,10 +1035,19 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   }
   for (const [sourceName, records] of Object.entries({ domains, tools, audits, issues })) {
     if (projectedNames.has(sourceName)) {
-      projected[sourceName] = recordsSource(sourceName, records, runsById, sources);
+      projected[sourceName] = declarativeRunRecords(sourceName, records, runs, sources);
     }
   }
-  if (needsMcpCalls) projected['mcp-calls'] = mcpCallsSource(tools, runsById, sources);
+  if (needsMcpCalls) {
+    projected['mcp-calls'] = declarativeDerivedSource('mcp-calls', {
+      $records: {
+        source: '$records',
+        rows: tools,
+        metadata: projectionMetadata(sources, 'tools', 'tools', true)
+      },
+      $runs: { source: '$runs', rows: runs, metadata: projectionMetadata(sources, 'runs', 'runs', true) }
+    }, sources, 'tools');
+  }
   if (projectedNames.has('usage') && sourceRows(sources.usage).length === 0) {
     projected.usage = usageSource(runs, sources);
   }
@@ -1377,15 +1059,16 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   if (projectedNames.has('detection-observations')
       && sourceRows(sources['detection-observations']).length === 0
       && securityFindings) {
-    projected['detection-observations'] = detectionObservationsSource(
-      sourceRows(securityFindings),
-      sources
-    );
+    projected['detection-observations'] = declarativeDerivedSource('detection-observations', {
+      '$security-findings': securityFindings
+    }, sources, 'audits');
   }
   if (projectedNames.has('safe-output-performance')
       && sourceRows(sources['safe-output-performance']).length === 0
       && outcomes) {
-    projected['safe-output-performance'] = safeOutputPerformanceSource(sourceRows(outcomes), sources);
+    projected['safe-output-performance'] = declarativeDerivedSource('safe-output-performance', {
+      $outcomes: outcomes
+    }, sources, 'issues');
   }
   if (projectedNames.has('work-items')
       && sourceRows(sources['work-items']).length === 0

@@ -23,6 +23,7 @@ describe('dashboard query architecture', () => {
     const workProject = read('src/components/work-project-view.js');
     const presentationQueryFixture = read('test/workflow-inventory-query.js');
     const canonicalSources = read('src/data/queries/view-sources.js');
+    const canonicalQueries = JSON.parse(read('src/data/queries/canonical-sources.json'));
     const dashboard = JSON.parse(read('dashboard.json')).dashboard;
     const optimizationDashboard = JSON.parse(read('../../optimization/dashboard.json')).dashboard;
 
@@ -51,6 +52,30 @@ describe('dashboard query architecture', () => {
     expect(canonicalSources).not.toContain('tokenEfficiencySources');
     expect(canonicalSources).not.toContain('projectCanonicalViewSources');
     expect(canonicalSources).not.toContain('failedRunsSource');
+    for (const projection of [
+      'campaignsSource',
+      'repositoriesSource',
+      'workflowsSource',
+      'runsSource',
+      'recordsSource',
+      'mcpCallsSource',
+      'findingsSource',
+      'detectionObservationsSource',
+      'safeOutputPerformanceSource'
+    ]) {
+      expect(canonicalSources).not.toContain(`function ${projection}`);
+    }
+    expect(canonicalQueries.map((query) => query.name)).toEqual(expect.arrayContaining([
+      'campaigns',
+      'repositories',
+      'workflows',
+      'runs',
+      'run-records',
+      'mcp-calls',
+      'findings',
+      'detection-observations',
+      'safe-output-performance'
+    ]));
     expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'failed-runs'))
       .toMatchObject({ from: 'runs' });
     expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-opportunities'))
