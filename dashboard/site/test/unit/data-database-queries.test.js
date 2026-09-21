@@ -504,6 +504,20 @@ describe('canonical view sources', () => {
     });
   });
 
+  it('does not read database stores for a populated published source', async () => {
+    const collectionReads = vi.spyOn(IDBObjectStore.prototype, 'getAll');
+    const published = { rows: [{ 'mcp-observation': 'published-call' }], metadata };
+
+    const projected = await queryDatabaseSources(
+      indexedDB,
+      { 'mcp-calls': published },
+      ['mcp-calls']
+    );
+
+    expect(projected['mcp-calls'].rows).toEqual(published.rows);
+    expect(collectionReads).not.toHaveBeenCalled();
+  });
+
   it('returns requested authoritative sources through the canonical query boundary', async () => {
     const loaded = await loadCanonicalViewSources(indexedDB, sources, {
       ingest: true,

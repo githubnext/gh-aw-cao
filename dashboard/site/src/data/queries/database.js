@@ -74,6 +74,17 @@ function namedSources(sources) {
   ]));
 }
 
+/** @param {unknown} source */
+function hasRows(source) {
+  return Boolean(
+    source
+    && typeof source === 'object'
+    && !Array.isArray(source)
+    && Array.isArray(/** @type {{ rows?: unknown }} */ (source).rows)
+    && /** @type {{ rows: unknown[] }} */ (source).rows.length > 0
+  );
+}
+
 /**
  * @param {string} queryName
  * @param {Record<string, import('../../presenter.js').LogicalSourceInput>} inputs
@@ -290,7 +301,11 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
   if (requested.has('data-health-collections') || requested.has('data-health-coverage')) {
     for (const name of HEALTH_DATABASE_SOURCES) requested.add(name);
   }
-  const stores = [...new Set([...requested].flatMap(queryStores))];
+  const databaseRequested = [...requested].filter((name) => (
+    DATABASE_TABLE_SOURCES.has(name)
+    || !hasRows(logicalSources[name])
+  ));
+  const stores = [...new Set(databaseRequested.flatMap(queryStores))];
   const transactionRequested = stores.includes('transactions');
   const collectionStores = /** @type {Array<'campaigns'|'repositories'|'workflows'|'runs'|'domains'|'tools'|'audits'|'issues'>} */ (
     stores.filter((name) => name !== 'transactions')
