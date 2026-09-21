@@ -22,6 +22,7 @@ describe('entity card templates', () => {
       'run',
       'event',
       'campaign',
+      'campaign-shortcut',
       'operation'
     ]));
   });
@@ -40,6 +41,25 @@ describe('entity card templates', () => {
       ]
     });
     expect(templates.campaign.details).not.toContainEqual(expect.objectContaining({ field: 'runs' }));
+    expect(templates['campaign-shortcut']).toMatchObject({
+      icon: 'goal',
+      'icon-field': 'campaign-icon',
+      title: { field: 'campaign-name' },
+      labels: [],
+      details: []
+    });
+    expect(pages.overview.views.find(
+      (/** @type {Record<string, any>} */ view) => view.id === 'overview-campaigns'
+    )).toMatchObject({
+      data: { source: 'campaigns' },
+      mark: 'list',
+      list: {
+        style: 'entity-cards',
+        appearance: 'grouped',
+        card: 'campaign-shortcut',
+        drill: { type: 'external', field: 'campaign-link' }
+      }
+    });
     expect(pages.campaigns.definition.views.find(
       (/** @type {Record<string, any>} */ view) => view.id === 'campaigns-inventory'
     )).toMatchObject({
