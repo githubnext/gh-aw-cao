@@ -305,12 +305,12 @@ async function installedCampaignRecords(root = process.cwd()) {
     }
     for (const entry of entries) {
       if (entry.isDirectory() || !entry.name.endsWith('.json')) continue;
-      const source = path.join(recordsDirectory, entry.name);
+      const recordPath = path.join(recordsDirectory, entry.name);
       let record;
       try {
-        record = JSON.parse(await readFile(source, 'utf8'));
+        record = JSON.parse(await readFile(recordPath, 'utf8'));
       } catch (error) {
-        if (error instanceof SyntaxError) throw new Error(`${path.relative(root, source)} contains invalid JSON: ${error.message}`);
+        if (error instanceof SyntaxError) throw new Error(`${path.relative(root, recordPath)} contains invalid JSON: ${error.message}`);
         throw error;
       }
       const campaignName = typeof record.package === 'string' && record.package.trim()
@@ -320,18 +320,21 @@ async function installedCampaignRecords(root = process.cwd()) {
           : typeof record.source === 'string'
             ? record.source.split('@')[0].trim()
             : '';
-      if (!campaignName) throw new Error(`${path.relative(root, source)} does not identify an installed campaign`);
+      if (!campaignName) throw new Error(`${path.relative(root, recordPath)} does not identify an installed campaign`);
       records.set(campaignName, {
         campaign: campaignName,
         source: typeof record.source === 'string' ? record.source : campaignName,
-        resolvedCommit: typeof record.resolvedCommit === 'string' ? record.resolvedCommit.trim() : ''
+        resolvedCommit: typeof record.resolvedCommit === 'string' ? record.resolvedCommit.trim() : '',
+        record,
+        recordPath
       });
     }
   }
   return [...records.values()].sort((left, right) => left.campaign.localeCompare(right.campaign));
 }
 
-async function patchCaoReleaseCheckout(workflow, releaseCommit, root = process.cwd()) {
+async function patchCaoReleaseCheckout(workflow, packageRecord, root = process.cwd()) {
+  const releaseCommit = packageRecord.resolvedCommit;
   if (!/^[0-9a-f]{40}$/i.test(releaseCommit)) {
     throw new Error(`Installed CAO package record has an invalid resolvedCommit: ${releaseCommit || '(missing)'}`);
   }
@@ -382,6 +385,14 @@ async function patchCaoReleaseCheckout(workflow, releaseCommit, root = process.c
 
   const patched = `${content.slice(0, stepStart)}${lines.join(newline)}${content.slice(stepEnd)}`;
   if (patched !== content) await writeFile(workflowPath, patched);
+  if (Array.isArray(packageRecord.record?.files)) {
+    const destination = path.relative(root, workflowPath).split(path.sep).join('/');
+    const file = packageRecord.record.files.find((entry) => entry?.destination === destination);
+    if (file) {
+      file.sha256 = createHash('sha256').update(patched).digest('hex');
+      await writeJsonAtomically(packageRecord.recordPath, packageRecord.record);
+    }
+  }
   return true;
 }
 
@@ -389,8 +400,12 @@ async function patchInstalledCaoReleaseCheckouts(records, root = process.cwd()) 
   const rootRecord = records.find(({ campaign }) => campaign === 'githubnext/gh-aw-cao');
   for (const workflow of ['activity', 'dashboard']) {
     const record = records.find(({ campaign }) => campaign === `githubnext/gh-aw-cao/${workflow}`) ?? rootRecord;
-    if (record) await patchCaoReleaseCheckout(workflow, record.resolvedCommit, root);
+    if (record) await patchCaoReleaseCheckout(workflow, record, root);
   }
+}
+
+function installedPackageUpdateTarget(campaign) {
+  return `https://github.com/${campaign}`;
 }
 
 async function readInstalledCaoDeclaration(campaignName) {
@@ -498,7 +513,7 @@ export async function updateCaoCampaigns(ghAwOptions = [], {
   const updatedCampaigns = [];
   const mergedDeclarations = [];
   for (const record of campaigns) {
-    const update = execute('gh', ['aw', 'update', record.campaign, ...ghAwOptions], {
+    const update = execute('gh', ['aw', 'update', installedPackageUpdateTarget(record.campaign), ...ghAwOptions], {
       encoding: 'utf8',
       maxBuffer: 16 * 1024 * 1024
     });
