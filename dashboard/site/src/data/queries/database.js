@@ -10,7 +10,6 @@ import {
   readTransactions
 } from '../storage/indexeddb.js';
 import {
-  DASHBOARD_QUERY_LIMITS,
   dashboardQueryDefects,
   dashboardQueryIndex,
   executeDashboardQueries,
@@ -141,24 +140,11 @@ function hasRows(source) {
 function executeDatabaseQuery(queryName, inputs, sources, metadataSource) {
   const definition = databaseQueryIndex.get(queryName);
   if (!definition) throw new Error(`Missing database query: ${queryName}`);
-  const primary = inputs[definition.from];
-  const chunkSize = DASHBOARD_QUERY_LIMITS['max-output-rows'];
-  const chunks = primary?.rows.length > chunkSize
-    ? Array.from(
-        { length: Math.ceil(primary.rows.length / chunkSize) },
-        (_, index) => primary.rows.slice(index * chunkSize, (index + 1) * chunkSize)
-      )
-    : [primary?.rows ?? []];
-  const results = chunks.map((rows) => executeDashboardQueries(
+  const result = executeDashboardQueries(
     [definition],
-    primary ? { ...inputs, [definition.from]: { ...primary, rows } } : inputs,
+    inputs,
     [queryName]
-  )[queryName]);
-  const failed = results.find((result) => result.metadata.availability === 'unavailable');
-  const result = failed ?? {
-    ...results[0],
-    rows: results.flatMap((source) => source.rows)
-  };
+  )[queryName];
   const unavailable = result.metadata.availability === 'unavailable';
   return /** @type {import('../../presenter.js').LogicalSourceInput} */ ({
     ...result,
