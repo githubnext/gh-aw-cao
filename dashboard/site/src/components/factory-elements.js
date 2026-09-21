@@ -15,6 +15,8 @@ import { dashboardViewAliasName } from '../data/queries/view-payload-compiler.js
 
 /**
  * @typedef {{
+ *   campaigns: () => number,
+ *   issues: () => number,
  *   successfulRuns: () => number,
  *   failedRuns: () => number,
  *   activeRuns: () => number,
@@ -31,7 +33,9 @@ import { dashboardViewAliasName } from '../data/queries/view-payload-compiler.js
 
 /** @type {Record<string, PluralText>} */
 const DEFAULT_STATION_LABELS = {
+  campaigns: { singular: 'Campaign', plural: 'Campaigns' },
   repositories: { singular: 'Repository registered', plural: 'Repositories registered' },
+  issues: { singular: 'Issue & PR', plural: 'Issues & PRs' },
   'successful-runs': { singular: 'Successful run', plural: 'Successful runs' },
   dispatches: { singular: 'Dispatch', plural: 'Dispatches' },
   'value-gains': { singular: 'Value gain', plural: 'Value gains' }
@@ -85,6 +89,8 @@ export function createFactoryMetrics(sources) {
   /** @param {string} name */
   const row = (name) => sources[name]?.rows()[0] ?? {};
   return {
+    campaigns: () => numberField(row('database-campaign-count'), 'campaigns'),
+    issues: () => numberField(row('database-issue-count'), 'issues'),
     successfulRuns: () => numberField(row('overview-run-summary'), 'successful-runs'),
     failedRuns: () => numberField(row('overview-run-summary'), 'failed-runs'),
     activeRuns: () => numberField(row('overview-run-summary'), 'active-runs'),

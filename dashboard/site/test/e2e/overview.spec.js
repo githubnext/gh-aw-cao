@@ -32,6 +32,8 @@ const sources = {
   'overview-factory-status': source('overview-factory-status', [{ 'factory-heading': 'Your factory is delivering value.' }]),
   'overview-registered-repository-summary': source('overview-registered-repository-summary', [{ 'registered-repositories': 6 }]),
   'overview-worker-summary': source('overview-worker-summary', [{ workers: 3 }]),
+  'database-campaign-count': source('database-campaign-count', [{ campaigns: 2 }]),
+  'database-issue-count': source('database-issue-count', [{ issues: 5 }]),
   'overview-needs-attention-preview': source('overview-needs-attention-preview', [
     {
       kind: 'Repeated workflow failures',
@@ -134,7 +136,7 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
   };
 
   for (const viewport of [
-    { width: 1440, height: 900, introColumns: 2, stationColumns: 4 },
+    { width: 1440, height: 900, introColumns: 2, stationColumns: 6 },
     { width: 390, height: 844, introColumns: 1, stationColumns: 2 }
   ]) {
     await page.setViewportSize(viewport);
@@ -154,7 +156,12 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     const rhythmBars = factory.locator('.factory-rhythm-bar-pair i:not([hidden])');
     await expect(rhythmBars.first()).toHaveCSS('animation-name', 'factory-rhythm-bar-grow');
     expect(await rhythmBars.last().evaluate((element) => getComputedStyle(element).animationDelay)).toBe('0.21s');
-    await expect(factory.locator('.factory-station')).toHaveCount(4);
+    await expect(factory.locator('.factory-station')).toHaveCount(6);
+    await expect(factory.locator('.factory-station').nth(0)).toContainText('Campaigns2');
+    await expect(factory.locator('.factory-station').nth(1)).toContainText('Repositories registered6');
+    await expect(factory.locator('.factory-station').nth(2)).toContainText('Issues & PRs5');
+    await expect(factory.locator('.factory-station').nth(0).locator('small')).toHaveText('');
+    await expect(factory.locator('.factory-station').nth(2).locator('small')).toHaveText('');
     expect(await factory.locator('.factory-station a').count()).toBeGreaterThan(0);
     expect(await page.locator('.factory-intro').evaluate((element) =>
       getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean).length
@@ -239,7 +246,7 @@ test('renders the Overview structure before mixed page data resolves', async ({ 
   });
 
   expect(immediate).toEqual({
-    sourceLoadCalls: 11,
+    sourceLoadCalls: 13,
     pageLoadCalls: 1,
     header: true,
     floor: true,
@@ -250,6 +257,6 @@ test('renders the Overview structure before mixed page data resolves', async ({ 
     runningPending: 1,
     headingPending: 1,
     rhythmPending: 1,
-    stationsPending: 4
+    stationsPending: 6
   });
 });

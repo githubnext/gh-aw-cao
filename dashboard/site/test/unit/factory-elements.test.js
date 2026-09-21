@@ -70,6 +70,7 @@ it('renders the factory header from only its declared JSON sources', () => {
 
 it('renders the factory floor from its independent JSON view and configuration', () => {
   const rendered = renderUiElement('factory-floor', context('factory-floor', {
+    'database-campaign-count': source('database-campaign-count', [{ campaigns: 2 }]),
     'overview-outcome-summary': source('overview-outcome-summary', [{ 'useful-outputs': 2 }]),
     'overview-run-summary': source('overview-run-summary', [{ 'successful-runs': 2, 'failed-runs': 2, 'active-runs': 4 }]),
     'overview-dispatch-summary': source('overview-dispatch-summary', [{ dispatches: 4, 'failed-dispatches': 2 }]),
@@ -77,6 +78,8 @@ it('renders the factory floor from its independent JSON view and configuration',
     'overview-value-summary': source('overview-value-summary', [{ 'value-gains': 1 }]),
     'overview-registered-repository-summary': source('overview-registered-repository-summary', [{ 'registered-repositories': 6 }]),
     'overview-worker-summary': source('overview-worker-summary', [{ workers: 2 }])
+    ,
+    'database-issue-count': source('database-issue-count', [{ issues: 5 }])
   }, {
     animate: 'number',
     labels: {
@@ -86,19 +89,22 @@ it('renders the factory floor from its independent JSON view and configuration',
 
   expect(rendered?.classList.contains('factory-floor-active')).toBe(true);
   expect([...rendered?.querySelectorAll('.factory-station') ?? []].map((station) => station.textContent)).toEqual([
+    'Campaigns2',
     'Repositories registered6',
+    'Issues & PRs5',
     'Successful runs22 failed',
     'Successful dispatches42 failed',
     'Value gain1'
   ]);
-  expect(rendered?.querySelector('.factory-station:nth-child(2) strong .metric-number-animated')).not.toBeNull();
-  expect(rendered?.querySelector('.factory-station:nth-child(3) small a')?.getAttribute('href'))
+  expect(rendered?.querySelector('.factory-station:nth-child(4) strong .metric-number-animated')).not.toBeNull();
+  expect(rendered?.querySelector('.factory-station:nth-child(5) small a')?.getAttribute('href'))
     .toBe('#page-dispatches?campaign-worker-dispatches.status=failure');
   expect(rendered?.getAttribute('aria-label')).toContain('6 repositories registered with 3 delivered to');
 });
 
 it('keeps unavailable registered repository evidence distinct from zero', () => {
   const rendered = renderUiElement('factory-floor', context('factory-floor', {
+    'database-campaign-count': source('database-campaign-count', [{ campaigns: 0 }]),
     'overview-outcome-summary': source('overview-outcome-summary', [{ 'useful-outputs': 0 }]),
     'overview-run-summary': source('overview-run-summary', [{ 'successful-runs': 0, 'failed-runs': 0, 'active-runs': 0 }]),
     'overview-dispatch-summary': source('overview-dispatch-summary', [{ dispatches: 0, 'failed-dispatches': 0 }]),
@@ -106,10 +112,12 @@ it('keeps unavailable registered repository evidence distinct from zero', () => 
     'overview-value-summary': source('overview-value-summary', [{ 'value-gains': 0 }]),
     'overview-registered-repository-summary': source('overview-registered-repository-summary', [], { availability: 'unavailable' }),
     'overview-worker-summary': source('overview-worker-summary', [{ workers: 0 }])
+    ,
+    'database-issue-count': source('database-issue-count', [{ issues: 0 }])
   }));
 
-  expect(rendered?.querySelector('.factory-station')?.textContent).toBe('Repositories registeredUnavailable');
-  expect(rendered?.querySelector('.factory-station:first-child strong a')).toBeNull();
+  expect(rendered?.querySelector('.factory-station:nth-child(2)')?.textContent).toBe('Repositories registeredUnavailable');
+  expect(rendered?.querySelector('.factory-station:nth-child(2) strong a')).toBeNull();
   expect(rendered?.getAttribute('aria-label')).toContain('Registered repositories unavailable');
 });
 
@@ -131,13 +139,15 @@ it('renders both elements immediately and updates only widgets whose query resol
   expect(header?.querySelector('.factory-heading-pending')).not.toBeNull();
   expect(header?.querySelector('.factory-rhythm-pending')).not.toBeNull();
   expect(floor?.classList.contains('factory-floor')).toBe(true);
-  expect(floor?.querySelectorAll('.factory-station-pending')).toHaveLength(4);
+  expect(floor?.querySelectorAll('.factory-station-pending')).toHaveLength(6);
   expect(requests.map(({ name }) => name)).toEqual([
     'overview-outcome-summary',
     'overview-run-summary',
     'overview-factory-status',
     'overview-rhythm',
+    'database-campaign-count',
     'overview-registered-repository-summary',
+    'database-issue-count',
     'overview-outcome-summary',
     'overview-run-summary',
     'overview-dispatch-summary',

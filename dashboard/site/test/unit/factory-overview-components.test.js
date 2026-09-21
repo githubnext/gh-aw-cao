@@ -8,7 +8,7 @@ import { renderFactoryStation } from '../../src/components/factory-station.js';
 
 /** @typedef {{ operations: number, live: number, review: number }} Motion */
 /** @typedef {{ total: number, registered: number, unavailable: boolean, registeredUnavailable: boolean }} Coverage */
-/** @typedef {{ successfulRuns: () => number, failedRuns: () => number, activeRuns: () => number, valueGains: () => number, coverage: () => Coverage, workers: () => number, dispatches: () => number, failedDispatches: () => number, usefulOutputs: () => number, deliveredRepositories: () => number, motion: () => Motion }} TestMetrics */
+/** @typedef {{ campaigns: () => number, issues: () => number, successfulRuns: () => number, failedRuns: () => number, activeRuns: () => number, valueGains: () => number, coverage: () => Coverage, workers: () => number, dispatches: () => number, failedDispatches: () => number, usefulOutputs: () => number, deliveredRepositories: () => number, motion: () => Motion }} TestMetrics */
 
 /**
  * @param {{ pending?: boolean, unavailable?: boolean, rows?: Record<string, unknown>[] }} [options]
@@ -22,11 +22,13 @@ function binding({ pending = false, unavailable = false, rows = [] } = {}) {
 }
 
 /**
- * @param {Partial<{ successfulRuns: number, failedRuns: number, activeRuns: number, valueGains: number, coverage: Coverage, workers: number, dispatches: number, failedDispatches: number, usefulOutputs: number, deliveredRepositories: number, motion: Motion }>} [overrides]
+ * @param {Partial<{ campaigns: number, issues: number, successfulRuns: number, failedRuns: number, activeRuns: number, valueGains: number, coverage: Coverage, workers: number, dispatches: number, failedDispatches: number, usefulOutputs: number, deliveredRepositories: number, motion: Motion }>} [overrides]
  * @returns {TestMetrics}
  */
 function metrics(overrides = {}) {
   const values = {
+    campaigns: 2,
+    issues: 5,
     successfulRuns: 8,
     failedRuns: 2,
     activeRuns: 1,
@@ -41,6 +43,8 @@ function metrics(overrides = {}) {
     ...overrides
   };
   return {
+    campaigns: () => values.campaigns,
+    issues: () => values.issues,
     successfulRuns: () => values.successfulRuns,
     failedRuns: () => values.failedRuns,
     activeRuns: () => values.activeRuns,
@@ -132,7 +136,9 @@ describe('Overview component boundaries', () => {
     const controller = new AbortController();
     const motion = state({ operations: 1, live: 1, review: 0 });
     const sources = {
+      'database-campaign-count': binding(),
       'overview-registered-repository-summary': binding(),
+      'database-issue-count': binding(),
       'overview-run-summary': binding(),
       'overview-dispatch-summary': binding(),
       'overview-value-summary': binding()
@@ -140,6 +146,8 @@ describe('Overview component boundaries', () => {
     /** @type {(name: string, count: number) => string} */
     const label = (name, count) => ({
       repositories: count === 1 ? 'Repository registered' : 'Repositories registered',
+      campaigns: count === 1 ? 'Campaign' : 'Campaigns',
+      issues: count === 1 ? 'Issue & PR' : 'Issues & PRs',
       'successful-runs': count === 1 ? 'Successful run' : 'Successful runs',
       dispatches: count === 1 ? 'Dispatch' : 'Dispatches',
       'value-gains': count === 1 ? 'Value gain' : 'Value gains'
@@ -147,7 +155,7 @@ describe('Overview component boundaries', () => {
     const scope = { signal: controller.signal, motion };
     const rendered = renderFactoryFloor(sources, metrics(), label, false, scope);
 
-    expect([...rendered.querySelectorAll('.factory-station strong')].map((element) => element.textContent)).toEqual(['6', '8', '7', '3']);
+    expect([...rendered.querySelectorAll('.factory-station strong')].map((element) => element.textContent)).toEqual(['2', '6', '5', '8', '7', '3']);
     expect(rendered.classList.contains('factory-floor-active')).toBe(true);
     expect(rendered.getAttribute('aria-label')).toContain('6 repositories registered with 4 delivered to');
     motion.set({ operations: 0, live: 0, review: 0 });
