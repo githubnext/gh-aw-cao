@@ -472,19 +472,29 @@ async function prepareInstalledPackageReleaseSource(record, releaseTags, execute
   }
   let releaseTag = releaseTags.get(record.resolvedCommit);
   if (!releaseTag) {
-    const release = execute('gh', [
+    const tags = execute('gh', [
       'api',
       '--paginate',
-      '/repos/githubnext/gh-aw-cao/releases',
+      '/repos/githubnext/gh-aw-cao/tags',
       '--jq',
-      `.[] | select(.draft == false and .prerelease == false and .target_commitish == "${record.resolvedCommit}") | .tag_name`
+      `.[] | select(.commit.sha == "${record.resolvedCommit}") | .name`
     ], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
-    if (release.error || release.status !== 0) {
-      throw new Error(`Unable to resolve CAO release for ${record.resolvedCommit}: ${commandFailureMessage(release, 'gh api failed')}`);
+    if (tags.error || tags.status !== 0) {
+      throw new Error(`Unable to resolve CAO tag for ${record.resolvedCommit}: ${commandFailureMessage(tags, 'gh api failed')}`);
     }
-    releaseTag = String(release.stdout || '').trim().split(/\s+/)[0];
+    releaseTag = String(tags.stdout || '').trim().split(/\s+/)
+      .find((tag) => /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/.test(tag));
     if (!/^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/.test(releaseTag)) {
-      throw new Error(`No published CAO release found for ${record.resolvedCommit}`);
+      throw new Error(`No CAO release tag found for ${record.resolvedCommit}`);
+    }
+    const release = execute('gh', [
+      'api',
+      `/repos/githubnext/gh-aw-cao/releases/tags/${encodeURIComponent(releaseTag)}`,
+      '--jq',
+      'select(.draft == false and .prerelease == false) | .tag_name'
+    ], { encoding: 'utf8' });
+    if (release.error || release.status !== 0 || String(release.stdout || '').trim() !== releaseTag) {
+      throw new Error(`CAO tag ${releaseTag} is not a published stable release`);
     }
     releaseTags.set(record.resolvedCommit, releaseTag);
   }
@@ -648,6 +658,12 @@ export async function updateCaoCampaigns(ghAwOptions = [], {
   const campaigns = await installedCampaignRecords();
   if (campaigns.length === 0) {
     throw new Error('No installed gh-aw package records found under .github/aw/packages');
+  }
+  for (const record of campaigns) {
+    if (!/^[0-9a-f]{40}$/i.test(record.resolvedCommit)
+      && !/^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/.test(record.resolvedCommit)) {
+      throw new Error(`Installed CAO package record has an invalid resolvedCommit: ${record.resolvedCommit || '(missing)'}`);
+    }
   }
 
   const updatedCampaigns = [];

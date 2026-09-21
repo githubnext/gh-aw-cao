@@ -436,6 +436,9 @@ test("cao update upgrades gh-aw, updates installed campaigns, and merges declara
           if (arguments_[1] === "/repos/githubnext/gh-aw-cao/commits/v0.0.2") {
             return { status: 0, stdout: "1234567890abcdef1234567890abcdef12345678\n", stderr: "" };
           }
+          if (arguments_[1] === "/repos/githubnext/gh-aw-cao/releases/tags/v0.0.1") {
+            return { status: 0, stdout: "v0.0.1\n", stderr: "" };
+          }
           return { status: 0, stdout: "v0.0.1\n", stderr: "" };
         }
         if (command === "gh" && arguments_[0] === "aw" && arguments_[1] === "update"
@@ -459,7 +462,8 @@ test("cao update upgrades gh-aw, updates installed campaigns, and merges declara
       ["gh", ["aw", "version"]],
       ["bash", ["-c", "curl --fail --silent --show-error --location https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- \"$1\"", "cao-gh-aw-install", "v0.89.17"]],
       ["gh", ["aw", "version"]],
-      ["gh", ["api", "--paginate", "/repos/githubnext/gh-aw-cao/releases", "--jq", ".[] | select(.draft == false and .prerelease == false and .target_commitish == \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\") | .tag_name"]],
+      ["gh", ["api", "--paginate", "/repos/githubnext/gh-aw-cao/tags", "--jq", ".[] | select(.commit.sha == \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\") | .name"]],
+      ["gh", ["api", "/repos/githubnext/gh-aw-cao/releases/tags/v0.0.1", "--jq", "select(.draft == false and .prerelease == false) | .tag_name"]],
       ["gh", ["aw", "update", "https://github.com/githubnext/gh-aw-cao", "--force"]],
       ["gh", ["aw", "update", "https://github.com/githubnext/gh-aw-cao/dependabot", "--force"]],
       ["gh", ["api", "/repos/githubnext/gh-aw-cao/commits/v0.0.2", "--jq", ".sha"]],
