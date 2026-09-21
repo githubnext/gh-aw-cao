@@ -445,7 +445,7 @@ test('mobile shell shows large overview actions and moves other views into the h
   expectLayoutWithin(factoryBox.width, viewportWidth, layoutPixelTolerance);
 
   await expect(factoryOverview.locator('.factory-intro, .factory-rhythm, .factory-floor')).toHaveCount(0);
-  await expect(factoryOverview.getByRole('region', { name: 'Loading Overview' })).toBeVisible();
+  await expect(factoryOverview.getByRole('region')).toHaveCount(8);
 
   await page.locator('.mobile-nav-menu > summary').click();
   await page.locator('[data-mobile-nav-page-id="cost"]').click();
@@ -1815,18 +1815,11 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await cleanNavigation.filter({ hasText: 'Overview' }).click();
   const overviewPage = page.locator('[data-page-id="overview"]');
   await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
-  await expect(overviewPage.getByRole('heading', { name: 'Your factory is humming.' })).toBeVisible();
-  await expect(overviewPage.locator('.factory-running-active > span')).toHaveText('Work in motion');
-  await expect(overviewPage.locator('.factory-station')).toHaveCount(6);
-  await expect(overviewPage.locator('.factory-station strong')).toHaveText(['2', '1', '17', '20', '12', '0']);
-  await expect(overviewPage.locator('.factory-station small')).toHaveText([
-    '',
-    '',
-    '',
-    '80 failed',
-    '0 failed',
-    ''
-  ]);
+  await expect(overviewPage.locator('[data-view-id^="overview-"]')).toHaveCount(8);
+  await expect(overviewPage.locator('[data-metric-value="campaigns"]')).toHaveText('2');
+  await expect(overviewPage.locator('[data-metric-value="repositories"]')).toHaveText('1');
+  await expect(overviewPage.locator('[data-metric-value="runs"]')).toHaveText('0');
+  await expect(overviewPage.locator('.factory-intro, .factory-rhythm, .factory-floor')).toHaveCount(0);
   await expect(overviewPage.locator('.factory-output')).toHaveCount(0);
   await expect(overviewPage.locator('.factory-status')).toHaveCount(0);
   await expect(overviewPage.locator('.notifications-inbox')).toHaveCount(0);
@@ -1836,22 +1829,6 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
     return { width, height };
   });
 
-  const factoryLinks = overviewPage.locator('.factory-station a');
-  expect(await factoryLinks.count()).toBeGreaterThan(0);
-  for (const link of await factoryLinks.evaluateAll((links) => links.map((element) => {
-    const { width, height } = element.getBoundingClientRect();
-    return { text: element.textContent?.trim(), width, height };
-  }))) {
-    expect(link.width, `${link.text} link width`).toBeGreaterThanOrEqual(24);
-    expect(link.height, `${link.text} link height`).toBeGreaterThanOrEqual(24);
-  }
-  await overviewPage.getByRole('link', { name: '80 failed', exact: true }).click();
-  await expect(page).toHaveURL(/#page-runs\?runs-runs-source\.run-conclusion=failure$/);
-  await expect(page.getByRole('heading', { name: 'Runs', exact: true, level: 1 })).toBeVisible();
-  await cleanNavigation.filter({ hasText: 'Overview' }).click();
-  await overviewPage.locator('.factory-station').nth(5).locator('strong a').click();
-  await expect(page).toHaveURL(/#page-operational-value$/);
-  await expect(page.getByRole('heading', { name: 'Operational value', exact: true, level: 1 })).toBeVisible();
   await page.evaluate(() => { window.location.hash = '#page-overview-failed-runs'; });
   const failedRunsPage = page.locator('[data-page-id="overview-failed-runs"]');
   await expect(failedRunsPage).toBeVisible();
@@ -1915,13 +1892,13 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await page.evaluate(() => { window.location.hash = '#page-overview'; });
   await expect(overviewPage).toBeVisible();
   await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
-  await expect(overviewPage.locator('.factory-station')).toHaveCount(6);
+  await expect(overviewPage.locator('[data-view-id^="overview-"]')).toHaveCount(8);
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Experimental']);
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toBeVisible();
   await page.locator('.mobile-nav-menu > summary').click();
-  await expect(overviewPage.locator('.factory-intro')).toBeInViewport();
-  await expect(overviewPage.locator('.custom-view')).toHaveCount(2);
+  await expect(overviewPage.locator('[data-view-id="overview-campaign-count"]')).toBeInViewport();
+  await expect(overviewPage.locator('.custom-view')).toHaveCount(8);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   await expect(overviewPage.locator('.table-scroll')).toHaveCount(0);
 

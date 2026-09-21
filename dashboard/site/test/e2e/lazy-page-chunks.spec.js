@@ -215,14 +215,15 @@ test('core dashboard stays small and page chunks load on demand with in-memory c
   expect(configurationFetch?.cache).toBe('reload');
 });
 
-test('async Factory Overview elements receive their chunked query definitions', async ({ page }) => {
+test('Overview counters receive their chunked query definitions', async ({ page }) => {
   const chunkRequests = captureChunkRequests(page);
   await page.goto(`${origin}/#page-overview`);
 
   const overview = page.locator('[data-page-id="overview"]');
-  await expect(overview.getByRole('heading', { name: 'Your factory is humming.' })).toBeVisible();
-  await expect(overview.locator('.factory-station').nth(0)).toContainText('1');
-  await expect(overview.locator('.factory-station').nth(1)).toContainText('1');
+  await expect(overview.getByRole('heading', { name: 'Campaigns' })).toBeVisible();
+  await expect(overview.locator('[data-metric-value="campaigns"]')).toHaveText('1');
+  await expect(overview.locator('[data-metric-value="repositories"]')).toHaveText('1');
+  await expect(overview.locator('[data-view-id^="overview-"]')).toHaveCount(8);
   await expect(overview).not.toContainText('Unavailable');
   await expect.poll(() => chunkRequests.filter((id) => id === 'overview').length).toBe(1);
 });
