@@ -68,8 +68,7 @@ export function startIngestionProgress(target = self, requestId) {
         detailsSubtitle: 'Downloading and processing a local copy in this browser can take several minutes. Cached shards are reused.',
         details: snapshot.history,
         actions: [
-          { label: 'Cancel', operation: 'cancel-data-ingestion', placement: 'details', requestId },
-          { label: 'Sync queries', operation: 'sync-dashboard-queries', placement: 'details', requestId }
+          { label: 'Cancel', operation: 'cancel-data-ingestion', placement: 'details', requestId }
         ],
         tone: 'info',
         duration: 0

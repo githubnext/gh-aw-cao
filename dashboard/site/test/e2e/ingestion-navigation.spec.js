@@ -157,7 +157,8 @@ test('Runs lazy list loads on scroll during and after activity ingestion', async
   await expect.poll(() => completedShards).toBe(shardCount - 1);
   await expect.poll(() => storedRunCount(page)).toBe((shardCount - 1) * runsPerShard);
   await page.locator('.dashboard-notification-toggle').click();
-  await page.getByRole('button', { name: 'Sync queries', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sync queries', exact: true })).toHaveCount(0);
   await navigateToPage(page, 'runs');
   await page.getByRole('button', { name: 'Table' }).click();
   await expect(page.locator('td[data-field="run"]', { hasText: '1001' })).toBeVisible();
