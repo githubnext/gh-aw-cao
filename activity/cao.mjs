@@ -294,7 +294,15 @@ function campaignSlugFromSpec(spec) {
 
 function resolvePathWithinRoot(root, destination) {
   const resolved = path.resolve(root, destination);
-  const relative = path.relative(root, resolved);
+  const canonicalRoot = realpathSync(root);
+  let canonicalPath;
+  try {
+    canonicalPath = realpathSync(resolved);
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error;
+    canonicalPath = path.join(realpathSync(path.dirname(resolved)), path.basename(resolved));
+  }
+  const relative = path.relative(canonicalRoot, canonicalPath);
   if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
     throw new Error(`Installed package destination escapes the repository: ${destination}`);
   }
@@ -329,7 +337,9 @@ async function installedCampaignRecords(root = process.cwd()) {
           : typeof record.source === 'string'
             ? record.source.split('@')[0].trim()
             : '';
-      if (!campaignName) throw new Error(`${path.relative(root, recordPath)} does not identify an installed campaign`);
+      if (!campaignName || (campaignName !== 'githubnext/gh-aw-cao' && !campaignName.startsWith('githubnext/gh-aw-cao/'))) {
+        continue;
+      }
       records.set(campaignName, {
         campaign: campaignName,
         source: typeof record.source === 'string' ? record.source : campaignName,
@@ -480,6 +490,7 @@ async function prepareInstalledPackageReleaseSource(record, releaseTags, execute
   }
   const prepared = {
     record: structuredClone(record.record),
+    writtenRecord: undefined,
     workflows: new Map()
   };
   try {
@@ -487,21 +498,28 @@ async function prepareInstalledPackageReleaseSource(record, releaseTags, execute
     for (const file of record.record.files ?? []) {
       if (!file.destination?.endsWith('.md')) continue;
       const workflowPath = resolvePathWithinRoot(process.cwd(), file.destination);
-      const content = await readFile(workflowPath, 'utf8');
+      let content;
+      try {
+        content = await readFile(workflowPath, 'utf8');
+      } catch (error) {
+        if (error?.code === 'ENOENT') continue;
+        throw error;
+      }
       const sourcePrefix = `source: ${record.campaign}@`;
       const lines = content.split(/\r?\n/);
       const sourceIndex = lines.findIndex((line) => line.startsWith(sourcePrefix));
       if (sourceIndex === -1) continue;
-      prepared.workflows.set(workflowPath, content);
       lines[sourceIndex] = `${sourcePrefix}${releaseTag}`;
       const updated = lines.join(content.includes('\r\n') ? '\r\n' : '\n');
+      prepared.workflows.set(workflowPath, { original: content, written: updated });
       await writeFile(workflowPath, updated);
       file.sha256 = createHash('sha256').update(updated).digest('hex');
     }
+    prepared.writtenRecord = structuredClone(record.record);
     await writeJsonAtomically(record.recordPath, record.record);
     return prepared;
   } catch (error) {
-    for (const [workflowPath, content] of prepared.workflows) await writeFile(workflowPath, content);
+    for (const [workflowPath, content] of prepared.workflows) await writeFile(workflowPath, content.original);
     await writeJsonAtomically(record.recordPath, prepared.record);
     throw error;
   }
@@ -509,8 +527,25 @@ async function prepareInstalledPackageReleaseSource(record, releaseTags, execute
 
 async function restorePreparedPackageSource(record, prepared) {
   if (!prepared) return;
-  for (const [workflowPath, content] of prepared.workflows) await writeFile(workflowPath, content);
-  await writeJsonAtomically(record.recordPath, prepared.record);
+  for (const [workflowPath, content] of prepared.workflows) {
+    let current;
+    try {
+      current = await readFile(workflowPath, 'utf8');
+    } catch (error) {
+      if (error?.code === 'ENOENT') continue;
+      throw error;
+    }
+    if (current === content.written) await writeFile(workflowPath, content.original);
+  }
+  let currentRecord;
+  try {
+    currentRecord = JSON.parse(await readFile(record.recordPath, 'utf8'));
+  } catch {
+    return;
+  }
+  if (JSON.stringify(currentRecord) === JSON.stringify(prepared.writtenRecord)) {
+    await writeJsonAtomically(record.recordPath, prepared.record);
+  }
 }
 
 async function readInstalledCaoDeclaration(campaignName) {
