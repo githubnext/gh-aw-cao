@@ -114,16 +114,17 @@ test('mobile horizontal bar labels preserve readable suffixes', async ({ page })
   const labelRendering = await firstRow.evaluate((row) => {
     const labelElement = row.querySelector('.horizontal-bar-chart-label');
     const textElement = row.querySelector('.horizontal-bar-chart-label-text');
-    if (!(labelElement instanceof HTMLElement) || !(textElement instanceof HTMLElement) || !(textElement.firstChild instanceof Text)) {
+    const textNode = textElement?.firstChild;
+    if (!labelElement || typeof labelElement.getBoundingClientRect !== 'function' || textNode?.nodeType !== Node.TEXT_NODE) {
       throw new Error('Expected horizontal bar label text.');
     }
     const suffix = 'planner.md';
-    const text = textElement.firstChild.textContent ?? '';
+    const text = textNode.textContent ?? '';
     const suffixStart = text.lastIndexOf(suffix);
     if (suffixStart < 0) throw new Error('Expected label suffix.');
     const suffixRange = document.createRange();
-    suffixRange.setStart(textElement.firstChild, suffixStart);
-    suffixRange.setEnd(textElement.firstChild, suffixStart + suffix.length);
+    suffixRange.setStart(textNode, suffixStart);
+    suffixRange.setEnd(textNode, suffixStart + suffix.length);
     const labelBounds = labelElement.getBoundingClientRect();
     const suffixBounds = suffixRange.getBoundingClientRect();
     return {
