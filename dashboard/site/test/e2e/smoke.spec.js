@@ -913,6 +913,102 @@ test('Runs renders the worker-projected table for an active time window', async 
   await expect(rows.locator('a').first()).toBeVisible();
 });
 
+test('Issues switches between its top-repository chart, table, and cards', async ({ page }) => {
+  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  await page.setViewportSize({ width: 1200, height: 900 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
+      import { prepareDashboardViewSources } from 'http://dashboard.test/test/e2e/helpers/dashboard-view-sources.js';
+      const documentModel = ${JSON.stringify(documentModel)};
+      const metadata = {
+        'source-id': 'issues-page-fixture',
+        'source-kind': 'fixture',
+        'as-of': '2026-09-20T12:00:00Z',
+        'retrieved-at': '2026-09-20T12:01:00Z',
+        completeness: 'complete',
+        freshness: 'fresh',
+        availability: 'available'
+      };
+      const issue = (id, repository, summary, observedAt) => ({
+        id,
+        organization: 'githubnext',
+        repository,
+        workflow: '.github/workflows/worker.md',
+        run: id,
+        'run-attempt': 1,
+        event: id,
+        'event-type': 'safe_output.created',
+        'event-summary': summary,
+        'event-timestamp': observedAt,
+        'safe-output-type': 'create_issue',
+        'github-entity-type': 'issue',
+        'is-pull-request': false,
+        'correlation-id': 'https://github.com/githubnext/' + repository + '/issues/' + id
+      });
+      const issues = [
+        issue('3', 'alpha', 'Alpha issue 2', '2026-09-20T12:00:00Z'),
+        issue('2', 'beta', 'Beta issue', '2026-09-19T12:00:00Z'),
+        issue('1', 'alpha', 'Alpha issue 1', '2026-09-18T12:00:00Z')
+      ];
+      const sources = {
+        issues: { source: 'issues', metadata, rows: issues },
+        runs: {
+          source: 'runs',
+          metadata,
+          rows: issues.map((row) => ({
+            organization: row.organization,
+            repository: row.repository,
+            workflow: row.workflow,
+            run: row.run,
+            'run-attempt': row['run-attempt'],
+            'run-link': {
+              relation: 'run',
+              href: 'https://github.com/githubnext/' + row.repository + '/actions/runs/' + row.run,
+              label: 'Run ' + row.run
+            }
+          }))
+        }
+      };
+      window.location.hash = '#page-issues';
+      const loadPageSources = (pageId, options) => prepareDashboardViewSources(
+        documentModel,
+        pageId,
+        sources,
+        { queryContext: options.queryContext, routeParameters: options.routeParameters }
+      );
+      const viewSources = await loadPageSources('issues', {});
+      document.querySelector('#root').append(renderDashboard({
+        document: documentModel,
+        sources: viewSources,
+        loadPageSources
+      }));
+    </script>
+  `);
+
+  const issuesPage = page.locator('[data-page-id="issues"]');
+  const chart = issuesPage.locator('[data-view-id="issues-by-repository"]');
+  const table = issuesPage.locator('[data-view-id="issues-source"] .table-region');
+  const cards = issuesPage.locator('[data-mobile-card-list]');
+
+  await expect(chart.locator('[data-chart-widget="pie"]')).toBeVisible();
+  await expect(chart).toContainText('githubnext/alpha');
+  await expect(page.getByRole('button', { name: 'Chart' })).toHaveAttribute('aria-pressed', 'true');
+
+  await page.getByRole('button', { name: 'Table' }).click();
+  await expect(table.locator('tbody tr')).toHaveCount(3);
+  await expect(table.locator('tbody tr').first()).toContainText('Alpha issue 2');
+
+  await page.getByRole('button', { name: 'Cards' }).click();
+  await expect(cards.locator('.entity-card-list-card')).toHaveCount(3);
+  await expect(cards.locator('.entity-card-list-card').first()).toContainText('Alpha issue 2');
+  await expect(cards.locator('.entity-card-list-card').first().locator('a')).toHaveAttribute(
+    'href',
+    'https://github.com/githubnext/alpha/issues/3'
+  );
+});
+
 
 
 

@@ -151,6 +151,47 @@ describe('dashboard view query contracts', () => {
       .toMatchObject({ data: { source: 'repositories' } });
   });
 
+  it('renders issues as a top-repository chart with a full-view table and cards', () => {
+    const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'issues');
+    const views = viewsOf(page);
+
+    expect(page).toMatchObject({
+      kind: 'built-in',
+      page: 'issues'
+    });
+    expect(views).toMatchObject([
+      {
+        id: 'issues-by-repository',
+        data: { source: 'issue-repository-totals' },
+        mark: 'chart',
+        chart: 'pie'
+      },
+      {
+        id: 'issues-source',
+        data: {
+          source: 'issue-safe-outputs',
+          limit: 100
+        },
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        layout: 'full-view'
+      }
+    ]);
+    expect(queries.find((/** @type {{ name: string }} */ query) => query.name === 'issue-repository-totals'))
+      .toMatchObject({
+        from: 'issue-safe-outputs',
+        limit: 10,
+        aggregate: {
+          by: ['repository-coordinate'],
+          values: [{ field: 'entity-url', as: 'issues', reducer: 'count' }]
+        }
+      });
+    expect(dashboard.navigation.flatMap(
+      (/** @type {{ pages?: string[] }} */ section) => section.pages ?? []
+    )).toContain('issues');
+  });
+
   it('resolves every authored view source through canonical data or Dashboard Language', () => {
     const unresolved = dashboard.pages.flatMap((/** @type {Record<string, unknown>} */ page) => viewsOf(page).flatMap((view) => (
       sourceNamesOf(view)
