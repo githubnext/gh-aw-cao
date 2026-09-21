@@ -110,7 +110,7 @@
     {
       "name": "domain-records",
       "from": "domain-keys",
-      "joins": [{ "source": "run-records", "type": "inner", "on": [{ "left": "_run-id", "right": "_id" }], "fields": [{ "field": "_id", "as": "_published-run-id" }] }]
+      "joins": [{ "source": "$published-runs", "type": "inner", "on": [{ "left": "_run-id", "right": "_id" }], "fields": [{ "field": "_id", "as": "_published-run-id" }] }]
     },
     {
       "name": "tool-keys",
@@ -124,7 +124,7 @@
     {
       "name": "tool-records",
       "from": "tool-keys",
-      "joins": [{ "source": "run-records", "type": "inner", "on": [{ "left": "_run-id", "right": "_id" }], "fields": [{ "field": "_id", "as": "_published-run-id" }] }]
+      "joins": [{ "source": "$published-runs", "type": "inner", "on": [{ "left": "_run-id", "right": "_id" }], "fields": [{ "field": "_id", "as": "_published-run-id" }] }]
     },
     {
       "name": "audit-keys",
@@ -138,7 +138,7 @@
     {
       "name": "audit-records",
       "from": "audit-keys",
-      "joins": [{ "source": "run-records", "type": "inner", "on": [{ "left": "_run-id", "right": "_id" }], "fields": [{ "field": "_id", "as": "_published-run-id" }] }]
+      "joins": [{ "source": "$published-runs", "type": "inner", "on": [{ "left": "_run-id", "right": "_id" }], "fields": [{ "field": "_id", "as": "_published-run-id" }] }]
     },
     {
       "name": "issue-keys",
@@ -152,12 +152,12 @@
     {
       "name": "issue-records",
       "from": "issue-keys",
-      "joins": [{ "source": "run-records", "type": "inner", "on": [{ "left": "_run-id", "right": "_id" }], "fields": [{ "field": "_id", "as": "_published-run-id" }] }]
+      "joins": [{ "source": "$published-runs", "type": "inner", "on": [{ "left": "_run-id", "right": "_id" }], "fields": [{ "field": "_id", "as": "_published-run-id" }] }]
     }
   ],
   "observations": [
     {
-      "query": "campaign-records", "kind": "campaign", "sourceId": "_slug", "observedAt": "_observed-at", "required": ["_slug"],
+      "query": "campaign-records", "input": "$campaigns", "kind": "campaign", "sourceId": "_slug", "observedAt": "_observed-at", "required": ["_slug"],
       "data": {
         "id": { "field": "_id" }, "slug": { "field": "_slug" },
         "name": { "fields": ["campaign-name", "package-name", "_slug"] },
@@ -184,7 +184,7 @@
       }
     },
     {
-      "query": "repository-records", "kind": "repository", "sourceId": "_full-name", "observedAt": "_observed-at", "required": ["_owner", "_name"],
+      "query": "repository-records", "input": "$repositories", "kind": "repository", "sourceId": "_full-name", "observedAt": "_observed-at", "required": ["_owner", "_name"],
       "data": {
         "id": { "field": "_id" }, "owner": { "field": "_owner" }, "name": { "field": "_name" }, "fullName": { "field": "_full-name" },
         "visibility": { "field": "visibility", "default": "unknown" }, "rolloutMode": { "field": "rollout-mode" },
@@ -192,7 +192,7 @@
       }
     },
     {
-      "query": "workflow-records", "kind": "workflow", "sourceId": "_workflow-coordinate", "observedAt": "_observed-at", "required": ["_owner", "_repository", "_path"],
+      "query": "workflow-records", "input": "$workflows", "kind": "workflow", "sourceId": "_workflow-coordinate", "observedAt": "_observed-at", "required": ["_owner", "_repository", "_path"],
       "data": {
         "id": { "field": "_id" }, "githubId": { "field": "workflow-id", "trim": true, "omitEmpty": true },
         "repositoryId": { "field": "_repository-id" }, "name": { "fields": ["workflow-name", "workflow"], "default": "" },
@@ -213,7 +213,7 @@
       }
     },
     {
-      "query": "run-records", "kind": "run", "sourceId": "_source-id", "observedAt": "_observed-at", "required": ["_owner", "_repository", "_path", "_github-run-id"],
+      "query": "run-records", "input": "$runs", "publishAs": "$published-runs", "kind": "run", "sourceId": "_source-id", "observedAt": "_observed-at", "required": ["_owner", "_repository", "_path", "_github-run-id"],
       "data": {
         "id": { "field": "_id" }, "repositoryId": { "field": "_repository-id" }, "workflowId": { "field": "_workflow-id" },
         "owner": { "field": "_owner" }, "repository": { "field": "_repository" }, "repositoryFullName": { "field": "_full-name" },
@@ -240,19 +240,19 @@
       }
     },
     {
-      "query": "domain-records", "kind": "domain", "sourceId": "event", "observedAt": "_observed-at", "required": ["event", "event-timestamp", "event-source", "event-type"],
+      "query": "domain-records", "input": "$domains", "kind": "domain", "sourceId": "event", "observedAt": "_observed-at", "required": ["event", "event-timestamp", "event-source", "event-type"],
       "data": {}
     },
     {
-      "query": "tool-records", "kind": "tool", "sourceId": "event", "observedAt": "_observed-at", "required": ["event", "event-timestamp", "event-source", "event-type"],
+      "query": "tool-records", "input": "$tools", "kind": "tool", "sourceId": "event", "observedAt": "_observed-at", "required": ["event", "event-timestamp", "event-source", "event-type"],
       "data": {}
     },
     {
-      "query": "audit-records", "kind": "audit", "sourceId": "event", "observedAt": "_observed-at", "required": ["event", "event-timestamp", "event-source", "event-type"],
+      "query": "audit-records", "input": "$audits", "kind": "audit", "sourceId": "event", "observedAt": "_observed-at", "required": ["event", "event-timestamp", "event-source", "event-type"],
       "data": {}
     },
     {
-      "query": "issue-records", "kind": "issue", "sourceId": "event", "observedAt": "_observed-at", "required": ["event", "event-timestamp", "event-source", "event-type"],
+      "query": "issue-records", "input": "$issues", "kind": "issue", "sourceId": "event", "observedAt": "_observed-at", "required": ["event", "event-timestamp", "event-source", "event-type"],
       "data": {}
     }
   ],

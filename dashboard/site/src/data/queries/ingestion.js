@@ -1,5 +1,5 @@
 import mappings from './ingestion.json' with { type: 'json' };
-import { executeDashboardQueries } from './declarative.js';
+import { DASHBOARD_QUERY_LIMITS, executeDashboardQueries } from './declarative.js';
 import { requiredString } from '../model/schema.js';
 
 const SOURCE = 'dashboard-sources';
@@ -70,9 +70,27 @@ function mappedValue(row, mapping) {
  * @returns {{ observations: import('../model/schema.js').CanonicalObservation[] }}
  */
 export function queryDashboardSourceObservations(sources) {
-  const queried = executeDashboardQueries(mappings.queries, queryInputs(sources));
+  const inputs = queryInputs(sources);
   const observations = mappings.observations.flatMap((mapping) => {
-    const rows = queried[mapping.query]?.rows ?? [];
+    const input = inputs[mapping.input];
+    const chunkSize = DASHBOARD_QUERY_LIMITS['max-output-rows'];
+    const chunks = input.rows.length > chunkSize
+      ? Array.from(
+          { length: Math.ceil(input.rows.length / chunkSize) },
+          (_, index) => input.rows.slice(index * chunkSize, (index + 1) * chunkSize)
+        )
+      : [input.rows];
+    const results = chunks.map((rows) => executeDashboardQueries(
+      mappings.queries,
+      { ...inputs, [mapping.input]: { ...input, rows } },
+      [mapping.query]
+    )[mapping.query]);
+    const failed = results.find((result) => result.metadata.availability === 'unavailable');
+    if (failed) throw new Error(requiredString(failed.metadata.error, `${mapping.query} query error`));
+    const rows = results.flatMap((result) => result.rows);
+    if (mapping.publishAs) {
+      inputs[mapping.publishAs] = { ...results[0], source: mapping.publishAs, rows };
+    }
     return rows.map((row) => {
       const sourceId = requiredString(row[mapping.sourceId], `${mapping.kind}.source-id`);
       const observedAt = requiredString(row[mapping.observedAt], `${mapping.kind}.observed-at`);

@@ -368,4 +368,33 @@ describe('dashboard source ingestion queries', () => {
       id: 'current-event', runId: 'github:run:303:attempt:1'
     })]);
   });
+
+  it('chunks large run-linked sources and defaults missing attempts', () => {
+    const count = 100_001;
+    const adapted = queryDashboardSourceObservations({
+      runs: {
+        rows: [{
+          organization: 'githubnext',
+          repository: 'gh-aw-cao',
+          workflow: '.github/workflows/dashboard.md',
+          run: '303',
+          'started-at': '2026-09-09T04:00:00Z'
+        }],
+        metadata
+      },
+      audits: {
+        rows: Array.from({ length: count }, (_, index) => ({
+          run: '303',
+          event: `event-${index}`,
+          'event-timestamp': '2026-09-09T04:00:01Z',
+          'event-source': 'agent',
+          'event-type': 'agent_turn'
+        })),
+        metadata
+      }
+    });
+
+    expect(adapted.observations.filter(({ kind }) => kind === 'audit')).toHaveLength(count);
+    expect(adapted.observations.at(-1)?.data.runId).toBe('github:run:303:attempt:1');
+  });
 });

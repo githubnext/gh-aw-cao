@@ -340,13 +340,15 @@ export function computeValue(row, definition) {
       ? null
       : JSON.stringify([timestamp, run, failed]);
   }
+  if (definition.function === 'positive-integer') {
+    const value = numericValue(values[0]);
+    const fallback = numericValue(values[1]);
+    return value !== null && Number.isInteger(value) && value > 0 ? value : fallback;
+  }
   const numbers = values.map(numericValue);
   if (numbers.some((value) => value === null)) return null;
   const finite = /** @type {number[]} */ (numbers);
   if (definition.function === 'number') return finite[0];
-  if (definition.function === 'positive-integer') {
-    return Number.isInteger(finite[0]) && finite[0] > 0 ? finite[0] : finite[1];
-  }
   if (definition.function === 'greater-than') return finite[0] > finite[1];
   if (definition.function === 'sum') return finite.reduce((total, value) => total + value, 0);
   if (definition.function === 'difference') return finite[0] - finite[1];
