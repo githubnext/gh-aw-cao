@@ -115,8 +115,25 @@ describe('database warning source queries', () => {
       'safe-output-performance'
     ]);
 
-    expect(Object.keys(sources)).toEqual(['findings']);
+    expect(Object.keys(sources)).toEqual([
+      'usage',
+      'outcomes',
+      'findings',
+      'security-findings',
+      'detection-observations',
+      'work-items',
+      'graders',
+      'experiments',
+      'evals',
+      'eval-observations',
+      'admissions',
+      'safe-output-performance'
+    ]);
     expect(sources.findings.rows).toHaveLength(1);
     expect(sources.findings.metadata.availability).not.toBe('unavailable');
+    for (const name of Object.keys(sources).filter((name) => name !== 'findings')) {
+      expect(sources[name].rows).toEqual([]);
+      expect(sources[name].metadata.availability).toBe('empty');
+    }
   });
 });

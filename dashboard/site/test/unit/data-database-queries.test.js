@@ -700,8 +700,8 @@ describe('canonical view sources', () => {
       ['grader-observations', 'operational-values']
     );
 
-    expect(projected).not.toHaveProperty('grader-observations');
-    expect(projected).not.toHaveProperty('operational-values');
+    expect(projected['grader-observations'].rows).toEqual([]);
+    expect(projected['operational-values'].rows).toEqual([]);
   });
 
   it('projects token optimizer artifacts without parsing issue display text', async () => {

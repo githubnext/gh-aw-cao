@@ -17,6 +17,14 @@ import {
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 const databaseQueryIndex = dashboardQueryIndex(databaseQueries);
 const RUN_RECORD_STORES = new Set(['domains', 'tools', 'audits', 'issues']);
+const DATABASE_TABLE_SOURCES = new Set([
+  'campaigns',
+  'repositories',
+  'workflows',
+  'runs',
+  ...RUN_RECORD_STORES,
+  'transactions'
+]);
 const HEALTH_DATABASE_SOURCES = [
   'repositories',
   'workflows',
@@ -242,6 +250,7 @@ function queryStores(name) {
   if (RUN_RECORD_STORES.has(name)) return ['runs', name];
   if (name === 'mcp-calls') return ['runs', 'tools'];
   if (name === 'findings') return ['runs', 'audits'];
+  if (name === 'firewall-observations') return ['runs', 'domains'];
   if (name === 'transactions') return ['transactions'];
   return [];
 }
@@ -278,9 +287,20 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
   /** @type {Record<string, import('../../presenter.js').LogicalSourceInput>} */
   const result = {};
   for (const name of requested) {
+    const logical = /** @type {import('../../presenter.js').LogicalSourceInput | undefined} */ (sources[name]);
+    if (logical && !DATABASE_TABLE_SOURCES.has(name)) {
+      result[name] = logical;
+      continue;
+    }
     if (!databaseQueryIndex.has(name) && !RUN_RECORD_STORES.has(name)) {
-      const logical = /** @type {import('../../presenter.js').LogicalSourceInput | undefined} */ (sources[name]);
-      if (logical) result[name] = logical;
+      result[name] = logical ?? {
+        source: name,
+        rows: [],
+        metadata: {
+          ...queryMetadata(sources, name, name, true),
+          availability: 'empty'
+        }
+      };
       continue;
     }
     if (name === 'transactions') {
@@ -297,8 +317,8 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
       result[name] = executeRunRecordsQuery(name, collections[name] ?? [], collections.runs ?? [], sources);
       continue;
     }
-    if (name === 'mcp-calls' || name === 'findings') {
-      const store = name === 'mcp-calls' ? 'tools' : 'audits';
+    if (name === 'mcp-calls' || name === 'findings' || name === 'firewall-observations') {
+      const store = name === 'mcp-calls' ? 'tools' : name === 'findings' ? 'audits' : 'domains';
       const records = executeRunRecordsQuery(store, collections[store] ?? [], collections.runs ?? [], sources);
       result[name] = executeDatabaseQuery(name, {
         'run-records': records
@@ -308,8 +328,14 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
     if (name === 'detection-observations' || name === 'safe-output-performance') {
       const inputName = name === 'detection-observations' ? '$security-findings' : '$outcomes';
       const logicalName = inputName.slice(1);
-      const logical = /** @type {import('../../presenter.js').LogicalSourceInput | undefined} */ (sources[logicalName]);
-      if (logical) result[name] = executeDatabaseQuery(name, { [inputName]: logical }, sources, logicalName);
+      const input = /** @type {import('../../presenter.js').LogicalSourceInput | undefined} */ (sources[logicalName]);
+      result[name] = input
+        ? executeDatabaseQuery(name, { [inputName]: input }, sources, logicalName)
+        : {
+            source: name,
+            rows: [],
+            metadata: { ...queryMetadata(sources, name, name, true), availability: 'empty' }
+          };
       continue;
     }
     const inputs = Object.fromEntries(queryStores(name).map((store) => [

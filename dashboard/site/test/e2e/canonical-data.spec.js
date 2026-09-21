@@ -474,7 +474,7 @@ test('native IndexedDB directly upserts and retains canonical data across reload
       'run-conclusion': 'failure'
     }],
     metadata: {
-      'source-kind': 'canonical-query',
+      'source-kind': 'database-query',
       availability: 'available'
     }
   });
@@ -570,12 +570,9 @@ test('data worker avoids unavailable legacy boundaries on initial and navigated 
     for (const source of Object.values(payload)) {
       expect(source.metadata.availability).not.toBe('unavailable');
     }
-    expect(payload.outcomes.rows[0]).toMatchObject({
-      'outcome-category': 'issue',
-      'outcome-number': 7
-    });
-    expect(payload['security-findings'].rows).toHaveLength(1);
-    expect(payload['work-items'].rows[0]['lifecycle-state']).toBe('blocked');
+    expect(payload.outcomes.rows).toEqual([]);
+    expect(payload['security-findings'].rows).toEqual([]);
+    expect(payload['work-items'].rows).toEqual([]);
     expect(payload['data-health-collections'].metadata.availability).toBe('available');
     expect(payload['data-health-coverage'].metadata.availability).toBe('available');
   }
@@ -1003,14 +1000,7 @@ test('data worker computes repository and campaign pages with request-scoped das
     metadata: { 'source-kind': 'derived', 'query-name': 'repository-activity' }
   });
   const horizonSource = result.horizon[Object.keys(result.horizon)[0]];
-  expect(horizonSource).toMatchObject({
-    rows: [{
-      repository: 'githubnext/gh-aw-cao',
-      runs: 0,
-      aic: 0,
-      status: 'No recent activity'
-    }]
-  });
+  expect(horizonSource.rows).toEqual([]);
   expect(Object.keys(result.navigated)).toEqual(['campaign-inventory']);
   expect(result.navigated['campaign-inventory']).toMatchObject({
     rows: [{
