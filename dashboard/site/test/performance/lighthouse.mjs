@@ -28,19 +28,19 @@ const scenarios = [
     id: 'cfo',
     persona: 'Chief Financial Officer',
     question: 'Where is AI Credit usage concentrated, and is it producing operational value?',
-    routes: ['cost', 'usage', 'campaigns']
+    routes: ['usage', 'campaigns', 'repositories']
   },
   {
     id: 'cto',
     persona: 'Chief Technology Officer',
     question: 'Which automation bottleneck most threatens control-plane reliability?',
-    routes: ['readiness', 'performance', 'workflows']
+    routes: ['overview', 'runs', 'workflows']
   },
   {
     id: 'cso',
     persona: 'Chief Security Officer',
     question: 'Which assurance gap requires immediate action?',
-    routes: ['security', 'findings', 'readiness']
+    routes: ['firewall', 'findings', 'mcps']
   }
 ];
 

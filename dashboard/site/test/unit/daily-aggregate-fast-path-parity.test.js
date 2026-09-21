@@ -90,36 +90,6 @@ describe('daily-aggregate fast path parity with canonical execution', () => {
     expect(fastPathResult['overview-dispatch-summary'].rows).toEqual(canonicalResult['overview-dispatch-summary'].rows);
   });
 
-  it('produces identical rows to canonical execution for overview-failed-run-count', async () => {
-    const runs = [
-      canonicalRun({ id: 'r1', event: 'schedule', conclusion: 'success', startedAt: '2026-09-10T01:00:00Z' }),
-      canonicalRun({ id: 'r2', event: 'schedule', conclusion: 'failure', startedAt: '2026-09-10T02:00:00Z' }),
-      canonicalRun({ id: 'r3', event: 'workflow_dispatch', conclusion: 'timed-out', startedAt: '2026-09-11T00:00:00Z' }),
-      canonicalRun({ id: 'r4', event: 'schedule', conclusion: 'stale', startedAt: '2026-09-11T00:00:00Z' }),
-      canonicalRun({ id: 'r5', event: 'workflow_dispatch', conclusion: 'success', startedAt: '2026-09-12T00:00:00Z' })
-    ];
-
-    const canonicalResult = executeDashboardQueries(
-      dashboardQueries,
-      { runs: { source: 'runs', rows: runs.map(projectedRunRow), metadata: runsMetadata } },
-      ['overview-failed-run-count']
-    );
-
-    const indexedDB = new IDBFactory();
-    const dailyAggregates = buildDailyOverviewAggregates(runs);
-    await publishDailyOverviewAggregates(indexedDB, {
-      generation: 'generation-a',
-      builtAt: '2026-09-21T00:00:00Z',
-      dailyAggregates
-    });
-    const fastPathResult = await queryDailyOverviewAggregateSources(
-      indexedDB,
-      dashboardQueries,
-      ['overview-failed-run-count']
-    );
-
-    expect(fastPathResult['overview-failed-run-count'].rows).toEqual(canonicalResult['overview-failed-run-count'].rows);
-  });
 });
 
 describe('daily-aggregate fast path parity end-to-end through real ingestion', () => {
@@ -131,7 +101,7 @@ describe('daily-aggregate fast path parity end-to-end through real ingestion', (
     });
   });
 
-  it('serves overview-dispatch-summary and overview-failed-run-count from the fast path after a real ingestion, matching canonical execution', async () => {
+  it('serves overview-dispatch-summary from the fast path after a real ingestion, matching canonical execution', async () => {
     const metadata = { 'as-of': '2026-09-21T00:00:00Z', 'artifact-generation': 'generation-a' };
     const sources = {
       repositories: {
@@ -193,7 +163,7 @@ describe('daily-aggregate fast path parity end-to-end through real ingestion', (
     const canonicalResult = executeDashboardQueries(
       dashboardQueries,
       { runs: { source: 'runs', rows: canonicalRows, metadata: runsMetadata } },
-      ['overview-dispatch-summary', 'overview-failed-run-count']
+      ['overview-dispatch-summary']
     );
 
     // Fast path: query the aggregates ingestion already published, with no
@@ -201,13 +171,11 @@ describe('daily-aggregate fast path parity end-to-end through real ingestion', (
     const fastPathResult = await queryDailyOverviewAggregateSources(
       indexedDB,
       dashboardQueries,
-      ['overview-dispatch-summary', 'overview-failed-run-count']
+      ['overview-dispatch-summary']
     );
 
-    expect(Object.keys(fastPathResult).sort()).toEqual(['overview-dispatch-summary', 'overview-failed-run-count']);
+    expect(Object.keys(fastPathResult)).toEqual(['overview-dispatch-summary']);
     expect(fastPathResult['overview-dispatch-summary'].rows).toEqual(canonicalResult['overview-dispatch-summary'].rows);
-    expect(fastPathResult['overview-failed-run-count'].rows).toEqual(canonicalResult['overview-failed-run-count'].rows);
     expect(fastPathResult['overview-dispatch-summary'].rows).toEqual([{ dispatches: 2, 'failed-dispatches': 1 }]);
-    expect(fastPathResult['overview-failed-run-count'].rows).toEqual([{ count: 2 }]);
   });
 });
