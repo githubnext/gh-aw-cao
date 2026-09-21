@@ -90,16 +90,10 @@ test('notifications move in at the lower right and center on mobile', async ({ p
   expect(Math.abs((bounds?.x ?? 0) + (bounds?.width ?? 0) / 2 - 195)).toBeLessThan(1);
 });
 
-test('mobile horizontal bar labels preserve readable suffixes', async ({ page }) => {
-  const firstWorkflowLabel = '.github/workflows/extremely-long-dependabot-update-planner.md';
-  const expectedVisibleSuffix = 'planner.md';
-  // Keep the fixture narrow enough that the prefix is substantially clipped,
-  // while allowing a subpixel edge tolerance for browser font rendering.
-  const meaningfulPrefixOverflowPx = 20;
-  // Require visible clipping proportional to measured overflow without tying
-  // the assertion to exact glyph widths.
-  const minimumFirstCharClipOverflowRatio = 4;
-  await page.setViewportSize({ width: 390, height: 844 });
+const horizontalBarFixtureLabel = '.github/workflows/extremely-long-dependabot-update-planner.md';
+const horizontalBarFixtureSuffix = 'planner.md';
+
+async function renderHorizontalBarFixture(page) {
   await page.setContent(`
     <style id="dashboard-styles"></style>
     <main class="chart-stage" style="width: 220px"></main>
@@ -108,20 +102,16 @@ test('mobile horizontal bar labels preserve readable suffixes', async ({ page })
       import { renderChartWidget } from 'http://dashboard.test/src/components/chart-elements.js';
       document.querySelector('#dashboard-styles').textContent = getPrimerStyles();
       document.querySelector('.chart-stage').append(renderChartWidget('horizontal-bar', [
-        { x: ${JSON.stringify(firstWorkflowLabel)}, y: 27 }
+        { x: ${JSON.stringify(horizontalBarFixtureLabel)}, y: 27 }
       ], [{ name: 'value', className: 'chart-series-1' }]));
     </script>
   `);
+}
 
-  const firstRow = page.locator('.horizontal-bar-chart-row').first();
-  const label = firstRow.locator('.horizontal-bar-chart-label');
-  await expect(label).toBeVisible();
-  await expect(label).toHaveCSS('direction', 'rtl');
-  await expect(label.locator('.horizontal-bar-chart-label-text')).toHaveCSS('direction', 'ltr');
-
-  const labelRendering = await firstRow.evaluate((row, suffix) => {
-    const labelElement = row.querySelector('.horizontal-bar-chart-label');
-    const textElement = row.querySelector('.horizontal-bar-chart-label-text');
+async function measureHorizontalBarLabel(row, suffix) {
+  return row.evaluate((rowElement, expectedSuffix) => {
+    const labelElement = rowElement.querySelector('.horizontal-bar-chart-label');
+    const textElement = rowElement.querySelector('.horizontal-bar-chart-label-text');
     const textNode = [...(textElement?.childNodes ?? [])].find((node) => node.nodeType === Node.TEXT_NODE);
     if (!labelElement || typeof labelElement.getBoundingClientRect !== 'function') {
       throw new Error('Expected horizontal bar label element.');
@@ -130,15 +120,16 @@ test('mobile horizontal bar labels preserve readable suffixes', async ({ page })
       throw new Error('Expected horizontal bar label text node.');
     }
     const text = textNode.textContent ?? '';
-    const suffixStart = text.lastIndexOf(suffix);
+    const suffixStart = text.lastIndexOf(expectedSuffix);
     if (suffixStart < 0) throw new Error('Expected label suffix.');
     const suffixRange = document.createRange();
     suffixRange.setStart(textNode, suffixStart);
-    suffixRange.setEnd(textNode, suffixStart + suffix.length);
+    suffixRange.setEnd(textNode, suffixStart + expectedSuffix.length);
     const firstCharRange = document.createRange();
     firstCharRange.setStart(textNode, 0);
     firstCharRange.setEnd(textNode, 1);
     const labelBounds = labelElement.getBoundingClientRect();
+    const textBounds = textElement.getBoundingClientRect();
     const suffixBounds = suffixRange.getBoundingClientRect();
     const firstCharBounds = firstCharRange.getBoundingClientRect();
     return {
@@ -148,35 +139,44 @@ test('mobile horizontal bar labels preserve readable suffixes', async ({ page })
       suffixLeft: suffixBounds.left,
       suffixRight: suffixBounds.right,
       labelLeft: labelBounds.left,
-      labelRight: labelBounds.right
+      labelRight: labelBounds.right,
+      text: textElement.textContent ?? '',
+      textOverflowed: textElement.scrollWidth > textElement.clientWidth,
+      textRight: textBounds.right
     };
-  }, expectedVisibleSuffix);
+  }, suffix);
+}
+
+test('mobile horizontal bar labels preserve readable suffixes', async ({ page }) => {
+  // Keep the fixture narrow enough that the prefix is substantially clipped,
+  // while allowing a subpixel edge tolerance for browser font rendering.
+  const meaningfulPrefixOverflowPx = 20;
+  // Require visible clipping proportional to measured overflow without tying
+  // the assertion to exact glyph widths.
+  const firstCharClipOverflowDivisor = 4;
+  await page.setViewportSize({ width: 390, height: 844 });
+  await renderHorizontalBarFixture(page);
+
+  const firstRow = page.locator('.horizontal-bar-chart-row').first();
+  const label = firstRow.locator('.horizontal-bar-chart-label');
+  await expect(label).toBeVisible();
+  await expect(label).toHaveCSS('direction', 'rtl');
+  await expect(label.locator('.horizontal-bar-chart-label-text')).toHaveCSS('direction', 'ltr');
+
+  const labelRendering = await measureHorizontalBarLabel(firstRow, horizontalBarFixtureSuffix);
 
   expect(labelRendering.overflowed).toBe(true);
   expect(labelRendering.overflowAmount).toBeGreaterThan(meaningfulPrefixOverflowPx);
   expect(labelRendering.firstCharClipDistance)
-    .toBeGreaterThan(labelRendering.overflowAmount / minimumFirstCharClipOverflowRatio);
+    .toBeGreaterThan(labelRendering.overflowAmount / firstCharClipOverflowDivisor);
   expect(labelRendering.suffixLeft).toBeGreaterThanOrEqual(labelRendering.labelLeft);
   expect(labelRendering.suffixRight).toBeLessThanOrEqual(labelRendering.labelRight);
 });
 
 test('desktop horizontal bar labels keep standard end truncation', async ({ page }) => {
-  const firstWorkflowLabel = '.github/workflows/extremely-long-dependabot-update-planner.md';
   const expectedVisiblePrefix = '.github';
-  const expectedClippedSuffix = 'planner.md';
   await page.setViewportSize({ width: 900, height: 700 });
-  await page.setContent(`
-    <style id="dashboard-styles"></style>
-    <main class="chart-stage" style="width: 220px"></main>
-    <script type="module">
-      import { getPrimerStyles } from 'http://dashboard.test/src/styles.js';
-      import { renderChartWidget } from 'http://dashboard.test/src/components/chart-elements.js';
-      document.querySelector('#dashboard-styles').textContent = getPrimerStyles();
-      document.querySelector('.chart-stage').append(renderChartWidget('horizontal-bar', [
-        { x: ${JSON.stringify(firstWorkflowLabel)}, y: 27 }
-      ], [{ name: 'value', className: 'chart-series-1' }]));
-    </script>
-  `);
+  await renderHorizontalBarFixture(page);
 
   const firstRow = page.locator('.horizontal-bar-chart-row').first();
   const label = firstRow.locator('.horizontal-bar-chart-label');
@@ -184,34 +184,10 @@ test('desktop horizontal bar labels keep standard end truncation', async ({ page
   await expect(label).toHaveCSS('direction', 'ltr');
   await expect(label.locator('.horizontal-bar-chart-label-text')).toHaveCSS('display', 'block');
 
-  const labelRendering = await firstRow.evaluate((row, suffix) => {
-    const labelElement = row.querySelector('.horizontal-bar-chart-label');
-    const textElement = row.querySelector('.horizontal-bar-chart-label-text');
-    const textNode = [...(textElement?.childNodes ?? [])].find((node) => node.nodeType === Node.TEXT_NODE);
-    if (!labelElement || typeof labelElement.getBoundingClientRect !== 'function') {
-      throw new Error('Expected horizontal bar label element.');
-    }
-    if (!textElement || typeof textElement.getBoundingClientRect !== 'function' || !textNode) {
-      throw new Error('Expected horizontal bar label text node.');
-    }
-    const text = textNode.textContent ?? '';
-    const suffixStart = text.lastIndexOf(suffix);
-    if (suffixStart < 0) throw new Error('Expected label suffix.');
-    const suffixRange = document.createRange();
-    suffixRange.setStart(textNode, suffixStart);
-    suffixRange.setEnd(textNode, suffixStart + suffix.length);
-    const textBounds = textElement.getBoundingClientRect();
-    const suffixBounds = suffixRange.getBoundingClientRect();
-    return {
-      text: textElement.textContent ?? '',
-      overflowed: textElement.scrollWidth > textElement.clientWidth,
-      suffixRight: suffixBounds.right,
-      textRight: textBounds.right
-    };
-  }, expectedClippedSuffix);
+  const labelRendering = await measureHorizontalBarLabel(firstRow, horizontalBarFixtureSuffix);
 
   expect(labelRendering.text.startsWith(expectedVisiblePrefix)).toBe(true);
-  expect(labelRendering.overflowed).toBe(true);
+  expect(labelRendering.textOverflowed).toBe(true);
   expect(labelRendering.suffixRight).toBeGreaterThan(labelRendering.textRight);
 });
 
