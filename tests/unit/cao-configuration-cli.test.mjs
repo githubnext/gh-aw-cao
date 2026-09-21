@@ -376,6 +376,7 @@ test("cao update upgrades gh-aw, updates installed campaigns, and merges declara
       files: [
         { destination: ".github/workflows/cao-activity.yml", sha256: "old" },
         { destination: ".github/workflows/cao-dashboard.yml", sha256: "old" },
+        { destination: ".github/workflows/dependabot.md", sha256: "old" },
       ],
     }));
     await mkdir(declarationDirectory, { recursive: true });
@@ -386,6 +387,10 @@ test("cao update upgrades gh-aw, updates installed campaigns, and merges declara
         `jobs:\n  build:\n    steps:\n      - name: Checkout trusted ${workflow} source\n        uses: actions/checkout@0123456789012345678901234567890123456789\n        with:\n          ref: \${{ github.workflow_sha }}\n          persist-credentials: false\n      - name: Next step\n        run: true\n`,
       );
     }
+    await writeFile(
+      path.join(root, ".github", "workflows", "dependabot.md"),
+      "---\nsource: githubnext/gh-aw-cao/dependabot@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n---\n\n# Dependabot\n",
+    );
     await writeFile(path.join(declarationDirectory, "cao.json"), JSON.stringify({
       campaign: "dependabot",
       orchestrator: "dependabot",
@@ -428,6 +433,9 @@ test("cao update upgrades gh-aw, updates installed campaigns, and merges declara
           };
         }
         if (command === "gh" && arguments_[0] === "api") {
+          if (arguments_[1] === "/repos/githubnext/gh-aw-cao/commits/v0.0.2") {
+            return { status: 0, stdout: "1234567890abcdef1234567890abcdef12345678\n", stderr: "" };
+          }
           return { status: 0, stdout: "v0.0.1\n", stderr: "" };
         }
         if (command === "gh" && arguments_[0] === "aw" && arguments_[1] === "update"
@@ -435,8 +443,8 @@ test("cao update upgrades gh-aw, updates installed campaigns, and merges declara
           writeFileSync(path.join(campaignRecords, "root.json"), JSON.stringify({
             schemaVersion: 1,
             package: "githubnext/gh-aw-cao",
-            source: "githubnext/gh-aw-cao@1234567890abcdef1234567890abcdef12345678",
-            resolvedCommit: "1234567890abcdef1234567890abcdef12345678",
+            source: "githubnext/gh-aw-cao@v0.0.2",
+            resolvedCommit: "v0.0.2",
             files: [
               { destination: ".github/workflows/cao-activity.yml", sha256: "old" },
               { destination: ".github/workflows/cao-dashboard.yml", sha256: "old" },
@@ -454,6 +462,7 @@ test("cao update upgrades gh-aw, updates installed campaigns, and merges declara
       ["gh", ["api", "--paginate", "/repos/githubnext/gh-aw-cao/releases", "--jq", ".[] | select(.draft == false and .prerelease == false and .target_commitish == \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\") | .tag_name"]],
       ["gh", ["aw", "update", "https://github.com/githubnext/gh-aw-cao", "--force"]],
       ["gh", ["aw", "update", "https://github.com/githubnext/gh-aw-cao/dependabot", "--force"]],
+      ["gh", ["api", "/repos/githubnext/gh-aw-cao/commits/v0.0.2", "--jq", ".sha"]],
     ]);
     assert.deepEqual(result.campaigns, [
       "githubnext/gh-aw-cao",
@@ -481,6 +490,10 @@ test("cao update upgrades gh-aw, updates installed campaigns, and merges declara
       const content = await readFile(path.join(root, file.destination));
       assert.equal(file.sha256, createHash("sha256").update(content).digest("hex"));
     }
+    assert.match(
+      await readFile(path.join(root, ".github", "workflows", "dependabot.md"), "utf8"),
+      /source: githubnext\/gh-aw-cao\/dependabot@v0\.0\.1/,
+    );
     assert.deepEqual(policy["control-plane"].campaigns.dependabot, {
       mode: "live",
       workers: {
