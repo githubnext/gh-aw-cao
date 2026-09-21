@@ -14,6 +14,7 @@ import { CANONICAL_SCHEMA_VERSION } from '../../src/data/model/schema.js';
 import {
   DATABASE_NAME,
   readCanonicalBatch,
+  readDailyOverviewAggregates,
   readTransactions,
   recordTransaction,
   replaceCanonicalBatch
@@ -819,6 +820,42 @@ describe('canonical source ingestion and queries', () => {
     await expect(ingestDashboardSources(indexedDB, sources)).resolves.toMatchObject({ updated: true });
     await expect(createCanonicalQueries(indexedDB).repositories.list()).resolves.toEqual([
       expect.objectContaining({ visibility: 'unknown' })
+    ]);
+  });
+
+  it('publishes daily overview aggregates from the ingested canonical batch', async () => {
+    await ingestDashboardSources(indexedDB, sources);
+
+    const result = await readDailyOverviewAggregates(indexedDB, { startDay: '2026-09-01', endDay: '2026-09-30' });
+
+    expect(result.available).toBe(true);
+    expect(result.records).toEqual([
+      expect.objectContaining({ day: '2026-09-09', runs: 1, successfulRuns: 0, failedRuns: 1 })
+    ]);
+  });
+
+  it('republishes an updated daily overview aggregate generation on reingestion without leaving a stale one active', async () => {
+    await ingestDashboardSources(indexedDB, sources);
+    const refreshed = structuredClone(sources);
+    refreshed.runs.rows.push({
+      organization: 'githubnext',
+      repository: 'gh-aw-cao',
+      workflow: '.github/workflows/dashboard.md',
+      run: '12346',
+      'run-attempt': 1,
+      'run-status': 'completed',
+      'run-conclusion': 'success',
+      'started-at': '2026-09-10T04:00:00Z',
+      'ended-at': metadata['as-of']
+    });
+
+    await ingestDashboardSources(indexedDB, refreshed);
+
+    const result = await readDailyOverviewAggregates(indexedDB, { startDay: '2026-09-01', endDay: '2026-09-30' });
+    expect(result.available).toBe(true);
+    expect(result.records).toEqual([
+      expect.objectContaining({ day: '2026-09-09', runs: 1 }),
+      expect.objectContaining({ day: '2026-09-10', runs: 1, successfulRuns: 1 })
     ]);
   });
 });
