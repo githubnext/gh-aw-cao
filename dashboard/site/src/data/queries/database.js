@@ -273,8 +273,11 @@ function indexedRunOperators(definition) {
 
 /** @param {string} name */
 function queryStores(name) {
-  const definition = databaseQueryIndex.get(name) ?? databaseQueryIndex.get('run-records');
-  const configured = definition?.['stores-by-source']?.[name] ?? definition?.stores;
+  const definition = databaseQueryIndex.get(name);
+  const mapped = [...databaseQueryIndex.values()]
+    .map((candidate) => candidate['stores-by-source']?.[name])
+    .find(Array.isArray);
+  const configured = definition?.stores ?? mapped;
   return Array.isArray(configured)
     ? configured.filter((store) => typeof store === 'string')
     : [];

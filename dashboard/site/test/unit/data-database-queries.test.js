@@ -518,6 +518,18 @@ describe('canonical view sources', () => {
     expect(collectionReads).not.toHaveBeenCalled();
   });
 
+  it('does not read database stores for a missing logical source', async () => {
+    const collectionReads = vi.spyOn(IDBObjectStore.prototype, 'getAll');
+
+    const projected = await queryDatabaseSources(indexedDB, {}, ['usage']);
+
+    expect(projected.usage).toMatchObject({
+      rows: [],
+      metadata: { availability: 'empty' }
+    });
+    expect(collectionReads).not.toHaveBeenCalled();
+  });
+
   it('returns requested authoritative sources through the canonical query boundary', async () => {
     const loaded = await loadCanonicalViewSources(indexedDB, sources, {
       ingest: true,
