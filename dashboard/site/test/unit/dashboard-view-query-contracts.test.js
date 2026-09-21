@@ -113,7 +113,7 @@ describe('dashboard view query contracts', () => {
     }
   });
 
-  it('defaults repositories to bounded worker-computed pie charts', () => {
+  it('renders repository insights and one activity inventory', () => {
     const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'repositories');
     const views = viewsOf(page);
 
@@ -147,8 +147,15 @@ describe('dashboard view query contracts', () => {
         from: 'findings',
         aggregate: { values: [{ field: 'finding', as: 'audit-issues', reducer: 'count' }] }
       });
-    expect(dashboard.views.find((/** @type {{ id: string }} */ view) => view.id === 'entity-repositories'))
-      .toMatchObject({ data: { source: 'repositories' } });
+    expect(views.map((view) => view.id)).toEqual([
+      'repositories-value-created',
+      'repositories-audit-issues',
+      'repositories-activity'
+    ]);
+    expect(views[2]).toMatchObject({
+      data: { source: 'repository-activity' },
+      mark: 'table'
+    });
   });
 
   it('renders issues as a top-repository chart with a full-view table and cards', () => {
