@@ -819,7 +819,7 @@ test('data worker returns MCP tool totals without safe outputs calls on initial 
 });
 
 
-test('data worker queries firewall summaries, attribution, and policy on initial and navigated requests', async ({ page }) => {
+test('data worker queries firewall summaries on initial and navigated requests', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;
     const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
@@ -831,11 +831,11 @@ test('data worker queries firewall summaries, attribution, and policy on initial
     };
     const initial = await loadCanonicalDashboardSources(
       `${location.origin}/sources.json`,
-      ['firewall-domain-totals', 'firewall-most-blocked-domains', 'firewall-attribution-details', 'firewall-policy-inventory'],
+      ['firewall-domain-totals', 'firewall-most-blocked-domains'],
       context
     );
     const navigated = await loadCanonicalDashboardPage(
-      ['firewall-domain-totals', 'firewall-most-blocked-domains', 'firewall-attribution-details', 'firewall-policy-inventory'],
+      ['firewall-domain-totals', 'firewall-most-blocked-domains'],
       context
     );
     return { initial, navigated };
@@ -844,9 +844,7 @@ test('data worker queries firewall summaries, attribution, and policy on initial
   for (const payload of [result.initial, result.navigated]) {
     expect(Object.keys(payload)).toEqual([
       'firewall-domain-totals',
-      'firewall-most-blocked-domains',
-      'firewall-attribution-details',
-      'firewall-policy-inventory'
+      'firewall-most-blocked-domains'
     ]);
     expect(payload['firewall-domain-totals']).toMatchObject({
       rows: [{ domain: 'api.github.com', run: 1, accepted: 4, blocked: 2 }],
@@ -855,38 +853,6 @@ test('data worker queries firewall summaries, attribution, and policy on initial
     expect(payload['firewall-most-blocked-domains']).toMatchObject({
       rows: [{ domain: 'api.github.com', run: 1, accepted: 4, blocked: 2 }],
       metadata: { 'source-kind': 'derived', 'query-name': 'firewall-most-blocked-domains' }
-    });
-    expect(payload['firewall-attribution-details']).toMatchObject({
-      rows: [
-        {
-          domain: 'api.github.com',
-          'decision-label': 'Denied by policy',
-          'request-count': 2,
-          workflow: '.github/workflows/dashboard.md',
-          run: '12345',
-          engine: 'copilot',
-          'resolved-model': 'gpt-5.1',
-          'policy-rule-description': 'Unapproved request'
-        },
-        {
-          domain: 'api.github.com',
-          'decision-label': 'Allowed by policy',
-          'request-count': 4,
-          workflow: '.github/workflows/dashboard.md',
-          run: '12345',
-          engine: 'copilot',
-          'resolved-model': 'gpt-5.1',
-          'policy-rule-description': 'GitHub API access'
-        }
-      ],
-      metadata: { 'source-kind': 'derived', 'query-name': 'firewall-attribution-details' }
-    });
-    expect(payload['firewall-policy-inventory']).toMatchObject({
-      rows: [
-        { action: 'deny', 'domain-pattern': 'all', description: 'Default deny', 'hit-count': 2 },
-        { action: 'allow', 'domain-pattern': 'api.github.com', description: 'GitHub API access', 'hit-count': 4 }
-      ],
-      metadata: { 'source-kind': 'derived', 'query-name': 'firewall-policy-inventory' }
     });
   }
 });

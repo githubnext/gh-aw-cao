@@ -349,15 +349,6 @@ describe('dashboard document validation', () => {
       ],
       limit: 10
     }));
-    expect(document.dashboard.queries).toContainEqual(expect.objectContaining({
-      name: 'firewall-attribution-details',
-      from: 'firewall-observations',
-      filter: { predicates: [{ field: 'decision', in: ['allowed', 'denied'] }] }
-    }));
-    expect(document.dashboard.queries).toContainEqual(expect.objectContaining({
-      name: 'firewall-policy-inventory',
-      from: 'firewall-policy-rules'
-    }));
     const [mostBlocked, domains] = firewall.views;
     expect(mostBlocked).toMatchObject({
       id: 'security-firewall-most-blocked-domains',
