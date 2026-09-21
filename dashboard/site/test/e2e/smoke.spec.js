@@ -531,9 +531,12 @@ test('Transactions includes local database controls and a responsive transaction
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(root).not.toHaveClass(/dashboard-full-view-scrolled/);
   await expect(page.locator('.org-sidebar')).toBeVisible();
-  await expect(transactionsPage.locator(':scope > .filter-bar .view-mode-control')).toBeVisible();
+  await expect(transactionsPage.locator(':scope > .filter-bar')).toBeHidden();
+  const mobileViewModeToggle = page.locator('.mobile-view-mode-toggle');
+  await expect(mobileViewModeToggle).toBeVisible();
+  await expect(mobileViewModeToggle).toHaveAttribute('aria-label', 'Switch to Table view');
   await expect(view).toBeHidden();
-  await transactionsPage.getByRole('button', { name: 'Table' }).click();
+  await mobileViewModeToggle.click();
   await expect(view).toBeVisible();
   await expect(root).toHaveClass(/dashboard-full-view/);
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
@@ -693,14 +696,18 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
   assert(facetControlBox);
   assert(scrolledSummaryBox);
   expect(scrolledSummaryBox.y - (facetControlBox.y + facetControlBox.height)).toBeGreaterThanOrEqual(4);
-  await page.getByRole('button', { name: 'Cards' }).click();
+  const mobileViewModeToggle = page.locator('.mobile-view-mode-toggle');
+  await expect(page.locator('[data-page-id="repositories"] > .filter-bar')).toBeHidden();
+  await expect(mobileViewModeToggle).toHaveAttribute('aria-label', 'Switch to Cards view');
+  await mobileViewModeToggle.click();
   await page.getByRole('button', { name: 'Chart' }).click();
   await expect(swimlane).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(swimlane).toBeVisible();
   await expect(table).toBeHidden();
-  await page.getByRole('button', { name: 'Table' }).click();
+  await expect(mobileViewModeToggle).toHaveAttribute('aria-label', 'Switch to Table view');
+  await mobileViewModeToggle.click();
   await expect(swimlane).toBeHidden();
   await expect(table).toBeVisible();
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);

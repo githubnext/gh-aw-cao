@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
-import { enableDashboardNavigation, renderDashboardNavigation } from '../../src/components/dashboard-navigation.js';
+import { enableDashboardNavigation, renderDashboardNavigation, syncMobileViewModeToggle } from '../../src/components/dashboard-navigation.js';
 import { buildChartPoints, prepareChartPoints, prepareTableRows } from '../../src/components/view-data.js';
 
 describe('dashboard sidebar', () => {
@@ -51,6 +51,43 @@ describe('dashboard sidebar', () => {
 
     const labels = [...sidebar.querySelectorAll('.nav-section-label')].map((element) => element.textContent);
     expect(labels).toEqual(['Main', 'Experimental']);
+  });
+
+  it('cycles the active page view from the mobile header control', () => {
+    const sidebar = renderDashboardNavigation([{ id: 'runs', title: 'Runs' }], 'Example');
+    const page = document.createElement('section');
+    page.className = 'dashboard-page';
+    for (const [mode, pressed] of [['chart', 'true'], ['table', 'false'], ['card', 'false']]) {
+      const button = document.createElement('button');
+      button.dataset.viewModeValue = mode;
+      button.setAttribute('aria-pressed', pressed);
+      button.addEventListener('click', () => {
+        for (const candidate of page.querySelectorAll('[data-view-mode-value]')) {
+          candidate.setAttribute('aria-pressed', String(candidate === button));
+        }
+      });
+      page.append(button);
+    }
+    const shell = document.createElement('div');
+    shell.className = 'app-shell';
+    shell.append(sidebar, page);
+    const root = document.createElement('div');
+    root.append(shell);
+    document.body.append(root);
+
+    enableDashboardNavigation(root);
+    syncMobileViewModeToggle(root);
+
+    const toggle = /** @type {HTMLButtonElement} */ (sidebar.querySelector('.mobile-view-mode-toggle'));
+    expect(toggle.hidden).toBe(false);
+    expect(toggle.dataset.viewMode).toBe('chart');
+    expect(toggle.getAttribute('aria-label')).toBe('Switch to Table view');
+    expect(toggle.querySelector('.octicon-graph')).not.toBeNull();
+
+    toggle.click();
+    expect(toggle.dataset.viewMode).toBe('table');
+    expect(toggle.getAttribute('aria-label')).toBe('Switch to Cards view');
+    expect(toggle.querySelector('.octicon-table')).not.toBeNull();
   });
 });
 

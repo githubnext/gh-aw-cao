@@ -1601,7 +1601,7 @@ describe('presenter built-in and custom pages', () => {
     expect(modeButtons[0]?.getAttribute('aria-pressed')).toBe('true');
     expect(page?.querySelector('[data-view-id="runs-chart"]')?.getAttribute('data-view-mode-content')).toBe('chart');
     expect(page?.querySelector('[data-view-id="runs-table"]')?.getAttribute('data-view-mode-content')).toBe('table');
-    expect(rendered.querySelector('.mobile-view-mode-toggle')).toBeNull();
+    expect(rendered.querySelector('.mobile-view-mode-toggle')).not.toBeNull();
     /** @type {HTMLButtonElement} */ (modeButtons[1]).click();
     expect(contexts.at(-1)).toMatchObject({ pageId: 'runs', queryContext: { viewMode: 'table' } });
   });

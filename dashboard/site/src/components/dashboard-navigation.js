@@ -5,6 +5,8 @@ import { titleCase } from './count-formatters.js';
 import { enableDetailsMenuDismissal } from './ui-primitives.js';
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.sidebar-collapsed');
+const VIEW_MODE_LABELS = { chart: 'Chart', table: 'Table', card: 'Cards' };
+const VIEW_MODE_ICONS = { chart: 'graph', table: 'table', card: 'stack' };
 
 /**
  * @param {Array<Record<string, unknown>>} pages
@@ -65,6 +67,17 @@ export function renderDashboardNavigation(pages, title, navigation) {
       ),
       h('div', { className: 'mobile-page-header' }, h('span', { className: 'mobile-brand-name' }, title)),
       h(
+        'button',
+        {
+          className: 'mobile-view-mode-toggle',
+          type: 'button',
+          'aria-label': 'Change view',
+          title: 'Change view',
+          hidden: true
+        },
+        octicon('graph')
+      ),
+      h(
         'details',
         { className: 'mobile-nav-menu' },
         h('summary', { role: 'button', 'aria-label': 'Select view', title: 'Select view' }, octicon('three-bars')),
@@ -124,9 +137,53 @@ export function renderDashboardNavigation(pages, title, navigation) {
 /** @param {HTMLElement} root */
 export function enableDashboardNavigation(root) {
   enableSidebarToggle(root);
+  enableMobileViewModeToggle(root);
   const menu = root.querySelector('.mobile-nav-menu');
   if (menu instanceof HTMLDetailsElement) {
     enableDetailsMenuDismissal(root, menu, '[data-mobile-nav-page-id]');
+  }
+
+  /** @param {HTMLElement} root */
+  export function syncMobileViewModeToggle(root) {
+    const toggle = root.querySelector('.mobile-view-mode-toggle');
+    const activePage = root.querySelector('.dashboard-page:not([hidden])');
+    const modeButtons = [...activePage?.querySelectorAll('[data-view-mode-value]') ?? []]
+      .filter((button) => button instanceof HTMLButtonElement);
+    if (!(toggle instanceof HTMLButtonElement) || modeButtons.length < 2) {
+      if (toggle instanceof HTMLButtonElement) toggle.hidden = true;
+      return;
+    }
+
+    const activeIndex = Math.max(0, modeButtons.findIndex((button) => button.getAttribute('aria-pressed') === 'true'));
+    const activeMode = modeButtons[activeIndex]?.getAttribute('data-view-mode-value');
+    if (activeMode !== 'chart' && activeMode !== 'table' && activeMode !== 'card') {
+      toggle.hidden = true;
+      return;
+    }
+    const nextMode = modeButtons[(activeIndex + 1) % modeButtons.length]?.getAttribute('data-view-mode-value');
+    const nextLabel = nextMode === 'chart' || nextMode === 'table' || nextMode === 'card'
+      ? VIEW_MODE_LABELS[nextMode]
+      : 'next';
+    toggle.hidden = false;
+    toggle.dataset.viewMode = activeMode;
+    toggle.setAttribute('aria-label', `Switch to ${nextLabel} view`);
+    toggle.title = `Current view: ${VIEW_MODE_LABELS[activeMode]}. Switch to ${nextLabel}.`;
+    toggle.replaceChildren(octicon(VIEW_MODE_ICONS[activeMode]));
+  }
+
+  /** @param {HTMLElement} root */
+  function enableMobileViewModeToggle(root) {
+    const toggle = root.querySelector('.mobile-view-mode-toggle');
+    if (!(toggle instanceof HTMLButtonElement)) return;
+    toggle.addEventListener('click', () => {
+      const activePage = root.querySelector('.dashboard-page:not([hidden])');
+      const modeButtons = [...activePage?.querySelectorAll('[data-view-mode-value]') ?? []]
+        .filter((button) => button instanceof HTMLButtonElement);
+      const activeIndex = modeButtons.findIndex((button) => button.getAttribute('aria-pressed') === 'true');
+      const nextButton = modeButtons[(Math.max(0, activeIndex) + 1) % modeButtons.length];
+      nextButton?.click();
+      syncMobileViewModeToggle(root);
+    });
   }
 }
 

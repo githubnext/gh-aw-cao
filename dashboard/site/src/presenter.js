@@ -22,7 +22,7 @@ import { DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from './debug-events.
 import { dashboardViewAliasName } from './data/queries/view-payload-compiler.js';
 import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
 import { sourceContinuation } from './data/continuation.js';
-import { renderDashboardNavigation, enableDashboardNavigation } from './components/dashboard-navigation.js';
+import { renderDashboardNavigation, enableDashboardNavigation, syncMobileViewModeToggle } from './components/dashboard-navigation.js';
 import { renderDashboardHeader } from './components/dashboard-header.js';
 import { renderDashboardFooter } from './components/dashboard-footer.js';
 import { renderDashboardFrame } from './components/dashboard-frame.js';
@@ -993,6 +993,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   /** @param {HTMLElement | undefined} page */
   const syncFullViewMode = (page) => {
     syncFullViewModeForPage(root, page);
+    syncMobileViewModeToggle(root);
   };
   const defaultBreadcrumbs = [breadcrumbRoot, breadcrumbDashboard].map((link) => ({
     label: link?.textContent ?? '',
