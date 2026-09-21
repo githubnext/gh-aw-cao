@@ -1856,57 +1856,6 @@
         }
       },
       {
-        "name": "transactions-table",
-        "intent": "List retained ingestion transactions from newest to oldest.",
-        "from": "transactions",
-        "select": [
-          {
-            "field": "kind"
-          },
-          {
-            "field": "createdAt",
-            "as": "created-at"
-          },
-          {
-            "field": "payloadScope",
-            "as": "payload-scope"
-          },
-          {
-            "field": "rawRuns",
-            "as": "raw-runs"
-          },
-          {
-            "field": "agenticRunRecords",
-            "as": "agentic-run-records"
-          },
-          {
-            "field": "agenticRuns",
-            "as": "agentic-runs"
-          },
-          {
-            "field": "duplicateRawRunObservations",
-            "as": "duplicate-raw-run-observations"
-          },
-          {
-            "field": "duplicateAgenticRunObservations",
-            "as": "duplicate-agentic-run-observations"
-          },
-          {
-            "field": "unenrichedRuns",
-            "as": "unenriched-runs"
-          },
-          {
-            "field": "error"
-          }
-        ],
-        "order-by": [
-          {
-            "field": "created-at",
-            "direction": "desc"
-          }
-        ]
-      },
-      {
         "name": "overview-outcome-summary",
         "intent": "Summarize distinct retained issue and pull request outputs and their delivered repositories.",
         "from": "outcomes",
@@ -10685,62 +10634,17 @@
         "description": "Inspect retained dashboard ingestion transactions.",
         "views": [
           {
-            "id": "transaction-local-database",
-            "title": "Local database",
-            "description": "Inspect and manage records retained in this browser.",
+            "id": "transaction-entries",
+            "title": "Transactions",
+            "description": "Data retained in the transactions table.",
             "data": {
-              "sources": [
-                "database-campaign-count",
-                "database-repository-count",
-                "database-workflow-count",
-                "database-run-count",
-                "database-domain-count",
-                "database-tool-count",
-                "database-audit-count",
-                "database-issue-count"
-              ]
-            },
-            "mark": "element",
-            "element": "local-database",
-            "layout": "full"
-          },
-          {
-            "id": "transaction-ingestion-trend",
-            "title": "Run ingestion coverage",
-            "description": "Known factory runs compared with runs that include imported run-owned record data at each ingestion transaction.",
-            "data": {
-              "source": "transactions-table"
-            },
-            "mark": "chart",
-            "chart": "line",
-            "layout": "full",
-            "empty-message": "No run ingestion transactions have been retained.",
-            "encoding": {
-              "x": {
-                "field": "created-at",
-                "type": "temporal",
-                "format": "human-friendly-timestamp"
-              },
-              "y": [
+              "source": "transactions",
+              "order-by": [
                 {
-                  "field": "raw-runs",
-                  "type": "quantitative",
-                  "title": "Known runs"
-                },
-                {
-                  "field": "agentic-runs",
-                  "type": "quantitative",
-                  "title": "Runs with record data"
+                  "field": "createdAt",
+                  "direction": "desc"
                 }
               ]
-            }
-          },
-          {
-            "id": "transaction-entries",
-            "title": "Transaction entries",
-            "description": "Retained ingestion transactions ordered from newest to oldest.",
-            "data": {
-              "source": "transactions-table"
             },
             "mark": "table",
             "controls": "interactive",
@@ -10750,43 +10654,73 @@
             "encoding": {
               "columns": [
                 {
+                  "field": "id",
+                  "type": "nominal",
+                  "title": "Transaction"
+                },
+                {
                   "field": "kind",
                   "type": "nominal",
                   "title": "Kind"
                 },
                 {
-                  "field": "payload-scope",
+                  "field": "payloadScope",
                   "type": "nominal",
                   "format": "shortened-url",
                   "title": "Scope"
                 },
                 {
-                  "field": "raw-runs",
+                  "field": "payloadHash",
+                  "type": "nominal",
+                  "title": "Payload hash"
+                },
+                {
+                  "field": "payloadEtag",
+                  "type": "nominal",
+                  "title": "Payload ETag"
+                },
+                {
+                  "field": "records",
+                  "type": "quantitative",
+                  "title": "Records"
+                },
+                {
+                  "field": "committedRecords",
+                  "type": "quantitative",
+                  "title": "Committed records"
+                },
+                {
+                  "field": "rawPayloadRecords",
+                  "type": "quantitative",
+                  "title": "Raw payload records"
+                },
+                {
+                  "field": "rawRuns",
                   "type": "quantitative",
                   "title": "Raw runs"
                 },
                 {
-                  "field": "agentic-run-records",
+                  "field": "agenticRunRecords",
                   "type": "quantitative",
                   "title": "Agentic run records"
                 },
                 {
-                  "field": "agentic-runs",
+                  "field": "agenticRuns",
                   "type": "quantitative",
                   "title": "Agentic runs"
                 },
                 {
-                  "field": "duplicate-raw-run-observations",
+                  "field": "duplicateRawRunObservations",
                   "type": "quantitative",
                   "title": "Duplicate raw runs"
                 },
                 {
-                  "field": "duplicate-agentic-run-observations",
+                  "field": "duplicateAgenticRunObservations",
                   "type": "quantitative",
                   "title": "Duplicate agentic runs"
                 },
                 {
-                  "field": "unenriched-runs",
+                  "field": "unenrichedRuns",
                   "type": "quantitative",
                   "title": "Unenriched runs"
                 },
@@ -10796,7 +10730,7 @@
                   "title": "Error"
                 },
                 {
-                  "field": "created-at",
+                  "field": "createdAt",
                   "type": "temporal",
                   "format": "human-friendly-timestamp",
                   "title": "Created"

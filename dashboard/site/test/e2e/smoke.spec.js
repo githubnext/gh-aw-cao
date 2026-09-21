@@ -434,7 +434,7 @@ test('mobile shell shows large overview actions and moves other views into the h
 
 
 
-test('Transactions includes local database controls and a responsive transaction table', async ({ page }) => {
+test('Transactions is a responsive table of retained transaction data', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
@@ -442,15 +442,22 @@ test('Transactions includes local database controls and a responsive transaction
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
       const rows = Array.from({ length: 100 }, (_, index) => ({
+        id: \`transaction:\${index}\`,
         kind: index % 2 === 0 ? 'ingest-jsonl' : 'ingest-dashboard-sources',
-        'created-at': new Date(Date.UTC(2026, 8, 12, 12, index)).toISOString(),
-        'payload-scope': \`https://dashboard.example/gh-aw-logs-shards/logs-\${index}.jsonl\`,
-        'raw-runs': 20 + index,
-        'agentic-run-records': 10 + index,
-        'agentic-runs': 8 + index,
-        'duplicate-raw-run-observations': index,
-        'duplicate-agentic-run-observations': index,
-        'unenriched-runs': index
+        createdAt: new Date(Date.UTC(2026, 8, 12, 12, index)).toISOString(),
+        payloadScope: \`https://dashboard.example/gh-aw-logs-shards/logs-\${index}.jsonl\`,
+        payloadHash: \`sha256:\${index}\`,
+        payloadEtag: \`etag-\${index}\`,
+        records: 30 + index,
+        committedRecords: 25 + index,
+        rawPayloadRecords: 24 + index,
+        rawRuns: 20 + index,
+        agenticRunRecords: 10 + index,
+        agenticRuns: 8 + index,
+        duplicateRawRunObservations: index,
+        duplicateAgenticRunObservations: index,
+        unenrichedRuns: index,
+        error: ''
       }));
       const metadata = {
         'source-id': 'transactions-fixture',
@@ -462,7 +469,7 @@ test('Transactions includes local database controls and a responsive transaction
         availability: 'available'
       };
       const sources = {
-        'transactions-table': { source: 'transactions-table', rows, metadata },
+        transactions: { source: 'transactions', rows, metadata },
         'configuration-policy': {
           source: 'configuration-policy',
           rows: [{ document: { version: 1 }, raw: '{"version":1}', diagnostics: [] }],
@@ -491,24 +498,17 @@ test('Transactions includes local database controls and a responsive transaction
   const transactionsPage = page.locator('[data-page-id="transactions"]');
   const view = transactionsPage.locator('[data-view-layout="full-view"]');
   const scroll = view.locator('.table-scroll');
-  await expect(transactionsPage.getByRole('heading', { name: 'Local database' })).toBeVisible();
-  await expect(transactionsPage.locator('.configuration-database-counts')).toContainText('13Audits');
-  await expect(transactionsPage.locator('.reset-dashboard-trigger')).toBeVisible();
+  await expect(transactionsPage.locator('[data-view-id]')).toHaveCount(1);
+  await expect(transactionsPage.getByRole('heading', { name: 'Local database' })).toHaveCount(0);
   await expect(root).toHaveClass(/dashboard-full-view/);
-  await expect(transactionsPage.locator('.line-chart-series')).toHaveCount(2);
-  await expect(transactionsPage.locator('.chart-legend')).toContainText('Known runs');
-  await expect(transactionsPage.locator('.chart-legend')).toContainText('Runs with record data');
-  expect(await transactionsPage.getByRole('button', { name: 'Table' }).evaluate(
-    (toggle) => toggle.closest('.filter-bar')?.parentElement === toggle.closest('.dashboard-page')
-  )).toBe(true);
-  await transactionsPage.getByRole('button', { name: 'Table' }).click();
+  await expect(transactionsPage.locator('.line-chart-series')).toHaveCount(0);
   await expect(view).toBeVisible();
   await expect(view.locator('[data-lazy-list]')).toHaveCount(1);
   await expect(view.getByRole('searchbox', { name: 'Filter Transaction entries' })).toBeVisible();
   await expect(view.getByRole('cell', { name: 'ingest-jsonl' }).first()).toBeVisible();
   const headings = await view.locator('thead tr').first().getByRole('columnheader').allTextContents();
   expect(headings.at(-1)?.trim()).toBe('Created');
-  expect(headings).not.toEqual(expect.arrayContaining([
+  expect(headings).toEqual(expect.arrayContaining([
     'Committed records',
     'Records',
     'Raw payload records',
@@ -526,17 +526,10 @@ test('Transactions includes local database controls and a responsive transaction
   });
   await expect(root).toHaveClass(/dashboard-full-view-scrolled/);
 
-  await transactionsPage.getByRole('button', { name: 'Cards' }).click();
-  await transactionsPage.getByRole('button', { name: 'Chart' }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(root).not.toHaveClass(/dashboard-full-view-scrolled/);
   await expect(page.locator('.org-sidebar')).toBeVisible();
   await expect(transactionsPage.locator(':scope > .filter-bar')).toBeHidden();
-  const mobileViewModeToggle = page.locator('.mobile-view-mode-toggle');
-  await expect(mobileViewModeToggle).toBeVisible();
-  await expect(mobileViewModeToggle).toHaveAttribute('aria-label', 'Switch to Table view');
-  await expect(view).toBeHidden();
-  await mobileViewModeToggle.click();
   await expect(view).toBeVisible();
   await expect(root).toHaveClass(/dashboard-full-view/);
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);

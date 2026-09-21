@@ -801,14 +801,25 @@ describe('presenter built-in and custom pages', () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {
-        'transactions-table': {
-          source: 'transactions-table',
+        transactions: {
+          source: 'transactions',
           rows: [{
+            id: 'ingest-jsonl:current:logs-1',
             kind: 'ingest-jsonl',
-            'created-at': '2026-09-02T12:00:00Z',
-            'payload-scope': 'https://dashboard.example/gh-aw-logs-shards/logs-1.jsonl',
-            'raw-runs': 8,
-            'agentic-runs': 6
+            createdAt: '2026-09-02T12:00:00Z',
+            payloadScope: 'https://dashboard.example/gh-aw-logs-shards/logs-1.jsonl',
+            payloadHash: 'sha256:abc123',
+            payloadEtag: 'etag-1',
+            records: 10,
+            committedRecords: 9,
+            rawPayloadRecords: 8,
+            rawRuns: 8,
+            agenticRunRecords: 7,
+            agenticRuns: 6,
+            duplicateRawRunObservations: 1,
+            duplicateAgenticRunObservations: 2,
+            unenrichedRuns: 3,
+            error: ''
           }],
           metadata
         }
@@ -821,9 +832,9 @@ describe('presenter built-in and custom pages', () => {
       await vi.waitFor(() => expect(rendered.querySelector('[data-page-id="transactions"]')?.hasAttribute('data-page-pending')).toBe(false));
       const page = rendered.querySelector('[data-page-id="transactions"]');
       expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
-      expect(page?.querySelectorAll('.line-chart-series')).toHaveLength(2);
-      expect(page?.querySelector('.chart-legend')?.textContent).toContain('Known runs');
-      expect(page?.querySelector('.chart-legend')?.textContent).toContain('Runs with record data');
+      expect(page?.querySelectorAll('[data-view-id]')).toHaveLength(1);
+      expect(page?.querySelector('.line-chart-series')).toBeNull();
+      expect(page?.textContent).not.toContain('Local database');
       expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
       expect(page?.querySelector('input[type="search"]')).not.toBeNull();
       expect(page?.textContent).toContain('ingest-jsonl');
@@ -831,7 +842,7 @@ describe('presenter built-in and custom pages', () => {
       expect(page?.querySelector('tbody a')?.getAttribute('href')).toBe('https://dashboard.example/gh-aw-logs-shards/logs-1.jsonl');
       const headings = [...page?.querySelectorAll('thead tr:first-child th') ?? []].map((heading) => heading.textContent?.trim());
       expect(headings.at(-1)).toBe('Created');
-      expect(headings).not.toEqual(expect.arrayContaining([
+      expect(headings).toEqual(expect.arrayContaining([
         'Committed records',
         'Records',
         'Raw payload records',
