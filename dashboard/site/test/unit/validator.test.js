@@ -82,16 +82,6 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
   });
 
-  it('validates declarative overview counter animations', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    const overview = document.dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'overview');
-    const floor = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'factory-floor');
-    floor.config.animate = 'number';
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-    floor.config.animate = 'counter';
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
-  });
-
   it('accepts supported dashboard CLI actions', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     document.dashboard['cli-actions'].push({
@@ -1139,42 +1129,27 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('defines Overview as declarative factory header and floor elements', () => {
+  it('defines Overview as native database counters', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const page = document.dashboard.pages.find((/** @type {{ id: string }} */ candidate) =>
       candidate.id === 'overview'
     );
 
-    expect(page.views).toEqual([
-      expect.objectContaining({
-        id: 'overview-header',
-        description: 'Repositories registered counts distinct registered targets and compares them with retained completed delivery evidence in the selected horizon.',
-        data: { sources: expect.arrayContaining([
-          'overview-outcome-summary',
-          'overview-run-summary',
-          'overview-factory-status',
-          'overview-rhythm'
-        ]) },
-        mark: 'element',
-        element: 'factory-header',
-        layout: 'full'
-      }),
-      expect.objectContaining({
-        id: 'overview-floor',
-        data: { sources: expect.arrayContaining([
-          'overview-outcome-summary',
-          'overview-run-summary',
-          'overview-dispatch-summary',
-          'overview-value-summary',
-          'overview-registered-repository-summary',
-          'overview-worker-summary'
-        ]) },
-        mark: 'element',
-        element: 'factory-floor',
-        config: expect.objectContaining({ animate: 'number' }),
-        layout: 'full'
-      })
+    expect(page.views).toHaveLength(8);
+    expect(page.views.every((/** @type {{ mark?: string }} */ view) => view.mark === 'metric')).toBe(true);
+    expect(page.views.map((/** @type {{ data?: { source?: string } }} */ view) => view.data?.source)).toEqual([
+      'database-campaign-count',
+      'database-repository-count',
+      'database-workflow-count',
+      'database-run-count',
+      'database-domain-count',
+      'database-tool-count',
+      'database-audit-count',
+      'database-issue-count'
     ]);
+    expect(document.dashboard.queries.some((/** @type {{ name?: string }} */ query) =>
+      query.name === 'overview-rhythm'
+    )).toBe(false);
     expect(validateDashboardDocument(authoritativeDashboardSource).ok).toBe(true);
   });
 

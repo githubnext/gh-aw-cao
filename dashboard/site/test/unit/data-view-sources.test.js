@@ -213,22 +213,38 @@ describe('canonical view sources', () => {
     }
   });
 
-  it('resolves the Overview repository metric with native IndexedDB count', async () => {
+  it('resolves every Overview counter with native IndexedDB counts', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
     const collectionReads = vi.spyOn(IDBObjectStore.prototype, 'getAll');
     const nativeCounts = vi.spyOn(IDBObjectStore.prototype, 'count');
+    const requested = [
+      'database-campaign-count',
+      'database-repository-count',
+      'database-workflow-count',
+      'database-run-count',
+      'database-domain-count',
+      'database-tool-count',
+      'database-audit-count',
+      'database-issue-count'
+    ];
 
     const result = await queryNativeCountSources(
       indexedDB,
       sources,
       dashboardQueries,
-      ['overview-registered-repository-summary']
+      requested
     );
 
-    expect(result['overview-registered-repository-summary'].rows).toEqual([
-      { 'registered-repositories': 1 }
-    ]);
-    expect(nativeCounts).toHaveBeenCalledOnce();
+    expect(Object.keys(result)).toEqual(requested);
+    expect(result['database-campaign-count'].rows).toEqual([{ campaigns: 1 }]);
+    expect(result['database-repository-count'].rows).toEqual([{ repositories: 1 }]);
+    expect(result['database-workflow-count'].rows).toEqual([{ workflows: 1 }]);
+    expect(result['database-run-count'].rows).toEqual([{ runs: 1 }]);
+    expect(result['database-domain-count'].rows).toEqual([{ domains: 0 }]);
+    expect(result['database-tool-count'].rows).toEqual([{ tools: 1 }]);
+    expect(result['database-audit-count'].rows).toEqual([{ audits: 1 }]);
+    expect(result['database-issue-count'].rows).toEqual([{ issues: 1 }]);
+    expect(nativeCounts).toHaveBeenCalledTimes(8);
     expect(collectionReads).not.toHaveBeenCalled();
   });
 

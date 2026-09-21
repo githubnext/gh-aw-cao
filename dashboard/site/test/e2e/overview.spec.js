@@ -24,15 +24,13 @@ function source(name, rows) {
 }
 
 const sources = {
-  'overview-outcome-summary': source('overview-outcome-summary', [{ 'useful-outputs': 2, 'delivered-repositories': 3 }]),
-  'overview-run-summary': source('overview-run-summary', [{ 'successful-runs': 20, 'failed-runs': 2, 'active-runs': 4, 'active-live': 1, 'active-review': 3 }]),
-  'overview-dispatch-summary': source('overview-dispatch-summary', [{ dispatches: 12, 'failed-dispatches': 1 }]),
-  'overview-delivery-summary': source('overview-delivery-summary', [{ 'delivered-repositories': 3 }]),
-  'overview-value-summary': source('overview-value-summary', [{ 'value-gains': 1 }]),
-  'overview-factory-status': source('overview-factory-status', [{ 'factory-heading': 'Your factory is delivering value.' }]),
-  'overview-registered-repository-summary': source('overview-registered-repository-summary', [{ 'registered-repositories': 6 }]),
-  'overview-worker-summary': source('overview-worker-summary', [{ workers: 3 }]),
   'database-campaign-count': source('database-campaign-count', [{ campaigns: 2 }]),
+  'database-repository-count': source('database-repository-count', [{ repositories: 6 }]),
+  'database-workflow-count': source('database-workflow-count', [{ workflows: 9 }]),
+  'database-run-count': source('database-run-count', [{ runs: 20 }]),
+  'database-domain-count': source('database-domain-count', [{ domains: 4 }]),
+  'database-tool-count': source('database-tool-count', [{ tools: 12 }]),
+  'database-audit-count': source('database-audit-count', [{ audits: 15 }]),
   'database-issue-count': source('database-issue-count', [{ issues: 5 }]),
   'overview-needs-attention-preview': source('overview-needs-attention-preview', [
     {
@@ -60,33 +58,7 @@ const sources = {
         label: `View issue ${id}`
       }
     }))
-  ]),
-  'campaign-inventory': source('campaign-inventory', [{
-    campaign: 'aw-doctor',
-    'campaign-name': 'AW Doctor',
-    'campaign-dashboard-link': {
-      'dashboard-href': '#page-campaign-insights?campaign=aw-doctor',
-      'dashboard-label': 'View AW Doctor campaign dashboard'
-    },
-    workflows: 3,
-    modes: ['review'],
-    registration: ['active'],
-    runs: 20,
-    'value-created': 7,
-    dispatches: 12,
-    aic: 42
-  }]),
-  'overview-rhythm': source('overview-rhythm', [{
-    rhythm: {
-      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((label, index) => ({
-        label,
-        date: `2026-09-${String(14 + index).padStart(2, '0')}`,
-        current: index + 1,
-        previous: 7 - index,
-        reached: index < 3
-      }))
-    }
-  }])
+  ])
 };
 
 test.beforeEach(async ({ page, context }) => {
@@ -109,7 +81,7 @@ test.beforeEach(async ({ page, context }) => {
   await page.goto('http://dashboard.test/#page-overview');
 });
 
-test('declarative Overview views preserve desktop and mobile behavior', async ({ page }) => {
+test('declarative Overview keeps only database counters on desktop and mobile', async ({ page }) => {
   /** @param {Record<string, unknown>} pageDefinition */
   const render = async (pageDefinition) => {
     await page.evaluate(async ({ documentModel, sourceData, presenterModuleUrl }) => {
@@ -136,67 +108,31 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
   };
 
   for (const viewport of [
-    { width: 1440, height: 900, introColumns: 2, stationColumns: 6 },
-    { width: 390, height: 844, introColumns: 1, stationColumns: 2 }
+    { width: 1440, height: 900 },
+    { width: 390, height: 844 }
   ]) {
     await page.setViewportSize(viewport);
-    const factory = await render(overviewPage);
+    const overview = await render(overviewPage);
 
-    await expect(factory).toBeVisible();
-    await expect(factory.locator(':scope > [data-view-id="overview-header"]')).toHaveClass(/factory-intro/);
-    await expect(factory.locator(':scope > [data-view-id="overview-floor"]')).toHaveClass(/factory-floor/);
-    await expect(factory.locator(':scope > [data-view-id="overview-campaigns"]')).toHaveCount(0);
-    await expect(factory.locator(':scope > .factory-intro + .factory-floor')).toHaveCount(1);
+    await expect(overview).toBeVisible();
+    await expect(overview.locator(':scope > [data-view-id^="overview-"]')).toHaveCount(8);
+    await expect(overview.locator('.factory-intro, .factory-rhythm, .factory-floor')).toHaveCount(0);
     const notifications = page.locator('[data-page-id="notifications"]');
     await expect(notifications).toHaveCount(0);
     await expect(notifications.locator('.entity-card-list-card')).toHaveCount(0);
-    await expect(factory.getByRole('heading', { name: 'Your factory is delivering value.' })).toBeVisible();
-    await expect(factory.locator('.factory-running-active')).toBeVisible();
-    await expect(factory.locator('.factory-rhythm-day')).toHaveCount(7);
-    const rhythmBars = factory.locator('.factory-rhythm-bar-pair i:not([hidden])');
-    await expect(rhythmBars.first()).toHaveCSS('animation-name', 'factory-rhythm-bar-grow');
-    expect(await rhythmBars.last().evaluate((element) => getComputedStyle(element).animationDelay)).toBe('0.21s');
-    await expect(factory.locator('.factory-station')).toHaveCount(6);
-    await expect(factory.locator('.factory-station').nth(0)).toContainText('Campaigns2');
-    await expect(factory.locator('.factory-station').nth(1)).toContainText('Repositories registered6');
-    await expect(factory.locator('.factory-station').nth(2)).toContainText('Issues & PRs5');
-    await expect(factory.locator('.factory-station').nth(0).locator('small')).toHaveText('');
-    await expect(factory.locator('.factory-station').nth(2).locator('small')).toHaveText('');
-    expect(await factory.locator('.factory-station a').count()).toBeGreaterThan(0);
-    expect(await page.locator('.factory-intro').evaluate((element) =>
-      getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean).length
-    )).toBe(viewport.introColumns);
-    expect(await page.locator('.factory-stations').evaluate((element) =>
-      getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean).length
-    )).toBe(viewport.stationColumns);
+    await expect(overview.locator('[data-metric-value="campaigns"]')).toHaveText('2');
+    await expect(overview.locator('[data-metric-value="repositories"]')).toHaveText('6');
+    await expect(overview.locator('[data-metric-value="workflows"]')).toHaveText('9');
+    await expect(overview.locator('[data-metric-value="runs"]')).toHaveText('20');
+    await expect(overview.locator('[data-metric-value="domains"]')).toHaveText('4');
+    await expect(overview.locator('[data-metric-value="tools"]')).toHaveText('12');
+    await expect(overview.locator('[data-metric-value="audits"]')).toHaveText('15');
+    await expect(overview.locator('[data-metric-value="issues"]')).toHaveText('5');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   }
 });
 
-test('disables Overview rhythm animation when reduced motion is preferred', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.evaluate(async ({ documentModel, sourceData, presenterModuleUrl }) => {
-    const { renderDashboard } = await import(presenterModuleUrl);
-    const rendered = renderDashboard({ document: documentModel, sources: sourceData });
-    document.querySelector('#root')?.replaceChildren(rendered);
-  }, {
-    documentModel: {
-      'language-version': dashboardDocument['language-version'],
-      dashboard: {
-        id: 'overview-reduced-motion',
-        title: 'Overview reduced motion',
-        'card-templates': dashboardDocument.dashboard['card-templates'],
-        pages: [overviewPage]
-      }
-    },
-    sourceData: sources,
-    presenterModuleUrl: 'http://dashboard.test/src/presenter.js'
-  });
-
-  await expect(page.locator('.factory-rhythm-bar-pair i:not([hidden])').first()).toHaveCSS('animation-name', 'none');
-});
-
-test('renders the Overview structure before mixed page data resolves', async ({ page }) => {
+test('renders an Overview loading state before counter data resolves', async ({ page }) => {
   const immediate = await page.evaluate(async ({ documentModel, presenterModuleUrl, sourceStoreModuleUrl }) => {
     const [{ renderDashboard }, { configureSourceLoader }] = await Promise.all([
       import(presenterModuleUrl),
@@ -221,16 +157,8 @@ test('renders the Overview structure before mixed page data resolves', async ({ 
     return {
       sourceLoadCalls,
       pageLoadCalls,
-      header: Boolean(overview?.querySelector(':scope > .custom-view-grid > .factory-intro')),
-      floor: Boolean(overview?.querySelector(':scope > .custom-view-grid > .factory-floor')),
       pageSkeletons: overview?.querySelectorAll('.dashboard-view-skeleton').length,
-      pageBusy: overview?.getAttribute('aria-busy'),
-      headerBusy: overview?.querySelector('.factory-intro')?.getAttribute('aria-busy'),
-      floorBusy: overview?.querySelector('.factory-floor')?.getAttribute('aria-busy'),
-      runningPending: overview?.querySelectorAll('.factory-running-pending').length,
-      headingPending: overview?.querySelectorAll('.factory-heading-pending').length,
-      rhythmPending: overview?.querySelectorAll('.factory-rhythm-pending').length,
-      stationsPending: overview?.querySelectorAll('.factory-station-pending').length
+      pageBusy: overview?.getAttribute('aria-busy')
     };
   }, {
     documentModel: {
@@ -246,17 +174,9 @@ test('renders the Overview structure before mixed page data resolves', async ({ 
   });
 
   expect(immediate).toEqual({
-    sourceLoadCalls: 13,
-    pageLoadCalls: 0,
-    header: true,
-    floor: true,
-    pageSkeletons: 0,
-    pageBusy: null,
-    headerBusy: null,
-    floorBusy: null,
-    runningPending: 1,
-    headingPending: 1,
-    rhythmPending: 1,
-    stationsPending: 6
+    sourceLoadCalls: 0,
+    pageLoadCalls: 1,
+    pageSkeletons: 1,
+    pageBusy: 'true'
   });
 });
