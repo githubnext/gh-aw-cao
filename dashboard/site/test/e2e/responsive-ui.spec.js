@@ -108,7 +108,6 @@ test('mobile horizontal bar labels preserve readable suffixes beside bounded bar
 
   const firstRow = page.locator('.horizontal-bar-chart-row').first();
   const label = firstRow.locator('.horizontal-bar-chart-label');
-  const track = firstRow.locator('.horizontal-bar-chart-track');
   await expect(label).toHaveCSS('direction', 'rtl');
 
   const layout = await firstRow.evaluate((row) => {
