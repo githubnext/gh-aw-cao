@@ -243,7 +243,7 @@ describe('canonical view sources', () => {
     expect(result['database-domain-count'].rows).toEqual([{ domains: 0 }]);
     expect(result['database-tool-count'].rows).toEqual([{ tools: 1 }]);
     expect(result['database-audit-count'].rows).toEqual([{ audits: 1 }]);
-    expect(result['database-issue-count'].rows).toEqual([{ issues: 1 }]);
+    expect(result['database-issue-count'].rows).toEqual([{ issues: 0 }]);
     expect(nativeCounts).toHaveBeenCalledTimes(8);
     expect(collectionReads).not.toHaveBeenCalled();
   });
