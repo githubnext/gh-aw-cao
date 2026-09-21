@@ -1305,7 +1305,7 @@ export async function ingestGhAwLogDirectory(indexedDB, contextPath, logDirector
 }
 
 /**
- * Ingests every `--cached-logs` wildcard shard file in a directory one by
+ * Ingests every `--cached-jsonl` wildcard shard file in a directory one by
  * one, using a payload scope derived from each shard's file name so the
  * transactions table can skip shards whose content hash was already
  * recorded instead of reprocessing the entire shard set on every run.
@@ -1401,7 +1401,7 @@ async function ingestJsonlFile(indexedDB, inputPath, options = {}) {
 
 /**
  * Computes SHA-256 checksums for the activity snapshot payloads: the
- * SQLite projection and every retained `--cached-logs` wildcard shard file.
+ * SQLite projection and every retained `--cached-jsonl` wildcard shard file.
  * Missing files are tolerated (an
  * absent shard directory yields no shard entries) so this can run
  * immediately after ingestion in the same workflow step.

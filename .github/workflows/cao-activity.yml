@@ -185,7 +185,6 @@ jobs:
             core.info('Workflow discovery completed')
 
       - name: Download agentic workflow logs
-        continue-on-error: true
         env:
           GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
           REPORT_AIC_CACHE: ${{ runner.temp }}/cao-gh-aw-logs

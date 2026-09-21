@@ -41,7 +41,7 @@ if (args[0] === "api") {
   process.exit(0);
 }
 const repository = args[args.indexOf("--repo") + 1];
-const shardPattern = args[args.indexOf("--cached-logs") + 1];
+const shardPattern = args[args.indexOf("--cached-jsonl") + 1];
 const shardPath = shardPattern.replace(/\\*$/, "") + "fixture.jsonl";
 fs.mkdirSync(path.dirname(shardPath), { recursive: true });
 fs.writeFileSync(shardPath, JSON.stringify({ schema_version: 2, kind: "run", run: {
@@ -94,8 +94,8 @@ process.stderr.write("Fetched 1 run\\n");
     ]);
     assert.equal(args.filter((value) => value === "--prune-older-runs").length, 1);
     const shardPrefix = path.join(item.root, "cache", "gh-aw-logs-shards", "github-gh-aw-logs-");
-    assert.deepEqual(args.slice(args.indexOf("--cached-logs"), args.indexOf("--cached-logs") + 2), [
-      "--cached-logs",
+    assert.deepEqual(args.slice(args.indexOf("--cached-jsonl"), args.indexOf("--cached-jsonl") + 2), [
+      "--cached-jsonl",
       `${shardPrefix}*`,
     ]);
     assert.equal(args.filter((value) => value === "logs").length, 1);

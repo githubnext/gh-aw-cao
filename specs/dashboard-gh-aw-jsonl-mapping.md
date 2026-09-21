@@ -28,7 +28,7 @@ projections but SHALL NOT emit canonical Job observations.
 `cao.json` SHALL resolve the bounded set of repositories that Activity may
 inspect; it SHALL NOT provide Workflow or Run identity. Activity SHALL invoke
 `gh aw logs --repo OWNER/REPOSITORY` once for each resolved repository and SHALL
-give each repository an independent `--cached-logs` wildcard prefix. Every
+give each repository an independent `--cached-jsonl` wildcard prefix. Every
 retained shard is part of the same schema-v2 runtime observation source.
 
 Canonical ingestion SHALL process shards individually and use their content

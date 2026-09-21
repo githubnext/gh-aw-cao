@@ -25,8 +25,8 @@ keeping cache-write permission out of the collection job. An incomplete
 extraction fails that job instead of silently skipping the cache save, which
 would strand consumers on a cache miss.
 
-Each `gh aw logs` invocation uses `--cached-logs` with a repository-specific
-trailing wildcard shard prefix instead of a single `--cached-jsonl` file. The wildcard shard
+Each `gh aw logs` invocation uses `--cached-jsonl` with a repository-specific
+trailing wildcard shard prefix instead of a single growing file. The wildcard shard
 directory itself is part of the shared activity cache, so `gh aw logs`
 recognizes previously discovered runs across job runs without re-seeding a
 snapshot. After a successful collection, `cao compact-jsonl` consolidates that

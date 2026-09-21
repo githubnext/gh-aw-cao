@@ -296,7 +296,7 @@ Activity acquisition SHALL use one runtime observation path:
 ```text
 cao.json repository scope
   -> one gh aw logs --repo call per resolved repository
-  -> repository-specific --cached-logs wildcard shards
+  -> repository-specific --cached-jsonl wildcard shards
   -> canonical JSONL ingestion
   -> SQLite and IndexedDB projections
   -> Dashboard Language queries
@@ -321,7 +321,7 @@ runtime or inventory completeness. Deleted registry entries SHALL NOT appear as
 current Workflows, and local compilation SHALL NOT convert missing or unknown
 registry evidence into an active runtime state.
 
-Each resolved Repository SHALL have an independent `--cached-logs` wildcard
+Each resolved Repository SHALL have an independent `--cached-jsonl` wildcard
 prefix in the shared shard directory. Repeated collection SHALL reuse known
 shards, and canonical ingestion SHALL skip a shard whose content hash already
 exists in the Transaction ledger. Repository collection MAY be serial to bound

@@ -55,7 +55,7 @@ for target_repository in "${repositories[@]}"; do
     --repo "$target_repository" \
     --output "$output_directory/$cache_name" \
     --summary-file "" \
-    --cached-logs "${shard_prefix}*" \
+    --cached-jsonl "${shard_prefix}*" \
     --artifacts usage \
     --start-date "-${window_days}d" \
     --cache-before "-${window_days}d" \
