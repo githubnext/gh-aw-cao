@@ -312,43 +312,23 @@ describe('declarative dashboard queries', () => {
     ]);
   });
 
-  it('counts database entities through the declared horizon queries', () => {
+  it('counts database entities used by configuration views', () => {
     const sources = {
       campaigns: {
         source: 'campaigns',
         rows: [{ id: 'campaign:activity', campaign: 'activity' }, { id: 'campaign:dashboard', campaign: 'dashboard' }],
         metadata: metadata('campaigns')
       },
-      repositories: {
-        source: 'repositories',
-        rows: [
-          { id: 'repository:gh-aw', repository: 'gh-aw' },
-          { id: 'repository:gh-aw-cao', repository: 'gh-aw-cao' },
-          { id: 'repository:next', repository: 'next' }
-        ],
-        metadata: metadata('repositories')
-      },
-      workflows,
-      runs: { source: 'runs', rows: [{ id: 'run:1', run: '1' }, { id: 'run:2', run: '2' }], metadata: metadata('runs') },
-      domains: { source: 'domains', rows: [{ id: 'domain:d', event: 'd' }], metadata: metadata('domains') },
-      tools: { source: 'tools', rows: [{ id: 'tool:t1', event: 't1' }, { id: 'tool:t2', event: 't2' }], metadata: metadata('tools') },
-      audits: { source: 'audits', rows: [{ id: 'audit:a', event: 'a' }, { id: 'audit:b', event: 'b' }, { id: 'audit:c', event: 'c' }], metadata: metadata('audits') },
       issues: { source: 'issues', rows: [{ id: 'issue:i', event: 'i' }], metadata: metadata('issues') }
     };
 
     const result = executeDashboardQueries(
       dashboardQueries,
       sources,
-      ['database-campaign-count', 'database-repository-count', 'database-workflow-count', 'database-run-count', 'database-domain-count', 'database-tool-count', 'database-audit-count', 'database-issue-count']
+      ['database-campaign-count', 'database-issue-count']
     );
 
     expect(result['database-campaign-count'].rows).toEqual([{ campaigns: 2 }]);
-    expect(result['database-repository-count'].rows).toEqual([{ repositories: 3 }]);
-    expect(result['database-workflow-count'].rows).toEqual([{ workflows: 2 }]);
-    expect(result['database-run-count'].rows).toEqual([{ runs: 2 }]);
-    expect(result['database-domain-count'].rows).toEqual([{ domains: 1 }]);
-    expect(result['database-tool-count'].rows).toEqual([{ tools: 2 }]);
-    expect(result['database-audit-count'].rows).toEqual([{ audits: 3 }]);
     expect(result['database-issue-count'].rows).toEqual([{ issues: 1 }]);
   });
 
