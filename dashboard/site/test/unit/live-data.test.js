@@ -19,6 +19,7 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain('renderSources({}, "loading")');
     expect(preview).toContain("subscribeWorkerLoadingProgress");
     expect(preview).toContain("setLoadingProgressState(document, state)");
+    expect(preview).toContain('loading: state === "loading"');
     expect(preview).not.toContain("renderAgenticLoader");
     expect(preview).not.toContain("AGENTIC_LOADER");
     expect(preview).not.toContain("Loading dashboard data…");

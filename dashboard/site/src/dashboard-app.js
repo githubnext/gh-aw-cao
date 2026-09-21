@@ -334,6 +334,7 @@
           sources,
           commitSha: document.querySelector('meta[name="dashboard-version"]')?.getAttribute("content"),
           prepared,
+          loading: state === "loading",
           loadPageSources,
           tableRowLimit,
         });

@@ -17,6 +17,9 @@ describe('loading progress', () => {
     const bar = /** @type {HTMLElement | null} */ (document.querySelector('.loading-progress'));
 
     expect(bar?.style.transform).toBe('scaleX(0.08)');
+    expect(bar?.getAttribute('role')).toBe('progressbar');
+    expect(bar?.getAttribute('aria-label')).toBe('Loading dashboard data');
+    expect(bar?.getAttribute('aria-valuenow')).toBe('8');
   });
 
   it('keeps a shimmer animation running while progress waits to complete', () => {
@@ -41,6 +44,7 @@ describe('loading progress', () => {
 
     const bar = /** @type {HTMLElement | null} */ (document.querySelector('.loading-progress'));
     expect(bar?.style.transform).toBe('scaleX(0.08)');
+    expect(bar?.getAttribute('aria-valuenow')).toBe('8');
   });
 
   it('waits for every worker operation before completing', () => {
@@ -58,6 +62,7 @@ describe('loading progress', () => {
 
     expect(bar?.classList.contains('loading-progress-complete')).toBe(true);
     expect(bar?.style.transform).toBe('scaleX(1)');
+    expect(bar?.getAttribute('aria-valuenow')).toBe('100');
     vi.advanceTimersByTime(240);
     expect(document.querySelectorAll('.loading-progress')).toHaveLength(0);
     expect(document.querySelectorAll('style[data-loading-progress-styles]')).toHaveLength(1);

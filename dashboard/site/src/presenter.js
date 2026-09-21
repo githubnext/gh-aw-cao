@@ -95,7 +95,7 @@ import {
  */
 
 /**
- * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, commitSha?: string | null, prepared?: boolean, tableRowLimit?: number, loadPageSources?: PageSourceLoader }} PresentationInput
+ * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, commitSha?: string | null, prepared?: boolean, loading?: boolean, tableRowLimit?: number, loadPageSources?: PageSourceLoader }} PresentationInput
  */
 
 /**
@@ -175,6 +175,8 @@ export function renderDashboard(input) {
   const cardTemplates = Object.fromEntries((document.dashboard['card-templates'] ?? []).map((template) => [template.id, template]));
   const reusableViews = document.dashboard.views ?? [];
   const horizonRange = resolveDashboardHorizon(document.dashboard);
+  const hasData = Object.values(rawSources).some((source) => Array.isArray(source?.rows) && source.rows.length > 0);
+  const showInitialLoadingSkeleton = input.loading === true && !hasData;
   const dataHorizon = resolveDataHorizon(rawSources);
   const githubUrlBase = typeof document.dashboard['github-url-base'] === 'string' && document.dashboard['github-url-base'].length > 0
     ? document.dashboard['github-url-base']
@@ -273,7 +275,9 @@ export function renderDashboard(input) {
           const page = resolvedPage();
           if (!page) throw new Error(`Dashboard page "${pageId}" is not available.`);
           updateHorizon(pageSources);
-          const rendered = renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, effectiveQueryContext);
+          const rendered = showInitialLoadingSkeleton && !rendersBeforePageSources
+            ? renderPageLoadingSkeleton(page)
+            : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, effectiveQueryContext);
           debugPerformance('page render', {
             pageId,
             phase: renderCount++ === 0 ? 'initial' : 'update',
@@ -477,6 +481,7 @@ function queryParametersMatch(left, right) {
 function showPageSkeleton(page, routeTabs) {
   page.replaceChildren(...(routeTabs ? [routeTabs, renderPageSkeleton()] : [renderPageSkeleton()]));
   page.setAttribute('aria-busy', 'true');
+  page.setAttribute('aria-label', 'Loading view');
 }
 
 /**
@@ -657,14 +662,23 @@ function renderPagePlaceholder(page) {
 }
 
 /**
+ * @param {PresentableBuiltInPage | PresentableCustomPage} page
+ * @returns {HTMLElement}
+ */
+function renderPageLoadingSkeleton(page) {
+  const placeholder = renderPagePlaceholder(page);
+  placeholder.removeAttribute('data-page-pending');
+  placeholder.setAttribute('aria-busy', 'true');
+  placeholder.setAttribute('aria-label', 'Loading view');
+  placeholder.append(renderPageSkeleton());
+  return placeholder;
+}
+
+/**
  * @returns {HTMLElement}
  */
 function renderPageSkeleton() {
-  const skeleton = renderSkeletonBars('dashboard-view-skeleton');
-  skeleton.removeAttribute('aria-hidden');
-  skeleton.setAttribute('role', 'status');
-  skeleton.setAttribute('aria-label', 'Loading view');
-  return skeleton;
+  return renderSkeletonBars('dashboard-view-skeleton');
 }
 
 /**
