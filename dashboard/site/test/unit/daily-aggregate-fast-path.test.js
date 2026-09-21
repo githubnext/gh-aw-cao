@@ -25,7 +25,10 @@ function dispatchSummaryQuery(overrides = {}) {
   };
 }
 
-/** @param {Partial<Record<string, unknown>>} overrides */
+/**
+ * @param {string} day
+ * @param {Partial<Record<string, unknown>>} [overrides]
+ */
 function dailyAggregate(day, overrides = {}) {
   return {
     day,
