@@ -54,12 +54,23 @@ export function deriveDataHealthCalloutSources(sources) {
   const coverageRows = COVERAGE_CONTRACTS.map((contract) => coverageDiagnostic(contract, sources, reconciliationRows));
   const metadata = combineSourceMetadata(Object.values(sources));
   return {
+    ...deriveDataHealthCollectionSource(sources),
+    'data-health-coverage': healthSource('data-health-coverage', coverageRows, metadata)
+  };
+}
+
+/**
+ * Derives collection status from source metadata without reading canonical rows.
+ * @param {Record<string, LogicalSourceInput>} sources
+ * @returns {Record<string, LogicalSourceInput>}
+ */
+export function deriveDataHealthCollectionSource(sources) {
+  return {
     'data-health-collections': healthSource(
       'data-health-collections',
       collectionDiagnostics(sources),
-      metadata
-    ),
-    'data-health-coverage': healthSource('data-health-coverage', coverageRows, metadata)
+      combineSourceMetadata(Object.values(sources))
+    )
   };
 }
 

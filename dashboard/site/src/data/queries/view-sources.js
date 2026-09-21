@@ -1198,7 +1198,7 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   }
   const requested = new Set(sourceNames);
   const projectedNames = new Set(requested);
-  const healthRequested = requested.has('data-health-collections') || requested.has('data-health-coverage');
+  const healthRequested = requested.has('data-health-coverage');
   if (healthRequested) {
     for (const sourceName of [
       'repositories',

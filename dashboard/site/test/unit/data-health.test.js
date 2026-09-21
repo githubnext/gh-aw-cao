@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deriveDataHealthSources } from '../../src/data-health.js';
+import { deriveDataHealthCollectionSource, deriveDataHealthSources } from '../../src/data-health.js';
 
 const metadata = /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
   'source-id': 'fixture',
@@ -51,6 +51,18 @@ function completeSources() {
 }
 
 describe('coverage and collection provenance', () => {
+  it('derives collection diagnostics from metadata without requiring canonical rows', () => {
+    const sources = completeSources();
+    for (const source of Object.values(sources)) source.rows = [];
+
+    const health = deriveDataHealthCollectionSource(sources)['data-health-collections'];
+
+    expect(health.rows.find((item) => item.source === 'runs')).toMatchObject({
+      source: 'runs',
+      state: 'complete'
+    });
+  });
+
   it('calculates authoritative expected-versus-observed coverage', () => {
     const sources = completeSources();
     sources.workflows.metadata['coverage-expected'] = 100;

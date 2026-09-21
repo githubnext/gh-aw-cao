@@ -396,6 +396,21 @@ describe('canonical view sources', () => {
     expect(metrics?.totalMs).toBeGreaterThanOrEqual(metrics?.databaseMs ?? 0);
   });
 
+  it('does not read canonical stores for metadata-only collection health', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+    /** @type {{ recordsRead: number, stores: string[] } | undefined} */
+    let metrics;
+
+    await queryCanonicalViewSources(
+      indexedDB,
+      sources,
+      ['data-health-collections'],
+      { onMetrics: (value) => { metrics = value; } }
+    );
+
+    expect(metrics).toMatchObject({ recordsRead: 0, stores: [] });
+  });
+
   it('projects campaign rows and workflow membership from canonical records', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
 
