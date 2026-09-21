@@ -13,13 +13,11 @@ describe('data-worker ingestion progress', () => {
     expect(estimateRemainingTime(1_000_000, 1_000_000, 2_000)).toBeNull();
   });
 
-  it('reports preparation before the first JSONL record is read', () => {
+  it('immediately reports preparation before the first JSONL record is read', () => {
     vi.useFakeTimers();
     const postMessage = vi.fn();
     const progress = startIngestionProgress({ postMessage });
     progress.start();
-
-    vi.advanceTimersByTime(3_000);
 
     expect(postMessage).toHaveBeenNthCalledWith(2, {
       type: 'notification',
@@ -27,28 +25,24 @@ describe('data-worker ingestion progress', () => {
         message: 'Preparing data...',
         icon: 'download',
         detailsSubtitle: expect.stringContaining('local copy'),
-        details: ['Preparing data... +3s'],
+        details: ['Preparing data... +0s'],
         duration: 0
       })
     });
     progress.complete();
   });
 
-  it('does not publish when the delayed report was already queued at completion', () => {
-    let delayedReport = () => {};
-    vi.spyOn(globalThis, 'setTimeout').mockImplementationOnce((callback) => {
-      delayedReport = /** @type {() => void} */ (callback);
-      return /** @type {ReturnType<typeof setTimeout>} */ (/** @type {unknown} */ (1));
-    });
+  it('stops publishing after completion', () => {
+    vi.useFakeTimers();
     const postMessage = vi.fn();
     const progress = startIngestionProgress({ postMessage });
     progress.start();
 
     progress.complete();
-    delayedReport();
+    vi.advanceTimersByTime(1_000);
 
-    expect(postMessage).toHaveBeenCalledTimes(3);
-    expect(postMessage).toHaveBeenNthCalledWith(3, {
+    expect(postMessage).toHaveBeenCalledTimes(4);
+    expect(postMessage).toHaveBeenNthCalledWith(4, {
       type: 'notification',
       notification: expect.objectContaining({ dismiss: true })
     });
@@ -105,11 +99,11 @@ describe('data-worker ingestion progress', () => {
     progress.reportShardImportProgress(0, 4);
     progress.reportShardImportProgress(2, 4);
 
-    expect(postMessage).toHaveBeenNthCalledWith(2, {
+    expect(postMessage).toHaveBeenNthCalledWith(3, {
       type: 'loading-progress',
       state: { id: expect.stringMatching(/^ingestion-progress-/), phase: 'update', completed: 0, total: 4 }
     });
-    expect(postMessage).toHaveBeenNthCalledWith(3, {
+    expect(postMessage).toHaveBeenNthCalledWith(4, {
       type: 'loading-progress',
       state: { id: expect.stringMatching(/^ingestion-progress-/), phase: 'update', completed: 2, total: 4 }
     });
@@ -133,24 +127,31 @@ describe('data-worker ingestion progress', () => {
     progress.complete();
   });
 
-  it('shows progress after three seconds, updates every second, and dismisses it when complete', () => {
+  it('shows progress immediately, updates every second, and dismisses it when complete', () => {
     vi.useFakeTimers();
     const postMessage = vi.fn();
     const progress = startIngestionProgress({ postMessage });
     progress.start();
 
+    expect(postMessage).toHaveBeenNthCalledWith(2, {
+      type: 'notification',
+      notification: expect.objectContaining({
+        id: expect.stringMatching(/^ingestion-progress-/),
+        message: 'Preparing data...',
+        icon: 'download',
+        duration: 0
+      })
+    });
+
     progress.setWorkload(2_048);
     progress.update({ bytesProcessed: 1_024, recordsIngested: 42, totalBytes: 2_048 });
-    vi.advanceTimersByTime(2_999);
-    expect(postMessage).toHaveBeenCalledTimes(1);
-
-    vi.advanceTimersByTime(1);
+    vi.advanceTimersByTime(1_000);
 
     expect(postMessage).toHaveBeenCalledWith({
       type: 'notification',
       notification: expect.objectContaining({
         id: expect.stringMatching(/^ingestion-progress-/),
-        message: '1.0 KB/2.0 KB · 3s remaining',
+        message: '1.0 KB/2.0 KB · 1s remaining',
         icon: 'download',
         duration: 0
       })
@@ -171,7 +172,7 @@ describe('data-worker ingestion progress', () => {
       notification: expect.objectContaining({ dismiss: true })
     });
     vi.advanceTimersByTime(1_000);
-    expect(postMessage).toHaveBeenCalledTimes(5);
+    expect(postMessage).toHaveBeenCalledTimes(6);
   });
 
   it('stays silent when ingestion completes before work is required', () => {

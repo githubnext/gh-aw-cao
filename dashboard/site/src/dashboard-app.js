@@ -1046,6 +1046,7 @@
         });
         cancelCommand.complete();
       } else {
+        await ensureDashboardPageLoaded("overview");
         renderSources({}, "loading");
         const sourceUrl = new URL("./payload-hashes.json", window.location.href).href;
         try {
