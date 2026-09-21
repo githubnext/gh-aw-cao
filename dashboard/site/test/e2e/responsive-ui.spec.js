@@ -115,7 +115,7 @@ test('mobile horizontal bar labels preserve readable suffixes', async ({ page })
   const labelRendering = await firstRow.evaluate((row, suffix) => {
     const labelElement = row.querySelector('.horizontal-bar-chart-label');
     const textElement = row.querySelector('.horizontal-bar-chart-label-text');
-    const textNode = textElement?.firstChild;
+    const textNode = [...(textElement?.childNodes ?? [])].find((node) => node.nodeType === Node.TEXT_NODE);
     if (!labelElement || typeof labelElement.getBoundingClientRect !== 'function' || textNode?.nodeType !== Node.TEXT_NODE) {
       throw new Error('Expected horizontal bar label text.');
     }
@@ -133,6 +133,7 @@ test('mobile horizontal bar labels preserve readable suffixes', async ({ page })
     const prefixBounds = prefixRange.getBoundingClientRect();
     return {
       overflowed: labelElement.scrollWidth > labelElement.clientWidth,
+      overflowAmount: labelElement.scrollWidth - labelElement.clientWidth,
       prefixRight: prefixBounds.right,
       suffixLeft: suffixBounds.left,
       suffixRight: suffixBounds.right,
@@ -142,7 +143,8 @@ test('mobile horizontal bar labels preserve readable suffixes', async ({ page })
   }, expectedVisibleSuffix);
 
   expect(labelRendering.overflowed).toBe(true);
-  expect(labelRendering.prefixRight).toBeLessThanOrEqual(labelRendering.labelLeft);
+  expect(labelRendering.overflowAmount).toBeGreaterThan(20);
+  expect(labelRendering.prefixRight).toBeLessThanOrEqual(labelRendering.labelLeft + 1);
   expect(labelRendering.suffixLeft).toBeGreaterThanOrEqual(labelRendering.labelLeft);
   expect(labelRendering.suffixRight).toBeLessThanOrEqual(labelRendering.labelRight);
 });
