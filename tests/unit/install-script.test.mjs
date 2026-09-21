@@ -32,7 +32,7 @@ mkdirSync(".github/workflows", { recursive: true });
 writeFileSync(".github/workflows/cao.json", '{"version":1,"gh-aw-version":"v0.89.17","control-plane":{"campaigns":{}}}\\n');
 appendFileSync(process.env.FAKE_COMMAND_LOG, "init\\n");
 EOF
-  cat > cao.sh <<'EOF'
+  cat > .github/aw/cao.sh <<'EOF'
 #!/bin/sh
 root="$(CDPATH= cd -P "$(dirname "$0")" && pwd)"
 exec node "$root/.github/aw/activity/cao.mjs" "$@"

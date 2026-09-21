@@ -4,6 +4,7 @@ set -euo pipefail
 
 policy_path=".github/workflows/cao.json"
 cao_cli=".github/aw/activity/cao.mjs"
+cao_source=".github/aw/cao.sh"
 cao_command="./cao.sh"
 control_runtime=".github/workflows/shared/control.mjs"
 
@@ -13,18 +14,11 @@ if ! gh aw version >/dev/null 2>&1; then
     bash
 fi
 
-if [[ -f "$cao_command" ]]; then
-  chmod +x "$cao_command"
-fi
-
-if [[ -f "$policy_path" && -f "$cao_cli" && -f "$cao_command" && -f "$control_runtime" ]]; then
-  exit 0
-fi
-
-if [[ ! -f "$cao_cli" || ! -f "$cao_command" || ! -f "$control_runtime" ]]; then
+if [[ ! -f "$cao_cli" || ! -f "$cao_source" || ! -f "$control_runtime" ]]; then
   gh aw add githubnext/gh-aw-cao
 fi
 
+cp "$cao_source" "$cao_command"
 chmod +x "$cao_command"
 
 if [[ ! -f "$policy_path" ]]; then

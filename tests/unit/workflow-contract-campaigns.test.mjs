@@ -293,7 +293,7 @@ test("root campaign installs the CAO CLI helper", () => {
 
   assert.deepEqual(
     rootManifest.resources.find(({ source }) => source === "cao.sh"),
-    { source: "cao.sh", destination: "cao.sh" },
+    { source: "cao.sh", destination: ".github/aw/cao.sh" },
   );
   assert.match(helper, /^#!\/bin\/sh/);
   assert.match(helper, /activity\/cao\.mjs/);
@@ -349,8 +349,7 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   assert.doesNotMatch(quickstart, /base64 -d|contents\/\.github\/cao/);
   assert.match(installer, /^#!\/usr\/bin\/env bash/);
   assert.match(installer, /install-gh-aw\.sh/);
-  assert.match(installer, /if \[\[ -f "\$cao_command" \]\]; then\s+chmod \+x "\$cao_command"\s+fi/);
-  assert.match(installer, /if \[\[ -f "\$policy_path" && -f "\$cao_cli" && -f "\$cao_command" && -f "\$control_runtime" \]\]; then\s+exit 0/);
+  assert.match(installer, /cp "\$cao_source" "\$cao_command"/);
   assert.match(installer, /gh aw add githubnext\/gh-aw-cao/);
   assert.match(installer, /chmod \+x "\$cao_command"/);
   assert.match(installer, /"\$cao_command" init/);

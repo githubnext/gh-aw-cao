@@ -17,4 +17,4 @@ resources:
   - source: .github/aw/instructions.md
     destination: .github/aw/instructions.md
   - source: cao.sh
-    destination: cao.sh
+    destination: .github/aw/cao.sh
