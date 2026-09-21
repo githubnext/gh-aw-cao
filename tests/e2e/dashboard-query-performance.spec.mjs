@@ -186,6 +186,18 @@ test("benchmarks every dashboard query against settled deployed data", async ({ 
       return completed.at - started.at;
     });
 
+    const indexedDbCount = await page.evaluate(async () => {
+      const { countCollections, ENTITY_STORES } = await import("./src/data/storage/indexeddb.js");
+      const startedAt = performance.now();
+      const counts = await countCollections(indexedDB, ENTITY_STORES);
+      return {
+        durationMs: Math.round((performance.now() - startedAt) * 100) / 100,
+        stores: ENTITY_STORES.length,
+        records: Object.values(counts).reduce((total, count) => total + count, 0),
+        counts,
+      };
+    });
+
     const results = await page.evaluate(async ({ context, chunkSize }) => {
       const { loadCanonicalDashboardPage } = await import("./src/data-processor.js");
       const rounded = (value) => Math.round(value * 100) / 100;
@@ -259,9 +271,10 @@ test("benchmarks every dashboard query against settled deployed data", async ({ 
     const report = {
       generatedAt: new Date().toISOString(),
       dashboardUrl: deployedDashboardUrl,
-      methodology: "Fresh Chromium profile running the checkout's dashboard and query worker; proxy current deployed data; measure initial Overview readiness, wait for refresh completion and two animation frames, profile the settled Overview request by worker phase, then measure a 25-row first chunk, one continuation chunk when present, and one unpaginated fill iteration.",
+      methodology: "Fresh Chromium profile running the checkout's dashboard and query worker; proxy current deployed data; measure native IndexedDB count() across all canonical entity stores, initial Overview readiness, and the settled Overview request by worker phase; then measure a 25-row first chunk, one continuation chunk when present, and one unpaginated fill iteration.",
       chunkSize: QUERY_CHUNK_SIZE,
       populateMs: Math.round(populateMs * 100) / 100,
+      indexedDbCount,
       overview: {
         initialReadyMs: Math.round(initialOverviewReadyMs * 100) / 100,
         requestMs: overviewRequest.requestMs,
