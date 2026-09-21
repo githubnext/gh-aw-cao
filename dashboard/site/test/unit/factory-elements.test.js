@@ -77,8 +77,7 @@ it('renders the factory floor from its independent JSON view and configuration',
     'overview-delivery-summary': source('overview-delivery-summary', [{ 'delivered-repositories': 3 }]),
     'overview-value-summary': source('overview-value-summary', [{ 'value-gains': 1 }]),
     'overview-registered-repository-summary': source('overview-registered-repository-summary', [{ 'registered-repositories': 6 }]),
-    'overview-worker-summary': source('overview-worker-summary', [{ workers: 2 }])
-    ,
+    'overview-worker-summary': source('overview-worker-summary', [{ workers: 2 }]),
     'database-issue-count': source('database-issue-count', [{ issues: 5 }])
   }, {
     animate: 'number',
@@ -111,8 +110,7 @@ it('keeps unavailable registered repository evidence distinct from zero', () => 
     'overview-delivery-summary': source('overview-delivery-summary', [{ 'delivered-repositories': 3 }]),
     'overview-value-summary': source('overview-value-summary', [{ 'value-gains': 0 }]),
     'overview-registered-repository-summary': source('overview-registered-repository-summary', [], { availability: 'unavailable' }),
-    'overview-worker-summary': source('overview-worker-summary', [{ workers: 0 }])
-    ,
+    'overview-worker-summary': source('overview-worker-summary', [{ workers: 0 }]),
     'database-issue-count': source('database-issue-count', [{ issues: 0 }])
   }));
 
@@ -170,9 +168,9 @@ it('renders both elements immediately and updates only widgets whose query resol
   await Promise.resolve();
 
   expect(header?.querySelector('.factory-running-active')?.textContent).toBe('Work in motion');
-  expect(floor?.querySelector('.factory-station:nth-child(2)')?.textContent).toBe('Successful runs31 failed');
-  expect(floor?.querySelector('.factory-station:nth-child(2)')?.classList.contains('factory-station-pending')).toBe(false);
-  expect(floor?.querySelector('.factory-station:nth-child(3)')?.classList.contains('factory-station-pending')).toBe(true);
+  expect(floor?.querySelector('.factory-station:nth-child(4)')?.textContent).toBe('Successful runs31 failed');
+  expect(floor?.querySelector('.factory-station:nth-child(4)')?.classList.contains('factory-station-pending')).toBe(false);
+  expect(floor?.querySelector('.factory-station:nth-child(5)')?.classList.contains('factory-station-pending')).toBe(true);
   expect(floor?.classList.contains('custom-view')).toBe(true);
 });
 

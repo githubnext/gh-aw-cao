@@ -25,6 +25,17 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
   const dispatches = renderFactoryStation('workflow', { animate: animateNumbers, href: '#page-runs', signal: scope.signal });
   const valueGains = renderFactoryStation('trophy', { animate: animateNumbers, final: true, href: '#page-operational-value', signal: scope.signal });
 
+  campaigns.bind(() => {
+    const count = metrics.campaigns();
+    return {
+      pending: sources['database-campaign-count'].pending(),
+      unavailable: sources['database-campaign-count'].unavailable(),
+      label: label('campaigns', count),
+      value: count,
+      detail: { text: '' }
+    };
+  });
+
   repositories.bind(() => {
     const coverage = metrics.coverage();
     return {
@@ -110,9 +121,9 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
       const workers = metrics.workers();
       const gains = metrics.valueGains();
       const usefulOutputs = metrics.usefulOutputs();
-    const repositoriesDescription = coverage.registeredUnavailable
-      ? 'Registered repositories unavailable'
-      : `${formatCount(coverage.registered)} ${label('repositories', coverage.registered).toLowerCase()}${coverage.unavailable ? '; repository delivery evidence unavailable' : ` with ${formatCount(coverage.total)} delivered to`}`;
+      const repositoriesDescription = coverage.registeredUnavailable
+        ? 'Registered repositories unavailable'
+        : `${formatCount(coverage.registered)} ${label('repositories', coverage.registered).toLowerCase()}${coverage.unavailable ? '; repository delivery evidence unavailable' : ` with ${formatCount(coverage.total)} delivered to`}`;
       return `${formatCount(campaignCount)} ${label('campaigns', campaignCount).toLowerCase()}, ${repositoriesDescription}, ${formatCount(issueCount)} ${label('issues', issueCount).toLowerCase()}, ${formatCount(successfulRuns)} ${label('successful-runs', successfulRuns).toLowerCase()}, ${formatCount(dispatchCount)} workflow ${label('dispatches', dispatchCount).toLowerCase()} across ${formatCount(workers)} ${workers === 1 ? 'worker' : 'workers'}, ${formatCount(gains)} grader ${gains === 1 ? 'value' : 'values'} above threshold, and ${formatCount(usefulOutputs)} issue or pull request ${usefulOutputs === 1 ? 'output' : 'outputs'}.`;
     },
     signal: scope.signal
@@ -155,13 +166,3 @@ export function renderFactoryFloorElement(context) {
   scope.bind(rendered);
   return rendered;
 }
-  campaigns.bind(() => {
-    const count = metrics.campaigns();
-    return {
-      pending: sources['database-campaign-count'].pending(),
-      unavailable: sources['database-campaign-count'].unavailable(),
-      label: label('campaigns', count),
-      value: count,
-      detail: { text: '' }
-    };
-  });
