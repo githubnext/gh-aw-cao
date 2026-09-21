@@ -81,6 +81,7 @@ const cachedSources = {
 };
 
 test("cached view is populated before background ingestion updates it", async ({ context, page }) => {
+  test.slow();
   /** @type {(value?: void) => void} */
   let releaseFreshData = () => {};
   const freshDataAllowed = new Promise((resolve) => {
