@@ -14,7 +14,7 @@ Create a new Central Agentic Ops control plane and prove it safely with one revi
 - When a source-managed control repository is also a catalog, treat it as a supported dogfood repository and apply both catalog and control-repository safety rules. Keep campaign manifests as campaign source, `.github/workflows/cao.json` as rollout and live-activation policy, and Actions variables and secrets as credentials. Do not require campaign records for workflows maintained directly in-tree or authority files in target repositories.
 - Public and private control repositories are supported. Preserve an existing repository's visibility; for a new repository, use the visibility the user chooses.
 - In a public control repository, policy, workflow runs, operational metadata, and review safe outputs are public. State that exposure before creation and never place confidential target information in those outputs.
-- Bootstrap a separate control repository with the root `install.sh`. It installs gh-aw when needed, adds the latest published core CAO campaign, and initializes the minimal policy. Never replace it with ad hoc campaign copying.
+- Bootstrap a separate control repository with the latest root `install.sh`. It installs gh-aw when needed, adds the latest published core CAO campaign, initializes the minimal policy, and makes the repository-local `./.github/aw/cao.sh` CLI executable. Never replace it with ad hoc campaign copying.
 - Keep one campaign-installed copy of `control.md`, `control.mjs`, `policy.mjs`, the policy schema, and the setup CLI together under `.github/workflows/shared/`. These files are available in the shared checkout; never fetch another copy from the CAO repository or materialize duplicate runtime files under `.github/aw/cao/`.
 - The root campaign installs `.github/aw/default-AGENTS.md` as campaign-owned source for control-repository ambient context. If the control repository has no root `AGENTS.md`, materialize that source as `AGENTS.md`; never overwrite or merge into existing agent instructions without the user's approval.
 - Keep rollout policy only in `.github/workflows/cao.json`. Do not create `CENTRAL_AGENTIC_OPS_*` variables or another policy channel.
@@ -94,7 +94,7 @@ Do not leave angle-bracket placeholders in authored files or pass placeholders t
       bash
     ```
 
-    The installer verifies or installs gh-aw, adds the latest published root campaign, and creates a minimal review-safe `.github/workflows/cao.json`. It exits without changing CAO files when the core runtime and policy are already installed. Run `gh aw doctor --repo <organization>/<control-repository> --dir .` after installation. In a source-managed control repository, do not run the installer over workflows maintained directly in-tree; verify its committed runtime and policy instead.
+    The installer verifies or installs gh-aw, adds the latest published root campaign, creates a minimal review-safe `.github/workflows/cao.json`, and makes the repository-local `./.github/aw/cao.sh` CLI executable. It exits without changing CAO files when the core runtime and policy are already installed. Run `gh aw doctor --repo <organization>/<control-repository> --dir .` after installation. In a source-managed control repository, do not run the installer over workflows maintained directly in-tree; verify its committed runtime and policy instead.
 
     When the selected authentication profile requires GitHub Apps and the user wants automated creation, run the credential-only helper installed with the campaign:
 
@@ -122,7 +122,7 @@ Do not leave angle-bracket placeholders in authored files or pass placeholders t
 10. Install the selected first-proof campaign through the installed CAO CLI so the campaign-owned orchestrator and worker identities are merged into the consumer-owned policy:
 
     ```bash
-    node .github/aw/activity/cao.mjs add githubnext/gh-aw-cao/<campaign-slug>
+    ./.github/aw/cao.sh add githubnext/gh-aw-cao/<campaign-slug>
     ```
 
     Parse and review the installer-created policy before editing it; do not replace or broaden it without the user's approval. After campaign installation, edit only `control-plane.scope` to add `target-owner` and `target-owner/target-repository`. Do not put `control-owner` or `control-repository` into this policy unless the selected target is the control repository. Keep the omitted defaults: `review`, one repository, and 100 percent rollout. Do not enable the user's other selected catalog operations yet; onboard each through the installed CAO CLI in a separate reviewed change after the first proof.

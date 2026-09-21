@@ -35,17 +35,20 @@ queries differ.
 
 ## Configure a control repository
 
+The latest Bash installer makes the campaign-installed `./.github/aw/cao.sh` wrapper
+executable. Run configuration commands through that repository-local CLI.
+
 Create a minimal review-safe control-plane policy:
 
 ```bash
-cao init
+./.github/aw/cao.sh init
 ```
 
 The command refuses to replace an existing `.github/workflows/cao.json`. Install an
 operational campaign and merge its declared orchestrator and workers into that policy with:
 
 ```bash
-cao add githubnext/gh-aw-cao/dependabot
+./.github/aw/cao.sh add githubnext/gh-aw-cao/dependabot
 ```
 
 `cao add` forwards remaining arguments to `gh aw add`, preserves operator-owned campaign
@@ -55,7 +58,7 @@ Upgrade `gh-aw` to the policy minimum, update every installed campaign, and refr
 worker declarations with:
 
 ```bash
-cao update
+./.github/aw/cao.sh update
 ```
 
 `cao update` forwards remaining arguments to `gh aw update`, preserves operator-owned

@@ -11,7 +11,7 @@ Help the user choose and install an existing CAO operational campaign. Discover 
 ## Boundaries
 
 - Use this skill for adopting an existing campaign. Use `.github/skills/create-cao-campaign/SKILL.md` when the user wants to author a new campaign or no existing campaign fits.
-- Work in the intended CAO control repository. Require `.github/workflows/cao.json` and the installed CAO CLI at `.github/aw/activity/cao.mjs`; hand off to `.github/skills/setup-cao/SKILL.md` when the control plane is not initialized.
+- Work in the intended CAO control repository. Require `.github/workflows/cao.json` and the executable installed CAO CLI at `./.github/aw/cao.sh`; hand off to `.github/skills/setup-cao/SKILL.md` when the control plane is not initialized.
 - Keep catalog discovery read-only. Do not install anything until the user explicitly selects a campaign after seeing the recommendation and safety summary.
 - Install through `cao add`, not the underlying campaign installer directly. The CAO wrapper validates the installed declaration and merges its orchestrator and workers into policy without enabling live mode or broadening repository scope.
 - Never edit generated `.lock.yml` files or `.github/aw/campaigns/*.json` ownership records directly.
@@ -58,7 +58,7 @@ Treat missing declarations, invalid metadata, inaccessible sources, unresolved p
 After explicit approval, run the campaign-installed CLI from the control repository:
 
 ```bash
-node .github/aw/activity/cao.mjs add githubnext/gh-aw-cao/<campaign-slug>@<catalog-commit>
+./.github/aw/cao.sh add githubnext/gh-aw-cao/<campaign-slug>@<catalog-commit>
 ```
 
 Forward additional campaign-installer options only when the user requested them and they do not weaken the reviewed boundary. Do not pass secrets in command arguments.
