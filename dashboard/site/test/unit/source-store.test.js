@@ -1,6 +1,6 @@
 import { afterEach, expect, it } from 'vitest';
 import { effect } from '../../src/reactive.js';
-import { configureSourceLoader, publishSource, refreshSources, requestSource, resetSourceStore, sourceState } from '../../src/source-store.js';
+import { configureSourceLoader, publishSource, refreshSources, requestSource, requestSources, resetSourceStore, sourceState } from '../../src/source-store.js';
 
 /** @type {import('../../src/presenter.js').SourceMetadata} */
 const metadata = {
@@ -85,6 +85,36 @@ it('keeps separate view bindings for the same canonical source', async () => {
 
   expect(sourceState('header-runs').get().source?.rows).toEqual([{ view: 'header' }]);
   expect(sourceState('floor-runs').get().source?.rows).toEqual([{ view: 'floor' }]);
+});
+
+it('batches independently bound sources while updating each binding', async () => {
+  const batches = [];
+  configureSourceLoader(
+    () => Promise.reject(new Error('single loader should not run')),
+    async (requests) => {
+      batches.push(requests.map(({ name }) => name));
+      return Object.fromEntries(requests.map(({ name, bindingKey }) => [
+        bindingKey,
+        { source: name, rows: [{ name }], metadata }
+      ]));
+    }
+  );
+
+  requestSources([
+    { name: 'runs', options: { bindingKey: 'header-runs' } },
+    { name: 'outcomes', options: { bindingKey: 'header-outcomes' } }
+  ]);
+  requestSources([
+    { name: 'runs', options: { bindingKey: 'floor-runs' } }
+  ]);
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  expect(batches).toEqual([['runs', 'outcomes', 'runs']]);
+  expect(sourceState('header-runs').get().source?.rows).toEqual([{ name: 'runs' }]);
+  expect(sourceState('header-outcomes').get().source?.rows).toEqual([{ name: 'outcomes' }]);
+  expect(sourceState('floor-runs').get().source?.rows).toEqual([{ name: 'runs' }]);
 });
 
 it('marks a source failed when its query rejects', async () => {

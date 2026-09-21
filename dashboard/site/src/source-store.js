@@ -43,6 +43,13 @@ const requestNames = new Map();
 const generations = new Map();
 /** @type {((name: string, options?: SourceRequestOptions) => Promise<LogicalSourceInput | undefined>) | null} */
 let loadSource = null;
+/** @type {((requests: Array<{ name: string, bindingKey: string, options: SourceRequestOptions }>) => Promise<Record<string, LogicalSourceInput | undefined>>) | null} */
+let loadSources = null;
+/** @type {Set<string>} */
+const batched = new Set();
+/** @type {Set<string>} */
+const pendingBatch = new Set();
+let batchScheduled = false;
 
 /**
  * @param {string} name
@@ -72,9 +79,11 @@ export function publishSource(name, source, bindingKey = name) {
  * Registers the loader used to resolve one named query at a time. Each source
  * is requested on its own so a slow query never delays a fast one.
  * @param {((name: string, options?: SourceRequestOptions) => Promise<LogicalSourceInput | undefined>) | null} loader
+ * @param {((requests: Array<{ name: string, bindingKey: string, options: SourceRequestOptions }>) => Promise<Record<string, LogicalSourceInput | undefined>>) | null} [batchLoader]
  */
-export function configureSourceLoader(loader) {
+export function configureSourceLoader(loader, batchLoader = null) {
   loadSource = loader;
+  loadSources = batchLoader;
 }
 
 /**
@@ -95,15 +104,49 @@ export function requestSource(name, options = {}) {
   void loadRequestedSource(bindingKey);
 }
 
+/**
+ * Requests a set of independently bound sources in one worker query while
+ * preserving per-source reactive updates.
+ * @param {Array<{ name: string, options?: SourceRequestOptions }>} requests
+ */
+export function requestSources(requests) {
+  if (!loadSource) return;
+  for (const { name, options = {} } of requests) {
+    const bindingKey = options.bindingKey ?? name;
+    const key = JSON.stringify(options);
+    if (requested.has(bindingKey) && requestKeys.get(bindingKey) === key) continue;
+    requested.add(bindingKey);
+    batched.add(bindingKey);
+    requestNames.set(bindingKey, name);
+    requestOptions.set(bindingKey, options);
+    requestKeys.set(bindingKey, key);
+    pendingBatch.add(bindingKey);
+  }
+  scheduleBatch();
+}
+
+function scheduleBatch() {
+  if (batchScheduled || pendingBatch.size === 0) return;
+  batchScheduled = true;
+  queueMicrotask(() => {
+    batchScheduled = false;
+    const bindingKeys = [...pendingBatch];
+    pendingBatch.clear();
+    void loadRequestedSources(bindingKeys);
+  });
+}
+
 /** Re-runs every previously requested query, for example after live data changes. */
 export function refreshSources() {
   // Grouped so bound elements run once for the whole refresh rather than once
   // per source that flips to loading.
   batch(() => {
     for (const name of [...requested]) {
-      void loadRequestedSource(name);
+      if (batched.has(name)) pendingBatch.add(name);
+      else void loadRequestedSource(name);
     }
   });
+  scheduleBatch();
 }
 
 /** @param {string} bindingKey */
@@ -138,6 +181,57 @@ async function loadRequestedSource(bindingKey) {
   }
 }
 
+/** @param {string[]} bindingKeys */
+async function loadRequestedSources(bindingKeys) {
+  const loader = loadSources;
+  if (!loader) {
+    await Promise.all(bindingKeys.map((bindingKey) => loadRequestedSource(bindingKey)));
+    return;
+  }
+  const loads = bindingKeys.flatMap((bindingKey) => {
+    const entry = sourceState(bindingKey);
+    const current = untracked(() => entry.get());
+    if (current.origin === 'view' && current.status === 'ready') return [];
+    const generation = (generations.get(bindingKey) ?? 0) + 1;
+    generations.set(bindingKey, generation);
+    if (current.status !== 'ready' && current.status !== 'loading') {
+      entry.set({ status: 'loading', origin: 'query', source: null });
+    }
+    return [{
+      name: requestNames.get(bindingKey) ?? bindingKey,
+      bindingKey,
+      options: requestOptions.get(bindingKey) ?? {},
+      generation,
+      entry
+    }];
+  });
+  if (loads.length === 0) return;
+  try {
+    const results = await loader(loads.map(({ name, bindingKey, options }) => ({ name, bindingKey, options })));
+    batch(() => {
+      for (const { bindingKey, generation, entry } of loads) {
+        if (generations.get(bindingKey) !== generation) continue;
+        const source = results[bindingKey];
+        entry.set(source
+          ? { status: 'ready', origin: 'query', source }
+          : { status: 'missing', origin: 'query', source: null });
+        debug('resolved', { source: requestNames.get(bindingKey) ?? bindingKey, rows: source?.rows?.length ?? 0 });
+      }
+    });
+  } catch (error) {
+    batch(() => {
+      for (const { bindingKey, generation, entry } of loads) {
+        if (generations.get(bindingKey) !== generation) continue;
+        entry.set({ status: 'failed', origin: 'query', source: null });
+        debug('failed', {
+          source: requestNames.get(bindingKey) ?? bindingKey,
+          message: error instanceof Error ? error.message : String(error)
+        });
+      }
+    });
+  }
+}
+
 /**
  * Forgets the state bound to the named sources so a new render starts from the
  * queries again.
@@ -151,6 +245,8 @@ export function clearSources(names) {
     requestKeys.delete(name);
     requestNames.delete(name);
     generations.delete(name);
+    batched.delete(name);
+    pendingBatch.delete(name);
   }
 }
 
@@ -162,5 +258,9 @@ export function resetSourceStore() {
   requestKeys.clear();
   requestNames.clear();
   generations.clear();
+  batched.clear();
+  pendingBatch.clear();
+  batchScheduled = false;
   loadSource = null;
+  loadSources = null;
 }

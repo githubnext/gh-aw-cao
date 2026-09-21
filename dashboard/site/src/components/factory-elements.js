@@ -3,7 +3,7 @@
  */
 
 import { batch, effect, state } from '../reactive.js';
-import { publishSource, requestSource, sourceState } from '../source-store.js';
+import { publishSource, requestSources, sourceState } from '../source-store.js';
 import { dashboardViewAliasName } from '../data/queries/view-payload-compiler.js';
 
 /** @typedef {Record<string, unknown>} Row */
@@ -51,6 +51,7 @@ const DEFAULT_STATION_LABELS = {
  */
 export function bindFactorySources(sources, names, request) {
   batch(() => {
+    const requests = [];
     for (const [sourceIndex, name] of names.entries()) {
       const source = sources[name];
       const declaredSourceIndex = request?.sourceNames?.indexOf(name) ?? -1;
@@ -59,8 +60,9 @@ export function bindFactorySources(sources, names, request) {
         ? dashboardViewAliasName(request.pageId, { id: request.viewId }, request.viewIndex ?? 0, name, effectiveSourceIndex)
         : name;
       if (source && Array.isArray(source.rows)) publishSource(name, source, bindingKey);
-      else requestSource(name, { ...request, sourceIndex: effectiveSourceIndex, bindingKey });
+      else requests.push({ name, options: { ...request, sourceIndex: effectiveSourceIndex, bindingKey } });
     }
+    requestSources(requests);
   });
   return Object.fromEntries(names.map((name) => {
     const declaredSourceIndex = request?.sourceNames?.indexOf(name) ?? -1;

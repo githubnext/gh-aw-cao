@@ -146,28 +146,61 @@ export async function startDashboardData(options) {
   loadPageSources.prepare = async (pageId) => {
     await preparePage?.(pageId);
   };
-  configureSourceLoader(async (name, options) => {
-    const sources = await loadCanonicalDashboardPage(
-      [name],
-      dashboardContext,
-      undefined,
-      {
-        pageId: options?.pageId,
-        viewId: options?.viewId,
-        queryContext: options?.queryContext,
-      },
-    );
-    const alias = options?.pageId && options.viewId
-      ? dashboardViewAliasName(
-          options.pageId,
-          { id: options.viewId },
-          0,
-          name,
-          options.sourceIndex ?? 0,
-        )
-      : name;
-    return sources[alias] ?? sources[name];
-  });
+  configureSourceLoader(
+    async (name, options) => {
+      const sources = await loadCanonicalDashboardPage(
+        [name],
+        dashboardContext,
+        undefined,
+        {
+          pageId: options?.pageId,
+          viewId: options?.viewId,
+          queryContext: options?.queryContext,
+        },
+      );
+      const alias = options?.pageId && options.viewId
+        ? dashboardViewAliasName(
+            options.pageId,
+            { id: options.viewId },
+            0,
+            name,
+            options.sourceIndex ?? 0,
+          )
+        : name;
+      return sources[alias] ?? sources[name];
+    },
+    async (requests) => {
+      const groups = Map.groupBy(requests, ({ options }) => JSON.stringify({
+        pageId: options.pageId,
+        queryContext: options.queryContext,
+      }));
+      const entries = await Promise.all([...groups.values()].map(async (group) => {
+        const first = group[0];
+        const sources = await loadCanonicalDashboardPage(
+          [...new Set(group.map(({ name }) => name))],
+          dashboardContext,
+          undefined,
+          {
+            pageId: first?.options.pageId,
+            queryContext: first?.options.queryContext,
+          },
+        );
+        return group.map(({ name, bindingKey, options }) => {
+          const alias = options.pageId && options.viewId
+            ? dashboardViewAliasName(
+                options.pageId,
+                { id: options.viewId },
+                0,
+                name,
+                options.sourceIndex ?? 0,
+              )
+            : name;
+          return [bindingKey, sources[alias] ?? sources[name]];
+        });
+      }));
+      return Object.fromEntries(entries.flat());
+    },
+  );
   const startAutomaticUpdates = () => {
     stopAutomaticDataUpdates = startAutomaticDashboardDataUpdates([
       new URL("./payload-hashes.json", sourceUrl).href,
