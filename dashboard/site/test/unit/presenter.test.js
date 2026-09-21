@@ -135,38 +135,8 @@ describe('dashboard DOM provenance', () => {
     disposeDashboard(rendered);
   });
 
-  it('renders the factory without the detached campaign list while the page subscription resolves', async () => {
-    let resolvePageSources = () => {};
-    const loadPageSources = vi.fn(() => new Promise((resolve) => {
-      resolvePageSources = () => resolve({
-        'data-health-collections': {
-          source: 'data-health-collections',
-          rows: [],
-          metadata: {
-            'source-id': 'data-health-collections',
-            'source-kind': 'canonical-query',
-            'as-of': '2026-09-17T00:00:00Z',
-            'retrieved-at': '2026-09-17T00:00:00Z',
-            availability: 'empty',
-            completeness: 'complete',
-            freshness: 'fresh'
-          }
-        },
-        'campaign-inventory': {
-          source: 'campaign-inventory',
-          rows: [],
-          metadata: {
-            'source-id': 'campaign-inventory',
-            'source-kind': 'canonical-query',
-            'as-of': '2026-09-17T00:00:00Z',
-            'retrieved-at': '2026-09-17T00:00:00Z',
-            availability: 'empty',
-            completeness: 'complete',
-            freshness: 'fresh'
-          }
-        }
-      });
-    }));
+  it('renders independently bound elements without registering a page-wide query', () => {
+    const loadPageSources = vi.fn(() => new Promise(() => {}));
     const rendered = renderDashboardView({
       document: authoritativeDashboardDocument,
       sources: {},
@@ -175,14 +145,10 @@ describe('dashboard DOM provenance', () => {
     const overviewBefore = rendered.querySelector('[data-page-id="overview"]');
     expect(overviewBefore?.querySelector('.factory-intro')).not.toBeNull();
 
-    await vi.waitFor(() => expect(loadPageSources).toHaveBeenCalled());
-    resolvePageSources();
-    await Promise.resolve();
-    await Promise.resolve();
-
     expect(rendered.querySelector('[data-page-id="overview"]')).toBe(overviewBefore);
     expect(rendered.querySelector('.factory-floor')).not.toBeNull();
     expect(rendered.querySelector('[data-view-id="overview-campaigns"]')).toBeNull();
+    expect(loadPageSources).not.toHaveBeenCalled();
     disposeDashboard(rendered);
   });
 
@@ -610,7 +576,7 @@ describe('dashboard DOM provenance', () => {
     expect(rendered.hasAttribute('data-json-path')).toBe(false);
   });
 
-  it('shows the loading skeleton instead of unavailable source errors during an empty initial load', () => {
+  it('shows a neutral loading skeleton instead of unavailable source errors during initial load', () => {
     const rendered = renderDashboard({
       document: {
         languageVersion: '0.1.0',
@@ -642,11 +608,12 @@ describe('dashboard DOM provenance', () => {
 
     const page = rendered.querySelector('[data-page-id="repositories"]');
     expect(page?.getAttribute('aria-busy')).toBe('true');
+    expect(page?.getAttribute('aria-label')).toBe('Loading view');
     expect(page?.querySelector('.dashboard-view-skeleton')).not.toBeNull();
-    expect(page?.textContent).toContain('Loading view');
+    expect(page?.querySelector('.agentic-loader')).toBeNull();
     expect(page?.textContent).not.toContain('This view cannot be shown because its data source is unavailable.');
-    expect(page?.textContent).not.toContain('Affected source: repository-activity');
   });
+
 });
 
 describe('presenter built-in and custom pages', () => {
@@ -2425,8 +2392,26 @@ describe('presenter built-in and custom pages', () => {
       });
       return {};
     });
-    const rendered = renderDashboard({
-      document: authoritativeDashboardDocument,
+    const rendered = renderDashboardView({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'horizon-dashboard',
+          title: 'Horizon dashboard',
+          defaults: { time: { range: '1w' } },
+          pages: [{
+            id: 'runs',
+            kind: 'custom',
+            title: 'Runs',
+            views: [{
+              id: 'runs-table',
+              data: { source: 'runs' },
+              mark: 'table',
+              encoding: { columns: [{ field: 'run' }] }
+            }]
+          }]
+        }
+      },
       sources: {},
       loadPageSources
     });
@@ -4198,6 +4183,7 @@ describe('presenter built-in and custom pages', () => {
     expect(second.hasAttribute('data-page-pending')).toBe(true);
     expect(second.getAttribute('aria-busy')).toBe('true');
     expect(second.querySelector('.dashboard-view-skeleton')).not.toBeNull();
+    expect(second.getAttribute('aria-label')).toBe('Loading view');
     expect(secondLink.getAttribute('aria-current')).toBe('page');
     expect(rendered.ownerDocument.defaultView?.location.hash).toBe('#page-second');
     expect(rendered.querySelector('#page-title')?.textContent).toBe('Second');
@@ -4263,6 +4249,7 @@ describe('presenter built-in and custom pages', () => {
       });
       const page = /** @type {HTMLElement} */ (root.querySelector('#page-second'));
       expect(page.getAttribute('aria-busy')).toBeNull();
+      expect(page.getAttribute('aria-label')).toBeNull();
       expect(page.querySelector('.empty')?.getAttribute('role')).toBe('alert');
     } finally {
       root.remove();

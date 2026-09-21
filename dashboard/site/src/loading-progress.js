@@ -66,10 +66,14 @@ function renderActiveProgress(target) {
   const current = [...target.operations.values()].at(-1);
   const total = Number(current?.total);
   const completed = Number(current?.completed);
-  const progress = Number.isFinite(total) && total > 0 && Number.isFinite(completed)
-    ? INITIAL_PROGRESS + (MAX_PROGRESS - INITIAL_PROGRESS) * Math.min(1, Math.max(0, completed / total))
+  const determinate = Number.isFinite(total) && total > 0 && Number.isFinite(completed);
+  const completion = determinate ? Math.min(1, Math.max(0, completed / total)) : 0;
+  const progress = determinate
+    ? INITIAL_PROGRESS + (MAX_PROGRESS - INITIAL_PROGRESS) * completion
     : INITIAL_PROGRESS;
   target.bar.style.transform = `scaleX(${progress})`;
+  if (determinate) target.bar.setAttribute('aria-valuenow', String(Math.round(completion * 100)));
+  else target.bar.removeAttribute('aria-valuenow');
 }
 
 /**
@@ -92,6 +96,7 @@ export function setLoadingProgressState(document, state) {
     }
     active.bar.classList.add('loading-progress-complete');
     active.bar.style.transform = 'scaleX(1)';
+    active.bar.setAttribute('aria-valuenow', '100');
     active.completionTimer = window.setTimeout(() => {
       if (active.operations.size > 0) return;
       active.bar.remove();
@@ -104,7 +109,10 @@ export function setLoadingProgressState(document, state) {
   if (!active || !active.bar.isConnected) {
     const bar = document.createElement('div');
     bar.className = 'loading-progress';
-    bar.setAttribute('aria-hidden', 'true');
+    bar.setAttribute('role', 'progressbar');
+    bar.setAttribute('aria-label', 'Loading dashboard data');
+    bar.setAttribute('aria-valuemin', '0');
+    bar.setAttribute('aria-valuemax', '100');
     active = {
       bar,
       operations: new Map(),

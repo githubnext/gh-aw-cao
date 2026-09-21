@@ -6,6 +6,7 @@
     "neutral": { "icon": "check-circle-fill", "tone": "muted" },
     "failure": { "icon": "x-circle-fill", "tone": "danger" },
     "failed": { "icon": "x-circle-fill", "tone": "danger" },
+    "critical": { "icon": "x-circle-fill", "tone": "danger" },
     "startup-failure": { "icon": "x-circle-fill", "tone": "danger" },
     "timed-out": { "icon": "x-circle-fill", "tone": "danger" },
     "cancelled": { "icon": "stop", "tone": "muted" },
@@ -17,6 +18,7 @@
     "requested": { "icon": "dot-fill", "tone": "attention" },
     "waiting": { "icon": "dot-fill", "tone": "attention" },
     "pending": { "icon": "dot-fill", "tone": "attention" },
-    "action-required": { "icon": "alert-fill", "tone": "attention" }
+    "action-required": { "icon": "alert-fill", "tone": "attention" },
+    "action": { "icon": "eye", "tone": "accent" }
   }
 }

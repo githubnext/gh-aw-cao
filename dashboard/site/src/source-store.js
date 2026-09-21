@@ -58,24 +58,6 @@ export function sourceState(name) {
 }
 
 /**
- * Returns the names of in-flight source requests that still match the predicate.
- * This supports page-level loaders that must keep their agentic skeleton visible
- * until every outlined field on a page has reached a non-loading state.
- * @param {(name: string) => boolean} [predicate]
- * @returns {string[]}
- */
-export function pendingSourceNames(predicate = () => true) {
-  const names = new Set();
-  for (const bindingKey of requested) {
-    const name = requestNames.get(bindingKey) ?? bindingKey;
-    if (sourceState(bindingKey).get().status === 'loading' && predicate(name)) {
-      names.add(name);
-    }
-  }
-  return [...names];
-}
-
-/**
  * Publishes rows a rendered view already holds, so bound elements render them
  * without waiting for a query round trip.
  * @param {string} name

@@ -1452,6 +1452,8 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
       import { prepareDashboardViewSources } from 'http://dashboard.test/test/e2e/helpers/dashboard-view-sources.js';
+      import { dashboardViewAliasName } from 'http://dashboard.test/src/data/queries/view-payload-compiler.js';
+      import { configureSourceLoader } from 'http://dashboard.test/src/source-store.js';
       const documentModel = ${JSON.stringify(documentModel)};
       const metadata = {
         'source-id': 'dashboard-next-fixture',
@@ -1710,6 +1712,24 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
         sources,
         { queryContext: options.queryContext, routeParameters: options.routeParameters }
       );
+      configureSourceLoader(async (name, options) => {
+        const prepared = await prepareDashboardViewSources(
+          documentModel,
+          options?.pageId ?? 'overview',
+          sources,
+          { queryContext: options?.queryContext }
+        );
+        const alias = options?.pageId && options.viewId
+          ? dashboardViewAliasName(
+              options.pageId,
+              { id: options.viewId },
+              0,
+              name,
+              options.sourceIndex ?? 0
+            )
+          : name;
+        return prepared[alias] ?? prepared[name];
+      });
       document.querySelector('#root').append(renderDashboard({
         document: documentModel,
         sources,
