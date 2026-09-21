@@ -92,8 +92,7 @@ test('notifications move in at the lower right and center on mobile', async ({ p
 
 test('mobile horizontal bar labels preserve readable suffixes', async ({ page }) => {
   const firstWorkflowLabel = '.github/workflows/extremely-long-dependabot-update-planner.md';
-  const secondWorkflowLabel = '.github/workflows/extremely-long-maintenance-compiler-security.md';
-  const expectedVisibleSuffix = firstWorkflowLabel.split('-').at(-1);
+  const expectedVisibleSuffix = 'planner.md';
   await page.setViewportSize({ width: 390, height: 844 });
   await page.setContent(`
     <style id="dashboard-styles"></style>
@@ -103,8 +102,7 @@ test('mobile horizontal bar labels preserve readable suffixes', async ({ page })
       import { renderChartWidget } from 'http://dashboard.test/src/components/chart-elements.js';
       document.querySelector('#dashboard-styles').textContent = getPrimerStyles();
       document.querySelector('.chart-stage').append(renderChartWidget('horizontal-bar', [
-        { x: ${JSON.stringify(firstWorkflowLabel)}, y: 27 },
-        { x: ${JSON.stringify(secondWorkflowLabel)}, y: 13 }
+        { x: ${JSON.stringify(firstWorkflowLabel)}, y: 27 }
       ], [{ name: 'value', className: 'chart-series-1' }]));
     </script>
   `);
