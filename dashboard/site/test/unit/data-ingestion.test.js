@@ -235,7 +235,7 @@ describe('canonical source ingestion and queries', () => {
     await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({
         kind: 'ingest-dashboard-sources',
-        ingestionVersion: 4,
+        ingestionVersion: 5,
         payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/)
       })
     ]);

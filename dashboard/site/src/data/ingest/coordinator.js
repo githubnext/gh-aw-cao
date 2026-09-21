@@ -27,7 +27,7 @@ import { createDebug } from '../../debug.js';
 
 const debug = createDebug('data:ingestion');
 
-const DASHBOARD_SOURCE_INGESTION_VERSION = 4;
+const DASHBOARD_SOURCE_INGESTION_VERSION = 5;
 const GH_AW_JSONL_INGESTION_VERSION = 4;
 export const NORMALIZED_JSON_INGESTION_VERSION = 2;
 const MAX_QUOTA_RECOVERY_ATTEMPTS = 4;

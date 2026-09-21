@@ -2,7 +2,7 @@
       import { setLoadingProgressState } from "./loading-progress.js";
       import { offerCancelCommand } from "./cancel-command.js";
       import { processDashboardQueries, subscribeWorkerLoadingProgress } from "./data-processor.js";
-      import { loadCanonicalViewSources } from "./data/queries/view-sources.js";
+      import { loadDatabaseQuerySources } from "./data/queries/database.js";
       import { startDashboardData } from "./data/startup.js";
       import { octicon } from "./octicons.js";
       import { renderRefreshError } from "./components/refresh-error.js";
@@ -1027,11 +1027,11 @@
        * @param {boolean} [ingest]
        * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
        */
-      async function withCanonicalViewSources(sources, ingest = false) {
+      async function withDatabaseQuerySources(sources, ingest = false) {
         const sourceNames = [...new Set(dashboardDocument.dashboard.pages.flatMap((page) =>
           dashboardPageSourceNames(dashboardDocument, page.id)
         ))];
-        return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (loadCanonicalViewSources(window.indexedDB, sources, {
+        return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (loadDatabaseQuerySources(window.indexedDB, sources, {
           ingest,
           storage: navigator.storage,
           sourceNames,
@@ -1041,7 +1041,7 @@
 
       if (new URLSearchParams(window.location.search).has("fixtures")) {
         await ensureAllDashboardPagesLoaded();
-        const fixtureProjection = await withCanonicalViewSources(fixtureSources, true);
+        const fixtureProjection = await withDatabaseQuerySources(fixtureSources, true);
         renderSources({
           ...fixtureProjection,
           ...await processDashboardQueries(dashboardQueries, fixtureProjection),

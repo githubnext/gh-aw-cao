@@ -585,5 +585,27 @@
       { "field": "observed-at" },
       { "field": "run-link" }
     ]
+  },
+  {
+    "name": "transactions",
+    "from": "$transactions",
+    "select": [
+      { "field": "id" },
+      { "field": "kind" },
+      { "field": "createdAt" },
+      { "field": "payloadScope" },
+      { "field": "payloadHash" },
+      { "field": "payloadEtag" },
+      { "field": "records" },
+      { "field": "committedRecords" },
+      { "field": "rawPayloadRecords" },
+      { "field": "rawRuns" },
+      { "field": "agenticRunRecords" },
+      { "field": "agenticRuns" },
+      { "field": "duplicateRawRunObservations" },
+      { "field": "duplicateAgenticRunObservations" },
+      { "field": "unenrichedRuns" },
+      { "field": "error" }
+    ]
   }
 ]

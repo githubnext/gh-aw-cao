@@ -153,14 +153,14 @@ test("cached view is populated before background ingestion updates it", async ({
 
   await page.goto(`${origin}/seed`);
   await page.evaluate(async ({ sources, moduleUrl }) => {
-    const { loadCanonicalViewSources } = await import(moduleUrl);
-    await loadCanonicalViewSources(indexedDB, sources, {
+    const { loadDatabaseQuerySources } = await import(moduleUrl);
+    await loadDatabaseQuerySources(indexedDB, sources, {
       ingest: true,
       storage: navigator.storage,
     });
   }, {
     sources: cachedSources,
-    moduleUrl: `${origin}/src/data/queries/view-sources.js`,
+    moduleUrl: `${origin}/src/data/queries/database.js`,
   });
 
   await page.goto(`${origin}/`);

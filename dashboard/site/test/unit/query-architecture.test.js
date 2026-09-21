@@ -23,15 +23,15 @@ describe('dashboard query architecture', () => {
     const factoryElements = read('src/components/factory-elements.js');
     const workProject = read('src/components/work-project-view.js');
     const presentationQueryFixture = read('test/workflow-inventory-query.js');
-    const canonicalSources = read('src/data/queries/view-sources.js');
-    const canonicalQueries = JSON.parse(read('src/data/queries/canonical-sources.json'));
+    const databaseAccess = read('src/data/queries/database.js');
+    const databaseQueries = JSON.parse(read('src/data/queries/database.json'));
     const dashboard = JSON.parse(read('dashboard.json')).dashboard;
     const optimizationDashboard = JSON.parse(read('../../optimization/dashboard.json')).dashboard;
 
-    expect(worker).toContain('queryNativeCountSources(');
-    expect(worker).toMatch(/executeDashboardQueries\(\s*context\.queries,\s*\{ \.\.\.canonicalPayload, \.\.\.healthPayload \},\s*directRequests/);
+    expect(worker).toContain('queryIndexedDatabaseSources(');
+    expect(worker).toMatch(/executeDashboardQueries\(\s*context\.queries,\s*\{ \.\.\.databasePayload, \.\.\.healthPayload \},\s*directRequests/);
     expect(worker).toContain('const replacedSources = new Set(viewPayload.replacedSources)');
-    expect(worker).toContain('deriveDataHealthCalloutSources(canonicalPayload)');
+    expect(worker).toContain('deriveDataHealthCalloutSources(databasePayload)');
     expect(worker).not.toMatch(/deriveOverviewSources|deriveRepositorySources|deriveRuntimeSources|deriveWorkflowSources/);
     expect(worker).toContain("operation === 'subscribe-canonical-dashboard'");
     expect(startup).toContain('subscribeCanonicalDashboardView(');
@@ -50,9 +50,9 @@ describe('dashboard query architecture', () => {
     expect(read('src/components/ui-elements.js')).not.toContain('filterRows');
     expect(presentationQueryFixture).toContain("operation: 'execute-dashboard-queries'");
     expect(presentationQueryFixture).not.toMatch(/executeDashboardQueries|compileDashboardViewPayloadQueries|deriveDashboardLinkSources/);
-    expect(canonicalSources).not.toContain('tokenEfficiencySources');
-    expect(canonicalSources).not.toContain('projectCanonicalViewSources');
-    expect(canonicalSources).not.toContain('failedRunsSource');
+    expect(databaseAccess).not.toContain('tokenEfficiencySources');
+    expect(databaseAccess).not.toContain('projectCanonicalViewSources');
+    expect(databaseAccess).not.toContain('failedRunsSource');
     for (const projection of [
       'campaignsSource',
       'repositoriesSource',
@@ -64,9 +64,9 @@ describe('dashboard query architecture', () => {
       'detectionObservationsSource',
       'safeOutputPerformanceSource'
     ]) {
-      expect(canonicalSources).not.toContain(`function ${projection}`);
+      expect(databaseAccess).not.toContain(`function ${projection}`);
     }
-    expect(canonicalQueries.map((/** @type {{ name?: string }} */ query) => query.name)).toEqual(expect.arrayContaining([
+    expect(databaseQueries.map((/** @type {{ name?: string }} */ query) => query.name)).toEqual(expect.arrayContaining([
       'campaigns',
       'repositories',
       'workflows',
@@ -80,7 +80,7 @@ describe('dashboard query architecture', () => {
     for (const query of /** @type {Array<{
       name: keyof typeof SOURCE_FIELDS,
       select: Array<{ field: string, as?: string }>
-    }>} */ (canonicalQueries)) {
+    }>} */ (databaseQueries)) {
       const expectedFields = SOURCE_FIELDS[query.name];
       if (!expectedFields) continue;
       const selectedFields = new Set(query.select.map((field) => field.as ?? field.field));

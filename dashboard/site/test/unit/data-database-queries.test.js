@@ -8,11 +8,15 @@ import {
   recordTransaction
 } from '../../src/data/storage/indexeddb.js';
 import {
-  loadCanonicalViewSources,
-  queryCanonicalViewSources,
-  queryNativeCountSources
-} from '../../src/data/queries/view-sources.js';
+  loadDatabaseQuerySources,
+  queryDatabaseSources,
+  queryIndexedDatabaseSources
+} from '../../src/data/queries/database.js';
 import { createDashboardQueryBudget, executeDashboardQueries } from '../../src/data/queries/declarative.js';
+
+const loadCanonicalViewSources = loadDatabaseQuerySources;
+const queryCanonicalViewSources = queryDatabaseSources;
+const queryNativeCountSources = queryIndexedDatabaseSources;
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
 const optimizationDashboardQueries = JSON.parse(
@@ -198,7 +202,7 @@ describe('canonical view sources', () => {
     const requested = definitions.map(({ name }) => name);
     const emptyMetadata = /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
       'source-id': 'empty',
-      'source-kind': 'canonical-query',
+      'source-kind': 'database-query',
       'as-of': metadata['as-of'],
       'retrieved-at': metadata['as-of'],
       completeness: 'complete',
@@ -372,7 +376,7 @@ describe('canonical view sources', () => {
 
     expect(projected.transactions).toMatchObject({
       source: 'transactions',
-      metadata: { 'source-kind': 'canonical-query', availability: 'available' },
+      metadata: { 'source-kind': 'database-query', availability: 'available' },
       rows: [
         {
           id: 'ingest-jsonl:current:newer',
@@ -423,7 +427,7 @@ describe('canonical view sources', () => {
       projectionMs: expect.any(Number),
       totalMs: expect.any(Number),
       recordsRead: expect.any(Number),
-      stores: ['repositories', 'workflows', 'runs']
+      stores: ['workflows', 'runs']
     });
     expect(metrics?.totalMs).toBeGreaterThanOrEqual(metrics?.databaseMs ?? 0);
   });
@@ -442,7 +446,7 @@ describe('canonical view sources', () => {
         'campaign-mode': 'review',
         'campaign-worker-count': 1
       }],
-      metadata: { 'source-kind': 'canonical-query' }
+      metadata: { 'source-kind': 'database-query' }
     });
     expect(projected.workflows.rows).toEqual([
       expect.objectContaining({
@@ -479,7 +483,7 @@ describe('canonical view sources', () => {
         event: 'event:tool-call',
         'event-type': 'tool.call'
       }],
-      metadata: { 'source-kind': 'canonical-query' }
+      metadata: { 'source-kind': 'database-query' }
     });
     expect(projected['mcp-calls']).toMatchObject({
       source: 'mcp-calls',
@@ -493,7 +497,7 @@ describe('canonical view sources', () => {
         'mcp-protocol-version': '2025-06-18',
         'response-bytes': 256
       }],
-      metadata: { 'source-kind': 'canonical-query' }
+      metadata: { 'source-kind': 'database-query' }
     });
   });
 
@@ -549,12 +553,12 @@ describe('canonical view sources', () => {
         'requested-model': 'model-a', 'resolved-model': 'model-b',
         'admission-status': 'admitted', resource: 'actions', 'resource-wait-hours': 2
       }],
-      metadata: { 'source-kind': 'canonical-query', availability: 'available' }
+      metadata: { 'source-kind': 'database-query', availability: 'available' }
     });
     expect(projected.repositories).toMatchObject({
       source: 'repositories',
       rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }],
-      metadata: { 'source-kind': 'canonical-query', availability: 'available' }
+      metadata: { 'source-kind': 'database-query', availability: 'available' }
     });
     expect(projected.workflows).toMatchObject({
       source: 'workflows',
@@ -562,7 +566,7 @@ describe('canonical view sources', () => {
         organization: 'githubnext', repository: 'gh-aw-cao',
         workflow: '.github/workflows/dashboard.md'
       }],
-      metadata: { 'source-kind': 'canonical-query', availability: 'available' }
+      metadata: { 'source-kind': 'database-query', availability: 'available' }
     });
     expect(projected['job-performance']).toMatchObject({
       source: 'job-performance',
@@ -607,7 +611,7 @@ describe('canonical view sources', () => {
     expect(Object.keys(projected)).toEqual(['tools', 'audits']);
     expect(projected.tools).toMatchObject({
       source: 'tools',
-      metadata: { 'source-kind': 'canonical-query', availability: 'available' }
+      metadata: { 'source-kind': 'database-query', availability: 'available' }
     });
     expect(projected.tools.rows).toEqual([
       expect.objectContaining({
@@ -653,7 +657,7 @@ describe('canonical view sources', () => {
     ]);
   });
 
-  it('projects current gh-aw grader summaries without treating zero as missing', async () => {
+  it('does not synthesize undeclared grader sources in JavaScript', async () => {
     const content = JSON.stringify({
       schema_version: 2,
       kind: 'run',
@@ -696,34 +700,8 @@ describe('canonical view sources', () => {
       ['grader-observations', 'operational-values']
     );
 
-    expect(projected['grader-observations'].rows).toEqual([
-      expect.objectContaining({
-        repository: 'gh-aw-cao',
-        run: '84',
-        grader: 'operational-value',
-        status: 'pass',
-        included: true,
-        value: 0
-      })
-    ]);
-    expect(projected['operational-values'].rows).toEqual([
-      expect.objectContaining({
-        repository: 'gh-aw-cao',
-        run: '84',
-        'operational-value': 0,
-        'operational-value-definition': 'accepted-maintenance-outcomes',
-        'operational-value-unit': 'count',
-        'operational-value-direction': 'higher_is_better',
-        diagnostics: {
-          'eligible-maintenance-items': 3,
-          'unavailable-maintenance-items': null
-        },
-        'diagnostic-definitions': [
-          { id: 'eligible-maintenance-items', name: 'eligible-maintenance-items' },
-          { id: 'unavailable-maintenance-items', name: 'unavailable-maintenance-items' }
-        ]
-      })
-    ]);
+    expect(projected).not.toHaveProperty('grader-observations');
+    expect(projected).not.toHaveProperty('operational-values');
   });
 
   it('projects token optimizer artifacts without parsing issue display text', async () => {

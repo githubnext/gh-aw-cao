@@ -439,9 +439,9 @@ test('native IndexedDB directly upserts and retains canonical data across reload
   expect(retained).toEqual([expect.objectContaining({ id: 'github:run:12345:attempt:2' })]);
 
   const viewSources = await page.evaluate(async (sourceDocument) => {
-    const viewSourcesUrl = `${location.origin}/src/data/queries/view-sources.js`;
-    const { loadCanonicalViewSources } = await import(viewSourcesUrl);
-    return loadCanonicalViewSources(indexedDB, sourceDocument, {
+    const databaseUrl = `${location.origin}/src/data/queries/database.js`;
+    const { loadDatabaseQuerySources } = await import(databaseUrl);
+    return loadDatabaseQuerySources(indexedDB, sourceDocument, {
       sourceNames: ['failed-runs', 'runs'],
       queries: [{
         name: 'failed-runs',

@@ -97,10 +97,10 @@ resources:
     destination: .github/aw/dashboard/site/src/data/queries/memoization.js
   - source: site/src/data/queries/view-payload-compiler.js
     destination: .github/aw/dashboard/site/src/data/queries/view-payload-compiler.js
-  - source: site/src/data/queries/canonical-sources.json
-    destination: .github/aw/dashboard/site/src/data/queries/canonical-sources.json
-  - source: site/src/data/queries/view-sources.js
-    destination: .github/aw/dashboard/site/src/data/queries/view-sources.js
+  - source: site/src/data/queries/database.json
+    destination: .github/aw/dashboard/site/src/data/queries/database.json
+  - source: site/src/data/queries/database.js
+    destination: .github/aw/dashboard/site/src/data/queries/database.js
   - source: site/src/data/storage/indexeddb.js
     destination: .github/aw/dashboard/site/src/data/storage/indexeddb.js
   - source: site/src/data/package.json
