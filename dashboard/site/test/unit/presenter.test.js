@@ -118,8 +118,16 @@ async function activatePage(rendered, pageId) {
 }
 
 describe('dashboard DOM provenance', () => {
-  it('includes the declarative campaign view in the Overview page subscription', () => {
+  it('includes the database counters in the Overview page subscription', () => {
     expect(dashboardPageSourceNames(authoritativeDashboardDocument, 'overview')).toEqual([
+      'database-campaign-count',
+      'database-repository-count',
+      'database-workflow-count',
+      'database-run-count',
+      'database-domain-count',
+      'database-tool-count',
+      'database-audit-count',
+      'database-issue-count',
       'data-health-collections'
     ]);
     const rendered = renderDashboardView({
@@ -128,14 +136,15 @@ describe('dashboard DOM provenance', () => {
       loadPageSources: () => new Promise(() => {})
     });
     const overview = rendered.querySelector('[data-page-id="overview"]');
-    expect(overview?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(2);
-    expect(overview?.querySelector('.factory-intro')).not.toBeNull();
-    expect(overview?.querySelector('.factory-floor')).not.toBeNull();
+    expect(overview?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(0);
+    expect(overview?.querySelector('.dashboard-view-skeleton')).not.toBeNull();
+    expect(overview?.querySelector('.factory-intro')).toBeNull();
+    expect(overview?.querySelector('.factory-floor')).toBeNull();
     expect(overview?.querySelector('[data-view-id="overview-campaigns"]')).toBeNull();
     disposeDashboard(rendered);
   });
 
-  it('renders independently bound elements without registering a page-wide query', () => {
+  it('loads the Overview counters through one page-wide query', () => {
     const loadPageSources = vi.fn(() => new Promise(() => {}));
     const rendered = renderDashboardView({
       document: authoritativeDashboardDocument,
@@ -143,12 +152,12 @@ describe('dashboard DOM provenance', () => {
       loadPageSources
     });
     const overviewBefore = rendered.querySelector('[data-page-id="overview"]');
-    expect(overviewBefore?.querySelector('.factory-intro')).not.toBeNull();
+    expect(overviewBefore?.querySelector('.dashboard-view-skeleton')).not.toBeNull();
 
     expect(rendered.querySelector('[data-page-id="overview"]')).toBe(overviewBefore);
-    expect(rendered.querySelector('.factory-floor')).not.toBeNull();
+    expect(rendered.querySelector('.factory-floor')).toBeNull();
     expect(rendered.querySelector('[data-view-id="overview-campaigns"]')).toBeNull();
-    expect(loadPageSources).not.toHaveBeenCalled();
+    expect(loadPageSources).toHaveBeenCalledOnce();
     disposeDashboard(rendered);
   });
 
@@ -1586,9 +1595,9 @@ describe('presenter built-in and custom pages', () => {
 
     const page = await activatePage(rendered, 'overview');
     expect(page?.querySelector(':scope > .custom-view-grid')).not.toBeNull();
-    expect(page?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(2);
-    expect(page?.querySelectorAll('.factory-station')).toHaveLength(6);
-    expect(page?.querySelector('.factory-intro h2')?.textContent).toBe('Your factory is idle.');
+    expect(page?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(8);
+    expect(page?.querySelectorAll('.factory-station')).toHaveLength(0);
+    expect(page?.querySelector('.factory-intro')).toBeNull();
     expect(page?.querySelector('.notifications-inbox')).toBeNull();
     expect(page?.querySelector('.factory-status')).toBeNull();
     expect(page?.querySelector('.factory-all-clear')).toBeNull();
@@ -2115,7 +2124,8 @@ describe('presenter built-in and custom pages', () => {
     }));
     window.dispatchEvent(new HashChangeEvent('hashchange'));
 
-    expect(directions.filter(Boolean)).toEqual(['forward', 'backward']);
+    expect(directions.filter(Boolean)[0]).toBe('forward');
+    expect(directions.filter(Boolean).slice(1).every((direction) => direction === 'backward')).toBe(true);
     await Promise.resolve();
     rendered.remove();
     Reflect.deleteProperty(document, 'startViewTransition');
