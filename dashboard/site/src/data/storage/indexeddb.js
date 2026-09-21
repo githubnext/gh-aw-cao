@@ -833,6 +833,66 @@ export async function pruneStaleDailyOverviewAggregates(indexedDB) {
 }
 
 /**
+ * Reads the daily overview aggregate metadata record without range-reading
+ * any day records. Callers that need the full available day range (e.g. a
+ * query-planner fast path summing over "all retained history") use this to
+ * discover `firstDay`/`lastDay` before issuing a bounded range read, instead
+ * of guessing a range. Fails closed exactly like {@link readDailyOverviewAggregates}.
+ *
+ * @param {IDBFactory} indexedDB
+ * @returns {Promise<{
+ *   available: boolean,
+ *   fallbackReason: string | null,
+ *   generation: string | null,
+ *   version: number | null,
+ *   firstDay: string | null,
+ *   lastDay: string | null
+ * }>}
+ */
+export async function readOverviewAggregateMetadata(indexedDB) {
+  const database = await openCanonicalDatabase(indexedDB);
+  try {
+    const metadata = await requestResult(
+      database.transaction(OVERVIEW_AGGREGATE_METADATA_STORE)
+        .objectStore(OVERVIEW_AGGREGATE_METADATA_STORE)
+        .get(OVERVIEW_AGGREGATE_METADATA_ID)
+    );
+    const activeGeneration = metadata && typeof metadata === 'object' ? metadata.activeGeneration : null;
+    const version = metadata && typeof metadata === 'object' ? metadata.version ?? null : null;
+    if (!metadata || typeof activeGeneration !== 'string' || !activeGeneration) {
+      return {
+        available: false,
+        fallbackReason: 'metadata-missing',
+        generation: null,
+        version,
+        firstDay: null,
+        lastDay: null
+      };
+    }
+    if (version !== DAILY_OVERVIEW_AGGREGATE_VERSION) {
+      return {
+        available: false,
+        fallbackReason: 'version-mismatch',
+        generation: activeGeneration,
+        version,
+        firstDay: null,
+        lastDay: null
+      };
+    }
+    return {
+      available: true,
+      fallbackReason: null,
+      generation: activeGeneration,
+      version,
+      firstDay: typeof metadata.firstDay === 'string' ? metadata.firstDay : null,
+      lastDay: typeof metadata.lastDay === 'string' ? metadata.lastDay : null
+    };
+  } finally {
+    database.close();
+  }
+}
+
+/**
  * Range-reads daily overview aggregate records for the currently active
  * generation (spec §72.8). Fails closed: returns `available: false` with a
  * `fallbackReason` whenever the metadata record is absent or its version

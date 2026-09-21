@@ -93,6 +93,8 @@ resources:
     destination: .github/aw/dashboard/site/src/data/normalize/index.js
   - source: site/src/data/queries/declarative.js
     destination: .github/aw/dashboard/site/src/data/queries/declarative.js
+  - source: site/src/data/queries/daily-aggregate-fast-path.js
+    destination: .github/aw/dashboard/site/src/data/queries/daily-aggregate-fast-path.js
   - source: site/src/data/queries/index.js
     destination: .github/aw/dashboard/site/src/data/queries/index.js
   - source: site/src/data/queries/memoization.js

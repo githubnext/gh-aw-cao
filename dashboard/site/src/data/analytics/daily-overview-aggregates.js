@@ -14,8 +14,9 @@
  */
 
 /** Conclusions treated as failed for run/dispatch aggregation. */
-const FAILED_CONCLUSIONS = new Set(['failure', 'startup-failure', 'stale', 'timed-out']);
-const DISPATCH_EVENT = 'workflow_dispatch';
+export const FAILED_RUN_CONCLUSIONS = ['failure', 'startup-failure', 'stale', 'timed-out'];
+const FAILED_CONCLUSIONS = new Set(FAILED_RUN_CONCLUSIONS);
+export const DISPATCH_EVENT = 'workflow_dispatch';
 
 /**
  * @typedef {object} DailyOverviewAggregateRecord
