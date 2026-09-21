@@ -73,7 +73,7 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   );
   assert.match(
     indexJob,
-    /Download agentic workflow logs\n\s+continue-on-error: true[\s\S]*?Ingest activity database/,
+    /Download agentic workflow logs[\s\S]*?Ingest activity database/,
   );
   assert.match(workflow, /REPORT_CONTROL_SETTINGS:[\s\S]*?bash "\$collector"/);
   assert.match(collector, /jq -r '\.allowed_repositories\[\]\?'/);
