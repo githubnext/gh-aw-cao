@@ -1,8 +1,34 @@
 // @vitest-environment jsdom
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { indexedDB } from 'fake-indexeddb';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+const queryCanonicalDatabaseDiagnostics = vi.hoisted(() => vi.fn().mockResolvedValue({
+  schemaVersion: 12,
+  counts: {
+    campaigns: 0,
+    repositories: 0,
+    workflows: 0,
+    runs: 0,
+    domains: 0,
+    tools: 0,
+    audits: 0,
+    issues: 0
+  },
+  relationshipErrors: [],
+  duplicateRecordIds: {
+    campaigns: [],
+    repositories: [],
+    workflows: [],
+    runs: [],
+    domains: [],
+    tools: [],
+    audits: [],
+    issues: []
+  }
+}));
+vi.mock('../../src/data-processor.js', () => ({ queryCanonicalDatabaseDiagnostics }));
+
 import { renderConfigurationView } from '../../src/components/configuration-view.js';
 import { setDeclaredCliActions } from '../../src/components/cli-actions.js';
 import { renderUiElement } from '../../src/components/ui-elements.js';
@@ -247,7 +273,6 @@ describe('Configuration dashboard view', () => {
   });
 
   it('collects and copies full diagnostics', async () => {
-    vi.stubGlobal('indexedDB', indexedDB);
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
@@ -415,7 +440,6 @@ describe('Configuration dashboard view', () => {
     });
 
     it('stays silent by default while editing settings and collecting diagnostics', async () => {
-      vi.stubGlobal('indexedDB', indexedDB);
       Object.defineProperty(navigator, 'clipboard', {
         configurable: true,
         value: { writeText: vi.fn().mockResolvedValue(undefined) }
@@ -444,7 +468,6 @@ describe('Configuration dashboard view', () => {
 
     it('logs sanitized draft and diagnostics metadata when the category is enabled', async () => {
       window.history.replaceState(null, '', '/?debug=configuration-view');
-      vi.stubGlobal('indexedDB', indexedDB);
       Object.defineProperty(navigator, 'clipboard', {
         configurable: true,
         value: { writeText: vi.fn().mockResolvedValue(undefined) }

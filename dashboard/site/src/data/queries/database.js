@@ -38,10 +38,7 @@ const DATABASE_TABLE_SOURCES = new Set([
  * @param {IDBFactory} indexedDB
  */
 export async function queryCanonicalDatabaseDiagnostics(indexedDB) {
-  const collections = await readCollections(indexedDB, ENTITY_STORES);
-  const records = Object.fromEntries(
-    ENTITY_STORES.map((store, index) => [store, collections[index]])
-  );
+  const records = await readCollections(indexedDB, ENTITY_STORES);
   const counts = Object.fromEntries(
     ENTITY_STORES.map((store) => [store, records[store].length])
   );
