@@ -327,12 +327,20 @@ test("cao update upgrades gh-aw, updates installed campaigns, and merges declara
     await writeFile(path.join(campaignRecords, "root.json"), JSON.stringify({
       campaign: "githubnext/gh-aw-cao",
       source: "githubnext/gh-aw-cao@v1",
+      resolvedCommit: "1234567890abcdef1234567890abcdef12345678",
     }));
     await writeFile(path.join(campaignRecords, "dependabot.json"), JSON.stringify({
       campaign: "githubnext/gh-aw-cao/dependabot",
       source: "githubnext/gh-aw-cao/dependabot@v1",
     }));
     await mkdir(declarationDirectory, { recursive: true });
+    await mkdir(path.join(root, ".github", "workflows"), { recursive: true });
+    for (const workflow of ["activity", "dashboard"]) {
+      await writeFile(
+        path.join(root, ".github", "workflows", `cao-${workflow}.yml`),
+        `jobs:\n  build:\n    steps:\n      - name: Checkout trusted ${workflow} source\n        uses: actions/checkout@0123456789012345678901234567890123456789\n        with:\n          ref: \${{ github.workflow_sha }}\n          persist-credentials: false\n      - name: Next step\n        run: true\n`,
+      );
+    }
     await writeFile(path.join(declarationDirectory, "cao.json"), JSON.stringify({
       campaign: "dependabot",
       orchestrator: "dependabot",
@@ -391,6 +399,15 @@ test("cao update upgrades gh-aw, updates installed campaigns, and merges declara
     ]);
     assert.deepEqual(result.declarations, ["dependabot"]);
     assert.equal(result["gh-aw"].updated, true);
+    for (const workflow of ["activity", "dashboard"]) {
+      const installedWorkflow = await readFile(
+        path.join(root, ".github", "workflows", `cao-${workflow}.yml`),
+        "utf8",
+      );
+      assert.match(installedWorkflow, /repository: githubnext\/gh-aw-cao/);
+      assert.match(installedWorkflow, /ref: 1234567890abcdef1234567890abcdef12345678/);
+      assert.doesNotMatch(installedWorkflow, /github\.workflow_sha/);
+    }
     assert.deepEqual(policy["control-plane"].campaigns.dependabot, {
       mode: "live",
       workers: {
@@ -404,6 +421,37 @@ test("cao update upgrades gh-aw, updates installed campaigns, and merges declara
         },
       },
     });
+  } finally {
+    process.chdir(previousDirectory);
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("cao update uses current package records and validates the release commit", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cao-update-package-record-"));
+  const previousDirectory = process.cwd();
+  const policyPath = path.join(root, ".github", "workflows", "cao.json");
+  const packageRecords = path.join(root, ".github", "aw", "packages");
+  try {
+    await mkdir(packageRecords, { recursive: true });
+    await writeFile(path.join(packageRecords, "root.json"), JSON.stringify({
+      schemaVersion: 1,
+      package: "githubnext/gh-aw-cao",
+      source: "githubnext/gh-aw-cao@v1",
+      resolvedCommit: "not-a-commit",
+      files: [],
+    }));
+    await mkdir(path.dirname(policyPath), { recursive: true });
+    await writeFile(policyPath, '{"version":1,"gh-aw-version":"v0.89.17","control-plane":{"campaigns":{}}}\n');
+    process.chdir(root);
+
+    await assert.rejects(
+      updateCaoCampaigns([], {
+        policyPath,
+        execute: () => versionResult,
+      }),
+      /invalid resolvedCommit: not-a-commit/,
+    );
   } finally {
     process.chdir(previousDirectory);
     await rm(root, { recursive: true, force: true });

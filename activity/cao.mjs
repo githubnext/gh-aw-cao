@@ -292,37 +292,97 @@ function campaignSlugFromSpec(spec) {
 }
 
 async function installedCampaignRecords(root = process.cwd()) {
-  const recordsDirectory = path.resolve(root, '.github', 'aw', 'campaigns');
-  let entries;
-  try {
-    entries = await readdir(recordsDirectory, { withFileTypes: true });
-  } catch (error) {
-    if (error?.code === 'ENOENT') return [];
-    throw error;
-  }
   const records = new Map();
-  for (const entry of entries) {
-    if (entry.isDirectory() || !entry.name.endsWith('.json')) continue;
-    const source = path.join(recordsDirectory, entry.name);
-    let record;
+  for (const directory of ['campaigns', 'packages']) {
+    const recordsDirectory = path.resolve(root, '.github', 'aw', directory);
+    let entries;
     try {
-      record = JSON.parse(await readFile(source, 'utf8'));
+      entries = await readdir(recordsDirectory, { withFileTypes: true });
     } catch (error) {
-      if (error instanceof SyntaxError) throw new Error(`${path.relative(root, source)} contains invalid JSON: ${error.message}`);
+      if (error?.code === 'ENOENT') continue;
       throw error;
     }
-    const campaignName = typeof record.campaign === 'string' && record.campaign.trim()
-      ? record.campaign.trim()
-      : typeof record.source === 'string'
-        ? record.source.split('@')[0].trim()
-        : '';
-    if (!campaignName) throw new Error(`${path.relative(root, source)} does not identify an installed campaign`);
-    records.set(campaignName, {
-      campaign: campaignName,
-      source: typeof record.source === 'string' ? record.source : campaignName
-    });
+    for (const entry of entries) {
+      if (entry.isDirectory() || !entry.name.endsWith('.json')) continue;
+      const source = path.join(recordsDirectory, entry.name);
+      let record;
+      try {
+        record = JSON.parse(await readFile(source, 'utf8'));
+      } catch (error) {
+        if (error instanceof SyntaxError) throw new Error(`${path.relative(root, source)} contains invalid JSON: ${error.message}`);
+        throw error;
+      }
+      const campaignName = typeof record.package === 'string' && record.package.trim()
+        ? record.package.trim()
+        : typeof record.campaign === 'string' && record.campaign.trim()
+          ? record.campaign.trim()
+          : typeof record.source === 'string'
+            ? record.source.split('@')[0].trim()
+            : '';
+      if (!campaignName) throw new Error(`${path.relative(root, source)} does not identify an installed campaign`);
+      records.set(campaignName, {
+        campaign: campaignName,
+        source: typeof record.source === 'string' ? record.source : campaignName,
+        resolvedCommit: typeof record.resolvedCommit === 'string' ? record.resolvedCommit.trim() : ''
+      });
+    }
   }
   return [...records.values()].sort((left, right) => left.campaign.localeCompare(right.campaign));
+}
+
+async function patchCaoReleaseCheckout(workflow, releaseCommit, root = process.cwd()) {
+  if (!/^[0-9a-f]{40}$/i.test(releaseCommit)) {
+    throw new Error(`Installed CAO package record has an invalid resolvedCommit: ${releaseCommit || '(missing)'}`);
+  }
+  const workflowPath = path.resolve(root, '.github', 'workflows', `cao-${workflow}.yml`);
+  let content;
+  try {
+    content = await readFile(workflowPath, 'utf8');
+  } catch (error) {
+    if (error?.code === 'ENOENT') return false;
+    throw error;
+  }
+
+  const stepMarker = `      - name: Checkout trusted ${workflow} source`;
+  const stepStart = content.indexOf(stepMarker);
+  if (stepStart === -1) throw new Error(`${path.relative(root, workflowPath)} is missing its trusted source checkout`);
+  const nextStep = content.indexOf('\n      - name:', stepStart + stepMarker.length);
+  const stepEnd = nextStep === -1 ? content.length : nextStep;
+  const step = content.slice(stepStart, stepEnd);
+  if (!/\n {8}uses: actions\/checkout@/.test(step)) {
+    throw new Error(`${path.relative(root, workflowPath)} trusted source step must use actions/checkout`);
+  }
+
+  const newline = content.includes('\r\n') ? '\r\n' : '\n';
+  const lines = step.split(/\r?\n/);
+  const withIndex = lines.findIndex((line) => line === '        with:');
+  if (withIndex === -1) throw new Error(`${path.relative(root, workflowPath)} trusted source checkout is missing with`);
+  let repositoryIndex = lines.findIndex((line, index) => index > withIndex && line.startsWith('          repository:'));
+  let refIndex = lines.findIndex((line, index) => index > withIndex && line.startsWith('          ref:'));
+  if (repositoryIndex === -1) {
+    repositoryIndex = withIndex + 1;
+    lines.splice(repositoryIndex, 0, '          repository: githubnext/gh-aw-cao');
+    if (refIndex !== -1) refIndex += 1;
+  } else {
+    lines[repositoryIndex] = '          repository: githubnext/gh-aw-cao';
+  }
+  if (refIndex === -1) {
+    lines.splice(repositoryIndex + 1, 0, `          ref: ${releaseCommit}`);
+  } else {
+    lines[refIndex] = `          ref: ${releaseCommit}`;
+  }
+
+  const patched = `${content.slice(0, stepStart)}${lines.join(newline)}${content.slice(stepEnd)}`;
+  if (patched !== content) await writeFile(workflowPath, patched);
+  return true;
+}
+
+async function patchInstalledCaoReleaseCheckouts(records, root = process.cwd()) {
+  const rootRecord = records.find(({ campaign }) => campaign === 'githubnext/gh-aw-cao');
+  for (const workflow of ['activity', 'dashboard']) {
+    const record = records.find(({ campaign }) => campaign === `githubnext/gh-aw-cao/${workflow}`) ?? rootRecord;
+    if (record) await patchCaoReleaseCheckout(workflow, record.resolvedCommit, root);
+  }
 }
 
 async function readInstalledCaoDeclaration(campaignName) {
@@ -445,6 +505,7 @@ export async function updateCaoCampaigns(ghAwOptions = [], {
     updatedCampaigns.push(record.campaign);
   }
   if (mergedDeclarations.length > 0) await writeJsonAtomically(path.resolve(policyPath), policy);
+  await patchInstalledCaoReleaseCheckouts(await installedCampaignRecords());
   return {
     command: 'update',
     policy: policyPath,
