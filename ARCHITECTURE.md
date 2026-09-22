@@ -62,7 +62,7 @@ compiled by gh-aw. No one input can widen another.
 Orchestrators decide rollout and selection; workers are independent,
 single-target enforcement points.
 
-### Activity and dashboard data
+### Activity, computations, and dashboard data
 
 CAO Activity is a separate evidence pipeline. It supports observability but
 grants no rollout or write authority.
@@ -78,16 +78,23 @@ flowchart LR
     Worker["Browser data Web Worker"]
     IndexedDB["IndexedDB projection"]
     Query["Dashboard Language queries"]
+    Compute["Versioned computations<br/>bounded insights"]
+    Results["Materialized computation results<br/>generation-scoped"]
     UI["Static dashboard"]
     CLI["cao CLI and agents"]
 
     Logs --> Shards
-    Shards --> SQLite --> CLI
+    Shards --> SQLite
     Shards --> Runs
     Shards --> Records
     Runs --> Publisher
     Records --> Publisher --> Worker
-    Worker --> IndexedDB --> Query --> UI
+    Worker --> IndexedDB
+    IndexedDB --> Query
+    IndexedDB --> Compute --> Results --> Query
+    SQLite --> Compute
+    Query --> UI
+    Compute --> CLI
 ```
 
 Activity collects a bounded snapshot once and publishes immutable cache
@@ -96,7 +103,17 @@ the authoritative inputs. It deterministically separates compact, immutable run
 information from detailed run-linked records so the browser data worker loads every run
 before continuing with event shards. Browser download, normalization,
 persistence, and queries run in a dedicated Web Worker. The main thread receives
-only bounded view payloads.
+only bounded view payloads. Versioned computations transform canonical evidence
+into partitioned measures and actionable insights so consumers do not repeatedly
+scan the full Activity corpus. Computation results remain derived evidence:
+they preserve source quality and provenance and grant no operational authority.
+Successful-Run value computations keep produced safe outputs, native
+operational-value measurements, and efficiency evidence separate; they do not
+turn runtime success or output creation into accepted value.
+The browser materializes bounded runtime and failure-scope results by
+generation, computes detailed audit causes only for selected or prioritized
+partitions, and discards every result safely because canonical evidence remains
+reconstructable.
 
 ## Source tree
 
@@ -107,6 +124,8 @@ only bounded view payloads.
 | `activity/` | Deterministic Activity collection, JSONL ingestion, SQLite projection, and the `cao` CLI. |
 | `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and static browser application. |
 | `dashboard/site/src/data/` | Canonical browser data model, adapters, normalization, storage, and declarative query engine. |
+| `research/` | Executable notebooks and experimental reference runtimes used to validate proposed computation semantics against canonical data; these are not dashboard production code. |
+| `specs/computations.md` | Versioned computation, bounded insight, provenance, quality, and measure contracts. |
 | `.github/workflows/*.md` | Editable gh-aw workflow sources. |
 | `.github/workflows/*.lock.yml` | Generated workflow artifacts; never edit these directly. |
 | `.github/workflows/shared/` | Shared policy resolution, control admission, checkout, review-bundle, and observability components. |
@@ -157,6 +176,19 @@ defined by manifests rather than by directory proximity.
   IndexedDB are disposable transport or query projections, not durable
   authority.
 - Missing, stale, partial, and zero evidence are distinct states.
+- Computations consume canonical evidence, preserve its quality and provenance,
+  and emit bounded, versioned results; they do not create authority or convert
+  runtime success into verified outcomes or operational value.
+- Overview counters use IndexedDB-native counts or generation-safe precomputed
+  daily values. Run-table scans, failure clustering, and audit diagnosis are
+  deferred to drill-down or compatible bounded materializations.
+- Materialized computation results are generation-scoped disposable state.
+  Runtime facts evaluate orchestrators first and enumerate worker targets only
+  when orchestration is healthy enough to make worker evaluation meaningful.
+  Worker facts use one evaluation partition per target so success on one target cannot mask
+  failure on another. Failure scopes are precomputed; detailed audit causes
+  and actions are selected-partition caches whose failure cannot invalidate
+  valid upstream results.
 - Dashboard selection, filtering, joins, grouping, aggregation, ordering, and
   pagination are declared in Dashboard Language and execute in the data Web
   Worker.

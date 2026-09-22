@@ -1,25 +1,28 @@
 ---
 title: Central Agentic Ops Dashboard Data Architecture Specification
 description: Canonical data model, ingestion, IndexedDB persistence, consistency, recovery, and scale requirements for the gh-aw-cao dashboard.
-version: 1.2.0
+version: 1.6.0
 status: Working Draft
+editors:
+  - GitHub Next
+---
+
+# Central Agentic Ops Dashboard Data Architecture Specification
+
+**Version:** 1.6.0
+**Status:** Working Draft
+**Repository:** `githubnext/gh-aw-cao`
+**Target implementation:** Dashboard data subsystem
+**Date:** 2026-09-22
+
+| Browser storage | IndexedDB keeps all available run summaries and expires detailed run-linked records after 30 days. |
+| --- | --- |
 
 IndexedDB SHALL retain all available canonical Repository, Workflow, and Run
 summaries so dashboard trends and run history can cover the complete published
 source. It SHALL retain detailed Domain, Tool, Audit, and Issue records for the
-bounded 30-day operational window. Expiring run-linked records MUST NOT remove their retained Run or
-the Run's structural parents.
-editors:
-  - GitHub Next
----
-| Browser storage | IndexedDB keeps all available run summaries and expires detailed run-linked records after 30 days. |
-# Central Agentic Ops Dashboard Data Architecture Specification
-
-**Version:** 1.2.0
-**Status:** Working Draft
-**Repository:** `githubnext/gh-aw-cao`
-**Target implementation:** Dashboard data subsystem
-**Date:** 2026-09-17
+bounded 30-day operational window. Expiring run-linked records MUST NOT remove
+their retained Run or the Run's structural parents.
 
 ---
 
@@ -796,6 +799,7 @@ erDiagram
   RUN {
     string id PK "githubRunId plus attempt"
     string repositoryId FK "required execution repository"
+    string targetRepositoryId FK "nullable worker target"
     string workflowId FK "required owning workflow"
     number githubRunId "composite natural key"
     number attempt "composite natural key"
@@ -920,6 +924,7 @@ Example:
   id: "github:run:123456789:attempt:1",
 
   repositoryId: "...",
+  targetRepositoryId: "...",
   workflowId: "...",
 
   githubRunId: 123456789,
@@ -969,6 +974,11 @@ corresponding source evidence is available at import time.
 **RUN-005** — An unavailable aggregate MUST remain `null`. An observed evidence
 class with no matching calls or audit items SHALL produce zero. Duration is
 measured in seconds, and MCP response size is measured in bytes.
+
+**RUN-006** — A worker Run SHOULD preserve its canonical
+`targetRepositoryId`. Missing target association MUST remain null and MUST NOT
+default to the execution Repository. Orchestrator Runs MUST leave
+`targetRepositoryId` null.
 
 ---
 
@@ -1656,7 +1666,33 @@ repositoryId
 repositoryId
 workflowId
 conclusion
+byGenerationWorkflowOrder:
+  [generation, workflowId, computationRunDate, githubRunId, attempt]
+byGenerationWorkflowTargetOrder:
+  [generation, workflowId, targetRepositoryId, computationRunDate, githubRunId, attempt]
 ```
+
+`computationRunDate` SHALL be the normalized first valid Run timestamp in this
+order: `startedAt`, `createdAt`, then `updatedAt`. It is a disposable projection
+field used to implement the `does-it-run` ordering contract and MUST preserve
+the source fields from which it was derived.
+
+`byGenerationWorkflowOrder` supports orchestrator evaluation.
+`byGenerationWorkflowTargetOrder` supports worker-target evaluation. The
+computation engine SHALL traverse these indexes newest-first and stop each
+partition after the first successful Run, except when complete-partition
+evidence is required because no success is retained. It SHOULD use one
+target-ordered range cursor with seeks between partitions when that reduces
+storage requests. A worker Run without `targetRepositoryId` SHALL be excluded
+from the target index and handled as incomplete evidence.
+
+These two ordered indexes are REQUIRED when IndexedDB materializes
+`does-it-run`; an implementation MUST NOT replace them with an all-Runs scan
+and in-memory sort.
+
+Run-information ingestion SHOULD maintain each computation partition's
+fingerprint while processing its Run summaries. Runtime-fact computation MUST
+NOT rescan historical Runs merely to calculate that fingerprint.
 
 ### run-linked tables
 
@@ -3277,7 +3313,311 @@ with INV-004 and §59 (Full Rebuild Requirement).
 
 ---
 
-# 73. Change Log
+# 73. Materialized Computation Projection
+
+## 73.1 Purpose and authority
+
+The dashboard SHALL maintain a disposable, generation-scoped projection of the
+versioned measure results defined by the
+[CAO Computations Specification](computations.md). The projection exists to
+make Failed runs drill-down immediate and to avoid rescanning canonical Runs or
+Audits for compatible repeated requests.
+
+Materialized computation results are derived state. They MUST NOT become
+authoritative evidence, grant control-plane authority, replace canonical
+records, or be retained as the only information required to reconstruct a
+result.
+
+## 73.2 Object stores
+
+The IndexedDB schema SHALL add:
+
+1. `computationResults`, containing one bounded result per generation, measure
+   version, and partition; and
+2. `computationMetadata`, containing readiness and publication metadata per
+   generation and measure version.
+
+Adding these stores and indexes MUST increment the physical IndexedDB schema
+version. A missing prior store is not migrated from legacy view state; the
+projection SHALL be rebuilt from canonical evidence.
+
+A `computationResults` record SHALL have this shape:
+
+```json
+{
+  "id": "generation:measure-id:measure-version:partition-hash",
+  "generation": "immutable-generation-id",
+  "measureId": "does-it-run",
+  "measureVersion": "1.0.0",
+  "partitionKey": {
+    "campaignId": "campaign:dependabot",
+    "workflowId": "github:workflow:98765",
+    "targetRepositoryId": "github:repository:12345"
+  },
+  "partitionHash": "content-addressed-partition-key",
+  "inputFingerprint": "content-addressed-inputs",
+  "stage": "runtime-fact",
+  "status": "ready",
+  "attentionState": "needs-attention",
+  "campaignId": "campaign:dependabot",
+  "workflowId": "github:workflow:98765",
+  "targetRepositoryId": "github:repository:12345",
+  "diagnosticScope": null,
+  "quality": {
+    "availability": "available",
+    "completeness": "complete",
+    "freshness": "fresh"
+  },
+  "computedAt": "2026-09-22T08:01:00Z",
+  "observedThrough": "2026-09-22T08:00:00Z",
+  "result": {}
+}
+```
+
+`stage` SHALL be one of `runtime-fact`, `failure-scope`, `likely-cause`, or
+`user-action`. `status` SHALL be one of `pending`, `ready`, `partial`,
+`unavailable`, or `failed`. `attentionState` SHALL be
+`needs-attention` or `no-attention`; strings are required because booleans are
+not valid IndexedDB keys.
+
+The `result` payload MUST satisfy the bound declared by its measure. It MUST NOT
+contain raw prompts, credentials, arguments, response bodies, unbounded audit
+objects, or another copy of canonical source rows.
+
+A `computationMetadata` record SHALL have this shape:
+
+```json
+{
+  "id": "generation:measure-id:measure-version",
+  "generation": "immutable-generation-id",
+  "measureId": "does-it-run",
+  "measureVersion": "1.0.0",
+  "stage": "runtime-fact",
+  "status": "ready",
+  "resultCount": 42,
+  "readyCount": 42,
+  "failedCount": 0,
+  "builtAt": "2026-09-22T08:01:00Z",
+  "sourceQuality": {
+    "availability": "available",
+    "completeness": "complete",
+    "freshness": "fresh"
+  }
+}
+```
+
+Metadata counts are diagnostics and MUST NOT substitute for result records when
+a consumer needs partition identity or evidence references.
+
+For `does-it-run`, each bounded Campaign summary result SHALL contain
+`workerEvaluationState` with value `eligible`, `blocked-by-orchestrator`, or
+`indeterminate-orchestrator`. Measure metadata MAY be `ready` when one or more
+Campaigns intentionally gate worker evaluation; an intentionally skipped
+worker set is not missing or failed materialization.
+
+## 73.3 Indexes
+
+`computationResults` SHALL define:
+
+| Index | Key path | Purpose |
+| --- | --- | --- |
+| `byGenerationMeasure` | `[generation, measureId, measureVersion]` | Enumerate one exact measure version for the active generation. |
+| `byGenerationMeasurePartition` | `[generation, measureId, measureVersion, partitionHash]` | Retrieve one exact-version partition without scanning; this index MUST be unique. |
+| `byGenerationAttention` | `[generation, measureId, measureVersion, attentionState]` | Count or enumerate one measure's attention results with native `IDBIndex.count()` or a bounded range. |
+| `byGenerationCampaign` | `[generation, measureId, measureVersion, campaignId]` | Read bounded exact-version Campaign drill-down results. |
+| `byGenerationCampaignTarget` | `[generation, measureId, measureVersion, campaignId, targetRepositoryId]` | Read one Campaign's bounded worker-target results without scanning other target partitions. |
+| `byGenerationDiagnosticScope` | `[generation, measureId, measureVersion, diagnosticScope]` | Read bounded exact-version failure-scope groups. |
+| `byGenerationStageStatus` | `[generation, measureId, measureVersion, stage, status]` | Report phased readiness without reading result payloads. |
+
+Records without an optional indexed value, such as `diagnosticScope`, SHALL be
+absent from that index. Callers MUST NOT encode a semantic unknown as an empty
+string merely to force index membership.
+
+An Overview attention counter MUST execute
+`byGenerationAttention.count(IDBKeyRange.only([generation, "does-it-run",
+"1.0.0", "needs-attention"]))` for the exact supported measure version. It
+MUST NOT combine stages or measure versions, load result payloads, enumerate
+keys, or scan canonical Runs.
+
+## 73.4 Materialization phases
+
+Materialization SHALL follow this order:
+
+1. After canonical Campaign, Repository, Workflow, and Run information is
+   committed, compute orchestrator `does-it-run` results first. Only when the
+   Campaign's orchestrator gate is `eligible`, compute one result per
+   worker-target partition. Implementations MUST construct partitions before
+   evaluating their success boundaries; one target's success MUST NOT reset
+   another target's failures. A blocked or indeterminate gate MUST publish its
+   bounded Campaign result without enumerating worker Runs.
+2. After Campaign classification, expected target scope, and target evaluation
+   evidence are available, compute affected `where-does-it-fail` clusters
+   outside the Overview request path.
+3. After detailed Audit, Tool, and Domain evidence is available, leave
+   `what-is-the-likely-cause` absent until selected or prioritized, unless
+   background capacity explicitly admits that bounded partition.
+4. Compute `what-should-the-user-do` with its cause result, or directly from
+   `not-observed` and `unknown` runtime results.
+
+The complete orchestrator-gate and worker-partition flow is illustrated by the
+[computation decision tree](computations.md#532-decision-tree).
+
+Each phase SHALL publish honest `pending`, `partial`, `unavailable`, `failed`,
+or `ready` metadata. A later phase MUST NOT delay publication of an earlier
+valid phase.
+
+## 73.5 Publication and generation safety
+
+Bulk runtime-fact and failure-scope materialization for a replacement
+generation SHALL write staging records in bounded transactions, validate their
+measure versions, partition uniqueness, bounds, fingerprints, relationships,
+and quality, then atomically mark the corresponding metadata ready. Results
+MUST NOT become queryable as ready before their metadata publication succeeds.
+
+A query SHALL join computation results only to canonical records with the same
+generation. Activating a new canonical generation MUST make prior-generation
+computation results ineligible for the active query, even when measure versions
+and partition keys match.
+
+Selected-partition cause and action computations MAY publish into the active
+generation after activation. The worker SHALL write the complete result and
+its metadata update in one transaction. A failed or aborted write MUST preserve
+any known-good compatible result.
+
+When an orchestrator gate transitions away from `eligible`, the data worker
+SHALL atomically publish the replacement Campaign summary and delete or
+invalidate that Campaign's worker-target computation records so they are
+absent from active attention indexes. This operation MUST NOT delete canonical
+worker Runs, which remain available for explicitly requested historical
+inspection.
+
+Retired-generation computation results MAY be garbage-collected with their
+canonical generation. Deleting either computation store MUST leave canonical
+data intact and MUST permit complete projection reconstruction.
+
+## 73.6 Cache compatibility and invalidation
+
+A cached result is compatible only when all of these values match:
+
+- active canonical generation;
+- measure ID;
+- measure version;
+- partition key and hash;
+- input fingerprint; and
+- required evidence-quality state.
+
+A mismatch MUST produce a cache miss. It MUST NOT be hidden by returning a
+result from another generation or measure version.
+
+For `does-it-run` version `1.0.0`, a worker result whose partition omits
+`targetRepositoryId` is invalid. The projection MUST rebuild it as
+target-aware partitions and MUST NOT read, migrate, or publish a legacy
+Workflow-wide worker result.
+
+Invalidation SHALL follow the measure fingerprints in the
+[CAO Computations Specification](computations.md#9-refresh-and-invalidation).
+Changing one Workflow SHOULD recompute its runtime partitions, affected failure
+clusters, and downstream cause or action partitions. A target-specific Run
+change SHOULD recompute only that worker-target partition. A late Run that sorts
+at or before the stored success boundary MUST invalidate the affected partition.
+A changed Workflow definition or expected-target set MAY invalidate every
+partition for that Workflow.
+
+## 73.7 Query and drill-down behavior
+
+The query/storage layer owns all reads and writes of computation stores. Views,
+effects, and components MUST NOT open the stores directly, join generations,
+cluster results, or reconstruct measure logic.
+
+Failed runs drill-down SHALL:
+
+1. read materialized runtime facts and failure scopes first;
+2. render those bounded results without a canonical Run-table scan;
+3. expose a pending state when a compatible cause result is absent;
+4. request only the selected cause partition from the data worker;
+5. retain an abort-scoped subscription; and
+6. update when the cause and action transaction publishes.
+
+When an orchestrator gate is not `eligible`, the drill-down SHALL render the
+orchestrator result and skipped-worker state before offering any explicit
+historical worker inspection. It MUST NOT automatically enumerate worker
+partitions or present skipped workers as healthy, failed, or `not-observed`.
+
+The query planner MUST report `executionPath:
+materialized-computation` for compatible reads and `executionPath: drill-down`
+for selected-partition computation. Diagnostics SHALL include measure ID and
+version, stage, duration, storage request count, records scanned and returned,
+generation, cache status, and invalidation or fallback reason.
+
+## 73.8 Failure behavior
+
+Missing stores, incompatible schema or measure versions, invalid metadata,
+quota errors, failed validation, transaction aborts, and unavailable evidence
+MUST produce an explicit unavailable, partial, or failed computation state.
+They MUST NOT produce a healthy zero or trigger a canonical Run-table scan on
+Overview.
+
+Failure of Audit ingestion or lazy cause computation MUST leave compatible
+runtime-fact and failure-scope records available. A consumer MAY offer retry of
+the selected bounded computation, but MUST NOT bypass the worker/query boundary
+or broaden the partition.
+
+## 73.9 Conformance tests
+
+- **T-DCP-001:** schema creation adds both stores and every declared index.
+- **T-DCP-002:** attention count uses native `IDBIndex.count()` without reading
+  result payloads or Runs.
+- **T-DCP-003:** runtime facts become queryable before detailed audit
+  computation.
+- **T-DCP-004:** failure scopes materialize outside the Overview request.
+- **T-DCP-005:** a selected cause partition publishes atomically and updates an
+  active subscription.
+- **T-DCP-006:** a failed lazy write preserves a known-good compatible result.
+- **T-DCP-007:** active queries reject prior-generation or incompatible-version
+  results.
+- **T-DCP-008:** one changed Workflow invalidates only affected partitions.
+- **T-DCP-009:** deleting computation stores leaves canonical data intact and
+  permits reconstruction.
+- **T-DCP-010:** missing or failed computation state never becomes a healthy
+  zero or an Overview Run-table scan.
+- **T-DCP-011:** a blocked or indeterminate orchestrator gate publishes a ready
+  Campaign result without enumerating worker-target partitions.
+- **T-DCP-012:** a gate transition to `eligible` materializes worker-target
+  partitions and updates the subscribed drill-down.
+- **T-DCP-013:** a gate transition away from `eligible` removes worker-target
+  results from active attention indexes without deleting canonical Runs.
+- **T-DCP-014:** newest-first indexed evaluation stops after the first success
+  in each partition and does not sort all Campaign Runs.
+
+---
+
+# 74. Change Log
+
+## Version 1.6.0 — Orchestrator-first computation gate
+
+* Required orchestrator runtime evaluation before worker-target enumeration.
+* Defined worker-evaluation state in computation metadata.
+* Required blocked and indeterminate gates to publish without scanning workers.
+* Preserved worker Runs as historical evidence without allowing them to
+  override the current orchestrator-gated Campaign result.
+* Added ordered orchestrator and worker-target Run indexes with early
+  success-boundary termination and ingestion-maintained fingerprints.
+* Added canonical worker target identity to Run evidence.
+
+## Version 1.5.0 — Target-aware computation partitions
+
+* Defined worker computation partitions by Campaign, Workflow, and target
+  Repository.
+* Added target-aware result fields and a Campaign-target index.
+* Required per-partition success boundaries and target-scoped invalidation.
+
+## Version 1.4.0 — Materialized computation projection
+
+* Defined generation-scoped computation result and metadata stores.
+* Defined native-count, Campaign, scope, and readiness indexes.
+* Defined phased runtime, clustering, audit, and action publication.
+* Defined lazy selected-partition computation, cache compatibility,
+  invalidation, failure preservation, and drill-down behavior.
 
 ## Version 1.3.0 — Daily Overview aggregate projection
 

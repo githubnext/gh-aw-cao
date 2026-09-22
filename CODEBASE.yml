@@ -65,6 +65,11 @@ architecture:
     bounded_worker_query_payloads: bounded query results sent from the data worker
     source_data_queries: direct source-data queries from UI code
     business_relationship_reconstruction: UI derivation of source-data relationships
+    canonical_evidence: source-neutral records with stable identities, relationships, quality, and provenance
+    bounded_computation_results: partitioned, versioned measures and actionable insights with bounded evidence references
+    computation_authority: authority inferred from a derived computation result
+    outcome_inference_from_runtime: treating runtime success as verification, accepted outcome, or operational value
+    generation_scoped_computation_results: disposable bounded measure results keyed to one canonical generation, measure version, partition, and input fingerprint
 
 components:
   policy_resolution:
@@ -112,6 +117,18 @@ components:
   dashboard_language_queries:
     path: dashboard/site/src/data/
     responsibility: declarative query definitions executed by the browser data worker
+  computations:
+    path: specs/computations.md
+    responsibility: define deterministic partitioned measures that transform canonical evidence into bounded actionable insights
+  computation_reference_runtime:
+    path: research/computations/
+    responsibility: experimentally evaluate proposed versioned measures over selected and ordered partitions without implying dashboard production integration
+  computation_research_notebooks:
+    path: research/
+    responsibility: validate computation contracts against local canonical evidence and present explainable drill-downs
+  computation_projection:
+    path: dashboard/site/src/data/
+    responsibility: materialize generation-scoped runtime and failure-scope results and cache selected audit-cause and action partitions
   dashboard_ui:
     path: dashboard/site/
     responsibility: render bounded Dashboard Language query payloads
@@ -135,7 +152,14 @@ dependencies:
   - dashboard_publisher -> browser_data_worker
   - browser_data_worker -> indexeddb_projection
   - browser_data_worker -> dashboard_language_queries
+  - sqlite_projection -> computations
+  - indexeddb_projection -> computations
+  - computations -> computation_reference_runtime
+  - computation_reference_runtime -> computation_research_notebooks
+  - computations -> computation_projection
+  - computation_projection -> dashboard_language_queries
   - dashboard_language_queries -> dashboard_ui
+  - computations -> cao_cli
 
 boundaries:
   - subject: policy_resolution
@@ -163,6 +187,12 @@ boundaries:
     must_not_depend_on:
       - source_data_queries
       - business_relationship_reconstruction
+  - subject: computations
+    may_depend_on:
+      - canonical_evidence
+    must_not_depend_on:
+      - computation_authority
+      - outcome_inference_from_runtime
 
 invariants:
   - "CAO controls whether and where operations run; gh-aw controls how admitted workflows run."
@@ -179,6 +209,14 @@ invariants:
   - "Dashboard ingestion MUST load every run-information shard before record shards; every domain, tool, audit, and issue MUST identify its owning run."
   - "Missing, stale, partial, and zero evidence are distinct states."
   - "Dashboard data operations MUST be declared in Dashboard Language and execute in the data Web Worker."
+  - "Computations MUST consume canonical evidence, preserve evidence quality and provenance, and emit bounded, versioned results."
+  - "Computation results MUST NOT grant authority or turn runtime success into verification, accepted outcomes, or operational value."
+  - "Successful-Run value computations MUST report produced outputs, native operational-value measurements, and efficiency as separate axes; output creation MUST NOT imply acceptance or value, and no composite score may be invented."
+  - "Overview counters MUST use IndexedDB-native counts or generation-safe precomputed daily values; Run-table scans, clustering, and audit diagnosis execute only in drill-down or compatible bounded materializations."
+  - "Materialized computation results MUST remain generation-scoped disposable state; runtime facts and failure scopes are precomputed, while detailed audit causes and actions are cached only for selected or prioritized partitions."
+  - "Runtime computation partitions MUST be target-aware for workers: form Campaign, Workflow, and target Repository evaluation partitions before evaluating success boundaries so one target's success cannot mask another target's failures."
+  - "Runtime computations MUST evaluate Campaign orchestrators before enumerating worker-target partitions; a failing, unknown, or unobserved orchestrator gates worker evaluation without converting skipped workers into healthy, failed, or not-observed results."
+  - "Failure of a downstream computation MUST NOT invalidate a compatible upstream result."
   - "Dashboard UI effects and components MUST NOT query source data or reconstruct business relationships."
   - "ADRs are durable decision history; current requirements and conformance rules live in specs/ or specification-style documentation."
   - "Generated workflow lock files MUST NOT be edited directly."
@@ -206,12 +244,15 @@ flows:
     - dashboard_publisher
     - browser_data_worker
     - indexeddb_projection
+    - computations
+    - computation_projection
     - dashboard_language_queries
     - dashboard_ui
   activity_cli:
     - gh_aw_logs
     - activity_jsonl_shards
     - sqlite_projection
+    - computations
     - cao_cli
 
 generation:
