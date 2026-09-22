@@ -7,7 +7,7 @@ import { formatString, stringOrFallback, toNumber } from '../view-formatters.js'
 import { findLink } from './link-content.js';
 
 /** @typedef {{ field: string, aggregate?: string, as?: string, direction?: string } & Record<string, unknown>} TableField */
-/** @typedef {{ key: string, x: string, y: number, category?: string, color: string | null, highlighted?: boolean | null, link: { href: string, label: string } | null, source?: Record<string, unknown> }} ChartPoint */
+/** @typedef {{ key: string, x: string, y: number, weight?: number, category?: string, color: string | null, highlighted?: boolean | null, link: { href: string, label: string } | null, source?: Record<string, unknown> }} ChartPoint */
 
 /** @param {unknown} value */
 export function toViewText(value) {
@@ -95,14 +95,16 @@ function compareValues(left, right) {
  * @param {Record<string, any> | null} y
  * @param {Record<string, any> | null} color
  * @param {string | null} hrefField
+ * @param {Record<string, any> | null} [weight]
  */
-export function buildChartPoints(pageId, title, rows, x, y, color, hrefField) {
+export function buildChartPoints(pageId, title, rows, x, y, color, hrefField, weight = null) {
   const aggregate = typeof y?.aggregate === 'string' ? y.aggregate : null;
   if (!aggregate || aggregate === 'none') {
     return rows.map((row, rowIndex) => ({
       key: `${pageId}-${title}-${rowIndex}`,
       x: x ? formatString(row[x.field], x.format) : 'unknown',
       y: y ? toNumber(row[y.field]) : 0,
+      weight: weight ? toNumber(row[weight.field]) : 1,
       category: y ? formatString(row[y.field], y.format) : 'unknown',
       color: color ? formatString(row[color.field], color.format) : null,
       highlighted: typeof row['in-window'] === 'boolean' ? row['in-window'] : null,
@@ -145,6 +147,7 @@ export function buildChartPoints(pageId, title, rows, x, y, color, hrefField) {
       key: `${pageId}-${title}-${index}`,
       x: group.x,
       y: value,
+      weight: weight ? toNumber(group.source[weight.field]) : 1,
       category: toViewText(group.values[0]),
       color: group.color,
       highlighted: null,

@@ -121,7 +121,10 @@ export function renderDataView(mark, context) {
 
 /** @param {unknown} view */
 export function supportsIncrementalChartContinuation(view) {
-  return isPlainObject(view) && view.mark === 'chart' && view.chart === 'swimlane';
+  return isPlainObject(view)
+    && view.mark === 'chart'
+    && view.chart === 'swimlane'
+    && !(isPlainObject(view.encoding) && isPlainObject(view.encoding.weight));
 }
 
 /** @param {Record<string, any>} view */
@@ -1124,6 +1127,7 @@ function renderChartView(context) {
     .filter((definition) => isPlainObject(definition) && typeof definition.field === 'string');
   const y = yDefinitions[0] ?? null;
   const color = isPlainObject(encoding?.color) && typeof encoding.color.field === 'string' ? encoding.color : null;
+  const weight = isPlainObject(encoding?.weight) && typeof encoding.weight.field === 'string' ? encoding.weight : null;
   const reference = isPlainObject(encoding?.reference) && typeof encoding.reference.field === 'string' ? encoding.reference : null;
   const href = isPlainObject(encoding?.href) && typeof encoding.href.field === 'string' ? encoding.href : null;
   const chartType = typeof view.chart === 'string' ? view.chart : x?.type === 'temporal' ? 'line' : 'bar';
@@ -1132,14 +1136,9 @@ function renderChartView(context) {
   /** @param {Array<Record<string, unknown>>} chartRows */
   const pointsForRows = (chartRows) => {
     if (chartType === 'line' && yDefinitions.length > 1) {
-      const points = yDefinitions.flatMap((definition) => buildChartPoints(
-        pageId,
-        title,
-        chartRows,
-        x,
-        definition,
-        null,
-        href?.field ?? null
+      const points = yDefinitions.flatMap((definition) => (weight
+        ? buildChartPoints(pageId, title, chartRows, x, definition, null, href?.field ?? null, weight)
+        : buildChartPoints(pageId, title, chartRows, x, definition, null, href?.field ?? null)
       ).map((point) => ({
         ...point,
         key: `${point.key}-${definition.field}`,
@@ -1148,7 +1147,9 @@ function renderChartView(context) {
       return prepareChartPoints(points, x, y, null, view.data);
     }
     return prepareChartPoints(
-      buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null),
+      weight
+        ? buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null, weight)
+        : buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null),
       x,
       value,
       series,

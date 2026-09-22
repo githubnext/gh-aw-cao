@@ -3182,7 +3182,8 @@ fast path:
 
 * **Additive** — safe to sum per-day scalar values across the requested
   window. Initial eligible metrics: `runs`, `successful-runs`,
-  `failed-runs`, `dispatches`, `failed-dispatches` (all derived from the
+  `failed-runs`, `dispatches`, `failed-dispatches`, and per-conclusion run
+  counts used by the Runs swimlane (all derived from the
   `runs` canonical collection, bucketed by the UTC day of
   `startedAt`, falling back to `createdAt`).
 * **Snapshot/global** — not a time-window aggregate. Examples:
@@ -3235,7 +3236,12 @@ A derived object store holds one record per generation and UTC day:
   "successfulRuns": 17102,
   "failedRuns": 1032,
   "dispatches": 8412,
-  "failedDispatches": 203
+  "failedDispatches": 203,
+  "runsByConclusion": {
+    "success": 17102,
+    "failure": 824,
+    "cancelled": 308
+  }
 }
 ```
 
@@ -3247,7 +3253,7 @@ A separate metadata record describes the currently usable projection:
 ```json
 {
   "id": "daily-overview-aggregates",
-  "version": 1,
+  "version": 2,
   "activeGeneration": "...",
   "builtAt": "...",
   "firstDay": "2026-01-01",

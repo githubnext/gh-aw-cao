@@ -1204,6 +1204,52 @@ describe('data view renderer', () => {
     const firstPage = new Promise((resolve) => {
       resolveFirstPage = resolve;
     });
+
+    it('renders weighted daily swimlane aggregates once without loading continuations', async () => {
+      const load = vi.fn();
+      const rendered = renderDataView('chart', {
+        pageId: 'runs',
+        title: 'Runs in the last week',
+        view: {
+          mark: 'chart',
+          chart: 'swimlane',
+          encoding: {
+            x: { field: 'day', type: 'temporal' },
+            y: { field: 'run-conclusion', type: 'ordinal' },
+            weight: { field: 'runs', type: 'quantitative' }
+          }
+        },
+        sourceName: 'runs-daily-conclusions',
+        rows: [{ day: '2026-08-31', 'run-conclusion': 'success', runs: 42 }],
+        metadata,
+        contextDetails: [],
+        headingTag: 'h3',
+        prepareTableRows: () => [],
+        buildChartPoints: (_pageId, _title, chartRows) => chartRows.map((row) => ({
+          key: `${row.day}-${row['run-conclusion']}`,
+          x: String(row.day),
+          y: Number.NaN,
+          weight: Number(row.runs),
+          category: String(row['run-conclusion']),
+          color: String(row['run-conclusion']),
+          link: null,
+          source: row
+        })),
+        prepareChartPoints: (points) => points,
+        toText: String,
+        continuation: {
+          token: 'page-2',
+          totalRows: 2,
+          load
+        }
+      });
+
+      await new Promise((resolve) => queueMicrotask(resolve));
+
+      expect(load).not.toHaveBeenCalled();
+      expect(rendered?.querySelector('.swimlane-summary')?.textContent).toContain('42 runs');
+      expect(rendered?.querySelector('.swimlane-chart-widget')?.hasAttribute('aria-busy')).toBe(false);
+    });
     const finalPage = new Promise((resolve) => {
       resolveFinalPage = resolve;
     });

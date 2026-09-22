@@ -599,12 +599,13 @@ describe('dashboard document validation', () => {
     expect(page.definition.views.find((/** @type {{ id: string }} */ view) =>
       view.id === 'runs-last-week'
     )).toMatchObject({
-      data: { source: 'runs-table', time: { range: '7d' } },
+      data: { source: 'runs-daily-conclusions', time: { range: '7d' } },
       mark: 'chart',
       chart: 'swimlane',
       encoding: {
-        x: { field: 'started-at', type: 'temporal' },
-        y: { field: 'run-conclusion', type: 'ordinal' }
+        x: { field: 'day', type: 'temporal' },
+        y: { field: 'run-conclusion', type: 'ordinal' },
+        weight: { field: 'runs', type: 'quantitative' }
       }
     });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);

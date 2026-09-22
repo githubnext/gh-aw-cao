@@ -68,7 +68,14 @@ describe('buildDailyOverviewAggregates', () => {
         successfulRuns: 2,
         failedRuns: 3,
         dispatches: 2,
-        failedDispatches: 1
+        failedDispatches: 1,
+        runsByConclusion: {
+          success: 2,
+          failure: 1,
+          'timed-out': 1,
+          stale: 1,
+          unknown: 1
+        }
       }
     ]);
   });
@@ -79,7 +86,15 @@ describe('buildDailyOverviewAggregates', () => {
       run({ id: 'r2', startedAt: '2026-09-10T00:00:00Z' })
     ]);
     expect(result).toEqual([
-      { day: '2026-09-10', runs: 1, successfulRuns: 1, failedRuns: 0, dispatches: 0, failedDispatches: 0 }
+      {
+        day: '2026-09-10',
+        runs: 1,
+        successfulRuns: 1,
+        failedRuns: 0,
+        dispatches: 0,
+        failedDispatches: 0,
+        runsByConclusion: { success: 1 }
+      }
     ]);
   });
 
@@ -97,7 +112,15 @@ describe('buildDailyOverviewAggregates', () => {
       run({ id: 'r1', conclusion: 'success' }) // corrected/replaced record for the same id
     ]);
     expect(result).toEqual([
-      { day: '2026-09-10', runs: 1, successfulRuns: 1, failedRuns: 0, dispatches: 0, failedDispatches: 0 }
+      {
+        day: '2026-09-10',
+        runs: 1,
+        successfulRuns: 1,
+        failedRuns: 0,
+        dispatches: 0,
+        failedDispatches: 0,
+        runsByConclusion: { success: 1 }
+      }
     ]);
   });
 

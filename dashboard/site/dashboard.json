@@ -1376,6 +1376,35 @@
     },
     "queries": [
       {
+        "name": "runs-daily-conclusions",
+        "intent": "Aggregate workflow run conclusions by UTC day for the Runs swimlane.",
+        "from": "runs",
+        "compute": [
+          {
+            "as": "day",
+            "function": "date-day",
+            "args": [
+              {
+                "field": "started-at"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "day",
+            "run-conclusion"
+          ],
+          "values": [
+            {
+              "field": "run",
+              "as": "runs",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
         "name": "entity-workflow-run-totals",
         "intent": "Summarize run outcomes and AI Credit consumption for reusable workflow cards.",
         "from": "runs",
@@ -10052,24 +10081,17 @@
               "title": "Runs in the last week",
               "description": "Workflow run conclusions observed during the last seven days.",
               "data": {
-                "source": "runs-table",
+                "source": "runs-daily-conclusions",
                 "time": {
                   "range": "7d"
-                },
-                "order-by": [
-                  {
-                    "field": "started-at",
-                    "direction": "desc"
-                  }
-                ],
-                "limit": 250
+                }
               },
               "mark": "chart",
               "chart": "swimlane",
               "layout": "horizontal",
               "encoding": {
                 "x": {
-                  "field": "started-at",
+                  "field": "day",
                   "type": "temporal",
                   "format": "human-friendly-timestamp",
                   "title": "Started"
@@ -10083,9 +10105,9 @@
                   "field": "run-conclusion",
                   "type": "nominal"
                 },
-                "href": {
-                  "field": "run-link",
-                  "type": "nominal"
+                "weight": {
+                  "field": "runs",
+                  "type": "quantitative"
                 }
               }
             },
