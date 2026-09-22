@@ -23,8 +23,8 @@ the complete Activity corpus. They operate on canonical evidence, preserve
 quality and provenance, and produce compact, versioned results that can be
 incrementally refreshed and independently explained.
 
-This specification defines five independently versioned measures. **Does it
-run?** establishes current runtime facts. **How well does it run?** reports
+This specification defines five independently versioned measures. **Runtime
+health** establishes current runtime facts. **How well does it run?** reports
 successful Run production, native operational-value measurements, and resource
 cost without inventing a composite score. **Where does it fail?** correlates
 current errors across campaigns and targets. **What is the likely cause?**
@@ -39,7 +39,7 @@ advance through deeper and more expensive analysis.
 2. [Scope and authority](#2-scope-and-authority)
 3. [Computation model](#3-computation-model)
 4. [Insight requirements](#4-insight-requirements)
-5. [Measure: Does it run?](#5-measure-does-it-run)
+5. [Measure: Runtime health](#5-measure-runtime-health)
    - [Companion measure: How well does it run?](#511-companion-measure-how-well-does-it-run)
 6. [Measure: Where does it fail?](#6-measure-where-does-it-fail)
 7. [Measure: What is the likely cause?](#7-measure-what-is-the-likely-cause)
@@ -190,7 +190,7 @@ Every result MUST contain:
 
 ```json
 {
-  "measureId": "does-it-run",
+  "measureId": "runtime-health",
   "measureVersion": "1.0.0",
   "partitionKey": {
     "campaignId": "campaign:dependabot",
@@ -290,7 +290,7 @@ one of these values only when a compatible bounded summary was precomputed
 before navigation. Otherwise, the value MUST be deferred to drill-down.
 
 The Overview failed-runs value is a historical time-window counter. It MUST NOT
-trigger `does-it-run` or represent unresolved failures. Navigation from that
+trigger `runtime-health` or represent unresolved failures. Navigation from that
 counter MAY start the staged computation chain, but the Overview request MUST
 complete without waiting for any stage of the chain.
 
@@ -352,14 +352,14 @@ Inference rules MUST be named and versioned by the measure definition.
 A next action MUST NOT claim that a retry, code change, policy change, or
 permission change is safe merely because the computation found an error.
 
-## 5. Measure: Does it run?
+## 5. Measure: Runtime health
 
 ### 5.1 Definition
 
 | Property | Value |
 | --- | --- |
-| Measure ID | `does-it-run` |
-| Measure version | `2.0.0` |
+| Measure ID | `runtime-health` |
+| Measure version | `1.0.0` |
 | Operator question | Does each orchestrator and worker in this campaign run successfully? |
 | Primary partition | Campaign and Workflow for orchestrators; Campaign, Workflow, and target Repository for workers |
 | Required entities | Campaign, Repository, Workflow, Run |
@@ -839,12 +839,12 @@ Campaign answer MUST be `unknown`, not `yes`.
 | Output | Independent production, value-measurement, and efficiency facts |
 
 This measure MUST consume only Run attempts whose native `conclusion` is
-exactly `success`. It is a companion to `does-it-run`, not a replacement for
+exactly `success`. It is a companion to `runtime-health`, not a replacement for
 runtime health. A successful Run MUST NOT be treated as useful, accepted, or
 valuable merely because it completed successfully.
 
 The default computation MUST evaluate only partitions whose current
-`does-it-run` answer is `yes`, or `running` when an observed successful boundary
+`runtime-health` answer is `yes`, or `running` when an observed successful boundary
 exists. It MUST skip `no`, `unknown`, `not-observed`, and orchestrator-gated
 worker partitions before loading detailed Issue, Audit, Tool, or Domain
 evidence. A consumer MAY request an explicit historical value analysis for a
@@ -852,7 +852,7 @@ failed partition, but MUST label it as historical and MUST NOT let it replace
 the current failure-diagnosis path.
 
 The engine MUST preserve the same Campaign, Workflow, target Repository, and
-target-scope partition identities used by `does-it-run`. One target's outputs
+target-scope partition identities used by `runtime-health`. One target's outputs
 or value measurements MUST NOT be attributed to another target.
 
 #### 5.11.2 Evidence window and selection
@@ -962,15 +962,15 @@ created outputs as unverified production.
 | Measure version | `1.0.0` |
 | Operator question | Is the current error shared across campaigns, campaign-wide, or target-specific? |
 | Primary partition | Equivalent current error group |
-| Required input | Version 1.x `does-it-run` results, Campaign scope, and target evaluation evidence |
+| Required input | Version 1.x `runtime-health` results, Campaign scope, and target evaluation evidence |
 | Output | One diagnostic-scope result per equivalent current error |
 
-This measure MUST consume bounded `does-it-run` results instead of rescanning
+This measure MUST consume bounded `runtime-health` results instead of rescanning
 all source Runs. It MAY resolve referenced Campaign, Workflow, Run, target, and
 quality records needed to validate scope.
 
 The measure MUST run only for current error groups emitted by a
-`does-it-run` result whose answer is `no`. It MUST NOT alter the upstream
+`runtime-health` result whose answer is `no`. It MUST NOT alter the upstream
 workflow answer, current streak, error identity, counts, or evidence
 references.
 
@@ -988,7 +988,7 @@ older than the latest successful attempt MUST NOT influence diagnostic scope.
 
 Each result MUST contain:
 
-- upstream `does-it-run` result and error-group identities;
+- upstream `runtime-health` result and error-group identities;
 - `diagnosticScope`;
 - `confidence`, one of `supported`, `tentative`, or `unknown`;
 - affected and evaluated Campaign counts;
@@ -1179,7 +1179,7 @@ missing evidence needed to proceed.
 | Measure version | `1.0.0` |
 | Operator question | What is the next bounded action justified by the evidence? |
 | Primary partition | One upstream attention result |
-| Required input | `does-it-run` and, when available, diagnostic-scope and cause-candidate results |
+| Required input | `runtime-health` and, when available, diagnostic-scope and cause-candidate results |
 | Output | One actionable item |
 
 This measure routes existing results into an action. It MUST NOT rescan raw
@@ -1189,12 +1189,12 @@ Activity data or independently infer a different failure scope or cause.
 
 The computation chain MUST use this routing:
 
-1. `does-it-run: yes` stops with no attention item.
-2. `does-it-run: running` stops unless a current error group also exists.
-3. `does-it-run: no` proceeds through `where-does-it-fail`,
+1. `runtime-health: yes` stops with no attention item.
+2. `runtime-health: running` stops unless a current error group also exists.
+3. `runtime-health: no` proceeds through `where-does-it-fail`,
    `what-is-the-likely-cause`, and this measure.
-4. `does-it-run: not-observed` routes directly to an activation action.
-5. `does-it-run: unknown` routes directly to an evidence-restoration action.
+4. `runtime-health: not-observed` routes directly to an activation action.
+5. `runtime-health: unknown` routes directly to an evidence-restoration action.
 
 A downstream unavailable result MUST NOT invalidate a valid upstream result.
 It MUST reduce confidence and produce the narrowest action justified by the
@@ -1249,9 +1249,9 @@ grant permission, modify a target, or claim that such a change is safe.
 ### 9.1 Materialization profile
 
 The dashboard implementation MUST maintain generation-scoped materialized
-results for `does-it-run` and `where-does-it-fail`.
+results for `runtime-health` and `where-does-it-fail`.
 
-`does-it-run` MUST be materialized once canonical Campaign, Repository,
+`runtime-health` MUST be materialized once canonical Campaign, Repository,
 Workflow, and Run information for the generation is committed. It MUST
 materialize orchestrator partitions first. It MUST materialize worker-target
 partitions only when the orchestrator gate is `eligible`; otherwise it MUST
@@ -1278,7 +1278,7 @@ eagerly scan audit records for every historical failure.
 
 `what-should-the-user-do` MUST be computed and cached with the corresponding
 cause result. For `not-observed` and `unknown`, it MUST be materialized directly
-from `does-it-run` without waiting for failure-scope or audit computation.
+from `runtime-health` without waiting for failure-scope or audit computation.
 
 Every materialized result MUST include:
 
@@ -1302,7 +1302,7 @@ The dashboard MUST expose computation stages independently:
 
 | Phase | Earliest availability | Required behavior |
 | --- | --- | --- |
-| Runtime fact | Canonical run-information phase committed | Make materialized `does-it-run` results queryable with the phase's honest quality state. |
+| Runtime fact | Canonical run-information phase committed | Make materialized `runtime-health` results queryable with the phase's honest quality state. |
 | Failure scope | Campaign, target-scope, and runtime facts available | Publish `where-does-it-fail` results without waiting for detailed audit ingestion. |
 | Likely cause | Required detailed audit evidence available | Compute selected or prioritized partitions and cache successful results. |
 | User action | Required upstream result available | Publish one action; preserve a narrower upstream action when deeper evidence is unavailable. |
@@ -1334,7 +1334,7 @@ version, partition key, input fingerprint, and required evidence-quality state
 match. Otherwise the result MUST be treated as stale and recomputed. An aborted
 or failed computation MUST NOT replace a known-good compatible result.
 
-The `does-it-run` partition input fingerprint MUST cover:
+The `runtime-health` partition input fingerprint MUST cover:
 
 - Campaign identity;
 - Workflow identity, campaign relationship, role, state, and path;
@@ -1372,7 +1372,7 @@ only the affected downstream partitions.
 
 A consumer:
 
-- MUST present `does-it-run` as runtime health, not outcome or value;
+- MUST present `runtime-health` as runtime health, not outcome or value;
 - MUST preserve each result, version, confidence, and quality state;
 - MUST disclose truncation and pre-truncation counts;
 - MUST provide a path from an actionable item through every upstream result to
@@ -1393,7 +1393,7 @@ subscribed to its worker query with an abort-scoped lifetime.
 
 ## 11. Conformance tests
 
-A conforming test suite for `does-it-run` MUST cover:
+A conforming test suite for `runtime-health` MUST cover:
 
 - **T-DIR-001:** the latest attempt succeeds;
 - **T-DIR-002:** one and multiple failures occur after a success;
@@ -1529,7 +1529,7 @@ A conforming Overview performance test suite MUST cover:
 A conforming materialization test suite MUST cover:
 
 - **T-MAT-001:** Run-information ingestion materializes one bounded
-  `does-it-run` result per orchestrator or worker-target partition;
+  `runtime-health` result per orchestrator or worker-target partition;
 - **T-MAT-002:** one changed worker-target partition recomputes only its partition
   and downstream dependents;
 - **T-MAT-003:** failure-scope clustering completes outside the Overview request
@@ -1626,8 +1626,8 @@ referenced failures. The action retains links to all three upstream results.
   invocation dispositions.
 - Clarified that a summary `noop` can coexist with dispatches and does not mean
   that the Campaign performed no work.
-- Advanced `does-it-run` to version `2.0.0` because corrected partition
-  selection can change Campaign answers produced from the same Run evidence.
+- Defined `runtime-health` version `1.0.0` with target-aware partition
+  selection and orchestrator-gated worker evaluation.
 
 ### Version 0.8.0 (Working Draft)
 
@@ -1654,7 +1654,7 @@ referenced failures. The action retains links to all three upstream results.
 
 ### Version 0.6.0 (Working Draft)
 
-- Defined target-aware worker partitions in the initial `does-it-run` measure
+- Defined target-aware worker partitions in the initial `runtime-health` measure
   version; no legacy Workflow-wide worker partition is supported.
 - Required partition construction before success-boundary evaluation so one
   target's success cannot mask another target's current failures.
@@ -1701,4 +1701,4 @@ referenced failures. The action retains links to all three upstream results.
 ### Version 0.1.0 (Working Draft)
 
 - Defined the common computation and insight contracts.
-- Defined version 1.0.0 of the **Does it run?** measure.
+- Defined version 1.0.0 of the **Runtime health** measure.

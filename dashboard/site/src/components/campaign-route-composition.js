@@ -14,11 +14,11 @@ import { renderCampaignReadme } from './campaign-readme.js';
 import { renderCampaignOperationalValueHistory } from './insights-overview.js';
 
 /**
- * @typedef {'overview'|'workflows'|'runs'|'issues'|'pull-requests'|'repositories'|'insights'|'reports'|'dispatches'} CampaignRouteBody
+ * @typedef {'overview'|'workflows'|'runs'|'issues'|'pull-requests'|'repositories'|'insights'|'problems'|'reports'|'dispatches'} CampaignRouteBody
  */
 
 /**
- * @typedef {'overview'|'workflows'|'runs'|'issues'|'pull-requests'|'repositories'|'insights'|'reports'} CampaignRouteTab
+ * @typedef {'overview'|'workflows'|'runs'|'issues'|'pull-requests'|'repositories'|'insights'|'problems'|'reports'} CampaignRouteTab
  */
 
 /**
@@ -90,6 +90,13 @@ const CAMPAIGN_ROUTE_COMPOSITIONS = {
     description: 'Audit events observed for the {campaignName} campaign.',
     currentTab: 'insights',
     bodyRenderer: ({ context }) => renderCampaignOperationalValueHistory(context)
+  },
+  problems: {
+    rootClassName: 'campaign-problems',
+    selectMessage: 'Select a campaign to view its current problems.',
+    description: 'Current runtime failures and retained evidence for the {campaignName} campaign.',
+    currentTab: 'problems',
+    bodyRenderer: undefined
   },
   reports: {
     rootClassName: 'campaign-reports',

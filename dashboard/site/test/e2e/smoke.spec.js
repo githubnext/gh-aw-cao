@@ -2088,10 +2088,14 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   const campaignInsightsPage = authoritativeDashboard.dashboard.pages.find(
     (/** @type {{ id?: string }} */ candidate) => candidate.id === 'campaign-insights'
   );
+  const campaignProblemsPage = authoritativeDashboard.dashboard.pages.find(
+    (/** @type {{ id?: string }} */ candidate) => candidate.id === 'campaign-problems'
+  );
   const campaignIssuesPage = authoritativeDashboard.dashboard.pages.find(
     (/** @type {{ id?: string }} */ candidate) => candidate.id === 'campaign-issues'
   );
   assert(campaignInsightsPage, 'Missing campaign insights page');
+  assert(campaignProblemsPage, 'Missing campaign problems page');
   assert(campaignIssuesPage, 'Missing campaign issues page');
 
   await page.setContent(`
@@ -2136,6 +2140,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
               description: 'Activity from centrally managed campaigns.',
             }))},
             ${JSON.stringify(campaignInsightsPage)},
+            ${JSON.stringify(campaignProblemsPage)},
             {
               id: 'campaign-detail',
               kind: 'custom',
@@ -2446,7 +2451,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   await expect(page.locator('[data-page-mode]')).toHaveText('Review');
   await expect(page.locator('[data-nav-page-id="campaigns"]')).toHaveAttribute('aria-current', 'page');
   const campaignNavigation = page.getByRole('navigation', { name: 'Ambient Context views' });
-  await expect(campaignNavigation).toContainText('InsightsDispatchesIssuesInfo');
+  await expect(campaignNavigation).toContainText('InsightsProblemsDispatchesIssuesInfo');
   await expect(campaignNavigation).toHaveCSS('display', 'flex');
   await expect(campaignNavigation).toHaveCSS('border-bottom-style', 'solid');
   const currentCampaignLink = campaignNavigation.getByRole('link', { name: 'Info' });
@@ -2460,6 +2465,10 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
     return colors[0] === colors[1];
   })).toBe(true);
   await expect(page.getByRole('heading', { name: 'Orchestrator and workers', level: 3 })).toHaveCount(0);
+  await campaignNavigation.getByRole('link', { name: 'Problems' }).click();
+  await expect(page).toHaveURL(/#page-campaign-problems\?campaign=ambient-context$/);
+  await expect(campaignNavigation.getByRole('link', { name: 'Problems' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('[data-page-id="campaign-problems"] [data-view-id="campaign-current-runtime-problems"]')).toBeVisible();
   await page.evaluate(() => {
     window.location.hash = '#page-campaign-workflows?campaign=ambient-context';
   });
@@ -2508,7 +2517,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   await expect(campaignNavigation).toHaveCSS('gap', '0px');
   await expect(campaignNavigation).toHaveCSS('overflow', 'hidden');
   const mobileCampaignLinks = campaignNavigation.locator('a');
-  await expect(mobileCampaignLinks).toHaveCount(4);
+  await expect(mobileCampaignLinks).toHaveCount(5);
   await expect(mobileCampaignLinks.first().locator('.tab-trailing-icon')).toBeVisible();
   expect(await mobileCampaignLinks.first().locator('.tab-trailing-icon').evaluate((icon) => parseFloat(getComputedStyle(icon).marginLeft) > 0)).toBe(true);
   await mobileCampaignLinks.first().focus();

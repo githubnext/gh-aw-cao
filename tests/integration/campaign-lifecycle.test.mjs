@@ -47,6 +47,8 @@ const activityExpectedFiles = [
   "activity/actions-context.mjs",
   "activity/actions-log.mjs",
   "activity/cao.mjs",
+  "activity/computations/index.mjs",
+  "activity/computations/runtime-health.mjs",
   "activity/collect-logs.sh",
   "activity/control-settings.mjs",
   "activity/debug.mjs",

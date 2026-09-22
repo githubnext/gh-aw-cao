@@ -29,8 +29,10 @@ const sources = {
       campaign: 'aw-doctor',
       'campaign-name': 'AW Doctor',
       'campaign-icon': 'gear',
+      'problem-indicator': 'alert',
+      'problem-indicator-label': 'Current failing workflow or target partitions: 2',
       'campaign-dashboard-link': {
-        'dashboard-href': '#page-campaign-detail?campaign=aw-doctor',
+        'dashboard-href': '#page-campaign-problems?campaign=aw-doctor',
         'dashboard-label': 'View AW Doctor campaign dashboard'
       }
     },
@@ -176,7 +178,9 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     );
     await expect(campaigns.locator(':scope > header')).toHaveCSS('padding', '8px 16px');
     await expect(campaigns.getByRole('link', { name: 'View AW Doctor campaign dashboard' }))
-      .toHaveAttribute('href', '#page-campaign-detail?campaign=aw-doctor');
+      .toHaveAttribute('href', '#page-campaign-problems?campaign=aw-doctor');
+    await expect(campaigns.getByRole('link', { name: 'View Dependabot campaign dashboard' }))
+      .toHaveAttribute('href', '#page-campaign-detail?campaign=dependabot');
     await expect(factory.locator(':scope > .factory-intro + .factory-floor')).toHaveCount(1);
     const notifications = page.locator('[data-page-id="notifications"]');
     await expect(notifications).toHaveCount(0);

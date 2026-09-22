@@ -113,6 +113,36 @@ total transfer required for a complete refresh. Run results exposed between
 phases are partial snapshot state; record-dependent results become current only
 after the record phase succeeds.
 
+## Runtime-health computation
+
+The CLI exposes computations through an extensible namespace. After downloading a query-ready snapshot, which includes both Activity SQLite
+and `inventory-sources.json`, compute runtime health for the full
+portfolio or one campaign:
+
+```bash
+cao computation runtime-health
+cao computation runtime-health --campaign dependabot
+cao computation runtime-health --campaign dependabot --diagnose
+```
+
+`runtime-health@1.0.0` selects canonical Campaign and Workflow relationships,
+orders Run attempts, and isolates worker targets with Dashboard Language
+queries before applying the versioned measure. Orchestrators are queried and
+evaluated first; worker Runs are queried only for campaigns whose orchestrator
+gate is eligible. The result reports runtime facts only and does not imply that
+a successful Run produced, verified, or delivered value.
+
+Use `--diagnose` with one `--campaign` to drill into current failure groups.
+The bounded diagnostic result compares current failed Runs with the latest
+successful boundary and queries run-linked Audit, tool, firewall, and safe-output
+evidence. When canonical evidence cannot establish an exact cause, it says so
+and links to the GitHub Actions Run where job logs and stderr can be inspected.
+
+Set `NODE_DEBUG=cao:computation:runtime-health` to inspect optional computation
+timing. The production test suite enforces a warmed median below 20 ms on a
+representative 20-campaign, 400-worker-Run corpus; timing is diagnostic and is
+not part of the computation result contract.
+
 `activity/cao.mjs` logs shard skip/ingest decisions and per-file hash results
 through Node's built-in `util.debuglog` (see `activity/debug.mjs`), scoped
 under the `cao:*` namespace (for example `cao:ingest`, `cao:hash-payloads`).
@@ -143,7 +173,8 @@ separate source and SQLite database when a complete historical archive is
 required.
 
 The `gh-aw-logs.mjs` resource provides the shared parser for consumers of the
-JSONL format. The `cao.mjs` resource provides the `cao` SQLite CLI entry point.
+JSONL format. The `cao.mjs` resource provides the `cao` SQLite CLI entry point,
+including the `computation` namespace.
 Agent jobs can query the normalized projection without repeating log
 acquisition. Consumers must still determine their own completeness, freshness,
 and scope requirements.

@@ -12,7 +12,7 @@ import { CAMPAIGN_ROUTE_TABS } from './route-body-specification.js';
  *   rootClassName: string,
  *   selectMessage: string,
  *   description: string,
- *   currentTab: 'overview'|'workflows'|'runs'|'issues'|'pull-requests'|'repositories'|'insights'|'reports',
+ *   currentTab: 'overview'|'workflows'|'runs'|'issues'|'pull-requests'|'repositories'|'insights'|'problems'|'reports',
  *   bodyRenderer: CampaignRouteBodyRenderer | undefined
  * }} CampaignRouteShellConfig
  */

@@ -1674,7 +1674,7 @@ byGenerationWorkflowTargetOrder:
 
 `computationRunDate` SHALL be the normalized first valid Run timestamp in this
 order: `startedAt`, `createdAt`, then `updatedAt`. It is a disposable projection
-field used to implement the `does-it-run` ordering contract and MUST preserve
+field used to implement the `runtime-health` ordering contract and MUST preserve
 the source fields from which it was derived.
 
 `byGenerationWorkflowOrder` supports orchestrator evaluation.
@@ -1687,7 +1687,7 @@ storage requests. A worker Run without `targetRepositoryId` SHALL be excluded
 from the target index and handled as incomplete evidence.
 
 These two ordered indexes are REQUIRED when IndexedDB materializes
-`does-it-run`; an implementation MUST NOT replace them with an all-Runs scan
+`runtime-health`; an implementation MUST NOT replace them with an all-Runs scan
 and in-memory sort.
 
 Run-information ingestion SHOULD maintain each computation partition's
@@ -3353,7 +3353,7 @@ A `computationResults` record SHALL have this shape:
 {
   "id": "generation:measure-id:measure-version:partition-hash",
   "generation": "immutable-generation-id",
-  "measureId": "does-it-run",
+  "measureId": "runtime-health",
   "measureVersion": "1.0.0",
   "partitionKey": {
     "campaignId": "campaign:dependabot",
@@ -3396,7 +3396,7 @@ A `computationMetadata` record SHALL have this shape:
 {
   "id": "generation:measure-id:measure-version",
   "generation": "immutable-generation-id",
-  "measureId": "does-it-run",
+  "measureId": "runtime-health",
   "measureVersion": "1.0.0",
   "stage": "runtime-fact",
   "status": "ready",
@@ -3415,7 +3415,7 @@ A `computationMetadata` record SHALL have this shape:
 Metadata counts are diagnostics and MUST NOT substitute for result records when
 a consumer needs partition identity or evidence references.
 
-For `does-it-run`, each bounded Campaign summary result SHALL contain
+For `runtime-health`, each bounded Campaign summary result SHALL contain
 `workerEvaluationState` with value `eligible`, `blocked-by-orchestrator`, or
 `indeterminate-orchestrator`. Measure metadata MAY be `ready` when one or more
 Campaigns intentionally gate worker evaluation; an intentionally skipped
@@ -3440,7 +3440,7 @@ absent from that index. Callers MUST NOT encode a semantic unknown as an empty
 string merely to force index membership.
 
 An Overview attention counter MUST execute
-`byGenerationAttention.count(IDBKeyRange.only([generation, "does-it-run",
+`byGenerationAttention.count(IDBKeyRange.only([generation, "runtime-health",
 "1.0.0", "needs-attention"]))` for the exact supported measure version. It
 MUST NOT combine stages or measure versions, load result payloads, enumerate
 keys, or scan canonical Runs.
@@ -3450,7 +3450,7 @@ keys, or scan canonical Runs.
 Materialization SHALL follow this order:
 
 1. After canonical Campaign, Repository, Workflow, and Run information is
-   committed, compute orchestrator `does-it-run` results first. Only when the
+   committed, compute orchestrator `runtime-health` results first. Only when the
    Campaign's orchestrator gate is `eligible`, compute one result per
    worker-target partition. Implementations MUST construct partitions before
    evaluating their success boundaries; one target's success MUST NOT reset
@@ -3515,7 +3515,7 @@ A cached result is compatible only when all of these values match:
 A mismatch MUST produce a cache miss. It MUST NOT be hidden by returning a
 result from another generation or measure version.
 
-For `does-it-run` version `1.0.0`, a worker result whose partition omits
+For `runtime-health` version `1.0.0`, a worker result whose partition omits
 `targetRepositoryId` is invalid. The projection MUST rebuild it as
 target-aware partitions and MUST NOT read, migrate, or publish a legacy
 Workflow-wide worker result.

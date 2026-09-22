@@ -4537,7 +4537,7 @@
             "function": "concat",
             "args": [
               {
-                "value": "#page-campaign-insights?campaign="
+                "value": "#page-campaign-detail?campaign="
               },
               {
                 "field": "encoded-campaign"
@@ -5366,6 +5366,30 @@
             ]
           },
           {
+            "as": "error-signature",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "failure-kind"
+              },
+              {
+                "field": "classification"
+              },
+              {
+                "field": "status"
+              }
+            ]
+          },
+          {
+            "as": "error-signature-label",
+            "function": "title-case",
+            "args": [
+              {
+                "field": "error-signature"
+              }
+            ]
+          },
+          {
             "as": "status-detail",
             "function": "coalesce",
             "args": [
@@ -5692,7 +5716,44 @@
             "field": "status"
           },
           {
+            "field": "run-status"
+          },
+          {
+            "field": "error-signature"
+          },
+          {
+            "field": "error-signature-label"
+          },
+          {
             "field": "status-detail"
+          },
+          {
+            "field": "declared-workflow-role",
+            "as": "workflow-role"
+          },
+          {
+            "field": "failure-job"
+          },
+          {
+            "field": "failure-message"
+          },
+          {
+            "field": "failure-step"
+          },
+          {
+            "field": "engine"
+          },
+          {
+            "field": "engine-version"
+          },
+          {
+            "field": "gh-aw-version"
+          },
+          {
+            "field": "requested-model"
+          },
+          {
+            "field": "resolved-model"
           },
           {
             "field": "resource-reset-at",
@@ -5724,6 +5785,565 @@
           }
         ],
         "order-by": [
+          {
+            "field": "started-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
+        "name": "campaign-runtime-health-groups",
+        "intent": "Compute each campaign workflow and runtime repository's latest consecutive failure streak in the selected horizon.",
+        "description": "Current retained failure streaks grouped by campaign workflow and runtime repository, considering only concluded Runs so an in-flight retry cannot mask an active failure streak.",
+        "from": "campaign-runs",
+        "filter": {
+          "predicates": [
+            {
+              "field": "run-status",
+              "equals": "completed"
+            }
+          ]
+        },
+        "compute": [
+          {
+            "as": "is-runtime-failure",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "status"
+              },
+              {
+                "value": "failure"
+              },
+              {
+                "value": "startup-failure"
+              },
+              {
+                "value": "stale"
+              },
+              {
+                "value": "timed-out"
+              }
+            ]
+          },
+          {
+            "as": "runtime-failure-streak-point",
+            "function": "failure-streak-point",
+            "args": [
+              {
+                "field": "started-at"
+              },
+              {
+                "field": "run"
+              },
+              {
+                "field": "is-runtime-failure"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "campaign",
+            "campaign-name",
+            "workflow",
+            "workflow-name",
+            "workflow-role",
+            "dispatch-type",
+            "runtime-repository"
+          ],
+          "values": [
+            {
+              "field": "runtime-failure-streak-point",
+              "as": "failure-count",
+              "reducer": "latest-failure-streak"
+            }
+          ]
+        }
+      },
+      {
+        "name": "campaign-runtime-problem-candidates",
+        "intent": "Mark campaign workflow and runtime repository partitions whose latest retained run streak is failing.",
+        "description": "Campaign runtime partitions annotated with whether their current retained streak contains failures.",
+        "from": "campaign-runtime-health-groups",
+        "compute": [
+          {
+            "as": "has-current-failure",
+            "function": "greater-than",
+            "args": [
+              {
+                "field": "failure-count"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "problem-kind",
+            "function": "coalesce",
+            "args": [
+              {
+                "value": "failure"
+              },
+              {
+                "value": "failure"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "campaign-current-runtime-failures",
+        "intent": "Show only campaign workflow and runtime repository partitions whose latest retained run streak is failing.",
+        "description": "Campaign runtime partitions with one or more consecutive failures after their latest retained success.",
+        "from": "campaign-runtime-problem-candidates",
+        "filter": {
+          "predicates": [
+            {
+              "field": "has-current-failure",
+              "equals": true
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "failure-count",
+            "direction": "desc"
+          },
+          {
+            "field": "workflow-name",
+            "direction": "asc"
+          },
+          {
+            "field": "runtime-repository",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
+        "name": "workflow-run-observation-counts",
+        "intent": "Count retained Runs for each workflow identity in the selected horizon.",
+        "description": "One row per organization, repository, and workflow with retained Run counts, safe to join without row multiplication.",
+        "from": "runs",
+        "aggregate": {
+          "by": [
+            "organization",
+            "repository",
+            "workflow"
+          ],
+          "values": [
+            {
+              "field": "run",
+              "as": "observed-run-count",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "campaign-active-orchestrator-run-presence",
+        "intent": "Count retained Runs for each active campaign orchestrator in the selected horizon.",
+        "description": "Active campaign orchestrators annotated with retained Run presence.",
+        "from": "workflows",
+        "joins": [
+          {
+            "source": "workflow-run-observation-counts",
+            "type": "left",
+            "on": [
+              {
+                "left": "organization",
+                "right": "organization"
+              },
+              {
+                "left": "repository",
+                "right": "repository"
+              },
+              {
+                "left": "workflow",
+                "right": "workflow"
+              }
+            ],
+            "fields": [
+              {
+                "field": "observed-run-count",
+                "as": "joined-observed-run-count"
+              }
+            ]
+          }
+        ],
+        "filter": {
+          "predicates": [
+            {
+              "field": "workflow-role",
+              "equals": "orchestrator"
+            },
+            {
+              "field": "workflow-active",
+              "equals": "true"
+            }
+          ]
+        },
+        "compute": [
+          {
+            "as": "runtime-repository",
+            "function": "concat",
+            "args": [
+              {
+                "field": "organization"
+              },
+              {
+                "value": "/"
+              },
+              {
+                "field": "repository"
+              }
+            ]
+          },
+          {
+            "as": "observed-run-count",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "joined-observed-run-count"
+              },
+              {
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "campaign"
+          },
+          {
+            "field": "campaign-name"
+          },
+          {
+            "field": "workflow"
+          },
+          {
+            "field": "workflow-name"
+          },
+          {
+            "field": "workflow-role"
+          },
+          {
+            "field": "runtime-repository"
+          },
+          {
+            "field": "observed-run-count"
+          }
+        ]
+      },
+      {
+        "name": "campaign-unobserved-orchestrator-candidates",
+        "intent": "Mark active campaign orchestrators with no retained Runs in the selected horizon.",
+        "description": "Active orchestrators annotated with whether runtime evidence is absent.",
+        "from": "campaign-active-orchestrator-run-presence",
+        "compute": [
+          {
+            "as": "is-unobserved",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "observed-run-count"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "failure-count",
+            "function": "sum",
+            "args": [
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "dispatch-type",
+            "function": "coalesce",
+            "args": [
+              {
+                "value": "Campaign orchestrator"
+              },
+              {
+                "value": "Campaign orchestrator"
+              }
+            ]
+          },
+          {
+            "as": "problem-kind",
+            "function": "coalesce",
+            "args": [
+              {
+                "value": "not-observed"
+              },
+              {
+                "value": "not-observed"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "campaign-unobserved-orchestrators",
+        "intent": "Show active campaign orchestrators with no retained Runs in the selected horizon.",
+        "description": "Active campaign orchestrators whose runtime state cannot be established from retained evidence.",
+        "from": "campaign-unobserved-orchestrator-candidates",
+        "filter": {
+          "predicates": [
+            {
+              "field": "is-unobserved",
+              "equals": true
+            }
+          ]
+        }
+      },
+      {
+        "name": "campaign-runtime-problems",
+        "intent": "Combine current runtime failures with active orchestrators that have no retained Run evidence.",
+        "description": "Current campaign runtime problems requiring investigation.",
+        "from": "campaign-current-runtime-failures",
+        "union": [
+          "campaign-unobserved-orchestrators"
+        ],
+        "order-by": [
+          {
+            "field": "failure-count",
+            "direction": "desc"
+          },
+          {
+            "field": "workflow-name",
+            "direction": "asc"
+          },
+          {
+            "field": "runtime-repository",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
+        "name": "campaign-runtime-problem-counts",
+        "intent": "Count current failing workflow and runtime repository partitions for each campaign.",
+        "description": "Current retained runtime problem counts by campaign.",
+        "from": "campaign-runtime-problems",
+        "aggregate": {
+          "by": [
+            "campaign"
+          ],
+          "values": [
+            {
+              "field": "failure-count",
+              "as": "problem-partitions",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "campaign-problem-runs",
+        "intent": "List retained failed runs for campaign problem investigation.",
+        "description": "Failed campaign runs ordered from newest to oldest with retained diagnostic metadata.",
+        "from": "campaign-runs",
+        "filter": {
+          "predicates": [
+            {
+              "field": "status",
+              "in": [
+                "failure",
+                "startup-failure",
+                "stale",
+                "timed-out"
+              ]
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "started-at",
+            "direction": "desc"
+          },
+          {
+            "field": "run",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
+        "name": "campaign-problem-run-evidence",
+        "intent": "Attach the current campaign runtime problem summary to each retained failed Run for that partition.",
+        "description": "Failed campaign runs annotated with the failure-count and problem-kind of their active runtime problem, one row per retained failed Run.",
+        "from": "campaign-problem-runs",
+        "joins": [
+          {
+            "source": "campaign-runtime-problems",
+            "type": "inner",
+            "on": [
+              {
+                "left": "campaign",
+                "right": "campaign"
+              },
+              {
+                "left": "workflow",
+                "right": "workflow"
+              },
+              {
+                "left": "runtime-repository",
+                "right": "runtime-repository"
+              }
+            ],
+            "fields": [
+              {
+                "field": "failure-count",
+                "as": "failure-count"
+              },
+              {
+                "field": "problem-kind",
+                "as": "problem-kind"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "campaign-problem-error-groups",
+        "intent": "Cluster retained failed Run evidence by workflow, runtime repository, and error signature so repeated identical failures collapse into one diagnosable group.",
+        "description": "One row per distinct error signature within a campaign runtime problem partition, with an occurrence count and the most recent matching Run identity for follow-up.",
+        "from": "campaign-problem-run-evidence",
+        "aggregate": {
+          "by": [
+            "campaign",
+            "campaign-name",
+            "workflow",
+            "workflow-name",
+            "workflow-role",
+            "runtime-repository",
+            "failure-count",
+            "problem-kind",
+            "error-signature",
+            "error-signature-label"
+          ],
+          "values": [
+            {
+              "field": "run",
+              "as": "occurrence-count",
+              "reducer": "count"
+            },
+            {
+              "field": "run",
+              "as": "latest-run",
+              "reducer": "max"
+            }
+          ]
+        }
+      },
+      {
+        "name": "campaign-problem-items",
+        "intent": "Attach the most recent representative Run evidence to each distinct campaign runtime problem error signature.",
+        "description": "Current campaign runtime problems clustered by error signature, one row per group, with an occurrence count, the most recent matching failed Run, and a repair prompt.",
+        "from": "campaign-problem-error-groups",
+        "joins": [
+          {
+            "source": "campaign-problem-run-evidence",
+            "type": "inner",
+            "on": [
+              {
+                "left": "campaign",
+                "right": "campaign"
+              },
+              {
+                "left": "workflow",
+                "right": "workflow"
+              },
+              {
+                "left": "runtime-repository",
+                "right": "runtime-repository"
+              },
+              {
+                "left": "latest-run",
+                "right": "run"
+              }
+            ],
+            "fields": [
+              {
+                "field": "started-at",
+                "as": "started-at"
+              },
+              {
+                "field": "run",
+                "as": "run"
+              },
+              {
+                "field": "status",
+                "as": "status"
+              },
+              {
+                "field": "status-detail",
+                "as": "status-detail"
+              },
+              {
+                "field": "failure-job",
+                "as": "failure-job"
+              },
+              {
+                "field": "failure-message",
+                "as": "failure-message"
+              },
+              {
+                "field": "failure-step",
+                "as": "failure-step"
+              },
+              {
+                "field": "gh-aw-version",
+                "as": "gh-aw-version"
+              },
+              {
+                "field": "engine",
+                "as": "engine"
+              },
+              {
+                "field": "engine-version",
+                "as": "engine-version"
+              },
+              {
+                "field": "requested-model",
+                "as": "requested-model"
+              },
+              {
+                "field": "resolved-model",
+                "as": "resolved-model"
+              },
+              {
+                "field": "run-link",
+                "as": "run-link"
+              }
+            ]
+          }
+        ],
+        "union": [
+          "campaign-unobserved-orchestrators"
+        ],
+        "order-by": [
+          {
+            "field": "workflow-name",
+            "direction": "asc"
+          },
+          {
+            "field": "runtime-repository",
+            "direction": "asc"
+          },
+          {
+            "field": "occurrence-count",
+            "direction": "desc"
+          },
           {
             "field": "started-at",
             "direction": "desc"
@@ -6677,7 +7297,85 @@
         "intent": "Provide one navigation row per registered campaign that opens its dedicated campaign view.",
         "description": "Registered campaigns with a resolved dashboard link to their dedicated campaign view.",
         "from": "campaigns",
+        "joins": [
+          {
+            "source": "campaign-runtime-problem-counts",
+            "type": "left",
+            "on": [
+              {
+                "left": "campaign",
+                "right": "campaign"
+              }
+            ],
+            "fields": [
+              {
+                "field": "problem-partitions",
+                "as": "observed-problem-partitions"
+              }
+            ]
+          }
+        ],
         "compute": [
+          {
+            "as": "problem-partitions",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "observed-problem-partitions"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "has-runtime-problems",
+            "function": "greater-than",
+            "args": [
+              {
+                "field": "problem-partitions"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "problem-indicator",
+            "function": "if",
+            "args": [
+              {
+                "field": "has-runtime-problems"
+              },
+              {
+                "value": "alert"
+              },
+              {
+                "value": ""
+              }
+            ]
+          },
+          {
+            "as": "problem-count-label",
+            "function": "format-count",
+            "args": [
+              {
+                "field": "problem-partitions"
+              }
+            ]
+          },
+          {
+            "as": "problem-indicator-label",
+            "function": "concat",
+            "args": [
+              {
+                "value": "Current failing workflow or target partitions: "
+              },
+              {
+                "field": "problem-count-label"
+              }
+            ]
+          },
           {
             "as": "encoded-campaign",
             "function": "url-encode",
@@ -6688,11 +7386,26 @@
             ]
           },
           {
+            "as": "campaign-dashboard-page-prefix",
+            "function": "if",
+            "args": [
+              {
+                "field": "has-runtime-problems"
+              },
+              {
+                "value": "#page-campaign-problems?campaign="
+              },
+              {
+                "value": "#page-campaign-insights?campaign="
+              }
+            ]
+          },
+          {
             "as": "campaign-dashboard-href",
             "function": "concat",
             "args": [
               {
-                "value": "#page-campaign-detail?campaign="
+                "field": "campaign-dashboard-page-prefix"
               },
               {
                 "field": "encoded-campaign"
@@ -6742,6 +7455,12 @@
           },
           {
             "field": "campaign-icon"
+          },
+          {
+            "field": "problem-indicator"
+          },
+          {
+            "field": "problem-indicator-label"
           },
           {
             "field": "campaign-dashboard-link"
@@ -8881,6 +9600,53 @@
         ]
       },
       {
+        "id": "campaign-problems",
+        "kind": "custom",
+        "title": "Campaign",
+        "description": "Current runtime failures and retained evidence for this campaign.",
+        "icon": "alert",
+        "class-name": "campaign-problems-page",
+        "route": {
+          "hash-query-parameter": "campaign"
+        },
+        "views": [
+          {
+            "id": "campaign-problems-navigation",
+            "title": "Campaign problems",
+            "data": {
+              "sources": [
+                "workflows"
+              ]
+            },
+            "mark": "element",
+            "element": "campaign-route",
+            "layout": "full",
+            "config": {
+              "body": "problems"
+            }
+          },
+          {
+            "id": "campaign-current-runtime-problems",
+            "title": "Problems",
+            "description": "Current runtime failures and missing orchestrator observations, grouped by workflow.",
+            "data": {
+              "sources": [
+                "campaign-problem-items"
+              ],
+              "arguments": [
+                {
+                  "name": "campaign",
+                  "field": "campaign"
+                }
+              ]
+            },
+            "mark": "element",
+            "element": "campaign-problem-list",
+            "layout": "full"
+          }
+        ]
+      },
+      {
         "id": "campaign-detail",
         "kind": "custom",
         "title": "Campaign",
@@ -10910,8 +11676,8 @@
           {
             "id": "overview-campaigns",
             "title": "Campaigns",
-            "intent": "Provide direct navigation to every registered campaign without requesting supporting metrics.",
-            "description": "Open a campaign to view its activity and insights.",
+            "intent": "Provide direct navigation to every registered campaign, opening current problems first when attention is required.",
+            "description": "Campaigns needing attention open to Problems; other campaigns open to their campaign overview.",
             "data": {
               "sources": [
                 "overview-campaign-links"
@@ -10924,6 +11690,8 @@
               "link-field": "campaign-dashboard-link",
               "icon-field": "campaign-icon",
               "fallback-icon": "goal",
+              "indicator-field": "problem-indicator",
+              "indicator-label-field": "problem-indicator-label",
               "empty-message": "No campaigns are registered."
             },
             "layout": "full"

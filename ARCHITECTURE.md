@@ -107,6 +107,9 @@ only bounded view payloads. Versioned computations transform canonical evidence
 into partitioned measures and actionable insights so consumers do not repeatedly
 scan the full Activity corpus. Computation results remain derived evidence:
 they preserve source quality and provenance and grant no operational authority.
+The `cao computation runtime-health` command executes the first production
+measure through declarative canonical queries. Future CLI measures extend the
+same `computation` namespace.
 Successful-Run value computations keep produced safe outputs, native
 operational-value measurements, and efficiency evidence separate; they do not
 turn runtime success or output creation into accepted value.
