@@ -1,5 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { relative, resolve } from 'node:path';
+import { parse } from 'yaml';
+import { renderDashboardQueryUsageGraph } from '../src/query-usage.js';
 import { validateDashboardDocument } from '../src/validator.js';
 
 const repositoryRoot = resolve(process.cwd(), '../..');
@@ -26,14 +28,22 @@ async function findDashboardDocuments(directory) {
 }
 
 const dashboardPaths = (await findDashboardDocuments(repositoryRoot)).sort();
+const renderQueryGraphs = process.argv.includes('--render-query-graphs');
 let invalidCount = 0;
 
 for (const dashboardPath of dashboardPaths) {
-  const result = validateDashboardDocument(await readFile(dashboardPath, 'utf8'));
+  const source = await readFile(dashboardPath, 'utf8');
+  const result = validateDashboardDocument(source);
+  const displayPath = relative(repositoryRoot, dashboardPath);
+  const hasDeadQueries = !result.ok && result.errors.some((error) => error.code === 'DLS-E015');
+  if (renderQueryGraphs || hasDeadQueries) {
+    const document = parse(source);
+    console.error(`Query usage graph for ${displayPath}:`);
+    console.error(renderDashboardQueryUsageGraph(document.dashboard));
+  }
   if (result.ok) continue;
 
   invalidCount += 1;
-  const displayPath = relative(repositoryRoot, dashboardPath);
   for (const error of result.errors) {
     console.error(`${displayPath}:${error.path}: ${error.code} ${error.message}`);
   }

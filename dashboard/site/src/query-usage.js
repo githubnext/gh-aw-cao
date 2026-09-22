@@ -15,6 +15,8 @@ export function buildDashboardQueryUsageGraph(dashboard) {
   /** @type {Map<string, string>} */
   const queryPaths = new Map();
   /** @type {Map<string, string>} */
+  const labels = new Map();
+  /** @type {Map<string, string>} */
   const reusableViewNodes = new Map();
 
   /** @param {string} name */
@@ -35,6 +37,7 @@ export function buildDashboardQueryUsageGraph(dashboard) {
   queries.forEach((query, index) => {
     if (!isRecord(query) || typeof query.name !== 'string') return;
     const node = addNode(queryNode(query.name));
+    labels.set(node, `Query: ${query.name}`);
     queryPaths.set(query.name, `$.dashboard.queries[${index}].name`);
     addQueryEdges(node, queryInputNames(query));
   });
@@ -44,6 +47,7 @@ export function buildDashboardQueryUsageGraph(dashboard) {
       if (!isRecord(view)) return;
       const node = `view:$.dashboard.views[${index}]`;
       addQueryEdges(node, viewQueryNames(view));
+      labels.set(node, `Reusable view: ${typeof view.id === 'string' ? view.id : index}`);
       if (typeof view.id === 'string') reusableViewNodes.set(view.id, node);
     });
   }
@@ -58,6 +62,7 @@ export function buildDashboardQueryUsageGraph(dashboard) {
       definition.views.forEach((view, viewIndex) => {
         const path = `$.dashboard.pages[${pageIndex}]${definition === page ? '' : '.definition'}.views[${viewIndex}]`;
         const node = addNode(`view:${path}`);
+        labels.set(node, `View: ${nodeLabel(page, pageIndex)} / ${nodeLabel(view, viewIndex)}`);
         roots.add(node);
         if (typeof view === 'string') {
           const reusableNode = reusableViewNodes.get(view);
@@ -71,6 +76,7 @@ export function buildDashboardQueryUsageGraph(dashboard) {
           if (!isRecord(section)) return;
           const path = `$.dashboard.pages[${pageIndex}]${definition === page ? '' : '.definition'}.sections[${sectionIndex}]`;
           const node = addNode(`section:${path}`);
+          labels.set(node, `Section: ${nodeLabel(page, pageIndex)} / ${nodeLabel(section, sectionIndex)}`);
           roots.add(node);
           addQueryEdges(node, [
             section['count-source'],
@@ -85,12 +91,44 @@ export function buildDashboardQueryUsageGraph(dashboard) {
     dashboard.callouts.forEach((callout, index) => {
       if (!isRecord(callout) || !isRecord(callout['visible-when'])) return;
       const node = addNode(`callout:$.dashboard.callouts[${index}]`);
+      labels.set(node, `Callout: ${nodeLabel(callout, index)}`);
       roots.add(node);
       addQueryEdges(node, [callout['visible-when'].source]);
     });
   }
 
-  return { graph, roots, queryPaths };
+  return { graph, roots, queryPaths, labels };
+}
+
+/**
+ * Renders the analyzed view-to-query graph as a Mermaid flowchart.
+ *
+ * @param {Record<string, unknown>} dashboard
+ */
+export function renderDashboardQueryUsageGraph(dashboard) {
+  const analysis = buildDashboardQueryUsageGraph(dashboard);
+  const reachable = reachableNodes(analysis.graph, analysis.roots);
+  const nodes = [...analysis.graph.keys()].toSorted();
+  const nodeIds = new Map(nodes.map((node, index) => [node, `n${index}`]));
+  const lines = ['flowchart LR'];
+
+  for (const node of nodes) {
+    lines.push(`  ${nodeIds.get(node)}["${escapeMermaidLabel(analysis.labels.get(node) ?? node)}"]`);
+  }
+  for (const node of nodes) {
+    for (const dependency of [...(analysis.graph.get(node) ?? [])].toSorted()) {
+      lines.push(`  ${nodeIds.get(node)} --> ${nodeIds.get(dependency)}`);
+    }
+  }
+
+  const deadQueryIds = nodes
+    .filter((node) => node.startsWith('query:') && !reachable.has(node))
+    .map((node) => nodeIds.get(node));
+  if (deadQueryIds.length > 0) {
+    lines.push('  classDef dead fill:#ffebe9,stroke:#cf222e,color:#82071e');
+    lines.push(`  class ${deadQueryIds.join(',')} dead`);
+  }
+  return lines.join('\n');
 }
 
 /**
@@ -99,20 +137,37 @@ export function buildDashboardQueryUsageGraph(dashboard) {
  */
 export function findDeadDashboardQueries(dashboard) {
   const { graph, roots, queryPaths } = buildDashboardQueryUsageGraph(dashboard);
+  const reachable = reachableNodes(graph, roots);
+
+  return [...queryPaths].flatMap(([name, path]) => (
+    reachable.has(`query:${name}`) ? [] : [{ name, path }]
+  ));
+}
+
+/** @param {Map<string, Set<string>>} graph @param {Set<string>} roots */
+function reachableNodes(graph, roots) {
   const reachable = new Set(roots);
   const pending = [...roots];
   while (pending.length > 0) {
     const node = pending.pop();
+    if (node === undefined) continue;
     for (const dependency of graph.get(node) ?? []) {
       if (reachable.has(dependency)) continue;
       reachable.add(dependency);
       pending.push(dependency);
     }
   }
+  return reachable;
+}
 
-  return [...queryPaths].flatMap(([name, path]) => (
-    reachable.has(`query:${name}`) ? [] : [{ name, path }]
-  ));
+/** @param {Record<string, any>} value @param {number} fallback */
+function nodeLabel(value, fallback) {
+  return typeof value.id === 'string' ? value.id : String(fallback);
+}
+
+/** @param {string} value */
+function escapeMermaidLabel(value) {
+  return value.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }
 
 /** @param {Record<string, unknown>} query */

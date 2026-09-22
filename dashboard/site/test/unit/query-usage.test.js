@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildDashboardQueryUsageGraph,
-  findDeadDashboardQueries
+  findDeadDashboardQueries,
+  renderDashboardQueryUsageGraph
 } from '../../src/query-usage.js';
 
 describe('dashboard query usage graph', () => {
@@ -26,6 +27,28 @@ describe('dashboard query usage graph', () => {
     expect(findDeadDashboardQueries(dashboard)).toEqual([
       { name: 'dead', path: '$.dashboard.queries[4].name' }
     ]);
+  });
+
+  it('renders view-to-query reachability and highlights dead queries', () => {
+    const dashboard = {
+      queries: [
+        { name: 'used', from: 'runs' },
+        { name: 'dead', from: 'runs' }
+      ],
+      pages: [{
+        id: 'overview',
+        kind: 'custom',
+        views: [{ id: 'run-count', data: { source: 'used' } }]
+      }]
+    };
+
+    expect(renderDashboardQueryUsageGraph(dashboard)).toBe(`flowchart LR
+  n0["Query: dead"]
+  n1["Query: used"]
+  n2["View: overview / run-count"]
+  n2 --> n1
+  classDef dead fill:#ffebe9,stroke:#cf222e,color:#82071e
+  class n0 dead`);
   });
 
   it('rejects queries used only by unreferenced reusable views', () => {
