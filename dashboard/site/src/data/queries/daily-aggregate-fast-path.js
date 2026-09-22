@@ -140,9 +140,12 @@ function isRunsDailyConclusionsShape(definition) {
   const compute = definition.compute;
   if (!Array.isArray(compute) || compute.length !== 1) return false;
   const [day] = compute;
+  const dayArgument = isPlainObject(day) && Array.isArray(day.args) && isPlainObject(day.args[0])
+    ? /** @type {Record<string, unknown>} */ (day.args[0])
+    : null;
   if (!isPlainObject(day) || day.as !== 'day' || day.function !== 'date-day'
       || !Array.isArray(day.args) || day.args.length !== 1
-      || !isPlainObject(day.args[0]) || day.args[0].field !== 'started-at') {
+      || dayArgument?.field !== 'started-at') {
     return false;
   }
   const by = definition.aggregate?.by;
@@ -165,8 +168,8 @@ function isRunsDailyConclusionsShape(definition) {
   }
   return {
     countAs: String(count.as),
-    startDay: predicates.find((predicate) => typeof predicate.gte === 'string')?.gte?.slice(0, 10) ?? null,
-    endDay: predicates.find((predicate) => typeof predicate.lt === 'string')?.lt?.slice(0, 10) ?? null
+    startDay: String(predicates.find((predicate) => typeof predicate.gte === 'string')?.gte ?? '').slice(0, 10) || null,
+    endDay: String(predicates.find((predicate) => typeof predicate.lt === 'string')?.lt ?? '').slice(0, 10) || null
   };
 }
 

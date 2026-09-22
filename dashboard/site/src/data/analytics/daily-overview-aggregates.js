@@ -26,7 +26,7 @@ export const DISPATCH_EVENT = 'workflow_dispatch';
  * @property {number} failedRuns Runs with a failed conclusion.
  * @property {number} dispatches `workflow_dispatch` runs started on this day.
  * @property {number} failedDispatches Failed `workflow_dispatch` runs.
- * @property {Record<string, number>} runsByConclusion Runs grouped by normalized conclusion.
+ * @property {Record<string, number>} [runsByConclusion] Runs grouped by normalized conclusion.
  */
 
 /**
@@ -100,7 +100,8 @@ export function buildDailyOverviewAggregates(runs) {
 
     record.runs += 1;
     const conclusionKey = conclusion ?? 'unknown';
-    record.runsByConclusion[conclusionKey] = (record.runsByConclusion[conclusionKey] ?? 0) + 1;
+    const runsByConclusion = record.runsByConclusion ??= {};
+    runsByConclusion[conclusionKey] = (runsByConclusion[conclusionKey] ?? 0) + 1;
     if (conclusion === 'success') record.successfulRuns += 1;
     if (conclusion && FAILED_CONCLUSIONS.has(conclusion)) record.failedRuns += 1;
     if (isDispatch) {

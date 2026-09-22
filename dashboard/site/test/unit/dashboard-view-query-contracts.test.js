@@ -86,7 +86,6 @@ describe('dashboard view query contracts', () => {
     const pagesById = new Map(dashboard.pages.map((/** @type {Record<string, unknown>} */ page) => [page.id, page]));
     const boundedViews = [
       ['workflows', 'top-workflow-runs', 250],
-      ['runs', 'runs-last-week', 250],
       ['graders', 'graders-graders-source', 100],
       ['graders', 'graders-observations-source', 100],
       ['usage', 'usage-usage-source', 100],

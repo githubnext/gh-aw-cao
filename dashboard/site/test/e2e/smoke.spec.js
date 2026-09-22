@@ -565,6 +565,14 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
         availability: 'available'
       };
       const sources = {
+        'runs-daily-conclusions': {
+          source: 'runs-daily-conclusions',
+          metadata,
+          rows: [
+            { day: '2026-09-10', 'run-conclusion': 'failure', runs: 50 },
+            { day: '2026-09-10', 'run-conclusion': 'success', runs: 50 }
+          ]
+        },
         'runs-table': {
           source: 'runs-table',
           metadata,
