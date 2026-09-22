@@ -59,12 +59,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      MOBILE_DEBUG_SHARD_LIMIT: ${{ matrix.shard_limit }}
+      MOBILE_DEBUG_SHARD_LIMIT: 10
     strategy:
       fail-fast: false
       matrix:
-        # Keep WebKit below the oversized generic fleet shard; Chromium retains broader coverage.
-        include: ${{ fromJSON(github.ref == 'refs/heads/main' && '[{"browser":"webkit","device":"iPhone 15","shard_limit":5},{"browser":"chromium","device":"Pixel 7","shard_limit":10}]' || '[{"browser":"webkit","device":"iPhone 15","shard_limit":5}]') }}
+        include: ${{ fromJSON(github.ref == 'refs/heads/main' && '[{"browser":"webkit","device":"iPhone 15"},{"browser":"chromium","device":"Pixel 7"}]' || '[{"browser":"webkit","device":"iPhone 15"}]') }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -12,6 +12,7 @@ import {
 } from "./dashboard-tree-analysis.mjs";
 
 const maximumDomNodes = 6_000;
+const maximumWebKitShardCount = 5;
 const transientDownloadStatuses = new Set([408, 429, 500, 502, 503, 504]);
 let preview;
 let sourcePayload;
@@ -24,6 +25,13 @@ function optionalPositiveInteger(name) {
   const parsed = Number(value);
   if (!Number.isSafeInteger(parsed)) throw new Error(`${name} must be a safe integer.`);
   return parsed;
+}
+
+function mobileDebugShardLimit() {
+  const requested = optionalPositiveInteger("MOBILE_DEBUG_SHARD_LIMIT");
+  return process.env.MOBILE_BROWSER === "webkit"
+    ? Math.min(requested ?? maximumWebKitShardCount, maximumWebKitShardCount)
+    : requested;
 }
 
 async function fetchDeployedData(url) {
@@ -222,7 +230,7 @@ test.beforeAll(async () => {
           && /^[a-f0-9]{64}$/i.test(hash))
         .sort(([left], [right]) => left.localeCompare(right));
       if (shards.length === 0) throw new Error("Deployed dashboard manifest contains no valid activity shards.");
-      const selectedShards = shards.slice(0, optionalPositiveInteger("MOBILE_DEBUG_SHARD_LIMIT"));
+      const selectedShards = shards.slice(0, mobileDebugShardLimit());
       expectedActivityShardPaths = selectedShards.map(([name]) => `/${name}`);
       await mkdir(destination, { recursive: true });
       const inventoryPath = join(destination, "inventory-sources.json");
@@ -307,7 +315,7 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
   });
 
   const parameters = new URLSearchParams({ debug: "1" });
-  const shardLimit = optionalPositiveInteger("MOBILE_DEBUG_SHARD_LIMIT");
+  const shardLimit = mobileDebugShardLimit();
   if (shardLimit !== undefined) parameters.set("debug-shard-limit", String(shardLimit));
   await page.goto(`${preview.url}/?${parameters}`, { waitUntil: "domcontentloaded" });
   const dashboard = page.locator(".dashboard-root");
