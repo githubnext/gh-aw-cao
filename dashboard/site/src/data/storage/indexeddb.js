@@ -998,6 +998,7 @@ export async function recordTransaction(indexedDB, transaction) {
     const done = transactionDone(write);
     const store = write.objectStore(TRANSACTION_STORE);
     store.put(transaction);
+    /** @param {Record<string, unknown> | undefined} candidate */
     const persistentReceipt = (candidate) => candidate?.kind === 'ingest-normalized-json'
       && typeof candidate.payloadHash === 'string';
     if (typeof store.count !== 'function' || typeof store.index('byCreatedAt').openCursor !== 'function') {
