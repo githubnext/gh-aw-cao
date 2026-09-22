@@ -88,10 +88,25 @@
           "title": "Status"
         },
         "title": {
-          "field": "run-title",
-          "title": "Run"
+          "field": "workflow",
+          "title": "Workflow file",
+          "format": "workflow-relative-path"
+        },
+        "subtitle": {
+          "field": "target-repository",
+          "title": "Target repository"
         },
         "labels": [
+          {
+            "field": "run-status",
+            "title": "Status",
+            "display": "label"
+          },
+          {
+            "field": "run-conclusion",
+            "title": "Outcome",
+            "display": "label"
+          },
           {
             "field": "branch",
             "title": "Branch",
@@ -100,9 +115,8 @@
         ],
         "details": [
           {
-            "field": "workflow",
-            "title": "Workflow",
-            "format": "workflow-relative-path"
+            "field": "run-title",
+            "title": "Run"
           },
           {
             "field": "run",
@@ -1616,6 +1630,9 @@
           },
           {
             "field": "workflow"
+          },
+          {
+            "field": "target-repository"
           },
           {
             "field": "run"

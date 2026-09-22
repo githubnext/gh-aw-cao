@@ -336,14 +336,19 @@ describe('data view renderer', () => {
       .toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/303');
   });
 
-  it('presents run entity cards with status icon, branch ref, and timing rail', () => {
+  it('presents run entity cards with workflow identity, target repository, status labels, branch ref, and timing rail', () => {
     const runCard = {
       icon: 'play',
       status: { field: 'run-conclusion', 'fallback-field': 'run-status', title: 'Status' },
-      title: { field: 'run-title', title: 'Run' },
-      labels: [{ field: 'branch', title: 'Branch', display: 'ref' }],
+      title: { field: 'workflow', title: 'Workflow file', format: 'workflow-relative-path' },
+      subtitle: { field: 'target-repository', title: 'Target repository' },
+      labels: [
+        { field: 'run-status', title: 'Status', display: 'label' },
+        { field: 'run-conclusion', title: 'Outcome', display: 'label' },
+        { field: 'branch', title: 'Branch', display: 'ref' }
+      ],
       details: [
-        { field: 'workflow', title: 'Workflow', format: 'workflow-relative-path' },
+        { field: 'run-title', title: 'Run' },
         { field: 'event', title: 'Event' }
       ],
       timing: [
@@ -373,6 +378,7 @@ describe('data view renderer', () => {
 
     const completed = render({
       'run-title': '[optimization:skills-curator] Layer AGENTS.md',
+      'target-repository': 'githubnext/gh-aw',
       'run-status': 'completed',
       'run-conclusion': 'success',
       workflow: '.github/workflows/optimization.md',
@@ -383,6 +389,7 @@ describe('data view renderer', () => {
     });
     const running = render({
       'run-title': 'Running Copilot cloud agent',
+      'target-repository': 'githubnext/gh-aw-firewall',
       'run-status': 'in-progress',
       'run-conclusion': null,
       workflow: '.github/workflows/optimization.md',
@@ -394,6 +401,13 @@ describe('data view renderer', () => {
     expect(completed?.querySelector('.entity-card-list-status-success .octicon-check-circle-fill')).not.toBeNull();
     expect(completed?.querySelector('.entity-card-list-status')?.getAttribute('data-card-status')).toBe('success');
     expect(completed?.querySelector('.entity-card-list-status')?.getAttribute('title')).toBe('Success');
+    expect(completed?.querySelector('.entity-card-list-title')?.textContent).toBe('optimization.md');
+    expect(completed?.querySelector('.entity-card-list-subtitle')?.textContent).toBe('githubnext/gh-aw');
+    expect([...completed?.querySelectorAll('.issue-list-labels li') ?? []].map((label) => label.textContent)).toEqual([
+      'completed',
+      'success',
+      'copilot/add-desktop-tabs'
+    ]);
     expect(running?.querySelector('.entity-card-list-status .sr-only')?.textContent).toBe('Status: In Progress');
     expect(completed?.querySelector('.entity-card-list-ref')?.textContent).toBe('copilot/add-desktop-tabs');
     const timing = completed?.querySelectorAll('.entity-card-list-timing-item') ?? [];
