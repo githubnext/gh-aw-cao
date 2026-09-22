@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 1,
+  "id": "work-queue-health-attainment",
+  "task": {
+    "actor": "Repository operator",
+    "subject": "A delegated-work queue health workflow for the githubnext/gh-aw-cao repository",
+    "intent": "Assess whether a delegated-work queue health workflow is surfacing active stalled work, preserving bounded no-op decisions for completed or already-owned items, and attaining its intended value of moving actionable work items toward verified completion.",
+    "activationConditions": [
+      "A repository operator enables a standalone delegated-work queue health workflow on githubnext/gh-aw-cao.",
+      "At least one delegated work item in githubnext/gh-aw-cao is observed with waiting or verification evidence within the dashboard horizon.",
+      "A workflow run for the delegated-work queue health workflow is observed in the selected horizon."
+    ],
+    "requiredEffects": [
+      "For each eligible stalled or waiting work item opportunity, the workflow evaluates the current queue state and emits at most one bounded safe output requesting the next action.",
+      "Accepted repository evidence must remain limited to the producing workflow run, the work item evidence, and any linked outcome created for that same work item opportunity.",
+      "Completed, recently updated, or already-owned work items must remain without a new durable output when the workflow has no actionable intervention."
+    ],
+    "noopConditions": [
+      "The work item is already verified complete or has an observed completed outcome state before evaluation.",
+      "The work item is actively owned with a recent next action and no waiting evidence that requires intervention.",
+      "A prior accepted workflow output already covers the same stalled work item opportunity in the selected horizon."
+    ],
+    "successConditions": [
+      "The workflow activates for eligible stalled or waiting work item opportunities within the selected horizon.",
+      "Observed outcomes for eligible opportunities are accepted when intervention is needed or intentionally absent when no-op conditions hold.",
+      "Operational-value observations preserve the ordered metrics published by gh-aw for each workflow run."
+    ],
+    "uncertainties": [
+      "A stalled work item does not by itself prove an accepted intervention was needed.",
+      "A successful workflow run does not by itself establish verified completion of the delegated work item.",
+      "A null operational-value metric must remain distinct from a numeric zero."
+    ]
+  },
+  "operationalValue": {
+    "upstream": "gh-aw",
+    "orderedMetrics": [
+      {
+        "id": "work-queue-health-attainment",
+        "unit": "ratio",
+        "direction": "higher_is_better"
+      }
+    ],
+    "preservation": "Preserve the metric identifier, native finite value or null, unit, and direction exactly as published by gh-aw.",
+    "opportunity": "One stable delegated work item opportunity identified by work-item-id in githubnext/gh-aw-cao for the delegated-work queue health workflow.",
+    "repositories": [
+      "githubnext/gh-aw-cao"
+    ],
+    "acceptedEvidence": [
+      "work-items rows scoped to the workflow and repository",
+      "outcomes rows linked to the same repository workflow and run provenance",
+      "operational-values rows published by gh-aw for the same workflow runs"
+    ],
+    "baseline": {
+      "kind": "attainment-only",
+      "value": null,
+      "cutoff": null
+    },
+    "maturationRules": [
+      "Use gh-aw published maturity for each operational-value observation without redefining it in the dashboard.",
+      "Treat unmatured or unavailable evaluator evidence as missing rather than inferred attainment."
+    ],
+    "zeroRules": [
+      "A numeric zero means the authoritative gh-aw evaluator reported zero attainment for that work item opportunity.",
+      "Do not substitute zero for null or missing evidence."
+    ],
+    "missingEvidenceRules": [
+      "When no operational-value observation exists for an eligible workflow run, attainment remains missing.",
+      "When work-item evidence is unavailable or incomparable, do not infer opportunity completion or attainment."
+    ]
+  },
+  "logicalSources": {
+    "work-items": {
+      "rows": [
+        {
+          "work-item-id": "wi-1001",
+          "name": "Refresh workflow contract fixtures",
+          "objective": "Update workflow contract fixtures after the latest routing change.",
+          "organization": "githubnext",
+          "repository": "gh-aw-cao",
+          "workflow": ".github/workflows/delegated-work-queue-health.yml",
+          "workflow-name": "Delegated work queue health",
+          "workflow-icon": "workflow",
+          "workflow-role": "standalone",
+          "scope": "repository",
+          "domain": "maintenance",
+          "work-type": "follow-up",
+          "lifecycle-state": "waiting",
+          "phase": "verification",
+          "reason": "Awaiting reviewer confirmation after generated fixture refresh.",
+          "reason-evidence-class": "run-output",
+          "next-action": "Confirm regenerated fixtures still match current route bindings.",
+          "next-actor": "repository-operator",
+          "waiting-on": "review",
+          "waiting-since": "2026-09-02T12:00:00Z",
+          "owner": "operations",
+          "consequence-tier": "medium",
+          "verification-state": "pending",
+          "outcome-state": "pending",
+          "started-at": "2026-09-02T11:00:00Z",
+          "observed-at": "2026-09-03T09:00:00Z",
+          "evidence-link": {
+            "relation": "evidence",
+            "href": "https://github.com/githubnext/gh-aw-cao/actions/runs/1001",
+            "label": "Run evidence"
+          },
+          "repository-link": {
+            "relation": "repository",
+            "href": "https://github.com/githubnext/gh-aw-cao",
+            "label": "githubnext/gh-aw-cao"
+          },
+          "run-link": {
+            "relation": "run",
+            "href": "https://github.com/githubnext/gh-aw-cao/actions/runs/1001",
+            "label": "Run 1001"
+          }
+        }
+      ]
+    },
+    "workflows": {
+      "rows": [
+        {
+          "organization": "githubnext",
+          "repository": "gh-aw-cao",
+          "workflow": ".github/workflows/delegated-work-queue-health.yml",
+          "workflow-name": "Delegated work queue health",
+          "workflow-role": "standalone",
+          "workflow-active": "true",
+          "rollout-mode": "review",
+          "observed-at": "2026-09-03T09:00:00Z",
+          "repository-link": {
+            "relation": "repository",
+            "href": "https://github.com/githubnext/gh-aw-cao",
+            "label": "githubnext/gh-aw-cao"
+          },
+          "workflow-link": {
+            "relation": "workflow",
+            "href": "https://github.com/githubnext/gh-aw-cao/actions/workflows/delegated-work-queue-health.yml",
+            "label": "Delegated work queue health"
+          }
+        }
+      ]
+    }
+  },
+  "dashboard": "work-queue-health-attainment.dashboard.yml"
+}

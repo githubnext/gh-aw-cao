@@ -7,6 +7,11 @@
       "dashboard": "examples/triage-review-readiness.dashboard.yml"
     },
     {
+      "id": "work-queue-health-attainment",
+      "metadata": "examples/work-queue-health-attainment.json",
+      "dashboard": "examples/work-queue-health-attainment.dashboard.yml"
+    },
+    {
       "id": "workflow-cost-inventory",
       "metadata": "examples/workflow-cost-inventory.json",
       "dashboard": "examples/workflow-cost-inventory.dashboard.yml"

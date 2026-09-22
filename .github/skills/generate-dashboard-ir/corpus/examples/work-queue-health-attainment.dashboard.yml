@@ -1,0 +1,135 @@
+language-version: "0.1.0"
+dashboard:
+  id: work-queue-health-attainment
+  title: Delegated work queue health attainment
+  defaults:
+    scope:
+      repositories:
+        - githubnext/gh-aw-cao
+      workflows:
+        - .github/workflows/delegated-work-queue-health.yml
+    time:
+      range: 30d
+  units:
+    percent:
+      name: Percent
+      symbol: "%"
+      significant: 0.1
+  pages:
+    - id: work-queue-health
+      kind: custom
+      title: Delegated work queue health attainment
+      description: Shows whether the delegated-work queue health workflow is activating on waiting work items, where actionable exceptions remain, and how its native attainment metric changes over time.
+      views:
+        - id: queue-lifecycle-distribution
+          title: Work queue lifecycle distribution
+          description: Current distribution of delegated work item lifecycle states for the selected workflow.
+          data:
+            source: work-items
+          mark: chart
+          chart: pie
+          layout: full
+          disclosure: essential
+          encoding:
+            x:
+              field: lifecycle-state
+              type: nominal
+              title: Lifecycle state
+            y:
+              field: work-item-id
+              type: quantitative
+              aggregate: distinct-count
+              title: Work items
+        - id: queue-activation-trend
+          title: Workflow activation trend
+          description: Daily workflow runs show whether the delegated-work queue health workflow is activating on repository work-item opportunities.
+          data:
+            source: runs
+          mark: chart
+          chart: line
+          layout: half
+          disclosure: essential
+          encoding:
+            x:
+              field: started-at
+              type: temporal
+              time-unit: day
+              title: Started
+            y:
+              field: run
+              type: quantitative
+              aggregate: distinct-count
+              title: Runs
+        - id: actionable-work-items
+          title: Actionable waiting work items
+          description: Waiting or pending-verification work items ordered by latest observation so an operator can inspect the current intervention queue.
+          data:
+            source: work-items
+            filters:
+              lifecycle-state:
+                - waiting
+                - active
+            order-by:
+              - field: observed-at
+                direction: desc
+              - field: work-item-id
+                direction: asc
+            limit: 20
+          mark: table
+          controls: interactive
+          layout: full
+          disclosure: essential
+          empty-message: No actionable waiting work items match the selected horizon.
+          encoding:
+            href:
+              field: evidence-link
+              type: nominal
+            columns:
+              - field: work-item-id
+                type: nominal
+                title: Work item
+              - field: name
+                type: nominal
+                title: Name
+              - field: lifecycle-state
+                type: nominal
+                title: Lifecycle
+                display: status
+              - field: verification-state
+                type: nominal
+                title: Verification
+                display: status
+              - field: next-actor
+                type: nominal
+                title: Next actor
+              - field: next-action
+                type: nominal
+                title: Next action
+              - field: waiting-since
+                type: temporal
+                title: Waiting since
+              - field: observed-at
+                type: temporal
+                title: Observed
+        - id: queue-attainment-trend
+          title: Work queue health attainment
+          description: Operational-value observations show the native work-queue health attainment metric published by gh-aw over time.
+          data:
+            source: operational-values
+            filters:
+              operational-value-definition: work-queue-health-attainment
+          mark: chart
+          chart: line
+          layout: half
+          disclosure: essential
+          encoding:
+            x:
+              field: observed-at
+              type: temporal
+              time-unit: day
+              title: Observed
+            y:
+              field: operational-value
+              type: quantitative
+              aggregate: mean
+              title: Mean attainment
