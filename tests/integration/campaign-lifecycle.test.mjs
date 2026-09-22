@@ -47,6 +47,8 @@ const activityExpectedFiles = [
   ".github/aw/activity/actions-log.mjs",
   ".github/aw/activity/cao.mjs",
   ".github/aw/activity/collect-logs.sh",
+  ".github/aw/activity/computations/index.mjs",
+  ".github/aw/activity/computations/runtime-health.mjs",
   ".github/aw/activity/control-settings.mjs",
   ".github/aw/activity/debug.mjs",
   ".github/aw/activity/gh-aw-logs.mjs",
