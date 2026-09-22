@@ -15,7 +15,7 @@ import {
 /**
  * @typedef {'scalar'|'text'|'boolean'|'numeric'|'temporal'|'link'|'unknown'} FieldType
  * @typedef {{ code: string, message: string, path: string }} ValidationError
- * @typedef {{ fields: Map<string, FieldType> | undefined, sources: Set<string> }} QueryType
+ * @typedef {{ fields: Map<string, FieldType> | undefined, sources: Set<string>, rowSources: Set<string> }} QueryType
  */
 
 /**
@@ -160,9 +160,11 @@ function compileQuery(query, index, symbols, compiled, errors) {
   /** @type {Map<string, FieldType> | undefined} */
   let fields = input?.fields ? new Map(input.fields) : undefined;
   const sources = new Set(input?.sources ?? []);
+  const rowSources = new Set(input?.rowSources ?? []);
   for (const sourceName of Array.isArray(query.union) ? query.union : []) {
     const unionInput = resolveSource(sourceName, symbols, compiled);
     for (const source of unionInput?.sources ?? []) sources.add(source);
+    for (const source of unionInput?.rowSources ?? []) rowSources.add(source);
     if (fields && unionInput?.fields) {
       for (const [field, type] of unionInput.fields) {
         if (!fields.has(field)) fields.set(field, type);
@@ -171,6 +173,7 @@ function compileQuery(query, index, symbols, compiled, errors) {
       fields = undefined;
     }
   }
+  const rowInputSources = new Set(rowSources);
 
   /** @param {unknown} field @param {string} fieldPath @param {'read'|'scalar'|'numeric'|'aggregate-numeric'} [usage] */
   const requireField = (field, fieldPath, usage = 'read') => {
@@ -240,7 +243,10 @@ function compileQuery(query, index, symbols, compiled, errors) {
 
   if (isRecord(query.filter) && Array.isArray(query.filter.predicates)) {
     query.filter.predicates.forEach((predicate, predicateIndex) => {
-      if (isRecord(predicate)) requireField(predicate.field, `${path}.filter.predicates[${predicateIndex}].field`, 'scalar');
+      if (!isRecord(predicate)) return;
+      const fieldPath = `${path}.filter.predicates[${predicateIndex}].field`;
+      requireField(predicate.field, fieldPath, 'scalar');
+      validateBranchSpecificFilter(predicate.field, rowInputSources, fieldPath, errors);
     });
   }
 
@@ -356,7 +362,7 @@ function compileQuery(query, index, symbols, compiled, errors) {
     });
   }
 
-  return { fields, sources };
+  return { fields, sources, rowSources };
 }
 
 /**
@@ -371,7 +377,8 @@ function resolveSource(source, symbols, compiled) {
     const names = SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (source)];
     return {
       fields: names ? new Map(names.map((name) => [name, intrinsicType(name)])) : undefined,
-      sources: new Set([source])
+      sources: new Set([source]),
+      rowSources: new Set([source])
     };
   }
   if (!symbols.has(source)) return undefined;
@@ -433,6 +440,38 @@ function validateUsage(field, type, usage, path, errors) {
       path
     ));
   }
+}
+
+/**
+ * A required filter over a multi-source row projection must be satisfiable from
+ * every branch. Otherwise one unavailable branch can make the whole projection
+ * unavailable even though that branch could never match the predicate.
+ *
+ * @param {unknown} field
+ * @param {Set<string>} rowInputSources
+ * @param {string} path
+ * @param {ValidationError[]} errors
+ */
+function validateBranchSpecificFilter(field, rowInputSources, path, errors) {
+  if (typeof field !== 'string' || rowInputSources.size <= 1) return;
+  let present = 0;
+  let known = 0;
+  for (const source of rowInputSources) {
+    const fields = SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (source)];
+    if (!Array.isArray(fields)) continue;
+    known += 1;
+    if (fields.includes(field)) present += 1;
+  }
+  if (known <= 1 || present === 0 || present === known) return;
+  const missing = [...rowInputSources].filter((source) => {
+    const fields = SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (source)];
+    return Array.isArray(fields) && !fields.includes(field);
+  }).sort();
+  errors.push(error(
+    ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
+    `filter field "${field}" is only available from some row input sources; query that source directly before filtering. Missing from: ${missing.join(', ')}.`,
+    path
+  ));
 }
 
 /** @param {unknown} reducer @param {unknown} field @param {Map<string, FieldType> | undefined} fields @returns {FieldType} */

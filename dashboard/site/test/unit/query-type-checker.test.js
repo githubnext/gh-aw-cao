@@ -152,6 +152,28 @@ describe('dashboard query type checker', () => {
     ]));
   });
 
+  it('rejects branch-specific filters over multi-source row projections', () => {
+    const result = compileDashboardQueryTypes([
+      query({
+        name: 'safe-output-items',
+        from: 'issues',
+        union: ['audits'],
+        filter: { predicates: [{ field: 'event-type', equals: 'safe_output.created' }] }
+      }),
+      query({
+        name: 'issue-safe-outputs',
+        from: 'safe-output-items',
+        filter: { predicates: [{ field: 'is-pull-request', equals: false }] }
+      })
+    ]);
+
+    expect(result.errors).toContainEqual(expect.objectContaining({
+      code: 'DLS-E011',
+      message: expect.stringContaining('filter field "is-pull-request" is only available from some row input sources'),
+      path: '$.dashboard.queries[1].filter.predicates[0].field'
+    }));
+  });
+
   it('preserves field kinds across aliases and rejects invalid operator use', () => {
     const result = compileDashboardQueryTypes([
       query({
