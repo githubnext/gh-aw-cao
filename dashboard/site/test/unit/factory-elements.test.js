@@ -61,7 +61,7 @@ it('renders campaign shortcuts through the reusable link button list', () => {
         'campaign-name': 'AW Doctor',
         'campaign-icon': 'gear',
         'campaign-dashboard-link': {
-          'dashboard-href': '#page-campaign-insights?campaign=aw-doctor',
+          'dashboard-href': '#page-campaign-detail?campaign=aw-doctor',
           'dashboard-label': 'View AW Doctor campaign dashboard'
         }
       }
@@ -77,7 +77,7 @@ it('renders campaign shortcuts through the reusable link button list', () => {
 
   expect(rendered?.querySelectorAll('.link-button-list-item')).toHaveLength(1);
   expect(rendered?.querySelector('.link-button-list-item a')?.getAttribute('href'))
-    .toBe('#page-campaign-insights?campaign=aw-doctor');
+    .toBe('#page-campaign-detail?campaign=aw-doctor');
   expect(rendered?.querySelector('.link-button-list-item a')?.getAttribute('aria-label'))
     .toBe('View AW Doctor campaign dashboard');
 });

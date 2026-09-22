@@ -30,7 +30,7 @@ const sources = {
       'campaign-name': 'AW Doctor',
       'campaign-icon': 'gear',
       'campaign-dashboard-link': {
-        'dashboard-href': '#page-campaign-insights?campaign=aw-doctor',
+        'dashboard-href': '#page-campaign-detail?campaign=aw-doctor',
         'dashboard-label': 'View AW Doctor campaign dashboard'
       }
     },
@@ -39,7 +39,7 @@ const sources = {
       'campaign-name': 'Dependabot',
       'campaign-icon': 'dependabot',
       'campaign-dashboard-link': {
-        'dashboard-href': '#page-campaign-insights?campaign=dependabot',
+        'dashboard-href': '#page-campaign-detail?campaign=dependabot',
         'dashboard-label': 'View Dependabot campaign dashboard'
       }
     }
@@ -170,7 +170,7 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(campaigns.locator('.link-button-list')).toBeVisible();
     await expect(campaigns.locator('.link-button-list-item')).toHaveCount(2);
     await expect(campaigns.getByRole('link', { name: 'View AW Doctor campaign dashboard' }))
-      .toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
+      .toHaveAttribute('href', '#page-campaign-detail?campaign=aw-doctor');
     await expect(factory.locator(':scope > .factory-intro + .factory-floor')).toHaveCount(1);
     const notifications = page.locator('[data-page-id="notifications"]');
     await expect(notifications).toHaveCount(0);

@@ -6755,7 +6755,7 @@
             "function": "concat",
             "args": [
               {
-                "value": "#page-campaign-insights?campaign="
+                "value": "#page-campaign-detail?campaign="
               },
               {
                 "field": "encoded-campaign"
