@@ -109,7 +109,7 @@ Named elements own specialized DOM, accessibility, interaction, local state, and
 | `insights-overview` | Composes the primary cross-domain Insights experience. |
 | `factory-header` | Presents factory status, retained-output context, work in motion, and weekly rhythm. |
 | `factory-floor` | Presents linked repository, run, dispatch, and value stations. |
-| `link-button-list` | Presents one source as a compact grouped list of Octicon navigation links. |
+| `link-button-list` | Presents one source as an inset grouped list of Octicon navigation rows with disclosure chevrons. |
 | `outcomes-overview` | Compatibility alias that composes the factory header and floor for existing version 0.1.0 documents. |
 
 ## Testing standard
