@@ -25,7 +25,7 @@ const suites = [
   {
     name: "activity",
     manifest: "activity/aw.yml",
-    testPattern: "focused activity campaign contract",
+    testPattern: "focused activity installation remains incomplete",
     prefixes: ["activity/", ".github/workflows/activity."],
   },
   {
