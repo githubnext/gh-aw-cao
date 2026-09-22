@@ -56,7 +56,7 @@ export function renderLinkButtonList(context) {
   const list = h('ul', { className: 'link-button-list' }, items);
   const skeleton = h(
     'div',
-    { className: 'link-button-list link-button-list-skeleton', 'aria-hidden': 'true' },
+    { className: 'link-button-list-skeleton', 'aria-hidden': 'true' },
     ...Array.from({ length: 3 }, () => h(
       'span',
       { className: 'link-button-list-skeleton-row' },
