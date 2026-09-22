@@ -282,6 +282,10 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .link-button-list-icon .octicon { width: 16px; height: 16px; }
 .link-button-list-chevron .octicon { width: 12px; height: 12px; }
 .link-button-list-empty { margin: 0; padding: 16px; border: 1px solid var(--border-muted); border-radius: 12px; background: var(--canvas-subtle); }
+.link-button-list-skeleton-row { min-height: 44px; display: grid; grid-template-columns: 28px minmax(0, 1fr); align-items: center; gap: 12px; padding: 8px 16px; }
+.link-button-list-skeleton-row > span { height: 16px; border-radius: 4px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite; }
+.link-button-list-skeleton-row > span:first-child { height: 28px; border-radius: 8px; }
+.link-button-list-skeleton-row > span:last-child { width: min(240px, 60%); }
 .mobile-brand-name { display: none; }
 .sidebar-collapsed { grid-template-columns: 64px minmax(0, 1fr); }
 .sidebar-collapsed .org-sidebar { padding-inline: 8px 7px; }
@@ -1740,7 +1744,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
   .link-button-list-view > header { margin-top: 24px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .factory-station, .factory-rhythm-bar-pair i { animation: none; }
+  .factory-station, .factory-rhythm-bar-pair i, .link-button-list-skeleton-row > span { animation: none; }
 }
 .dashboard-next-work-page .custom-view-grid { display: block; }
 .dashboard-next-insights-page .custom-view-grid { display: block; }

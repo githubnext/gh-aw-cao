@@ -89,6 +89,35 @@ it('renders campaign shortcuts through the reusable link button list', () => {
   expect(rendered?.querySelector('.link-button-list-indicator .octicon-alert')).not.toBeNull();
 });
 
+it('renders a link button list skeleton until its source resolves', async () => {
+  /** @type {(value: import('../../src/presenter.js').LogicalSourceInput) => void} */
+  let resolveSource = () => {};
+  configureSourceLoader(() => new Promise((resolve) => {
+    resolveSource = resolve;
+  }));
+
+  const rendered = renderUiElement('link-button-list', context('link-button-list', {}));
+  const skeleton = /** @type {HTMLElement | null} */ (rendered?.querySelector('.link-button-list-skeleton'));
+
+  expect(rendered?.hasAttribute('aria-busy')).toBe(true);
+  expect(skeleton?.hidden).toBe(false);
+  expect(skeleton?.getAttribute('aria-hidden')).toBe('true');
+  expect(skeleton?.querySelectorAll('.link-button-list-skeleton-row')).toHaveLength(3);
+  expect(rendered?.querySelector('ul')?.hidden).toBe(true);
+
+  resolveSource(source('overview-campaign-links', [{
+    'campaign-name': 'AW Doctor',
+    'campaign-dashboard-link': { 'dashboard-href': '#page-campaign-aw-doctor' }
+  }]));
+  await Promise.resolve();
+  await Promise.resolve();
+
+  expect(rendered?.hasAttribute('aria-busy')).toBe(false);
+  expect(skeleton?.hidden).toBe(true);
+  expect(rendered?.querySelector('ul')?.hidden).toBe(false);
+  expect(rendered?.querySelectorAll('.link-button-list-item')).toHaveLength(1);
+});
+
 it('renders the factory header from only its declared JSON sources', () => {
   const rendered = renderUiElement('factory-header', context('factory-header', {
     'overview-outcome-summary': source('overview-outcome-summary', [{ 'useful-outputs': 2, 'delivered-repositories': 3 }]),
