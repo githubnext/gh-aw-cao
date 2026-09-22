@@ -1,8 +1,11 @@
 import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { expect, it } from 'vitest';
 import { executeDashboardQuery } from '../../src/data/queries/declarative.js';
 
-const dashboard = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8')).dashboard;
+const fixtureDirectory = dirname(fileURLToPath(import.meta.url));
+const dashboard = JSON.parse(readFileSync(resolve(fixtureDirectory, '../../dashboard.json'), 'utf8')).dashboard;
 const query = dashboard.queries.find(
   (/** @type {{ name?: string }} */ candidate) => candidate.name === 'overview-campaign-links'
 );
