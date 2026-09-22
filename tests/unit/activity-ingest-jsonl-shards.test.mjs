@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdir, mkdtemp, cp, readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, cp, readFile, readdir, rename, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -203,6 +203,56 @@ test('ingest-jsonl injects every run shard before record shards', async () => {
       `gh-aw-runs:${runShard}`,
     ].sort(),
   );
+
+  const renamedRunShard = `renamed-${runShard}`;
+  const renamedRecordShard = `renamed-${recordShard}`;
+  await rename(path.join(runsDirectory, runShard), path.join(runsDirectory, renamedRunShard));
+  await rename(path.join(recordsDirectory, recordShard), path.join(recordsDirectory, renamedRecordShard));
+  const repeated = JSON.parse((await execFileAsync(process.execPath, [
+    path.resolve('activity/cao.mjs'),
+    'ingest-jsonl',
+    '--database',
+    databasePath,
+    '--runs-dir',
+    runsDirectory,
+    '--records-dir',
+    recordsDirectory,
+  ])).stdout).result;
+  assert.equal(repeated.updated, false);
+  assert.deepEqual(repeated.shards.map(({ skipped }) => skipped), [true, true]);
+  assert.equal((await queryTransactions(databasePath)).length, 2);
+});
+
+test('hash-payloads keeps phased shard hashes stable when source shard names change', async () => {
+  const { root, shardDirectory } = await fixture();
+  const sourceName = (await readdir(shardDirectory))[0];
+  const sourcePath = path.join(shardDirectory, sourceName);
+  const duplicateName = 'gh-aw-logs-2000000000-bbbb.jsonl';
+  await cp(sourcePath, path.join(shardDirectory, duplicateName));
+  const runsDirectory = path.join(root, 'gh-aw-logs-runs');
+  const recordsDirectory = path.join(root, 'gh-aw-logs-records');
+
+  const hashes = JSON.parse((await execFileAsync(process.execPath, [
+    path.resolve('activity/cao.mjs'),
+    'hash-payloads',
+    '--shard-dir',
+    shardDirectory,
+    '--runs-dir',
+    runsDirectory,
+    '--records-dir',
+    recordsDirectory,
+  ])).stdout);
+  const runHashes = Object.entries(hashes)
+    .filter(([name]) => name.startsWith('gh-aw-logs-runs/'))
+    .map(([, hash]) => hash);
+  const recordHashes = Object.entries(hashes)
+    .filter(([name]) => name.startsWith('gh-aw-logs-records/'))
+    .map(([, hash]) => hash);
+
+  assert.equal(runHashes.length, 2);
+  assert.equal(new Set(runHashes).size, 1);
+  assert.equal(recordHashes.length, 2);
+  assert.equal(new Set(recordHashes).size, 1);
 });
 
 test('phased shard names preserve source order for non-empty phase pairs', async () => {

@@ -207,6 +207,11 @@ async function transactionId(kind, scope) {
   return `${kind}:current:${await payloadHash(scope, undefined)}`;
 }
 
+/** @param {string} hash */
+function normalizedShardTransactionId(hash) {
+  return `ingest-normalized-json:sha256:${hash}:v${NORMALIZED_JSON_INGESTION_VERSION}`;
+}
+
 /** @param {{ context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[] }} options */
 export function cachedJsonlAdaptationContext(options) {
   return JSON.stringify({
@@ -238,6 +243,11 @@ export async function isCachedGhAwJsonlCurrent(indexedDB, options) {
  * @param {{ payloadIdentity: string, payloadScope: string }} options
  */
 export async function isNormalizedJsonCurrent(indexedDB, options) {
+  const receipt = await readTransaction(indexedDB, normalizedShardTransactionId(options.payloadIdentity));
+  if (receipt?.payloadHash === options.payloadIdentity
+      && receipt.ingestionVersion === NORMALIZED_JSON_INGESTION_VERSION) {
+    return true;
+  }
   return previouslyIngested(
     indexedDB,
     'ingest-normalized-json',
@@ -540,7 +550,7 @@ export function ingestNormalizedJson(indexedDB, input, options) {
       options.signal?.throwIfAborted();
       const timings = { parsingMs: 0, normalizationMs: 0, storageMs: monotonicNow() - storageStartedAt };
       await recordTransaction(indexedDB, {
-        id: await transactionId('ingest-normalized-json', options.payloadScope),
+        id: normalizedShardTransactionId(options.payloadIdentity),
         kind: 'ingest-normalized-json',
         createdAt: new Date(options.now ?? Date.now()).toISOString(),
         payloadScope: options.payloadScope,

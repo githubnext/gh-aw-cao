@@ -112,6 +112,20 @@ describe('canonical source ingestion and queries', () => {
       updated: false,
       skipped: true
     });
+    await expect(ingestNormalizedJson(indexedDB, payload, {
+      ...options,
+      payloadScope: 'https://example.test/gh-aw-logs-normalized/renamed-shard.json'
+    })).resolves.toMatchObject({
+      updated: false,
+      skipped: true
+    });
+    await expect(readTransactions(indexedDB)).resolves.toEqual([
+      expect.objectContaining({
+        id: `ingest-normalized-json:sha256:${options.payloadIdentity}:v2`,
+        payloadHash: options.payloadIdentity,
+        payloadScope: options.payloadScope
+      })
+    ]);
     expect((await readCanonicalBatch(indexedDB)).repositories).toEqual(payload.batch.repositories);
   });
 

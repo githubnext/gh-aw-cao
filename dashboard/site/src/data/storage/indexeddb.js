@@ -998,10 +998,16 @@ export async function recordTransaction(indexedDB, transaction) {
     const done = transactionDone(write);
     const store = write.objectStore(TRANSACTION_STORE);
     store.put(transaction);
+    const persistentReceipt = (candidate) => candidate?.kind === 'ingest-normalized-json'
+      && typeof candidate.payloadHash === 'string';
     if (typeof store.count !== 'function' || typeof store.index('byCreatedAt').openCursor !== 'function') {
       const records = await requestResult(store.index('byCreatedAt').getAll());
-      for (const expired of records.slice(0, Math.max(0, records.length - MAX_TRANSACTION_RECORDS))) {
+      let remaining = Math.max(0, records.length - MAX_TRANSACTION_RECORDS);
+      for (const expired of records) {
+        if (remaining === 0) break;
+        if (persistentReceipt(expired)) continue;
         store.delete(expired.id);
+        remaining -= 1;
       }
     } else {
       const count = await requestResult(store.count());
@@ -1015,8 +1021,10 @@ export async function recordTransaction(indexedDB, transaction) {
             resolve(undefined);
             return;
           }
-          cursor.delete();
-          remaining -= 1;
+          if (!persistentReceipt(cursor.value)) {
+            cursor.delete();
+            remaining -= 1;
+          }
           cursor.continue();
         };
       });
