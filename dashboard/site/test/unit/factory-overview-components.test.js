@@ -145,7 +145,7 @@ describe('Overview component boundaries', () => {
     };
     /** @type {(name: string, count: number) => string} */
     const label = (name, count) => ({
-      repositories: count === 1 ? 'Repository registered' : 'Repositories registered',
+      repositories: count === 1 ? 'Repository' : 'Repositories',
       campaigns: count === 1 ? 'Campaign' : 'Campaigns',
       issues: count === 1 ? 'Issue & PR' : 'Issues & PRs',
       'successful-runs': count === 1 ? 'Successful run' : 'Successful runs',
@@ -157,7 +157,7 @@ describe('Overview component boundaries', () => {
 
     expect([...rendered.querySelectorAll('.factory-station strong')].map((element) => element.textContent)).toEqual(['2', '6', '5', '8', '7', '3']);
     expect(rendered.classList.contains('factory-floor-active')).toBe(true);
-    expect(rendered.getAttribute('aria-label')).toContain('6 repositories registered with 4 delivered to');
+    expect(rendered.getAttribute('aria-label')).toContain('6 repositories with 4 delivered to');
     motion.set({ operations: 0, live: 0, review: 0 });
     expect(rendered.classList.contains('factory-floor-active')).toBe(false);
     controller.abort();

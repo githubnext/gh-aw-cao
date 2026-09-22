@@ -113,46 +113,32 @@ describe('dashboard view query contracts', () => {
     }
   });
 
-  it('renders repository insights and one activity inventory', () => {
+  it('renders issues per repository and one activity inventory', () => {
     const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'repositories');
     const views = viewsOf(page);
 
-    expect(views.slice(0, 2)).toMatchObject([
+    expect(views[0]).toMatchObject(
       {
-        id: 'repositories-value-created',
-        data: { source: 'repository-value-created-top' },
-        mark: 'chart',
-        chart: 'pie'
-      },
-      {
-        id: 'repositories-audit-issues',
-        data: { source: 'repository-audit-issues-top' },
+        id: 'repositories-issues',
+        data: { source: 'issue-repository-totals' },
         mark: 'chart',
         chart: 'pie'
       }
-    ]);
-    for (const name of ['repository-value-created-top', 'repository-audit-issues-top']) {
-      expect(queries.find((/** @type {{ name: string }} */ query) => query.name === name)).toMatchObject({
+    );
+    expect(queries.find((/** @type {{ name: string }} */ query) => query.name === 'issue-repository-totals'))
+      .toMatchObject({
+        from: 'issue-safe-outputs',
         limit: 10,
-        aggregate: { by: ['repository-coordinate'] }
-      });
-    }
-    expect(queries.find((/** @type {{ name: string }} */ query) => query.name === 'repository-value-created-top'))
-      .toMatchObject({
-        from: 'operational-values',
-        aggregate: { values: [{ field: 'operational-value', as: 'value-created', reducer: 'count' }] }
-      });
-    expect(queries.find((/** @type {{ name: string }} */ query) => query.name === 'repository-audit-issues-top'))
-      .toMatchObject({
-        from: 'findings',
-        aggregate: { values: [{ field: 'finding', as: 'audit-issues', reducer: 'count' }] }
+        aggregate: {
+          by: ['repository-coordinate'],
+          values: [{ field: 'entity-url', as: 'issues', reducer: 'count' }]
+        }
       });
     expect(views.map((view) => view.id)).toEqual([
-      'repositories-value-created',
-      'repositories-audit-issues',
+      'repositories-issues',
       'repositories-activity'
     ]);
-    expect(views[2]).toMatchObject({
+    expect(views[1]).toMatchObject({
       data: { source: 'repository-activity' },
       mark: 'table'
     });

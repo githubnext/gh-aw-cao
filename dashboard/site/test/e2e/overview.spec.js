@@ -183,7 +183,7 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     expect(await rhythmBars.last().evaluate((element) => getComputedStyle(element).animationDelay)).toBe('0.21s');
     await expect(factory.locator('.factory-station')).toHaveCount(6);
     await expect(factory.locator('.factory-station').nth(0)).toContainText('Campaigns2');
-    await expect(factory.locator('.factory-station').nth(1)).toContainText('Repositories registered6');
+    await expect(factory.locator('.factory-station').nth(1)).toContainText('Repositories6');
     await expect(factory.locator('.factory-station').nth(2)).toContainText('Issues & PRs5');
     await expect(factory.locator('.factory-station').nth(0).locator('small')).toHaveText('');
     await expect(factory.locator('.factory-station').nth(2).locator('small')).toHaveText('');

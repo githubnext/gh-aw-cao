@@ -34,7 +34,7 @@ import { dashboardViewAliasName } from '../data/queries/view-payload-compiler.js
 /** @type {Record<string, PluralText>} */
 const DEFAULT_STATION_LABELS = {
   campaigns: { singular: 'Campaign', plural: 'Campaigns' },
-  repositories: { singular: 'Repository registered', plural: 'Repositories registered' },
+  repositories: { singular: 'Repository', plural: 'Repositories' },
   issues: { singular: 'Issue & PR', plural: 'Issues & PRs' },
   'successful-runs': { singular: 'Successful run', plural: 'Successful runs' },
   dispatches: { singular: 'Dispatch', plural: 'Dispatches' },

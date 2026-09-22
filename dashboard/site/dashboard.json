@@ -5740,98 +5740,6 @@
         }
       },
       {
-        "name": "repository-value-created-top",
-        "intent": "Rank the ten repositories with the most non-null operational-value observations without combining incompatible metrics.",
-        "description": "Top repositories by observed operational-value evidence count.",
-        "from": "operational-values",
-        "compute": [
-          {
-            "as": "repository-coordinate",
-            "function": "concat",
-            "args": [
-              {
-                "field": "organization"
-              },
-              {
-                "value": "/"
-              },
-              {
-                "field": "repository"
-              }
-            ]
-          }
-        ],
-        "aggregate": {
-          "by": [
-            "repository-coordinate"
-          ],
-          "values": [
-            {
-              "field": "operational-value",
-              "as": "value-created",
-              "reducer": "count"
-            }
-          ]
-        },
-        "order-by": [
-          {
-            "field": "value-created",
-            "direction": "desc"
-          },
-          {
-            "field": "repository-coordinate",
-            "direction": "asc"
-          }
-        ],
-        "limit": 10
-      },
-      {
-        "name": "repository-audit-issues-top",
-        "intent": "Rank the ten repositories with the most findings produced by audit evidence.",
-        "description": "Top repositories by observed audit finding count.",
-        "from": "findings",
-        "compute": [
-          {
-            "as": "repository-coordinate",
-            "function": "concat",
-            "args": [
-              {
-                "field": "organization"
-              },
-              {
-                "value": "/"
-              },
-              {
-                "field": "repository"
-              }
-            ]
-          }
-        ],
-        "aggregate": {
-          "by": [
-            "repository-coordinate"
-          ],
-          "values": [
-            {
-              "field": "finding",
-              "as": "audit-issues",
-              "reducer": "count"
-            }
-          ]
-        },
-        "order-by": [
-          {
-            "field": "audit-issues",
-            "direction": "desc"
-          },
-          {
-            "field": "repository-coordinate",
-            "direction": "asc"
-          }
-        ],
-        "limit": 10
-      },
-      {
         "name": "repository-workflow-totals",
         "intent": "Summarize declared and disabled workflow counts by repository.",
         "description": "Declared and disabled workflow totals for each repository.",
@@ -7566,16 +7474,16 @@
           },
           "views": [
             {
-              "id": "repositories-value-created",
-              "title": "Top repositories with value created",
-              "description": "The share of non-null operational-value observations attributed to the ten repositories with the most value evidence.",
+              "id": "repositories-issues",
+              "title": "Top repositories with issues",
+              "description": "The share of retained issues attributed to the ten repositories with the most issue safe outputs.",
               "data": {
-                "source": "repository-value-created-top"
+                "source": "issue-repository-totals"
               },
               "mark": "chart",
               "chart": "pie",
-              "layout": "half",
-              "empty-message": "No repository operational value was observed in the selected horizon.",
+              "layout": "full",
+              "empty-message": "No issue safe outputs were retained in the current report.",
               "encoding": {
                 "x": {
                   "field": "repository-coordinate",
@@ -7583,37 +7491,9 @@
                   "title": "Repository"
                 },
                 "y": {
-                  "field": "value-created",
+                  "field": "issues",
                   "type": "quantitative",
-                  "aggregate": "sum",
-                  "as": "total-value-created",
-                  "title": "Value observations"
-                }
-              }
-            },
-            {
-              "id": "repositories-audit-issues",
-              "title": "Top repositories by audit issues",
-              "description": "The share of audit findings attributed to the ten repositories with the most findings.",
-              "data": {
-                "source": "repository-audit-issues-top"
-              },
-              "mark": "chart",
-              "chart": "pie",
-              "layout": "half",
-              "empty-message": "No repository audit issues were observed in the selected horizon.",
-              "encoding": {
-                "x": {
-                  "field": "repository-coordinate",
-                  "type": "nominal",
-                  "title": "Repository"
-                },
-                "y": {
-                  "field": "audit-issues",
-                  "type": "quantitative",
-                  "aggregate": "sum",
-                  "as": "total-audit-issues",
-                  "title": "Audit issues"
+                  "title": "Issues"
                 }
               }
             },
@@ -10943,7 +10823,7 @@
           {
             "id": "overview-header",
             "title": "How are we doing?",
-            "description": "Repositories registered counts distinct registered targets and compares them with retained completed delivery evidence in the selected horizon.",
+            "description": "Repositories counts distinct registered targets and compares them with retained completed delivery evidence in the selected horizon.",
             "data": {
               "sources": [
                 "overview-outcome-summary",
@@ -10982,8 +10862,8 @@
                   "plural": "Campaigns"
                 },
                 "repositories": {
-                  "singular": "Repository registered",
-                  "plural": "Repositories registered"
+                  "singular": "Repository",
+                  "plural": "Repositories"
                 },
                 "issues": {
                   "singular": "Issue & PR",
