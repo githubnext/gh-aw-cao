@@ -86,7 +86,6 @@ describe('dashboard view query contracts', () => {
     const pagesById = new Map(dashboard.pages.map((/** @type {Record<string, unknown>} */ page) => [page.id, page]));
     const boundedViews = [
       ['workflows', 'top-workflow-runs', 250],
-      ['runs', 'runs-last-week', 250],
       ['graders', 'graders-graders-source', 100],
       ['graders', 'graders-observations-source', 100],
       ['usage', 'usage-usage-source', 100],
@@ -113,46 +112,32 @@ describe('dashboard view query contracts', () => {
     }
   });
 
-  it('renders repository insights and one activity inventory', () => {
+  it('renders issues per repository and one activity inventory', () => {
     const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'repositories');
     const views = viewsOf(page);
 
-    expect(views.slice(0, 2)).toMatchObject([
+    expect(views[0]).toMatchObject(
       {
-        id: 'repositories-value-created',
-        data: { source: 'repository-value-created-top' },
-        mark: 'chart',
-        chart: 'pie'
-      },
-      {
-        id: 'repositories-audit-issues',
-        data: { source: 'repository-audit-issues-top' },
+        id: 'repositories-issues',
+        data: { source: 'issue-repository-totals' },
         mark: 'chart',
         chart: 'pie'
       }
-    ]);
-    for (const name of ['repository-value-created-top', 'repository-audit-issues-top']) {
-      expect(queries.find((/** @type {{ name: string }} */ query) => query.name === name)).toMatchObject({
+    );
+    expect(queries.find((/** @type {{ name: string }} */ query) => query.name === 'issue-repository-totals'))
+      .toMatchObject({
+        from: 'issue-safe-outputs',
         limit: 10,
-        aggregate: { by: ['repository-coordinate'] }
-      });
-    }
-    expect(queries.find((/** @type {{ name: string }} */ query) => query.name === 'repository-value-created-top'))
-      .toMatchObject({
-        from: 'operational-values',
-        aggregate: { values: [{ field: 'operational-value', as: 'value-created', reducer: 'count' }] }
-      });
-    expect(queries.find((/** @type {{ name: string }} */ query) => query.name === 'repository-audit-issues-top'))
-      .toMatchObject({
-        from: 'findings',
-        aggregate: { values: [{ field: 'finding', as: 'audit-issues', reducer: 'count' }] }
+        aggregate: {
+          by: ['repository-coordinate'],
+          values: [{ field: 'entity-url', as: 'issues', reducer: 'count' }]
+        }
       });
     expect(views.map((view) => view.id)).toEqual([
-      'repositories-value-created',
-      'repositories-audit-issues',
+      'repositories-issues',
       'repositories-activity'
     ]);
-    expect(views[2]).toMatchObject({
+    expect(views[1]).toMatchObject({
       data: { source: 'repository-activity' },
       mark: 'table'
     });
@@ -197,6 +182,79 @@ describe('dashboard view query contracts', () => {
     expect(dashboard.navigation.flatMap(
       (/** @type {{ pages?: string[] }} */ section) => section.pages ?? []
     )).toContain('issues');
+  });
+
+  it('keeps issue repository totals available when audit records are unavailable', () => {
+    const availableMetadata = { ...metadata, availability: 'available' };
+    const unavailableMetadata = { ...metadata, availability: 'unavailable', completeness: 'partial' };
+    const issueRows = [
+      {
+        organization: 'githubnext',
+        repository: 'gh-aw-cao',
+        workflow: '.github/workflows/worker.md',
+        run: '101',
+        'run-attempt': 1,
+        'event-type': 'safe_output.created',
+        'event-timestamp': '2026-09-20T12:00:00Z',
+        'github-entity-type': 'issue',
+        'is-pull-request': false,
+        'safe-output-type': 'create_issue',
+        'event-summary': 'Fix issue view',
+        'correlation-id': 'https://github.com/githubnext/gh-aw-cao/issues/13439'
+      },
+      {
+        organization: 'githubnext',
+        repository: 'gh-aw-cao',
+        workflow: '.github/workflows/worker.md',
+        run: '102',
+        'run-attempt': 1,
+        'event-type': 'safe_output.created',
+        'event-timestamp': '2026-09-20T13:00:00Z',
+        'github-entity-type': 'pull_request',
+        'is-pull-request': true,
+        'safe-output-type': 'create_pull_request',
+        'event-summary': 'Ignore pull request',
+        'correlation-id': 'https://github.com/githubnext/gh-aw-cao/pull/13440'
+      }
+    ];
+    const results = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries',
+      queries,
+      sourceNames: ['issue-safe-outputs', 'issue-repository-totals'],
+      sources: {
+        audits: { source: 'audits', rows: [], metadata: unavailableMetadata },
+        issues: { source: 'issues', rows: issueRows, metadata: availableMetadata },
+        runs: {
+          source: 'runs',
+          rows: [{
+            organization: 'githubnext',
+            repository: 'gh-aw-cao',
+            workflow: '.github/workflows/worker.md',
+            run: '101',
+            'run-attempt': 1,
+            'run-link': {
+              relation: 'run',
+              href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/101',
+              label: 'Run 101'
+            }
+          }],
+          metadata: availableMetadata
+        }
+      }
+    }));
+
+    expect(results['issue-safe-outputs'].metadata.availability).toBe('available');
+    expect(results['issue-safe-outputs'].rows).toEqual([
+      expect.objectContaining({
+        'event-summary': 'Fix issue view',
+        'entity-url': 'https://github.com/githubnext/gh-aw-cao/issues/13439',
+        repository: 'gh-aw-cao'
+      })
+    ]);
+    expect(results['issue-repository-totals'].metadata.availability).toBe('available');
+    expect(results['issue-repository-totals'].rows).toEqual([
+      { 'repository-coordinate': 'githubnext/gh-aw-cao', issues: 1 }
+    ]);
   });
 
   it('resolves every authored view source through canonical data or Dashboard Language', () => {

@@ -93,7 +93,7 @@ function resolveGithubEntityLink(row, field, fallbackLabel) {
  *   rowLimit?: number,
  *   units?: Record<string, { name: string, symbol: string, significant: number }>,
  *   prepareTableRows: (rows: Array<Record<string, unknown>>, columns: TableField[], data: unknown) => Array<Record<string, unknown>>,
- *   buildChartPoints: (pageId: string, title: string, rows: Array<Record<string, unknown>>, x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, hrefField: string | null) => ChartPoint[],
+ *   buildChartPoints: (pageId: string, title: string, rows: Array<Record<string, unknown>>, x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, hrefField: string | null, weight?: Record<string, any> | null) => ChartPoint[],
  *   prepareChartPoints: (points: ChartPoint[], x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, data: unknown) => ChartPoint[],
  *   toText: (value: unknown) => string,
  *   cardTemplates?: Record<string, { icon: string, 'icon-field'?: string, status?: { field: string, 'fallback-field'?: string, title?: string }, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[] }>,
@@ -121,7 +121,10 @@ export function renderDataView(mark, context) {
 
 /** @param {unknown} view */
 export function supportsIncrementalChartContinuation(view) {
-  return isPlainObject(view) && view.mark === 'chart' && view.chart === 'swimlane';
+  return isPlainObject(view)
+    && view.mark === 'chart'
+    && view.chart === 'swimlane'
+    && !(isPlainObject(view.encoding) && isPlainObject(view.encoding.weight));
 }
 
 /** @param {Record<string, any>} view */
@@ -382,7 +385,10 @@ function renderEntityCardListView(options) {
 function renderEntityCardItems(rows, options) {
   const { pageId, title, renderValue, toText, definition, drill = null, keyOffset = 0, chevron = false } = options;
   return rows.map((row, index) => {
-    const titleText = toText(row[definition.title.field]);
+    const renderedTitle = renderValue(definition.title, row[definition.title.field], row);
+    const titleText = renderedTitle instanceof HTMLElement
+      ? renderedTitle.textContent ?? ''
+      : toText(renderedTitle);
     const subtitle = definition.subtitle;
     const subtitleContent = subtitle ? renderValue(subtitle, row[subtitle.field], row) : '';
     const subtitleText = subtitleContent instanceof HTMLElement
@@ -393,7 +399,7 @@ function renderEntityCardItems(rows, options) {
       ? renderExternalLink(target.link)
       : target
         ? h('a', { href: target.link.href, 'data-card-drill': 'query' }, target.link.label)
-        : titleText;
+        : renderedTitle;
     if (target && titleContent instanceof HTMLAnchorElement) {
       titleContent.dataset.cardDrill = target.external ? 'external' : 'query';
     }
@@ -1124,6 +1130,7 @@ function renderChartView(context) {
     .filter((definition) => isPlainObject(definition) && typeof definition.field === 'string');
   const y = yDefinitions[0] ?? null;
   const color = isPlainObject(encoding?.color) && typeof encoding.color.field === 'string' ? encoding.color : null;
+  const weight = isPlainObject(encoding?.weight) && typeof encoding.weight.field === 'string' ? encoding.weight : null;
   const reference = isPlainObject(encoding?.reference) && typeof encoding.reference.field === 'string' ? encoding.reference : null;
   const href = isPlainObject(encoding?.href) && typeof encoding.href.field === 'string' ? encoding.href : null;
   const chartType = typeof view.chart === 'string' ? view.chart : x?.type === 'temporal' ? 'line' : 'bar';
@@ -1132,14 +1139,9 @@ function renderChartView(context) {
   /** @param {Array<Record<string, unknown>>} chartRows */
   const pointsForRows = (chartRows) => {
     if (chartType === 'line' && yDefinitions.length > 1) {
-      const points = yDefinitions.flatMap((definition) => buildChartPoints(
-        pageId,
-        title,
-        chartRows,
-        x,
-        definition,
-        null,
-        href?.field ?? null
+      const points = yDefinitions.flatMap((definition) => (weight
+        ? buildChartPoints(pageId, title, chartRows, x, definition, null, href?.field ?? null, weight)
+        : buildChartPoints(pageId, title, chartRows, x, definition, null, href?.field ?? null)
       ).map((point) => ({
         ...point,
         key: `${point.key}-${definition.field}`,
@@ -1148,7 +1150,9 @@ function renderChartView(context) {
       return prepareChartPoints(points, x, y, null, view.data);
     }
     return prepareChartPoints(
-      buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null),
+      weight
+        ? buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null, weight)
+        : buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null),
       x,
       value,
       series,

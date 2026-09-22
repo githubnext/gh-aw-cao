@@ -4617,9 +4617,16 @@ function validateEncoding(encodingNode, encoding, mark, chart, sourceName, data,
   /** @type {Map<string, string>} */
   const aggregateOutputIds = new Map();
   const markValue = typeof mark === 'string' ? mark : null;
+  if (markValue !== 'chart' && encoding.weight !== undefined) {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      'weight encoding is supported only by chart views.',
+      `${viewPath}.encoding.weight`
+    ));
+  }
   const displayForbiddenChannels = ['list', 'table'].includes(markValue ?? '')
     ? ['href']
-    : ['value', 'x', 'y', 'color', 'reference', 'href'];
+    : ['value', 'x', 'y', 'color', 'weight', 'reference', 'href'];
   for (const channel of displayForbiddenChannels) {
     if (isPlainObject(encoding[channel]) && encoding[channel].display !== undefined) {
       errors.push(createError(
@@ -4631,7 +4638,7 @@ function validateEncoding(encodingNode, encoding, mark, chart, sourceName, data,
   }
   const filterForbiddenChannels = ['list', 'table'].includes(markValue ?? '')
     ? ['href']
-    : ['value', 'x', 'y', 'color', 'reference', 'href'];
+    : ['value', 'x', 'y', 'color', 'weight', 'reference', 'href'];
   for (const channel of filterForbiddenChannels) {
     if (isPlainObject(encoding[channel]) && encoding[channel].filter !== undefined) {
       errors.push(createError(
@@ -4972,6 +4979,24 @@ function validateChartEncoding(encodingNode, encoding, chart, sourceName, path, 
 
   if (encoding.color !== undefined) {
     validateFieldDefinition(getValueNodeByKey(encodingNode, 'color'), encoding.color, sourceName, `${path}.color`, aggregateOutputIds, errors);
+  }
+
+  if (encoding.weight !== undefined) {
+    validateFieldDefinition(getValueNodeByKey(encodingNode, 'weight'), encoding.weight, sourceName, `${path}.weight`, aggregateOutputIds, errors);
+    if (chart !== 'swimlane') {
+      errors.push(createError(
+        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        'weight encoding is supported only by swimlane charts.',
+        `${path}.weight`
+      ));
+    }
+    if (isPlainObject(encoding.weight) && encoding.weight.type !== undefined && encoding.weight.type !== 'quantitative') {
+      errors.push(createError(
+        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        'swimlane weight encoding must be quantitative when explicitly typed.',
+        `${path}.weight.type`
+      ));
+    }
   }
 
   if (encoding.reference !== undefined) {

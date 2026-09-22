@@ -40,7 +40,7 @@ export const OVERVIEW_AGGREGATE_METADATA_ID = 'daily-overview-aggregates';
  * Any change to those semantics MUST bump this version so readers treat
  * previously published metadata as absent (spec §72.4).
  */
-export const DAILY_OVERVIEW_AGGREGATE_VERSION = 1;
+export const DAILY_OVERVIEW_AGGREGATE_VERSION = 2;
 export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
  * string, { keyPath: string, indexes: Record<string, string | string[]> }
  * >} */ ({

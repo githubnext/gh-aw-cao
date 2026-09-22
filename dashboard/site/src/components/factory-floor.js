@@ -20,7 +20,7 @@ import { renderReactiveGrid } from './reactive-grid.js';
 export function renderFactoryFloor(sources, metrics, label, animateNumbers, scope) {
   const campaigns = renderFactoryStation('project', { animate: animateNumbers, href: '#page-campaigns', signal: scope.signal });
   const repositories = renderFactoryStation('repo', { animate: animateNumbers, href: '#page-repositories', signal: scope.signal });
-  const issues = renderFactoryStation('issue', { animate: animateNumbers, href: '#page-findings', signal: scope.signal });
+  const issues = renderFactoryStation('issue', { animate: animateNumbers, href: '#page-issues', signal: scope.signal });
   const runs = renderFactoryStation('play', { animate: animateNumbers, href: '#page-runs?runs-runs-source.run-conclusion=success', signal: scope.signal });
   const dispatches = renderFactoryStation('workflow', { animate: animateNumbers, href: '#page-runs', signal: scope.signal });
   const valueGains = renderFactoryStation('trophy', { animate: animateNumbers, final: true, href: '#page-usage', signal: scope.signal });
@@ -122,7 +122,7 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
       const gains = metrics.valueGains();
       const usefulOutputs = metrics.usefulOutputs();
       const repositoriesDescription = coverage.registeredUnavailable
-        ? 'Registered repositories unavailable'
+        ? 'Repositories unavailable'
         : `${formatCount(coverage.registered)} ${label('repositories', coverage.registered).toLowerCase()}${coverage.unavailable ? '; repository delivery evidence unavailable' : ` with ${formatCount(coverage.total)} delivered to`}`;
       return `${formatCount(campaignCount)} ${label('campaigns', campaignCount).toLowerCase()}, ${repositoriesDescription}, ${formatCount(issueCount)} ${label('issues', issueCount).toLowerCase()}, ${formatCount(successfulRuns)} ${label('successful-runs', successfulRuns).toLowerCase()}, ${formatCount(dispatchCount)} workflow ${label('dispatches', dispatchCount).toLowerCase()} across ${formatCount(workers)} ${workers === 1 ? 'worker' : 'workers'}, ${formatCount(gains)} grader ${gains === 1 ? 'value' : 'values'} above threshold, and ${formatCount(usefulOutputs)} issue or pull request ${usefulOutputs === 1 ? 'output' : 'outputs'}.`;
     },

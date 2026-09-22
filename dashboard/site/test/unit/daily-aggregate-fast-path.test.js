@@ -51,6 +51,7 @@ function dailyAggregate(day, overrides = {}) {
     failedRuns: 2,
     dispatches: 4,
     failedDispatches: 1,
+    runsByConclusion: { success: 8, failure: 2 },
     ...overrides
   };
 }
@@ -117,7 +118,7 @@ describe('queryDailyOverviewAggregateSources', () => {
       'source-kind': 'derived',
       availability: 'available',
       generation: 'generation-a',
-      'aggregate-version': 1
+      'aggregate-version': 2
     });
   });
 
@@ -143,7 +144,7 @@ describe('queryDailyOverviewAggregateSources', () => {
       'source-kind': 'derived',
       availability: 'available',
       generation: 'generation-a',
-      'aggregate-version': 1
+      'aggregate-version': 2
     });
   });
 
@@ -179,5 +180,48 @@ describe('queryDailyOverviewAggregateSources', () => {
     expect(Object.keys(result).sort()).toEqual(['overview-dispatch-summary', 'overview-failed-run-count']);
     expect(result['overview-dispatch-summary'].rows).toEqual([{ dispatches: 10, 'failed-dispatches': 3 }]);
     expect(result['overview-failed-run-count'].rows).toEqual([{ count: 5 }]);
+  });
+
+  it('returns weighted daily conclusion rows for an aliased Runs swimlane query', async () => {
+    const indexedDB = new IDBFactory();
+    await publishDailyOverviewAggregates(indexedDB, {
+      generation: 'generation-a',
+      dailyAggregates: [
+        dailyAggregate('2026-09-10', { runsByConclusion: { success: 8, failure: 2 } }),
+        dailyAggregate('2026-09-11', { runsByConclusion: { success: 6, cancelled: 4 } })
+      ]
+    });
+    const query = {
+      name: 'view:runs:runs-last-week:runs-daily-conclusions',
+      from: 'runs',
+      filter: {
+        predicates: [
+          { field: '@time', gte: '2026-09-10T12:00:00Z' },
+          { field: '@time', lt: '2026-09-11T12:00:00Z' }
+        ]
+      },
+      compute: [{
+        as: 'day',
+        function: 'date-day',
+        args: [{ field: 'started-at' }]
+      }],
+      aggregate: {
+        by: ['day', 'run-conclusion'],
+        values: [{ field: 'run', as: 'runs', reducer: 'count' }]
+      }
+    };
+
+    const result = await queryDailyOverviewAggregateSources(indexedDB, [query], [query.name]);
+
+    expect(result[query.name].rows).toEqual([
+      { day: '2026-09-10', 'run-conclusion': 'success', runs: 8 },
+      { day: '2026-09-10', 'run-conclusion': 'failure', runs: 2 },
+      { day: '2026-09-11', 'run-conclusion': 'success', runs: 6 },
+      { day: '2026-09-11', 'run-conclusion': 'cancelled', runs: 4 }
+    ]);
+    expect(result[query.name].metadata).toMatchObject({
+      'execution-path': 'daily-aggregate',
+      'aggregate-version': 2
+    });
   });
 });

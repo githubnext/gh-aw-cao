@@ -104,6 +104,7 @@ const SEMANTIC_SERIES_PHRASES = {
  * @typedef {{
  *   x: string,
  *   y: number,
+ *   weight?: number,
  *   color: string | null,
  *   highlighted?: boolean | null,
  *   key?: string,
@@ -1147,8 +1148,9 @@ function renderSwimlaneChart(points, timeRange) {
     const status = swimlaneConclusion(point.color ?? point.category) ?? 'unknown';
     timestamps[index] = timestamp;
     laneIndexes[index] = laneDefinitions.findIndex(([candidate]) => candidate === lane);
-    counts[status] += 1;
-    plottedCount += 1;
+    const weight = Number.isFinite(point.weight) && Number(point.weight) > 0 ? Number(point.weight) : 1;
+    counts[status] += weight;
+    plottedCount += weight;
     firstObserved = Math.min(firstObserved, timestamp);
     lastObserved = Math.max(lastObserved, timestamp);
   }
@@ -1245,13 +1247,16 @@ function buildSwimlaneSections(points, timestamps, laneIndexes, laneDefinitions,
     const x = xCoordinate(timestamp);
     const index = Math.min(binCount - 1, Math.max(0, Math.floor((x - SWIMLANE_LAYOUT.startX) / sectionWidth)));
     const bins = /** @type {NonNullable<ReturnType<typeof binsByLane.get>>} */ (binsByLane.get(lane));
+    const weight = Number.isFinite(points[pointIndex].weight) && Number(points[pointIndex].weight) > 0
+      ? Number(points[pointIndex].weight)
+      : 1;
     const bin = bins[index].get(status);
     if (bin) {
-      bin.count += 1;
+      bin.count += weight;
       bin.first = Math.min(bin.first, timestamp);
       bin.last = Math.max(bin.last, timestamp);
     } else {
-      bins[index].set(status, { count: 1, first: timestamp, last: timestamp, status, point: { ...points[pointIndex], lane, status, timestamp } });
+      bins[index].set(status, { count: weight, first: timestamp, last: timestamp, status, point: { ...points[pointIndex], lane, status, timestamp } });
     }
   }
 

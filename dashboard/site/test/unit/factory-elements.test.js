@@ -126,16 +126,18 @@ it('renders the factory floor from its independent JSON view and configuration',
   expect(rendered?.classList.contains('factory-floor-active')).toBe(true);
   expect([...rendered?.querySelectorAll('.factory-station') ?? []].map((station) => station.textContent)).toEqual([
     'Campaigns2',
-    'Repositories registered6',
+    'Repositories6',
     'Issues & PRs5',
     'Successful runs22 failed',
     'Successful dispatches42 failed',
     'Value gain1'
   ]);
+  expect(rendered?.querySelector('.factory-station:nth-child(3) strong a')?.getAttribute('href'))
+    .toBe('#page-issues');
   expect(rendered?.querySelector('.factory-station:nth-child(4) strong .metric-number-animated')).not.toBeNull();
   expect(rendered?.querySelector('.factory-station:nth-child(5) small a')?.getAttribute('href'))
     .toBe('#page-dispatches?campaign-worker-dispatches.status=failure');
-  expect(rendered?.getAttribute('aria-label')).toContain('6 repositories registered with 3 delivered to');
+  expect(rendered?.getAttribute('aria-label')).toContain('6 repositories with 3 delivered to');
 });
 
 it('keeps unavailable registered repository evidence distinct from zero', () => {
@@ -151,9 +153,9 @@ it('keeps unavailable registered repository evidence distinct from zero', () => 
     'database-issue-count': source('database-issue-count', [{ issues: 0 }])
   }));
 
-  expect(rendered?.querySelector('.factory-station:nth-child(2)')?.textContent).toBe('Repositories registeredUnavailable');
+  expect(rendered?.querySelector('.factory-station:nth-child(2)')?.textContent).toBe('RepositoriesUnavailable');
   expect(rendered?.querySelector('.factory-station:nth-child(2) strong a')).toBeNull();
-  expect(rendered?.getAttribute('aria-label')).toContain('Registered repositories unavailable');
+  expect(rendered?.getAttribute('aria-label')).toContain('Repositories unavailable');
 });
 
 it('renders both elements immediately and updates only widgets whose query resolves', async () => {

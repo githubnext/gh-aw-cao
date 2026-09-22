@@ -599,12 +599,13 @@ describe('dashboard document validation', () => {
     expect(page.definition.views.find((/** @type {{ id: string }} */ view) =>
       view.id === 'runs-last-week'
     )).toMatchObject({
-      data: { source: 'runs-table', time: { range: '7d' } },
+      data: { source: 'runs-daily-conclusions', time: { range: '7d' } },
       mark: 'chart',
       chart: 'swimlane',
       encoding: {
-        x: { field: 'started-at', type: 'temporal' },
-        y: { field: 'run-conclusion', type: 'ordinal' }
+        x: { field: 'day', type: 'temporal' },
+        y: { field: 'run-conclusion', type: 'ordinal' },
+        weight: { field: 'runs', type: 'quantitative' }
       }
     });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
@@ -676,7 +677,7 @@ describe('dashboard document validation', () => {
     expect(page.views).toEqual([
       expect.objectContaining({
         id: 'overview-header',
-        description: 'Repositories registered counts distinct registered targets and compares them with retained completed delivery evidence in the selected horizon.',
+        description: 'Repositories counts distinct registered targets and compares them with retained completed delivery evidence in the selected horizon.',
         data: { sources: expect.arrayContaining([
           'overview-outcome-summary',
           'overview-factory-status',

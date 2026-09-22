@@ -65,8 +65,13 @@ describe('entity card templates', () => {
   it('presents runs like a GitHub Actions run row', () => {
     expect(templates.run).toMatchObject({
       status: { field: 'run-conclusion', 'fallback-field': 'run-status' },
-      title: { field: 'run-title' },
-      labels: [{ field: 'branch', display: 'ref' }],
+      title: { field: 'workflow', format: 'workflow-relative-path' },
+      subtitle: { field: 'target-repository' },
+      labels: [
+        { field: 'run-status', title: 'Status', display: 'label' },
+        { field: 'run-conclusion', title: 'Outcome', display: 'label' },
+        { field: 'branch', display: 'ref' }
+      ],
       timing: [
         { field: 'started-at', icon: 'calendar' },
         { field: 'duration', icon: 'stopwatch' }
@@ -74,7 +79,7 @@ describe('entity card templates', () => {
     });
     const runQuery = dashboard.queries.find((/** @type {Record<string, any>} */ query) => query.name === 'entity-runs');
     const selected = runQuery.select.map((/** @type {Record<string, any>} */ field) => field.field);
-    expect(selected).toEqual(expect.arrayContaining(['run-title', 'branch', 'event', 'duration', 'started-at']));
+    expect(selected).toEqual(expect.arrayContaining(['workflow', 'target-repository', 'run-title', 'run-status', 'run-conclusion', 'branch', 'event', 'duration', 'started-at']));
   });
 
   it('presents workflow inventory cards with identity and run outcome totals', () => {

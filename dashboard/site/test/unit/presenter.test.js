@@ -2250,7 +2250,7 @@ describe('presenter built-in and custom pages', () => {
             availability: 'available'
           }
         }
-      }, ['runs-table'])
+      }, ['runs-table', 'runs-daily-conclusions'])
     });
 
     const headings = [...rendered.querySelectorAll('[data-page-id="runs"] .page-section h3')].map((element) => element.textContent);

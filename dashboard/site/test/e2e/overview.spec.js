@@ -41,7 +41,7 @@ const sources = {
       'campaign-name': 'Dependabot',
       'campaign-icon': 'dependabot',
       'campaign-dashboard-link': {
-        'dashboard-href': '#page-campaign-insights?campaign=dependabot',
+        'dashboard-href': '#page-campaign-detail?campaign=dependabot',
         'dashboard-label': 'View Dependabot campaign dashboard'
       }
     }
@@ -171,10 +171,16 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(campaigns).toBeVisible();
     await expect(campaigns.locator('.link-button-list')).toBeVisible();
     await expect(campaigns.locator('.link-button-list-item')).toHaveCount(2);
+    await expect(campaigns).toHaveCSS('row-gap', '12px');
+    await expect(campaigns.locator(':scope > header')).toHaveCSS(
+      'margin-top',
+      viewport.width <= 700 ? '24px' : '0px'
+    );
+    await expect(campaigns.locator(':scope > header')).toHaveCSS('padding', '8px 16px');
     await expect(campaigns.getByRole('link', { name: 'View AW Doctor campaign dashboard' }))
       .toHaveAttribute('href', '#page-campaign-problems?campaign=aw-doctor');
     await expect(campaigns.getByRole('link', { name: 'View Dependabot campaign dashboard' }))
-      .toHaveAttribute('href', '#page-campaign-insights?campaign=dependabot');
+      .toHaveAttribute('href', '#page-campaign-detail?campaign=dependabot');
     await expect(factory.locator(':scope > .factory-intro + .factory-floor')).toHaveCount(1);
     const notifications = page.locator('[data-page-id="notifications"]');
     await expect(notifications).toHaveCount(0);
@@ -187,7 +193,7 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     expect(await rhythmBars.last().evaluate((element) => getComputedStyle(element).animationDelay)).toBe('0.21s');
     await expect(factory.locator('.factory-station')).toHaveCount(6);
     await expect(factory.locator('.factory-station').nth(0)).toContainText('Campaigns2');
-    await expect(factory.locator('.factory-station').nth(1)).toContainText('Repositories registered6');
+    await expect(factory.locator('.factory-station').nth(1)).toContainText('Repositories6');
     await expect(factory.locator('.factory-station').nth(2)).toContainText('Issues & PRs5');
     await expect(factory.locator('.factory-station').nth(0).locator('small')).toHaveText('');
     await expect(factory.locator('.factory-station').nth(2).locator('small')).toHaveText('');

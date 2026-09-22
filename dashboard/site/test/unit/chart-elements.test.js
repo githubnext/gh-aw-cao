@@ -449,6 +449,32 @@ describe('chart element helpers', () => {
     expect(chart.querySelector('[role="status"]')).toBeNull();
   });
 
+  it('uses declarative weights for daily aggregate swimlane observations', () => {
+    const chart = renderChartWidget('swimlane', [
+      {
+        x: '2026-08-30',
+        y: Number.NaN,
+        weight: 40,
+        category: 'success',
+        color: 'success',
+        source: {}
+      },
+      {
+        x: '2026-08-30',
+        y: Number.NaN,
+        weight: 10,
+        category: 'failure',
+        color: 'failure',
+        source: {}
+      }
+    ], []);
+
+    expect(chart.querySelector('.swimlane-summary')?.textContent).toContain('50 runs');
+    expect(chart.querySelector('.swimlane-summary')?.textContent).toContain('80.0% success');
+    expect([...chart.querySelectorAll('.swimlane-mark')]
+      .reduce((total, mark) => total + Number(mark.getAttribute('data-swimlane-count')), 0)).toBe(50);
+  });
+
   it('renders an empty swimlane without invalid timeline dates', () => {
     const chart = renderChartWidget('swimlane', [], []);
 

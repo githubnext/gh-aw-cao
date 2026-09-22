@@ -125,6 +125,55 @@ function isFailedRunCountShape(definition) {
 }
 
 /**
+ * Recognizes the daily conclusion query used by the Runs swimlane. Request
+ * scoped `@time` predicates are allowed because the materialized records use
+ * the same UTC day computed by the query.
+ *
+ * @param {import('./declarative.js').DashboardQuery} definition
+ */
+function isRunsDailyConclusionsShape(definition) {
+  if (definition.from !== 'runs' || definition.joins?.length || definition.union?.length
+      || definition.select?.length || definition['order-by']?.length || definition.limit !== undefined
+      || definition['temporal-series'] || definition.predict?.length) {
+    return false;
+  }
+  const compute = definition.compute;
+  if (!Array.isArray(compute) || compute.length !== 1) return false;
+  const [day] = compute;
+  const dayArgument = isPlainObject(day) && Array.isArray(day.args) && isPlainObject(day.args[0])
+    ? /** @type {Record<string, unknown>} */ (day.args[0])
+    : null;
+  if (!isPlainObject(day) || day.as !== 'day' || day.function !== 'date-day'
+      || !Array.isArray(day.args) || day.args.length !== 1
+      || dayArgument?.field !== 'started-at') {
+    return false;
+  }
+  const by = definition.aggregate?.by;
+  const values = definition.aggregate?.values;
+  if (!Array.isArray(by) || by.length !== 2 || by[0] !== 'day' || by[1] !== 'run-conclusion'
+      || !Array.isArray(values) || values.length !== 1) {
+    return false;
+  }
+  const [count] = values;
+  if (!isPlainObject(count) || count.field !== 'run' || count.reducer !== 'count' || count.filter) {
+    return false;
+  }
+  const predicates = definition.filter?.predicates ?? [];
+  if (!Array.isArray(predicates) || predicates.some((predicate) => (
+    !isPlainObject(predicate)
+    || predicate.field !== '@time'
+    || (typeof predicate.gte !== 'string' && typeof predicate.lt !== 'string')
+  ))) {
+    return false;
+  }
+  return {
+    countAs: String(count.as),
+    startDay: String(predicates.find((predicate) => typeof predicate.gte === 'string')?.gte ?? '').slice(0, 10) || null,
+    endDay: String(predicates.find((predicate) => typeof predicate.lt === 'string')?.lt ?? '').slice(0, 10) || null
+  };
+}
+
+/**
  * Eligible query names mapped to their shape validator and daily-record
  * summarizer. A query is only ever fast-pathed if the live definition still
  * matches the validator; otherwise it is left for canonical execution.
@@ -159,6 +208,25 @@ const ELIGIBLE_QUERIES = /** @type {const} */ ({
       }
       return { [shape.countAs]: failedRuns };
     }
+  },
+  'runs-daily-conclusions': {
+    matchShape: isRunsDailyConclusionsShape,
+    /**
+     * @param {import('../analytics/daily-overview-aggregates.js').DailyOverviewAggregateRecord[]} records
+     * @param {{ countAs: string, startDay: string | null, endDay: string | null }} shape
+     */
+    summarize: (records, shape) => records
+      .filter((record) => (
+        (!shape.startDay || record.day >= shape.startDay)
+        && (!shape.endDay || record.day <= shape.endDay)
+      ))
+      .flatMap((record) => Object.entries(record.runsByConclusion ?? {})
+        .filter(([, count]) => Number.isFinite(count) && count > 0)
+        .map(([conclusion, count]) => ({
+          day: record.day,
+          'run-conclusion': conclusion,
+          [shape.countAs]: count
+        })))
   }
 });
 
@@ -201,12 +269,15 @@ function fastPathMetadata(name, generation, version, availability, extra = {}) {
  */
 export async function queryDailyOverviewAggregateSources(indexedDB, definitions, requested) {
   const index = dashboardQueryIndex(definitions);
-  /** @type {Array<{ name: string, shape: unknown, summarize: (records: import('../analytics/daily-overview-aggregates.js').DailyOverviewAggregateRecord[], shape: unknown) => Record<string, number> }>} */
+  /** @type {Array<{ name: string, shape: unknown, summarize: (records: import('../analytics/daily-overview-aggregates.js').DailyOverviewAggregateRecord[], shape: unknown) => Record<string, unknown> | Array<Record<string, unknown>> }>} */
   const candidates = [];
   for (const name of requested) {
-    const eligible = ELIGIBLE_QUERIES[/** @type {keyof typeof ELIGIBLE_QUERIES} */ (name)];
-    if (!eligible) continue;
     const definition = index.get(name);
+    const eligible = ELIGIBLE_QUERIES[/** @type {keyof typeof ELIGIBLE_QUERIES} */ (name)]
+      ?? (definition && isRunsDailyConclusionsShape(definition)
+        ? ELIGIBLE_QUERIES['runs-daily-conclusions']
+        : undefined);
+    if (!eligible) continue;
     const shape = definition ? eligible.matchShape(definition) : false;
     if (!shape) {
       reportDiagnostics({
@@ -225,7 +296,7 @@ export async function queryDailyOverviewAggregateSources(indexedDB, definitions,
     candidates.push({
       name,
       shape,
-      summarize: /** @type {(records: import('../analytics/daily-overview-aggregates.js').DailyOverviewAggregateRecord[], shape: unknown) => Record<string, number>} */ (eligible.summarize)
+      summarize: /** @type {(records: import('../analytics/daily-overview-aggregates.js').DailyOverviewAggregateRecord[], shape: unknown) => Record<string, unknown> | Array<Record<string, unknown>>} */ (eligible.summarize)
     });
   }
   if (candidates.length === 0) return {};
@@ -273,11 +344,12 @@ export async function queryDailyOverviewAggregateSources(indexedDB, definitions,
   /** @type {Record<string, import('../../presenter.js').LogicalSourceInput>} */
   const results = {};
   for (const { name, shape, summarize } of candidates) {
-    const row = summarize(read.records, shape);
+    const summary = summarize(read.records, shape);
+    const rows = Array.isArray(summary) ? summary : [summary];
     const durationMs = Math.round(monotonicNow() - startedAt);
     results[name] = {
       source: name,
-      rows: [row],
+      rows,
       metadata: fastPathMetadata(name, read.generation, read.version, 'available', {
         'records-scanned': read.recordsScanned,
         'duration-ms': durationMs
@@ -289,7 +361,7 @@ export async function queryDailyOverviewAggregateSources(indexedDB, definitions,
       durationMs,
       requestCount: 1,
       recordsScanned: read.recordsScanned,
-      recordsReturned: 1,
+      recordsReturned: rows.length,
       aggregateVersion: read.version,
       generation: read.generation,
       fallbackReason: null

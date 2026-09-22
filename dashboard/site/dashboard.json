@@ -88,10 +88,25 @@
           "title": "Status"
         },
         "title": {
-          "field": "run-title",
-          "title": "Run"
+          "field": "workflow",
+          "title": "Workflow file",
+          "format": "workflow-relative-path"
+        },
+        "subtitle": {
+          "field": "target-repository",
+          "title": "Target repository"
         },
         "labels": [
+          {
+            "field": "run-status",
+            "title": "Status",
+            "display": "label"
+          },
+          {
+            "field": "run-conclusion",
+            "title": "Outcome",
+            "display": "label"
+          },
           {
             "field": "branch",
             "title": "Branch",
@@ -100,9 +115,8 @@
         ],
         "details": [
           {
-            "field": "workflow",
-            "title": "Workflow",
-            "format": "workflow-relative-path"
+            "field": "run-title",
+            "title": "Run"
           },
           {
             "field": "run",
@@ -1376,6 +1390,35 @@
     },
     "queries": [
       {
+        "name": "runs-daily-conclusions",
+        "intent": "Aggregate workflow run conclusions by UTC day for the Runs swimlane.",
+        "from": "runs",
+        "compute": [
+          {
+            "as": "day",
+            "function": "date-day",
+            "args": [
+              {
+                "field": "started-at"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "day",
+            "run-conclusion"
+          ],
+          "values": [
+            {
+              "field": "run",
+              "as": "runs",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
         "name": "entity-workflow-run-totals",
         "intent": "Summarize run outcomes and AI Credit consumption for reusable workflow cards.",
         "from": "runs",
@@ -1616,6 +1659,9 @@
           },
           {
             "field": "workflow"
+          },
+          {
+            "field": "target-repository"
           },
           {
             "field": "run"
@@ -3984,18 +4030,19 @@
         ]
       },
       {
-        "name": "safe-output-items",
-        "intent": "Inspect safe-output items with their GitHub entity type and producing workflow run.",
-        "description": "Safe-output item events retain entity, action, repository, workflow, and run provenance.",
+        "name": "issue-safe-outputs",
+        "intent": "List retained GitHub issue safe outputs.",
+        "description": "Issue-only projection of retained safe-output items.",
         "from": "issues",
-        "union": [
-          "audits"
-        ],
         "filter": {
           "predicates": [
             {
               "field": "event-type",
               "equals": "safe_output.created"
+            },
+            {
+              "field": "is-pull-request",
+              "equals": false
             }
           ]
         },
@@ -4083,65 +4130,6 @@
         ]
       },
       {
-        "name": "issue-safe-outputs",
-        "intent": "List retained GitHub issue safe outputs.",
-        "description": "Issue-only projection of retained safe-output items.",
-        "from": "safe-output-items",
-        "filter": {
-          "predicates": [
-            {
-              "field": "is-pull-request",
-              "equals": false
-            }
-          ]
-        },
-        "select": [
-          {
-            "field": "observed-at"
-          },
-          {
-            "field": "github-entity-type"
-          },
-          {
-            "field": "is-pull-request"
-          },
-          {
-            "field": "safe-output-type"
-          },
-          {
-            "field": "event-summary"
-          },
-          {
-            "field": "entity-url"
-          },
-          {
-            "field": "organization"
-          },
-          {
-            "field": "repository"
-          },
-          {
-            "field": "workflow"
-          },
-          {
-            "field": "run"
-          },
-          {
-            "field": "run-link"
-          }
-        ],
-        "order-by": [
-          {
-            "field": "observed-at",
-            "direction": "desc"
-          },
-          {
-            "field": "entity-url",
-            "direction": "asc"
-          }
-        ]
-      },
-      {
         "name": "issue-repository-totals",
         "intent": "Rank the ten repositories with the most retained GitHub issue safe outputs.",
         "description": "Top repositories by retained issue safe-output count.",
@@ -4191,18 +4179,57 @@
         "name": "pull-requests",
         "intent": "List retained GitHub pull request safe outputs.",
         "description": "Pull-request-only projection of retained safe-output items.",
-        "from": "safe-output-items",
+        "from": "issues",
         "filter": {
           "predicates": [
+            {
+              "field": "event-type",
+              "equals": "safe_output.created"
+            },
             {
               "field": "is-pull-request",
               "equals": true
             }
           ]
         },
+        "joins": [
+          {
+            "source": "runs",
+            "type": "left",
+            "on": [
+              {
+                "left": "organization",
+                "right": "organization"
+              },
+              {
+                "left": "repository",
+                "right": "repository"
+              },
+              {
+                "left": "workflow",
+                "right": "workflow"
+              },
+              {
+                "left": "run",
+                "right": "run"
+              },
+              {
+                "left": "run-attempt",
+                "right": "run-attempt"
+              }
+            ],
+            "fields": [
+              {
+                "field": "run-link",
+                "as": "linked-run"
+              }
+            ]
+          }
+        ],
         "select": [
           {
-            "field": "observed-at"
+            "field": "event-timestamp",
+            "as": "observed-at"
           },
           {
             "field": "github-entity-type"
@@ -4217,7 +4244,8 @@
             "field": "event-summary"
           },
           {
-            "field": "entity-url"
+            "field": "correlation-id",
+            "as": "entity-url"
           },
           {
             "field": "organization"
@@ -4232,7 +4260,8 @@
             "field": "run"
           },
           {
-            "field": "run-link"
+            "field": "linked-run",
+            "as": "run-link"
           }
         ],
         "order-by": [
@@ -4508,7 +4537,7 @@
             "function": "concat",
             "args": [
               {
-                "value": "#page-campaign-insights?campaign="
+                "value": "#page-campaign-detail?campaign="
               },
               {
                 "field": "encoded-campaign"
@@ -6360,98 +6389,6 @@
         }
       },
       {
-        "name": "repository-value-created-top",
-        "intent": "Rank the ten repositories with the most non-null operational-value observations without combining incompatible metrics.",
-        "description": "Top repositories by observed operational-value evidence count.",
-        "from": "operational-values",
-        "compute": [
-          {
-            "as": "repository-coordinate",
-            "function": "concat",
-            "args": [
-              {
-                "field": "organization"
-              },
-              {
-                "value": "/"
-              },
-              {
-                "field": "repository"
-              }
-            ]
-          }
-        ],
-        "aggregate": {
-          "by": [
-            "repository-coordinate"
-          ],
-          "values": [
-            {
-              "field": "operational-value",
-              "as": "value-created",
-              "reducer": "count"
-            }
-          ]
-        },
-        "order-by": [
-          {
-            "field": "value-created",
-            "direction": "desc"
-          },
-          {
-            "field": "repository-coordinate",
-            "direction": "asc"
-          }
-        ],
-        "limit": 10
-      },
-      {
-        "name": "repository-audit-issues-top",
-        "intent": "Rank the ten repositories with the most findings produced by audit evidence.",
-        "description": "Top repositories by observed audit finding count.",
-        "from": "findings",
-        "compute": [
-          {
-            "as": "repository-coordinate",
-            "function": "concat",
-            "args": [
-              {
-                "field": "organization"
-              },
-              {
-                "value": "/"
-              },
-              {
-                "field": "repository"
-              }
-            ]
-          }
-        ],
-        "aggregate": {
-          "by": [
-            "repository-coordinate"
-          ],
-          "values": [
-            {
-              "field": "finding",
-              "as": "audit-issues",
-              "reducer": "count"
-            }
-          ]
-        },
-        "order-by": [
-          {
-            "field": "audit-issues",
-            "direction": "desc"
-          },
-          {
-            "field": "repository-coordinate",
-            "direction": "asc"
-          }
-        ],
-        "limit": 10
-      },
-      {
         "name": "repository-workflow-totals",
         "intent": "Summarize declared and disabled workflow counts by repository.",
         "description": "Declared and disabled workflow totals for each repository.",
@@ -8285,16 +8222,16 @@
           },
           "views": [
             {
-              "id": "repositories-value-created",
-              "title": "Top repositories with value created",
-              "description": "The share of non-null operational-value observations attributed to the ten repositories with the most value evidence.",
+              "id": "repositories-issues",
+              "title": "Top repositories with issues",
+              "description": "The share of retained issues attributed to the ten repositories with the most issue safe outputs.",
               "data": {
-                "source": "repository-value-created-top"
+                "source": "issue-repository-totals"
               },
               "mark": "chart",
               "chart": "pie",
-              "layout": "half",
-              "empty-message": "No repository operational value was observed in the selected horizon.",
+              "layout": "full",
+              "empty-message": "No issue safe outputs were retained in the current report.",
               "encoding": {
                 "x": {
                   "field": "repository-coordinate",
@@ -8302,37 +8239,9 @@
                   "title": "Repository"
                 },
                 "y": {
-                  "field": "value-created",
+                  "field": "issues",
                   "type": "quantitative",
-                  "aggregate": "sum",
-                  "as": "total-value-created",
-                  "title": "Value observations"
-                }
-              }
-            },
-            {
-              "id": "repositories-audit-issues",
-              "title": "Top repositories by audit issues",
-              "description": "The share of audit findings attributed to the ten repositories with the most findings.",
-              "data": {
-                "source": "repository-audit-issues-top"
-              },
-              "mark": "chart",
-              "chart": "pie",
-              "layout": "half",
-              "empty-message": "No repository audit issues were observed in the selected horizon.",
-              "encoding": {
-                "x": {
-                  "field": "repository-coordinate",
-                  "type": "nominal",
-                  "title": "Repository"
-                },
-                "y": {
-                  "field": "audit-issues",
-                  "type": "quantitative",
-                  "aggregate": "sum",
-                  "as": "total-audit-issues",
-                  "title": "Audit issues"
+                  "title": "Issues"
                 }
               }
             },
@@ -10818,24 +10727,17 @@
               "title": "Runs in the last week",
               "description": "Workflow run conclusions observed during the last seven days.",
               "data": {
-                "source": "runs-table",
+                "source": "runs-daily-conclusions",
                 "time": {
                   "range": "7d"
-                },
-                "order-by": [
-                  {
-                    "field": "started-at",
-                    "direction": "desc"
-                  }
-                ],
-                "limit": 250
+                }
               },
               "mark": "chart",
               "chart": "swimlane",
               "layout": "horizontal",
               "encoding": {
                 "x": {
-                  "field": "started-at",
+                  "field": "day",
                   "type": "temporal",
                   "format": "human-friendly-timestamp",
                   "title": "Started"
@@ -10849,9 +10751,9 @@
                   "field": "run-conclusion",
                   "type": "nominal"
                 },
-                "href": {
-                  "field": "run-link",
-                  "type": "nominal"
+                "weight": {
+                  "field": "runs",
+                  "type": "quantitative"
                 }
               }
             },
@@ -11709,7 +11611,7 @@
           {
             "id": "overview-header",
             "title": "How are we doing?",
-            "description": "Repositories registered counts distinct registered targets and compares them with retained completed delivery evidence in the selected horizon.",
+            "description": "Repositories counts distinct registered targets and compares them with retained completed delivery evidence in the selected horizon.",
             "data": {
               "sources": [
                 "overview-outcome-summary",
@@ -11748,8 +11650,8 @@
                   "plural": "Campaigns"
                 },
                 "repositories": {
-                  "singular": "Repository registered",
-                  "plural": "Repositories registered"
+                  "singular": "Repository",
+                  "plural": "Repositories"
                 },
                 "issues": {
                   "singular": "Issue & PR",
@@ -11775,7 +11677,7 @@
             "id": "overview-campaigns",
             "title": "Campaigns",
             "intent": "Provide direct navigation to every registered campaign, opening current problems first when attention is required.",
-            "description": "Campaigns needing attention open to Problems; other campaigns open to Insights.",
+            "description": "Campaigns needing attention open to Problems; other campaigns open to their campaign overview.",
             "data": {
               "sources": [
                 "overview-campaign-links"
