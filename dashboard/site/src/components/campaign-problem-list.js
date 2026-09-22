@@ -146,7 +146,7 @@ function renderProblemGroup(rows) {
     h(
       'header',
       { className: 'campaign-problem-group-header' },
-      h('span', { className: 'campaign-problem-group-name' }, name),
+      h('h4', { className: 'campaign-problem-group-name' }, name),
       workflow ? h('span', { className: 'campaign-problem-group-path' }, workflow) : null,
       renderCountBadge(problemCount(rows), `${problemCount(rows)} current problems`)
     ),
