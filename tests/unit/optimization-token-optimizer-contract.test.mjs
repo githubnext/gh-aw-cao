@@ -39,6 +39,7 @@ test("optimization campaign installs the token optimizer contract", () => {
 
 test("token optimizer is review-only, assignment-scoped, and gated before inference", () => {
   const source = workflow("optimization-token-optimizer.md");
+  const compiled = workflow("optimization-token-optimizer.lock.yml");
   const policy = JSON.parse(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"));
   const campaignPolicy = JSON.parse(readFileSync(join(root, "optimization", "cao.json"), "utf8"));
 
@@ -66,6 +67,8 @@ test("token optimizer is review-only, assignment-scoped, and gated before infere
   assert.match(source, /^      assignment_json:$/m);
   assert.doesNotMatch(source, /^      assignment_run_id:$/m);
   assert.match(source, /attributableRunIds: \(\$assignment\.attributableRunIds \+ \[\$optimizerRunId\] \| unique\)/);
+  assert.match(compiled, /cao_script=activity\/cao\.mjs/);
+  assert.doesNotMatch(compiled, /\.github\/aw\/activity\/cao\.mjs/);
   assert.equal(
     policy["control-plane"].campaigns.optimization.workers["token-optimizer"]["max-mode"],
     "review",

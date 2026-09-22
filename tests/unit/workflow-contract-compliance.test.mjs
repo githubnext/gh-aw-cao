@@ -9,6 +9,7 @@ import { root, workflow } from "./workflow-contract.helpers.mjs";
 test("Advisory preserves UK AI guidance and human-review boundaries", () => {
   const orchestrator = workflow("uk-ai-advisory.md");
   const maintainer = workflow("uk-ai-advisory-campaign-maintainer.md");
+  const compiledMaintainer = workflow("uk-ai-advisory-campaign-maintainer.lock.yml");
   const worker = workflow("uk-ai-advisory-operational-resilience.md");
   const readme = readFileSync(join(root, "uk-ai-advisory", "README.md"), "utf8");
 
@@ -65,6 +66,7 @@ test("Advisory preserves UK AI guidance and human-review boundaries", () => {
   assert.match(maintainer, /update only the applicable ledger path/i);
   assert.match(maintainer, /allowed-files:\n\s+- "uk-ai-advisory\/implementation-status\.md"/);
   assert.doesNotMatch(maintainer, /\.github\/aw\/uk-ai-advisory/);
+  assert.doesNotMatch(compiledMaintainer, /\.github\/aw\/uk-ai-advisory/);
   assert.match(maintainer, /draft: true/);
   assert.match(maintainer, /create-issue:[\s\S]*?deduplicate-by-title: true[\s\S]*?max: 1/);
   assert.match(maintainer, /If the authoritative source or a trusted campaign file cannot be accessed or reconciled, call `report_incomplete`/);
@@ -94,6 +96,7 @@ test("UK AI advisory worker uses actionable progressive-disclosure reports", () 
 test("EU CRA workflows preserve advisory and human-review boundaries", () => {
   const orchestrator = workflow("eu-cra-compliance.md");
   const maintainer = workflow("eu-cra-compliance-campaign-maintainer.md");
+  const compiledMaintainer = workflow("eu-cra-compliance-campaign-maintainer.lock.yml");
   const workers = [
     ["eu-cra-compliance-scope-classifier.md", "Scope"],
     ["eu-cra-compliance-security-requirements-auditor.md", "Security"],
@@ -156,6 +159,7 @@ test("EU CRA workflows preserve advisory and human-review boundaries", () => {
   assert.match(maintainer, /update only the applicable ledger path/i);
   assert.match(maintainer, /allowed-files:\n\s+- "eu-cra-compliance\/implementation-status\.md"/);
   assert.doesNotMatch(maintainer, /\.github\/aw\/eu-cra-compliance/);
+  assert.doesNotMatch(compiledMaintainer, /\.github\/aw\/eu-cra-compliance/);
   assert.match(maintainer, /draft: true/);
   assert.match(maintainer, /create-issue:[\s\S]*?max: 1/);
   assert.match(maintainer, /deduplicate-by-title: true/);

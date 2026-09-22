@@ -18,11 +18,19 @@ jobs:
           curl --fail --silent --show-error --location \
             https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh |
             bash -s -- v0.89.17
-      - name: Compile optimizer workflow
-        run: gh aw compile .github/workflows/optimization-token-optimizer.md --schedule-seed githubnext/gh-aw-cao
-      - name: Upload compiled lock
+      - name: Compile changed workflows
+        run: |
+          gh aw compile \
+            .github/workflows/optimization-token-optimizer.md \
+            .github/workflows/eu-cra-compliance-campaign-maintainer.md \
+            .github/workflows/uk-ai-advisory-campaign-maintainer.md \
+            --schedule-seed githubnext/gh-aw-cao
+      - name: Upload compiled locks
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: optimization-token-optimizer-lock
-          path: .github/workflows/optimization-token-optimizer.lock.yml
+          name: canonical-runtime-locks
+          path: |
+            .github/workflows/optimization-token-optimizer.lock.yml
+            .github/workflows/eu-cra-compliance-campaign-maintainer.lock.yml
+            .github/workflows/uk-ai-advisory-campaign-maintainer.lock.yml
           if-no-files-found: error
