@@ -75,7 +75,10 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
     indexJob,
     /Download agentic workflow logs[\s\S]*?Ingest activity database/,
   );
-  assert.match(workflow, /REPORT_CONTROL_SETTINGS:[\s\S]*?bash "\$collector"/);
+  assert.match(
+    workflow,
+    /Download agentic workflow logs[\s\S]*?REPORT_CONTROL_SETTINGS:[\s\S]*?bash activity\/collect-logs\.sh/,
+  );
   assert.match(collector, /jq -r '\.allowed_repositories\[\]\?'/);
   assert.match(collector, /--repo "\$target_repository"/);
   assert.match(collector, /--cached-jsonl "\$\{shard_prefix\}\*"/);
@@ -103,7 +106,7 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   );
   assert.match(
     workflow,
-    /Restore legacy activity cache layout[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/drain3_weights\.json[\s\S]*?Download agentic workflow logs[\s\S]*?REPORT_DRAIN3_WEIGHTS: \$\{\{ runner\.temp \}\}\/cao-activity\/drain3_weights\.json[\s\S]*?bash "\$collector"/,
+    /Restore legacy activity cache layout[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/drain3_weights\.json[\s\S]*?Download agentic workflow logs[\s\S]*?REPORT_DRAIN3_WEIGHTS: \$\{\{ runner\.temp \}\}\/cao-activity\/drain3_weights\.json[\s\S]*?bash activity\/collect-logs\.sh/,
   );
   assert.match(workflow, /Restore legacy activity cache layout\n\s+if: steps\.activity-cache\.outputs\.cache-matched-key == ''/);
   assert.match(collector, /if \[\[ -n "\$drain3_weights_path" && -f "\$drain3_weights_path" \]\]/);
