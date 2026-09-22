@@ -34,7 +34,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up CAO dashboard runtime
-        uses: ./.github/actions/setup-cao-runtime
+        uses: $/.github/actions/setup-cao-runtime
         with:
           bundle: dashboard
 
