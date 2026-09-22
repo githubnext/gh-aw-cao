@@ -125,8 +125,10 @@ destination set.
 
 The supported root CAO installer MUST materialize the root runtime after gh-aw
 has resolved the root package record. `cao add` MUST materialize a selected
-campaign before reading its declaration. `cao update` MUST materialize each
-updated selected package before merging declarations.
+non-root campaign before reading its declaration. `cao add` MUST reject the
+root package before invoking gh-aw and direct operators to the root installer.
+`cao update` MUST materialize each updated selected package before merging
+declarations.
 
 gh-aw package installation by itself cannot run this post-install lifecycle.
 Therefore an implementation MUST NOT represent direct Activity or Dashboard

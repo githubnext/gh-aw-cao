@@ -339,6 +339,20 @@ test("cao add leaves policy untouched when gh aw add fails", async () => {
   }
 });
 
+test("cao add rejects the root package before modifying gh-aw records", async () => {
+  const calls = [];
+  await assert.rejects(
+    addCaoCampaign("githubnext/gh-aw-cao@v1", [], {
+      execute(command, arguments_) {
+        calls.push([command, arguments_]);
+        return versionResult;
+      },
+    }),
+    /cao add cannot install the CAO root package; use install\.sh/,
+  );
+  assert.deepEqual(calls, []);
+});
+
 test("cao update upgrades gh-aw, updates installed campaigns, and merges declarations", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-update-"));
   const previousDirectory = process.cwd();

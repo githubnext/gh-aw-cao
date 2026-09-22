@@ -567,6 +567,10 @@ export async function addCaoCampaign(campaignSpec, ghAwOptions = [], {
   execute = spawnSync
 } = {}) {
   if (!campaignSpec || campaignSpec.startsWith('-')) throw new UsageError('cao add requires a campaign');
+  const expectedCampaign = campaignSlugFromSpec(campaignSpec);
+  if (expectedCampaign === 'gh-aw-cao') {
+    throw new UsageError('cao add cannot install the CAO root package; use install.sh');
+  }
   const install = execute('gh', ['aw', 'add', campaignSpec, ...ghAwOptions], {
     encoding: 'utf8',
     maxBuffer: 16 * 1024 * 1024
@@ -575,7 +579,6 @@ export async function addCaoCampaign(campaignSpec, ghAwOptions = [], {
     throw new Error(`gh aw add failed: ${commandFailureMessage(install, 'unknown error')}`);
   }
 
-  const expectedCampaign = campaignSlugFromSpec(campaignSpec);
   materializeInstalledCao(expectedCampaign, execute);
   const declaration = await readInstalledCaoDeclaration(campaignSpec);
   if (!declaration) throw new Error(`Campaign ${expectedCampaign} did not install ${expectedCampaign}/cao.json`);
