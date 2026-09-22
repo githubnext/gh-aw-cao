@@ -382,7 +382,10 @@ function renderEntityCardListView(options) {
 function renderEntityCardItems(rows, options) {
   const { pageId, title, renderValue, toText, definition, drill = null, keyOffset = 0, chevron = false } = options;
   return rows.map((row, index) => {
-    const titleText = toText(row[definition.title.field]);
+    const renderedTitle = renderValue(definition.title, row[definition.title.field], row);
+    const titleText = renderedTitle instanceof HTMLElement
+      ? renderedTitle.textContent ?? ''
+      : toText(renderedTitle);
     const subtitle = definition.subtitle;
     const subtitleContent = subtitle ? renderValue(subtitle, row[subtitle.field], row) : '';
     const subtitleText = subtitleContent instanceof HTMLElement
@@ -393,7 +396,7 @@ function renderEntityCardItems(rows, options) {
       ? renderExternalLink(target.link)
       : target
         ? h('a', { href: target.link.href, 'data-card-drill': 'query' }, target.link.label)
-        : titleText;
+        : renderedTitle;
     if (target && titleContent instanceof HTMLAnchorElement) {
       titleContent.dataset.cardDrill = target.external ? 'external' : 'query';
     }
