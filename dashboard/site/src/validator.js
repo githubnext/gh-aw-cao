@@ -1294,14 +1294,11 @@ function validateDashboard(dashboard, dashboardNode, errors) {
       return;
     }
     validateObjectKeys(visibilityNode, SITE_CALLOUT_VISIBILITY_KEYS, path, errors);
-    validateStringField(visibility.source, `${path}.source`, true, errors);
-    if (typeof visibility.source === 'string' && !SOURCE_VALUES.includes(visibility.source)) {
-      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'visible-when source must use one canonical source name.', `${path}.source`));
-    }
+    validateSource(visibility.source, `${path}.source`, errors);
     validateStringField(visibility.field, `${path}.field`, true, errors);
     if (
       typeof visibility.source === 'string'
-      && SOURCE_VALUES.includes(visibility.source)
+      && (SOURCE_VALUES.includes(visibility.source) || declaredQueries.has(visibility.source))
       && typeof visibility.field === 'string'
       && !sourceFieldNames(visibility.source)?.includes(visibility.field)
     ) {

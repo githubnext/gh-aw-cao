@@ -57,6 +57,22 @@ describe('dashboard document validation', () => {
     });
   });
 
+  it('accepts declared queries as callout visibility sources', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    document.dashboard.callouts = [{
+      id: 'failed-run-callout',
+      title: 'Failed runs',
+      description: 'One or more runs need attention.',
+      'visible-when': {
+        source: 'failed-runs',
+        field: 'run-conclusion',
+        equals: 'failure'
+      }
+    }];
+
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+  });
+
   it('counts every grader observation in the overview value summary', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     /** @type {{ name?: string, [key: string]: unknown }[]} */
