@@ -2219,13 +2219,10 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .sidebar-collapsed .copilot-panel-toggle > :is(span, .octicon-chevron-up) { display: initial; }
   .dashboard-copilot-panel { max-height: min(42vh, 360px); padding-inline: 14px; }
   .primary-nav { display: none; }
-  .dashboard-mobile-overview-actions .primary-nav { width: 100%; display: flex; flex: none; flex-direction: row; gap: 8px; overflow-x: auto; padding: 8px 0 2px; scrollbar-width: thin; }
   .nav-section { display: flex; flex: 0 0 auto; flex-direction: row; }
   .nav-section-toggle { display: none; }
   .nav-section-items, .nav-section:not([open]) > .nav-section-items { display: flex; flex-direction: row; gap: 4px; }
   .primary-nav .nav-item, .sidebar-collapsed .primary-nav .nav-item { width: 44px; min-height: 44px; flex: 0 0 44px; justify-content: center; gap: 0; padding: 0; }
-  .dashboard-mobile-overview-actions .primary-nav .nav-item { width: 52px; min-height: 52px; flex: 0 0 52px; gap: 0; padding: 0; border: 1px solid var(--border); border-radius: 16px; background: var(--canvas-subtle); }
-  .dashboard-mobile-overview-actions .primary-nav .nav-item:hover, .dashboard-mobile-overview-actions .primary-nav .nav-item[aria-current="page"] { background: var(--neutral-muted); }
   .primary-nav .nav-item.mobile-nav-overflow { display: none; }
   .primary-nav .nav-item .nav-label { display: none; }
   .primary-nav a[aria-current="page"]::before { content: none; }

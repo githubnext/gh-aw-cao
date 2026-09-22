@@ -362,7 +362,7 @@ async function hydrateView(page, title) {
   await expect(placeholder).toHaveCount(0);
 }
 
-test('mobile shell shows large overview actions and moves other views into the hamburger', async ({ page }) => {
+test('mobile shell keeps Overview navigation in the hamburger menu', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 390, height: 844 });
@@ -381,9 +381,8 @@ test('mobile shell shows large overview actions and moves other views into the h
   const dashboardMain = page.locator('main.dashboard-prototype');
   const factoryOverview = page.locator('[data-page-id="overview"] > .custom-view-grid');
   await expect(root).toHaveClass(/dashboard-mobile-overview-actions/);
-  await expect(primaryNav).toHaveCSS('display', 'flex');
-  await expect(overviewAction).toHaveCSS('min-height', '52px');
-  await expect(overviewAction.locator('.nav-label')).toBeHidden();
+  await expect(primaryNav).toBeHidden();
+  await expect(overviewAction).toBeHidden();
   const viewportSize = page.viewportSize();
   expect(viewportSize).not.toBeNull();
   if (viewportSize === null) throw new Error('Expected Playwright to provide a viewport size');
@@ -3999,7 +3998,7 @@ test('desktop navigation collapses to an icon rail and expands back to text', as
   await expect(page.locator('.org-sidebar')).toHaveCSS('width', '200px');
 });
 
-test('phone navigation uses overview actions and a full-label view menu without horizontal scrolling', async ({ page }) => {
+test('phone navigation keeps all views in the full-label menu without horizontal scrolling', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.setViewportSize({ width: 390, height: 844 });
@@ -4033,11 +4032,8 @@ test('phone navigation uses overview actions and a full-label view menu without 
     </script>
   `);
 
-  const shortcuts = page.locator('.nav-section-items > .nav-item');
-  const activeItem = page.locator('.nav-section-items > .nav-item[aria-current="page"]');
   const historyBack = page.getByRole('button', { name: 'Go back' });
   await expect(historyBack).toBeHidden();
-  await expect(activeItem).toBeVisible();
   await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-mobile-overview-actions/);
   const mobileBrandName = page.locator('.mobile-page-header .mobile-brand-name');
   await expect(mobileBrandName).toBeVisible();
@@ -4048,16 +4044,7 @@ test('phone navigation uses overview actions and a full-label view menu without 
     if (!title || !brand) return false;
     return brand.getBoundingClientRect().top >= title.getBoundingClientRect().bottom;
   })).toBe(true);
-  await expect(activeItem.locator('.nav-label')).toBeHidden();
-  await expect(activeItem).toHaveCSS('min-height', '52px');
-  expect(await activeItem.evaluate((item) => getComputedStyle(item, '::before').content)).toBe('none');
-  await expect(shortcuts).toHaveCount(6);
-  await expect(shortcuts.nth(4)).toBeVisible();
-  await expect(shortcuts.nth(4).locator('.octicon-meter')).toBeVisible();
-  await expect(shortcuts.nth(5)).toBeHidden();
-  await expect(page.locator('.nav-section').first()).toHaveCSS('flex-direction', 'row');
-  await expect(page.locator('.nav-section-items').first()).toHaveCSS('flex-direction', 'row');
-  await expect(page.locator('.primary-nav')).toHaveCSS('overflow-x', 'auto');
+  await expect(page.locator('.primary-nav')).toBeHidden();
 
   const viewMenuButton = page.getByRole('button', { name: 'Select view' });
   await expect(viewMenuButton).toHaveCSS('border-radius', '50%');
@@ -4065,6 +4052,9 @@ test('phone navigation uses overview actions and a full-label view menu without 
   await viewMenuButton.click();
   const menu = page.locator('.mobile-nav-menu-list');
   await expect(menu).toBeVisible();
+  await expect(menu.locator('.mobile-nav-item')).toHaveCount(6);
+  await expect(menu.getByText('Overview', { exact: true })).toBeVisible();
+  await expect(menu.getByText('Runs', { exact: true })).toBeVisible();
   const menuActions = page.locator('.mobile-nav-menu-actions');
   await expect(menuActions.locator('.repository-link .action-label')).toBeVisible();
   await expect(menuActions.locator('.repository-link .action-label')).toHaveText('githubnext/gh-aw-cao');
