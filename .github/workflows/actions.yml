@@ -58,6 +58,8 @@ jobs:
     if: github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      MOBILE_DEBUG_SHARD_LIMIT: ${{ matrix.shard_limit }}
     strategy:
       fail-fast: false
       matrix:
@@ -91,7 +93,6 @@ jobs:
           DASHBOARD_DATA_URL: https://githubnext.github.io/gh-aw-cao/cao/payload-hashes.json
           MOBILE_BROWSER: ${{ matrix.browser }}
           MOBILE_DEVICE: ${{ matrix.device }}
-          MOBILE_DEBUG_SHARD_LIMIT: ${{ matrix.shard_limit }}
           MOBILE_PROFILE: baseline
       - name: Test mobile dashboard with restricted memory
         if: ${{ !cancelled() && matrix.browser == 'chromium' }}
