@@ -196,6 +196,11 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     )).toBe(viewport.stationColumns);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   }
+
+  const factory = await render(overviewPage);
+  const campaignsStation = factory.locator('.factory-station').first();
+  await campaignsStation.click({ position: { x: 1, y: 1 } });
+  await expect(page).toHaveURL(/#page-campaigns$/);
 });
 
 test('disables Overview rhythm animation when reduced motion is preferred', async ({ page }) => {

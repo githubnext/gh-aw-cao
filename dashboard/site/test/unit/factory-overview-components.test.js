@@ -91,13 +91,14 @@ describe('Overview component boundaries', () => {
     expect(station.element.classList.contains('factory-station-pending')).toBe(true);
 
     stationState.set({ pending: false, unavailable: false, label: 'Successful runs', value: 8, detail: { text: '2 failed' } });
-    expect(station.element.querySelector('strong a')?.getAttribute('href')).toBe('#page-runs');
+    expect(station.element.querySelector(':scope > .factory-station-link')?.getAttribute('href')).toBe('#page-runs');
+    expect(station.element.querySelector('strong a')).toBeNull();
     expect(station.element.querySelector('strong')?.textContent).toBe('8');
     expect(station.element.querySelector('small')?.textContent).toBe('2 failed');
 
     stationState.set({ pending: false, unavailable: true, label: 'Successful runs', value: 0, detail: { text: '' } });
     expect(station.element.querySelector('strong')?.textContent).toBe('Unavailable');
-    expect(station.element.querySelector('strong a')).toBeNull();
+    expect(station.element.querySelector('.factory-station-link')).toBeNull();
     controller.abort();
   });
 

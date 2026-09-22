@@ -27,18 +27,23 @@ export function renderFactoryStation(icon, options) {
         const count = station.pending ? '' : station.unavailable ? 'Unavailable' : formatCount(station.value);
         value.set({
           text: count,
-          target: !station.pending && !station.unavailable ? station.value : undefined,
-          href: options.href && !station.pending && !station.unavailable ? options.href : undefined
+          target: !station.pending && !station.unavailable ? station.value : undefined
         });
+        const content = [
+          h('span', { className: 'factory-station-icon', 'aria-hidden': 'true' }, octicon(icon)),
+          h('span', {}, station.label),
+          value.element
+        ];
+        const primary = options.href && !station.pending && !station.unavailable
+          ? h('a', { className: 'factory-station-link', href: options.href }, content)
+          : content;
         const detail = station.pending || !station.detail
           ? ''
           : station.detail.href
             ? h('a', { href: station.detail.href }, station.detail.text)
             : station.detail.text;
         return [
-          h('span', { className: 'factory-station-icon', 'aria-hidden': 'true' }, octicon(icon)),
-          h('span', {}, station.label),
-          value.element,
+          primary,
           h('small', {}, detail)
         ];
       }, { signal: options.signal });
