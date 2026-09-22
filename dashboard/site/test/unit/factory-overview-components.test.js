@@ -165,7 +165,6 @@ describe('Overview component boundaries', () => {
 
   it('header presents heading priority, outcome summary, and rhythm composition', () => {
     const controller = new AbortController();
-    const motion = state({ operations: 0, live: 0, review: 0 });
     const sources = {
       'overview-factory-status': binding({ rows: [{ 'factory-heading': 'Your factory is delivering value.' }] }),
       'overview-rhythm': binding({ rows: rhythmRows() })
@@ -173,7 +172,7 @@ describe('Overview component boundaries', () => {
     const rendered = renderFactoryHeader(
       sources,
       metrics(),
-      { signal: controller.signal, motion }
+      { signal: controller.signal }
     );
 
     expect(rendered.querySelector('.factory-running')).toBeNull();
