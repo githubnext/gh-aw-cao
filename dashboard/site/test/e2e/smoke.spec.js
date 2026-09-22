@@ -375,12 +375,10 @@ test('mobile shell keeps Overview navigation in the hamburger menu', async ({ pa
     </script>
   `);
 
-  const root = page.locator('.dashboard-root');
   const primaryNav = page.locator('.primary-nav');
   const overviewAction = page.locator('[data-nav-page-id="overview"]');
   const dashboardMain = page.locator('main.dashboard-prototype');
   const factoryOverview = page.locator('[data-page-id="overview"] > .custom-view-grid');
-  await expect(root).toHaveClass(/dashboard-mobile-overview-actions/);
   await expect(primaryNav).toBeHidden();
   await expect(overviewAction).toBeHidden();
   const viewportSize = page.viewportSize();
@@ -426,7 +424,6 @@ test('mobile shell keeps Overview navigation in the hamburger menu', async ({ pa
   await page.locator('.mobile-nav-menu > summary').click();
   await page.locator('[data-mobile-nav-page-id="runs"]').click();
 
-  await expect(root).not.toHaveClass(/dashboard-mobile-overview-actions/);
   await expect(primaryNav).toHaveCSS('display', 'none');
   await expect(page.locator('[data-mobile-nav-page-id="overview"]')).toHaveAttribute('href', '#page-overview');
 });
@@ -4034,7 +4031,6 @@ test('phone navigation keeps all views in the full-label menu without horizontal
 
   const historyBack = page.getByRole('button', { name: 'Go back' });
   await expect(historyBack).toBeHidden();
-  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-mobile-overview-actions/);
   const mobileBrandName = page.locator('.mobile-page-header .mobile-brand-name');
   await expect(mobileBrandName).toBeVisible();
   await expect(mobileBrandName).toHaveText('gh-aw-cao');
@@ -4064,7 +4060,6 @@ test('phone navigation keeps all views in the full-label menu without horizontal
   await menu.getByText('Cost & efficiency', { exact: true }).click();
   await expect(menu).toBeHidden();
   await expect(page.getByRole('heading', { name: 'Cost & efficiency', level: 1 })).toBeVisible();
-  await expect(page.locator('.dashboard-root')).not.toHaveClass(/dashboard-mobile-overview-actions/);
   await expect(page.locator('.primary-nav')).toHaveCSS('display', 'none');
   await expect(historyBack).toBeVisible();
   await expect(historyBack).toHaveCSS('border-radius', '50%');

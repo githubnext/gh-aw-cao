@@ -238,11 +238,11 @@ describe('DLS-CONF-004 scaffold gates', () => {
     }
   });
 
-  it('hides mobile primary navigation so the hamburger menu owns page navigation', () => {
+  it('hides mobile primary navigation and keeps Overview content full-width', () => {
     const styles = readFileSync(resolve('src/styles.js'), 'utf8');
 
     expect(styles).toContain('.primary-nav { display: none; }');
-    expect(styles).not.toContain('.dashboard-mobile-overview-actions .primary-nav');
+    expect(styles).toContain('.dashboard-overview-page { margin: calc(-1 * var(--dashboard-mobile-page-padding-top)) calc(-1 * var(--dashboard-mobile-page-padding-inline)) 0; }');
   });
 
   it('stacks the expanded filter panel above the page header and hides the horizon tooltip', () => {

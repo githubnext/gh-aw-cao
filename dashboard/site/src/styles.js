@@ -2182,7 +2182,6 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
      collapse-on-scroll state keeps its clip because the menu collapses away with the header. */
   .dashboard-root.dashboard-full-view:not(.dashboard-full-view-scrolled) .org-sidebar:has(.mobile-nav-menu[open]) { overflow: visible; }
   .dashboard-root.dashboard-full-view:not(.dashboard-full-view-scrolled):has(.mobile-nav-menu[open]), .dashboard-root.dashboard-full-view:not(.dashboard-full-view-scrolled):has(.mobile-nav-menu[open]) .app-shell { overflow: visible; }
-  .dashboard-mobile-overview-actions .org-sidebar { background: var(--canvas-subtle); }
   .sidebar-header { position: relative; margin: 0 0 8px; }
   .mobile-history-back:not([hidden]) { width: 44px; height: 44px; display: grid; flex: 0 0 44px; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 50%; background: var(--canvas-subtle); color: var(--fg); cursor: pointer; }
   .mobile-history-back:hover { background: var(--neutral-muted); }
@@ -2269,7 +2268,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .dashboard-full-view .app-main { height: 100%; min-height: 0; overflow: hidden; }
   main.dashboard-prototype { overflow: visible; overflow-x: clip; padding: var(--dashboard-mobile-page-padding-top) var(--dashboard-mobile-page-padding-inline) var(--dashboard-mobile-page-padding-bottom); }
   /* Paired with the mobile main padding above: cancel top/inline overview inset, but do not negate bottom padding. */
-  .dashboard-mobile-overview-actions .dashboard-overview-page { margin: calc(-1 * var(--dashboard-mobile-page-padding-top)) calc(-1 * var(--dashboard-mobile-page-padding-inline)) 0; }
+  .dashboard-overview-page { margin: calc(-1 * var(--dashboard-mobile-page-padding-top)) calc(-1 * var(--dashboard-mobile-page-padding-inline)) 0; }
   .dashboard-full-view .custom-view[data-view-layout="full-view"] > .view-state-card { margin-inline: 14px; }
   .dashboard-full-view .custom-view-grid > .chart-view-swimlane { padding: 0 14px 12px; }
   .data-state-summary, .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
