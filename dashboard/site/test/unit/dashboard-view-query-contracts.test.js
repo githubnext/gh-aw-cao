@@ -185,6 +185,79 @@ describe('dashboard view query contracts', () => {
     )).toContain('issues');
   });
 
+  it('keeps issue repository totals available when audit records are unavailable', () => {
+    const availableMetadata = { ...metadata, availability: 'available' };
+    const unavailableMetadata = { ...metadata, availability: 'unavailable', completeness: 'partial' };
+    const issueRows = [
+      {
+        organization: 'githubnext',
+        repository: 'gh-aw-cao',
+        workflow: '.github/workflows/worker.md',
+        run: '101',
+        'run-attempt': 1,
+        'event-type': 'safe_output.created',
+        'event-timestamp': '2026-09-20T12:00:00Z',
+        'github-entity-type': 'issue',
+        'is-pull-request': false,
+        'safe-output-type': 'create_issue',
+        'event-summary': 'Fix issue view',
+        'correlation-id': 'https://github.com/githubnext/gh-aw-cao/issues/13439'
+      },
+      {
+        organization: 'githubnext',
+        repository: 'gh-aw-cao',
+        workflow: '.github/workflows/worker.md',
+        run: '102',
+        'run-attempt': 1,
+        'event-type': 'safe_output.created',
+        'event-timestamp': '2026-09-20T13:00:00Z',
+        'github-entity-type': 'pull_request',
+        'is-pull-request': true,
+        'safe-output-type': 'create_pull_request',
+        'event-summary': 'Ignore pull request',
+        'correlation-id': 'https://github.com/githubnext/gh-aw-cao/pull/13440'
+      }
+    ];
+    const results = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries',
+      queries,
+      sourceNames: ['issue-safe-outputs', 'issue-repository-totals'],
+      sources: {
+        audits: { source: 'audits', rows: [], metadata: unavailableMetadata },
+        issues: { source: 'issues', rows: issueRows, metadata: availableMetadata },
+        runs: {
+          source: 'runs',
+          rows: [{
+            organization: 'githubnext',
+            repository: 'gh-aw-cao',
+            workflow: '.github/workflows/worker.md',
+            run: '101',
+            'run-attempt': 1,
+            'run-link': {
+              relation: 'run',
+              href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/101',
+              label: 'Run 101'
+            }
+          }],
+          metadata: availableMetadata
+        }
+      }
+    }));
+
+    expect(results['issue-safe-outputs'].metadata.availability).toBe('available');
+    expect(results['issue-safe-outputs'].rows).toEqual([
+      expect.objectContaining({
+        'event-summary': 'Fix issue view',
+        'entity-url': 'https://github.com/githubnext/gh-aw-cao/issues/13439',
+        repository: 'gh-aw-cao'
+      })
+    ]);
+    expect(results['issue-repository-totals'].metadata.availability).toBe('available');
+    expect(results['issue-repository-totals'].rows).toEqual([
+      { 'repository-coordinate': 'githubnext/gh-aw-cao', issues: 1 }
+    ]);
+  });
+
   it('resolves every authored view source through canonical data or Dashboard Language', () => {
     const unresolved = dashboard.pages.flatMap((/** @type {Record<string, unknown>} */ page) => viewsOf(page).flatMap((view) => (
       sourceNamesOf(view)

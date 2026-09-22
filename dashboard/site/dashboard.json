@@ -4103,18 +4103,57 @@
         "name": "issue-safe-outputs",
         "intent": "List retained GitHub issue safe outputs.",
         "description": "Issue-only projection of retained safe-output items.",
-        "from": "safe-output-items",
+        "from": "issues",
         "filter": {
           "predicates": [
+            {
+              "field": "event-type",
+              "equals": "safe_output.created"
+            },
             {
               "field": "is-pull-request",
               "equals": false
             }
           ]
         },
+        "joins": [
+          {
+            "source": "runs",
+            "type": "left",
+            "on": [
+              {
+                "left": "organization",
+                "right": "organization"
+              },
+              {
+                "left": "repository",
+                "right": "repository"
+              },
+              {
+                "left": "workflow",
+                "right": "workflow"
+              },
+              {
+                "left": "run",
+                "right": "run"
+              },
+              {
+                "left": "run-attempt",
+                "right": "run-attempt"
+              }
+            ],
+            "fields": [
+              {
+                "field": "run-link",
+                "as": "linked-run"
+              }
+            ]
+          }
+        ],
         "select": [
           {
-            "field": "observed-at"
+            "field": "event-timestamp",
+            "as": "observed-at"
           },
           {
             "field": "github-entity-type"
@@ -4129,7 +4168,8 @@
             "field": "event-summary"
           },
           {
-            "field": "entity-url"
+            "field": "correlation-id",
+            "as": "entity-url"
           },
           {
             "field": "organization"
@@ -4144,7 +4184,8 @@
             "field": "run"
           },
           {
-            "field": "run-link"
+            "field": "linked-run",
+            "as": "run-link"
           }
         ],
         "order-by": [
