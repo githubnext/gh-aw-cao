@@ -169,10 +169,12 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(campaigns).toBeVisible();
     await expect(campaigns.locator('.link-button-list')).toBeVisible();
     await expect(campaigns.locator('.link-button-list-item')).toHaveCount(2);
+    await expect(campaigns).toHaveCSS('row-gap', '12px');
     await expect(campaigns.locator(':scope > header')).toHaveCSS(
       'margin-top',
       viewport.width <= 700 ? '24px' : '0px'
     );
+    await expect(campaigns.locator(':scope > header')).toHaveCSS('padding', '8px 16px');
     await expect(campaigns.getByRole('link', { name: 'View AW Doctor campaign dashboard' }))
       .toHaveAttribute('href', '#page-campaign-detail?campaign=aw-doctor');
     await expect(factory.locator(':scope > .factory-intro + .factory-floor')).toHaveCount(1);

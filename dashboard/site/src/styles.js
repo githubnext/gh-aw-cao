@@ -264,8 +264,8 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .entity-card-list-grouped .issue-list-labels { justify-content: flex-end; }
 .entity-card-list-chevron { display: flex; align-items: center; color: var(--muted); }
 .entity-card-list-chevron .octicon { width: 14px; height: 14px; }
-.link-button-list-view { display: grid; gap: 8px; }
-.link-button-list-view > header { display: grid; gap: 4px; padding-inline: 16px; }
+.link-button-list-view { display: grid; gap: 12px; }
+.link-button-list-view > header { display: grid; gap: 4px; padding: 8px 16px; }
 .link-button-list-view > header :is(h2, p) { margin: 0; }
 .link-button-list-view > header h2 { font-size: .75rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .link-button-list-view > header p, .link-button-list-empty { color: var(--muted); font-size: .75rem; }
