@@ -6740,6 +6740,24 @@
         "intent": "Provide one navigation row per registered campaign that opens its dedicated campaign view.",
         "description": "Registered campaigns with a resolved dashboard link to their dedicated campaign view.",
         "from": "campaigns",
+        "joins": [
+          {
+            "source": "campaign-dispatch-totals",
+            "type": "left",
+            "on": [
+              {
+                "left": "campaign",
+                "right": "campaign"
+              }
+            ],
+            "fields": [
+              {
+                "field": "dispatches",
+                "as": "campaign-dispatches"
+              }
+            ]
+          }
+        ],
         "compute": [
           {
             "as": "encoded-campaign",
@@ -6808,6 +6826,9 @@
           },
           {
             "field": "campaign-dashboard-link"
+          },
+          {
+            "field": "campaign-dispatches"
           }
         ],
         "order-by": [
@@ -11022,6 +11043,7 @@
               "link-field": "campaign-dashboard-link",
               "icon-field": "campaign-icon",
               "fallback-icon": "goal",
+              "count-field": "campaign-dispatches",
               "empty-message": "No campaigns are registered."
             },
             "layout": "full"

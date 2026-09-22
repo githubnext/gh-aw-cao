@@ -80,7 +80,65 @@ it('renders campaign shortcuts through the reusable link button list', () => {
     .toBe('#page-campaign-insights?campaign=aw-doctor');
   expect(rendered?.querySelector('.link-button-list-item a')?.getAttribute('aria-label'))
     .toBe('View AW Doctor campaign dashboard');
+  expect(rendered?.querySelector('.link-button-list-count')).toBeNull();
 });
+
+it('renders a dispatch count badge for each link button list row when count-field is configured', () => {
+  const rendered = renderUiElement('link-button-list', {
+    ...context('link-button-list', {
+    'overview-campaign-links': source('overview-campaign-links', [
+      {
+        campaign: 'aw-doctor',
+        'campaign-name': 'AW Doctor',
+        'campaign-icon': 'gear',
+        'campaign-dispatches': 42,
+        'campaign-dashboard-link': {
+          'dashboard-href': '#page-campaign-insights?campaign=aw-doctor',
+          'dashboard-label': 'View AW Doctor campaign dashboard'
+        }
+      }
+    ])
+    }),
+    elementConfig: {
+      'label-field': 'campaign-name',
+      'link-field': 'campaign-dashboard-link',
+      'icon-field': 'campaign-icon',
+      'fallback-icon': 'goal',
+      'count-field': 'campaign-dispatches'
+    }
+  });
+
+  expect(rendered?.querySelector('.link-button-list-count')?.textContent).toBe('42');
+});
+
+it('hides the count badge when the configured count-field is null (e.g. an unmatched left join)', () => {
+  const rendered = renderUiElement('link-button-list', {
+    ...context('link-button-list', {
+    'overview-campaign-links': source('overview-campaign-links', [
+      {
+        campaign: 'aw-doctor',
+        'campaign-name': 'AW Doctor',
+        'campaign-icon': 'gear',
+        'campaign-dispatches': null,
+        'campaign-dashboard-link': {
+          'dashboard-href': '#page-campaign-insights?campaign=aw-doctor',
+          'dashboard-label': 'View AW Doctor campaign dashboard'
+        }
+      }
+    ])
+    }),
+    elementConfig: {
+      'label-field': 'campaign-name',
+      'link-field': 'campaign-dashboard-link',
+      'icon-field': 'campaign-icon',
+      'fallback-icon': 'goal',
+      'count-field': 'campaign-dispatches'
+    }
+  });
+
+  expect(rendered?.querySelector('.link-button-list-count')).toBeNull();
+});
+
 
 it('renders the factory header from only its declared JSON sources', () => {
   const rendered = renderUiElement('factory-header', context('factory-header', {

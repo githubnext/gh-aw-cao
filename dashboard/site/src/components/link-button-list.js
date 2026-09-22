@@ -1,7 +1,7 @@
 import { h, keyed } from '../dom.js';
 import { effect } from '../reactive.js';
 import { bindFactorySources, createFactoryMetrics, createFactoryScope } from './factory-elements.js';
-import { text } from './count-formatters.js';
+import { formatCount, text } from './count-formatters.js';
 import { findLink, renderSafeLink } from './link-content.js';
 import { renderIconSpan } from './ui-primitives.js';
 
@@ -19,10 +19,12 @@ export function renderLinkButtonList(context) {
   const linkField = text(context.elementConfig?.['link-field']);
   const iconField = text(context.elementConfig?.['icon-field']);
   const fallbackIcon = text(context.elementConfig?.['fallback-icon']) || 'link';
+  const countField = text(context.elementConfig?.['count-field']);
   const items = keyed(
     source.rows(),
     (row) => {
       const label = text(row[labelField]) || 'Link';
+      const count = countField && row[countField] != null ? row[countField] : undefined;
       return h(
         'li',
         { className: 'link-button-list-item' },
@@ -30,6 +32,7 @@ export function renderLinkButtonList(context) {
           h('span', { className: 'link-button-list-content' },
             renderIconSpan('link-button-list-icon', text(row[iconField]) || fallbackIcon, { ariaHidden: true }),
             h('span', null, label),
+            count === undefined ? null : h('span', { className: 'link-button-list-count' }, formatCount(count)),
             renderIconSpan('link-button-list-chevron', 'chevron-right', { ariaHidden: true })
           ),
           findLink(row, linkField)
