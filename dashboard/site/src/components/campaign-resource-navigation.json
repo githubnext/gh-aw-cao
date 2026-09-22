@@ -2,12 +2,11 @@
   "default": "insights",
   "tabs": [
     { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-    { "id": "workflows", "label": "Workflows", "icon": "workflow", "page": "campaign-workflows" },
-    { "id": "runs", "label": "Runs", "icon": "play", "page": "campaign-runs" },
+    { "id": "runs", "label": "Dispatches", "icon": "play", "page": "campaign-dispatches" },
     { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" },
-    { "id": "overview", "label": "Information", "icon": "info", "page": "campaign-detail" }
+    { "id": "overview", "label": "Info", "icon": "info", "page": "campaign-detail" }
   ],
-  "additional-bodies": ["pull-requests", "repositories", "reports"],
+  "additional-bodies": ["workflows", "pull-requests", "repositories", "reports"],
   "aliases": {
     "dispatches": "runs"
   }
