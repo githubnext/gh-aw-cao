@@ -226,6 +226,7 @@ invariants:
   - "CAO runtime materialization MUST use a full immutable resolvedCommit SHA, MUST fail closed for tag-only or missing provenance, and MUST preserve exact focused Activity or Dashboard package ownership when root materialization runs."
   - "Activity and Dashboard manifests are root-package components; direct component installation is incomplete because gh-aw cannot invoke canonical runtime materialization."
   - "Installed campaign records MUST be updated through gh-aw campaign commands."
+  - "The repository-layout and installation specification defines canonical runtime ownership, immutable materialization, and fail-closed installation lifecycle requirements."
   - "Policy and workflow changes MUST be committed together."
 
 flows:
@@ -279,6 +280,8 @@ generation:
     path: adr/
   normative_contract:
     path: specs/
+  repository_layout_installation_specification:
+    path: specs/repository-layout-and-installation.md
 
 commands:
   repository_root:

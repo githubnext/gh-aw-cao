@@ -129,6 +129,7 @@ reconstructable.
 | `dashboard/site/src/data/` | Canonical browser data model, adapters, normalization, storage, and declarative query engine. |
 | `research/` | Executable notebooks and experimental reference runtimes used to validate proposed computation semantics against canonical data; these are not dashboard production code. |
 | `specs/computations.md` | Versioned computation, bounded insight, provenance, quality, and measure contracts. |
+| `specs/repository-layout-and-installation.md` | Normative canonical runtime layout, ownership, materialization, and installation lifecycle contract. |
 | `.github/workflows/*.md` | Editable gh-aw workflow sources. |
 | `.github/workflows/*.lock.yml` | Generated workflow artifacts; never edit these directly. |
 | `.github/workflows/shared/` | Shared policy resolution, control admission, checkout, review-bundle, and observability components. |
@@ -238,6 +239,7 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
 - `specs/activity.md` defines evidence collection and snapshot semantics.
 - `specs/dashboard-data.md` defines the canonical data architecture.
 - `specs/dashboard.md` defines the dashboard product contract.
+- `specs/repository-layout-and-installation.md` defines canonical runtime layout and installation conformance.
 - `docs/architecture.md` explains the control plane for operators.
 - `AGENTS.md` records repository conventions and focused validation commands.
 

@@ -43,7 +43,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up CAO activity runtime
-        uses: $/.github/actions/setup-cao-runtime
+        uses: ./.github/actions/setup-cao-runtime # zizmor: ignore[self-repository] - local action is checked out at github.workflow_sha.
         with:
           bundle: activity
 

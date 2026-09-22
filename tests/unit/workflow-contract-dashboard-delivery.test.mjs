@@ -291,8 +291,8 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.equal((activityWorkflow.match(/path: \|[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-shards/g) || []).length, 4);
   assert.doesNotMatch(activityCacheJob, /Save activity cache[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/m);
   assert.doesNotMatch(activityManifest, /^resources:/m);
-  assert.match(activityWorkflow, /uses: \$\/\.github\/actions\/setup-cao-runtime[\s\S]*?bundle: activity/);
-  assert.match(dashboardWorkflow, /uses: \$\/\.github\/actions\/setup-cao-runtime[\s\S]*?bundle: dashboard/);
+  assert.match(activityWorkflow, /uses: \.\/\.github\/actions\/setup-cao-runtime[\s\S]*?bundle: activity/);
+  assert.match(dashboardWorkflow, /uses: \.\/\.github\/actions\/setup-cao-runtime[\s\S]*?bundle: dashboard/);
   assert.match(aicUsage, /Processing \$\{logs\.length\} cached gh-aw log records/);
   assert.doesNotMatch(activityWorkflow, /REPORT_VALUE_CACHE/);
   assert.doesNotMatch(activityWorkflow, /REPORT_VALUE_REPLAY_CACHE/);
@@ -348,7 +348,7 @@ test("Activity campaign owns the shared collected-data cache contract", () => {
   assert.doesNotMatch(workflow, /workflow_call:/);
   assert.match(workflow, /Resolve dashboard control settings[\s\S]*?\.github\/workflows\/shared\/control\.mjs/);
   assert.doesNotMatch(workflow, /Resolve CAO control source|\.github\/aw\/campaigns|\.cao-runtime/);
-  assert.match(workflow, /uses: \$\/\.github\/actions\/setup-cao-runtime[\s\S]*?bundle: activity/);
+  assert.match(workflow, /uses: \.\/\.github\/actions\/setup-cao-runtime[\s\S]*?bundle: activity/);
   assert.match(workflow, /uses: github\/gh-aw-actions\/setup-cli@[0-9a-f]{40}/);
   assert.match(workflow, /node activity\/control-settings\.mjs \\\n\s+\.github\/workflows\/shared\/control\.mjs/);
   assert.match(workflow, /workflow_dispatch:[\s\S]*?request-id:/);
