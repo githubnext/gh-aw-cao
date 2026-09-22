@@ -160,4 +160,26 @@ describe('does-it-run computation', () => {
     expect(result.campaignResult.answer).toBe('yes');
     expect(result.partitionResults).toHaveLength(3);
   });
+
+  it('does not invent partitions for configured workers that were not selected', () => {
+    const result = computeDoesItRunCampaign({
+      campaignId: 'campaign:conditional',
+      orchestratorPartitions: [partition({
+        campaignId: 'campaign:conditional',
+        workflowId: 'workflow:conditional',
+        workflowRole: 'orchestrator',
+        targetRepositoryId: null,
+        targetScopeMembership: null,
+        runs: [run(501, 'success', '2026-09-22T01:00:00Z')]
+      })],
+      workerPartitions: []
+    });
+
+    expect(result.campaignResult).toMatchObject({
+      measureVersion: '2.0.0',
+      answer: 'yes',
+      workerPartitionCount: 0,
+      attentionPartitionCount: 0
+    });
+  });
 });

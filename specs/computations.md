@@ -1,7 +1,7 @@
 ---
 title: Central Agentic Ops Computations Specification
 description: Normative requirements for a staged computation chain that derives bounded, actionable insights from CAO evidence.
-version: 0.8.0
+version: 0.9.0
 status: Working Draft
 editors:
   - GitHub Next
@@ -9,7 +9,7 @@ editors:
 
 # Central Agentic Ops Computations Specification
 
-**Version:** 0.8.0
+**Version:** 0.9.0
 **Status:** Working Draft
 **Latest Version:** https://github.com/githubnext/gh-aw-cao/blob/main/specs/computations.md
 **Editors:** GitHub Next
@@ -359,7 +359,7 @@ permission change is safe merely because the computation found an error.
 | Property | Value |
 | --- | --- |
 | Measure ID | `does-it-run` |
-| Measure version | `1.0.0` |
+| Measure version | `2.0.0` |
 | Operator question | Does each orchestrator and worker in this campaign run successfully? |
 | Primary partition | Campaign and Workflow for orchestrators; Campaign, Workflow, and target Repository for workers |
 | Required entities | Campaign, Repository, Workflow, Run |
@@ -381,6 +381,11 @@ The required canonical inputs are:
   `createdAt`, `startedAt`, `completedAt`, and `updatedAt`; and
 - evidence-generation quality metadata.
 
+Worker absence may affect the Campaign answer only when authoritative
+orchestrator evidence identifies the worker-target invocation as required or
+dispatched. That evidence MUST identify the Campaign, worker Workflow, target
+Repository, orchestrator Run, disposition, and observation time.
+
 When present, the computation MAY also use the producer-supplied
 `targetRepository`, `failureKind`, `classification`, `failureJob`,
 `failureStep`, and bounded `failureMessage` fields. These diagnostic fields
@@ -399,6 +404,30 @@ included.
 An inactive or disabled campaign Workflow MUST remain in the result. Its
 configured state is relevant to the answer and MUST NOT be hidden by the
 absence of runs.
+
+Selecting a Workflow definition MUST NOT imply that the Workflow was expected
+to run for every selected or configured target. Worker invocation is often
+conditional on candidate eligibility, prior campaign state, or the presence of
+work. The engine MUST preserve the distinction between:
+
+- `dispatched`: the orchestrator requested this worker-target invocation;
+- `required`: reviewed configuration independently requires this
+  worker-target invocation in the evidence boundary;
+- `not-selected`: the orchestrator intentionally did not select the invocation;
+- `no-eligible-work`: the invocation was unnecessary because its documented
+  prerequisite produced no eligible work; and
+- `indeterminate`: the available evidence does not establish whether the
+  invocation was required or dispatched.
+
+`not-selected` and `no-eligible-work` are dispositions, not Run results. They
+MUST NOT create empty Run partitions and MUST NOT make a Campaign unhealthy or
+unknown. A `noop` output MUST NOT by itself be interpreted as
+`no-eligible-work`, because an orchestrator may emit a summary `noop` after
+dispatching other workers.
+
+When dispatch-intent evidence is unavailable, observed worker Runs MAY still
+be evaluated. The engine MUST NOT manufacture missing worker-target
+partitions from the Cartesian product of configured workers and repositories.
 
 ### 5.3.1 Orchestrator gate
 
@@ -509,11 +538,20 @@ success for one target MUST NOT end, hide, or shorten the current failure
 streak for another target.
 
 The partition set MUST include every canonically associated target observed for
-the worker in the evidence boundary. When authoritative expected-target
-evidence is available, it MUST also include an empty partition for each expected
-target with no observed Run. An observed target outside that expected set MUST
-remain a separate partition and MUST be marked `observed-extra`; it MUST NOT be
-used as evidence that an expected target is healthy.
+the worker in the evidence boundary. It MUST include an empty partition only
+when authoritative evidence says that the exact worker-target invocation was
+`required` or `dispatched` and no associated Run was observed. A Campaign target
+or configured worker alone is insufficient to create that partition.
+
+An observed target outside an authoritative expected-target set MUST remain a
+separate partition and MUST be marked `observed-extra`; it MUST NOT be used as
+evidence that an expected target is healthy. When policy permits dynamic
+discovery and does not declare a fixed target set, an observed dispatched target
+MUST NOT be marked `observed-extra`.
+
+The review safe-output repository is an output destination, not a target
+Repository. An engine MUST NOT infer the expected target from review mode,
+`safe_output_repo`, or the control repository identity.
 
 A worker Run without a valid canonical target Repository association MUST NOT
 be assigned to another target or merged into a Workflow-wide partition. The
@@ -768,12 +806,16 @@ The Campaign MUST answer:
 - `not-observed` when all expected partitions answer `not-observed`;
 - `running` when none answer `no` or `unknown` and any expected partition answers
   `running`; and
-- `yes` only when every expected partition answers `yes`.
+- `yes` only when every required or dispatched partition answers `yes`.
 
 An `observed-extra` partition MUST be displayed and counted separately, but MUST
 NOT make the configured Campaign healthy or unhealthy. When expected-target
 evidence is unavailable, observed worker partitions have `unknown` membership and
 participate in the Campaign answer with partial evidence.
+
+Configured workers with `not-selected` or `no-eligible-work` dispositions MUST
+be reported separately from evaluated partitions. Their absence MUST NOT
+prevent a Campaign answer of `yes`.
 
 The worker-partition answer rules apply only when `workerEvaluationState` is
 `eligible`. A skipped worker evaluation is not an empty, zero, healthy,
@@ -1390,7 +1432,17 @@ A conforming test suite for `does-it-run` MUST cover:
 - **T-DIR-025:** successful and running orchestrators make worker evaluation
   `eligible`; and
 - **T-DIR-026:** an explicitly requested historical worker result cannot
-  override an orchestrator-gated Campaign answer.
+  override an orchestrator-gated Campaign answer;
+- **T-DIR-027:** review mode does not substitute the control or safe-output
+  repository for the selected target;
+- **T-DIR-028:** configured workers and targets do not produce a Cartesian set
+  of empty partitions without authoritative invocation expectations;
+- **T-DIR-029:** `not-selected` and `no-eligible-work` worker dispositions do
+  not affect Campaign health;
+- **T-DIR-030:** a confirmed dispatch without an associated Run produces a
+  `not-observed` partition; and
+- **T-DIR-031:** a summary `noop` emitted alongside dispatches does not erase or
+  reclassify those dispatches.
 
 A conforming test suite for `how-well-does-it-run` MUST cover:
 
@@ -1562,6 +1614,20 @@ referenced failures. The action retains links to all three upstream results.
 - [Cached gh-aw JSONL Mapping](dashboard-gh-aw-jsonl-mapping.md)
 
 ## 14. Change log
+
+### Version 0.9.0 (Working Draft)
+
+- Separated configured workers from worker-target invocations that were
+  required or dispatched in an evidence boundary.
+- Prohibited deriving target identity from review-mode output routing.
+- Prohibited Cartesian worker-target expansion without authoritative
+  invocation evidence.
+- Added explicit `not-selected`, `no-eligible-work`, and `indeterminate`
+  invocation dispositions.
+- Clarified that a summary `noop` can coexist with dispatches and does not mean
+  that the Campaign performed no work.
+- Advanced `does-it-run` to version `2.0.0` because corrected partition
+  selection can change Campaign answers produced from the same Run evidence.
 
 ### Version 0.8.0 (Working Draft)
 

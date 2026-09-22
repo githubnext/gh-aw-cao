@@ -1,6 +1,6 @@
 export const DOES_IT_RUN_MEASURE = Object.freeze({
   id: 'does-it-run',
-  version: '1.0.0'
+  version: '2.0.0'
 });
 
 const ACTIVE_STATUSES = new Set(['queued', 'in_progress', 'waiting', 'requested', 'pending']);
