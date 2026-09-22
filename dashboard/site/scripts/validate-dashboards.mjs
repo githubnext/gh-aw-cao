@@ -37,9 +37,15 @@ for (const dashboardPath of dashboardPaths) {
   const displayPath = relative(repositoryRoot, dashboardPath);
   const hasDeadQueries = !result.ok && result.errors.some((error) => error.code === 'DLS-E015');
   if (renderQueryGraphs || hasDeadQueries) {
-    const document = parse(source);
-    console.error(`Query usage graph for ${displayPath}:`);
-    console.error(renderDashboardQueryUsageGraph(document.dashboard));
+    try {
+      const dashboard = parse(source)?.dashboard;
+      if (dashboard && typeof dashboard === 'object' && !Array.isArray(dashboard)) {
+        console.error(`Query usage graph for ${displayPath}:`);
+        console.error(renderDashboardQueryUsageGraph(dashboard));
+      }
+    } catch {
+      // Validation below reports malformed input without aborting analysis of other documents.
+    }
   }
   if (result.ok) continue;
 
