@@ -931,7 +931,8 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .campaign-problem-list-empty{margin:0;padding:18px 14px;color:var(--muted)}
 @media (max-width: 700px) {
   .campaign-problem-item{grid-template-columns:20px minmax(0,1fr) auto;padding-left:12px}
-  .campaign-problem-item .table-intent-control{grid-column:2;justify-self:start}
+  .campaign-problem-occurrences{grid-column:3;grid-row:1}
+  .campaign-problem-item .table-intent-control{grid-column:2;grid-row:2;justify-self:start}
 }
 h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 0 0 20px; overflow: visible; }
