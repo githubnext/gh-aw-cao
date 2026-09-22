@@ -2532,7 +2532,8 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   await campaignNavigation.getByRole('link', { name: 'Insights' }).click();
   const campaignInsights = page.locator('[data-page-id="campaign-insights"]');
   await expect(campaignInsights).toBeVisible();
-  await expect(campaignInsights.getByRole('navigation', { name: 'Ambient Context views' })).toBeHidden();
+  await expect(campaignInsights.getByRole('navigation', { name: 'Ambient Context views' })).toBeVisible();
+  await expect(campaignInsights.getByRole('navigation', { name: 'Ambient Context views' })).toHaveCSS('display', 'grid');
   const mobileBack = page.getByRole('button', { name: 'Go back' });
   await expect(mobileBack).toBeVisible();
   await expect(page.locator('.overview-header')).toContainText('Audit events observed for the Ambient Context campaign.');
