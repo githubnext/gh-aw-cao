@@ -54,6 +54,16 @@ export function renderLinkButtonList(context) {
     (row, index) => findLink(row, linkField)?.href || text(row[labelField]) || String(index)
   );
   const list = h('ul', { className: 'link-button-list' }, items);
+  const skeleton = h(
+    'div',
+    { className: 'link-button-list-skeleton', 'aria-hidden': 'true' },
+    ...Array.from({ length: 3 }, () => h(
+      'span',
+      { className: 'link-button-list-skeleton-row' },
+      h('span'),
+      h('span')
+    ))
+  );
   const empty = h(
     'p',
     { className: 'link-button-list-empty' },
@@ -66,6 +76,7 @@ export function renderLinkButtonList(context) {
       h('h2', { id: `${context.viewId || context.pageId}-heading` }, context.title),
       context.description ? h('p', null, context.description) : null),
     list,
+    skeleton,
     empty
   );
   effect(() => {
@@ -74,6 +85,7 @@ export function renderLinkButtonList(context) {
     const pending = source.pending();
     const hasRows = items.items.length > 0;
     list.hidden = !hasRows;
+    skeleton.hidden = !pending;
     empty.hidden = hasRows || pending;
     root.toggleAttribute('aria-busy', pending);
   }, { signal: scope.signal });

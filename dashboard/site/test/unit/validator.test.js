@@ -39,6 +39,40 @@ describe('dashboard document validation', () => {
     expect(accepted.ok).toBe(true);
   });
 
+  it('rejects queries outside the view-to-query dependency graph', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    document.dashboard.queries.push({
+      name: 'unused-run-query',
+      intent: 'Exercise dead query validation.',
+      from: 'runs'
+    });
+
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([{
+        code: 'DLS-E015',
+        message: 'query "unused-run-query" is not used by a view, callout, or another retained query.',
+        path: `$.dashboard.queries[${document.dashboard.queries.length - 1}].name`
+      }])
+    });
+  });
+
+  it('accepts declared queries as callout visibility sources', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    document.dashboard.callouts = [{
+      id: 'failed-run-callout',
+      title: 'Failed runs',
+      description: 'One or more runs need attention.',
+      'visible-when': {
+        source: 'failed-runs',
+        field: 'run-conclusion',
+        equals: 'failure'
+      }
+    }];
+
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+  });
+
   it('counts every grader observation in the overview value summary', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     /** @type {{ name?: string, [key: string]: unknown }[]} */
@@ -1162,7 +1196,9 @@ dashboard:
       const page = document.dashboard.pages[0];
       expect(document.dashboard.navigation).toEqual([{ label: 'Campaign operations', experimental: true, pages: [pageId] }]);
       expect(page).toMatchObject({ kind: 'custom' });
-      expect(page.views).toHaveLength(pageId === 'cao-evolution-dashboard' ? 5 : 4);
+      expect(page.views).toHaveLength(
+        pageId === 'cao-evolution-dashboard' || pageId === 'optimization-dashboard' ? 5 : 4
+      );
       const tables = page.views.filter(
         (/** @type {{ mark?: string }} */ view) => view.mark === 'table'
       );
@@ -1186,6 +1222,8 @@ dashboard:
       const attainmentSource = 'operational-values';
       const expectedSources = pageId === 'cao-evolution-dashboard'
         ? [attainmentSource, attainmentSource, 'outcomes', 'outcomes', 'runs']
+        : pageId === 'optimization-dashboard'
+          ? [attainmentSource, attainmentSource, attainmentSource, 'outcomes', 'runs']
         : [attainmentSource, attainmentSource, 'outcomes', 'runs'];
       expect(sources.sort()).toEqual(expectedSources.sort());
     }

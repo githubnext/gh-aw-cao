@@ -269,7 +269,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .link-button-list-view > header :is(h2, p) { margin: 0; }
 .link-button-list-view > header h2 { font-size: .75rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .link-button-list-view > header p, .link-button-list-empty { color: var(--muted); font-size: .75rem; }
-.link-button-list { overflow: hidden; margin: 0; padding: 0; border: 1px solid var(--border-muted); border-radius: 12px; background: var(--canvas-subtle); list-style: none; }
+:is(.link-button-list,.link-button-list-skeleton) { overflow: hidden; margin: 0; padding: 0; border: 1px solid var(--border-muted); border-radius: 12px; background: var(--canvas-subtle); list-style: none; }
 .link-button-list-item > a { position: relative; min-height: 44px; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto 12px; align-items: center; gap: 12px; padding: 8px 16px; color: var(--fg); text-decoration: none; -webkit-tap-highlight-color: transparent; }
 .link-button-list-item:not(:last-child) > a::after { content: ""; position: absolute; inset-inline: 56px 0; bottom: 0; height: 1px; background: var(--border-muted); }
 .link-button-list-content { display: contents; }
@@ -282,6 +282,10 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .link-button-list-icon .octicon { width: 16px; height: 16px; }
 .link-button-list-chevron .octicon { width: 12px; height: 12px; }
 .link-button-list-empty { margin: 0; padding: 16px; border: 1px solid var(--border-muted); border-radius: 12px; background: var(--canvas-subtle); }
+.link-button-list-skeleton-row { min-height: 44px; display: grid; grid-template-columns: 28px minmax(0, 1fr); align-items: center; gap: 12px; padding: 8px 16px; }
+.link-button-list-skeleton-row > span { height: 16px; border-radius: 4px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite; }
+.link-button-list-skeleton-row > span:first-child { height: 28px; border-radius: 8px; }
+.link-button-list-skeleton-row > span:last-child { width: 60%; }
 .mobile-brand-name { display: none; }
 .sidebar-collapsed { grid-template-columns: 64px minmax(0, 1fr); }
 .sidebar-collapsed .org-sidebar { padding-inline: 8px 7px; }
@@ -1740,7 +1744,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
   .link-button-list-view > header { margin-top: 24px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .factory-station, .factory-rhythm-bar-pair i { animation: none; }
+  .factory-station, .factory-rhythm-bar-pair i, .link-button-list-skeleton-row > span { animation: none; }
 }
 .dashboard-next-work-page .custom-view-grid { display: block; }
 .dashboard-next-insights-page .custom-view-grid { display: block; }

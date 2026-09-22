@@ -142,6 +142,7 @@ import {
 } from './components/route-body-specification.js';
 import { cliActionTemplateFields } from './cli-action-template.js';
 import { compileDashboardQueryTypes } from './query-type-checker.js';
+import { findDeadDashboardQueries } from './query-usage.js';
 
 /**
  * @param {string} command
@@ -798,6 +799,13 @@ function validateDashboard(dashboard, dashboardNode, errors) {
   }
   declaredQueries = queryTypes.queryFields;
   declaredQuerySources = queryTypes.querySources;
+  for (const query of findDeadDashboardQueries(dashboard)) {
+    errors.push(createError(
+      ERROR_CODES.unusedQuery,
+      `query "${query.name}" is not used by a view, callout, or another retained query.`,
+      query.path
+    ));
+  }
   declaredCardTemplates = validateCardTemplates(
     dashboard['card-templates'],
     getValueNodeByKey(dashboardNode, 'card-templates'),
@@ -1286,14 +1294,11 @@ function validateDashboard(dashboard, dashboardNode, errors) {
       return;
     }
     validateObjectKeys(visibilityNode, SITE_CALLOUT_VISIBILITY_KEYS, path, errors);
-    validateStringField(visibility.source, `${path}.source`, true, errors);
-    if (typeof visibility.source === 'string' && !SOURCE_VALUES.includes(visibility.source)) {
-      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'visible-when source must use one canonical source name.', `${path}.source`));
-    }
+    validateSource(visibility.source, `${path}.source`, errors);
     validateStringField(visibility.field, `${path}.field`, true, errors);
     if (
       typeof visibility.source === 'string'
-      && SOURCE_VALUES.includes(visibility.source)
+      && (SOURCE_VALUES.includes(visibility.source) || declaredQueries.has(visibility.source))
       && typeof visibility.field === 'string'
       && !sourceFieldNames(visibility.source)?.includes(visibility.field)
     ) {

@@ -7,34 +7,6 @@
     "repository": "githubnext/gh-aw-cao",
     "queries": [
       {
-        "name": "optimization-run-observations",
-        "intent": "Show AW Optimization orchestrator and worker runs so operators can verify activation across AI Credit and ambient-context operations.",
-        "from": "runs",
-        "filter": {
-          "predicates": [
-            {
-              "field": "workflow",
-              "in": [
-                ".github/workflows/optimization.md",
-                ".github/workflows/optimization-ai-credit-auditor.md",
-                ".github/workflows/optimization-ai-credit-optimizer.md",
-                ".github/workflows/optimization-agents-md-curator.md",
-                ".github/workflows/optimization-skills-curator.md",
-                ".github/workflows/optimization-token-efficiency-auditor.md",
-                ".github/workflows/optimization-token-optimizer.md",
-                ".github/workflows/optimization-token-efficiency-verifier.md"
-              ]
-            }
-          ]
-        },
-        "order-by": [
-          {
-            "field": "started-at",
-            "direction": "desc"
-          }
-        ]
-      },
-      {
         "name": "optimization-retained-outcomes",
         "intent": "List retained AW Optimization audits and recommendations without presenting proposed savings or context changes as realized value.",
         "from": "outcomes",
@@ -49,38 +21,6 @@
         "order-by": [
           {
             "field": "published-at",
-            "direction": "desc"
-          }
-        ]
-      },
-      {
-        "name": "optimization-attainment-observations",
-        "intent": "Query included, matured canonical grader observations for AW Optimization workers while preserving each grader identity and result.",
-        "from": "grader-observations",
-        "filter": {
-          "predicates": [
-            {
-              "field": "workflow",
-              "in": [
-                ".github/workflows/optimization-ai-credit-auditor.md",
-                ".github/workflows/optimization-ai-credit-optimizer.md",
-                ".github/workflows/optimization-agents-md-curator.md",
-                ".github/workflows/optimization-token-efficiency-verifier.md"
-              ]
-            },
-            {
-              "field": "included",
-              "equals": true
-            },
-            {
-              "field": "maturity-status",
-              "equals": "matured"
-            }
-          ]
-        },
-        "order-by": [
-          {
-            "field": "observed-at",
             "direction": "desc"
           }
         ]
@@ -978,52 +918,6 @@
               }
             ]
           }
-        ]
-      },
-      {
-        "name": "token-efficiency-opportunities",
-        "intent": "Project stable token-efficiency opportunities from canonical audit records.",
-        "from": "audits",
-        "filter": {
-          "predicates": [{ "field": "event-type", "equals": "token_efficiency.opportunity" }]
-        },
-        "compute": [
-          {
-            "as": "target-repository-link",
-            "function": "concat",
-            "args": [{ "value": "https://github.com/" }, { "field": "target-repo" }]
-          },
-          {
-            "as": "target-workflow-link",
-            "function": "concat",
-            "args": [
-              { "value": "https://github.com/" },
-              { "field": "target-repo" },
-              { "value": "/blob/HEAD/" },
-              { "field": "target-workflow-path" }
-            ]
-          }
-        ],
-        "select": [
-          { "field": "target-organization", "as": "organization" },
-          { "field": "target-repository", "as": "repository" },
-          { "field": "target-workflow-path", "as": "workflow" },
-          { "field": "run" },
-          { "field": "opportunity-id" },
-          { "field": "opportunity-kind" },
-          { "field": "assignment-run" },
-          { "field": "experiment" },
-          { "field": "evidence-window-start" },
-          { "field": "evidence-window-end" },
-          { "field": "evidence-state" },
-          { "field": "evidence-confidence" },
-          { "field": "cost-grain" },
-          { "field": "event-timestamp", "as": "observed-at" },
-          { "field": "safe-output-url", "as": "issue-link" },
-          { "field": "payload-ref", "as": "evidence-link" },
-          { "field": "target-repository-link", "as": "repository-link" },
-          { "field": "target-workflow-link", "as": "workflow-link" },
-          { "field": "run-link" }
         ]
       },
       {
@@ -3711,6 +3605,44 @@
                   "type": "temporal",
                   "format": "human-friendly-timestamp",
                   "title": "Observation cutoff"
+                }
+              ]
+            }
+          },
+          {
+            "id": "token-efficiency-optimizer-assignments",
+            "description": "The bounded eligible subset available for orchestrator dispatch in deterministic measured-AIC priority order.",
+            "disclosure": "supplemental",
+            "disclosure-label": "Dispatch-ready candidates",
+            "data": {
+              "source": "token-efficiency-optimizer-assignments",
+              "limit": 10
+            },
+            "mark": "table",
+            "controls": "static",
+            "layout": "full-view",
+            "empty-message": "No token-efficiency candidates currently satisfy every dispatch gate.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "candidate-id",
+                  "type": "nominal",
+                  "title": "Candidate"
+                },
+                {
+                  "field": "target-repo",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "workflow-path",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "measured-aic",
+                  "type": "quantitative",
+                  "title": "Measured AIC"
                 }
               ]
             }

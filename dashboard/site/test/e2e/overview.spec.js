@@ -264,6 +264,7 @@ test('renders the Overview structure before mixed page data resolves', async ({ 
       floorBusy: overview?.querySelector('.factory-floor')?.getAttribute('aria-busy'),
       campaigns: Boolean(overview?.querySelector('.link-button-list-view')),
       campaignsBusy: overview?.querySelector('.link-button-list-view')?.getAttribute('aria-busy'),
+      campaignSkeletonRows: overview?.querySelectorAll('.link-button-list-skeleton-row').length,
       headingPending: overview?.querySelectorAll('.factory-heading-pending').length,
       rhythmPending: overview?.querySelectorAll('.factory-rhythm-pending').length,
       stationsPending: overview?.querySelectorAll('.factory-station-pending').length
@@ -292,6 +293,7 @@ test('renders the Overview structure before mixed page data resolves', async ({ 
     headerBusy: null,
     floorBusy: null,
     campaignsBusy: '',
+    campaignSkeletonRows: 3,
     headingPending: 1,
     rhythmPending: 1,
     stationsPending: 6

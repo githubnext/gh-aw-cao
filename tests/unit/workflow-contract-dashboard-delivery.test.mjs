@@ -461,7 +461,8 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(mobileTest, /payload-hashes\.json/);
   assert.match(mobileTest, /gh-aw-logs-shards\\\/\[A-Za-z0-9\._-\]\+\\\.jsonl/);
   assert.match(mobileTest, /inventory-sources\.json/);
-  assert.match(mobileTest, /shards\.slice\(0, optionalPositiveInteger\("MOBILE_DEBUG_SHARD_LIMIT"\)\)/);
+  assert.match(mobileTest, /process\.env\.MOBILE_BROWSER === "webkit"[\s\S]*?Math\.min\(requested \?\? maximumWebKitShardCount, maximumWebKitShardCount\)/);
+  assert.match(mobileTest, /shards\.slice\(0, mobileDebugShardLimit\(\)\)/);
   assert.match(mobileTest, /for \(const \[name\] of selectedShards\)[\s\S]*?pipeline\(response\.body, createWriteStream\(shardPath\)\)/);
   assert.match(mobileTest, /parameters\.set\("debug-shard-limit", String\(shardLimit\)\)/);
   assert.doesNotMatch(mobileTest, /fetch\(dataUrl\)/);
