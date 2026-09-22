@@ -897,8 +897,8 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .table-cli-action-button { width: 32px; height: 32px; display: grid; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); cursor: pointer; }
 .table-cli-action-button:hover { border-color: var(--accent); background: var(--accent-muted); color: var(--accent); }
 .table-cli-action-button .octicon { width: 16px; height: 16px; margin: 0; }
-.table-intent-dialog { width: min(680px, calc(100vw - 32px)); max-width: none; max-height: calc(100vh - 32px); margin: auto; padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); box-shadow: 0 16px 48px color-mix(in srgb, var(--canvas-inset) 70%, transparent); color: var(--fg); }
-.table-intent-dialog[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
+.table-intent-dialog { width: min(680px, calc(100vw - 32px)); height: fit-content; max-width: none; max-height: calc(100dvh - 32px); margin: auto; padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); box-shadow: 0 16px 48px color-mix(in srgb, var(--canvas-inset) 70%, transparent); color: var(--fg); }
+.table-intent-dialog[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; align-content: start; }
 .table-intent-dialog::backdrop { background: color-mix(in srgb, var(--canvas-inset) 72%, transparent); }
 .table-intent-dialog-header { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border-bottom: 1px solid var(--border); background: var(--canvas-subtle); text-align: left; }
 .table-intent-dialog-header h2 { margin: 0; font-size: 1rem; }
@@ -916,23 +916,21 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .campaign-problem-list>:is(h3,h4){margin:0;padding:10px 14px 8px;border-bottom:1px solid var(--border);background:var(--canvas-subtle);text-transform:uppercase;font-size:.75rem;letter-spacing:.04em}
 .campaign-problem-list>.view-description{margin:0;padding:8px 14px;border-bottom:1px solid var(--border-muted);color:var(--muted);font-size:.75rem}
 .campaign-problem-group{border-bottom:1px solid var(--border-muted)}
-.campaign-problem-group>summary{display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--canvas-subtle);cursor:pointer;list-style:none}
-.campaign-problem-group>summary::-webkit-details-marker{display:none}
-.campaign-problem-group-chevron{width:16px;height:16px;display:grid;flex:0 0 16px;place-items:center;color:var(--muted)}
-.campaign-problem-group[open] .campaign-problem-group-chevron{transform:rotate(90deg)}
+.campaign-problem-group-header{display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--canvas-subtle)}
 .campaign-problem-group-name{font-weight:600}
 .campaign-problem-group-path{min-width:0;overflow:hidden;color:var(--muted);font-size:.75rem;text-overflow:ellipsis;white-space:nowrap}
 .campaign-problem-group .count-badge{margin-left:auto}
 .campaign-problem-items{margin:0;padding:0;list-style:none}
-.campaign-problem-item{min-height:42px;display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;gap:8px;padding:6px 12px 6px 40px;border-top:1px solid var(--border-muted)}
+.campaign-problem-item{min-height:42px;display:grid;grid-template-columns:20px minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:6px 12px 6px 40px;border-top:1px solid var(--border-muted)}
 .campaign-problem-severity{width:16px;height:16px;display:grid;place-items:center;color:var(--danger)}
 .campaign-problem-copy{min-width:0}
 .campaign-problem-message,.campaign-problem-metadata{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .campaign-problem-metadata{color:var(--muted);font-size:.75rem}
 .campaign-problem-item .table-intent-button{min-height:28px;padding:3px 8px}
+.campaign-problem-occurrences{display:inline-flex}
 .campaign-problem-list-empty{margin:0;padding:18px 14px;color:var(--muted)}
 @media (max-width: 700px) {
-  .campaign-problem-item{grid-template-columns:20px minmax(0,1fr);padding-left:12px}
+  .campaign-problem-item{grid-template-columns:20px minmax(0,1fr) auto;padding-left:12px}
   .campaign-problem-item .table-intent-control{grid-column:2;justify-self:start}
 }
 h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }

@@ -69,7 +69,10 @@ describe('campaign problem list', () => {
     expect(rendered.querySelector('.campaign-problem-run-link a')?.getAttribute('href'))
       .toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/123');
     expect(rendered.querySelector('[data-intent-presentation="copy-prompt"]')?.textContent)
-      .toContain('Fix with Copilot');
+      .toContain('Fix It');
+    expect(rendered.querySelector('.table-intent-dialog')?.textContent)
+      .toContain('Use the debugging skill');
+    expect(rendered.querySelector('details.campaign-problem-group')).toBeNull();
   });
 
   it('shows active orchestrators without retained Run evidence as problems', () => {
@@ -131,6 +134,8 @@ describe('campaign problem list', () => {
     const badges = [...rendered.querySelectorAll('.count-badge')].map((badge) => badge.textContent);
     expect(badges).toContain('52×');
     expect(badges).toContain('3×');
+    expect(rendered.querySelectorAll('.campaign-problem-occurrences')).toHaveLength(2);
+    expect(rendered.querySelector('.campaign-problem-message .count-badge')).toBeNull();
     expect(rendered.querySelector('.campaign-problem-run-link a')?.textContent).toContain('Latest Run');
   });
 
