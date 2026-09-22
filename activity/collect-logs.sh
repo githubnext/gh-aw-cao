@@ -78,11 +78,8 @@ for target_repository in "${repositories[@]}"; do
 done
 
 if [[ $exit_code -eq 0 ]]; then
-  if [[ -f activity/cao.mjs ]]; then
-    cao_script=activity/cao.mjs
-  elif [[ -f .github/aw/activity/cao.mjs ]]; then
-    cao_script=.github/aw/activity/cao.mjs
-  else
+  cao_script=activity/cao.mjs
+  if [[ ! -f "$cao_script" ]]; then
     echo "CAO activity CLI is unavailable" >&2
     exit_code=1
   fi

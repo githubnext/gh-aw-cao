@@ -10,8 +10,12 @@ const suites = [
     manifest: "aw.yml",
     testPattern: "root campaign",
     prefixes: [
-      ".github/aw/cao-evolution/graders/",
-      ".github/aw/optimization/graders/",
+      "activity/",
+      "dashboard/",
+      "cao.sh",
+      ".github/actions/setup-cao-runtime/",
+      "cao-evolution/.github/graders/",
+      "optimization/.github/graders/",
       ".github/workflows/graders/cao-evolution-",
       ".github/workflows/graders/dependabot-",
       ".github/workflows/graders/optimization-",
@@ -22,14 +26,14 @@ const suites = [
     name: "activity",
     manifest: "activity/aw.yml",
     testPattern: "focused activity campaign contract",
-    prefixes: [".github/workflows/activity."],
+    prefixes: ["activity/", ".github/workflows/activity."],
   },
   {
     name: "CAO Evolution",
     manifest: "cao-evolution/aw.yml",
     testPattern: "focused CAO Evolution campaign contract",
     prefixes: [
-      ".github/aw/cao-evolution/graders/",
+      "cao-evolution/.github/graders/",
       ".github/workflows/graders/cao-evolution-",
       ".github/workflows/cao-evolution",
       ".github/workflows/shared/",
@@ -40,7 +44,7 @@ const suites = [
     manifest: "eu-cra-compliance/aw.yml",
     testPattern: "focused EU CRA campaign contract",
     prefixes: [
-      ".github/aw/eu-cra-compliance/graders/",
+      "eu-cra-compliance/.github/graders/",
       ".github/workflows/eu-cra-compliance",
       ".github/workflows/graders/eu-cra-compliance",
       ".github/workflows/shared/",
@@ -60,7 +64,7 @@ const suites = [
     manifest: "self-care/aw.yml",
     testPattern: "focused SelfCare campaign contract",
     prefixes: [
-      ".github/aw/self-care/graders/",
+      "self-care/.github/graders/",
       ".github/workflows/graders/self-care-",
       ".github/workflows/self-care",
       ".github/workflows/shared/",
@@ -71,7 +75,7 @@ const suites = [
     manifest: "software-development-practices/aw.yml",
     testPattern: "focused Software Development Practices campaign contract",
     prefixes: [
-      ".github/aw/software-development-practices/graders/",
+      "software-development-practices/.github/graders/",
       ".github/workflows/graders/software-development-practices-",
       ".github/workflows/shared/",
       ".github/workflows/software-development-practices",
@@ -81,7 +85,7 @@ const suites = [
     name: "dashboard",
     manifest: "dashboard/aw.yml",
     testPattern: "dashboard campaign contract|--force restores dashboard",
-    prefixes: [".github/workflows/dashboard-"],
+    prefixes: ["dashboard/", ".github/workflows/dashboard-"],
   },
   {
     name: "Dependabot",

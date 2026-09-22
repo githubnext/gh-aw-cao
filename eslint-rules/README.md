@@ -38,10 +38,10 @@ All six workflows share one repo-memory branch, `memory/eslint-rules`.
 - `rules/<rule-key>.json` is a flat directory holding the current normalized state of each rule.
 - Only compact evidence references and outcomes are persisted — permalinks, numbers, paths, counts, and classifications. Review comment text, agent transcripts, diffs, logs, and source dumps are never stored.
 
-[`rules-db.mjs`](./rules-db.mjs) rebuilds a queryable SQLite database from those logs. It is installed as a campaign resource at `.github/aw/eslint-rules/rules-db.mjs` and uses only the Node.js standard library:
+[`rules-db.mjs`](./rules-db.mjs) rebuilds a queryable SQLite database from those logs. It is installed as a campaign resource at `eslint-rules/rules-db.mjs` and uses only the Node.js standard library:
 
 ```bash
-node .github/aw/eslint-rules/rules-db.mjs build \
+node eslint-rules/rules-db.mjs build \
   --memory "$GH_AW_MEMORY_DIR" \
   --database /tmp/gh-aw/eslint-rules/rules.sqlite
 ```

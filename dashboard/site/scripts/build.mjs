@@ -110,15 +110,6 @@ export function filterExperimentalDashboardViews(document, enabled = false) {
 }
 
 async function findCampaignDashboards(repositoryPath, controlSettings) {
-  const installedDashboardsPath = join(repositoryPath, "dashboards");
-  try {
-    return (await readdir(installedDashboardsPath, { withFileTypes: true }))
-      .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
-      .map((entry) => join(installedDashboardsPath, entry.name));
-  } catch (error) {
-    if (error?.code !== "ENOENT") throw error;
-  }
-
   const campaignDashboards = [];
   for (const campaignName of Object.keys(controlSettings.campaigns ?? {}).toSorted()) {
     const source = join(repositoryPath, campaignName, "dashboard.json");

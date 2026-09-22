@@ -139,7 +139,7 @@ Every ESLint Factory workflow shares one repo-memory branch, `memory/eslint-rule
 - Each line is one JSON object with exactly these fields: `schema` (`"cao.eslint-rules.transaction"`), `schema_version` (`1`), `txn_id` (`applier-<run id>-<counter>`), `recorded_at` (ISO 8601 UTC seconds, `Z` suffix), `worker` (`"applier"`), `kind`, `rule_key`, `target_repo`, `central_repo`, `correlation_id`, `run_url`, and a `payload` object.
 - `rules/<rule-key>.json` is a flat directory holding the current normalized state of every central rule. Read it; only record adoption state there.
 - Persist compact outcomes only: the selected `rule_key`, the adoption mode (`bootstrap` or `extend`), the issue number and URL, and the readiness evidence you relied on. Never copy issue bodies, source files, diffs, or lint output into memory.
-- Rebuild the derived database before and after writing with `node .github/aw/eslint-rules/rules-db.mjs build --memory "$GH_AW_MEMORY_DIR" --database /tmp/gh-aw/eslint-rules/rules.sqlite`. It fails closed on malformed lines; if it rejects a line you appended, correct that line and `report_incomplete` rather than appending more.
+- Rebuild the derived database before and after writing with `node eslint-rules/rules-db.mjs build --memory "$GH_AW_MEMORY_DIR" --database /tmp/gh-aw/eslint-rules/rules.sqlite`. It fails closed on malformed lines; if it rejects a line you appended, correct that line and `report_incomplete` rather than appending more.
 
 ## Selection
 

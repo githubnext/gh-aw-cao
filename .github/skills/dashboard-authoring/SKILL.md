@@ -42,6 +42,6 @@ Before treating a source as complete, run `cao audit-jsonl --input FILE`. Distin
 ## Campaign file convention
 
 - Store an operation campaign's production Dashboard Language document at `<campaign>/dashboard.json`.
-- Declare it in `<campaign>/aw.yml` as a resource whose destination is `.github/aw/dashboards/<campaign>.json`, where `<campaign>` is the campaign's canonical identifier.
-- Keep each campaign dashboard independently valid. The dashboard campaign bundles installed `.github/aw/dashboards/*.json` documents into the single deployed `dashboard.json` that the browser loads.
+- Store it at `<campaign>/dashboard.json`, where `<campaign>` is the campaign's canonical identifier; the CAO materializer preserves the campaign directory at that same path.
+- Keep each campaign dashboard independently valid. The dashboard campaign bundles installed `<campaign>/dashboard.json` documents into the single deployed `dashboard.json` that the browser loads.
 - Do not add campaign pages directly to `dashboard/site/dashboard.json`; that file contains the built-in dashboard configuration.

@@ -166,7 +166,6 @@ test("local dashboard server composes campaign dashboards and reloads after upda
   const preview = await startDashboardServer({
     siteRoot,
     catalogRoot: campaignRoot,
-    installedDashboardsDirectory: path.join(root, "installed-dashboards"),
     downloadData,
     allowMissingOrigin: true,
     workingDirectory: root,
@@ -266,7 +265,6 @@ test("local dashboard server fails when dashboard data cannot be downloaded", as
       startDashboardServer({
         siteRoot: root,
         catalogRoot: null,
-        installedDashboardsDirectory: path.join(root, "dashboards"),
         downloadData: async () => {
           throw new Error("artifact unavailable");
         },
@@ -344,7 +342,6 @@ test("canvas dashboard executes only declared CLI actions through the provided e
   const preview = await startDashboardServer({
     siteRoot: root,
     catalogRoot: null,
-    installedDashboardsDirectory: path.join(root, "dashboards"),
     downloadData: async (destination) => {
       await mkdir(destination, { recursive: true });
       await writeFile(path.join(destination, "sources.json"), "{}");
@@ -494,7 +491,6 @@ test("local dashboard server optionally prompts Copilot to update the active vie
   const preview = await startDashboardServer({
     siteRoot: root,
     catalogRoot: campaignRoot,
-    installedDashboardsDirectory: path.join(root, "dashboards"),
     downloadData: async (destination) => {
       await mkdir(destination, { recursive: true });
       await writeFile(path.join(destination, "sources.json"), "{}");
@@ -696,17 +692,16 @@ test("local dashboard server rejects paths outside its workspace", async () => {
       startDashboardServer({
         siteRoot: root,
         catalogRoot: null,
-        installedDashboardsDirectory: path.join(workspace, "dashboards"),
         workingDirectory: workspace,
       }),
       /paths must remain within the workspace/,
     );
-    await symlink(outside, path.join(workspace, "dashboards"));
+    await writeFile(path.join(outside, "dashboard.json"), dashboard("outside"));
+    await symlink(outside, path.join(workspace, "example"));
     await assert.rejects(
       startDashboardServer({
         siteRoot,
-        catalogRoot: null,
-        installedDashboardsDirectory: path.join(workspace, "dashboards"),
+        catalogRoot: workspace,
         workingDirectory: workspace,
       }),
       /paths must remain within the workspace/,
@@ -738,7 +733,9 @@ test("dashboard local server declares canvas readiness output", async () => {
   assert.match(source, /CAO_CANVAS_READY \$\{preview\.url\}\//);
 });
 
-test("local dashboard server downloads dashboard-build data with GitHub CLI", async () => {
+test("local dashboard server downloads dashboard-build data with GitHub CLI", {
+  skip: process.platform === "win32",
+}, async () => {
   const root = await mkdtemp(path.join(tmpdir(), "dashboard-local-server-"));
   const ghExecutable = path.join(root, "gh");
   await writeFile(path.join(root, "index.html"), "<!doctype html><body>preview</body>");
@@ -776,7 +773,6 @@ printf '{"repositories":{"rows":[{"repository":"control"}]}}' > "$7/cao/inventor
   const preview = await startDashboardServer({
     siteRoot: root,
     catalogRoot: null,
-    installedDashboardsDirectory: path.join(root, "dashboards"),
     repository: "acme/control",
     ghExecutable,
     workingDirectory: root,

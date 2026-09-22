@@ -180,14 +180,14 @@ The campaign installs the following components in the control-plane repository:
 
 - `.github/workflows/cao-dashboard.yml`, the dashboard builder, artifact publisher, and optional standalone Pages publisher;
 - `.github/workflows/cao-activity.yml`, the scheduled and manually dispatchable data collector and cache publisher;
-- `.github/aw/activity/logs.mjs`, the single bounded `gh aw logs` acquisition entrypoint;
-- `.github/aw/activity/index.mjs`, the local-only deployed-workflow and run-health indexer;
-- `.github/aw/dashboard/report/aic-usage.mjs`, the bounded AI Credit usage collector;
-- `.github/aw/activity/inventory.mjs`, the dependency-free control-plane inventory extractor;
-- `.github/aw/dashboard/report/operational-values.mjs`, the fleet collector that preserves ordered operational-value metrics from retained gh-aw run records;
-- `.github/aw/dashboard/report/records.mjs`, the durable issue, pull request, comment, and review-artifact normalizer with logs-derived run attribution;
-- `.github/aw/dashboard/report/dashboard-language-sources.mjs`, the trusted adapter from collected records to Dashboard Language `sources.json`;
-- `.github/aw/dashboard/site`, the bundled Dashboard Language configuration, validator, presenter, and browser runtime.
+- `activity/logs.mjs`, the single bounded `gh aw logs` acquisition entrypoint;
+- `activity/index.mjs`, the local-only deployed-workflow and run-health indexer;
+- `dashboard/report/aic-usage.mjs`, the bounded AI Credit usage collector;
+- `activity/inventory.mjs`, the dependency-free control-plane inventory extractor;
+- `dashboard/report/operational-values.mjs`, the fleet collector that preserves ordered operational-value metrics from retained gh-aw run records;
+- `dashboard/report/records.mjs`, the durable issue, pull request, comment, and review-artifact normalizer with logs-derived run attribution;
+- `dashboard/report/dashboard-language-sources.mjs`, the trusted adapter from collected records to Dashboard Language `sources.json`;
+- `dashboard/site`, the bundled Dashboard Language configuration, validator, presenter, and browser runtime.
 
 For a standalone Pages site:
 
@@ -311,7 +311,7 @@ The command installs or upgrades `gh-aw` to the minimum version declared by `.gi
 
 Stable releases are used by default. Pass `--pre-releases` to include published prereleases when selecting the latest compatible release.
 
-Existing installations whose campaign records predate the campaign-owned `.github/workflows/shared/` runtime must update before running CAO so `control.mjs` and `policy.mjs` are materialized beside `control.md`. Admission intentionally fails closed when those installed files are missing.
+Existing control repositories whose campaign records predate the campaign-owned `.github/workflows/shared/` runtime must update before running CAO so `control.mjs` and `policy.mjs` are materialized beside `control.md`. Admission intentionally fails closed when those canonical source-path resources are missing.
 
 ### Catalog Release Revocation
 
@@ -325,7 +325,7 @@ A catalog maintainer cannot remotely disable workflows already installed in inde
 6. update projected catalog versions and lifecycle status after validation;
 7. resume each runtime through review and limited-live promotion.
 
-Removing or retagging the catalog source does not revoke installed files. Revocation is complete only after every affected runtime is stopped, repaired, or has its repository access removed.
+Removing or retagging the catalog source does not revoke resources already materialized in control repositories at their canonical source paths. Revocation is complete only after every affected runtime is stopped, repaired, or has its repository access removed.
 
 ## Adding a Campaign
 

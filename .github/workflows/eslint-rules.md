@@ -122,7 +122,7 @@ This campaign deliberately splits repository selection from repository work:
 
 Read `/tmp/gh-aw/agent/control-precompute.json` first. Stop with `report_incomplete` when it is missing, unreadable, or reports no authorization.
 
-Every ESLint Factory workflow shares the `memory/eslint-rules` repo-memory branch mounted at `$GH_AW_MEMORY_DIR`. Rebuild its disposable SQLite view before selection with `node .github/aw/eslint-rules/rules-db.mjs build --memory "$GH_AW_MEMORY_DIR" --database /tmp/gh-aw/eslint-rules/rules.sqlite`. The append-only JSONL logs remain authoritative; fail with `report_incomplete` if validation fails.
+Every ESLint Factory workflow shares the `memory/eslint-rules` repo-memory branch mounted at `$GH_AW_MEMORY_DIR`. Rebuild its disposable SQLite view before selection with `node eslint-rules/rules-db.mjs build --memory "$GH_AW_MEMORY_DIR" --database /tmp/gh-aw/eslint-rules/rules.sqlite`. The append-only JSONL logs remain authoritative; fail with `report_incomplete` if validation fails.
 
 For each precomputed candidate, and for no other repository, confirm eligibility with bounded read-only evidence:
 

@@ -11,7 +11,6 @@ import { DatabaseSync } from "node:sqlite";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const scriptSource = path.join(repositoryRoot, "eslint-rules/rules-db.mjs");
-const scriptResource = path.join(repositoryRoot, ".github/aw/eslint-rules/rules-db.mjs");
 
 function transaction(overrides = {}) {
   return JSON.stringify({
@@ -235,8 +234,4 @@ test("rules database command line builds and verifies without dependencies", () 
   } finally {
     rmSync(memory, { recursive: true, force: true });
   }
-});
-
-test("installed rules database resource matches the campaign source", () => {
-  assert.deepEqual(readFileSync(scriptResource), readFileSync(scriptSource));
 });

@@ -48,7 +48,6 @@ test("Copilot prompt saves a dashboard change, renders it, and correlates browse
     preview = await startDashboardServer({
       siteRoot: path.join(repositoryRoot, "dashboard/site"),
       catalogRoot: campaignRoot,
-      installedDashboardsDirectory: path.join(fixtureRoot, "installed"),
       downloadData: async (destination) => {
         await mkdir(destination, { recursive: true });
         await writeFile(path.join(destination, "sources.json"), JSON.stringify({

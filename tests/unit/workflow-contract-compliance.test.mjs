@@ -63,7 +63,8 @@ test("Advisory preserves UK AI guidance and human-review boundaries", () => {
   assert.match(maintainer, /original specification and current authoritative GOV\.UK guidance/);
   assert.match(maintainer, /https:\/\/www\.gov\.uk\/guidance\/ai-open-code-and-vulnerability-risk-in-the-public-sector/);
   assert.match(maintainer, /update only the applicable ledger path/i);
-  assert.match(maintainer, /allowed-files:\n\s+- "uk-ai-advisory\/implementation-status\.md"\n\s+- "\.github\/aw\/uk-ai-advisory\/implementation-status\.md"/);
+  assert.match(maintainer, /allowed-files:\n\s+- "uk-ai-advisory\/implementation-status\.md"/);
+  assert.doesNotMatch(maintainer, /\.github\/aw\/uk-ai-advisory/);
   assert.match(maintainer, /draft: true/);
   assert.match(maintainer, /create-issue:[\s\S]*?deduplicate-by-title: true[\s\S]*?max: 1/);
   assert.match(maintainer, /If the authoritative source or a trusted campaign file cannot be accessed or reconciled, call `report_incomplete`/);
@@ -153,7 +154,8 @@ test("EU CRA workflows preserve advisory and human-review boundaries", () => {
   assert.doesNotMatch(maintainer, /^\s+staged:/m);
   assert.match(maintainer, /Systematically account for the complete Act: Articles 1–71, Annexes I–VIII/);
   assert.match(maintainer, /update only the applicable ledger path/i);
-  assert.match(maintainer, /allowed-files:\n\s+- "eu-cra-compliance\/implementation-status\.md"\n\s+- "\.github\/aw\/eu-cra-compliance\/implementation-status\.md"/);
+  assert.match(maintainer, /allowed-files:\n\s+- "eu-cra-compliance\/implementation-status\.md"/);
+  assert.doesNotMatch(maintainer, /\.github\/aw\/eu-cra-compliance/);
   assert.match(maintainer, /draft: true/);
   assert.match(maintainer, /create-issue:[\s\S]*?max: 1/);
   assert.match(maintainer, /deduplicate-by-title: true/);

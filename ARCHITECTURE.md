@@ -130,7 +130,8 @@ reconstructable.
 | `.github/workflows/*.lock.yml` | Generated workflow artifacts; never edit these directly. |
 | `.github/workflows/shared/` | Shared policy resolution, control admission, checkout, review-bundle, and observability components. |
 | `.github/workflows/cao.json` | Sole persistent, non-secret rollout policy for this source-managed control plane. |
-| `.github/aw/` | Runtime resources and installed campaign ownership records used by workflows in this repository. |
+| `.github/aw/` | gh-aw instruction, package, and generated campaign-ownership metadata only; CAO executable resources stay at their canonical catalog source paths. |
+| `.github/cao/instructions.md` | CAO-specific operator and authoring guidance; it does not grant rollout authority or execution capabilities. |
 | `skills/` | Portable Agent Plugin skills exposed by this repository. |
 | `specs/` | Normative control, Activity, dashboard, and data contracts. |
 | `docs/` | Explanatory and operator-facing documentation site. |
@@ -138,9 +139,17 @@ reconstructable.
 | `tests/` | Unit, integration, load, and workflow-contract tests. |
 | `scripts/` | Repository validation and maintenance utilities. |
 
-Campaign manifests are the catalog's source of truth for campaign contents.
-Campaign source may install files into different destinations, so ownership is
-defined by manifests rather than by directory proximity.
+Campaign manifests are the catalog's source of truth for installed workflows and
+the trusted materializer bootstrap. The materializer copies executable resources
+from the package's immutable full `resolvedCommit` SHA to the same top-level
+paths they occupy in the catalog, replacing each bounded campaign-owned
+destination so removed files cannot survive an update. Exact focused Activity
+or Dashboard records retain ownership of their directories when root
+materialization runs; all selected revisions are preflighted before replacement.
+The Activity and Dashboard manifests are root-package components rather than
+complete standalone installation entry points because gh-aw cannot invoke the
+materialization hook. Source-managed and installed control repositories
+therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
 
 ## Architectural boundaries
 
@@ -199,6 +208,8 @@ defined by manifests rather than by directory proximity.
 
 - Edit `.github/workflows/*.md`, then compile with `gh aw compile`; do not edit
   `.lock.yml` files by hand.
+- Keep executable campaign resource destinations aligned with their catalog
+  source paths; do not add a parallel installed-runtime tree under `.github/aw/`.
 - Update installed campaign records through gh-aw campaign commands rather than
   editing `.github/aw/campaigns/*.json`.
 - Keep policy and workflow changes together because admission resolves policy

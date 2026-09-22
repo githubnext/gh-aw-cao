@@ -13,7 +13,7 @@ test("campaign lifecycle matrix selects only campaigns owning changed files", ()
   );
   assert.deepEqual(
     names(["dashboard/site/index.html"]),
-    ["root", "CAO Evolution", "dashboard", "Dependabot"],
+    ["root", "dashboard"],
   );
   assert.deepEqual(
     names([".github/workflows/graders/dependabot-update-planner-operational-value.sh"]),
@@ -24,20 +24,8 @@ test("campaign lifecycle matrix selects only campaigns owning changed files", ()
     ["root", "CAO Evolution"],
   );
   assert.deepEqual(
-    names([".github/aw/optimization/graders/optimization-ai-credit-auditor-operational-value.sh"]),
-    ["root"],
-  );
-  assert.deepEqual(
-    names([".github/aw/dependabot/graders/dependabot-update-planner-operational-value.sh"]),
-    [],
-  );
-  assert.deepEqual(
-    names([".github/aw/eu-cra-compliance/graders/eu-cra-compliance-scope-classifier-operational-value.sh"]),
-    [],
-  );
-  assert.deepEqual(
     names(["optimization/.github/graders/optimization-ai-credit-auditor-operational-value.sh"]),
-    [],
+    ["root"],
   );
   assert.deepEqual(
     names(["dependabot/.github/graders/dependabot-update-planner-operational-value.sh"]),

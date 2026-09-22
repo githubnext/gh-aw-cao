@@ -42,6 +42,11 @@ jobs:
           ref: ${{ github.workflow_sha }}
           persist-credentials: false
 
+      - name: Set up CAO activity runtime
+        uses: ./.github/actions/setup-cao-runtime
+        with:
+          bundle: activity
+
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -90,15 +95,7 @@ jobs:
           REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity/control-settings.json
         run: |
           mkdir -p "$RUNNER_TEMP/cao-activity"
-          if [[ -f activity/control-settings.mjs ]]; then
-            activity_root=activity
-          elif [[ -f .github/aw/activity/control-settings.mjs ]]; then
-            activity_root=.github/aw/activity
-          else
-            echo "Activity control settings resolver is unavailable" >&2
-            exit 1
-          fi
-          node "$activity_root/control-settings.mjs" \
+          node activity/control-settings.mjs \
             .github/workflows/shared/control.mjs \
             .github/workflows/cao.json \
             "$REPORT_CONTROL_SETTINGS"
@@ -160,17 +157,9 @@ jobs:
             if (settings.allowed_repositories.length === 0 && !process.env.ACTIVITY_APP_TOKEN) {
               throw new Error('Owner-wide repository discovery requires the read-only GitHub App')
             }
-            const activityRoot = fs.existsSync('activity/cao.mjs')
-              ? 'activity'
-              : fs.existsSync('.github/aw/activity/cao.mjs')
-                ? '.github/aw/activity'
-                : undefined
-            if (!activityRoot) {
-              throw new Error('Activity inventory collector is unavailable')
-            }
             core.info('Workflow discovery started')
             const result = await exec.getExecOutput(process.execPath, [
-              path.join(activityRoot, 'cao.mjs'),
+              path.join('activity', 'cao.mjs'),
               'discover-workflows',
               '--control-settings', process.env.REPORT_CONTROL_SETTINGS,
               '--inventory', process.env.REPORT_INVENTORY,
@@ -198,15 +187,7 @@ jobs:
           REPORT_RUN_LIMIT: "10000"
           REPORT_RUN_WINDOW_DAYS: "30"
         run: |
-          if [[ -f activity/collect-logs.sh ]]; then
-            collector=activity/collect-logs.sh
-          elif [[ -f .github/aw/activity/collect-logs.sh ]]; then
-            collector=.github/aw/activity/collect-logs.sh
-          else
-            echo "Activity log collector is unavailable" >&2
-            exit 1
-          fi
-          bash "$collector"
+          bash activity/collect-logs.sh
           collection_exit_code="$(cat "$REPORT_GH_AW_LOGS_EXIT_CODE")"
           if [[ "$collection_exit_code" -ne 0 ]]; then
             echo "One or more repository log collections failed" >&2
@@ -219,15 +200,7 @@ jobs:
           REPORT_GH_AW_LOGS_RUNS: ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
           REPORT_GH_AW_LOGS_RECORDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-records
         run: |
-          if [[ -f activity/cao.mjs ]]; then
-            ingestion_script=activity/cao.mjs
-          elif [[ -f .github/aw/activity/cao.mjs ]]; then
-            ingestion_script=.github/aw/activity/cao.mjs
-          else
-            echo "Activity shard generator is unavailable" >&2
-            exit 1
-          fi
-          node "$ingestion_script" hash-payloads \
+          node activity/cao.mjs hash-payloads \
             --shard-dir "$REPORT_GH_AW_LOGS_SHARDS" \
             --runs-dir "$REPORT_GH_AW_LOGS_RUNS" \
             --records-dir "$REPORT_GH_AW_LOGS_RECORDS" \
@@ -239,22 +212,14 @@ jobs:
           REPORT_GH_AW_LOGS_RUNS: ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
           REPORT_GH_AW_LOGS_RECORDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-records
         run: |
-          if [[ -f activity/cao.mjs ]]; then
-            ingestion_script=activity/cao.mjs
-          elif [[ -f .github/aw/activity/cao.mjs ]]; then
-            ingestion_script=.github/aw/activity/cao.mjs
-          else
-            echo "Activity SQLite ingestion pipeline is unavailable" >&2
-            exit 1
-          fi
           # Compact run information is injected before detailed event data so
           # clients and projections can expose run properties immediately.
-          node "$ingestion_script" ingest-jsonl \
+          node activity/cao.mjs ingest-jsonl \
             --database "$ACTIVITY_DATABASE" \
             --runs-dir "$REPORT_GH_AW_LOGS_RUNS" \
             --records-dir "$REPORT_GH_AW_LOGS_RECORDS" \
             --run-retention-days all
-          node "$ingestion_script" doctor \
+          node activity/cao.mjs doctor \
             --database "$ACTIVITY_DATABASE" \
             --run-ttl-days all
 
@@ -265,15 +230,7 @@ jobs:
           REPORT_GH_AW_LOGS_RUNS: ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
           REPORT_GH_AW_LOGS_RECORDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-records
         run: |
-          if [[ -f activity/cao.mjs ]]; then
-            ingestion_script=activity/cao.mjs
-          elif [[ -f .github/aw/activity/cao.mjs ]]; then
-            ingestion_script=.github/aw/activity/cao.mjs
-          else
-            echo "Activity SQLite ingestion pipeline is unavailable" >&2
-            exit 1
-          fi
-          node "$ingestion_script" hash-payloads \
+          node activity/cao.mjs hash-payloads \
             --database "$ACTIVITY_DATABASE" \
             --shard-dir "$REPORT_GH_AW_LOGS_SHARDS" \
             --runs-dir "$REPORT_GH_AW_LOGS_RUNS" \

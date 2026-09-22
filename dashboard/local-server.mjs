@@ -40,9 +40,7 @@ import { buildDashboardPageChunkPath, splitDashboardDocument } from "./site/src/
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const executeFile = promisify(execFile);
-const defaultCatalogRoot = basename(resolve(scriptDirectory, "..", "..")) === ".github"
-  ? null
-  : resolve(scriptDirectory, "..");
+const defaultCatalogRoot = resolve(scriptDirectory, "..");
 const socketEndpoint = "/__dashboard_socket";
 const dataArtifactName = "central-agentic-ops-dashboard";
 const devServerPidFileName = ".cao-dashboard-dev-server.json";
@@ -211,30 +209,24 @@ async function dashboardSourceForView(view, dashboardPaths) {
   return dashboardPaths[0];
 }
 
-async function campaignDashboardPaths(catalogRoot, installedDashboardsDirectory) {
+async function campaignDashboardPaths(catalogRoot) {
+  if (!catalogRoot) return [];
   const paths = [];
-  const installed = await readdir(installedDashboardsDirectory, { withFileTypes: true }).catch((error) => {
+  const catalogEntries = await readdir(catalogRoot, { withFileTypes: true }).catch((error) => {
     if (error?.code === "ENOENT") return [];
     throw error;
   });
-  for (const entry of installed) {
-    if (entry.isFile() && entry.name.endsWith(".json")) {
-      paths.push(join(installedDashboardsDirectory, entry.name));
+  for (const entry of catalogEntries) {
+    if (entry.name.startsWith(".")) continue;
+    const path = join(catalogRoot, entry.name, "dashboard.json");
+    if (!(await stat(path).catch(() => null))?.isFile()) continue;
+    const resolvedPath = await realpath(path);
+    if (!isWithin(catalogRoot, resolvedPath)) {
+      throw new Error("Dashboard server paths must remain within the workspace.");
     }
+    paths.push(resolvedPath);
   }
-
-  if (catalogRoot) {
-    const catalogEntries = await readdir(catalogRoot, { withFileTypes: true }).catch((error) => {
-      if (error?.code === "ENOENT") return [];
-      throw error;
-    });
-    for (const entry of catalogEntries) {
-      if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
-      const path = join(catalogRoot, entry.name, "dashboard.json");
-      if ((await stat(path).catch(() => null))?.isFile()) paths.push(path);
-    }
-  }
-  return [...new Set(paths)].toSorted();
+  return paths.toSorted();
 }
 
 async function downloadDashboardData(destination, repository, ghExecutable) {
@@ -546,8 +538,7 @@ async function isWorkspaceDashboardServer(pid, workingDirectory) {
     return processDirectory === workingDirectory
       && arguments_.some((argument) =>
         argument === "dashboard/local-server.mjs"
-        || argument.endsWith("/dashboard/local-server.mjs")
-        || argument.endsWith("/.github/aw/dashboard/local-server.mjs"));
+        || argument.endsWith("/dashboard/local-server.mjs"));
   } catch (error) {
     if (error?.code === "ENOENT" || error?.code === "ESRCH") return false;
     throw error;
@@ -1183,7 +1174,7 @@ The original dashboard source most likely defining this view is ${JSON.stringify
 The complete set of editable original dashboard sources is:
 ${editableDashboardPaths.map((path) => `- ${path}`).join("\n")}
 
-Built-in views come from the site's dashboard.json. Campaign views come from their campaign dashboard.json source (for an installed control repository, under .github/aw/dashboards; for this catalog, in the matching top-level campaign directory). Only JSON dashboard changes are supported. You may inspect files in the workspace, search with grep, and use common safe shell commands to understand existing data, conventions, and related dashboards. Read, write, and shell access are available in the workspace and under ${JSON.stringify(tmpdir())}; use the temporary directory only for disposable intermediate files. Modify application state only through the selected dashboard.json. Use read_dashboard_language_reference when language vocabulary is needed, then use read_current_dashboard_view and validate_current_dashboard_view to inspect and validate the selected page. Prefer save_current_dashboard_view for the final write, then run validate_dashboard_json. Do not finish until validate_dashboard_json returns ok: true.
+Built-in views come from the site's dashboard.json. Campaign views come from the matching top-level <campaign>/dashboard.json file in both catalog and installed control repositories. Only JSON dashboard changes are supported. You may inspect files in the workspace, search with grep, and use common safe shell commands to understand existing data, conventions, and related dashboards. Read, write, and shell access are available in the workspace and under ${JSON.stringify(tmpdir())}; use the temporary directory only for disposable intermediate files. Modify application state only through the selected dashboard.json. Use read_dashboard_language_reference when language vocabulary is needed, then use read_current_dashboard_view and validate_current_dashboard_view to inspect and validate the selected page. Prefer save_current_dashboard_view for the final write, then run validate_dashboard_json. Do not finish until validate_dashboard_json returns ok: true.
 
 JavaScript, HTML, CSS, and all other application files are outside this session's scope. Do not propose or attempt changes to them because they require a full application reload; make the requested improvement only through the selected dashboard.json page.
 
@@ -1372,7 +1363,6 @@ function readWebsocketFrames(buffer) {
  * @param {{
  *   siteRoot?: string,
  *   catalogRoot?: string | null,
- *   installedDashboardsDirectory?: string,
  *   repository?: string,
  *   ghExecutable?: string,
  *   downloadData?: (destination: string, repository?: string, ghExecutable?: string) => Promise<void>,
@@ -1393,7 +1383,6 @@ function readWebsocketFrames(buffer) {
 export async function startDashboardServer({
   siteRoot = join(scriptDirectory, "site"),
   catalogRoot = defaultCatalogRoot,
-  installedDashboardsDirectory = resolve(scriptDirectory, "..", "dashboards"),
   repository,
   ghExecutable = "gh",
   downloadData = downloadDashboardData,
@@ -1436,15 +1425,14 @@ export async function startDashboardServer({
   const trace = createTraceRecorder({ traceFile: resolvedTraceFile, output: traceOutput });
   const resolvedSiteRoot = await realpath(siteRoot);
   const resolvedCatalogRoot = catalogRoot ? await canonicalPath(catalogRoot) : null;
-  const resolvedInstalledDashboardsDirectory = await canonicalPath(installedDashboardsDirectory);
   if (!isWithin(resolvedWorkingDirectory, resolvedSiteRoot)
-      || (resolvedCatalogRoot && !isWithin(resolvedWorkingDirectory, resolvedCatalogRoot))
-      || !isWithin(resolvedWorkingDirectory, resolvedInstalledDashboardsDirectory)) {
+      || (resolvedCatalogRoot && !isWithin(resolvedWorkingDirectory, resolvedCatalogRoot))) {
     output("Dashboard server configuration rejected.", {
       reason: "dashboard path is outside the workspace",
     });
     throw new Error("Dashboard server paths must remain within the workspace.");
   }
+  await campaignDashboardPaths(resolvedCatalogRoot);
   const baseDashboardPath = join(resolvedSiteRoot, "dashboard.json");
   const temporaryDirectory = await mkdtemp(join(resolvedWorkingDirectory, ".cao-dashboard-preview-"));
   const bundledDashboardPath = join(temporaryDirectory, "dashboard.json");
@@ -1568,10 +1556,10 @@ export async function startDashboardServer({
     const controller = new AbortController();
     copilotRequest = { socket, controller, traceId, sessionKey };
     try {
-      const editableDashboardPaths = [baseDashboardPath, ...await campaignDashboardPaths(
-        resolvedCatalogRoot,
-        resolvedInstalledDashboardsDirectory,
-      )];
+      const editableDashboardPaths = [
+        baseDashboardPath,
+        ...await campaignDashboardPaths(resolvedCatalogRoot),
+      ];
       const viewDashboardPath = await dashboardSourceForView(payload.view, editableDashboardPaths);
       const previousDashboardSource = await readFile(viewDashboardPath, "utf8");
       output("Accepted Copilot dashboard request.", {
@@ -1846,10 +1834,7 @@ export async function startDashboardServer({
 
   const rebuild = async (notify = true, traceId, forceNotify = false) => {
     output("Checking dashboard sources for updates.");
-    const campaignPaths = await campaignDashboardPaths(
-      resolvedCatalogRoot,
-      resolvedInstalledDashboardsDirectory,
-    );
+    const campaignPaths = await campaignDashboardPaths(resolvedCatalogRoot);
     const nextSignature = await sourceSignature([baseDashboardPath, ...campaignPaths]);
     if (nextSignature === signature) {
       if (notify && forceNotify) broadcastDashboard(traceId);
@@ -1893,7 +1878,6 @@ export async function startDashboardServer({
     if (closed) return;
     const candidates = new Set([
       resolvedSiteRoot,
-      resolvedInstalledDashboardsDirectory,
       ...campaignPaths.map(dirname),
     ]);
     if (resolvedCatalogRoot) candidates.add(resolvedCatalogRoot);

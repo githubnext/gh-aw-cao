@@ -8,6 +8,10 @@ import { compilerVersionFromLock } from "./version.mjs";
 
 const CAMPAIGN_OWNERSHIP_DIRECTORY = ".github/aw/campaigns";
 
+function normalizeNewlines(source) {
+  return source.replaceAll("\r\n", "\n");
+}
+
 function unquote(value = "") {
   const trimmed = value.trim();
   if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
@@ -110,7 +114,7 @@ export function discoverInventory(root = path.resolve(process.env.REPORT_ROOT ||
   const workflowDirectory = path.join(root, ".github/workflows");
   const policyPath = path.join(workflowDirectory, "cao.json");
   const manifests = findFiles(root, "aw.yml").map((manifestPath) => {
-    const source = readFileSync(manifestPath, "utf8");
+    const source = normalizeNewlines(readFileSync(manifestPath, "utf8"));
     const readmePath = path.join(path.dirname(manifestPath), "README.md");
     return {
       path: relative(root, manifestPath),
@@ -119,7 +123,7 @@ export function discoverInventory(root = path.resolve(process.env.REPORT_ROOT ||
       minVersion: scalar(source, "min-version"),
       experimental: scalar(source, "experimental") === "true",
       readmePath: existsSync(readmePath) ? relative(root, readmePath) : "",
-      readme: existsSync(readmePath) ? readFileSync(readmePath, "utf8") : "",
+      readme: existsSync(readmePath) ? normalizeNewlines(readFileSync(readmePath, "utf8")) : "",
       includes: manifestIncludes(source),
     };
   });
@@ -135,7 +139,7 @@ export function discoverInventory(root = path.resolve(process.env.REPORT_ROOT ||
     .map((entry) => {
       const sourcePath = `.github/workflows/${entry.name}`;
       const lockPath = path.join(workflowDirectory, `${entry.name.slice(0, -3)}.lock.yml`);
-      const source = readFileSync(path.join(workflowDirectory, entry.name), "utf8");
+      const source = normalizeNewlines(readFileSync(path.join(workflowDirectory, entry.name), "utf8"));
       const stem = entry.name.slice(0, -3);
       const role = source.match(/uses:\s+shared\/control\.md[\s\S]*?role:\s+(orchestrator|worker)/)?.[1] || "standalone";
       const maxAiCredits = Number(scalar(source, "max-ai-credits"));

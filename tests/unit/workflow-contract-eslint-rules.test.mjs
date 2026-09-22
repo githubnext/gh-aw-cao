@@ -65,7 +65,7 @@ test("ESLint Factory orchestrator owns discovery and dispatches only its declare
   assert.match(source, /transactions\/orchestrator__<owner>__<repository>\.jsonl/);
   assert.match(
     source,
-    /node \.github\/aw\/eslint-rules\/rules-db\.mjs build --memory "\$GH_AW_MEMORY_DIR" --database \/tmp\/gh-aw\/eslint-rules\/rules\.sqlite/,
+    /node eslint-rules\/rules-db\.mjs build --memory "\$GH_AW_MEMORY_DIR" --database \/tmp\/gh-aw\/eslint-rules\/rules\.sqlite/,
   );
 });
 
@@ -109,7 +109,7 @@ test("ESLint Factory workers share one append-only memory branch with collision-
     assert.match(source, /rules\/<rule-key>\.json` is a flat directory/, name);
     assert.match(
       source,
-      /node \.github\/aw\/eslint-rules\/rules-db\.mjs build --memory "\$GH_AW_MEMORY_DIR" --database \/tmp\/gh-aw\/eslint-rules\/rules\.sqlite/,
+      /node eslint-rules\/rules-db\.mjs build --memory "\$GH_AW_MEMORY_DIR" --database \/tmp\/gh-aw\/eslint-rules\/rules\.sqlite/,
       name,
     );
     assert.match(source, /fails closed on malformed lines/, name);
@@ -188,8 +188,9 @@ test("ESLint Factory campaign manifest, policy, and dashboard describe the same 
   }
   assert.match(manifest, /- \.\.\/aw\.yml/);
   assert.match(manifest, /experimental: true/);
-  assert.match(manifest, /source: dashboard\.json\n\s+destination: \.github\/aw\/dashboards\/eslint-rules\.json/);
-  assert.match(manifest, /source: rules-db\.mjs\n\s+destination: \.github\/aw\/eslint-rules\/rules-db\.mjs/);
+  assert.doesNotMatch(manifest, /^resources:/m);
+  assert.ok(readFileSync(join(root, "eslint-rules", "dashboard.json"), "utf8").length > 0);
+  assert.ok(readFileSync(join(root, "eslint-rules", "rules-db.mjs"), "utf8").length > 0);
 
   const policy = controlPolicy["control-plane"].campaigns["eslint-rules"];
   assert.equal(policy.mode, "review");

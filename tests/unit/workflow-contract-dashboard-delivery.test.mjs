@@ -38,11 +38,11 @@ test("dashboard authoring corpus workflow generates only validated training exam
   const dashboardIrSkill = readFileSync(
     join(root, ".github", "skills", "generate-dashboard-ir", "SKILL.md"),
     "utf8",
-  );
+  ).replaceAll("\r\n", "\n");
   const dashboardAuthoringSkill = readFileSync(
     join(root, ".github", "skills", "dashboard-authoring", "SKILL.md"),
     "utf8",
-  );
+  ).replaceAll("\r\n", "\n");
 
   assert.match(source, /^intent: Improve model reliability/m);
   assert.match(
@@ -65,8 +65,8 @@ test("dashboard authoring corpus workflow generates only validated training exam
   assert.match(dashboardIrSkill, /Return only the validated complete Dashboard Language YAML document/);
   assert.match(dashboardAuthoringSkill, /Pass the intent to `generate-dashboard-ir`/);
   assert.match(dashboardAuthoringSkill, /Store an operation campaign's production Dashboard Language document at `<campaign>\/dashboard\.json`/);
-  assert.match(dashboardAuthoringSkill, /destination is `\.github\/aw\/dashboards\/<campaign>\.json`/);
-  assert.match(dashboardAuthoringSkill, /bundles installed `\.github\/aw\/dashboards\/\*\.json` documents into the single deployed `dashboard\.json`/);
+  assert.match(dashboardAuthoringSkill, /materializer preserves the campaign directory at that same path/);
+  assert.match(dashboardAuthoringSkill, /bundles installed `<campaign>\/dashboard\.json` documents into the single deployed `dashboard\.json`/);
   assert.match(dashboardAuthoringSkill, /Do not add campaign pages directly to `dashboard\/site\/dashboard\.json`/);
   assert.doesNotMatch(dashboardAuthoringSkill, /Select only the Dashboard Language sources and fields/);
   assert.doesNotMatch(dashboardAuthoringSkill, /corpus\/index\.json/);
@@ -149,6 +149,8 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   const rootManifest = readFileSync(join(root, "aw.yml"), "utf8");
   const activityManifest = readFileSync(join(root, "activity", "aw.yml"), "utf8");
   const dashboardManifest = readFileSync(join(root, "dashboard", "aw.yml"), "utf8");
+  const materializer = readFileSync(join(root, ".github", "workflows", "shared", "materialize-cao.mjs"), "utf8");
+  const runtimeAction = readFileSync(join(root, ".github", "actions", "setup-cao-runtime", "action.yml"), "utf8");
   const rootCampaign = parse(rootManifest);
   const dashboardCampaign = parse(dashboardManifest);
   const canonicalPolicyResolver = readFileSync(join(root, ".github", "workflows", "shared", "policy.mjs"), "utf8");
@@ -169,17 +171,15 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   const reportAssets = ["aic-usage.mjs", "activity-collectors.mjs", "bundle-dashboards.mjs", "compose-dashboard-documents.mjs", "configure-site.mjs", "dashboard-language-sources.mjs", "operational-value-records.mjs", "operational-values.mjs", "records.mjs", "text-utils.mjs"];
   const activityEntrypoints = new Set(["activity-collectors.mjs"]);
   const buildEntrypoints = new Set(["bundle-dashboards.mjs", "configure-site.mjs"]);
-  const normalizeInclude = (entry, sourcePrefix = "") => typeof entry === "string"
-    ? { source: entry, destination: entry, kind: "action-workflow" }
-    : { ...entry, source: `${sourcePrefix}${entry.source}` };
-
   assert.ok(rootCampaign.includes.includes("dashboard/aw.yml"));
   assert.match(dashboardManifest, /name: CAO Dashboard/);
   assert.match(rootManifest, /^\s+- dashboard\/aw\.yml$/m);
   assert.match(dashboardManifest, /^\s+- \.github\/workflows\/cao-dashboard\.yml$/m);
   assert.doesNotMatch(dashboardManifest, /cao-dashboard-build|dispatch-workflow/);
   assert.doesNotMatch(dashboardManifest, /destination: \.github\/cao\//);
-  assert.match(dashboardManifest, /source: local-server\.mjs\n\s+destination: \.github\/aw\/dashboard\/local-server\.mjs/);
+  assert.doesNotMatch(dashboardManifest, /^resources:/m);
+  assert.match(materializer, /rootResources = \[[\s\S]*?'activity'[\s\S]*?'dashboard'/);
+  assert.match(runtimeAction, /materialize-cao\.mjs" verify "\$CAO_RUNTIME_BUNDLE"/);
   assert.match(canonicalPolicyResolver, /export function parsePolicy/);
   assert.match(deployedWorkflows, /REPORT_RUN_WINDOW_DAYS/);
   assert.match(activityWorkflow, /REPORT_RUN_WINDOW_DAYS: "30"/);
@@ -223,11 +223,11 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(activityRunner, /control-settings\.mjs[\s\S]*?\.github\/workflows\/shared\/control\.mjs[\s\S]*?\.github\/workflows\/cao\.json[\s\S]*?controlSettingsPath/);
   assert.match(activityRunner, /REPORT_CONTROL_SETTINGS[\s\S]*?path\.join\(runnerTemp, "cao-activity", "control-settings\.json"\)/);
   assert.doesNotMatch(dashboardWorkflow, /^\s+run:/m);
-  assert.equal((dashboardWorkflow.match(/actions\/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3/g) || []).length, 9);
-  assert.match(dashboardWorkflow, /Install dashboard build dependencies[\s\S]*?await exec\.exec\('npm', \[[\s\S]*?'ci'[\s\S]*?'--prefix'[\s\S]*?process\.env\.DASHBOARD_SITE_ROOT[\s\S]*?'--ignore-scripts'/);
-  assert.match(dashboardWorkflow, /Assemble Dashboard Language site[\s\S]*?await exec\.exec\('npm', \[[\s\S]*?'--prefix'[\s\S]*?process\.env\.DASHBOARD_SITE_ROOT[\s\S]*?'run'[\s\S]*?'build'[\s\S]*?process\.env\.REPORT_OUTPUT[\s\S]*?controlSettings/);
+  assert.equal((dashboardWorkflow.match(/actions\/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3/g) || []).length, 8);
+  assert.match(dashboardWorkflow, /Install dashboard build dependencies[\s\S]*?await exec\.exec\('npm', \[[\s\S]*?'ci'[\s\S]*?'--prefix'[\s\S]*?'dashboard\/site'[\s\S]*?'--ignore-scripts'/);
+  assert.match(dashboardWorkflow, /Assemble Dashboard Language site[\s\S]*?await exec\.exec\('npm', \[[\s\S]*?'--prefix'[\s\S]*?'dashboard\/site'[\s\S]*?'run'[\s\S]*?'build'[\s\S]*?process\.env\.REPORT_OUTPUT[\s\S]*?controlSettings/);
   assert.match(dashboardWorkflow, /DASHBOARD_COMMIT_SHA: \$\{\{ github\.workflow_sha \}\}[\s\S]*?process\.env\.DASHBOARD_COMMIT_SHA/);
-  assert.match(dashboardWorkflow, /core\.info\('Resolved dashboard source layout: installed'\)[\s\S]*?core\.info\('Resolved dashboard source layout: source'\)/);
+  assert.doesNotMatch(dashboardWorkflow, /DASHBOARD_LAYOUT|DASHBOARD_SITE_ROOT|Resolve dashboard source layout/);
   assert.match(dashboardWorkflow, /core\.info\(`Standalone Pages deployment: \$\{deploy \? 'enabled' : 'disabled'\}`\)/);
   assert.match(dashboardWorkflow, /core\.info\('Dashboard build dependencies installed'\)[\s\S]*?core\.info\(`Restored activity data validation completed \(\$\{activityFiles\.length\} files\)`\)[\s\S]*?core\.info\('Activity database health assessment completed'\)[\s\S]*?core\.info\('Dashboard site build completed'\)[\s\S]*?core\.info\(`Dashboard artifact assembly completed \(\$\{collectedFiles\.length\} collected data files\)`\)/);
   assert.doesNotMatch(dashboardWorkflow, /core\.(?:info|error)\(`[^`]*\$\{activityFile\}/);
@@ -250,10 +250,10 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(dashboardDeployJob, /Download dashboard artifact[\s\S]*?name: central-agentic-ops-dashboard[\s\S]*?Configure Pages[\s\S]*?Upload Pages artifact[\s\S]*?Deploy Pages/);
   assert.match(dashboardWorkflow, /deploy:\n\s+needs: build\n\s+if: needs\.build\.outputs\.deploy == 'true'/);
   assert.match(dashboardWorkflow, /name: CAO Dashboard/);
-  assert.match(dashboardWorkflow, /workflow_dispatch:[\s\S]*?push:[\s\S]*?\.github\/aw\/dashboard\/\*\*[\s\S]*?\.github\/workflows\/cao\.json[\s\S]*?dashboard\/\*\*/);
+  assert.match(dashboardWorkflow, /workflow_dispatch:[\s\S]*?push:[\s\S]*?\.github\/workflows\/cao\.json[\s\S]*?dashboard\/\*\*/);
   assert.doesNotMatch(dashboardWorkflow, /workflow_run:/);
   assert.doesNotMatch(dashboardWorkflow, /github\.event\.workflow_run\.conclusion == 'success'/);
-  assert.match(dashboardWorkflow, /\.github\/aw\/dashboards\/\*\*/);
+  assert.doesNotMatch(dashboardWorkflow, /\.github\/aw\/dashboards|\.github\/aw\/dashboard/);
   assert.match(dashboardWorkflow, /"\*\/dashboard\.json"/);
   assert.match(dashboardWorkflow, /github\.event_name == 'push' && github\.ref_name == github\.event\.repository\.default_branch/);
   assert.match(dashboardWorkflow, /enablement: false/);
@@ -290,11 +290,9 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(activityWorkflow, /Hash activity payloads[\s\S]*?hash-payloads[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--shard-dir "\$REPORT_GH_AW_LOGS_SHARDS"[\s\S]*?--runs-dir "\$REPORT_GH_AW_LOGS_RUNS"[\s\S]*?--records-dir "\$REPORT_GH_AW_LOGS_RECORDS"[\s\S]*?--inventory "\$RUNNER_TEMP\/cao-activity\/inventory-sources\.json"[\s\S]*?--output "\$RUNNER_TEMP\/cao-activity\/payload-hashes\.json"/);
   assert.equal((activityWorkflow.match(/path: \|[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-shards/g) || []).length, 4);
   assert.doesNotMatch(activityCacheJob, /Save activity cache[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/m);
-  assert.match(activityManifest, /source: cao\.mjs[\s\S]*?destination: \.github\/aw\/activity\/cao\.mjs/);
-  assert.match(dashboardManifest, /source: site\/src\/data\/package\.json[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/data\/package\.json/);
-  assert.match(dashboardManifest, /source: site\/src\/main\.js[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/main\.js/);
-  assert.match(dashboardManifest, /source: site\/src\/components\/refresh-error\.js[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/components\/refresh-error\.js/);
-  assert.match(dashboardManifest, /source: site\/src\/data\/storage\/sqlite-indexeddb\.js[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/data\/storage\/sqlite-indexeddb\.js/);
+  assert.doesNotMatch(activityManifest, /^resources:/m);
+  assert.match(activityWorkflow, /uses: \.\/\.github\/actions\/setup-cao-runtime[\s\S]*?bundle: activity/);
+  assert.match(dashboardWorkflow, /uses: \.\/\.github\/actions\/setup-cao-runtime[\s\S]*?bundle: dashboard/);
   assert.match(aicUsage, /Processing \$\{logs\.length\} cached gh-aw log records/);
   assert.doesNotMatch(activityWorkflow, /REPORT_VALUE_CACHE/);
   assert.doesNotMatch(activityWorkflow, /REPORT_VALUE_REPLAY_CACHE/);
@@ -305,7 +303,7 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(activityWorkflow, /Resolve gh-aw compiler version[\s\S]*control\.mjs compiler-version \.github\/workflows\/cao\.json/);
   assert.match(activityWorkflow, /uses: github\/gh-aw-actions\/setup-cli@[0-9a-f]{40}/);
   assert.match(activityWorkflow, /version: \$\{\{ steps\.gh-aw-compiler\.outputs\.version \}\}/);
-  assert.match(activityWorkflow, /control-settings\.mjs" \\\n\s+\.github\/workflows\/shared\/control\.mjs/);
+  assert.match(activityWorkflow, /node activity\/control-settings\.mjs \\\n\s+\.github\/workflows\/shared\/control\.mjs/);
   assert.doesNotMatch(deployedWorkflows, /fetch\(|api\.github\.com|gh api|spawn\(/);
   assert.match(deployedWorkflows, /Build activity index from local workflow inventory/);
   assert.match(deployedWorkflows, /usageArtifactGaps/);
@@ -316,18 +314,12 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(operationalValues, /REPORT_GH_AW_LOGS_SHARDS is required/);
   assert.match(operationalValues, /run\?\.graders\?\.results/);
   assert.doesNotMatch(operationalValues, /runGhAw|gh run|gh aw logs|graders", "operational-value", "report"/);
-  assert.match(dashboardManifest, /source: site\/index\.html\n\s+destination: \.github\/aw\/dashboard\/site\/index\.html/);
-  assert.match(dashboardManifest, /source: site\/favicon\.svg\n\s+destination: \.github\/aw\/dashboard\/site\/favicon\.svg/);
-  assert.match(dashboardManifest, /source: site\/dashboard\.json\n\s+destination: \.github\/aw\/dashboard\/site\/dashboard\.json/);
-  assert.match(dashboardManifest, /source: site\/src\/presenter\.js\n\s+destination: \.github\/aw\/dashboard\/site\/src\/presenter\.js/);
-  assert.match(dashboardManifest, /source: site\/src\/loading-progress\.js\n\s+destination: \.github\/aw\/dashboard\/site\/src\/loading-progress\.js/);
   for (const assetName of ["data-operations.js", "data-processor.js", "data-worker.js"]) {
-    assert.match(dashboardManifest, new RegExp(`source: site/src/${assetName.replace(".", "\\.")}\\n\\s+destination: \\.github/aw/dashboard/site/src/${assetName.replace(".", "\\.")}`));
+    assert.ok(existsSync(join(root, "dashboard", "site", "src", assetName)));
   }
   for (const assetName of reportAssets) {
     const assetPath = join(root, "dashboard", "report", assetName);
     assert.ok(existsSync(assetPath), `missing report script ${assetName}`);
-    assert.match(dashboardManifest, new RegExp(`destination: \\.github/aw/dashboard/report/${assetName.replace(".", "\\.")}`));
     if (activityEntrypoints.has(assetName)) {
       assert.match(activityRunner, new RegExp(`dashboardReportRoot[\\s\\S]*?${assetName.replace(".", "\\.")}`));
     }
@@ -350,29 +342,15 @@ test("Activity campaign owns the shared collected-data cache contract", () => {
   assert.deepEqual(activityManifest.includes, [
     ".github/workflows/cao-activity.yml",
   ]);
-  assert.deepEqual(activityManifest.resources, [
-    { source: "cao.mjs", destination: ".github/aw/activity/cao.mjs" },
-    { source: "debug.mjs", destination: ".github/aw/activity/debug.mjs" },
-    { source: "actions-context.mjs", destination: ".github/aw/activity/actions-context.mjs" },
-    { source: "actions-log.mjs", destination: ".github/aw/activity/actions-log.mjs" },
-    { source: "control-settings.mjs", destination: ".github/aw/activity/control-settings.mjs" },
-    { source: "collect-logs.sh", destination: ".github/aw/activity/collect-logs.sh" },
-    {
-      source: "token-intervention-lifecycle.mjs",
-      destination: ".github/aw/activity/token-intervention-lifecycle.mjs",
-    },
-    { source: "gh-aw-logs.mjs", destination: ".github/aw/activity/gh-aw-logs.mjs" },
-    { source: "inventory.mjs", destination: ".github/aw/activity/inventory.mjs" },
-    { source: "inventory-sources.mjs", destination: ".github/aw/activity/inventory-sources.mjs" },
-    { source: "version.mjs", destination: ".github/aw/activity/version.mjs" },
-  ]);
+  assert.equal(activityManifest.resources, undefined);
   assert.ok(rootManifest.includes.includes("activity/aw.yml"));
   assert.match(workflow, /schedule:[\s\S]*?cron:/);
   assert.doesNotMatch(workflow, /workflow_call:/);
   assert.match(workflow, /Resolve dashboard control settings[\s\S]*?\.github\/workflows\/shared\/control\.mjs/);
   assert.doesNotMatch(workflow, /Resolve CAO control source|\.github\/aw\/campaigns|\.cao-runtime/);
+  assert.match(workflow, /uses: \.\/\.github\/actions\/setup-cao-runtime[\s\S]*?bundle: activity/);
   assert.match(workflow, /uses: github\/gh-aw-actions\/setup-cli@[0-9a-f]{40}/);
-  assert.match(workflow, /node "\$activity_root\/control-settings\.mjs" \\\n\s+\.github\/workflows\/shared\/control\.mjs/);
+  assert.match(workflow, /node activity\/control-settings\.mjs \\\n\s+\.github\/workflows\/shared\/control\.mjs/);
   assert.match(workflow, /workflow_dispatch:[\s\S]*?request-id:/);
   assert.match(workflow, /concurrency:[\s\S]*?cancel-in-progress: false/);
   assert.match(workflow, /actions\/cache\/restore@[0-9a-f]{40}/);
@@ -383,7 +361,7 @@ test("Activity campaign owns the shared collected-data cache contract", () => {
   assert.match(activityCollector, /mv "\$generated_weights" "\$drain3_weights_path"/);
   assert.match(workflow, /REPORT_GH_AW_LOGS_SHARDS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-shards/);
   assert.match(workflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-gh-aw-logs/);
-  assert.match(workflow, /if \[\[ -f activity\/collect-logs\.sh \]\]; then[\s\S]*?elif \[\[ -f \.github\/aw\/activity\/collect-logs\.sh \]\]; then[\s\S]*?bash "\$collector"/);
+  assert.match(workflow, /bash activity\/collect-logs\.sh/);
   assert.doesNotMatch(workflow, /issues: read/);
   assert.equal((workflow.match(/pull-requests: read/g) || []).length, 3);
   assert.match(workflow, /Generate GitHub App token for activity[\s\S]*?GH_AW_GITHUB_READ_APP_ID[\s\S]*?GH_AW_GITHUB_READ_APP_PRIVATE_KEY/);
@@ -392,8 +370,8 @@ test("Activity campaign owns the shared collected-data cache contract", () => {
   assert.doesNotMatch(workflow, /ACTIVITY_INDEXER|ACTIVITY_LOGS|ACTIVITY_RUNNER|GITHUB_TELEMETRY|cao-gh\.jsonl/);
   assert.match(workflow, /Collect dashboard inventory[\s\S]*?uses: actions\/github-script@[0-9a-f]{40}[\s\S]*?core\.info\('Workflow discovery started'\)[\s\S]*?'discover-workflows'[\s\S]*?core\.info\('Workflow discovery completed'\)/);
   assert.match(workflow, /Restore activity cache[\s\S]*?Download agentic workflow logs[\s\S]*?Upload activity snapshot[\s\S]*?cache:[\s\S]*?needs: index[\s\S]*?Download activity snapshot[\s\S]*?Save activity cache/);
-  assert.match(workflow, /Collect dashboard inventory[\s\S]*?activity\/cao\.mjs[\s\S]*?\.github\/aw\/activity\/cao\.mjs/);
-  assert.match(workflow, /bash "\$collector"/);
+  assert.match(workflow, /Collect dashboard inventory[\s\S]*?path\.join\('activity', 'cao\.mjs'\)/);
+  assert.match(workflow, /bash activity\/collect-logs\.sh/);
   assert.match(activityCollector, /gh aw logs --audit/);
   assert.match(workflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl/);
   assert.equal((workflow.match(/path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/gm) || []).length, 1);
@@ -405,8 +383,8 @@ test("Activity campaign owns the shared collected-data cache contract", () => {
 });
 
 test("Documentation Pages deploys docs with the latest dashboard artifact", () => {
-  const workflow = readFileSync(join(root, ".github", "workflows", "docs.yml"), "utf8");
-  const dashboardWorkflow = readFileSync(join(root, ".github", "workflows", "cao-dashboard.yml"), "utf8");
+  const workflow = readFileSync(join(root, ".github", "workflows", "docs.yml"), "utf8").replaceAll("\r\n", "\n");
+  const dashboardWorkflow = readFileSync(join(root, ".github", "workflows", "cao-dashboard.yml"), "utf8").replaceAll("\r\n", "\n");
   const astroConfig = readFileSync(join(root, "astro.config.mjs"), "utf8");
 
   assert.equal(existsSync(join(root, ".github", "workflows", "dashboard-build.yml")), false);
@@ -433,8 +411,7 @@ test("Documentation Pages deploys docs with the latest dashboard artifact", () =
   assert.match(dashboardWorkflow, /workflow_dispatch:/);
   assert.match(dashboardWorkflow, /gh-aw-logs-shards[\s\S]*?recursive: true/);
   assert.match(dashboardWorkflow, /name: central-agentic-ops-dashboard/);
-  assert.match(dashboardWorkflow, /core\.exportVariable\('DASHBOARD_LAYOUT', 'source'\)/);
-  assert.match(dashboardWorkflow, /core\.exportVariable\('DASHBOARD_LAYOUT', 'installed'\)/);
+  assert.doesNotMatch(dashboardWorkflow, /DASHBOARD_LAYOUT|DASHBOARD_SITE_ROOT/);
   assert.match(dashboardWorkflow, /push:|deploy-pages|upload-pages-artifact/);
   assert.match(astroConfig, /base: "\/gh-aw-cao"/);
   assert.match(astroConfig, /rewriteDocsLinks, \{ base: "\/gh-aw-cao" \}/);
@@ -444,7 +421,7 @@ test("Documentation Pages deploys docs with the latest dashboard artifact", () =
 });
 
 test("mobile dashboard integration downloads deployed dashboard data", () => {
-  const workflow = readFileSync(join(root, ".github", "workflows", "actions.yml"), "utf8");
+  const workflow = readFileSync(join(root, ".github", "workflows", "actions.yml"), "utf8").replaceAll("\r\n", "\n");
   const campaignDocument = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 
   assert.match(workflow, /pull_request:[\s\S]*?dashboard\/\*\*/);
@@ -559,7 +536,7 @@ test("Dashboard inventory links multiline orchestrator worker lists", () => {
     assert.deepEqual(inventory.campaigns.map((entry) => entry.id), registeredCampaignIds);
     assert.equal(inventory.campaigns.find((entry) => entry.id === "repo-assist")?.name, "Repo Assist");
     assert.equal(dependabotBundle.readmePath, "dependabot/README.md");
-    assert.match(dependabotBundle.readme, /^# Dependabot Campaign\n/);
+    assert.match(dependabotBundle.readme, /^# Dependabot Campaign\r?\n/);
     assert.match(dependabotBundle.readme, /## Safety Boundaries/);
     assert.deepEqual(inventory.bundles.map((bundle) => ({
       id: bundle.id,

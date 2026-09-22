@@ -29,7 +29,8 @@ structure:
   workflow_artifacts: .github/workflows/*.lock.yml
   workflow_shared: .github/workflows/shared/
   rollout_policy: .github/workflows/cao.json
-  workflow_resources: .github/aw/
+  campaign_runtime: <campaign>/
+  agent_instruction_resources: .github/aw/
   campaign_records: .github/aw/campaigns/
   workflow_agent_skills: .github/skills/
   portable_agent_skills: skills/
@@ -220,6 +221,9 @@ invariants:
   - "Dashboard UI effects and components MUST NOT query source data or reconstruct business relationships."
   - "ADRs are durable decision history; current requirements and conformance rules live in specs/ or specification-style documentation."
   - "Generated workflow lock files MUST NOT be edited directly."
+  - "The trusted CAO materializer MUST replace bounded campaign-owned destinations with executable resources at the same top-level paths used by their catalog sources; .github/aw MUST remain exclusively gh-aw-owned and MUST NOT become a parallel CAO runtime tree."
+  - "CAO runtime materialization MUST use a full immutable resolvedCommit SHA, MUST fail closed for tag-only or missing provenance, and MUST preserve exact focused Activity or Dashboard package ownership when root materialization runs."
+  - "Activity and Dashboard manifests are root-package components; direct component installation is incomplete because gh-aw cannot invoke canonical runtime materialization."
   - "Installed campaign records MUST be updated through gh-aw campaign commands."
   - "Policy and workflow changes MUST be committed together."
 

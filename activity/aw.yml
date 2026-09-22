@@ -1,29 +1,6 @@
 name: CAO Activity
-description: Maintain a shared, bounded snapshot of GitHub Agentic Workflow activity.
+description: Root-package component that maintains a shared, bounded snapshot of GitHub Agentic Workflow activity; not a standalone installation entry point.
 min-version: v0.89.17
 experimental: true
 includes:
   - .github/workflows/cao-activity.yml
-resources:
-  - source: cao.mjs
-    destination: .github/aw/activity/cao.mjs
-  - source: debug.mjs
-    destination: .github/aw/activity/debug.mjs
-  - source: actions-context.mjs
-    destination: .github/aw/activity/actions-context.mjs
-  - source: actions-log.mjs
-    destination: .github/aw/activity/actions-log.mjs
-  - source: control-settings.mjs
-    destination: .github/aw/activity/control-settings.mjs
-  - source: collect-logs.sh
-    destination: .github/aw/activity/collect-logs.sh
-  - source: token-intervention-lifecycle.mjs
-    destination: .github/aw/activity/token-intervention-lifecycle.mjs
-  - source: gh-aw-logs.mjs
-    destination: .github/aw/activity/gh-aw-logs.mjs
-  - source: inventory.mjs
-    destination: .github/aw/activity/inventory.mjs
-  - source: inventory-sources.mjs
-    destination: .github/aw/activity/inventory-sources.mjs
-  - source: version.mjs
-    destination: .github/aw/activity/version.mjs

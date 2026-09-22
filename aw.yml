@@ -12,9 +12,7 @@ resources:
     destination: .github/workflows/shared/policy.mjs
   - source: .github/workflows/shared/setup-github-apps.mjs
     destination: .github/workflows/shared/setup-github-apps.mjs
-  - source: AGENTS.md
-    destination: .github/aw/default-AGENTS.md
+  - source: .github/workflows/shared/materialize-cao.mjs
+    destination: .github/workflows/shared/materialize-cao.mjs
   - source: .github/aw/instructions.md
     destination: .github/aw/instructions.md
-  - source: cao.sh
-    destination: .github/aw/cao.sh

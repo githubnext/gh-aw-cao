@@ -17,7 +17,7 @@ function document(id, navigationLabel) {
   };
 }
 
-test("bundles installed campaign dashboards into one deterministic document", async () => {
+test("bundles canonical campaign dashboards into one deterministic document", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "dashboard-bundle-"));
   const output = path.join(root, "dashboard.json");
   const additions = path.join(root, "dashboards");

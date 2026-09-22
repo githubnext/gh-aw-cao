@@ -2,14 +2,14 @@
 
 Production Dashboard Language validator and presenter for the Central Agentic Ops dashboard campaign.
 
-The dashboard build workflow copies this directory to its configured `site-path`, bundles installed `.github/aw/dashboards/*.json` campaign documents into a small core `dashboard.json` plus per-page `dashboard-pages/*.json` chunks, and generates `sources.json`. The browser loads the core shell first, fetches page chunks on demand, derives presentation-only data, and renders the `/cao` experience without page-specific HTML generation.
+The dashboard build workflow copies this directory to its configured `site-path`, bundles installed `<campaign>/dashboard.json` documents into a small core `dashboard.json` plus per-page `dashboard-pages/*.json` chunks, and generates `sources.json`. The browser loads the core shell first, fetches page chunks on demand, derives presentation-only data, and renders the `/cao` experience without page-specific HTML generation.
 
 ## Data pipeline
 
 1. The activity action writes inventory, deployed-workflow, AI Credit, and operational-value JSON into one bounded cache snapshot.
 2. `dashboard/report/records.mjs`, executed by the activity action, normalizes durable issues, pull requests, comments, review artifacts, and run attribution.
 3. `dashboard/report/dashboard-language-sources.mjs` adapts collector and record data into `sources.json`.
-4. Quality gates validate campaign dashboard sources; the builder bundles installed campaign dashboards into the split dashboard shell and page chunks.
+4. Quality gates validate canonical campaign dashboard sources; the builder bundles those sources into the split dashboard shell and page chunks.
 5. The renderer displays the dashboard shell and loading skeleton from `dashboard.json`, fetches the active page chunk on demand, preloads cached sources from IndexedDB when available, then refreshes the interface and cache from validated `sources.json`.
 
 `sources.json` is the default deployed input. Add `?fixtures` locally to use the illustrative fixture data.

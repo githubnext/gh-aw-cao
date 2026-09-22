@@ -52,16 +52,11 @@ it can answer the question, since repeated direct GitHub queries burn API
 rate limits that the shared cache already avoids. First check whether the
 restore populated `$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite`; a
 missing or empty file is a cache miss and must be treated as a fallback
-condition, not an error. Resolve the CLI entry point before running any
-`cao` command, since it lives at a different path depending on whether
-this is the source-managed control repository or an installed campaign:
+condition, not an error. Every control repository uses the same CLI path:
 
 ```bash
-if [ -f activity/cao.mjs ]; then
-  cao_script=activity/cao.mjs
-elif [ -f .github/aw/activity/cao.mjs ]; then
-  cao_script=.github/aw/activity/cao.mjs
-else
+cao_script=activity/cao.mjs
+if [ ! -f "$cao_script" ]; then
   echo "cao CLI is unavailable; fall back to unbounded evidence gathering" >&2
   cao_script=""
 fi

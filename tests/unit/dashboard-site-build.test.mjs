@@ -1,18 +1,10 @@
 import assert from "node:assert/strict";
-import { access, mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import test from "node:test";
-import { parse } from "yaml";
 import { buildDashboardSite, embedDashboardVersion, filterExperimentalDashboardViews } from "../../dashboard/site/scripts/build.mjs";
-
-function localDependencies(source) {
-  const dependencies = [];
-  const pattern = /(?:\bfrom\s+|\bimport\s*\(\s*|\bimport\s+|\bexport\s+(?:\*|\{[^}]*\})\s+from\s+)["'](\.{1,2}\/[^"']+)["']|new URL\(\s*["'](\.{1,2}\/[^"']+)["']\s*,\s*import\.meta\.url\s*\)/g;
-  for (const match of source.matchAll(pattern)) dependencies.push(match[1] ?? match[2]);
-  return dependencies;
-}
 
 async function builtSiteSha(destination) {
   const index = await readFile(new URL("index.html", destination), "utf8");
@@ -53,6 +45,21 @@ test("dashboard site embeds a validated commit SHA", () => {
     () => embedDashboardVersion(html, "not-a-commit"),
     /dashboard commit SHA must be a 40-character lowercase hexadecimal string/,
   );
+});
+
+test("dashboard site ignores the legacy flat dashboards directory", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "dashboard-site-layout-"));
+  const repositoryRoot = path.join(root, "repository");
+  const destination = path.join(root, "output");
+
+  try {
+    await mkdir(path.join(repositoryRoot, "dashboards"), { recursive: true });
+    await writeFile(path.join(repositoryRoot, "dashboards", "legacy.json"), "not valid dashboard JSON");
+    await buildDashboardSite({ destination, repositoryRoot, controlSettings: { campaigns: {} } });
+    assert.ok(JSON.parse(await readFile(path.join(destination, "dashboard.json"), "utf8")).dashboard);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
 });
 
 test("docs dashboard installs renderer assets and configured campaign pages", async () => {
@@ -118,22 +125,10 @@ test("docs dashboard installs renderer assets and configured campaign pages", as
       new RegExp(`const VERSION = '${mainHash}';`),
     );
 
-    const manifest = parse(await readFile(new URL("../../dashboard/aw.yml", import.meta.url), "utf8"));
-    const installedSitePrefix = ".github/aw/dashboard/site/";
-    const buildResources = new Set(["package.json", "package-lock.json", "scripts/build.mjs"]);
-    for (const resource of manifest.resources.filter(({ destination: resourcePath }) => (
-      resourcePath.startsWith(installedSitePrefix)
-      && !buildResources.has(resourcePath.slice(installedSitePrefix.length))
-      && (!resourcePath.endsWith(".js")
-        || resourcePath.endsWith("/main.js")
-        || resourcePath.endsWith("/data-worker.js"))
-    ))) {
-      await access(new URL(resource.destination.slice(installedSitePrefix.length), destination));
-    }
     await assert.rejects(
       readFile(new URL("README.md", destination), "utf8"),
       (error) => error?.code === "ENOENT",
-      "build copied a dashboard source that gh aw add would not install",
+      "build copied a dashboard development-only source",
     );
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -164,25 +159,5 @@ test("dashboard cache hashes are stable and change with assembled site content",
     assert.match(await readFile(new URL("src/main.js", changedDestination), "utf8"), /sourceMappingURL=main\.js\.map/);
   } finally {
     await rm(root, { recursive: true, force: true });
-  }
-});
-
-test("dashboard campaign includes every transitive site module and asset", async () => {
-  const dashboardRoot = new URL("../../dashboard/", import.meta.url);
-  const manifest = parse(await readFile(new URL("aw.yml", dashboardRoot), "utf8"));
-  const bundled = new Set(manifest.resources.map(({ source }) => source));
-  const pending = [...bundled].filter((source) => source.startsWith("site/") && source.endsWith(".js"));
-  const visited = new Set();
-
-  while (pending.length > 0) {
-    const source = pending.pop();
-    if (visited.has(source)) continue;
-    visited.add(source);
-    const contents = await readFile(new URL(source, dashboardRoot), "utf8");
-    for (const dependency of localDependencies(contents)) {
-      const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(source), dependency));
-      assert.ok(bundled.has(resolved), `${source} depends on unbundled dashboard resource ${resolved}`);
-      if (resolved.endsWith(".js")) pending.push(resolved);
-    }
   }
 });

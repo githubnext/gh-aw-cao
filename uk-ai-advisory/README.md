@@ -17,7 +17,7 @@ The UK AI Advisory campaign applies the UK government [AI open-code and vulnerab
 
 The orchestrator dispatches at most 50 workers per run. Each worker uses a fixed seven-day lookback, treats proposed A/B/C/D tiers as human-review priorities rather than authorization, and creates at most one consolidated issue through declared safe outputs.
 
-The campaign maintainer runs independently of repository dispatch. It updates the [implementation-status ledger](implementation-status.md) only through a draft pull request and may open at most one deduplicated issue for the highest-priority concrete fleet gap. Installed campaigns keep the ledger at `.github/aw/uk-ai-advisory/implementation-status.md`. It does not inspect target repositories or edit operation workflows.
+The campaign maintainer runs independently of repository dispatch. It updates the [implementation-status ledger](implementation-status.md) only through a draft pull request and may open at most one deduplicated issue for the highest-priority concrete fleet gap. Installed campaigns keep the ledger at `uk-ai-advisory/implementation-status.md`. It does not inspect target repositories or edit operation workflows.
 
 ## Install and Configure
 

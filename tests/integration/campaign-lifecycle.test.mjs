@@ -9,13 +9,14 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import test from "node:test";
 import { retryTransientCampaignInstall } from "../helpers/campaign-install-retry.mjs";
 
 const campaignSource = process.env.CENTRAL_AGENTIC_OPS_CAMPAIGN_SOURCE
   || "githubnext/gh-aw-cao@main";
 const campaignUpdateSource = "https://github.com/githubnext/gh-aw-cao";
+const materializerScript = resolve(".github/workflows/shared/materialize-cao.mjs");
 const controlRuntimeFiles = [
   ".github/workflows/shared/control.mjs",
   ".github/workflows/shared/policy.mjs",
@@ -43,23 +44,23 @@ const dependabotCampaignUpdateSource = `${campaignUpdateSource}/dependabot`;
 const selfCareCampaignSource = focusedCampaignSource("self-care");
 const softwareDevelopmentPracticesCampaignSource = focusedCampaignSource("software-development-practices");
 const activityExpectedFiles = [
-  ".github/aw/activity/actions-context.mjs",
-  ".github/aw/activity/actions-log.mjs",
-  ".github/aw/activity/cao.mjs",
-  ".github/aw/activity/collect-logs.sh",
-  ".github/aw/activity/control-settings.mjs",
-  ".github/aw/activity/debug.mjs",
-  ".github/aw/activity/gh-aw-logs.mjs",
-  ".github/aw/activity/inventory.mjs",
-  ".github/aw/activity/inventory-sources.mjs",
-  ".github/aw/activity/token-intervention-lifecycle.mjs",
-  ".github/aw/activity/version.mjs",
+  "activity/actions-context.mjs",
+  "activity/actions-log.mjs",
+  "activity/cao.mjs",
+  "activity/collect-logs.sh",
+  "activity/control-settings.mjs",
+  "activity/debug.mjs",
+  "activity/gh-aw-logs.mjs",
+  "activity/inventory.mjs",
+  "activity/inventory-sources.mjs",
+  "activity/token-intervention-lifecycle.mjs",
+  "activity/version.mjs",
   ".github/workflows/cao-activity.yml",
 ];
 const caoEvolutionExpectedFiles = [
-  ".github/aw/cao-evolution/graders/cao-evolution-failures-investigator-operational-value.sh",
-  ".github/aw/cao-evolution/graders/cao-evolution-compiler-security-operational-value.sh",
-  ".github/aw/dashboards/cao-evolution.json",
+  "cao-evolution/.github/graders/cao-evolution-failures-investigator-operational-value.sh",
+  "cao-evolution/.github/graders/cao-evolution-compiler-security-operational-value.sh",
+  "cao-evolution/dashboard.json",
   ".github/workflows/graders/cao-evolution-failures-investigator-operational-value.sh",
   ".github/workflows/graders/cao-evolution-compiler-security-operational-value.sh",
   ".github/workflows/cao-evolution-failures-investigator.md",
@@ -72,24 +73,24 @@ const caoEvolutionExpectedFiles = [
   ".github/workflows/shared/control.md",
 ];
 const ukAiAdvisoryExpectedFiles = [
-  ".github/aw/uk-ai-advisory/implementation-status.md",
-  ".github/aw/dashboards/uk-ai-advisory.json",
+  "uk-ai-advisory/implementation-status.md",
+  "uk-ai-advisory/dashboard.json",
   ".github/workflows/uk-ai-advisory-campaign-maintainer.md",
   ".github/workflows/uk-ai-advisory-operational-resilience.md",
   ".github/workflows/uk-ai-advisory.md",
   ".github/workflows/shared/control.md",
 ];
 const craExpectedFiles = [
-  ".github/aw/dashboards/eu-cra-compliance.json",
-  ".github/aw/eu-cra-compliance/implementation-status.md",
-  ".github/aw/eu-cra-compliance/eu-cra-report-operational-value-runtime.bash",
-  ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
-  ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-conformity-release-evidence-operational-value.sh",
-  ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-campaign-maintainer-operational-value.sh",
-  ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-scope-classifier-operational-value.sh",
-  ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-security-requirements-auditor-operational-value.sh",
-  ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh",
-  ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-vulnerability-handling-auditor-operational-value.sh",
+  "eu-cra-compliance/dashboard.json",
+  "eu-cra-compliance/implementation-status.md",
+  "eu-cra-compliance/eu-cra-report-operational-value-runtime.bash",
+  "eu-cra-compliance/.github/graders/eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
+  "eu-cra-compliance/.github/graders/eu-cra-compliance-conformity-release-evidence-operational-value.sh",
+  "eu-cra-compliance/.github/graders/eu-cra-compliance-campaign-maintainer-operational-value.sh",
+  "eu-cra-compliance/.github/graders/eu-cra-compliance-scope-classifier-operational-value.sh",
+  "eu-cra-compliance/.github/graders/eu-cra-compliance-security-requirements-auditor-operational-value.sh",
+  "eu-cra-compliance/.github/graders/eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh",
+  "eu-cra-compliance/.github/graders/eu-cra-compliance-vulnerability-handling-auditor-operational-value.sh",
   ".github/workflows/graders/eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
   ".github/workflows/graders/eu-cra-compliance-conformity-release-evidence-operational-value.sh",
   ".github/workflows/graders/eu-cra-compliance-scope-classifier-operational-value.sh",
@@ -115,8 +116,8 @@ const dashboardExpectedFiles = [
   ).matchAll(/^\s+destination: (.+)$/gm)].map((match) => match[1]),
 ];
 const selfCareExpectedFiles = [
-  ".github/aw/dashboards/self-care.json",
-  ".github/aw/self-care/graders/self-care-docs-build-time-investigator-operational-value.sh",
+  "self-care/dashboard.json",
+  "self-care/.github/graders/self-care-docs-build-time-investigator-operational-value.sh",
   ".github/workflows/graders/self-care-docs-build-time-investigator-operational-value.sh",
   ".github/workflows/self-care-accessibility-checker.md",
   ".github/workflows/self-care-code-improvement.md",
@@ -138,10 +139,10 @@ const selfCareExpectedFiles = [
   ".github/workflows/shared/control.md",
 ];
 const softwareDevelopmentPracticesExpectedFiles = [
-  ".github/aw/dashboards/software-development-practices.json",
-  ".github/aw/software-development-practices/software-development-guidance-operational-value-runtime.bash",
-  ".github/aw/software-development-practices/graders/software-development-practices-github-well-architected-operational-value.sh",
-  ".github/aw/software-development-practices/graders/software-development-practices-nist-ssdf-operational-value.sh",
+  "software-development-practices/dashboard.json",
+  "software-development-practices/software-development-guidance-operational-value-runtime.bash",
+  "software-development-practices/.github/graders/software-development-practices-github-well-architected-operational-value.sh",
+  "software-development-practices/.github/graders/software-development-practices-nist-ssdf-operational-value.sh",
   ".github/workflows/graders/software-development-practices-github-well-architected-operational-value.sh",
   ".github/workflows/graders/software-development-practices-nist-ssdf-operational-value.sh",
   ".github/workflows/shared/control.md",
@@ -187,6 +188,13 @@ async function installCampaign(source) {
         "--force",
         "--no-security-scanner",
       ], consumer);
+      const packageName = source.slice(0, source.lastIndexOf("@"));
+      const campaign = packageName === "githubnext/gh-aw-cao"
+        ? "root"
+        : packageName.split("/").at(-1);
+      if (campaign !== "activity" && campaign !== "dashboard") {
+        run(process.execPath, [materializerScript, "materialize", campaign], consumer);
+      }
       return consumer;
     } catch (error) {
       rmSync(consumer, { recursive: true, force: true });
@@ -198,7 +206,7 @@ async function installCampaign(source) {
 test("root campaign bootstraps an empty CAO and preserves resources during workflow update", { timeout: 240_000 }, async () => {
   const consumer = await installCampaign(campaignSource);
   try {
-    assert.ok(existsSync(join(consumer, ".github", "aw", "default-AGENTS.md")));
+    assert.equal(existsSync(join(consumer, ".github", "aw", "default-AGENTS.md")), false);
     assert.equal(existsSync(join(consumer, ".github", "aw", "cao")), false);
     for (const relativePath of controlRuntimeFiles) {
       assert.ok(existsSync(join(consumer, relativePath)), `root campaign omitted control file ${relativePath}`);
@@ -263,23 +271,12 @@ test("root campaign bootstraps an empty CAO and preserves resources during workf
   }
 });
 
-test("gh aw add installs the focused activity campaign contract", { timeout: 180_000 }, async () => {
+test("direct focused activity installation remains incomplete without the CAO materializer", { timeout: 180_000 }, async () => {
   const consumer = await installCampaign(activityCampaignSource);
   try {
-    for (const relativePath of activityExpectedFiles) {
-      assert.ok(existsSync(join(consumer, relativePath)), `activity campaign omitted ${relativePath}`);
-    }
-    const campaignManifests = installedManifests(consumer);
-    assert.equal(campaignManifests.length, 1, "expected one installed activity campaign manifest");
-    const installedManifest = JSON.parse(readFileSync(
-      installedManifestPath(consumer, campaignManifests[0]),
-      "utf8",
-    ));
-    assert.deepEqual(
-      installedManifest.files.map(({ destination }) => destination).sort(),
-      activityExpectedFiles.toSorted(),
-      "activity campaign manifest must own its workflow and indexer",
-    );
+    assert.ok(existsSync(join(consumer, ".github", "workflows", "cao-activity.yml")));
+    assert.equal(existsSync(join(consumer, "activity", "cao.mjs")), false);
+    assert.equal(existsSync(join(consumer, ".github", "actions", "setup-cao-runtime", "action.yml")), false);
   } finally {
     rmSync(consumer, { recursive: true, force: true });
   }
@@ -306,16 +303,16 @@ test("gh aw add installs the focused EU CRA campaign contract", { timeout: 180_0
     assert.deepEqual(
       installedManifest.files.map(({ destination }) => destination).sort(),
       [
-        ".github/aw/dashboards/eu-cra-compliance.json",
-        ".github/aw/eu-cra-compliance/implementation-status.md",
-        ".github/aw/eu-cra-compliance/eu-cra-report-operational-value-runtime.bash",
-        ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
-        ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-conformity-release-evidence-operational-value.sh",
-        ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-campaign-maintainer-operational-value.sh",
-        ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-scope-classifier-operational-value.sh",
-        ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-security-requirements-auditor-operational-value.sh",
-        ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh",
-        ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-vulnerability-handling-auditor-operational-value.sh",
+        "eu-cra-compliance/dashboard.json",
+        "eu-cra-compliance/implementation-status.md",
+        "eu-cra-compliance/eu-cra-report-operational-value-runtime.bash",
+        "eu-cra-compliance/.github/graders/eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
+        "eu-cra-compliance/.github/graders/eu-cra-compliance-conformity-release-evidence-operational-value.sh",
+        "eu-cra-compliance/.github/graders/eu-cra-compliance-campaign-maintainer-operational-value.sh",
+        "eu-cra-compliance/.github/graders/eu-cra-compliance-scope-classifier-operational-value.sh",
+        "eu-cra-compliance/.github/graders/eu-cra-compliance-security-requirements-auditor-operational-value.sh",
+        "eu-cra-compliance/.github/graders/eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh",
+        "eu-cra-compliance/.github/graders/eu-cra-compliance-vulnerability-handling-auditor-operational-value.sh",
         ".github/workflows/graders/eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
         ".github/workflows/graders/eu-cra-compliance-conformity-release-evidence-operational-value.sh",
         ".github/workflows/graders/eu-cra-compliance-scope-classifier-operational-value.sh",
@@ -360,8 +357,8 @@ test("gh aw add installs the focused UK AI Advisory campaign contract", { timeou
     assert.deepEqual(
       installedManifest.files.map(({ destination }) => destination).sort(),
       [
-        ".github/aw/uk-ai-advisory/implementation-status.md",
-        ".github/aw/dashboards/uk-ai-advisory.json",
+        "uk-ai-advisory/implementation-status.md",
+        "uk-ai-advisory/dashboard.json",
         ".github/workflows/uk-ai-advisory-campaign-maintainer.md",
         ".github/workflows/uk-ai-advisory.md",
       ].toSorted(),
@@ -419,10 +416,10 @@ test("gh aw add installs the focused Software Development Practices campaign con
     assert.deepEqual(
       installedManifest.files.map(({ destination }) => destination).sort(),
       [
-        ".github/aw/dashboards/software-development-practices.json",
-        ".github/aw/software-development-practices/graders/software-development-practices-github-well-architected-operational-value.sh",
-        ".github/aw/software-development-practices/graders/software-development-practices-nist-ssdf-operational-value.sh",
-        ".github/aw/software-development-practices/software-development-guidance-operational-value-runtime.bash",
+        "software-development-practices/dashboard.json",
+        "software-development-practices/.github/graders/software-development-practices-github-well-architected-operational-value.sh",
+        "software-development-practices/.github/graders/software-development-practices-nist-ssdf-operational-value.sh",
+        "software-development-practices/software-development-guidance-operational-value-runtime.bash",
         ".github/workflows/graders/software-development-practices-github-well-architected-operational-value.sh",
         ".github/workflows/graders/software-development-practices-nist-ssdf-operational-value.sh",
         ".github/workflows/software-development-practices-github-well-architected.md",
@@ -436,25 +433,15 @@ test("gh aw add installs the focused Software Development Practices campaign con
   }
 });
 
-test("gh aw add installs the dashboard campaign contract", { timeout: 180_000 }, async () => {
-  const consumer = await installCampaign(dashboardCampaignSource);
+test("root CAO installation materializes the dashboard campaign contract", { timeout: 180_000 }, async () => {
+  const consumer = await installCampaign(campaignSource);
 
   try {
     for (const relativePath of dashboardExpectedFiles) {
       assert.ok(existsSync(join(consumer, relativePath)), `dashboard campaign omitted ${relativePath}`);
     }
 
-    const campaignManifests = installedManifests(consumer);
-    assert.equal(campaignManifests.length, 1, "expected one installed dashboard campaign manifest");
-    const installedManifest = JSON.parse(readFileSync(
-      installedManifestPath(consumer, campaignManifests[0]),
-      "utf8",
-    ));
-    assert.deepEqual(
-      installedManifest.files.map(({ destination }) => destination).sort(),
-      dashboardExpectedFiles.toSorted(),
-      "dashboard campaign manifest must own its workflow and every report module",
-    );
+    assert.equal(existsSync(join(consumer, ".github", "aw", "dashboard")), false);
 
     const dashboardWorkflow = readFileSync(join(consumer, ".github", "workflows", "cao-dashboard.yml"), "utf8");
     assert.doesNotMatch(dashboardWorkflow, /workflow_call:|cao-dashboard-build|dispatch-workflow/);
@@ -470,12 +457,12 @@ test("gh aw add installs the dashboard campaign contract", { timeout: 180_000 },
     assert.doesNotMatch(dashboardWorkflow, /actions\/github-script@(?![0-9a-f]{40}\b)/);
     assert.match(dashboardWorkflow, /Standalone Pages deployment:[\s\S]*?Dashboard artifact assembly completed/);
     assert.doesNotMatch(dashboardWorkflow, /schedule:/);
-    assert.match(dashboardWorkflow, /push:[\s\S]*?\.github\/aw\/dashboard\/\*\*[\s\S]*?\.github\/workflows\/cao\.json/);
-    assert.match(dashboardWorkflow, /\.github\/aw\/dashboards\/\*\*/);
+    assert.match(dashboardWorkflow, /push:[\s\S]*?dashboard\/\*\*[\s\S]*?\.github\/workflows\/cao\.json/);
     assert.match(dashboardWorkflow, /"\*\/dashboard\.json"/);
+    assert.doesNotMatch(dashboardWorkflow, /\.github\/aw\/(?:dashboard|dashboards)/);
     assert.match(dashboardWorkflow, /github\.ref_name == github\.event\.repository\.default_branch/);
 
-    const dashboardSite = join(consumer, ".github", "aw", "dashboard", "site");
+    const dashboardSite = join(consumer, "dashboard", "site");
     const dashboardOutput = join(consumer, "dashboard-output");
     const controlSettings = join(consumer, "control-settings.json");
     run("gh", ["aw", "add", activityCampaignSource, "--force", "--no-security-scanner"], consumer);
@@ -490,8 +477,8 @@ test("gh aw add installs the dashboard campaign contract", { timeout: 180_000 },
   }
 });
 
-test("gh aw add --force restores dashboard workflows, producers, and renderer assets", { timeout: 180_000 }, async () => {
-  const consumer = await installCampaign(dashboardCampaignSource);
+test("root CAO rematerialization restores dashboard workflows, producers, and renderer assets", { timeout: 180_000 }, async () => {
+  const consumer = await installCampaign(campaignSource);
 
   try {
     const deployPath = join(consumer, ".github", "workflows", "cao-dashboard.yml");
@@ -499,9 +486,9 @@ test("gh aw add --force restores dashboard workflows, producers, and renderer as
     writeFileSync(deployPath, `${deployWorkflow}\n# local integration-test change\n`);
 
     const removedFiles = [
-      ".github/aw/dashboard/report/records.mjs",
-      ".github/aw/dashboard/site/index.html",
-      ".github/aw/dashboard/site/scripts/build.mjs",
+      "dashboard/report/records.mjs",
+      "dashboard/site/index.html",
+      "dashboard/site/scripts/build.mjs",
     ];
     for (const relativePath of removedFiles) {
       rmSync(join(consumer, relativePath));
@@ -510,10 +497,11 @@ test("gh aw add --force restores dashboard workflows, producers, and renderer as
     run("gh", [
       "aw",
       "add",
-      dashboardCampaignSource,
+      campaignSource,
       "--force",
       "--no-security-scanner",
     ], consumer);
+    run(process.execPath, [materializerScript, "materialize", "root"], consumer);
 
     assert.ok(
       !readFileSync(deployPath, "utf8").includes("# local integration-test change"),
@@ -544,7 +532,7 @@ test("gh aw update replaces workflows and restores campaign-owned assets", { tim
     writeFileSync(orchestratorPath, `${orchestrator}\n# local integration-test change\n`);
 
     const removedFiles = [
-      ".github/aw/dependabot/graders/dependabot-update-planner-operational-value.sh",
+      "dependabot/.github/graders/dependabot-update-planner-operational-value.sh",
       ".github/workflows/dependabot-update-planner.md",
       ".github/workflows/graders/dependabot-update-planner-operational-value.sh",
       ".github/workflows/shared/control.md",

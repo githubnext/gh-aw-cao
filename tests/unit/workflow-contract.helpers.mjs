@@ -13,11 +13,11 @@ export const ghAwVersion = controlPolicy["gh-aw-version"];
 export const escapedGhAwVersion = ghAwVersion.replaceAll(".", "\\.");
 
 export function workflow(name, directory = workflowsDirectory) {
-  return readFileSync(join(directory, name), "utf8");
+  return readFileSync(join(directory, name), "utf8").replaceAll("\r\n", "\n");
 }
 
 export function script(name, directory) {
-  return readFileSync(join(directory, name), "utf8").replace(/\r?\n$/, "");
+  return readFileSync(join(directory, name), "utf8").replaceAll("\r\n", "\n").replace(/\n$/, "");
 }
 
 export function controlPrecompute() {

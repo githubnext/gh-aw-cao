@@ -22,7 +22,7 @@ The EU CRA campaign helps a private Central Agentic Ops control repository ident
 
 The orchestrator dispatches at most 48 repository-level workers per run. Each worker creates at most one evidence issue, uses the shared control plane, and defaults to review output.
 
-The campaign maintainer runs independently of repository dispatch. It updates the [implementation-status ledger](implementation-status.md) only through a draft pull request and may open at most one deduplicated issue for the highest-priority concrete fleet gap. Installed campaigns keep the ledger at `.github/aw/eu-cra-compliance/implementation-status.md`.
+The campaign maintainer runs independently of repository dispatch. It updates the [implementation-status ledger](implementation-status.md) only through a draft pull request and may open at most one deduplicated issue for the highest-priority concrete fleet gap. Installed campaigns keep the ledger at `eu-cra-compliance/implementation-status.md`.
 
 ## Install and Configure
 

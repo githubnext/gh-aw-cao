@@ -78,8 +78,8 @@ lifecycle_complete=false
 if [[ $exit_code -eq 0 ]]; then
   if [[ -f activity/token-intervention-lifecycle.mjs ]]; then
     lifecycle_script=activity/token-intervention-lifecycle.mjs
-  elif [[ -f .github/aw/activity/token-intervention-lifecycle.mjs ]]; then
-    lifecycle_script=.github/aw/activity/token-intervention-lifecycle.mjs
+  elif [[ -f activity/token-intervention-lifecycle.mjs ]]; then
+    lifecycle_script=activity/token-intervention-lifecycle.mjs
   else
     lifecycle_script=
   fi

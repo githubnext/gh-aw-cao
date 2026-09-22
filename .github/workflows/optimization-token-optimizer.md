@@ -67,13 +67,8 @@ jobs:
           eligible=false
           reason=incomplete-evidence
 
-          if [ -f activity/cao.mjs ]; then
-            cao_script=activity/cao.mjs
-          elif [ -f .github/aw/activity/cao.mjs ]; then
-            cao_script=.github/aw/activity/cao.mjs
-          else
-            cao_script=
-          fi
+          cao_script=activity/cao.mjs
+          [ -f "$cao_script" ] || cao_script=
 
           assignment="$(jq -ce '
             . as $input

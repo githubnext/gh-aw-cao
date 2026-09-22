@@ -35,7 +35,7 @@ queries differ.
 
 ## Configure a control repository
 
-The latest Bash installer makes the campaign-installed `./cao.sh` wrapper
+The latest Bash installer makes the canonical `./cao.sh` wrapper
 executable. Run configuration commands through that repository-local CLI.
 
 Create a minimal review-safe control-plane policy:
@@ -100,15 +100,12 @@ itself is not guaranteed to be at a fixed path.
    `$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite`. A missing or empty file is a cache
    miss and must be treated as a fallback condition, not an error — fall back to
    bounded read-only GitHub or `agentic-workflows` tool calls instead.
-2. Resolve the CLI entry point. It lives at a different path depending on whether this
-   is the source-managed control repository or an installed campaign:
+2. Resolve the CLI entry point from the canonical source-layout path used by both
+   the catalog and installed campaigns:
 
    ```bash
-   if [ -f activity/cao.mjs ]; then
-     cao_script=activity/cao.mjs
-   elif [ -f .github/aw/activity/cao.mjs ]; then
-     cao_script=.github/aw/activity/cao.mjs
-   else
+   cao_script=activity/cao.mjs
+   if [ ! -f "$cao_script" ]; then
      echo "cao CLI is unavailable; fall back to unbounded evidence gathering" >&2
      cao_script=""
    fi

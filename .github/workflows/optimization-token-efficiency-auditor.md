@@ -155,13 +155,8 @@ jobs:
                 reason=run-identity-count-mismatch
               else
                 db="$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite"
-                if [ -f activity/cao.mjs ]; then
-                  cao_script=activity/cao.mjs
-                elif [ -f .github/aw/activity/cao.mjs ]; then
-                  cao_script=.github/aw/activity/cao.mjs
-                else
-                  cao_script=
-                fi
+                cao_script=activity/cao.mjs
+                [ -f "$cao_script" ] || cao_script=
 
                 inventory_sources="$RUNNER_TEMP/cao-activity/inventory-sources.json"
                 payload_hashes="$RUNNER_TEMP/cao-activity/payload-hashes.json"

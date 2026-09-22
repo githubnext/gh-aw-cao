@@ -19,7 +19,7 @@ There is no `.github/cao/src/report.mjs` in the current control runtime. Admissi
 
 ## What Admission Gates
 
-The shared control component keeps one campaign-installed runtime under `.github/workflows/shared/`. The exact-`github.workflow_sha` shared checkout contains that runtime and `.github/workflows/cao.json`; authorized runs execute `precompute` from the same checkout.
+The shared control component keeps one canonical runtime under `.github/workflows/shared/`. The exact-`github.workflow_sha` shared checkout contains that runtime and `.github/workflows/cao.json`; authorized runs execute `precompute` from the same checkout.
 
 | Check | Admitted when |
 | --- | --- |

@@ -87,7 +87,7 @@ The root campaign installs:
 
 1. shared authentication, routing, and fail-closed controls;
 2. the activity and dashboard infrastructure;
-3. the `cao` CLI runtime under `.github/aw/activity/`; and
+3. the `cao` CLI runtime under `activity/`; and
 4. CAO project skills under `.github/skills/` for Copilot discovery in the control repository.
 
 Use the `add-cao-campaign` skill to discover and compare catalog operations when you do not already know which campaign fits. After explicit selection, it installs through CAO so the campaign declaration is merged automatically. For example, install Dependabot with:

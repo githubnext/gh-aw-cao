@@ -55,7 +55,7 @@ Treat missing declarations, invalid metadata, inaccessible sources, unresolved p
 
 ## Install
 
-After explicit approval, run the campaign-installed CLI from the control repository:
+After explicit approval, run the repository-local CLI from the control repository:
 
 ```bash
 ./cao.sh add githubnext/gh-aw-cao/<campaign-slug>@<catalog-commit>
@@ -66,7 +66,7 @@ Forward additional campaign-installer options only when the user requested them 
 After installation:
 
 1. Parse `.github/workflows/cao.json` and reject unresolved placeholders.
-2. Confirm the new campaign identity, orchestrator, and workers match the installed `.github/aw/<campaign-slug>/cao.json` declaration.
+2. Confirm the new campaign identity, orchestrator, and workers match the installed `<campaign-slug>/cao.json` declaration.
 3. Confirm global scope, campaign mode, exact target overrides, worker settings, and unrelated campaign settings did not broaden or change. A newly added campaign must remain in review unless the user separately requests and approves a policy change.
 4. Run `gh aw doctor --dir .` and report any incomplete prerequisites without bypassing them.
 5. Review `git diff` for campaign-owned files and policy changes. Do not commit, push, enable workers, dispatch workflows, or promote live mode unless the user explicitly asks.

@@ -17,9 +17,9 @@ The dashboard campaign publishes an access-controlled static view of Central Age
 - `.github/workflows/cao-activity.yml`: shared data collector and cache publisher installed by the core activity campaign.
 - `.github/workflows/shared/policy.mjs`: dependency-free checked-in policy parser and resolver.
 - `.github/workflows/shared/control.mjs`: deterministic policy command adapter used by the build workflow.
-- `.github/aw/dashboard/report`: deterministic collection modules executed by the activity action plus Dashboard Language source adaptation.
-- `.github/aw/dashboard/site`: the bundled Dashboard Language validator, presenter, configuration, and browser runtime.
-- `.github/aw/dashboard/local-server.mjs`: local preview server using Node.js built-ins and GitHub CLI, with live reload.
+- `dashboard/report`: deterministic collection modules executed by the activity action plus Dashboard Language source adaptation.
+- `dashboard/site`: the bundled Dashboard Language validator, presenter, configuration, and browser runtime.
+- `dashboard/local-server.mjs`: local preview server using Node.js built-ins and GitHub CLI, with live reload.
 
 The activity action reads trusted workflow data and writes a bounded JSONL and SQLite cache snapshot plus a deterministic `inventory-sources.json` sidecar from the reviewed control policy, installed campaign ownership records, local control workflow inventory, and paginated Actions workflow registries for resolved repositories. Campaign default-branch revisions, the latest stable gh-aw release, and generated lock compiler metadata are collected as independent version evidence. Registry and version lookup failures remain explicit partial evidence, and repository-owned workflows remain standalone rather than becoming campaign workers or rollout authority. The dashboard publisher restores these files from the same cache. The browser ingests the activity JSONL and then the sidecar so configured campaigns, including campaigns without recent runs, are available to Dashboard Language queries. AI agents do not receive `pages: write`, `id-token: write`, or deployment authority.
 
@@ -29,22 +29,37 @@ If authoritative control policy resolution fails, the build remains fail-closed 
 
 ## Install
 
-The root Central Agentic Ops campaign installs the dashboard by default. For a focused installation, install the core activity campaign and dashboard from the same reviewed release tag or full commit SHA:
+The root Central Agentic Ops campaign installs Activity, Dashboard, the trusted
+materializer, and the local runtime verification action together. Install a
+reviewed release tag or full commit SHA through the CAO installer so the
+canonical runtime files are materialized after gh-aw records the exact package
+revision:
 
 ```bash
-gh aw add githubnext/gh-aw-cao/activity@<catalog-release>
-gh aw add githubnext/gh-aw-cao/dashboard@<catalog-release>
+curl --fail --silent --show-error --location \
+  https://raw.githubusercontent.com/githubnext/gh-aw-cao/<catalog-release>/install.sh |
+  bash -s -- githubnext/gh-aw-cao@<catalog-release>
 ```
 
-Both installation paths add the deterministic dashboard automation without an additional enable variable. The standalone publisher remains manual-only and cannot enable Pages for the repository.
+Direct `gh aw add` of the component `activity/` or `dashboard/` manifests is not
+a complete installation: gh-aw packages cannot run the required post-install
+materialization step, and those manifests intentionally contain no duplicate
+runtime resources. The root installation adds the deterministic dashboard
+automation without an additional enable variable. The standalone publisher
+remains manual-only and cannot enable Pages for the repository.
 
-To refresh or restore campaign-owned files, reinstall a reviewed release with force:
+To refresh or restore campaign-owned files, rerun the installer with the same
+reviewed package revision:
 
 ```bash
-gh aw add githubnext/gh-aw-cao/dashboard@<catalog-release> --force
+curl --fail --silent --show-error --location \
+  https://raw.githubusercontent.com/githubnext/gh-aw-cao/<catalog-release>/install.sh |
+  bash -s -- githubnext/gh-aw-cao@<catalog-release>
 ```
 
-The campaign contains only deterministic action workflows and resources, so `gh aw update` has no source-tracked agentic workflow through which to discover it.
+Use `./cao.sh update` to move installed CAO packages to a newer reviewed
+release. It runs gh-aw updates and rematerializes canonical runtime files from
+the immutable resolved commit recorded by gh-aw.
 
 ## Local preview
 
@@ -58,7 +73,7 @@ The server requires GitHub CLI authentication with Actions read access. It downl
 
 Open only the unguessable URL printed by the server. The server uses only Node.js built-ins plus GitHub CLI, binds to the loopback interface by default, rejects unexpected request hosts, and serves the bundled site without a build step. Use `--port` or `--host` to override its address.
 
-The preview composes `.github/aw/dashboard/site/dashboard.json` with every installed `.github/aw/dashboards/*.json` campaign dashboard. It watches those files, serves a split core `dashboard.json` plus per-page `dashboard-pages/*.json` chunks, and sends the updated core document over a capability-protected WebSocket after a valid update. The browser re-renders that shell without reloading the page while continuing to use the downloaded report data. Invalid dashboard JSON is reported in the terminal while the last valid preview remains available.
+The preview composes `dashboard/site/dashboard.json` with every installed `<campaign>/dashboard.json` document. It watches those files, serves a split core `dashboard.json` plus per-page `dashboard-pages/*.json` chunks, and sends the updated core document over a capability-protected WebSocket after a valid update. The browser re-renders that shell without reloading the page while continuing to use the downloaded report data. Invalid dashboard JSON is reported in the terminal while the last valid preview remains available.
 
 ### Canvas CLI actions
 
@@ -159,7 +174,7 @@ The workflow passes `enablement: false` to `actions/configure-pages`, so a run v
 
 Use **Refresh** in the dashboard header to open **Central Agentic Ops Dashboard** on the repository's **Actions** page, then click **Run workflow**. The build restores the latest complete schema-versioned activity snapshot and normalizes its usage records into the dashboard tables without triggering collection or indexing. Run **CAO Activity** separately when a fresh snapshot is required. The standalone workflow is deliberately not scheduled, so installing the campaign cannot replace an existing Pages deployment without an explicit run. Operational-value collection preserves the ordered native metrics already present in retained gh-aw run records. Actions caches accelerate refreshes but are evictable and are not historical authority.
 
-The catalog contains only collector, adapter, and presenter code. Installed control repositories hold runtime aggregation and the current access-controlled Pages view. Live organization-specific JSON, Markdown, and SVG snapshots are generated data and are not committed to this catalog.
+The catalog contains the collector, adapter, presenter, and runtime sources at the same paths used by control repositories. Control repositories generate the current access-controlled Pages view. Live organization-specific JSON, Markdown, and SVG snapshots are generated data and are not committed to this catalog.
 
 ## Configure
 

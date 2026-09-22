@@ -196,7 +196,7 @@ Every ESLint Factory workflow shares one repo-memory branch, `memory/eslint-rule
 - Each line is one JSON object with exactly these fields: `schema` (`"cao.eslint-rules.transaction"`), `schema_version` (`1`), `txn_id` (`miner-<run id>-<counter>`), `recorded_at` (ISO 8601 UTC seconds, `Z` suffix), `worker` (`"miner"`), `kind`, `rule_key`, `target_repo`, `central_repo`, `correlation_id`, `run_url`, and a `payload` object.
 - `rules/<rule-key>.json` is a flat directory holding the current normalized state of every central rule. `rule_key` matches `^[a-z0-9][a-z0-9._-]{0,80}$`, starts with the language (`js-` or `ts-`), and describes the unsafe pattern, for example `ts-no-floating-promise-in-handler`. One file per rule; never create subdirectories.
 - Persist compact evidence references and outcomes only: pull request and commit numbers, permalinks, file paths, occurrence counts, and classifications. Never copy review comment text, commit diffs, agent transcripts, logs, or source files into memory.
-- Rebuild the derived database before and after writing with `node .github/aw/eslint-rules/rules-db.mjs build --memory "$GH_AW_MEMORY_DIR" --database /tmp/gh-aw/eslint-rules/rules.sqlite`. It fails closed on malformed lines; if it rejects a line you appended, correct that line and `report_incomplete` rather than appending more.
+- Rebuild the derived database before and after writing with `node eslint-rules/rules-db.mjs build --memory "$GH_AW_MEMORY_DIR" --database /tmp/gh-aw/eslint-rules/rules.sqlite`. It fails closed on malformed lines; if it rejects a line you appended, correct that line and `report_incomplete` rather than appending more.
 
 ## Mining
 
