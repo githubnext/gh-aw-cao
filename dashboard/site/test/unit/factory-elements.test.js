@@ -125,6 +125,8 @@ it('renders the factory floor from its independent JSON view and configuration',
     'Successful dispatches42 failed',
     'Value gain1'
   ]);
+  expect(rendered?.querySelector('.factory-station:nth-child(3) strong a')?.getAttribute('href'))
+    .toBe('#page-issues');
   expect(rendered?.querySelector('.factory-station:nth-child(4) strong .metric-number-animated')).not.toBeNull();
   expect(rendered?.querySelector('.factory-station:nth-child(5) small a')?.getAttribute('href'))
     .toBe('#page-dispatches?campaign-worker-dispatches.status=failure');

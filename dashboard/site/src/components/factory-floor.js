@@ -20,7 +20,7 @@ import { renderReactiveGrid } from './reactive-grid.js';
 export function renderFactoryFloor(sources, metrics, label, animateNumbers, scope) {
   const campaigns = renderFactoryStation('project', { animate: animateNumbers, href: '#page-campaigns', signal: scope.signal });
   const repositories = renderFactoryStation('repo', { animate: animateNumbers, href: '#page-repositories', signal: scope.signal });
-  const issues = renderFactoryStation('issue', { animate: animateNumbers, href: '#page-findings', signal: scope.signal });
+  const issues = renderFactoryStation('issue', { animate: animateNumbers, href: '#page-issues', signal: scope.signal });
   const runs = renderFactoryStation('play', { animate: animateNumbers, href: '#page-runs?runs-runs-source.run-conclusion=success', signal: scope.signal });
   const dispatches = renderFactoryStation('workflow', { animate: animateNumbers, href: '#page-runs', signal: scope.signal });
   const valueGains = renderFactoryStation('trophy', { animate: animateNumbers, final: true, href: '#page-usage', signal: scope.signal });
