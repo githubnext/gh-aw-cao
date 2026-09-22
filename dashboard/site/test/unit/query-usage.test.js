@@ -22,7 +22,7 @@ describe('dashboard query usage graph', () => {
     };
 
     const { graph } = buildDashboardQueryUsageGraph(dashboard);
-    expect([...graph.get('query:joined')]).toEqual(['query:base']);
+    expect([...(graph.get('query:joined') ?? [])]).toEqual(['query:base']);
     expect(findDeadDashboardQueries(dashboard)).toEqual([
       { name: 'dead', path: '$.dashboard.queries[4].name' }
     ]);

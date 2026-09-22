@@ -17,15 +17,18 @@ export function buildDashboardQueryUsageGraph(dashboard) {
   /** @type {Map<string, string>} */
   const reusableViewNodes = new Map();
 
+  /** @param {string} name */
   const queryNode = (name) => `query:${name}`;
+  /** @param {string} node */
   const addNode = (node) => {
     if (!graph.has(node)) graph.set(node, new Set());
     return node;
   };
+  /** @param {string} node @param {unknown[]} names */
   const addQueryEdges = (node, names) => {
-    const edges = graph.get(addNode(node));
+    const edges = graph.get(addNode(node)) ?? new Set();
     for (const name of names) {
-      if (queryNames.has(name)) edges.add(queryNode(name));
+      if (typeof name === 'string' && queryNames.has(name)) edges.add(queryNode(name));
     }
   };
 
@@ -59,7 +62,7 @@ export function buildDashboardQueryUsageGraph(dashboard) {
         roots.add(node);
         if (typeof view === 'string') {
           const reusableNode = reusableViewNodes.get(view);
-          if (reusableNode) graph.get(node).add(reusableNode);
+          if (reusableNode) graph.get(node)?.add(reusableNode);
         } else if (isRecord(view)) {
           addQueryEdges(node, viewQueryNames(view));
         }

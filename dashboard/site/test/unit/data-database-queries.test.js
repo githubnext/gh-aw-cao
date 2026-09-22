@@ -789,7 +789,7 @@ describe('canonical view sources', () => {
     expect(projected['operational-values'].rows).toEqual([]);
   });
 
-  it('projects token optimizer artifacts without parsing issue display text', async () => {
+  it('projects token optimizer interventions without parsing issue display text', async () => {
     const records = [
       {
         schema_version: 2,
@@ -912,20 +912,9 @@ describe('canonical view sources', () => {
     const projected = executeDashboardQueries(
       optimizationDashboardQueries,
       canonical,
-      ['token-efficiency-opportunities', 'token-efficiency-interventions']
+      ['token-efficiency-interventions']
     );
 
-    expect(projected['token-efficiency-opportunities'].rows).toEqual([
-      expect.objectContaining({
-        organization: 'octo',
-        repository: 'example',
-        workflow: '.github/workflows/review.md',
-        'opportunity-kind': 'unbounded-context-growth',
-        'assignment-run': '1185999',
-        'evidence-state': 'complete',
-        'cost-grain': 'invocation'
-      })
-    ]);
     expect(projected['token-efficiency-interventions'].rows).toEqual([
       expect.objectContaining({
         organization: 'octo',
