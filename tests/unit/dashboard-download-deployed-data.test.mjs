@@ -197,12 +197,14 @@ test("downloads the deployed activity shards and SQLite file without rebuilding"
     "gh-aw-logs-shards/empty.jsonl": createHash("sha256").update("").digest("hex"),
   });
   const databaseContent = Buffer.from("published sqlite bytes");
+  const inventoryContent = JSON.stringify({ campaigns: { rows: [] } });
   const requests = [];
   const server = createServer((request, response) => {
     requests.push(request.url);
     response.writeHead(200, { "content-type": "application/x-ndjson" });
     response.end(request.url?.endsWith(".sqlite")
       ? databaseContent : request.url?.endsWith("empty.jsonl") ? ""
+      : request.url?.endsWith("inventory-sources.json") ? inventoryContent
       : request.url?.endsWith("payload-hashes.json") ? manifest : logsContent);
   });
 
@@ -213,10 +215,12 @@ test("downloads the deployed activity shards and SQLite file without rebuilding"
       "gh-aw-logs-shards/fixture.jsonl": createHash("sha256").update(logsContent).digest("hex"),
     });
     const databaseContent = Buffer.from("default sqlite bytes");
+    const inventoryContent = JSON.stringify({ campaigns: { rows: [] } });
     const server = createServer((request, response) => {
       response.writeHead(200, { "content-type": "application/x-ndjson" });
       response.end(request.url?.endsWith(".sqlite")
         ? databaseContent
+        : request.url?.endsWith("inventory-sources.json") ? inventoryContent
         : request.url?.endsWith("payload-hashes.json") ? manifest : logsContent);
     });
     await new Promise((resolve, reject) => {
@@ -234,6 +238,7 @@ test("downloads the deployed activity shards and SQLite file without rebuilding"
       ], { cwd: root });
       assert.equal(await readFile(path.join(root, ".cao", "gh-aw-logs-shards", "fixture.jsonl"), "utf8"), logsContent);
       assert.deepEqual(await readFile(path.join(root, ".cao", "gh-aw-logs.sqlite")), databaseContent);
+      assert.equal(await readFile(path.join(root, ".cao", "inventory-sources.json"), "utf8"), inventoryContent);
     } finally {
       await new Promise((resolve) => server.close(resolve));
       await rm(root, { recursive: true, force: true });
@@ -321,10 +326,12 @@ test("downloads the deployed activity shards and SQLite file without rebuilding"
       false,
     );
     assert.deepEqual(await readFile(path.join(output, "gh-aw-logs.sqlite")), databaseContent);
+    assert.equal(await readFile(path.join(output, "inventory-sources.json"), "utf8"), inventoryContent);
     assert.deepEqual(requests.toSorted(), [
       "/cao/gh-aw-logs-shards/empty.jsonl",
       "/cao/gh-aw-logs-shards/fixture.jsonl",
       "/cao/gh-aw-logs.sqlite",
+      "/cao/inventory-sources.json",
       "/cao/payload-hashes.json",
     ]);
     assert.match(result.databaseUrl, /\/cao\/gh-aw-logs\.sqlite$/);

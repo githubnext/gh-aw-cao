@@ -18,11 +18,15 @@ export function renderLinkButtonList(context) {
   const labelField = text(context.elementConfig?.['label-field']);
   const linkField = text(context.elementConfig?.['link-field']);
   const iconField = text(context.elementConfig?.['icon-field']);
+  const indicatorField = text(context.elementConfig?.['indicator-field']);
+  const indicatorLabelField = text(context.elementConfig?.['indicator-label-field']);
   const fallbackIcon = text(context.elementConfig?.['fallback-icon']) || 'link';
   const items = keyed(
     source.rows(),
     (row) => {
       const label = text(row[labelField]) || 'Link';
+      const indicator = text(row[indicatorField]);
+      const indicatorLabel = text(row[indicatorLabelField]);
       return h(
         'li',
         { className: 'link-button-list-item' },
@@ -30,6 +34,17 @@ export function renderLinkButtonList(context) {
           h('span', { className: 'link-button-list-content' },
             renderIconSpan('link-button-list-icon', text(row[iconField]) || fallbackIcon, { ariaHidden: true }),
             h('span', null, label),
+            indicator
+              ? h(
+                  'span',
+                  {
+                    className: 'link-button-list-indicator',
+                    title: indicatorLabel || undefined,
+                    'aria-label': indicatorLabel || undefined
+                  },
+                  renderIconSpan('', indicator, { ariaHidden: true })
+                )
+              : null,
             renderIconSpan('link-button-list-chevron', 'chevron-right', { ariaHidden: true })
           ),
           findLink(row, linkField)

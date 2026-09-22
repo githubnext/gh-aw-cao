@@ -176,16 +176,18 @@ describe('campaign detail route', () => {
     }));
 
     expect(rendered.dataset.campaign).toBe('ambient-context');
-    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('InsightsDispatchesIssuesInfo');
+    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('InsightsProblemsDispatchesIssuesInfo');
     expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-campaign-detail?campaign=ambient-context');
     expect([...rendered.querySelectorAll('.campaign-tabs a')].map((link) => link.getAttribute('href'))).toEqual([
       '#page-campaign-insights?campaign=ambient-context',
+      '#page-campaign-problems?campaign=ambient-context',
       '#page-campaign-dispatches?campaign=ambient-context',
       '#page-campaign-issues?campaign=ambient-context',
       '#page-campaign-detail?campaign=ambient-context'
     ]);
     expect([...rendered.querySelectorAll('.campaign-tabs a')].map((link) => link.getAttribute('data-nav-page-id'))).toEqual([
       'campaign-insights',
+      'campaign-problems',
       'campaign-dispatches',
       'campaign-issues',
       'campaign-detail'
@@ -215,7 +217,7 @@ describe('campaign detail route', () => {
     }));
 
     expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')).toBeNull();
-    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('InsightsDispatchesIssuesInfo');
+    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('InsightsProblemsDispatchesIssuesInfo');
   });
 
   describe('workflow run navigation', () => {

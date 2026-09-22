@@ -239,6 +239,18 @@ class SqliteIDBObjectStore {
     this.transaction = transaction;
   }
 
+  get indexNames() {
+    const rows = this.database.connection.prepare(`
+      SELECT name
+      FROM __idb_indexes
+      WHERE database_name = ? AND store_name = ?
+      ORDER BY name
+    `).all(this.database.name, this.name);
+    return new SqliteDOMStringList(rows.map((row) => String(
+      /** @type {{ name: string }} */ (row).name
+    )));
+  }
+
   /**
    * @param {string} name
    * @param {KeyPath} keyPath

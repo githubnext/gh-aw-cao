@@ -277,6 +277,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/outcome-detail-sections.js
   - source: site/src/components/campaign-aic-utilization-thresholds.json
     destination: .github/aw/dashboard/site/src/components/campaign-aic-utilization-thresholds.json
+  - source: site/src/components/campaign-problem-list.js
+    destination: .github/aw/dashboard/site/src/components/campaign-problem-list.js
   - source: site/src/components/campaign-readme.js
     destination: .github/aw/dashboard/site/src/components/campaign-readme.js
   - source: site/src/components/campaign-resource-navigation.json

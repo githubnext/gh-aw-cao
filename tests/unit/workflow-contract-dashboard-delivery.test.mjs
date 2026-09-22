@@ -352,6 +352,14 @@ test("Activity campaign owns the shared collected-data cache contract", () => {
   ]);
   assert.deepEqual(activityManifest.resources, [
     { source: "cao.mjs", destination: ".github/aw/activity/cao.mjs" },
+    {
+      source: "computations/index.mjs",
+      destination: ".github/aw/activity/computations/index.mjs",
+    },
+    {
+      source: "computations/runtime-health.mjs",
+      destination: ".github/aw/activity/computations/runtime-health.mjs",
+    },
     { source: "debug.mjs", destination: ".github/aw/activity/debug.mjs" },
     { source: "actions-context.mjs", destination: ".github/aw/activity/actions-context.mjs" },
     { source: "actions-log.mjs", destination: ".github/aw/activity/actions-log.mjs" },

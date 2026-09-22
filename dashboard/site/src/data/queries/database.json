@@ -211,6 +211,7 @@
       { "field": "status", "as": "run-status" },
       { "field": "conclusion", "as": "run-conclusion" },
       { "field": "classification" },
+      { "field": "failureKind", "as": "failure-kind" },
       { "field": "duration" },
       { "field": "actionMinutes", "as": "action-minutes" },
       { "field": "githubApiCalls", "as": "github-api-calls" },
