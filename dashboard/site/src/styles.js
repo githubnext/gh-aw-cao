@@ -1712,6 +1712,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
   .factory-rhythm { padding: 0; }
   .factory-rhythm-bars { gap: 5px; }
   .factory-status { align-items: flex-start; flex-direction: column; gap: 12px; padding: 16px 20px; }
+  .link-button-list-view > header { margin-top: 24px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .factory-station, .factory-rhythm-bar-pair i { animation: none; }
