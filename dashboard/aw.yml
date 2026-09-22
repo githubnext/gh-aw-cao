@@ -165,6 +165,8 @@ resources:
     destination: .github/aw/dashboard/site/src/presenter.js
   - source: site/src/query-type-checker.js
     destination: .github/aw/dashboard/site/src/query-type-checker.js
+  - source: site/src/query-usage.js
+    destination: .github/aw/dashboard/site/src/query-usage.js
   - source: site/src/reactive.js
     destination: .github/aw/dashboard/site/src/reactive.js
   - source: site/src/retry.js

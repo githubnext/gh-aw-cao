@@ -142,6 +142,7 @@ import {
 } from './components/route-body-specification.js';
 import { cliActionTemplateFields } from './cli-action-template.js';
 import { compileDashboardQueryTypes } from './query-type-checker.js';
+import { findDeadDashboardQueries } from './query-usage.js';
 
 /**
  * @param {string} command
@@ -798,6 +799,13 @@ function validateDashboard(dashboard, dashboardNode, errors) {
   }
   declaredQueries = queryTypes.queryFields;
   declaredQuerySources = queryTypes.querySources;
+  for (const query of findDeadDashboardQueries(dashboard)) {
+    errors.push(createError(
+      ERROR_CODES.unusedQuery,
+      `query "${query.name}" is not used by a view, callout, or another retained query.`,
+      query.path
+    ));
+  }
   declaredCardTemplates = validateCardTemplates(
     dashboard['card-templates'],
     getValueNodeByKey(dashboardNode, 'card-templates'),

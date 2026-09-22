@@ -39,6 +39,24 @@ describe('dashboard document validation', () => {
     expect(accepted.ok).toBe(true);
   });
 
+  it('rejects queries outside the view-to-query dependency graph', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    document.dashboard.queries.push({
+      name: 'unused-run-query',
+      intent: 'Exercise dead query validation.',
+      from: 'runs'
+    });
+
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([{
+        code: 'DLS-E015',
+        message: 'query "unused-run-query" is not used by a view, callout, or another retained query.',
+        path: `$.dashboard.queries[${document.dashboard.queries.length - 1}].name`
+      }])
+    });
+  });
+
   it('counts every grader observation in the overview value summary', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     /** @type {{ name?: string, [key: string]: unknown }[]} */

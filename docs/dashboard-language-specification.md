@@ -1075,6 +1075,7 @@ Validation proceeds conceptually through YAML syntax, document count, structural
 - **DLS-VAL-003:** A Level 2 or Level 3 validator **MUST** reject incompatible source fields, filters, aggregates, encodings, links, or data relationships. A validator **MUST** reject an `href` reference to a non-link field or an ambiguous multi-link field with link-specific error code `DLS-E009`, and **MUST** reject ambiguous or invalid aggregate-order references with `DLS-E010`. A valid custom view **MUST NOT** be rejected merely because its runtime result is `empty` or `unavailable`; `DLS-E012` applies only when required external source metadata needed to determine those states is missing.
 - **DLS-VAL-004:** Error reporting **MUST NOT** expose credentials, secret values, or sensitive source payloads.
 - **DLS-VAL-005:** A validator **MUST** reject a page that uses `disclosure` and has zero or more than four effective essential views using `DLS-E013`.
+- **DLS-VAL-006:** A validator **MUST** build the dependency graph from rendered views and callouts through declarative query inputs and reject every declared query that is unreachable from that graph using `DLS-E015`.
 
 Error codes are listed in Appendix B.
 
@@ -1450,6 +1451,7 @@ dashboard:
 | `DLS-E012` | Missing required external provenance or data-state metadata; not an `empty` or `unavailable` runtime result |
 | `DLS-E013` | Invalid progressive-disclosure configuration or essential-view count |
 | `DLS-E014` | Invalid graphical nesting |
+| `DLS-E015` | Declared query is unused by rendered dashboard content or another retained query |
 
 ### Appendix C: Invalid Examples (Informative)
 

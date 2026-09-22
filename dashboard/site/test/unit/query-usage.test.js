@@ -1,0 +1,40 @@
+import { describe, expect, it } from 'vitest';
+import {
+  buildDashboardQueryUsageGraph,
+  findDeadDashboardQueries
+} from '../../src/query-usage.js';
+
+describe('dashboard query usage graph', () => {
+  it('retains transitive dependencies from inline and reusable views and callouts', () => {
+    const dashboard = {
+      queries: [
+        { name: 'base', from: 'runs' },
+        { name: 'joined', from: 'base', joins: [{ source: 'workflows' }] },
+        { name: 'reusable', from: 'joined' },
+        { name: 'callout', from: 'findings' },
+        { name: 'dead', from: 'runs' }
+      ],
+      views: [{ id: 'shared', data: { source: 'reusable' } }],
+      pages: [
+        { kind: 'custom', views: [{ data: { source: 'joined' } }, 'shared'] }
+      ],
+      callouts: [{ 'visible-when': { source: 'callout' } }]
+    };
+
+    const { graph } = buildDashboardQueryUsageGraph(dashboard);
+    expect([...graph.get('query:joined')]).toEqual(['query:base']);
+    expect(findDeadDashboardQueries(dashboard)).toEqual([
+      { name: 'dead', path: '$.dashboard.queries[4].name' }
+    ]);
+  });
+
+  it('retains queries used by declared reusable views', () => {
+    const dashboard = {
+      queries: [{ name: 'orphan', from: 'runs' }],
+      views: [{ id: 'unused', data: { source: 'orphan' } }],
+      pages: [{ kind: 'custom', views: [] }]
+    };
+
+    expect(findDeadDashboardQueries(dashboard)).toEqual([]);
+  });
+});
