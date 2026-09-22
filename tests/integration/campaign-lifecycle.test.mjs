@@ -517,12 +517,12 @@ test("root CAO rematerialization restores dashboard workflows, producers, and re
   }
 });
 
-test("gh aw update replaces workflows and restores campaign-owned assets", { timeout: 180_000 }, async () => {
+test("gh aw update replaces workflows and restores campaign-owned assets after canonical materialization", { timeout: 180_000 }, async () => {
   const consumer = await installCampaign(dependabotUpdateSource);
 
   try {
     assert.ok(
-      existsSync(join(consumer, ".github", "aw", "dependabot", "graders", "dependabot-update-planner-operational-value.sh")),
+      existsSync(join(consumer, "dependabot", ".github", "graders", "dependabot-update-planner-operational-value.sh")),
       "Dependabot campaign omitted its campaign-owned operational-value grader",
     );
     assert.ok(
@@ -554,6 +554,7 @@ test("gh aw update replaces workflows and restores campaign-owned assets", { tim
       "--cool-down",
       "0",
     ], consumer);
+    run(process.execPath, [materializerScript, "materialize", "dependabot"], consumer);
 
     const updatedOrchestrator = readFileSync(orchestratorPath, "utf8");
     assert.ok(
