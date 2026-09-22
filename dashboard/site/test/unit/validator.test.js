@@ -679,7 +679,6 @@ describe('dashboard document validation', () => {
         description: 'Repositories registered counts distinct registered targets and compares them with retained completed delivery evidence in the selected horizon.',
         data: { sources: expect.arrayContaining([
           'overview-outcome-summary',
-          'overview-run-summary',
           'overview-factory-status',
           'overview-rhythm'
         ]) },

@@ -4,11 +4,10 @@ import { formatCount } from './count-formatters.js';
 import { bindFactorySources, createFactoryMetrics, createFactoryScope } from './factory-elements.js';
 import { renderFactoryRhythm } from './factory-rhythm.js';
 
-/** @typedef {{ operations: number, live: number, review: number }} Motion */
 /** @typedef {{ rows: () => Record<string, unknown>[], pending: () => boolean, unavailable: () => boolean }} SourceBinding */
 /** @typedef {Record<string, SourceBinding>} SourceBindings */
 /** @typedef {{ usefulOutputs: () => number, deliveredRepositories: () => number }} HeaderMetrics */
-/** @typedef {{ signal: AbortSignal, motion: import('../reactive.js').State<Motion> }} HeaderScope */
+/** @typedef {{ signal: AbortSignal }} HeaderScope */
 
 /**
  * @param {SourceBindings} sources
@@ -16,17 +15,8 @@ import { renderFactoryRhythm } from './factory-rhythm.js';
  * @param {HeaderScope} scope
  */
 export function renderFactoryHeader(sources, metrics, scope) {
-  const running = h('p', { className: 'factory-running' });
   const heading = h('h2', { id: 'agent-factory-heading' });
   const summary = h('p', {});
-
-  render(running, () => {
-    const pending = sources['overview-run-summary']?.pending() ?? false;
-    const motion = scope.motion.get();
-    running.className = `factory-running${pending ? ' factory-running-pending' : ''}${motion.operations > 0 ? ' factory-running-active' : ''}`;
-    running.toggleAttribute('aria-busy', pending);
-    return pending ? '' : motion.operations > 0 ? h('span', {}, 'Work in motion') : 'Actions activity observed';
-  }, { signal: scope.signal });
 
   render(heading, () => {
     const status = sources['overview-factory-status'];
@@ -54,14 +44,13 @@ export function renderFactoryHeader(sources, metrics, scope) {
   return h(
     'header',
     { className: 'factory-intro' },
-    h('div', { className: 'factory-intro-copy' }, running, heading, summary),
+    h('div', { className: 'factory-intro-copy' }, heading, summary),
     renderFactoryRhythm(sources['overview-rhythm'], scope)
   );
 }
 
 const HEADER_SOURCE_NAMES = [
   'overview-outcome-summary',
-  'overview-run-summary',
   'overview-factory-status',
   'overview-rhythm'
 ];

@@ -176,7 +176,7 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(notifications).toHaveCount(0);
     await expect(notifications.locator('.entity-card-list-card')).toHaveCount(0);
     await expect(factory.getByRole('heading', { name: 'Your factory is delivering value.' })).toBeVisible();
-    await expect(factory.locator('.factory-running-active')).toBeVisible();
+    await expect(factory.locator('.factory-running')).toHaveCount(0);
     await expect(factory.locator('.factory-rhythm-day')).toHaveCount(7);
     const rhythmBars = factory.locator('.factory-rhythm-bar-pair i:not([hidden])');
     await expect(rhythmBars.first()).toHaveCSS('animation-name', 'factory-rhythm-bar-grow');
@@ -254,7 +254,6 @@ test('renders the Overview structure before mixed page data resolves', async ({ 
       floorBusy: overview?.querySelector('.factory-floor')?.getAttribute('aria-busy'),
       campaigns: Boolean(overview?.querySelector('.link-button-list-view')),
       campaignsBusy: overview?.querySelector('.link-button-list-view')?.getAttribute('aria-busy'),
-      runningPending: overview?.querySelectorAll('.factory-running-pending').length,
       headingPending: overview?.querySelectorAll('.factory-heading-pending').length,
       rhythmPending: overview?.querySelectorAll('.factory-rhythm-pending').length,
       stationsPending: overview?.querySelectorAll('.factory-station-pending').length
@@ -273,7 +272,7 @@ test('renders the Overview structure before mixed page data resolves', async ({ 
   });
 
   expect(immediate).toEqual({
-    sourceLoadCalls: 14,
+    sourceLoadCalls: 13,
     pageLoadCalls: 0,
     header: true,
     floor: true,
@@ -283,7 +282,6 @@ test('renders the Overview structure before mixed page data resolves', async ({ 
     headerBusy: null,
     floorBusy: null,
     campaignsBusy: '',
-    runningPending: 1,
     headingPending: 1,
     rhythmPending: 1,
     stationsPending: 6

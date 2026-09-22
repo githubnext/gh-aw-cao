@@ -10947,7 +10947,6 @@
             "data": {
               "sources": [
                 "overview-outcome-summary",
-                "overview-run-summary",
                 "overview-factory-status",
                 "overview-rhythm"
               ]

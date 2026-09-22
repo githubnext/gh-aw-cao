@@ -91,7 +91,7 @@ it('renders the factory header from only its declared JSON sources', () => {
   }));
 
   expect(rendered?.classList.contains('factory-intro')).toBe(true);
-  expect(rendered?.querySelector('.factory-running-active')?.textContent).toBe('Work in motion');
+  expect(rendered?.querySelector('.factory-running')).toBeNull();
   expect(rendered?.querySelector('h2')?.textContent).toBe('Your factory is delivering value.');
   expect(rendered?.querySelector('.factory-intro-copy > p:last-child')?.textContent)
     .toBe('2 retained issue and pull request outputs are backed by Actions evidence across 3 repositories.');
@@ -170,7 +170,6 @@ it('renders both elements immediately and updates only widgets whose query resol
   expect(floor?.querySelectorAll('.factory-station-pending')).toHaveLength(6);
   expect(requests.map(({ name }) => name)).toEqual([
     'overview-outcome-summary',
-    'overview-run-summary',
     'overview-factory-status',
     'overview-rhythm',
     'database-campaign-count',
@@ -192,12 +191,11 @@ it('renders both elements immediately and updates only widgets whose query resol
     'active-live': 1,
     'active-review': 1
   }]);
-  resolvers.get('overview-header:overview-run-summary')?.(runSummary);
   resolvers.get('overview-floor:overview-run-summary')?.(runSummary);
   await Promise.resolve();
   await Promise.resolve();
 
-  expect(header?.querySelector('.factory-running-active')?.textContent).toBe('Work in motion');
+  expect(header?.querySelector('.factory-running')).toBeNull();
   expect(floor?.querySelector('.factory-station:nth-child(4)')?.textContent).toBe('Successful runs31 failed');
   expect(floor?.querySelector('.factory-station:nth-child(4)')?.classList.contains('factory-station-pending')).toBe(false);
   expect(floor?.querySelector('.factory-station:nth-child(5)')?.classList.contains('factory-station-pending')).toBe(true);
@@ -207,7 +205,6 @@ it('renders both elements immediately and updates only widgets whose query resol
 it('stops updating an element after its rendered root is removed', async () => {
   const first = renderUiElement('factory-header', context('factory-header', {
     'overview-outcome-summary': source('overview-outcome-summary', []),
-    'overview-run-summary': source('overview-run-summary', [{ 'active-runs': 0 }]),
     'overview-factory-status': source('overview-factory-status', [{ 'factory-heading': 'First status' }]),
     'overview-rhythm': source('overview-rhythm', [{ rhythm }])
   }));
@@ -218,11 +215,10 @@ it('stops updating an element after its rendered root is removed', async () => {
 
   renderUiElement('factory-header', context('factory-header', {
     'overview-outcome-summary': source('overview-outcome-summary', []),
-    'overview-run-summary': source('overview-run-summary', [{ 'active-runs': 1 }]),
     'overview-factory-status': source('overview-factory-status', [{ 'factory-heading': 'Second status' }]),
     'overview-rhythm': source('overview-rhythm', [{ rhythm }])
   }));
 
   expect(first.querySelector('h2')?.textContent).toBe('First status');
-  expect(first.querySelector('.factory-running')?.textContent).toBe('Actions activity observed');
+  expect(first.querySelector('.factory-running')).toBeNull();
 });
