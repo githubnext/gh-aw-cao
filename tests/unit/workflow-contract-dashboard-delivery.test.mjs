@@ -460,10 +460,10 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(workflow, /deployed-data:[\s\S]*?if: github\.event_name == 'schedule' \|\| github\.event_name == 'workflow_dispatch'/);
   assert.match(workflow, /mobile:[\s\S]*?if: github\.event_name != 'push'/);
   assert.match(workflow, /include: \$\{\{ fromJSON\(github\.ref == 'refs\/heads\/main'/);
-  assert.match(workflow, /refs\/heads\/main' && '[^']*Pixel 7[^']*' \|\| '\[\{"browser":"webkit","device":"iPhone 15"\}\]'/);
+  assert.match(workflow, /refs\/heads\/main' && '[^']*"device":"Pixel 7","shard_limit":10[^']*' \|\| '\[\{"browser":"webkit","device":"iPhone 15","shard_limit":5\}\]'/);
   assert.match(workflow, /name: Test deployed dashboard data ingestion\n\s+run: node --test tests\/integration\/dashboard-deployed-data\.test\.mjs/);
   assert.match(workflow, /DASHBOARD_DATA_URL: https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/payload-hashes\.json/);
-  assert.match(workflow, /MOBILE_DEBUG_SHARD_LIMIT: 10/);
+  assert.match(workflow, /MOBILE_DEBUG_SHARD_LIMIT: \$\{\{ matrix\.shard_limit \}\}/);
   assert.match(workflow, /Test mobile dashboard with restricted memory[\s\S]*?MOBILE_MEMORY_MB: 256/);
   assert.match(workflow, /Test mobile dashboard with throttled network[\s\S]*?MOBILE_NETWORK_DOWNLOAD_KBPS: 1600/);
   assert.match(workflow, /Test mobile dashboard with restricted memory and network[\s\S]*?MOBILE_MEMORY_MB: 256[\s\S]*?MOBILE_NETWORK_LATENCY_MS: 150/);
