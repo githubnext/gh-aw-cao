@@ -2947,7 +2947,7 @@
             "function": "concat",
             "args": [
               {
-                "value": "token-efficiency-portfolio-candidates"
+                "value": "token-efficiency-optimizer-assignments"
               },
               {
                 "value": ""
@@ -2986,6 +2986,46 @@
           }
         ],
         "limit": 100
+      },
+      {
+        "name": "token-efficiency-optimizer-assignments",
+        "intent": "Expose only mature, evaluator-backed, non-duplicate exact Run candidates in deterministic measured-AIC priority order for bounded orchestrator dispatch.",
+        "from": "token-efficiency-portfolio-candidates",
+        "filter": {
+          "predicates": [
+            {
+              "field": "candidate-status",
+              "equals": "eligible"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "priority-aic",
+            "direction": "desc"
+          },
+          {
+            "field": "organization",
+            "direction": "asc"
+          },
+          {
+            "field": "repository",
+            "direction": "asc"
+          },
+          {
+            "field": "workflow",
+            "direction": "asc"
+          },
+          {
+            "field": "assignment-run",
+            "direction": "asc"
+          },
+          {
+            "field": "candidate-id",
+            "direction": "asc"
+          }
+        ],
+        "limit": 10
       },
       {
         "name": "token-efficiency-portfolio-status-summary",
@@ -3565,6 +3605,44 @@
                   "type": "temporal",
                   "format": "human-friendly-timestamp",
                   "title": "Observation cutoff"
+                }
+              ]
+            }
+          },
+          {
+            "id": "token-efficiency-optimizer-assignments",
+            "description": "The bounded eligible subset available for orchestrator dispatch in deterministic measured-AIC priority order.",
+            "disclosure": "supplemental",
+            "disclosure-label": "Dispatch-ready candidates",
+            "data": {
+              "source": "token-efficiency-optimizer-assignments",
+              "limit": 10
+            },
+            "mark": "table",
+            "controls": "static",
+            "layout": "full-view",
+            "empty-message": "No token-efficiency candidates currently satisfy every dispatch gate.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "candidate-id",
+                  "type": "nominal",
+                  "title": "Candidate"
+                },
+                {
+                  "field": "target-repo",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "workflow-path",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "measured-aic",
+                  "type": "quantitative",
+                  "title": "Measured AIC"
                 }
               ]
             }

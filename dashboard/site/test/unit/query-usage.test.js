@@ -28,11 +28,32 @@ describe('dashboard query usage graph', () => {
     ]);
   });
 
-  it('retains queries used by declared reusable views', () => {
+  it('rejects queries used only by unreferenced reusable views', () => {
     const dashboard = {
       queries: [{ name: 'orphan', from: 'runs' }],
       views: [{ id: 'unused', data: { source: 'orphan' } }],
       pages: [{ kind: 'custom', views: [] }]
+    };
+
+    expect(findDeadDashboardQueries(dashboard)).toEqual([
+      { name: 'orphan', path: '$.dashboard.queries[0].name' }
+    ]);
+  });
+
+  it('retains queries used by section count sources', () => {
+    const dashboard = {
+      queries: [
+        { name: 'single-count', from: 'runs' },
+        { name: 'group-count', from: 'workflows' }
+      ],
+      pages: [{
+        kind: 'custom',
+        views: [],
+        sections: [
+          { 'count-source': 'single-count' },
+          { 'count-sources': ['group-count'] }
+        ]
+      }]
     };
 
     expect(findDeadDashboardQueries(dashboard)).toEqual([]);

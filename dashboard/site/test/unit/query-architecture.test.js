@@ -105,6 +105,8 @@ describe('dashboard query architecture', () => {
       .toBeUndefined();
     expect(optimizationDashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-portfolio-candidates')?.from)
       .toBe('token-efficiency-portfolio-candidate-evaluation');
+    expect(optimizationDashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-optimizer-assignments'))
+      .toMatchObject({ from: 'token-efficiency-portfolio-candidates', limit: 10 });
     expect(optimizationDashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-interventions')?.from)
       .toBe('audits');
     for (const legacyModule of [

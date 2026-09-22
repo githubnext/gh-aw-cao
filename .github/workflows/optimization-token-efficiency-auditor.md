@@ -81,7 +81,7 @@ jobs:
               reason=review-mode-required
             elif ! jq -e --arg target "$TARGET_REPOSITORY" '
                 . as $candidate
-                | $candidate.query == "token-efficiency-portfolio-candidates"
+                | $candidate.query == "token-efficiency-optimizer-assignments"
                 and $candidate["candidate-status"] == "eligible"
                 and $candidate["missing-reason"] == "none"
                 and $candidate["source-completeness"] == "complete"
@@ -415,7 +415,7 @@ source: githubnext/gh-aw-cao/.github/workflows/optimization-token-efficiency-aud
 
 This workflow has no model task. Its activation job validates exactly one
 review-only candidate selected by the
-`token-efficiency-portfolio-candidates` Dashboard Language query. It checks the
+`token-efficiency-optimizer-assignments` Dashboard Language query. It checks the
 frozen repository, workflow, opportunity, experiment, evaluator, evidence
 window, query completeness and freshness, cost grain, and Run identities
 against the authoritative Activity snapshot, and it rejects active or applied

@@ -44,7 +44,6 @@ export function buildDashboardQueryUsageGraph(dashboard) {
       if (!isRecord(view)) return;
       const node = `view:$.dashboard.views[${index}]`;
       addQueryEdges(node, viewQueryNames(view));
-      roots.add(node);
       if (typeof view.id === 'string') reusableViewNodes.set(view.id, node);
     });
   }
@@ -67,6 +66,18 @@ export function buildDashboardQueryUsageGraph(dashboard) {
           addQueryEdges(node, viewQueryNames(view));
         }
       });
+      if (Array.isArray(definition.sections)) {
+        definition.sections.forEach((section, sectionIndex) => {
+          if (!isRecord(section)) return;
+          const path = `$.dashboard.pages[${pageIndex}]${definition === page ? '' : '.definition'}.sections[${sectionIndex}]`;
+          const node = addNode(`section:${path}`);
+          roots.add(node);
+          addQueryEdges(node, [
+            section['count-source'],
+            ...(Array.isArray(section['count-sources']) ? section['count-sources'] : [])
+          ]);
+        });
+      }
     });
   }
 

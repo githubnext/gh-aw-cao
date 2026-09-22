@@ -1180,7 +1180,9 @@ dashboard:
       const page = document.dashboard.pages[0];
       expect(document.dashboard.navigation).toEqual([{ label: 'Campaign operations', experimental: true, pages: [pageId] }]);
       expect(page).toMatchObject({ kind: 'custom' });
-      expect(page.views).toHaveLength(pageId === 'cao-evolution-dashboard' ? 5 : 4);
+      expect(page.views).toHaveLength(
+        pageId === 'cao-evolution-dashboard' || pageId === 'optimization-dashboard' ? 5 : 4
+      );
       const tables = page.views.filter(
         (/** @type {{ mark?: string }} */ view) => view.mark === 'table'
       );
@@ -1204,6 +1206,8 @@ dashboard:
       const attainmentSource = 'operational-values';
       const expectedSources = pageId === 'cao-evolution-dashboard'
         ? [attainmentSource, attainmentSource, 'outcomes', 'outcomes', 'runs']
+        : pageId === 'optimization-dashboard'
+          ? [attainmentSource, attainmentSource, attainmentSource, 'outcomes', 'runs']
         : [attainmentSource, attainmentSource, 'outcomes', 'runs'];
       expect(sources.sort()).toEqual(expectedSources.sort());
     }
