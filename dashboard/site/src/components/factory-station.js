@@ -4,12 +4,10 @@ import { render } from '../reactive.js';
 import { createAnimatedNumber } from './animated-number.js';
 import { formatCount } from './count-formatters.js';
 
-/** @typedef {{ text: string, href?: string }} StationDetail */
-
 /**
  * @param {string} icon
  * @param {{ animate?: boolean, final?: boolean, href?: string, signal: AbortSignal }} options
- * @returns {{ element: HTMLElement, bind: (read: () => { pending: boolean, unavailable?: boolean, label: string, value: number, detail?: StationDetail }) => void }}
+ * @returns {{ element: HTMLElement, bind: (read: () => { pending: boolean, unavailable?: boolean, label: string, value: number, detail?: string }) => void }}
  */
 export function renderFactoryStation(icon, options) {
   const element = h('li', { className: 'factory-station' });
@@ -37,11 +35,7 @@ export function renderFactoryStation(icon, options) {
         const primary = options.href && !station.pending && !station.unavailable
           ? h('a', { className: 'factory-station-link', href: options.href }, content)
           : content;
-        const detail = station.pending || !station.detail
-          ? ''
-          : station.detail.href
-            ? h('a', { href: station.detail.href }, station.detail.text)
-            : station.detail.text;
+        const detail = station.pending ? '' : station.detail;
         return [
           primary,
           h('small', {}, detail)

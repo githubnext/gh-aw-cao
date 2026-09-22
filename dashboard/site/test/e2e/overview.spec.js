@@ -187,7 +187,8 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(factory.locator('.factory-station').nth(2)).toContainText('Issues & PRs5');
     await expect(factory.locator('.factory-station').nth(0).locator('small')).toHaveText('');
     await expect(factory.locator('.factory-station').nth(2).locator('small')).toHaveText('');
-    expect(await factory.locator('.factory-station a').count()).toBeGreaterThan(0);
+    await expect(factory.locator('.factory-station > a')).toHaveCount(6);
+    await expect(factory.locator('.factory-station a a')).toHaveCount(0);
     await expect(factory.locator('.factory-station-link').first()).toHaveCSS('display', 'grid');
     expect(await page.locator('.factory-intro').evaluate((element) =>
       getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean).length

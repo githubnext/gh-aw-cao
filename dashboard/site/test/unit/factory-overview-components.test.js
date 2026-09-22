@@ -82,7 +82,7 @@ describe('Overview component boundaries', () => {
       unavailable: false,
       label: 'Successful runs',
       value: 0,
-      detail: { text: '' }
+      detail: ''
     });
     const station = renderFactoryStation('play', { href: '#page-runs', signal: controller.signal });
     station.bind(stationState.get);
@@ -90,13 +90,14 @@ describe('Overview component boundaries', () => {
     expect(station.element.getAttribute('aria-busy')).toBe('true');
     expect(station.element.classList.contains('factory-station-pending')).toBe(true);
 
-    stationState.set({ pending: false, unavailable: false, label: 'Successful runs', value: 8, detail: { text: '2 failed' } });
+    stationState.set({ pending: false, unavailable: false, label: 'Successful runs', value: 8, detail: '2 failed' });
     expect(station.element.querySelector(':scope > .factory-station-link')?.getAttribute('href')).toBe('#page-runs');
     expect(station.element.querySelector('strong a')).toBeNull();
+    expect(station.element.querySelectorAll('a')).toHaveLength(1);
     expect(station.element.querySelector('strong')?.textContent).toBe('8');
     expect(station.element.querySelector('small')?.textContent).toBe('2 failed');
 
-    stationState.set({ pending: false, unavailable: true, label: 'Successful runs', value: 0, detail: { text: '' } });
+    stationState.set({ pending: false, unavailable: true, label: 'Successful runs', value: 0, detail: '' });
     expect(station.element.querySelector('strong')?.textContent).toBe('Unavailable');
     expect(station.element.querySelector('.factory-station-link')).toBeNull();
     controller.abort();
@@ -104,13 +105,13 @@ describe('Overview component boundaries', () => {
 
   it('station stops reacting after its owner aborts', () => {
     const controller = new AbortController();
-    const stationState = state({ pending: false, unavailable: false, label: 'Runs', value: 1, detail: { text: '' } });
+    const stationState = state({ pending: false, unavailable: false, label: 'Runs', value: 1, detail: '' });
     const station = renderFactoryStation('play', { signal: controller.signal });
     station.bind(stationState.get);
 
     expect(station.element.querySelector('strong')?.textContent).toBe('1');
     controller.abort();
-    stationState.set({ pending: false, unavailable: false, label: 'Runs', value: 9, detail: { text: '' } });
+    stationState.set({ pending: false, unavailable: false, label: 'Runs', value: 9, detail: '' });
     expect(station.element.querySelector('strong')?.textContent).toBe('1');
   });
 

@@ -126,8 +126,8 @@ it('renders the factory floor from its independent JSON view and configuration',
     'Value gain1'
   ]);
   expect(rendered?.querySelector('.factory-station:nth-child(4) strong .metric-number-animated')).not.toBeNull();
-  expect(rendered?.querySelector('.factory-station:nth-child(5) small a')?.getAttribute('href'))
-    .toBe('#page-dispatches?campaign-worker-dispatches.status=failure');
+  expect(rendered?.querySelectorAll('.factory-station a')).toHaveLength(6);
+  expect(rendered?.querySelector('.factory-station:nth-child(5) small')?.textContent).toBe('2 failed');
   expect(rendered?.getAttribute('aria-label')).toContain('6 repositories registered with 3 delivered to');
 });
 

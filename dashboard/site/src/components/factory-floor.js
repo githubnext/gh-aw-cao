@@ -32,7 +32,7 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
       unavailable: sources['database-campaign-count'].unavailable(),
       label: label('campaigns', count),
       value: count,
-      detail: { text: '' }
+      detail: ''
     };
   });
 
@@ -43,7 +43,7 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
       unavailable: coverage.registeredUnavailable,
       label: label('repositories', coverage.registered),
       value: coverage.registered,
-      detail: { text: '' }
+      detail: ''
     };
   });
 
@@ -54,7 +54,7 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
       unavailable: sources['database-issue-count'].unavailable(),
       label: label('issues', count),
       value: count,
-      detail: { text: '' }
+      detail: ''
     };
   });
 
@@ -65,10 +65,7 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
       pending: sources['overview-run-summary'].pending(),
       label: label('successful-runs', successfulRuns),
       value: successfulRuns,
-      detail: {
-        text: `${formatCount(failedRuns)} failed`,
-        href: '#page-runs?runs-runs-source.run-conclusion=failure'
-      }
+      detail: `${formatCount(failedRuns)} failed`
     };
   });
 
@@ -79,10 +76,7 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
       pending: sources['overview-dispatch-summary'].pending(),
       label: label('dispatches', dispatchCount),
       value: dispatchCount,
-      detail: {
-        text: `${formatCount(failedDispatches)} failed`,
-        href: '#page-dispatches?campaign-worker-dispatches.status=failure'
-      }
+      detail: `${formatCount(failedDispatches)} failed`
     };
   });
 
@@ -92,7 +86,7 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
       pending: sources['overview-value-summary'].pending(),
       label: label('value-gains', gains),
       value: gains,
-      detail: { text: '' }
+      detail: ''
     };
   });
 
