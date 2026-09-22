@@ -28,6 +28,7 @@ import { doctorSqliteDatabase } from '../dashboard/site/src/data/storage/sqlite-
 import { installSqliteIndexedDB } from '../dashboard/site/src/data/storage/sqlite-indexeddb.js';
 import { discoverInventory } from './inventory.mjs';
 import { discoverInventoryDashboardSources } from './inventory-sources.mjs';
+import { hasComputation, queryComputation } from './computations/index.mjs';
 
 const debug = createDebug('ingest');
 const debugHash = createDebug('hash-payloads');
@@ -55,7 +56,7 @@ const GH_AW_INSTALLER_COMMAND = 'curl --fail --silent --show-error --location ht
 const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json';
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
-const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'enable', 'disable', 'discover-workflows', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'query', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
+const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'enable', 'disable', 'discover-workflows', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'query', 'computation', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
 
 // Intentional CLI misuse that should print usage without an internal stack trace.
 class UsageError extends Error {}
@@ -73,6 +74,7 @@ const USAGE = `Usage:
   cao audit-jsonl [--input-dir SHARD_DIRECTORY]
   cao compact-jsonl --input-dir SHARD_DIRECTORY --group OWNER/REPOSITORY=SHARD_PREFIX [--group OWNER/REPOSITORY=SHARD_PREFIX...]
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
+  cao computation runtime-health [--database FILE] [--inventory FILE] [--campaign SLUG] [--diagnose]
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
   cao download [--url URL] [--output DIRECTORY]
   cao hash-payloads [--database FILE] [--shard-dir SHARD_DIRECTORY] [--normalized-dir DIRECTORY] [--runs-dir DIRECTORY] [--records-dir DIRECTORY] [--inventory FILE] [--output FILE]
@@ -83,6 +85,9 @@ const USAGE = `Usage:
 
 Query local CAO data as JSON. Download the deployed snapshot before querying:
   cao download
+  cao computation runtime-health
+  cao computation runtime-health --campaign dependabot
+  cao computation runtime-health --campaign dependabot --diagnose
   cao gh runs -R githubnext/gh-aw-cao -w cao-activity --status failure --since 2026-09-01 --until 2026-09-15
   cao gh issues -R githubnext/gh-aw-cao --since 2026-09-01
   cao gh prs -R githubnext/gh-aw-cao -w cao-activity -L 10
@@ -871,7 +876,7 @@ function parseOptions(arguments_) {
     const argument = arguments_[index];
     if (!argument.startsWith('--') && !aliases[argument]) throw new UsageError(`Unexpected argument: ${argument}`);
     const name = aliases[argument] ?? argument.slice(2);
-    if (name === 'help' || name === 'stdin' || name === 'keep') {
+    if (name === 'help' || name === 'stdin' || name === 'keep' || name === 'diagnose') {
       options[name] = 'true';
       continue;
     }
@@ -1244,21 +1249,29 @@ export async function downloadDeployedDashboardData({
     throw new Error('Dashboard data URL must identify payload-hashes.json.');
   }
   const databaseUrl = new URL('gh-aw-logs.sqlite', manifestUrl);
+  const inventoryUrl = new URL('inventory-sources.json', manifestUrl);
   const outputDirectory = path.resolve(output);
   await mkdir(outputDirectory, { recursive: true });
   const temporaryDirectory = await mkdtemp(path.join(outputDirectory, '.deployed-dashboard-'));
   const temporaryManifest = path.join(temporaryDirectory, 'payload-hashes.json');
   const temporaryShards = path.join(temporaryDirectory, 'gh-aw-logs-shards');
   const temporaryDatabase = path.join(temporaryDirectory, 'gh-aw-logs.sqlite');
+  const temporaryInventory = path.join(temporaryDirectory, 'inventory-sources.json');
   const manifestPath = path.join(outputDirectory, 'payload-hashes.json');
   const shardsPath = path.join(outputDirectory, 'gh-aw-logs-shards');
   const databasePath = path.join(outputDirectory, 'gh-aw-logs.sqlite');
+  const inventoryPath = path.join(outputDirectory, 'inventory-sources.json');
 
   try {
     await Promise.all([
       downloadFile(manifestUrl, temporaryManifest),
-      downloadFile(databaseUrl, temporaryDatabase)
+      downloadFile(databaseUrl, temporaryDatabase),
+      downloadFile(inventoryUrl, temporaryInventory)
     ]);
+    const inventorySources = JSON.parse(await readFile(temporaryInventory, 'utf8'));
+    if (!isMapping(inventorySources)) {
+      throw new Error('Deployed inventory sources must contain a JSON object.');
+    }
     const hashes = JSON.parse(await readFile(temporaryManifest, 'utf8'));
     const shardEntries = Object.entries(hashes)
       .filter(([name, digest]) => /^gh-aw-logs-shards\/[^/]+\.jsonl$/.test(name)
@@ -1284,12 +1297,15 @@ export async function downloadDeployedDashboardData({
     await rename(temporaryShards, shardsPath);
     await replaceFile(temporaryManifest, manifestPath);
     await replaceFile(temporaryDatabase, databasePath);
+    await replaceFile(temporaryInventory, inventoryPath);
     return {
       manifestUrl: manifestUrl.href,
       databaseUrl: databaseUrl.href,
+      inventoryUrl: inventoryUrl.href,
       manifest: manifestPath,
       shards: shardsPath,
-      database: databasePath
+      database: databasePath,
+      inventory: inventoryPath
     };
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
@@ -1993,7 +2009,11 @@ export async function runCli(arguments_, input = process.stdin) {
   }
   const ghResource = command === 'gh' ? optionArguments[0] : undefined;
   if (command === 'gh' && (!ghResource || ghResource === 'help' || ghResource === '--help')) return USAGE;
-  const options = parseOptions(command === 'gh' ? optionArguments.slice(1) : optionArguments);
+  const computation = command === 'computation' ? optionArguments[0] : undefined;
+  if (command === 'computation' && (!computation || computation === 'help' || computation === '--help')) return USAGE;
+  const options = parseOptions(
+    command === 'gh' || command === 'computation' ? optionArguments.slice(1) : optionArguments
+  );
   if (options.help) return USAGE;
   if (command === 'download') {
     rejectUnknownOptions(options, ['url', 'output']);
@@ -2082,6 +2102,33 @@ export async function runCli(arguments_, input = process.stdin) {
       throw new UsageError('--status is only supported for cao gh runs');
     }
     return queryGhData(indexedDB, ghResource, options);
+  }
+  if (command === 'computation') {
+    rejectUnknownOptions(options, ['database', 'inventory', 'campaign', 'diagnose']);
+    if (!hasComputation(computation)) {
+      throw new UsageError(`Unknown computation: ${computation}`);
+    }
+    if (options.diagnose && !options.campaign) {
+      throw new UsageError('--diagnose requires --campaign SLUG');
+    }
+    const inventoryPath = path.resolve(
+      option(options, 'inventory', false)
+        || path.join(path.dirname(path.resolve(databasePath)), 'inventory-sources.json')
+    );
+    let inventorySources;
+    try {
+      inventorySources = JSON.parse(await readFile(inventoryPath, 'utf8'));
+    } catch (error) {
+      if (error && error.code === 'ENOENT') {
+        throw new Error(`Runtime health requires campaign inventory: ${inventoryPath}. Run "cao download" first or pass --inventory FILE.`);
+      }
+      throw new Error(`Unable to read computation inventory ${inventoryPath}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    return queryComputation(indexedDB, computation, {
+      campaign: option(options, 'campaign', false),
+      diagnose: Boolean(options.diagnose),
+      inventorySources
+    });
   }
 
   if (command === 'ingest') {

@@ -28,6 +28,7 @@ import { renderFactoryHeaderElement } from './factory-header.js';
 import { renderLocalDatabaseView } from './local-database-view.js';
 import { renderPanel } from './panel.js';
 import { renderLinkButtonList } from './link-button-list.js';
+import { renderCampaignProblemList } from './campaign-problem-list.js';
 /**
  * @typedef {{
  *   pageId: string,
@@ -44,7 +45,7 @@ import { renderLinkButtonList } from './link-button-list.js';
  *   element?: string,
  *   viewId?: string,
  *   viewIndex?: number,
- *   elementConfig?: { body?: string, sections?: string[], section?: string, labels?: Record<string, unknown>, animate?: string, 'view-all-page'?: string, 'view-all-label'?: string, 'label-field'?: string, 'link-field'?: string, 'icon-field'?: string, 'fallback-icon'?: string, 'empty-message'?: string },
+ *   elementConfig?: { body?: string, sections?: string[], section?: string, labels?: Record<string, unknown>, animate?: string, 'view-all-page'?: string, 'view-all-label'?: string, 'label-field'?: string, 'link-field'?: string, 'icon-field'?: string, 'fallback-icon'?: string, 'indicator-field'?: string, 'indicator-label-field'?: string, 'empty-message'?: string },
  *   headingTag: 'h3'|'h4'
  * }} ElementRenderContext
  */
@@ -81,6 +82,7 @@ const ELEMENT_RENDERERS = new Map([
   ['factory-header', renderFactoryHeaderElement],
   ['factory-floor', renderFactoryFloorElement],
   ['link-button-list', renderLinkButtonList],
+  ['campaign-problem-list', renderCampaignProblemList],
   ['outcomes-overview', renderLegacyFactoryOverview],
   ['local-database', renderLocalDatabaseView]
 ]);
@@ -97,7 +99,7 @@ export function elementLoadsSourcesAsync(name) {
   return ASYNC_SOURCE_ELEMENTS.has(name);
 }
 
-const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'needs-attention-list', 'campaign-insights', 'campaign-detail', 'campaign-dispatches', 'campaign-reports', 'campaign-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'campaign-activity-shell', 'work-project-view', 'insights-overview', 'factory-header', 'factory-floor', 'link-button-list', 'outcomes-overview', 'local-database']);
+const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'needs-attention-list', 'campaign-insights', 'campaign-detail', 'campaign-dispatches', 'campaign-reports', 'campaign-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'campaign-activity-shell', 'work-project-view', 'insights-overview', 'factory-header', 'factory-floor', 'link-button-list', 'campaign-problem-list', 'outcomes-overview', 'local-database']);
 const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy']);
 
 /**

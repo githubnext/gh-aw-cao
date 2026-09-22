@@ -1,6 +1,6 @@
-export const DOES_IT_RUN_MEASURE = Object.freeze({
-  id: 'does-it-run',
-  version: '2.0.0'
+export const RUNTIME_HEALTH_MEASURE = Object.freeze({
+  id: 'runtime-health',
+  version: '1.0.0'
 });
 
 const ACTIVE_STATUSES = new Set(['queued', 'in_progress', 'waiting', 'requested', 'pending']);
@@ -94,7 +94,7 @@ function boundedLabels(runs) {
  *   runs: Record<string, unknown>[]
  * }} partition
  */
-export function evaluateDoesItRunPartition(partition) {
+export function evaluateRuntimeHealthPartition(partition) {
   const campaignId = requiredString(partition?.campaignId, 'partition.campaignId');
   const workflowId = requiredString(partition?.workflowId, 'partition.workflowId');
   if (!['orchestrator', 'worker'].includes(partition?.workflowRole)) {
@@ -189,8 +189,8 @@ export function evaluateDoesItRunPartition(partition) {
 
   const latestRun = orderedRuns[0] ?? null;
   return {
-    measureId: DOES_IT_RUN_MEASURE.id,
-    measureVersion: DOES_IT_RUN_MEASURE.version,
+    measureId: RUNTIME_HEALTH_MEASURE.id,
+    measureVersion: RUNTIME_HEALTH_MEASURE.version,
     campaignId,
     workflowId,
     workflowRole: partition.workflowRole,
@@ -219,7 +219,7 @@ export function evaluateDoesItRunPartition(partition) {
   };
 }
 
-/** @param {ReturnType<typeof evaluateDoesItRunPartition>[]} orchestratorResults */
+/** @param {ReturnType<typeof evaluateRuntimeHealthPartition>[]} orchestratorResults */
 export function workerEvaluationState(orchestratorResults) {
   if (!Array.isArray(orchestratorResults) || orchestratorResults.length === 0) {
     return 'indeterminate-orchestrator';
@@ -230,7 +230,7 @@ export function workerEvaluationState(orchestratorResults) {
   return 'eligible';
 }
 
-/** @param {ReturnType<typeof evaluateDoesItRunPartition>[]} results */
+/** @param {ReturnType<typeof evaluateRuntimeHealthPartition>[]} results */
 function aggregateAnswer(results) {
   const answers = new Set(results.map((result) => result.answer));
   if (answers.has('no')) return 'no';
@@ -245,11 +245,11 @@ function aggregateAnswer(results) {
 /**
  * @param {{
  *   campaignId: string,
- *   orchestratorPartitions: Parameters<typeof evaluateDoesItRunPartition>[0][],
- *   workerPartitions?: Parameters<typeof evaluateDoesItRunPartition>[0][]
+ *   orchestratorPartitions: Parameters<typeof evaluateRuntimeHealthPartition>[0][],
+ *   workerPartitions?: Parameters<typeof evaluateRuntimeHealthPartition>[0][]
  * }} campaign
  */
-export function computeDoesItRunCampaign(campaign) {
+export function computeRuntimeHealthCampaign(campaign) {
   const campaignId = requiredString(campaign?.campaignId, 'campaign.campaignId');
   if (!Array.isArray(campaign.orchestratorPartitions)) {
     throw new TypeError('campaign.orchestratorPartitions must be an array');
@@ -258,10 +258,10 @@ export function computeDoesItRunCampaign(campaign) {
     throw new TypeError('campaign.workerPartitions must be an array');
   }
 
-  const orchestratorResults = campaign.orchestratorPartitions.map(evaluateDoesItRunPartition);
+  const orchestratorResults = campaign.orchestratorPartitions.map(evaluateRuntimeHealthPartition);
   const gate = workerEvaluationState(orchestratorResults);
   const workerResults = gate === 'eligible'
-    ? (campaign.workerPartitions ?? []).map(evaluateDoesItRunPartition)
+    ? (campaign.workerPartitions ?? []).map(evaluateRuntimeHealthPartition)
     : [];
   const includedWorkers = workerResults.filter((result) => (
     result.targetScopeMembership !== 'observed-extra'
@@ -276,8 +276,8 @@ export function computeDoesItRunCampaign(campaign) {
 
   return {
     campaignResult: {
-      measureId: DOES_IT_RUN_MEASURE.id,
-      measureVersion: DOES_IT_RUN_MEASURE.version,
+      measureId: RUNTIME_HEALTH_MEASURE.id,
+      measureVersion: RUNTIME_HEALTH_MEASURE.version,
       campaignId,
       answer,
       workerEvaluationState: gate,
@@ -304,16 +304,16 @@ export function computeDoesItRunCampaign(campaign) {
 }
 
 /**
- * @param {{ campaigns: Parameters<typeof computeDoesItRunCampaign>[0][] }} input
+ * @param {{ campaigns: Parameters<typeof computeRuntimeHealthCampaign>[0][] }} input
  */
-export function computeDoesItRunPortfolio(input) {
+export function computeRuntimeHealthPortfolio(input) {
   if (!Array.isArray(input?.campaigns)) throw new TypeError('input.campaigns must be an array');
   const campaignComputations = [...input.campaigns]
     .sort((left, right) => String(left.campaignId).localeCompare(String(right.campaignId)))
-    .map(computeDoesItRunCampaign);
+    .map(computeRuntimeHealthCampaign);
   return {
-    measureId: DOES_IT_RUN_MEASURE.id,
-    measureVersion: DOES_IT_RUN_MEASURE.version,
+    measureId: RUNTIME_HEALTH_MEASURE.id,
+    measureVersion: RUNTIME_HEALTH_MEASURE.version,
     campaignResults: campaignComputations.map(({ campaignResult }) => campaignResult),
     partitionResults: campaignComputations.flatMap(({ partitionResults }) => partitionResults),
     errorGroups: campaignComputations.flatMap(({ errorGroups }) => errorGroups)

@@ -134,7 +134,7 @@ components:
     responsibility: render bounded Dashboard Language query payloads
   cao_cli:
     path: activity/cao.mjs
-    responsibility: query Activity SQLite projections for local tooling and agents
+    responsibility: query Activity SQLite projections and execute extensible computation commands for local tooling and agents
 
 dependencies:
   - catalog -> control_repository
@@ -216,6 +216,7 @@ invariants:
   - "Materialized computation results MUST remain generation-scoped disposable state; runtime facts and failure scopes are precomputed, while detailed audit causes and actions are cached only for selected or prioritized partitions."
   - "Runtime computation partitions MUST be target-aware for workers: form Campaign, Workflow, and target Repository evaluation partitions before evaluating success boundaries so one target's success cannot mask another target's failures."
   - "Runtime computations MUST evaluate Campaign orchestrators before enumerating worker-target partitions; a failing, unknown, or unobserved orchestrator gates worker evaluation without converting skipped workers into healthy, failed, or not-observed results."
+  - "The cao computation namespace exposes production measures; runtime-health selection, joins, and ordering execute through Dashboard Language queries before versioned measure evaluation."
   - "Failure of a downstream computation MUST NOT invalidate a compatible upstream result."
   - "Dashboard UI effects and components MUST NOT query source data or reconstruct business relationships."
   - "ADRs are durable decision history; current requirements and conformance rules live in specs/ or specification-style documentation."
@@ -294,6 +295,7 @@ commands:
       docs_build: npm run docs:build
       dashboard_local: "npm run dashboard:local -- --repo OWNER/REPOSITORY"
       dashboard_local_copilot: npm run dashboard:local:copilot
+      runtime_health: cao computation runtime-health [--campaign SLUG]
   dashboard_site:
     working_directory: dashboard/site/
     entries:

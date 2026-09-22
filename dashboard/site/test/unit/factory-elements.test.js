@@ -60,8 +60,10 @@ it('renders campaign shortcuts through the reusable link button list', () => {
         campaign: 'aw-doctor',
         'campaign-name': 'AW Doctor',
         'campaign-icon': 'gear',
+        'problem-indicator': 'alert',
+        'problem-indicator-label': 'Current failing workflow or target partitions: 2',
         'campaign-dashboard-link': {
-          'dashboard-href': '#page-campaign-detail?campaign=aw-doctor',
+          'dashboard-href': '#page-campaign-problems?campaign=aw-doctor',
           'dashboard-label': 'View AW Doctor campaign dashboard'
         }
       }
@@ -71,15 +73,20 @@ it('renders campaign shortcuts through the reusable link button list', () => {
       'label-field': 'campaign-name',
       'link-field': 'campaign-dashboard-link',
       'icon-field': 'campaign-icon',
-      'fallback-icon': 'goal'
+      'fallback-icon': 'goal',
+      'indicator-field': 'problem-indicator',
+      'indicator-label-field': 'problem-indicator-label'
     }
   });
 
   expect(rendered?.querySelectorAll('.link-button-list-item')).toHaveLength(1);
   expect(rendered?.querySelector('.link-button-list-item a')?.getAttribute('href'))
-    .toBe('#page-campaign-detail?campaign=aw-doctor');
+    .toBe('#page-campaign-problems?campaign=aw-doctor');
   expect(rendered?.querySelector('.link-button-list-item a')?.getAttribute('aria-label'))
     .toBe('View AW Doctor campaign dashboard');
+  expect(rendered?.querySelector('.link-button-list-indicator')?.getAttribute('aria-label'))
+    .toBe('Current failing workflow or target partitions: 2');
+  expect(rendered?.querySelector('.link-button-list-indicator .octicon-alert')).not.toBeNull();
 });
 
 it('renders the factory header from only its declared JSON sources', () => {
