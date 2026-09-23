@@ -1606,6 +1606,50 @@ describe('presenter built-in and custom pages', () => {
     expect(contexts.at(-1)).toMatchObject({ pageId: 'runs', queryContext: { viewMode: 'card' } });
   });
 
+  it('omits page chrome when a page has only one card view mode', async () => {
+    const rendered = renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'cards-only-dashboard',
+          title: 'Cards only',
+          pages: [{
+            id: 'maintenance',
+            kind: /** @type {'custom'} */ ('custom'),
+            title: 'Maintenance',
+            views: [{
+              id: 'campaigns',
+              title: 'Campaigns',
+              data: { source: 'campaigns' },
+              mark: 'list',
+              list: { style: 'cards', icon: 'goal' },
+              encoding: { columns: [{ field: 'campaign-name' }] }
+            }]
+          }]
+        }
+      },
+      sources: {
+        campaigns: {
+          source: 'campaigns',
+          rows: [],
+          metadata: {
+            'source-id': 'campaigns-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-16T10:00:00Z',
+            'retrieved-at': '2026-09-16T10:00:00Z',
+            availability: 'available',
+            completeness: 'complete',
+            freshness: 'fresh'
+          }
+        }
+      }
+    });
+
+    const page = await activatePage(rendered, 'maintenance');
+    expect(page?.querySelector(':scope > .page-chrome')).toBeNull();
+    expect(page?.getAttribute('data-view-mode')).toBe('card');
+  });
+
   it('includes the template default view mode in the initial page source request', async () => {
     const loadPageSources = vi.fn(
       /** @type {NonNullable<Parameters<typeof renderDashboard>[0]['loadPageSources']>} */ (async () => ({}))

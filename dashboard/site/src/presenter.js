@@ -843,7 +843,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
         : [...pageSources.values()])
     })
     : null;
-  const viewModeControl = viewModes.length > 0
+  const viewModeControl = viewModes.length > 1
     ? renderViewModeControl(viewModes, selectedViewMode, (viewMode) => {
       dispatchQueryContextChange(currentFilters, currentTimeWindow, viewMode);
     })
