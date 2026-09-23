@@ -1788,6 +1788,75 @@ describe('declarative dashboard queries', () => {
     expect(budget.operations).toBe(8);
   });
 
+  it('reuses shared nested query materializations across a dependency diamond', () => {
+    let sourceReads = 0;
+    const budget = createDashboardQueryBudget();
+    const definitions = [
+      {
+        name: 'base',
+        from: 'usage',
+        select: [{ field: 'workflow' }, { field: 'aic' }]
+      },
+      {
+        name: 'higher-cost',
+        from: 'base',
+        filter: { predicates: [{ field: 'aic', gte: 5 }] }
+      },
+      {
+        name: 'lower-cost',
+        from: 'base',
+        filter: { predicates: [{ field: 'aic', lt: 5 }] }
+      },
+      {
+        name: 'combined',
+        from: 'higher-cost',
+        union: ['lower-cost'],
+        'order-by': [{ field: 'aic', direction: 'asc' }]
+      },
+      {
+        name: 'summary',
+        from: 'combined',
+        aggregate: {
+          values: [{ field: 'workflow', as: 'workflows', reducer: 'count' }]
+        }
+      }
+    ];
+    const derived = executeDashboardQueries(
+      definitions,
+      {
+        usage: {
+          ...usage,
+          get rows() {
+            sourceReads += 1;
+            return usage.rows;
+          }
+        }
+      },
+      definitions.map((definition) => definition.name),
+      { budget }
+    );
+
+    expect(sourceReads).toBe(0);
+    expect(budget.operations).toBe(0);
+    expect(derived.summary.rows).toEqual([{ workflows: 2 }]);
+    const readsAfterSummary = sourceReads;
+    const operationsAfterSummary = budget.operations;
+    expect(readsAfterSummary).toBeGreaterThan(0);
+
+    expect(derived.combined.rows).toEqual([
+      { workflow: 'a.md', aic: 4 },
+      { workflow: 'a.md', aic: 6 }
+    ]);
+    expect(derived['higher-cost'].rows).toEqual([{ workflow: 'a.md', aic: 6 }]);
+    expect(derived['lower-cost'].rows).toEqual([{ workflow: 'a.md', aic: 4 }]);
+    expect(derived.base.rows).toEqual([
+      { workflow: 'a.md', aic: 4 },
+      { workflow: 'a.md', aic: 6 }
+    ]);
+    expect(sourceReads).toBe(readsAfterSummary);
+    expect(budget.operations).toBe(operationsAfterSummary);
+  });
+
   it.each(['constructor', '__proto__'])('lazily executes a query named %s', (name) => {
     const budget = createDashboardQueryBudget();
     const derived = executeDashboardQueries(
