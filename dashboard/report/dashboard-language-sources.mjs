@@ -55,6 +55,7 @@ const sourceNames = [
   "configuration-policy",
   "configuration-actions",
 ];
+const INTERNAL_CAMPAIGNS = new Set(["activity", "dashboard"]);
 const AIC_TO_USD = 0.01;
 export const GITHUB_RATE_LIMIT_THRESHOLDS = Object.freeze({
   staleAfterMinutes: 60,
@@ -652,7 +653,10 @@ function campaignRows(inventory = {}, controlSettings = {}, generatedAt) {
     String(entry.id || "").trim(),
     entry,
   ]).filter(([id]) => id));
-  const ids = new Set([...bundles.keys(), ...registered.keys(), ...Object.keys(controlSettings.campaigns || {})]);
+  const ids = new Set(
+    [...bundles.keys(), ...registered.keys(), ...Object.keys(controlSettings.campaigns || {})]
+      .filter((id) => !INTERNAL_CAMPAIGNS.has(id)),
+  );
   return [...ids].sort().map((id) => {
     const bundle = bundles.get(id)
       || [...bundles.values()].find((candidate) => candidate.id === id)
