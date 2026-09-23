@@ -100,11 +100,11 @@ describe('dashboard view query contracts', () => {
       expect(data?.['order-by'], `${pageId}/${viewId} should choose deterministic retained rows`).toEqual(expect.any(Array));
     }
 
-    expect(queries.find((/** @type {{ name: string }} */ query) => query.name === 'top-workflow-runs'))
-      .toMatchObject({
-        'order-by': expect.any(Array),
-        limit: 250
-      });
+    const topWorkflowRuns = queries.find((/** @type {{ name: string }} */ query) =>
+      query.name === 'top-workflow-runs'
+    );
+    expect(topWorkflowRuns).toMatchObject({ limit: 250 });
+    expect(topWorkflowRuns?.['order-by']).toContainEqual({ field: 'started-at', direction: 'desc' });
   });
 
   it('renders the failed-runs ledger as a bounded lazy table', () => {
