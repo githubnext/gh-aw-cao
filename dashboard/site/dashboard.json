@@ -7590,7 +7590,7 @@
             ]
           },
           {
-            "as": "campaign-experimental-label",
+            "as": "experimental-label",
             "function": "if",
             "args": [
               {
@@ -7709,7 +7709,7 @@
             "field": "campaign-experimental"
           },
           {
-            "field": "campaign-experimental-label"
+            "field": "experimental-label"
           },
           {
             "field": "problem-indicator"
@@ -12079,7 +12079,7 @@
               "link-field": "campaign-dashboard-link",
               "icon-field": "campaign-icon",
               "fallback-icon": "goal",
-              "badge-field": "campaign-experimental-label",
+              "badge-field": "experimental-label",
               "indicator-field": "problem-indicator",
               "indicator-label-field": "problem-indicator-label",
               "empty-message": "No campaigns are registered."

@@ -60,7 +60,7 @@ it('renders campaign shortcuts through the reusable link button list', () => {
         campaign: 'aw-doctor',
         'campaign-name': 'AW Doctor',
         'campaign-icon': 'gear',
-        'campaign-experimental-label': 'Experimental',
+        'experimental-label': 'Experimental',
         'problem-indicator': 'alert',
         'problem-indicator-label': 'Current failing workflow or target partitions: 2',
         'campaign-dashboard-link': {
@@ -75,7 +75,7 @@ it('renders campaign shortcuts through the reusable link button list', () => {
       'link-field': 'campaign-dashboard-link',
       'icon-field': 'campaign-icon',
       'fallback-icon': 'goal',
-      'badge-field': 'campaign-experimental-label',
+      'badge-field': 'experimental-label',
       'indicator-field': 'problem-indicator',
       'indicator-label-field': 'problem-indicator-label'
     }

@@ -40,7 +40,7 @@ const sources = {
       campaign: 'dependabot',
       'campaign-name': 'Dependabot',
       'campaign-icon': 'dependabot',
-      'campaign-experimental-label': 'Experimental',
+      'experimental-label': 'Experimental',
       'campaign-dashboard-link': {
         'dashboard-href': '#page-campaign-detail?campaign=dependabot',
         'dashboard-label': 'View Dependabot campaign dashboard'
