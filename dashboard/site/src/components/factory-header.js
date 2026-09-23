@@ -1,48 +1,40 @@
 import { h } from '../dom.js';
 import { render } from '../reactive.js';
-import { formatCount } from './count-formatters.js';
-import { bindFactorySources, createFactoryMetrics, createFactoryScope } from './factory-elements.js';
+import { bindFactorySources, createFactoryScope } from './factory-elements.js';
 import { renderFactoryRhythm } from './factory-rhythm.js';
 
 /** @typedef {{ rows: () => Record<string, unknown>[], pending: () => boolean, unavailable: () => boolean }} SourceBinding */
 /** @typedef {Record<string, SourceBinding>} SourceBindings */
-/** @typedef {{ usefulOutputs: () => number, deliveredRepositories: () => number, campaignHealth: () => number }} HeaderMetrics */
 /** @typedef {{ signal: AbortSignal }} HeaderScope */
 
 /**
  * @param {SourceBindings} sources
- * @param {HeaderMetrics} metrics
  * @param {HeaderScope} scope
  */
-export function renderFactoryHeader(sources, metrics, scope) {
+export function renderFactoryHeader(sources, scope) {
   const heading = h('h2', { id: 'agent-factory-heading' });
   const summary = h('p', {});
 
   render(heading, () => {
-    const status = sources['overview-factory-status'];
-    const pending = status.pending();
-    const candidate = status.rows()[0]?.['factory-heading'];
-    const healthSourcePending = sources['overview-healthy-campaign-count']?.pending() ?? true;
-    const campaignHealth = metrics.campaignHealth();
+    const presentation = sources['overview-header-presentation'];
+    const pending = presentation.pending();
+    const candidate = presentation.rows()[0]?.heading;
     heading.classList.toggle('factory-heading-pending', pending);
     heading.toggleAttribute('aria-busy', pending);
     return pending
       ? ''
-      : !healthSourcePending && campaignHealth > 0 && campaignHealth < 0.66
-      ? 'Your campaigns need attention.'
-      : !status.unavailable() && typeof candidate === 'string' && candidate
+      : !presentation.unavailable() && typeof candidate === 'string' && candidate
       ? candidate
       : 'Your campaign status is unavailable.';
   }, { signal: scope.signal });
 
   render(summary, () => {
-    const pending = sources['overview-outcome-summary']?.pending() ?? false;
-    const usefulOutputs = metrics.usefulOutputs();
-    const deliveredRepositories = metrics.deliveredRepositories();
-    summary.hidden = pending || usefulOutputs === 0;
-    return !pending && usefulOutputs > 0
-      ? `${formatCount(usefulOutputs)} retained issue and pull request ${usefulOutputs === 1 ? 'output is' : 'outputs are'} backed by Actions evidence${deliveredRepositories > 0 ? ` across ${formatCount(deliveredRepositories)} ${deliveredRepositories === 1 ? 'repository' : 'repositories'}` : ''}.`
-      : '';
+    const presentation = sources['overview-header-presentation'];
+    const pending = presentation.pending();
+    const candidate = presentation.rows()[0]?.summary;
+    const text = typeof candidate === 'string' ? candidate : '';
+    summary.hidden = pending || !text;
+    return pending ? '' : text;
   }, { signal: scope.signal });
 
   return h(
@@ -54,10 +46,7 @@ export function renderFactoryHeader(sources, metrics, scope) {
 }
 
 const HEADER_SOURCE_NAMES = [
-  'overview-outcome-summary',
-  'overview-factory-status',
-  'database-campaign-count',
-  'overview-healthy-campaign-count',
+  'overview-header-presentation',
   'overview-rhythm'
 ];
 
@@ -73,9 +62,8 @@ export function renderFactoryHeaderElement(context) {
     sourceNames: context.sourceNames,
     queryContext: context.queryContext
   });
-  const metrics = createFactoryMetrics(sources);
-  const scope = createFactoryScope(metrics);
-  const rendered = renderFactoryHeader(sources, metrics, scope);
+  const scope = createFactoryScope();
+  const rendered = renderFactoryHeader(sources, scope);
   scope.bind(rendered);
   return rendered;
 }

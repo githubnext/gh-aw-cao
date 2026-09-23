@@ -724,11 +724,7 @@ describe('dashboard document validation', () => {
       expect.objectContaining({
         id: 'overview-header',
         description: 'Campaign health measures campaigns without current runtime errors; repository coverage measures registered repositories reached by successful worker execution.',
-        data: { sources: expect.arrayContaining([
-          'overview-outcome-summary',
-          'overview-factory-status',
-          'overview-rhythm'
-        ]) },
+        data: { sources: ['overview-header-presentation', 'overview-rhythm'] },
         mark: 'element',
         element: 'factory-header',
         layout: 'full',
@@ -736,14 +732,7 @@ describe('dashboard document validation', () => {
       }),
       expect.objectContaining({
         id: 'overview-floor',
-        data: { sources: expect.arrayContaining([
-          'overview-outcome-summary',
-          'overview-run-summary',
-          'overview-dispatch-summary',
-          'overview-value-summary',
-          'overview-registered-repository-summary',
-          'overview-worker-summary'
-        ]) },
+        data: { sources: ['overview-campaign-station', 'overview-repository-station'] },
         mark: 'element',
         element: 'factory-floor',
         config: expect.objectContaining({ animate: 'number' }),

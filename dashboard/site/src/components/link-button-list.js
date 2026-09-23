@@ -1,6 +1,6 @@
 import { h, keyed } from '../dom.js';
 import { effect } from '../reactive.js';
-import { bindFactorySources, createFactoryMetrics, createFactoryScope } from './factory-elements.js';
+import { bindFactorySources, createFactoryScope } from './factory-elements.js';
 import { text } from './count-formatters.js';
 import { findLink, renderSafeLink } from './link-content.js';
 import { renderIconSpan } from './ui-primitives.js';
@@ -13,7 +13,7 @@ import { renderIconSpan } from './ui-primitives.js';
 export function renderLinkButtonList(context) {
   const sourceName = context.sourceNames[0] ?? '';
   const bindings = bindFactorySources(context.sources, [sourceName], context);
-  const scope = createFactoryScope(createFactoryMetrics(bindings));
+  const scope = createFactoryScope();
   const source = bindings[sourceName];
   const labelField = text(context.elementConfig?.['label-field']);
   const linkField = text(context.elementConfig?.['link-field']);

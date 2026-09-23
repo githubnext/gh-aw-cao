@@ -1,47 +1,14 @@
 /**
- * Shared data adapters for the declaratively composed factory elements.
+ * Shared source bindings for independently loaded declarative elements.
  */
 
-import { batch, effect, state } from '../reactive.js';
+import { batch } from '../reactive.js';
 import { publishSource, requestSource, sourceState } from '../source-store.js';
 import { dashboardViewAliasName } from '../data/queries/view-payload-compiler.js';
 
 /** @typedef {Record<string, unknown>} Row */
 /** @typedef {{ rows: () => Row[], pending: () => boolean, unavailable: () => boolean }} SourceBinding */
 /** @typedef {Record<string, SourceBinding>} SourceBindings */
-/** @typedef {{ total: number, registered: number, averageCoverage: number, unavailable: boolean, registeredUnavailable: boolean, coverageUnavailable: boolean }} Coverage */
-/** @typedef {{ operations: number, live: number, review: number }} Motion */
-/** @typedef {{ singular: string, plural: string }} PluralText */
-
-/**
- * @typedef {{
- *   campaigns: () => number,
- *   campaignTotal: () => number,
- *   campaignHealth: () => number,
- *   issues: () => number,
- *   successfulRuns: () => number,
- *   failedRuns: () => number,
- *   activeRuns: () => number,
- *   valueGains: () => number,
- *   coverage: () => Coverage,
- *   workers: () => number,
- *   dispatches: () => number,
- *   failedDispatches: () => number,
- *   usefulOutputs: () => number,
- *   deliveredRepositories: () => number,
- *   motion: () => Motion
- * }} FactoryMetrics
- */
-
-/** @type {Record<string, PluralText>} */
-const DEFAULT_STATION_LABELS = {
-  campaigns: { singular: 'Campaign', plural: 'Campaigns' },
-  repositories: { singular: 'Repository', plural: 'Repositories' },
-  issues: { singular: 'Issue & PR', plural: 'Issues & PRs' },
-  'successful-runs': { singular: 'Successful run', plural: 'Successful runs' },
-  dispatches: { singular: 'Dispatch', plural: 'Dispatches' },
-  'value-gains': { singular: 'Value gain', plural: 'Value gains' }
-};
 
 /**
  * Binds each declared query independently so the element can render before all
@@ -83,65 +50,12 @@ export function bindFactorySources(sources, names, request) {
 }
 
 /**
- * Exposes the compact query fields consumed by the factory components.
- * @param {SourceBindings} sources
- * @returns {FactoryMetrics}
+ * Creates an abort-scoped lifetime for one independently loaded element.
  */
-export function createFactoryMetrics(sources) {
-  /** @param {string} name */
-  const row = (name) => sources[name]?.rows()[0] ?? {};
-  return {
-    campaigns: () => numberField(row('overview-healthy-campaign-count'), 'healthy-campaigns'),
-    campaignTotal: () => numberField(row('database-campaign-count'), 'campaigns'),
-     campaignHealth: () => {
-       const total = numberField(row('database-campaign-count'), 'campaigns');
-       const healthy = numberField(row('overview-healthy-campaign-count'), 'healthy-campaigns');
-       return total > 0 ? healthy / total : 0;
-     },
-    issues: () => numberField(row('database-issue-count'), 'issues'),
-    successfulRuns: () => numberField(row('overview-run-summary'), 'successful-runs'),
-    failedRuns: () => numberField(row('overview-run-summary'), 'failed-runs'),
-    activeRuns: () => numberField(row('overview-run-summary'), 'active-runs'),
-    valueGains: () => numberField(row('overview-value-summary'), 'value-gains'),
-    coverage: () => ({
-      total: numberField(row('overview-repository-coverage'), 'reached-repositories'),
-      registered: numberField(row('overview-repository-coverage'), 'registered-repositories-total'),
-      averageCoverage: Math.min(1, Math.max(0, numberField(row('overview-repository-coverage'), 'repository-coverage'))),
-      unavailable: sources['overview-delivery-summary']?.unavailable() ?? true,
-      registeredUnavailable: sources['overview-registered-repository-summary']?.unavailable() ?? true,
-      coverageUnavailable: sources['overview-repository-coverage']?.unavailable() ?? true
-    }),
-    workers: () => numberField(row('overview-worker-summary'), 'workers'),
-    dispatches: () => numberField(row('overview-dispatch-summary'), 'dispatches'),
-    failedDispatches: () => numberField(row('overview-dispatch-summary'), 'failed-dispatches'),
-    usefulOutputs: () => numberField(row('overview-outcome-summary'), 'useful-outputs'),
-    deliveredRepositories: () => numberField(row('overview-outcome-summary'), 'delivered-repositories'),
-    motion: () => ({
-      operations: numberField(row('overview-run-summary'), 'active-runs'),
-      live: numberField(row('overview-run-summary'), 'active-live'),
-      review: numberField(row('overview-run-summary'), 'active-review')
-    })
-  };
-}
-
-/**
- * Creates the reactive state shared by one factory element's widgets.
- * @param {FactoryMetrics} metrics
- */
-export function createFactoryScope(metrics) {
+export function createFactoryScope() {
   const lifetime = new AbortController();
-  const motion = state(metrics.motion());
-  effect(() => {
-    const next = metrics.motion();
-    motion.set((current) => (
-      current.operations === next.operations && current.live === next.live && current.review === next.review
-        ? current
-        : next
-    ));
-  }, { signal: lifetime.signal });
   return {
     signal: lifetime.signal,
-    motion,
     /** @param {HTMLElement} element */
     bind(element) {
       if (typeof MutationObserver !== 'function') return;
@@ -159,30 +73,4 @@ export function createFactoryScope(metrics) {
       lifetime.signal.addEventListener('abort', () => observer.disconnect(), { once: true });
     }
   };
-}
-
-/**
- * @param {Record<string, unknown> | undefined} config
- * @returns {(labelId: string, count: number) => string}
- */
-export function factoryStationLabel(config) {
-  const declared = config && typeof config === 'object' && config.labels && typeof config.labels === 'object'
-    ? /** @type {Record<string, unknown>} */ (config.labels)
-    : {};
-  return (labelId, count) => {
-    const candidate = declared[labelId];
-    const text = candidate && typeof candidate === 'object'
-      && typeof (/** @type {PluralText} */ (candidate).singular) === 'string'
-      && typeof (/** @type {PluralText} */ (candidate).plural) === 'string'
-      ? /** @type {PluralText} */ (candidate)
-      : DEFAULT_STATION_LABELS[labelId];
-    if (!text) return labelId;
-    return Math.abs(count) === 1 ? text.singular : text.plural;
-  };
-}
-
-/** @param {Row} row @param {string} field */
-function numberField(row, field) {
-  const value = Number(row[field]);
-  return Number.isFinite(value) ? value : 0;
 }

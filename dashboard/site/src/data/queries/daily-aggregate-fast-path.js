@@ -15,7 +15,7 @@
  * always treated as ineligible, never guessed at.
  */
 
-import { DISPATCH_EVENT, FAILED_RUN_CONCLUSIONS } from '../analytics/daily-overview-aggregates.js';
+import { FAILED_RUN_CONCLUSIONS } from '../analytics/daily-overview-aggregates.js';
 import { readDailyOverviewAggregates, readOverviewAggregateMetadata } from '../storage/indexeddb.js';
 import { dashboardQueryIndex } from './declarative.js';
 import { createDebug } from '../../debug.js';
@@ -67,36 +67,6 @@ function matchesSinglePredicate(predicates, expected) {
       && expected.in.every((value) => predicate.in.includes(value));
   }
   return false;
-}
-
-/**
- * Recognizes the exact shape of `overview-dispatch-summary` (dashboard.json):
- * `from: runs`, filtered to `event = workflow_dispatch`, with exactly two
- * `count` aggregate values — an unfiltered total and one filtered to the
- * failed-conclusion set — matching `buildDailyOverviewAggregates`'s
- * `dispatches`/`failedDispatches` fields one for one.
- *
- * @param {import('./declarative.js').DashboardQuery} definition
- */
-function isDispatchSummaryShape(definition) {
-  if (definition.from !== 'runs') return false;
-  if (definition.joins?.length || definition.union?.length || definition.compute?.length
-      || definition.select?.length || definition['order-by']?.length || definition.limit !== undefined
-      || definition.aggregate?.by?.length || definition['temporal-series'] || definition.predict?.length) {
-    return false;
-  }
-  if (!matchesSinglePredicate(definition.filter?.predicates, { field: 'event', equals: DISPATCH_EVENT })) {
-    return false;
-  }
-  const values = definition.aggregate?.values;
-  if (!Array.isArray(values) || values.length !== 2) return false;
-  const [total, failed] = values;
-  if (!isPlainObject(total) || total.reducer !== 'count' || total.filter) return false;
-  if (!isPlainObject(failed) || failed.reducer !== 'count') return false;
-  if (!matchesSinglePredicate(failed.filter?.predicates, { field: 'run-conclusion', in: FAILED_RUN_CONCLUSIONS })) {
-    return false;
-  }
-  return { totalAs: String(total.as), failedAs: String(failed.as) };
 }
 
 /**
@@ -179,22 +149,6 @@ function isRunsDailyConclusionsShape(definition) {
  * matches the validator; otherwise it is left for canonical execution.
  */
 const ELIGIBLE_QUERIES = /** @type {const} */ ({
-  'overview-dispatch-summary': {
-    matchShape: isDispatchSummaryShape,
-    /**
-     * @param {import('../analytics/daily-overview-aggregates.js').DailyOverviewAggregateRecord[]} records
-     * @param {{ totalAs: string, failedAs: string }} shape
-     */
-    summarize: (records, shape) => {
-      let dispatches = 0;
-      let failedDispatches = 0;
-      for (const record of records) {
-        dispatches += record.dispatches ?? 0;
-        failedDispatches += record.failedDispatches ?? 0;
-      }
-      return { [shape.totalAs]: dispatches, [shape.failedAs]: failedDispatches };
-    }
-  },
   'overview-failed-run-count': {
     matchShape: isFailedRunCountShape,
     /**

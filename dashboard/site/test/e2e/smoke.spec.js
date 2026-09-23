@@ -1082,7 +1082,14 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
         label: 'Review dependency evidence'
       };
       const sources = {
-        campaigns: { source: 'campaigns', rows: [{ id: 'campaign-1' }, { id: 'campaign-2' }], metadata },
+        campaigns: {
+          source: 'campaigns',
+          rows: [
+            { id: 'campaign-1', campaign: 'campaign-1' },
+            { id: 'campaign-2', campaign: 'campaign-2' }
+          ],
+          metadata
+        },
         issues: {
           source: 'issues',
           rows: Array.from({ length: 17 }, (_, index) => ({ id: \`issue-\${index + 1}\` })),
@@ -1245,16 +1252,17 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
           source: 'runs',
           rows: [
             ...Array.from({ length: 80 }, (_, index) => ({
-              repository: 'gh-aw', workflow: 'review', run: String(index + 1),
+              organization: 'github', repository: 'gh-aw', workflow: 'review', run: String(index + 1),
               'run-status': 'completed', 'run-conclusion': 'failure', 'started-at': '2026-08-29T09:30:00Z'
             })),
             ...Array.from({ length: 20 }, (_, index) => ({
-              repository: 'gh-aw', workflow: 'update', run: String(index + 81),
+              organization: 'github', repository: 'gh-aw', workflow: 'update', run: String(index + 81),
               event: index < 12 ? 'workflow_dispatch' : 'schedule',
-              'run-status': 'completed', 'run-conclusion': 'success', 'started-at': '2026-08-29T09:35:00Z'
+              'run-status': 'completed', 'run-conclusion': 'success', 'started-at': '2026-08-29T09:35:00Z',
+              'target-repository': 'github/target-' + (index % 3 + 1)
             })),
             {
-              repository: 'gh-aw', workflow: 'dispatch', run: '101',
+              organization: 'github', repository: 'gh-aw', workflow: 'dispatch', run: '101',
               'run-status': 'in-progress', 'run-conclusion': 'unknown', 'started-at': '2026-08-29T09:50:00Z'
             }
           ],
@@ -1262,15 +1270,24 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
         },
         repositories: {
           source: 'repositories',
-          rows: [{ id: 'repository:github/gh-aw', repository: 'gh-aw', 'rollout-mode': 'review', 'observed-at': '2026-08-29T09:30:00Z' }],
+          rows: [
+            { id: 'repository:github/gh-aw', repository: 'gh-aw', 'repository-coordinate': 'github/gh-aw', 'rollout-mode': 'review', 'observed-at': '2026-08-29T09:30:00Z' },
+            ...Array.from({ length: 5 }, (_, index) => ({
+              id: 'repository:github/target-' + (index + 1),
+              repository: 'target-' + (index + 1),
+              'repository-coordinate': 'github/target-' + (index + 1),
+              'rollout-mode': 'review',
+              'observed-at': '2026-08-29T09:30:00Z'
+            }))
+          ],
           metadata
         },
         workflows: {
           source: 'workflows',
           rows: [
-            { repository: 'gh-aw', workflow: 'dispatch', 'workflow-role': 'orchestrator', 'workflow-active': 'true', 'observed-at': '2026-08-29T09:30:00Z' },
-            { repository: 'gh-aw', workflow: 'review', 'workflow-role': 'worker', 'workflow-active': 'true', 'observed-at': '2026-08-29T09:30:00Z' },
-            { repository: 'gh-aw', workflow: 'update', 'workflow-role': 'worker', 'workflow-active': 'true', 'observed-at': '2026-08-29T09:30:00Z' }
+            { campaign: 'campaign-1', organization: 'github', repository: 'gh-aw', workflow: 'dispatch', 'workflow-role': 'orchestrator', 'workflow-active': 'true', 'observed-at': '2026-08-29T09:30:00Z' },
+            { campaign: 'campaign-1', organization: 'github', repository: 'gh-aw', workflow: 'review', 'workflow-role': 'worker', 'workflow-active': 'true', 'observed-at': '2026-08-29T09:30:00Z' },
+            { campaign: 'campaign-2', organization: 'github', repository: 'gh-aw', workflow: 'update', 'workflow-role': 'worker', 'workflow-active': 'true', 'observed-at': '2026-08-29T09:30:00Z' }
           ],
           metadata
         },

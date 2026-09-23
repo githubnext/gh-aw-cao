@@ -152,6 +152,62 @@ describe('declarative dashboard queries', () => {
     expect(result['overview-factory-status'].rows).toEqual([{ 'factory-heading': 'Your campaigns are humming.' }]);
   });
 
+  it('produces presentation-ready Overview header and campaign station payloads', () => {
+    const result = executeDashboardQueries(
+      dashboardQueries,
+      {
+        campaigns: {
+          source: 'campaigns',
+          rows: [
+            { id: 'campaign:one', campaign: 'one' },
+            { id: 'campaign:two', campaign: 'two' }
+          ],
+          metadata: metadata('campaigns')
+        },
+        runs: { source: 'runs', rows: [], metadata: metadata('runs') },
+        workflows: { source: 'workflows', rows: [], metadata: metadata('workflows') },
+        'grader-observations': {
+          source: 'grader-observations',
+          rows: [{ grader: 'value-created' }],
+          metadata: metadata('grader-observations')
+        },
+        outcomes: {
+          source: 'outcomes',
+          rows: [
+            {
+              'safe-output': 'issue-1',
+              'outcome-category': 'issue',
+              'safe-output-kind': 'create-issue',
+              'outcome-state': 'accepted',
+              repository: 'githubnext/one'
+            },
+            {
+              'safe-output': 'pr-2',
+              'outcome-category': 'pull-request',
+              'safe-output-kind': 'create-pull-request',
+              'outcome-state': 'accepted',
+              repository: 'githubnext/two'
+            }
+          ],
+          metadata: metadata('outcomes')
+        }
+      },
+      ['overview-header-presentation', 'overview-campaign-station']
+    );
+
+    expect(result['overview-header-presentation'].rows).toEqual([{
+      heading: 'Your campaigns are delivering value.',
+      summary: '2 retained issue and pull request outputs are backed by Actions evidence across 2 repositories.'
+    }]);
+    expect(result['overview-campaign-station'].rows).toEqual([{
+      value: 1,
+      'display-value': '100%',
+      detail: '2/2 healthy campaigns',
+      description: '100% campaign health',
+      active: false
+    }]);
+  });
+
   it('counts canonical repository identities registered in the resolved control-plane scope', () => {
     const repositories = [
       ['github', 'gh-aw'],
@@ -176,30 +232,6 @@ describe('declarative dashboard queries', () => {
       { 'registered-repositories': 6 }
     ]);
   });
-
-  it('counts failed workflow dispatches separately from total dispatches', () => {
-    const result = executeDashboardQueries(
-      dashboardQueries,
-      {
-        runs: {
-          source: 'runs',
-          rows: [
-            { run: '1', event: 'workflow_dispatch', 'run-conclusion': 'success' },
-            { run: '2', event: 'workflow_dispatch', 'run-conclusion': 'failure' },
-            { run: '3', event: 'workflow_dispatch', 'run-conclusion': 'timed-out' },
-            { run: '4', event: 'push', 'run-conclusion': 'failure' }
-          ],
-          metadata: metadata('runs')
-        }
-      },
-      ['overview-dispatch-summary']
-    );
-
-    expect(result['overview-dispatch-summary'].rows).toEqual([
-      { dispatches: 3, 'failed-dispatches': 2 }
-    ]);
-  });
-
 
   it('executes built-in aggregate-local filters with the same filtered totals', () => {
     const result = executeDashboardQueries(
@@ -312,24 +344,22 @@ describe('declarative dashboard queries', () => {
     ]);
   });
 
-  it('counts database entities used by configuration views', () => {
+  it('counts campaigns used by the Overview presentation queries', () => {
     const sources = {
       campaigns: {
         source: 'campaigns',
         rows: [{ id: 'campaign:activity', campaign: 'activity' }, { id: 'campaign:dashboard', campaign: 'dashboard' }],
         metadata: metadata('campaigns')
-      },
-      issues: { source: 'issues', rows: [{ id: 'issue:i', event: 'i' }], metadata: metadata('issues') }
+      }
     };
 
     const result = executeDashboardQueries(
       dashboardQueries,
       sources,
-      ['database-campaign-count', 'database-issue-count']
+      ['database-campaign-count']
     );
 
     expect(result['database-campaign-count'].rows).toEqual([{ campaigns: 2 }]);
-    expect(result['database-issue-count'].rows).toEqual([{ issues: 1 }]);
   });
 
   it('derives one compiler upgrade decision per repository', () => {
