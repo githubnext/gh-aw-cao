@@ -328,7 +328,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .document-list-footer { display: flex; justify-content: flex-end; padding: 8px 14px; }
 .document-list-footer a { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; }
 .issue-list { display: block; }
-.issue-list-card { min-width: 0; display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 8px; padding: 8px 16px; border-top: 1px solid var(--border); list-style: none; }
+.issue-list-card { min-width: 0; display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 8px; padding: 8px 16px; border-top: 1px solid var(--border); list-style: none; } /* .entity-card-list-actions (defined above) assumes column 2 is the content column; keep its grid-column value in sync if this column layout changes */
 .issue-list-card:first-child { border-top: 0; }
 .issue-list-card:hover { background: var(--canvas-subtle); }
 .entity-card-list-card:has([data-card-drill]) { cursor: pointer; }
