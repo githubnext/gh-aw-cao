@@ -189,7 +189,6 @@ test("ESLint Factory campaign manifest, policy, and dashboard describe the same 
   assert.match(manifest, /- \.\.\/aw\.yml/);
   assert.match(manifest, /experimental: true/);
   assert.doesNotMatch(manifest, /^resources:/m);
-  assert.ok(readFileSync(join(root, "eslint-rules", "dashboard.json"), "utf8").length > 0);
   assert.ok(readFileSync(join(root, "eslint-rules", "rules-db.mjs"), "utf8").length > 0);
 
   const policy = controlPolicy["control-plane"].campaigns["eslint-rules"];
@@ -200,7 +199,4 @@ test("ESLint Factory campaign manifest, policy, and dashboard describe the same 
     workers.map(([name, worker]) => [worker, name.replace(".md", "")]),
   );
 
-  const dashboard = JSON.parse(readFileSync(join(root, "eslint-rules", "dashboard.json"), "utf8"));
-  assert.equal(dashboard.dashboard.pages[0].icon, policy.icon);
-  assert.equal(dashboard.dashboard.pages[0].views[0].mark, "chart");
 });

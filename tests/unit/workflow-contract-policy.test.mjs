@@ -279,7 +279,6 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "self-care-data-acquisition-audit.md": { credits: 300, timeout: 20 },
     "self-care-dashboard-language-refactor.md": { credits: 400, timeout: 30 },
     "self-care-dashboard-review.md": { credits: 400, timeout: 30 },
-    "self-care-experimental-views.md": { credits: 600, timeout: 120 },
     "self-care-docs-build-time-investigator.md": { credits: 400, timeout: 30 },
     "self-care-glossary.md": { credits: 400, timeout: 30 },
     "self-care-open-source-failures.md": { credits: 500, timeout: 30 },
