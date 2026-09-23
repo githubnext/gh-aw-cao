@@ -1019,8 +1019,8 @@ describe('declarative dashboard queries', () => {
       expect.objectContaining({ workflow: 'c.md', runs: 1, 'successful-runs': 1, 'failed-runs': 0, 'aic-per-run': 0, ingestion: '100%' })
     ]);
     expect(derived['top-workflow-runs'].rows).toEqual([
-      expect.objectContaining({ workflow: 'a.md', run: '1', 'workflow-label': 'githubnext/gh-aw-cao:a.md', 'workflow-runs': 2 }),
       expect.objectContaining({ workflow: 'a.md', run: '2', 'workflow-label': 'githubnext/gh-aw-cao:a.md', 'workflow-runs': 2 }),
+      expect.objectContaining({ workflow: 'a.md', run: '1', 'workflow-label': 'githubnext/gh-aw-cao:a.md', 'workflow-runs': 2 }),
       expect.objectContaining({ workflow: 'c.md', run: '3', 'workflow-label': 'githubnext/gh-aw-cao:c.md', 'workflow-runs': 1 })
     ]);
     expect(derived['campaign-operational-value-totals'].rows).toEqual([{

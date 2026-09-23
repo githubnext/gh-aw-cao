@@ -402,9 +402,9 @@ test('the authored basic table queries return the populated canonical database r
     payload['workflow-inventory'].rows.map((row) => `${row.repository}:${row.workflow}`)
   );
   expect(payload['top-workflow-runs'].rows.map((row) => [row.run, row['workflow-label'], row['workflow-runs']])).toEqual([
-    ['1001', 'githubnext/gh-aw-cao:.github/workflows/dashboard.md', 3],
-    ['1002', 'githubnext/gh-aw-cao:.github/workflows/dashboard.md', 3],
     ['1003', 'githubnext/gh-aw-cao:.github/workflows/dashboard.md', 3],
+    ['1002', 'githubnext/gh-aw-cao:.github/workflows/dashboard.md', 3],
+    ['1001', 'githubnext/gh-aw-cao:.github/workflows/dashboard.md', 3],
     ['1005', 'githubnext/control-plane:.github/workflows/audit.md', 1],
     ['1004', 'githubnext/gh-aw-cao:.github/workflows/doctor.md', 1]
   ]);
