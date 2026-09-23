@@ -278,6 +278,10 @@ func TestCapabilityTokenProtectsStaticAssetsAndAPI(t *testing.T) {
 	if !strings.Contains(bootstrap.Body.String(), `sessionStorage.setItem("cao-dashboard-access-token"`) {
 		t.Fatalf("bootstrap did not initialize origin-scoped storage: %s", bootstrap.Body.String())
 	}
+	if !strings.Contains(bootstrap.Body.String(), `history.replaceState`) ||
+		strings.Contains(bootstrap.Body.String(), `location.replace`) {
+		t.Fatalf("bootstrap must remove the token without navigation: %s", bootstrap.Body.String())
+	}
 
 	authorizedAPI := httptest.NewRecorder()
 	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "https://localhost/api/v1/refresh", nil)

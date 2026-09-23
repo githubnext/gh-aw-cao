@@ -157,7 +157,7 @@ func (a *App) requireAccess(next http.Handler) http.Handler {
 		if !strings.HasPrefix(request.URL.Path, "/api/") {
 			if (request.Method == http.MethodGet || request.Method == http.MethodHead) &&
 				constantTimeTokenEqual(request.URL.Query().Get("access_token"), a.accessToken) {
-				a.bootstrap(response)
+				a.serveIndex(response, a.accessToken)
 				return
 			}
 			next.ServeHTTP(response, request)
@@ -169,17 +169,6 @@ func (a *App) requireAccess(next http.Handler) http.Handler {
 		}
 		writeError(response, http.StatusUnauthorized, "dashboard access token is required")
 	})
-}
-
-func (a *App) bootstrap(response http.ResponseWriter) {
-	token, _ := json.Marshal(a.accessToken)
-	response.Header().Set("Content-Type", "text/html; charset=utf-8")
-	response.Header().Set("Cache-Control", "no-store")
-	_, _ = fmt.Fprintf(
-		response,
-		`<!doctype html><meta charset="utf-8"><title>Opening dashboard</title><script>sessionStorage.setItem("cao-dashboard-access-token", %s);location.replace("/");</script>`,
-		token,
-	)
 }
 
 func validRequestHost(value string) bool {
@@ -507,31 +496,41 @@ func (a *App) static(response http.ResponseWriter, request *http.Request) {
 		path = filepath.Join(a.config.SiteDirectory, "index.html")
 	}
 	if filepath.Base(path) == "index.html" {
-		// #nosec G304 -- path is constrained to the configured site directory above.
-		content, err := os.ReadFile(path)
-		if err != nil {
-			http.NotFound(response, request)
-			return
-		}
-		html := string(content)
-		meta := `<meta name="dashboard-data-backend" content="redis-http">`
-		if !strings.Contains(html, `name="dashboard-data-backend"`) {
-			if index := strings.Index(strings.ToLower(html), "</head>"); index >= 0 {
-				html = html[:index] + meta + html[index:]
-			} else {
-				html = meta + html
-			}
-		}
-		response.Header().Set("Content-Type", "text/html; charset=utf-8")
-		response.Header().Set("Cache-Control", "no-cache")
-		// #nosec G705 -- content comes from the configured local static site, with only a fixed meta tag inserted.
-		_, _ = io.WriteString(response, html)
+		a.serveIndex(response, "")
 		return
 	}
 	if contentType := mime.TypeByExtension(filepath.Ext(path)); contentType != "" {
 		response.Header().Set("Content-Type", contentType)
 	}
 	http.ServeFile(response, request, path)
+}
+
+func (a *App) serveIndex(response http.ResponseWriter, accessToken string) {
+	path := filepath.Join(a.config.SiteDirectory, "index.html")
+	// #nosec G304 -- path is constrained to the configured site directory.
+	content, err := os.ReadFile(path)
+	if err != nil {
+		http.Error(response, "not found", http.StatusNotFound)
+		return
+	}
+	html := string(content)
+	injections := `<meta name="dashboard-data-backend" content="redis-http">`
+	if accessToken != "" {
+		token, _ := json.Marshal(accessToken)
+		injections += fmt.Sprintf(
+			`<script>sessionStorage.setItem("cao-dashboard-access-token",%s);const u=new URL(location.href);u.searchParams.delete("access_token");history.replaceState(null,"",u.pathname+u.search+u.hash);</script>`,
+			token,
+		)
+	}
+	if index := strings.Index(strings.ToLower(html), "</head>"); index >= 0 {
+		html = html[:index] + injections + html[index:]
+	} else {
+		html = injections + html
+	}
+	response.Header().Set("Content-Type", "text/html; charset=utf-8")
+	response.Header().Set("Cache-Control", "no-store")
+	// #nosec G705 -- content comes from the configured local static site, with fixed bootstrap markup inserted.
+	_, _ = io.WriteString(response, html)
 }
 
 func writeJSON(response http.ResponseWriter, status int, value any) {
