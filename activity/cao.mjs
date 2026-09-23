@@ -52,6 +52,7 @@ const DEFAULT_ACTIVITY_STATS_WORKFLOW = 'cao-activity.yml';
 const DEFAULT_ACTIVITY_STATS_ARTIFACT = 'cao-activity-index';
 const DEFAULT_ACTIVITY_STATS_LIMIT = 5;
 const DEFAULT_GH_LIMIT = 30;
+const DEFAULT_COMPACTED_JSONL_SHARD_BYTES = 4 * 1024 * 1024;
 const GH_AW_INSTALLER_COMMAND = 'curl --fail --silent --show-error --location https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- "$1"';
 const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json';
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
@@ -72,7 +73,7 @@ const USAGE = `Usage:
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY|--runs-dir DIRECTORY --records-dir DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input-dir SHARD_DIRECTORY]
-  cao compact-jsonl --input-dir SHARD_DIRECTORY --group OWNER/REPOSITORY=SHARD_PREFIX [--group OWNER/REPOSITORY=SHARD_PREFIX...]
+  cao compact-jsonl --input-dir SHARD_DIRECTORY --group OWNER/REPOSITORY=SHARD_PREFIX [--group OWNER/REPOSITORY=SHARD_PREFIX...] [--max-bytes BYTES]
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao computation runtime-health [--database FILE] [--inventory FILE] [--campaign SLUG] [--diagnose]
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
@@ -997,11 +998,11 @@ async function* jsonlLines(paths) {
   }
 }
 
-async function compactJsonlShardGroup(directory, prefix, names) {
+async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
   const sourcePaths = names.map((name) => path.join(directory, name));
   const sourceBytes = (await Promise.all(sourcePaths.map(async (filePath) => (await stat(filePath)).size)))
     .reduce((sum, size) => sum + size, 0);
-  if (sourcePaths.length <= 1) {
+  if (sourcePaths.length <= 1 && sourceBytes <= maxBytes) {
     let sourceRecords = 0;
     for await (const line of jsonlLines(sourcePaths)) sourceRecords += 1;
     return {
@@ -1011,34 +1012,53 @@ async function compactJsonlShardGroup(directory, prefix, names) {
       retainedRecords: sourceRecords,
       sourceBytes,
       compactedBytes: sourceBytes,
-      output: sourcePaths[0] ?? null
+      output: sourcePaths[0] ?? null,
+      outputs: sourcePaths
     };
   }
 
-  const temporaryPath = path.join(directory, `.${prefix}${process.pid}.tmp`);
-  const outputHash = createHash('sha256');
-  let retainedRecords = 0;
-  await pipeline(
-    (async function* compactedLines() {
-      for await (const line of jsonlLines(sourcePaths)) {
-        const outputLine = `${line}\n`;
-        outputHash.update(outputLine);
-        retainedRecords += 1;
-        yield outputLine;
-      }
-    })(),
-    createWriteStream(temporaryPath, { flags: 'wx' })
-  );
   const latestSequence = names.reduce((latest, name) => {
     const match = name.slice(prefix.length).match(/^(\d+)-/);
     return match ? Math.max(latest, Number(match[1])) : latest;
   }, 0);
   const sequence = Math.max(Math.floor(Date.now() / 1000), latestSequence + 1);
-  const outputName = `${prefix}${sequence}-${outputHash.digest('hex').slice(0, 16)}.jsonl`;
-  const outputPath = path.join(directory, outputName);
-  await rename(temporaryPath, outputPath);
-  await Promise.all(sourcePaths.filter((filePath) => filePath !== outputPath).map((filePath) => rm(filePath)));
-  const compactedBytes = (await stat(outputPath)).size;
+  const outputPaths = [];
+  const temporaryPaths = [];
+  let bufferedLines = [];
+  let bufferedBytes = 0;
+  let retainedRecords = 0;
+  const flush = async () => {
+    if (bufferedLines.length === 0) return;
+    const content = bufferedLines.join('');
+    const hash = createHash('sha256').update(content).digest('hex').slice(0, 16);
+    const part = String(outputPaths.length).padStart(4, '0');
+    const outputPath = path.join(directory, `${prefix}${sequence}-${part}-${hash}.jsonl`);
+    const temporaryPath = path.join(directory, `.${path.basename(outputPath)}.${process.pid}.tmp`);
+    temporaryPaths.push(temporaryPath);
+    await writeFile(temporaryPath, content, { flag: 'wx' });
+    await rename(temporaryPath, outputPath);
+    temporaryPaths.pop();
+    outputPaths.push(outputPath);
+    bufferedLines = [];
+    bufferedBytes = 0;
+  };
+  try {
+    for await (const line of jsonlLines(sourcePaths)) {
+      const outputLine = `${line}\n`;
+      const lineBytes = Buffer.byteLength(outputLine);
+      if (bufferedLines.length > 0 && bufferedBytes + lineBytes > maxBytes) await flush();
+      bufferedLines.push(outputLine);
+      bufferedBytes += lineBytes;
+      retainedRecords += 1;
+    }
+    await flush();
+  } catch (error) {
+    await Promise.all([...temporaryPaths, ...outputPaths].map((filePath) => rm(filePath, { force: true })));
+    throw error;
+  }
+  await Promise.all(sourcePaths.filter((filePath) => !outputPaths.includes(filePath)).map((filePath) => rm(filePath)));
+  const compactedBytes = (await Promise.all(outputPaths.map(async (filePath) => (await stat(filePath)).size)))
+    .reduce((sum, size) => sum + size, 0);
   return {
     prefix,
     sourceFiles: sourcePaths.length,
@@ -1046,7 +1066,8 @@ async function compactJsonlShardGroup(directory, prefix, names) {
     retainedRecords,
     sourceBytes,
     compactedBytes,
-    output: outputPath
+    output: outputPaths[0] ?? null,
+    outputs: outputPaths
   };
 }
 
@@ -1066,8 +1087,15 @@ async function shardRepository(filePath) {
   return null;
 }
 
-export async function compactJsonlShards(inputDirectory, groupDefinitions) {
+export async function compactJsonlShards(
+  inputDirectory,
+  groupDefinitions,
+  maxBytes = DEFAULT_COMPACTED_JSONL_SHARD_BYTES
+) {
   if (groupDefinitions.length === 0) throw new UsageError('At least one --group is required');
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 1) {
+    throw new UsageError('--max-bytes must be a positive integer');
+  }
   const groupsByRepository = new Map();
   for (const definition of groupDefinitions) {
     const separator = definition.indexOf('=');
@@ -1093,7 +1121,7 @@ export async function compactJsonlShards(inputDirectory, groupDefinitions) {
   for (const [repository, { prefix, names }] of [...groupsByRepository].sort(([left], [right]) => left.localeCompare(right))) {
     groups.push({
       repository,
-      ...await compactJsonlShardGroup(directory, prefix, names)
+      ...await compactJsonlShardGroup(directory, prefix, names, maxBytes)
     });
   }
   return {
@@ -1932,13 +1960,16 @@ export async function runCli(arguments_, input = process.stdin) {
     return auditJsonlDirectory(option(options, 'input-dir', false) || DEFAULT_SHARDS_PATH);
   }
   if (command === 'compact-jsonl') {
-    rejectUnknownOptions(options, ['input-dir', 'group']);
+    rejectUnknownOptions(options, ['input-dir', 'group', 'max-bytes']);
     const groups = options.group
       ? Array.isArray(options.group) ? options.group : [options.group]
       : [];
     return compactJsonlShards(
       path.resolve(option(options, 'input-dir')),
-      groups
+      groups,
+      option(options, 'max-bytes', false) === undefined
+        ? DEFAULT_COMPACTED_JSONL_SHARD_BYTES
+        : Number(option(options, 'max-bytes', false))
     );
   }
   if (command === 'hash-payloads') {
