@@ -188,6 +188,13 @@ stages receive full credit, the same structure modulo field names receives 85% c
 partial structural overlap receives up to 60% credit. Suggestions include the detected field
 mapping and the stages that can form a shared chain.
 
+The report also includes a complete final query inventory. Each query lists its source,
+execution stages, direct dependencies and dependents, rendered consumers, dependency depth,
+fan-in, fan-out, and every above-threshold similarity match. Aggregate statistics compare the
+query graph before and after pruning, including stage counts, dependency edges, root and nested
+query counts, maximum and average depth, pairs compared, similarity relation counts, and score
+buckets.
+
 Write the optimized document only after reviewing that report:
 
 ```bash

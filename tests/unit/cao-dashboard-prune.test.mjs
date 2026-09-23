@@ -128,6 +128,47 @@ test('consolidates compatible query projections and rewrites every query referen
   }]);
   assert.deepEqual(report.queries.chains, []);
   assert.deepEqual(report.queries.removed, ['unused']);
+  assert.deepEqual(report.queries.stats.before, {
+    queries: 4,
+    'dependency-edges': 1,
+    'root-queries': 3,
+    'nested-queries': 1,
+    'max-depth': 1,
+    'average-depth': 0.25,
+    'stage-counts': {
+      from: 4,
+      union: 0,
+      time: 0,
+      joins: 0,
+      filter: 2,
+      compute: 0,
+      'temporal-series': 0,
+      aggregate: 0,
+      predict: 0,
+      select: 2,
+      'order-by': 0,
+      limit: 0
+    }
+  });
+  assert.equal(report.queries.stats.after.queries, 2);
+  assert.equal(report.queries.stats.similarity['pairs-compared'], 6);
+  assert.equal(report.queries.inventory.length, 2);
+  const failedRunsInventory = report.queries.inventory.find((query) => query.name === 'failed-runs');
+  assert.deepEqual({ ...failedRunsInventory, similarities: [] }, {
+    name: 'failed-runs',
+    index: 0,
+    from: 'runs',
+    stages: ['from', 'filter', 'select'],
+    dependencies: [],
+    dependents: ['failure-summary'],
+    consumers: ['page:overview/view:failures', 'query:failure-summary'],
+    depth: 0,
+    'fan-in': 0,
+    'fan-out': 1,
+    similarities: []
+  });
+  assert.equal(failedRunsInventory.similarities[0].query, 'failed-run-repositories');
+  assert.ok(failedRunsInventory.similarities[0].score >= 0.95);
   assert.equal(report.queries.similar[0].query, 'failed-run-repositories');
   assert.equal(report.queries.similar[0].candidate, 'failed-runs');
   assert.ok(report.queries.similar[0].score >= 0.95);
@@ -427,6 +468,19 @@ test('cao prune-dashboard can analyze without writing an output file', async () 
     assert.equal(report.command, 'prune-dashboard');
     assert.equal(report.output, undefined);
     assert.equal(report.queries.after, 1);
+    assert.deepEqual(report.queries.inventory[0], {
+      name: 'used',
+      index: 0,
+      from: 'runs',
+      stages: ['from'],
+      dependencies: [],
+      dependents: [],
+      consumers: ['page:overview/view:used'],
+      depth: 0,
+      'fan-in': 0,
+      'fan-out': 0,
+      similarities: []
+    });
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

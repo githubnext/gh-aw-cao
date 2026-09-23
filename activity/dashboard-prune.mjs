@@ -55,6 +55,7 @@ export function pruneDashboardDocument(document) {
   dashboard.queries = dashboard.queries.filter((query) => (
     !isRecord(query) || typeof query.name !== 'string' || liveQueryNames.has(query.name)
   ));
+  const finalAnalysis = buildDashboardQueryAnalysis(dashboard, similarQueries);
 
   return {
     document: optimized,
@@ -65,6 +66,12 @@ export function pruneDashboardDocument(document) {
         consolidated: groups,
         chains,
         similar: similarQueries,
+        stats: {
+          before: summarizeQueryGraph(queries),
+          after: finalAnalysis.stats,
+          similarity: summarizeSimilarities(queries.length, similarQueries)
+        },
+        inventory: finalAnalysis.inventory,
         removed: removedQueries
       },
       views: {
@@ -107,9 +114,187 @@ export function analyzeDashboardQueries(queries) {
     candidates.sort((left, rightCandidate) => (
       rightCandidate.score - left.score || left.candidate.localeCompare(rightCandidate.candidate)
     ));
-    suggestions.push(...candidates.slice(0, 3));
+    suggestions.push(...candidates);
   }
   return suggestions;
+}
+
+/**
+ * @param {Record<string, any>} dashboard
+ * @param {Array<Record<string, any>>} similarities
+ */
+function buildDashboardQueryAnalysis(dashboard, similarities) {
+  const queries = Array.isArray(dashboard.queries) ? dashboard.queries : [];
+  const definitions = queries.filter((query) => isRecord(query) && typeof query.name === 'string');
+  const index = new Map(definitions.map((query) => [query.name, query]));
+  const consumers = new Map(definitions.map((query) => [query.name, new Set()]));
+  const dependents = new Map(definitions.map((query) => [query.name, new Set()]));
+  const similarityByQuery = new Map(definitions.map((query) => [query.name, []]));
+
+  for (const query of definitions) {
+    for (const dependency of queryInputNames(query)) {
+      if (!index.has(dependency)) continue;
+      dependents.get(dependency)?.add(query.name);
+      consumers.get(dependency)?.add(`query:${query.name}`);
+    }
+  }
+  for (const view of Array.isArray(dashboard.views) ? dashboard.views : []) {
+    if (!isRecord(view)) continue;
+    addViewConsumers(view, `view:${typeof view.id === 'string' ? view.id : 'anonymous'}`, consumers);
+  }
+  for (const [pageIndex, page] of (Array.isArray(dashboard.pages) ? dashboard.pages : []).entries()) {
+    if (!isRecord(page)) continue;
+    const pageId = typeof page.id === 'string' ? page.id : String(pageIndex);
+    for (const [viewIndex, view] of pageViews(page).entries()) {
+      if (isRecord(view)) {
+        addViewConsumers(
+          view,
+          `page:${pageId}/view:${typeof view.id === 'string' ? view.id : viewIndex}`,
+          consumers
+        );
+      } else if (typeof view === 'string') {
+        const reusable = Array.isArray(dashboard.views)
+          ? dashboard.views.find((candidate) => isRecord(candidate) && candidate.id === view)
+          : undefined;
+        if (isRecord(reusable)) addViewConsumers(reusable, `page:${pageId}/view:${view}`, consumers);
+      }
+    }
+    const definition = page.kind === 'built-in' && isRecord(page.definition) ? page.definition : page;
+    for (const [sectionIndex, section] of (Array.isArray(definition.sections) ? definition.sections : []).entries()) {
+      if (!isRecord(section)) continue;
+      for (const name of [
+        section['count-source'],
+        ...(Array.isArray(section['count-sources']) ? section['count-sources'] : [])
+      ]) {
+        if (typeof name === 'string' && consumers.has(name)) {
+          consumers.get(name)?.add(`page:${pageId}/section:${sectionIndex}`);
+        }
+      }
+    }
+  }
+  for (const [index_, callout] of (Array.isArray(dashboard.callouts) ? dashboard.callouts : []).entries()) {
+    const source = isRecord(callout) && isRecord(callout['visible-when']) ? callout['visible-when'].source : undefined;
+    if (typeof source === 'string' && consumers.has(source)) consumers.get(source)?.add(`callout:${index_}`);
+  }
+  for (const similarity of similarities) {
+    if (typeof similarity.query !== 'string' || typeof similarity.candidate !== 'string') continue;
+    const forward = {
+      query: similarity.candidate,
+      score: similarity.score,
+      relation: similarity.relation,
+      'exact-stages': similarity['exact-stages'],
+      'mapped-stages': similarity['mapped-stages'],
+      'field-mapping': similarity['field-mapping'],
+      'chainable-prefix': similarity['chainable-prefix']
+    };
+    const reverse = {
+      ...forward,
+      query: similarity.query,
+      'field-mapping': Object.fromEntries(
+        Object.entries(similarity['field-mapping'] ?? {}).map(([from, to]) => [to, from])
+      )
+    };
+    similarityByQuery.get(similarity.query)?.push(forward);
+    similarityByQuery.get(similarity.candidate)?.push(reverse);
+  }
+
+  const depths = queryDepths(index);
+  const inventory = definitions.map((query, index_) => {
+    const dependencies = queryInputNames(query).filter((name) => index.has(name));
+    return {
+      name: query.name,
+      index: index_,
+      from: query.from,
+      stages: queryStages(query),
+      dependencies,
+      dependents: [...(dependents.get(query.name) ?? [])].toSorted(),
+      consumers: [...(consumers.get(query.name) ?? [])].toSorted(),
+      depth: depths.get(query.name) ?? 0,
+      'fan-in': dependencies.length,
+      'fan-out': dependents.get(query.name)?.size ?? 0,
+      similarities: (similarityByQuery.get(query.name) ?? [])
+        .toSorted((left, right) => right.score - left.score || left.query.localeCompare(right.query))
+    };
+  });
+  return { inventory, stats: summarizeQueryGraph(definitions) };
+}
+
+/** @param {Record<string, any>} view @param {string} label @param {Map<string, Set<string>>} consumers */
+function addViewConsumers(view, label, consumers) {
+  for (const name of viewQueryNames(view)) {
+    if (consumers.has(name)) consumers.get(name)?.add(label);
+  }
+}
+
+/** @param {unknown[]} queries */
+function summarizeQueryGraph(queries) {
+  const definitions = queries.filter((query) => isRecord(query) && typeof query.name === 'string');
+  const index = new Map(definitions.map((query) => [query.name, query]));
+  const depths = queryDepths(index);
+  const stageCounts = Object.fromEntries(Object.keys(QUERY_STAGE_WEIGHTS).map((stage) => [stage, 0]));
+  let dependencyEdges = 0;
+  for (const query of definitions) {
+    for (const stage of queryStages(query)) stageCounts[stage] += 1;
+    dependencyEdges += queryInputNames(query).filter((name) => index.has(name)).length;
+  }
+  const depthValues = [...depths.values()];
+  return {
+    queries: definitions.length,
+    'dependency-edges': dependencyEdges,
+    'root-queries': depthValues.filter((depth) => depth === 0).length,
+    'nested-queries': depthValues.filter((depth) => depth > 0).length,
+    'max-depth': depthValues.length > 0 ? Math.max(...depthValues) : 0,
+    'average-depth': depthValues.length > 0
+      ? Math.round((depthValues.reduce((total, depth) => total + depth, 0) / depthValues.length) * 100) / 100
+      : 0,
+    'stage-counts': stageCounts
+  };
+}
+
+/** @param {number} queryCount @param {Array<Record<string, any>>} similarities */
+function summarizeSimilarities(queryCount, similarities) {
+  const buckets = { '0.65-0.74': 0, '0.75-0.84': 0, '0.85-0.94': 0, '0.95-1.00': 0 };
+  for (const similarity of similarities) {
+    const score = Number(similarity.score);
+    if (score >= 0.95) buckets['0.95-1.00'] += 1;
+    else if (score >= 0.85) buckets['0.85-0.94'] += 1;
+    else if (score >= 0.75) buckets['0.75-0.84'] += 1;
+    else buckets['0.65-0.74'] += 1;
+  }
+  return {
+    threshold: 0.65,
+    'pairs-compared': queryCount * (queryCount - 1) / 2,
+    'matches-reported': similarities.length,
+    duplicates: similarities.filter((similarity) => similarity.relation === 'duplicate').length,
+    'field-mapped': similarities.filter((similarity) => similarity.relation === 'same-shape-with-field-mapping').length,
+    similar: similarities.filter((similarity) => similarity.relation === 'similar').length,
+    buckets
+  };
+}
+
+/** @param {Map<string, Record<string, any>>} index */
+function queryDepths(index) {
+  const cache = new Map();
+  const depth = (name, visiting = new Set()) => {
+    if (cache.has(name)) return cache.get(name);
+    if (visiting.has(name)) return 0;
+    const query = index.get(name);
+    if (!query) return 0;
+    const next = new Set(visiting).add(name);
+    const dependencies = queryInputNames(query).filter((dependency) => index.has(dependency));
+    const value = dependencies.length === 0
+      ? 0
+      : 1 + Math.max(...dependencies.map((dependency) => depth(dependency, next)));
+    cache.set(name, value);
+    return value;
+  };
+  for (const name of index.keys()) depth(name);
+  return cache;
+}
+
+/** @param {Record<string, any>} query */
+function queryStages(query) {
+  return Object.keys(QUERY_STAGE_WEIGHTS).filter((stage) => query[stage] !== undefined);
 }
 
 /** @param {Record<string, any>} left @param {Record<string, any>} right */
