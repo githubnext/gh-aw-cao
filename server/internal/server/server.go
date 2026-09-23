@@ -79,29 +79,29 @@ func (a *App) Serve(ctx context.Context) error {
 		a.hub.Broadcast(result.Revision)
 		a.config.Logger.Printf("activated local dashboard revision %d", result.Revision)
 	}
-	certificatePEM, keyPEM, generated, err := LoadOrGenerateCertificate(a.config.CertFile, a.config.KeyFile)
-	if err != nil {
-		return fmt.Errorf("load TLS certificate: %w", err)
-	}
-	certificate, err := tls.X509KeyPair(certificatePEM, keyPEM)
-	if err != nil {
-		return fmt.Errorf("parse TLS certificate: %w", err)
-	}
 	var listenConfig net.ListenConfig
 	listener, err := listenConfig.Listen(ctx, "tcp", a.config.Listen)
 	if err != nil {
 		return err
 	}
-	tlsListener := tls.NewListener(listener, &tls.Config{Certificates: []tls.Certificate{certificate}, MinVersion: tls.VersionTLS12})
+	servingListener := listener
+	if a.config.CertFile != "" {
+		certificate, certificateErr := tls.LoadX509KeyPair(a.config.CertFile, a.config.KeyFile)
+		if certificateErr != nil {
+			_ = listener.Close()
+			return fmt.Errorf("load TLS certificate: %w", certificateErr)
+		}
+		servingListener = tls.NewListener(listener, &tls.Config{
+			Certificates: []tls.Certificate{certificate},
+			MinVersion:   tls.VersionTLS12,
+		})
+	}
 	httpServer := &http.Server{
 		Handler:           a.Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       65 * time.Second,
 		WriteTimeout:      65 * time.Second,
 		IdleTimeout:       90 * time.Second,
-	}
-	if generated {
-		a.config.Logger.Printf("using an in-memory localhost self-signed certificate; local clients must trust it or use insecure mode (for example curl -k)")
 	}
 	a.config.Logger.Printf("serving local dashboard at %s", a.capabilityURL())
 	go func() {
@@ -110,7 +110,7 @@ func (a *App) Serve(ctx context.Context) error {
 		defer cancel()
 		_ = httpServer.Shutdown(shutdown)
 	}()
-	err = httpServer.Serve(tlsListener)
+	err = httpServer.Serve(servingListener)
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}
@@ -137,7 +137,11 @@ func generateAccessToken() (string, error) {
 }
 
 func (a *App) capabilityURL() string {
-	return "https://" + a.config.Listen + "/?access_token=" + a.accessToken
+	scheme := "http"
+	if a.config.CertFile != "" {
+		scheme = "https"
+	}
+	return scheme + "://" + a.config.Listen + "/?access_token=" + a.accessToken
 }
 
 func (a *App) requireAccess(next http.Handler) http.Handler {

@@ -10,7 +10,8 @@ The supported deployment is:
 
 - one trusted operator;
 - one local checkout or worktree;
-- an HTTPS listener on loopback;
+- an HTTP listener on loopback for debugging, or HTTPS with an
+  operator-supplied certificate and key;
 - a dedicated or access-controlled Redis database;
 - dashboard artifacts obtained from a trusted local workflow or download;
 - browser access through the capability URL printed by the server.
@@ -27,7 +28,8 @@ may be loaded without the capability.
 
 - `serve` generates a cryptographically random access token unless an explicit
   token of at least 32 characters is provided with `--access-token`.
-- The server prints an HTTPS capability URL containing the token.
+- The server prints an HTTP or explicitly configured HTTPS capability URL
+  containing the token.
 - Opening that URL writes the token to origin-scoped `sessionStorage` and
   immediately replaces the browser location with a URL that does not contain
   the token.
@@ -51,9 +53,9 @@ telemetry. Restart the server to rotate an automatically generated token.
   addresses are rejected even when a certificate is configured.
 - Requests with a non-loopback `Host` header are rejected, reducing DNS
   rebinding exposure.
-- The generated self-signed certificate covers `localhost`, `127.0.0.1`, and
-  `::1`. Existing certificate and key files may be supplied together.
-- TLS 1.2 or newer is required.
+- The server never generates certificates. HTTP is the localhost debugging
+  default. When certificate and key files are supplied together, TLS 1.2 or
+  newer is required.
 - The HTTP server configures read-header, read, write, idle, and shutdown
   timeouts.
 - API responses use `Cache-Control: no-store`, and the dashboard service worker

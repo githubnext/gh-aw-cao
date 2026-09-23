@@ -79,7 +79,8 @@ Open only the unguessable URL printed by the server. The server uses only Node.j
 dashboard with server-owned storage and query execution. It ingests the compacted
 data files from a deployed dashboard artifact into dockerized Redis Stack,
 executes Dashboard Language queries on the server with RediSearch pushdown, and
-serves the built dashboard over loopback HTTPS. The browser receives only
+serves the built dashboard over loopback HTTP by default or explicitly
+configured HTTPS. The browser receives only
 bounded query results; the Redis URL and credentials remain in the Go process.
 
 This profile is intentionally local-only and does not reuse

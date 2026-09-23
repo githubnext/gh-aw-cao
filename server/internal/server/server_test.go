@@ -3,7 +3,6 @@ package server
 import (
 	"bufio"
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -34,17 +33,15 @@ func TestValidateListenSafety(t *testing.T) {
 	}
 }
 
-func TestGeneratedCertificateSupportsLocalhost(t *testing.T) {
-	certificatePEM, keyPEM, generated, err := LoadOrGenerateCertificate("", "")
-	if err != nil {
-		t.Fatal(err)
+func TestCapabilityURLUsesConfiguredTransport(t *testing.T) {
+	app := &App{config: Config{Listen: "127.0.0.1:8443"}, accessToken: testAccessToken}
+	if got := app.capabilityURL(); !strings.HasPrefix(got, "http://") {
+		t.Fatalf("local debugging must default to HTTP: %s", got)
 	}
-	if !generated {
-		t.Fatal("expected generated certificate")
-	}
-	certificate, err := tls.X509KeyPair(certificatePEM, keyPEM)
-	if err != nil || len(certificate.Certificate) == 0 {
-		t.Fatalf("invalid certificate: %v", err)
+	app.config.CertFile = "localhost.pem"
+	app.config.KeyFile = "localhost-key.pem"
+	if got := app.capabilityURL(); !strings.HasPrefix(got, "https://") {
+		t.Fatalf("explicit certificate must enable HTTPS: %s", got)
 	}
 }
 

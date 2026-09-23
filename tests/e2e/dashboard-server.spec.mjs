@@ -29,7 +29,7 @@ const populatedViews = [
 
 test("deployed shards populate server-backed dashboard views", async ({ context, page }) => {
   await page.goto(`/?access_token=${accessToken}`);
-  await expect(page).toHaveURL("https://127.0.0.1:8443/");
+  await expect(page).toHaveURL("http://127.0.0.1:8443/");
   await expect(page.locator('meta[name="dashboard-data-backend"]')).toHaveAttribute("content", "redis-http");
   const headers = { Authorization: `Bearer ${accessToken}` };
 

@@ -3,7 +3,7 @@ import { defineConfig } from "@playwright/test";
 
 const chromiumExecutable = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
   || (existsSync("/usr/bin/chromium") ? "/usr/bin/chromium" : undefined);
-const origin = "https://127.0.0.1:8443";
+const origin = "http://127.0.0.1:8443";
 const accessToken = process.env.DASHBOARD_SERVER_ACCESS_TOKEN
   || "0123456789abcdef0123456789abcdef";
 const serverCommand = process.env.DASHBOARD_SERVER_COMMAND
@@ -19,7 +19,6 @@ export default defineConfig({
   webServer: {
     command: serverCommand,
     url: `${origin}/api/v1/health`,
-    ignoreHTTPSErrors: true,
     reuseExistingServer: false,
     timeout: 120_000,
     stdout: "pipe",
@@ -29,7 +28,6 @@ export default defineConfig({
     baseURL: origin,
     browserName: "chromium",
     headless: true,
-    ignoreHTTPSErrors: true,
     launchOptions: {
       args: ["--no-sandbox", "--disable-dev-shm-usage"],
       ...(chromiumExecutable ? { executablePath: chromiumExecutable } : {}),

@@ -48,7 +48,7 @@ Repository
 
 The static deployment SHALL maintain this canonical model in IndexedDB. The
 local server profile SHALL maintain an equivalent disposable generation in
-Redis and SHALL execute dashboard queries in its Go HTTPS server.
+Redis and SHALL execute dashboard queries in its Go HTTP(S) server.
 
 IndexedDB and Redis generations SHALL be treated exclusively as disposable,
 reconstructable, derived state and MUST NOT become authoritative storage.
@@ -247,7 +247,7 @@ flowchart LR
   source --> indexeddb["IndexedDB<br/>browser"]
   indexeddb --> views["Dashboard views"]
   source --> redis["Redis<br/>local server"]
-  redis --> go["Go HTTPS query server"]
+  redis --> go["Go HTTP(S) query server"]
   go --> views
 ```
 
@@ -290,7 +290,7 @@ The implementation profile defined by this specification is:
 | Canonical model | 13 | Campaign, Repository, Workflow, Run, Domain, Tool, Audit, and Issue records |
 | Browser IndexedDB | 20 | Eight canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
 | Local SQLite projection | IndexedDB 20 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records`, containing the same logical stores and JSON records as IndexedDB |
-| Local Redis server projection | Canonical model 13 | Immutable active generation of logical-source hashes plus RediSearch indexes, queried only through the loopback Go HTTPS server |
+| Local Redis server projection | Canonical model 13 | Immutable active generation of logical-source hashes plus RediSearch indexes, queried only through the loopback Go HTTP(S) server |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
 
 ## 5.2 Local Redis server profile
@@ -305,7 +305,8 @@ Node.js dashboard preview server. It SHALL:
   activating a new generation;
 * activate a complete Redis generation atomically and preserve the prior active
   generation when ingestion fails;
-* serve the built dashboard and its query API over HTTPS on loopback;
+* serve the built dashboard and its query API over HTTP on loopback by default,
+  or HTTPS only when the operator provides a certificate and key;
 * keep the Redis URL and any Redis credentials exclusively in the Go process;
 * execute Dashboard Language queries on the server and push every compatible
   filter, search, numeric/time range, aggregation, ordering, and limit into

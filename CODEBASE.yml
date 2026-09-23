@@ -123,7 +123,7 @@ components:
     responsibility: disposable generation-scoped local dashboard projection with RediSearch indexes
   dashboard_https_server:
     path: server/
-    responsibility: ingest deployed dashboard artifacts, execute Dashboard Language queries server-side, and serve bounded results with static dashboard assets over loopback HTTPS
+    responsibility: ingest deployed dashboard artifacts, execute Dashboard Language queries server-side, and serve bounded results with static dashboard assets over loopback HTTP or explicitly configured HTTPS
   dashboard_language_queries:
     path: dashboard/site/src/data/
     responsibility: declarative query definitions executed by the browser data worker
@@ -225,9 +225,9 @@ invariants:
   - "The deployed dashboard artifact MUST NOT contain or manifest raw Activity JSONL; browser ingestion MUST consume compacted normalized run and record JSONL and fail closed when run-information shards are absent."
   - "Normalized Activity shards MUST be JSONL and browser consumers MUST stream bounded record batches without buffering a complete shard."
   - "Missing, stale, partial, and zero evidence are distinct states."
-  - "Dashboard data operations MUST be declared in Dashboard Language and execute outside the browser main thread: in the data Web Worker for static deployment or in the Go HTTPS server for the local Redis profile."
-  - "In the local Redis profile, Dashboard Language queries execute in the Go HTTPS server and compatible stages MUST be pushed into Redis before bounded Go fallback."
-  - "The local Redis profile MUST bind to loopback, serve HTTPS, and MUST NOT expose Redis endpoints or credentials to browser code."
+  - "Dashboard data operations MUST be declared in Dashboard Language and execute outside the browser main thread: in the data Web Worker for static deployment or in the Go HTTP(S) server for the local Redis profile."
+  - "In the local Redis profile, Dashboard Language queries execute in the Go HTTP(S) server and compatible stages MUST be pushed into Redis before bounded Go fallback."
+  - "The local Redis profile MUST bind to loopback, use HTTP by default for localhost debugging, enable HTTPS only with operator-supplied certificate files, and MUST NOT expose Redis endpoints or credentials to browser code."
   - "Remote Redis dashboard exposure, authentication, GitHub live querying, and webhooks are outside the local profile."
   - "Computations MUST consume canonical evidence, preserve evidence quality and provenance, and emit bounded, versioned results."
   - "Computation results MUST NOT grant authority or turn runtime success into verification, accepted outcomes, or operational value."
@@ -385,7 +385,7 @@ validation:
     - "Verify campaign contents against root and campaign aw.yml manifests."
     - "Verify policy and workflow changes are reviewed together."
     - "Verify workflow sources, not generated lock files, are edited."
-    - "Verify dashboard data access crosses either the Web Worker or Go HTTPS server declarative query boundary."
+    - "Verify dashboard data access crosses either the Web Worker or Go HTTP(S) server declarative query boundary."
 
 provenance:
   source: ARCHITECTURE.md

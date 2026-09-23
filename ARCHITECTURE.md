@@ -79,7 +79,7 @@ flowchart LR
     IndexedDB["IndexedDB projection"]
     Redis["Redis projection<br/>local server profile"]
     Query["Dashboard Language queries"]
-    GoServer["Go HTTPS query server"]
+    GoServer["Go HTTP(S) query server"]
     Compute["Versioned computations<br/>bounded insights"]
     Results["Materialized computation results<br/>generation-scoped"]
     UI["Static dashboard"]
@@ -111,7 +111,7 @@ dashboard artifact contains the SQLite projection, inventory, and compacted
 normalized run and record JSONL; browser ingestion fails closed rather than
 falling back to raw Activity JSONL. Static-browser download, normalization, persistence, and queries run in a
 dedicated Web Worker. The local Redis profile ingests the same deployed
-dashboard artifact in a loopback-only Go HTTPS server, keeps Redis credentials
+dashboard artifact in a loopback-only Go HTTP(S) server, keeps Redis credentials
 server-side, pushes compatible Dashboard Language operations into RediSearch,
 and returns only bounded query payloads to the browser. The main thread receives
 only bounded view payloads in either profile. Versioned computations transform canonical evidence
@@ -137,7 +137,7 @@ reconstructable.
 | `<operation>/aw.yml` | Campaign boundary and installation manifest for an operation. User-facing operations include `cao-evolution/`, `dependabot/`, `eu-cra-compliance/`, `optimization/`, `repo-assist/`, `self-care/`, `software-development-practices/`, and `uk-ai-advisory/`. |
 | `activity/` | Deterministic Activity collection, JSONL ingestion, SQLite projection, and the `cao` CLI. |
 | `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and static browser application. |
-| `server/` | Local-only Go HTTPS host, deployed-artifact ingester, Redis projection, and server-side Dashboard Language query engine. |
+| `server/` | Local-only Go HTTP(S) host, deployed-artifact ingester, Redis projection, and server-side Dashboard Language query engine. |
 | `dashboard/site/src/data/` | Canonical browser data model, adapters, normalization, storage, and declarative query engine. |
 | `research/` | Executable notebooks and experimental reference runtimes used to validate proposed computation semantics against canonical data; these are not dashboard production code. |
 | `specs/computations.md` | Versioned computation, bounded insight, provenance, quality, and measure contracts. |
@@ -221,7 +221,8 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   limiting into Redis.
 - UI effects and components render query results; they do not reconstruct
   business relationships or query source data.
-- The local Redis profile binds to loopback, serves the dashboard over HTTPS,
+- The local Redis profile binds to loopback, serves HTTP for local debugging and
+  HTTPS only with operator-supplied certificate files,
   and never sends Redis endpoints or credentials to browser code. Remote
   exposure, authentication, and webhooks are outside this profile.
 
@@ -245,7 +246,7 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
 - **JSONL** is the bounded evidence interchange; **SQLite** supports local tools
   and agents; **IndexedDB** supports the static browser dashboard; **Redis
   Stack/RediSearch** supports the optional local server-hosted dashboard.
-- **Go** implements the isolated local HTTPS ingestion and query server.
+- **Go** implements the isolated local HTTP(S) ingestion and query server.
 - **Dashboard Language** keeps data operations declarative and off the browser
   main thread.
 - **Astro/Starlight** builds the documentation site. The operational dashboard

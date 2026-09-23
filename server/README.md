@@ -5,10 +5,10 @@ Ops dashboard with server-owned persistence and query execution. It ingests the
 same compacted data published with the deployed dashboard, materializes
 generation-scoped logical sources in Redis Stack, executes Dashboard Language
 queries in Go with RediSearch pushdown, and serves the built dashboard over
-HTTPS.
+loopback HTTP by default or operator-configured HTTPS.
 
 The browser never connects to Redis and never receives the Redis URL or
-credentials. It communicates only with the same-origin HTTPS API.
+credentials. It communicates only with the same-origin HTTP(S) API.
 
 > [!IMPORTANT]
 > This server uses a local bearer capability, not user identity or GitHub
@@ -23,7 +23,7 @@ flowchart LR
   Artifact["Deployed dashboard artifact<br/>inventory + run JSONL + record JSONL"]
   Ingest["Go ingester<br/>verify, parse, project"]
   Redis["Redis Stack<br/>generation rows + RediSearch indexes"]
-  API["Go HTTPS server<br/>query planner + bounded fallback"]
+  API["Go HTTP(S) server<br/>query planner + bounded fallback"]
   Browser["Dashboard browser app<br/>render bounded view payloads"]
 
   Artifact --> Ingest
@@ -44,7 +44,7 @@ flowchart LR
 | Artifact ingestion | `internal/ingest/` | Validates deployed manifests and hashes, loads run shards before record shards, projects canonical records into logical dashboard sources, and activates complete generations. |
 | Query engine | `internal/query/` | Validates Dashboard Language definitions and executes joins, filters, computed fields, aggregates, temporal series, selection, ordering, and limits under resource budgets. |
 | Redis projection | `internal/redisx/` | Stores source rows and metadata, creates RediSearch indexes, plans compatible pushdown, loads bounded fallbacks, and atomically publishes the active generation. |
-| HTTPS/API server | `internal/server/` | Enforces loopback binding, terminates TLS, serves static dashboard assets, handles API requests, and publishes revision events. |
+| HTTP(S)/API server | `internal/server/` | Enforces loopback binding, optionally terminates operator-configured TLS, serves static dashboard assets, handles API requests, and publishes revision events. |
 | Shared API model | `internal/model/` | Defines logical sources, active-generation metadata, diagnostics, and query metrics. |
 | Local Redis | `docker-compose.yml` | Runs Redis Stack with RediSearch on `127.0.0.1:6379`. |
 
@@ -132,12 +132,12 @@ The engine rejects unsupported prediction queries and enforces limits on query
 definitions, joins, predicates, input rows, output rows, and total operations.
 It does not silently truncate or return partial success for invalid queries.
 
-## HTTPS and browser transport
+## HTTP(S) and browser transport
 
 `serve` binds to `127.0.0.1:8443` by default. Non-loopback listen addresses are
-rejected. Provide `--cert` and `--key` to use an existing certificate; otherwise
-the server creates an in-memory self-signed certificate for `localhost`,
-`127.0.0.1`, and `::1`.
+rejected. Local debugging uses HTTP and the server never generates
+certificates. Provide both `--cert` and `--key` to enable HTTPS with an existing
+operator-managed certificate.
 
 The server injects:
 
@@ -181,7 +181,7 @@ caches.
 - Redis namespaces isolate this server's keys and indexes, but are not a
   substitute for dedicated Redis credentials with narrow ACL key patterns or a
   dedicated Redis database or instance.
-- The HTTPS server sets content-type, frame, referrer, permissions, and
+- The HTTP(S) server sets content-type, frame, referrer, permissions, and
   cross-origin resource policy headers.
 - Request bodies, query structures, row counts, output counts, and operation
   counts are bounded.
@@ -232,7 +232,7 @@ go -C server run ./cmd/cao-dashboard serve
 `serve` prints a capability URL such as:
 
 ```text
-https://127.0.0.1:8443/?access_token=<random-token>
+http://127.0.0.1:8443/?access_token=<random-token>
 ```
 
 Open that exact URL. The server removes the token from the address bar after
@@ -268,9 +268,9 @@ go -C server run ./cmd/cao-dashboard serve \
 Verify the local endpoint:
 
 ```bash
-curl -k https://127.0.0.1:8443/api/v1/health
+curl http://127.0.0.1:8443/api/v1/health
 
-curl -k https://127.0.0.1:8443/api/v1/query \
+curl http://127.0.0.1:8443/api/v1/query \
   -H 'authorization: Bearer 0123456789abcdef0123456789abcdef' \
   -H 'content-type: application/json' \
   --data '{"sourceNames":["runs"],"queries":[]}'
@@ -293,7 +293,7 @@ npm run dashboard:server:test
 ```
 
 The Redis-backed end-to-end test uses the deployed-format subset under
-`server/testdata/deployed-subset`, starts the HTTPS server, and verifies that
+`server/testdata/deployed-subset`, starts the HTTP server, and verifies that
 the Runs, Workflows, and Repositories views render populated rows:
 
 ```bash
@@ -312,4 +312,4 @@ dashboard CI:
   server unit suite.
 - **Redis dashboard integration** starts Redis Stack, runs the Redis integration
   tests, builds the dashboard and server, ingests the deployed shard subset,
-  launches HTTPS, and executes the Playwright view assertions.
+  launches the localhost HTTP server, and executes the Playwright view assertions.
