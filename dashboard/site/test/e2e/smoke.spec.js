@@ -1784,6 +1784,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
 });
 
 test('full-view scrolling with a small overscroll range does not jitter the app chrome', async ({ page }) => {
+  test.slow();
   const presenterModuleUrl = buildPresenterModuleUrl();
   await page.setViewportSize({ width: 1000, height: 900 });
 

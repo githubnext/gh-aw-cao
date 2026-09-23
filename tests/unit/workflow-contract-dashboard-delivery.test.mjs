@@ -463,11 +463,12 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(mobileTest, /Memory\.getDOMCounters/);
   assert.match(mobileTest, /VmRSS/);
   assert.match(mobileTest, /payload-hashes\.json/);
-  assert.match(mobileTest, /gh-aw-logs-shards\\\/\[A-Za-z0-9\._-\]\+\\\.jsonl/);
+  assert.match(mobileTest, /deployedActivityShardEntries\(payloadHashes\)/);
+  assert.match(mobileTest, /gh-aw-logs-\(\?:runs\|records\)/);
   assert.match(mobileTest, /inventory-sources\.json/);
   assert.match(mobileTest, /process\.env\.MOBILE_BROWSER === "webkit"[\s\S]*?Math\.min\(requested \?\? maximumWebKitShardCount, maximumWebKitShardCount\)/);
   assert.match(mobileTest, /shards\.slice\(0, mobileDebugShardLimit\(\)\)/);
-  assert.match(mobileTest, /for \(const \[name\] of selectedShards\)[\s\S]*?pipeline\(response\.body, createWriteStream\(shardPath\)\)/);
+  assert.match(mobileTest, /for \(const \{ name, sourceName \} of selectedShards\)[\s\S]*?legacyPhaseJsonToJsonl[\s\S]*?pipeline\(response\.body, createWriteStream\(shardPath\)\)/);
   assert.match(mobileTest, /parameters\.set\("debug-shard-limit", String\(shardLimit\)\)/);
   assert.doesNotMatch(mobileTest, /fetch\(dataUrl\)/);
   assert.doesNotMatch(mobileTest, /logsResponse\.text\(\)/);
@@ -476,7 +477,9 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(mobileTest, /horizontal page scrolling/);
   assert.match(workflow, /Peak process PSS \| Peak JS heap \| Retained JS heap \| Source payload/);
   const deployedDataTest = readFileSync(join(root, "tests", "integration", "dashboard-deployed-data.test.mjs"), "utf8");
-  assert.match(deployedDataTest, /Object\.keys\(manifest\)[\s\S]*?gh-aw-logs-shards\/[\s\S]*?ingestCachedGhAwJsonl\(indexedDB, shard\.body/);
+  assert.match(deployedDataTest, /deployedActivityShardEntries\(manifest\)[\s\S]*?ingestNormalizedJsonl\(indexedDB, chunks/);
+  assert.match(deployedDataTest, /expectedPhase: name\.startsWith\("gh-aw-logs-runs\/"\) \? "runs" : "records"/);
+  assert.doesNotMatch(deployedDataTest, /gh-aw-logs-shards/);
   assert.doesNotMatch(deployedDataTest, /response\.text\(\)/);
   assert.match(deployedDataTest, /event\.source === "firewall"/);
   for (const source of ["workflows", "runs", "domains", "tools", "audits", "issues"]) {
