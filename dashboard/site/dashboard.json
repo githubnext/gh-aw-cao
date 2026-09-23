@@ -1700,14 +1700,19 @@
         ]
       },
       {
-        "name": "entity-events",
-        "intent": "Project all run-owned records for reusable cards and run drill-down.",
+        "name": "event-base",
+        "intent": "Reuse shared query stages for entity-events, event-runs",
         "from": "audits",
         "union": [
           "domains",
           "tools",
           "issues"
-        ],
+        ]
+      },
+      {
+        "name": "entity-events",
+        "intent": "Project all run-owned records for reusable cards and run drill-down.",
+        "from": "event-base",
         "compute": [
           {
             "as": "event-url",
@@ -2549,8 +2554,8 @@
         }
       },
       {
-        "name": "failed-runs",
-        "intent": "List failed workflow runs that need operator attention.",
+        "name": "failure-run-base",
+        "intent": "Reuse shared query stages for failed-runs, overview-failing-runs",
         "from": "runs",
         "filter": {
           "predicates": [
@@ -2564,7 +2569,12 @@
               ]
             }
           ]
-        },
+        }
+      },
+      {
+        "name": "failed-runs",
+        "intent": "List failed workflow runs that need operator attention.",
+        "from": "failure-run-base",
         "order-by": [
           {
             "field": "started-at",
@@ -2575,20 +2585,7 @@
       {
         "name": "overview-failing-runs",
         "intent": "Identify failed runs in the selected snapshot horizon so subsequent streak logic can use the same declarative failure definition.",
-        "from": "runs",
-        "filter": {
-          "predicates": [
-            {
-              "field": "run-conclusion",
-              "in": [
-                "failure",
-                "startup-failure",
-                "stale",
-                "timed-out"
-              ]
-            }
-          ]
-        },
+        "from": "failure-run-base",
         "aggregate": {
           "by": [
             "organization",
@@ -3282,12 +3279,7 @@
         "name": "event-runs",
         "intent": "Identify each workflow run that has one or more imported run-owned records.",
         "description": "Distinct workflow runs represented by imported domain, tool, audit, or issue records.",
-        "from": "audits",
-        "union": [
-          "domains",
-          "tools",
-          "issues"
-        ],
+        "from": "event-base",
         "aggregate": {
           "by": [
             "organization",
@@ -3999,68 +3991,22 @@
       },
       {
         "name": "engines-models-usage",
-        "intent": "Summarize agent events by the run-level agent and model identifiers.",
-        "description": "Observed agent events grouped by agent ID and model ID.",
-        "from": "audits",
-        "joins": [
-          {
-            "source": "runs",
-            "type": "left",
-            "on": [
-              {
-                "left": "organization",
-                "right": "organization"
-              },
-              {
-                "left": "repository",
-                "right": "repository"
-              },
-              {
-                "left": "workflow",
-                "right": "workflow"
-              },
-              {
-                "left": "run",
-                "right": "run"
-              },
-              {
-                "left": "run-attempt",
-                "right": "run-attempt"
-              }
-            ],
-            "fields": [
-              {
-                "field": "agent-id",
-                "as": "run-agent-id"
-              },
-              {
-                "field": "model-id",
-                "as": "run-model-id"
-              }
-            ]
-          }
-        ],
-        "filter": {
-          "predicates": [
-            {
-              "field": "event-source",
-              "equals": "agent"
-            }
-          ]
-        },
+        "intent": "Summarize workflow runs by their agent and model identifiers.",
+        "description": "Observed workflow runs grouped by agent ID and model ID.",
+        "from": "runs",
         "compute": [
           {
             "as": "summary",
             "function": "concat",
             "args": [
               {
-                "field": "run-agent-id"
+                "field": "agent-id"
               },
               {
                 "value": " / "
               },
               {
-                "field": "run-model-id"
+                "field": "model-id"
               }
             ]
           }
@@ -4071,8 +4017,8 @@
           ],
           "values": [
             {
-              "field": "event-type",
-              "as": "events",
+              "field": "run",
+              "as": "runs",
               "reducer": "count"
             }
           ]
@@ -4082,12 +4028,12 @@
             "field": "summary"
           },
           {
-            "field": "events"
+            "field": "runs"
           }
         ],
         "order-by": [
           {
-            "field": "events",
+            "field": "runs",
             "direction": "desc"
           },
           {
@@ -11737,7 +11683,7 @@
           {
             "id": "engines-models-distribution",
             "title": "Agent and model distribution",
-            "description": "Distribution of observed agent events by agent and model combination.",
+            "description": "Distribution of observed workflow runs by agent and model combination.",
             "data": {
               "source": "engines-models-usage"
             },
@@ -11752,16 +11698,16 @@
                 "title": "Agent / model"
               },
               "y": {
-                "field": "events",
+                "field": "runs",
                 "type": "quantitative",
-                "title": "Events"
+                "title": "Runs"
               }
             }
           },
           {
             "id": "engines-models-usage",
             "title": "Engines and models",
-            "description": "Observed agent events grouped by agent and model identifiers.",
+            "description": "Observed workflow runs grouped by agent and model identifiers.",
             "data": {
               "source": "engines-models-usage"
             },
@@ -11777,9 +11723,9 @@
                   "title": "Agent / model"
                 },
                 {
-                  "field": "events",
+                  "field": "runs",
                   "type": "quantitative",
-                  "title": "Events"
+                  "title": "Runs"
                 }
               ]
             },
@@ -11787,7 +11733,7 @@
           }
         ],
         "navigation-label": "Models & Agents",
-        "description": "Compare observed agent and model combinations from agent events."
+        "description": "Compare observed agent and model combinations from workflow runs."
       },
       {
         "id": "findings",
@@ -12036,7 +11982,6 @@
             "description": "Campaign health measures campaigns without current runtime errors; repository coverage measures registered repositories reached by successful worker execution.",
             "data": {
               "sources": [
-                "overview-outcome-summary",
                 "overview-factory-status",
                 "database-campaign-count",
                 "overview-healthy-campaign-count",
@@ -12091,7 +12036,6 @@
             "id": "overview-campaigns",
             "title": "Campaigns",
             "intent": "Provide direct navigation to every registered campaign, opening current problems first when attention is required.",
-            "description": "Campaigns needing attention open to Problems; other campaigns open to their campaign overview.",
             "data": {
               "sources": [
                 "overview-campaign-links"

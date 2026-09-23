@@ -133,7 +133,11 @@ jobs:
               marker,
               '### Dashboard query performance',
               '',
+              '<details><summary><b>Query performance measurements</b></summary>',
+              '',
               summary,
+              '',
+              '</details>',
               '',
               `[View the workflow run and performance artifact](${runUrl}).`,
             ].join('\n')

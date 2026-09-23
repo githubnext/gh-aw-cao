@@ -170,7 +170,7 @@ describe('Overview component boundaries', () => {
     controller.abort();
   });
 
-  it('header presents heading priority, outcome summary, and rhythm composition', () => {
+  it('header presents heading priority and rhythm composition without subtext', () => {
     const controller = new AbortController();
     const sources = {
       'overview-factory-status': binding({ rows: [{ 'factory-heading': 'Your campaigns are delivering value.' }] }),
@@ -184,7 +184,7 @@ describe('Overview component boundaries', () => {
 
     expect(rendered.querySelector('.factory-running')).toBeNull();
     expect(rendered.querySelector('h2')?.textContent).toBe('Your campaigns are delivering value.');
-    expect(rendered.querySelector('.factory-intro-copy > p:last-child')?.textContent).toBe('5 retained issue and pull request outputs are backed by Actions evidence across 4 repositories.');
+    expect(rendered.querySelector('.factory-intro-copy > p')).toBeNull();
     expect(rendered.querySelector('.factory-rhythm')).not.toBeNull();
 
     controller.abort();

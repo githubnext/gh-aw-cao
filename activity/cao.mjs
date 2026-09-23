@@ -29,6 +29,11 @@ import { installSqliteIndexedDB } from '../dashboard/site/src/data/storage/sqlit
 import { discoverInventory } from './inventory.mjs';
 import { discoverInventoryDashboardSources } from './inventory-sources.mjs';
 import { hasComputation, queryComputation } from './computations/index.mjs';
+import {
+  analyzeDashboardComplexity,
+  formatDashboardComplexityMarkdown
+} from './dashboard-complexity.mjs';
+import { pruneDashboardDocument } from './dashboard-prune.mjs';
 
 const debug = createDebug('ingest');
 const debugHash = createDebug('hash-payloads');
@@ -58,7 +63,7 @@ const GH_AW_INSTALLER_COMMAND = 'curl --fail --silent --show-error --location ht
 const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json';
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
-const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'enable', 'disable', 'discover-workflows', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'query', 'computation', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
+const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'query', 'computation', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
 
 // Intentional CLI misuse that should print usage without an internal stack trace.
 class UsageError extends Error {}
@@ -71,6 +76,8 @@ const USAGE = `Usage:
   cao enable CAMPAIGN...
   cao disable CAMPAIGN...
   cao discover-workflows --control-settings FILE --inventory FILE --output FILE --repo OWNER/REPO [--root DIRECTORY]
+  cao dashboard-complexity [QUERY_ID] --input FILE [--format json|markdown] [--limit COUNT]
+  cao prune-dashboard --input FILE [--output FILE]
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY|--runs-dir DIRECTORY --records-dir DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input-dir SHARD_DIRECTORY]
@@ -87,6 +94,9 @@ const USAGE = `Usage:
 
 Query local CAO data as JSON. Download the deployed snapshot before querying:
   cao download
+  cao dashboard-complexity --input dashboard/site/dashboard.json
+  cao dashboard-complexity campaign-inventory --input dashboard/site/dashboard.json
+  cao prune-dashboard --input dashboard.json --output dashboard.pruned.json
   cao computation runtime-health
   cao computation runtime-health --campaign dependabot
   cao computation runtime-health --campaign dependabot --diagnose
@@ -1949,28 +1959,90 @@ export async function discoverWorkflows({
   };
 }
 
+export async function pruneDashboardFile({ inputPath, outputPath } = {}) {
+  let document;
+  try {
+    document = JSON.parse(await readFile(path.resolve(inputPath), 'utf8'));
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error(`${inputPath} contains invalid JSON: ${error.message}`);
+    }
+    throw error;
+  }
+  const result = pruneDashboardDocument(document);
+  if (outputPath) await writeJsonAtomically(outputPath, result.document);
+  return {
+    command: 'prune-dashboard',
+    input: inputPath,
+    ...(outputPath ? { output: outputPath } : {}),
+    ...result.report
+  };
+}
+
+export async function analyzeDashboardComplexityFile({
+  inputPath,
+  queryId,
+  format = 'json',
+  limit
+} = {}) {
+  let document;
+  try {
+    document = JSON.parse(await readFile(path.resolve(inputPath), 'utf8'));
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error(`${inputPath} contains invalid JSON: ${error.message}`);
+    }
+    throw error;
+  }
+  if (!['json', 'markdown'].includes(format)) {
+    throw new UsageError('--format must be json or markdown');
+  }
+  if (limit !== undefined && (!Number.isInteger(limit) || limit < 1)) {
+    throw new UsageError('--limit must be a positive integer');
+  }
+  const analysis = analyzeDashboardComplexity(document);
+  const selected = queryId === undefined
+    ? undefined
+    : analysis.inventory.find((query) => query.name === queryId);
+  if (queryId !== undefined && !selected) {
+    throw new UsageError(`Unknown dashboard query: ${queryId}`);
+  }
+  if (format === 'markdown') {
+    return formatDashboardComplexityMarkdown(analysis, { limit, queryId });
+  }
+  return {
+    command: 'dashboard-complexity',
+    input: inputPath,
+    ...(selected ? { query: selected } : analysis)
+  };
+}
+
 export async function runCli(arguments_, input = process.stdin) {
-  const [command, ...optionArguments] = arguments_;
+  const [command, ...rawOptionArguments] = arguments_;
   if (!command || command === '--help' || command === 'help') return USAGE;
   if (command === 'init') {
-    if (optionArguments.length > 0) throw new UsageError(`Unexpected argument: ${optionArguments[0]}`);
+    if (rawOptionArguments.length > 0) throw new UsageError(`Unexpected argument: ${rawOptionArguments[0]}`);
     return initializeCaoPolicy();
   }
   if (command === 'add') {
-    return addCaoCampaign(optionArguments[0], optionArguments.slice(1));
+    return addCaoCampaign(rawOptionArguments[0], rawOptionArguments.slice(1));
   }
   if (command === 'update') {
-    return updateCaoCampaigns(optionArguments);
+    return updateCaoCampaigns(rawOptionArguments);
   }
   if (command === 'mode') {
-    return setCaoCampaignMode(optionArguments[0], optionArguments.slice(1));
+    return setCaoCampaignMode(rawOptionArguments[0], rawOptionArguments.slice(1));
   }
   if (command === 'enable' || command === 'disable') {
-    return setCaoCampaignWorkflowsEnabled(command, optionArguments);
+    return setCaoCampaignWorkflowsEnabled(command, rawOptionArguments);
   }
   if (!COMMANDS.has(command) && arguments_.length === 2) {
-    return runLegacyIngestion(command, optionArguments[0]);
+    return runLegacyIngestion(command, rawOptionArguments[0]);
   }
+  const optionArguments = [...rawOptionArguments];
+  const dashboardQueryId = command === 'dashboard-complexity' && !optionArguments[0]?.startsWith('--')
+    ? optionArguments.shift()
+    : undefined;
   const ghResource = command === 'gh' ? optionArguments[0] : undefined;
   if (command === 'gh' && (!ghResource || ghResource === 'help' || ghResource === '--help')) return USAGE;
   const computation = command === 'computation' ? optionArguments[0] : undefined;
@@ -1994,6 +2066,23 @@ export async function runCli(arguments_, input = process.stdin) {
       inventoryPath: option(options, 'inventory'),
       outputPath: option(options, 'output'),
       repository: option(options, 'repo'),
+    });
+  }
+  if (command === 'dashboard-complexity') {
+    rejectUnknownOptions(options, ['input', 'format', 'limit']);
+    const limit = option(options, 'limit', false);
+    return analyzeDashboardComplexityFile({
+      inputPath: option(options, 'input'),
+      queryId: dashboardQueryId,
+      format: option(options, 'format', false) || 'json',
+      limit: limit === undefined ? undefined : Number(limit)
+    });
+  }
+  if (command === 'prune-dashboard') {
+    rejectUnknownOptions(options, ['input', 'output']);
+    return pruneDashboardFile({
+      inputPath: option(options, 'input'),
+      outputPath: option(options, 'output', false)
     });
   }
   if (command === 'audit-jsonl') {
