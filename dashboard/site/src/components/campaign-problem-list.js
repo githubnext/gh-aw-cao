@@ -120,7 +120,8 @@ function renderProblem(row) {
         occurrences > 1
           ? renderCountBadge(`${occurrences}×`, `Seen ${occurrences} times, most recently below`)
           : null,
-        age ? ` · ${age}` : null
+        age ? ' ' : null,
+        age ? h('span', { className: 'campaign-problem-age' }, age) : null
       ),
       h(
         'p',

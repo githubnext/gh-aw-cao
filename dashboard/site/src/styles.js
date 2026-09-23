@@ -926,6 +926,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .campaign-problem-message,.campaign-problem-target{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .campaign-problem-target{color:var(--fg);font-size:.75rem}
 .campaign-problem-metadata{margin:0;color:var(--muted);font-size:.75rem}
+.campaign-problem-age{color:var(--muted);font-size:.75rem;font-weight:400}
 .campaign-problem-item .table-intent-button{min-height:28px;padding:3px 8px}
 .campaign-problem-list-empty{margin:0;padding:18px 14px;color:var(--muted)}
 @media (max-width: 700px) {

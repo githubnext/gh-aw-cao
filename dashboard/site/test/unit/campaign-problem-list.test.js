@@ -84,8 +84,8 @@ describe('campaign problem list', () => {
     ]);
     expect(rendered.textContent).not.toContain('Runtime: githubnext/gh-aw-cao');
     expect(rendered.textContent).toContain('Process completed with exit code 1.');
-    expect(rendered.querySelector('.campaign-problem-message')?.textContent).toContain('ago');
-    expect(rendered.querySelector('.campaign-problem-metadata')?.textContent).not.toContain('ago');
+    expect(rendered.querySelector('.campaign-problem-age')?.textContent).toBeTruthy();
+    expect(rendered.querySelector('.campaign-problem-metadata .campaign-problem-age')).toBeNull();
     expect(rendered.querySelector('.campaign-problem-title a')?.getAttribute('href'))
       .toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/123');
     expect(rendered.querySelector('.campaign-problem-title a')?.textContent)
@@ -158,7 +158,7 @@ describe('campaign problem list', () => {
     expect(badges).toContain('3×');
     expect(rendered.querySelectorAll('.campaign-problem-occurrences')).toHaveLength(0);
     expect(rendered.querySelectorAll('.campaign-problem-message .count-badge')).toHaveLength(2);
-    expect(rendered.querySelector('.campaign-problem-message')?.textContent).toContain('ago');
+    expect(rendered.querySelector('.campaign-problem-message .campaign-problem-age')?.textContent).toBeTruthy();
     expect(rendered.querySelector('.campaign-problem-title a')?.textContent).toBe('Driver Exit');
   });
 
