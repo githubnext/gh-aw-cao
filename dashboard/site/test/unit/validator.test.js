@@ -725,7 +725,6 @@ describe('dashboard document validation', () => {
         id: 'overview-header',
         description: 'Campaign health measures campaigns without current runtime errors; repository coverage measures registered repositories reached by successful worker execution.',
         data: { sources: expect.arrayContaining([
-          'overview-outcome-summary',
           'overview-factory-status',
           'overview-rhythm'
         ]) },

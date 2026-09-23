@@ -11980,7 +11980,6 @@
             "description": "Campaign health measures campaigns without current runtime errors; repository coverage measures registered repositories reached by successful worker execution.",
             "data": {
               "sources": [
-                "overview-outcome-summary",
                 "overview-factory-status",
                 "database-campaign-count",
                 "overview-healthy-campaign-count",
