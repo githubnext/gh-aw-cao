@@ -228,7 +228,7 @@ describe('Configuration dashboard view', () => {
   it('separates CAO package and compiler maintenance inventory', () => {
     const dashboard = JSON.parse(readFileSync(resolve('dashboard.json'), 'utf8')).dashboard;
     const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'maintenance');
-    const cleanNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => !candidate.label);
+    const dataNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => candidate.label === 'Data');
 
     expect(page.title).toBe('Maintenance');
     expect(page.views.map((/** @type {{ data: { source: string } }} */ view) => view.data.source))
@@ -248,7 +248,7 @@ describe('Configuration dashboard view', () => {
         'gh-aw-current-version',
         'upgrade-state'
       ]);
-    expect(cleanNavigation.pages).toContain('maintenance');
+    expect(dataNavigation.pages).toContain('maintenance');
   });
 
   it('wires the Settings view to a supported UI element', () => {
