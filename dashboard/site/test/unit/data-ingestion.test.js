@@ -168,6 +168,41 @@ describe('canonical source ingestion and queries', () => {
     vi.unstubAllGlobals();
   });
 
+  it('migrates legacy scope-keyed JSONL shard receipts to stable SHA receipts', async () => {
+    vi.stubGlobal('crypto', webcrypto);
+    const payloadIdentity = 'e'.repeat(64);
+    const payloadScope = 'https://example.test/gh-aw-logs-shards/legacy-shard.jsonl';
+    const scopeHash = createHash('sha256').update(payloadScope).digest('hex');
+    await recordTransaction(indexedDB, {
+      id: `ingest-jsonl:current:${scopeHash}`,
+      kind: 'ingest-jsonl',
+      createdAt: '2026-09-09T05:00:00.000Z',
+      payloadScope,
+      payloadHash: payloadIdentity,
+      adaptationContext: JSON.stringify({
+        ingestionVersion: 4,
+        context: null,
+        workflowHints: []
+      }),
+      ingestionVersion: 4
+    });
+
+    const unread = async function* () {
+      yield await Promise.reject(new Error('cached shards must not be consumed'));
+    };
+    await expect(ingestCachedGhAwJsonl(indexedDB, unread(), {
+      payloadIdentity,
+      payloadScope
+    })).resolves.toMatchObject({
+      updated: false,
+      skipped: true
+    });
+    await expect(readTransactions(indexedDB)).resolves.toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: `ingest-jsonl:sha256:${payloadIdentity}:v4` })
+    ]));
+    vi.unstubAllGlobals();
+  });
+
   it('imports legacy package-shaped normalized JSON as campaigns', async () => {
     const repositoryId = 'repository:githubnext%2Fgh-aw-cao';
     const legacyPackageId = 'package:dashboard-sources:maintenance';

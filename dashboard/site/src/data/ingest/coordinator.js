@@ -301,27 +301,29 @@ export async function readCurrentIngestion(indexedDB, kind, scope) {
 
 /**
  * @param {IDBFactory} indexedDB
+ * @param {{ payloadIdentity: string, payloadScope: string }} options
+ */
+async function readCachedJsonlShardReceipt(indexedDB, options) {
+  const receiptId = cachedJsonlShardTransactionId(options.payloadIdentity);
+  const receipt = await readTransaction(indexedDB, receiptId);
+  if (receipt) return receipt;
+  const legacyReceipt = await readCurrentIngestion(indexedDB, 'ingest-jsonl', options.payloadScope);
+  if (legacyReceipt?.payloadHash === options.payloadIdentity) {
+    await recordTransaction(indexedDB, { ...legacyReceipt, id: receiptId });
+  }
+  return legacyReceipt;
+}
+
+/**
+ * @param {IDBFactory} indexedDB
  * @param {{ payloadIdentity: string, payloadScope: string, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[] }} options
  */
 export async function isCachedGhAwJsonlCurrent(indexedDB, options) {
   const adaptationContext = cachedJsonlAdaptationContext(options);
-  const receiptId = cachedJsonlShardTransactionId(options.payloadIdentity);
-  const receipt = await readTransaction(indexedDB, receiptId);
-  if (receipt?.payloadHash === options.payloadIdentity
-      && receipt.adaptationContext === adaptationContext
-      && receipt.ingestionVersion === GH_AW_JSONL_INGESTION_VERSION) {
-    return true;
-  }
-  const current = await readCurrentIngestion(indexedDB, 'ingest-jsonl', options.payloadScope);
-  if (current?.payloadHash === options.payloadIdentity
-      && current.adaptationContext === adaptationContext
-      && current.ingestionVersion === GH_AW_JSONL_INGESTION_VERSION) {
-    await recordTransaction(indexedDB, { ...current, id: receiptId });
-    return true;
-  }
-  return current?.payloadHash === options.payloadIdentity
-    && current.adaptationContext === adaptationContext
-    && current.ingestionVersion === GH_AW_JSONL_INGESTION_VERSION;
+  const receipt = await readCachedJsonlShardReceipt(indexedDB, options);
+  return receipt?.payloadHash === options.payloadIdentity
+    && receipt.adaptationContext === adaptationContext
+    && receipt.ingestionVersion === GH_AW_JSONL_INGESTION_VERSION;
 }
 
 /**
@@ -693,7 +695,10 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
     const scope = options.payloadScope ?? 'gh-aw-jsonl';
     const publishedIdentity = options.payloadIdentity;
     if (publishedIdentity) {
-      const current = await readTransaction(indexedDB, cachedJsonlShardTransactionId(publishedIdentity));
+      const current = await readCachedJsonlShardReceipt(indexedDB, {
+        payloadIdentity: publishedIdentity,
+        payloadScope: scope
+      });
       if (current?.payloadHash === publishedIdentity
           && current.adaptationContext === adaptationContext
           && current.ingestionVersion === GH_AW_JSONL_INGESTION_VERSION) {
@@ -723,7 +728,10 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
     const parsingMs = monotonicNow() - startedAt;
     const current = publishedIdentity
       ? null
-      : await readTransaction(indexedDB, cachedJsonlShardTransactionId(payloadIdentity));
+      : await readCachedJsonlShardReceipt(indexedDB, {
+          payloadIdentity,
+          payloadScope: scope
+        });
     if (current?.payloadHash === payloadIdentity
         && current.adaptationContext === adaptationContext
         && current.ingestionVersion === GH_AW_JSONL_INGESTION_VERSION) {
