@@ -233,6 +233,109 @@ describe('canonical source ingestion and queries', () => {
     });
   });
 
+  it('migrates schema 12 phased shards to repository-scoped run and issue identities', async () => {
+    const repositoryId = 'github:repository:1';
+    const workflowId = 'github:workflow:2';
+    const canonicalRecord = (
+      /** @type {string} */ id,
+      /** @type {string} */ observedAt,
+      /** @type {Record<string, unknown>} */ fields = {}
+    ) => ({
+      id,
+      observedAt,
+      provenance: { source: 'test', sourceId: id, observedAt },
+      ...fields
+    });
+    /** @returns {import('../../src/data/model/schema.js').CanonicalBatch} */
+    const emptyBatch = () => ({
+      campaigns: [],
+      repositories: [],
+      workflows: [],
+      runs: [],
+      domains: [],
+      tools: [],
+      audits: [],
+      issues: []
+    });
+    const runsBatch = emptyBatch();
+    runsBatch.repositories.push(canonicalRecord(repositoryId, '2026-09-09T04:00:00Z'));
+    runsBatch.workflows.push(canonicalRecord(workflowId, '2026-09-09T04:00:00Z', { repositoryId }));
+    runsBatch.runs.push(
+      canonicalRecord('github:run:12345:attempt:1', '2026-09-09T04:00:00Z', {
+        githubRunId: '12345',
+        attempt: 1,
+        owner: 'githubnext',
+        repository: 'gh-aw-cao',
+        repositoryId,
+        workflowId
+      }),
+      canonicalRecord('github:run:12345:attempt:2', '2026-09-09T05:00:00Z', {
+        githubRunId: '12345',
+        attempt: 2,
+        owner: 'githubnext',
+        repository: 'gh-aw-cao',
+        repositoryId,
+        workflowId
+      })
+    );
+    await ingestNormalizedJson(indexedDB, {
+      schemaVersion: 12,
+      ingestionVersion: 2,
+      sourceRecords: 2,
+      phase: 'runs',
+      batch: runsBatch
+    }, {
+      payloadIdentity: '1'.repeat(64),
+      payloadScope: 'https://example.test/gh-aw-logs-runs/schema-12.json',
+      expectedPhase: 'runs'
+    });
+
+    const recordsBatch = emptyBatch();
+    recordsBatch.issues.push(
+      canonicalRecord('issue:safe-output:unkeyed', '2026-09-09T03:00:00Z', {
+        runId: 'github:run:12345:attempt:1',
+        timestamp: '2026-09-09T03:00:00Z'
+      }),
+      canonicalRecord('issue:safe-output:first', '2026-09-09T04:00:00Z', {
+        runId: 'github:run:12345:attempt:1',
+        number: 42,
+        url: 'https://github.com/githubnext/gh-aw-cao/issues/42',
+        timestamp: '2026-09-09T04:00:00Z'
+      }),
+      canonicalRecord('issue:safe-output:second', '2026-09-09T05:00:00Z', {
+        runId: 'github:run:12345:attempt:2',
+        number: 42,
+        url: 'https://github.com/githubnext/gh-aw-cao/issues/42',
+        timestamp: '2026-09-09T05:00:00Z'
+      })
+    );
+    await ingestNormalizedJson(indexedDB, {
+      schemaVersion: 12,
+      ingestionVersion: 2,
+      sourceRecords: 2,
+      phase: 'records',
+      batch: recordsBatch
+    }, {
+      payloadIdentity: '2'.repeat(64),
+      payloadScope: 'https://example.test/gh-aw-logs-records/schema-12.json',
+      expectedPhase: 'records'
+    });
+
+    const stored = await readCanonicalBatch(indexedDB);
+    expect(stored.runs).toEqual([
+      expect.objectContaining({
+        id: 'github:run:githubnext/gh-aw-cao:12345',
+        attempt: 2
+      })
+    ]);
+    expect(stored.issues).toEqual([
+      expect.objectContaining({
+        id: 'github:issue:githubnext/gh-aw-cao:42',
+        runId: 'github:run:githubnext/gh-aw-cao:12345'
+      })
+    ]);
+  });
+
   it('rejects mislabeled or mixed phased payloads', async () => {
     const payload = {
       schemaVersion: CANONICAL_SCHEMA_VERSION,
@@ -273,7 +376,7 @@ describe('canonical source ingestion and queries', () => {
 
     expect(repositories).toHaveLength(1);
     expect(workflows).toHaveLength(1);
-    expect(runs).toEqual([expect.objectContaining({ id: 'github:run:12345:attempt:2' })]);
+    expect(runs).toEqual([expect.objectContaining({ id: 'github:run:githubnext/gh-aw-cao:12345' })]);
     expect(await queries.runs.recentFailures()).toHaveLength(1);
   });
 
@@ -410,11 +513,11 @@ describe('canonical source ingestion and queries', () => {
 
     const queries = createCanonicalQueries(indexedDB);
     expect((await queries.runs.list()).map((run) => run.id)).toEqual([
-      'github:run:12345:attempt:2',
-      'github:run:303:attempt:1'
+      'github:run:githubnext/gh-aw-cao:12345',
+      'github:run:githubnext/gh-aw-cao:303'
     ]);
-    expect(await queries.audits.forRun('github:run:303:attempt:1')).toHaveLength(1);
-    expect(await queries.domains.forRun('github:run:303:attempt:1')).toHaveLength(1);
+    expect(await queries.audits.forRun('github:run:githubnext/gh-aw-cao:303')).toHaveLength(1);
+    expect(await queries.domains.forRun('github:run:githubnext/gh-aw-cao:303')).toHaveLength(1);
   });
 
   it('upserts complete gh-aw transaction logs onto retained canonical records', async () => {
@@ -467,10 +570,10 @@ describe('canonical source ingestion and queries', () => {
       })
     ]);
     expect(activeRuns.map((run) => run.id)).toEqual([
-      'github:run:12345:attempt:2',
-      'github:run:303:attempt:1'
+      'github:run:githubnext/gh-aw-cao:12345',
+      'github:run:githubnext/gh-aw-cao:303'
     ]);
-    expect(await queries.audits.forRun('github:run:303:attempt:1')).toEqual([
+    expect(await queries.audits.forRun('github:run:githubnext/gh-aw-cao:303')).toEqual([
       expect.objectContaining({ source: 'agent', type: 'agent_turn', sequence: 0 })
     ]);
   });
@@ -498,7 +601,7 @@ describe('canonical source ingestion and queries', () => {
     const queries = createCanonicalQueries(indexedDB);
     await expect(queries.repositories.list()).resolves.toEqual([repositoryBefore]);
     await expect(queries.runs.list()).resolves.toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'github:run:303:attempt:1' })
+      expect.objectContaining({ id: 'github:run:githubnext/gh-aw-cao:303' })
     ]));
   });
 
@@ -576,7 +679,7 @@ describe('canonical source ingestion and queries', () => {
     });
     await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([
       expect.objectContaining({
-        id: 'github:run:303:attempt:1',
+        id: 'github:run:githubnext/gh-aw-cao:303',
         repositoryFullName: 'githubnext/gh-aw-cao',
         agentId: 'copilot',
         agentVersion: '1.2.3',
@@ -586,7 +689,7 @@ describe('canonical source ingestion and queries', () => {
         aicTotal: 2.5
       })
     ]);
-    await expect(createCanonicalQueries(indexedDB).tools.forRun('github:run:303:attempt:1')).resolves.toEqual(
+    await expect(createCanonicalQueries(indexedDB).tools.forRun('github:run:githubnext/gh-aw-cao:303')).resolves.toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           source: 'mcp',
@@ -640,7 +743,7 @@ describe('canonical source ingestion and queries', () => {
       now: Date.parse('2026-02-02T00:00:00Z')
     });
     expect((await createCanonicalQueries(indexedDB).runs.list()).map((run) => run.id).sort()).toEqual([
-      'github:run:1:attempt:1', 'github:run:2:attempt:1'
+      'github:run:githubnext/gh-aw-cao:1', 'github:run:githubnext/gh-aw-cao:2'
     ]);
   });
 
@@ -740,7 +843,7 @@ describe('canonical source ingestion and queries', () => {
     const queries = createCanonicalQueries(indexedDB);
     await expect(queries.repositories.list()).resolves.toEqual([repositoryBefore]);
     await expect(queries.runs.list()).resolves.toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'github:run:303:attempt:1' })
+      expect.objectContaining({ id: 'github:run:githubnext/gh-aw-cao:303' })
     ]));
   });
 

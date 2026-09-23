@@ -7,8 +7,9 @@ import {
 } from '../adapters/gh-aw-logs.js';
 import { adaptSqlExport } from '../adapters/sql-export.js';
 import { buildDailyOverviewAggregates } from '../analytics/daily-overview-aggregates.js';
+import { issueCoordinates, runId } from '../model/ids.js';
 import { CANONICAL_SCHEMA_VERSION } from '../model/schema.js';
-import { normalize } from '../normalize/index.js';
+import { normalize, orderRunRecords } from '../normalize/index.js';
 import {
   publishDailyOverviewAggregates,
   pruneStaleDailyOverviewAggregates,
@@ -166,6 +167,73 @@ function migrateNormalizedBatch(batch) {
     }
   }
   delete migrated.packages;
+  return /** @type {import('../model/schema.js').CanonicalBatch} */ (migrated);
+}
+
+/**
+ * @param {Record<string, unknown>} record
+ * @param {import('../model/schema.js').EntityKind} kind
+ * @returns {import('../model/schema.js').CanonicalObservation}
+ */
+function normalizedRecordObservation(record, kind) {
+  const provenance = record.provenance && typeof record.provenance === 'object' && !Array.isArray(record.provenance)
+    ? /** @type {Record<string, unknown>} */ (record.provenance)
+    : {};
+  return {
+    kind,
+    source: typeof provenance.source === 'string' ? provenance.source : 'normalized-activity',
+    sourceId: typeof provenance.sourceId === 'string' ? provenance.sourceId : String(record.id),
+    observedAt: String(record.observedAt),
+    data: record
+  };
+}
+
+/**
+ * Migrates the immediately preceding canonical schema, whose run IDs included
+ * attempts and whose issue IDs were source-specific.
+ *
+ * @param {IDBFactory} indexedDB
+ * @param {import('../model/schema.js').CanonicalBatch} batch
+ */
+async function migrateSchema12Batch(indexedDB, batch) {
+  const storedRuns = batch.runs.length > 0 ? [] : (await readCanonicalBatch(indexedDB)).runs;
+  const legacyRunIds = new Map();
+  for (const record of [...storedRuns, ...batch.runs]) {
+    const canonicalId = runId(
+      String(record.owner),
+      String(record.repository),
+      /** @type {string | number} */ (record.githubRunId)
+    );
+    legacyRunIds.set(
+      `github:run:${String(record.githubRunId).trim()}:attempt:${Number(record.attempt)}`,
+      canonicalId
+    );
+    legacyRunIds.set(String(record.id), canonicalId);
+  }
+  const migrateRunLink = (/** @type {Record<string, unknown>} */ record) => ({
+    ...record,
+    runId: legacyRunIds.get(String(record.runId)) ?? record.runId
+  });
+  const migratableIssues = batch.issues.filter((record) => {
+    if (record.owner !== undefined && record.repository !== undefined && record.number !== undefined) return true;
+    if (typeof record.url !== 'string') return false;
+    try {
+      issueCoordinates(record.url);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+  const migrated = {
+    ...batch,
+    runs: batch.runs.length > 0
+      ? normalize(batch.runs.map((record) => normalizedRecordObservation(record, 'run'))).runs
+      : [],
+    domains: orderRunRecords(batch.domains.map(migrateRunLink)),
+    tools: orderRunRecords(batch.tools.map(migrateRunLink)),
+    audits: orderRunRecords(batch.audits.map(migrateRunLink)),
+    issues: normalize(migratableIssues.map((record) => normalizedRecordObservation(migrateRunLink(record), 'issue'))).issues
+  };
   return /** @type {import('../model/schema.js').CanonicalBatch} */ (migrated);
 }
 
@@ -509,7 +577,7 @@ export function ingestNormalizedJson(indexedDB, input, options) {
         throw new TypeError('Normalized activity payload must be an object');
       }
       const payload = /** @type {{ schemaVersion?: unknown, ingestionVersion?: unknown, sourceRecords?: unknown, phase?: unknown, batch?: unknown }} */ (input);
-      if (payload.schemaVersion !== CANONICAL_SCHEMA_VERSION) {
+      if (payload.schemaVersion !== CANONICAL_SCHEMA_VERSION && payload.schemaVersion !== 12) {
         throw new TypeError(`Unsupported normalized activity schema: ${String(payload.schemaVersion)}`);
       }
       if (payload.ingestionVersion !== NORMALIZED_JSON_INGESTION_VERSION) {
@@ -518,7 +586,10 @@ export function ingestNormalizedJson(indexedDB, input, options) {
       if (!payload.batch || typeof payload.batch !== 'object' || Array.isArray(payload.batch)) {
         throw new TypeError('Normalized activity payload must include a canonical batch');
       }
-      const batch = migrateNormalizedBatch(/** @type {Record<string, unknown>} */ (payload.batch));
+      let batch = migrateNormalizedBatch(/** @type {Record<string, unknown>} */ (payload.batch));
+      if (payload.schemaVersion === 12) {
+        batch = await migrateSchema12Batch(indexedDB, batch);
+      }
       for (const collection of NORMALIZED_BATCH_COLLECTIONS) {
         if (!Array.isArray(batch[collection])) {
           throw new TypeError(`Normalized activity payload is missing ${collection}`);

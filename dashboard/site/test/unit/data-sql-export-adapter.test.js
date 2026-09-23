@@ -19,15 +19,15 @@ describe('SQL export adapter', () => {
       repositories: [{ id: 'github:repository:101', fullName: 'githubnext/gh-aw-cao' }],
       workflows: [{ id: 'github:workflow:202', repositoryId: 'github:repository:101' }],
       runs: [{
-        id: 'github:run:303:attempt:1',
+        id: 'github:run:githubnext/gh-aw-cao:303',
         repositoryId: 'github:repository:101',
         workflowId: 'github:workflow:202'
       }],
       audits: expect.arrayContaining([
-        expect.objectContaining({ runId: 'github:run:303:attempt:1' })
+        expect.objectContaining({ runId: 'github:run:githubnext/gh-aw-cao:303' })
       ]),
       domains: [expect.objectContaining({
-        runId: 'github:run:303:attempt:1',
+        runId: 'github:run:githubnext/gh-aw-cao:303',
         domain: 'api.github.com'
       })]
     });

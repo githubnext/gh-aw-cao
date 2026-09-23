@@ -28,7 +28,7 @@ describe('gh-aw logs adapter', () => {
 
     expect(relationshipErrors(batch)).toEqual([]);
     expect([...batch.domains, ...batch.tools, ...batch.audits]
-      .every((record) => record.runId === 'github:run:303:attempt:1')).toBe(true);
+      .every((record) => record.runId === 'github:run:githubnext/gh-aw-cao:303')).toBe(true);
     expect(batch.domains.map((record) => record.type)).toEqual(['net_allowed']);
     expect(batch.tools.map((record) => record.type)).toEqual([
       'tool_call', 'agent_tool_start', 'agent_tool_done'
@@ -220,6 +220,16 @@ describe('gh-aw logs adapter', () => {
         kind: 'safe_output_item',
         safe_output: {
           run_id: 303,
+          type: 'create_issue',
+          temporaryId: 'draft-issue',
+          timestamp: '2026-09-09T04:00:52Z'
+        }
+      },
+      {
+        schema_version: 2,
+        kind: 'safe_output_item',
+        safe_output: {
+          run_id: 303,
           type: 'report_incomplete',
           reason: 'Required vulnerability-alert evidence was unavailable.',
           details: 'Verbose diagnostic evidence that must not become the event summary.',
@@ -242,19 +252,19 @@ describe('gh-aw logs adapter', () => {
     const batch = normalize(adapted.observations);
 
     expect(adapted).toMatchObject({
-      records: 6,
+      records: 7,
       rawPayloadRecords: 1,
       rawRuns: 1,
       agenticRuns: 1,
-      safeOutputItems: 2,
-      mappedSafeOutputItems: 2,
+      safeOutputItems: 3,
+      mappedSafeOutputItems: 3,
       rateLimits: 1,
       mappedRateLimits: 1
     });
     expect(relationshipErrors(batch)).toEqual([]);
     expect(batch.runs).toEqual([
       expect.objectContaining({
-        id: 'github:run:303:attempt:1',
+        id: 'github:run:githubnext/gh-aw-cao:303',
         workflowPath: '.github/workflows/dashboard.md',
         number: 7,
         targetRepository: 'github/gh-aw',
@@ -317,12 +327,18 @@ describe('gh-aw logs adapter', () => {
         safeOutputType: 'create_pull_request',
         githubEntityType: 'pull_request',
         correlationId: 'https://github.com/githubnext/gh-aw-cao/pull/43',
-        runId: 'github:run:303:attempt:1',
+        runId: 'github:run:githubnext/gh-aw-cao:303',
         payloadRef: 'gh-aw-logs-shards#L4',
         isPullRequest: true
       })
     ]));
     expect(batch.audits).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        source: 'safe-output',
+        type: 'safe_output.created',
+        safeOutputType: 'create_issue',
+        correlationId: 'draft-issue'
+      }),
       expect.objectContaining({
         source: 'safe-output',
         type: 'safe_output.created',

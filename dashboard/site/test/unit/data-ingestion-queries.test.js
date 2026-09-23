@@ -135,7 +135,7 @@ describe('dashboard source ingestion queries', () => {
       role: 'worker'
     });
     expect(batch.runs[0]).toMatchObject({
-      id: 'github:run:12345:attempt:2',
+      id: 'github:run:githubnext/gh-aw-cao:12345',
       workflowId: batch.workflows[0].id,
       repositoryId: batch.repositories[0].id,
       status: 'completed',
@@ -305,7 +305,7 @@ describe('dashboard source ingestion queries', () => {
       agentId: 'copilot', modelId: 'auto'
     })]);
     expect(batch.audits).toEqual([expect.objectContaining({
-      runId: 'github:run:303:attempt:1',
+      runId: 'github:run:githubnext/gh-aw-cao:303',
       sequence: 0,
       source: 'token-intervention-lifecycle',
       type: 'token_efficiency.intervention',
@@ -374,7 +374,7 @@ describe('dashboard source ingestion queries', () => {
 
     expect(relationshipErrors(batch)).toEqual([]);
     expect(batch.audits).toEqual([expect.objectContaining({
-      id: 'current-event', runId: 'github:run:303:attempt:1'
+      id: 'current-event', runId: 'github:run:githubnext/gh-aw-cao:303'
     })]);
   });
 
@@ -404,6 +404,6 @@ describe('dashboard source ingestion queries', () => {
     });
 
     expect(adapted.observations.filter(({ kind }) => kind === 'audit')).toHaveLength(count);
-    expect(adapted.observations.at(-1)?.data.runId).toBe('github:run:303:attempt:1');
+    expect(adapted.observations.at(-1)?.data.runId).toBe('github:run:githubnext/gh-aw-cao:303');
   }, 15_000);
 });

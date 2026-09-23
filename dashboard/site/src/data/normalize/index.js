@@ -1,4 +1,4 @@
-import { repositoryId, runId, sourceId, workflowId } from '../model/ids.js';
+import { issueCoordinates, issueId, repositoryId, runId, sourceId, workflowId } from '../model/ids.js';
 import { canonicalTimestamp, requiredString } from '../model/schema.js';
 
 /** @type {Record<import('../model/schema.js').EntityKind, keyof import('../model/schema.js').CanonicalBatch>} */
@@ -33,20 +33,33 @@ function withoutUndefined(value) {
 /** @param {import('../model/schema.js').CanonicalObservation} observation */
 function identityFor(observation) {
   const data = observation.data;
-  if (typeof data.id === 'string' && data.id.trim()) return data.id.trim();
+  if (!['run', 'issue'].includes(observation.kind)
+    && typeof data.id === 'string' && data.id.trim()) return data.id.trim();
   switch (observation.kind) {
     case 'campaign':
       return sourceId('campaign', observation.source, requiredIdentifier(data.slug, 'campaign.slug'));
     case 'repository': return repositoryId(requiredIdentifier(data.githubId, 'repository.githubId'));
     case 'workflow': return workflowId(requiredIdentifier(data.githubId, 'workflow.githubId'));
     case 'run': return runId(
-      requiredIdentifier(data.githubRunId, 'run.githubRunId'),
-      requiredIdentifier(data.attempt, 'run.attempt')
+      requiredString(data.owner, 'run.owner'),
+      requiredString(data.repository, 'run.repository'),
+      requiredIdentifier(data.githubRunId, 'run.githubRunId')
     );
+    case 'issue': {
+      const coordinates = data.owner !== undefined
+        && data.repository !== undefined
+        && data.number !== undefined
+        ? data
+        : issueCoordinates(requiredString(data.url, 'issue.url'));
+      return issueId(
+        requiredString(coordinates.owner, 'issue.owner'),
+        requiredString(coordinates.repository, 'issue.repository'),
+        requiredIdentifier(coordinates.number, 'issue.number')
+      );
+    }
     case 'domain':
     case 'tool':
     case 'audit':
-    case 'issue':
       return sourceId(observation.kind, observation.source, observation.sourceId);
   }
 }

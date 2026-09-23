@@ -40,10 +40,12 @@ describe('canonical normalization', () => {
     });
   });
 
-  it('is idempotent and distinguishes run attempts', () => {
+  it('is idempotent and collapses run attempts under the repository run key', () => {
     const first = observation('run', 'run-1', '2026-09-09T01:00:00Z', {
       githubRunId: 456,
       attempt: 1,
+      owner: 'githubnext',
+      repository: 'gh-aw-cao',
       workflowId: 'github:workflow:9',
       repositoryId: 'github:repository:123',
       status: 'completed'
@@ -55,10 +57,32 @@ describe('canonical normalization', () => {
 
     const batch = normalize([first, first, rerun]);
 
-    expect(batch.runs.map((run) => run.id)).toEqual([
-      'github:run:456:attempt:1',
-      'github:run:456:attempt:2'
-    ]);
+    expect(batch.runs).toHaveLength(1);
+    expect(batch.runs[0]).toMatchObject({
+      id: 'github:run:githubnext/gh-aw-cao:456',
+      attempt: 2
+    });
+  });
+
+  it('collapses repeated safe outputs under the repository issue key', () => {
+    const first = observation('issue', 'run-1:issue', '2026-09-09T01:00:00Z', {
+      runId: 'github:run:githubnext/gh-aw-cao:456',
+      url: 'https://github.com/GitHubNext/GH-AW-CAO/issues/42',
+      status: 'created'
+    });
+    const repeated = observation('issue', 'run-2:issue', '2026-09-09T02:00:00Z', {
+      runId: 'github:run:githubnext/gh-aw-cao:789',
+      url: 'https://github.com/githubnext/gh-aw-cao/issues/42',
+      status: 'updated'
+    });
+
+    const batch = normalize([first, repeated]);
+
+    expect(batch.issues).toHaveLength(1);
+    expect(batch.issues[0]).toMatchObject({
+      id: 'github:issue:githubnext/gh-aw-cao:42',
+      status: 'updated'
+    });
   });
 
   it('orders run-linked records independently of ingestion order', () => {
@@ -85,11 +109,15 @@ describe('canonical normalization', () => {
     const lower = observation('run', 'run-dashboard', '2026-09-09T04:00:00Z', {
       githubRunId: 99,
       attempt: 1,
+      owner: 'githubnext',
+      repository: 'gh-aw-cao',
       status: 'in_progress'
     });
     const authoritative = observation('run', 'run-github', '2026-09-09T03:00:00Z', {
       githubRunId: 99,
       attempt: 1,
+      owner: 'githubnext',
+      repository: 'gh-aw-cao',
       status: 'completed',
       conclusion: 'success'
     }, 'github');

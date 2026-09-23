@@ -88,7 +88,8 @@
         { "as": "_workflow-coordinate", "function": "concat", "args": [{ "field": "_repository-coordinate" }, { "value": ":" }, { "field": "_path" }] },
         { "as": "_workflow-encoded", "function": "url-encode", "args": [{ "field": "_workflow-coordinate" }] },
         { "as": "_workflow-id", "function": "concat", "args": [{ "value": "workflow:" }, { "field": "_workflow-encoded" }] },
-        { "as": "_id", "function": "concat", "args": [{ "value": "github:run:" }, { "field": "_github-run-id" }, { "value": ":attempt:" }, { "field": "_attempt" }] },
+        { "as": "_lookup-run-id", "function": "concat", "args": [{ "value": "github:run:" }, { "field": "_github-run-id" }, { "value": ":attempt:" }, { "field": "_attempt" }] },
+        { "as": "_id", "function": "concat", "args": [{ "value": "github:run:" }, { "field": "_repository-coordinate" }, { "value": ":" }, { "field": "_github-run-id" }] },
         { "as": "_source-id", "function": "concat", "args": [{ "field": "_full-name" }, { "value": ":" }, { "field": "_github-run-id" }, { "value": ":" }, { "field": "_attempt" }] },
         { "as": "_source-id", "function": "lower", "args": [{ "field": "_source-id" }] },
         { "as": "_observed-at", "function": "coalesce", "args": [{ "field": "ended-at" }, { "field": "started-at" }, { "field": "__source-observed-at" }] },
@@ -103,56 +104,56 @@
       "from": "$domains",
       "compute": [
         { "as": "_attempt", "function": "positive-integer", "args": [{ "field": "run-attempt" }, { "value": 1 }] },
-        { "as": "_run-id", "function": "concat", "args": [{ "value": "github:run:" }, { "field": "run" }, { "value": ":attempt:" }, { "field": "_attempt" }] },
+        { "as": "_lookup-run-id", "function": "concat", "args": [{ "value": "github:run:" }, { "field": "run" }, { "value": ":attempt:" }, { "field": "_attempt" }] },
         { "as": "_observed-at", "function": "coalesce", "args": [{ "field": "observed-at" }, { "field": "event-timestamp" }, { "field": "__source-observed-at" }] }
       ]
     },
     {
       "name": "domain-records",
       "from": "domain-keys",
-      "joins": [{ "source": "$published-runs", "type": "inner", "on": [{ "left": "_run-id", "right": "_id" }], "fields": [{ "field": "_id", "as": "_published-run-id" }] }]
+      "joins": [{ "source": "$published-runs", "type": "inner", "on": [{ "left": "_lookup-run-id", "right": "_lookup-run-id" }], "fields": [{ "field": "_id", "as": "_run-id" }] }]
     },
     {
       "name": "tool-keys",
       "from": "$tools",
       "compute": [
         { "as": "_attempt", "function": "positive-integer", "args": [{ "field": "run-attempt" }, { "value": 1 }] },
-        { "as": "_run-id", "function": "concat", "args": [{ "value": "github:run:" }, { "field": "run" }, { "value": ":attempt:" }, { "field": "_attempt" }] },
+        { "as": "_lookup-run-id", "function": "concat", "args": [{ "value": "github:run:" }, { "field": "run" }, { "value": ":attempt:" }, { "field": "_attempt" }] },
         { "as": "_observed-at", "function": "coalesce", "args": [{ "field": "observed-at" }, { "field": "event-timestamp" }, { "field": "__source-observed-at" }] }
       ]
     },
     {
       "name": "tool-records",
       "from": "tool-keys",
-      "joins": [{ "source": "$published-runs", "type": "inner", "on": [{ "left": "_run-id", "right": "_id" }], "fields": [{ "field": "_id", "as": "_published-run-id" }] }]
+      "joins": [{ "source": "$published-runs", "type": "inner", "on": [{ "left": "_lookup-run-id", "right": "_lookup-run-id" }], "fields": [{ "field": "_id", "as": "_run-id" }] }]
     },
     {
       "name": "audit-keys",
       "from": "$audits",
       "compute": [
         { "as": "_attempt", "function": "positive-integer", "args": [{ "field": "run-attempt" }, { "value": 1 }] },
-        { "as": "_run-id", "function": "concat", "args": [{ "value": "github:run:" }, { "field": "run" }, { "value": ":attempt:" }, { "field": "_attempt" }] },
+        { "as": "_lookup-run-id", "function": "concat", "args": [{ "value": "github:run:" }, { "field": "run" }, { "value": ":attempt:" }, { "field": "_attempt" }] },
         { "as": "_observed-at", "function": "coalesce", "args": [{ "field": "observed-at" }, { "field": "event-timestamp" }, { "field": "__source-observed-at" }] }
       ]
     },
     {
       "name": "audit-records",
       "from": "audit-keys",
-      "joins": [{ "source": "$published-runs", "type": "inner", "on": [{ "left": "_run-id", "right": "_id" }], "fields": [{ "field": "_id", "as": "_published-run-id" }] }]
+      "joins": [{ "source": "$published-runs", "type": "inner", "on": [{ "left": "_lookup-run-id", "right": "_lookup-run-id" }], "fields": [{ "field": "_id", "as": "_run-id" }] }]
     },
     {
       "name": "issue-keys",
       "from": "$issues",
       "compute": [
         { "as": "_attempt", "function": "positive-integer", "args": [{ "field": "run-attempt" }, { "value": 1 }] },
-        { "as": "_run-id", "function": "concat", "args": [{ "value": "github:run:" }, { "field": "run" }, { "value": ":attempt:" }, { "field": "_attempt" }] },
+        { "as": "_lookup-run-id", "function": "concat", "args": [{ "value": "github:run:" }, { "field": "run" }, { "value": ":attempt:" }, { "field": "_attempt" }] },
         { "as": "_observed-at", "function": "coalesce", "args": [{ "field": "observed-at" }, { "field": "event-timestamp" }, { "field": "__source-observed-at" }] }
       ]
     },
     {
       "name": "issue-records",
       "from": "issue-keys",
-      "joins": [{ "source": "$published-runs", "type": "inner", "on": [{ "left": "_run-id", "right": "_id" }], "fields": [{ "field": "_id", "as": "_published-run-id" }] }]
+      "joins": [{ "source": "$published-runs", "type": "inner", "on": [{ "left": "_lookup-run-id", "right": "_lookup-run-id" }], "fields": [{ "field": "_id", "as": "_run-id" }] }]
     }
   ],
   "observations": [
@@ -281,7 +282,7 @@
     "supersededByInterventionId": { "field": "superseded-by-intervention-id" }, "recommendationChurnCount": { "field": "recommendation-churn-count" },
     "recommendationChurnRate": { "field": "recommendation-churn-rate" }, "controlVariant": { "field": "control-variant" },
     "optimizedVariant": { "field": "optimized-variant" }, "proposedSavingsAic": { "field": "proposed-savings-aic" },
-    "missingReason": { "field": "missing-reason" }, "safeOutputId": { "field": "safe-output-id" }, "safeOutputUrl": { "field": "safe-output-url" },
+    "missingReason": { "field": "missing-reason" }, "safeOutputId": { "field": "safe-output-id" }, "safeOutputUrl": { "field": "safe-output-url" }, "url": { "fields": ["safe-output-url", "correlation-id"] },
     "implementationChangeId": { "field": "implementation-change-id" }, "implementationPullRequestUrl": { "field": "implementation-pull-request-url" },
     "implementationRunIds": { "field": "implementation-run-ids" }, "acceptedAt": { "field": "accepted-at" },
     "implementationStartedAt": { "field": "implementation-started-at" }, "implementationCompletedAt": { "field": "implementation-completed-at" },

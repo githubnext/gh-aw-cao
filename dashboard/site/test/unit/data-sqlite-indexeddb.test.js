@@ -189,7 +189,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       '--where', 'conclusion=success'
     ], { encoding: 'utf8' }));
     expect(runs).toEqual([
-      expect.objectContaining({ id: 'github:run:303:attempt:1' })
+      expect.objectContaining({ id: 'github:run:githubnext/gh-aw-cao:303' })
     ]);
 
     const diagnosis = JSON.parse(execFileSync(process.execPath, [
@@ -352,8 +352,8 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       '--collection', 'runs'
     ], { encoding: 'utf8' }));
     expect(/** @type {{ id: string }[]} */ (runs).map((run) => run.id)).toEqual([
-      'github:run:100:attempt:1',
-      'github:run:200:attempt:1'
+      'github:run:githubnext/gh-aw-cao:100',
+      'github:run:githubnext/gh-aw-cao:200'
     ]);
 
     const diagnosis = JSON.parse(execFileSync(process.execPath, [

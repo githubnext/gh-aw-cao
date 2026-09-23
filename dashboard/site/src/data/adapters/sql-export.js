@@ -81,6 +81,48 @@ export function adaptSqlExport(input) {
   const exportedAt = canonicalTimestamp(document.exported_at, 'SQL export exported_at');
   const source = `sql:${requiredString(document.source, 'SQL export source')}`;
   if (!Array.isArray(document.rows)) throw new TypeError('SQL export rows must be an array');
+  const repositoryCoordinates = new Map(document.rows.flatMap((candidate, index) => {
+    const row = objectValue(candidate, `SQL export row ${index}`);
+    if (row.entity_kind !== 'repository') return [];
+    return [[
+      identifier(row.github_repository_id, 'github_repository_id'),
+      {
+        owner: requiredString(row.repository_owner, 'repository_owner'),
+        repository: requiredString(row.repository_name, 'repository_name')
+      }
+    ]];
+  }));
+  const repositoryByRun = new Map(document.rows.flatMap((candidate, index) => {
+    const row = objectValue(candidate, `SQL export row ${index}`);
+    if (row.entity_kind !== 'run') return [];
+    return [[
+      identifier(row.github_run_id, 'github_run_id'),
+      identifier(row.github_repository_id, 'github_repository_id')
+    ]];
+  }));
+  const coordinatesFor = (
+    /** @type {Record<string, unknown>} */ row,
+    /** @type {number} */ index,
+    /** @type {string} */ kind
+  ) => {
+    const githubRepositoryId = (row.github_repository_id === undefined || row.github_repository_id === null
+      ? undefined
+      : identifier(row.github_repository_id, 'github_repository_id'))
+      ?? repositoryByRun.get(identifier(row.github_run_id, 'github_run_id'));
+    if (!githubRepositoryId) throw new TypeError('github_repository_id is required');
+    const known = repositoryCoordinates.get(githubRepositoryId);
+    const owner = optionalString(row.repository_owner) ?? known?.owner;
+    const repository = optionalString(row.repository_name) ?? known?.repository;
+    if (!owner || !repository) {
+      throw new TypeError(
+        `SQL export row ${index} (${kind}) cannot resolve coordinates for GitHub repository ${githubRepositoryId}`
+      );
+    }
+    return {
+      owner,
+      repository
+    };
+  };
 
   /** @type {import('../model/schema.js').CanonicalObservation[]} */
   const observations = [];
@@ -134,9 +176,13 @@ export function adaptSqlExport(input) {
       case 'run': {
         const githubRunId = identifier(row.github_run_id, 'github_run_id');
         const attempt = positiveInteger(row.run_attempt, 'run_attempt');
+        const coordinates = coordinatesFor(row, index, kind);
         data = {
           githubRunId,
           attempt,
+          owner: coordinates.owner,
+          repository: coordinates.repository,
+          repositoryFullName: `${coordinates.owner}/${coordinates.repository}`,
           repositoryId: repositoryId(identifier(row.github_repository_id, 'github_repository_id')),
           workflowId: workflowId(identifier(row.github_workflow_id, 'github_workflow_id')),
           event: optionalString(row.run_event) ?? 'unknown',
@@ -150,9 +196,14 @@ export function adaptSqlExport(input) {
         };
         break;
       }
-      case 'domain':
+      case 'domain': {
+        const coordinates = coordinatesFor(row, index, kind);
         data = {
-          runId: runId(identifier(row.github_run_id, 'github_run_id'), positiveInteger(row.run_attempt, 'run_attempt')),
+          runId: runId(
+            coordinates.owner,
+            coordinates.repository,
+            identifier(row.github_run_id, 'github_run_id')
+          ),
           timestamp: canonicalTimestamp(row.observed_at ?? exportedAt, 'observed_at'),
           source: optionalString(row.source) ?? 'firewall',
           type: optionalString(row.type) ?? (row.decision === 'denied' ? 'net_blocked' : 'net_allowed'),
@@ -161,9 +212,15 @@ export function adaptSqlExport(input) {
           requestCount: optionalNumber(row.request_count, 'request_count') ?? 1
         };
         break;
-      case 'tool':
+      }
+      case 'tool': {
+        const coordinates = coordinatesFor(row, index, kind);
         data = {
-          runId: runId(identifier(row.github_run_id, 'github_run_id'), positiveInteger(row.run_attempt, 'run_attempt')),
+          runId: runId(
+            coordinates.owner,
+            coordinates.repository,
+            identifier(row.github_run_id, 'github_run_id')
+          ),
           timestamp: canonicalTimestamp(row.observed_at ?? exportedAt, 'observed_at'),
           source: optionalString(row.source) ?? 'mcp',
           type: optionalString(row.type) ?? 'tool.call',
@@ -176,9 +233,15 @@ export function adaptSqlExport(input) {
           correlationId: optionalString(row.correlation_id)
         };
         break;
-      case 'issue':
+      }
+      case 'issue': {
+        const coordinates = coordinatesFor(row, index, kind);
         data = {
-          runId: runId(identifier(row.github_run_id, 'github_run_id'), positiveInteger(row.run_attempt, 'run_attempt')),
+          runId: runId(
+            coordinates.owner,
+            coordinates.repository,
+            identifier(row.github_run_id, 'github_run_id')
+          ),
           timestamp: canonicalTimestamp(row.observed_at ?? exportedAt, 'observed_at'),
           source: optionalString(row.source) ?? 'safe-output',
           type: optionalString(row.type) ?? 'safe_output.created',
@@ -188,7 +251,9 @@ export function adaptSqlExport(input) {
           githubEntityType: optionalString(row.github_entity_type)
         };
         break;
+      }
       case 'audit': {
+        const coordinates = coordinatesFor(row, index, kind);
         if (row.source_sequence !== undefined && row.source_sequence !== null
           && (!Number.isInteger(Number(row.source_sequence)) || Number(row.source_sequence) < 0)) {
           throw new TypeError('source_sequence must be a non-negative integer');
@@ -208,7 +273,11 @@ export function adaptSqlExport(input) {
           throw new TypeError('optimization_target_repo must be an owner/repository coordinate');
         }
         data = {
-          runId: runId(identifier(row.github_run_id, 'github_run_id'), positiveInteger(row.run_attempt, 'run_attempt')),
+          runId: runId(
+            coordinates.owner,
+            coordinates.repository,
+            identifier(row.github_run_id, 'github_run_id')
+          ),
           timestamp: canonicalTimestamp(row.event_timestamp ?? observedAt, 'event_timestamp'),
           source: requiredString(row.event_source, 'event_source'),
           type: eventType,

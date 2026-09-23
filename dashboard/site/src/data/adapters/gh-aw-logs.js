@@ -1,4 +1,6 @@
 import {
+  issueId,
+  issueCoordinates,
   repositoryCoordinateId,
   runId,
   sourceId,
@@ -368,7 +370,15 @@ function stableDigest(value) {
 function recordKind(type, fields) {
   if (fields.source === 'firewall' || type === 'net_allowed' || type === 'net_blocked') return 'domain';
   if (type === 'safe_output.created'
-    && ['issue', 'pull_request'].includes(String(fields.githubEntityType))) return 'issue';
+    && ['issue', 'pull_request'].includes(String(fields.githubEntityType))
+    && typeof fields.correlationId === 'string') {
+    try {
+      issueCoordinates(fields.correlationId);
+      return 'issue';
+    } catch {
+      return 'audit';
+    }
+  }
   if (fields.source === 'mcp'
     || type === 'tool_call'
     || type === 'agent_tool_start'
@@ -382,9 +392,16 @@ function recordKind(type, fields) {
 /** @param {string} type @param {Record<string, unknown>} fields @param {'domain' | 'tool' | 'audit' | 'issue'} kind */
 function specializedFields(type, fields, kind) {
   if (kind === 'issue') {
+    const url = requiredString(fields.correlationId, 'safe output URL');
+    const { owner, repository, number } = issueCoordinates(url);
     return {
+      id: issueId(owner, repository, number),
+      owner,
+      repository,
+      repositoryFullName: `${owner}/${repository}`,
+      number,
       isPullRequest: fields.githubEntityType === 'pull_request',
-      url: fields.correlationId
+      url
     };
   }
   if (kind === 'tool') {
@@ -613,7 +630,7 @@ export function adaptGhAwLogs(input) {
   const canonicalWorkflowId = workflowCoordinateId(repositoryOwner, repositoryName, workflowPath);
   const githubRunId = identifier(run.githubRunId, 'run.githubRunId');
   const attempt = positiveInteger(run.attempt, 'run.attempt');
-  const canonicalRunId = runId(githubRunId, attempt);
+  const canonicalRunId = runId(repositoryOwner, repositoryName, githubRunId);
   const events = adaptGhAwTimelineFiles(document.files, canonicalRunId);
 
   /** @type {import('../model/schema.js').CanonicalObservation[]} */
@@ -646,6 +663,9 @@ export function adaptGhAwLogs(input) {
       data: {
         githubRunId,
         attempt,
+        owner: repositoryOwner,
+        repository: repositoryName,
+        repositoryFullName: `${repositoryOwner}/${repositoryName}`,
         repositoryId: canonicalRepositoryId,
         workflowId: canonicalWorkflowId,
         event: optionalString(run.event) ?? 'unknown',
@@ -913,11 +933,8 @@ function createCachedGhAwJsonlAccumulator(options) {
         observation.optimizerRunId,
         `gh-aw JSONL line ${line}.observation.optimizerRunId`
       );
-      const optimizerRunAttempt = positiveInteger(
-        observation.runAttempt ?? 1,
-        `gh-aw JSONL line ${line}.observation.runAttempt`
-      );
-      const optimizerRunKey = runId(optimizerRunId, optimizerRunAttempt);
+      positiveInteger(observation.runAttempt ?? 1, `gh-aw JSONL line ${line}.observation.runAttempt`);
+      const optimizerRunKey = String(optimizerRunId);
       const observations = tokenEfficiencyObservationsByRun.get(optimizerRunKey) ?? [];
       observations.push({ ...observation, __line: line });
       tokenEfficiencyObservationsByRun.set(optimizerRunKey, observations);
@@ -932,11 +949,11 @@ function createCachedGhAwJsonlAccumulator(options) {
         observation.optimizerRunId,
         `gh-aw JSONL line ${line}.observation.optimizerRunId`
       );
-      const optimizerRunAttempt = positiveInteger(
+      positiveInteger(
         observation.optimizerRunAttempt,
         `gh-aw JSONL line ${line}.observation.optimizerRunAttempt`
       );
-      const optimizerRunKey = runId(optimizerRunId, optimizerRunAttempt);
+      const optimizerRunKey = String(optimizerRunId);
       const observations = tokenEfficiencyLifecycleObservationsByRun.get(optimizerRunKey) ?? [];
       observations.push({ ...observation, __line: line });
       tokenEfficiencyLifecycleObservationsByRun.set(optimizerRunKey, observations);
@@ -959,11 +976,11 @@ function createCachedGhAwJsonlAccumulator(options) {
         `gh-aw JSONL line ${line}.run.workflow_path`
       );
       const githubRunId = identifier(run.run_id, `gh-aw JSONL line ${line}.run.run_id`);
-      const attempt = positiveInteger(
+      positiveInteger(
         run.run_attempt ?? 1,
         `gh-aw JSONL line ${line}.run.run_attempt`
       );
-      const id = runId(githubRunId, attempt);
+      const id = runId(coordinates.owner, coordinates.name, githubRunId);
       if (hasReportIncompleteOutcome(run)) reportIncompleteRunIds.add(id);
       const observedAt = canonicalTimestamp(
         run.updated_at ?? run.created_at,
@@ -1002,7 +1019,7 @@ function createCachedGhAwJsonlAccumulator(options) {
         run.databaseId,
         `gh-aw JSONL line ${line}.payload[${payloadIndex}].databaseId`
       );
-      const attempt = positiveInteger(
+      positiveInteger(
         run.attempt ?? 1,
         `gh-aw JSONL line ${line}.payload[${payloadIndex}].attempt`
       );
@@ -1014,7 +1031,7 @@ function createCachedGhAwJsonlAccumulator(options) {
         run.updatedAt ?? run.createdAt,
         `gh-aw JSONL line ${line}.payload[${payloadIndex}].updatedAt`
       );
-      const id = runId(githubRunId, attempt);
+      const id = runId(coordinates.owner, coordinates.name, githubRunId);
       const candidate = {
         line,
         observedAt,
@@ -1379,7 +1396,8 @@ function createCachedGhAwJsonlAccumulator(options) {
     const safeOutputs = explicitSafeOutputs.length > 0
       ? explicitSafeOutputs
       : nestedSafeOutputs.map((value) => ({ value, line: enriched.line }));
-    for (const tokenObservation of tokenEfficiencyObservationsByRun.get(id) ?? []) {
+    const githubRunKey = String(run.run_id);
+    for (const tokenObservation of tokenEfficiencyObservationsByRun.get(githubRunKey) ?? []) {
       const observed = timestamp(tokenObservation.observedAt) ?? completedAt ?? enriched.observedAt;
       const targetRepo = requiredString(tokenObservation.targetRepo, 'token observation targetRepo').toLowerCase();
       if (!REPOSITORY_COORDINATE_PATTERN.test(targetRepo)) continue;
@@ -1477,7 +1495,7 @@ function createCachedGhAwJsonlAccumulator(options) {
         );
       }
     }
-    for (const lifecycle of tokenEfficiencyLifecycleObservationsByRun.get(id) ?? []) {
+    for (const lifecycle of tokenEfficiencyLifecycleObservationsByRun.get(githubRunKey) ?? []) {
       const observed = canonicalTimestamp(
         lifecycle.observedAt,
         'token lifecycle observedAt'
@@ -1766,7 +1784,7 @@ function createCachedGhAwJsonlAccumulator(options) {
     }
   }
   const unmatchedLifecycleRuns = [...tokenEfficiencyLifecycleObservationsByRun.keys()]
-    .filter((id) => !runIds.has(id));
+    .filter((id) => !latestRunByGithubId.has(id));
   if (unmatchedLifecycleRuns.length > 0) {
     throw new TypeError(
       `Token lifecycle observations require retained optimizer runs: ${unmatchedLifecycleRuns.join(', ')}`
@@ -1781,15 +1799,38 @@ function createCachedGhAwJsonlAccumulator(options) {
       'gh-aw JSONL collection context observedAt'
     );
     const contextRun = objectValue(context.run, 'gh-aw JSONL collection context run');
-    const collectionRunId = runId(
-      identifier(contextRun.githubRunId, 'gh-aw JSONL collection context run.githubRunId'),
-      positiveInteger(contextRun.attempt, 'gh-aw JSONL collection context run.attempt')
+    const contextGithubRunId = identifier(
+      contextRun.githubRunId,
+      'gh-aw JSONL collection context run.githubRunId'
     );
-    if (!runIds.has(collectionRunId)) {
-      const contextRepository = objectValue(
+    /** @type {{ repository: Record<string, unknown>, owner: string, name: string } | undefined} */
+    let contextCoordinates;
+    const resolveContextRepository = () => {
+      if (contextCoordinates) return contextCoordinates;
+      const repository = objectValue(
         context.repository,
         'gh-aw JSONL collection context repository'
       );
+      contextCoordinates = {
+        repository,
+        owner: requiredString(
+          repository.owner,
+          'gh-aw JSONL collection context repository.owner'
+        ),
+        name: requiredString(
+          repository.name,
+          'gh-aw JSONL collection context repository.name'
+        )
+      };
+      return contextCoordinates;
+    };
+    let collectionRunId = latestRunByGithubId.get(String(contextGithubRunId));
+    if (!collectionRunId) {
+      const { owner, name } = resolveContextRepository();
+      collectionRunId = runId(owner, name, contextGithubRunId);
+    }
+    if (!runIds.has(collectionRunId)) {
+      const { repository: contextRepository, owner, name } = resolveContextRepository();
       const contextWorkflow = objectValue(
         context.workflow,
         'gh-aw JSONL collection context workflow'
@@ -1801,14 +1842,6 @@ function createCachedGhAwJsonlAccumulator(options) {
       const workflowGithubId = identifier(
         contextWorkflow.githubId,
         'gh-aw JSONL collection context workflow.githubId'
-      );
-      const owner = requiredString(
-        contextRepository.owner,
-        'gh-aw JSONL collection context repository.owner'
-      );
-      const name = requiredString(
-        contextRepository.name,
-        'gh-aw JSONL collection context repository.name'
       );
       const repository = repositoryCoordinateId(owner, name);
       const contextWorkflowPath = requiredString(

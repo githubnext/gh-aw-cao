@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  issueCoordinates,
+  issueId,
   repositoryCoordinateId,
   repositoryId,
   runId,
@@ -15,9 +17,23 @@ describe('canonical data identities', () => {
     expect(workflowId(98765)).toBe('github:workflow:98765');
   });
 
-  it('distinguishes attempts of the same workflow run', () => {
-    expect(runId(123456789, 1)).toBe('github:run:123456789:attempt:1');
-    expect(runId(123456789, 2)).not.toBe(runId(123456789, 1));
+  it('keys runs by repository and GitHub run ID', () => {
+    expect(runId('GitHubNext', 'GH-AW-CAO', 123456789)).toBe(
+      'github:run:githubnext/gh-aw-cao:123456789'
+    );
+    expect(runId('githubnext', 'other', 123456789))
+      .not.toBe(runId('githubnext', 'gh-aw-cao', 123456789));
+  });
+
+  it('keys issues and pull requests by repository and number', () => {
+    expect(issueId('GitHubNext', 'GH-AW-CAO', 42)).toBe(
+      'github:issue:githubnext/gh-aw-cao:42'
+    );
+    expect(issueCoordinates('https://github.com/GitHubNext/GH-AW-CAO/pull/42/files')).toEqual({
+      owner: 'GitHubNext',
+      repository: 'GH-AW-CAO',
+      number: 42
+    });
   });
 
   it('normalizes repository coordinates independently of their source', () => {
@@ -41,9 +57,14 @@ describe('canonical data identities', () => {
     );
   });
 
-  it('rejects missing IDs and invalid run attempts', () => {
+  it('rejects missing IDs and invalid issue coordinates', () => {
     expect(() => repositoryId(' ')).toThrow('repository ID is required');
-    expect(() => runId(123, 0)).toThrow('Run attempt must be a positive integer');
+    expect(() => runId('', '', 123)).toThrow('Run repository owner and name are required');
+    expect(() => runId('', 'repo', 123)).toThrow('Run repository owner and name are required');
+    expect(() => issueId('owner', 'repo', 0)).toThrow('Issue number must be a positive integer');
+    expect(() => issueId('owner', '', 1)).toThrow('Issue repository owner and name are required');
+    expect(() => issueCoordinates('https://example.com/owner/repo/issues/1'))
+      .toThrow('URL must identify a GitHub issue or pull request');
     expect(() => sourceId('audit', '', '42')).toThrow('audit source and coordinate are required');
   });
 });

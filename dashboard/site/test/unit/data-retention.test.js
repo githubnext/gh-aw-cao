@@ -35,7 +35,9 @@ function batch(events) {
       sourceId: 'run-1',
       observedAt: '2026-09-09T05:00:00Z',
       data: {
-        id: 'run:1',
+        githubRunId: 1,
+        owner: 'githubnext',
+        repository: 'gh-aw-cao',
         repositoryId: 'repository:1',
         workflowId: 'workflow:1',
         startedAt: '2026-09-09T04:00:00Z'
@@ -48,7 +50,7 @@ function batch(events) {
       observedAt: event.timestamp,
       data: {
         id: event.eventId,
-        runId: event.runId ?? 'run:1',
+        runId: event.runId ?? 'github:run:githubnext/gh-aw-cao:1',
         timestamp: event.timestamp,
         source: 'agent',
         type: 'agent_turn'
@@ -101,7 +103,7 @@ describe('canonical retention merge', () => {
       retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS
     });
 
-    expect(merged.runs.map((run) => run.id)).toEqual(['run:1']);
+    expect(merged.runs.map((run) => run.id)).toEqual(['github:run:githubnext/gh-aw-cao:1']);
     expect(merged.audits).toEqual([]);
     expect(merged.workflows.map((workflow) => workflow.id)).toEqual(['workflow:1']);
     expect(merged.repositories.map((repository) => repository.id)).toEqual(['repository:1']);
@@ -168,7 +170,7 @@ describe('canonical retention merge', () => {
 
     expect(merged.repositories.map((repository) => repository.id)).toEqual(['repository:1']);
     expect(merged.workflows.map((workflow) => workflow.id)).toEqual(['workflow:1']);
-    expect(merged.runs.map((run) => run.id)).toEqual(['run:1']);
+    expect(merged.runs.map((run) => run.id)).toEqual(['github:run:githubnext/gh-aw-cao:1']);
     expect(merged.audits.map((event) => event.id)).toEqual(['event:1']);
   });
 

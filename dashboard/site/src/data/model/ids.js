@@ -42,16 +42,51 @@ export function workflowCoordinateId(owner, repository, path) {
   return `workflow:${encodeURIComponent(`${repositoryCoordinate}:${workflowSourcePath(path)}`)}`;
 }
 
-/**
- * @param {string | number} githubRunId
- * @param {string | number} attempt
- */
-export function runId(githubRunId, attempt) {
-  const normalizedAttempt = Number(attempt);
-  if (!Number.isInteger(normalizedAttempt) || normalizedAttempt < 1) {
-    throw new TypeError('Run attempt must be a positive integer');
+/** @param {string} owner @param {string} repository @param {string | number} githubRunId */
+export function runId(owner, repository, githubRunId) {
+  const normalizedOwner = owner.trim();
+  const normalizedRepository = repository.trim();
+  if (!normalizedOwner || !normalizedRepository) {
+    throw new TypeError('Run repository owner and name are required');
   }
-  return `${githubId('run', githubRunId)}:attempt:${normalizedAttempt}`;
+  const coordinate = `${normalizedOwner}/${normalizedRepository}`.toLowerCase();
+  const normalizedRunId = String(githubRunId).trim();
+  if (!normalizedRunId) throw new TypeError('run ID is required');
+  return `github:run:${coordinate}:${normalizedRunId}`;
+}
+
+/** @param {string} owner @param {string} repository @param {string | number} issueNumber */
+export function issueId(owner, repository, issueNumber) {
+  const normalizedOwner = owner.trim();
+  const normalizedRepository = repository.trim();
+  if (!normalizedOwner || !normalizedRepository) {
+    throw new TypeError('Issue repository owner and name are required');
+  }
+  const coordinate = `${normalizedOwner}/${normalizedRepository}`.toLowerCase();
+  const normalizedNumber = Number(issueNumber);
+  if (!Number.isInteger(normalizedNumber) || normalizedNumber < 1) {
+    throw new TypeError('Issue number must be a positive integer');
+  }
+  return `github:issue:${coordinate}:${normalizedNumber}`;
+}
+
+/** @param {string} value */
+export function issueCoordinates(value) {
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new TypeError(`URL must identify a GitHub issue or pull request: ${value}`);
+  }
+  const match = url.hostname.toLowerCase() === 'github.com'
+    ? url.pathname.match(/^\/([^/]+)\/([^/]+)\/(?:issues|pull)\/(\d+)(?:\/|$)/)
+    : null;
+  if (!match) throw new TypeError(`URL must identify a GitHub issue or pull request: ${value}`);
+  return {
+    owner: match[1],
+    repository: match[2],
+    number: Number(match[3])
+  };
 }
 
 /**

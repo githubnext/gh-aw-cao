@@ -427,7 +427,7 @@ test('native IndexedDB directly upserts and retains canonical data across reload
   expect(first.result).toMatchObject({ updated: true });
   expect(first.repositories).toHaveLength(1);
   expect(first.workflows).toHaveLength(1);
-  expect(first.runs[0].id).toBe('github:run:12345:attempt:2');
+  expect(first.runs[0].id).toBe('github:run:githubnext/gh-aw-cao:12345');
 
   await page.reload();
   const retained = await page.evaluate(async () => {
@@ -436,7 +436,7 @@ test('native IndexedDB directly upserts and retains canonical data across reload
     const queries = createCanonicalQueries(indexedDB);
     return queries.runs.recentFailures();
   });
-  expect(retained).toEqual([expect.objectContaining({ id: 'github:run:12345:attempt:2' })]);
+  expect(retained).toEqual([expect.objectContaining({ id: 'github:run:githubnext/gh-aw-cao:12345' })]);
 
   const viewSources = await page.evaluate(async (sourceDocument) => {
     const databaseUrl = `${location.origin}/src/data/queries/database.js`;
@@ -1025,7 +1025,7 @@ test('Chromium ingests gh-aw artifacts as a Run and ordered run records', async 
   }, ghAwLogInput());
 
   expect(result.ingestion).toMatchObject({ updated: true });
-  expect(result.runs[0].id).toBe('github:run:303:attempt:1');
+  expect(result.runs[0].id).toBe('github:run:githubnext/gh-aw-cao:303');
   expect(result.domains.map((/** @type {Record<string, unknown>} */ record) => [record.sequence, record.source, record.type])).toEqual([
     [0, 'firewall', 'net_allowed']
   ]);
@@ -1118,8 +1118,8 @@ test('deletion rebuilds derived state and fresh data is directly upserted', asyn
     })
   ]);
   expect(result.runs.map((/** @type {Record<string, unknown>} */ run) => run.id)).toEqual([
-    'github:run:101:attempt:2',
-    'github:run:202:attempt:2'
+    'github:run:githubnext/gh-aw-cao:101',
+    'github:run:githubnext/gh-aw-cao:202'
   ]);
 });
 
