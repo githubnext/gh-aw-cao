@@ -9611,16 +9611,16 @@
           },
           "views": [
             {
-              "id": "campaigns-value-created",
-              "title": "Ops Value by campaign",
-              "description": "The share of observed operational value created by each centrally managed campaign.",
+              "id": "campaigns-dispatches",
+              "title": "Dispatches by campaign",
+              "description": "The share of observed dispatches handled by each centrally managed campaign.",
               "data": {
                 "source": "campaign-inventory"
               },
               "mark": "chart",
               "chart": "pie",
               "layout": "horizontal",
-              "empty-message": "No campaign operational value was observed in the selected horizon.",
+              "empty-message": "No campaign dispatches were observed in the selected horizon.",
               "encoding": {
                 "x": {
                   "field": "campaign-name",
@@ -9628,12 +9628,11 @@
                   "title": "Campaign"
                 },
                 "y": {
-                  "field": "value-created",
+                  "field": "dispatches",
                   "type": "quantitative",
                   "aggregate": "sum",
-                  "as": "total-value-created",
-                  "title": "Ops Value",
-                  "unit": "ops-value"
+                  "as": "total-dispatches",
+                  "title": "Dispatches"
                 },
                 "href": {
                   "field": "campaign-dashboard-link",

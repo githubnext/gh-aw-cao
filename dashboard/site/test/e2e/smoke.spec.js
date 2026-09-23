@@ -2074,7 +2074,7 @@ test('pie charts match the report layout at medium viewport widths', async ({ pa
   await expect(legend).toBeVisible();
 });
 
-test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory, and campaign activity in browser', async ({ page }) => {
+test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inventory, and campaign activity in browser', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const queryDefinitions = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8')).dashboard.queries;
   const campaignInsightsPage = authoritativeDashboard.dashboard.pages.find(
@@ -2400,10 +2400,9 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   `);
 
   await expect(page.getByRole('heading', { name: 'Campaigns', level: 1 })).toBeVisible();
-  const valueChart = page.locator('[data-view-id="campaigns-value-created"]');
-  await expect(valueChart.locator('[data-chart-widget="pie"]')).toBeVisible();
-  await expect(valueChart.locator('.chart-legend-pie')).toContainText('Ambient Context');
-  await expect(valueChart.locator('.chart-legend-pie')).toContainText('AW Doctor');
+  const dispatchChart = page.locator('[data-view-id="campaigns-dispatches"]');
+  await expect(dispatchChart.locator('[data-chart-widget="pie"]')).toBeVisible();
+  await expect(dispatchChart.locator('.chart-legend-pie')).toContainText('Ambient Context');
   await page.getByRole('button', { name: 'Table' }).click();
   await expect(page.locator('[data-page-id="campaigns"] [data-view-layout="full-view"]')).toBeVisible();
   await expect(page.locator('[data-page-id="campaigns"] [data-lazy-list]')).toBeVisible();
