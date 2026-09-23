@@ -1625,7 +1625,7 @@
         ]
       },
       {
-        "name": "shared-query-1-base",
+        "name": "event-base",
         "intent": "Reuse shared query stages for entity-events, event-runs",
         "from": "audits",
         "union": [
@@ -1637,7 +1637,7 @@
       {
         "name": "entity-events",
         "intent": "Project all run-owned records for reusable cards and run drill-down.",
-        "from": "shared-query-1-base",
+        "from": "event-base",
         "compute": [
           {
             "as": "event-url",
@@ -2479,7 +2479,7 @@
         }
       },
       {
-        "name": "shared-query-2-base",
+        "name": "failure-run-base",
         "intent": "Reuse shared query stages for failed-runs, overview-failing-runs",
         "from": "runs",
         "filter": {
@@ -2499,7 +2499,7 @@
       {
         "name": "failed-runs",
         "intent": "List failed workflow runs that need operator attention.",
-        "from": "shared-query-2-base",
+        "from": "failure-run-base",
         "order-by": [
           {
             "field": "started-at",
@@ -2510,7 +2510,7 @@
       {
         "name": "overview-failing-runs",
         "intent": "Identify failed runs in the selected snapshot horizon so subsequent streak logic can use the same declarative failure definition.",
-        "from": "shared-query-2-base",
+        "from": "failure-run-base",
         "aggregate": {
           "by": [
             "organization",
@@ -3204,7 +3204,7 @@
         "name": "event-runs",
         "intent": "Identify each workflow run that has one or more imported run-owned records.",
         "description": "Distinct workflow runs represented by imported domain, tool, audit, or issue records.",
-        "from": "shared-query-1-base",
+        "from": "event-base",
         "aggregate": {
           "by": [
             "organization",

@@ -207,10 +207,15 @@ The optimizer preserves public query names where possible. It merges compatible 
 rewrites query references, extracts repeated `from`/`union`/`time`/`joins`/`filter` prefixes
 into a named base query, and rewrites the original declarations to chain from that base:
 
+Base query names must describe the shared subject, not generation order. Prefer normalized
+concepts shared by the child query names (`failure-run-base`, `event-base`). When the child
+names share no useful concept, use the source and shared stage (`run-filter-base`,
+`audit-union-base`). Never emit numeric placeholders such as `shared-query-1-base`.
+
 ```json
 [
   {
-    "name": "failed-run-base",
+    "name": "failure-run-base",
     "intent": "Reuse shared query stages for failed-run-cost",
     "from": "runs",
     "filter": {
@@ -219,7 +224,7 @@ into a named base query, and rewrites the original declarations to chain from th
   },
   {
     "name": "failed-run-cost",
-    "from": "failed-run-base",
+    "from": "failure-run-base",
     "compute": [
       {
         "as": "cost",

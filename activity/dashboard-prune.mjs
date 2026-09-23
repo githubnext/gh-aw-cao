@@ -514,8 +514,12 @@ function chainCommonQueryPrefixes(queries) {
   )));
   const insertions = [];
   const report = [];
-  for (const [groupIndex, group] of chainGroups.entries()) {
-    const baseName = uniqueBaseQueryName(group.entries.map(({ query }) => query.name), names, groupIndex + 1);
+  for (const group of chainGroups) {
+    const baseName = uniqueBaseQueryName(
+      group.entries.map(({ query }) => query.name),
+      group.prefix,
+      names
+    );
     names.add(baseName);
     const reusedBy = group.entries.map(({ query }) => query.name);
     const base = {
@@ -550,16 +554,22 @@ function queryChainPrefix(query) {
   return prefix;
 }
 
-/** @param {string[]} queryNames @param {Set<string>} names @param {number} fallback */
-function uniqueBaseQueryName(queryNames, names, fallback) {
-  const tokenLists = queryNames.map((name) => name.split('-'));
-  const common = [];
-  for (let index = 0; index < Math.min(...tokenLists.map((tokens) => tokens.length)); index += 1) {
-    const token = tokenLists[0][index];
-    if (!tokenLists.every((tokens) => tokens[index] === token)) break;
-    common.push(token);
-  }
-  const stem = common.length > 0 ? common.join('-') : `shared-query-${fallback}`;
+/**
+ * @param {string[]} queryNames
+ * @param {Record<string, any>} prefix
+ * @param {Set<string>} names
+ */
+function uniqueBaseQueryName(queryNames, prefix, names) {
+  const tokenLists = queryNames.map((name) => name.split('-').map(normalizeQueryNameToken));
+  const shared = [...new Set(tokenLists[0])].filter((token) => (
+    tokenLists.slice(1).every((tokens) => tokens.includes(token))
+  ));
+  const stage = CHAIN_PREFIX_KEYS.find((key) => prefix[key] !== undefined);
+  const fallback = [
+    typeof prefix.from === 'string' ? prefix.from.split('-').map(normalizeQueryNameToken).join('-') : 'query',
+    stage
+  ].filter(Boolean);
+  const stem = (shared.length > 0 ? shared : fallback).join('-');
   let candidate = `${stem}-base`;
   let suffix = 2;
   while (names.has(candidate)) {
@@ -567,6 +577,23 @@ function uniqueBaseQueryName(queryNames, names, fallback) {
     suffix += 1;
   }
   return candidate;
+}
+
+/** @param {string} token */
+function normalizeQueryNameToken(token) {
+  if (/^fail(?:ed|ing|ure|ures)?$/.test(token)) return 'failure';
+  const singular = {
+    events: 'event',
+    runs: 'run',
+    records: 'record',
+    repositories: 'repository',
+    workflows: 'workflow',
+    issues: 'issue',
+    audits: 'audit',
+    tools: 'tool',
+    domains: 'domain'
+  };
+  return singular[token] ?? token;
 }
 
 /** @param {Record<string, any>} query */

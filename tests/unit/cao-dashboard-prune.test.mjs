@@ -348,27 +348,77 @@ test('extracts shared query prefixes into reusable JSON query chains', () => {
 
   assert.deepEqual(document.dashboard.queries, [
     {
-      name: 'failed-run-base',
+      name: 'failure-run-base',
       intent: 'Reuse shared query stages for failed-run-cost, failed-run-duration',
       from: 'runs',
       filter: { predicates: [{ field: 'conclusion', equals: 'failure' }] }
     },
     {
       name: 'failed-run-cost',
-      from: 'failed-run-base',
+      from: 'failure-run-base',
       compute: [{ as: 'cost', function: 'multiply', args: [{ field: 'tokens' }, { value: 2 }] }]
     },
     {
       name: 'failed-run-duration',
-      from: 'failed-run-base',
+      from: 'failure-run-base',
       compute: [{ as: 'minutes', function: 'divide', args: [{ field: 'duration' }, { value: 60 }] }]
     }
   ]);
   assert.deepEqual(report.queries.chains, [{
-    base: 'failed-run-base',
+    base: 'failure-run-base',
     reusedBy: ['failed-run-cost', 'failed-run-duration'],
     stages: ['from', 'filter']
   }]);
+});
+
+test('names shared chains from normalized query concepts and source stages', () => {
+  const input = dashboard({
+    queries: [
+      {
+        name: 'entity-events',
+        from: 'audits',
+        union: ['domains', 'tools'],
+        compute: [{ as: 'event-url', function: 'coalesce', args: [{ field: 'event-link' }, { value: '' }] }]
+      },
+      {
+        name: 'event-runs',
+        from: 'audits',
+        union: ['domains', 'tools'],
+        aggregate: { by: ['run'], values: [{ field: 'run', as: 'events', reducer: 'count' }] }
+      },
+      {
+        name: 'alpha',
+        from: 'runs',
+        filter: { predicates: [{ field: 'status', equals: 'queued' }] },
+        compute: [{ as: 'label', function: 'coalesce', args: [{ field: 'run' }, { value: '' }] }]
+      },
+      {
+        name: 'beta',
+        from: 'runs',
+        filter: { predicates: [{ field: 'status', equals: 'queued' }] },
+        aggregate: { by: ['repository'], values: [{ field: 'run', as: 'runs', reducer: 'count' }] }
+      }
+    ],
+    pages: [{
+      id: 'overview',
+      kind: 'custom',
+      views: [
+        { id: 'events', data: { source: 'entity-events' } },
+        { id: 'event-runs', data: { source: 'event-runs' } },
+        { id: 'alpha', data: { source: 'alpha' } },
+        { id: 'beta', data: { source: 'beta' } }
+      ]
+    }],
+    navigation: [{ pages: ['overview'] }]
+  });
+
+  const { report } = pruneDashboardDocument(input);
+
+  assert.deepEqual(report.queries.chains.map((chain) => chain.base), [
+    'event-base',
+    'run-filter-base'
+  ]);
+  assert.ok(report.queries.chains.every((chain) => !chain.base.startsWith('shared-query-')));
 });
 
 test('prunes reusable views that are not referenced by a page or route behavior', () => {

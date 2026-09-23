@@ -96,12 +96,16 @@ describe('dashboard query architecture', () => {
       expect(expectedFields.filter((field) => !selectedFields.has(field)), query.name).toEqual([]);
     }
     const failedRuns = dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'failed-runs');
-    expect(failedRuns?.from).toMatch(/-base$/);
+    expect(failedRuns?.from).toBe('failure-run-base');
     expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === failedRuns?.from))
       .toMatchObject({
         from: 'runs',
         filter: { predicates: [{ field: 'run-conclusion' }] }
       });
+    expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'entity-events')?.from)
+      .toBe('event-base');
+    expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'event-runs')?.from)
+      .toBe('event-base');
     expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-opportunities'))
       .toBeUndefined();
     expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-interventions'))
