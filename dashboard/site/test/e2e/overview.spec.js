@@ -50,11 +50,13 @@ const sources = {
   'overview-run-summary': source('overview-run-summary', [{ 'successful-runs': 20, 'failed-runs': 2, 'active-runs': 4, 'active-live': 1, 'active-review': 3 }]),
   'overview-dispatch-summary': source('overview-dispatch-summary', [{ dispatches: 12, 'failed-dispatches': 1 }]),
   'overview-delivery-summary': source('overview-delivery-summary', [{ 'delivered-repositories': 3 }]),
+  'overview-repository-coverage': source('overview-repository-coverage', [{ 'repository-coverage': 0.5, 'reached-repositories': 3, 'registered-repositories-total': 6 }]),
   'overview-value-summary': source('overview-value-summary', [{ 'value-gains': 1 }]),
   'overview-factory-status': source('overview-factory-status', [{ 'factory-heading': 'Your factory is delivering value.' }]),
   'overview-registered-repository-summary': source('overview-registered-repository-summary', [{ 'registered-repositories': 6 }]),
   'overview-worker-summary': source('overview-worker-summary', [{ workers: 3 }]),
   'database-campaign-count': source('database-campaign-count', [{ campaigns: 2 }]),
+  'overview-healthy-campaign-count': source('overview-healthy-campaign-count', [{ 'healthy-campaigns': 1 }]),
   'database-issue-count': source('database-issue-count', [{ issues: 5 }]),
   'overview-needs-attention-preview': source('overview-needs-attention-preview', [
     {
@@ -158,8 +160,8 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
   };
 
   for (const viewport of [
-    { width: 1440, height: 900, introColumns: 2, stationColumns: 6 },
-    { width: 390, height: 844, introColumns: 1, stationColumns: 2 }
+    { width: 1440, height: 900, introColumns: 2 },
+    { width: 390, height: 844, introColumns: 1 }
   ]) {
     await page.setViewportSize(viewport);
     const factory = await render(overviewPage);
@@ -185,25 +187,22 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     const notifications = page.locator('[data-page-id="notifications"]');
     await expect(notifications).toHaveCount(0);
     await expect(notifications.locator('.entity-card-list-card')).toHaveCount(0);
-    await expect(factory.getByRole('heading', { name: 'Your factory is delivering value.' })).toBeVisible();
+    await expect(factory.getByRole('heading', { name: 'Your factory needs attention.' })).toBeVisible();
     await expect(factory.locator('.factory-running')).toHaveCount(0);
     await expect(factory.locator('.factory-rhythm-day')).toHaveCount(7);
     const rhythmBars = factory.locator('.factory-rhythm-bar-pair i:not([hidden])');
     await expect(rhythmBars.first()).toHaveCSS('animation-name', 'factory-rhythm-bar-grow');
     expect(await rhythmBars.last().evaluate((element) => getComputedStyle(element).animationDelay)).toBe('0.21s');
-    await expect(factory.locator('.factory-station')).toHaveCount(6);
-    await expect(factory.locator('.factory-station').nth(0)).toContainText('Campaigns2');
-    await expect(factory.locator('.factory-station').nth(1)).toContainText('Repositories6');
-    await expect(factory.locator('.factory-station').nth(2)).toContainText('Issues & PRs5');
-    await expect(factory.locator('.factory-station').nth(0).locator('small')).toHaveText('');
-    await expect(factory.locator('.factory-station').nth(2).locator('small')).toHaveText('');
+    await expect(factory.locator('.factory-station')).toHaveCount(2);
+    await expect(factory.locator('.factory-station').nth(0)).toContainText('Factory health50%1/2 healthy campaigns');
+    await expect(factory.locator('.factory-station').nth(1)).toContainText('Repository coverage50%3/6 repositories reached');
     expect(await factory.locator('.factory-station a').count()).toBeGreaterThan(0);
     expect(await page.locator('.factory-intro').evaluate((element) =>
       getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean).length
     )).toBe(viewport.introColumns);
     expect(await page.locator('.factory-stations').evaluate((element) =>
       getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean).length
-    )).toBe(viewport.stationColumns);
+    )).toBe(2);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   }
 });
@@ -283,7 +282,7 @@ test('renders the Overview structure before mixed page data resolves', async ({ 
   });
 
   expect(immediate).toEqual({
-    sourceLoadCalls: 13,
+    sourceLoadCalls: 17,
     pageLoadCalls: 0,
     header: true,
     floor: true,
@@ -296,6 +295,6 @@ test('renders the Overview structure before mixed page data resolves', async ({ 
     campaignSkeletonRows: 3,
     headingPending: 1,
     rhythmPending: 1,
-    stationsPending: 6
+    stationsPending: 2
   });
 });

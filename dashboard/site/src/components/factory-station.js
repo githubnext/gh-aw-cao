@@ -3,12 +3,13 @@ import { octicon } from '../octicons.js';
 import { render } from '../reactive.js';
 import { createAnimatedNumber } from './animated-number.js';
 import { formatCount } from './count-formatters.js';
+import { formatPercent } from '../view-formatters.js';
 
 /** @typedef {{ text: string, href?: string }} StationDetail */
 
 /**
  * @param {string} icon
- * @param {{ animate?: boolean, final?: boolean, href?: string, signal: AbortSignal }} options
+ * @param {{ animate?: boolean, final?: boolean, format?: 'count'|'percent', href?: string, signal: AbortSignal }} options
  * @returns {{ element: HTMLElement, bind: (read: () => { pending: boolean, unavailable?: boolean, label: string, value: number, detail?: StationDetail }) => void }}
  */
 export function renderFactoryStation(icon, options) {
@@ -24,7 +25,9 @@ export function renderFactoryStation(icon, options) {
           + `${!station.pending && !station.unavailable && station.value === 0 ? ' factory-station-empty' : ''}`;
         if (station.pending) element.setAttribute('aria-busy', 'true');
         else element.removeAttribute('aria-busy');
-        const count = station.pending ? '' : station.unavailable ? 'Unavailable' : formatCount(station.value);
+        const count = station.pending ? '' : station.unavailable
+          ? 'Unavailable'
+          : options.format === 'percent' ? formatPercent(station.value) : formatCount(station.value);
         value.set({
           text: count,
           target: !station.pending && !station.unavailable ? station.value : undefined,

@@ -48,6 +48,7 @@ export const COMPUTE_FUNCTION_ARITY = {
   if: [3, 3],
   'format-count': [1, 1],
   'format-percent': [1, 1],
+  'array-length': [1, 1],
   'failure-streak-point': [3, 3],
   number: [1, 1],
   'positive-integer': [2, 2],
@@ -63,7 +64,7 @@ export const TEXT_COMPUTE_FUNCTIONS = [
 ];
 
 /** Computed-field functions whose result is always a finite number or null. */
-export const NUMERIC_COMPUTE_FUNCTIONS = ['number', 'positive-integer', 'sum', 'difference', 'product', 'quotient'];
+export const NUMERIC_COMPUTE_FUNCTIONS = ['number', 'positive-integer', 'sum', 'difference', 'product', 'quotient', 'array-length'];
 
 /** Vega regression method names supported without an external model registry. */
 export const PREDICTION_METHODS = ['linear', 'log', 'exp', 'pow', 'quad', 'poly'];
@@ -332,6 +333,7 @@ export function computeValue(row, definition) {
     const value = numericValue(values[0]);
     return value === null ? null : formatPercent(value);
   }
+  if (definition.function === 'array-length') return Array.isArray(values[0]) ? values[0].length : null;
   if (definition.function === 'failure-streak-point') {
     const timestamp = parseTimestamp(values[0]);
     const run = textValue(values[1]).trim();

@@ -126,6 +126,18 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
   });
 
+  it('validates declarative factory floor station selection', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const overview = document.dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'overview');
+    const floor = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'factory-floor');
+    floor.config.stations = ['campaigns', 'repositories'];
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    floor.config.stations = ['campaigns', 'campaigns'];
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+    floor.config.stations = ['campaigns', 'workers'];
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+  });
+
   it('accepts supported dashboard CLI actions', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     document.dashboard['cli-actions'].push({
@@ -711,7 +723,7 @@ describe('dashboard document validation', () => {
     expect(page.views).toEqual([
       expect.objectContaining({
         id: 'overview-header',
-        description: 'Repositories counts distinct registered targets and compares them with retained completed delivery evidence in the selected horizon.',
+        description: 'Factory health measures campaigns without current runtime errors; repository coverage measures registered repositories reached by successful worker execution.',
         data: { sources: expect.arrayContaining([
           'overview-outcome-summary',
           'overview-factory-status',
@@ -719,7 +731,8 @@ describe('dashboard document validation', () => {
         ]) },
         mark: 'element',
         element: 'factory-header',
-        layout: 'full'
+        layout: 'full',
+        title: 'How are we doing?'
       }),
       expect.objectContaining({
         id: 'overview-floor',

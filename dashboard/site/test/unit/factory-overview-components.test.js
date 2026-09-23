@@ -7,8 +7,8 @@ import { renderFactoryRhythm } from '../../src/components/factory-rhythm.js';
 import { renderFactoryStation } from '../../src/components/factory-station.js';
 
 /** @typedef {{ operations: number, live: number, review: number }} Motion */
-/** @typedef {{ total: number, registered: number, unavailable: boolean, registeredUnavailable: boolean }} Coverage */
-/** @typedef {{ campaigns: () => number, issues: () => number, successfulRuns: () => number, failedRuns: () => number, activeRuns: () => number, valueGains: () => number, coverage: () => Coverage, workers: () => number, dispatches: () => number, failedDispatches: () => number, usefulOutputs: () => number, deliveredRepositories: () => number, motion: () => Motion }} TestMetrics */
+/** @typedef {{ total: number, registered: number, averageCoverage: number, unavailable: boolean, registeredUnavailable: boolean, coverageUnavailable: boolean }} Coverage */
+/** @typedef {{ campaigns: () => number, campaignTotal: () => number, campaignHealth: () => number, issues: () => number, successfulRuns: () => number, failedRuns: () => number, activeRuns: () => number, valueGains: () => number, coverage: () => Coverage, workers: () => number, dispatches: () => number, failedDispatches: () => number, usefulOutputs: () => number, deliveredRepositories: () => number, motion: () => Motion }} TestMetrics */
 
 /**
  * @param {{ pending?: boolean, unavailable?: boolean, rows?: Record<string, unknown>[] }} [options]
@@ -22,18 +22,20 @@ function binding({ pending = false, unavailable = false, rows = [] } = {}) {
 }
 
 /**
- * @param {Partial<{ campaigns: number, issues: number, successfulRuns: number, failedRuns: number, activeRuns: number, valueGains: number, coverage: Coverage, workers: number, dispatches: number, failedDispatches: number, usefulOutputs: number, deliveredRepositories: number, motion: Motion }>} [overrides]
+ * @param {Partial<{ campaigns: number, campaignTotal: number, campaignHealth: number, issues: number, successfulRuns: number, failedRuns: number, activeRuns: number, valueGains: number, coverage: Coverage, workers: number, dispatches: number, failedDispatches: number, usefulOutputs: number, deliveredRepositories: number, motion: Motion }>} [overrides]
  * @returns {TestMetrics}
  */
 function metrics(overrides = {}) {
   const values = {
     campaigns: 2,
+    campaignTotal: 3,
+    campaignHealth: 2 / 3,
     issues: 5,
     successfulRuns: 8,
     failedRuns: 2,
     activeRuns: 1,
     valueGains: 3,
-    coverage: { total: 4, registered: 6, unavailable: false, registeredUnavailable: false },
+    coverage: { total: 4, registered: 6, averageCoverage: 0.5, unavailable: false, registeredUnavailable: false, coverageUnavailable: false },
     workers: 2,
     dispatches: 7,
     failedDispatches: 1,
@@ -44,6 +46,8 @@ function metrics(overrides = {}) {
   };
   return {
     campaigns: () => values.campaigns,
+    campaignTotal: () => values.campaignTotal,
+    campaignHealth: () => values.campaignHealth,
     issues: () => values.issues,
     successfulRuns: () => values.successfulRuns,
     failedRuns: () => values.failedRuns,
@@ -132,12 +136,14 @@ describe('Overview component boundaries', () => {
     expect(days[0]?.getAttribute('aria-label')).toBe('Mon 2026-09-07: 11 successful runs this week.');
   });
 
-  it('floor composes four stations and owns their aggregate accessible summary', () => {
+  it('floor composes selected stations and owns their aggregate accessible summary', () => {
     const controller = new AbortController();
     const motion = state({ operations: 1, live: 1, review: 0 });
     const sources = {
       'database-campaign-count': binding(),
+      'overview-healthy-campaign-count': binding(),
       'overview-registered-repository-summary': binding(),
+      'overview-repository-coverage': binding(),
       'database-issue-count': binding(),
       'overview-run-summary': binding(),
       'overview-dispatch-summary': binding(),
@@ -153,11 +159,12 @@ describe('Overview component boundaries', () => {
       'value-gains': count === 1 ? 'Value gain' : 'Value gains'
     })[name] ?? name;
     const scope = { signal: controller.signal, motion };
-    const rendered = renderFactoryFloor(sources, metrics(), label, false, scope);
+    const rendered = renderFactoryFloor(sources, metrics(), label, false, scope, ['campaigns', 'repositories']);
 
-    expect([...rendered.querySelectorAll('.factory-station strong')].map((element) => element.textContent)).toEqual(['2', '6', '5', '8', '7', '3']);
+    expect([...rendered.querySelectorAll('.factory-station strong')].map((element) => element.textContent)).toEqual(['66.7%', '50%']);
+    expect([...rendered.querySelectorAll('.factory-station small')].map((element) => element.textContent)).toEqual(['2/3 healthy campaigns', '4/6 repositories reached']);
     expect(rendered.classList.contains('factory-floor-active')).toBe(true);
-    expect(rendered.getAttribute('aria-label')).toContain('6 repositories with 4 delivered to');
+    expect(rendered.getAttribute('aria-label')).toBe('67% factory health, 50% average repository coverage.');
     motion.set({ operations: 0, live: 0, review: 0 });
     expect(rendered.classList.contains('factory-floor-active')).toBe(false);
     controller.abort();

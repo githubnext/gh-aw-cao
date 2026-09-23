@@ -6,7 +6,7 @@ import { renderFactoryRhythm } from './factory-rhythm.js';
 
 /** @typedef {{ rows: () => Record<string, unknown>[], pending: () => boolean, unavailable: () => boolean }} SourceBinding */
 /** @typedef {Record<string, SourceBinding>} SourceBindings */
-/** @typedef {{ usefulOutputs: () => number, deliveredRepositories: () => number }} HeaderMetrics */
+/** @typedef {{ usefulOutputs: () => number, deliveredRepositories: () => number, campaignHealth: () => number }} HeaderMetrics */
 /** @typedef {{ signal: AbortSignal }} HeaderScope */
 
 /**
@@ -22,10 +22,14 @@ export function renderFactoryHeader(sources, metrics, scope) {
     const status = sources['overview-factory-status'];
     const pending = status.pending();
     const candidate = status.rows()[0]?.['factory-heading'];
+    const healthSourcePending = sources['overview-healthy-campaign-count']?.pending() ?? true;
+    const campaignHealth = metrics.campaignHealth();
     heading.classList.toggle('factory-heading-pending', pending);
     heading.toggleAttribute('aria-busy', pending);
     return pending
       ? ''
+      : !healthSourcePending && campaignHealth > 0 && campaignHealth < 0.66
+      ? 'Your factory needs attention.'
       : !status.unavailable() && typeof candidate === 'string' && candidate
       ? candidate
       : 'Your factory status is unavailable.';
@@ -52,6 +56,8 @@ export function renderFactoryHeader(sources, metrics, scope) {
 const HEADER_SOURCE_NAMES = [
   'overview-outcome-summary',
   'overview-factory-status',
+  'database-campaign-count',
+  'overview-healthy-campaign-count',
   'overview-rhythm'
 ];
 

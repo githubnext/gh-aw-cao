@@ -2060,6 +2060,10 @@
               {
                 "field": "workflow-role",
                 "as": "workflow-role"
+              },
+              {
+                "field": "workflow-active",
+                "as": "workflow-active"
               }
             ]
           },
@@ -2358,6 +2362,60 @@
             }
           ]
         }
+      },
+      {
+        "name": "overview-delivery-coverage-input",
+        "intent": "Prepare successful delivery totals for the repository coverage summary.",
+        "from": "overview-delivery-summary",
+        "compute": [
+          {
+            "as": "coverage-key",
+            "function": "concat",
+            "args": [
+              {
+                "value": "repository-coverage"
+              },
+              {
+                "value": ""
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "delivered-repositories"
+          },
+          {
+            "field": "coverage-key"
+          }
+        ]
+      },
+      {
+        "name": "overview-registered-repository-coverage-input",
+        "intent": "Prepare registered repository totals for the repository coverage summary.",
+        "from": "overview-registered-repository-summary",
+        "compute": [
+          {
+            "as": "coverage-key",
+            "function": "concat",
+            "args": [
+              {
+                "value": "repository-coverage"
+              },
+              {
+                "value": ""
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "registered-repositories"
+          },
+          {
+            "field": "coverage-key"
+          }
+        ]
       },
       {
         "name": "overview-worker-summary",
@@ -4618,6 +4676,10 @@
                 "orchestrator",
                 "worker"
               ]
+            },
+            {
+              "field": "workflow-active",
+              "equals": "true"
             }
           ]
         },
@@ -6111,6 +6173,139 @@
         }
       },
       {
+        "name": "overview-repository-coverage-summary",
+        "intent": "Aggregate reached and total repositories across the resolved organization scope.",
+        "from": "overview-delivery-coverage-input",
+        "joins": [
+          {
+            "source": "overview-registered-repository-coverage-input",
+            "type": "left",
+            "on": [
+              {
+                "left": "coverage-key",
+                "right": "coverage-key"
+              }
+            ],
+            "fields": [
+              {
+                "field": "registered-repositories",
+                "as": "registered-repositories-total"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "values": [
+            {
+              "field": "delivered-repositories",
+              "as": "reached-repositories",
+              "reducer": "sum"
+            },
+            {
+              "field": "registered-repositories-total",
+              "as": "registered-repositories-total",
+              "reducer": "sum"
+            }
+          ]
+        }
+      },
+      {
+        "name": "overview-repository-coverage",
+        "intent": "Measure registered repository reach from successful worker execution.",
+        "from": "overview-repository-coverage-summary",
+        "compute": [
+          {
+            "as": "repository-coverage",
+            "function": "quotient",
+            "args": [
+              {
+                "field": "reached-repositories"
+              },
+              {
+                "field": "registered-repositories-total"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "repository-coverage"
+          },
+          {
+            "field": "reached-repositories"
+          },
+          {
+            "field": "registered-repositories-total"
+          }
+        ]
+      },
+      {
+        "name": "overview-healthy-campaign-count",
+        "intent": "Count campaigns with no retained workflow or target errors.",
+        "from": "campaigns",
+        "joins": [
+          {
+            "source": "campaign-runtime-problem-counts",
+            "type": "left",
+            "on": [
+              {
+                "left": "campaign",
+                "right": "campaign"
+              }
+            ],
+            "fields": [
+              {
+                "field": "problem-partitions",
+                "as": "observed-problem-workflows"
+              }
+            ]
+          }
+        ],
+        "compute": [
+          {
+            "as": "normalized-problem-workflows",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "observed-problem-workflows"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "problem-present",
+            "function": "greater-than",
+            "args": [
+              {
+                "field": "normalized-problem-workflows"
+              },
+              {
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "values": [
+            {
+              "field": "id",
+              "as": "healthy-campaigns",
+              "reducer": "count",
+              "filter": {
+                "predicates": [
+                  {
+                    "field": "problem-present",
+                    "equals": false
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
         "name": "campaign-problem-runs",
         "intent": "List retained failed runs for campaign problem investigation.",
         "description": "Failed campaign runs ordered from newest to oldest with retained diagnostic metadata.",
@@ -7243,6 +7438,10 @@
                 "orchestrator",
                 "worker"
               ]
+            },
+            {
+              "field": "workflow-active",
+              "equals": "true"
             }
           ]
         },
@@ -11639,11 +11838,13 @@
           {
             "id": "overview-header",
             "title": "How are we doing?",
-            "description": "Repositories counts distinct registered targets and compares them with retained completed delivery evidence in the selected horizon.",
+            "description": "Factory health measures campaigns without current runtime errors; repository coverage measures registered repositories reached by successful worker execution.",
             "data": {
               "sources": [
                 "overview-outcome-summary",
                 "overview-factory-status",
+                "database-campaign-count",
+                "overview-healthy-campaign-count",
                 "overview-rhythm"
               ]
             },
@@ -11654,11 +11855,13 @@
           {
             "id": "overview-floor",
             "title": "Factory floor",
-            "intent": "Compare registered repositories, successful runs, dispatches, and value gains while preserving their investigation routes.",
+            "intent": "Show the registered campaign and repository inventory while preserving their investigation routes.",
             "data": {
               "sources": [
                 "database-campaign-count",
+                "overview-healthy-campaign-count",
                 "overview-registered-repository-summary",
+                "overview-repository-coverage",
                 "database-issue-count",
                 "overview-outcome-summary",
                 "overview-run-summary",
@@ -11672,6 +11875,10 @@
             "element": "factory-floor",
             "config": {
               "animate": "number",
+              "stations": [
+                "campaigns",
+                "repositories"
+              ],
               "labels": {
                 "campaigns": {
                   "singular": "Campaign",
@@ -11680,22 +11887,6 @@
                 "repositories": {
                   "singular": "Repository",
                   "plural": "Repositories"
-                },
-                "issues": {
-                  "singular": "Issue & PR",
-                  "plural": "Issues & PRs"
-                },
-                "successful-runs": {
-                  "singular": "Successful run",
-                  "plural": "Successful runs"
-                },
-                "dispatches": {
-                  "singular": "Successful dispatch",
-                  "plural": "Successful dispatches"
-                },
-                "value-gains": {
-                  "singular": "Value gain",
-                  "plural": "Value gains"
                 }
               }
             },
