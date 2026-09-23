@@ -23,7 +23,7 @@ const ReadmeContent = entry.ReadmeContent;
 
 <StarlightPage
   frontmatter={{
-    title: entry.name,
+    title: entry.experimental ? `${entry.name} · Experimental` : entry.name,
     description: entry.description,
     editUrl,
   }}

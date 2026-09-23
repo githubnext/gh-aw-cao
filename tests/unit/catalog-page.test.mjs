@@ -10,6 +10,10 @@ const campaignReadmeContent = readFileSync(
   new URL("../../docs/components/CampaignReadmeContent.astro", import.meta.url),
   "utf8",
 );
+const campaignList = readFileSync(
+  new URL("../../docs/pages/catalog/index.astro", import.meta.url),
+  "utf8",
+);
 
 test("campaign detail keeps the embedded README title out of the page heading outline", () => {
   assert.match(campaignDetail, /<CampaignReadmeContent>\s*<ReadmeContent \/>\s*<\/CampaignReadmeContent>/);
@@ -22,4 +26,9 @@ test("campaign detail code examples scroll without widening the page", () => {
     campaignDetail,
     /\.campaign-guide :global\(pre\),\s*\.install-campaign pre \{[\s\S]*?max-width: 100%;[\s\S]*?overflow-x: auto;/,
   );
+});
+
+test("experimental campaigns are labeled in catalog links and detail titles", () => {
+  assert.match(campaignList, /\{entry\.experimental && <span class="catalog-experimental-label">Experimental<\/span>\}/);
+  assert.match(campaignDetail, /title: entry\.experimental \? `\$\{entry\.name\} · Experimental` : entry\.name,/);
 });
