@@ -1,13 +1,15 @@
 import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "@playwright/test";
 
 const chromiumExecutable = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
   || (existsSync("/usr/bin/chromium") ? "/usr/bin/chromium" : undefined);
 const origin = "http://127.0.0.1:8443";
+const repositoryRoot = fileURLToPath(new URL("../../..", import.meta.url));
 const accessToken = process.env.DASHBOARD_SERVER_ACCESS_TOKEN
   || "0123456789abcdef0123456789abcdef";
 const serverCommand = process.env.DASHBOARD_SERVER_COMMAND
-  || `go -C server run ./cmd/cao-dashboard serve --source testdata/deployed-subset --access-token ${accessToken}`;
+  || `go -C "${repositoryRoot}/server" run ./cmd/cao-dashboard serve --source testdata/deployed-subset --access-token ${accessToken}`;
 
 export default defineConfig({
   testDir: "../../e2e",
