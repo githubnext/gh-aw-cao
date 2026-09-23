@@ -147,3 +147,19 @@ test("authentication prefers an optional GitHub App and retains bounded fallback
   assert.match(authentication, /CAO requires organization billing/);
   assert.match(authentication, /does not support `COPILOT_GITHUB_TOKEN` inference fallback/);
 });
+
+test("Dependabot planner scopes its read token to the dispatched target", () => {
+  const source = workflow("dependabot-update-planner.md");
+  const generated = workflow("dependabot-update-planner.lock.yml");
+  const tokenStep = /\n\s+- name: Generate GitHub App token\n\s+id: github-mcp-app-token[\s\S]*?(?=\n\s+- name: )/.exec(generated)?.[0];
+
+  assert.ok(tokenStep, "missing GitHub MCP App token step");
+  assert.match(source, /name: Derive target GitHub App scope[\s\S]*?TARGET_REPOSITORY: \$\{\{ inputs\.target_repo \}\}/);
+  assert.match(source, /echo "owner=\$owner" >> "\$GITHUB_OUTPUT"/);
+  assert.match(source, /echo "repository=\$repository" >> "\$GITHUB_OUTPUT"/);
+  assert.match(source, /github-app:[\s\S]*?owner: \$\{\{ steps\.target_github_app_scope\.outputs\.owner \}\}/);
+  assert.match(source, /repositories: \["\$\{\{ steps\.target_github_app_scope\.outputs\.repository \}\}"\]/);
+  assert.match(tokenStep, /owner: \$\{\{ steps\.target_github_app_scope\.outputs\.owner \}\}/);
+  assert.match(tokenStep, /repositories: \$\{\{ steps\.target_github_app_scope\.outputs\.repository \}\}/);
+  assert.doesNotMatch(tokenStep, /github\.repository_(owner|name)|github\.event\.repository\.name/);
+});
