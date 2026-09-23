@@ -4,31 +4,42 @@
     "request": {
       "schemaVersion": 1,
       "run": {"id": "1", "repository": "githubnext/gh-aw-cao", "workflow": "AW Optimization / Token Optimizer"},
-      "event": {"inputs": {"target_repo": "octo/service", "workflow_path": ".github/workflows/check.md", "opportunity_kind": "unused-tools"}},
-      "outputs": [{"type": "create_issue", "title": "Token efficiency for octo/service .github/workflows/check.md unused-tools", "body": "**Action:** Remove unused tools and validate the workflow.\n### Evidence\nopportunityId: token-opportunity:1\nexperimentId: experiment-1\nThe recommendation is unapplied.\n<details><summary><b>Agent prompt</b></summary>Apply and test the change.</details>"}],
+      "event": {"inputs": {"target_repo": "octo/service"}},
+      "outputs": [{"type": "create_issue", "title": "Optimize .github/workflows/check.md in octo/service", "body": "octo/service has one evidence-complete candidate.\n\n**Action:** Assign this issue to Copilot and accept only after validation passes.\n\n### Recommendation\n- **Measured baseline:** 2.4 AIC per successful run\n- **Proposed change:** narrow the always-loaded context\n- **Reliability safeguard:** failure rate must not increase\n- **Accepted outcome safeguard:** accepted outcome rate must not decrease\n- **Validation:** compile and compare a complete seven-day window\n\n<details><summary><b>Agent prompt</b></summary>\nImplement and validate the named change.\n</details>"}],
       "config": {}
     },
-    "expected": [{"id": "token-efficiency-request-conformance", "value": 1}]
+    "expected": [{"id": "actionable-optimization-recommendation", "value": 1}]
   },
   {
     "name": "missed",
     "request": {
       "schemaVersion": 1,
       "run": {"id": "2", "repository": "githubnext/gh-aw-cao", "workflow": "AW Optimization / Token Optimizer"},
-      "event": {"inputs": {"target_repo": "octo/service", "workflow_path": ".github/workflows/check.md", "opportunity_kind": "unused-tools"}},
-      "outputs": [{"type": "create_issue", "title": "Generic optimization", "body": "No assignment evidence."}],
+      "event": {"inputs": {"target_repo": "octo/service"}},
+      "outputs": [{"type": "update_issue", "title": "Generic optimization", "body": "Reduce tokens."}],
       "config": {}
     },
-    "expected": [{"id": "token-efficiency-request-conformance", "value": 0}]
+    "expected": [{"id": "actionable-optimization-recommendation", "value": 0}]
   },
   {
     "name": "noop",
-    "request": {"schemaVersion": 1, "run": {"id": "3"}, "event": {"inputs": {"target_repo": "octo/service", "workflow_path": ".github/workflows/check.md", "opportunity_kind": "unused-tools"}}, "outputs": [{"type": "noop", "message": "No conservative recommendation is supported."}], "config": {}},
-    "expected": [{"id": "token-efficiency-request-conformance", "value": null}]
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "3"},
+      "event": {"inputs": {"target_repo": "octo/service"}},
+      "outputs": [{"type": "noop", "message": "No evidence-complete recommendation is supported."}],
+      "config": {}
+    },
+    "expected": [{"id": "actionable-optimization-recommendation", "value": null}]
+  },
+  {
+    "name": "unavailable",
+    "request": {"schemaVersion": 1, "run": {"id": "4"}, "event": {"inputs": {}}, "outputs": [], "config": {}},
+    "expected": [{"id": "actionable-optimization-recommendation", "value": null}]
   },
   {
     "name": "malformed",
     "request": {"schemaVersion": 2, "run": {}, "event": [], "outputs": {}, "config": []},
-    "expected": [{"id": "token-efficiency-request-conformance", "value": null}]
+    "expected": [{"id": "actionable-optimization-recommendation", "value": null}]
   }
 ]

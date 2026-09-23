@@ -124,29 +124,15 @@
       },
       "optimization": {
         "icon": "meter",
+        "mode": "review",
+        "max-repositories": 1,
         "workers": {
-          "ai-credit-auditor": {
-            "workflow": "optimization-ai-credit-auditor"
-          },
-          "ai-credit-optimizer": {
-            "workflow": "optimization-ai-credit-optimizer"
-          },
-          "agents-md-curator": {
-            "workflow": "optimization-agents-md-curator"
-          },
-          "skills-curator": {
-            "workflow": "optimization-skills-curator"
-          },
-          "token-efficiency-auditor": {
-            "workflow": "optimization-token-efficiency-auditor",
+          "token-auditor": {
+            "workflow": "optimization-token-auditor",
             "max-mode": "review"
           },
           "token-optimizer": {
             "workflow": "optimization-token-optimizer",
-            "max-mode": "review"
-          },
-          "token-efficiency-verifier": {
-            "workflow": "optimization-token-efficiency-verifier",
             "max-mode": "review"
           }
         }

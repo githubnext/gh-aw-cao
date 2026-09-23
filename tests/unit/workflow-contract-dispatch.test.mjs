@@ -62,13 +62,10 @@ test("ownership, provenance, and workflow identity fail closed", () => {
   assert.match(control, /If `repo_error` is non-empty, select no repositories and dispatch no workers/);
   assert.match(control, /Do not loop, wait for replenishment, or redispatch itself/);
   assert.match(control, /If a dispatch fails or is rate-limited, do not retry it in the same run/);
-  assert.match(workflow("optimization-ai-credit-optimizer.md"), /group_by\(\.workflow_path\)/);
   assert.match(workflow("shared/target-checkout-read-org-token.md"), /path: target/);
-  assert.match(workflow("optimization-ai-credit-optimizer.lock.yml"), /Checkout \$\{\{ inputs\.target_repo \}\} into target[\s\S]*?path: target/);
-  assert.match(workflow("optimization-ai-credit-auditor.md"), /Group by `workflow_path`/);
-  for (const name of ["optimization-ai-credit-auditor.md", "optimization-ai-credit-optimizer.md"]) {
-    assert.match(workflow(name), /branch-name: "memory\/token-audit-\$\{\{ inputs\.central_repo \}\}-\$\{\{ inputs\.target_repo \}\}"/);
-  }
+  assert.match(workflow("optimization-token-optimizer.lock.yml"), /Checkout \$\{\{ inputs\.target_repo \}\} into target[\s\S]*?path: target/);
+  assert.match(workflow("optimization-token-auditor.md"), /Read `\/tmp\/gh-aw\/agent\/control-precompute\.json` first/);
+  assert.match(workflow("optimization-token-optimizer.md"), /Read `\/tmp\/gh-aw\/agent\/control-precompute\.json` first/);
   assert.match(operations, /disable Actions for the repository/);
   assert.match(operations, /Cancel every queued or running orchestrator and worker run/);
   assert.match(operations, /identify and stop every participating control repository/);
@@ -122,15 +119,13 @@ test("AW Optimization emits a no-op safe output when no workers are dispatched",
 
   assert.match(
     optimization,
-    /If no worker is dispatched and no incomplete condition applies, call `noop` exactly once with the complete orchestrator report as its message\./,
+    /If no repository has complete, actionable evidence, call `noop`/,
   );
 });
 
 test("every worker uses the standard dispatch envelope and safe mode vocabulary", () => {
   const workerNames = [
     ["uk-ai-advisory-operational-resilience.md", "uk-ai-advisory", "operational-resilience"],
-    ["optimization-agents-md-curator.md", "optimization", "agents-md-curator"],
-    ["optimization-skills-curator.md", "optimization", "skills-curator"],
     ["cao-evolution-failures-investigator.md", "cao-evolution", "failures-investigator"],
     ["cao-evolution-compiler-security.md", "cao-evolution", "compiler-security"],
     ["cao-evolution-efficiency.md", "cao-evolution", "efficiency"],
@@ -148,8 +143,7 @@ test("every worker uses the standard dispatch envelope and safe mode vocabulary"
     ["eu-cra-compliance-security-requirements-auditor.md", "eu-cra-compliance", "security-requirements-auditor"],
     ["eu-cra-compliance-supply-chain-sbom-auditor.md", "eu-cra-compliance", "supply-chain-sbom-auditor"],
     ["eu-cra-compliance-vulnerability-handling-auditor.md", "eu-cra-compliance", "vulnerability-handling-auditor"],
-    ["optimization-ai-credit-auditor.md", "optimization", "ai-credit-auditor"],
-    ["optimization-ai-credit-optimizer.md", "optimization", "ai-credit-optimizer"],
+    ["optimization-token-auditor.md", "optimization", "token-auditor"],
     ["optimization-token-optimizer.md", "optimization", "token-optimizer"],
     ["software-development-practices-github-well-architected.md", "software-development-practices", "github-well-architected"],
     ["software-development-practices-nist-ssdf.md", "software-development-practices", "nist-ssdf"],

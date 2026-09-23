@@ -1,0 +1,9 @@
+name: AW Optimization
+description: Evidence-bounded audits and recommendations for GitHub Agentic Workflow AI Credit and token efficiency.
+min-version: v0.89.20
+experimental: true
+includes:
+  - ../aw.yml
+  - .github/workflows/optimization-token-auditor.md
+  - .github/workflows/optimization-token-optimizer.md
+  - .github/workflows/optimization.md

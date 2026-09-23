@@ -24,8 +24,7 @@ test("shared activity cache restores into activation and agent jobs", () => {
 
   for (const name of [
     "cao-evolution-failures-investigator.md",
-    "optimization-ai-credit-auditor.md",
-    "optimization-ai-credit-optimizer.md",
+    "optimization-token-auditor.md",
     "optimization-token-optimizer.md",
     "self-care-open-source-failures.md",
   ]) {

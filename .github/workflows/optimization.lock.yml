@@ -1,5 +1,5 @@
-# gh-aw-metadata: {"schema_version":"v4","frontmatter_hash":"df20f59fd20bcde14733d7d349d9c7cc79d8fe9af22a55255da1718332cecba9","body_hash":"d522b5427a511e74c055149088295066aba80e972c66115b24b9e4a33fea8cfd","compiler_version":"v0.89.20","strict":true,"agent_id":"copilot","engine_versions":{"copilot":"1.0.87"}}
-# gh-aw-manifest: {"version":1,"secrets":["GH_AW_DEFAULT_OTLP_ENDPOINT","GH_AW_DEFAULT_OTLP_HEADERS","GH_AW_GITHUB_MCP_SERVER_TOKEN","GH_AW_GITHUB_READ_APP_PRIVATE_KEY","GH_AW_GITHUB_TOKEN","GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY","GITHUB_TOKEN"],"actions":[{"repo":"actions/cache/restore","sha":"55cc8345863c7cc4c66a329aec7e433d2d1c52a9","version":"v6.1.0"},{"repo":"actions/checkout","sha":"3d3c42e5aac5ba805825da76410c181273ba90b1","version":"v7.0.1"},{"repo":"actions/create-github-app-token","sha":"bcd2ba49218906704ab6c1aa796996da409d3eb1","version":"v3.2.0"},{"repo":"actions/download-artifact","sha":"3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c","version":"v8.0.1"},{"repo":"actions/github-script","sha":"3a2844b7e9c422d3c10d287c895573f7108da1b3","version":"v9.0.0"},{"repo":"actions/upload-artifact","sha":"043fb46d1a93c77aae656e7c1c64a875d1fc6a0a","version":"v7.0.1"},{"repo":"github/gh-aw-actions/setup","sha":"925900cb40de9cb7652268d0cd14e00f9b7d2189","version":"v0.89.20"}],"containers":[{"image":"ghcr.io/github/gh-aw-firewall/agent:0.28.23","digest":"sha256:2c78aaba1c108e130e2d6d01e4f2cca334ea04c53e6f258913ac34173fe7e3b2","pinned_image":"ghcr.io/github/gh-aw-firewall/agent:0.28.23@sha256:2c78aaba1c108e130e2d6d01e4f2cca334ea04c53e6f258913ac34173fe7e3b2"},{"image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.28.23","digest":"sha256:c15c3d1208df10c5b588a3657be53742aa982ae0909d1eb1812525268794ca64","pinned_image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.28.23@sha256:c15c3d1208df10c5b588a3657be53742aa982ae0909d1eb1812525268794ca64"},{"image":"ghcr.io/github/gh-aw-firewall/squid:0.28.23","digest":"sha256:02ffc56dd40158223064ef03a78c2d9717473c93723b4e403d455ea6f0b09ae0","pinned_image":"ghcr.io/github/gh-aw-firewall/squid:0.28.23@sha256:02ffc56dd40158223064ef03a78c2d9717473c93723b4e403d455ea6f0b09ae0"},{"image":"ghcr.io/github/gh-aw-mcpg:v0.4.25","digest":"sha256:9be0a86220e807a0ecc89e53d7453468f7a53fbc6b3d1efd2299025ffe01d086","pinned_image":"ghcr.io/github/gh-aw-mcpg:v0.4.25@sha256:9be0a86220e807a0ecc89e53d7453468f7a53fbc6b3d1efd2299025ffe01d086"},{"image":"ghcr.io/github/gh-aw-node","digest":"sha256:11c2c544876cdbaffefe0f7f1283b74838c209654b4934a78e23ed11f750490f","pinned_image":"ghcr.io/github/gh-aw-node@sha256:11c2c544876cdbaffefe0f7f1283b74838c209654b4934a78e23ed11f750490f"}],"mcp_servers":[{"name":"github","tools":["actions_get","actions_list","get_commit","get_file_contents","get_job_logs","get_latest_release","get_release_by_tag","get_tag","list_branches","list_commits","list_releases","list_starred_repositories","list_tags","search_code","search_repositories"]},{"name":"safeoutputs","tools":["dispatch_workflow","missing_data","missing_tool","noop","optimization_agents_md_curator","optimization_ai_credit_auditor","optimization_ai_credit_optimizer","optimization_skills_curator","optimization_token_efficiency_auditor","optimization_token_efficiency_verifier","optimization_token_optimizer"]}]}
+# gh-aw-metadata: {"schema_version":"v4","frontmatter_hash":"b3f7ad2b9820f0d35e263848a5ebde3ee6cd0f2e0a0cb01efb5177f8bca106a7","body_hash":"0ae0a5865da18ee16d491ab24c4caab60c7700354cdd389981fe34cd3a63760f","compiler_version":"v0.89.20","strict":true,"agent_id":"copilot","engine_versions":{"copilot":"1.0.87"}}
+# gh-aw-manifest: {"version":1,"secrets":["GH_AW_DEFAULT_OTLP_ENDPOINT","GH_AW_DEFAULT_OTLP_HEADERS","GH_AW_GITHUB_MCP_SERVER_TOKEN","GH_AW_GITHUB_READ_APP_PRIVATE_KEY","GH_AW_GITHUB_TOKEN","GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY","GITHUB_TOKEN"],"actions":[{"repo":"actions/cache/restore","sha":"55cc8345863c7cc4c66a329aec7e433d2d1c52a9","version":"v6.1.0"},{"repo":"actions/checkout","sha":"3d3c42e5aac5ba805825da76410c181273ba90b1","version":"v7.0.1"},{"repo":"actions/create-github-app-token","sha":"bcd2ba49218906704ab6c1aa796996da409d3eb1","version":"v3.2.0"},{"repo":"actions/download-artifact","sha":"3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c","version":"v8.0.1"},{"repo":"actions/github-script","sha":"3a2844b7e9c422d3c10d287c895573f7108da1b3","version":"v9.0.0"},{"repo":"actions/upload-artifact","sha":"043fb46d1a93c77aae656e7c1c64a875d1fc6a0a","version":"v7.0.1"},{"repo":"github/gh-aw-actions/setup","sha":"925900cb40de9cb7652268d0cd14e00f9b7d2189","version":"v0.89.20"},{"repo":"github/gh-aw-actions/setup-cli","sha":"925900cb40de9cb7652268d0cd14e00f9b7d2189","version":"v0.89.20"}],"containers":[{"image":"alpine:latest","digest":"sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6","pinned_image":"alpine:latest@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6"},{"image":"ghcr.io/github/gh-aw-firewall/agent:0.28.23","digest":"sha256:2c78aaba1c108e130e2d6d01e4f2cca334ea04c53e6f258913ac34173fe7e3b2","pinned_image":"ghcr.io/github/gh-aw-firewall/agent:0.28.23@sha256:2c78aaba1c108e130e2d6d01e4f2cca334ea04c53e6f258913ac34173fe7e3b2"},{"image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.28.23","digest":"sha256:c15c3d1208df10c5b588a3657be53742aa982ae0909d1eb1812525268794ca64","pinned_image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.28.23@sha256:c15c3d1208df10c5b588a3657be53742aa982ae0909d1eb1812525268794ca64"},{"image":"ghcr.io/github/gh-aw-firewall/squid:0.28.23","digest":"sha256:02ffc56dd40158223064ef03a78c2d9717473c93723b4e403d455ea6f0b09ae0","pinned_image":"ghcr.io/github/gh-aw-firewall/squid:0.28.23@sha256:02ffc56dd40158223064ef03a78c2d9717473c93723b4e403d455ea6f0b09ae0"},{"image":"ghcr.io/github/gh-aw-mcpg:v0.4.25","digest":"sha256:9be0a86220e807a0ecc89e53d7453468f7a53fbc6b3d1efd2299025ffe01d086","pinned_image":"ghcr.io/github/gh-aw-mcpg:v0.4.25@sha256:9be0a86220e807a0ecc89e53d7453468f7a53fbc6b3d1efd2299025ffe01d086"},{"image":"ghcr.io/github/gh-aw-node","digest":"sha256:11c2c544876cdbaffefe0f7f1283b74838c209654b4934a78e23ed11f750490f","pinned_image":"ghcr.io/github/gh-aw-node@sha256:11c2c544876cdbaffefe0f7f1283b74838c209654b4934a78e23ed11f750490f"}],"mcp_servers":[{"name":"agenticworkflows","tools":["*"]},{"name":"github","tools":["actions_get","actions_list","get_commit","get_file_contents","get_job_logs","get_latest_release","get_release_by_tag","get_tag","list_branches","list_commits","list_releases","list_starred_repositories","list_tags","search_code","search_repositories"]},{"name":"safeoutputs","tools":["dispatch_workflow","missing_data","missing_tool","noop","optimization_token_auditor","optimization_token_optimizer"]}]}
 # This file was automatically generated by gh-aw (v0.89.20). DO NOT EDIT. To debug this workflow, load the skill at https://github.com/github/gh-aw/blob/main/debug.md
 #
 #    ___                   _   _
@@ -17,14 +17,15 @@
 #  \/  \/ \___/|_| |_|\_\|_| |_|\___/ \_/\_/ |___/
 #
 #
-# To update this file, edit githubnext/gh-aw-cao@2de9130ff1709fccdacbe5261fd5da71995e6721 and run:
+# To update this file, edit the corresponding .md file and run:
 #   gh aw compile
 # Not all edits will cause changes to this file.
 #
 # For more information: https://github.github.com/gh-aw/introduction/overview/
 #
+# Selects repositories with measurable agentic-workflow usage and dispatches bounded token audits and optimization reviews.
 #
-# Source: githubnext/gh-aw-cao@2de9130ff1709fccdacbe5261fd5da71995e6721
+# Intent: Reduce avoidable AI Credit and token consumption while preserving workflow reliability and accepted outcomes.
 #
 # Resolved workflow manifest:
 #   Imports:
@@ -57,9 +58,11 @@
 #   - actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
 #   - actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0 (source v9)
 #   - actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+#   - github/gh-aw-actions/setup-cli@925900cb40de9cb7652268d0cd14e00f9b7d2189 # v0.89.20
 #   - github/gh-aw-actions/setup@925900cb40de9cb7652268d0cd14e00f9b7d2189 # v0.89.20
 #
 # Container images used:
+#   - alpine:latest@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
 #   - ghcr.io/github/gh-aw-firewall/agent:0.28.23@sha256:2c78aaba1c108e130e2d6d01e4f2cca334ea04c53e6f258913ac34173fe7e3b2
 #   - ghcr.io/github/gh-aw-firewall/api-proxy:0.28.23@sha256:c15c3d1208df10c5b588a3657be53742aa982ae0909d1eb1812525268794ca64
 #   - ghcr.io/github/gh-aw-firewall/squid:0.28.23@sha256:02ffc56dd40158223064ef03a78c2d9717473c93723b4e403d455ea6f0b09ae0
@@ -101,9 +104,6 @@ on:
       safe_output_repo:
         type: string
       target_repo:
-        type: string
-      token_efficiency_candidates_json:
-        description: Frozen eligible rows from the token-efficiency-optimizer-assignments Dashboard Language query
         type: string
 
 permissions: {}
@@ -166,7 +166,6 @@ jobs:
           GH_AW_CURRENT_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/optimization.lock.yml@${{ github.ref }}
           GH_AW_INFO_VERSION: "1.0.87"
           GH_AW_INFO_AWF_VERSION: "v0.28.23"
-          GH_AW_INFO_BODY_MODIFIED: "false"
           GH_AW_INFO_ENGINE_ID: "copilot"
       - name: Restore CAO activity cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -183,117 +182,6 @@ jobs:
             ${{ runner.temp }}/cao-activity/drain3_weights.json
           restore-keys: |
             cao-activity-v5-
-      - name: Download CAO control precompute artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: cao-control-precompute
-          path: /tmp/gh-aw/agent
-      - name: Validate frozen token-efficiency portfolio rows
-        id: token_candidates
-        run: |
-          set -euo pipefail
-          candidates_dir="$RUNNER_TEMP/token-efficiency-portfolio"
-          candidates_file="$candidates_dir/candidates.json"
-          precompute=/tmp/gh-aw/agent/control-precompute.json
-          mkdir -p "$candidates_dir"
-          eligible=false
-          reason=not-supplied
-          count=0
-          echo '[]' > "$candidates_file"
-
-          if [ -n "$TOKEN_CANDIDATES_JSON" ]; then
-            reason=invalid-candidate-json
-            if candidates="$(jq -ce '.' <<<"$TOKEN_CANDIDATES_JSON" 2>/dev/null)"; then
-              count="$(jq 'length' <<<"$candidates")"
-              effective_max="$(jq -r '.effective_max_repos // 0' "$precompute")"
-              allowed_repositories="$(jq -c '
-                [.candidate_repositories[]? | (.full_name // .repository // empty) | ascii_downcase]
-              ' "$precompute")"
-              if jq -e \
-                  --argjson effectiveMax "$effective_max" \
-                  --argjson allowed "$allowed_repositories" '
-                    type == "array"
-                    and length > 0
-                    and length <= 10
-                    and length <= $effectiveMax
-                    and (map(.["target-repo"] | ascii_downcase) | unique | length) == length
-                    and (map(.["candidate-id"]) | unique | length) == length
-                    and all(.[];
-                      . as $candidate
-                      | $candidate.query == "token-efficiency-optimizer-assignments"
-                      and $candidate["candidate-status"] == "eligible"
-                      and $candidate["missing-reason"] == "none"
-                      and $candidate["source-completeness"] == "complete"
-                      and $candidate["source-freshness"] == "fresh"
-                      and (($candidate["target-repo"] | ascii_downcase) as $target | ($allowed | index($target)) != null)
-                      and ($candidate["workflow-path"] | test("^\\.github/workflows/[^/]+\\.(md|lock\\.yml)$"))
-                      and ($candidate["candidate-id"] | startswith("token-candidate:"))
-                      and $candidate["candidate-id"] == (
-                        "token-candidate:"
-                        + $candidate["target-repo"] + ":"
-                        + $candidate["workflow-path"] + ":"
-                        + $candidate["assignment-run"] + ":"
-                        + $candidate.experiment + ":"
-                        + $candidate.variant + ":"
-                        + $candidate["smell-id"]
-                      )
-                      and ($candidate["assignment-run"] | test("^[0-9]+$"))
-                      and ($candidate["evidence-window-start"] | fromdateiso8601? != null)
-                      and ($candidate["evidence-window-end"] | fromdateiso8601? != null)
-                      and ($candidate["observation-cutoff"] | fromdateiso8601? != null)
-                      and $candidate["cost-grain"] == "run-aggregate"
-                      and ($candidate["run-identities"] | test("^[0-9]+$"))
-                      and $candidate["run-identities"] == $candidate["assignment-run"]
-                      and ($candidate["distinct-runs"] | type == "number")
-                      and $candidate["distinct-runs"] == 1
-                      and ($candidate["invocation-count"] | type == "number")
-                      and $candidate["invocation-count"] == 1
-                      and ($candidate["priced-invocation-count"] | type == "number")
-                      and $candidate["priced-invocation-count"] == $candidate["invocation-count"]
-                      and ($candidate["measured-aic"] | type == "number")
-                      and $candidate["measured-aic"] > 0
-                      and ($candidate["aic-per-accepted-outcome"] | type == "number")
-                      and $candidate["aic-per-accepted-outcome"] > 0
-                      and ($candidate.experiment | test("^[A-Za-z0-9][A-Za-z0-9._:-]*$"))
-                      and ($candidate.variant | test("^[A-Za-z0-9][A-Za-z0-9._:-]*$"))
-                      and $candidate["assignment-included"] == true
-                      and ($candidate["evaluator-digest"] | test("^[0-9a-f]{64}$"))
-                      and $candidate["maturity-state"] == "matured"
-                      and ($candidate["accepted-outcome-count"] | type == "number")
-                      and $candidate["accepted-outcome-count"] >= 1
-                      and $candidate["quality-evidence-state"] == "complete"
-                      and $candidate["reliability-evidence-state"] == "complete"
-                      and $candidate["active-intervention-count"] == 0
-                      and $candidate["active-intervention-state"] == "none"
-                      and $candidate["evidence-state"] == "complete"
-                      and ($candidate["priority-aic"] | type == "number")
-                      and $candidate["priority-aic"] == $candidate["measured-aic"]
-                      and ($candidate | has("total-tokens") | not)
-                    )
-                    and . == sort_by(-.["priority-aic"], .["target-repo"], .["workflow-path"], .["assignment-run"], .["candidate-id"])
-                  ' <<<"$candidates" >/dev/null; then
-                eligible=true
-                reason=eligible
-                jq '.' <<<"$candidates" > "$candidates_file"
-              else
-                reason=invalid-incomplete-or-unauthorized-candidate
-              fi
-            fi
-          fi
-
-          echo "eligible=$eligible" >> "$GITHUB_OUTPUT"
-          echo "reason=$reason" >> "$GITHUB_OUTPUT"
-          echo "count=$count" >> "$GITHUB_OUTPUT"
-        env:
-          TOKEN_CANDIDATES_JSON: ${{ inputs.token_efficiency_candidates_json }}
-      - name: Upload frozen token-efficiency portfolio rows
-        if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          if-no-files-found: error
-          name: token-efficiency-portfolio-candidates
-          path: ${{ runner.temp }}/token-efficiency-portfolio/candidates.json
-          retention-days: 1
       - name: Mask OTLP telemetry headers
         run: bash "${RUNNER_TEMP}/gh-aw/actions/mask_otlp_headers.sh"
       - name: Generate agentic run info
@@ -315,8 +203,6 @@ jobs:
           GH_AW_INFO_AWMG_VERSION: ""
           GH_AW_INFO_FIREWALL_TYPE: "squid"
           GH_AW_INFO_AGENT_RUNTIME: ""
-          GH_AW_INFO_FRONTMATTER_SOURCE: "githubnext/gh-aw-cao@2de9130ff1709fccdacbe5261fd5da71995e6721"
-          GH_AW_INFO_BODY_MODIFIED: "false"
           GH_AW_COMPILED_STRICT: "true"
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
@@ -416,7 +302,7 @@ jobs:
           GH_AW_GITHUB_SERVER_URL: ${{ github.server_url }}
           GH_AW_GITHUB_WORKSPACE: ${{ github.workspace }}
           GH_AW_PROMPT_CONTENT_0000: "<system>\n"
-          GH_AW_PROMPT_CONTENT_0001: "<safe-output-tools>\nTools: optimization_ai_credit_auditor, optimization_ai_credit_optimizer, optimization_agents_md_curator, optimization_skills_curator, optimization_token_efficiency_auditor, optimization_token_optimizer, optimization_token_efficiency_verifier, missing_tool, missing_data, noop\nShared budgets: dispatch-workflow [optimization_ai_credit_auditor, optimization_ai_credit_optimizer, optimization_agents_md_curator, optimization_skills_curator, optimization_token_efficiency_auditor, optimization_token_optimizer, optimization_token_efficiency_verifier](max:20 total)\n"
+          GH_AW_PROMPT_CONTENT_0001: "<safe-output-tools>\nTools: optimization_token_auditor, optimization_token_optimizer, missing_tool, missing_data, noop\nShared budgets: dispatch-workflow [optimization_token_auditor, optimization_token_optimizer](max:12 total)\n"
           GH_AW_PROMPT_CONTENT_0002: "</safe-output-tools>\n"
           GH_AW_PROMPT_CONTENT_0003: "<github-context>\nThe following GitHub context information is available for this workflow:\n{{#if github.actor}}\n- **actor**: __GH_AW_GITHUB_ACTOR__\n{{/if}}\n{{#if github.repository}}\n- **repository**: __GH_AW_GITHUB_REPOSITORY__\n{{/if}}\n{{#if github.workspace}}\n- **workspace**: __GH_AW_GITHUB_WORKSPACE__\n{{/if}}\n{{#if github.event.issue.number || (github.aw.context.item_type == 'issue' && github.aw.context.item_number)}}\n- **issue-number**: #__GH_AW_EXPR_802A9F6A__\n{{/if}}\n{{#if github.event.discussion.number || (github.aw.context.item_type == 'discussion' && github.aw.context.item_number)}}\n- **discussion-number**: #__GH_AW_EXPR_1A3A194A__\n{{/if}}\n{{#if github.event.pull_request.number || (github.aw.context.item_type == 'pull_request' && github.aw.context.item_number)}}\n- **pull-request-number**: #__GH_AW_EXPR_463A214A__\n{{/if}}\n{{#if github.event.comment.id || github.aw.context.comment_id}}\n- **comment-id**: __GH_AW_EXPR_FF1D34CE__\n{{/if}}\n{{#if github.run_id}}\n- **workflow-run-id**: __GH_AW_GITHUB_RUN_ID__\n{{/if}}\n</github-context>\n\n"
           GH_AW_PROMPT_CONTENT_0004: "</system>\n"
@@ -536,6 +422,8 @@ jobs:
       actions: read
       contents: read
       copilot-requests: write
+      issues: read
+      pull-requests: read
     concurrency:
       group: "gh-aw-copilot-${{ github.workflow }}-${{ github.run_id }}"
       queue: max
@@ -591,7 +479,6 @@ jobs:
           GH_AW_CURRENT_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/optimization.lock.yml@${{ github.ref }}
           GH_AW_INFO_VERSION: "1.0.87"
           GH_AW_INFO_AWF_VERSION: "v0.28.23"
-          GH_AW_INFO_BODY_MODIFIED: "false"
           GH_AW_INFO_ENGINE_ID: "copilot"
       - name: Download CAO control precompute artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -613,11 +500,6 @@ jobs:
             ${{ runner.temp }}/cao-activity/drain3_weights.json
           restore-keys: |
             cao-activity-v5-
-      - name: Download frozen token-efficiency portfolio rows
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: token-efficiency-portfolio-candidates
-          path: /tmp/gh-aw/token-efficiency-portfolio
       - name: Set runtime paths
         id: set-runtime-paths
         env:
@@ -699,6 +581,8 @@ jobs:
           github-api-url: ${{ github.api_url }}
           permission-actions: read
           permission-contents: read
+          permission-issues: read
+          permission-pull-requests: read
       - name: Determine automatic lockdown mode for GitHub MCP Server
         id: determine-automatic-lockdown
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0 (source v9)
@@ -727,7 +611,15 @@ jobs:
           GH_AW_SKILL_DIR: ".github/skills"
         run: bash "${RUNNER_TEMP}/gh-aw/actions/restore_inline_skills.sh"
       - name: Download container images
-        run: bash "${RUNNER_TEMP}/gh-aw/actions/download_docker_images.sh" ghcr.io/github/gh-aw-firewall/agent:0.28.23@sha256:2c78aaba1c108e130e2d6d01e4f2cca334ea04c53e6f258913ac34173fe7e3b2 ghcr.io/github/gh-aw-firewall/api-proxy:0.28.23@sha256:c15c3d1208df10c5b588a3657be53742aa982ae0909d1eb1812525268794ca64 ghcr.io/github/gh-aw-firewall/squid:0.28.23@sha256:02ffc56dd40158223064ef03a78c2d9717473c93723b4e403d455ea6f0b09ae0 ghcr.io/github/gh-aw-mcpg:v0.4.25@sha256:9be0a86220e807a0ecc89e53d7453468f7a53fbc6b3d1efd2299025ffe01d086 ghcr.io/github/gh-aw-node@sha256:11c2c544876cdbaffefe0f7f1283b74838c209654b4934a78e23ed11f750490f
+        run: bash "${RUNNER_TEMP}/gh-aw/actions/download_docker_images.sh" alpine:latest@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 ghcr.io/github/gh-aw-firewall/agent:0.28.23@sha256:2c78aaba1c108e130e2d6d01e4f2cca334ea04c53e6f258913ac34173fe7e3b2 ghcr.io/github/gh-aw-firewall/api-proxy:0.28.23@sha256:c15c3d1208df10c5b588a3657be53742aa982ae0909d1eb1812525268794ca64 ghcr.io/github/gh-aw-firewall/squid:0.28.23@sha256:02ffc56dd40158223064ef03a78c2d9717473c93723b4e403d455ea6f0b09ae0 ghcr.io/github/gh-aw-mcpg:v0.4.25@sha256:9be0a86220e807a0ecc89e53d7453468f7a53fbc6b3d1efd2299025ffe01d086 ghcr.io/github/gh-aw-node@sha256:11c2c544876cdbaffefe0f7f1283b74838c209654b4934a78e23ed11f750490f
+      - name: Install gh-aw extension
+        uses: github/gh-aw-actions/setup-cli@925900cb40de9cb7652268d0cd14e00f9b7d2189 # v0.89.20
+        with:
+          version: 'v0.89.20'
+          github-token: ${{ secrets.GH_AW_GITHUB_MCP_SERVER_TOKEN || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+      - name: Copy gh-aw binary for MCP Server
+        run: |
+          bash "${RUNNER_TEMP}/gh-aw/actions/copy_gh_aw_binary_for_mcp.sh"
       - name: Prepare Safe Outputs Directories
         run: |
           mkdir -p "${RUNNER_TEMP}/gh-aw/safeoutputs"
@@ -738,7 +630,7 @@ jobs:
         env:
           GH_AW_FILE_ROOT: "${{ runner.temp }}/gh-aw"
           GH_AW_FILE_CONFIG: "{\"files\":[{\"path\":\"safeoutputs/config.json\",\"content_env\":\"GH_AW_SAFE_OUTPUTS_CONFIG\"}]}"
-          GH_AW_SAFE_OUTPUTS_CONFIG: "{\"create_report_incomplete_issue\":{},\"dispatch_workflow\":{\"allowed_refs\":[\"refs/heads/${{ github.event.repository.default_branch }}\"],\"aw_context_workflows\":[\"optimization-ai-credit-auditor\",\"optimization-ai-credit-optimizer\",\"optimization-agents-md-curator\",\"optimization-skills-curator\",\"optimization-token-efficiency-auditor\",\"optimization-token-optimizer\",\"optimization-token-efficiency-verifier\"],\"max\":20,\"workflow_files\":{\"optimization-agents-md-curator\":\".lock.yml\",\"optimization-ai-credit-auditor\":\".lock.yml\",\"optimization-ai-credit-optimizer\":\".lock.yml\",\"optimization-skills-curator\":\".lock.yml\",\"optimization-token-efficiency-auditor\":\".lock.yml\",\"optimization-token-efficiency-verifier\":\".lock.yml\",\"optimization-token-optimizer\":\".lock.yml\"},\"workflows\":[\"optimization-ai-credit-auditor\",\"optimization-ai-credit-optimizer\",\"optimization-agents-md-curator\",\"optimization-skills-curator\",\"optimization-token-efficiency-auditor\",\"optimization-token-optimizer\",\"optimization-token-efficiency-verifier\"]},\"missing_data\":{},\"missing_tool\":{},\"noop\":{\"max\":1,\"report-as-issue\":\"false\"},\"report_incomplete\":{}}"
+          GH_AW_SAFE_OUTPUTS_CONFIG: "{\"create_report_incomplete_issue\":{},\"dispatch_workflow\":{\"allowed_refs\":[\"refs/heads/${{ github.event.repository.default_branch }}\"],\"aw_context_workflows\":[\"optimization-token-auditor\",\"optimization-token-optimizer\"],\"max\":12,\"workflow_files\":{\"optimization-token-auditor\":\".lock.yml\",\"optimization-token-optimizer\":\".lock.yml\"},\"workflows\":[\"optimization-token-auditor\",\"optimization-token-optimizer\"]},\"missing_data\":{},\"missing_tool\":{},\"noop\":{\"max\":1,\"report-as-issue\":\"false\"},\"report_incomplete\":{}}"
         with:
           script: |
             const path = require('path');
@@ -755,8 +647,8 @@ jobs:
               "repo_params": {},
               "dynamic_tools": [
                 {
-                  "_workflow_name": "optimization-ai-credit-auditor",
-                  "description": "Dispatch the 'optimization-ai-credit-auditor' workflow with workflow_dispatch trigger. This workflow must support workflow_dispatch and be in .github/workflows/ directory in the same repository. Use the 'ref' parameter to target a specific branch or tag (allowed patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}).",
+                  "_workflow_name": "optimization-token-auditor",
+                  "description": "Dispatch the 'optimization-token-auditor' workflow with workflow_dispatch trigger. This workflow must support workflow_dispatch and be in .github/workflows/ directory in the same repository. Use the 'ref' parameter to target a specific branch or tag (allowed patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}).",
                   "inputSchema": {
                     "additionalProperties": false,
                     "properties": {
@@ -766,23 +658,23 @@ jobs:
                         "type": "string"
                       },
                       "batch_label": {
-                        "description": "Input parameter 'batch_label' for workflow optimization-ai-credit-auditor",
+                        "description": "Input parameter 'batch_label' for workflow optimization-token-auditor",
                         "type": "string"
                       },
                       "central_repo": {
-                        "description": "Input parameter 'central_repo' for workflow optimization-ai-credit-auditor",
+                        "description": "Input parameter 'central_repo' for workflow optimization-token-auditor",
                         "type": "string"
                       },
                       "control_plane_run_url": {
-                        "description": "Input parameter 'control_plane_run_url' for workflow optimization-ai-credit-auditor",
+                        "description": "Input parameter 'control_plane_run_url' for workflow optimization-token-auditor",
                         "type": "string"
                       },
                       "correlation_id": {
-                        "description": "Input parameter 'correlation_id' for workflow optimization-ai-credit-auditor",
+                        "description": "Input parameter 'correlation_id' for workflow optimization-token-auditor",
                         "type": "string"
                       },
                       "max_repos": {
-                        "description": "Input parameter 'max_repos' for workflow optimization-ai-credit-auditor",
+                        "description": "Input parameter 'max_repos' for workflow optimization-token-auditor",
                         "type": "number"
                       },
                       "ref": {
@@ -790,19 +682,19 @@ jobs:
                         "type": "string"
                       },
                       "rollout_percent": {
-                        "description": "Input parameter 'rollout_percent' for workflow optimization-ai-credit-auditor",
+                        "description": "Input parameter 'rollout_percent' for workflow optimization-token-auditor",
                         "type": "number"
                       },
                       "safe_output_mode": {
-                        "description": "Input parameter 'safe_output_mode' for workflow optimization-ai-credit-auditor",
+                        "description": "Input parameter 'safe_output_mode' for workflow optimization-token-auditor",
                         "type": "string"
                       },
                       "safe_output_repo": {
-                        "description": "Input parameter 'safe_output_repo' for workflow optimization-ai-credit-auditor",
+                        "description": "Input parameter 'safe_output_repo' for workflow optimization-token-auditor",
                         "type": "string"
                       },
                       "target_repo": {
-                        "description": "Input parameter 'target_repo' for workflow optimization-ai-credit-auditor",
+                        "description": "Input parameter 'target_repo' for workflow optimization-token-auditor",
                         "type": "string"
                       }
                     },
@@ -812,252 +704,7 @@ jobs:
                     ],
                     "type": "object"
                   },
-                  "name": "optimization_ai_credit_auditor"
-                },
-                {
-                  "_workflow_name": "optimization-ai-credit-optimizer",
-                  "description": "Dispatch the 'optimization-ai-credit-optimizer' workflow with workflow_dispatch trigger. This workflow must support workflow_dispatch and be in .github/workflows/ directory in the same repository. Use the 'ref' parameter to target a specific branch or tag (allowed patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}).",
-                  "inputSchema": {
-                    "additionalProperties": false,
-                    "properties": {
-                      "aw_context": {
-                        "default": "",
-                        "description": "Agent caller context (used internally by Agentic Workflows).",
-                        "type": "string"
-                      },
-                      "batch_label": {
-                        "description": "Input parameter 'batch_label' for workflow optimization-ai-credit-optimizer",
-                        "type": "string"
-                      },
-                      "central_repo": {
-                        "description": "Input parameter 'central_repo' for workflow optimization-ai-credit-optimizer",
-                        "type": "string"
-                      },
-                      "control_plane_run_url": {
-                        "description": "Input parameter 'control_plane_run_url' for workflow optimization-ai-credit-optimizer",
-                        "type": "string"
-                      },
-                      "correlation_id": {
-                        "description": "Input parameter 'correlation_id' for workflow optimization-ai-credit-optimizer",
-                        "type": "string"
-                      },
-                      "max_repos": {
-                        "description": "Input parameter 'max_repos' for workflow optimization-ai-credit-optimizer",
-                        "type": "number"
-                      },
-                      "ref": {
-                        "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
-                        "type": "string"
-                      },
-                      "rollout_percent": {
-                        "description": "Input parameter 'rollout_percent' for workflow optimization-ai-credit-optimizer",
-                        "type": "number"
-                      },
-                      "safe_output_mode": {
-                        "description": "Input parameter 'safe_output_mode' for workflow optimization-ai-credit-optimizer",
-                        "type": "string"
-                      },
-                      "safe_output_repo": {
-                        "description": "Input parameter 'safe_output_repo' for workflow optimization-ai-credit-optimizer",
-                        "type": "string"
-                      },
-                      "target_repo": {
-                        "description": "Input parameter 'target_repo' for workflow optimization-ai-credit-optimizer",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "safe_output_repo",
-                      "target_repo"
-                    ],
-                    "type": "object"
-                  },
-                  "name": "optimization_ai_credit_optimizer"
-                },
-                {
-                  "_workflow_name": "optimization-agents-md-curator",
-                  "description": "Dispatch the 'optimization-agents-md-curator' workflow with workflow_dispatch trigger. This workflow must support workflow_dispatch and be in .github/workflows/ directory in the same repository. Use the 'ref' parameter to target a specific branch or tag (allowed patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}).",
-                  "inputSchema": {
-                    "additionalProperties": false,
-                    "properties": {
-                      "aw_context": {
-                        "default": "",
-                        "description": "Agent caller context (used internally by Agentic Workflows).",
-                        "type": "string"
-                      },
-                      "batch_label": {
-                        "description": "Input parameter 'batch_label' for workflow optimization-agents-md-curator",
-                        "type": "string"
-                      },
-                      "central_repo": {
-                        "description": "Input parameter 'central_repo' for workflow optimization-agents-md-curator",
-                        "type": "string"
-                      },
-                      "control_plane_run_url": {
-                        "description": "Input parameter 'control_plane_run_url' for workflow optimization-agents-md-curator",
-                        "type": "string"
-                      },
-                      "correlation_id": {
-                        "description": "Input parameter 'correlation_id' for workflow optimization-agents-md-curator",
-                        "type": "string"
-                      },
-                      "max_repos": {
-                        "description": "Input parameter 'max_repos' for workflow optimization-agents-md-curator",
-                        "type": "number"
-                      },
-                      "ref": {
-                        "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
-                        "type": "string"
-                      },
-                      "rollout_percent": {
-                        "description": "Input parameter 'rollout_percent' for workflow optimization-agents-md-curator",
-                        "type": "number"
-                      },
-                      "safe_output_mode": {
-                        "description": "Input parameter 'safe_output_mode' for workflow optimization-agents-md-curator",
-                        "type": "string"
-                      },
-                      "safe_output_repo": {
-                        "description": "Input parameter 'safe_output_repo' for workflow optimization-agents-md-curator",
-                        "type": "string"
-                      },
-                      "target_repo": {
-                        "description": "Input parameter 'target_repo' for workflow optimization-agents-md-curator",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "safe_output_repo",
-                      "target_repo"
-                    ],
-                    "type": "object"
-                  },
-                  "name": "optimization_agents_md_curator"
-                },
-                {
-                  "_workflow_name": "optimization-skills-curator",
-                  "description": "Dispatch the 'optimization-skills-curator' workflow with workflow_dispatch trigger. This workflow must support workflow_dispatch and be in .github/workflows/ directory in the same repository. Use the 'ref' parameter to target a specific branch or tag (allowed patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}).",
-                  "inputSchema": {
-                    "additionalProperties": false,
-                    "properties": {
-                      "aw_context": {
-                        "default": "",
-                        "description": "Agent caller context (used internally by Agentic Workflows).",
-                        "type": "string"
-                      },
-                      "batch_label": {
-                        "description": "Input parameter 'batch_label' for workflow optimization-skills-curator",
-                        "type": "string"
-                      },
-                      "central_repo": {
-                        "description": "Input parameter 'central_repo' for workflow optimization-skills-curator",
-                        "type": "string"
-                      },
-                      "control_plane_run_url": {
-                        "description": "Input parameter 'control_plane_run_url' for workflow optimization-skills-curator",
-                        "type": "string"
-                      },
-                      "correlation_id": {
-                        "description": "Input parameter 'correlation_id' for workflow optimization-skills-curator",
-                        "type": "string"
-                      },
-                      "max_repos": {
-                        "description": "Input parameter 'max_repos' for workflow optimization-skills-curator",
-                        "type": "number"
-                      },
-                      "ref": {
-                        "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
-                        "type": "string"
-                      },
-                      "rollout_percent": {
-                        "description": "Input parameter 'rollout_percent' for workflow optimization-skills-curator",
-                        "type": "number"
-                      },
-                      "safe_output_mode": {
-                        "description": "Input parameter 'safe_output_mode' for workflow optimization-skills-curator",
-                        "type": "string"
-                      },
-                      "safe_output_repo": {
-                        "description": "Input parameter 'safe_output_repo' for workflow optimization-skills-curator",
-                        "type": "string"
-                      },
-                      "target_repo": {
-                        "description": "Input parameter 'target_repo' for workflow optimization-skills-curator",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "safe_output_repo",
-                      "target_repo"
-                    ],
-                    "type": "object"
-                  },
-                  "name": "optimization_skills_curator"
-                },
-                {
-                  "_workflow_name": "optimization-token-efficiency-auditor",
-                  "description": "Dispatch the 'optimization-token-efficiency-auditor' workflow with workflow_dispatch trigger. This workflow must support workflow_dispatch and be in .github/workflows/ directory in the same repository. Use the 'ref' parameter to target a specific branch or tag (allowed patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}).",
-                  "inputSchema": {
-                    "additionalProperties": false,
-                    "properties": {
-                      "aw_context": {
-                        "default": "",
-                        "description": "Agent caller context (used internally by Agentic Workflows).",
-                        "type": "string"
-                      },
-                      "batch_label": {
-                        "description": "Input parameter 'batch_label' for workflow optimization-token-efficiency-auditor",
-                        "type": "string"
-                      },
-                      "candidate_json": {
-                        "description": "Input parameter 'candidate_json' for workflow optimization-token-efficiency-auditor",
-                        "type": "string"
-                      },
-                      "central_repo": {
-                        "description": "Input parameter 'central_repo' for workflow optimization-token-efficiency-auditor",
-                        "type": "string"
-                      },
-                      "control_plane_run_url": {
-                        "description": "Input parameter 'control_plane_run_url' for workflow optimization-token-efficiency-auditor",
-                        "type": "string"
-                      },
-                      "correlation_id": {
-                        "description": "Input parameter 'correlation_id' for workflow optimization-token-efficiency-auditor",
-                        "type": "string"
-                      },
-                      "max_repos": {
-                        "description": "Input parameter 'max_repos' for workflow optimization-token-efficiency-auditor",
-                        "type": "number"
-                      },
-                      "ref": {
-                        "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
-                        "type": "string"
-                      },
-                      "rollout_percent": {
-                        "description": "Input parameter 'rollout_percent' for workflow optimization-token-efficiency-auditor",
-                        "type": "number"
-                      },
-                      "safe_output_mode": {
-                        "description": "Input parameter 'safe_output_mode' for workflow optimization-token-efficiency-auditor",
-                        "type": "string"
-                      },
-                      "safe_output_repo": {
-                        "description": "Input parameter 'safe_output_repo' for workflow optimization-token-efficiency-auditor",
-                        "type": "string"
-                      },
-                      "target_repo": {
-                        "description": "Input parameter 'target_repo' for workflow optimization-token-efficiency-auditor",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "candidate_json",
-                      "safe_output_repo",
-                      "target_repo"
-                    ],
-                    "type": "object"
-                  },
-                  "name": "optimization_token_efficiency_auditor"
+                  "name": "optimization_token_auditor"
                 },
                 {
                   "_workflow_name": "optimization-token-optimizer",
@@ -1065,13 +712,13 @@ jobs:
                   "inputSchema": {
                     "additionalProperties": false,
                     "properties": {
-                      "assignment_json": {
-                        "description": "Input parameter 'assignment_json' for workflow optimization-token-optimizer",
-                        "type": "string"
-                      },
                       "aw_context": {
                         "default": "",
                         "description": "Agent caller context (used internally by Agentic Workflows).",
+                        "type": "string"
+                      },
+                      "batch_label": {
+                        "description": "Input parameter 'batch_label' for workflow optimization-token-optimizer",
                         "type": "string"
                       },
                       "central_repo": {
@@ -1112,88 +759,12 @@ jobs:
                       }
                     },
                     "required": [
-                      "assignment_json",
                       "safe_output_repo",
                       "target_repo"
                     ],
                     "type": "object"
                   },
                   "name": "optimization_token_optimizer"
-                },
-                {
-                  "_workflow_name": "optimization-token-efficiency-verifier",
-                  "description": "Dispatch the 'optimization-token-efficiency-verifier' workflow with workflow_dispatch trigger. This workflow must support workflow_dispatch and be in .github/workflows/ directory in the same repository. Use the 'ref' parameter to target a specific branch or tag (allowed patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}).",
-                  "inputSchema": {
-                    "additionalProperties": false,
-                    "properties": {
-                      "aw_context": {
-                        "default": "",
-                        "description": "Agent caller context (used internally by Agentic Workflows).",
-                        "type": "string"
-                      },
-                      "batch_label": {
-                        "description": "Input parameter 'batch_label' for workflow optimization-token-efficiency-verifier",
-                        "type": "string"
-                      },
-                      "central_repo": {
-                        "description": "Input parameter 'central_repo' for workflow optimization-token-efficiency-verifier",
-                        "type": "string"
-                      },
-                      "control_plane_run_url": {
-                        "description": "Input parameter 'control_plane_run_url' for workflow optimization-token-efficiency-verifier",
-                        "type": "string"
-                      },
-                      "correlation_id": {
-                        "description": "Input parameter 'correlation_id' for workflow optimization-token-efficiency-verifier",
-                        "type": "string"
-                      },
-                      "evidence_cutoff": {
-                        "description": "Input parameter 'evidence_cutoff' for workflow optimization-token-efficiency-verifier",
-                        "type": "string"
-                      },
-                      "intervention_id": {
-                        "description": "Input parameter 'intervention_id' for workflow optimization-token-efficiency-verifier",
-                        "type": "string"
-                      },
-                      "max_repos": {
-                        "description": "Input parameter 'max_repos' for workflow optimization-token-efficiency-verifier",
-                        "type": "number"
-                      },
-                      "opportunity_id": {
-                        "description": "Input parameter 'opportunity_id' for workflow optimization-token-efficiency-verifier",
-                        "type": "string"
-                      },
-                      "ref": {
-                        "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
-                        "type": "string"
-                      },
-                      "rollout_percent": {
-                        "description": "Input parameter 'rollout_percent' for workflow optimization-token-efficiency-verifier",
-                        "type": "number"
-                      },
-                      "safe_output_mode": {
-                        "description": "Input parameter 'safe_output_mode' for workflow optimization-token-efficiency-verifier",
-                        "type": "string"
-                      },
-                      "safe_output_repo": {
-                        "description": "Input parameter 'safe_output_repo' for workflow optimization-token-efficiency-verifier",
-                        "type": "string"
-                      },
-                      "target_repo": {
-                        "description": "Input parameter 'target_repo' for workflow optimization-token-efficiency-verifier",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "evidence_cutoff",
-                      "intervention_id",
-                      "opportunity_id",
-                      "safe_output_repo",
-                      "target_repo"
-                    ],
-                    "type": "object"
-                  },
-                  "name": "optimization_token_efficiency_verifier"
                 }
               ]
             }
@@ -1356,9 +927,31 @@ jobs:
 
           mkdir -p "$HOME/.copilot"
           GH_AW_NODE=$(which node 2>/dev/null || command -v node 2>/dev/null || echo node)
-          cat << GH_AW_MCP_CONFIG_6943b38c7b3a6207_EOF | "$GH_AW_NODE" "${RUNNER_TEMP}/gh-aw/actions/start_mcp_gateway.cjs"
+          cat << GH_AW_MCP_CONFIG_178c1837a699a230_EOF | "$GH_AW_NODE" "${RUNNER_TEMP}/gh-aw/actions/start_mcp_gateway.cjs"
           {
             "mcpServers": {
+              "agenticworkflows": {
+                "type": "stdio",
+                "container": "alpine:latest",
+                "entrypoint": "${RUNNER_TEMP}/gh-aw/gh-aw",
+                "entrypointArgs": ["mcp-server", "--validate-actor"],
+                "mounts": ["${RUNNER_TEMP}/gh-aw:${RUNNER_TEMP}/gh-aw:ro", "/usr/bin/gh:/usr/bin/gh:ro", "\${GITHUB_WORKSPACE}:\${GITHUB_WORKSPACE}:rw", "/tmp/gh-aw:/tmp/gh-aw:rw"],
+                "args": ["--network", "host", "-w", "\${GITHUB_WORKSPACE}"],
+                "env": {
+                  "DEBUG": "*",
+                  "GITHUB_TOKEN": "\${GITHUB_TOKEN}",
+                  "GITHUB_ACTOR": "\${GITHUB_ACTOR}",
+                  "GITHUB_REPOSITORY": "\${GITHUB_REPOSITORY}"
+                },
+                "guard-policies": {
+                  "write-sink": {
+                    "accept": [
+                      "*"
+                    ],
+                    "sink-visibility": "${GH_AW_SINK_VISIBILITY}"
+                  }
+                }
+              },
               "github": {
                 "type": "http",
                 "url": "https://api.githubcopilot.com/mcp/",
@@ -1434,7 +1027,7 @@ jobs:
               }
             }
           }
-          GH_AW_MCP_CONFIG_6943b38c7b3a6207_EOF
+          GH_AW_MCP_CONFIG_178c1837a699a230_EOF
       - name: Mount MCP servers as CLIs
         id: mount-mcp-clis
         continue-on-error: true
@@ -1790,7 +1383,6 @@ jobs:
           GH_AW_CURRENT_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/optimization.lock.yml@${{ github.ref }}
           GH_AW_INFO_VERSION: "1.0.87"
           GH_AW_INFO_AWF_VERSION: "v0.28.23"
-          GH_AW_INFO_BODY_MODIFIED: "false"
           GH_AW_INFO_ENGINE_ID: "copilot"
       - name: Generate GitHub App token
         id: safe-outputs-app-token
@@ -1897,7 +1489,7 @@ jobs:
           GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
           GH_AW_NOOP_MAX: "1"
           GH_AW_WORKFLOW_NAME: "AW Optimization"
-          GH_AW_WORKFLOW_SOURCE: "githubnext/gh-aw-cao@2de9130ff1709fccdacbe5261fd5da71995e6721"
+          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/optimization.md"
           GH_AW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           GH_AW_AGENT_CONCLUSION: ${{ needs.agent.result }}
           GH_AW_NOOP_REPORT_AS_ISSUE: "false"
@@ -1920,7 +1512,7 @@ jobs:
           GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
           GH_AW_MISSING_TOOL_CREATE_ISSUE: "true"
           GH_AW_WORKFLOW_NAME: "AW Optimization"
-          GH_AW_WORKFLOW_SOURCE: "githubnext/gh-aw-cao@2de9130ff1709fccdacbe5261fd5da71995e6721"
+          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/optimization.md"
         with:
           github-token: ${{ steps.safe-outputs-app-token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           script: |
@@ -1937,7 +1529,7 @@ jobs:
           GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
           GH_AW_REPORT_INCOMPLETE_CREATE_ISSUE: "true"
           GH_AW_WORKFLOW_NAME: "AW Optimization"
-          GH_AW_WORKFLOW_SOURCE: "githubnext/gh-aw-cao@2de9130ff1709fccdacbe5261fd5da71995e6721"
+          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/optimization.md"
         with:
           github-token: ${{ steps.safe-outputs-app-token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           script: |
@@ -1954,7 +1546,7 @@ jobs:
         env:
           GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
           GH_AW_WORKFLOW_NAME: "AW Optimization"
-          GH_AW_WORKFLOW_SOURCE: "githubnext/gh-aw-cao@2de9130ff1709fccdacbe5261fd5da71995e6721"
+          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/optimization.md"
           GH_AW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           GH_AW_AGENT_CONCLUSION: ${{ needs.agent.result }}
           GH_AW_WORKFLOW_ID: "optimization"
@@ -2003,7 +1595,7 @@ jobs:
         env:
           GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
           GH_AW_WORKFLOW_NAME: "AW Optimization"
-          GH_AW_WORKFLOW_SOURCE: "githubnext/gh-aw-cao@2de9130ff1709fccdacbe5261fd5da71995e6721"
+          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/optimization.md"
           GH_AW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           GH_AW_REPORT_FAILED_JOBS: "true"
         with:
@@ -2043,7 +1635,6 @@ jobs:
           GH_AW_CURRENT_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/optimization.lock.yml@${{ github.ref }}
           GH_AW_INFO_VERSION: "1.0.87"
           GH_AW_INFO_AWF_VERSION: "v0.28.23"
-          GH_AW_INFO_BODY_MODIFIED: "false"
           GH_AW_INFO_ENGINE_ID: "copilot"
       - name: Generate CAO pre-activation GitHub App token
         id: cao_pre_activation_app_token
@@ -2155,13 +1746,13 @@ jobs:
           CAO_CONTROL_PLANE_RUN_URL: ${{ inputs.control_plane_run_url || '' }}
           CAO_CONTROL_RUNTIME: ${{ steps.cao_control_source.outputs.runtime }}
           CAO_CORRELATION_ID: ${{ inputs.correlation_id || '' }}
-          CAO_DISPATCH_MAX: "20"
+          CAO_DISPATCH_MAX: "12"
           CAO_ORCHESTRATOR_CREDITS: "250"
           CAO_ROLE: orchestrator
           CAO_SAFE_OUTPUT_REPOSITORY: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo || '' }}
           CAO_TARGET_REPOSITORY: ${{ inputs.target_repo || '' }}
           CAO_WORKER: __none__
-          CAO_WORKER_CREDITS_PER_TARGET: "1950"
+          CAO_WORKER_CREDITS_PER_TARGET: "900"
           GH_TOKEN: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || github.token }}
           GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
         with:
@@ -2312,7 +1903,7 @@ jobs:
       GH_AW_SAFE_OUTPUT_MESSAGES: "{\"footerInstall\":\"\\u003c!-- --\\u003e\"}"
       GH_AW_WORKFLOW_ID: "optimization"
       GH_AW_WORKFLOW_NAME: "AW Optimization"
-      GH_AW_WORKFLOW_SOURCE: "githubnext/gh-aw-cao@2de9130ff1709fccdacbe5261fd5da71995e6721"
+      GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/optimization.md"
     outputs:
       app_token_minting_failed: ${{ steps.safe-outputs-app-token.outcome == 'failure' }}
       code_push_failure_count: ${{ steps.process_safe_outputs.outputs.code_push_failure_count }}
@@ -2342,7 +1933,6 @@ jobs:
           GH_AW_CURRENT_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/optimization.lock.yml@${{ github.ref }}
           GH_AW_INFO_VERSION: "1.0.87"
           GH_AW_INFO_AWF_VERSION: "v0.28.23"
-          GH_AW_INFO_BODY_MODIFIED: "false"
           GH_AW_INFO_ENGINE_ID: "copilot"
       - name: Mask OTLP telemetry headers
         run: bash "${RUNNER_TEMP}/gh-aw/actions/mask_otlp_headers.sh"
@@ -2395,7 +1985,7 @@ jobs:
           GH_AW_ALLOWED_DOMAINS: "*.githubusercontent.com,api.githubcopilot.com,api.snapcraft.io,archive.ubuntu.com,azure.archive.ubuntu.com,codeload.github.com,crl.geotrust.com,crl.globalsign.com,crl.identrust.com,crl.sectigo.com,crl.thawte.com,crl.usertrust.com,crl.verisign.com,crl3.digicert.com,crl4.digicert.com,crls.ssl.com,docs.github.com,github-cloud.githubusercontent.com,github-cloud.s3.amazonaws.com,github.blog,github.com,github.githubassets.com,json-schema.org,json.schemastore.org,keyserver.ubuntu.com,lfs.github.com,objects.githubusercontent.com,ocsp.digicert.com,ocsp.geotrust.com,ocsp.globalsign.com,ocsp.identrust.com,ocsp.sectigo.com,ocsp.ssl.com,ocsp.thawte.com,ocsp.usertrust.com,ocsp.verisign.com,packagecloud.io,packages.cloud.google.com,packages.microsoft.com,patch-diff.githubusercontent.com,patchdiff.githubusercontent.com,ppa.launchpad.net,raw.githubusercontent.com,s.symcb.com,s.symcd.com,security.ubuntu.com,ts-crl.ws.symantec.com,ts-ocsp.ws.symantec.com,www.googleapis.com"
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_API_URL: ${{ github.api_url }}
-          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"create_report_incomplete_issue\":{},\"dispatch_workflow\":{\"allowed_refs\":[\"refs/heads/${{ github.event.repository.default_branch }}\"],\"aw_context_workflows\":[\"optimization-ai-credit-auditor\",\"optimization-ai-credit-optimizer\",\"optimization-agents-md-curator\",\"optimization-skills-curator\",\"optimization-token-efficiency-auditor\",\"optimization-token-optimizer\",\"optimization-token-efficiency-verifier\"],\"max\":20,\"workflow_files\":{\"optimization-agents-md-curator\":\".lock.yml\",\"optimization-ai-credit-auditor\":\".lock.yml\",\"optimization-ai-credit-optimizer\":\".lock.yml\",\"optimization-skills-curator\":\".lock.yml\",\"optimization-token-efficiency-auditor\":\".lock.yml\",\"optimization-token-efficiency-verifier\":\".lock.yml\",\"optimization-token-optimizer\":\".lock.yml\"},\"workflows\":[\"optimization-ai-credit-auditor\",\"optimization-ai-credit-optimizer\",\"optimization-agents-md-curator\",\"optimization-skills-curator\",\"optimization-token-efficiency-auditor\",\"optimization-token-optimizer\",\"optimization-token-efficiency-verifier\"]},\"missing_data\":{},\"missing_tool\":{},\"noop\":{\"max\":1,\"report-as-issue\":\"false\"},\"report_incomplete\":{}}"
+          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"create_report_incomplete_issue\":{},\"dispatch_workflow\":{\"allowed_refs\":[\"refs/heads/${{ github.event.repository.default_branch }}\"],\"aw_context_workflows\":[\"optimization-token-auditor\",\"optimization-token-optimizer\"],\"max\":12,\"workflow_files\":{\"optimization-token-auditor\":\".lock.yml\",\"optimization-token-optimizer\":\".lock.yml\"},\"workflows\":[\"optimization-token-auditor\",\"optimization-token-optimizer\"]},\"missing_data\":{},\"missing_tool\":{},\"noop\":{\"max\":1,\"report-as-issue\":\"false\"},\"report_incomplete\":{}}"
         with:
           github-token: ${{ steps.safe-outputs-app-token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           script: |

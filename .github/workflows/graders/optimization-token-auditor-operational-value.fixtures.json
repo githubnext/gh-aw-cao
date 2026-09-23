@@ -1,0 +1,45 @@
+[
+  {
+    "name": "attained",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "1", "repository": "githubnext/gh-aw-cao", "workflow": "AW Optimization / Token Auditor"},
+      "event": {"inputs": {"target_repo": "octo/service"}},
+      "outputs": [{"type": "create_issue", "title": "Token usage audit for octo/service", "body": "octo/service used measured AIC.\n\n**Action:** Maintainers should review the highest-cost workflow.\n\n### Measured usage\n- **Period:** 2026-09-01 to 2026-09-08 UTC\n- **Total runs:** 8 completed, 9 observed\n- **Total AI credits:** 12 AIC, 100% coverage\n- **Active workflows:** 3\n- **Reliability:** 7 successful, 1 failed, 1 incomplete"}],
+      "config": {}
+    },
+    "expected": [{"id": "actionable-token-audit", "value": 1}]
+  },
+  {
+    "name": "missed",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "2", "repository": "githubnext/gh-aw-cao", "workflow": "AW Optimization / Token Auditor"},
+      "event": {"inputs": {"target_repo": "octo/service"}},
+      "outputs": [{"type": "update_issue", "title": "Token usage audit for octo/service", "body": "No bounded cost or reliability evidence."}],
+      "config": {}
+    },
+    "expected": [{"id": "actionable-token-audit", "value": 0}]
+  },
+  {
+    "name": "noop",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "3"},
+      "event": {"inputs": {"target_repo": "octo/service"}},
+      "outputs": [{"type": "noop", "message": "No completed agentic-workflow runs in the window."}],
+      "config": {}
+    },
+    "expected": [{"id": "actionable-token-audit", "value": null}]
+  },
+  {
+    "name": "unavailable",
+    "request": {"schemaVersion": 1, "run": {"id": "4"}, "event": {"inputs": {}}, "outputs": [], "config": {}},
+    "expected": [{"id": "actionable-token-audit", "value": null}]
+  },
+  {
+    "name": "malformed",
+    "request": {"schemaVersion": 2, "run": {}, "event": [], "outputs": {}, "config": []},
+    "expected": [{"id": "actionable-token-audit", "value": null}]
+  }
+]

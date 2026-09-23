@@ -31,8 +31,6 @@ test("Copilot setup uses Node 24", () => {
 
 test("root CAO workflows use organization-billed Copilot authentication", () => {
   const rootCampaignWorkflowIds = [
-    "optimization-agents-md-curator",
-    "optimization-skills-curator",
     "cao-evolution-failures-investigator",
     "cao-evolution-compiler-security",
     "cao-evolution",
@@ -41,8 +39,7 @@ test("root CAO workflows use organization-billed Copilot authentication", () => 
     "cao-evolution-reliability",
     "dependabot-update-planner",
     "dependabot",
-    "optimization-ai-credit-auditor",
-    "optimization-ai-credit-optimizer",
+    "optimization-token-auditor",
     "optimization-token-optimizer",
     "optimization",
   ];

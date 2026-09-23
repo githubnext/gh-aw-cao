@@ -10,9 +10,7 @@ import { root, workflow } from "./workflow-contract.helpers.mjs";
 
 test("one-shot operational-value graders consume only the gh-aw request", () => {
   for (const name of [
-    "optimization-agents-md-curator-operational-value.sh",
-    "optimization-ai-credit-auditor-operational-value.sh",
-    "optimization-ai-credit-optimizer-operational-value.sh",
+    "optimization-token-auditor-operational-value.sh",
     "optimization-token-optimizer-operational-value.sh",
   ]) {
     const source = readFileSync(join(root, ".github", "workflows", "graders", name), "utf8");
@@ -34,9 +32,7 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
     "eu-cra-compliance-security-requirements-auditor-operational-value.sh",
     "eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh",
     "eu-cra-compliance-vulnerability-handling-auditor-operational-value.sh",
-    "optimization-agents-md-curator-operational-value.sh",
-    "optimization-ai-credit-auditor-operational-value.sh",
-    "optimization-ai-credit-optimizer-operational-value.sh",
+    "optimization-token-auditor-operational-value.sh",
     "optimization-token-optimizer-operational-value.sh",
     "repo-assist-issue-fix-operational-value.sh",
     "repo-assist-issue-triage-operational-value.sh",
@@ -47,9 +43,7 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
     "software-development-practices-nist-ssdf-operational-value.sh",
   ]);
   const oneShotGraders = new Set([
-    "optimization-agents-md-curator-operational-value.sh",
-    "optimization-ai-credit-auditor-operational-value.sh",
-    "optimization-ai-credit-optimizer-operational-value.sh",
+    "optimization-token-auditor-operational-value.sh",
     "optimization-token-optimizer-operational-value.sh",
     "repo-assist-issue-fix-operational-value.sh",
     "repo-assist-issue-triage-operational-value.sh",
@@ -121,8 +115,8 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
   const dependabotName = "dependabot-update-planner-operational-value.sh";
   const dependabotEvaluator = readFileSync(join(gradersDirectory, dependabotName), "utf8");
   assert.match(dependabotWorker, new RegExp(`graders:\\s+operational-value:[\\s\\S]*run: \\.\\/graders\\/${dependabotName}`));
-  const auditorWorker = workflow("optimization-ai-credit-auditor.md");
-  const optimizerWorker = workflow("optimization-ai-credit-optimizer.md");
+  const auditorWorker = workflow("optimization-token-auditor.md");
+  const optimizerWorker = workflow("optimization-token-optimizer.md");
   assert.match(dependabotWorker, /checks: read/);
   assert.match(dependabotWorker, /statuses: read/);
   assert.match(dependabotWorker, /create-issue:\n(?:    .*\n)*?    deduplicate-by-title: true/);
@@ -153,12 +147,15 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
   assert.match(dependabotEvaluator, /issues\/\$issue_number\/sub_issues/);
   assert.match(dependabotEvaluator, /child_count <= 12/);
   assert.match(dependabotEvaluator, /parentAssigneeCount/);
-  assert.match(auditorWorker, /window_start: \$windowStart/);
-  assert.match(auditorWorker, /window_end: \$windowEnd/);
-  assert.match(optimizerWorker, /GH_REPO: \$\{\{ inputs\.target_repo \}\}/);
-  assert.match(optimizerWorker, /gh aw logs \\\n\s+--repo "\$TARGET_REPO"/);
-  assert.match(optimizerWorker, /\$\{TARGET_PREFIX\}__optimization-log\.json/);
-  assert.match(optimizerWorker, /"optimizer_run_id":"\$\{\{ github\.run_id \}\}"/);
+  assert.match(auditorWorker, /imports:[\s\S]*uses: shared\/activity-cache\.md/);
+  assert.match(auditorWorker, /deduplicate-by-title: true/);
+  assert.match(auditorWorker, /expires: 3d/);
+  assert.match(auditorWorker, /Token usage audit for TARGET_REPO/);
+  assert.match(optimizerWorker, /imports:[\s\S]*uses: shared\/activity-cache\.md/);
+  assert.match(optimizerWorker, /deduplicate-by-title: true/);
+  assert.match(optimizerWorker, /expires: 14d/);
+  assert.match(optimizerWorker, /Optimize TARGET_WORKFLOW in TARGET_REPO/);
+  assert.match(optimizerWorker, /accepted-outcome criteria/);
 });
 
 test("review smoke is manual, protected, bounded, and cannot change the target", () => {

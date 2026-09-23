@@ -95,6 +95,17 @@ const suites = [
       ".github/workflows/shared/",
     ],
   },
+  {
+    name: "AW Optimization",
+    manifest: "optimization/aw.yml",
+    testPattern: "focused AW Optimization campaign contract",
+    prefixes: [
+      "optimization/.github/graders/",
+      ".github/workflows/graders/optimization-",
+      ".github/workflows/optimization",
+      ".github/workflows/shared/",
+    ],
+  },
 ];
 
 function sourcePath(manifest, source) {

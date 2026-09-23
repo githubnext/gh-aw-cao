@@ -1,0 +1,8 @@
+{
+  "campaign": "optimization",
+  "orchestrator": "optimization",
+  "workers": {
+    "token-auditor": "optimization-token-auditor",
+    "token-optimizer": "optimization-token-optimizer"
+  }
+}

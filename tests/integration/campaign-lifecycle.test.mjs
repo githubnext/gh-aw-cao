@@ -41,6 +41,7 @@ const craCampaignSource = focusedCampaignSource("eu-cra-compliance");
 const dashboardCampaignSource = focusedCampaignSource("dashboard");
 const dependabotUpdateSource = focusedCampaignSource("dependabot");
 const dependabotCampaignUpdateSource = `${campaignUpdateSource}/dependabot`;
+const optimizationCampaignSource = focusedCampaignSource("optimization");
 const selfCareCampaignSource = focusedCampaignSource("self-care");
 const softwareDevelopmentPracticesCampaignSource = focusedCampaignSource("software-development-practices");
 const activityExpectedFiles = [
@@ -113,6 +114,17 @@ const dashboardExpectedFiles = [
     new URL("../../dashboard/aw.yml", import.meta.url),
     "utf8",
   ).matchAll(/^\s+destination: (.+)$/gm)].map((match) => match[1]),
+];
+const optimizationExpectedFiles = [
+  "optimization/.github/graders/optimization-token-auditor-operational-value.sh",
+  "optimization/.github/graders/optimization-token-optimizer-operational-value.sh",
+  ".github/workflows/graders/optimization-token-auditor-operational-value.sh",
+  ".github/workflows/graders/optimization-token-optimizer-operational-value.sh",
+  ".github/workflows/optimization-token-auditor.md",
+  ".github/workflows/optimization-token-optimizer.md",
+  ".github/workflows/optimization.md",
+  ".github/workflows/shared/activity-cache.md",
+  ".github/workflows/shared/control.md",
 ];
 const selfCareExpectedFiles = [
   "self-care/.github/graders/self-care-docs-build-time-investigator-operational-value.sh",
@@ -381,6 +393,21 @@ test("gh aw add installs the focused CAO Evolution campaign contract", { timeout
     for (const relativePath of caoEvolutionExpectedFiles) {
       assert.ok(existsSync(join(consumer, relativePath)), `focused CAO Evolution campaign omitted ${relativePath}`);
     }
+  } finally {
+    rmSync(consumer, { recursive: true, force: true });
+  }
+});
+
+test("gh aw add installs the focused AW Optimization campaign contract", { timeout: 180_000 }, async () => {
+  const consumer = await installCampaign(optimizationCampaignSource);
+  try {
+    for (const relativePath of optimizationExpectedFiles) {
+      assert.ok(existsSync(join(consumer, relativePath)), `focused AW Optimization campaign omitted ${relativePath}`);
+    }
+    assert.ok(
+      !existsSync(join(consumer, ".github", "workflows", "dependabot.md")),
+      "focused AW Optimization campaign installed an unrelated orchestrator",
+    );
   } finally {
     rmSync(consumer, { recursive: true, force: true });
   }

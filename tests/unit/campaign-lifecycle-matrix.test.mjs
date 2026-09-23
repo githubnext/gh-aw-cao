@@ -9,7 +9,7 @@ test("campaign lifecycle matrix selects only campaigns owning changed files", ()
   assert.deepEqual(names(["uk-ai-advisory/dashboard.json"]), []);
   assert.deepEqual(
     names([".github/workflows/shared/control.md"]),
-    ["root", "CAO Evolution", "Dependabot"],
+    ["root", "CAO Evolution", "Dependabot", "AW Optimization"],
   );
   assert.deepEqual(
     names(["dashboard/site/index.html"]),
@@ -28,13 +28,17 @@ test("campaign lifecycle matrix selects only campaigns owning changed files", ()
     ["Dependabot"],
   );
   assert.deepEqual(
+    names(["optimization/.github/graders/optimization-token-auditor-operational-value.sh"]),
+    ["AW Optimization"],
+  );
+  assert.deepEqual(
     names(["eu-cra-compliance/.github/graders/eu-cra-compliance-scope-classifier-operational-value.sh"]),
     [],
   );
 });
 
 test("campaign lifecycle matrix selects a campaign and its dependents when its manifest changes", () => {
-  assert.deepEqual(names(["activity/aw.yml"]), ["root", "activity", "CAO Evolution", "Dependabot"]);
+  assert.deepEqual(names(["activity/aw.yml"]), ["root", "activity", "CAO Evolution", "Dependabot", "AW Optimization"]);
   assert.deepEqual(names(["software-development-practices/aw.yml"]), []);
   assert.deepEqual(names(["self-care/aw.yml"]), []);
 });
@@ -45,8 +49,8 @@ test("campaign lifecycle matrix selects no campaigns for unrelated changes", () 
 
 test("campaign lifecycle matrix selects all campaigns for manual runs", () => {
   const suites = selectCampaignLifecycleSuites(null);
-  assert.equal(suites.length, 5);
-  assert.equal(names(["tests/integration/campaign-lifecycle.test.mjs"]).length, 5);
+  assert.equal(suites.length, 6);
+  assert.equal(names(["tests/integration/campaign-lifecycle.test.mjs"]).length, 6);
 
   const source = readFileSync(new URL("../integration/campaign-lifecycle.test.mjs", import.meta.url), "utf8");
   const testNames = [...source.matchAll(/^test\("([^"]+)"/gm)].map((match) => match[1]);
