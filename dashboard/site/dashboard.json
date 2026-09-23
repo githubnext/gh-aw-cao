@@ -10863,7 +10863,22 @@
               "title": "Workflows",
               "description": "Declared workflows across the configured repository scope.",
               "data": {
-                "source": "workflow-inventory"
+                "source": "workflow-inventory",
+                "order-by": [
+                  {
+                    "field": "runs",
+                    "direction": "desc"
+                  },
+                  {
+                    "field": "repository",
+                    "direction": "asc"
+                  },
+                  {
+                    "field": "workflow",
+                    "direction": "asc"
+                  }
+                ],
+                "limit": 100
               },
               "mark": "table",
               "controls": "interactive",
@@ -12038,6 +12053,7 @@
             },
             "mark": "table",
             "controls": "interactive",
+            "lazy-list": true,
             "column-summaries": true,
             "empty-message": "No failed runs were observed in the selected horizon.",
             "layout": "full-view",
