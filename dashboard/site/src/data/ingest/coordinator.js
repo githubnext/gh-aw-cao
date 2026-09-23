@@ -7,7 +7,7 @@ import {
 } from '../adapters/gh-aw-logs.js';
 import { adaptSqlExport } from '../adapters/sql-export.js';
 import { buildDailyOverviewAggregates } from '../analytics/daily-overview-aggregates.js';
-import { runId } from '../model/ids.js';
+import { issueCoordinates, runId } from '../model/ids.js';
 import { CANONICAL_SCHEMA_VERSION } from '../model/schema.js';
 import { normalize, orderRunRecords } from '../normalize/index.js';
 import {
@@ -214,6 +214,16 @@ async function migrateSchema12Batch(indexedDB, batch) {
     ...record,
     runId: legacyRunIds.get(String(record.runId)) ?? record.runId
   });
+  const migratableIssues = batch.issues.filter((record) => {
+    if (record.owner !== undefined && record.repository !== undefined && record.number !== undefined) return true;
+    if (typeof record.url !== 'string') return false;
+    try {
+      issueCoordinates(record.url);
+      return true;
+    } catch {
+      return false;
+    }
+  });
   const migrated = {
     ...batch,
     runs: batch.runs.length > 0
@@ -222,7 +232,7 @@ async function migrateSchema12Batch(indexedDB, batch) {
     domains: orderRunRecords(batch.domains.map(migrateRunLink)),
     tools: orderRunRecords(batch.tools.map(migrateRunLink)),
     audits: orderRunRecords(batch.audits.map(migrateRunLink)),
-    issues: normalize(batch.issues.map((record) => normalizedRecordObservation(migrateRunLink(record), 'issue'))).issues
+    issues: normalize(migratableIssues.map((record) => normalizedRecordObservation(migrateRunLink(record), 'issue'))).issues
   };
   return /** @type {import('../model/schema.js').CanonicalBatch} */ (migrated);
 }

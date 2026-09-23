@@ -292,6 +292,10 @@ describe('canonical source ingestion and queries', () => {
 
     const recordsBatch = emptyBatch();
     recordsBatch.issues.push(
+      canonicalRecord('issue:safe-output:unkeyed', '2026-09-09T03:00:00Z', {
+        runId: 'github:run:12345:attempt:1',
+        timestamp: '2026-09-09T03:00:00Z'
+      }),
       canonicalRecord('issue:safe-output:first', '2026-09-09T04:00:00Z', {
         runId: 'github:run:12345:attempt:1',
         number: 42,
