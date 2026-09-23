@@ -113,7 +113,7 @@ jobs:
           else
             echo "client_id=" >> "$GITHUB_OUTPUT"
             if [[ "$PROBE_OUTCOME" == "skipped" ]]; then
-              echo "::warning::No read-only GitHub App is configured; continuing with the configured fallback token. Report the analysis as incomplete when target evidence cannot be read."
+              echo "::warning::The read-only GitHub App client id or private key is not configured; continuing with the configured fallback token. Report the analysis as incomplete when target evidence cannot be read."
             else
               echo "::warning::The read-only GitHub App has no installation covering $TARGET_REPOSITORY; continuing with the configured fallback token. Report the analysis as incomplete when target evidence cannot be read."
             fi
