@@ -13,7 +13,7 @@ test("downloads canonical deployed dashboard inputs", async () => {
     const content = String(url).endsWith(".jsonl")
       ? '{"kind":"run"}\n'
       : String(url).endsWith("payload-hashes.json")
-        ? '{"gh-aw-logs-shards/fixture.jsonl":"digest"}'
+        ? `{"gh-aw-logs-runs/fixture.jsonl":"${"a".repeat(64)}"}`
         : '{"repositories":[]}';
     return {
       ok: true,
@@ -35,9 +35,9 @@ test("downloads canonical deployed dashboard inputs", async () => {
     assert.deepEqual(requested, [
       "https://example.test/cao/payload-hashes.json",
       "https://example.test/cao/inventory-sources.json",
-      "https://example.test/cao/gh-aw-logs-shards/fixture.jsonl",
+      "https://example.test/cao/gh-aw-logs-runs/fixture.jsonl",
     ]);
-    assert.equal(await readFile(join(destination, "gh-aw-logs-shards", "fixture.jsonl"), "utf8"), '{"kind":"run"}\n');
+    assert.equal(await readFile(join(destination, "gh-aw-logs-runs", "fixture.jsonl"), "utf8"), '{"kind":"run"}\n');
     assert.equal(
       await readFile(join(destination, "inventory-sources.json"), "utf8"),
       '{"repositories":[]}',
@@ -66,7 +66,7 @@ test("waits for both deployed dashboard downloads when one fails", async () => {
             controller.error(new Error("activity download failed"));
           },
         }),
-    json: async () => ({ "gh-aw-logs-shards/fixture.jsonl": "digest" }),
+    json: async () => ({ "gh-aw-logs-runs/fixture.jsonl": "a".repeat(64) }),
   });
 
   try {
@@ -79,6 +79,64 @@ test("waits for both deployed dashboard downloads when one fails", async () => {
       /activity download failed/,
     );
     assert.equal(inventoryFinished, true);
+  } finally {
+    await rm(destination, { recursive: true });
+  }
+});
+
+test("converts predecessor compacted phase JSON to current JSONL", async () => {
+  const destination = await mkdtemp(join(tmpdir(), "dashboard-view-data-"));
+  const legacyName = "gh-aw-logs-runs/legacy.json";
+  const currentName = "gh-aw-logs-runs/legacy.jsonl";
+  const fetcher = async (url) => {
+    const value = String(url);
+    const content = value.endsWith("payload-hashes.json")
+      ? JSON.stringify({ [legacyName]: "a".repeat(64) })
+      : value.endsWith("inventory-sources.json")
+        ? '{"repositories":[]}'
+        : JSON.stringify({
+            schemaVersion: 13,
+            ingestionVersion: 2,
+            sourceRecords: 1,
+            phase: "runs",
+            batch: {
+              campaigns: [],
+              repositories: [{ id: "repository:acme%2Fcontrol" }],
+              workflows: [],
+              runs: [],
+            },
+          });
+    return {
+      ok: true,
+      body: new Blob([content]).stream(),
+      arrayBuffer: async () => new TextEncoder().encode(content).buffer,
+      json: async () => JSON.parse(content),
+    };
+  };
+
+  try {
+    await downloadDeployedDashboardData(
+      destination,
+      "https://example.test/cao/payload-hashes.json",
+      fetcher,
+    );
+    const lines = (await readFile(join(destination, currentName), "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    assert.deepEqual(lines[0], {
+      kind: "metadata",
+      schemaVersion: 13,
+      ingestionVersion: 3,
+      sourceRecords: 1,
+      phase: "runs",
+      records: 1,
+    });
+    assert.deepEqual(lines[1], {
+      kind: "record",
+      collection: "repositories",
+      record: { id: "repository:acme%2Fcontrol" },
+    });
   } finally {
     await rm(destination, { recursive: true });
   }

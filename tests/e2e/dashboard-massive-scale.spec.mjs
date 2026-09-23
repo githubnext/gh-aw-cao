@@ -23,9 +23,10 @@ const maximumGeneratorRssMb = numberSetting("DASHBOARD_STRESS_MAX_GENERATOR_RSS_
 const megabyte = 1024 * 1024;
 
 let root;
-let shardDirectory;
+let rawShardDirectory;
 let databasePath;
 let manifest;
+let payloadHashes;
 let databaseCounts;
 let generationMemory;
 let ingestionMemory;
@@ -129,11 +130,14 @@ function canonicalCounts(path) {
 
 test.beforeAll(async () => {
   root = await mkdtemp(join(tmpdir(), "cao-dashboard-massive-scale-"));
-  shardDirectory = join(root, "gh-aw-logs-shards");
+  rawShardDirectory = join(root, "gh-aw-logs-shards");
+  const runsDirectory = join(root, "gh-aw-logs-runs");
+  const recordsDirectory = join(root, "gh-aw-logs-records");
+  const manifestPath = join(root, "payload-hashes.json");
   databasePath = join(root, "gh-aw-logs.sqlite");
   generationMemory = await runMeasuredCommand(process.execPath, [
     resolve("tests/helpers/dashboard-stress-data.mjs"),
-    "--output", shardDirectory,
+    "--output", rawShardDirectory,
     "--repositories", String(repositories),
     "--runs", String(runs),
     "--derived-events", String(derivedEvents),
@@ -141,11 +145,20 @@ test.beforeAll(async () => {
     "--workflows", String(workflows),
   ]);
   manifest = JSON.parse(generationMemory.stdout);
+  await runMeasuredCommand(process.execPath, [
+    resolve("activity/cao.mjs"),
+    "hash-payloads",
+    "--shard-dir", rawShardDirectory,
+    "--runs-dir", runsDirectory,
+    "--records-dir", recordsDirectory,
+    "--output", manifestPath,
+  ]);
+  payloadHashes = JSON.parse(await readFile(manifestPath, "utf8"));
   ingestionMemory = await runMeasuredCommand(process.execPath, [
     resolve("activity/cao.mjs"),
     "ingest-jsonl",
     "--database", databasePath,
-    "--input-dir", shardDirectory,
+    "--input-dir", rawShardDirectory,
     "--retention-days", "all",
     "--run-retention-days", "all",
   ]);
@@ -161,19 +174,22 @@ test.beforeAll(async () => {
       }
       if (pathname === "/payload-hashes.json") {
         response.writeHead(200, { "content-type": "application/json" });
-        response.end(JSON.stringify(Object.fromEntries(manifest.files.map((file) => [
-          `gh-aw-logs-shards/${file.name}`,
-          file.sha256,
-        ]))));
+        response.end(JSON.stringify(Object.fromEntries(
+          Object.entries(payloadHashes).filter(([name]) =>
+            name.startsWith("gh-aw-logs-runs/") || name.startsWith("gh-aw-logs-records/")
+          ),
+        )));
         return;
       }
-      const shard = manifest.files.find((file) => pathname === `/gh-aw-logs-shards/${file.name}`);
-      if (shard) {
+      const shardName = pathname.slice(1);
+      if (Object.hasOwn(payloadHashes, shardName)
+          && (shardName.startsWith("gh-aw-logs-runs/") || shardName.startsWith("gh-aw-logs-records/"))) {
+        const shardPath = join(root, shardName);
         response.writeHead(200, {
           "content-type": "application/x-ndjson",
-          "content-length": String(shard.bytes),
+          "content-length": String((await stat(shardPath)).size),
         });
-        createReadStream(join(shardDirectory, shard.name)).pipe(response);
+        createReadStream(shardPath).pipe(response);
         return;
       }
       const filePath = resolve(join(siteRoot, pathname));

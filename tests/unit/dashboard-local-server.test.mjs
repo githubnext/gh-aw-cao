@@ -764,8 +764,8 @@ fi
   [ "$6" = "--dir" ] &&
   [ "$8" = "--repo" ] &&
   [ "$9" = "acme/control" ] || exit 3
-mkdir -p "$7/cao/gh-aw-logs-shards"
-printf '%s\n' '{"schema_version":2,"repository":"acme/control","token":"sensitive"}' > "$7/cao/gh-aw-logs-shards/logs-1.jsonl"
+mkdir -p "$7/cao/gh-aw-logs-runs"
+printf '%s\n' '{"schema_version":2,"repository":"acme/control","token":"sensitive"}' > "$7/cao/gh-aw-logs-runs/logs-1.jsonl"
 printf '{"repositories":{"rows":[{"repository":"control"}]}}' > "$7/cao/inventory-sources.json"
 `);
   await chmod(ghExecutable, 0o755);
@@ -779,7 +779,7 @@ printf '{"repositories":{"rows":[{"repository":"control"}]}}' > "$7/cao/inventor
     port: 0,
   });
   try {
-    const logsResponse = await fetch(`${preview.url}/gh-aw-logs-shards/logs-1.jsonl`);
+    const logsResponse = await fetch(`${preview.url}/gh-aw-logs-runs/logs-1.jsonl`);
     assert.equal(logsResponse.status, 200);
     assert.equal(logsResponse.headers.get("content-type"), "application/x-ndjson; charset=utf-8");
     const logsContent = await logsResponse.text();
@@ -790,7 +790,7 @@ printf '{"repositories":{"rows":[{"repository":"control"}]}}' > "$7/cao/inventor
     });
     const hashesResponse = await fetch(`${preview.url}/payload-hashes.json`);
     assert.deepEqual(await hashesResponse.json(), {
-      "gh-aw-logs-shards/logs-1.jsonl": createHash("sha256").update(logsContent).digest("hex"),
+      "gh-aw-logs-runs/logs-1.jsonl": createHash("sha256").update(logsContent).digest("hex"),
     });
     const inventoryResponse = await fetch(`${preview.url}/inventory-sources.json`);
     assert.deepEqual(await inventoryResponse.json(), {

@@ -1,7 +1,11 @@
 import { createWriteStream } from "node:fs";
-import { mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { pipeline } from "node:stream/promises";
+import {
+  deployedActivityShardEntries,
+  legacyPhaseJsonToJsonl,
+} from "./dashboard-deployed-refresh-helpers.mjs";
 
 export async function downloadDeployedDashboardData(destination, sourceUrl, fetcher = fetch) {
   const inventoryUrl = new URL("inventory-sources.json", sourceUrl);
@@ -21,11 +25,14 @@ export async function downloadDeployedDashboardData(destination, sourceUrl, fetc
   if (!inventoryResponse.body) throw new Error("Deployed dashboard inventory response has no body.");
   await mkdir(destination, { recursive: true });
   await pipeline(inventoryResponse.body, createWriteStream(join(destination, "inventory-sources.json")));
-  const shardDirectory = join(destination, "gh-aw-logs-shards");
-  await mkdir(shardDirectory);
-  for (const name of Object.keys(manifest).filter((name) => name.startsWith("gh-aw-logs-shards/")).sort()) {
-    const response = await fetcher(new URL(name, sourceUrl));
-    if (!response.ok || !response.body) throw new Error(`Unable to download deployed dashboard shard: ${name}.`);
-    await pipeline(response.body, createWriteStream(join(destination, name)));
+  for (const { name, sourceName } of deployedActivityShardEntries(manifest)) {
+    const response = await fetcher(new URL(sourceName, sourceUrl));
+    if (!response.ok || !response.body) throw new Error(`Unable to download deployed dashboard shard: ${sourceName}.`);
+    await mkdir(dirname(join(destination, name)), { recursive: true });
+    if (sourceName.endsWith(".json")) {
+      await writeFile(join(destination, name), legacyPhaseJsonToJsonl(Buffer.from(await response.arrayBuffer())));
+    } else {
+      await pipeline(response.body, createWriteStream(join(destination, name)));
+    }
   }
 }

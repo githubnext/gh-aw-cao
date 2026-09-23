@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { normalizedRunShard } from './normalized-shard.js';
 import { expect, test } from '@playwright/test';
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
@@ -9,6 +10,7 @@ const buildScript = fileURLToPath(new URL('../../scripts/build.mjs', import.meta
 const controlSettings = fileURLToPath(new URL('../performance/fixtures/control-settings.json', import.meta.url));
 const buildRoot = mkdtempSync(join(process.cwd(), '.lazy-page-chunks-'));
 const origin = 'http://lazy-page-chunks.dashboard.test';
+const shardName = `gh-aw-logs-runs/logs-${'a'.repeat(64)}-${'b'.repeat(16)}.jsonl`;
 
 execFileSync(process.execPath, [buildScript, buildRoot, controlSettings], {
   cwd: siteRoot,
@@ -93,7 +95,7 @@ test.beforeEach(async ({ context }) => {
     if (pathname === '/payload-hashes.json') {
       await route.fulfill({
         contentType: 'application/json',
-        body: JSON.stringify({ 'gh-aw-logs-shards/logs-1.jsonl': 'a'.repeat(64) }),
+        body: JSON.stringify({ [shardName]: 'a'.repeat(64) }),
       });
       return;
     }
@@ -101,8 +103,8 @@ test.beforeEach(async ({ context }) => {
       await route.fulfill({ contentType: 'application/json', body: JSON.stringify(inventory) });
       return;
     }
-    if (pathname === '/gh-aw-logs-shards/logs-1.jsonl') {
-      await route.fulfill({ contentType: 'application/x-ndjson', body: logs });
+    if (pathname === `/${shardName}`) {
+      await route.fulfill({ contentType: 'application/x-ndjson', body: normalizedRunShard(logs) });
       return;
     }
     let filePath = join(buildRoot, pathname);

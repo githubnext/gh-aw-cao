@@ -3,7 +3,9 @@ import { createServer } from "node:http";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { extname, resolve, sep } from "node:path";
 import {
+  deployedActivityShardEntries,
   deployedDashboardUrl,
+  legacyPhaseJsonToJsonl,
   shouldIgnoreRequestFailure,
 } from "./dashboard-deployed-refresh-helpers.mjs";
 import {
@@ -35,6 +37,7 @@ const overviewSourceNames = dashboardPageSourceNames(
   { dashboard: dashboardDocument },
   "overview",
 );
+const deployedShardSources = new Map();
 
 async function serveDashboard(request, response) {
   const requestUrl = new URL(request.url || "/", "http://127.0.0.1");
@@ -56,7 +59,10 @@ async function serveDashboard(request, response) {
     if (error?.code !== "ENOENT" && error?.message !== "Not a file") throw error;
   }
 
-  const deployedUrl = deployedProxyTarget(pathname, deployedDashboardUrl);
+  const deployedUrl = deployedProxyTarget(
+    deployedShardSources.get(pathname) ?? pathname,
+    deployedDashboardUrl,
+  );
   if (!deployedUrl) {
     response.writeHead(403).end();
     return;
@@ -65,9 +71,17 @@ async function serveDashboard(request, response) {
     method: request.method,
     redirect: "error",
   });
-  const body = request.method === "HEAD"
+  let body = request.method === "HEAD"
     ? undefined
     : Buffer.from(await deployedResponse.arrayBuffer());
+  if (pathname === "/payload-hashes.json" && body) {
+    const entries = deployedActivityShardEntries(JSON.parse(body.toString("utf8")));
+    deployedShardSources.clear();
+    for (const { name, sourceName } of entries) deployedShardSources.set(`/${name}`, `/${sourceName}`);
+    body = Buffer.from(JSON.stringify(Object.fromEntries(entries.map(({ name, hash }) => [name, hash]))));
+  } else if (body && deployedShardSources.get(pathname)?.endsWith(".json")) {
+    body = Buffer.from(legacyPhaseJsonToJsonl(body));
+  }
   const contentLength = request.method === "HEAD"
     ? deployedResponse.headers.get("content-length")
     : String(body.length);

@@ -2,10 +2,12 @@ import { expect, test } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { normalizedRunShard } from "./normalized-shard.js";
 
 const siteRoot = fileURLToPath(new URL("../..", import.meta.url));
 const origin = "http://cached-refresh.dashboard.test";
 const metadata = { "as-of": "2026-09-15T10:00:00Z" };
+const shardName = `gh-aw-logs-runs/logs-${"a".repeat(64)}-${"b".repeat(16)}.jsonl`;
 
 const dashboard = {
   "language-version": "0.1.0",
@@ -111,16 +113,16 @@ test("cached view is populated before background ingestion updates it", async ({
     if (pathname === "/payload-hashes.json") {
       await route.fulfill({
         contentType: "application/json",
-        body: JSON.stringify({ "gh-aw-logs-shards/logs-1.jsonl": "a".repeat(64) }),
+        body: JSON.stringify({ [shardName]: "a".repeat(64) }),
       });
       return;
     }
-    if (pathname === "/gh-aw-logs-shards/logs-1.jsonl") {
+    if (pathname === `/${shardName}`) {
       freshDataRequested = true;
       await freshDataAllowed;
       await route.fulfill({
         contentType: "application/x-ndjson",
-        body: `${JSON.stringify({
+        body: normalizedRunShard(`${JSON.stringify({
           schema_version: 2,
           kind: "run",
           run: {
@@ -136,7 +138,7 @@ test("cached view is populated before background ingestion updates it", async ({
             created_at: "2026-09-15T11:00:00Z",
             updated_at: "2026-09-15T11:05:00Z",
           },
-        })}\n`,
+        })}\n`),
       });
       return;
     }

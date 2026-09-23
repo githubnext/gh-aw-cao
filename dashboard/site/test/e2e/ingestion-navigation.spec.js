@@ -2,10 +2,12 @@ import { expect, test } from '@playwright/test';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { normalizedRunShard } from './normalized-shard.js';
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
 const origin = 'http://ingestion-navigation.dashboard.test';
 const asOf = '2026-09-16T22:00:00Z';
+const shardHash = 'a'.repeat(64);
 const pageDefinitions = [
   ['runs', 'Runs', 'runs', 'run-title'],
   ['repositories', 'Repositories', 'repositories', 'repository'],
@@ -102,14 +104,14 @@ test('Runs lazy list loads on scroll during and after activity ingestion', async
         contentType: 'application/json',
         body: JSON.stringify(Object.fromEntries(
           Array.from({ length: shardCount }, (_, index) => [
-           `gh-aw-logs-shards/logs-${String(index + 1).padStart(2, '0')}.jsonl`,
+           `gh-aw-logs-runs/logs-${String(index + 1).padStart(2, '0')}-${shardHash}-${String(index + 1).padStart(16, '0')}.jsonl`,
             String(index + 1).padStart(64, 'a')
           ])
         ))
       });
       return;
     }
-    const shard = /^\/gh-aw-logs-shards\/logs-(\d+)\.jsonl$/.exec(url.pathname);
+    const shard = /^\/gh-aw-logs-runs\/logs-(\d+)-[a-f0-9]{64}-[a-f0-9]{16}\.jsonl$/.exec(url.pathname);
     if (shard) {
       if (route.request().method() === 'HEAD') {
         await route.fulfill({ headers: { 'content-length': '512' }, body: '' });
@@ -121,7 +123,7 @@ test('Runs lazy list loads on scroll during and after activity ingestion', async
       if (run === shardCount) await finalShardReady;
       await route.fulfill({
         contentType: 'application/x-ndjson',
-        body: `${Array.from({ length: runsPerShard }, (_, index) => JSON.stringify({
+        body: normalizedRunShard(`${Array.from({ length: runsPerShard }, (_, index) => JSON.stringify({
           schema_version: 2,
           kind: 'run',
           run: {
@@ -137,7 +139,7 @@ test('Runs lazy list loads on scroll during and after activity ingestion', async
             created_at: asOf,
             updated_at: asOf
           }
-        })).join('\n')}\n`
+        })).join('\n')}\n`)
       });
       completedShards += 1;
       return;

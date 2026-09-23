@@ -6,9 +6,12 @@ import { fileURLToPath } from 'node:url';
 import { ingestGhAwLogs as ingestNodeGhAwLogs } from '../../src/data/ingest/coordinator.js';
 import { readCanonicalBatch } from '../../src/data/storage/indexeddb.js';
 import { createSqliteIndexedDB } from '../../src/data/storage/sqlite-indexeddb.js';
+import { normalizedActivityShards } from './normalized-shard.js';
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
 const databaseName = 'gh-aw-cao-dashboard-data';
+const shardName = `gh-aw-logs-runs/logs-${'a'.repeat(64)}-${'b'.repeat(16)}.jsonl`;
+const recordShardName = `gh-aw-logs-records/logs-${'c'.repeat(64)}-${'d'.repeat(16)}.jsonl`;
 const canonicalEntityTables = [
   'audits', 'campaigns', 'domains', 'issues', 'repositories', 'runs', 'tools', 'workflows'
 ];
@@ -325,14 +328,17 @@ test.beforeEach(async ({ context, page }) => {
     if (pathname === '/payload-hashes.json') {
       await route.fulfill({
         contentType: 'application/json',
-        body: JSON.stringify({ 'gh-aw-logs-shards/logs-1.jsonl': 'a'.repeat(64) })
+        body: JSON.stringify({
+          [shardName]: 'a'.repeat(64),
+          [recordShardName]: 'c'.repeat(64)
+        })
       });
       return;
     }
-    if (pathname === '/gh-aw-logs-shards/logs-1.jsonl') {
+    if (pathname === `/${shardName}` || pathname === `/${recordShardName}`) {
       await route.fulfill({
         contentType: 'application/x-ndjson',
-        body: `${JSON.stringify({ schema_version: 2, kind: 'run', run: {
+        body: normalizedActivityShards(`${JSON.stringify({ schema_version: 2, kind: 'run', run: {
           run_id: 12345,
           run_attempt: 1,
           organization: 'githubnext',
@@ -383,7 +389,7 @@ test.beforeEach(async ({ context, page }) => {
               }
             }
           }
-        } })}\n`
+        } })}\n`)[pathname === `/${shardName}` ? 'runs' : 'records']
       });
       return;
     }

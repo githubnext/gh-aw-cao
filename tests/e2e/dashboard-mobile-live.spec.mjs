@@ -6,6 +6,10 @@ import { pipeline } from "node:stream/promises";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
 import { captureMobileDashboardScreenshot } from "./dashboard-screenshot.mjs";
 import {
+  deployedActivityShardEntries,
+  legacyPhaseJsonToJsonl,
+} from "./dashboard-deployed-refresh-helpers.mjs";
+import {
   summarizeAccessibilityTree,
   summarizeDomTree,
   summarizeMobileAccessibility,
@@ -224,25 +228,24 @@ test.beforeAll(async () => {
       if (!inventoryResponse.ok) throw new Error(`Unable to download deployed dashboard inventory: HTTP ${inventoryResponse.status}.`);
       if (!inventoryResponse.body) throw new Error("Deployed dashboard inventory response has no body.");
       const payloadHashes = await payloadHashesResponse.json();
-      const shards = Object.entries(payloadHashes)
-        .filter(([name, hash]) => /^gh-aw-logs-shards\/[A-Za-z0-9._-]+\.jsonl$/.test(name)
-          && typeof hash === "string"
-          && /^[a-f0-9]{64}$/i.test(hash))
-        .sort(([left], [right]) => left.localeCompare(right));
-      if (shards.length === 0) throw new Error("Deployed dashboard manifest contains no valid activity shards.");
+      const shards = deployedActivityShardEntries(payloadHashes);
       const selectedShards = shards.slice(0, mobileDebugShardLimit());
-      expectedActivityShardPaths = selectedShards.map(([name]) => `/${name}`);
+      expectedActivityShardPaths = selectedShards.map(({ name }) => `/${name}`);
       await mkdir(destination, { recursive: true });
       const inventoryPath = join(destination, "inventory-sources.json");
       await pipeline(inventoryResponse.body, createWriteStream(inventoryPath));
       let activityBytes = 0;
-      for (const [name] of selectedShards) {
-        const response = await fetchDeployedData(new URL(name, dataUrl));
-        if (!response.ok) throw new Error(`Unable to download deployed dashboard shard ${name}: HTTP ${response.status}.`);
-        if (!response.body) throw new Error(`Deployed dashboard shard ${name} has no body.`);
+      for (const { name, sourceName } of selectedShards) {
+        const response = await fetchDeployedData(new URL(sourceName, dataUrl));
+        if (!response.ok) throw new Error(`Unable to download deployed dashboard shard ${sourceName}: HTTP ${response.status}.`);
+        if (!response.body) throw new Error(`Deployed dashboard shard ${sourceName} has no body.`);
         const shardPath = join(destination, name);
         await mkdir(dirname(shardPath), { recursive: true });
-        await pipeline(response.body, createWriteStream(shardPath));
+        if (sourceName.endsWith(".json")) {
+          await writeFile(shardPath, legacyPhaseJsonToJsonl(Buffer.from(await response.arrayBuffer())));
+        } else {
+          await pipeline(response.body, createWriteStream(shardPath));
+        }
         activityBytes += (await stat(shardPath)).size;
       }
       const inventory = await stat(inventoryPath);
@@ -299,8 +302,9 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
   });
   page.on("response", (response) => {
     const pathname = new URL(response.url()).pathname;
-    if (pathname.includes("/gh-aw-logs-shards/") && pathname.endsWith(".jsonl")) {
-      shardResponses.set(pathname.slice(pathname.indexOf("/gh-aw-logs-shards/")), response);
+    const shardPath = /\/gh-aw-logs-(?:runs|records)\/[^/]+\.jsonl$/.exec(pathname)?.[0];
+    if (shardPath) {
+      shardResponses.set(shardPath, response);
     }
     if (pathname.endsWith("/inventory-sources.json")) inventoryResponse = response;
   });
@@ -330,6 +334,7 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
     "The dashboard must complete its canonical data refresh",
   ).toBe("completed");
   await expect(dashboard).not.toHaveAttribute("aria-busy", "true", { timeout: 540_000 });
+  await expect(page.locator(".loading-progress")).toHaveCount(0, { timeout: 30_000 });
   await memoryInvestigation.mark("dashboard-idle");
   // DOM provenance annotation (`data-json-path`/`data-js-view`) is lazily
   // loaded and applied asynchronously; wait for it so the DOM analysis below
@@ -437,7 +442,7 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
     const navigation = performance.getEntriesByType("navigation")[0];
     const memory = performance.memory;
     const resources = performance.getEntriesByType("resource")
-      .filter(({ name }) => /\/(?:gh-aw-logs-shards\/[^/]+\.jsonl|inventory-sources\.json|dashboard\.json)$/.test(new URL(name).pathname))
+      .filter(({ name }) => /\/(?:gh-aw-logs-(?:runs|records)\/[^/]+\.jsonl|inventory-sources\.json|dashboard\.json)$/.test(new URL(name).pathname))
       .map(({ name, duration, transferSize, encodedBodySize, decodedBodySize }) => ({
         name: new URL(name).pathname.split("/").at(-1),
         durationMs: Number(duration.toFixed(2)),
