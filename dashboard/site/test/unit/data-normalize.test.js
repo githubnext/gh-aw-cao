@@ -128,4 +128,49 @@ describe('canonical normalization', () => {
 
     expect(batch.runs[0]).toMatchObject({ status: 'completed', conclusion: 'success' });
   });
+
+  it('keys audits as <org>/<repo>/<runid>/<audit-code>', () => {
+    const finding = observation(
+      'audit',
+      'github:run:githubnext/gh-aw-cao:303:agentic:audit.finding:abcd1234',
+      '2026-09-09T00:00:00Z',
+      {
+        runId: 'github:run:githubnext/gh-aw-cao:303',
+        timestamp: '2026-09-09T00:00:00Z',
+        source: 'audit',
+        type: 'audit.finding',
+        summary: 'Actionable finding',
+        status: 'high'
+      },
+      'gh-aw-logs'
+    );
+
+    const batch = normalize([finding]);
+
+    expect(batch.audits).toHaveLength(1);
+    expect(batch.audits[0].id).toBe('githubnext/gh-aw-cao/303/agentic%3Aaudit.finding%3Aabcd1234');
+  });
+
+  it('drops info-level audits as noise', () => {
+    const actionable = observation('audit', 'run-1:audit-actionable', '2026-09-09T00:00:00Z', {
+      runId: 'github:run:githubnext/gh-aw-cao:303',
+      timestamp: '2026-09-09T00:00:00Z',
+      source: 'audit',
+      type: 'audit.finding',
+      summary: 'Actionable finding',
+      status: 'high'
+    }, 'gh-aw-logs');
+    const informational = observation('audit', 'run-1:audit-info', '2026-09-09T00:00:01Z', {
+      runId: 'github:run:githubnext/gh-aw-cao:303',
+      timestamp: '2026-09-09T00:00:01Z',
+      source: 'audit',
+      type: 'audit.finding',
+      summary: 'Informational finding',
+      status: 'Info'
+    }, 'gh-aw-logs');
+
+    const batch = normalize([actionable, informational]);
+
+    expect(batch.audits.map((audit) => audit.summary)).toEqual(['Actionable finding']);
+  });
 });

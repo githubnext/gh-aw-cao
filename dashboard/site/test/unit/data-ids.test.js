@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  auditId,
   issueCoordinates,
   issueId,
   repositoryCoordinateId,
   repositoryId,
+  runCoordinatesFromId,
   runId,
   sourceId,
   workflowCoordinateId,
@@ -66,5 +68,27 @@ describe('canonical data identities', () => {
     expect(() => issueCoordinates('https://example.com/owner/repo/issues/1'))
       .toThrow('URL must identify a GitHub issue or pull request');
     expect(() => sourceId('audit', '', '42')).toThrow('audit source and coordinate are required');
+  });
+
+  it('keys audits as <org>/<repo>/<runid>/<audit-code>', () => {
+    const canonicalRunId = runId('githubnext', 'gh-aw-cao', 303);
+    expect(runCoordinatesFromId(canonicalRunId)).toEqual({
+      owner: 'githubnext',
+      repository: 'gh-aw-cao',
+      githubRunId: '303'
+    });
+    expect(auditId(canonicalRunId, 'audit.finding:abcd1234')).toBe(
+      'githubnext/gh-aw-cao/303/audit.finding%3Aabcd1234'
+    );
+    // Strips a redundant run-ID prefix embedded in the audit code, so the
+    // key is not the run coordinate repeated twice.
+    expect(auditId(canonicalRunId, `${canonicalRunId}:agentic:audit.finding:abcd1234`)).toBe(
+      'githubnext/gh-aw-cao/303/agentic%3Aaudit.finding%3Aabcd1234'
+    );
+  });
+
+  it('requires a canonical run ID and a non-empty audit code', () => {
+    expect(() => runCoordinatesFromId('not-a-run-id')).toThrow('Value is not a canonical run ID');
+    expect(() => auditId(runId('githubnext', 'gh-aw-cao', 303), '  ')).toThrow('Audit code is required');
   });
 });
