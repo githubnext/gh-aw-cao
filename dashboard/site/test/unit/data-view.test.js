@@ -886,6 +886,60 @@ describe('data view renderer', () => {
     expect(load).toHaveBeenCalledTimes(1);
   });
 
+  it('forgets early continuation pages once many later pages have loaded, bounding memory for large tables', async () => {
+    const intersect = stubIntersectionObserver();
+    const pageCount = 20;
+    const load = vi.fn(async (/** @type {string} */ token) => {
+      const index = Number(token.split('-')[1]);
+      return {
+        rows: [{ event: `event-${25 + index}` }],
+        continuationToken: index < pageCount ? `page-${index + 1}` : undefined
+      };
+    });
+    const rendered = renderDataView('table', {
+      pageId: 'events',
+      title: 'Events',
+      view: {
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        layout: 'full-view',
+        encoding: { columns: [{ field: 'event', type: 'nominal' }] }
+      },
+      sourceName: 'events',
+      rows: Array.from({ length: 25 }, (_, index) => ({ event: `event-${index + 1}` })),
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String,
+      continuation: { token: 'page-2', totalRows: 25 + pageCount, load }
+    });
+
+    const tableMore = /** @type {HTMLButtonElement} */ (rendered?.querySelector('[data-table-more]'));
+    // Walk the table far past the first page via its own continuation clicks,
+    // well beyond any small in-memory retention window.
+    for (let page = 2; page <= pageCount; page += 1) {
+      tableMore.click();
+      await vi.waitFor(() => expect(rendered?.querySelectorAll('tbody tr')).toHaveLength(25 + (page - 1)));
+    }
+    expect(load).toHaveBeenCalledTimes(pageCount - 1);
+    const callsForFirstPage = load.mock.calls.filter((call) => call[0] === 'page-2').length;
+    expect(callsForFirstPage).toBe(1);
+
+    // The mobile card list independently replays the continuation from its
+    // own start (`page-2`) to catch up. If every page were kept in memory
+    // forever this would be served from cache; instead the long-forgotten
+    // first page must be fetched again.
+    const cardBoundary = /** @type {HTMLElement} */ (rendered?.querySelector('[data-card-list-boundary]'));
+    intersect(cardBoundary);
+    await vi.waitFor(() => (
+      expect(load.mock.calls.filter((call) => call[0] === 'page-2').length).toBeGreaterThan(callsForFirstPage)
+    ));
+  });
+
   it('renders quantitative mobile table fields as labeled card metrics', () => {
     const rendered = renderDataView('table', {
       pageId: 'campaigns',
