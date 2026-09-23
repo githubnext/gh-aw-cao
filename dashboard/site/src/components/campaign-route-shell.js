@@ -34,6 +34,7 @@ import { CAMPAIGN_ROUTE_TABS } from './route-body-specification.js';
 export function renderCampaignRouteShell(context, config) {
   const allWorkflows = rowsFor(context.sources, 'workflows');
   const problemCount = rowsFor(context.sources, 'campaign-problem-items').length;
+  const allIssues = rowsFor(context.sources, 'campaign-worker-issues');
   return createRoutePageShell(context, {
     rootClassName: config.rootClassName,
     datasetKey: 'campaign',
@@ -45,7 +46,7 @@ export function renderCampaignRouteShell(context, config) {
     currentTab: config.currentTab,
     tabListClassName: 'campaign-tabs',
     tabListAriaLabel: (title) => `${title} views`,
-    tabs: ({ routeValue }) => campaignTabs(routeValue, problemCount),
+    tabs: ({ routeValue }) => campaignTabs(routeValue, problemCount, campaignIssueCount(routeValue, allIssues)),
     pageLevelTabs: true,
     renderMatched: (routeValue) => {
       const campaignId = normalizeCampaignRoute(routeValue);
@@ -70,16 +71,29 @@ export function renderCampaignRouteShell(context, config) {
 
 /**
  * @param {string} campaignId
- * @param {number} problemCount
+ * @param {Array<Record<string, unknown>>} issues
  */
-function campaignTabs(campaignId, problemCount) {
+function campaignIssueCount(campaignId, issues) {
+  return issues.filter((row) => String(row.campaign).toLowerCase() === campaignId.toLowerCase()).length;
+}
+
+/**
+ * @param {string} campaignId
+ * @param {number} problemCount
+ * @param {number} issueCount
+ */
+function campaignTabs(campaignId, problemCount, issueCount) {
   const campaignQuery = `?campaign=${encodeURIComponent(campaignId)}`;
   return CAMPAIGN_ROUTE_TABS.map((tab) => ({
     id: tab.id,
     label: tab.label,
     icon: tab.icon,
     href: `#page-${tab.page}${campaignQuery}`,
-    count: tab.id === 'problems' && problemCount > 0 ? problemCount : undefined,
+    count: tab.id === 'problems' && problemCount > 0
+      ? problemCount
+      : tab.id === 'issues' && issueCount > 0
+        ? issueCount
+        : undefined,
     trailingIcon: 'chevron-right'
   }));
 }

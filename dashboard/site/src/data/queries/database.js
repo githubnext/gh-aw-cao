@@ -336,6 +336,40 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
       }, sources, store);
       continue;
     }
+    if (name === 'outcomes') {
+      const records = executeRunRecordsQuery('issues', collections.issues ?? [], collections.runs ?? [], sources);
+      const workflowRows = executeDatabaseQuery('workflows', {
+        $workflows: {
+          source: '$workflows',
+          rows: collections.workflows ?? [],
+          metadata: queryMetadata(sources, 'workflows', 'workflows', true)
+        },
+        $repositories: {
+          source: '$repositories',
+          rows: collections.repositories ?? [],
+          metadata: queryMetadata(sources, 'repositories', 'repositories', true)
+        }
+      }, sources, 'workflows');
+      const linkedRecords = {
+        ...records,
+        rows: records.rows.map((row) => {
+          const correlationId = typeof row['correlation-id'] === 'string' ? row['correlation-id'] : '';
+          const isPullRequest = row['is-pull-request'] === true;
+          const link = correlationId ? { href: correlationId, label: isPullRequest ? 'View pull request' : 'View issue' } : null;
+          return {
+            ...row,
+            'issue-link': !isPullRequest ? link : null,
+            'pull-request-link': isPullRequest ? link : null,
+            'external-link': link
+          };
+        })
+      };
+      result[name] = executeDatabaseQuery(name, {
+        'run-records': linkedRecords,
+        workflows: workflowRows
+      }, sources, 'issues');
+      continue;
+    }
     if (name === 'detection-observations' || name === 'safe-output-performance') {
       const inputName = name === 'detection-observations' ? '$security-findings' : '$outcomes';
       const logicalName = inputName.slice(1);

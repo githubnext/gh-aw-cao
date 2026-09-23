@@ -348,6 +348,7 @@
       { "field": "safeOutputType", "as": "safe-output-type" },
       { "field": "githubEntityType", "as": "github-entity-type" },
       { "field": "isPullRequest", "as": "is-pull-request" },
+      { "field": "number" },
       { "field": "toolType", "as": "tool-type" },
       { "field": "isSkill", "as": "is-skill" },
       { "field": "name" },
@@ -416,6 +417,118 @@
       { "field": "implementationCompletedAt", "as": "implementation-completed-at" },
       { "field": "rejectedAt", "as": "rejected-at" },
       { "field": "supersededAt", "as": "superseded-at" }
+    ]
+  },
+  {
+    "name": "outcomes",
+    "stores": ["issues", "runs", "workflows", "repositories"],
+    "from": "run-records",
+    "filter": {
+      "predicates": [
+        { "field": "event-type", "equals": "safe_output.created" }
+      ]
+    },
+    "joins": [
+      {
+        "source": "workflows",
+        "type": "left",
+        "on": [
+          { "left": "organization", "right": "organization" },
+          { "left": "repository", "right": "repository" },
+          { "left": "workflow", "right": "workflow" }
+        ],
+        "fields": [
+          { "field": "campaign", "as": "campaign" },
+          { "field": "campaign-name", "as": "campaign-name" },
+          { "field": "workflow-name", "as": "workflow-name" },
+          { "field": "workflow-role", "as": "workflow-role" },
+          { "field": "workflow-link", "as": "workflow-link" },
+          { "field": "organization-link", "as": "organization-link" },
+          { "field": "repository-link", "as": "repository-link" }
+        ]
+      }
+    ],
+    "compute": [
+      {
+        "as": "outcome-category",
+        "function": "if",
+        "args": [{ "field": "is-pull-request" }, { "value": "pull-request" }, { "value": "issue" }]
+      },
+      {
+        "as": "_safe-output-is-issue",
+        "function": "equals-any",
+        "args": [{ "field": "safe-output-type" }, { "value": "create_issue" }]
+      },
+      {
+        "as": "_safe-output-is-pull-request",
+        "function": "equals-any",
+        "args": [{ "field": "safe-output-type" }, { "value": "create_pull_request" }]
+      },
+      {
+        "as": "_safe-output-kind-issue",
+        "function": "if",
+        "args": [
+          { "field": "_safe-output-is-issue" },
+          { "value": "create-issue" },
+          { "field": "safe-output-type" }
+        ]
+      },
+      {
+        "as": "safe-output-kind",
+        "function": "if",
+        "args": [
+          { "field": "_safe-output-is-pull-request" },
+          { "value": "create-pull-request" },
+          { "field": "_safe-output-kind-issue" }
+        ]
+      },
+      {
+        "as": "outcome-status",
+        "function": "coalesce",
+        "args": [{ "field": "event-status" }, { "value": "unknown" }]
+      },
+      {
+        "as": "outcome-state",
+        "function": "coalesce",
+        "args": [{ "field": "event-status" }, { "value": "unknown" }]
+      }
+    ],
+    "select": [
+      { "field": "id", "as": "safe-output" },
+      { "field": "organization" },
+      { "field": "repository" },
+      { "field": "campaign" },
+      { "field": "campaign-name" },
+      { "field": "repository", "as": "runtime-repository" },
+      { "field": "workflow" },
+      { "field": "workflow-name" },
+      { "field": "workflow-role" },
+      { "field": "run" },
+      { "field": "run-conclusion" },
+      { "field": "safe-output-kind" },
+      { "field": "number", "as": "outcome-number" },
+      { "field": "event-summary", "as": "outcome-title" },
+      { "field": "event-summary", "as": "outcome-summary" },
+      { "field": "outcome-body-html" },
+      { "field": "outcome-category" },
+      { "field": "outcome-status" },
+      { "field": "outcome-state" },
+      { "field": "outcome-warning" },
+      { "field": "evidence-strength" },
+      { "field": "rollout-mode" },
+      { "field": "engine" },
+      { "field": "engine-version" },
+      { "field": "requested-model" },
+      { "field": "resolved-model" },
+      { "field": "event-timestamp", "as": "published-at" },
+      { "field": "observed-at" },
+      { "field": "issue-link" },
+      { "field": "pull-request-link" },
+      { "field": "external-link" },
+      { "field": "run-link" },
+      { "field": "organization-link" },
+      { "field": "repository-link" },
+      { "field": "workflow-link" }
     ]
   },
   {

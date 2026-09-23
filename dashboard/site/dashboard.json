@@ -10042,7 +10042,8 @@
             "title": "Campaign issues",
             "data": {
               "sources": [
-                "workflows"
+                "workflows",
+                "campaign-worker-issues"
               ]
             },
             "mark": "element",
@@ -10065,16 +10066,21 @@
                 }
               ]
             },
-            "mark": "table",
-            "controls": "interactive",
+            "mark": "list",
+            "list": {
+              "style": "issues",
+              "icon": "issue-opened"
+            },
             "empty-message": "No generated issues have been attributed to this campaign.",
             "encoding": {
+              "href": {
+                "field": "issue-link"
+              },
               "columns": [
                 {
                   "field": "outcome-title",
                   "type": "nominal",
-                  "title": "Issue",
-                  "display": "outcome-link"
+                  "title": "Issue"
                 },
                 {
                   "field": "outcome-status",
