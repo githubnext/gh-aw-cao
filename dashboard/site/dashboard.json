@@ -3699,14 +3699,27 @@
             ]
           }
         ],
+        "compute": [
+          {
+            "as": "audit-kind",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "code"
+              },
+              {
+                "field": "event-type"
+              }
+            ]
+          }
+        ],
         "select": [
           {
             "field": "event-timestamp",
             "as": "observed-at"
           },
           {
-            "field": "event-type",
-            "as": "audit-kind"
+            "field": "audit-kind"
           },
           {
             "field": "event-status"
@@ -11522,7 +11535,7 @@
                   "title": "Severity"
                 },
                 "y": {
-                  "field": "finding",
+                  "field": "code",
                   "type": "quantitative",
                   "aggregate": "count",
                   "title": "Findings"

@@ -3000,7 +3000,7 @@ dashboard:
           mark: metric
           encoding:
             value:
-              field: finding
+              field: code
               aggregate: count
         - id: operational-values-view
           data:
@@ -3430,7 +3430,7 @@ dashboard:
           mark: metric
           encoding:
             value:
-              field: finding
+              field: code
               aggregate: count
 `);
 

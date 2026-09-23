@@ -973,7 +973,7 @@ function createAppendixASources() {
           repository: 'octo-org/platform',
           workflow: '.github/workflows/ci.yml',
           run: '1001',
-          finding: 'finding-1',
+          code: 'manual_review_required',
           'finding-summary': 'Pull request needed manual review',
           'finding-severity': 'medium',
           'finding-status': 'open',

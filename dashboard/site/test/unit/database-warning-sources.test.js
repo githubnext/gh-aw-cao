@@ -72,6 +72,7 @@ function batch() {
       runId: 'github:run:42:attempt:1',
       type: 'audit.finding',
       source: 'audit',
+      code: 'prompt_injection_detected',
       summary: 'Prompt injection detected',
       status: 'high',
       timestamp: observedAt,
@@ -130,6 +131,10 @@ describe('database warning source queries', () => {
       'safe-output-performance'
     ]);
     expect(sources.findings.rows).toHaveLength(1);
+    expect(sources.findings.rows[0]).toEqual(expect.objectContaining({
+      code: 'prompt_injection_detected',
+      'finding-summary': 'Prompt injection detected'
+    }));
     expect(sources.findings.metadata.availability).not.toBe('unavailable');
     for (const name of Object.keys(sources).filter((name) => name !== 'findings')) {
       expect(sources[name].rows).toEqual([]);
