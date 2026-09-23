@@ -163,3 +163,19 @@ test("Dependabot planner scopes its read token to the dispatched target", () => 
   assert.match(tokenStep, /repositories: \$\{\{ steps\.target_github_app_scope\.outputs\.repository \}\}/);
   assert.doesNotMatch(tokenStep, /github\.repository_(owner|name)|github\.event\.repository\.name/);
 });
+
+test("Dependabot planner skips the target read token when the App is not installed on the target", () => {
+  const source = workflow("dependabot-update-planner.md");
+  const generated = workflow("dependabot-update-planner.lock.yml");
+  const probeStep = /\n\s+- name: Probe target GitHub App installation\n[\s\S]*?(?=\n\s+- name: )/.exec(generated)?.[0];
+  const tokenStep = /\n\s+- name: Generate GitHub App token\n\s+id: github-mcp-app-token[\s\S]*?(?=\n\s+- name: )/.exec(generated)?.[0];
+
+  assert.ok(probeStep, "missing target GitHub App installation probe step");
+  assert.match(probeStep, /continue-on-error: true/);
+  assert.match(probeStep, /owner: \$\{\{ steps\.target_github_app_scope\.outputs\.owner \}\}/);
+  assert.match(probeStep, /repositories: \$\{\{ steps\.target_github_app_scope\.outputs\.repository \}\}/);
+  assert.match(source, /github-app:\n\s+client-id: \$\{\{ steps\.target_github_app_access\.outputs\.client_id \}\}/);
+  assert.match(source, /PROBE_OUTCOME: \$\{\{ steps\.target_github_app_probe\.outcome \}\}/);
+  assert.match(source, /if \[\[ "\$PROBE_OUTCOME" == "success" \]\]/);
+  assert.match(tokenStep, /if: \$\{\{ steps\.target_github_app_access\.outputs\.client_id != '' /);
+});

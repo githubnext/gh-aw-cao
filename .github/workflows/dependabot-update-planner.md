@@ -84,6 +84,37 @@ jobs:
           echo "owner=$owner" >> "$GITHUB_OUTPUT"
           echo "repository=$repository" >> "$GITHUB_OUTPUT"
 
+      - name: Probe target GitHub App installation
+        id: target_github_app_probe
+        continue-on-error: true
+        env:
+          GH_AW_IGNORE_IF_MISSING_PRIVATE_KEY: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
+        if: ${{ vars.GH_AW_GITHUB_READ_APP_ID != '' && env.GH_AW_IGNORE_IF_MISSING_PRIVATE_KEY != '' }}
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.GH_AW_GITHUB_READ_APP_ID }}
+          private-key: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
+          owner: ${{ steps.target_github_app_scope.outputs.owner }}
+          repositories: ${{ steps.target_github_app_scope.outputs.repository }}
+          github-api-url: ${{ github.api_url }}
+          permission-contents: read
+
+      - name: Resolve target GitHub App availability
+        id: target_github_app_access
+        env:
+          READ_APP_CLIENT_ID: ${{ vars.GH_AW_GITHUB_READ_APP_ID }}
+          PROBE_OUTCOME: ${{ steps.target_github_app_probe.outcome }}
+          TARGET_REPOSITORY: ${{ inputs.target_repo }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$PROBE_OUTCOME" == "success" ]]; then
+            echo "client_id=$READ_APP_CLIENT_ID" >> "$GITHUB_OUTPUT"
+          else
+            echo "client_id=" >> "$GITHUB_OUTPUT"
+            echo "::warning::The read-only GitHub App has no installation covering $TARGET_REPOSITORY; continuing with the configured fallback token. Report the analysis as incomplete when target evidence cannot be read."
+          fi
+
 if: needs.pre_activation.outputs.cao_authorized == 'true'
 
 imports:
@@ -153,7 +184,7 @@ tools:
     min-integrity: unapproved
     toolsets: [default, repos, issues, pull_requests, actions, dependabot, code_security, security_advisories]
     github-app:
-      client-id: ${{ vars.GH_AW_GITHUB_READ_APP_ID }}
+      client-id: ${{ steps.target_github_app_access.outputs.client_id }}
       private-key: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
       ignore-if-missing: true
       owner: ${{ steps.target_github_app_scope.outputs.owner }}

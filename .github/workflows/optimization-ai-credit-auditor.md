@@ -513,7 +513,8 @@ if (fs.existsSync(assignmentsFile)) {
     for (const name of names) {
       attrs[`gh_aw.experiment.${name}`] = assignments[name];
     }
-    const otlp = require('/tmp/gh-aw/actions/otlp.cjs');
+    const path = require('path');
+    const otlp = require(path.join(process.env.RUNNER_TEMP, 'gh-aw', 'actions', 'otlp.cjs'));
     await otlp.logSpan('experiment', attrs);
   }
 }
