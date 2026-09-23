@@ -6,7 +6,7 @@ import test from "node:test";
 import { root, workflow } from "./workflow-contract.helpers.mjs";
 
 const graderName = "optimization-token-optimizer-operational-value.sh";
-const grader = join(root, "optimization", ".github", "graders", graderName);
+const grader = join(root, ".experimental", "optimization", ".github", "graders", graderName);
 
 function evaluate(input) {
   return JSON.parse(execFileSync(grader, {
@@ -27,12 +27,12 @@ test("token optimizer uses the one-shot operational-value contract", { skip: pro
 });
 
 test("optimization campaign installs the token optimizer contract", () => {
-  const manifest = readFileSync(join(root, "optimization", "aw.yml"), "utf8");
+  const manifest = readFileSync(join(root, ".experimental", "optimization", "aw.yml"), "utf8");
 
   assert.doesNotMatch(manifest, /^resources:/m);
   assert.match(readFileSync(grader, "utf8"), /^#!\/usr\/bin\/env bash/m);
   assert.match(
-    readFileSync(join(root, "optimization", "collect-token-efficiency.sh"), "utf8"),
+    readFileSync(join(root, ".experimental", "optimization", "collect-token-efficiency.sh"), "utf8"),
     /^#!\/usr\/bin\/env bash/m,
   );
 });
@@ -41,7 +41,7 @@ test("token optimizer is review-only, assignment-scoped, and gated before infere
   const source = workflow("optimization-token-optimizer.md");
   const compiled = workflow("optimization-token-optimizer.lock.yml");
   const policy = JSON.parse(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"));
-  const campaignPolicy = JSON.parse(readFileSync(join(root, "optimization", "cao.json"), "utf8"));
+  const campaignPolicy = JSON.parse(readFileSync(join(root, ".experimental", "optimization", "cao.json"), "utf8"));
 
   assert.match(source, /^name: "AW Optimization \/ Token Optimizer"$/m);
   assert.match(source, /worker: token-optimizer/);
@@ -77,7 +77,7 @@ test("token optimizer is review-only, assignment-scoped, and gated before infere
 });
 
 test("token optimizer observations use the Activity JSONL boundary, not issue text", () => {
-  const collector = readFileSync(join(root, "optimization", "collect-token-efficiency.sh"), "utf8");
+  const collector = readFileSync(join(root, ".experimental", "optimization", "collect-token-efficiency.sh"), "utf8");
   const adapter = readFileSync(
     join(root, "dashboard", "site", "src", "data", "adapters", "gh-aw-logs.js"),
     "utf8",
@@ -87,7 +87,7 @@ test("token optimizer observations use the Activity JSONL boundary, not issue te
     "utf8",
   );
   const tokenEfficiencyQueries = readFileSync(
-    join(root, "optimization", "token-efficiency-queries.json"),
+    join(root, ".experimental", "optimization", "token-efficiency-queries.json"),
     "utf8",
   );
 
@@ -109,7 +109,7 @@ test("token intervention tracking is deterministic, read-only, and campaign-owne
     join(root, ".github", "workflows", "optimization-token-intervention-tracker.yml"),
     "utf8",
   ).replaceAll("\r\n", "\n");
-  const manifest = readFileSync(join(root, "optimization", "aw.yml"), "utf8");
+  const manifest = readFileSync(join(root, ".experimental", "optimization", "aw.yml"), "utf8");
   const activityManifest = readFileSync(join(root, "activity", "aw.yml"), "utf8");
 
   assert.match(tracker, /workflow_dispatch:/);

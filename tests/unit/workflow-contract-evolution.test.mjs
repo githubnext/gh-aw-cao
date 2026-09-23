@@ -16,8 +16,8 @@ function workflowConfig(name) {
 test("AW Optimization combines AI Credit and ambient-context workers", () => {
   const orchestrator = workflow("optimization.md");
   const orchestratorConfig = workflowConfig("optimization.md");
-  const manifest = parse(readFileSync(join(root, "optimization", "aw.yml"), "utf8"));
-  const descriptor = JSON.parse(readFileSync(join(root, "optimization", "cao.json"), "utf8"));
+  const manifest = parse(readFileSync(join(root, ".experimental", "optimization", "aw.yml"), "utf8"));
+  const descriptor = JSON.parse(readFileSync(join(root, ".experimental", "optimization", "cao.json"), "utf8"));
   const policy = JSON.parse(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"));
   const policyWorkers = policy["control-plane"].campaigns.optimization.workers;
   const workerEntries = Object.entries(descriptor.workers);

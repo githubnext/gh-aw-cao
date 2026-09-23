@@ -541,7 +541,7 @@ test("Dashboard inventory links multiline orchestrator worker lists", () => {
     )["control-plane"].campaigns;
     const registeredCampaignIds = Object.keys(policyCampaigns).sort();
     const expectedBundles = registeredCampaignIds.flatMap((campaignId) => {
-      const descriptorPath = join(root, campaignId, "cao.json");
+      const descriptorPath = join(root, campaignId === "optimization" ? ".experimental" : "", campaignId, "cao.json");
       if (!existsSync(descriptorPath)) {
         assert.equal(policyCampaigns[campaignId].workers, undefined, `${campaignId} workers require a campaign descriptor`);
         return [];

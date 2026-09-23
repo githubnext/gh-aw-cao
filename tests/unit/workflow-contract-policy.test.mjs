@@ -19,7 +19,7 @@ function operationCampaigns() {
     readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"),
   )["control-plane"].campaigns;
   return Object.entries(policyCampaigns).flatMap(([campaignName, policy]) => {
-    const descriptorPath = join(root, campaignName, "cao.json");
+    const descriptorPath = join(root, campaignName === "optimization" ? ".experimental" : "", campaignName, "cao.json");
     if (!existsSync(descriptorPath)) {
       assert.equal(policy.workers, undefined, `${campaignName} workers require a campaign descriptor`);
       return [];
