@@ -2509,7 +2509,9 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   const mobileCampaignLinks = campaignNavigation.locator('a');
   await expect(mobileCampaignLinks).toHaveCount(5);
   await expect(mobileCampaignLinks.first().locator('.tab-trailing-icon')).toBeVisible();
-  expect(await mobileCampaignLinks.first().locator('.tab-trailing-icon').evaluate((icon) => parseFloat(getComputedStyle(icon).marginLeft) > 0)).toBe(true);
+  expect(await mobileCampaignLinks.first().evaluate((link) => {
+    return link.lastElementChild?.classList.contains('tab-trailing-icon') === true;
+  })).toBe(true);
   await mobileCampaignLinks.first().focus();
   await expect(mobileCampaignLinks.first()).toHaveCSS('outline-offset', '-3px');
   const mobileLinkBoxes = await mobileCampaignLinks.evaluateAll((links) => links.map((link) => {
