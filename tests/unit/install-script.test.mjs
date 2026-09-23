@@ -51,14 +51,14 @@ exit 2
 `);
   const fakeCurl = `#!/usr/bin/env bash
 echo "curl" >> "$FAKE_COMMAND_LOG"
-printf '%s\\n' '#!/usr/bin/env bash' 'printf "v0.89.17\\n" > "$FAKE_GH_AW_INSTALLED"'
+printf '%s\\n' '#!/usr/bin/env bash' 'printf "v0.89.20\\n" > "$FAKE_GH_AW_INSTALLED"'
 `;
   await writeFile(path.join(bin, "curl"), fakeCurl);
   await writeFile(path.join(bin, "curl.exe"), fakeCurl);
   await chmod(path.join(bin, "gh"), 0o755);
   await chmod(path.join(bin, "curl"), 0o755);
   await chmod(path.join(bin, "curl.exe"), 0o755);
-  await writeFile(ghAwInstalled, "v0.89.17\n");
+  await writeFile(ghAwInstalled, "v0.89.20\n");
 
   const env = {
     ...process.env,
