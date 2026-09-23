@@ -233,6 +233,105 @@ describe('canonical source ingestion and queries', () => {
     });
   });
 
+  it('migrates schema 12 phased shards to repository-scoped run and issue identities', async () => {
+    const repositoryId = 'github:repository:1';
+    const workflowId = 'github:workflow:2';
+    const canonicalRecord = (
+      /** @type {string} */ id,
+      /** @type {string} */ observedAt,
+      /** @type {Record<string, unknown>} */ fields = {}
+    ) => ({
+      id,
+      observedAt,
+      provenance: { source: 'test', sourceId: id, observedAt },
+      ...fields
+    });
+    /** @returns {import('../../src/data/model/schema.js').CanonicalBatch} */
+    const emptyBatch = () => ({
+      campaigns: [],
+      repositories: [],
+      workflows: [],
+      runs: [],
+      domains: [],
+      tools: [],
+      audits: [],
+      issues: []
+    });
+    const runsBatch = emptyBatch();
+    runsBatch.repositories.push(canonicalRecord(repositoryId, '2026-09-09T04:00:00Z'));
+    runsBatch.workflows.push(canonicalRecord(workflowId, '2026-09-09T04:00:00Z', { repositoryId }));
+    runsBatch.runs.push(
+      canonicalRecord('github:run:12345:attempt:1', '2026-09-09T04:00:00Z', {
+        githubRunId: '12345',
+        attempt: 1,
+        owner: 'githubnext',
+        repository: 'gh-aw-cao',
+        repositoryId,
+        workflowId
+      }),
+      canonicalRecord('github:run:12345:attempt:2', '2026-09-09T05:00:00Z', {
+        githubRunId: '12345',
+        attempt: 2,
+        owner: 'githubnext',
+        repository: 'gh-aw-cao',
+        repositoryId,
+        workflowId
+      })
+    );
+    await ingestNormalizedJson(indexedDB, {
+      schemaVersion: 12,
+      ingestionVersion: 2,
+      sourceRecords: 2,
+      phase: 'runs',
+      batch: runsBatch
+    }, {
+      payloadIdentity: '1'.repeat(64),
+      payloadScope: 'https://example.test/gh-aw-logs-runs/schema-12.json',
+      expectedPhase: 'runs'
+    });
+
+    const recordsBatch = emptyBatch();
+    recordsBatch.issues.push(
+      canonicalRecord('issue:safe-output:first', '2026-09-09T04:00:00Z', {
+        runId: 'github:run:12345:attempt:1',
+        number: 42,
+        url: 'https://github.com/githubnext/gh-aw-cao/issues/42',
+        timestamp: '2026-09-09T04:00:00Z'
+      }),
+      canonicalRecord('issue:safe-output:second', '2026-09-09T05:00:00Z', {
+        runId: 'github:run:12345:attempt:2',
+        number: 42,
+        url: 'https://github.com/githubnext/gh-aw-cao/issues/42',
+        timestamp: '2026-09-09T05:00:00Z'
+      })
+    );
+    await ingestNormalizedJson(indexedDB, {
+      schemaVersion: 12,
+      ingestionVersion: 2,
+      sourceRecords: 2,
+      phase: 'records',
+      batch: recordsBatch
+    }, {
+      payloadIdentity: '2'.repeat(64),
+      payloadScope: 'https://example.test/gh-aw-logs-records/schema-12.json',
+      expectedPhase: 'records'
+    });
+
+    const stored = await readCanonicalBatch(indexedDB);
+    expect(stored.runs).toEqual([
+      expect.objectContaining({
+        id: 'github:run:githubnext/gh-aw-cao:12345',
+        attempt: 2
+      })
+    ]);
+    expect(stored.issues).toEqual([
+      expect.objectContaining({
+        id: 'github:issue:githubnext/gh-aw-cao:42',
+        runId: 'github:run:githubnext/gh-aw-cao:12345'
+      })
+    ]);
+  });
+
   it('rejects mislabeled or mixed phased payloads', async () => {
     const payload = {
       schemaVersion: CANONICAL_SCHEMA_VERSION,
