@@ -511,14 +511,14 @@ describe('data view renderer', () => {
         encoding: { columns: [{ field: 'campaign-name' }] }
       },
       rows: [
-        { 'campaign-name': 'Current package', campaign: 'current', 'campaign-update-state': 'current' },
-        { 'campaign-name': 'Outdated package', campaign: 'outdated', 'campaign-update-state': 'update-available' }
+        { 'campaign-name': 'Current package', campaign: 'current', 'campaign-update-state': 'current', 'campaign-registration': 'true' },
+        { 'campaign-name': 'Outdated package', campaign: 'outdated', 'campaign-update-state': 'update-available', 'campaign-registration': 'true' }
       ],
       cardTemplates: {
         'maintenance-campaign': {
           icon: 'workflow',
           title: { field: 'campaign-name' },
-          labels: [],
+          labels: [{ field: 'campaign-registration', title: 'Registration', display: 'active-state' }],
           details: [],
           actions: [{
             action: 'update-campaign',
@@ -539,6 +539,16 @@ describe('data view renderer', () => {
     const cards = rendered?.querySelectorAll('.entity-card-list-card') ?? [];
     expect(cards[0]?.querySelector('.entity-card-list-actions')).toBeNull();
     expect(cards[1]?.querySelector('.entity-card-list-actions button')?.textContent).toContain('Update campaign');
+
+    // The row-level action must be rendered after the labels list in DOM order so that
+    // CSS grid auto-placement keeps the labels badge in its own column instead of pushing
+    // it into a stray row/column that renders outside the card bounds (see #13672-style regression).
+    const outdatedCard = cards[1];
+    const children = outdatedCard ? Array.from(outdatedCard.children) : [];
+    const labelsIndex = children.findIndex((child) => child.classList.contains('issue-list-labels'));
+    const actionsIndex = children.findIndex((child) => child.classList.contains('entity-card-list-actions'));
+    expect(labelsIndex).toBeGreaterThanOrEqual(0);
+    expect(actionsIndex).toBeGreaterThan(labelsIndex);
   });
 
   it('renders entity-card grids with row-selected icons', () => {
