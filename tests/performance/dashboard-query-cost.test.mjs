@@ -32,14 +32,19 @@ const outputDirectory = path.resolve(
 
 /** @param {string} name @param {number} fallback */
 function budget(name, fallback) {
-  const value = Number(process.env[name] ?? fallback);
-  if (!Number.isFinite(value) || value <= 0) throw new TypeError(`${name} must be a positive number.`);
+  const raw = process.env[name] ?? fallback;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new TypeError(`${name} must be a positive number; received "${raw}".`);
+  }
   return value;
 }
 
 const candidateLimit = budget("DASHBOARD_QUERY_COST_CANDIDATES", DEFAULT_QUERY_COST_CANDIDATES);
 if (!Number.isInteger(candidateLimit)) {
-  throw new TypeError("DASHBOARD_QUERY_COST_CANDIDATES must be a positive integer.");
+  throw new TypeError(
+    `DASHBOARD_QUERY_COST_CANDIDATES must be a positive integer; received "${process.env.DASHBOARD_QUERY_COST_CANDIDATES}".`,
+  );
 }
 const maximumDurationMs = budget("DASHBOARD_QUERY_COST_MAX_DURATION_MS", 5_000);
 const maximumOperations = budget("DASHBOARD_QUERY_COST_MAX_OPERATIONS", 50_000_000);

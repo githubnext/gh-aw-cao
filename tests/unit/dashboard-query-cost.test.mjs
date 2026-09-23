@@ -43,14 +43,14 @@ const CANDIDATE_LIMIT = 10;
 
 test("static query cost evaluator picks the highest ranked queries to investigate", () => {
   const { candidates, analysis } = selectCostlyQueries(dashboardDocument, CANDIDATE_LIMIT);
-  assert.equal(candidates.length, CANDIDATE_LIMIT);
+  assert.equal(candidates.length, Math.min(CANDIDATE_LIMIT, analysis.ranking.length));
   assert.deepEqual(
     candidates.map(({ name }) => name),
     analysis.ranking.slice(0, CANDIDATE_LIMIT).map(({ name }) => name),
   );
   assert.deepEqual(
     candidates.map(({ rank }) => rank),
-    Array.from({ length: CANDIDATE_LIMIT }, (_, index) => index + 1),
+    candidates.map((_, index) => index + 1),
   );
   for (const candidate of candidates) {
     assert.ok(candidate["static-total-row-read-units"] >= candidate["static-direct-row-read-units"]);
@@ -88,7 +88,7 @@ test("benchmark measures computational and space cost per query", async (t) => {
     assert.ok(measurement.operations >= 0);
     assert.ok(measurement["result-bytes"] > 0);
     assert.ok(measurement["retained-heap-bytes"] >= 0);
-    assert.ok(measurement["peak-heap-bytes"] >= measurement["retained-heap-bytes"]);
+    assert.ok(measurement["execution-heap-bytes"] >= measurement["retained-heap-bytes"]);
   }
   assert.deepEqual(
     [...report["most-costly-by-time"]].sort(),
