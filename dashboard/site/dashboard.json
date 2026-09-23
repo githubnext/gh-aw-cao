@@ -3519,7 +3519,8 @@
             "field": "started-at",
             "direction": "asc"
           }
-        ]
+        ],
+        "limit": 250
       },
       {
         "name": "workflow-aic-totals",
@@ -10863,22 +10864,7 @@
               "title": "Workflows",
               "description": "Declared workflows across the configured repository scope.",
               "data": {
-                "source": "workflow-inventory",
-                "order-by": [
-                  {
-                    "field": "runs",
-                    "direction": "desc"
-                  },
-                  {
-                    "field": "repository",
-                    "direction": "asc"
-                  },
-                  {
-                    "field": "workflow",
-                    "direction": "asc"
-                  }
-                ],
-                "limit": 100
+                "source": "workflow-inventory"
               },
               "mark": "table",
               "controls": "interactive",
