@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
   dashboardAssessmentPageBudgetMs,
@@ -75,6 +76,15 @@ test("grows the assessment timeout with the number of selected views", () => {
   );
   assert.equal(dashboardAssessmentTimeout(75), maximumDashboardAssessmentTimeoutMs);
   assert.equal(dashboardAssessmentTimeout(10_000), maximumDashboardAssessmentTimeoutMs);
+});
+
+test("configures Playwright with the bounded assessment timeout", () => {
+  const config = readFileSync(
+    new URL("../playwright/configs/dashboard-views.config.mjs", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(config, /timeout: maximumDashboardAssessmentTimeoutMs/);
 });
 
 test("ignores request aborts caused by closing an assessed page", () => {
