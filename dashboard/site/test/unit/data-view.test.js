@@ -886,13 +886,14 @@ describe('data view renderer', () => {
     expect(load).toHaveBeenCalledTimes(1);
   });
 
-  it('forgets early continuation pages once many later pages have loaded, bounding memory for large tables', async () => {
+  it('forgets early continuation pages once cached rows exceed the memory threshold for large tables', async () => {
     const intersect = stubIntersectionObserver();
-    const pageCount = 20;
+    const pageCount = 3;
+    const rowsPerPage = 1025;
     const load = vi.fn(async (/** @type {string} */ token) => {
       const index = Number(token.split('-')[1]);
       return {
-        rows: [{ event: `event-${25 + index}` }],
+        rows: Array.from({ length: rowsPerPage }, (_, offset) => ({ event: `event-${index}-${offset}` })),
         continuationToken: index < pageCount ? `page-${index + 1}` : undefined
       };
     });
@@ -915,28 +916,28 @@ describe('data view renderer', () => {
       buildChartPoints: () => [],
       prepareChartPoints: () => [],
       toText: String,
-      continuation: { token: 'page-2', totalRows: 25 + pageCount, load }
+      continuation: { token: 'page-2', totalRows: 25 + rowsPerPage * (pageCount - 1), load }
     });
 
     const tableMore = /** @type {HTMLButtonElement} */ (rendered?.querySelector('[data-table-more]'));
-    // Walk the table far past the first page via its own continuation clicks,
-    // well beyond any small in-memory retention window.
-    for (let page = 2; page <= pageCount; page += 1) {
-      tableMore.click();
-      await vi.waitFor(() => expect(rendered?.querySelectorAll('tbody tr')).toHaveLength(25 + (page - 1)));
-    }
-    expect(load).toHaveBeenCalledTimes(pageCount - 1);
-    const callsForFirstPage = load.mock.calls.filter((call) => call[0] === 'page-2').length;
-    expect(callsForFirstPage).toBe(1);
+    // Loading `page-2` (1,025 rows) alone stays under the 2,048-row memory
+    // threshold, so it is still cached. Loading `page-3` pushes the combined
+    // cached rows past the threshold, so `page-2` must be forgotten.
+    tableMore.click();
+    await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(tableMore.disabled).toBe(false));
+    tableMore.click();
+    await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(2));
 
     // The mobile card list independently replays the continuation from its
     // own start (`page-2`) to catch up. If every page were kept in memory
-    // forever this would be served from cache; instead the long-forgotten
-    // first page must be fetched again.
+    // regardless of size, this would be served from cache; instead the
+    // forgotten first page must be fetched again once it no longer fits
+    // under the row threshold.
     const cardBoundary = /** @type {HTMLElement} */ (rendered?.querySelector('[data-card-list-boundary]'));
     intersect(cardBoundary);
     await vi.waitFor(() => (
-      expect(load.mock.calls.filter((call) => call[0] === 'page-2').length).toBeGreaterThan(callsForFirstPage)
+      expect(load.mock.calls.filter((call) => call[0] === 'page-2').length).toBe(2)
     ));
   });
 
