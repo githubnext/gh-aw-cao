@@ -10,11 +10,10 @@
     "install:gh-aw": "GH_AW_VERSION=$(node .github/workflows/shared/control.mjs compiler-version .github/workflows/cao.json) && curl -sL https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- \"$GH_AW_VERSION\"",
     "setup:github-apps": "node .github/workflows/shared/setup-github-apps.mjs",
     "dashboard:local": "node dashboard/local-server.mjs",
-    "dashboard:local:copilot": "node dashboard/local-server.mjs --copilot",
     "dashboard:local:mobile": "DASHBOARD_DATA_URL=https://githubnext.github.io/gh-aw-cao/cao/payload-hashes.json MOBILE_BROWSER=chromium MOBILE_DEVICE='Pixel 7' MOBILE_PROFILE=low-memory MOBILE_MEMORY_MB=256 playwright test --config=tests/playwright/configs/mobile.config.mjs",
     "dashboard:data": "node activity/cao.mjs",
     "dashboard:data:download": "npm run dashboard:data -- download",
-    "dev": "node dashboard/local-server.mjs --copilot --replace-existing --trace-file .cao-dashboard-traces/latest.jsonl",
+    "dev": "node dashboard/local-server.mjs --replace-existing --trace-file .cao-dashboard-traces/latest.jsonl",
     "docs:dev": "astro dev",
     "docs:build": "astro build",
     "docs:preview": "astro preview",
@@ -37,7 +36,6 @@
     "test:performance:dashboard-queries": "playwright test --config=tests/playwright/configs/dashboard-query-performance.config.mjs",
     "test:e2e:dashboard-ingestion": "playwright test --config=tests/playwright/configs/dashboard-ingestion.config.mjs",
     "test:stress:dashboard": "playwright test --config=tests/playwright/configs/dashboard-massive-scale.config.mjs",
-    "test:e2e:copilot-loop": "playwright test --config=tests/playwright/configs/copilot-loop.config.mjs",
     "test:e2e:local-server": "playwright test --config=tests/playwright/configs/local-server.config.mjs"
   },
   "dependencies": {

@@ -12,7 +12,7 @@
     "validate:corpus": "node ./scripts/validate-corpus.mjs",
     "validate:dashboards": "node ./scripts/validate-dashboards.mjs",
     "analyze:query-graphs": "node ./scripts/validate-dashboards.mjs --render-query-graphs",
-    "dev": "cd .. && node local-server.mjs --copilot"
+    "dev": "cd .. && node local-server.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

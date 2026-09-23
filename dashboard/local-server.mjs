@@ -15,10 +15,8 @@ import {
   stat,
   writeFile,
 } from "node:fs/promises";
-import { createReadStream, createWriteStream, existsSync, watch } from "node:fs";
-import { createRequire } from "node:module";
+import { createReadStream, createWriteStream, watch } from "node:fs";
 import { isIP } from "node:net";
-import { tmpdir } from "node:os";
 import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
@@ -44,8 +42,6 @@ const defaultCatalogRoot = resolve(scriptDirectory, "..");
 const socketEndpoint = "/__dashboard_socket";
 const dataArtifactName = "central-agentic-ops-dashboard";
 const devServerPidFileName = ".cao-dashboard-dev-server.json";
-const maxCopilotDashboardRepairAttempts = 3;
-let validateDashboardDocument;
 const trustedDashboardWorkflowPaths = new Set([
   ".github/workflows/cao-dashboard.yml",
 ]);
@@ -175,13 +171,6 @@ async function existingDirectories(paths) {
   return directories;
 }
 
-export async function repositorySkillDirectories(workingDirectory) {
-  return existingDirectories([
-    join(workingDirectory, ".github", "skills"),
-    join(workingDirectory, ".agents", "skills"),
-  ]);
-}
-
 async function canonicalPath(path) {
   const absolutePath = resolve(path);
   try {
@@ -190,23 +179,6 @@ async function canonicalPath(path) {
     if (error?.code !== "ENOENT" || dirname(absolutePath) === absolutePath) throw error;
     return join(await canonicalPath(dirname(absolutePath)), basename(absolutePath));
   }
-}
-
-async function dashboardSourceForView(view, dashboardPaths) {
-  for (const path of dashboardPaths) {
-    try {
-      const document = JSON.parse(await readFile(path, "utf8"));
-      const matches = document?.dashboard?.pages?.some((page) =>
-        [page?.id, page?.title, page?.["navigation-label"]].includes(view));
-      if (matches) return path;
-    } catch (error) {
-      console.log("Unable to inspect dashboard source for Copilot.", {
-        path,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-  return dashboardPaths[0];
 }
 
 async function campaignDashboardPaths(catalogRoot) {
@@ -315,104 +287,6 @@ function isLoopbackHost(host) {
   if (unbracketed === "localhost" || unbracketed === "::1") return true;
   if (isIP(unbracketed) !== 4) return false;
   return unbracketed.split(".")[0] === "127";
-}
-
-function normalizeDashboardJson(source) {
-  return JSON.stringify(JSON.parse(source), null, 2);
-}
-
-function formatDashboardValidationErrors(errors) {
-  return errors
-    .map((error) => `${error.code} at ${error.path}: ${error.message}`)
-    .join("\n");
-}
-
-function validateDashboardSource(source) {
-  const result = validateDashboardDocument(source);
-  if (result.ok) return;
-  throw new Error(`Dashboard validation failed:\n${formatDashboardValidationErrors(result.errors)}`);
-}
-
-const copilotReadOnlyShellCommands = new Set([
-  "basename",
-  "cat",
-  "cut",
-  "dirname",
-  "du",
-  "echo",
-  "file",
-  "grep",
-  "head",
-  "jq",
-  "ls",
-  "pwd",
-  "readlink",
-  "realpath",
-  "rg",
-  "sed",
-  "stat",
-  "tail",
-  "tr",
-  "uniq",
-  "wc",
-]);
-
-function shellCommandDetails(permission) {
-  return {
-    commands: permission.commands.map((command) => ({
-      identifier: command.identifier,
-      readOnly: command.readOnly,
-    })),
-    commandSegments: (permission.commandSegments ?? []).map((segment) => ({
-      identifier: segment.identifier,
-      command: truncatedLogText(segment.fullCommandText, 300),
-    })),
-  };
-}
-
-function shellCommandIdentifiers(permission) {
-  const segmentIdentifiers = (permission.commandSegments ?? [])
-    .map((segment) => segment.identifier)
-    .filter(Boolean);
-  return segmentIdentifiers.length > 0
-    ? segmentIdentifiers
-    : permission.commands.map((command) => command.identifier);
-}
-
-function shellAbsolutePaths(permission) {
-  const commandPaths = permission.fullCommandText.match(/\/[^\s"'|;&<>]+/g) ?? [];
-  return [...new Set([...permission.possiblePaths, ...commandPaths])];
-}
-
-export function shellPermissionRejection(permission) {
-  if (permission.hasWriteFileRedirection || /[<>]/.test(permission.fullCommandText)) {
-    return "shell command uses redirection";
-  }
-  if (permission.possibleUrls.length > 0) return "shell command may access a URL";
-  const identifiers = shellCommandIdentifiers(permission);
-  if (identifiers.length === 0) return "shell command could not be classified";
-  if (identifiers.includes("sed")) {
-    if (/(?:^|\s)(?:-i(?:\S*)?|--in-place(?:=\S*)?)(?:\s|$)/.test(permission.fullCommandText)) {
-      return "sed in-place editing is not allowed";
-    }
-    if (/(?:^|\s)(?:-f|--file)(?:\s|=|$)/.test(permission.fullCommandText)) {
-      return "sed script files are not allowed";
-    }
-    if (/(?:^|[;/'"\s])(?:e|w|W)(?:\s|['"]|$)/.test(permission.fullCommandText)) {
-      return "sed execute and file-writing commands are not allowed";
-    }
-  }
-  const deniedIdentifiers = identifiers.filter((identifier) =>
-    !copilotReadOnlyShellCommands.has(identifier));
-  if (deniedIdentifiers.length > 0) {
-    return `shell command not allowed: ${deniedIdentifiers.join(", ")}`;
-  }
-  return null;
-}
-
-function dashboardPageIndex(document, view) {
-  return document?.dashboard?.pages?.findIndex((page) =>
-    [page?.id, page?.title, page?.["navigation-label"]].includes(view)) ?? -1;
 }
 
 const secretKeyPattern = /(?:^|[-_])(api[-_]?key|authorization|client[-_]?secret|password|private[-_]?key|secret|token)(?:$|[-_])/i;

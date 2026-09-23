@@ -133,35 +133,6 @@ npm run dashboard:local:mobile
 
 This starts the local preview through Playwright with the Pixel 7 profile and a 256 MiB V8 heap limit, then records DOM analysis, accessibility, trace, and screenshot evidence under `test-results/chromium-low-memory/`. The check fails when the rendered page exceeds 6,000 elements.
 
-### Copilot-assisted editing
-
-Install the Copilot SDK and start the preview with the optional editing mode:
-
-```bash
-npm install @github/copilot-sdk
-npm run dashboard:local:copilot
-```
-
-Catalog contributors can use `npm run dashboard:local:copilot`. The CLI relaunches itself with Node's filesystem permission model, limiting reads and writes to the current workspace. It serves only Markdown, JSON, recognized web assets, and images, and redacts common secret patterns from textual files before returning them to the browser. The SDK launches Copilot CLI in headless server mode using the signed-in Copilot user and explicitly loads repository skills from `.github/skills` and `.agents/skills`. The preview adds a Copilot chat launcher above the dashboard; the dialog retains user and assistant messages across requests. Submitting a request starts a session for the active view, instructs Copilot to use the `generate-dashboard-ir` skill, validates the edited JSON until it passes, and saves it with normalized two-space indentation. Serialized, retrying source rebuilds then update the open view without reloading the page. Copilot mode only binds to a loopback host and restricts sessions to purpose-built tools that read editable dashboard sources, validate candidate JSON, and save the selected source. The server prints one access-log line for every HTTP response without exposing the capability URL prefix.
-
-Start the Copilot-enabled development loop with:
-
-```bash
-npm run dev
-```
-
-Starting the command again replaces the prior dashboard dev server from the same workspace before binding port `4173`. It verifies the listener's command and working directory before signaling the exact process and refuses to stop unrelated port owners.
-
-Each prompt receives one correlation ID. Browser lifecycle events, server request handling, source validation, preview rebuild, and the browser render acknowledgement are written as redacted JSON Lines to `.cao-dashboard-traces/latest.jsonl`. A request is reported as complete only after the browser confirms that it rendered the rebuilt dashboard.
-
-Run the self-contained improvement loop without a live artifact or Copilot account:
-
-```bash
-npm run test:e2e:copilot-loop
-```
-
-The browser test starts a Copilot-enabled server with a deterministic runtime, submits a prompt through the chat UI, writes a campaign dashboard source, waits for the active browser view to update, and verifies the shared browser/server correlation trace.
-
 ## Standalone Pages site
 
 Before running the standalone deployment, configure the private control-plane or review repository that will own the Pages site:

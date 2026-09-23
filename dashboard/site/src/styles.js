@@ -163,42 +163,6 @@ export function primerStylesheet() {
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body { margin: 0; background: var(--canvas); color: var(--fg); font: .875rem/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji"; letter-spacing: 0; }
-.dashboard-copilot-prompt { --copilot-accent: var(--purple); --copilot-accent-muted: color-mix(in srgb, var(--purple) 14%, transparent); display: grid; gap: 8px; color: var(--fg); }
-.dashboard-copilot-conversation { max-height: min(42vh, 360px); display: flex; flex-direction: column; gap: 8px; overflow: auto; scrollbar-width: thin; }
-.dashboard-copilot-conversation:empty { display: none; }
-.dashboard-copilot-message { display: grid; gap: 2px; padding: 7px 8px; border: 1px solid var(--border); border-radius: 8px; font-size: .75rem; line-height: 1.35; }
-.dashboard-copilot-message-user > strong { color: var(--muted); font-size: .6875rem; }
-.dashboard-copilot-message-user { align-self: flex-end; background: var(--copilot-accent-muted); border-color: color-mix(in srgb, var(--copilot-accent) 42%, var(--border)); }
-.dashboard-copilot-message-assistant { align-self: stretch; background: var(--canvas); }
-.dashboard-copilot-message-reasoning, .dashboard-copilot-message-update { border-style: dashed; background: transparent; color: var(--muted); font-style: italic; }
-.dashboard-copilot-message-refusal { border-style: dashed; background: transparent; color: var(--muted); }
-.dashboard-copilot-message-error { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, transparent); }
-.dashboard-copilot-message-content { white-space: pre-wrap; overflow-wrap: anywhere; }
-.dashboard-copilot-label { color: var(--muted); font-size: .6875rem; font-weight: 600; }
-.dashboard-copilot-input { min-width: 0; display: flex; align-items: center; gap: 4px; padding: 3px; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); }
-.dashboard-copilot-input:focus-within { border-color: var(--copilot-accent); outline: 2px solid color-mix(in srgb, var(--copilot-accent) 28%, transparent); }
-.dashboard-copilot-input textarea { min-width: 0; width: 100%; min-height: 44px; max-height: 120px; padding: 4px 5px; resize: vertical; border: 0; outline: 0; background: transparent; color: var(--fg); font: inherit; font-size: .75rem; line-height: 1.5; }
-.dashboard-copilot-action { width: 28px; height: 28px; display: grid; flex: 0 0 28px; place-items: center; padding: 0; border: 0; border-radius: 6px; background: var(--copilot-accent); color: var(--on-emphasis); cursor: pointer; }
-.dashboard-copilot-action:hover { filter: brightness(1.14); }
-.dashboard-copilot-action.dashboard-copilot-cancel { border: 1px solid var(--border); background: var(--canvas-subtle); color: var(--fg); }
-.dashboard-copilot-action.dashboard-copilot-cancel:hover { background: var(--neutral-muted); filter: none; }
-.dashboard-copilot-action:disabled { background: var(--neutral-muted); color: var(--muted); cursor: not-allowed; filter: none; }
-.dashboard-copilot-prompt output { min-height: 1em; color: var(--muted); font-size: .6875rem; line-height: 1.25; }
-.dashboard-copilot-prompt output:empty { display: none; }
-.dashboard-copilot-panel { width: 100vw; max-height: min(32vh, 300px); display: flex; flex-direction: column; position: fixed; z-index: 40; right: 0; bottom: 0; left: 0; padding: 10px max(16px, calc((100vw - 920px) / 2)); border-top: 1px solid var(--border); background: var(--canvas-subtle); box-shadow: 0 -8px 24px color-mix(in srgb, var(--canvas-inset) 28%, transparent); animation: copilot-panel-rise 160ms ease-out; }
-.dashboard-copilot-panel[hidden] { display: none; }
-.dashboard-copilot-panel .dashboard-copilot-prompt { min-height: 0; padding-top: 40px; }
-.dashboard-copilot-panel .dashboard-copilot-conversation { max-height: min(16vh, 140px); }
-.copilot-panel-toggle { min-height: 32px; display: flex; align-items: center; gap: 8px; margin-top: auto; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font: inherit; font-size: .6875rem; text-align: left; cursor: pointer; }
-.copilot-panel-toggle > .octicon { color: var(--purple); }
-.copilot-panel-toggle > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.copilot-panel-toggle > .octicon-chevron-up { width: 12px; height: 12px; flex-basis: 12px; margin-left: auto; color: var(--muted); }
-.copilot-panel-toggle:hover, .copilot-panel-toggle[aria-expanded="true"] { background: var(--neutral-muted); color: var(--fg); }
-.dashboard-copilot-panel > .copilot-panel-toggle { width: var(--copilot-toggle-width); position: absolute; top: 10px; left: var(--copilot-toggle-left); margin: 0; }
-@keyframes copilot-panel-rise {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
 .dashboard-root { height: 100vh; min-height: 0; overflow: hidden; background: var(--canvas); color: var(--fg); font: .875rem/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji"; }
 .octicon-sprite { width: 0; height: 0; position: absolute; overflow: hidden; }
 .octicon { width: 16px; height: 16px; flex: 0 0 16px; fill: currentColor; vertical-align: text-bottom; }
@@ -294,8 +258,6 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .sidebar-collapsed .sidebar-brand { display: none; }
 .sidebar-collapsed .sidebar-toggle { width: 32px; flex-basis: 32px; }
 .sidebar-collapsed .nav-label, .sidebar-collapsed .nav-section-toggle { display: none; }
-.sidebar-collapsed .copilot-panel-toggle { justify-content: center; padding-inline: 4px; }
-.sidebar-collapsed .copilot-panel-toggle > :is(span, .octicon-chevron-up) { display: none; }
 .sidebar-collapsed .nav-section-items { display: flex !important; }
 .sidebar-collapsed .primary-nav a { justify-content: center; gap: 0; padding-inline: 6px; }
 .sidebar-collapsed .primary-nav a[aria-current="page"]::before { left: -8px; }
@@ -2225,9 +2187,6 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .sidebar-toggle { display: none; }
   .sidebar-collapsed .org-sidebar { padding: 14px 12px 10px; }
   .sidebar-collapsed .sidebar-brand > span, .sidebar-collapsed .nav-label { display: initial; }
-  .sidebar-collapsed .copilot-panel-toggle { justify-content: flex-start; padding-inline: 8px; }
-  .sidebar-collapsed .copilot-panel-toggle > :is(span, .octicon-chevron-up) { display: initial; }
-  .dashboard-copilot-panel { max-height: min(42vh, 360px); padding-inline: 14px; }
   .primary-nav { display: none; }
   .nav-section { display: flex; flex: 0 0 auto; flex-direction: row; }
   .nav-section-toggle { display: none; }

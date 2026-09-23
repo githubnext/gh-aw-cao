@@ -259,69 +259,6 @@
         });
         console.log("Dashboard preview socket initialized.");
       }
-      /** @type {HTMLFormElement | undefined} */
-      let copilotPrompt;
-      let copilotPanelOpen = false;
-      if (previewMode === "copilot") {
-        if (!dashboardSocket) throw new Error("Copilot mode requires the dashboard preview socket.");
-        const { renderCopilotPrompt } = await import("./copilot-prompt.js");
-        copilotPrompt = renderCopilotPrompt(dashboardSocket);
-        console.log("Copilot dashboard prompt initialized.");
-      }
-
-      /** @param {HTMLElement} dashboard */
-      const attachCopilotPanel = (dashboard) => {
-        if (!copilotPrompt) return;
-        const panel = document.createElement("aside");
-        panel.id = "dashboard-copilot-panel";
-        panel.className = "dashboard-copilot-panel";
-        panel.setAttribute("aria-label", "Modify this view with Copilot");
-        panel.hidden = !copilotPanelOpen;
-
-        const toggleButton = document.createElement("button");
-        toggleButton.type = "button";
-        toggleButton.className = "copilot-panel-toggle";
-        toggleButton.setAttribute("aria-controls", panel.id);
-        toggleButton.setAttribute("aria-label", "Modify this view with Copilot");
-        toggleButton.title = "Modify this view with Copilot";
-        const toggleLabel = document.createElement("span");
-        toggleLabel.textContent = "Modify this view";
-        const sidebar = dashboard.querySelector(".org-sidebar");
-
-        /** @param {boolean} open @param {boolean} [restoreFocus] */
-        const setOpen = (open, restoreFocus = false) => {
-          copilotPanelOpen = open;
-          panel.hidden = !open;
-          toggleButton.replaceChildren(
-            octicon("sparkle"),
-            toggleLabel,
-            octicon(open ? "chevron-down" : "chevron-up")
-          );
-          if (open) {
-            const triggerBounds = toggleButton.getBoundingClientRect();
-            toggleButton.style.setProperty("--copilot-toggle-left", `${triggerBounds.left}px`);
-            toggleButton.style.setProperty("--copilot-toggle-width", `${triggerBounds.width}px`);
-            panel.prepend(toggleButton);
-          } else {
-            sidebar?.append(toggleButton);
-          }
-          toggleButton.setAttribute("aria-expanded", String(open));
-          dashboard.classList.toggle("dashboard-copilot-panel-open", open);
-          if (open) copilotPrompt.querySelector("textarea")?.focus();
-          else if (restoreFocus) toggleButton.focus();
-        };
-        toggleButton.addEventListener("click", () => setOpen(!copilotPanelOpen, copilotPanelOpen));
-        panel.addEventListener("keydown", (event) => {
-          if (event.key === "Escape") setOpen(false, true);
-        });
-
-        panel.append(copilotPrompt);
-  sidebar?.append(toggleButton);
-        dashboard.append(panel);
-        dashboard.classList.add("dashboard-copilot-enabled");
-        setOpen(copilotPanelOpen);
-      };
-
       /**
       * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
       * @param {'ready' | 'loading' | 'cached' | 'stale'} [state]
@@ -358,7 +295,6 @@
             dashboard.querySelector(".report-body")?.prepend(renderRefreshError(retryRefresh));
           }
         }
-        attachCopilotPanel(dashboard);
         attachCliActions(dashboard, dashboardDocument.dashboard["cli-actions"] ?? [], {
           repository: dashboardDocument.dashboard.repository,
           canExecute: canExecuteCliActions

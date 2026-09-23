@@ -73,15 +73,8 @@ describe("live Dashboard Language sources", () => {
     expect(preview).not.toContain('viewer.json');
     expect(preview).not.toContain('localViewer');
     expect(preview).toContain('new URL("./__dashboard_socket", window.location.href)');
-    expect(preview).toContain('previewMode === "copilot"');
-    expect(preview).toContain('await import("./copilot-prompt.js")');
-    expect(preview).toContain('copilotPrompt = renderCopilotPrompt(dashboardSocket)');
-    expect(preview).toContain('dashboard.classList.add("dashboard-copilot-enabled")');
-    expect(preview).toContain('octicon(open ? "chevron-down" : "chevron-up")');
-    expect(preview).toContain('panel.prepend(toggleButton)');
-    expect(preview).toContain('sidebar?.append(toggleButton)');
-    expect(preview).toContain('dashboard.append(panel)');
-    expect(preview).not.toContain('dashboard.querySelector(".org-sidebar")?.append(copilotPrompt)');
+    expect(preview).not.toContain("copilot-prompt");
+    expect(preview).not.toContain("dashboard-copilot");
     expect(preview).not.toContain("Retain the illustrative fixture data");
     expect(preview).not.toContain("loadCanonicalDashboardSources");
     expect(preview).not.toContain("refreshCanonicalDashboardSources");
