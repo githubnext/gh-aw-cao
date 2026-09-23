@@ -191,16 +191,18 @@ export async function benchmarkDashboardQueryCost({ databasePath, document, limi
     // reports only its own execution cost.
     sources[name] = { source: name, rows: source.rows, metadata: source.metadata };
   }
-  const measurements = candidates.map((candidate) => ({
-    ...candidate,
-    ...measureDashboardQueryCost(index.get(candidate.name), sources, defects.get(candidate.name)),
-  }));
+  const measurements = candidates
+    .filter((candidate) => index.has(candidate.name))
+    .map((candidate) => ({
+      ...candidate,
+      ...measureDashboardQueryCost(index.get(candidate.name), sources, defects.get(candidate.name)),
+    }));
   const databaseRecords = Object.values(databaseSources)
     .reduce((total, source) => total + (Array.isArray(source?.rows) ? source.rows.length : 0), 0);
   return {
     dashboard: typeof dashboard?.id === "string" ? dashboard.id : "dashboard",
     queries: definitions.length,
-    candidates: candidates.length,
+    candidates: measurements.length,
     database: {
       path: path.resolve(databasePath),
       "duration-ms": Number(databaseMs.toFixed(3)),
@@ -255,10 +257,9 @@ function markdownCode(value) {
  * @param {Awaited<ReturnType<typeof benchmarkDashboardQueryCost>>} report
  */
 export function dashboardQueryCostMarkdown(report) {
-  const byTime = report["most-costly-by-time"].map((query) =>
-    report.measurements.find((measurement) => measurement.query === query));
-  const byMemory = report["most-costly-by-memory"].map((query) =>
-    report.measurements.find((measurement) => measurement.query === query));
+  const index = new Map(report.measurements.map((measurement) => [measurement.query, measurement]));
+  const byTime = report["most-costly-by-time"].map((query) => index.get(query));
+  const byMemory = report["most-costly-by-memory"].map((query) => index.get(query));
   const failures = report.measurements.filter((measurement) =>
     !["available", "empty"].includes(measurement.status));
   return [

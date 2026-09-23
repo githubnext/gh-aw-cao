@@ -39,14 +39,19 @@ async function syntheticSnapshot() {
   return { root, database };
 }
 
+const CANDIDATE_LIMIT = 10;
+
 test("static query cost evaluator picks the highest ranked queries to investigate", () => {
-  const { candidates, analysis } = selectCostlyQueries(dashboardDocument, 10);
-  assert.equal(candidates.length, 10);
+  const { candidates, analysis } = selectCostlyQueries(dashboardDocument, CANDIDATE_LIMIT);
+  assert.equal(candidates.length, CANDIDATE_LIMIT);
   assert.deepEqual(
     candidates.map(({ name }) => name),
-    analysis.ranking.slice(0, 10).map(({ name }) => name),
+    analysis.ranking.slice(0, CANDIDATE_LIMIT).map(({ name }) => name),
   );
-  assert.deepEqual(candidates.map(({ rank }) => rank), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  assert.deepEqual(
+    candidates.map(({ rank }) => rank),
+    Array.from({ length: CANDIDATE_LIMIT }, (_, index) => index + 1),
+  );
   for (const candidate of candidates) {
     assert.ok(candidate["static-total-row-read-units"] >= candidate["static-direct-row-read-units"]);
   }

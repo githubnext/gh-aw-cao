@@ -38,6 +38,9 @@ function budget(name, fallback) {
 }
 
 const candidateLimit = budget("DASHBOARD_QUERY_COST_CANDIDATES", DEFAULT_QUERY_COST_CANDIDATES);
+if (!Number.isInteger(candidateLimit)) {
+  throw new TypeError("DASHBOARD_QUERY_COST_CANDIDATES must be a positive integer.");
+}
 const maximumDurationMs = budget("DASHBOARD_QUERY_COST_MAX_DURATION_MS", 5_000);
 const maximumOperations = budget("DASHBOARD_QUERY_COST_MAX_OPERATIONS", 50_000_000);
 const maximumResultBytes = budget("DASHBOARD_QUERY_COST_MAX_RESULT_MB", 48) * 1024 * 1024;
@@ -76,8 +79,8 @@ after(async () => {
 });
 
 test("static query cost evaluator selects the queries to investigate", () => {
-  const { candidates } = selectCostlyQueries(document, candidateLimit);
-  assert.equal(candidates.length, Math.min(candidateLimit, document.dashboard.queries.length));
+  const { analysis, candidates } = selectCostlyQueries(document, candidateLimit);
+  assert.equal(candidates.length, Math.min(candidateLimit, analysis.ranking.length));
   assert.deepEqual(candidates.map(({ rank }) => rank), candidates.map((_, index) => index + 1));
   for (const candidate of candidates) {
     assert.ok(candidate["static-total-row-read-units"] > 0, `${candidate.name} has no static cost`);
