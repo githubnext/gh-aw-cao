@@ -35,10 +35,12 @@ test("deployed dashboard scrolling uses a stable view snapshot", async () => {
   const elements = [
     {
       scrollIntoView: (options) => scrollCalls.push(options),
+      matches: (selector) => selector === "[data-lazy-view]",
       focus: (options) => focusCalls.push(options),
     },
     {
       scrollIntoView: (options) => scrollCalls.push(options),
+      matches: () => false,
       focus: (options) => focusCalls.push(options),
     },
   ];
@@ -69,7 +71,6 @@ test("deployed dashboard scrolling uses a stable view snapshot", async () => {
     { block: "center", inline: "nearest" },
   ]);
   assert.deepEqual(focusCalls, [
-    { preventScroll: true },
     { preventScroll: true },
   ]);
   assert.deepEqual(disposed, [0, 1]);
