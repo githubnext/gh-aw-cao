@@ -33,6 +33,7 @@ import { CAMPAIGN_ROUTE_TABS } from './route-body-specification.js';
  */
 export function renderCampaignRouteShell(context, config) {
   const allWorkflows = rowsFor(context.sources, 'workflows');
+  const problemCount = rowsFor(context.sources, 'campaign-problem-items').length;
   return createRoutePageShell(context, {
     rootClassName: config.rootClassName,
     datasetKey: 'campaign',
@@ -44,7 +45,7 @@ export function renderCampaignRouteShell(context, config) {
     currentTab: config.currentTab,
     tabListClassName: 'campaign-tabs',
     tabListAriaLabel: (title) => `${title} views`,
-    tabs: ({ routeValue }) => campaignTabs(routeValue),
+    tabs: ({ routeValue }) => campaignTabs(routeValue, problemCount),
     pageLevelTabs: true,
     renderMatched: (routeValue) => {
       const campaignId = normalizeCampaignRoute(routeValue);
@@ -58,7 +59,7 @@ export function renderCampaignRouteShell(context, config) {
         allocation: {
           title: campaignName,
           description: config.description.replace('{campaignName}', campaignName),
-          mode: campaignModeForRoute(workflows),
+          ...(config.currentTab === 'problems' ? {} : { mode: campaignModeForRoute(workflows) }),
           navigationPage: 'campaigns'
         },
         content: config.bodyRenderer?.({ context, campaignId, campaignName, workflows }) ?? null
@@ -69,14 +70,16 @@ export function renderCampaignRouteShell(context, config) {
 
 /**
  * @param {string} campaignId
+ * @param {number} problemCount
  */
-function campaignTabs(campaignId) {
+function campaignTabs(campaignId, problemCount) {
   const campaignQuery = `?campaign=${encodeURIComponent(campaignId)}`;
   return CAMPAIGN_ROUTE_TABS.map((tab) => ({
     id: tab.id,
     label: tab.label,
     icon: tab.icon,
     href: `#page-${tab.page}${campaignQuery}`,
+    count: tab.id === 'problems' && problemCount > 0 ? problemCount : undefined,
     trailingIcon: 'chevron-right'
   }));
 }

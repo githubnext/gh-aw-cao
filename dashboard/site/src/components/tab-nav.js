@@ -4,6 +4,7 @@
 
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
+import { renderCountBadge } from './ui-primitives.js';
 
 /**
  * @typedef {{
@@ -11,6 +12,7 @@ import { octicon } from '../octicons.js';
  *   icon: string,
  *   href: string,
  *   current?: boolean,
+ *   count?: number,
  *   trailingIcon?: string
  * }} LinkTab
  */
@@ -36,11 +38,14 @@ export function renderLinkTabs({ className, ariaLabel, tabs }) {
   return h(
     'nav',
     { className, 'aria-label': ariaLabel },
-    ...tabs.map(({ label, icon, href, current, trailingIcon }) => h(
+    ...tabs.map(({ label, icon, href, current, count, trailingIcon }) => h(
       'a',
       { href, 'aria-current': current ? 'page' : undefined },
       octicon(icon),
       h('span', null, label),
+      typeof count === 'number' && Number.isFinite(count)
+        ? renderCountBadge(count, `${count} current ${label.toLowerCase()}`)
+        : null,
       trailingIcon ? octicon(trailingIcon, 'tab-trailing-icon') : null
     ))
   );

@@ -919,19 +919,18 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .campaign-problem-group-header{display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--canvas-subtle)}
 .campaign-problem-group-name{margin:0;font-size:inherit;font-weight:600}
 .campaign-problem-group-path{min-width:0;overflow:hidden;color:var(--muted);font-size:.75rem;text-overflow:ellipsis;white-space:nowrap}
-.campaign-problem-group .count-badge{margin-left:auto}
 .campaign-problem-items{margin:0;padding:0;list-style:none}
-.campaign-problem-item{min-height:42px;display:grid;grid-template-columns:20px minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:6px 12px 6px 40px;border-top:1px solid var(--border-muted)}
+.campaign-problem-item{min-height:42px;display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;gap:8px;padding:6px 12px 6px 40px;border-top:1px solid var(--border-muted)}
 .campaign-problem-severity{width:16px;height:16px;display:grid;place-items:center;color:var(--danger)}
 .campaign-problem-copy{min-width:0}
-.campaign-problem-message,.campaign-problem-metadata{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.campaign-problem-metadata{color:var(--muted);font-size:.75rem}
+.campaign-problem-message,.campaign-problem-target{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.campaign-problem-target{color:var(--fg);font-size:.75rem}
+.campaign-problem-metadata{margin:0;color:var(--muted);font-size:.75rem}
+.campaign-problem-age{color:var(--muted);font-size:.75rem;font-weight:400}
 .campaign-problem-item .table-intent-button{min-height:28px;padding:3px 8px}
-.campaign-problem-occurrences{display:inline-flex}
 .campaign-problem-list-empty{margin:0;padding:18px 14px;color:var(--muted)}
 @media (max-width: 700px) {
   .campaign-problem-item{grid-template-columns:20px minmax(0,1fr) auto;grid-template-rows:auto auto;padding-left:12px}
-  .campaign-problem-occurrences{grid-column:3;grid-row:1}
   .campaign-problem-item .table-intent-control{grid-column:2;grid-row:2;justify-self:start}
 }
 h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }

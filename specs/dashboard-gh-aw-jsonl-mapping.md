@@ -247,6 +247,18 @@ item's `type` as `safeOutputType` and SHALL preserve or derive
 `githubEntityType` from explicit target kind, canonical github.com URL shape,
 or the safe-output action. Non-GitHub provider items and items without
 conclusive GitHub entity evidence SHALL leave `githubEntityType` absent.
+For a `report_incomplete` item, the Event summary SHALL preserve its concise
+`reason`, falling back to `Required evidence was unavailable.` when no reason
+is present. The verbose `details` field SHALL NOT be copied into the summary.
+When the published evidence retains only a failed `report_incomplete` MCP tool
+outcome, campaign problem diagnosis SHALL still classify the Run as
+`Incomplete Evidence` and SHALL use a generic unavailable-evidence diagnosis
+instead of presenting the lower-level `driver_exit` wrapper.
+
+For `workflow_dispatch` Runs whose display title has the canonical
+`workflow · owner/repository · review|live` shape, the adapter SHALL derive
+both `targetRepository` and the Run's effective `rolloutMode` from that title.
+The dispatched mode SHALL take precedence over workflow-level rollout defaults.
 
 Event records SHALL populate only the existing Event model fields:
 

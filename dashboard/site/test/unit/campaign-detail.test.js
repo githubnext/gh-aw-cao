@@ -210,6 +210,42 @@ describe('campaign detail route', () => {
     expect(rendered.textContent).not.toContain('Other');
   });
 
+  it('shows the visible target problem count on the Problems tab', () => {
+    const base = context();
+    const rendered = renderCampaignRouteVariant({
+      ...base,
+      sourceNames: ['workflows', 'campaign-problem-items'],
+      sources: {
+        ...base.sources,
+        'campaign-problem-items': {
+          source: 'campaign-problem-items',
+          metadata,
+          rows: [
+            { campaign: 'ambient-context', 'target-repository': 'octo-org/api' },
+            { campaign: 'ambient-context', 'target-repository': 'octo-org/web' }
+          ]
+        }
+      }
+    }, 'problems');
+    const host = document.createElement('div');
+    host.append(rendered);
+    let allocation;
+    host.addEventListener('dashboard-route-allocation', (event) => {
+      if (event instanceof CustomEvent) allocation = event.detail;
+    });
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'campaign', value: 'ambient-context' }
+    }));
+
+    expect(rendered.querySelector('.campaign-tabs a[href^="#page-campaign-problems"] .count-badge')?.textContent)
+      .toBe('2');
+    expect(allocation).toEqual({
+      title: 'Ambient Context',
+      description: 'Current runtime failures and retained evidence for the Ambient Context campaign.',
+      navigationPage: 'campaigns'
+    });
+  });
+
   it('keeps campaign facets above the page filter bar for the route view lifetime', async () => {
     const page = document.createElement('section');
     page.className = 'dashboard-page';
