@@ -274,7 +274,13 @@ export async function startDashboardData(options) {
           changed,
         });
         refreshBoundSources();
-        render({}, "ready", loadPageSources);
+        if (usesRemoteDataBackend(document)) {
+          const dashboard = document.querySelector("#root > .dashboard-root");
+          dashboard?.classList.remove("dashboard-refreshing");
+          dashboard?.removeAttribute("aria-busy");
+        } else {
+          render({}, "ready", loadPageSources);
+        }
       },
       showStaleSources,
     );

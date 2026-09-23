@@ -58,6 +58,8 @@ describe("dashboard data startup", () => {
   beforeEach(() => {
     calls.length = 0;
     vi.clearAllMocks();
+    document.head.replaceChildren();
+    document.body.replaceChildren();
     dataProcessor.loadCanonicalDashboardPage.mockImplementation(async (sourceNames = ["runs"]) => {
       if (sourceNames.length === 0) return {};
       calls.push("cache");
@@ -155,6 +157,35 @@ describe("dashboard data startup", () => {
     window.dispatchEvent(new Event("dashboard-refresh-request"));
 
     expect(dataProcessor.refreshCanonicalDashboardSources).toHaveBeenCalledOnce();
+  });
+
+  it("keeps remote navigation mounted when the revision is unchanged", async () => {
+    const marker = document.createElement("meta");
+    marker.name = "dashboard-data-backend";
+    marker.content = "redis-http";
+    document.head.append(marker);
+    const root = document.createElement("div");
+    root.id = "root";
+    const dashboard = document.createElement("div");
+    dashboard.className = "dashboard-root dashboard-refreshing";
+    dashboard.setAttribute("aria-busy", "true");
+    root.append(dashboard);
+    document.body.append(root);
+    dataProcessor.refreshCanonicalDashboardSources.mockResolvedValue({ changed: false });
+
+    await startDashboardData(options({
+      render: (
+        /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ _sources,
+        /** @type {'ready' | 'cached' | 'stale'} */ state,
+      ) => calls.push(`render:${state}`),
+    }));
+    await vi.waitFor(() => expect(dataProcessor.refreshCanonicalDashboardSources).toHaveBeenCalled());
+    await vi.waitFor(() => expect(dashboard.classList.contains("dashboard-refreshing")).toBe(false));
+
+    expect(calls).toEqual(["render:cached", "settle"]);
+    expect(root.firstElementChild).toBe(dashboard);
+    expect(dashboard.hasAttribute("aria-busy")).toBe(false);
+    expect(updates.startAutomaticDashboardDataUpdates).not.toHaveBeenCalled();
   });
 
   it("paginates view aliases and reloads only the originating view", async () => {

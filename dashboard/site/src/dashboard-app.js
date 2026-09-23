@@ -994,7 +994,9 @@
         cancelCommand.complete();
       } else {
         await ensureDashboardPageLoaded(initialDashboardPageId());
-        renderSources({}, "loading");
+        if (!document.querySelector('meta[name="dashboard-data-backend"][content="redis-http"]')) {
+          renderSources({}, "loading");
+        }
         const sourceUrl = new URL("./payload-hashes.json", window.location.href).href;
         try {
           await startDashboardData({
