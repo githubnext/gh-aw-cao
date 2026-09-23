@@ -97,6 +97,13 @@ const operationalValues = [
   }
 ];
 
+const campaigns = [
+  {
+    campaign: 'ambient-context',
+    'campaign-experimental': true
+  }
+];
+
 const outcomes = [
   {
     campaign: 'ambient-context',
@@ -137,7 +144,8 @@ const outcomes = [
   }
 ];
 
-function context() {
+/** @param {Array<Record<string, unknown>>} [campaignRows] */
+function context(campaignRows = []) {
   return {
     pageId: 'campaign-detail',
     title: 'Orchestrator and workers',
@@ -147,6 +155,7 @@ function context() {
     headingTag: /** @type {'h3'} */ ('h3'),
     sources: {
       workflows: { source: 'workflows', metadata, rows: workflows },
+      campaigns: { source: 'campaigns', metadata, rows: campaignRows },
       outcomes: { source: 'outcomes', metadata, rows: outcomes },
       'operational-values': { source: 'operational-values', metadata, rows: operationalValues }
     }
@@ -178,6 +187,20 @@ describe('campaign detail route', () => {
     expect(rendered.dataset.campaign).toBe('ambient-context');
     expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('InsightsProblemsDispatchesIssuesInfo');
     expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-campaign-detail?campaign=ambient-context');
+  });
+
+  it('labels experimental campaign titles', () => {
+    const rendered = renderCampaignRouteVariant(context(campaigns), 'overview');
+    /** @type {Array<Record<string, unknown>>} */
+    const allocations = [];
+    rendered.addEventListener('dashboard-route-allocation', (event) => {
+      if (event instanceof CustomEvent) allocations.push(event.detail);
+    });
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'campaign', value: 'ambient-context' }
+    }));
+
+    expect(allocations.at(-1)?.title).toBe('Ambient Context · Experimental');
     expect([...rendered.querySelectorAll('.campaign-tabs a')].map((link) => link.getAttribute('href'))).toEqual([
       '#page-campaign-insights?campaign=ambient-context',
       '#page-campaign-problems?campaign=ambient-context',

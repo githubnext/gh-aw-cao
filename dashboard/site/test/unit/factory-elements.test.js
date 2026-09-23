@@ -60,6 +60,7 @@ it('renders campaign shortcuts through the reusable link button list', () => {
         campaign: 'aw-doctor',
         'campaign-name': 'AW Doctor',
         'campaign-icon': 'gear',
+        'campaign-experimental-label': 'Experimental',
         'problem-indicator': 'alert',
         'problem-indicator-label': 'Current failing workflow or target partitions: 2',
         'campaign-dashboard-link': {
@@ -74,6 +75,7 @@ it('renders campaign shortcuts through the reusable link button list', () => {
       'link-field': 'campaign-dashboard-link',
       'icon-field': 'campaign-icon',
       'fallback-icon': 'goal',
+      'badge-field': 'campaign-experimental-label',
       'indicator-field': 'problem-indicator',
       'indicator-label-field': 'problem-indicator-label'
     }
@@ -87,6 +89,7 @@ it('renders campaign shortcuts through the reusable link button list', () => {
   expect(rendered?.querySelector('.link-button-list-indicator')?.getAttribute('aria-label'))
     .toBe('Current failing workflow or target partitions: 2');
   expect(rendered?.querySelector('.link-button-list-indicator .octicon-alert')).not.toBeNull();
+  expect(rendered?.querySelector('.link-button-list-badge')?.textContent).toBe('Experimental');
 });
 
 it('renders a link button list skeleton until its source resolves', async () => {

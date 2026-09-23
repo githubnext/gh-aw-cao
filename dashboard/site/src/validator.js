@@ -2679,7 +2679,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
           ));
         }
       }
-      const linkButtonConfigKeys = ['label-field', 'link-field', 'icon-field', 'fallback-icon', 'empty-message'];
+      const linkButtonConfigKeys = ['label-field', 'link-field', 'icon-field', 'fallback-icon', 'badge-field', 'empty-message'];
       for (const key of linkButtonConfigKeys) {
         if (view.config[key] === undefined) continue;
         validateStringField(view.config[key], `${path}.config.${key}`, true, errors);

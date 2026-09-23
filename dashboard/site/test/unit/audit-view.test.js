@@ -27,7 +27,7 @@ describe('Audit dashboard view', () => {
       'campaign-audit-events-table'
     ]);
     expect(insights.views[0].data).toMatchObject({
-      sources: ['workflows', 'campaign-operational-value-series'],
+      sources: ['workflows', 'campaigns', 'campaign-operational-value-series'],
       arguments: [{ name: 'campaign', field: 'campaign' }]
     });
     expect(insights.views.slice(1).map((/** @type {{ data: Record<string, string> }} */ view) => view.data)).toEqual([
@@ -158,6 +158,11 @@ describe('Audit dashboard view', () => {
         ],
         metadata
       },
+      campaigns: {
+        source: 'campaigns',
+        rows: [{ campaign: 'alpha-campaign', 'campaign-experimental': true }],
+        metadata
+      },
       'operational-values': {
         source: 'operational-values',
         rows: [
@@ -169,7 +174,7 @@ describe('Audit dashboard view', () => {
         metadata
       }
     }, payload.aliases);
-    const valueAlias = payload.aliases.find((alias) => alias.endsWith('campaign-operational-value-series-2'));
+    const valueAlias = payload.aliases.find((alias) => alias.endsWith('campaign-operational-value-series-3'));
 
     expect(valueAlias).toBeDefined();
     expect(result[valueAlias ?? ''].rows).toEqual([

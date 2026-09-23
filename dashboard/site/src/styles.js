@@ -273,6 +273,9 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .link-button-list-item > a { position: relative; min-height: 44px; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto 12px; align-items: center; gap: 12px; padding: 8px 16px; color: var(--fg); text-decoration: none; -webkit-tap-highlight-color: transparent; }
 .link-button-list-item:not(:last-child) > a::after { content: ""; position: absolute; inset-inline: 56px 0; bottom: 0; height: 1px; background: var(--border-muted); }
 .link-button-list-content { display: contents; }
+.link-button-list-label { min-width: 0; display: flex; align-items: center; gap: 8px; }
+.link-button-list-label > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.link-button-list-badge { flex: none; padding: 2px 6px; border: 1px solid var(--attention); border-radius: 999px; color: var(--attention); font-size: .625rem; font-weight: 600; }
 .link-button-list-item > a:is(:hover, :active) { background: var(--neutral-muted); }
 .link-button-list-item > a:focus-visible { outline: 2px solid var(--focus, Highlight); outline-offset: -3px; }
 .link-button-list-icon { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--accent-muted); color: var(--accent); }

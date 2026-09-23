@@ -18,6 +18,7 @@ export function renderLinkButtonList(context) {
   const labelField = text(context.elementConfig?.['label-field']);
   const linkField = text(context.elementConfig?.['link-field']);
   const iconField = text(context.elementConfig?.['icon-field']);
+  const badgeField = text(context.elementConfig?.['badge-field']);
   const indicatorField = text(context.elementConfig?.['indicator-field']);
   const indicatorLabelField = text(context.elementConfig?.['indicator-label-field']);
   const fallbackIcon = text(context.elementConfig?.['fallback-icon']) || 'link';
@@ -25,6 +26,7 @@ export function renderLinkButtonList(context) {
     source.rows(),
     (row) => {
       const label = text(row[labelField]) || 'Link';
+      const badge = text(row[badgeField]);
       const indicator = text(row[indicatorField]);
       const indicatorLabel = text(row[indicatorLabelField]);
       return h(
@@ -33,7 +35,12 @@ export function renderLinkButtonList(context) {
         renderSafeLink(
           h('span', { className: 'link-button-list-content' },
             renderIconSpan('link-button-list-icon', text(row[iconField]) || fallbackIcon, { ariaHidden: true }),
-            h('span', null, label),
+            h(
+              'span',
+              { className: 'link-button-list-label' },
+              h('span', null, label),
+              badge ? h('span', { className: 'link-button-list-badge' }, badge) : null
+            ),
             indicator
               ? h(
                   'span',

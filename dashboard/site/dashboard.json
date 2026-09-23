@@ -7590,6 +7590,21 @@
             ]
           },
           {
+            "as": "campaign-experimental-label",
+            "function": "if",
+            "args": [
+              {
+                "field": "campaign-experimental"
+              },
+              {
+                "value": "Experimental"
+              },
+              {
+                "value": ""
+              }
+            ]
+          },
+          {
             "as": "problem-count-label",
             "function": "format-count",
             "args": [
@@ -7689,6 +7704,12 @@
           },
           {
             "field": "campaign-icon"
+          },
+          {
+            "field": "campaign-experimental"
+          },
+          {
+            "field": "campaign-experimental-label"
           },
           {
             "field": "problem-indicator"
@@ -9711,6 +9732,7 @@
             "data": {
               "sources": [
                 "workflows",
+                "campaigns",
                 "campaign-operational-value-series"
               ],
               "arguments": [
@@ -9850,6 +9872,7 @@
             "data": {
               "sources": [
                 "workflows",
+                "campaigns",
                 "campaign-problem-items"
               ],
               "arguments": [
@@ -9903,7 +9926,8 @@
             "title": "Campaign overview",
             "data": {
               "sources": [
-                "workflows"
+                "workflows",
+                "campaigns"
               ]
             },
             "mark": "element",
@@ -9931,7 +9955,8 @@
             "title": "Campaign workflows",
             "data": {
               "sources": [
-                "workflows"
+                "workflows",
+                "campaigns"
               ]
             },
             "mark": "element",
@@ -10057,6 +10082,7 @@
             "data": {
               "sources": [
                 "workflows",
+                "campaigns",
                 "campaign-worker-issues"
               ]
             },
@@ -10165,7 +10191,8 @@
             "title": "Campaign pull requests",
             "data": {
               "sources": [
-                "workflows"
+                "workflows",
+                "campaigns"
               ]
             },
             "mark": "element",
@@ -10243,7 +10270,8 @@
             "title": "Campaign workflow runs",
             "data": {
               "sources": [
-                "workflows"
+                "workflows",
+                "campaigns"
               ]
             },
             "mark": "element",
@@ -10506,7 +10534,8 @@
             "title": "Campaign workflow runs",
             "data": {
               "sources": [
-                "workflows"
+                "workflows",
+                "campaigns"
               ]
             },
             "mark": "element",
@@ -10611,7 +10640,8 @@
             "title": "Campaign repositories",
             "data": {
               "sources": [
-                "workflows"
+                "workflows",
+                "campaigns"
               ]
             },
             "mark": "element",
@@ -10717,7 +10747,8 @@
             "title": "Campaign reports",
             "data": {
               "sources": [
-                "workflows"
+                "workflows",
+                "campaigns"
               ]
             },
             "mark": "element",
@@ -12048,6 +12079,7 @@
               "link-field": "campaign-dashboard-link",
               "icon-field": "campaign-icon",
               "fallback-icon": "goal",
+              "badge-field": "campaign-experimental-label",
               "indicator-field": "problem-indicator",
               "indicator-label-field": "problem-indicator-label",
               "empty-message": "No campaigns are registered."

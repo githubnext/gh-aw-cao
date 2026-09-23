@@ -40,6 +40,7 @@ const sources = {
       campaign: 'dependabot',
       'campaign-name': 'Dependabot',
       'campaign-icon': 'dependabot',
+      'campaign-experimental-label': 'Experimental',
       'campaign-dashboard-link': {
         'dashboard-href': '#page-campaign-detail?campaign=dependabot',
         'dashboard-label': 'View Dependabot campaign dashboard'
@@ -183,6 +184,7 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
       .toHaveAttribute('href', '#page-campaign-problems?campaign=aw-doctor');
     await expect(campaigns.getByRole('link', { name: 'View Dependabot campaign dashboard' }))
       .toHaveAttribute('href', '#page-campaign-detail?campaign=dependabot');
+    await expect(campaigns.locator('.link-button-list-badge')).toHaveText('Experimental');
     await expect(factory.locator(':scope > .factory-intro + .factory-floor')).toHaveCount(1);
     const notifications = page.locator('[data-page-id="notifications"]');
     await expect(notifications).toHaveCount(0);

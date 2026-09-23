@@ -46,7 +46,7 @@ it('opens campaigns with runtime problems on Problems and healthy campaigns on I
       source: 'campaigns',
       metadata,
       rows: [
-        { campaign: 'aw-doctor', 'campaign-name': 'AW Doctor', 'campaign-icon': 'gear' },
+        { campaign: 'aw-doctor', 'campaign-name': 'AW Doctor', 'campaign-icon': 'gear', 'campaign-experimental': true },
         { campaign: 'dependabot', 'campaign-name': 'Dependabot', 'campaign-icon': 'dependabot' }
       ]
     },
@@ -60,6 +60,7 @@ it('opens campaigns with runtime problems on Problems and healthy campaigns on I
   expect(result.rows).toEqual([
     expect.objectContaining({
       campaign: 'aw-doctor',
+      'campaign-experimental-label': 'Experimental',
       'problem-indicator': 'alert',
       'campaign-dashboard-link': expect.objectContaining({
         'dashboard-href': '#page-campaign-problems?campaign=aw-doctor'

@@ -56,9 +56,12 @@ export function renderCampaignRouteShell(context, config) {
         return null;
       }
       const campaignName = campaignNameForRoute(campaignId, workflows);
+      const experimental = rowsFor(context.sources, 'campaigns')
+        .some((campaign) => String(campaign.campaign).toLowerCase() === campaignId.toLowerCase()
+          && campaign['campaign-experimental'] === true);
       return {
         allocation: {
-          title: campaignName,
+          title: experimental ? `${campaignName} · Experimental` : campaignName,
           description: config.description.replace('{campaignName}', campaignName),
           ...(config.currentTab === 'problems' ? {} : { mode: campaignModeForRoute(workflows) }),
           navigationPage: 'campaigns'
