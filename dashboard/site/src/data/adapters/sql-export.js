@@ -100,15 +100,23 @@ export function adaptSqlExport(input) {
       identifier(row.github_repository_id, 'github_repository_id')
     ]];
   }));
-  const coordinatesFor = (/** @type {Record<string, unknown>} */ row) => {
-    const githubRepositoryId = optionalString(row.github_repository_id)
+  const coordinatesFor = (
+    /** @type {Record<string, unknown>} */ row,
+    /** @type {number} */ index,
+    /** @type {string} */ kind
+  ) => {
+    const githubRepositoryId = (row.github_repository_id === undefined || row.github_repository_id === null
+      ? undefined
+      : identifier(row.github_repository_id, 'github_repository_id'))
       ?? repositoryByRun.get(identifier(row.github_run_id, 'github_run_id'));
     if (!githubRepositoryId) throw new TypeError('github_repository_id is required');
     const known = repositoryCoordinates.get(githubRepositoryId);
     const owner = optionalString(row.repository_owner) ?? known?.owner;
     const repository = optionalString(row.repository_name) ?? known?.repository;
     if (!owner || !repository) {
-      throw new TypeError(`Repository coordinates are unavailable for GitHub repository ${githubRepositoryId}`);
+      throw new TypeError(
+        `SQL export row ${index} (${kind}) cannot resolve coordinates for GitHub repository ${githubRepositoryId}`
+      );
     }
     return {
       owner,
@@ -168,7 +176,7 @@ export function adaptSqlExport(input) {
       case 'run': {
         const githubRunId = identifier(row.github_run_id, 'github_run_id');
         const attempt = positiveInteger(row.run_attempt, 'run_attempt');
-        const coordinates = coordinatesFor(row);
+        const coordinates = coordinatesFor(row, index, kind);
         data = {
           githubRunId,
           attempt,
@@ -189,7 +197,7 @@ export function adaptSqlExport(input) {
         break;
       }
       case 'domain': {
-        const coordinates = coordinatesFor(row);
+        const coordinates = coordinatesFor(row, index, kind);
         data = {
           runId: runId(
             coordinates.owner,
@@ -206,7 +214,7 @@ export function adaptSqlExport(input) {
         break;
       }
       case 'tool': {
-        const coordinates = coordinatesFor(row);
+        const coordinates = coordinatesFor(row, index, kind);
         data = {
           runId: runId(
             coordinates.owner,
@@ -227,7 +235,7 @@ export function adaptSqlExport(input) {
         break;
       }
       case 'issue': {
-        const coordinates = coordinatesFor(row);
+        const coordinates = coordinatesFor(row, index, kind);
         data = {
           runId: runId(
             coordinates.owner,
@@ -245,7 +253,7 @@ export function adaptSqlExport(input) {
         break;
       }
       case 'audit': {
-        const coordinates = coordinatesFor(row);
+        const coordinates = coordinatesFor(row, index, kind);
         if (row.source_sequence !== undefined && row.source_sequence !== null
           && (!Number.isInteger(Number(row.source_sequence)) || Number(row.source_sequence) < 0)) {
           throw new TypeError('source_sequence must be a non-negative integer');

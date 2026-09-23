@@ -46,7 +46,9 @@ function identityFor(observation) {
       requiredIdentifier(data.githubRunId, 'run.githubRunId')
     );
     case 'issue': {
-      const coordinates = data.owner && data.repository && data.number
+      const coordinates = data.owner !== undefined
+        && data.repository !== undefined
+        && data.number !== undefined
         ? data
         : issueCoordinates(requiredString(data.url, 'issue.url'));
       return issueId(

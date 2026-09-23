@@ -72,7 +72,12 @@ export function issueId(owner, repository, issueNumber) {
 
 /** @param {string} value */
 export function issueCoordinates(value) {
-  const url = new URL(value);
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new TypeError(`URL must identify a GitHub issue or pull request: ${value}`);
+  }
   const match = url.hostname.toLowerCase() === 'github.com'
     ? url.pathname.match(/^\/([^/]+)\/([^/]+)\/(?:issues|pull)\/(\d+)(?:\/|$)/)
     : null;

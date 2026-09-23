@@ -39,11 +39,6 @@ function positiveInteger(value, field) {
   return number;
 }
 
-/** @param {unknown} value @param {string} field */
-function validateRunAttempt(value, field) {
-  positiveInteger(value, field);
-}
-
 /** @param {unknown} value */
 function optionalString(value) {
   return value === undefined || value === null || value === '' ? undefined : String(value);
@@ -902,7 +897,7 @@ function createCachedGhAwJsonlAccumulator(options) {
         observation.optimizerRunId,
         `gh-aw JSONL line ${line}.observation.optimizerRunId`
       );
-      validateRunAttempt(observation.runAttempt ?? 1, `gh-aw JSONL line ${line}.observation.runAttempt`);
+      positiveInteger(observation.runAttempt ?? 1, `gh-aw JSONL line ${line}.observation.runAttempt`);
       const optimizerRunKey = String(optimizerRunId);
       const observations = tokenEfficiencyObservationsByRun.get(optimizerRunKey) ?? [];
       observations.push({ ...observation, __line: line });
@@ -918,7 +913,7 @@ function createCachedGhAwJsonlAccumulator(options) {
         observation.optimizerRunId,
         `gh-aw JSONL line ${line}.observation.optimizerRunId`
       );
-      validateRunAttempt(
+      positiveInteger(
         observation.optimizerRunAttempt,
         `gh-aw JSONL line ${line}.observation.optimizerRunAttempt`
       );
@@ -945,7 +940,7 @@ function createCachedGhAwJsonlAccumulator(options) {
         `gh-aw JSONL line ${line}.run.workflow_path`
       );
       const githubRunId = identifier(run.run_id, `gh-aw JSONL line ${line}.run.run_id`);
-      validateRunAttempt(
+      positiveInteger(
         run.run_attempt ?? 1,
         `gh-aw JSONL line ${line}.run.run_attempt`
       );
@@ -987,7 +982,7 @@ function createCachedGhAwJsonlAccumulator(options) {
         run.databaseId,
         `gh-aw JSONL line ${line}.payload[${payloadIndex}].databaseId`
       );
-      validateRunAttempt(
+      positiveInteger(
         run.attempt ?? 1,
         `gh-aw JSONL line ${line}.payload[${payloadIndex}].attempt`
       );
