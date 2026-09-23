@@ -845,8 +845,8 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       'data-route-navigation-page': routeNavigationPage,
       'data-view-mode': selectedViewMode
     },
-    filterBar,
     renderedRouteTabs,
+    filterBar,
     ...(renderedViews.length > 0
       ? [renderHiddenDataStateMetrics(summarizeDataState(pageSources)), renderedContent]
       : [h('p', null, 'No custom views available.')])

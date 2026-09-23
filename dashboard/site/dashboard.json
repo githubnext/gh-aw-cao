@@ -5127,6 +5127,49 @@
         ]
       },
       {
+        "name": "run-incomplete-outcomes",
+        "intent": "Project retained report-incomplete terminal outcomes as concise run diagnoses.",
+        "description": "One retained incomplete-evidence diagnosis per workflow Run when the agent explicitly reported that required evidence or access was unavailable.",
+        "from": "audits",
+        "filter": {
+          "predicates": [
+            {
+              "field": "event-type",
+              "equals": "safe_output.created"
+            },
+            {
+              "field": "safe-output-type",
+              "equals": "report_incomplete"
+            }
+          ]
+        },
+        "select": [
+          {
+            "field": "organization"
+          },
+          {
+            "field": "repository"
+          },
+          {
+            "field": "workflow"
+          },
+          {
+            "field": "run"
+          },
+          {
+            "field": "run-attempt"
+          },
+          {
+            "field": "safe-output-type",
+            "as": "outcome-kind"
+          },
+          {
+            "field": "event-summary",
+            "as": "outcome-diagnosis"
+          }
+        ]
+      },
+      {
         "name": "campaign-runs",
         "intent": "Project workflow runs with campaign attribution and retained failure evidence.",
         "description": "Canonical workflow runs joined to their declared campaign and workflow identity.",
@@ -5167,6 +5210,42 @@
                 "as": "declared-workflow-role"
               }
             ]
+          },
+          {
+            "source": "run-incomplete-outcomes",
+            "type": "left",
+            "on": [
+              {
+                "left": "organization",
+                "right": "organization"
+              },
+              {
+                "left": "repository",
+                "right": "repository"
+              },
+              {
+                "left": "workflow",
+                "right": "workflow"
+              },
+              {
+                "left": "run",
+                "right": "run"
+              },
+              {
+                "left": "run-attempt",
+                "right": "run-attempt"
+              }
+            ],
+            "fields": [
+              {
+                "field": "outcome-kind",
+                "as": "outcome-kind"
+              },
+              {
+                "field": "outcome-diagnosis",
+                "as": "outcome-diagnosis"
+              }
+            ]
           }
         ],
         "compute": [
@@ -5186,9 +5265,54 @@
             ]
           },
           {
+            "as": "effective-outcome-kind",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "outcome-kind"
+              },
+              {
+                "field": "terminal-outcome"
+              },
+              {
+                "value": ""
+              }
+            ]
+          },
+          {
+            "as": "is-incomplete-outcome",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "effective-outcome-kind"
+              },
+              {
+                "value": "report_incomplete"
+              }
+            ]
+          },
+          {
+            "as": "diagnosis-kind",
+            "function": "if",
+            "args": [
+              {
+                "field": "is-incomplete-outcome"
+              },
+              {
+                "value": "incomplete_evidence"
+              },
+              {
+                "value": ""
+              }
+            ]
+          },
+          {
             "as": "error-signature",
             "function": "coalesce",
             "args": [
+              {
+                "field": "diagnosis-kind"
+              },
               {
                 "field": "failure-kind"
               },
@@ -5213,6 +5337,12 @@
             "as": "status-detail",
             "function": "coalesce",
             "args": [
+              {
+                "field": "outcome-diagnosis"
+              },
+              {
+                "field": "terminal-outcome-detail"
+              },
               {
                 "field": "failure-detail"
               },
@@ -5533,6 +5663,12 @@
             "field": "runtime-repository"
           },
           {
+            "field": "target-repository"
+          },
+          {
+            "field": "rollout-mode"
+          },
+          {
             "field": "status"
           },
           {
@@ -5546,6 +5682,12 @@
           },
           {
             "field": "status-detail"
+          },
+          {
+            "field": "outcome-kind"
+          },
+          {
+            "field": "outcome-diagnosis"
           },
           {
             "field": "declared-workflow-role",
@@ -6034,9 +6176,30 @@
         ]
       },
       {
+        "name": "campaign-problem-latest-target-runs",
+        "intent": "Identify the most recent retained failed Run for each campaign workflow target repository.",
+        "description": "One row per campaign workflow and target repository with its most recent retained failed Run identity.",
+        "from": "campaign-problem-run-evidence",
+        "aggregate": {
+          "by": [
+            "campaign",
+            "workflow",
+            "runtime-repository",
+            "target-repository"
+          ],
+          "values": [
+            {
+              "field": "run",
+              "as": "latest-target-run",
+              "reducer": "max"
+            }
+          ]
+        }
+      },
+      {
         "name": "campaign-problem-error-groups",
-        "intent": "Cluster retained failed Run evidence by workflow, runtime repository, and error signature so repeated identical failures collapse into one diagnosable group.",
-        "description": "One row per distinct error signature within a campaign runtime problem partition, with an occurrence count and the most recent matching Run identity for follow-up.",
+        "intent": "Cluster retained failed Run evidence by workflow, runtime repository, target repository, and error signature so repeated identical failures for one target collapse into one diagnosable group.",
+        "description": "One row per distinct target repository and error signature within a campaign runtime problem partition, with an occurrence count and the most recent matching Run identity for follow-up.",
         "from": "campaign-problem-run-evidence",
         "aggregate": {
           "by": [
@@ -6046,6 +6209,8 @@
             "workflow-name",
             "workflow-role",
             "runtime-repository",
+            "target-repository",
+            "rollout-mode",
             "failure-count",
             "problem-kind",
             "error-signature",
@@ -6066,10 +6231,46 @@
         }
       },
       {
+        "name": "campaign-current-problem-error-groups",
+        "intent": "Keep only the newest error signature for each campaign workflow target repository.",
+        "description": "Current target-specific error groups whose representative Run is the target repository's most recent retained failed Run.",
+        "from": "campaign-problem-error-groups",
+        "joins": [
+          {
+            "source": "campaign-problem-latest-target-runs",
+            "type": "inner",
+            "on": [
+              {
+                "left": "campaign",
+                "right": "campaign"
+              },
+              {
+                "left": "workflow",
+                "right": "workflow"
+              },
+              {
+                "left": "runtime-repository",
+                "right": "runtime-repository"
+              },
+              {
+                "left": "latest-run",
+                "right": "latest-target-run"
+              }
+            ],
+            "fields": [
+              {
+                "field": "latest-target-run",
+                "as": "current-target-run"
+              }
+            ]
+          }
+        ]
+      },
+      {
         "name": "campaign-problem-items",
         "intent": "Attach the most recent representative Run evidence to each distinct campaign runtime problem error signature.",
-        "description": "Current campaign runtime problems clustered by error signature, one row per group, with an occurrence count, the most recent matching failed Run, and a repair prompt.",
-        "from": "campaign-problem-error-groups",
+        "description": "Current campaign runtime problems represented by the newest error signature for each target repository, with its effective rollout mode, an occurrence count, the most recent matching failed Run, and a repair prompt.",
+        "from": "campaign-current-problem-error-groups",
         "joins": [
           {
             "source": "campaign-problem-run-evidence",
@@ -9435,7 +9636,14 @@
             "title": "Campaign problems",
             "data": {
               "sources": [
-                "workflows"
+                "workflows",
+                "campaign-problem-items"
+              ],
+              "arguments": [
+                {
+                  "name": "campaign",
+                  "field": "campaign"
+                }
               ]
             },
             "mark": "element",
@@ -9448,7 +9656,7 @@
           {
             "id": "campaign-current-runtime-problems",
             "title": "Problems",
-            "description": "Current runtime failures and missing orchestrator observations, grouped by workflow.",
+            "description": "Current runtime failures and missing orchestrator observations, grouped by workflow with the target repository and effective Live or Review mode identified for each error group.",
             "data": {
               "sources": [
                 "campaign-problem-items"

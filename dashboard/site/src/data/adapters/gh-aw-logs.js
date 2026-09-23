@@ -91,6 +91,33 @@ function dispatchTargetRepository(title, event) {
   return REPOSITORY_COORDINATE_PATTERN.test(parts[1]) ? parts[1] : undefined;
 }
 
+/** @param {unknown} title @param {unknown} event */
+function dispatchRolloutMode(title, event) {
+  if (event !== 'workflow_dispatch' || typeof title !== 'string') return undefined;
+  const parts = title.split('·').map((part) => part.trim());
+  return parts.length === 3 && ['review', 'live'].includes(parts[2]) ? parts[2] : undefined;
+}
+
+/** @param {Record<string, unknown>} run */
+function hasReportIncompleteOutcome(run) {
+  const audit = run.audit && typeof run.audit === 'object' && !Array.isArray(run.audit)
+    ? /** @type {Record<string, unknown>} */ (run.audit)
+    : {};
+  const usages = [run.mcp_tool_usage, audit.mcp_tool_usage]
+    .filter((value) => value && typeof value === 'object' && !Array.isArray(value))
+    .map((value) => /** @type {Record<string, unknown>} */ (value));
+  const calls = [
+    ...(Array.isArray(run.tool_calls) ? run.tool_calls : []),
+    ...usages.flatMap((usage) => Array.isArray(usage.tool_calls) ? usage.tool_calls : [])
+  ];
+  return calls.some((value) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const call = /** @type {Record<string, unknown>} */ (value);
+    return firstOptionalString(call.tool, call.tool_name) === 'report_incomplete'
+      && optionalString(call.status) !== 'success';
+  });
+}
+
 /** @param {...unknown} values */
 function firstOptionalString(...values) {
   return values.map(optionalString).find((value) => value !== undefined);
@@ -854,6 +881,7 @@ function createCachedGhAwJsonlAccumulator(options) {
   const latestRunByGithubId = new Map();
   /** @type {Map<string, CachedRun>} */
   const rawRuns = new Map();
+  const reportIncompleteRunIds = new Set();
   let records = 0;
   let agenticRunRecords = 0;
   let rawPayloadRecords = 0;
@@ -945,6 +973,7 @@ function createCachedGhAwJsonlAccumulator(options) {
         `gh-aw JSONL line ${line}.run.run_attempt`
       );
       const id = runId(coordinates.owner, coordinates.name, githubRunId);
+      if (hasReportIncompleteOutcome(run)) reportIncompleteRunIds.add(id);
       const observedAt = canonicalTimestamp(
         run.updated_at ?? run.created_at,
         `gh-aw JSONL line ${line}.run.updated_at`
@@ -1083,6 +1112,7 @@ function createCachedGhAwJsonlAccumulator(options) {
     );
     const metadata = runMetadata(enrichedValue);
     const aggregates = runAggregates(enrichedValue);
+    const reportIncomplete = reportIncompleteRunIds.has(id);
     const title = optionalString(rawValue.displayTitle)
       ?? optionalString(enrichedValue.display_title)
       ?? `Run ${githubRunId}`;
@@ -1118,6 +1148,8 @@ function createCachedGhAwJsonlAccumulator(options) {
         title,
         event,
         targetRepository: dispatchTargetRepository(title, event),
+        rolloutMode: dispatchRolloutMode(title, event)
+          ?? firstOptionalString(rawValue.rolloutMode, enrichedValue.rollout_mode, enrichedValue.rolloutMode),
         status,
         conclusion: optionalString(rawValue.conclusion)
           ?? optionalString(enrichedValue.conclusion)
@@ -1136,6 +1168,10 @@ function createCachedGhAwJsonlAccumulator(options) {
         classification: optionalString(enrichedValue.classification),
         intentionalFailure: enrichedValue.intentional_failure,
         failureKind: optionalString(enrichedValue.failure_kind),
+        terminalOutcome: reportIncomplete ? 'report_incomplete' : undefined,
+        terminalOutcomeDetail: reportIncomplete
+          ? 'The agent reported that required evidence or access was unavailable.'
+          : undefined,
         duration: optionalString(enrichedValue.duration),
         actionMinutes: finiteNumber(enrichedValue.action_minutes),
         agentId: metadata.agentId ?? null,
@@ -1695,11 +1731,13 @@ function createCachedGhAwJsonlAccumulator(options) {
       emitEvent(
         'safe_output.created',
         timestamp(record.timestamp) ?? completedAt ?? enriched.observedAt,
-        detail([
-          optionalString(record.type) ?? 'safe output',
-          optionalString(record.repo) ?? '',
-          optionalString(record.number) ?? ''
-        ]),
+        optionalString(record.type) === 'report_incomplete'
+          ? optionalString(record.reason) ?? 'Required evidence was unavailable.'
+          : detail([
+              optionalString(record.type) ?? 'safe output',
+              optionalString(record.repo) ?? '',
+              optionalString(record.number) ?? ''
+            ]),
         'created',
         { type: 'safe-output', index, outputType: record.type, url: record.url },
         {

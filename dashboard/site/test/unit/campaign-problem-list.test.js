@@ -38,10 +38,13 @@ describe('campaign problem list', () => {
         workflow: '.github/workflows/optimization-token-optimizer.lock.yml',
         'workflow-name': 'Token Optimizer',
         'runtime-repository': 'githubnext/gh-aw-cao',
+        'target-repository': 'octo-org/service-api',
+        'rollout-mode': 'live',
         'problem-kind': 'failure',
         'failure-count': 3,
         status: 'failure',
         'status-detail': 'Process completed with exit code 1.',
+        'started-at': '2026-09-22T10:00:00Z',
         run: '123',
         'run-link': {
           href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/123',
@@ -53,6 +56,8 @@ describe('campaign problem list', () => {
         workflow: '.github/workflows/optimization-token-optimizer.lock.yml',
         'workflow-name': 'Token Optimizer',
         'runtime-repository': 'githubnext/gh-aw-cao',
+        'target-repository': 'octo-org/web-app',
+        'rollout-mode': 'review',
         'problem-kind': 'failure',
         'failure-count': 3,
         status: 'failure',
@@ -63,11 +68,30 @@ describe('campaign problem list', () => {
 
     expect(rendered.querySelectorAll('.campaign-problem-group')).toHaveLength(1);
     expect(rendered.querySelector('.campaign-problem-group-name')?.textContent).toBe('Token Optimizer');
-    expect(rendered.querySelector('.count-badge')?.textContent).toBe('3');
+    expect(rendered.querySelector('.campaign-problem-group-header .count-badge')).toBeNull();
     expect(rendered.querySelectorAll('.campaign-problem-item')).toHaveLength(2);
+    expect([...rendered.querySelectorAll('.campaign-problem-target')].map((node) => node.textContent))
+      .toEqual([
+        'Target repository: octo-org/service-api Live',
+        'Target repository: octo-org/web-app Review'
+      ]);
+    expect([...rendered.querySelectorAll('.campaign-problem-target .mode-badge')].map((badge) => ({
+      label: badge.textContent,
+      className: badge.className
+    }))).toEqual([
+      { label: 'Live', className: 'mode-badge mode-live' },
+      { label: 'Review', className: 'mode-badge mode-review' }
+    ]);
+    expect(rendered.textContent).not.toContain('Runtime: githubnext/gh-aw-cao');
     expect(rendered.textContent).toContain('Process completed with exit code 1.');
-    expect(rendered.querySelector('.campaign-problem-run-link a')?.getAttribute('href'))
+    expect(rendered.querySelector('.campaign-problem-age')?.textContent).toBeTruthy();
+    expect(rendered.querySelector('.campaign-problem-metadata .campaign-problem-age')).toBeNull();
+    expect(rendered.querySelector('.campaign-problem-title a')?.getAttribute('href'))
       .toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/123');
+    expect(rendered.querySelector('.campaign-problem-title a')?.textContent)
+      .toBe('Process completed with exit code 1.');
+    expect(rendered.querySelector('.campaign-problem-title a')?.getAttribute('aria-label'))
+      .toBe('Process completed with exit code 1.');
     expect(rendered.querySelector('[data-intent-presentation="copy-prompt"]')?.textContent)
       .toContain('Fix It');
     expect(rendered.querySelector('.table-intent-dialog')?.textContent)
@@ -89,7 +113,9 @@ describe('campaign problem list', () => {
     ]);
 
     expect(rendered.textContent).toContain('No retained orchestrator Run was observed');
-    expect(rendered.querySelector('.count-badge')?.textContent).toBe('1');
+    expect(rendered.querySelector('.campaign-problem-target')?.textContent)
+      .toBe('Target repository: Unavailable for this observation');
+    expect(rendered.querySelector('.campaign-problem-group-header .count-badge')).toBeNull();
     expect(rendered.querySelector('.campaign-problem-severity')?.getAttribute('aria-label')).toBe('Error');
   });
 
@@ -107,11 +133,9 @@ describe('campaign problem list', () => {
         'occurrence-count': 52,
         status: 'failure',
         'status-detail': null,
+        'started-at': '2026-09-22T10:00:00Z',
         run: '35754799033',
-        'run-link': {
-          href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/35754799033',
-          label: 'Run 35754799033'
-        }
+        'run-link': 'https://github.com/githubnext/gh-aw-cao/actions/runs/35754799033'
       },
       {
         campaign: 'dependabot',
@@ -134,9 +158,10 @@ describe('campaign problem list', () => {
     const badges = [...rendered.querySelectorAll('.count-badge')].map((badge) => badge.textContent);
     expect(badges).toContain('52×');
     expect(badges).toContain('3×');
-    expect(rendered.querySelectorAll('.campaign-problem-occurrences')).toHaveLength(2);
-    expect(rendered.querySelector('.campaign-problem-message .count-badge')).toBeNull();
-    expect(rendered.querySelector('.campaign-problem-run-link a')?.textContent).toContain('Latest Run');
+    expect(rendered.querySelectorAll('.campaign-problem-occurrences')).toHaveLength(0);
+    expect(rendered.querySelectorAll('.campaign-problem-message .count-badge')).toHaveLength(2);
+    expect(rendered.querySelector('.campaign-problem-message .campaign-problem-age')?.textContent).toBeTruthy();
+    expect(rendered.querySelector('.campaign-problem-title a')?.textContent).toBe('Driver Exit');
   });
 
   it('renders an honest empty state', () => {

@@ -1,6 +1,11 @@
 import { isSpuriousAbortAfterSuccessResponse } from "./dashboard-view-assessment.mjs";
 
 export const deployedDashboardUrl = "https://githubnext.github.io/gh-aw-cao/cao/";
+export const populatedDashboardPages = [
+  { pageId: "repositories", storeName: "repositories" },
+  { pageId: "workflows", storeName: "workflows" },
+  { pageId: "runs", storeName: "runs" },
+];
 const deployedDashboardBase = new URL(deployedDashboardUrl);
 const deployedActivityShardDirectories = new Set(["gh-aw-logs-runs", "gh-aw-logs-records"]);
 

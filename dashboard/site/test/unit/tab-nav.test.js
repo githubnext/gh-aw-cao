@@ -9,7 +9,7 @@ describe('tab-nav', () => {
       ariaLabel: 'Workflow views',
       tabs: [
         { label: 'Insights', icon: 'graph', href: '#page-one' },
-        { label: 'Reports', icon: 'issue', href: '#page-two', current: true, trailingIcon: 'chevron-right' }
+        { label: 'Reports', icon: 'issue', href: '#page-two', current: true, count: 2, trailingIcon: 'chevron-right' }
       ]
     });
 
@@ -17,8 +17,9 @@ describe('tab-nav', () => {
     expect(rendered.getAttribute('aria-label')).toBe('Workflow views');
     expect([...rendered.querySelectorAll('a')].map((link) => [link.textContent, link.getAttribute('href'), link.getAttribute('aria-current')])).toEqual([
       ['Insights', '#page-one', null],
-      ['Reports', '#page-two', 'page']
+      ['Reports2', '#page-two', 'page']
     ]);
+    expect(rendered.querySelector('.count-badge')?.getAttribute('aria-label')).toBe('2 current reports');
     expect(rendered.querySelector('.tab-trailing-icon')?.classList).toContain('octicon-chevron-right');
   });
 

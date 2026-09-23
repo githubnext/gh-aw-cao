@@ -3,12 +3,12 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   deployedDashboardUrl as dashboardUrl,
+  populatedDashboardPages,
   scrollRenderedViewsIntoView,
   shouldIgnoreRequestFailure,
 } from "./dashboard-deployed-refresh-helpers.mjs";
 
 const outputDirectory = resolve("test-results/dashboard-deployed");
-const populatedPages = ["events", "repositories", "workflows"];
 
 test("deployed dashboard refreshes and renders populated views", async ({ page }, testInfo) => {
   await mkdir(outputDirectory, { recursive: true });
@@ -71,7 +71,7 @@ test("deployed dashboard refreshes and renders populated views", async ({ page }
     await expect(page.locator(".dashboard-root")).not.toHaveAttribute("aria-busy", "true");
     await expect(page.locator(".dashboard-stale, .source-refresh-error")).toHaveCount(0);
 
-    for (const pageId of populatedPages) {
+    for (const { pageId } of populatedDashboardPages) {
       await page.evaluate((nextPageId) => {
         window.location.hash = `#page-${nextPageId}`;
       }, pageId);
@@ -101,9 +101,9 @@ test("deployed dashboard refreshes and renders populated views", async ({ page }
 
     diagnostics = await page.evaluate(() => window.collectFullDiagnostics());
     expect(diagnostics.passed, JSON.stringify(diagnostics.checks, null, 2)).toBe(true);
-    expect(diagnostics.database.counts.repositories).toBeGreaterThan(0);
-    expect(diagnostics.database.counts.workflows).toBeGreaterThan(0);
-    expect(diagnostics.database.counts.events).toBeGreaterThan(0);
+    for (const { storeName } of populatedDashboardPages) {
+      expect(diagnostics.database.counts[storeName]).toBeGreaterThan(0);
+    }
     expect(browserErrors).toEqual([]);
     expect(failedRequests).toEqual([]);
   } finally {

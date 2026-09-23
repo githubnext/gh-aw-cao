@@ -210,6 +210,62 @@ describe('campaign detail route', () => {
     expect(rendered.textContent).not.toContain('Other');
   });
 
+  it('shows the visible target problem count on the Problems tab', () => {
+    const base = context();
+    const rendered = renderCampaignRouteVariant({
+      ...base,
+      sourceNames: ['workflows', 'campaign-problem-items'],
+      sources: {
+        ...base.sources,
+        'campaign-problem-items': {
+          source: 'campaign-problem-items',
+          metadata,
+          rows: [
+            { campaign: 'ambient-context', 'target-repository': 'octo-org/api' },
+            { campaign: 'ambient-context', 'target-repository': 'octo-org/web' }
+          ]
+        }
+      }
+    }, 'problems');
+    const host = document.createElement('div');
+    host.append(rendered);
+    let allocation;
+    host.addEventListener('dashboard-route-allocation', (event) => {
+      if (event instanceof CustomEvent) allocation = event.detail;
+    });
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'campaign', value: 'ambient-context' }
+    }));
+
+    expect(rendered.querySelector('.campaign-tabs a[href^="#page-campaign-problems"] .count-badge')?.textContent)
+      .toBe('2');
+    expect(allocation).toEqual({
+      title: 'Ambient Context',
+      description: 'Current runtime failures and retained evidence for the Ambient Context campaign.',
+      navigationPage: 'campaigns'
+    });
+  });
+
+  it('keeps campaign facets above the page filter bar for the route view lifetime', async () => {
+    const page = document.createElement('section');
+    page.className = 'dashboard-page';
+    const filterBar = document.createElement('div');
+    filterBar.className = 'filter-bar';
+    const rendered = renderCampaignRouteVariant(context(), 'overview');
+    page.append(filterBar, rendered);
+
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'campaign', value: 'ambient-context' }
+    }));
+
+    expect(page.children[0]).toBe(page.querySelector('.campaign-tabs'));
+    expect(page.children[1]).toBe(filterBar);
+
+    rendered.remove();
+    await Promise.resolve();
+    expect(page.querySelector('.campaign-tabs')).toBeNull();
+  });
+
   it('keeps non-facet workflow composition available without adding a selected tab', () => {
     const rendered = renderCampaignRouteVariant(context(), 'workflows');
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
@@ -320,7 +376,7 @@ describe('campaign detail route', () => {
       rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
         detail: { parameter: 'campaign', value: 'missing' }
       }));
-      expect(rendered.textContent).toBe('Campaign not found.');
+      expect(rendered.textContent).toContain('Campaign not found.');
 
       const unavailableContext = context();
       const unavailable = renderCampaignRouteView({
@@ -339,7 +395,7 @@ describe('campaign detail route', () => {
       unavailable.dispatchEvent(new CustomEvent('dashboard-route-change', {
         detail: { parameter: 'campaign', value: 'ambient-context' }
       }));
-      expect(unavailable.textContent).toBe('Campaign data is unavailable.');
+      expect(unavailable.textContent).toContain('Campaign data is unavailable.');
     });
   });
 
@@ -355,7 +411,7 @@ describe('campaign detail route', () => {
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
       detail: { parameter: 'campaign', value: 'missing' }
     }));
-    expect(rendered.textContent).toBe('Campaign not found.');
+    expect(rendered.textContent).toContain('Campaign not found.');
   });
 
   it('renders the same unavailable state for workflow and report navigation', () => {
@@ -377,7 +433,8 @@ describe('campaign detail route', () => {
       rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
         detail: { parameter: 'campaign', value: 'ambient-context' }
       }));
-      expect(rendered.textContent).toBe('Campaign data is unavailable.');
+      expect(rendered.textContent).toContain('Campaign data is unavailable.');
+      expect(rendered.querySelector('.campaign-tabs')).not.toBeNull();
     }
   });
 });
