@@ -62,8 +62,10 @@ test("benchmark measures computational and space cost per query", async (t) => {
     assert.ok(measurement["input-row-total"] >= 0);
   }
   assert.deepEqual(
-    [...report["most-costly-by-time"]].sort(),
-    report.measurements.map(({ query }) => query).sort(),
+    report["most-costly-by-time"],
+    [...report.measurements]
+      .sort((left, right) => right["duration-ms"] - left["duration-ms"])
+      .map(({ query }) => query),
   );
   assert.deepEqual(
     report["most-costly-by-memory"],

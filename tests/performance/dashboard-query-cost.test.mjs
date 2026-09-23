@@ -30,22 +30,24 @@ const outputDirectory = path.resolve(
   process.env.DASHBOARD_QUERY_COST_OUTPUT || "test-results/dashboard-query-cost",
 );
 
-/** @param {string} name @param {number} fallback */
-function budget(name, fallback) {
+/** @param {string} name @param {number} fallback @param {{ integer?: boolean }} [options] */
+function budget(name, fallback, options = {}) {
   const raw = process.env[name] ?? fallback;
   const value = Number(raw);
-  if (!Number.isFinite(value) || value <= 0) {
-    throw new TypeError(`${name} must be a positive number; received "${raw}".`);
+  const valid = options.integer ? Number.isInteger(value) : Number.isFinite(value);
+  if (!valid || value <= 0) {
+    throw new TypeError(
+      `${name} must be a positive ${options.integer ? "integer" : "number"}; received "${raw}".`,
+    );
   }
   return value;
 }
 
-const candidateLimit = budget("DASHBOARD_QUERY_COST_CANDIDATES", DEFAULT_QUERY_COST_CANDIDATES);
-if (!Number.isInteger(candidateLimit)) {
-  throw new TypeError(
-    `DASHBOARD_QUERY_COST_CANDIDATES must be a positive integer; received "${process.env.DASHBOARD_QUERY_COST_CANDIDATES}".`,
-  );
-}
+const candidateLimit = budget(
+  "DASHBOARD_QUERY_COST_CANDIDATES",
+  DEFAULT_QUERY_COST_CANDIDATES,
+  { integer: true },
+);
 const maximumDurationMs = budget("DASHBOARD_QUERY_COST_MAX_DURATION_MS", 5_000);
 const maximumOperations = budget("DASHBOARD_QUERY_COST_MAX_OPERATIONS", 50_000_000);
 const maximumResultBytes = budget("DASHBOARD_QUERY_COST_MAX_RESULT_MB", 48) * 1024 * 1024;

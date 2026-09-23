@@ -29,14 +29,24 @@ const BENCHMARK_TIMEOUT_MS = 600_000;
 const BENCHMARK_MAX_OPERATIONS = 2_000_000_000;
 
 /**
- * Installs the SQLite-backed IndexedDB shim. The factory holds no connection
+ * Installs the SQLite-backed IndexedDB shim and returns a disposer that
+ * restores the previously installed globals. The factory holds no connection
  * of its own: each `open()` creates and closes its own SQLite connection, so
- * callers only restore the previously installed globals.
+ * restoring the globals releases everything the benchmark installed.
  *
  * @param {string} databasePath
  */
 export function openDeployedDatabase(databasePath) {
-  return installSqliteIndexedDB(path.resolve(databasePath));
+  const previousIndexedDB = globalThis.indexedDB;
+  const previousKeyRange = globalThis.IDBKeyRange;
+  const indexedDB = installSqliteIndexedDB(path.resolve(databasePath));
+  return {
+    indexedDB,
+    close() {
+      globalThis.indexedDB = previousIndexedDB;
+      globalThis.IDBKeyRange = previousKeyRange;
+    },
+  };
 }
 
 /** @param {string} documentPath */
@@ -182,10 +192,9 @@ export async function benchmarkDashboardQueryCost({ databasePath, document, limi
     .filter((query) => query && typeof query.name === "string")
     .map((query) => [query.name, query]));
   const defects = dashboardQueryDefects(definitions);
-  const previousIndexedDB = globalThis.indexedDB;
-  const previousKeyRange = globalThis.IDBKeyRange;
+  const database = openDeployedDatabase(databasePath);
+  const indexedDB = database.indexedDB;
   try {
-    const indexedDB = openDeployedDatabase(databasePath);
     const required = resolveDashboardQuerySources(definitions, candidates.map(({ name }) => name));
     const databaseStartedAt = performance.now();
     // Mirrors the production worker boundary: the canonical projection resolves
@@ -231,8 +240,7 @@ export async function benchmarkDashboardQueryCost({ databasePath, document, limi
       "most-costly-by-memory": rankMeasurements(measurements, "result-bytes", "retained-heap-bytes"),
     };
   } finally {
-    globalThis.indexedDB = previousIndexedDB;
-    globalThis.IDBKeyRange = previousKeyRange;
+    database.close();
   }
 }
 
