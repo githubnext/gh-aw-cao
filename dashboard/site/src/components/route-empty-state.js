@@ -15,7 +15,8 @@ import { renderEmptyMessage } from './ui-primitives.js';
  *   notFoundMessage: string,
  *   unavailableMessage?: string,
  *   isUnavailable?: () => boolean,
- *   hasSelection?: (routeValue: string) => boolean
+ *   hasSelection?: (routeValue: string) => boolean,
+ *   onRender?: (routeValue: string, matched: boolean) => void
  * }} RouteViewOptions
  */
 
@@ -45,6 +46,7 @@ export function createRouteView(options) {
         ? null
         : hasSelection ? options.notFoundMessage : options.selectMessage;
     root.replaceChildren(matched ?? renderEmptyMessage(message ?? ''));
+    options.onRender?.(normalizedValue, Boolean(matched));
   };
 
   root.addEventListener('dashboard-route-change', (event) => {
