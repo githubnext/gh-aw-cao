@@ -105,7 +105,7 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
   for (const name of oneShotGraders) {
     const packagePath = name.startsWith("repo-assist-")
       ? join(root, "repo-assist")
-      : join(root, ".experimental", "optimization");
+      : join(root, "optimization");
     assert.equal(
       readFileSync(join(packagePath, ".github", "graders", name), "utf8"),
       readFileSync(join(gradersDirectory, name), "utf8"),
