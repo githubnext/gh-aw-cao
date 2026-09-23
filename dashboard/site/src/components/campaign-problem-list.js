@@ -19,6 +19,7 @@ const FIX_ACTION = {
     'workflow-name',
     'workflow-role',
     'runtime-repository',
+    'target-repository',
     'problem-kind',
     'failure-count',
     'error-signature',
@@ -58,7 +59,6 @@ function problemDetail(row) {
 /** @param {Record<string, unknown>} row */
 function problemMetadata(row) {
   const values = [
-    text(row['runtime-repository']),
     problemDetail(row),
     text(row['failure-job']) ? `Job: ${text(row['failure-job'])}` : '',
     text(row['failure-step']) ? `Step: ${text(row['failure-step'])}` : '',
@@ -68,10 +68,16 @@ function problemMetadata(row) {
 }
 
 /** @param {Record<string, unknown>} row */
+function problemTarget(row) {
+  return text(row['target-repository']) || 'Unavailable for this observation';
+}
+
+/** @param {Record<string, unknown>} row */
 function renderProblem(row) {
   const run = text(row.run);
   const runLink = findLink(row, 'run-link');
   const occurrences = Number(row['occurrence-count']) || 0;
+  const metadata = problemMetadata(row);
   return h(
     'li',
     { className: 'campaign-problem-item' },
@@ -86,17 +92,25 @@ function renderProblem(row) {
       ),
       h(
         'p',
-        { className: 'campaign-problem-metadata' },
-        problemMetadata(row),
-        runLink
-          ? h(
-              'span',
-              { className: 'campaign-problem-run-link' },
-              ' · ',
-              renderSafeLink(run ? `Latest Run ${run}` : 'Open Run', runLink)
-            )
-          : null
-      )
+        { className: 'campaign-problem-target' },
+        'Target repository: ',
+        h('strong', {}, problemTarget(row))
+      ),
+      metadata || runLink
+        ? h(
+            'p',
+            { className: 'campaign-problem-metadata' },
+            metadata,
+            runLink
+              ? h(
+                  'span',
+                  { className: 'campaign-problem-run-link' },
+                  metadata ? ' · ' : '',
+                  renderSafeLink(run ? `Latest Run ${run}` : 'Open Run', runLink)
+                )
+              : null
+          )
+        : null
     ),
     occurrences > 1
       ? h(

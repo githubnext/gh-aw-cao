@@ -38,6 +38,7 @@ describe('campaign problem list', () => {
         workflow: '.github/workflows/optimization-token-optimizer.lock.yml',
         'workflow-name': 'Token Optimizer',
         'runtime-repository': 'githubnext/gh-aw-cao',
+        'target-repository': 'octo-org/service-api',
         'problem-kind': 'failure',
         'failure-count': 3,
         status: 'failure',
@@ -53,6 +54,7 @@ describe('campaign problem list', () => {
         workflow: '.github/workflows/optimization-token-optimizer.lock.yml',
         'workflow-name': 'Token Optimizer',
         'runtime-repository': 'githubnext/gh-aw-cao',
+        'target-repository': 'octo-org/web-app',
         'problem-kind': 'failure',
         'failure-count': 3,
         status: 'failure',
@@ -65,6 +67,12 @@ describe('campaign problem list', () => {
     expect(rendered.querySelector('.campaign-problem-group-name')?.textContent).toBe('Token Optimizer');
     expect(rendered.querySelector('.count-badge')?.textContent).toBe('3');
     expect(rendered.querySelectorAll('.campaign-problem-item')).toHaveLength(2);
+    expect([...rendered.querySelectorAll('.campaign-problem-target')].map((node) => node.textContent))
+      .toEqual([
+        'Target repository: octo-org/service-api',
+        'Target repository: octo-org/web-app'
+      ]);
+    expect(rendered.textContent).not.toContain('Runtime: githubnext/gh-aw-cao');
     expect(rendered.textContent).toContain('Process completed with exit code 1.');
     expect(rendered.querySelector('.campaign-problem-run-link a')?.getAttribute('href'))
       .toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/123');
@@ -89,6 +97,8 @@ describe('campaign problem list', () => {
     ]);
 
     expect(rendered.textContent).toContain('No retained orchestrator Run was observed');
+    expect(rendered.querySelector('.campaign-problem-target')?.textContent)
+      .toBe('Target repository: Unavailable for this observation');
     expect(rendered.querySelector('.count-badge')?.textContent).toBe('1');
     expect(rendered.querySelector('.campaign-problem-severity')?.getAttribute('aria-label')).toBe('Error');
   });

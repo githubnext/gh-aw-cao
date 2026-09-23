@@ -9,6 +9,12 @@ const dashboard = JSON.parse(readFileSync(resolve(fixtureDirectory, '../../dashb
 const query = dashboard.queries.find(
   (/** @type {{ name?: string }} */ candidate) => candidate.name === 'overview-campaign-links'
 );
+const problemGroupsQuery = dashboard.queries.find(
+  (/** @type {{ name?: string }} */ candidate) => candidate.name === 'campaign-problem-error-groups'
+);
+const problemItemsQuery = dashboard.queries.find(
+  (/** @type {{ name?: string }} */ candidate) => candidate.name === 'campaign-problem-items'
+);
 
 /** @type {import('../../src/presenter.js').SourceMetadata} */
 const metadata = {
@@ -54,4 +60,21 @@ it('opens campaigns with runtime problems on Problems and healthy campaigns on I
       })
     })
   ]);
+});
+
+it('keeps campaign error groups scoped to their target repository', () => {
+  expect(problemGroupsQuery).toMatchObject({
+    aggregate: {
+      by: expect.arrayContaining(['runtime-repository', 'target-repository', 'error-signature'])
+    }
+  });
+  expect(problemItemsQuery).toMatchObject({
+    joins: [
+      expect.objectContaining({
+        on: expect.arrayContaining([
+          { left: 'target-repository', right: 'target-repository' }
+        ])
+      })
+    ]
+  });
 });

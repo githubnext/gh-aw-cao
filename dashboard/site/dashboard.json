@@ -5533,6 +5533,9 @@
             "field": "runtime-repository"
           },
           {
+            "field": "target-repository"
+          },
+          {
             "field": "status"
           },
           {
@@ -6035,8 +6038,8 @@
       },
       {
         "name": "campaign-problem-error-groups",
-        "intent": "Cluster retained failed Run evidence by workflow, runtime repository, and error signature so repeated identical failures collapse into one diagnosable group.",
-        "description": "One row per distinct error signature within a campaign runtime problem partition, with an occurrence count and the most recent matching Run identity for follow-up.",
+        "intent": "Cluster retained failed Run evidence by workflow, runtime repository, target repository, and error signature so repeated identical failures for one target collapse into one diagnosable group.",
+        "description": "One row per distinct target repository and error signature within a campaign runtime problem partition, with an occurrence count and the most recent matching Run identity for follow-up.",
         "from": "campaign-problem-run-evidence",
         "aggregate": {
           "by": [
@@ -6046,6 +6049,7 @@
             "workflow-name",
             "workflow-role",
             "runtime-repository",
+            "target-repository",
             "failure-count",
             "problem-kind",
             "error-signature",
@@ -6068,7 +6072,7 @@
       {
         "name": "campaign-problem-items",
         "intent": "Attach the most recent representative Run evidence to each distinct campaign runtime problem error signature.",
-        "description": "Current campaign runtime problems clustered by error signature, one row per group, with an occurrence count, the most recent matching failed Run, and a repair prompt.",
+        "description": "Current campaign runtime problems clustered by target repository and error signature, one row per group, with an occurrence count, the most recent matching failed Run, and a repair prompt.",
         "from": "campaign-problem-error-groups",
         "joins": [
           {
@@ -6086,6 +6090,10 @@
               {
                 "left": "runtime-repository",
                 "right": "runtime-repository"
+              },
+              {
+                "left": "target-repository",
+                "right": "target-repository"
               },
               {
                 "left": "latest-run",
@@ -9448,7 +9456,7 @@
           {
             "id": "campaign-current-runtime-problems",
             "title": "Problems",
-            "description": "Current runtime failures and missing orchestrator observations, grouped by workflow.",
+            "description": "Current runtime failures and missing orchestrator observations, grouped by workflow with the target repository identified for each error group.",
             "data": {
               "sources": [
                 "campaign-problem-items"

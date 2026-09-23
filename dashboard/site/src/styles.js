@@ -924,7 +924,8 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .campaign-problem-item{min-height:42px;display:grid;grid-template-columns:20px minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:6px 12px 6px 40px;border-top:1px solid var(--border-muted)}
 .campaign-problem-severity{width:16px;height:16px;display:grid;place-items:center;color:var(--danger)}
 .campaign-problem-copy{min-width:0}
-.campaign-problem-message,.campaign-problem-metadata{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.campaign-problem-message,.campaign-problem-target,.campaign-problem-metadata{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.campaign-problem-target{color:var(--fg);font-size:.75rem}
 .campaign-problem-metadata{color:var(--muted);font-size:.75rem}
 .campaign-problem-item .table-intent-button{min-height:28px;padding:3px 8px}
 .campaign-problem-occurrences{display:inline-flex}
