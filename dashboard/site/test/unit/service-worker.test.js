@@ -114,12 +114,15 @@ describe('dashboard service worker', () => {
     expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/logs-1.jsonl'))).toBe(false);
   });
 
-  it('rejects unpaired phased activity shards', async () => {
+  it('downloads independently published run-information and record shards', async () => {
     const { listeners, fetch, entries } = serviceWorkerHarness();
-    const stem = `gh-aw-logs-1000-a-${'a'.repeat(64)}-${'b'.repeat(16)}.json`;
+    const firstStem = `gh-aw-logs-1000-a-${'a'.repeat(64)}-${'b'.repeat(16)}.json`;
+    const secondStem = `gh-aw-logs-2000-b-${'c'.repeat(64)}-${'d'.repeat(16)}.json`;
     const payloadHashes = JSON.stringify({
       'gh-aw-logs-shards/logs-1.jsonl': 'c'.repeat(64),
-      [`gh-aw-logs-runs/${stem}`]: 'd'.repeat(64)
+      [`gh-aw-logs-runs/${firstStem}`]: 'd'.repeat(64),
+      [`gh-aw-logs-runs/${secondStem}`]: 'e'.repeat(64),
+      [`gh-aw-logs-records/${secondStem}`]: 'f'.repeat(64)
     });
     fetch.mockImplementation(async (url) => new Response(
       String(url).endsWith('/payload-hashes.json') ? payloadHashes : '[]'
@@ -133,8 +136,10 @@ describe('dashboard service worker', () => {
       ports: [{ postMessage: vi.fn() }]
     });
 
-    expect(entries.has('https://example.test/dashboard/gh-aw-logs-shards/logs-1.jsonl')).toBe(true);
-    expect(entries.has(`https://example.test/dashboard/gh-aw-logs-runs/${stem}`)).toBe(false);
+    expect(entries.has('https://example.test/dashboard/gh-aw-logs-shards/logs-1.jsonl')).toBe(false);
+    expect(entries.has(`https://example.test/dashboard/gh-aw-logs-runs/${firstStem}`)).toBe(true);
+    expect(entries.has(`https://example.test/dashboard/gh-aw-logs-runs/${secondStem}`)).toBe(true);
+    expect(entries.has(`https://example.test/dashboard/gh-aw-logs-records/${secondStem}`)).toBe(true);
   });
 
   it('downloads configured dashboard data during periodic background sync with no page open', async () => {

@@ -151,12 +151,7 @@ async function downloadData(urls) {
       && typeof hash === 'string'
       && /^[a-f0-9]{64}$/i.test(hash))
     .sort(([left], [right]) => left.localeCompare(right));
-  const fileName = ([name]) => name.slice(name.lastIndexOf('/') + 1);
-  const phasedEntries = runEntries.length > 0
-    && runEntries.length === eventEntries.length
-    && runEntries.every((entry, index) => fileName(entry) === fileName(eventEntries[index]))
-    ? [...runEntries, ...eventEntries]
-    : [];
+  const phasedEntries = runEntries.length > 0 ? [...runEntries, ...eventEntries] : [];
   const normalizedEntries = Object.entries(currentHashes)
     .filter(([name, hash]) => /^gh-aw-logs-normalized\/[a-f0-9]{64}-[a-f0-9]{16}\.json$/i.test(name)
       && typeof hash === 'string'
