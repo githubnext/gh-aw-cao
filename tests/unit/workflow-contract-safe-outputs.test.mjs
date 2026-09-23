@@ -171,8 +171,8 @@ test("Dependabot worker maintains a durable parent and one-PR child tasks withou
   assert.match(source, /Do not list, search, match, or reuse closed issues/);
   assert.match(source, /never let a closed parent prevent this creation/i);
   assert.match(source, /not all live targets allow this workflow to create missing labels/);
-  assert.match(source, /explicitly labeled lower-bound fallback inventory/);
-  assert.match(source, /must not prove completeness, absence, resolution, or support `noop`/);
+  assert.match(source, /instead of substituting pull-request search results/);
+  assert.doesNotMatch(source, /fallback inventory/);
   assert.match(source, /authenticated read-only `gh api/);
   assert.match(source, /Never create, update, push to, comment on, or otherwise mutate a pull request/);
 });
