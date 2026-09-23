@@ -6,7 +6,7 @@ import { tidy } from '../../data-operations.js';
 const debug = createDebug('data:indexeddb');
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 19;
+export const DATABASE_VERSION = 20;
 
 /** @param {string} [pathname] */
 export function canonicalDatabaseName(pathname) {

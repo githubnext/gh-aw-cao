@@ -22,7 +22,7 @@ describe('full dashboard diagnostics', () => {
     vi.spyOn(console, 'table').mockImplementation(() => {});
 
     const queryDatabase = vi.fn().mockResolvedValue({
-      schemaVersion: 12,
+      schemaVersion: 13,
       counts: {
         campaigns: 0,
         repositories: 0,
