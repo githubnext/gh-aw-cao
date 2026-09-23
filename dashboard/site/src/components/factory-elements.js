@@ -33,6 +33,44 @@ import { dashboardViewAliasName } from '../data/queries/view-payload-compiler.js
  * }} FactoryMetrics
  */
 
+/**
+ * Canonical metric roles consumed by {@link createFactoryMetrics}. A JSON
+ * view may bind an element to differently named sources by overriding any of
+ * these roles through `config.sources`, so the same factory element can be
+ * reused on another page without changing its JavaScript.
+ * @type {string[]}
+ */
+export const FACTORY_METRIC_ROLES = [
+  'campaigns',
+  'healthy-campaigns',
+  'issues',
+  'run-summary',
+  'value-summary',
+  'repository-coverage',
+  'delivery-summary',
+  'registered-repository-summary',
+  'worker-summary',
+  'dispatch-summary',
+  'outcome-summary'
+];
+
+/**
+ * Resolves the actual source name bound to each canonical metric role,
+ * applying any `config.sources` overrides declared on the view.
+ * @param {Record<string, string>} defaults
+ * @param {Record<string, unknown> | undefined} config
+ * @returns {Record<string, string>}
+ */
+export function resolveFactorySourceNames(defaults, config) {
+  const overrides = config && typeof config === 'object' && config.sources && typeof config.sources === 'object'
+    ? /** @type {Record<string, unknown>} */ (config.sources)
+    : {};
+  return Object.fromEntries(Object.entries(defaults).map(([role, defaultName]) => {
+    const override = overrides[role];
+    return [role, typeof override === 'string' && override ? override : defaultName];
+  }));
+}
+
 /** @type {Record<string, PluralText>} */
 const DEFAULT_STATION_LABELS = {
   campaigns: { singular: 'Campaign', plural: 'Campaigns' },
@@ -83,43 +121,51 @@ export function bindFactorySources(sources, names, request) {
 }
 
 /**
- * Exposes the compact query fields consumed by the factory components.
+ * Exposes the compact query fields consumed by the factory components. The
+ * optional `roleNames` map resolves each canonical metric role (see
+ * {@link FACTORY_METRIC_DEFAULT_SOURCES}) to the source name it was actually
+ * bound under, so callers may reuse the same metric roles against
+ * differently named sources. When omitted, roles are looked up by their own
+ * name, preserving compatibility with callers that only need `motion()`.
  * @param {SourceBindings} sources
+ * @param {Record<string, string>} [roleNames]
  * @returns {FactoryMetrics}
  */
-export function createFactoryMetrics(sources) {
-  /** @param {string} name */
-  const row = (name) => sources[name]?.rows()[0] ?? {};
+export function createFactoryMetrics(sources, roleNames) {
+  /** @param {string} role */
+  const sourceFor = (role) => sources[roleNames?.[role] ?? role];
+  /** @param {string} role */
+  const row = (role) => sourceFor(role)?.rows()[0] ?? {};
   return {
-    campaigns: () => numberField(row('overview-healthy-campaign-count'), 'healthy-campaigns'),
-    campaignTotal: () => numberField(row('database-campaign-count'), 'campaigns'),
+    campaigns: () => numberField(row('healthy-campaigns'), 'healthy-campaigns'),
+    campaignTotal: () => numberField(row('campaigns'), 'campaigns'),
      campaignHealth: () => {
-       const total = numberField(row('database-campaign-count'), 'campaigns');
-       const healthy = numberField(row('overview-healthy-campaign-count'), 'healthy-campaigns');
+       const total = numberField(row('campaigns'), 'campaigns');
+       const healthy = numberField(row('healthy-campaigns'), 'healthy-campaigns');
        return total > 0 ? healthy / total : 0;
      },
-    issues: () => numberField(row('database-issue-count'), 'issues'),
-    successfulRuns: () => numberField(row('overview-run-summary'), 'successful-runs'),
-    failedRuns: () => numberField(row('overview-run-summary'), 'failed-runs'),
-    activeRuns: () => numberField(row('overview-run-summary'), 'active-runs'),
-    valueGains: () => numberField(row('overview-value-summary'), 'value-gains'),
+    issues: () => numberField(row('issues'), 'issues'),
+    successfulRuns: () => numberField(row('run-summary'), 'successful-runs'),
+    failedRuns: () => numberField(row('run-summary'), 'failed-runs'),
+    activeRuns: () => numberField(row('run-summary'), 'active-runs'),
+    valueGains: () => numberField(row('value-summary'), 'value-gains'),
     coverage: () => ({
-      total: numberField(row('overview-repository-coverage'), 'reached-repositories'),
-      registered: numberField(row('overview-repository-coverage'), 'registered-repositories-total'),
-      averageCoverage: Math.min(1, Math.max(0, numberField(row('overview-repository-coverage'), 'repository-coverage'))),
-      unavailable: sources['overview-delivery-summary']?.unavailable() ?? true,
-      registeredUnavailable: sources['overview-registered-repository-summary']?.unavailable() ?? true,
-      coverageUnavailable: sources['overview-repository-coverage']?.unavailable() ?? true
+      total: numberField(row('repository-coverage'), 'reached-repositories'),
+      registered: numberField(row('repository-coverage'), 'registered-repositories-total'),
+      averageCoverage: Math.min(1, Math.max(0, numberField(row('repository-coverage'), 'repository-coverage'))),
+      unavailable: sourceFor('delivery-summary')?.unavailable() ?? true,
+      registeredUnavailable: sourceFor('registered-repository-summary')?.unavailable() ?? true,
+      coverageUnavailable: sourceFor('repository-coverage')?.unavailable() ?? true
     }),
-    workers: () => numberField(row('overview-worker-summary'), 'workers'),
-    dispatches: () => numberField(row('overview-dispatch-summary'), 'dispatches'),
-    failedDispatches: () => numberField(row('overview-dispatch-summary'), 'failed-dispatches'),
-    usefulOutputs: () => numberField(row('overview-outcome-summary'), 'useful-outputs'),
-    deliveredRepositories: () => numberField(row('overview-outcome-summary'), 'delivered-repositories'),
+    workers: () => numberField(row('worker-summary'), 'workers'),
+    dispatches: () => numberField(row('dispatch-summary'), 'dispatches'),
+    failedDispatches: () => numberField(row('dispatch-summary'), 'failed-dispatches'),
+    usefulOutputs: () => numberField(row('outcome-summary'), 'useful-outputs'),
+    deliveredRepositories: () => numberField(row('outcome-summary'), 'delivered-repositories'),
     motion: () => ({
-      operations: numberField(row('overview-run-summary'), 'active-runs'),
-      live: numberField(row('overview-run-summary'), 'active-live'),
-      review: numberField(row('overview-run-summary'), 'active-review')
+      operations: numberField(row('run-summary'), 'active-runs'),
+      live: numberField(row('run-summary'), 'active-live'),
+      review: numberField(row('run-summary'), 'active-review')
     })
   };
 }

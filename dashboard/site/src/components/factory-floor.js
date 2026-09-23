@@ -1,5 +1,5 @@
 import { formatCount } from './count-formatters.js';
-import { bindFactorySources, createFactoryMetrics, createFactoryScope, factoryStationLabel } from './factory-elements.js';
+import { bindFactorySources, createFactoryMetrics, createFactoryScope, factoryStationLabel, resolveFactorySourceNames } from './factory-elements.js';
 import { renderFactoryStation } from './factory-station.js';
 import { renderReactiveGrid } from './reactive-grid.js';
 
@@ -17,9 +17,10 @@ import { renderReactiveGrid } from './reactive-grid.js';
  * @param {(labelId: string, count: number) => string} label
  * @param {boolean} animateNumbers
  * @param {FactoryFloorScope} scope
+ * @param {Record<string, string>} roleNames
  * @param {FactoryStationId[]} [selectedStations]
  */
-export function renderFactoryFloor(sources, metrics, label, animateNumbers, scope, selectedStations) {
+export function renderFactoryFloor(sources, metrics, label, animateNumbers, scope, roleNames, selectedStations) {
   const campaigns = renderFactoryStation('organization', { animate: animateNumbers, format: 'percent', href: '#page-campaigns', signal: scope.signal });
   const repositories = renderFactoryStation('repo', { animate: animateNumbers, format: 'percent', href: '#page-repositories', signal: scope.signal });
   const issues = renderFactoryStation('issue', { animate: animateNumbers, href: '#page-issues', signal: scope.signal });
@@ -31,8 +32,8 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
     const count = metrics.campaigns();
     const total = metrics.campaignTotal();
     return {
-      pending: sources['overview-healthy-campaign-count']?.pending() ?? true,
-      unavailable: sources['overview-healthy-campaign-count']?.unavailable() ?? true,
+      pending: sources[roleNames['healthy-campaigns']]?.pending() ?? true,
+      unavailable: sources[roleNames['healthy-campaigns']]?.unavailable() ?? true,
       label: 'Campaign health',
       value: total > 0 ? count / total : 0,
       detail: { text: `${formatCount(count)}/${formatCount(total)} healthy campaigns` }
@@ -42,7 +43,7 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
   repositories.bind(() => {
     const coverage = metrics.coverage();
     return {
-      pending: sources['overview-repository-coverage']?.pending() ?? true,
+      pending: sources[roleNames['repository-coverage']]?.pending() ?? true,
       unavailable: coverage.coverageUnavailable,
       label: 'Repository coverage',
       value: coverage.averageCoverage,
@@ -53,8 +54,8 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
   issues.bind(() => {
     const count = metrics.issues();
     return {
-      pending: sources['database-issue-count'].pending(),
-      unavailable: sources['database-issue-count'].unavailable(),
+      pending: sources[roleNames.issues].pending(),
+      unavailable: sources[roleNames.issues].unavailable(),
       label: label('issues', count),
       value: count,
       detail: { text: '' }
@@ -65,7 +66,7 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
     const successfulRuns = metrics.successfulRuns();
     const failedRuns = metrics.failedRuns();
     return {
-      pending: sources['overview-run-summary'].pending(),
+      pending: sources[roleNames['run-summary']].pending(),
       label: label('successful-runs', successfulRuns),
       value: successfulRuns,
       detail: {
@@ -79,7 +80,7 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
     const dispatchCount = metrics.dispatches();
     const failedDispatches = metrics.failedDispatches();
     return {
-      pending: sources['overview-dispatch-summary'].pending(),
+      pending: sources[roleNames['dispatch-summary']].pending(),
       label: label('dispatches', dispatchCount),
       value: dispatchCount,
       detail: {
@@ -92,7 +93,7 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
   valueGains.bind(() => {
     const gains = metrics.valueGains();
     return {
-      pending: sources['overview-value-summary'].pending(),
+      pending: sources[roleNames['value-summary']].pending(),
       label: label('value-gains', gains),
       value: gains,
       detail: { text: '' }
@@ -154,33 +155,40 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
   });
 }
 
-const FLOOR_SOURCE_NAMES = [
-  'database-campaign-count',
-  'overview-healthy-campaign-count',
-  'overview-registered-repository-summary',
-  'overview-repository-coverage',
-  'database-issue-count',
-  'overview-outcome-summary',
-  'overview-run-summary',
-  'overview-dispatch-summary',
-  'overview-delivery-summary',
-  'overview-value-summary',
-  'overview-worker-summary'
-];
+/**
+ * Default role-to-source-name bindings for the overview page. A view may
+ * override any entry through `config.sources` to bind the same element to
+ * differently named sources.
+ * @type {Record<string, string>}
+ */
+export const FLOOR_DEFAULT_SOURCES = {
+  campaigns: 'database-campaign-count',
+  'healthy-campaigns': 'overview-healthy-campaign-count',
+  'registered-repository-summary': 'overview-registered-repository-summary',
+  'repository-coverage': 'overview-repository-coverage',
+  issues: 'database-issue-count',
+  'outcome-summary': 'overview-outcome-summary',
+  'run-summary': 'overview-run-summary',
+  'dispatch-summary': 'overview-dispatch-summary',
+  'delivery-summary': 'overview-delivery-summary',
+  'value-summary': 'overview-value-summary',
+  'worker-summary': 'overview-worker-summary'
+};
 
 /**
  * Renders the JSON-selected factory floor from its declared query payloads.
  * @param {import('./ui-elements.js').ElementRenderContext} context
  */
 export function renderFactoryFloorElement(context) {
-  const sources = bindFactorySources(context.sources, FLOOR_SOURCE_NAMES, {
+  const roleNames = resolveFactorySourceNames(FLOOR_DEFAULT_SOURCES, context.elementConfig);
+  const sources = bindFactorySources(context.sources, Object.values(roleNames), {
     pageId: context.pageId,
     viewId: context.viewId,
     viewIndex: context.viewIndex,
     sourceNames: context.sourceNames,
     queryContext: context.queryContext
   });
-  const metrics = createFactoryMetrics(sources);
+  const metrics = createFactoryMetrics(sources, roleNames);
   const scope = createFactoryScope(metrics);
   const rendered = renderFactoryFloor(
     sources,
@@ -188,6 +196,7 @@ export function renderFactoryFloorElement(context) {
     factoryStationLabel(context.elementConfig),
     context.elementConfig?.animate === 'number',
     scope,
+    roleNames,
     Array.isArray(context.elementConfig?.stations)
       ? /** @type {FactoryStationId[]} */ (context.elementConfig.stations.filter((station) => typeof station === 'string'))
       : undefined

@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { state } from '../../src/reactive.js';
-import { renderFactoryFloor } from '../../src/components/factory-floor.js';
-import { renderFactoryHeader } from '../../src/components/factory-header.js';
+import { FLOOR_DEFAULT_SOURCES, renderFactoryFloor } from '../../src/components/factory-floor.js';
+import { HEADER_DEFAULT_SOURCES, renderFactoryHeader } from '../../src/components/factory-header.js';
 import { renderFactoryRhythm } from '../../src/components/factory-rhythm.js';
 import { renderFactoryStation } from '../../src/components/factory-station.js';
 
@@ -159,7 +159,7 @@ describe('Overview component boundaries', () => {
       'value-gains': count === 1 ? 'Value gain' : 'Value gains'
     })[name] ?? name;
     const scope = { signal: controller.signal, motion };
-    const rendered = renderFactoryFloor(sources, metrics(), label, false, scope, ['campaigns', 'repositories']);
+    const rendered = renderFactoryFloor(sources, metrics(), label, false, scope, FLOOR_DEFAULT_SOURCES, ['campaigns', 'repositories']);
 
     expect([...rendered.querySelectorAll('.factory-station strong')].map((element) => element.textContent)).toEqual(['66.7%', '50%']);
     expect([...rendered.querySelectorAll('.factory-station small')].map((element) => element.textContent)).toEqual(['2/3 healthy campaigns', '4/6 repositories reached']);
@@ -179,7 +179,8 @@ describe('Overview component boundaries', () => {
     const rendered = renderFactoryHeader(
       sources,
       metrics(),
-      { signal: controller.signal }
+      { signal: controller.signal },
+      HEADER_DEFAULT_SOURCES
     );
 
     expect(rendered.querySelector('.factory-running')).toBeNull();

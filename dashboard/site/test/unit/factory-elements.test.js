@@ -132,6 +132,18 @@ it('renders the factory header from only its declared JSON sources', () => {
   expect(rendered?.querySelectorAll('.factory-rhythm-day')).toHaveLength(7);
 });
 
+it('rebinds the factory header to differently named sources through config.sources', () => {
+  const rendered = renderUiElement('factory-header', context('factory-header', {
+    'custom-status': source('custom-status', [{ 'factory-heading': 'Custom campaign status.' }]),
+    'custom-rhythm': source('custom-rhythm', [{ rhythm }])
+  }, {
+    sources: { status: 'custom-status', rhythm: 'custom-rhythm' }
+  }));
+
+  expect(rendered?.querySelector('h2')?.textContent).toBe('Custom campaign status.');
+  expect(rendered?.querySelectorAll('.factory-rhythm-day')).toHaveLength(7);
+});
+
 it('renders the factory floor from its independent JSON view and configuration', () => {
   const rendered = renderUiElement('factory-floor', context('factory-floor', {
     'database-campaign-count': source('database-campaign-count', [{ campaigns: 2 }]),
@@ -187,6 +199,17 @@ it('keeps unavailable registered repository evidence distinct from zero', () => 
   expect(rendered?.querySelector('.factory-station:nth-child(2)')?.textContent).toBe('Repository coverageUnavailable0/0 repositories reached');
   expect(rendered?.querySelector('.factory-station:nth-child(2) strong a')).toBeNull();
   expect(rendered?.getAttribute('aria-label')).toContain('Repository coverage unavailable');
+});
+
+it('rebinds the factory floor to differently named sources through config.sources', () => {
+  const rendered = renderUiElement('factory-floor', context('factory-floor', {
+    'custom-issue-count': source('custom-issue-count', [{ issues: 7 }])
+  }, {
+    stations: ['issues'],
+    sources: { issues: 'custom-issue-count' }
+  }));
+
+  expect(rendered?.querySelector('.factory-station')?.textContent).toBe('Issues & PRs7');
 });
 
 it('renders both elements immediately and updates only widgets whose query resolves', async () => {

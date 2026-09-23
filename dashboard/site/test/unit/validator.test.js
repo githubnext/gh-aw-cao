@@ -138,6 +138,23 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
   });
 
+  it('validates declarative factory element source role rebinding', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const overview = document.dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'overview');
+    const floor = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'factory-floor');
+    const header = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'factory-header');
+    floor.config.sources = { issues: 'database-issue-count' };
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    floor.config.sources = { workers: 'overview-worker-summary' };
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+    delete floor.config.sources;
+    header.config = { sources: { status: 'overview-factory-status' } };
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    const links = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'link-button-list');
+    links.config.sources = { status: 'overview-factory-status' };
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+  });
+
   it('accepts supported dashboard CLI actions', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     document.dashboard['cli-actions'].push({

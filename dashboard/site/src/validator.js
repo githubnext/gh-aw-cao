@@ -59,6 +59,8 @@ import {
   FIELD_FORMAT_VALUES,
   FIELD_TYPE_VALUES,
   FACTORY_FLOOR_STATION_VALUES,
+  FACTORY_HEADER_SOURCE_ROLES,
+  FACTORY_FLOOR_SOURCE_ROLES,
   FACTORY_OVERVIEW_SECTION_VALUES,
   FILTER_DIMENSION_VALUES,
   DETECTION_STATE_VALUES,
@@ -2742,6 +2744,28 @@ function validateView(view, viewNode, path, viewIds, errors) {
             'config.animate must use one canonical element animation value.',
             `${path}.config.animate`
           ));
+        }
+      }
+      if (view.config.sources !== undefined) {
+        if (view.element !== 'factory-header' && view.element !== 'factory-floor') {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'config.sources is supported only for the factory-header and factory-floor elements.',
+            `${path}.config.sources`
+          ));
+        } else if (!isPlainObject(view.config.sources) || Object.keys(view.config.sources).length === 0) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            `${view.element} config.sources must be a non-empty mapping of metric roles to source names.`,
+            `${path}.config.sources`
+          ));
+        } else {
+          const allowedRoles = view.element === 'factory-header' ? FACTORY_HEADER_SOURCE_ROLES : FACTORY_FLOOR_SOURCE_ROLES;
+          const sourcesNode = getValueNodeByKey(getValueNodeByKey(viewNode, 'config'), 'sources');
+          validateObjectKeys(sourcesNode, allowedRoles, `${path}.config.sources`, errors);
+          for (const [role, sourceName] of Object.entries(view.config.sources)) {
+            validateStringField(sourceName, `${path}.config.sources.${role}`, true, errors);
+          }
         }
       }
       const linkButtonConfigKeys = ['label-field', 'link-field', 'icon-field', 'fallback-icon', 'empty-message'];
