@@ -13,6 +13,7 @@
     "dashboard:server:build": "npm --prefix dashboard/site run build -- dist ../../.github/workflows/cao.json",
     "dashboard:server:redis-up": "docker compose -f server/docker-compose.yml up -d",
     "dashboard:server:redis-down": "docker compose -f server/docker-compose.yml down",
+    "dashboard:server:setup:macos": "bash scripts/setup-dashboard-server-macos.sh",
     "dashboard:server:ingest": "go -C server run ./cmd/cao-dashboard ingest",
     "dashboard:server:serve": "go -C server run ./cmd/cao-dashboard serve",
     "dashboard:server:lint": "cd server && golangci-lint fmt --diff && golangci-lint run ./...",

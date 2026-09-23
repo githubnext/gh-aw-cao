@@ -205,6 +205,16 @@ guidance, limitations, and private vulnerability-reporting process.
 
 The module targets Go 1.28 and declares `toolchain go1.28.0`.
 
+On a MacBook, install Homebrew first and run the idempotent project setup:
+
+```bash
+npm run dashboard:server:setup:macos
+```
+
+The command installs Homebrew Go, Node.js 24, Redis Stack Server with
+RediSearch, and the dashboard npm dependencies. It does not start a persistent
+Homebrew service.
+
 From the repository root:
 
 ```bash
