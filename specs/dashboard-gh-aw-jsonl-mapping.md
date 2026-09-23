@@ -77,11 +77,15 @@ the enriched records resolve one unique path for the workflow name. Otherwise,
 it SHALL use a source-namespaced Repository-plus-workflow-name coordinate and
 leave the path absent.
 
-Run identity SHALL be:
+Source rows SHALL be deduplicated by run ID and attempt before normalization.
+The canonical Run identity SHALL be:
 
 ```text
-github:run:<databaseId>:attempt:<attempt>
+github:run:<normalized-owner>/<normalized-repository>:<databaseId>
 ```
+
+The winning observation SHALL retain `attempt`; an attempt does not create a
+second canonical Run.
 
 ## 2 `run` envelope
 

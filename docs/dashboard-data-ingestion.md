@@ -17,7 +17,12 @@ Agentic workflows produce Actions logs. The Activity workflow collects a bounded
   <img class="docs-theme-diagram-dark" alt="Agentic workflow logs are collected by Activity into JSONL, then the shared data model produces SQLite for agents and CLI tools or IndexedDB for dashboard views" src="/gh-aw-cao/assets/dashboard-data-flow-dark.svg">
 </div>
 
-SQLite and IndexedDB are rebuildable copies. Neither is the source for the other. Both use the same conversion rules and keep all run summaries available in the published JSONL. Detailed Domain, Tool, Audit, and Issue records remain bounded to 30 days unless a separate full-detail SQLite archive is requested.
+SQLite and IndexedDB are rebuildable projections. Neither is the source for the
+other. The local SQLite adapter implements the same logical object stores,
+indexes, records, conversion rules, and queries as browser IndexedDB. It is not
+a separate relational canonical schema. Both keep all run summaries available
+in the published JSONL. Detailed Domain, Tool, Audit, and Issue records remain
+bounded to 30 days unless a separate full-detail SQLite archive is requested.
 
 See [Data model](/gh-aw-cao/dashboard-data-model/) for the canonical entities, identities, and relationships produced by ingestion.
 
@@ -69,7 +74,14 @@ The activity shard manifest is the dashboard's published operational input. The 
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
-The canonical database is `gh-aw-cao-dashboard-data`, schema version 11. It has stores for `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `audits`, and `issues`; all use their canonical `id` as the key. The `transactions` store records ingestion outcomes and is indexed by `createdAt` and `kind`. Because this database is disposable derived state, schema upgrades rebuild its stores from authoritative dashboard inputs.
+The canonical model is version 13. The browser database is
+`gh-aw-cao-dashboard-data`, IndexedDB version 20. Its canonical stores are
+`campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `audits`,
+and `issues`; all use `id` as the key. The `transactions` store records
+ingestion outcomes and is indexed by `createdAt`. The disposable
+`dailyOverviewAggregates` and `overviewAggregateMetadata` stores implement the
+Overview fast path. Because the database is derived state, physical schema
+upgrades rebuild every store from authoritative dashboard inputs.
 
 For each ingestion, the worker reads the existing canonical batch, merges incoming records, expires time-bounded records outside the 30-day retention window, and prunes orphaned descendants and unreferenced structural parents. The effective retention horizon is the later of the browser clock and the newest incoming observation, so a browser with a slow clock cannot prune current producer data. The worker then replaces each canonical collection, deleting records absent from the retained batch and writing every retained record.
 
@@ -81,7 +93,13 @@ Every merged batch must satisfy these relationships:
 
 Work items and findings are projected from Issue and Audit records rather than stored in separate canonical tables. Independent logical sources, such as usage, outcomes, admissions, security, and MCP evidence, retain their published schemas in worker memory and are selected only when a page requests them.
 
-Source download, adaptation, normalization, IndexedDB writes, and page queries run in a dedicated Web Worker. A successful JSONL ingestion writes an `ingest-jsonl` transaction containing its timestamp, input-record count, and retained-record count. A failed ingestion writes an `ingest-jsonl-failed` transaction with the error type when possible and does not write a partial batch.
+Source download, adaptation, normalization, IndexedDB writes, and page queries
+run in a dedicated Web Worker. Successful inputs write content-addressed
+receipts containing the ingestion version, payload identity, and retained or
+committed record counts. A failure writes a diagnostic receipt when possible.
+Bounded writes that committed before a later failure may remain in the
+disposable database, but no successful receipt is written and the shard remains
+retryable.
 
 Worker errors abort the update instead of rerunning ingestion through an older path. There is no shadow, dual-read, alias, or fallback route. Views render only after the worker returns that page's query projection.
 
@@ -95,7 +113,11 @@ SQL uses the versioned `gh-aw-cao.dashboard-sql-export` interchange contract. Da
 
 ## Use local SQLite
 
-Node.js 24 can run the same ingestion and query layer against a persistent SQLite file. The local adapter implements only the IndexedDB operations used by the canonical dashboard store; the browser continues to use native IndexedDB.
+Node.js 24 can run the same ingestion and query layer against a persistent
+SQLite file. The local adapter stores IndexedDB metadata and JSON records in
+`__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records`; those
+tables are an emulation detail, not canonical entity tables. The browser
+continues to use native IndexedDB.
 
 Ingest an extracted gh-aw log directory with its run context:
 

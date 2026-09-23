@@ -712,13 +712,13 @@ Each evaluation-partition result MUST contain:
   "answer": "no",
   "needsAttention": true,
   "latestRun": {
-    "runId": "github:run:123:attempt:1",
+    "runId": "github:run:octo/control:123",
     "status": "completed",
     "conclusion": "failure",
     "observedAt": "2026-09-22T07:00:00Z"
   },
   "latestSuccess": {
-    "runId": "github:run:120:attempt:1",
+    "runId": "github:run:octo/control:120",
     "observedAt": "2026-09-21T07:00:00Z"
   },
   "successBoundary": "observed",
@@ -732,8 +732,8 @@ Each evaluation-partition result MUST contain:
       "count": 2,
       "latestObservedAt": "2026-09-22T07:00:00Z",
       "runReferences": [
-        { "runId": "github:run:123:attempt:1" },
-        { "runId": "github:run:122:attempt:1" }
+        { "runId": "github:run:octo/control:123" },
+        { "runId": "github:run:octo/control:122" }
       ],
       "omittedRunReferenceCount": 0
     }

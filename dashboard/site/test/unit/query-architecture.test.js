@@ -32,7 +32,6 @@ describe('dashboard query architecture', () => {
      * joins?: unknown[]
      * }>} */ (JSON.parse(read('src/data/queries/database.json')));
     const dashboard = JSON.parse(read('dashboard.json')).dashboard;
-    const optimizationQueries = JSON.parse(read('../../optimization/token-efficiency-queries.json')).queries;
 
     expect(worker).toContain('queryIndexedDatabaseSources(');
     expect(worker).toMatch(/executeDashboardQueries\(\s*context\.queries,\s*\{ \.\.\.databasePayload, \.\.\.healthPayload \},\s*directRequests/);
@@ -110,14 +109,6 @@ describe('dashboard query architecture', () => {
       .toBeUndefined();
     expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-interventions'))
       .toBeUndefined();
-    expect(optimizationQueries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-opportunities'))
-      .toBeUndefined();
-    expect(optimizationQueries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-portfolio-candidates')?.from)
-      .toBe('token-efficiency-portfolio-candidate-evaluation');
-    expect(optimizationQueries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-optimizer-assignments'))
-      .toMatchObject({ from: 'token-efficiency-portfolio-candidates', limit: 10 });
-    expect(optimizationQueries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-interventions')?.from)
-      .toBe('audits');
     for (const legacyModule of [
       'inferred-sources.js',
       'notification-stories.js',

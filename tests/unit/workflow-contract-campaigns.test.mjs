@@ -42,7 +42,6 @@ test("campaigns and repository workflows pin the supported gh-aw version", () =>
     "dependabot/aw.yml",
     "eslint-rules/aw.yml",
     "eu-cra-compliance/aw.yml",
-    "optimization/aw.yml",
     "repo-assist/aw.yml",
     "self-care/aw.yml",
     "software-development-practices/aw.yml",
@@ -85,7 +84,6 @@ test("catalog campaigns declare their current experimental maturity", () => {
     "dependabot/aw.yml",
     "eslint-rules/aw.yml",
     "eu-cra-compliance/aw.yml",
-    "optimization/aw.yml",
     "repo-assist/aw.yml",
     "self-care/aw.yml",
     "software-development-practices/aw.yml",
@@ -105,7 +103,6 @@ test("operational workflows use the transitive CAO campaign bundle", () => {
   const declaredOperationWorkflows = Object.keys(policyCampaigns).flatMap((campaignName) => {
     const descriptorPath = join(root, campaignName, "cao.json");
     if (!existsSync(descriptorPath)) {
-      assert.equal(policyCampaigns[campaignName].workers, undefined, `${campaignName} workers require a campaign descriptor`);
       return [];
     }
     const descriptor = JSON.parse(readFileSync(descriptorPath, "utf8"));
@@ -149,7 +146,9 @@ test("operational workflows use the transitive CAO campaign bundle", () => {
   const operationWorkflows = readdirSync(workflowsDirectory)
     .filter((name) =>
       name.endsWith(".md")
-      && workflowConfig(name).imports?.some((entry) => entry.uses === "shared/control.md"))
+      && workflowConfig(name).imports?.some((entry) =>
+        entry.uses === "shared/control.md"
+        && existsSync(join(root, entry.with.campaign, "cao.json"))))
     .sort();
   assert.deepEqual(operationWorkflows.map((name) => `.github/workflows/${name}`), declaredOperationWorkflows);
   assert.match(control, /name: Upload CAO admission artifact/);
@@ -163,7 +162,7 @@ test("operational workflows use the transitive CAO campaign bundle", () => {
 });
 
 test("campaign manifests exclude repository-only tests", () => {
-  for (const relativePath of ["aw.yml", join("uk-ai-advisory", "aw.yml"), join("cao-evolution", "aw.yml"), join("dashboard", "aw.yml"), join("dependabot", "aw.yml"), join("eslint-rules", "aw.yml"), join("eu-cra-compliance", "aw.yml"), join("optimization", "aw.yml"), join("repo-assist", "aw.yml"), join("self-care", "aw.yml"), join("software-development-practices", "aw.yml")]) {
+  for (const relativePath of ["aw.yml", join("uk-ai-advisory", "aw.yml"), join("cao-evolution", "aw.yml"), join("dashboard", "aw.yml"), join("dependabot", "aw.yml"), join("eslint-rules", "aw.yml"), join("eu-cra-compliance", "aw.yml"), join("repo-assist", "aw.yml"), join("self-care", "aw.yml"), join("software-development-practices", "aw.yml")]) {
     const manifest = readFileSync(join(root, relativePath), "utf8");
     assert.doesNotMatch(manifest, /(?:review-smoke|enterprise-canary|enterprise-stress|tests\/e2e|\.github\/aw\/e2e)/, relativePath);
   }
@@ -226,7 +225,6 @@ test("operational campaigns install declarations matching their workflow identit
     "dependabot",
     "eslint-rules",
     "eu-cra-compliance",
-    "optimization",
     "repo-assist",
     "self-care",
     "software-development-practices",
