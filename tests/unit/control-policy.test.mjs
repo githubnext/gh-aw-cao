@@ -96,7 +96,7 @@ test("control policy schema accepts config-defined campaign and worker catalogs"
   assert.match(policy["gh-aw-version"], /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/);
   assert.equal(schema.properties["gh-aw-version"].type, "string");
   assert.equal(schema.$defs.controlPlane.properties.web.$ref, "#/$defs/web");
-  assert.equal(policy["control-plane"].web.experimental, true);
+  assert.equal(policy["control-plane"].web.experimental, false);
   assert.equal(policy["control-plane"].web.favicon, "./favicon.svg");
   assert.equal(schema.$defs.controlCampaigns.additionalProperties.$ref, "#/$defs/campaignPolicy");
   assert.equal(schema.$defs.targetCampaigns.additionalProperties.$ref, "#/$defs/targetCampaign");
