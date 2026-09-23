@@ -1118,8 +1118,8 @@ test('deletion rebuilds derived state and fresh data is directly upserted', asyn
     })
   ]);
   expect(result.runs.map((/** @type {Record<string, unknown>} */ run) => run.id)).toEqual([
-    'github:run:101:attempt:2',
-    'github:run:202:attempt:2'
+    'github:run:githubnext/gh-aw-cao:101',
+    'github:run:githubnext/gh-aw-cao:202'
   ]);
 });
 
