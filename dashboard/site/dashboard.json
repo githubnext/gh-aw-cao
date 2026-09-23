@@ -12352,13 +12352,13 @@
         "pages": [
           "overview",
           "campaigns",
-          "maintenance",
           "configuration"
         ]
       },
       {
         "label": "Data",
         "pages": [
+          "maintenance",
           "repositories",
           "workflows",
           "runs",

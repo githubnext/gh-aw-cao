@@ -15,7 +15,7 @@ The mapping SHALL preserve these mandatory relationships:
 ```text
 Workflow -> Repository
 Run -> Repository and Workflow
-Event -> Run
+Domain, Tool, Audit, and Issue -> Run
 ```
 
 The mapping SHALL NOT emit Campaign or Transaction observations. Transactions
@@ -176,7 +176,7 @@ the grain declared by the source schema:
 | `token_usage_summary.by_model` | Run-and-model aggregate usage |
 | `token_usage_summary.cache_efficiency` | Run-level cache diagnostic |
 | `experiments.assignments` | One experiment assignment per map entry for the Run |
-| `mcp_tool_usage.tool_calls[]` | Correlated canonical tool Events |
+| `mcp_tool_usage.tool_calls[]` | Correlated canonical Tool records |
 | canonical Run conclusion | Completed-Run reliability evidence |
 
 The summary and `by_model` objects SHALL retain aggregate cost grain and MUST
@@ -186,7 +186,7 @@ add the corresponding summary AIC a second time.
 
 Token-efficiency opportunities, interventions, and comparisons MUST NOT be
 inferred solely from high cost, aggregate token usage, or a safe-output creation
-Event. They require the explicit producer observations, frozen assignment, and
+record. They require the explicit producer observations, frozen assignment, and
 evidence rules in `specs/dashboard-data.md` Section 5.5. Safe-output creation is
 not accepted-outcome evidence without an authoritative disposition or frozen
 evaluator rule.
@@ -197,22 +197,30 @@ evaluator rule.
 the published `job-performance` logical source, but normalized canonical shards,
 SQLite, and IndexedDB MUST omit them.
 
-## 4 Agentic Event ownership
+## 4 Run-owned record ownership
 
-Every Event emitted from an enriched Run SHALL carry that Run's canonical
-`runId`. Session-shaped source observations SHALL NOT create a canonical entity
-or intermediate ownership relationship.
+Every Domain, Tool, Audit, and Issue emitted from an enriched Run SHALL carry
+that Run's canonical `runId`. Source observations that describe an agent or tool
+interaction context SHALL NOT create a canonical entity or intermediate
+ownership relationship between a Run and its records.
 
-## 5 Agentic Event mapping
+Each observation SHALL be classified using `specs/dashboard-data.md`
+Section 11: firewall network activity becomes a Domain, MCP, Bash, and skill
+calls become Tools, issue and pull-request safe outputs become Issues, and every
+other lifecycle, agent, policy, or grader observation becomes an Audit.
 
-Agentic Events SHALL use their owning Run ID, source `gh-aw-logs`, a stable
+## 5 Run-owned record mapping
+
+Run-owned records SHALL use their owning Run ID, source `gh-aw-logs`, a stable
 semantic ID, the source line as `payloadRef`, and the source line-derived
 sequence as `sourceSequence`.
 
-| Source condition | Event `type` |
+Enriched Runs SHALL emit these Audit records:
+
+| Source condition | Audit `type` |
 | --- | --- |
 | Enriched Run has a start or creation time | `workflow_run_started` |
-| Every enriched Run | `agent.session` with source `agent` |
+| Every enriched Run | `agent.session` with source `agent`, an agent-context Audit and not a canonical entity |
 | Enriched Run is completed | `workflow_run_completed` |
 | Conclusion is failure or `failure_kind` exists | `workflow_run_failed` |
 | Token usage or AIC exists | `workflow_run_usage` |
@@ -223,34 +231,42 @@ sequence as `sourceSequence`.
 | `safe_items_count` exists | `workflow_run_safe_outputs` |
 | `comparison` exists | `workflow_run_comparison` |
 
-Each `mcp_tool_usage.tool_calls[]` item SHALL emit a `tool.call` Event and a
-correlated outcome Event. When the run-level projection is absent or empty,
+Each `mcp_tool_usage.tool_calls[]` item SHALL emit a `tool.call` Tool record and
+a correlated outcome record. When the run-level projection is absent or empty,
 `audit.mcp_tool_usage.tool_calls[]` SHALL provide the tool calls. A `success`
 status SHALL emit `tool.result`; every other source status SHALL emit
-`tool.error` while preserving that status. Both Events SHALL use source `mcp`
+`tool.error` while preserving that status. Both records SHALL use source `mcp`
 and the source `tool_call_id` as `correlationId`.
 
-Audit arrays SHALL map to compact canonical Events rather than an audit-shaped
-store: `key_findings` to `audit.finding`, `observability_insights` to
+Firewall evidence SHALL map to Domain records that preserve the observed host,
+its allowed or blocked decision, and its request count rather than being counted
+once per record.
+
+Audit arrays SHALL map to compact canonical Audit records rather than an
+audit-shaped store: `key_findings` to `audit.finding`, `observability_insights` to
 `audit.observability`, `recommendations` to `audit.recommendation`,
 `missing_tools` to `audit.missing_tool`, `missing_data` to
 `audit.missing_data`, `noops` to `audit.noop`, `mcp_failures` to
 `audit.mcp_failure`, and `skill_activations` to `audit.skill_activation`.
-The Event SHALL preserve the source item's `code` as its machine-readable audit
-kind. Dashboard queries SHALL use `code` when present and retain the `audit.*`
-Event type only as the category and legacy fallback.
+A `skill_activations` item SHALL become a Tool record with `toolType="skill"`
+and `isSkill=true`. Each record SHALL preserve the source item's `code` as its
+machine-readable audit kind. Dashboard queries SHALL use `code` when present and
+retain the `audit.*` type only as the category and legacy fallback.
 
 Each `safe_output_item` envelope SHALL emit `safe_output.created` with source
 `safe-output` for its preceding `run` envelope with the
 same `run_id`. When no item envelopes are present for a Run, `safe_outputs[]`,
 or `audit.created_items[]` when `safe_outputs` is absent, SHALL provide the
-Events instead. This precedence prevents the duplicated projection in the Run
-envelope from creating duplicate Events. The Event SHALL preserve the source
+records instead. This precedence prevents the duplicated projection in the Run
+envelope from creating duplicate records. The record SHALL preserve the source
 item's `type` as `safeOutputType` and SHALL preserve or derive
 `githubEntityType` from explicit target kind, canonical github.com URL shape,
 or the safe-output action. Non-GitHub provider items and items without
 conclusive GitHub entity evidence SHALL leave `githubEntityType` absent.
-For a `report_incomplete` item, the Event summary SHALL preserve its concise
+An item with a resolvable canonical issue or pull-request URL SHALL become an
+Issue record carrying its owner, repository, number, URL, and `isPullRequest`;
+every other safe-output item SHALL remain an Audit record.
+For a `report_incomplete` item, the record summary SHALL preserve its concise
 `reason`, falling back to `Required evidence was unavailable.` when no reason
 is present. The verbose `details` field SHALL NOT be copied into the summary.
 When the published evidence retains only a failed `report_incomplete` MCP tool
@@ -263,7 +279,7 @@ For `workflow_dispatch` Runs whose display title has the canonical
 both `targetRepository` and the Run's effective `rolloutMode` from that title.
 The dispatched mode SHALL take precedence over workflow-level rollout defaults.
 
-Event records SHALL populate only the existing Event model fields:
+Run-owned records SHALL populate only the existing shared record fields:
 
 ```text
 id
@@ -283,13 +299,19 @@ observedAt
 provenance
 ```
 
+They MAY additionally populate the specialized fields declared for their record
+type in `specs/dashboard-data.md` Section 12: `domain`, `decision`, and
+`requestCount` for a Domain; `toolType`, `isSkill`, and `name` for a Tool; and
+`owner`, `repository`, `repositoryFullName`, `number`, `url`, and
+`isPullRequest` for an Issue.
+
 The Activity collector MAY append a schema-v2
 `token_efficiency_observation` envelope only from the validated
 `token-efficiency-observation` Actions artifact produced by
 `optimization-token-optimizer`. The envelope SHALL join to the preceding
 canonical Run by `observation.optimizerRunId` and SHALL emit exactly one
-`token_efficiency.opportunity` Event and one `token_efficiency.intervention`
-Event. These Events MAY additionally retain the Section 5.5 identity,
+`token_efficiency.opportunity` Audit and one `token_efficiency.intervention`
+Audit. These records MAY additionally retain the Section 5.5 identity,
 evidence, state, disposition, variant, proposed-savings, supersession, and
 attributable-Run fields needed by their Dashboard Language projections.
 
@@ -314,7 +336,7 @@ commit before retaining it. Each observation SHALL retain its claim source ID,
 schema revision, immutable generation, observed time, completeness, freshness,
 and evidence links in `sourceProvenance`.
 The append-only lifecycle shard SHALL retain that optimizer Run as a
-`token_efficiency_run_context` envelope so lifecycle Events keep their canonical
+`token_efficiency_run_context` envelope so lifecycle records keep their canonical
 Run relationship after ordinary Activity-window pruning. This
 context envelope does not represent an additional Run.
 Issue titles, bodies, comments, and open or closed state MUST NOT establish
@@ -322,9 +344,9 @@ acceptance, implementation, disposition, or lineage.
 
 ## 6 `github_api_rate_limit` envelope
 
-Each `github_api_rate_limit` envelope SHALL map to one Event:
+Each `github_api_rate_limit` envelope SHALL map to one Audit record:
 
-| JSONL or ingestion source | Canonical Event field |
+| JSONL or ingestion source | Canonical Audit field |
 | --- | --- |
 | Collection context | `runId`, `timestamp`, `observedAt` |
 | Constant `github-api` | `source` |
@@ -337,14 +359,14 @@ Each `github_api_rate_limit` envelope SHALL map to one Event:
 
 The envelope has no run identity. It SHALL be emitted only when
 explicit collection context resolves an owning canonical Run. The adapter
-SHALL link the Event directly to that Run. Missing collection context SHALL
+SHALL link the Audit directly to that Run. Missing collection context SHALL
 leave rate-limit records unmapped rather than assign them to an adjacent or
 inferred Run.
 
 ## 7 Privacy boundary
 
-The canonical mapping SHALL retain only fields required by existing Run and
-Event contracts. It SHALL NOT persist complete audit objects, MCP
+The canonical mapping SHALL retain only fields required by existing Run,
+Domain, Tool, Audit, and Issue contracts. It SHALL NOT persist complete audit objects, MCP
 arguments, responses, error bodies, artifact contents, or other opaque source
 payloads. It SHALL NOT query the GitHub API to fill absent operational fields.
 
@@ -360,7 +382,7 @@ records
 rawPayloadRecords
 rawRuns
 agenticRuns
-events
+recordsByKind
 safeOutputItems
 mappedSafeOutputItems
 rateLimits

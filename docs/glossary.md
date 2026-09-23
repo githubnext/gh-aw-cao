@@ -84,7 +84,7 @@ A distributable collection of an operation's workflows, shared dependencies, and
 
 ## Run
 
-One execution of a coordinator, worker, or standalone workflow. A coordinator run may produce many dispatches; each dispatch starts a separate worker run. A run records activity and evidence, but successful completion alone does not prove operational value. Do not use **session** as a synonym for run; see **Session** for the distinct canonical entity.
+One execution of a coordinator, worker, or standalone workflow. A coordinator run may produce many dispatches; each dispatch starts a separate worker run. A run records activity and evidence, but successful completion alone does not prove operational value. Use **run** rather than **session**: a run is the canonical execution entity, and canonical Domain, Tool, Audit, and Issue records link directly to it.
 
 ## Rollout mode
 
@@ -93,12 +93,6 @@ The effective mode in which an operation runs for an admitted target: `review`, 
 ## Safe output
 
 A declared, bounded way for a workflow to produce an external effect, such as creating an issue or dispatching a worker. See the canonical gh-aw definition of [Safe Outputs](https://github.github.com/gh-aw/reference/glossary/#safe-outputs).
-
-## Session
-
-An upstream agent or tool interaction context. Session identifiers may appear in
-source evidence, but Session is not a canonical dashboard entity; canonical
-Domain, Tool, Audit, and Issue records link directly to the owning Run.
 
 ## Target repository
 

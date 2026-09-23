@@ -13,8 +13,8 @@ you need the complete vocabulary, validation rules, or conformance requirements.
 
 ## What you can ask
 
-Start with a declared source such as repositories, workflows, runs, sessions,
-events, usage, outcomes, or findings. Then combine only the operations the view
+Start with a declared source such as repositories, workflows, runs, domains,
+tools, audits, issues, usage, outcomes, or findings. Then combine only the operations the view
 needs:
 
 | Query operation | Use it to |

@@ -991,10 +991,10 @@ default to the execution Repository. Orchestrator Runs MUST leave
 
 # 10. Run Detail
 
-Jobs and sessions MAY remain upstream observations or published logical
-sources, but they are not canonical entities and MUST NOT be persisted in
-canonical SQLite or IndexedDB tables. Job-shaped performance data MAY be
-projected directly from authoritative inputs. Session-shaped summaries MAY be
+Jobs and agent interaction contexts MAY remain upstream observations or
+published logical sources, but they are not canonical entities and MUST NOT be
+persisted in canonical SQLite or IndexedDB tables. Job-shaped performance data
+MAY be projected directly from authoritative inputs. Run detail MUST be
 projected from Run and its Domain, Tool, Audit, and Issue records.
 
 ---

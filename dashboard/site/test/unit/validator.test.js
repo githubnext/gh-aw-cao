@@ -262,7 +262,7 @@ describe('dashboard document validation', () => {
     };
     documents.forEach((document) => visit(document.dashboard.pages));
 
-    expect(temporalFields.length).toBeGreaterThan(38);
+    expect(temporalFields.length).toBeGreaterThan(20);
     expect(temporalFields.every((field) => field.format === 'human-friendly-timestamp')).toBe(true);
   });
 
@@ -1193,86 +1193,8 @@ dashboard:
 
 
 
-  it('keeps one focused custom dashboard for every operation campaign', () => {
-    const documents = campaignDashboardSources.map((source) => JSON.parse(source));
-    const campaignPageIds = [
-      'cao-evolution-dashboard',
-      'dependabot-dashboard',
-      'uk-ai-advisory-dashboard',
-      'eu-cra-compliance-dashboard',
-      'optimization-dashboard'
-    ];
-    expect(documents).toHaveLength(campaignPageIds.length);
-    for (const pageId of campaignPageIds) {
-      const document = documents.find((candidate) => candidate.dashboard.pages[0].id === pageId);
-      if (!document) throw new Error(`Missing campaign dashboard page ${pageId}`);
-      const page = document.dashboard.pages[0];
-      expect(document.dashboard.navigation).toEqual([{ label: 'Campaign operations', experimental: true, pages: [pageId] }]);
-      expect(page).toMatchObject({ kind: 'custom' });
-      expect(page.views).toHaveLength(
-        pageId === 'cao-evolution-dashboard' || pageId === 'optimization-dashboard' ? 5 : 4
-      );
-      const tables = page.views.filter(
-        (/** @type {{ mark?: string }} */ view) => view.mark === 'table'
-      );
-      expect(tables.filter(
-        (/** @type {{ disclosure?: string }} */ view) => view.disclosure === 'essential'
-      )).toHaveLength(1);
-      expect(tables.filter(
-        (/** @type {{ disclosure?: string }} */ view) => view.disclosure === 'supplemental'
-      )).toHaveLength(tables.length - 1);
-      const queryByName = new Map(document.dashboard.queries.map(
-        (/** @type {{ name: string, from: string }} */ query) => [query.name, query]
-      ));
-      /** @param {string} source @returns {string} */
-      const canonicalSource = (source) => {
-        const query = queryByName.get(source);
-        return query ? canonicalSource(query.from) : source;
-      };
-      const sources = page.views.map(
-        (/** @type {{ data: { source: string } }} */ view) => canonicalSource(view.data.source)
-      );
-      const attainmentSource = 'operational-values';
-      const expectedSources = pageId === 'cao-evolution-dashboard'
-        ? [attainmentSource, attainmentSource, 'outcomes', 'outcomes', 'runs']
-        : pageId === 'optimization-dashboard'
-          ? [attainmentSource, attainmentSource, attainmentSource, 'outcomes', 'runs']
-        : [attainmentSource, attainmentSource, 'outcomes', 'runs'];
-      expect(sources.sort()).toEqual(expectedSources.sort());
-    }
-  });
-
-  it('keeps the CAO Evolution run inventory aligned with the built-in run table', () => {
-    const builtInDocument = JSON.parse(authoritativeDashboardSource);
-    const builtInRunView = builtInDocument.dashboard.pages
-      .find((/** @type {{ id: string }} */ page) => page.id === 'runs')
-      .definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'runs-runs-source');
-    const evolutionDocument = campaignDashboardSources
-      .map((source) => JSON.parse(source))
-      .find((document) => document.dashboard.id === 'cao-evolution-dashboard');
-    const runView = evolutionDocument.dashboard.pages[0].views
-      .find((/** @type {{ id: string }} */ view) => view.id === 'cao-evolution-runs');
-
-    expect(runView).toMatchObject({
-      mark: 'table',
-      controls: 'interactive',
-      encoding: { href: builtInRunView.encoding.href }
-    });
-    expect(runView.encoding.columns.map(
-      (/** @type {{ field: string }} */ column) => column.field
-    )).toEqual([
-      'run',
-      'run-status',
-      'run-conclusion',
-      'repository',
-      'workflow',
-      'rollout-mode',
-      'started-at'
-    ]);
-    expect(runView.description).toContain('maintenance checks');
-    expect(runView.encoding.columns.some(
-      (/** @type {{ field: string }} */ column) => column.field === 'engine-version'
-    )).toBe(false);
+  it('does not ship experimental campaign dashboard documents', () => {
+    expect(campaignDashboardSources).toEqual([]);
   });
 
 

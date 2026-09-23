@@ -22,8 +22,8 @@ const queryNativeCountSources = queryIndexedDatabaseSources;
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
 const optimizationDashboardQueries = JSON.parse(
-  readFileSync(`${process.cwd()}/../../optimization/dashboard.json`, 'utf8')
-).dashboard.queries;
+  readFileSync(`${process.cwd()}/../../optimization/token-efficiency-queries.json`, 'utf8')
+).queries;
 const dashboardQueries = JSON.parse(
   readFileSync(`${process.cwd()}/dashboard.json`, 'utf8')
 ).dashboard.queries;
