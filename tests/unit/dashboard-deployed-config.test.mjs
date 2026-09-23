@@ -1,14 +1,25 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import config from "../playwright/configs/dashboard-deployed.config.mjs";
 import {
   deployedDashboardUrl,
+  populatedDashboardPageIds,
   scrollRenderedViewsIntoView,
   shouldIgnoreRequestFailure,
 } from "../e2e/dashboard-deployed-refresh-helpers.mjs";
 
 test("deployed dashboard test has enough time for sequential refresh checks", () => {
   assert.equal(config.timeout, 600_000);
+});
+
+test("deployed dashboard check targets declared navigation pages", () => {
+  const dashboard = JSON.parse(readFileSync("dashboard/site/dashboard.json", "utf8"));
+  const navigationPageIds = new Set(dashboard.dashboard.navigation.flatMap(({ pages }) => pages));
+
+  for (const pageId of populatedDashboardPageIds) {
+    assert.ok(navigationPageIds.has(pageId), `${pageId} is a declared navigation page`);
+  }
 });
 
 test("deployed dashboard scrolling uses a stable view snapshot", async () => {

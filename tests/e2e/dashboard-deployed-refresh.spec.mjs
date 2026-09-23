@@ -3,12 +3,12 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   deployedDashboardUrl as dashboardUrl,
+  populatedDashboardPageIds,
   scrollRenderedViewsIntoView,
   shouldIgnoreRequestFailure,
 } from "./dashboard-deployed-refresh-helpers.mjs";
 
 const outputDirectory = resolve("test-results/dashboard-deployed");
-const populatedPages = ["events", "repositories", "workflows"];
 
 test("deployed dashboard refreshes and renders populated views", async ({ page }, testInfo) => {
   await mkdir(outputDirectory, { recursive: true });
@@ -71,7 +71,7 @@ test("deployed dashboard refreshes and renders populated views", async ({ page }
     await expect(page.locator(".dashboard-root")).not.toHaveAttribute("aria-busy", "true");
     await expect(page.locator(".dashboard-stale, .source-refresh-error")).toHaveCount(0);
 
-    for (const pageId of populatedPages) {
+    for (const pageId of populatedDashboardPageIds) {
       await page.evaluate((nextPageId) => {
         window.location.hash = `#page-${nextPageId}`;
       }, pageId);
