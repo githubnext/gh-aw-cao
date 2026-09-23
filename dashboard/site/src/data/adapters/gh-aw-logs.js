@@ -370,7 +370,15 @@ function stableDigest(value) {
 function recordKind(type, fields) {
   if (fields.source === 'firewall' || type === 'net_allowed' || type === 'net_blocked') return 'domain';
   if (type === 'safe_output.created'
-    && ['issue', 'pull_request'].includes(String(fields.githubEntityType))) return 'issue';
+    && ['issue', 'pull_request'].includes(String(fields.githubEntityType))
+    && typeof fields.correlationId === 'string') {
+    try {
+      issueCoordinates(fields.correlationId);
+      return 'issue';
+    } catch {
+      return 'audit';
+    }
+  }
   if (fields.source === 'mcp'
     || type === 'tool_call'
     || type === 'agent_tool_start'
