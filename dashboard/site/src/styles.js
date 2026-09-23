@@ -250,6 +250,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .entity-card-list-status-accent { color: var(--accent); }
 .entity-card-list-status-muted { color: var(--cancelled); }
 .issue-list-labels .entity-card-list-ref, .ref-label { max-width: 240px; border-color: var(--accent-muted); background: var(--accent-muted); color: var(--accent); font-family: var(--font-mono, ui-monospace, monospace); font-size: .6875rem; font-weight: 400; }
+.issue-list-labels .entity-card-list-badge { max-width: none; padding: 0; border: 0; background: transparent; font-weight: 400; line-height: 1; }
 .ref-label { display: inline-block; padding: 0 7px; border: 1px solid var(--accent-muted); border-radius: 999px; line-height: 18px; }
 .entity-card-list-timing { display: grid; align-content: start; gap: 2px; margin: 0; padding: 0; color: var(--muted); font-size: .75rem; list-style: none; }
 .entity-card-list-timing-item { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
@@ -258,6 +259,8 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .entity-card-list-timing-value { font-variant-numeric: tabular-nums; }
 .entity-card-list-timing-value time { color: inherit; }
 .entity-card-list-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.entity-card-list-actions .table-cli-action-button { width: auto; height: auto; min-height: 32px; display: inline-flex; align-items: center; justify-content: flex-start; padding: 6px 10px; border: 1px solid var(--border); }
+.entity-card-list-actions .table-cli-action-button .cli-action-trigger-copy strong { font-size: .75rem; white-space: nowrap; }
 .entity-card-list-grouped { overflow: hidden; border: 1px solid var(--border); border-radius: 14px; background: var(--canvas); }
 .entity-card-list-grouped .entity-card-list-card { grid-template-columns: 20px minmax(0, 1fr) auto auto; align-items: center; padding: 12px 16px; }
 .entity-card-list-grouped .entity-card-list-card:first-child { border-top: 0; }

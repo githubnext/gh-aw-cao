@@ -3553,7 +3553,7 @@ describe('presenter built-in and custom pages', () => {
       }
     });
 
-    expect(rendered.querySelector('.custom-table .status-success')?.textContent).toBe('true');
+    expect(rendered.querySelector('.custom-table .status-success')?.textContent).toBe('Active');
     expect(rendered.querySelector('.custom-table .mode-review')?.textContent).toBe('review');
     expect(rendered.querySelector('.custom-table .status-danger')?.textContent).toBe('failure');
   });

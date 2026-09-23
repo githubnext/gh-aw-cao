@@ -409,14 +409,23 @@ function renderEntityCardItems(rows, options) {
           ? resolveCardStatus(row[definition.status['fallback-field']])
           : null)
       : null;
+    const badgeDisplays = ['active-state', 'status', 'mode', 'grader-status'];
     const labels = definition.labels.flatMap((column) => {
       const value = row[column.field];
       const values = Array.isArray(value) ? value : [value];
-      return values.map((label) => toText(label)).filter(Boolean).map((label) => h(
-        'li',
-        column.display === 'ref' ? { className: 'entity-card-list-ref' } : null,
-        label
-      ));
+      return values.flatMap((label) => {
+        if (label === null || label === undefined || label === '') return [];
+        if (badgeDisplays.includes(String(column.display))) {
+          return [h('li', { className: 'entity-card-list-badge' }, renderCellDisplay(column.display, label, toText))];
+        }
+        const text = toText(label);
+        if (!text) return [];
+        return [h(
+          'li',
+          column.display === 'ref' ? { className: 'entity-card-list-ref' } : null,
+          text
+        )];
+      });
     });
     const timing = (definition.timing ?? []).flatMap((column) => {
       const value = row[column.field];

@@ -42,10 +42,11 @@ describe('badge', () => {
     const active = renderActiveStateBadge(true);
     expect(active.tagName).toBe('SPAN');
     expect(active.className).toBe('status status-success');
-    expect(active.textContent).toBe('true');
+    expect(active.textContent).toBe('Active');
 
     const inactive = renderActiveStateBadge(false);
     expect(inactive.className).toBe('status status-muted');
+    expect(inactive.textContent).toBe('Inactive');
   });
 
   it.each([
