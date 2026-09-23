@@ -91,7 +91,7 @@ async function dispatchExtendedEvent(listener, event) {
 describe('dashboard service worker', () => {
   it('prefers normalized activity shards and reuses their published hashes', async () => {
     const { listeners, fetch, entries } = serviceWorkerHarness();
-    const normalizedName = `gh-aw-logs-normalized/${'a'.repeat(64)}-${'b'.repeat(16)}.json`;
+    const normalizedName = `gh-aw-logs-normalized/${'a'.repeat(64)}-${'b'.repeat(16)}.jsonl`;
     const payloadHashes = JSON.stringify({
       'gh-aw-logs-shards/logs-1.jsonl': 'c'.repeat(64),
       [normalizedName]: 'd'.repeat(64)
@@ -116,8 +116,8 @@ describe('dashboard service worker', () => {
 
   it('downloads independently published run-information and record shards', async () => {
     const { listeners, fetch, entries } = serviceWorkerHarness();
-    const firstStem = `gh-aw-logs-1000-a-${'a'.repeat(64)}-${'b'.repeat(16)}.json`;
-    const secondStem = `gh-aw-logs-2000-b-${'c'.repeat(64)}-${'d'.repeat(16)}.json`;
+    const firstStem = `gh-aw-logs-1000-a-${'a'.repeat(64)}-${'b'.repeat(16)}.jsonl`;
+    const secondStem = `gh-aw-logs-2000-b-${'c'.repeat(64)}-${'d'.repeat(16)}.jsonl`;
     const payloadHashes = JSON.stringify({
       'gh-aw-logs-shards/logs-1.jsonl': 'c'.repeat(64),
       [`gh-aw-logs-runs/${firstStem}`]: 'd'.repeat(64),

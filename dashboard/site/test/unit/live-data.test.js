@@ -5,6 +5,14 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("live Dashboard Language sources", () => {
+  it("always streams normalized JSONL response bodies", () => {
+    const worker = readFileSync(resolve("src/data-worker.js"), "utf8");
+
+    expect(worker).toContain("ingestNormalizedJsonl(");
+    expect(worker).toContain("responseChunks(/** @type {ReadableStream<Uint8Array>} */ (response.body))");
+    expect(worker).not.toContain("ingestNormalizedJson(indexedDB, await response.json()");
+  });
+
   it("loads generated sources progressively and requires an explicit fixture opt-in", () => {
     const shell = readFileSync(resolve("index.html"), "utf8");
     const main = readFileSync(resolve("src/main.js"), "utf8");

@@ -5,9 +5,10 @@ import { queryDashboardSourceObservations } from './data/queries/ingestion.js';
 import {
   ingestCachedGhAwJsonl,
   ingestDashboardSources,
-  ingestNormalizedJson,
+  ingestNormalizedJsonl,
   isCachedGhAwJsonlCurrent,
-  isNormalizedJsonCurrent
+  isNormalizedJsonCurrent,
+  NORMALIZED_JSONL_INGESTION_VERSION
 } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
 import {
@@ -415,7 +416,7 @@ export function publishedJsonlShards(hashes) {
 export function publishedNormalizedShards(hashes) {
   if (!hashes || typeof hashes !== 'object' || Array.isArray(hashes)) return [];
   return Object.entries(/** @type {Record<string, unknown>} */ (hashes))
-    .filter(([name, hash]) => /^gh-aw-logs-normalized\/[a-f0-9]{64}-[a-f0-9]{16}\.json$/i.test(name)
+    .filter(([name, hash]) => /^gh-aw-logs-normalized\/[a-f0-9]{64}-[a-f0-9]{16}\.jsonl$/i.test(name)
       && typeof hash === 'string'
       && /^[a-f0-9]{64}$/i.test(hash))
     .map(([name, hash]) => ({ name, hash: /** @type {string} */ (hash).toLowerCase() }))
@@ -426,7 +427,7 @@ export function publishedNormalizedShards(hashes) {
 function publishedPhaseShards(hashes, phase) {
   if (!hashes || typeof hashes !== 'object' || Array.isArray(hashes)) return [];
   const pattern = new RegExp(
-    `^gh-aw-logs-${phase}/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\\.json$`,
+    `^gh-aw-logs-${phase}/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\\.jsonl$`,
     'i'
   );
   return Object.entries(/** @type {Record<string, unknown>} */ (hashes))
@@ -595,7 +596,7 @@ export function processDataRequest(request, signal) {
               ? await isNormalizedJsonCurrent(indexedDB, {
                   payloadIdentity: shard.hash,
                   payloadScope: shardUrl.href
-                })
+                }, NORMALIZED_JSONL_INGESTION_VERSION)
               : await isCachedGhAwJsonlCurrent(indexedDB, {
                   payloadIdentity: shard.hash,
                   payloadScope: shardUrl.href,
@@ -659,7 +660,7 @@ export function processDataRequest(request, signal) {
             });
             const response = await ingestionFetch(shardUrl);
             if (!response.ok) throw new Error(`Unable to load activity shard ${shard.name}: ${response.status}`);
-            if (!normalized && !response.body) throw new Error(`Unable to stream activity shard ${shard.name}`);
+            if (!response.body) throw new Error(`Unable to stream activity shard ${shard.name}`);
             {
               const contentLengthHeader = response.headers.get('content-length');
               const contentLength = contentLengthHeader === null ? Number.NaN : Number(contentLengthHeader);
@@ -685,7 +686,11 @@ export function processDataRequest(request, signal) {
                 expectedPhase
               };
               const ingestion = normalized
-                ? await ingestNormalizedJson(indexedDB, await response.json(), ingestionOptions)
+                ? await ingestNormalizedJsonl(
+                    indexedDB,
+                    responseChunks(/** @type {ReadableStream<Uint8Array>} */ (response.body)),
+                    ingestionOptions
+                  )
                 : await ingestCachedGhAwJsonl(indexedDB, responseChunks(/** @type {ReadableStream<Uint8Array>} */ (response.body)), {
                     ...ingestionOptions,
                     workflowHints,

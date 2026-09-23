@@ -44,14 +44,23 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
       created_at: '2026-09-09T05:00:00Z'
     }
   })}\n`).observations);
-  const normalized = (/** @type {'runs' | 'records'} */ phase, /** @type {typeof batch} */ phaseBatch) => ({
-    schemaVersion: CANONICAL_SCHEMA_VERSION,
-    ingestionVersion: 2,
-    sourceRecords: 1,
-    phase,
-    batch: phaseBatch
-  });
-  const shardStem = `gh-aw-logs-1000-a-${'c'.repeat(64)}-${'d'.repeat(16)}.json`;
+  const normalized = (/** @type {'runs' | 'records'} */ phase, /** @type {typeof batch} */ phaseBatch) => {
+    const records = Object.entries(phaseBatch).flatMap(([collection, values]) =>
+      values.map((record) => ({ kind: 'record', collection, record }))
+    );
+    return [
+      {
+        kind: 'metadata',
+        schemaVersion: CANONICAL_SCHEMA_VERSION,
+        ingestionVersion: 3,
+        sourceRecords: 1,
+        phase,
+        records: records.length
+      },
+      ...records
+    ].map((line) => JSON.stringify(line)).join('\n') + '\n';
+  };
+  const shardStem = `gh-aw-logs-1000-a-${'c'.repeat(64)}-${'d'.repeat(16)}.jsonl`;
   const runsName = `gh-aw-logs-runs/${shardStem}`;
   const recordsName = `gh-aw-logs-records/${shardStem}`;
   /** @type {string[]} */
@@ -72,7 +81,7 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
       if (init?.method !== 'HEAD') downloadedShards.push(url);
       return init?.method === 'HEAD'
         ? new Response(null, { headers: { 'content-length': '1' } })
-        : Response.json(normalized('runs', {
+        : new Response(normalized('runs', {
             ...batch, domains: [], tools: [], audits: [], issues: []
           }));
     }
@@ -81,7 +90,7 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
     if (init?.method !== 'HEAD') await eventReady;
     return init?.method === 'HEAD'
       ? new Response(null, { headers: { 'content-length': '1' } })
-      : Response.json(normalized('records', {
+      : new Response(normalized('records', {
           campaigns: [], repositories: [], workflows: [], runs: [],
           domains: batch.domains, tools: batch.tools, audits: batch.audits, issues: batch.issues
         }));
@@ -163,7 +172,7 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
   expect(posted.find(({ subscriptionId }) => subscriptionId === 'audits')).toBeDefined();
   expect(posted.find(({ subscriptionId }) => subscriptionId === 'audits-during-run-phase')).toBeDefined();
   expect((await readTransactions(indexedDB))
-    .filter(({ kind }) => kind === 'ingest-normalized-json')
+    .filter(({ kind }) => kind === 'ingest-normalized-jsonl')
     .map(({ payloadScope, payloadHash }) => ({ payloadScope, payloadHash })))
     .toEqual(expect.arrayContaining([
       {

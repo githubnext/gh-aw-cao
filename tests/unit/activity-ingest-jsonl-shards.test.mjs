@@ -8,6 +8,17 @@ import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
 
+async function readNormalizedJsonl(filePath) {
+  const lines = (await readFile(filePath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+  const [metadata, ...records] = lines;
+  const batch = Object.fromEntries(
+    ['campaigns', 'repositories', 'workflows', 'runs', 'domains', 'tools', 'audits', 'issues']
+      .map((collection) => [collection, []])
+  );
+  for (const envelope of records) batch[envelope.collection].push(envelope.record);
+  return { ...metadata, batch };
+}
+
 async function fixture() {
   const root = await mkdtemp(path.join(os.tmpdir(), 'activity-ingest-jsonl-shards-'));
   const shardDirectory = path.join(root, 'gh-aw-logs-shards');
@@ -362,7 +373,7 @@ test('hash-payloads excludes info-level audits from record shards', async () => 
   ]);
 
   const [recordShard] = await readdir(recordsDirectory);
-  const payload = JSON.parse(await readFile(path.join(recordsDirectory, recordShard), 'utf8'));
+  const payload = await readNormalizedJsonl(path.join(recordsDirectory, recordShard));
   const findings = payload.batch.audits.filter((audit) => audit.type === 'audit.finding');
   assert.deepEqual(findings.map((audit) => audit.summary), ['Actionable finding']);
 });
@@ -427,9 +438,11 @@ test('hash-payloads upgrades the legacy cached layout to phased shards', async (
   assert.equal(runs.length, 1);
   assert.deepEqual(runs, records);
   assert.equal(normalized.length, 1);
-  const runPayload = JSON.parse(await readFile(path.join(runsDirectory, runs[0]), 'utf8'));
-  const recordPayload = JSON.parse(await readFile(path.join(recordsDirectory, records[0]), 'utf8'));
-  const normalizedPayload = JSON.parse(await readFile(path.join(legacyNormalizedDirectory, normalized[0]), 'utf8'));
+  assert.ok([...runs, ...records, ...normalized].every((name) => name.endsWith('.jsonl')));
+  assert.ok(normalized.every((name) => !name.endsWith('.json')));
+  const runPayload = await readNormalizedJsonl(path.join(runsDirectory, runs[0]));
+  const recordPayload = await readNormalizedJsonl(path.join(recordsDirectory, records[0]));
+  const normalizedPayload = await readNormalizedJsonl(path.join(legacyNormalizedDirectory, normalized[0]));
   assert.equal(runPayload.phase, 'runs');
   assert.equal(recordPayload.phase, 'records');
   assert.ok(runPayload.batch.runs.length > 0);

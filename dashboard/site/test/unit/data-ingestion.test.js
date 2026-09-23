@@ -8,6 +8,7 @@ import {
   ingestDashboardSources,
   ingestGhAwLogs,
   ingestNormalizedJson,
+  ingestNormalizedJsonl,
   ingestSqlExport
 } from '../../src/data/ingest/coordinator.js';
 import { createCanonicalQueries } from '../../src/data/queries/index.js';
@@ -79,6 +80,65 @@ beforeEach(async () => {
 });
 
 describe('canonical source ingestion and queries', () => {
+  it('streams normalized JSONL across chunk boundaries and skips published repeats', async () => {
+    await ingestDashboardSources(indexedDB, sources);
+    const inventoryRepository = (await readCanonicalBatch(indexedDB)).repositories[0];
+    const lines = [
+      {
+        kind: 'metadata',
+        schemaVersion: CANONICAL_SCHEMA_VERSION,
+        ingestionVersion: 3,
+        sourceRecords: 1,
+        phase: 'runs',
+        records: 1
+      },
+      {
+        kind: 'record',
+        collection: 'repositories',
+        record: {
+          ...inventoryRepository,
+          owner: 'overwritten-by-activity',
+          provenance: {
+            source: 'test',
+            sourceId: 'normalized-jsonl',
+            observedAt: '2026-09-09T05:00:00Z'
+          }
+        }
+      }
+    ].map((line) => JSON.stringify(line)).join('\n') + '\n';
+    async function* chunks() {
+      yield lines.slice(0, 17);
+      yield new TextEncoder().encode(lines.slice(17, 89));
+      yield lines.slice(89);
+    }
+    const options = {
+      payloadIdentity: 'f'.repeat(64),
+      payloadScope: 'https://example.test/gh-aw-logs-runs/shard.jsonl',
+      expectedPhase: /** @type {const} */ ('runs')
+    };
+
+    await expect(ingestNormalizedJsonl(indexedDB, chunks(), options)).resolves.toMatchObject({
+      updated: true,
+      committedRecords: 1
+    });
+    await expect(ingestNormalizedJsonl(indexedDB, chunks(), options)).resolves.toMatchObject({
+      updated: false,
+      skipped: true
+    });
+    expect((await readCanonicalBatch(indexedDB)).repositories).toEqual([
+      expect.objectContaining({
+        id: inventoryRepository.id,
+        owner: inventoryRepository.owner
+      })
+    ]);
+    expect(await readTransactions(indexedDB)).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        kind: 'ingest-normalized-jsonl',
+        payloadHash: options.payloadIdentity
+      })
+    ]));
+  });
+
   it('imports pre-normalized JSON with a published identity and skips repeats', async () => {
     const payload = {
       schemaVersion: CANONICAL_SCHEMA_VERSION,

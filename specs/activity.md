@@ -104,6 +104,20 @@ Run-information shards MUST contain only Campaign, Repository, Workflow, and Run
 records. Record shards MUST contain only Domain, Tool, Audit, and Issue records.
 Every record-shard transport record MUST carry its canonical Run identity.
 
+Normalized run-information and record shards MUST use JSONL files with a
+`.jsonl` extension. The first line MUST be a metadata envelope and every
+following line MUST contain exactly one canonical record and its collection.
+Publishers MUST NOT emit normalized `.json` shards or a single JSON object that
+contains a complete canonical batch.
+
+Consumers MUST stream normalized JSONL from the response body and commit
+bounded record batches while bytes continue to arrive. They MUST NOT call
+`Response.json()`, buffer the complete response text, or materialize the full
+transport shard before writing canonical storage. This constraint bounds peak
+memory independently of snapshot size for browsers with constrained heaps,
+including iOS WebKit. A missing response stream MUST fail closed rather than
+fall back to full-file parsing.
+
 The two phases MUST be a complete partition of the source records. Publishers
 MUST omit a phase shard when it contains no records, so the run-information and
 record shard sets MAY contain different filename stems. Consumers MUST validate

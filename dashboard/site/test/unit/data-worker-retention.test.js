@@ -146,22 +146,15 @@ describe('canonical dashboard worker retention updates', () => {
     const jsonlRequests = [];
     /** @type {string[]} */
     const requestUrls = [];
-    const normalizedName = `gh-aw-logs-normalized/${'a'.repeat(64)}-${'b'.repeat(16)}.json`;
-    const normalizedPayload = {
+    const normalizedName = `gh-aw-logs-normalized/${'a'.repeat(64)}-${'b'.repeat(16)}.jsonl`;
+    const normalizedPayload = `${JSON.stringify({
+      kind: 'metadata',
       schemaVersion: CANONICAL_SCHEMA_VERSION,
-      ingestionVersion: 2,
+      ingestionVersion: 3,
       sourceRecords: 0,
-      batch: {
-        campaigns: [],
-        repositories: [],
-        workflows: [],
-        runs: [],
-        domains: [],
-        tools: [],
-        audits: [],
-        issues: []
-      }
-    };
+      phase: 'all',
+      records: 0
+    })}\n`;
     const payloadHashes = {
       'gh-aw-logs.sqlite': 'b'.repeat(64),
       'gh-aw-logs-shards/logs-1.jsonl': 'c'.repeat(64),
@@ -172,7 +165,7 @@ describe('canonical dashboard worker retention updates', () => {
       if (String(input).endsWith('/payload-hashes.json')) return Response.json(payloadHashes);
       if (String(input).endsWith('/inventory-sources.json')) return new Response(null, { status: 404 });
       jsonlRequests.push(init);
-      return Response.json(normalizedPayload, { headers: { etag: '"generation-b"' } });
+      return new Response(normalizedPayload, { headers: { etag: '"generation-b"' } });
     });
     dispatch({
       id: 3,
@@ -212,7 +205,7 @@ describe('canonical dashboard worker retention updates', () => {
       'https://dashboard.example/payload-hashes.json'
     ]);
     expect((await readTransactions(indexedDB))
-      .filter((transaction) => transaction.kind === 'ingest-normalized-json'))
+      .filter((transaction) => transaction.kind === 'ingest-normalized-jsonl'))
       .toEqual([
         expect.objectContaining({
           payloadScope: `https://dashboard.example/${normalizedName}`,
@@ -230,7 +223,7 @@ describe('canonical dashboard worker retention updates', () => {
       if (String(input).endsWith('/payload-hashes.json')) return Response.json(updatedPayloadHashes);
       if (String(input).endsWith('/inventory-sources.json')) return new Response(null, { status: 404 });
       jsonlRequests.push(init);
-      return Response.json(normalizedPayload, { headers: { etag: '"generation-c"' } });
+      return new Response(normalizedPayload, { headers: { etag: '"generation-c"' } });
     });
     dispatch({
       id: 5,

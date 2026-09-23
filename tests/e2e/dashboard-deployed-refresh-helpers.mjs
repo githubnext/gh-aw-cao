@@ -20,7 +20,7 @@ function isDeployedDashboardShardProbe({ method, url }) {
   if (method !== "HEAD" || typeof url !== "string") return false;
   try {
     const parsed = new URL(url);
-    // Match flat deployed activity JSON shard filenames in the run-information and record shard directories.
+    // Match flat deployed activity JSONL shard filenames in the run-information and record shard directories.
     return parsed.origin === deployedDashboardBase.origin
       && parsed.pathname.startsWith(deployedDashboardBase.pathname)
       && isFlatDeployedActivityShardPath(parsed.pathname.slice(deployedDashboardBase.pathname.length));
@@ -35,7 +35,7 @@ function isFlatDeployedActivityShardPath(relativePath) {
     && extraSegments.length === 0
     && typeof filename === "string"
     && filename.length > 0
-    && filename.endsWith(".json");
+    && filename.endsWith(".jsonl");
 }
 
 export async function scrollRenderedViewsIntoView(activePage) {

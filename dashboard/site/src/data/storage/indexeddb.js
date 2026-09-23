@@ -1,4 +1,5 @@
 import { relationshipErrors } from '../model/schema.js';
+import { recordTimestamp } from './retention.js';
 import { scopedStorageKey } from '../../storage-scope.js';
 import { createDebug } from '../../debug.js';
 import { tidy } from '../../data-operations.js';
@@ -103,6 +104,9 @@ const INGESTION_LOCK_ACQUIRE_TIMEOUT_MS = INGESTION_LOCK_LEASE_MS + 30_000;
 const INGESTION_LOCK_RETRY_DELAY_MS = 25;
 const INGESTION_LOCK_WAITING_NOTICE_DELAY_MS = 500;
 const MAX_QUERY_INDEX_LOOKUPS = 32;
+const RECORD_OVERHEAD_BYTES = 512;
+const RETENTION_TIMESTAMPS = new Set(['runs', 'domains', 'tools', 'audits', 'issues']);
+const RUN_LINKED_STORES = /** @type {const} */ (['domains', 'tools', 'audits', 'issues']);
 const QUERYABLE_STRING_KEY_PATHS = new Set([
   'slug',
   'repositoryId',
@@ -293,12 +297,15 @@ export function openCanonicalDatabase(indexedDB) {
  *
  * @param {IDBFactory} indexedDB
  * @param {import('../model/schema.js').CanonicalBatch} batch
- * @param {{ batchSize?: number, onBatchCommitted?: (progress: { committedBatches: number, committedRecords: number }) => void | Promise<void> }} [options]
+ * @param {{ batchSize?: number, validateRelationships?: boolean, onBatchCommitted?: (progress: { committedBatches: number, committedRecords: number }) => void | Promise<void> }} [options]
  */
 export async function upsertCanonicalBatch(indexedDB, batch, options = {}) {
-  const errors = relationshipErrors(batch);
-  if (errors.length > 0) {
-    throw new Error(`Canonical relationship validation failed: ${errors.join('; ')}`);
+  if (options.validateRelationships !== false) {
+    const errors = relationshipErrors(batch);
+    if (errors.length > 0) {
+      throw new Error(`Canonical relationship validation failed: ${errors.join('; ')}`);
+    }
+
   }
 
   const batchSize = options.batchSize ?? DEFAULT_WRITE_BATCH_SIZE;
@@ -331,6 +338,146 @@ export async function upsertCanonicalBatch(indexedDB, batch, options = {}) {
   } finally {
     database.close();
   }
+}
+
+  /** @param {Record<string, unknown>} record */
+function estimatedRecordBytes(record) {
+  return new TextEncoder().encode(JSON.stringify(record)).byteLength + RECORD_OVERHEAD_BYTES;
+}
+
+/**
+ * Applies retention and database-size limits with cursor scans so maintenance
+ * never materializes the canonical database or its large linked-record stores.
+ *
+ * @param {IDBFactory} indexedDB
+ * @param {{ now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes: number, usageBytes?: number | null }} options
+ */
+export async function maintainCanonicalDatabase(indexedDB, options) {
+    const now = options.now ?? Date.now();
+    const defaultWindow = Number.isFinite(options.retentionWindowMs)
+      ? Math.max(0, Number(options.retentionWindowMs))
+      : 30 * 24 * 60 * 60 * 1000;
+    const targetBytes = Math.floor(Math.max(0, options.maxDatabaseBytes) * 0.75);
+    let estimatedBytes = 0;
+    let deletedRecords = 0;
+    /** @type {{ id: string, timestamp: number, bytes: number }[]} */
+    const runs = [];
+    /** @type {string[]} */
+    const expiredRunIds = [];
+    /** @type {Map<string, number>} */
+    const linkedBytesByRun = new Map();
+    const database = await openCanonicalDatabase(indexedDB);
+    try {
+      for (const storeName of ENTITY_STORES) {
+        const transaction = readwriteTransaction(database, storeName);
+        const done = transactionDone(transaction);
+        const store = transaction.objectStore(storeName);
+        /** @param {Record<string, unknown>} record @param {() => void} remove */
+        const visit = (record, remove) => {
+          const configuredWindow = options.retentionWindowMsByStore?.[storeName];
+          const windowMs = Number.isFinite(configuredWindow)
+            ? Math.max(0, Number(configuredWindow))
+            : defaultWindow;
+          const timestamp = recordTimestamp(storeName, record);
+          if (RETENTION_TIMESTAMPS.has(storeName)
+              && (timestamp === null || timestamp < now - windowMs)) {
+            if (storeName === 'runs') {
+              expiredRunIds.push(String(record.id));
+            } else {
+              remove();
+              deletedRecords += 1;
+            }
+            return;
+          }
+          const bytes = estimatedRecordBytes(record);
+          estimatedBytes += bytes;
+          if (storeName === 'runs') {
+            runs.push({
+              id: String(record.id),
+              timestamp: timestamp ?? Number.NEGATIVE_INFINITY,
+              bytes
+            });
+          } else if (RUN_LINKED_STORES.includes(/** @type {typeof RUN_LINKED_STORES[number]} */ (storeName))) {
+            const runId = String(record.runId);
+            linkedBytesByRun.set(runId, (linkedBytesByRun.get(runId) ?? 0) + bytes);
+          }
+        };
+        if (typeof store.openCursor !== 'function') {
+          for (const record of await requestResult(store.getAll())) {
+            visit(record, () => store.delete(record.id));
+          }
+        } else {
+          await new Promise((resolve, reject) => {
+            const cursorRequest = store.openCursor();
+            cursorRequest.onerror = () => reject(cursorRequest.error ?? new Error('IndexedDB cursor failed'));
+            cursorRequest.onsuccess = () => {
+              const cursor = cursorRequest.result;
+              if (!cursor) {
+                resolve(undefined);
+                return;
+              }
+              visit(cursor.value, () => cursor.delete());
+              cursor.continue();
+            };
+          });
+        }
+        await done;
+      }
+
+      for (const runId of expiredRunIds) {
+        estimatedBytes -= linkedBytesByRun.get(runId) ?? 0;
+      }
+      const usageTarget = Number.isFinite(options.usageBytes)
+        && Number(options.usageBytes) > options.maxDatabaseBytes
+        ? Math.floor(estimatedBytes * (options.maxDatabaseBytes / Number(options.usageBytes)) * 0.9)
+        : targetBytes;
+      const effectiveTarget = Math.min(targetBytes, usageTarget);
+      const evictedRunIds = [...expiredRunIds];
+      if (estimatedBytes > effectiveTarget) {
+        runs.sort((left, right) => left.timestamp - right.timestamp || left.id.localeCompare(right.id));
+        for (const run of runs) {
+          if (estimatedBytes <= effectiveTarget) break;
+          evictedRunIds.push(run.id);
+          estimatedBytes -= run.bytes + (linkedBytesByRun.get(run.id) ?? 0);
+        }
+      }
+
+      for (let offset = 0; offset < evictedRunIds.length; offset += DEFAULT_WRITE_BATCH_SIZE) {
+        const ids = evictedRunIds.slice(offset, offset + DEFAULT_WRITE_BATCH_SIZE);
+        const transaction = readwriteTransaction(database, ['runs', ...RUN_LINKED_STORES]);
+        const done = transactionDone(transaction);
+        const runStore = transaction.objectStore('runs');
+        for (const id of ids) {
+          runStore.delete(id);
+          deletedRecords += 1;
+          for (const storeName of RUN_LINKED_STORES) {
+            const request = transaction.objectStore(storeName).index('byRun').openCursor(id);
+            request.onsuccess = () => {
+              const cursor = request.result;
+              if (!cursor) return;
+              cursor.delete();
+              deletedRecords += 1;
+              cursor.continue();
+            };
+          }
+        }
+        await done;
+      }
+
+      if (deletedRecords > 0) {
+        const transaction = readwriteTransaction(database, [
+          DAILY_OVERVIEW_AGGREGATE_STORE,
+          OVERVIEW_AGGREGATE_METADATA_STORE
+        ]);
+        const done = transactionDone(transaction);
+        transaction.objectStore(DAILY_OVERVIEW_AGGREGATE_STORE).clear();
+        transaction.objectStore(OVERVIEW_AGGREGATE_METADATA_STORE).clear();
+        await done;
+      }
+      return { deletedRecords, estimatedBytes };
+    } finally {
+      database.close();
+    }
 }
 
 /**

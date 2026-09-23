@@ -15,9 +15,9 @@ import { adaptCachedGhAwJsonlStream, createCachedJsonlPayloadHasher } from '../d
 import {
   ingestCachedGhAwJsonl,
   ingestGhAwLogs,
-  ingestNormalizedJson,
+  ingestNormalizedJsonl,
   isCachedGhAwJsonlCurrent,
-  NORMALIZED_JSON_INGESTION_VERSION
+  NORMALIZED_JSONL_INGESTION_VERSION
 } from '../dashboard/site/src/data/ingest/coordinator.js';
 import { normalize } from '../dashboard/site/src/data/normalize/index.js';
 import { CANONICAL_SCHEMA_VERSION } from '../dashboard/site/src/data/model/schema.js';
@@ -42,6 +42,7 @@ const ENTITY_COLLECTIONS = [
   'audits',
   'issues'
 ];
+const NORMALIZED_COLLECTIONS = ['campaigns', ...ENTITY_COLLECTIONS];
 const QUERY_COLLECTIONS = [...ENTITY_COLLECTIONS, 'transactions'];
 const DEFAULT_DEPLOYED_DATA_URL = 'https://githubnext.github.io/gh-aw-cao/cao/payload-hashes.json';
 const DEFAULT_OUTPUT_DIRECTORY = '.cao';
@@ -998,6 +999,30 @@ async function* jsonlLines(paths) {
   }
 }
 
+async function hashFileContents(filePath) {
+  const hash = createHash('sha256');
+  for await (const chunk of createReadStream(filePath)) hash.update(chunk);
+  return hash.digest('hex');
+}
+
+function* normalizedJsonlLines(payload) {
+  const records = Object.values(payload.batch)
+    .reduce((total, collection) => total + collection.length, 0);
+  yield `${JSON.stringify({
+    kind: 'metadata',
+    schemaVersion: payload.schemaVersion,
+    ingestionVersion: payload.ingestionVersion,
+    sourceRecords: payload.sourceRecords,
+    phase: payload.phase ?? 'all',
+    records
+  })}\n`;
+  for (const collection of NORMALIZED_COLLECTIONS) {
+    for (const record of payload.batch[collection]) {
+      yield `${JSON.stringify({ kind: 'record', collection, record })}\n`;
+    }
+  }
+}
+
 async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
   const sourcePaths = names.map((name) => path.join(directory, name));
   const sourceBytes = (await Promise.all(sourcePaths.map(async (filePath) => (await stat(filePath)).size)))
@@ -1311,14 +1336,13 @@ async function ingestNormalizedShardDirectories(indexedDB, directories, options 
   let updated = false;
   let committedRecords = 0;
   for (const [phase, directory] of directories) {
-    const names = (await readdir(directory)).filter((name) => name.endsWith('.json')).sort();
+    const names = (await readdir(directory)).filter((name) => name.endsWith('.jsonl')).sort();
     for (const name of names) {
       const shardPath = path.join(directory, name);
-      const content = await readFile(shardPath);
-      const payloadIdentity = createHash('sha256').update(content).digest('hex');
-      const result = await ingestNormalizedJson(
+      const payloadIdentity = await hashFileContents(shardPath);
+      const result = await ingestNormalizedJsonl(
         indexedDB,
-        JSON.parse(content.toString('utf8')),
+        createReadStream(shardPath),
         {
           ...options,
           expectedPhase: phase,
@@ -1374,17 +1398,17 @@ async function hashActivityPayloads({
   inventoryPath
 }) {
   const hashFile = async (filePath) => {
-    const hash = createHash('sha256');
-    for await (const chunk of createReadStream(filePath)) hash.update(chunk);
-    const digest = hash.digest('hex');
+    const digest = await hashFileContents(filePath);
     debugHash('hashed %s -> %s', filePath, digest);
     return digest;
   };
   const payloadHasRecords = async (filePath) => {
-    const payload = JSON.parse(await readFile(filePath, 'utf8'));
-    return payload?.batch
-      && typeof payload.batch === 'object'
-      && Object.values(payload.batch).some((records) => Array.isArray(records) && records.length > 0);
+    let lines = 0;
+    for await (const line of jsonlLines([filePath])) {
+      lines += 1;
+      if (lines > 1) return true;
+    }
+    return false;
   };
   const hashes = {};
   if (databasePath) hashes[path.basename(databasePath)] = await hashFile(databasePath);
@@ -1399,7 +1423,7 @@ async function hashActivityPayloads({
     const inventorySource = inventoryPath ? await readFile(inventoryPath, 'utf8') : '{}';
     const workflowHints = workflowHintsFromInventory(JSON.parse(inventorySource));
     const normalizationContext = createHash('sha256')
-      .update(`${CANONICAL_SCHEMA_VERSION}\0${NORMALIZED_JSON_INGESTION_VERSION}\0${JSON.stringify(workflowHints)}`)
+      .update(`${CANONICAL_SCHEMA_VERSION}\0${NORMALIZED_JSONL_INGESTION_VERSION}\0${JSON.stringify(workflowHints)}`)
       .digest('hex')
       .slice(0, 16);
     const retainedPayloads = {
@@ -1420,7 +1444,7 @@ async function hashActivityPayloads({
       const rawHash = await hashFile(shardPath);
       hashes[`${path.basename(shardDirectory)}/${name}`] = rawHash;
       if (!normalizedDirectory && !runsDirectory && !recordsDirectory) continue;
-      const payloadName = `${rawHash}-${normalizationContext}.json`;
+      const payloadName = `${rawHash}-${normalizationContext}.jsonl`;
       const phasedPayloadName = `${path.parse(name).name}-${payloadName}`;
       const outputPaths = [
         normalizedDirectory ? ['normalized', path.join(normalizedDirectory, payloadName)] : null,
@@ -1444,7 +1468,7 @@ async function hashActivityPayloads({
         const batch = normalize(adapted.observations);
         const metadata = {
           schemaVersion: CANONICAL_SCHEMA_VERSION,
-          ingestionVersion: NORMALIZED_JSON_INGESTION_VERSION,
+          ingestionVersion: NORMALIZED_JSONL_INGESTION_VERSION,
           sourceRecords: adapted.records
         };
         const payloads = {
@@ -1482,7 +1506,10 @@ async function hashActivityPayloads({
         };
         await Promise.all(missing.map(async ([phase, outputPath]) => {
           const temporaryPath = `${outputPath}.${process.pid}.tmp`;
-          await writeFile(temporaryPath, JSON.stringify(payloads[phase]));
+          await pipeline(
+            Readable.from(normalizedJsonlLines(payloads[phase])),
+            createWriteStream(temporaryPath, { flags: 'wx' })
+          );
           await rename(temporaryPath, outputPath);
         }));
       }
@@ -1502,7 +1529,7 @@ async function hashActivityPayloads({
       ['records', recordsDirectory]
     ].filter(([, directory]) => Boolean(directory))) {
       for (const name of await readdir(directory)) {
-        if (name.endsWith('.json') && !retainedPayloads[phase].has(name)) {
+        if ((name.endsWith('.json') || name.endsWith('.jsonl')) && !retainedPayloads[phase].has(name)) {
           await rm(path.join(directory, name), { force: true });
         }
       }

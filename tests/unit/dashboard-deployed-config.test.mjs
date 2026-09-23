@@ -161,23 +161,23 @@ test("deployed dashboard scrolling reports unexpected errors", async () => {
 test("deployed dashboard failure tracking ignores only benign aborted probes", () => {
   assert.equal(shouldIgnoreRequestFailure({
     method: "HEAD",
-    url: `${deployedDashboardUrl}gh-aw-logs-runs/shard.json`,
+    url: `${deployedDashboardUrl}gh-aw-logs-runs/shard.jsonl`,
     errorText: "net::ERR_ABORTED",
   }), true);
   assert.equal(shouldIgnoreRequestFailure({
     method: "HEAD",
-    url: `${deployedDashboardUrl}gh-aw-logs-records/shard.json`,
+    url: `${deployedDashboardUrl}gh-aw-logs-records/shard.jsonl`,
     errorText: "net::ERR_ABORTED",
   }), true);
   assert.equal(shouldIgnoreRequestFailure({
     method: "GET",
-    url: `${deployedDashboardUrl}gh-aw-logs-runs/shard.json`,
+    url: `${deployedDashboardUrl}gh-aw-logs-runs/shard.jsonl`,
     errorText: "net::ERR_ABORTED",
     reloading: true,
   }), true);
   assert.equal(shouldIgnoreRequestFailure({
     method: "GET",
-    url: `${deployedDashboardUrl}gh-aw-logs-runs/shard.json`,
+    url: `${deployedDashboardUrl}gh-aw-logs-runs/shard.jsonl`,
     errorText: "net::ERR_ABORTED",
   }), false);
   assert.equal(shouldIgnoreRequestFailure({
@@ -199,7 +199,7 @@ test("deployed dashboard failure tracking ignores only benign aborted probes", (
   }), false);
   assert.equal(shouldIgnoreRequestFailure({
     method: "HEAD",
-    url: `${deployedDashboardUrl}gh-aw-logs-runs/shard.json`,
+    url: `${deployedDashboardUrl}gh-aw-logs-runs/shard.jsonl`,
     errorText: "net::ERR_NAME_NOT_RESOLVED",
   }), false);
   assert.equal(shouldIgnoreRequestFailure({
@@ -209,7 +209,7 @@ test("deployed dashboard failure tracking ignores only benign aborted probes", (
   }), false);
   assert.equal(shouldIgnoreRequestFailure({
     method: "HEAD",
-    url: "https://githubnext.github.io/other-dashboard/cao/gh-aw-logs-runs/shard.json",
+    url: "https://githubnext.github.io/other-dashboard/cao/gh-aw-logs-runs/shard.jsonl",
     errorText: "net::ERR_ABORTED",
   }), false);
   assert.equal(shouldIgnoreRequestFailure({

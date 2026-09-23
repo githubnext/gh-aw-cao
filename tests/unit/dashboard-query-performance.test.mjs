@@ -37,8 +37,8 @@ test("deployed integration isolates query benchmark reporting from test permissi
 test("deployed proxy targets remain under the trusted dashboard URL", () => {
   const base = "https://githubnext.github.io/gh-aw-cao/cao/";
   assert.equal(
-    deployedProxyTarget("/gh-aw-logs-runs/shard.json", base)?.href,
-    `${base}gh-aw-logs-runs/shard.json`,
+    deployedProxyTarget("/gh-aw-logs-runs/shard.jsonl", base)?.href,
+    `${base}gh-aw-logs-runs/shard.jsonl`,
   );
   assert.equal(
     deployedProxyTarget("/https://example.com/private", base)?.origin,

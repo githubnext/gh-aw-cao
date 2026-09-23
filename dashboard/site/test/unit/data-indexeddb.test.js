@@ -6,6 +6,7 @@ import {
   DATABASE_NAME,
   DATABASE_VERSION,
   deleteCanonicalDatabase,
+  maintainCanonicalDatabase,
   openCanonicalDatabase,
   publishDailyOverviewAggregates,
   pruneStaleDailyOverviewAggregates,
@@ -88,6 +89,41 @@ afterEach(() => {
 });
 
 describe('canonical IndexedDB', () => {
+  it('maintains retention and size limits without loading whole stores', async () => {
+    await writeRecords('repositories', [{ id: 'repository:1' }]);
+    await writeRecords('runs', [
+      { id: 'run:expired', observedAt: '2026-01-01T00:00:00Z' },
+      { id: 'run:current', observedAt: '2026-09-09T00:00:00Z' }
+    ]);
+    await writeRecords('audits', [
+      { id: 'audit:expired-run', runId: 'run:expired', observedAt: '2026-09-09T00:00:00Z' },
+      { id: 'audit:current-run', runId: 'run:current', observedAt: '2026-09-09T00:00:00Z' }
+    ]);
+
+    await maintainCanonicalDatabase(indexedDB, {
+      now: Date.parse('2026-09-10T00:00:00Z'),
+      retentionWindowMs: 30 * 24 * 60 * 60 * 1000,
+      maxDatabaseBytes: Number.MAX_SAFE_INTEGER
+    });
+
+    expect(await readCollection(indexedDB, 'runs')).toEqual([
+      expect.objectContaining({ id: 'run:current' })
+    ]);
+    expect(await readCollection(indexedDB, 'audits')).toEqual([
+      expect.objectContaining({ id: 'audit:current-run' })
+    ]);
+
+    await maintainCanonicalDatabase(indexedDB, {
+      now: Date.parse('2026-09-10T00:00:00Z'),
+      retentionWindowMs: Number.MAX_SAFE_INTEGER,
+      maxDatabaseBytes: 0
+    });
+
+    expect(await readCollection(indexedDB, 'runs')).toEqual([]);
+    expect(await readCollection(indexedDB, 'audits')).toEqual([]);
+    expect(await readCollection(indexedDB, 'repositories')).toEqual([{ id: 'repository:1' }]);
+  });
+
   it('initializes the simplified database schema', async () => {
     const database = await openCanonicalDatabase(indexedDB);
 

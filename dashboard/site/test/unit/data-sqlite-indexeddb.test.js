@@ -249,28 +249,30 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       '--normalized-dir', normalizedDirectory,
       '--output', manifestPath
     ], { encoding: 'utf8' }));
-    const normalizedName = readdirSync(normalizedDirectory).find((name) => name.endsWith('.json'));
+    const normalizedName = readdirSync(normalizedDirectory).find((name) => name.endsWith('.jsonl'));
     if (!normalizedName) throw new Error('Normalized payload was not generated');
-    expect(normalizedName).toMatch(/^[a-f0-9]{64}-[a-f0-9]{16}\.json$/);
+    expect(normalizedName).toMatch(/^[a-f0-9]{64}-[a-f0-9]{16}\.jsonl$/);
+    expect(readdirSync(normalizedDirectory).some((name) => name.endsWith('.json'))).toBe(false);
     expect(hashes).toMatchObject({
       'dashboard.sqlite': expect.stringMatching(/^[a-f0-9]{64}$/),
       'shards/cached-v2.jsonl': expect.stringMatching(/^[a-f0-9]{64}$/),
       [`normalized/${normalizedName}`]: expect.stringMatching(/^[a-f0-9]{64}$/)
     });
-    expect(JSON.parse(readFileSync(join(normalizedDirectory, normalizedName), 'utf8'))).toMatchObject({
+    const [normalizedMetadata, ...normalizedRecords] = readFileSync(
+      join(normalizedDirectory, normalizedName),
+      'utf8'
+    ).trim().split('\n').map((line) => JSON.parse(line));
+    expect(normalizedMetadata).toMatchObject({
+      kind: 'metadata',
       schemaVersion: CANONICAL_SCHEMA_VERSION,
-      ingestionVersion: 2,
+      ingestionVersion: 3,
       sourceRecords: 3,
-      batch: {
-        repositories: expect.any(Array),
-        workflows: expect.any(Array),
-        runs: expect.any(Array),
-        domains: expect.any(Array),
-        tools: expect.any(Array),
-        audits: expect.any(Array),
-        issues: expect.any(Array)
-      }
+      phase: 'all',
+      records: normalizedRecords.length
     });
+    expect(normalizedRecords.every(({ kind, collection, record }) =>
+      kind === 'record' && typeof collection === 'string' && record && typeof record === 'object'
+    )).toBe(true);
 
     const audits = JSON.parse(execFileSync(process.execPath, [
       script,

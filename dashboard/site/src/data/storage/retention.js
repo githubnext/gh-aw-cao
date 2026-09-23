@@ -43,6 +43,25 @@ const WORKFLOW_INVENTORY_FIELDS = /** @type {const} */ ([
 ]);
 const RECORD_OVERHEAD_BYTES = 512;
 
+/**
+ * Preserves inventory-owned fields when an Activity observation updates an
+ * existing structural record.
+ * @param {'repositories' | 'workflows'} storeName
+ * @param {Record<string, unknown> | undefined} existing
+ * @param {Record<string, unknown>} incoming
+ */
+export function mergeActivityStructuralRecord(storeName, existing, incoming) {
+  if (!existing) return incoming;
+  if (storeName === 'repositories') return existing;
+  const inventoryFields = existing.registryState === undefined
+    ? WORKFLOW_INVENTORY_FIELDS
+    : [...WORKFLOW_INVENTORY_FIELDS, 'state', 'name', 'path', 'workflowLink'];
+  const preserved = Object.fromEntries(inventoryFields
+    .filter((field) => existing[field] !== undefined)
+    .map((field) => [field, existing[field]]));
+  return { ...incoming, ...preserved };
+}
+
 /** @param {Record<string, unknown>} record */
 function recordSize(record) {
   return new TextEncoder().encode(JSON.stringify(record)).byteLength + RECORD_OVERHEAD_BYTES;
@@ -184,19 +203,16 @@ function upsertRecords(
       const id = String(record.id);
       // Discovery owns repository metadata, so run-derived observations may only
       // backfill missing repository records and must never overwrite existing ones.
-      if (storeName === 'repositories' && preserveRepositoryRecords && records.has(id)) continue;
+      if (storeName === 'repositories' && preserveRepositoryRecords && records.has(id)) {
+        records.set(id, mergeActivityStructuralRecord('repositories', records.get(id), record));
+        continue;
+      }
       // Inventory discovery owns campaign membership and registry metadata.
       // Run-derived observations may enrich other workflow fields only.
       if (storeName === 'workflows' && preserveWorkflowCampaignMappings) {
         const existing = records.get(id);
         if (existing) {
-          const inventoryFields = existing.registryState === undefined
-            ? WORKFLOW_INVENTORY_FIELDS
-            : [...WORKFLOW_INVENTORY_FIELDS, 'state', 'name', 'path', 'workflowLink'];
-          const preserved = Object.fromEntries(inventoryFields
-            .filter((field) => existing[field] !== undefined)
-            .map((field) => [field, existing[field]]));
-          records.set(id, { ...record, ...preserved });
+          records.set(id, mergeActivityStructuralRecord('workflows', existing, record));
           continue;
         }
       }

@@ -13,13 +13,21 @@ import { normalize, orderRunRecords } from '../normalize/index.js';
 import {
   publishDailyOverviewAggregates,
   pruneStaleDailyOverviewAggregates,
+  maintainCanonicalDatabase,
   readCanonicalBatch,
+  readRecord,
   readTransaction,
   recordTransaction,
   replaceCanonicalBatch,
+  upsertCanonicalBatch,
   withCanonicalIngestionLock
 } from '../storage/indexeddb.js';
-import { capCanonicalBatchSize, estimateCanonicalBatchBytes, mergeRetainedRecords } from '../storage/retention.js';
+import {
+  capCanonicalBatchSize,
+  estimateCanonicalBatchBytes,
+  mergeActivityStructuralRecord,
+  mergeRetainedRecords
+} from '../storage/retention.js';
 import {
   inspectDatabaseUsage,
   inspectStorage,
@@ -34,6 +42,7 @@ const debug = createDebug('data:ingestion');
 const DASHBOARD_SOURCE_INGESTION_VERSION = 5;
 const GH_AW_JSONL_INGESTION_VERSION = 4;
 export const NORMALIZED_JSON_INGESTION_VERSION = 2;
+export const NORMALIZED_JSONL_INGESTION_VERSION = 3;
 const MAX_QUOTA_RECOVERY_ATTEMPTS = 4;
 const MAX_USAGE_RECOVERY_ATTEMPTS = 4;
 const NORMALIZED_BATCH_COLLECTIONS = /** @type {const} */ ([
@@ -46,6 +55,7 @@ const NORMALIZED_BATCH_COLLECTIONS = /** @type {const} */ ([
   'audits',
   'issues'
 ]);
+const NORMALIZED_JSONL_WRITE_BATCH_SIZE = 250;
 const LEGACY_PACKAGE_FIELD_ALIASES = /** @type {const} */ ({
   packageId: 'campaignId',
   package: 'campaign',
@@ -275,9 +285,10 @@ async function transactionId(kind, scope) {
   return `${kind}:current:${await payloadHash(scope, undefined)}`;
 }
 
-/** @param {string} hash */
-function normalizedShardTransactionId(hash) {
-  return `ingest-normalized-json:sha256:${hash}:v${NORMALIZED_JSON_INGESTION_VERSION}`;
+/** @param {string} hash * @param {number} [ingestionVersion]
+*/
+function normalizedShardTransactionId(hash, ingestionVersion = NORMALIZED_JSON_INGESTION_VERSION) {
+ return `ingest-normalized-json:sha256:${hash}:v${ingestionVersion}`;
 }
 
 /** @param {string} hash */
@@ -322,17 +333,22 @@ export async function isCachedGhAwJsonlCurrent(indexedDB, options) {
 /**
  * @param {IDBFactory} indexedDB
  * @param {{ payloadIdentity: string, payloadScope: string }} options
+ * @param {number} [ingestionVersion]
  */
-export async function isNormalizedJsonCurrent(indexedDB, options) {
-  const receiptId = normalizedShardTransactionId(options.payloadIdentity);
+export async function isNormalizedJsonCurrent(
+  indexedDB,
+  options,
+  ingestionVersion = NORMALIZED_JSON_INGESTION_VERSION
+) {
+  const receiptId = normalizedShardTransactionId(options.payloadIdentity, ingestionVersion);
   const receipt = await readTransaction(indexedDB, receiptId);
   if (receipt?.payloadHash === options.payloadIdentity
-      && receipt.ingestionVersion === NORMALIZED_JSON_INGESTION_VERSION) {
+      && receipt.ingestionVersion === ingestionVersion) {
     return true;
   }
   const legacyReceipt = await readCurrentIngestion(indexedDB, 'ingest-normalized-json', options.payloadScope);
   if (legacyReceipt?.payloadHash !== options.payloadIdentity
-      || legacyReceipt.ingestionVersion !== NORMALIZED_JSON_INGESTION_VERSION) {
+      || legacyReceipt.ingestionVersion !== ingestionVersion) {
     return false;
   }
   await recordTransaction(indexedDB, { ...legacyReceipt, id: receiptId });
@@ -589,6 +605,7 @@ export function ingestNormalizedJson(indexedDB, input, options) {
       if (!input || typeof input !== 'object' || Array.isArray(input)) {
         throw new TypeError('Normalized activity payload must be an object');
       }
+
       const payload = /** @type {{ schemaVersion?: unknown, ingestionVersion?: unknown, sourceRecords?: unknown, phase?: unknown, batch?: unknown }} */ (input);
       if (payload.schemaVersion !== CANONICAL_SCHEMA_VERSION && payload.schemaVersion !== 12) {
         throw new TypeError(`Unsupported normalized activity schema: ${String(payload.schemaVersion)}`);
@@ -652,6 +669,196 @@ export function ingestNormalizedJson(indexedDB, input, options) {
       throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, error);
     }
   }, { onLockWait: options.onLockWait, signal: options.signal });
+}
+
+/**
+ * Streams build-time normalized activity JSONL into canonical storage without
+ * retaining the full transport shard in memory.
+ *
+ * @param {IDBFactory} indexedDB
+ * @param {AsyncIterable<string | Uint8Array>} chunks
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, onLockWait?: () => void, payloadIdentity: string, payloadScope: string, expectedPhase?: 'runs' | 'records', signal?: AbortSignal }} options
+ */
+export function ingestNormalizedJsonl(indexedDB, chunks, options) {
+  return serializeIngestion(indexedDB, async () => {
+    let phase = 'adapting';
+    try {
+      if (!chunks || typeof chunks !== 'object' || !(Symbol.asyncIterator in chunks)) {
+        throw new TypeError('Normalized activity JSONL must be an async iterable');
+      }
+      if (await isNormalizedJsonCurrent(indexedDB, options, NORMALIZED_JSONL_INGESTION_VERSION)) {
+        debug('skipped unchanged normalized activity JSONL shard', { scope: options.payloadScope });
+        return { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 };
+      }
+      const decoder = new TextDecoder();
+      const encoder = new TextEncoder();
+      let pending = '';
+      let lineNumber = 0;
+      /** @type {{ phase: 'all' | 'runs' | 'records', records: number, sourceRecords?: number } | null} */
+      let header = null;
+      let batch = emptyNormalizedBatch();
+      let bufferedRecords = 0;
+      let committedBatches = 0;
+      let committedRecords = 0;
+      const flush = async () => {
+        if (bufferedRecords === 0) return;
+        phase = 'writing';
+        await preserveStreamedStructuralMetadata(indexedDB, batch);
+        const result = await upsertCanonicalBatch(indexedDB, batch, {
+          validateRelationships: false,
+          onBatchCommitted: ({ committedRecords: storedRecords }) => {
+            options.onWriteProgress?.({
+              storedRecords: committedRecords + storedRecords,
+              totalRecords: Number(header?.records ?? committedRecords + bufferedRecords)
+            });
+          }
+        });
+        committedBatches += result.committedBatches;
+        committedRecords += result.committedRecords;
+        batch = emptyNormalizedBatch();
+        bufferedRecords = 0;
+        phase = 'adapting';
+      };
+      /** @param {string} line */
+      const accept = async (line) => {
+        lineNumber += 1;
+        if (!line.trim()) return;
+        /** @type {Record<string, unknown>} */
+        let envelope;
+        try {
+          envelope = JSON.parse(line);
+        } catch (error) {
+          throw new TypeError(`Normalized activity JSONL line ${lineNumber} must contain valid JSON`, { cause: error });
+        }
+        if (!envelope || typeof envelope !== 'object' || Array.isArray(envelope)) {
+          throw new TypeError(`Normalized activity JSONL line ${lineNumber} must contain an object`);
+        }
+        if (!header) {
+          if (envelope.kind !== 'metadata') {
+            throw new TypeError('Normalized activity JSONL must start with metadata');
+          }
+          if (envelope.schemaVersion !== CANONICAL_SCHEMA_VERSION) {
+            throw new TypeError(`Unsupported normalized activity schema: ${String(envelope.schemaVersion)}`);
+          }
+          if (envelope.ingestionVersion !== NORMALIZED_JSONL_INGESTION_VERSION) {
+            throw new TypeError(`Unsupported normalized activity ingestion version: ${String(envelope.ingestionVersion)}`);
+          }
+          if (typeof envelope.phase !== 'string'
+              || !['all', 'runs', 'records'].includes(envelope.phase)) {
+            throw new TypeError(`Unsupported normalized activity phase: ${String(envelope.phase)}`);
+          }
+          if (options.expectedPhase && envelope.phase !== options.expectedPhase) {
+            throw new TypeError(`Normalized activity payload phase must be ${options.expectedPhase}`);
+          }
+          if (!Number.isSafeInteger(envelope.records) || Number(envelope.records) < 0) {
+            throw new TypeError('Normalized activity JSONL metadata records must be a non-negative integer');
+          }
+          header = {
+            phase: /** @type {'all' | 'runs' | 'records'} */ (envelope.phase),
+            records: Number(envelope.records),
+            sourceRecords: Number.isSafeInteger(envelope.sourceRecords)
+              ? Number(envelope.sourceRecords)
+              : undefined
+          };
+          return;
+        }
+        const collection = typeof envelope.collection === 'string'
+          ? /** @type {typeof NORMALIZED_BATCH_COLLECTIONS[number]} */ (envelope.collection)
+          : null;
+        if (envelope.kind !== 'record'
+            || collection === null
+            || !NORMALIZED_BATCH_COLLECTIONS.includes(collection)
+            || !envelope.record
+            || typeof envelope.record !== 'object'
+            || Array.isArray(envelope.record)) {
+          throw new TypeError(`Normalized activity JSONL line ${lineNumber} must contain a canonical record`);
+        }
+        const excluded = header.phase === 'runs'
+          ? ['domains', 'tools', 'audits', 'issues']
+          : header.phase === 'records'
+            ? ['campaigns', 'repositories', 'workflows', 'runs']
+            : [];
+        if (excluded.includes(collection)) {
+          throw new TypeError(`Normalized ${header.phase} payload must not include ${collection}`);
+        }
+        batch[collection].push(/** @type {never} */ (envelope.record));
+        bufferedRecords += 1;
+        if (bufferedRecords >= NORMALIZED_JSONL_WRITE_BATCH_SIZE) await flush();
+      };
+      for await (const chunk of chunks) {
+        options.signal?.throwIfAborted();
+        pending += decoder.decode(typeof chunk === 'string' ? encoder.encode(chunk) : chunk, { stream: true });
+        let newline;
+        while ((newline = pending.indexOf('\n')) !== -1) {
+          const line = pending.slice(0, newline);
+          pending = pending.slice(newline + 1);
+          await accept(line);
+        }
+      }
+      pending += decoder.decode();
+      if (pending) await accept(pending);
+      const metadata = /** @type {{ phase: 'all' | 'runs' | 'records', records: number, sourceRecords?: number } | null} */ (header);
+      if (!metadata) throw new TypeError('Normalized activity JSONL metadata is missing');
+      await flush();
+      if (committedRecords !== metadata.records) {
+        throw new TypeError(
+          `Normalized activity JSONL declared ${metadata.records} records but contained ${committedRecords}`
+        );
+      }
+      options.signal?.throwIfAborted();
+      const maxDatabaseBytes = Number.isFinite(options.maxDatabaseBytes)
+        ? Math.max(0, Number(options.maxDatabaseBytes))
+        : MAX_DASHBOARD_DATABASE_BYTES;
+      const usageBytes = options.storage
+        ? await inspectDatabaseUsage(options.storage).catch(() => null)
+        : null;
+      const retained = await maintainCanonicalDatabase(indexedDB, {
+        now: options.now,
+        retentionWindowMs: options.retentionWindowMs,
+        retentionWindowMsByStore: options.retentionWindowMsByStore,
+        maxDatabaseBytes,
+        usageBytes
+      });
+      const result = { updated: true, committedBatches, committedRecords };
+      await recordTransaction(indexedDB, {
+        id: normalizedShardTransactionId(options.payloadIdentity, NORMALIZED_JSONL_INGESTION_VERSION),
+        kind: 'ingest-normalized-jsonl',
+        createdAt: new Date(options.now ?? Date.now()).toISOString(),
+        payloadScope: options.payloadScope,
+        payloadHash: options.payloadIdentity,
+        ingestionVersion: NORMALIZED_JSONL_INGESTION_VERSION,
+        records: Number(metadata.sourceRecords ?? 0),
+        committedRecords,
+        storage: retained
+      });
+      return { ...result, records: Number(metadata.sourceRecords ?? 0) };
+    } catch (error) {
+      if (error instanceof CanonicalIngestionError) throw error;
+      throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, error);
+    }
+  }, { onLockWait: options.onLockWait, signal: options.signal });
+}
+
+function emptyNormalizedBatch() {
+  return /** @type {import('../model/schema.js').CanonicalBatch} */ (
+    /** @type {unknown} */ (Object.fromEntries(NORMALIZED_BATCH_COLLECTIONS.map((collection) => [collection, []])))
+  );
+}
+
+/**
+ * @param {IDBFactory} indexedDB
+ * @param {import('../model/schema.js').CanonicalBatch} batch
+ */
+async function preserveStreamedStructuralMetadata(indexedDB, batch) {
+  for (const storeName of /** @type {const} */ (['repositories', 'workflows'])) {
+    batch[storeName] = await Promise.all(batch[storeName].map(async (record) => (
+      mergeActivityStructuralRecord(
+        storeName,
+        await readRecord(indexedDB, storeName, String(record.id)) ?? undefined,
+        record
+      )
+    )));
+  }
 }
 
 /**
