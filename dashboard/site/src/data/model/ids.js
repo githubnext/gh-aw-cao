@@ -44,8 +44,12 @@ export function workflowCoordinateId(owner, repository, path) {
 
 /** @param {string} owner @param {string} repository @param {string | number} githubRunId */
 export function runId(owner, repository, githubRunId) {
-  const coordinate = `${owner.trim()}/${repository.trim()}`.toLowerCase();
-  if (coordinate === '/') throw new TypeError('Run repository owner and name are required');
+  const normalizedOwner = owner.trim();
+  const normalizedRepository = repository.trim();
+  if (!normalizedOwner || !normalizedRepository) {
+    throw new TypeError('Run repository owner and name are required');
+  }
+  const coordinate = `${normalizedOwner}/${normalizedRepository}`.toLowerCase();
   const normalizedRunId = String(githubRunId).trim();
   if (!normalizedRunId) throw new TypeError('run ID is required');
   return `github:run:${coordinate}:${normalizedRunId}`;
@@ -53,8 +57,12 @@ export function runId(owner, repository, githubRunId) {
 
 /** @param {string} owner @param {string} repository @param {string | number} issueNumber */
 export function issueId(owner, repository, issueNumber) {
-  const coordinate = `${owner.trim()}/${repository.trim()}`.toLowerCase();
-  if (coordinate === '/') throw new TypeError('Issue repository owner and name are required');
+  const normalizedOwner = owner.trim();
+  const normalizedRepository = repository.trim();
+  if (!normalizedOwner || !normalizedRepository) {
+    throw new TypeError('Issue repository owner and name are required');
+  }
+  const coordinate = `${normalizedOwner}/${normalizedRepository}`.toLowerCase();
   const normalizedNumber = Number(issueNumber);
   if (!Number.isInteger(normalizedNumber) || normalizedNumber < 1) {
     throw new TypeError('Issue number must be a positive integer');

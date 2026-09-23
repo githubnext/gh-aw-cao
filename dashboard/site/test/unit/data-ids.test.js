@@ -60,7 +60,9 @@ describe('canonical data identities', () => {
   it('rejects missing IDs and invalid issue coordinates', () => {
     expect(() => repositoryId(' ')).toThrow('repository ID is required');
     expect(() => runId('', '', 123)).toThrow('Run repository owner and name are required');
+    expect(() => runId('', 'repo', 123)).toThrow('Run repository owner and name are required');
     expect(() => issueId('owner', 'repo', 0)).toThrow('Issue number must be a positive integer');
+    expect(() => issueId('owner', '', 1)).toThrow('Issue repository owner and name are required');
     expect(() => issueCoordinates('https://example.com/owner/repo/issues/1'))
       .toThrow('URL must identify a GitHub issue or pull request');
     expect(() => sourceId('audit', '', '42')).toThrow('audit source and coordinate are required');

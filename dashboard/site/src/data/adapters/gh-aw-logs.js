@@ -39,6 +39,11 @@ function positiveInteger(value, field) {
   return number;
 }
 
+/** @param {unknown} value @param {string} field */
+function validateRunAttempt(value, field) {
+  positiveInteger(value, field);
+}
+
 /** @param {unknown} value */
 function optionalString(value) {
   return value === undefined || value === null || value === '' ? undefined : String(value);
@@ -897,7 +902,7 @@ function createCachedGhAwJsonlAccumulator(options) {
         observation.optimizerRunId,
         `gh-aw JSONL line ${line}.observation.optimizerRunId`
       );
-      positiveInteger(observation.runAttempt ?? 1, `gh-aw JSONL line ${line}.observation.runAttempt`);
+      validateRunAttempt(observation.runAttempt ?? 1, `gh-aw JSONL line ${line}.observation.runAttempt`);
       const optimizerRunKey = String(optimizerRunId);
       const observations = tokenEfficiencyObservationsByRun.get(optimizerRunKey) ?? [];
       observations.push({ ...observation, __line: line });
@@ -913,7 +918,7 @@ function createCachedGhAwJsonlAccumulator(options) {
         observation.optimizerRunId,
         `gh-aw JSONL line ${line}.observation.optimizerRunId`
       );
-      positiveInteger(
+      validateRunAttempt(
         observation.optimizerRunAttempt,
         `gh-aw JSONL line ${line}.observation.optimizerRunAttempt`
       );
@@ -940,7 +945,7 @@ function createCachedGhAwJsonlAccumulator(options) {
         `gh-aw JSONL line ${line}.run.workflow_path`
       );
       const githubRunId = identifier(run.run_id, `gh-aw JSONL line ${line}.run.run_id`);
-      positiveInteger(
+      validateRunAttempt(
         run.run_attempt ?? 1,
         `gh-aw JSONL line ${line}.run.run_attempt`
       );
@@ -982,7 +987,7 @@ function createCachedGhAwJsonlAccumulator(options) {
         run.databaseId,
         `gh-aw JSONL line ${line}.payload[${payloadIndex}].databaseId`
       );
-      positiveInteger(
+      validateRunAttempt(
         run.attempt ?? 1,
         `gh-aw JSONL line ${line}.payload[${payloadIndex}].attempt`
       );
@@ -1754,38 +1759,34 @@ function createCachedGhAwJsonlAccumulator(options) {
       contextRun.githubRunId,
       'gh-aw JSONL collection context run.githubRunId'
     );
-    let contextRepository;
-    let owner;
-    let name;
-    let collectionRunId = latestRunByGithubId.get(String(contextGithubRunId));
-    if (!collectionRunId) {
-      contextRepository = objectValue(
+    /** @type {{ repository: Record<string, unknown>, owner: string, name: string } | undefined} */
+    let contextCoordinates;
+    const resolveContextRepository = () => {
+      if (contextCoordinates) return contextCoordinates;
+      const repository = objectValue(
         context.repository,
         'gh-aw JSONL collection context repository'
       );
-      owner = requiredString(
-        contextRepository.owner,
-        'gh-aw JSONL collection context repository.owner'
-      );
-      name = requiredString(
-        contextRepository.name,
-        'gh-aw JSONL collection context repository.name'
-      );
+      contextCoordinates = {
+        repository,
+        owner: requiredString(
+          repository.owner,
+          'gh-aw JSONL collection context repository.owner'
+        ),
+        name: requiredString(
+          repository.name,
+          'gh-aw JSONL collection context repository.name'
+        )
+      };
+      return contextCoordinates;
+    };
+    let collectionRunId = latestRunByGithubId.get(String(contextGithubRunId));
+    if (!collectionRunId) {
+      const { owner, name } = resolveContextRepository();
       collectionRunId = runId(owner, name, contextGithubRunId);
     }
     if (!runIds.has(collectionRunId)) {
-      contextRepository ??= objectValue(
-        context.repository,
-        'gh-aw JSONL collection context repository'
-      );
-      owner ??= requiredString(
-        contextRepository.owner,
-        'gh-aw JSONL collection context repository.owner'
-      );
-      name ??= requiredString(
-        contextRepository.name,
-        'gh-aw JSONL collection context repository.name'
-      );
+      const { repository: contextRepository, owner, name } = resolveContextRepository();
       const contextWorkflow = objectValue(
         context.workflow,
         'gh-aw JSONL collection context workflow'

@@ -282,7 +282,7 @@
     "supersededByInterventionId": { "field": "superseded-by-intervention-id" }, "recommendationChurnCount": { "field": "recommendation-churn-count" },
     "recommendationChurnRate": { "field": "recommendation-churn-rate" }, "controlVariant": { "field": "control-variant" },
     "optimizedVariant": { "field": "optimized-variant" }, "proposedSavingsAic": { "field": "proposed-savings-aic" },
-    "missingReason": { "field": "missing-reason" },     "safeOutputId": { "field": "safe-output-id" }, "safeOutputUrl": { "field": "safe-output-url" }, "url": { "fields": ["safe-output-url", "correlation-id"] },
+    "missingReason": { "field": "missing-reason" }, "safeOutputId": { "field": "safe-output-id" }, "safeOutputUrl": { "field": "safe-output-url" }, "url": { "fields": ["safe-output-url", "correlation-id"] },
     "implementationChangeId": { "field": "implementation-change-id" }, "implementationPullRequestUrl": { "field": "implementation-pull-request-url" },
     "implementationRunIds": { "field": "implementation-run-ids" }, "acceptedAt": { "field": "accepted-at" },
     "implementationStartedAt": { "field": "implementation-started-at" }, "implementationCompletedAt": { "field": "implementation-completed-at" },

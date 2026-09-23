@@ -105,11 +105,14 @@ export function adaptSqlExport(input) {
       ?? repositoryByRun.get(identifier(row.github_run_id, 'github_run_id'));
     if (!githubRepositoryId) throw new TypeError('github_repository_id is required');
     const known = repositoryCoordinates.get(githubRepositoryId);
+    const owner = optionalString(row.repository_owner) ?? known?.owner;
+    const repository = optionalString(row.repository_name) ?? known?.repository;
+    if (!owner || !repository) {
+      throw new TypeError(`Repository coordinates are unavailable for GitHub repository ${githubRepositoryId}`);
+    }
     return {
-      owner: optionalString(row.repository_owner) ?? known?.owner
-        ?? requiredString(row.repository_owner, 'repository_owner'),
-      repository: optionalString(row.repository_name) ?? known?.repository
-        ?? requiredString(row.repository_name, 'repository_name')
+      owner,
+      repository
     };
   };
 
@@ -185,9 +188,8 @@ export function adaptSqlExport(input) {
         };
         break;
       }
-      case 'domain':
-        {
-          const coordinates = coordinatesFor(row);
+      case 'domain': {
+        const coordinates = coordinatesFor(row);
         data = {
           runId: runId(
             coordinates.owner,
@@ -202,10 +204,9 @@ export function adaptSqlExport(input) {
           requestCount: optionalNumber(row.request_count, 'request_count') ?? 1
         };
         break;
-        }
-      case 'tool':
-        {
-          const coordinates = coordinatesFor(row);
+      }
+      case 'tool': {
+        const coordinates = coordinatesFor(row);
         data = {
           runId: runId(
             coordinates.owner,
@@ -224,10 +225,9 @@ export function adaptSqlExport(input) {
           correlationId: optionalString(row.correlation_id)
         };
         break;
-        }
-      case 'issue':
-        {
-          const coordinates = coordinatesFor(row);
+      }
+      case 'issue': {
+        const coordinates = coordinatesFor(row);
         data = {
           runId: runId(
             coordinates.owner,
@@ -243,7 +243,7 @@ export function adaptSqlExport(input) {
           githubEntityType: optionalString(row.github_entity_type)
         };
         break;
-        }
+      }
       case 'audit': {
         const coordinates = coordinatesFor(row);
         if (row.source_sequence !== undefined && row.source_sequence !== null
