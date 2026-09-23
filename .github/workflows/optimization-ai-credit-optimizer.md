@@ -112,6 +112,9 @@ safe-outputs:
     close-older-issues: true
     max: 1
     target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
+  missing-data: false
+  missing-tool: false
+  report-incomplete: false
 
 timeout-minutes: 30
 
@@ -128,6 +131,7 @@ steps:
 
       RAW_LOGS=/tmp/gh-aw/token-audit/all-runs.raw.json
       LOG_EXIT=0
+      RAW_JSON_VALID=false
       gh aw logs \
         --repo "$TARGET_REPO" \
         --output /tmp/gh-aw/token-audit/logs \
@@ -139,7 +143,8 @@ steps:
         --max-storage 1024 \
         > "$RAW_LOGS" || LOG_EXIT=$?
 
-      if jq -e . "$RAW_LOGS" >/dev/null 2>&1; then
+      if jq -e 'type == "object" and ((.runs // null) | type == "array")' "$RAW_LOGS" >/dev/null 2>&1; then
+        RAW_JSON_VALID=true
         jq '
           ((.runs // []) | unique_by(.run_id)) as $runs |
           {
@@ -155,9 +160,20 @@ steps:
         echo "✅ Downloaded $TOTAL agentic workflow runs (last 7 days, exit code $LOG_EXIT)"
       else
         echo "⚠️ Agentic workflow logs were unavailable or invalid (exit code $LOG_EXIT)"
-        echo '{"runs":[],"summary":{}}' > /tmp/gh-aw/token-audit/all-runs.json
+        echo '{"runs":[],"summary":{"total_runs":0,"total_tokens":0,"total_aic":0}}' > /tmp/gh-aw/token-audit/all-runs.json
       fi
       rm -f "$RAW_LOGS"
+      jq -n \
+        --arg target_repo "$TARGET_REPO" \
+        --argjson exit_code "$LOG_EXIT" \
+        --argjson json_valid "$RAW_JSON_VALID" \
+        '{
+          schema_version: 1,
+          target_repo: $target_repo,
+          window_days: 7,
+          collection_exit_code: $exit_code,
+          collection_json_valid: $json_valid
+        }' > /tmp/gh-aw/token-audit/collection-status.json
 
       BEFORE_COUNT=$(jq '(.runs // []) | length' /tmp/gh-aw/token-audit/all-runs.json)
       if [[ "$TARGET_REPO" != "githubnext/gh-aw-cao" ]]; then
@@ -226,6 +242,32 @@ steps:
       echo "✅ Generated top workflow summary at /tmp/gh-aw/token-audit/top-workflows.json"
       jq '.top_workflows' /tmp/gh-aw/token-audit/top-workflows.json
 
+      collection_exit_code=$(jq -r '.collection_exit_code // 1' /tmp/gh-aw/token-audit/collection-status.json)
+      collection_json_valid=$(jq -r '.collection_json_valid // false' /tmp/gh-aw/token-audit/collection-status.json)
+      run_count=$(jq '(.runs // []) | length' /tmp/gh-aw/token-audit/all-runs.json)
+      positive_aic_run_count=$(jq '[.runs[]? | select((.aic // 0) > 0)] | length' /tmp/gh-aw/token-audit/all-runs.json)
+      eligible_workflow_count=$(jq '[.top_workflows[]? | select((.run_count // 0) > 0 and (.total_ai_credits // 0) > 0)] | length' /tmp/gh-aw/token-audit/top-workflows.json)
+      state=no-candidate
+      if [ "$collection_exit_code" -ne 0 ] || [ "$collection_json_valid" != "true" ]; then
+        state=unavailable
+      elif [ "$eligible_workflow_count" -gt 0 ]; then
+        state=ready
+      fi
+      jq \
+        --arg state "$state" \
+        --argjson run_count "$run_count" \
+        --argjson positive_aic_run_count "$positive_aic_run_count" \
+        --argjson eligible_workflow_count "$eligible_workflow_count" \
+        '. + {
+          state: $state,
+          run_count: $run_count,
+          positive_aic_run_count: $positive_aic_run_count,
+          eligible_workflow_count: $eligible_workflow_count
+        }' \
+        /tmp/gh-aw/token-audit/collection-status.json \
+        > /tmp/gh-aw/token-audit/evidence-status.json
+      echo "Evidence status: $(cat /tmp/gh-aw/token-audit/evidence-status.json)"
+
   - name: Load optimization history
     run: |
       set -euo pipefail
@@ -259,6 +301,7 @@ Always filter `gh api` responses with `--jq`. Prefer a single bash tool call con
 
 - `/tmp/gh-aw/token-audit/all-runs.json`: full 7-day run data (`gh aw logs --json`).
 - `/tmp/gh-aw/token-audit/top-workflows.json`: pre-aggregated top 10 workflows by total AIC.
+- `/tmp/gh-aw/token-audit/evidence-status.json`: deterministic collection and candidate-readiness status for this run.
 - `/tmp/gh-aw/repo-memory/default/YYYY-MM-DD.json`: daily audit snapshots for local runs.
 - `/tmp/gh-aw/repo-memory/default/<owner>__<repo>__YYYY-MM-DD.json`: daily audit snapshots for central runs with `target_repo`.
 - `/tmp/gh-aw/repo-memory/default/optimization-log.json`: prior optimizations for local runs (if present).
@@ -266,14 +309,34 @@ Always filter `gh api` responses with `--jq`. Prefer a single bash tool call con
 
 Treat missing numeric fields (`aic`, `token_usage`, `turns`, `action_minutes`) as `0`.
 
+## Evidence Preconditions and Bounded No-op
+
+Read `/tmp/gh-aw/token-audit/evidence-status.json` before analyzing any workflow.
+It is the deterministic record of whether the pre-aggregated collection completed
+and produced at least one positive-AIC candidate after the monitoring-workflow
+filter. Do not re-download logs, search for an unlisted cache, or infer a target
+from repository activity when this record is not ready.
+
+If the status file is missing or invalid, or its `state` is `unavailable` or
+`no-candidate`, call `noop` exactly once with a concise explanation containing
+the target repository, status, run count, positive-AIC run count, and eligible
+workflow count; use `unknown` for counts that cannot be read. Do not call
+`create_issue`, `missing_data`, or `report_incomplete`, and do not update
+optimization history. This is an expected bounded no-op for a collection gap
+or an empty evidence window, not a workflow recommendation.
+
 ## Phase 1 — Select Target
 
+- Proceed only when `evidence-status.json` has `state` equal to `ready`.
 - Start from `top-workflows.json`.
 - Exclude workflows optimized in the last 14 days (use `optimization-log.json`).
 - Exclude the AI credit monitoring family — the `optimization-ai-credit-optimizer` and `optimization-ai-credit-auditor` workflows — **unless this workflow is running in `githubnext/gh-aw-cao`** (the source repository that ships them). In downstream repositories these workflows are not valid optimization targets; any optimization suggestions for them belong in `githubnext/gh-aw-cao`. In downstream repos they are pre-filtered from `all-runs.json` and `top-workflows.json`, but never select them even if a stale snapshot still lists them.
 - Choose the highest AI-credit-spend workflow that remains.
 - If no snapshot/history exists, derive candidates directly from `all-runs.json`.
 - When `target_repo` is present, read and write only the target-specific snapshot and optimization log files using the `<owner>__<repo>__` prefix. Do not mix history between target repositories.
+- If the 14-day exclusion leaves no eligible workflow, call `noop` exactly once
+  with the standard no-op explanation and do not fabricate a target or write
+  optimization history.
 
 Then collect run-level data for the selected workflow:
 
