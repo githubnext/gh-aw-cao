@@ -2275,10 +2275,10 @@
                 "field": "has-successful-runs"
               },
               {
-                "value": "Your factory is humming."
+                "value": "Your campaigns are humming."
               },
               {
-                "value": "Your factory is idle."
+                "value": "Your campaigns are idle."
               }
             ]
           },
@@ -2290,7 +2290,7 @@
                 "field": "has-failed-runs"
               },
               {
-                "value": "Your factory needs attention."
+                "value": "Your campaigns need attention."
               },
               {
                 "field": "successful-heading"
@@ -2305,7 +2305,7 @@
                 "field": "failures-exceed-successes"
               },
               {
-                "value": "Your factory is under strain."
+                "value": "Your campaigns are under strain."
               },
               {
                 "field": "attention-heading"
@@ -2320,7 +2320,7 @@
                 "field": "has-active-runs"
               },
               {
-                "value": "Your factory is humming."
+                "value": "Your campaigns are humming."
               },
               {
                 "field": "strain-heading"
@@ -2335,7 +2335,7 @@
                 "field": "has-value-gains"
               },
               {
-                "value": "Your factory is delivering value."
+                "value": "Your campaigns are delivering value."
               },
               {
                 "field": "active-heading"
@@ -11977,7 +11977,7 @@
           {
             "id": "overview-header",
             "title": "How are we doing?",
-            "description": "Factory health measures campaigns without current runtime errors; repository coverage measures registered repositories reached by successful worker execution.",
+            "description": "Campaign health measures campaigns without current runtime errors; repository coverage measures registered repositories reached by successful worker execution.",
             "data": {
               "sources": [
                 "overview-outcome-summary",
@@ -11993,7 +11993,7 @@
           },
           {
             "id": "overview-floor",
-            "title": "Factory floor",
+            "title": "Campaign overview",
             "intent": "Show the registered campaign and repository inventory while preserving their investigation routes.",
             "data": {
               "sources": [

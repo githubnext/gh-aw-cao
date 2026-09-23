@@ -111,12 +111,12 @@ describe('declarative dashboard queries', () => {
   });
 
   it.each([
-    ['delivering value', { successes: 0, failures: 0, active: 0, graders: 1 }, 'Your factory is delivering value.'],
-    ['active', { successes: 0, failures: 2, active: 1, graders: 0 }, 'Your factory is humming.'],
-    ['under strain', { successes: 1, failures: 2, active: 0, graders: 0 }, 'Your factory is under strain.'],
-    ['needs attention', { successes: 2, failures: 1, active: 0, graders: 0 }, 'Your factory needs attention.'],
-    ['successful', { successes: 1, failures: 0, active: 0, graders: 0 }, 'Your factory is humming.'],
-    ['idle', { successes: 0, failures: 0, active: 0, graders: 0 }, 'Your factory is idle.']
+    ['delivering value', { successes: 0, failures: 0, active: 0, graders: 1 }, 'Your campaigns are delivering value.'],
+    ['active', { successes: 0, failures: 2, active: 1, graders: 0 }, 'Your campaigns are humming.'],
+    ['under strain', { successes: 1, failures: 2, active: 0, graders: 0 }, 'Your campaigns are under strain.'],
+    ['needs attention', { successes: 2, failures: 1, active: 0, graders: 0 }, 'Your campaigns need attention.'],
+    ['successful', { successes: 1, failures: 0, active: 0, graders: 0 }, 'Your campaigns are humming.'],
+    ['idle', { successes: 0, failures: 0, active: 0, graders: 0 }, 'Your campaigns are idle.']
   ])('classifies factory status as %s in Dashboard Language', (_state, counts, expected) => {
     const runs = [
       ...Array.from({ length: counts.successes }, (_, index) => ({ run: `success-${index}`, 'run-conclusion': 'success', 'run-status': 'completed' })),
@@ -149,7 +149,7 @@ describe('declarative dashboard queries', () => {
     );
 
     expect(result['overview-factory-status'].metadata.availability).toBe('available');
-    expect(result['overview-factory-status'].rows).toEqual([{ 'factory-heading': 'Your factory is humming.' }]);
+    expect(result['overview-factory-status'].rows).toEqual([{ 'factory-heading': 'Your campaigns are humming.' }]);
   });
 
   it('counts canonical repository identities registered in the resolved control-plane scope', () => {

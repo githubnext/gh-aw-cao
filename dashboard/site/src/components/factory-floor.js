@@ -33,7 +33,7 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
     return {
       pending: sources['overview-healthy-campaign-count']?.pending() ?? true,
       unavailable: sources['overview-healthy-campaign-count']?.unavailable() ?? true,
-      label: 'Factory health',
+      label: 'Campaign health',
       value: total > 0 ? count / total : 0,
       detail: { text: `${formatCount(count)}/${formatCount(total)} healthy campaigns` }
     };
@@ -114,7 +114,7 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
   /** @type {Record<FactoryStationId, () => string>} */
   const stationDescriptions = {
     campaigns: () => {
-      return `${Math.round(metrics.campaignHealth() * 100)}% factory health`;
+      return `${Math.round(metrics.campaignHealth() * 100)}% campaign health`;
     },
     repositories: () => {
       const coverage = metrics.coverage();

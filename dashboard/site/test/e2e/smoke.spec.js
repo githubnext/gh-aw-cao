@@ -1394,7 +1394,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await cleanNavigation.filter({ hasText: 'Overview' }).click();
   const overviewPage = page.locator('[data-page-id="overview"]');
   await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
-  await expect(overviewPage.getByRole('heading', { name: 'Your factory needs attention.' })).toBeVisible();
+  await expect(overviewPage.getByRole('heading', { name: 'Your campaigns need attention.' })).toBeVisible();
   await expect(overviewPage.locator('.factory-running')).toHaveCount(0);
   await expect(overviewPage.locator('.factory-station')).toHaveCount(2);
   await expect(overviewPage.locator('.factory-station strong')).toHaveText(['50%', '50%']);

@@ -1374,7 +1374,7 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector(':scope > .custom-view-grid')).not.toBeNull();
     expect(page?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(3);
     expect(page?.querySelectorAll('.factory-station')).toHaveLength(2);
-    expect(page?.querySelector('.factory-intro h2')?.textContent).toBe('Your factory is idle.');
+    expect(page?.querySelector('.factory-intro h2')?.textContent).toBe('Your campaigns are idle.');
     expect(page?.querySelector('.notifications-inbox')).toBeNull();
     expect(page?.querySelector('.factory-status')).toBeNull();
     expect(page?.querySelector('.factory-all-clear')).toBeNull();

@@ -29,10 +29,10 @@ export function renderFactoryHeader(sources, metrics, scope) {
     return pending
       ? ''
       : !healthSourcePending && campaignHealth > 0 && campaignHealth < 0.66
-      ? 'Your factory needs attention.'
+      ? 'Your campaigns need attention.'
       : !status.unavailable() && typeof candidate === 'string' && candidate
       ? candidate
-      : 'Your factory status is unavailable.';
+      : 'Your campaign status is unavailable.';
   }, { signal: scope.signal });
 
   render(summary, () => {

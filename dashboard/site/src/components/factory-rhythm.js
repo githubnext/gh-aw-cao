@@ -17,9 +17,9 @@ export function renderFactoryRhythm(source, scope) {
     headingClassName: 'factory-rhythm-heading',
     legendClassName: 'factory-rhythm-legend',
     plotClassName: 'factory-rhythm-bars',
-    title: 'Factory rhythm',
+    title: 'Campaign rhythm',
     ariaLabel: 'Successful Actions runs from Monday through Sunday',
-    legendLabel: 'Factory rhythm legend',
+    legendLabel: 'Campaign rhythm legend',
     legend: [
       { label: 'This week', className: 'factory-rhythm-legend-current' },
       { label: 'Last week', className: 'factory-rhythm-legend-previous' }

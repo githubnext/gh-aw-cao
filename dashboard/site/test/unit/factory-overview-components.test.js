@@ -164,7 +164,7 @@ describe('Overview component boundaries', () => {
     expect([...rendered.querySelectorAll('.factory-station strong')].map((element) => element.textContent)).toEqual(['66.7%', '50%']);
     expect([...rendered.querySelectorAll('.factory-station small')].map((element) => element.textContent)).toEqual(['2/3 healthy campaigns', '4/6 repositories reached']);
     expect(rendered.classList.contains('factory-floor-active')).toBe(true);
-    expect(rendered.getAttribute('aria-label')).toBe('67% factory health, 50% average repository coverage.');
+    expect(rendered.getAttribute('aria-label')).toBe('67% campaign health, 50% average repository coverage.');
     motion.set({ operations: 0, live: 0, review: 0 });
     expect(rendered.classList.contains('factory-floor-active')).toBe(false);
     controller.abort();
@@ -173,7 +173,7 @@ describe('Overview component boundaries', () => {
   it('header presents heading priority, outcome summary, and rhythm composition', () => {
     const controller = new AbortController();
     const sources = {
-      'overview-factory-status': binding({ rows: [{ 'factory-heading': 'Your factory is delivering value.' }] }),
+      'overview-factory-status': binding({ rows: [{ 'factory-heading': 'Your campaigns are delivering value.' }] }),
       'overview-rhythm': binding({ rows: rhythmRows() })
     };
     const rendered = renderFactoryHeader(
@@ -183,7 +183,7 @@ describe('Overview component boundaries', () => {
     );
 
     expect(rendered.querySelector('.factory-running')).toBeNull();
-    expect(rendered.querySelector('h2')?.textContent).toBe('Your factory is delivering value.');
+    expect(rendered.querySelector('h2')?.textContent).toBe('Your campaigns are delivering value.');
     expect(rendered.querySelector('.factory-intro-copy > p:last-child')?.textContent).toBe('5 retained issue and pull request outputs are backed by Actions evidence across 4 repositories.');
     expect(rendered.querySelector('.factory-rhythm')).not.toBeNull();
 

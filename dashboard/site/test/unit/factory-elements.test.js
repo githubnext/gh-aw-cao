@@ -43,7 +43,7 @@ function context(element, sources, elementConfig) {
     pageId: 'overview',
     viewId: element === 'factory-header' ? 'overview-header' : element === 'factory-floor' ? 'overview-floor' : 'overview-campaigns',
     viewIndex: element === 'factory-header' ? 0 : element === 'factory-floor' ? 1 : 2,
-    title: element === 'factory-header' ? 'How are we doing?' : element === 'factory-floor' ? 'Factory floor' : 'Campaigns',
+    title: element === 'factory-header' ? 'How are we doing?' : element === 'factory-floor' ? 'Campaign overview' : 'Campaigns',
     sourceNames: Object.keys(sources),
     sources,
     elementConfig,
@@ -122,13 +122,13 @@ it('renders the factory header from only its declared JSON sources', () => {
   const rendered = renderUiElement('factory-header', context('factory-header', {
     'overview-outcome-summary': source('overview-outcome-summary', [{ 'useful-outputs': 2, 'delivered-repositories': 3 }]),
     'overview-run-summary': source('overview-run-summary', [{ 'active-runs': 4, 'active-live': 1, 'active-review': 3 }]),
-    'overview-factory-status': source('overview-factory-status', [{ 'factory-heading': 'Your factory is delivering value.' }]),
+    'overview-factory-status': source('overview-factory-status', [{ 'factory-heading': 'Your campaigns are delivering value.' }]),
     'overview-rhythm': source('overview-rhythm', [{ rhythm }])
   }));
 
   expect(rendered?.classList.contains('factory-intro')).toBe(true);
   expect(rendered?.querySelector('.factory-running')).toBeNull();
-  expect(rendered?.querySelector('h2')?.textContent).toBe('Your factory is delivering value.');
+  expect(rendered?.querySelector('h2')?.textContent).toBe('Your campaigns are delivering value.');
   expect(rendered?.querySelector('.factory-intro-copy > p:last-child')?.textContent)
     .toBe('2 retained issue and pull request outputs are backed by Actions evidence across 3 repositories.');
   expect(rendered?.querySelectorAll('.factory-rhythm-day')).toHaveLength(7);
@@ -156,7 +156,7 @@ it('renders the factory floor from its independent JSON view and configuration',
 
   expect(rendered?.classList.contains('factory-floor-active')).toBe(true);
   expect([...rendered?.querySelectorAll('.factory-station') ?? []].map((station) => station.textContent)).toEqual([
-    'Factory health100%2/2 healthy campaigns',
+    'Campaign health100%2/2 healthy campaigns',
     'Repository coverage50%3/6 repositories reached',
     'Issues & PRs5',
     'Successful runs22 failed',

@@ -723,7 +723,7 @@ describe('dashboard document validation', () => {
     expect(page.views).toEqual([
       expect.objectContaining({
         id: 'overview-header',
-        description: 'Factory health measures campaigns without current runtime errors; repository coverage measures registered repositories reached by successful worker execution.',
+        description: 'Campaign health measures campaigns without current runtime errors; repository coverage measures registered repositories reached by successful worker execution.',
         data: { sources: expect.arrayContaining([
           'overview-outcome-summary',
           'overview-factory-status',

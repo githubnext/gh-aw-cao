@@ -52,7 +52,7 @@ const sources = {
   'overview-delivery-summary': source('overview-delivery-summary', [{ 'delivered-repositories': 3 }]),
   'overview-repository-coverage': source('overview-repository-coverage', [{ 'repository-coverage': 0.5, 'reached-repositories': 3, 'registered-repositories-total': 6 }]),
   'overview-value-summary': source('overview-value-summary', [{ 'value-gains': 1 }]),
-  'overview-factory-status': source('overview-factory-status', [{ 'factory-heading': 'Your factory is delivering value.' }]),
+  'overview-factory-status': source('overview-factory-status', [{ 'factory-heading': 'Your campaigns are delivering value.' }]),
   'overview-registered-repository-summary': source('overview-registered-repository-summary', [{ 'registered-repositories': 6 }]),
   'overview-worker-summary': source('overview-worker-summary', [{ workers: 3 }]),
   'database-campaign-count': source('database-campaign-count', [{ campaigns: 2 }]),
@@ -187,14 +187,14 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     const notifications = page.locator('[data-page-id="notifications"]');
     await expect(notifications).toHaveCount(0);
     await expect(notifications.locator('.entity-card-list-card')).toHaveCount(0);
-    await expect(factory.getByRole('heading', { name: 'Your factory needs attention.' })).toBeVisible();
+    await expect(factory.getByRole('heading', { name: 'Your campaigns need attention.' })).toBeVisible();
     await expect(factory.locator('.factory-running')).toHaveCount(0);
     await expect(factory.locator('.factory-rhythm-day')).toHaveCount(7);
     const rhythmBars = factory.locator('.factory-rhythm-bar-pair i:not([hidden])');
     await expect(rhythmBars.first()).toHaveCSS('animation-name', 'factory-rhythm-bar-grow');
     expect(await rhythmBars.last().evaluate((element) => getComputedStyle(element).animationDelay)).toBe('0.21s');
     await expect(factory.locator('.factory-station')).toHaveCount(2);
-    await expect(factory.locator('.factory-station').nth(0)).toContainText('Factory health50%1/2 healthy campaigns');
+    await expect(factory.locator('.factory-station').nth(0)).toContainText('Campaign health50%1/2 healthy campaigns');
     await expect(factory.locator('.factory-station').nth(1)).toContainText('Repository coverage50%3/6 repositories reached');
     expect(await factory.locator('.factory-station a').count()).toBeGreaterThan(0);
     expect(await page.locator('.factory-intro').evaluate((element) =>
