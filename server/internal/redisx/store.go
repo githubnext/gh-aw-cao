@@ -16,6 +16,8 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
 
+const redisWriteBatchSize = 250
+
 type Store struct {
 	Client    *Client
 	namespace string
@@ -125,6 +127,17 @@ func (s *Store) PutSource(ctx context.Context, generation string, source model.S
 		return nil, fmt.Errorf("create RediSearch index for %s: %w", source.Source, err)
 	}
 	setKey := s.sourceSetKey(generation, source.Source)
+	commands := make([][]string, 0, redisWriteBatchSize)
+	flush := func(rowNumber int) error {
+		if len(commands) == 0 {
+			return nil
+		}
+		if _, err := s.Client.DoMany(ctx, commands); err != nil {
+			return fmt.Errorf("write %s rows through %d: %w", source.Source, rowNumber, err)
+		}
+		commands = commands[:0]
+		return nil
+	}
 	for rowNumber, row := range source.Rows {
 		data, err := json.Marshal(row)
 		if err != nil {
@@ -149,9 +162,15 @@ func (s *Store) PutSource(ctx context.Context, generation string, source model.S
 		script := `redis.call("HSET", KEYS[1], unpack(ARGV)); redis.call("SADD", KEYS[2], KEYS[1]); return "OK"`
 		arguments := []string{"EVAL", script, "2", key, setKey}
 		arguments = append(arguments, command[2:]...)
-		if _, err := s.Client.Do(ctx, arguments...); err != nil {
-			return nil, fmt.Errorf("write %s row: %w", source.Source, err)
+		commands = append(commands, arguments)
+		if len(commands) == cap(commands) {
+			if err := flush(rowNumber); err != nil {
+				return nil, err
+			}
 		}
+	}
+	if err := flush(len(source.Rows) - 1); err != nil {
+		return nil, err
 	}
 	metadata, _ := json.Marshal(source.Metadata)
 	schema, _ := json.Marshal(aliases)

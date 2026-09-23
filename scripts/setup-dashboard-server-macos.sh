@@ -34,16 +34,22 @@ brew_install_cask() {
   fi
 }
 
-brew tap redis-stack/redis-stack
 brew_install_formula go
 brew_install_formula node@24
-brew_install_cask redis-stack/redis-stack/redis-stack-server
+brew_install_formula docker
+brew_install_formula docker-compose
+brew_install_formula colima
 
 node_prefix="$(brew --prefix node@24)"
 export PATH="$node_prefix/bin:$PATH"
 
-if ! command -v redis-stack-server >/dev/null 2>&1; then
-  echo "redis-stack-server was installed but is not available on PATH." >&2
+if ! command -v docker >/dev/null 2>&1; then
+  echo "The Docker CLI was installed but is not available on PATH." >&2
+  exit 1
+fi
+
+if ! command -v colima >/dev/null 2>&1; then
+  echo "Colima was installed but is not available on PATH." >&2
   exit 1
 fi
 
@@ -64,7 +70,8 @@ echo "Installed dashboard server dependencies:"
 echo "  $(go version)"
 echo "  node $(node --version)"
 echo "  npm $(npm --version)"
-echo "  Redis Stack $(brew list --cask --versions redis-stack-server | awk '{print $2}')"
+echo "  Docker $(docker --version)"
+echo "  Colima $(colima version | head -1)"
 
 if ! GOTOOLCHAIN=auto go -C server env GOVERSION >/dev/null 2>&1; then
   cat >&2 <<'EOF'
@@ -79,7 +86,8 @@ cat <<'EOF'
 
 Setup complete. Start the local stack with:
 
-  redis-stack-server --bind 127.0.0.1 --port 6379 --save '' --appendonly no
+  colima start
+  npm run dashboard:server:redis-up
   npm run dashboard:server:build
   go -C server run ./cmd/cao-dashboard serve \
     --source testdata/deployed-subset

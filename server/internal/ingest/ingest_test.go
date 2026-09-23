@@ -61,6 +61,21 @@ func TestValidateManifestFailsClosed(t *testing.T) {
 			t.Fatalf("expected missing run phase error, got %v", err)
 		}
 	})
+	t.Run("non-shard identities are not file content hashes", func(t *testing.T) {
+		directory := scratchDirectory(t)
+		name := "gh-aw-logs-runs/runs.jsonl"
+		content := []byte("{\"kind\":\"metadata\"}\n")
+		writeTestFile(t, filepath.Join(directory, filepath.FromSlash(name)), content)
+		sum := sha256.Sum256(content)
+		manifest, _ := json.Marshal(map[string]string{
+			name:                hex.EncodeToString(sum[:]),
+			"gh-aw-logs.sqlite": strings.Repeat("f", 64),
+		})
+		writeTestFile(t, filepath.Join(directory, "payload-hashes.json"), manifest)
+		if _, _, _, err := ValidateManifest(directory); err != nil {
+			t.Fatalf("non-shard identity must not be validated as a file hash: %v", err)
+		}
+	})
 }
 
 func TestDeployedSubsetProjectsCanonicalSources(t *testing.T) {

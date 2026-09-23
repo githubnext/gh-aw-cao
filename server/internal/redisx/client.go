@@ -89,6 +89,51 @@ func (c *Client) Do(ctx context.Context, args ...string) (any, error) {
 }
 
 func (c *Client) do(ctx context.Context, args ...string) (any, error) {
+	connection, reader, writer, err := c.connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = connection.Close()
+	}()
+	if err := writeCommand(writer, args...); err != nil {
+		return nil, err
+	}
+	if err := writer.Flush(); err != nil {
+		return nil, err
+	}
+	return readRESP(reader)
+}
+
+func (c *Client) DoMany(ctx context.Context, commands [][]string) ([]any, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	connection, reader, writer, err := c.connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = connection.Close()
+	}()
+	for _, command := range commands {
+		if err := writeCommand(writer, command...); err != nil {
+			return nil, err
+		}
+	}
+	if err := writer.Flush(); err != nil {
+		return nil, err
+	}
+	results := make([]any, len(commands))
+	for index := range commands {
+		results[index], err = readRESP(reader)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return results, nil
+}
+
+func (c *Client) connect(ctx context.Context) (net.Conn, *bufio.Reader, *bufio.Writer, error) {
 	dialer := net.Dialer{Timeout: c.timeout}
 	var connection net.Conn
 	var err error
@@ -102,11 +147,8 @@ func (c *Client) do(ctx context.Context, args ...string) (any, error) {
 		connection, err = dialer.DialContext(ctx, "tcp", c.address)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("connect to Redis: %w", err)
+		return nil, nil, nil, fmt.Errorf("connect to Redis: %w", err)
 	}
-	defer func() {
-		_ = connection.Close()
-	}()
 	deadline := time.Now().Add(c.timeout)
 	if value, ok := ctx.Deadline(); ok && value.Before(deadline) {
 		deadline = value
@@ -120,33 +162,33 @@ func (c *Client) do(ctx context.Context, args ...string) (any, error) {
 			authentication = []string{"AUTH", c.username, c.password}
 		}
 		if err := writeCommand(writer, authentication...); err != nil {
-			return nil, err
+			_ = connection.Close()
+			return nil, nil, nil, err
 		}
 		if err := writer.Flush(); err != nil {
-			return nil, err
+			_ = connection.Close()
+			return nil, nil, nil, err
 		}
 		if _, err := readRESP(reader); err != nil {
-			return nil, fmt.Errorf("redis authentication failed")
+			_ = connection.Close()
+			return nil, nil, nil, errors.New("redis authentication failed")
 		}
 	}
 	if c.database != 0 {
 		if err := writeCommand(writer, "SELECT", strconv.Itoa(c.database)); err != nil {
-			return nil, err
+			_ = connection.Close()
+			return nil, nil, nil, err
 		}
 		if err := writer.Flush(); err != nil {
-			return nil, err
+			_ = connection.Close()
+			return nil, nil, nil, err
 		}
 		if _, err := readRESP(reader); err != nil {
-			return nil, err
+			_ = connection.Close()
+			return nil, nil, nil, err
 		}
 	}
-	if err := writeCommand(writer, args...); err != nil {
-		return nil, err
-	}
-	if err := writer.Flush(); err != nil {
-		return nil, err
-	}
-	return readRESP(reader)
+	return connection, reader, writer, nil
 }
 
 func writeCommand(writer *bufio.Writer, args ...string) error {

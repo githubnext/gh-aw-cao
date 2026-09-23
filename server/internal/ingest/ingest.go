@@ -23,6 +23,8 @@ import (
 
 var collections = []string{"campaigns", "repositories", "workflows", "runs", "domains", "tools", "audits", "issues"}
 
+const projectionBatchSize = 25_000
+
 type Result struct {
 	Generation   string         `json:"generation"`
 	Revision     int64          `json:"revision"`
@@ -57,16 +59,22 @@ func ValidateManifest(directory string) (Manifest, []string, []string, error) {
 		if clean != name || filepath.IsAbs(name) || strings.HasPrefix(clean, "../") {
 			return nil, nil, nil, fmt.Errorf("manifest path %q is unsafe", name)
 		}
+		verifyContentHash := false
 		switch {
 		case strings.HasPrefix(name, "gh-aw-logs-runs/") && strings.HasSuffix(name, ".jsonl"):
 			runs = append(runs, name)
+			verifyContentHash = true
 		case strings.HasPrefix(name, "gh-aw-logs-records/") && strings.HasSuffix(name, ".jsonl"):
 			records = append(records, name)
+			verifyContentHash = true
 		case strings.HasPrefix(name, "gh-aw-logs-shards/"):
 			return nil, nil, nil, errors.New("raw activity JSONL is not supported; compacted run/record shards are required")
 		}
 		if len(expected) != 64 {
 			return nil, nil, nil, fmt.Errorf("manifest hash for %q is not SHA-256", name)
+		}
+		if !verifyContentHash {
+			continue
 		}
 		// #nosec G304 -- name is constrained above to a clean relative manifest path.
 		payload, err := os.ReadFile(filepath.Join(directory, filepath.FromSlash(name)))
@@ -332,16 +340,28 @@ func projectSources(canonical map[string][]model.Row, inventory map[string]model
 	runRecords, ok := index["run-records"]
 	if ok {
 		for _, name := range []string{"domains", "tools", "audits", "issues"} {
-			available := mergeSourceMaps(sources, map[string]model.Source{
-				"$records": {Source: "$records", Rows: canonical[name], Metadata: model.Metadata{}},
-				"$runs":    {Source: "$runs", Rows: canonical["runs"], Metadata: model.Metadata{}},
-			})
-			result, err := execute(runRecords, available)
-			if err != nil {
-				return nil, fmt.Errorf("project %s: %w", name, err)
+			records := canonical[name]
+			projected := model.Source{Source: name, Rows: []model.Row{}, Metadata: model.Metadata{}}
+			for offset := 0; offset < max(1, len(records)); offset += projectionBatchSize {
+				end := min(len(records), offset+projectionBatchSize)
+				batch := records[offset:end]
+				available := mergeSourceMaps(sources, map[string]model.Source{
+					"$records": {Source: "$records", Rows: batch, Metadata: model.Metadata{}},
+					"$runs":    {Source: "$runs", Rows: canonical["runs"], Metadata: model.Metadata{}},
+				})
+				result, err := execute(runRecords, available)
+				if err != nil {
+					return nil, fmt.Errorf("project %s batch %d-%d: %w", name, offset, end, err)
+				}
+				projected.Rows = append(projected.Rows, result.Rows...)
+				for key, value := range result.Metadata {
+					projected.Metadata[key] = value
+				}
+				if len(records) == 0 {
+					break
+				}
 			}
-			result.Source = name
-			sources[name] = mergeLogical(sources[name], result)
+			sources[name] = mergeLogical(sources[name], projected)
 		}
 	}
 	for _, name := range []string{"mcp-calls", "findings", "firewall-observations"} {

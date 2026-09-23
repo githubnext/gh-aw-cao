@@ -211,14 +211,15 @@ On a MacBook, install Homebrew first and run the idempotent project setup:
 npm run dashboard:server:setup:macos
 ```
 
-The command installs Homebrew Go, Node.js 24, Redis Stack Server with
-RediSearch, and the dashboard npm dependencies. It does not start a persistent
-Homebrew service.
+The command installs Homebrew Go, Node.js 24, the Docker CLI, Docker Compose,
+Colima, and the dashboard npm dependencies. Redis Stack with RediSearch runs only through
+`server/docker-compose.yml`; the setup does not install or start a native Redis
+service.
 
 From the repository root:
 
 ```bash
-docker compose -f server/docker-compose.yml up -d
+docker-compose -f server/docker-compose.yml up -d
 
 npm --prefix dashboard/site ci
 npm run dashboard:server:build
@@ -279,7 +280,7 @@ curl http://127.0.0.1:8443/api/v1/query \
 Stop Redis:
 
 ```bash
-docker compose -f server/docker-compose.yml down
+docker-compose -f server/docker-compose.yml down
 ```
 
 ## Validation and CI
@@ -297,7 +298,7 @@ The Redis-backed end-to-end test uses the deployed-format subset under
 the Runs, Workflows, and Repositories views render populated rows:
 
 ```bash
-docker compose -f server/docker-compose.yml up -d
+docker-compose -f server/docker-compose.yml up -d
 npm ci
 npm --prefix dashboard/site ci
 npm run dashboard:server:build
