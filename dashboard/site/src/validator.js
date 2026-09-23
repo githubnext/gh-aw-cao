@@ -4,6 +4,7 @@ import {
   AGGREGATE_VALUES,
   BUILT_IN_PAGE_KEYS,
   BUILT_IN_PAGE_VALUES,
+  CARD_TEMPLATE_ACTION_KEYS,
   CARD_STATUS_KEYS,
   CARD_TEMPLATE_KEYS,
   CARD_TIMING_FIELD_KEYS,
@@ -559,6 +560,62 @@ function validateCardTemplates(templates, templatesNode, errors) {
     errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'card-templates must be a non-empty sequence.', '$.dashboard.card-templates'));
     return ids;
   }
+
+  /**
+   * @param {unknown} actions
+   * @param {unknown} actionsNode
+   * @param {string} path
+   * @param {ValidationError[]} errors
+   */
+  function validateCardTemplateActions(actions, actionsNode, path, errors) {
+    if (actions === undefined) return;
+    if (!Array.isArray(actions) || actions.length === 0) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'card template actions must be a non-empty sequence.', path));
+      return;
+    }
+    actions.forEach((action, index) => {
+      const actionPath = `${path}[${index}]`;
+      const actionNode = getSequenceItemNode(actionsNode, index);
+      if (!isPlainObject(action)) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'card template action must be a mapping.', actionPath));
+        return;
+      }
+      validateObjectKeys(actionNode, CARD_TEMPLATE_ACTION_KEYS, actionPath, errors);
+      validateRequiredIdentifier(action.action, `${actionPath}.action`, 'card template CLI action reference', errors);
+      const declaredAction = typeof action.action === 'string' ? declaredCliActions.get(action.action) : undefined;
+      if (typeof action.action === 'string' && !declaredAction) {
+        errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'card template action must reference a declared dashboard CLI action.', `${actionPath}.action`));
+      } else if (declaredAction?.placement !== 'row') {
+        errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'card template action must reference a row-placed dashboard CLI action.', `${actionPath}.action`));
+      }
+      const context = action.context;
+      if (!Array.isArray(context) || context.length === 0) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'card template action context must be a non-empty sequence of source fields.', `${actionPath}.context`));
+      } else {
+        context.forEach((field, fieldIndex) => validateRequiredIdentifier(
+          field,
+          `${actionPath}.context[${fieldIndex}]`,
+          'card template action context field',
+          errors
+        ));
+        const command = declaredAction?.command;
+        const templateFields = typeof command === 'string' ? cliActionTemplateFields(command) : [];
+        if (templateFields.some((field) => !context.includes(field))) {
+          errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'card template action context must include every command template field.', `${actionPath}.context`));
+        }
+      }
+      if (action.when === undefined) return;
+      if (!isPlainObject(action.when)) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'card template action when must be a mapping.', `${actionPath}.when`));
+        return;
+      }
+      validateObjectKeys(getValueNodeByKey(actionNode, 'when'), TABLE_ACTION_WHEN_KEYS, `${actionPath}.when`, errors);
+      validateRequiredIdentifier(action.when.field, `${actionPath}.when.field`, 'card template action when field', errors);
+      if (!Object.hasOwn(action.when, 'equals') || ['object', 'function', 'symbol'].includes(typeof action.when.equals)) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'card template action when equals must be a scalar.', `${actionPath}.when.equals`));
+      }
+    });
+  }
   templates.forEach((template, index) => {
     const path = `$.dashboard.card-templates[${index}]`;
     const templateNode = getSequenceItemNode(templatesNode, index);
@@ -585,6 +642,7 @@ function validateCardTemplates(templates, templatesNode, errors) {
     }
     validateCardTemplateStatus(template.status, getValueNodeByKey(templateNode, 'status'), `${path}.status`, errors);
     validateCardTemplateTiming(template.timing, getValueNodeByKey(templateNode, 'timing'), `${path}.timing`, errors);
+    validateCardTemplateActions(template.actions, getValueNodeByKey(templateNode, 'actions'), `${path}.actions`, errors);
     for (const key of ['labels', 'details']) {
       const fields = template[key];
       if (!Array.isArray(fields) || (key === 'details' && fields.length === 0)) {
@@ -807,6 +865,7 @@ function validateDashboard(dashboard, dashboardNode, errors) {
       query.path
     ));
   }
+  validateCliActions(dashboard['cli-actions'], getValueNodeByKey(dashboardNode, 'cli-actions'), errors);
   declaredCardTemplates = validateCardTemplates(
     dashboard['card-templates'],
     getValueNodeByKey(dashboardNode, 'card-templates'),
@@ -819,7 +878,6 @@ function validateDashboard(dashboard, dashboardNode, errors) {
   );
   const unitIds = validateUnits(dashboard.units, getValueNodeByKey(dashboardNode, 'units'), errors);
   validateSiteCallouts(dashboard.callouts, getValueNodeByKey(dashboardNode, 'callouts'), errors);
-  validateCliActions(dashboard['cli-actions'], getValueNodeByKey(dashboardNode, 'cli-actions'), errors);
 
   if (!Array.isArray(dashboard.pages) || dashboard.pages.length === 0) {
     errors.push(createError(
@@ -1557,6 +1615,13 @@ function validatePage(page, pageNode, path, pageIds, errors) {
   validateOptionalStringField(page.description, `${path}.description`, errors);
   if (page['class-name'] !== undefined) {
     validateRequiredIdentifier(page['class-name'], `${path}.class-name`, 'page class name', errors);
+  }
+  if (page['filter-bar'] !== undefined && typeof page['filter-bar'] !== 'boolean') {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      'filter-bar must be a Boolean when present.',
+      `${path}.filter-bar`
+    ));
   }
   if (page.icon !== undefined) {
     validateStringField(page.icon, `${path}.icon`, true, errors);
@@ -3055,12 +3120,7 @@ function validateTemporalSeriesEntries(entries, entriesNode, path, allowedKeys, 
  */
 function validateListDrill(drill, drillNode, listPath, style, errors) {
   const path = `${listPath}.drill`;
-  if (drill === undefined) {
-    if (style === 'entity-cards') {
-      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'entity-cards lists must declare drill behavior.', path));
-    }
-    return;
-  }
+  if (drill === undefined) return;
   if (style !== 'entity-cards') {
     errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'list.drill is supported only for entity-cards lists.', path));
     return;

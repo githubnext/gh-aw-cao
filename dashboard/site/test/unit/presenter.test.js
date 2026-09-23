@@ -1524,7 +1524,7 @@ describe('presenter built-in and custom pages', () => {
     }
   });
 
-  it('renders view modes in each non-overview page filter bar and emits worker query context', async () => {
+  it('renders ordered view modes in page chrome and emits worker query context', async () => {
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
@@ -1587,21 +1587,67 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-page-id="overview"] .filter-bar')).toBeNull();
 
     const page = await activatePage(rendered, 'runs');
-    const filterBar = page?.querySelector(':scope > .filter-bar');
-    const modeButtons = [...filterBar?.querySelectorAll('[data-view-mode-value]') ?? []];
+    const chrome = page?.querySelector(':scope > .page-chrome');
+    const modeButtons = [...chrome?.querySelectorAll('[data-view-mode-value]') ?? []];
     /** @type {unknown[]} */
     const contexts = [];
     rendered.addEventListener('dashboard-query-context-change', (event) => {
       if (event instanceof CustomEvent) contexts.push(event.detail);
     });
 
-    expect(modeButtons.map((button) => button.textContent)).toEqual(['Chart', 'Table', 'Cards']);
+    expect(page?.querySelector(':scope > .filter-bar')).toBeNull();
+    expect(chrome?.querySelector('.filter-bar')).toBeNull();
+    expect(modeButtons.map((button) => button.textContent)).toEqual(['Chart', 'Cards', 'Table']);
     expect(modeButtons[0]?.getAttribute('aria-pressed')).toBe('true');
     expect(page?.querySelector('[data-view-id="runs-chart"]')?.getAttribute('data-view-mode-content')).toBe('chart');
     expect(page?.querySelector('[data-view-id="runs-table"]')?.getAttribute('data-view-mode-content')).toBe('table');
     expect(rendered.querySelector('.mobile-view-mode-toggle')).not.toBeNull();
     /** @type {HTMLButtonElement} */ (modeButtons[1]).click();
-    expect(contexts.at(-1)).toMatchObject({ pageId: 'runs', queryContext: { viewMode: 'table' } });
+    expect(contexts.at(-1)).toMatchObject({ pageId: 'runs', queryContext: { viewMode: 'card' } });
+  });
+
+  it('omits page chrome when a page has only one card view mode', async () => {
+    const rendered = renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'cards-only-dashboard',
+          title: 'Cards only',
+          pages: [{
+            id: 'maintenance',
+            kind: /** @type {'custom'} */ ('custom'),
+            title: 'Maintenance',
+            views: [{
+              id: 'campaigns',
+              title: 'Campaigns',
+              data: { source: 'campaigns' },
+              mark: 'list',
+              list: { style: 'cards', icon: 'goal' },
+              encoding: { columns: [{ field: 'campaign-name' }] }
+            }]
+          }]
+        }
+      },
+      sources: {
+        campaigns: {
+          source: 'campaigns',
+          rows: [],
+          metadata: {
+            'source-id': 'campaigns-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-16T10:00:00Z',
+            'retrieved-at': '2026-09-16T10:00:00Z',
+            availability: 'available',
+            completeness: 'complete',
+            freshness: 'fresh'
+          }
+        }
+      }
+    });
+
+    const page = await activatePage(rendered, 'maintenance');
+    expect(page?.querySelector(':scope > .page-chrome')).toBeNull();
+    expect(page?.getAttribute('data-view-mode')).toBe('card');
   });
 
   it('includes the template default view mode in the initial page source request', async () => {
@@ -1691,8 +1737,8 @@ describe('presenter built-in and custom pages', () => {
     const modeButtons = [...rendered.querySelectorAll('[data-view-mode-value]')];
 
     expect(rendered.querySelector('[data-page-id="repositories"]')?.getAttribute('data-view-mode')).toBe('table');
-    expect(modeButtons.map((button) => button.textContent)).toEqual(['Table', 'Cards']);
-    expect(modeButtons[0]?.getAttribute('aria-pressed')).toBe('true');
+    expect(modeButtons.map((button) => button.textContent)).toEqual(['Cards', 'Table']);
+    expect(modeButtons[1]?.getAttribute('aria-pressed')).toBe('true');
     expect(rendered.querySelector('[data-mobile-card-list] .entity-card-list-card')?.textContent).toContain('githubnext/gh-aw-cao');
   });
 

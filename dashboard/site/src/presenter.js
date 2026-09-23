@@ -12,7 +12,7 @@ import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayo
 import { externalAnchorAttrs, findLink } from './components/link-content.js';
 import { elementHandlesEmptyRows, elementHandlesUnavailableSource, elementLoadsSourcesAsync, renderUiElement } from './components/ui-elements.js';
 import { renderDataView, supportsIncrementalChartContinuation } from './components/data-view.js';
-import { enableHorizonOutsideClickDismissal, renderFilterBar, setTimeWindowFilter, setTimeWindowRange } from './components/filter-bar.js';
+import { enableHorizonOutsideClickDismissal, renderFilterBar, renderViewModeControl, setTimeWindowFilter, setTimeWindowRange } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
 import { renderDashboardHorizon } from './components/dashboard-horizon.js';
 import { restoreDashboardTheme } from './components/theme-settings.js';
@@ -62,11 +62,11 @@ import {
  */
 
 /**
- * @typedef {{ id: string, kind: 'built-in', page: string, title?: string, ['navigation-label']?: string, description?: string, icon?: string, ['class-name']?: string, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], definition?: { views?: Array<unknown>, sections?: PresentablePageSection[], ['data-state']?: Record<string, boolean> } }} PresentableBuiltInPage
+ * @typedef {{ id: string, kind: 'built-in', page: string, title?: string, ['navigation-label']?: string, description?: string, icon?: string, ['class-name']?: string, ['filter-bar']?: boolean, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], definition?: { views?: Array<unknown>, sections?: PresentablePageSection[], ['data-state']?: Record<string, boolean> } }} PresentableBuiltInPage
  */
 
 /**
- * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, description?: string, icon?: string, ['class-name']?: string, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
+ * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, description?: string, icon?: string, ['class-name']?: string, ['filter-bar']?: boolean, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
  */
 
 /**
@@ -253,8 +253,8 @@ export function renderDashboard(input) {
       if (!resolvedPage()) return null;
       const renderPreparedPage = () => {
         const pagePayload = getBuiltInPagePayload(resolvedPage(), reusableViews);
-        const defaultViewMode = pageId === 'overview' ? undefined : availableViewModes(pagePayload.views ?? [])[0];
-        const effectiveQueryContext = options.queryContext ?? (defaultViewMode ? { viewMode: defaultViewMode } : undefined);
+        const initialViewMode = pageId === 'overview' ? undefined : defaultViewMode(pagePayload.views ?? []);
+        const effectiveQueryContext = options.queryContext ?? (initialViewMode ? { viewMode: initialViewMode } : undefined);
         options.queryContext = effectiveQueryContext;
         const rendersBeforePageSources = dashboardPageSourcesAreIndependentlyBound(resolvedPage(), reusableViews);
         /** @param {Record<string, LogicalSourceInput>} pageSources */
@@ -699,9 +699,11 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
     ? page.views.map((view) => applyDashboardDefaults(view, effectiveDashboardDefaults))
     : [];
   const viewModes = page.id === 'overview' ? [] : availableViewModes(views);
-  const selectedViewMode = /** @type {'chart'|'table'|'card'|undefined} */ (viewModes.includes(queryContext?.viewMode ?? 'chart')
-    ? queryContext?.viewMode ?? 'chart'
-    : viewModes[0]);
+  const selectedViewMode = /** @type {'chart'|'table'|'card'|undefined} */ (
+    viewModes.includes(queryContext?.viewMode ?? 'chart')
+      ? queryContext?.viewMode ?? 'chart'
+      : defaultViewMode(views)
+  );
   const sections = Array.isArray(page.sections) ? page.sections : [];
   const standaloneCalloutViewIds = new Set(sections.flatMap((section) => {
     if (!Array.isArray(section.views) || section.views.length !== 1) return [];
@@ -805,8 +807,12 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
 
   /** @type {HTMLElement} */
   let root;
-  const filterBar = withFilterBar && page.id !== 'overview'
-    ? renderFilterBar((filters, timeWindow, viewMode) => {
+  /**
+   * @param {Map<string, string[]>} filters
+   * @param {{ start?: string, end?: string } | undefined} timeWindow
+   * @param {'chart'|'table'|'card'|undefined} viewMode
+   */
+  const dispatchQueryContextChange = (filters, timeWindow, viewMode) => {
       root.dispatchEvent(new CustomEvent('dashboard-query-context-change', {
         bubbles: true,
         detail: {
@@ -820,16 +826,30 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
           }
         }
       }));
+    };
+  let currentFilters = new Map(Object.entries(queryContext?.filters ?? {}));
+  let currentTimeWindow = queryContext?.timeWindow;
+  const filterBar = withFilterBar && page['filter-bar'] === true
+    ? renderFilterBar((filters, timeWindow) => {
+      currentFilters = filters;
+      currentTimeWindow = timeWindow;
+      dispatchQueryContextChange(currentFilters, currentTimeWindow, selectedViewMode);
     }, {
       defaultRange: isPlainObject(dashboardDefaults.time) && typeof dashboardDefaults.time.range === 'string'
         ? dashboardDefaults.time.range
         : 'all',
       referenceEnd: latestSourceCoverageEnd(page.id === 'readiness'
         ? [sources.runs, sources.findings, sources.outcomes]
-        : [...pageSources.values()]),
-      viewModes,
-      viewMode: selectedViewMode
+        : [...pageSources.values()])
     })
+    : null;
+  const viewModeControl = viewModes.length > 1
+    ? renderViewModeControl(viewModes, selectedViewMode, (viewMode) => {
+      dispatchQueryContextChange(currentFilters, currentTimeWindow, viewMode);
+    })
+    : null;
+  const pageChrome = filterBar || viewModeControl
+    ? h('div', { className: 'page-chrome' }, filterBar, viewModeControl)
     : null;
   root = h(
     'section',
@@ -846,7 +866,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       'data-view-mode': selectedViewMode
     },
     renderedRouteTabs,
-    filterBar,
+    pageChrome,
     ...(renderedViews.length > 0
       ? [renderHiddenDataStateMetrics(summarizeDataState(pageSources)), renderedContent]
       : [h('p', null, 'No custom views available.')])
@@ -858,8 +878,17 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
 function availableViewModes(views) {
   const modes = new Set(views.map(viewModeForView));
   if (modes.has('table')) modes.add('card');
-  const orderedModes = /** @type {const} */ (['chart', 'table', 'card']);
+  const orderedModes = /** @type {const} */ (['chart', 'card', 'table']);
   return orderedModes.filter((mode) => modes.has(mode));
+}
+
+/** @param {Array<unknown>} views @returns {'chart'|'table'|'card'|undefined} */
+function defaultViewMode(views) {
+  const modes = new Set(views.map(viewModeForView));
+  if (modes.has('chart')) return 'chart';
+  if (modes.has('table')) return 'table';
+  if (modes.has('card')) return 'card';
+  return undefined;
 }
 
 /** @param {unknown} view @returns {'chart'|'table'|'card'} */

@@ -17,8 +17,8 @@ const VIEW_MODE_ICONS = { chart: 'graph', table: 'table', card: 'stack' };
 export const HORIZON_FILTER_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.horizon-filter-settings');
 
 /**
- * @param {(filters: Map<string, string[]>, timeWindow?: TimeWindow, viewMode?: 'chart'|'table'|'card') => void} onChange
- * @param {{ defaultRange?: string, referenceEnd?: string, viewModes?: Array<'chart'|'table'|'card'>, viewMode?: 'chart'|'table'|'card' }} [options]
+ * @param {(filters: Map<string, string[]>, timeWindow?: TimeWindow) => void} onChange
+ * @param {{ defaultRange?: string, referenceEnd?: string }} [options]
  * @returns {HTMLElement}
  */
 export function renderFilterBar(onChange, options = {}) {
@@ -31,11 +31,6 @@ export function renderFilterBar(onChange, options = {}) {
   }));
   const count = renderCountBadge(0, '0 filters');
   const applyFilters = debounce(onChange, FILTER_DEBOUNCE_MS);
-  const viewModes = options.viewModes ?? [];
-  const initialViewMode = /** @type {'chart'|'table'|'card'|undefined} */ (viewModes.includes(options.viewMode ?? 'chart')
-    ? options.viewMode ?? 'chart'
-    : viewModes[0]);
-  const selectedViewMode = state(initialViewMode);
   /** @type {ReturnType<typeof renderHorizonControl>} */
   let horizonControl;
   const emit = () => {
@@ -44,9 +39,7 @@ export function renderFilterBar(onChange, options = {}) {
     const parsed = parseFilters(filters.value);
     parsed.set('mode', horizonControl.modes());
     updateCount(parsed);
-    const viewMode = selectedViewMode.get();
-    if (viewMode) onChange(parsed, horizonControl.value(), viewMode);
-    else onChange(parsed, horizonControl.value());
+    onChange(parsed, horizonControl.value());
   };
   horizonControl = renderHorizonControl(options.defaultRange ?? ALL_RECORDED, options.referenceEnd, emit);
   const root = h(
@@ -64,7 +57,7 @@ export function renderFilterBar(onChange, options = {}) {
       ),
       horizonControl.element
     ),
-    viewModes.length > 0 ? renderViewModeControl(viewModes, selectedViewMode, emit) : null
+    null
   );
   /** @param {boolean} expanded */
   const setExpanded = (expanded) => {
@@ -89,9 +82,7 @@ export function renderFilterBar(onChange, options = {}) {
     const parsed = parseFilters(filters.value);
     parsed.set('mode', horizonControl.modes());
     updateCount(parsed);
-    const viewMode = selectedViewMode.get();
-    if (viewMode) applyFilters(parsed, horizonControl.value(), viewMode);
-    else applyFilters(parsed, horizonControl.value());
+    applyFilters(parsed, horizonControl.value());
   });
   /** Strips `mode:` / `rollout-mode:` tokens from the freeform filter input, since applied
    * mode values always come from the horizon control's checkboxes, not this text field. */
@@ -138,11 +129,12 @@ export function renderFilterBar(onChange, options = {}) {
 
 /**
  * @param {Array<'chart'|'table'|'card'>} modes
- * @param {import('../reactive.js').State<'chart'|'table'|'card'|undefined>} selectedMode
- * @param {() => void} onChange
+ * @param {'chart'|'table'|'card'|undefined} initialMode
+ * @param {(mode: 'chart'|'table'|'card') => void} onChange
  */
-function renderViewModeControl(modes, selectedMode, onChange) {
+export function renderViewModeControl(modes, initialMode, onChange) {
   const root = h('div', { className: 'view-mode-control', role: 'group', 'aria-label': 'View mode' });
+  const selectedMode = state(initialMode);
   const buttons = new Map(modes.map((mode) => {
     const button = h(
       'button',
@@ -153,7 +145,7 @@ function renderViewModeControl(modes, selectedMode, onChange) {
     button.addEventListener('click', () => {
       if (selectedMode.get() === mode) return;
       selectedMode.set(mode);
-      onChange();
+      onChange(mode);
     });
     return [mode, button];
   }));

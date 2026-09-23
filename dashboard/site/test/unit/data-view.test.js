@@ -493,6 +493,54 @@ describe('data view renderer', () => {
     expect(activate).toHaveBeenCalledOnce();
   });
 
+  it('renders declared conditional CLI actions on entity cards', () => {
+    setDeclaredCliActions([{
+      id: 'update-campaign',
+      label: 'Update campaign',
+      icon: 'sync',
+      command: 'gh aw update {{campaign}}',
+      placement: 'row'
+    }], { canExecute: false });
+    const rendered = renderDataView('list', {
+      pageId: 'maintenance',
+      title: 'CAO packages',
+      sourceName: 'campaigns',
+      view: {
+        mark: 'list',
+        list: { style: 'entity-cards', card: 'maintenance-campaign', icon: 'workflow' },
+        encoding: { columns: [{ field: 'campaign-name' }] }
+      },
+      rows: [
+        { 'campaign-name': 'Current package', campaign: 'current', 'campaign-update-state': 'current' },
+        { 'campaign-name': 'Outdated package', campaign: 'outdated', 'campaign-update-state': 'update-available' }
+      ],
+      cardTemplates: {
+        'maintenance-campaign': {
+          icon: 'workflow',
+          title: { field: 'campaign-name' },
+          labels: [],
+          details: [],
+          actions: [{
+            action: 'update-campaign',
+            context: ['campaign'],
+            when: { field: 'campaign-update-state', equals: 'update-available' }
+          }]
+        }
+      },
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const cards = rendered?.querySelectorAll('.entity-card-list-card') ?? [];
+    expect(cards[0]?.querySelector('.entity-card-list-actions')).toBeNull();
+    expect(cards[1]?.querySelector('.entity-card-list-actions button')?.textContent).toContain('Update campaign');
+  });
+
   it('renders entity-card grids with row-selected icons', () => {
     const rendered = renderDataView('list', {
       pageId: 'agents',

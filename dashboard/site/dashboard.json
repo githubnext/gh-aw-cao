@@ -453,6 +453,81 @@
             "unit": "aic"
           }
         ]
+      },
+      {
+        "id": "maintenance-campaign",
+        "icon": "workflow",
+        "title": {
+          "field": "campaign-name",
+          "title": "Package"
+        },
+        "details": [
+          {
+            "field": "campaign-version",
+            "title": "Installed"
+          },
+          {
+            "field": "campaign-current-version",
+            "title": "Latest"
+          },
+          {
+            "field": "campaign-update-state",
+            "title": "Update",
+            "display": "status"
+          }
+        ],
+        "actions": [
+          {
+            "action": "update-campaign",
+            "context": [
+              "campaign"
+            ],
+            "when": {
+              "field": "campaign-update-state",
+              "equals": "update-available"
+            }
+          }
+        ],
+        "labels": [
+          {
+            "field": "campaign-registration",
+            "title": "Registration",
+            "display": "active-state"
+          }
+        ]
+      },
+      {
+        "id": "maintenance-repository",
+        "icon": "repo",
+        "title": {
+          "field": "repository",
+          "title": "Repository"
+        },
+        "details": [
+          {
+            "field": "gh-aw-version",
+            "title": "Installed"
+          },
+          {
+            "field": "gh-aw-current-version",
+            "title": "Latest"
+          }
+        ],
+        "actions": [
+          {
+            "action": "upgrade-target-repository",
+            "context": [
+              "repository"
+            ]
+          }
+        ],
+        "labels": [
+          {
+            "field": "upgrade-state",
+            "title": "Upgrade",
+            "display": "status"
+          }
+        ]
       }
     ],
     "views": [
@@ -10910,6 +10985,7 @@
         "page": "runs",
         "title": "Runs",
         "icon": "play",
+        "filter-bar": true,
         "definition": {
           "data-state": {
             "availability": true
@@ -11784,9 +11860,7 @@
             "data": {
               "source": "campaigns"
             },
-            "mark": "table",
-            "controls": "interactive",
-            "lazy-list": true,
+            "mark": "list",
             "empty-message": "No CAO campaign packages were observed.",
             "encoding": {
               "columns": [
@@ -11817,24 +11891,14 @@
                   "title": "Registration",
                   "display": "active-state"
                 }
-              ],
-              "actions": [
-                {
-                  "action": "update-campaign",
-                  "presentation": "cli-action",
-                  "icon": "sync",
-                  "label": "Update campaign",
-                  "context": [
-                    "campaign"
-                  ],
-                  "when": {
-                    "field": "campaign-update-state",
-                    "equals": "update-available"
-                  }
-                }
               ]
             },
-            "layout": "full"
+            "layout": "full",
+            "list": {
+              "style": "entity-cards",
+              "card": "maintenance-campaign",
+              "icon": "workflow"
+            }
           },
           {
             "id": "maintenance-repositories",
@@ -11843,9 +11907,7 @@
             "data": {
               "source": "maintenance-repositories"
             },
-            "mark": "table",
-            "controls": "interactive",
-            "lazy-list": true,
+            "mark": "list",
             "empty-message": "No Agentic Workflow compiler versions were observed.",
             "encoding": {
               "columns": [
@@ -11870,20 +11932,14 @@
                   "title": "Upgrade",
                   "display": "status"
                 }
-              ],
-              "actions": [
-                {
-                  "action": "upgrade-target-repository",
-                  "presentation": "cli-action",
-                  "icon": "download",
-                  "label": "Upgrade repository",
-                  "context": [
-                    "repository"
-                  ]
-                }
               ]
             },
-            "layout": "full"
+            "layout": "full",
+            "list": {
+              "style": "entity-cards",
+              "card": "maintenance-repository",
+              "icon": "repo"
+            }
           }
         ]
       },
@@ -12303,13 +12359,13 @@
       {
         "pages": [
           "overview",
-          "campaigns",
           "configuration"
         ]
       },
       {
         "label": "Data",
         "pages": [
+          "campaigns",
           "maintenance",
           "repositories",
           "workflows",

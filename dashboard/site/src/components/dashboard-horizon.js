@@ -77,7 +77,7 @@ export function renderDashboardHorizon(options) {
     toggle.setAttribute('aria-expanded', String(expanded));
     root.classList.toggle('filter-bar-expanded', expanded);
     const dashboardRoot = root.closest('.dashboard-root');
-    const activeFilterBar = dashboardRoot?.querySelector('.dashboard-page:not([hidden]) > .filter-bar');
+    const activeFilterBar = dashboardRoot?.querySelector('.dashboard-page:not([hidden]) > .page-chrome > .filter-bar');
     if (activeFilterBar instanceof HTMLElement) {
       activeFilterBar.classList.toggle('filter-bar-expanded', expanded);
     }

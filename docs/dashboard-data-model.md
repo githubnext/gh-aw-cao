@@ -37,11 +37,11 @@ the exact identities and parent relationships.
 | **Campaign** | Namespaced deterministic ID from the stable campaign slug | None | Classifies an installed starter campaign and its maintenance state. |
 | **Repository** | `github:repository:<github-id>` | None | Represents one GitHub repository across renames. |
 | **Workflow** | `github:workflow:<github-id>` | Repository | Represents one workflow across path or filename changes. |
-| **Run** | `github:run:<run-id>:attempt:<attempt>` | Repository and Workflow | Distinguishes every attempt of a GitHub Actions run. |
+| **Run** | `github:run:<owner>/<repository>:<run-id>` | Repository and Workflow | Converges observations for one repository-scoped GitHub Actions run while retaining the latest observed attempt. |
 | **Domain** | Namespaced deterministic source ID | Run | Records allowed and blocked firewall observations. |
 | **Tool** | Namespaced deterministic source ID | Run | Records MCP, Bash, and skill calls. |
 | **Audit** | Namespaced deterministic source ID | Run | Records lifecycle, policy, grader, agent, and other execution observations. |
-| **Issue** | Namespaced deterministic source ID | Run | Records issue and pull-request safe outputs. |
+| **Issue** | `github:issue:<owner>/<repository>:<number>` | Run | Records issue and pull-request safe outputs. |
 
 Names, paths, timestamps, and ingestion order are not canonical identities. Stable upstream IDs take precedence; deterministic source coordinates are used only when an upstream system provides no stable ID.
 
@@ -87,7 +87,14 @@ The activity shard manifest is the dashboard's published operational input. Norm
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
-The canonical database is `gh-aw-cao-dashboard-data`, schema version 11. It has stores for `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `audits`, and `issues`; all use their canonical `id` as the key. The `transactions` store records ingestion outcomes and is indexed by `createdAt` and `kind`. Because this database is disposable derived state, schema upgrades rebuild its stores from authoritative dashboard inputs.
+The canonical model is version 13. The browser database is
+`gh-aw-cao-dashboard-data`, IndexedDB version 20. Its canonical stores are
+`campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `audits`,
+and `issues`; all use `id` as the key. The `transactions` store records
+ingestion outcomes and is indexed by `createdAt`. Two additional disposable
+stores, `dailyOverviewAggregates` and `overviewAggregateMetadata`, implement the
+versioned Overview fast path. Schema upgrades rebuild all stores from
+authoritative dashboard inputs.
 
 For each ingestion, the worker reads the existing canonical batch, merges the incoming records, expires time-bounded records outside the 30-day retention window, and prunes orphaned descendants and unreferenced structural parents. The effective retention horizon is the later of the browser clock and the newest incoming observation, so a browser with a slow clock cannot prune current producer data. The worker then reconciles each canonical collection: it deletes records absent from the retained batch and writes changed records. This makes expired records disappear while allowing fresh partial collections to retain compatible history.
 
@@ -108,13 +115,23 @@ Every merged batch must satisfy these mandatory relationships:
 
 Work items and findings are projected from Issue and Audit records rather than stored in separate canonical tables. Independent logical sources, such as usage, outcomes, admissions, security, and MCP evidence, retain their published schemas in worker memory rather than being forced into unrelated entity tables. They are reconstructable from the static source artifact and are selected only when a page requests them.
 
-Source download, adaptation, normalization, IndexedDB writes, and page queries run in a dedicated Web Worker, keeping large object graphs and conversions off the rendering thread. A successful JSONL ingestion writes an `ingest-jsonl` transaction containing its timestamp, input-record count, and retained-record count. A failed JSONL ingestion writes an `ingest-jsonl-failed` transaction with the error type when possible, and does not write a partial incoming batch. The audit trail is diagnostic derived state, not an authoritative log.
+Source download, adaptation, normalization, IndexedDB writes, and page queries
+run in a dedicated Web Worker, keeping large object graphs and conversions off
+the rendering thread. Successful inputs write content-addressed ingestion
+receipts with their ingestion version, payload identity, and retained or
+committed record counts. Failures write a diagnostic receipt when possible.
+Because canonical writes use bounded transactions, a later failure may leave
+already committed records; it never writes a successful receipt, and the shard
+remains retryable. The audit trail is diagnostic derived state, not an
+authoritative log.
 
 The browser path fully replaces the legacy data system. Worker errors abort the update instead of rerunning ingestion through an older path, and an unusable source raises an explicit loading error. There is no shadow, dual-read, alias, or fallback route. Views render only after the worker returns that page's query projection.
 
 Before ingestion, the browser inspects its storage estimate and requests persistent storage when the API is available. Either request may be denied or fail without affecting correctness.
 
-Ingestion diagnostics use stable categories such as `NORMALIZATION_FAILED`, `TRANSACTION_ABORTED`, and `QUOTA_EXCEEDED`. A failed JSONL update never writes partial incoming data.
+Ingestion diagnostics use stable categories such as `NORMALIZATION_FAILED`,
+`TRANSACTION_ABORTED`, and `QUOTA_EXCEEDED`. A failed update never becomes
+current merely because an earlier bounded transaction committed.
 
 IndexedDB stores this canonical data as disposable derived state. Clearing browser storage triggers reconstruction from authorized published inputs; it does not delete authoritative information.
 

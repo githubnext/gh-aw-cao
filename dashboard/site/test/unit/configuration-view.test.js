@@ -231,8 +231,15 @@ describe('Configuration dashboard view', () => {
     const dataNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => candidate.label === 'Data');
 
     expect(page.title).toBe('Maintenance');
+    expect(page['filter-bar']).toBeUndefined();
     expect(page.views.map((/** @type {{ data: { source: string } }} */ view) => view.data.source))
       .toEqual(['campaigns', 'maintenance-repositories']);
+    expect(page.views.map((/** @type {{ mark: string }} */ view) => view.mark)).toEqual(['list', 'list']);
+    expect(page.views.map((/** @type {{ list: { style: string, card: string } }} */ view) => view.list))
+      .toEqual([
+        { style: 'entity-cards', card: 'maintenance-campaign', icon: 'workflow' },
+        { style: 'entity-cards', card: 'maintenance-repository', icon: 'repo' }
+      ]);
     expect(page.views[0].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field))
       .toEqual([
         'campaign-name',
@@ -248,6 +255,16 @@ describe('Configuration dashboard view', () => {
         'gh-aw-current-version',
         'upgrade-state'
       ]);
+    const templates = new Map(dashboard['card-templates'].map((/** @type {{ id: string }} */ template) => [template.id, template]));
+    expect(templates.get('maintenance-campaign').actions).toEqual([{
+      action: 'update-campaign',
+      context: ['campaign'],
+      when: { field: 'campaign-update-state', equals: 'update-available' }
+    }]);
+    expect(templates.get('maintenance-repository').actions).toEqual([{
+      action: 'upgrade-target-repository',
+      context: ['repository']
+    }]);
     expect(dataNavigation.pages).toContain('maintenance');
   });
 
