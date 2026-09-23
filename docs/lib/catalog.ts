@@ -25,16 +25,21 @@ export type CatalogEntry = {
   experimental: boolean;
   includes: string[];
   manifestFile: string;
+  manifestPath: string;
   readmePath?: string;
   ReadmeContent?: CampaignReadme["Content"];
 };
 
-const manifests = import.meta.glob<string>("../../*/aw.{yml,yaml}", {
+const manifests = import.meta.glob<string>(["../../*/aw.{yml,yaml}", "../../.experimental/*/aw.{yml,yaml}"], {
   query: "?raw",
   import: "default",
   eager: true,
+  exhaustive: true,
 });
-const readmes = import.meta.glob<CampaignReadme>("../../*/README.md", { eager: true });
+const readmes = import.meta.glob<CampaignReadme>(["../../*/README.md", "../../.experimental/*/README.md"], {
+  eager: true,
+  exhaustive: true,
+});
 const rootManifest = parse(rootManifestSource) as CampaignManifest;
 
 function requiredString(value: unknown, field: string, manifestPath: string): string {
@@ -85,10 +90,11 @@ const campaignEntries: CatalogEntry[] = Object.entries(manifests)
     if (!slug) throw new Error(`Could not derive a campaign slug from ${manifestPath}`);
     const manifestFile = manifestPath.split("/").at(-1);
     if (!manifestFile) throw new Error(`Could not derive a manifest filename from ${manifestPath}`);
+    const campaignPath = manifestPath.replace(/^\.\.\//, "").replace(/\/aw\.ya?ml$/, "");
 
     const manifest = parse(source) as CampaignManifest;
-    const readmePath = `../../${slug}/README.md`;
-    const readme = readmes[readmePath];
+    const readmeSourcePath = `../../${campaignPath}/README.md`;
+    const readme = readmes[readmeSourcePath];
 
     return {
       slug,
@@ -100,7 +106,8 @@ const campaignEntries: CatalogEntry[] = Object.entries(manifests)
       experimental: optionalBoolean(manifest.experimental, "experimental", manifestPath),
       includes: workflowList(manifest.includes, manifestPath),
       manifestFile,
-      readmePath: readme ? `${slug}/README.md` : undefined,
+      manifestPath: `${campaignPath}/${manifestFile}`,
+      readmePath: readme ? `${campaignPath}/README.md` : undefined,
       ReadmeContent: readme?.Content,
     };
   });

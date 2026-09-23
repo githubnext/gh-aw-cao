@@ -81,6 +81,7 @@ test("landing wizard client imports its prompt generation dependencies", () => {
 
 test("landing wizard operations come from the checked-in control policy", () => {
   assert.match(catalog, /import controlPolicy from "\.\.\/\.\.\/\.github\/workflows\/cao\.json"/);
+  assert.match(catalog, /\.experimental\/\*\/aw\.\{yml,yaml\}/);
   assert.match(catalog, /export const catalogEntries = campaignEntries\s+\.filter\(\(entry\) => !entry\.private\)/);
   assert.match(catalog, /selectConfiguredOperations\(controlPolicy, campaignEntries\)/);
   assert.match(wizard, /configuredOperationEntries as operations/);
