@@ -450,17 +450,21 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
         for (const id of ids) {
           runStore.delete(id);
           deletedRecords += 1;
-          for (const storeName of RUN_LINKED_STORES) {
-            const store = transaction.objectStore(storeName);
-            const index = store.index('byRun');
-            if (typeof index.openCursor !== 'function') {
-              const records = await requestResult(index.getAll(id));
-              for (const record of records) {
-                store.delete(record.id);
-                deletedRecords += 1;
-              }
-              continue;
+        }
+        const idSet = new Set(ids);
+        for (const storeName of RUN_LINKED_STORES) {
+          const store = transaction.objectStore(storeName);
+          const index = store.index('byRun');
+          if (typeof index.openCursor !== 'function') {
+            const records = await requestResult(store.getAll());
+            for (const record of records) {
+              if (!idSet.has(String(record.runId))) continue;
+              store.delete(record.id);
+              deletedRecords += 1;
             }
+            continue;
+          }
+          for (const id of ids) {
             const request = index.openCursor(id);
             request.onsuccess = () => {
               const cursor = request.result;
