@@ -88,8 +88,8 @@ jobs:
         id: target_github_app_probe
         continue-on-error: true
         env:
-          GH_AW_IGNORE_IF_MISSING_PRIVATE_KEY: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
-        if: ${{ vars.GH_AW_GITHUB_READ_APP_ID != '' && env.GH_AW_IGNORE_IF_MISSING_PRIVATE_KEY != '' }}
+          READ_APP_PRIVATE_KEY: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
+        if: ${{ vars.GH_AW_GITHUB_READ_APP_ID != '' && env.READ_APP_PRIVATE_KEY != '' }}
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           client-id: ${{ vars.GH_AW_GITHUB_READ_APP_ID }}
@@ -112,7 +112,11 @@ jobs:
             echo "client_id=$READ_APP_CLIENT_ID" >> "$GITHUB_OUTPUT"
           else
             echo "client_id=" >> "$GITHUB_OUTPUT"
-            echo "::warning::The read-only GitHub App has no installation covering $TARGET_REPOSITORY; continuing with the configured fallback token. Report the analysis as incomplete when target evidence cannot be read."
+            if [[ "$PROBE_OUTCOME" == "skipped" ]]; then
+              echo "::warning::No read-only GitHub App is configured; continuing with the configured fallback token. Report the analysis as incomplete when target evidence cannot be read."
+            else
+              echo "::warning::The read-only GitHub App has no installation covering $TARGET_REPOSITORY; continuing with the configured fallback token. Report the analysis as incomplete when target evidence cannot be read."
+            fi
           fi
 
 if: needs.pre_activation.outputs.cao_authorized == 'true'
