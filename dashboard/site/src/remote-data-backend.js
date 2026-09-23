@@ -32,6 +32,23 @@ export function usesRemoteDataBackend(document = globalThis.document) {
   return document?.querySelector?.(`meta[name="${BACKEND_META_NAME}"]`)?.getAttribute("content") === REMOTE_BACKEND;
 }
 
+/**
+ * Removes static-dashboard PWA state from the server-backed origin. A worker
+ * controlling the current page remains until navigation, but unregistering it
+ * prevents update-driven controller changes and reload loops.
+ * @param {{ serviceWorkers?: ServiceWorkerContainer, cacheStorage?: CacheStorage }} [dependencies]
+ */
+export async function disableRemoteDashboardPwa(dependencies = {}) {
+  const serviceWorkers = dependencies.serviceWorkers ?? globalThis.navigator?.serviceWorker;
+  const cacheStorage = dependencies.cacheStorage ?? globalThis.caches;
+  const registrations = await serviceWorkers?.getRegistrations?.().catch(() => []) ?? [];
+  await Promise.allSettled(registrations.map((registration) => registration.unregister()));
+  const keys = await cacheStorage?.keys?.().catch(() => []) ?? [];
+  await Promise.allSettled(keys
+    .filter((key) => key.startsWith("central-agentic-ops-dashboard-"))
+    .map((key) => cacheStorage.delete(key)));
+}
+
 /** @param {string} path */
 function apiUrl(path) {
   return new URL(path, globalThis.location?.origin ?? "https://localhost").href;

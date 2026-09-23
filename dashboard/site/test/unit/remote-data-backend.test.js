@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  disableRemoteDashboardPwa,
   queryRemoteDashboard,
   refreshRemoteDashboard,
   subscribeRemoteRevision,
@@ -20,6 +21,29 @@ describe("remote dashboard data backend", () => {
     meta.content = "redis-http";
     document.head.append(meta);
     expect(usesRemoteDataBackend(document)).toBe(true);
+  });
+
+  it("removes static dashboard workers and caches in remote mode", async () => {
+    const unregister = vi.fn().mockResolvedValue(true);
+    const deleteCache = vi.fn().mockResolvedValue(true);
+
+    await disableRemoteDashboardPwa({
+      serviceWorkers: /** @type {never} */ ({
+        getRegistrations: vi.fn().mockResolvedValue([{ unregister }]),
+      }),
+      cacheStorage: /** @type {never} */ ({
+        keys: vi.fn().mockResolvedValue([
+          "central-agentic-ops-dashboard-app-v1",
+          "central-agentic-ops-dashboard-data-v1",
+          "unrelated-cache",
+        ]),
+        delete: deleteCache,
+      }),
+    });
+
+    expect(unregister).toHaveBeenCalledOnce();
+    expect(deleteCache).toHaveBeenCalledTimes(2);
+    expect(deleteCache).not.toHaveBeenCalledWith("unrelated-cache");
   });
 
   it("posts compiled query context without Redis connection details", async () => {

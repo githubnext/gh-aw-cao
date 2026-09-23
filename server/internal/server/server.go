@@ -384,7 +384,24 @@ type generationLoader struct {
 }
 
 func (loader *generationLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
-	return loader.store.LoadSource(loader.ctx, loader.generation, name, definition)
+	source, metrics, err := loader.store.LoadSource(loader.ctx, loader.generation, name, definition)
+	if errors.Is(err, redisx.ErrSourceUnavailable) {
+		return unavailableSource(name), metrics, nil
+	}
+	return source, metrics, err
+}
+
+func unavailableSource(name string) model.Source {
+	return model.Source{
+		Source: name,
+		Rows:   []model.Row{},
+		Metadata: model.Metadata{
+			"source-id":    name,
+			"availability": "unavailable",
+			"completeness": "unknown",
+			"freshness":    "unknown",
+		},
+	}
 }
 
 func paginate(source model.Source, revision string, page paginationRequest) (model.Source, error) {

@@ -68,12 +68,55 @@ func TestEmptyAggregateBehavior(t *testing.T) {
 			{Field: "value", As: "mean", Reducer: "mean"},
 		}},
 	}
+
 	result, _, _, err := ExecuteDefinition(definition, map[string]model.Source{"rows": {Rows: nil}}, MaxOperations)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(result.Rows) != 1 || result.Rows[0]["count"] != 0 || result.Rows[0]["sum"] != float64(0) || result.Rows[0]["mean"] != nil {
 		t.Fatalf("unexpected empty aggregate: %#v", result.Rows)
+	}
+}
+
+func TestJoinRejectsDuplicateRightKeys(t *testing.T) {
+	definition := Definition{
+		Name: "joined", From: "runs",
+		Joins: []Join{{
+			Source: "workflows", Type: "left",
+			On:     []JoinKey{{Left: "workflow", Right: "workflow"}},
+			Fields: []SelectedField{{Field: "name", As: "workflow-name"}},
+		}},
+	}
+	_, _, _, err := ExecuteDefinition(definition, map[string]model.Source{
+		"runs": {Rows: []model.Row{{"workflow": "build.yml"}}},
+		"workflows": {Rows: []model.Row{
+			{"workflow": "build.yml", "name": "Build"},
+			{"workflow": "build.yml", "name": "Duplicate"},
+		}},
+	}, MaxOperations)
+	if err == nil || !strings.Contains(err.Error(), "more than one row per join key") {
+		t.Fatalf("expected duplicate join-key rejection, got %v", err)
+	}
+}
+
+func TestLeftJoinDoesNotMatchBlankKeys(t *testing.T) {
+	definition := Definition{
+		Name: "joined", From: "runs",
+		Joins: []Join{{
+			Source: "workflows", Type: "left",
+			On:     []JoinKey{{Left: "workflow", Right: "workflow"}},
+			Fields: []SelectedField{{Field: "name", As: "workflow-name"}},
+		}},
+	}
+	result, _, _, err := ExecuteDefinition(definition, map[string]model.Source{
+		"runs":      {Rows: []model.Row{{"workflow": ""}}},
+		"workflows": {Rows: []model.Row{{"workflow": "", "name": "Blank"}}},
+	}, MaxOperations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Rows) != 1 || result.Rows[0]["workflow-name"] != nil {
+		t.Fatalf("blank join keys matched unexpectedly: %#v", result.Rows)
 	}
 }
 

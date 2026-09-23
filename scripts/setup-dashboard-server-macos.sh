@@ -73,14 +73,7 @@ echo "  npm $(npm --version)"
 echo "  Docker $(docker --version)"
 echo "  Colima $(colima version | head -1)"
 
-if ! GOTOOLCHAIN=auto go -C server env GOVERSION >/dev/null 2>&1; then
-  cat >&2 <<'EOF'
-
-Warning: the Go toolchain declared by server/go.mod is not available yet.
-The dependencies are installed, but building the server requires that toolchain
-or a temporary compatibility build.
-EOF
-fi
+GOTOOLCHAIN=auto go -C server env GOVERSION >/dev/null
 
 cat <<'EOF'
 

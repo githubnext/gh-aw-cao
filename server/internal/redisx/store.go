@@ -16,7 +16,9 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 )
 
-const redisWriteBatchSize = 250
+const redisWriteBatchSize = 100
+
+var ErrSourceUnavailable = errors.New("redis source is unavailable")
 
 type Store struct {
 	Client    *Client
@@ -291,7 +293,7 @@ func (s *Store) sourceInfo(ctx context.Context, generation, name string) (model.
 	}
 	fields, err := Strings(value)
 	if err != nil || len(fields) != 3 {
-		return nil, nil, nil, fmt.Errorf("source %q is unavailable", name)
+		return nil, nil, nil, fmt.Errorf("%w: %q", ErrSourceUnavailable, name)
 	}
 	metadata := model.Metadata{}
 	aliases := map[string]string{}
@@ -306,7 +308,7 @@ func (s *Store) sourceInfo(ctx context.Context, generation, name string) (model.
 		_ = json.Unmarshal([]byte(fields[2]), &types)
 	}
 	if fields[0] == "" && fields[1] == "" {
-		return nil, nil, nil, fmt.Errorf("source %q is unavailable", name)
+		return nil, nil, nil, fmt.Errorf("%w: %q", ErrSourceUnavailable, name)
 	}
 	return metadata, aliases, types, nil
 }

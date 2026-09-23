@@ -436,46 +436,71 @@ func applyJoin(left, right []model.Row, join Join, operations *int, remaining in
 	if len(join.On) == 0 {
 		return nil, errors.New("join equality keys are required")
 	}
-	index := map[string][]model.Row{}
+	*operations += len(right)
+	if *operations > remaining {
+		return nil, errors.New("join exceeds max operations")
+	}
+	index := map[string]model.Row{}
 	for _, row := range right {
-		key := joinKey(row, join.On, false)
-		index[key] = append(index[key], row)
+		key, ok := joinKey(row, join.On, false)
+		if !ok {
+			continue
+		}
+		if _, duplicate := index[key]; duplicate {
+			return nil, fmt.Errorf("joined source %q contains more than one row per join key", join.Source)
+		}
+		index[key] = row
 	}
 	output := make([]model.Row, 0, len(left))
 	for _, row := range left {
-		matches := index[joinKey(row, join.On, true)]
-		*operations += 1 + len(matches)
-		if *operations > remaining {
-			return nil, errors.New("join exceeds max operations")
-		}
-		if len(matches) == 0 && join.Type == "left" {
+		key, ok := joinKey(row, join.On, true)
+		match, matched := index[key]
+		if !ok || !matched {
+			if join.Type != "left" {
+				continue
+			}
 			output = append(output, cloneRow(row))
+			continue
 		}
-		for _, match := range matches {
-			combined := cloneRow(row)
-			for _, field := range join.Fields {
-				combined[alias(field)] = match[field.Field]
-			}
-			output = append(output, combined)
-			if len(output) > MaxJoinRows {
-				return nil, errors.New("join exceeds max join rows")
-			}
+		combined := cloneRow(row)
+		for _, field := range join.Fields {
+			combined[alias(field)] = match[field.Field]
 		}
+		output = append(output, combined)
+		if len(output) > MaxJoinRows {
+			return nil, errors.New("join exceeds max join rows")
+		}
+	}
+	*operations += len(output)
+	if *operations > remaining {
+		return nil, errors.New("join exceeds max operations")
 	}
 	return output, nil
 }
 
-func joinKey(row model.Row, keys []JoinKey, left bool) string {
-	values := make([]any, len(keys))
+func joinKey(row model.Row, keys []JoinKey, left bool) (string, bool) {
+	values := make([]string, len(keys))
 	for i, key := range keys {
 		field := key.Right
 		if left {
 			field = key.Left
 		}
-		values[i] = row[field]
+		value := row[field]
+		if value == nil {
+			return "", false
+		}
+		switch value.(type) {
+		case []any, map[string]any:
+			return "", false
+		}
+		text := strings.TrimSpace(fmt.Sprint(value))
+		if text == "" {
+			return "", false
+		}
+		values[i] = text
 	}
 	data, _ := json.Marshal(values)
-	return string(data)
+	return string(data), true
 }
 
 func filterRows(rows []model.Row, filter Filter) []model.Row {

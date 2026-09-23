@@ -131,8 +131,44 @@ func TestSourceEvaluationTimeUsesLatestCanonicalOrSourceTimestamp(t *testing.T) 
 			},
 		},
 	}
+
 	if got := sourceEvaluationTime(sources).Format(time.RFC3339Nano); got != "2026-01-04T12:30:00Z" {
 		t.Fatalf("got evaluatedAt %s", got)
+	}
+}
+
+func TestMergeLogicalReconcilesWorkflowIdentity(t *testing.T) {
+	canonical := model.Source{
+		Source: "workflows",
+		Rows: []model.Row{{
+			"organization": "githubnext",
+			"repository":   "gh-aw-cao",
+			"workflow":     ".github/workflows/dashboard.md",
+			"campaign":     "dashboard",
+			"observed-at":  "2026-09-22T00:00:00Z",
+		}},
+	}
+	inventory := model.Source{
+		Source: "workflows",
+		Rows: []model.Row{{
+			"organization":  "githubnext",
+			"repository":    "gh-aw-cao",
+			"workflow":      ".github/workflows/dashboard.md",
+			"workflow-name": "Dashboard",
+			"observed-at":   "2026-09-23T00:00:00Z",
+		}},
+	}
+
+	merged := mergeLogical(inventory, canonical)
+
+	if len(merged.Rows) != 1 {
+		t.Fatalf("workflow identity was duplicated: %#v", merged.Rows)
+	}
+	if merged.Rows[0]["campaign"] != "dashboard" || merged.Rows[0]["workflow-name"] != "Dashboard" {
+		t.Fatalf("workflow fields were not reconciled: %#v", merged.Rows[0])
+	}
+	if merged.Rows[0]["observed-at"] != "2026-09-23T00:00:00Z" {
+		t.Fatalf("inventory observation did not win: %#v", merged.Rows[0])
 	}
 }
 

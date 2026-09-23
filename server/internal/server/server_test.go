@@ -38,6 +38,7 @@ func TestCapabilityURLUsesConfiguredTransport(t *testing.T) {
 	if got := app.capabilityURL(); !strings.HasPrefix(got, "http://") {
 		t.Fatalf("local debugging must default to HTTP: %s", got)
 	}
+
 	app.config.CertFile = "localhost.pem"
 	app.config.KeyFile = "localhost-key.pem"
 	if got := app.capabilityURL(); !strings.HasPrefix(got, "https://") {

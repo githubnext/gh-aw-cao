@@ -433,21 +433,47 @@ func mergeSourceMaps(maps ...map[string]model.Source) map[string]model.Source {
 }
 
 func mergeLogical(left, right model.Source) model.Source {
-	rows := append(append([]model.Row{}, right.Rows...), left.Rows...)
-	sort.SliceStable(rows, func(i, j int) bool {
-		left, _ := json.Marshal(rows[i])
-		right, _ := json.Marshal(rows[j])
-		return bytes.Compare(left, right) < 0
-	})
-	deduplicated := rows[:0]
-	previous := ""
-	for _, row := range rows {
-		data, _ := json.Marshal(row)
-		if string(data) != previous {
-			deduplicated = append(deduplicated, row)
-			previous = string(data)
+	sourceName := right.Source
+	if sourceName == "" {
+		sourceName = left.Source
+	}
+	merged := map[string]model.Row{}
+	order := []string{}
+	mergeRows := func(rows []model.Row) {
+		for _, row := range rows {
+			key := logicalRowKey(sourceName, row)
+			if existing := merged[key]; existing != nil {
+				combined := model.Row{}
+				for field, value := range existing {
+					combined[field] = value
+				}
+				for field, value := range row {
+					if value != nil {
+						combined[field] = value
+					}
+				}
+				merged[key] = combined
+				continue
+			}
+			copy := model.Row{}
+			for field, value := range row {
+				copy[field] = value
+			}
+			merged[key] = copy
+			order = append(order, key)
 		}
 	}
+	mergeRows(right.Rows)
+	mergeRows(left.Rows)
+	rows := make([]model.Row, 0, len(order))
+	for _, key := range order {
+		rows = append(rows, merged[key])
+	}
+	sort.SliceStable(rows, func(i, j int) bool {
+		leftData, _ := json.Marshal(rows[i])
+		rightData, _ := json.Marshal(rows[j])
+		return bytes.Compare(leftData, rightData) < 0
+	})
 	metadata := model.Metadata{}
 	for key, value := range left.Metadata {
 		metadata[key] = value
@@ -455,7 +481,41 @@ func mergeLogical(left, right model.Source) model.Source {
 	for key, value := range right.Metadata {
 		metadata[key] = value
 	}
-	return model.Source{Source: right.Source, Rows: deduplicated, Metadata: metadata}
+	return model.Source{Source: sourceName, Rows: rows, Metadata: metadata}
+}
+
+func logicalRowKey(sourceName string, row model.Row) string {
+	fields := map[string][]string{
+		"campaigns":    {"campaign"},
+		"repositories": {"organization", "repository"},
+		"workflows":    {"organization", "repository", "workflow"},
+		"runs":         {"organization", "repository", "workflow", "run"},
+		"domains":      {"event"},
+		"tools":        {"event"},
+		"audits":       {"event"},
+		"issues":       {"event"},
+		"outcomes":     {"safe-output"},
+	}[sourceName]
+	for _, fallback := range [][]string{fields, {"id"}} {
+		if len(fallback) == 0 {
+			continue
+		}
+		values := make([]string, 0, len(fallback))
+		complete := true
+		for _, field := range fallback {
+			value := strings.TrimSpace(fmt.Sprint(row[field]))
+			if value == "" || value == "<nil>" {
+				complete = false
+				break
+			}
+			values = append(values, value)
+		}
+		if complete {
+			return sourceName + ":" + strings.Join(values, "\x00")
+		}
+	}
+	data, _ := json.Marshal(row)
+	return sourceName + ":json:" + string(data)
 }
 
 func buildDiagnostics(canonical map[string][]model.Row) model.Diagnostics {

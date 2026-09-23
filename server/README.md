@@ -203,7 +203,7 @@ guidance, limitations, and private vulnerability-reporting process.
 
 ## Run locally
 
-The module targets Go 1.28 and declares `toolchain go1.28.0`.
+The module targets and pins Go 1.27.1.
 
 On a MacBook, install Homebrew first and run the idempotent project setup:
 
@@ -310,7 +310,7 @@ npm run test:e2e:dashboard-server
 `.github/workflows/cgo.yml` keeps server validation separate from the static
 dashboard CI:
 
-- **Go format, lint, and tests** runs Go 1.28, golangci-lint v2.13.2, and the
+- **Go format, lint, and tests** runs Go 1.27.1, golangci-lint v2.13.2, and the
   server unit suite.
 - **Redis dashboard integration** starts Redis Stack, runs the Redis integration
   tests, builds the dashboard and server, ingests the deployed shard subset,
