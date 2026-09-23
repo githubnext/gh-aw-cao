@@ -164,7 +164,7 @@ caches.
 
 - All data APIs except minimal readiness require a cryptographically random
   capability token. The bootstrap URL stores it in origin-scoped
-  `sessionStorage`, redirects to a clean URL, and browser requests attach it
+  `localStorage`, cleans the current URL without navigating, and browser requests attach it
   explicitly as an `Authorization: Bearer` header. The token is never placed in
   a host-scoped cookie.
 - Only loopback listeners are accepted.
@@ -237,7 +237,8 @@ http://127.0.0.1:8443/?access_token=<random-token>
 ```
 
 Open that exact URL. The server removes the token from the address bar after
-initializing origin-scoped browser session storage. Use `--access-token` with a
+initializing origin-scoped browser local storage. Refreshes continue to work
+without restoring the token in the URL. Use `--access-token` with a
 value of at least 32 characters only when deterministic automation requires it.
 
 Ingest and serve in one process:

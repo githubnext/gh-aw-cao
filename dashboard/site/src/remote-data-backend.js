@@ -39,7 +39,7 @@ function apiUrl(path) {
 
 function accessToken() {
   try {
-    return globalThis.sessionStorage?.getItem(ACCESS_TOKEN_STORAGE_KEY) ?? "";
+    return globalThis.localStorage?.getItem(ACCESS_TOKEN_STORAGE_KEY) ?? "";
   } catch {
     return "";
   }

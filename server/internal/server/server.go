@@ -518,7 +518,7 @@ func (a *App) serveIndex(response http.ResponseWriter, accessToken string) {
 	if accessToken != "" {
 		token, _ := json.Marshal(accessToken)
 		injections += fmt.Sprintf(
-			`<script>sessionStorage.setItem("cao-dashboard-access-token",%s);const u=new URL(location.href);u.searchParams.delete("access_token");history.replaceState(null,"",u.pathname+u.search+u.hash);</script>`,
+			`<script>localStorage.setItem("cao-dashboard-access-token",%s);const u=new URL(location.href);u.searchParams.delete("access_token");history.replaceState(null,"",u.pathname+u.search+u.hash);</script>`,
 			token,
 		)
 	}

@@ -30,9 +30,9 @@ may be loaded without the capability.
   token of at least 32 characters is provided with `--access-token`.
 - The server prints an HTTP or explicitly configured HTTPS capability URL
   containing the token.
-- Opening that URL writes the token to origin-scoped `sessionStorage` and
-  immediately replaces the browser location with a URL that does not contain
-  the token.
+- Opening that URL writes the token to origin-scoped `localStorage` and removes
+  it from the current address with `history.replaceState`, without navigation.
+  This preserves access across ordinary page refreshes.
 - Browser queries, diagnostics, refreshes, and the streamed revision request
   explicitly send `Authorization: Bearer <token>`.
 - The server does not place the bearer capability in a cookie; loopback cookies

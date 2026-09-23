@@ -275,7 +275,7 @@ func TestCapabilityTokenProtectsStaticAssetsAndAPI(t *testing.T) {
 	if len(bootstrap.Result().Cookies()) != 0 {
 		t.Fatal("bootstrap must not place the bearer capability in a cookie")
 	}
-	if !strings.Contains(bootstrap.Body.String(), `sessionStorage.setItem("cao-dashboard-access-token"`) {
+	if !strings.Contains(bootstrap.Body.String(), `localStorage.setItem("cao-dashboard-access-token"`) {
 		t.Fatalf("bootstrap did not initialize origin-scoped storage: %s", bootstrap.Body.String())
 	}
 	if !strings.Contains(bootstrap.Body.String(), `history.replaceState`) ||

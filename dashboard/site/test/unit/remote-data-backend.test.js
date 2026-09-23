@@ -9,7 +9,7 @@ import {
 afterEach(() => {
   vi.unstubAllGlobals();
   document.head.replaceChildren();
-  sessionStorage.clear();
+  localStorage.clear();
 });
 
 describe("remote dashboard data backend", () => {
@@ -23,7 +23,7 @@ describe("remote dashboard data backend", () => {
   });
 
   it("posts compiled query context without Redis connection details", async () => {
-    sessionStorage.setItem("cao-dashboard-access-token", "test-access-token");
+    localStorage.setItem("cao-dashboard-access-token", "test-access-token");
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({
         revision: 4,
@@ -72,7 +72,7 @@ describe("remote dashboard data backend", () => {
   });
 
   it("authenticates the revision stream without an ambient cookie", async () => {
-    sessionStorage.setItem("cao-dashboard-access-token", "stream-access-token");
+    localStorage.setItem("cao-dashboard-access-token", "stream-access-token");
     const stream = new ReadableStream({
       start(controller) {
         controller.enqueue(new TextEncoder().encode('data: {"revision":9}\n\n'));
