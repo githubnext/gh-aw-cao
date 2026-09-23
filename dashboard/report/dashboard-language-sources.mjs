@@ -958,7 +958,7 @@ export function transactionLogRows(usage) {
     const timeline = Array.isArray(run.timeline) ? run.timeline : [];
     const names = repositoryParts(run.repository);
     const attempt = Number(run.runAttempt) || 1;
-    const canonicalRun = canonicalRunId(run.runId, attempt);
+    const canonicalRun = canonicalRunId(names.organization, names.repository, run.runId);
     const timestamps = timeline.map((event) => firstText(event.timestamp)).filter(Boolean).sort();
     const observedAt = firstText(run.createdAt, usage.generatedAt);
     if (timestamps.length === 0 && observedAt) timestamps.push(observedAt);

@@ -28,7 +28,7 @@ describe('gh-aw logs adapter', () => {
 
     expect(relationshipErrors(batch)).toEqual([]);
     expect([...batch.domains, ...batch.tools, ...batch.audits]
-      .every((record) => record.runId === 'github:run:303:attempt:1')).toBe(true);
+      .every((record) => record.runId === 'github:run:githubnext/gh-aw-cao:303')).toBe(true);
     expect(batch.domains.map((record) => record.type)).toEqual(['net_allowed']);
     expect(batch.tools.map((record) => record.type)).toEqual([
       'tool_call', 'agent_tool_start', 'agent_tool_done'
@@ -242,7 +242,7 @@ describe('gh-aw logs adapter', () => {
     expect(relationshipErrors(batch)).toEqual([]);
     expect(batch.runs).toEqual([
       expect.objectContaining({
-        id: 'github:run:303:attempt:1',
+        id: 'github:run:githubnext/gh-aw-cao:303',
         workflowPath: '.github/workflows/dashboard.md',
         number: 7,
         targetRepository: 'github/gh-aw',
@@ -295,7 +295,7 @@ describe('gh-aw logs adapter', () => {
         safeOutputType: 'create_pull_request',
         githubEntityType: 'pull_request',
         correlationId: 'https://github.com/githubnext/gh-aw-cao/pull/43',
-        runId: 'github:run:303:attempt:1',
+        runId: 'github:run:githubnext/gh-aw-cao:303',
         payloadRef: 'gh-aw-logs-shards#L4',
         isPullRequest: true
       })
