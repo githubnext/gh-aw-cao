@@ -241,6 +241,10 @@ function summarizeInvalid(invalid) {
 /** @param {DoctorTransaction[]} transactions @param {number} horizon */
 function retainedTransactions(transactions, horizon) {
   return transactions.filter((transaction) => {
+    if (transaction.kind === 'ingest-normalized-json'
+        && typeof transaction.payloadHash === 'string') {
+      return true;
+    }
     const timestamp = Date.parse(String(transaction.createdAt ?? ''));
     return Number.isFinite(timestamp) && timestamp >= horizon;
   });

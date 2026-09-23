@@ -1,4 +1,5 @@
 import 'fake-indexeddb/auto';
+import { createHash, webcrypto } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -127,6 +128,44 @@ describe('canonical source ingestion and queries', () => {
       })
     ]);
     expect((await readCanonicalBatch(indexedDB)).repositories).toEqual(payload.batch.repositories);
+  });
+
+  it('migrates legacy scope-keyed normalized shard receipts to stable SHA receipts', async () => {
+    vi.stubGlobal('crypto', webcrypto);
+    const payloadIdentity = 'f'.repeat(64);
+    const payloadScope = 'https://example.test/gh-aw-logs-normalized/legacy-shard.json';
+    const scopeHash = createHash('sha256').update(payloadScope).digest('hex');
+    await recordTransaction(indexedDB, {
+      id: `ingest-normalized-json:current:${scopeHash}`,
+      kind: 'ingest-normalized-json',
+      createdAt: '2026-09-09T05:00:00.000Z',
+      payloadScope,
+      payloadHash: payloadIdentity,
+      ingestionVersion: 2
+    });
+
+    await expect(ingestNormalizedJson(indexedDB, {
+      schemaVersion: CANONICAL_SCHEMA_VERSION,
+      ingestionVersion: 2,
+      sourceRecords: 0,
+      batch: {
+        campaigns: [],
+        repositories: [],
+        workflows: [],
+        runs: [],
+        domains: [],
+        tools: [],
+        audits: [],
+        issues: []
+      }
+    }, { payloadIdentity, payloadScope })).resolves.toMatchObject({
+      updated: false,
+      skipped: true
+    });
+    await expect(readTransactions(indexedDB)).resolves.toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: `ingest-normalized-json:sha256:${payloadIdentity}:v2` })
+    ]));
+    vi.unstubAllGlobals();
   });
 
   it('imports legacy package-shaped normalized JSON as campaigns', async () => {

@@ -243,18 +243,19 @@ export async function isCachedGhAwJsonlCurrent(indexedDB, options) {
  * @param {{ payloadIdentity: string, payloadScope: string }} options
  */
 export async function isNormalizedJsonCurrent(indexedDB, options) {
-  const receipt = await readTransaction(indexedDB, normalizedShardTransactionId(options.payloadIdentity));
+  const receiptId = normalizedShardTransactionId(options.payloadIdentity);
+  const receipt = await readTransaction(indexedDB, receiptId);
   if (receipt?.payloadHash === options.payloadIdentity
       && receipt.ingestionVersion === NORMALIZED_JSON_INGESTION_VERSION) {
     return true;
   }
-  return previouslyIngested(
-    indexedDB,
-    'ingest-normalized-json',
-    options.payloadScope,
-    options.payloadIdentity,
-    NORMALIZED_JSON_INGESTION_VERSION
-  );
+  const legacyReceipt = await readCurrentIngestion(indexedDB, 'ingest-normalized-json', options.payloadScope);
+  if (legacyReceipt?.payloadHash !== options.payloadIdentity
+      || legacyReceipt.ingestionVersion !== NORMALIZED_JSON_INGESTION_VERSION) {
+    return false;
+  }
+  await recordTransaction(indexedDB, { ...legacyReceipt, id: receiptId });
+  return true;
 }
 
 /**
