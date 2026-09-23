@@ -1360,7 +1360,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
 
   const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
   const data = page.locator('.nav-section').first();
-  await expect(cleanNavigation).toHaveText(['Overview', 'Notifications', 'Campaigns', 'Repositories', 'Settings']);
+  await expect(cleanNavigation).toHaveText(['Overview', 'Campaigns', 'Repositories', 'Settings']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
   await expect(data.getByRole('link')).toHaveText(['Workflows', 'Runs', 'Issues', 'Models & Agents', 'Firewall', 'MCPs']);
