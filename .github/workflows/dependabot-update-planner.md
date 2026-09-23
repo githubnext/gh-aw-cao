@@ -304,8 +304,10 @@ Also determine the repository-declared package-manager and toolchain versions fr
 Build a complete snapshot without requiring Dependabot pull requests to exist. Security findings and routine version updates have separate evidence routes:
 
 1. Find every open Dependabot security alert visible to this workflow with `list_dependabot_alerts` or authenticated read-only `gh api -X GET /repos/{owner}/{repo}/dependabot/alerts?state=open`. Record the vulnerable package, severity, advisory, vulnerable range, and patched version when available.
+   - Successfully checking out `target_repo` proves only repository contents access. It does not prove that the credential used by GitHub tools or `gh api` can read Dependabot alerts.
+   - Require an actual successful alert-list response using a credential with `vulnerability-alerts: read` access before treating security evidence as available.
    - Distinguish an empty result from unavailable evidence. Tool denial, DIFC filtering, missing tools, authentication failures, permission failures, or API errors mean alert evidence is unavailable; do not summarize unavailable alert evidence as "zero open alerts."
-   - Routine package-manager results do not replace security evidence. If alert evidence is unavailable, call `report_incomplete` instead of `noop`.
+   - Routine package-manager results do not replace security evidence. If alert evidence or the required credential permission is unavailable, call `report_incomplete` and identify the missing alert access as a blocker; never emit `noop` or a completed plan.
 2. Build the complete routine version-update inventory directly from every repository-declared package manager, independently of Dependabot pull requests.
    - Run the manager's native non-mutating outdated or version query from the matching workspace, for example `npm outdated --json`, `pnpm outdated --format json`, `yarn outdated --json`, `poetry show --outdated`, `go list -m -u -json all`, `bundle outdated --parseable`, `composer outdated --format=json`, `dotnet list package --outdated --format json`, or `dart pub outdated --json`.
    - Use the repository-declared package-manager and toolchain version. Do not install a missing manager, plugin, dependency, or tool; do not run install, update, audit-fix, or lifecycle scripts; and do not modify manifests or lockfiles.

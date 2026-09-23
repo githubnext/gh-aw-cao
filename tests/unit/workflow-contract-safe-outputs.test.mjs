@@ -130,6 +130,7 @@ test("Dependabot worker maintains a durable parent and one-PR child tasks withou
 
   assert.equal(config.tools.github.mode, "gh-proxy");
   assert.equal(config.tools.github["min-integrity"], "unapproved");
+  assert.equal(config.permissions["vulnerability-alerts"], "read");
   assert.deepEqual(Object.keys(outputs).sort(), ["add-comment", "close-issue", "create-issue", "update-issue"]);
   assert.equal(outputs["create-issue"].max, 13);
   assert.equal(outputs["create-issue"]["deduplicate-by-title"], true);
@@ -173,6 +174,9 @@ test("Dependabot worker maintains a durable parent and one-PR child tasks withou
   assert.match(source, /not all live targets allow this workflow to create missing labels/);
   assert.match(source, /`npm outdated --json`/);
   assert.match(source, /Routine package-manager results do not replace security evidence/);
+  assert.match(source, /checking out `target_repo` proves only repository contents access/);
+  assert.match(source, /actual successful alert-list response/);
+  assert.match(source, /missing alert access as a blocker/);
   assert.match(source, /Their absence does not make the inventory incomplete/);
   assert.match(source, /do not run install, update, audit-fix, or lifecycle scripts/);
   assert.doesNotMatch(source, /fallback inventory/);
