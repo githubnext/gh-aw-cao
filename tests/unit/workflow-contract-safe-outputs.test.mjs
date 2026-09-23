@@ -125,8 +125,11 @@ test("Dependabot worker maintains a durable parent and one-PR child tasks withou
   const source = workflow("dependabot-update-planner.md");
   const frontmatter = /^---\n([\s\S]*?)\n---/.exec(source)?.[1];
   assert.ok(frontmatter, "Dependabot worker must have frontmatter");
-  const outputs = parse(frontmatter)["safe-outputs"];
+  const config = parse(frontmatter);
+  const outputs = config["safe-outputs"];
 
+  assert.equal(config.tools.github.mode, "gh-proxy");
+  assert.equal(config.tools.github["min-integrity"], "unapproved");
   assert.deepEqual(Object.keys(outputs).sort(), ["add-comment", "close-issue", "create-issue", "update-issue"]);
   assert.equal(outputs["create-issue"].max, 13);
   assert.equal(outputs["create-issue"]["deduplicate-by-title"], true);
@@ -168,6 +171,9 @@ test("Dependabot worker maintains a durable parent and one-PR child tasks withou
   assert.match(source, /Do not list, search, match, or reuse closed issues/);
   assert.match(source, /never let a closed parent prevent this creation/i);
   assert.match(source, /not all live targets allow this workflow to create missing labels/);
+  assert.match(source, /explicitly labeled lower-bound fallback inventory/);
+  assert.match(source, /must not prove completeness, absence, resolution, or support `noop`/);
+  assert.match(source, /authenticated read-only `gh api/);
   assert.match(source, /Never create, update, push to, comment on, or otherwise mutate a pull request/);
 });
 

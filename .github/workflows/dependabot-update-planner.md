@@ -133,7 +133,8 @@ tracker-id: dependabot-update-planner
 
 tools:
   github:
-    mode: remote
+    mode: gh-proxy
+    min-integrity: unapproved
     toolsets: [default, repos, issues, pull_requests, actions, dependabot, code_security, security_advisories]
   web-fetch:
   repo-memory:
@@ -302,10 +303,10 @@ Also determine the repository-declared package-manager and toolchain versions fr
 
 Build a complete snapshot from Dependabot service evidence, without requiring Dependabot pull requests to exist:
 
-1. Build the current update inventory from Dependabot-native service evidence before inspecting pull requests. Use every available read-only Dependabot tool or API exposed to the workflow for pending security updates, version updates, update jobs, repository-access blockers, and Dependabot-identified configuration failures.
+1. Build the current update inventory from Dependabot-native service evidence before inspecting pull requests. Use every available authenticated read-only Dependabot tool or API exposed to the workflow for pending security updates, version updates, update jobs, repository-access blockers, and Dependabot-identified configuration failures.
    - Pull requests are not the source of truth for the update inventory. Do not infer that an update exists, is absent, or is resolved solely from open, closed, merged, or missing Dependabot pull requests.
-   - If the workflow lacks a Dependabot-native read path for non-security version updates or update jobs, call `missing_tool` or `report_incomplete` with the missing evidence path instead of substituting pull-request search results.
-2. Find every open Dependabot security alert visible to this workflow with `list_dependabot_alerts`, including alerts not represented by an open pull request.
+   - If the workflow lacks a Dependabot-native read path for non-security version updates or update jobs, use currently open Dependabot-authored dependency-update pull requests as an explicitly labeled lower-bound fallback inventory. This proves only visible queued work; it must not prove completeness, absence, resolution, or support `noop`. If neither native evidence nor at least one qualifying open Dependabot pull request is available, call `missing_tool` or `report_incomplete` with the missing evidence path.
+2. Find every open Dependabot security alert visible to this workflow with `list_dependabot_alerts` or authenticated read-only `gh api -X GET /repos/{owner}/{repo}/dependabot/alerts`, including alerts not represented by an open pull request.
    - Distinguish an empty result from unavailable evidence. Tool denial, DIFC filtering, missing tools, authentication failures, permission failures, or API errors mean alert evidence is unavailable; do not summarize unavailable alert evidence as "zero open alerts."
    - If alert evidence is unavailable and no other Dependabot evidence is sufficient to produce a bounded plan, call `report_incomplete` instead of `noop`.
 3. Inspect Dependabot repository-access state when available:
@@ -315,8 +316,9 @@ Build a complete snapshot from Dependabot service evidence, without requiring De
    - Unavailable evidence: if neither tool path is available, or if the API returns 403/404, record repository-access evidence as unavailable instead of guessing.
    - Prohibited mutations: never call repository-access PATCH or PUT endpoints. Reference https://docs.github.com/en/rest/dependabot/repository-access for the read-only API contract.
 4. Inspect Dependabot configuration and recent Dependabot failures only to explain blocked identified updates, repository-access gaps, or open Dependabot pull-request queue problems. Do not invent general freshness work that Dependabot has not identified.
-5. After direct Dependabot evidence has produced the update inventory, list Dependabot-authored dependency update pull requests only as supplementary queue/status evidence for conflicts, CI failures, grouping, branch names, links, and stale duplicate cleanup. Do not treat pull requests as required input or the sole source of truth for the update list.
+5. After direct Dependabot evidence has produced the update inventory, list Dependabot-authored dependency update pull requests only as supplementary queue/status evidence for conflicts, CI failures, grouping, branch names, links, and stale duplicate cleanup. The only exception is the explicitly labeled lower-bound fallback inventory when the non-security native evidence path is unavailable.
    - A still-open Dependabot dependency update pull request is actionable queue hygiene until it is merged, closed, or superseded, but it is not proof of a current update unless direct Dependabot evidence still identifies that update.
+   - When using the lower-bound fallback, preserve prior unresolved tasks unless current direct evidence proves they are resolved, and state that the plan is incomplete beyond the visible open pull requests.
    - For stale or duplicate open Dependabot pull requests that require no coding-agent changes, include a human-only blocker/task that names the pull requests to close, supersede, or ask Dependabot to refresh.
 6. Reconcile duplicates by ecosystem, package, manifest, vulnerable version range, target version, advisory, access blocker, Dependabot-native update identity when available, and existing pull request. One update or blocker appears once in the checklist, with all related links.
 7. Sort the plan by critical/high security, Dependabot access blockers that prevent security updates, broken or conflicted updates, other security updates, major updates, then compatible minor and patch updates.
