@@ -222,7 +222,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .entity-card-list-timing-icon .octicon { width: 14px; height: 14px; }
 .entity-card-list-timing-value { font-variant-numeric: tabular-nums; }
 .entity-card-list-timing-value time { color: inherit; }
-.entity-card-list-actions { display: flex; flex-wrap: wrap; gap: 6px; grid-column: 2 / -1; margin-top: 10px; } /* spans from the content column (col 2 of .issue-list-card's grid-template-columns) to the last column so it always forms its own full-width row instead of competing with the labels column for auto-placement */
+.entity-card-list-actions { display: flex; flex-wrap: wrap; gap: 6px; grid-column: 2 / -1; margin-top: 10px; } /* keep in sync with .issue-list-card's grid-template-columns (defined further below): column 1 is the status/type icon, column 2 is the card content, so "2 / -1" spans from the content column through the last column, forcing the actions to form their own full-width row instead of competing with the labels column for grid auto-placement */
 .entity-card-list-actions .table-cli-action-button { width: auto; height: auto; min-height: 32px; display: inline-flex; align-items: center; justify-content: flex-start; padding: 6px 10px; border: 1px solid var(--border); }
 .entity-card-list-actions .table-cli-action-button .cli-action-trigger-copy strong { font-size: .75rem; white-space: nowrap; }
 .entity-card-list-grouped { overflow: hidden; border: 1px solid var(--border); border-radius: 14px; background: var(--canvas); }

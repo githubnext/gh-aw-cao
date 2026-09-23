@@ -512,7 +512,7 @@ describe('data view renderer', () => {
       },
       rows: [
         { 'campaign-name': 'Current package', campaign: 'current', 'campaign-update-state': 'current', 'campaign-registration': 'true' },
-        { 'campaign-name': 'Outdated package', campaign: 'outdated', 'campaign-update-state': 'update-available', 'campaign-registration': 'true' }
+        { 'campaign-name': 'Outdated package', campaign: 'outdated', 'campaign-update-state': 'update-available', 'campaign-registration': 'true', 'campaign-observed-at': '2026-08-31T00:00:00Z' }
       ],
       cardTemplates: {
         'maintenance-campaign': {
@@ -520,6 +520,7 @@ describe('data view renderer', () => {
           title: { field: 'campaign-name' },
           labels: [{ field: 'campaign-registration', title: 'Registration', display: 'active-state' }],
           details: [],
+          timing: [{ field: 'campaign-observed-at', title: 'Observed', icon: 'calendar', type: 'temporal' }],
           actions: [{
             action: 'update-campaign',
             context: ['campaign'],
@@ -540,15 +541,18 @@ describe('data view renderer', () => {
     expect(cards[0]?.querySelector('.entity-card-list-actions')).toBeNull();
     expect(cards[1]?.querySelector('.entity-card-list-actions button')?.textContent).toContain('Update campaign');
 
-    // The row-level action must be rendered after the labels list in DOM order so that
-    // CSS grid auto-placement keeps the labels badge in its own column instead of pushing
-    // it into a stray row/column that renders outside the card bounds (see #13672-style regression).
+    // The row-level action must be rendered after the labels and timing lists in DOM order so
+    // that CSS grid auto-placement keeps those badges in their own column instead of pushing
+    // them into a stray row/column that renders outside the card bounds (see #13672-style regression).
     const outdatedCard = cards[1];
     const children = outdatedCard ? Array.from(outdatedCard.children) : [];
     const labelsIndex = children.findIndex((child) => child.classList.contains('issue-list-labels'));
+    const timingIndex = children.findIndex((child) => child.classList.contains('entity-card-list-timing'));
     const actionsIndex = children.findIndex((child) => child.classList.contains('entity-card-list-actions'));
     expect(labelsIndex).toBeGreaterThanOrEqual(0);
+    expect(timingIndex).toBeGreaterThanOrEqual(0);
     expect(actionsIndex).toBeGreaterThan(labelsIndex);
+    expect(actionsIndex).toBeGreaterThan(timingIndex);
   });
 
   it('renders entity-card grids with row-selected icons', () => {
