@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   DATABASE_NAME,
   DATABASE_VERSION,
+  maintainCanonicalDatabase,
   openCanonicalDatabase,
   publishDailyOverviewAggregates,
   readCollection,
@@ -102,6 +103,26 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     await replaceCanonicalBatch(reopened, replacement);
     expect(await readCollection(reopened, 'audits')).toEqual([]);
     expect(readFileSync(filename, 'utf8').slice(0, 15)).toBe('SQLite format 3');
+  });
+
+  it('cascades retention eviction through SQLite indexes', async () => {
+    const indexedDB = installSqliteIndexedDB(temporaryDatabase());
+    const canonical = batch();
+    canonical.runs[0].observedAt = '2026-01-01T00:00:00Z';
+    canonical.audits = canonical.audits.map((record) => ({
+      ...record,
+      observedAt: '2026-09-09T00:00:00Z'
+    }));
+    await upsertCanonicalBatch(indexedDB, canonical);
+
+    await maintainCanonicalDatabase(indexedDB, {
+      now: Date.parse('2026-09-10T00:00:00Z'),
+      retentionWindowMs: 30 * 24 * 60 * 60 * 1000,
+      maxDatabaseBytes: Number.MAX_SAFE_INTEGER
+    });
+
+    expect(await readCollection(indexedDB, 'runs')).toEqual([]);
+    expect(await readCollection(indexedDB, 'audits')).toEqual([]);
   });
 
   it('publishes and range-reads daily overview aggregates through the compound generation/day index', async () => {

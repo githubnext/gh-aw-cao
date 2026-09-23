@@ -451,7 +451,17 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
           runStore.delete(id);
           deletedRecords += 1;
           for (const storeName of RUN_LINKED_STORES) {
-            const request = transaction.objectStore(storeName).index('byRun').openCursor(id);
+            const store = transaction.objectStore(storeName);
+            const index = store.index('byRun');
+            if (typeof index.openCursor !== 'function') {
+              const records = await requestResult(index.getAll(id));
+              for (const record of records) {
+                store.delete(record.id);
+                deletedRecords += 1;
+              }
+              continue;
+            }
+            const request = index.openCursor(id);
             request.onsuccess = () => {
               const cursor = request.result;
               if (!cursor) return;
@@ -470,8 +480,14 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
           OVERVIEW_AGGREGATE_METADATA_STORE
         ]);
         const done = transactionDone(transaction);
-        transaction.objectStore(DAILY_OVERVIEW_AGGREGATE_STORE).clear();
-        transaction.objectStore(OVERVIEW_AGGREGATE_METADATA_STORE).clear();
+        for (const storeName of [DAILY_OVERVIEW_AGGREGATE_STORE, OVERVIEW_AGGREGATE_METADATA_STORE]) {
+          const store = transaction.objectStore(storeName);
+          if (typeof store.clear === 'function') {
+            store.clear();
+          } else {
+            for (const record of await requestResult(store.getAll())) store.delete(record.id);
+          }
+        }
         await done;
       }
       return { deletedRecords, estimatedBytes };

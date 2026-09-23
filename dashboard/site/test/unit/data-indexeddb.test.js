@@ -124,6 +124,37 @@ describe('canonical IndexedDB', () => {
     expect(await readCollection(indexedDB, 'repositories')).toEqual([{ id: 'repository:1' }]);
   });
 
+  it('evicts oldest run subtrees first to meet a finite size limit', async () => {
+    const timestamps = [
+      '2026-09-07T00:00:00Z',
+      '2026-09-08T00:00:00Z',
+      '2026-09-09T00:00:00Z'
+    ];
+    await writeRecords('runs', timestamps.map((observedAt, index) => ({
+      id: `run:${index}`,
+      observedAt
+    })));
+    await writeRecords('audits', timestamps.map((observedAt, index) => ({
+      id: `audit:${index}`,
+      runId: `run:${index}`,
+      observedAt
+    })));
+
+    await maintainCanonicalDatabase(indexedDB, {
+      now: Date.parse('2026-09-10T00:00:00Z'),
+      retentionWindowMs: 30 * 24 * 60 * 60 * 1000,
+      maxDatabaseBytes: 3_000
+    });
+
+    const retainedRuns = await readCollection(indexedDB, 'runs');
+    expect(retainedRuns).toContainEqual(expect.objectContaining({ id: 'run:2' }));
+    expect(retainedRuns).not.toContainEqual(expect.objectContaining({ id: 'run:0' }));
+    expect(retainedRuns.length).toBeGreaterThan(0);
+    expect(retainedRuns.length).toBeLessThan(3);
+    expect((await readCollection(indexedDB, 'audits')).map((record) => record.runId))
+      .toEqual(retainedRuns.map((record) => record.id));
+  });
+
   it('initializes the simplified database schema', async () => {
     const database = await openCanonicalDatabase(indexedDB);
 
