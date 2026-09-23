@@ -55,6 +55,38 @@ export function runId(owner, repository, githubRunId) {
   return `github:run:${coordinate}:${normalizedRunId}`;
 }
 
+const RUN_ID_PATTERN = /^github:run:([^/:]+)\/([^:]+):(.+)$/;
+
+/**
+ * Splits a canonical run ID back into its repository owner, repository name,
+ * and raw GitHub run ID.
+ *
+ * @param {string} value
+ */
+export function runCoordinatesFromId(value) {
+  const match = RUN_ID_PATTERN.exec(String(value));
+  if (!match) throw new TypeError(`Value is not a canonical run ID: ${value}`);
+  const [, owner, repository, githubRunId] = match;
+  return { owner, repository, githubRunId };
+}
+
+/**
+ * Produces a deterministic, human-readable Audit ID keyed by repository
+ * coordinate, run, and a per-run-unique audit code, so audits are stored as
+ * `<org>/<repo>/<runid>/<audit-code>`.
+ *
+ * @param {string} canonicalRunId
+ * @param {string | number} auditCode
+ */
+export function auditId(canonicalRunId, auditCode) {
+  const { owner, repository, githubRunId } = runCoordinatesFromId(canonicalRunId);
+  let normalizedCode = String(auditCode).trim();
+  if (!normalizedCode) throw new TypeError('Audit code is required');
+  const runPrefix = `${canonicalRunId}:`;
+  if (normalizedCode.startsWith(runPrefix)) normalizedCode = normalizedCode.slice(runPrefix.length);
+  return `${owner}/${repository}/${githubRunId}/${encodeURIComponent(normalizedCode)}`;
+}
+
 /** @param {string} owner @param {string} repository @param {string | number} issueNumber */
 export function issueId(owner, repository, issueNumber) {
   const normalizedOwner = owner.trim();

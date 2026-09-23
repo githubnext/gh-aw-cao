@@ -87,7 +87,7 @@ describe('canonical source ingestion and queries', () => {
       {
         kind: 'metadata',
         schemaVersion: CANONICAL_SCHEMA_VERSION,
-        ingestionVersion: 3,
+        ingestionVersion: 4,
         sourceRecords: 1,
         phase: 'runs',
         records: 1
@@ -154,7 +154,7 @@ describe('canonical source ingestion and queries', () => {
       {
         kind: 'metadata',
         schemaVersion: CANONICAL_SCHEMA_VERSION,
-        ingestionVersion: 3,
+        ingestionVersion: 4,
         sourceRecords: records.length,
         phase: 'all',
         records: records.length
@@ -183,7 +183,7 @@ describe('canonical source ingestion and queries', () => {
     const metadata = {
       kind: 'metadata',
       schemaVersion: CANONICAL_SCHEMA_VERSION,
-      ingestionVersion: 3,
+      ingestionVersion: 4,
       sourceRecords: 251,
       phase: 'all',
       records: 251
@@ -530,7 +530,7 @@ describe('canonical source ingestion and queries', () => {
     await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({
         kind: 'ingest-dashboard-sources',
-        ingestionVersion: 5,
+        ingestionVersion: 6,
         payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/)
       })
     ]);
@@ -847,9 +847,9 @@ describe('canonical source ingestion and queries', () => {
     );
     await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({
-        id: expect.stringMatching(/^ingest-jsonl:sha256:[a-f0-9]{64}:v4$/),
+        id: expect.stringMatching(/^ingest-jsonl:sha256:[a-f0-9]{64}:v5$/),
         kind: 'ingest-jsonl',
-        ingestionVersion: 4,
+        ingestionVersion: 5,
         records: 3,
         payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/)
       })

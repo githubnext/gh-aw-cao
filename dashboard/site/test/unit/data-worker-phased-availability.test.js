@@ -52,7 +52,7 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
       {
         kind: 'metadata',
         schemaVersion: CANONICAL_SCHEMA_VERSION,
-        ingestionVersion: 3,
+        ingestionVersion: 4,
         sourceRecords: 1,
         phase,
         records: records.length

@@ -72,7 +72,7 @@ describe('canonical dashboard worker ingestion order', () => {
       {
         kind: 'metadata',
         schemaVersion: CANONICAL_SCHEMA_VERSION,
-        ingestionVersion: 3,
+        ingestionVersion: 4,
         sourceRecords: 1,
         phase: 'runs',
         records: runRecords.length

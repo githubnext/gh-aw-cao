@@ -39,10 +39,10 @@ import { createDebug } from '../../debug.js';
 
 const debug = createDebug('data:ingestion');
 
-const DASHBOARD_SOURCE_INGESTION_VERSION = 5;
-const GH_AW_JSONL_INGESTION_VERSION = 4;
+const DASHBOARD_SOURCE_INGESTION_VERSION = 6;
+const GH_AW_JSONL_INGESTION_VERSION = 5;
 export const NORMALIZED_JSON_INGESTION_VERSION = 2;
-export const NORMALIZED_JSONL_INGESTION_VERSION = 3;
+export const NORMALIZED_JSONL_INGESTION_VERSION = 4;
 const MAX_QUOTA_RECOVERY_ATTEMPTS = 4;
 const MAX_USAGE_RECOVERY_ATTEMPTS = 4;
 const NORMALIZED_BATCH_COLLECTIONS = /** @type {const} */ ([

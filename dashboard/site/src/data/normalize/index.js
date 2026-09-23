@@ -1,5 +1,18 @@
-import { issueCoordinates, issueId, repositoryId, runId, sourceId, workflowId } from '../model/ids.js';
+import { auditId, issueCoordinates, issueId, repositoryId, runId, sourceId, workflowId } from '../model/ids.js';
 import { canonicalTimestamp, requiredString } from '../model/schema.js';
+
+/**
+ * Info-level audits are noise: routine, non-actionable observations that
+ * would otherwise dominate storage and query results. They are dropped
+ * before entering the canonical graph so neither JSONL compaction nor
+ * canonical data ingestion persists them.
+ *
+ * @param {import('../model/schema.js').CanonicalObservation} observation
+ */
+function isNoiseLevelAudit(observation) {
+  return observation.kind === 'audit'
+    && String(observation.data?.status ?? '').trim().toLowerCase() === 'info';
+}
 
 /** @type {Record<import('../model/schema.js').EntityKind, keyof import('../model/schema.js').CanonicalBatch>} */
 const COLLECTIONS = {
@@ -59,8 +72,9 @@ function identityFor(observation) {
     }
     case 'domain':
     case 'tool':
-    case 'audit':
       return sourceId(observation.kind, observation.source, observation.sourceId);
+    case 'audit':
+      return auditId(requiredString(data.runId, 'audit.runId'), observation.sourceId);
   }
 }
 
@@ -134,7 +148,9 @@ export function normalize(observations, options = {}) {
     issues: new Map()
   };
 
-  const sorted = [...observations].sort((left, right) => compareObservations(left, right, sourcePrecedence));
+  const sorted = [...observations]
+    .filter((observation) => !isNoiseLevelAudit(observation))
+    .sort((left, right) => compareObservations(left, right, sourcePrecedence));
   for (const observation of sorted) {
     const collection = COLLECTIONS[observation.kind];
     if (!collection) throw new TypeError(`Unsupported observation kind: ${observation.kind}`);
