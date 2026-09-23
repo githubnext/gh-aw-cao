@@ -22,11 +22,9 @@ test("deployed dashboard check targets declared navigation pages", () => {
   const dashboard = JSON.parse(readFileSync(resolve(repositoryRoot, "dashboard/site/dashboard.json"), "utf8"));
   const navigationPageIds = new Set(dashboard.dashboard.navigation.flatMap(({ pages }) => pages));
 
-  for (const { pageId } of populatedDashboardPages) {
-    assert.ok(navigationPageIds.has(pageId), `${pageId} is a declared navigation page`);
-  }
-  for (const { storeName } of populatedDashboardPages) {
-    assert.ok(ENTITY_STORES.includes(storeName), `${storeName} is a canonical entity store`);
+  for (const { pageId, storeName } of populatedDashboardPages) {
+    assert.ok(navigationPageIds.has(pageId), `expected '${pageId}' to be a declared navigation page`);
+    assert.ok(ENTITY_STORES.includes(storeName), `expected '${storeName}' to be a canonical entity store`);
   }
 });
 
