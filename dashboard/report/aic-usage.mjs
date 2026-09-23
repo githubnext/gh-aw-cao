@@ -714,6 +714,7 @@ export async function collectAicUsage() {
         const metadata = workflowByRunId.get(runId);
         if (!Number.isFinite(runId) || !metadata) continue;
         const repository = metadata.workflow.repository;
+        const [repositoryOwner, repositoryName] = repository.split("/");
         const mode = parseRolloutMode(metadata.run?.displayTitle);
         const common = {
           repository,
@@ -754,7 +755,7 @@ export async function collectAicUsage() {
             readRunTimeline(
               temporaryRoot,
               runId,
-              canonicalRunId(runId, common.runAttempt),
+              canonicalRunId(repositoryOwner, repositoryName, runId),
               evidence,
             ),
           ]);
