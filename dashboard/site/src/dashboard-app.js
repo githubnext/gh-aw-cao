@@ -3,7 +3,6 @@
       import { offerCancelCommand } from "./cancel-command.js";
       import { loadDashboardQuerySources, processDashboardQueries, subscribeWorkerLoadingProgress } from "./data-processor.js";
       import { startDashboardData } from "./data/startup.js";
-      import { octicon } from "./octicons.js";
       import { renderRefreshError } from "./components/refresh-error.js";
       import { collectFullDiagnostics } from "./diagnostics.js";
       import { startDashboardAppUpdates } from "./dashboard-data-updates.js";
