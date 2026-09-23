@@ -195,7 +195,11 @@ jobs:
               : `${report.slice(0, maximumReportLength)}\n\n_Report truncated; see the workflow artifact for the complete ranking._`
             const body = [
               marker,
+              '<details><summary><b>Query complexity report</b></summary>',
+              '',
               boundedReport,
+              '',
+              '</details>',
               '',
               '⚠️ This structural estimate is informational and does not block the pull request.',
               `🔎 [View the workflow run and complete report artifact](${runUrl}).`,
@@ -417,11 +421,13 @@ jobs:
               }
               const status = result.failures.length > 0 ? '❌' : '✅'
               return [
-                `#### ${status} 👤🚦 ${result.persona} (\`${result.id}\`)`,
+                `<details><summary>${status} 👤🚦 <b>${result.persona}</b> (<code>${result.id}</code>)</summary>`,
                 '',
                 '| Measurement | Status | Value | Threshold |',
                 '| --- | --- | --- | --- |',
                 ...rows,
+                '',
+                '</details>',
               ].join('\n')
             })
             const runUrl =

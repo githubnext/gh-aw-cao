@@ -179,6 +179,15 @@ jobs:
                 '',
                 '</details>',
               ].join('\n') : ''
+              const resultsSection = rows.length > 0 ? [
+                '<details><summary><b>View assessment results</b></summary>',
+                '',
+                '| View | Result | DOM nodes | Findings |',
+                '|---|---:|---:|---|',
+                ...rows,
+                '',
+                '</details>',
+              ].join('\n') : ''
               body = [
                 marker,
                 '### Dashboard view assessment',
@@ -194,9 +203,7 @@ jobs:
                   ? `Ignored views: ${summary.ignoredPageIds.map(safeIdentifier).join(', ')}.`
                   : '',
                 '',
-                '| View | Result | DOM nodes | Findings |',
-                '|---|---:|---:|---|',
-                ...rows,
+                resultsSection,
                 '',
                 queryUsageGraphSection,
                 '',
