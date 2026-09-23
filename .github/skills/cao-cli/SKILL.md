@@ -195,6 +195,17 @@ query graph before and after pruning, including stage counts, dependency edges, 
 query counts, maximum and average depth, pairs compared, similarity relation counts, and score
 buckets.
 
+Each query also includes a static row-read complexity estimate derived from the declarative
+executor's source-copy, join, and row-operator scan behavior. The normalized upper-bound model
+sets every external source to one row and assumes no selectivity; symbolic source coefficients
+let agents substitute real cardinalities. The report lists direct, dependency, and total
+row-read units, stage-level reads, output units, and the complexity class.
+
+`stats.after.row-read-estimate.computation-pressure` lists every query from highest to lowest
+pressure. Pressure is the dependency-amortized normalized row-read total: the query plus each
+unique transitive dependency materialized once, matching compiler reuse within one execution
+batch.
+
 Write the optimized document only after reviewing that report:
 
 ```bash

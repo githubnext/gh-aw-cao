@@ -199,6 +199,7 @@ function buildDashboardQueryAnalysis(dashboard, similarities) {
   }
 
   const depths = queryDepths(index);
+  const complexity = queryComplexityEstimates(index);
   const inventory = definitions.map((query, index_) => {
     const dependencies = queryInputNames(query).filter((name) => index.has(name));
     return {
@@ -212,11 +213,15 @@ function buildDashboardQueryAnalysis(dashboard, similarities) {
       depth: depths.get(query.name) ?? 0,
       'fan-in': dependencies.length,
       'fan-out': dependents.get(query.name)?.size ?? 0,
+      complexity: {
+        ...complexity.queries.get(query.name),
+        'computation-pressure-rank': complexity.ranks.get(query.name)
+      },
       similarities: (similarityByQuery.get(query.name) ?? [])
         .toSorted((left, right) => right.score - left.score || left.query.localeCompare(right.query))
     };
   });
-  return { inventory, stats: summarizeQueryGraph(definitions) };
+  return { inventory, stats: summarizeQueryGraph(definitions, complexity) };
 }
 
 /** @param {Record<string, any>} view @param {string} label @param {Map<string, Set<string>>} consumers */
@@ -226,11 +231,15 @@ function addViewConsumers(view, label, consumers) {
   }
 }
 
-/** @param {unknown[]} queries */
-function summarizeQueryGraph(queries) {
+/**
+ * @param {unknown[]} queries
+ * @param {ReturnType<typeof queryComplexityEstimates>} [complexity]
+ */
+function summarizeQueryGraph(queries, complexity) {
   const definitions = queries.filter((query) => isRecord(query) && typeof query.name === 'string');
   const index = new Map(definitions.map((query) => [query.name, query]));
   const depths = queryDepths(index);
+  const estimates = complexity ?? queryComplexityEstimates(index);
   const stageCounts = Object.fromEntries(Object.keys(QUERY_STAGE_WEIGHTS).map((stage) => [stage, 0]));
   let dependencyEdges = 0;
   for (const query of definitions) {
@@ -247,8 +256,211 @@ function summarizeQueryGraph(queries) {
     'average-depth': depthValues.length > 0
       ? Math.round((depthValues.reduce((total, depth) => total + depth, 0) / depthValues.length) * 100) / 100
       : 0,
-    'stage-counts': stageCounts
+    'stage-counts': stageCounts,
+    'row-read-estimate': estimates.summary
   };
+}
+
+/**
+ * Static upper-bound row-read model matching the declarative executor:
+ * - every external source starts with one normalized row;
+ * - filters, joins, aggregates, and limits do not reduce the upper-bound row count;
+ * - joins cannot expand the left side because duplicate right keys fail closed;
+ * - dependencies are materialized once and reused within one execution batch.
+ *
+ * @param {Map<string, Record<string, any>>} index
+ */
+function queryComplexityEstimates(index) {
+  const direct = new Map();
+  const visiting = new Set();
+
+  /** @param {string} source */
+  const sourceOutput = (source) => {
+    if (!index.has(source)) return new Map([[source, 1]]);
+    return estimate(source).output;
+  };
+  /** @param {string} name */
+  const estimate = (name) => {
+    if (direct.has(name)) return direct.get(name);
+    if (visiting.has(name)) return emptyComplexityEstimate();
+    const query = index.get(name);
+    if (!query) return emptyComplexityEstimate();
+    visiting.add(name);
+
+    const stageReads = {};
+    let output = new Map();
+    for (const source of [query.from, ...(Array.isArray(query.union) ? query.union : [])]) {
+      if (typeof source === 'string') output = addCoefficients(output, sourceOutput(source));
+    }
+    stageReads.from = coefficientsObject(output);
+    let reads = new Map(output);
+
+    for (const join of Array.isArray(query.joins) ? query.joins : []) {
+      if (!isRecord(join) || typeof join.source !== 'string') continue;
+      const joined = sourceOutput(join.source);
+      const joinReads = addCoefficients(output, joined);
+      stageReads[`join:${join.source}`] = coefficientsObject(joinReads);
+      reads = addCoefficients(reads, joinReads);
+    }
+    for (const [stage, cost] of queryOperatorCosts(query)) {
+      const operatorReads = scaleCoefficients(output, cost);
+      stageReads[stage] = coefficientsObject(operatorReads);
+      reads = addCoefficients(reads, operatorReads);
+    }
+
+    visiting.delete(name);
+    const value = {
+      reads,
+      output,
+      'stage-reads': stageReads,
+      class: query['order-by'] ? 'linear-row-reads-with-n-log-n-sort' : 'linear-row-reads'
+    };
+    direct.set(name, value);
+    return value;
+  };
+  for (const name of index.keys()) estimate(name);
+
+  const queries = new Map();
+  for (const [name, query] of index) {
+    const dependencies = transitiveQueryDependencies(query, index);
+    let total = new Map(direct.get(name)?.reads ?? []);
+    for (const dependency of dependencies) {
+      total = addCoefficients(total, direct.get(dependency)?.reads ?? new Map());
+    }
+    const own = direct.get(name) ?? emptyComplexityEstimate();
+    queries.set(name, {
+      model: 'normalized-upper-bound',
+      assumptions: 'Each external source has one row; selectivity is 1; query dependencies materialize once per batch.',
+      class: own.class,
+      'direct-row-read-units': coefficientTotal(own.reads),
+      'dependency-row-read-units': coefficientTotal(total) - coefficientTotal(own.reads),
+      'total-row-read-units': coefficientTotal(total),
+      'output-row-units': coefficientTotal(own.output),
+      'source-coefficients': coefficientsObject(total),
+      'direct-source-coefficients': coefficientsObject(own.reads),
+      'stage-row-reads': own['stage-reads']
+    });
+  }
+
+  let graphReads = new Map();
+  const stageTotals = {};
+  for (const value of direct.values()) {
+    graphReads = addCoefficients(graphReads, value.reads);
+    for (const [stage, coefficients] of Object.entries(value['stage-reads'])) {
+      stageTotals[stage] = (stageTotals[stage] ?? 0)
+        + coefficientTotal(new Map(Object.entries(coefficients)));
+    }
+  }
+  const ranked = [...queries].toSorted((left, right) => (
+    right[1]['total-row-read-units'] - left[1]['total-row-read-units']
+    || right[1]['direct-row-read-units'] - left[1]['direct-row-read-units']
+    || left[0].localeCompare(right[0])
+  ));
+  const ranks = new Map(ranked.map(([name], index_) => [name, index_ + 1]));
+  const pressure = ranked.map(([name, value], index_) => ({
+    rank: index_ + 1,
+    name,
+    score: value['total-row-read-units'],
+    'total-row-read-units': value['total-row-read-units'],
+    'direct-row-read-units': value['direct-row-read-units'],
+    'dependency-row-read-units': value['dependency-row-read-units'],
+    class: value.class
+  }));
+  return {
+    queries,
+    ranks,
+    summary: {
+      model: 'normalized-upper-bound',
+      assumptions: 'Each external source has one row; selectivity is 1; all queries materialize once with shared dependencies reused.',
+      'materialize-all-row-read-units': coefficientTotal(graphReads),
+      'source-coefficients': coefficientsObject(graphReads),
+      'stage-row-read-units': Object.fromEntries(
+        Object.entries(stageTotals).toSorted(([left], [right]) => left.localeCompare(right))
+      ),
+      'computation-pressure-definition': 'Dependency-amortized normalized row-read units; each unique transitive dependency materializes once.',
+      'computation-pressure': pressure
+    }
+  };
+}
+
+function emptyComplexityEstimate() {
+  return {
+    reads: new Map(),
+    output: new Map(),
+    'stage-reads': {},
+    class: 'linear-row-reads'
+  };
+}
+
+/** @param {Record<string, any>} query */
+function queryOperatorCosts(query) {
+  const costs = [];
+  if (Array.isArray(query.filter?.predicates) && query.filter.predicates.length > 0) costs.push(['filter', 1]);
+  if (Array.isArray(query.compute) && query.compute.length > 0) costs.push(['compute', 1]);
+  if (query['temporal-series'] !== undefined) costs.push(['temporal-series', 1]);
+  if (isRecord(query.aggregate) && Array.isArray(query.aggregate.values)) {
+    const aggregateCost = 1 + query.aggregate.values.reduce((cost, value) => (
+      cost + (isRecord(value) && isRecord(value.filter) && Array.isArray(value.filter.predicates)
+        ? 1 + value.filter.predicates.reduce((total, predicate) => (
+            total + 1 + (isRecord(predicate) && Array.isArray(predicate.in) ? predicate.in.length : 0)
+          ), 0)
+        : 0)
+    ), 0);
+    costs.push(['aggregate', aggregateCost]);
+  }
+  if (Array.isArray(query.predict) && query.predict.length > 0) {
+    const predictionCost = query.predict.reduce((cost, prediction) => {
+      if (!isRecord(prediction)) return cost;
+      const predictors = Array.isArray(prediction.on) ? prediction.on.length : 1;
+      const terms = prediction.method === 'quad'
+        ? 3
+        : prediction.method === 'poly' ? Number(prediction.order ?? 3) + 1 : predictors + 1;
+      return cost + terms * terms;
+    }, 0);
+    costs.push(['predict', predictionCost]);
+  }
+  if (Array.isArray(query.select) && query.select.length > 0) costs.push(['select', 1]);
+  if (Array.isArray(query['order-by']) && query['order-by'].length > 0) costs.push(['order-by', 1]);
+  if (typeof query.limit === 'number') costs.push(['limit', 1]);
+  return costs;
+}
+
+/** @param {Record<string, any>} query @param {Map<string, Record<string, any>>} index */
+function transitiveQueryDependencies(query, index) {
+  const resolved = new Set();
+  const pending = queryInputNames(query).filter((name) => index.has(name));
+  while (pending.length > 0) {
+    const name = pending.pop();
+    if (resolved.has(name)) continue;
+    resolved.add(name);
+    const dependency = index.get(name);
+    if (dependency) pending.push(...queryInputNames(dependency).filter((input) => index.has(input)));
+  }
+  return resolved;
+}
+
+/** @param {Map<string, number>} left @param {Map<string, number>} right */
+function addCoefficients(left, right) {
+  const result = new Map(left);
+  for (const [source, coefficient] of right) {
+    result.set(source, (result.get(source) ?? 0) + Number(coefficient));
+  }
+  return result;
+}
+
+/** @param {Map<string, number>} coefficients @param {number} scale */
+function scaleCoefficients(coefficients, scale) {
+  return new Map([...coefficients].map(([source, coefficient]) => [source, coefficient * scale]));
+}
+
+/** @param {Map<string, number>} coefficients */
+function coefficientTotal(coefficients) {
+  return [...coefficients.values()].reduce((total, coefficient) => total + Number(coefficient), 0);
+}
+
+/** @param {Map<string, number>} coefficients */
+function coefficientsObject(coefficients) {
+  return Object.fromEntries([...coefficients].toSorted(([left], [right]) => left.localeCompare(right)));
 }
 
 /** @param {number} queryCount @param {Array<Record<string, any>>} similarities */
