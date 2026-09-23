@@ -12034,7 +12034,6 @@
             "id": "overview-campaigns",
             "title": "Campaigns",
             "intent": "Provide direct navigation to every registered campaign, opening current problems first when attention is required.",
-            "description": "Campaigns needing attention open to Problems; other campaigns open to their campaign overview.",
             "data": {
               "sources": [
                 "overview-campaign-links"

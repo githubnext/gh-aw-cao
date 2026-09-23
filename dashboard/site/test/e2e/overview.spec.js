@@ -171,6 +171,7 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(factory.locator(':scope > [data-view-id="overview-floor"]')).toHaveClass(/factory-floor/);
     const campaigns = factory.locator(':scope > [data-view-id="overview-campaigns"]');
     await expect(campaigns).toBeVisible();
+    await expect(campaigns.locator(':scope > header > p')).toHaveCount(0);
     await expect(campaigns.locator('.link-button-list')).toBeVisible();
     await expect(campaigns.locator('.link-button-list-item')).toHaveCount(2);
     await expect(campaigns).toHaveCSS('row-gap', '12px');
