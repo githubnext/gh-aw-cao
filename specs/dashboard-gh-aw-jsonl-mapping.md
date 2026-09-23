@@ -236,6 +236,9 @@ store: `key_findings` to `audit.finding`, `observability_insights` to
 `missing_tools` to `audit.missing_tool`, `missing_data` to
 `audit.missing_data`, `noops` to `audit.noop`, `mcp_failures` to
 `audit.mcp_failure`, and `skill_activations` to `audit.skill_activation`.
+The Event SHALL preserve the source item's `code` as its machine-readable audit
+kind. Dashboard queries SHALL use `code` when present and retain the `audit.*`
+Event type only as the category and legacy fallback.
 
 Each `safe_output_item` envelope SHALL emit `safe_output.created` with source
 `safe-output` for its preceding `run` envelope with the

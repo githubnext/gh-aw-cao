@@ -62,12 +62,12 @@ test('ingest-jsonl --input-dir skips already-ingested shards on repeat runs with
   assert.equal(first.result.shards[0].skipped, false);
   assert.ok(first.result.shards[0].committedRecords > 0);
 
-  // Every ingested shard MUST be recorded as its own entry in the
-  // transactions table, keyed by its own payload scope, so a later run can
-  // independently look up and skip that specific shard.
+  // Every ingested shard MUST be recorded as its own content-addressed entry
+  // so a later run can independently look up and skip that specific shard.
   const transactionsAfterFirst = await queryTransactions(databasePath);
   assert.equal(transactionsAfterFirst.length, 1);
   assert.equal(transactionsAfterFirst[0].kind, 'ingest-jsonl');
+  assert.match(transactionsAfterFirst[0].id, /^ingest-jsonl:sha256:[a-f0-9]{64}:v\d+$/);
   assert.equal(transactionsAfterFirst[0].payloadScope, 'gh-aw-jsonl:gh-aw-logs-1000000000-aaaa.jsonl');
 
   const second = await ingest(shardDirectory, databasePath);
@@ -100,6 +100,18 @@ test('ingest-jsonl --input-dir skips already-ingested shards on repeat runs with
     'gh-aw-jsonl:gh-aw-logs-1000000000-aaaa.jsonl',
     'gh-aw-jsonl:gh-aw-logs-2000000000-bbbb.jsonl',
   ]);
+
+  // A later cao-activity run may publish the same shard under a different
+  // filename. Its SHA-256 receipt must still prevent reparsing.
+  await rename(
+    path.join(shardDirectory, 'gh-aw-logs-1000000000-aaaa.jsonl'),
+    path.join(shardDirectory, 'gh-aw-logs-3000000000-cccc.jsonl'),
+  );
+  const fourth = await ingest(shardDirectory, databasePath);
+  assert.equal(fourth.result.updated, false);
+  assert.equal(fourth.result.shards.length, 2);
+  assert.deepEqual(fourth.result.shards.map(({ skipped }) => skipped), [true, true]);
+  assert.equal((await queryTransactions(databasePath)).length, 2);
 });
 
 test('ingest-jsonl --input ingests a single JSONL file', async () => {

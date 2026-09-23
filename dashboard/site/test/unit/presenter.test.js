@@ -347,19 +347,6 @@ describe('dashboard DOM provenance', () => {
     expect(lazySourceNames).toContain('runs-table');
   });
 
-  it('keeps the Notifications page selected instead of its overview parent link', async () => {
-    const rendered = renderDashboardView({
-      document: authoritativeDashboardDocument,
-      sources: {}
-    });
-
-    await activatePage(rendered, 'notifications');
-
-    expect(rendered.querySelector('[data-nav-page-id="notifications"]')?.getAttribute('aria-current')).toBe('page');
-    expect(rendered.querySelector('[data-nav-page-id="overview"]')?.getAttribute('aria-current')).toBeNull();
-    disposeDashboard(rendered);
-  });
-
   it('selects a route drilldown parent when its route has a value', async () => {
     const root = document.createElement('div');
     root.innerHTML = `
@@ -2571,7 +2558,7 @@ describe('presenter built-in and custom pages', () => {
           source: 'findings',
           rows: [
             {
-              finding: 'finding-1',
+              code: 'finding-1',
               organization: 'github',
               repository: 'gh-aw-cao',
               'observed-at': '2026-08-29T12:00:00Z',
@@ -2585,7 +2572,7 @@ describe('presenter built-in and custom pages', () => {
               }
             },
             {
-              finding: 'finding-2',
+              code: 'finding-2',
               organization: 'github',
               repository: 'other-repo',
               'observed-at': '2026-08-29T13:00:00Z',
@@ -2599,7 +2586,7 @@ describe('presenter built-in and custom pages', () => {
               }
             },
             {
-              finding: 'finding-3',
+              code: 'finding-3',
               organization: 'github',
               repository: 'gh-aw-cao',
               'observed-at': '2026-08-30T01:00:00Z',

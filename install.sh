@@ -8,7 +8,7 @@ cao_command="./cao.sh"
 control_runtime=".github/workflows/shared/control.mjs"
 materializer=".github/workflows/shared/materialize-cao.mjs"
 runtime_action=".github/actions/setup-cao-runtime/action.yml"
-required_gh_aw="v0.89.17"
+required_gh_aw="v0.89.20"
 catalog_source="${1:-githubnext/gh-aw-cao}"
 
 version_at_least() {

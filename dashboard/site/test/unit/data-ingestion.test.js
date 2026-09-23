@@ -709,6 +709,7 @@ describe('canonical source ingestion and queries', () => {
     );
     await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({
+        id: expect.stringMatching(/^ingest-jsonl:sha256:[a-f0-9]{64}:v4$/),
         kind: 'ingest-jsonl',
         ingestionVersion: 4,
         records: 3,
@@ -718,7 +719,8 @@ describe('canonical source ingestion and queries', () => {
     await expect(ingestCachedGhAwJsonl(indexedDB, content, {
       now: Date.parse('2026-01-02T00:00:00Z'),
       payloadEtag: '"generation-a"',
-      context
+      context,
+      payloadScope: 'renamed-shard.jsonl'
     })).resolves.toMatchObject({ updated: false, skipped: true });
     await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({ payloadEtag: '"generation-a"' })

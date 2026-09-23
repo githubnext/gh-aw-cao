@@ -135,7 +135,7 @@ jobs:
 
       - name: Install gh-aw CLI
         continue-on-error: true
-        uses: github/gh-aw-actions/setup-cli@858a589faae74adb860f056e5a6a596a79aaaf5a # v0.89.17 tag resolves to this commit
+        uses: github/gh-aw-actions/setup-cli@925900cb40de9cb7652268d0cd14e00f9b7d2189 # v0.89.20
         env:
           GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
         with:

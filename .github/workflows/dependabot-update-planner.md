@@ -67,6 +67,22 @@ jobs:
     outputs:
       cao_authorized: ${{ steps.cao_admission.outputs.authorized == 'true' && steps.cao_precompute.outputs.authorized != 'false' }}
       cao_reason: ${{ steps.cao_precompute.outputs.reason || steps.cao_admission.outputs.reason }}
+  agent:
+    pre-steps:
+      - name: Derive target GitHub App scope
+        id: target_github_app_scope
+        env:
+          TARGET_REPOSITORY: ${{ inputs.target_repo }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          IFS=/ read -r owner repository extra <<< "$TARGET_REPOSITORY"
+          if [[ -z "$owner" || -z "$repository" || -n "$extra" ]]; then
+            echo "Invalid target repository: $TARGET_REPOSITORY" >&2
+            exit 1
+          fi
+          echo "owner=$owner" >> "$GITHUB_OUTPUT"
+          echo "repository=$repository" >> "$GITHUB_OUTPUT"
 
 if: needs.pre_activation.outputs.cao_authorized == 'true'
 
@@ -136,6 +152,12 @@ tools:
     mode: gh-proxy
     min-integrity: unapproved
     toolsets: [default, repos, issues, pull_requests, actions, dependabot, code_security, security_advisories]
+    github-app:
+      client-id: ${{ vars.GH_AW_GITHUB_READ_APP_ID }}
+      private-key: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
+      ignore-if-missing: true
+      owner: ${{ steps.target_github_app_scope.outputs.owner }}
+      repositories: ["${{ steps.target_github_app_scope.outputs.repository }}"]
   web-fetch:
   repo-memory:
     branch-name: "memory/dependabot"

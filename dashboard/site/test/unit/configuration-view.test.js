@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const queryCanonicalDatabaseDiagnostics = vi.hoisted(() => vi.fn().mockResolvedValue({
-  schemaVersion: 12,
+  schemaVersion: 13,
   counts: {
     campaigns: 0,
     repositories: 0,

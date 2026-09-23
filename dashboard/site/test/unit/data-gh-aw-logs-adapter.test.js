@@ -166,7 +166,7 @@ describe('gh-aw logs adapter', () => {
                 status: 'success'
               }]
             },
-            key_findings: [{ title: 'Slow response', severity: 'medium' }],
+            key_findings: [{ code: 'high_token_usage', title: 'Slow response', severity: 'medium' }],
             missing_tools: [{ tool: 'search', timestamp: '2026-09-09T04:00:20Z' }],
             skill_activations: [{ name: 'review', status: 'success', timestamp: '2026-09-09T04:00:30Z' }],
             created_items: [{
@@ -293,6 +293,13 @@ describe('gh-aw logs adapter', () => {
       'audit.finding',
       'audit.missing_tool',
       'github_api_rate_limit'
+    ]));
+    expect(batch.audits).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: 'audit.finding',
+        code: 'high_token_usage',
+        summary: 'Slow response'
+      })
     ]));
     expect(batch.tools).toEqual(expect.arrayContaining([
       expect.objectContaining({

@@ -1689,7 +1689,10 @@ function createCachedGhAwJsonlAccumulator(options) {
           optionalString(record[summaryField]) ?? type,
           optionalString(record[statusField]),
           { type, index, summary: record[summaryField], status: record[statusField] },
-          { source: 'audit' }
+          {
+            source: 'audit',
+            code: optionalString(record.code)
+          }
         );
       });
     };

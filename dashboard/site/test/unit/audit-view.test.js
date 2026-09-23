@@ -82,6 +82,32 @@ describe('Audit dashboard view', () => {
     ]);
   });
 
+  it('uses audit codes as event kinds with a legacy event-type fallback', () => {
+    const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries',
+      queries: dashboard.queries,
+      sourceNames: ['audit-events'],
+      sources: {
+        audits: {
+          source: 'audits',
+          rows: [
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', run: '1', event: '1', code: 'high_token_usage', 'event-type': 'audit.finding', 'event-summary': 'High token usage' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', run: '1', event: '2', 'event-type': 'audit.recommendation', 'event-summary': 'Legacy recommendation' }
+          ],
+          metadata
+        },
+        tools: { source: 'tools', rows: [], metadata },
+        workflows: { source: 'workflows', rows: [], metadata },
+        runs: { source: 'runs', rows: [], metadata }
+      }
+    }));
+
+    expect(result['audit-events'].rows).toEqual([
+      expect.objectContaining({ 'audit-kind': 'high_token_usage' }),
+      expect.objectContaining({ 'audit-kind': 'audit.recommendation' })
+    ]);
+  });
+
   it('attributes every operational-value extract using repository-qualified workflow identity', () => {
     const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
