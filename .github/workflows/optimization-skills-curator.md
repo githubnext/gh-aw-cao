@@ -135,8 +135,8 @@ steps:
         const ROOT = 'target';
         const OUT_DIR = '/tmp/gh-aw/agent/optimization/skills-curator';
         const OUT = path.join(OUT_DIR, 'skills-prefetch.json');
-        const SKILL_GLOBS = ['.github/skills/*/SKILL.md', '.claude/skills/*/SKILL.md', 'skills/*/SKILL.md'];
-        const AGENT_GLOBS = ['.github/agents/*.md', '.claude/agents/*.md'];
+        const SKILL_GLOBS = ['.agents/skills/*/SKILL.md', '.github/skills/*/SKILL.md', '.claude/skills/*/SKILL.md', 'skills/*/SKILL.md'];
+        const AGENT_GLOBS = ['.agents/agents/*.md', '.github/agents/*.md', '.claude/agents/*.md'];
         const REFERENCE_WINDOW_DAYS = 180;
         const MAX_LIST_ITEMS = 40;
         const MAX_OPEN_PULL_REQUESTS = 10;
