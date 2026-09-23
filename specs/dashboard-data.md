@@ -1,7 +1,7 @@
 ---
 title: Central Agentic Ops Dashboard Data Architecture Specification
 description: Canonical data model, ingestion, IndexedDB persistence, consistency, recovery, and scale requirements for the gh-aw-cao dashboard.
-version: 1.6.0
+version: 1.7.0
 status: Working Draft
 editors:
   - GitHub Next
@@ -9,11 +9,11 @@ editors:
 
 # Central Agentic Ops Dashboard Data Architecture Specification
 
-**Version:** 1.6.0
+**Version:** 1.7.0
 **Status:** Working Draft
 **Repository:** `githubnext/gh-aw-cao`
 **Target implementation:** Dashboard data subsystem
-**Date:** 2026-09-22
+**Date:** 2026-09-23
 
 | Browser storage | IndexedDB keeps all available run summaries and expires detailed run-linked records after 30 days. |
 | --- | --- |
@@ -57,7 +57,12 @@ Issue records SHALL contain both issues and pull requests, distinguished by an
 `isPullRequest` flag. Every record in these four tables SHALL reference its
 owning Run.
 
-The architecture SHALL support eventual consistency, idempotent conversion, large datasets, bounded-memory ingestion, immutable source generations, integrity verification, interruption recovery, staging generations, atomic generation activation, browser storage failures, schema evolution, Node.js testing, and real-browser testing.
+The architecture SHALL support eventual consistency, idempotent conversion,
+large datasets, bounded-memory ingestion, integrity verification, interruption
+recovery, browser storage failures, schema evolution, Node.js testing, and
+real-browser testing. Derived projections MAY use immutable generations and
+atomic activation, but the canonical entity stores use bounded incremental
+reconciliation and MUST NOT be described as generation-atomic.
 
 Dashboard views SHALL consume only the canonical query layer and SHALL NOT parse upstream source formats directly.
 
@@ -197,9 +202,12 @@ Reprocessing identical input MUST NOT create duplicate entities or run-linked re
 
 Partial observations MAY arrive at different times and MUST converge toward a coherent canonical state.
 
-## INV-009 — Fail-safe activation
+## INV-009 — Fail-safe ingestion status
 
-An incomplete replacement dataset MUST NEVER replace a known-good active dataset.
+An incomplete ingestion MUST NOT be recorded as current. Bounded canonical
+writes MAY already have committed before a later shard or validation failure;
+the failed phase MUST remain retryable, and record-dependent subscribers MUST
+retain their last complete result until that phase succeeds.
 
 ## INV-010 — Bounded processing
 
@@ -211,7 +219,9 @@ Node tests and browser runtime SHOULD exercise the same canonical and persistenc
 
 ## INV-012 — Full replacement
 
-Views MUST read only the active canonical generation. The completed implementation MUST NOT fall back to a legacy cache, source object, generation, alias, or renderer data path.
+Views MUST read only through the canonical query boundary. The completed
+implementation MUST NOT fall back to a legacy cache, source object, alias, or
+renderer data path.
 
 ---
 
@@ -239,10 +249,17 @@ but MUST NOT be copied into the dashboard artifact or listed in its deployed
 payload manifest. The browser MUST fail closed when compacted run-information
 shards are absent; it MUST NOT fall back to raw Activity JSONL.
 
-SQLite and IndexedDB SHALL use the same adapters, identities, normalization,
-and relationship validation. They MAY use different retention windows because
-SQLite can serve a historical archive while IndexedDB remains a bounded browser
-cache.
+The local SQLite projection and browser IndexedDB projection SHALL use the same
+adapters, identities, normalization, object-store definitions, and relationship
+validation. The local SQLite file is an implementation of the IndexedDB subset
+used by the canonical storage API; it is not a separate relational canonical
+schema. It MAY use a different retention window when explicitly created as a
+historical archive.
+
+The `gh-aw-cao.dashboard-sql-export` contract is a separate, static source
+interchange. Its producer-owned relational tables or views SHALL be serialized
+to JSON and adapted before canonical normalization. The SQL export contract
+MUST NOT be confused with the local SQLite projection.
 
 IndexedDB and the Activity SQLite database SHALL retain all available canonical
 Repository, Workflow, and Run summaries. They SHALL retain detailed Domain,
@@ -250,7 +267,38 @@ Tool, Audit, and Issue records for the bounded 30-day operational window.
 Expiring run-owned records MUST NOT remove their retained Run or the Run's
 structural parents.
 
-## 5.1 Completeness and archives
+## 5.1 Implemented storage profile
+
+The implementation profile defined by this specification is:
+
+| Layer | Version | Physical structure |
+| --- | ---: | --- |
+| Canonical model | 13 | Campaign, Repository, Workflow, Run, Domain, Tool, Audit, and Issue records |
+| Browser IndexedDB | 20 | Eight canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
+| Local SQLite projection | IndexedDB 20 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records`, containing the same logical stores and JSON records as IndexedDB |
+| Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
+
+`gh-aw-cao-dashboard-data` is the logical database name. Every implemented
+store uses `id` as its key path. The implemented secondary indexes are:
+
+| Store | Indexes |
+| --- | --- |
+| `campaigns` | `bySlug -> slug` |
+| `repositories` | none |
+| `workflows` | `byRepository -> repositoryId` |
+| `runs` | `byRepository -> repositoryId`, `byWorkflow -> workflowId`, `byConclusion -> conclusion` |
+| `domains`, `tools`, `audits`, `issues` | `byRun -> runId` |
+| `transactions` | `byCreatedAt -> createdAt` |
+| `dailyOverviewAggregates` | `byGenerationDay -> [generation, day]` |
+| `overviewAggregateMetadata` | none |
+
+Physical IndexedDB upgrades SHALL rebuild every store because all browser state
+is disposable. The SQLite-backed implementation SHALL preserve exactly the same
+logical database version, store names, key paths, indexes, and record values.
+The metadata tables are an emulation detail and MUST NOT be presented as
+canonical domain tables.
+
+## 5.2 Completeness and archives
 
 The scheduled Activity collection SHALL be treated as a rolling operational
 snapshot, not as a complete historical archive. Completeness SHALL be reported
@@ -273,7 +321,7 @@ Expired or unavailable GitHub Actions artifacts SHALL be reported as missing
 enrichment. Their run summaries MAY still be present and MUST NOT be described
 as fully enriched runs.
 
-## 5.2 Maintenance inventory
+## 5.3 Maintenance inventory
 
 Campaign inventory inputs MAY report `campaign-version`,
 `campaign-current-version`, and `campaign-update-state` for an installed gh-aw
@@ -294,12 +342,11 @@ The SQLite Campaign projection and the IndexedDB `campaigns` object store MUST
 preserve the same three campaign-maintenance fields with identical missing-data
 semantics. Both projections remain disposable and reconstructable from campaign
 inventory inputs. Schema migration MUST rebuild these derived records, and a
-failed refresh MUST retain the last complete active generation rather than
-publish partial maintenance state. Campaign and repository maintenance actions
-MUST use these canonical query results and MUST NOT inspect upstream manifests
-or browser storage directly.
+failed refresh MUST NOT publish a complete maintenance query payload. Campaign
+and repository maintenance actions MUST use these canonical query results and
+MUST NOT inspect upstream manifests or browser storage directly.
 
-## 5.3 Activity acquisition and source roles
+## 5.4 Activity acquisition and source roles
 
 Activity acquisition SHALL use one runtime observation path:
 
@@ -344,9 +391,9 @@ avoid source adaptation and normalization, use their `payload-hashes.json`
 identities to skip unchanged downloads and imports, and fall back to the source
 JSONL shards when normalized payloads are unavailable.
 
-## 5.4 Canonical join contract
+### 5.4.1 Canonical join contract
 
-### 5.4.1 Campaign resource navigation projections
+#### 5.4.1.1 Campaign resource navigation projections
 
 Campaign resource pages SHALL resolve one campaign slug from the active route and
 apply it as an equality predicate inside the dashboard query worker. Generated
@@ -368,7 +415,10 @@ The cached JSONL source does not expose immutable Repository and Workflow IDs
 for every envelope. Until it does, Repository identity SHALL use normalized
 `OWNER/REPOSITORY`; Workflow identity SHALL be scoped to that Repository and
 use authoritative workflow path when available, otherwise a source-namespaced
-workflow name. Run identity SHALL use GitHub run ID plus attempt.
+workflow name. Run identity SHALL use normalized execution-repository
+coordinates plus GitHub run ID. `attempt` SHALL remain a required observation
+field used for source deduplication and diagnostics, but it SHALL NOT be part of
+the canonical Run ID.
 
 The mandatory execution joins are:
 
@@ -691,9 +741,9 @@ MUST NOT be shipped to the browser.
 Browser IndexedDB remains disposable. Migration of any identity, enum, or
 measure semantics in this section SHALL increment the canonical schema and
 rebuild token-optimization projections from authoritative inputs. A failed
-rebuild SHALL retain the last complete active generation. A historical SQLite
-archive MAY use longer retention but MUST apply the same adapter and
-normalization rules.
+rebuild MUST NOT create a successful ingestion receipt or publish a compatible
+derived projection. A historical SQLite archive MAY use longer retention but
+MUST apply the same adapter and normalization rules.
 
 The browser SHALL retain active interventions until they reach a terminal state
 and SHALL retain the resulting compact comparison for at least the existing
@@ -804,12 +854,12 @@ erDiagram
     string observedAt
   }
   RUN {
-    string id PK "githubRunId plus attempt"
+    string id PK "repository coordinate plus githubRunId"
     string repositoryId FK "required execution repository"
     string targetRepositoryId FK "nullable worker target"
     string workflowId FK "required owning workflow"
-    number githubRunId "composite natural key"
-    number attempt "composite natural key"
+    number githubRunId "repository-scoped natural key"
+    number attempt "latest observed attempt"
     string status
     string conclusion
     string startedAt
@@ -847,11 +897,16 @@ field. `PK`, `FK`, and `UK` denote primary, foreign, and unique keys. Nullable
 GitHub IDs are preferred immutable identities when present. When cached JSONL
 does not expose them, Repository falls back to normalized `fullName`, Workflow
 falls back to `(repositoryId, path)` or a source-namespaced
-`(repositoryId, name)`, and Run uses `(githubRunId, attempt)`. These composite
-values are encoded into the canonical string `id`; the individual components
-are not independently unique.
+`(repositoryId, name)`, and Run uses
+`(executionRepositoryCoordinate, githubRunId)`. These composite values are
+encoded into the canonical string `id`; the individual components are not
+independently unique.
 
-Repository and Workflow references on Run MAY be denormalized for browser query efficiency, but remain mandatory canonical relationships. Every Domain, Tool, Audit, and Issue MUST reference exactly one Run. Partial observations MAY exist during normalization; all mandatory relationships MUST resolve before a generation is activated.
+Repository and Workflow references on Run MAY be denormalized for browser query
+efficiency, but remain mandatory canonical relationships. Every Domain, Tool,
+Audit, and Issue MUST reference exactly one Run. Partial observations MAY exist
+during normalization; all mandatory relationships MUST resolve before a
+complete batch is reconciled or a streamed record phase is marked current.
 
 ---
 
@@ -928,7 +983,7 @@ Example:
 
 ```js
 {
-  id: "github:run:123456789:attempt:1",
+  id: "github:run:githubnext/gh-aw-cao:123456789",
 
   repositoryId: "...",
   targetRepositoryId: "...",
@@ -966,9 +1021,14 @@ Example:
 
 ### Requirements
 
-**RUN-001** — Run attempts MUST be distinguishable.
+**RUN-001** — Source observations MUST preserve and deduplicate by attempt.
+Canonical Run normalization SHALL converge those observations onto the
+repository-scoped GitHub run identity and retain the winning observation's
+`attempt`.
 
-**RUN-002** — Canonical identity SHOULD incorporate run ID and attempt.
+**RUN-002** — Canonical identity SHALL incorporate normalized execution
+Repository coordinates and GitHub run ID. Attempt MUST NOT create a second
+canonical Run.
 
 **RUN-003** — Later observations MAY enrich incomplete Run records.
 
@@ -1036,7 +1096,7 @@ Example:
 {
   id: "domain:01J...",
 
-  runId: "github:run:123456789:attempt:1",
+  runId: "github:run:githubnext/gh-aw-cao:123456789",
 
   sequence: 17,
   timestamp: "...",
@@ -1246,12 +1306,12 @@ SQL-export adapter
 canonical model
 ```
 
-The version 1 JSON document SHALL contain:
+The version 3 JSON document SHALL contain:
 
 ```js
 {
   contract: "gh-aw-cao.dashboard-sql-export",
-  schema_version: 2,
+  schema_version: 3,
   source: "stable-source-name",
   generation: "immutable-generation-id",
   exported_at: "RFC3339 timestamp",
@@ -1259,7 +1319,13 @@ The version 1 JSON document SHALL contain:
 }
 ```
 
-Each row SHALL contain `entity_kind`, `source_id`, and `observed_at`. The remaining nullable columns are defined by entity kind. GitHub-backed relationships SHALL use immutable GitHub repository, workflow, and run IDs. Domains, Tools, Audits, and Issues SHALL reference their Run through `github_run_id` and `run_attempt`.
+Each row SHALL contain `entity_kind`, `source_id`, and `observed_at`. The
+remaining nullable columns are defined by entity kind. GitHub-backed
+relationships SHALL use immutable GitHub repository, workflow, and run IDs.
+Domains, Tools, Audits, and Issues SHALL carry `github_run_id` and
+`run_attempt`; normalization uses the execution Repository coordinates and
+`github_run_id` for the canonical `runId`, while `run_attempt` preserves source
+grain and validation context.
 
 The relational interchange SHALL consist of one manifest row and denormalized entity rows. A producer MAY expose these as tables or views. Database-specific extraction queries and credentials remain upstream concerns and MUST NOT be shipped to the browser.
 
@@ -1344,7 +1410,7 @@ github:repository:<id>
 
 github:workflow:<id>
 
-github:run:<id>:attempt:<attempt>
+github:run:<normalized-owner>/<normalized-repository>:<github-run-id>
 ```
 
 Run-owned records SHOULD use stable source identifiers where available.
@@ -1611,22 +1677,23 @@ A completely empty IndexedDB MUST be recoverable.
 
 # 26. Database Definition
 
-The new subsystem SHOULD use a fresh database name during migration.
-
-Example:
+The canonical browser database SHALL use:
 
 ```js
-const DATABASE_NAME = "gh-aw-cao-dashboard-v2";
-const DATABASE_VERSION = 1;
+const DATABASE_NAME = "gh-aw-cao-dashboard-data";
+const DATABASE_VERSION = 20;
 ```
 
-After the old data path is removed, the name MAY be simplified.
+The name MAY be scoped by deployment path to prevent unrelated dashboard
+deployments on the same origin from sharing derived state. A version upgrade
+SHALL recreate the stores in Section 5.1 rather than migrate stale derived
+rows.
 
 ---
 
 # 27. Object Stores
 
-Version 1.2 SHOULD define:
+IndexedDB version 20 SHALL define:
 
 ```text
 campaigns
@@ -1638,14 +1705,17 @@ tools
 audits
 issues
 transactions
+dailyOverviewAggregates
+overviewAggregateMetadata
 ```
 
-Future stores MAY include:
+Future physical versions MAY include:
 
 ```text
 payloadCache
 searchIndex
-aggregates
+computationResults
+computationMetadata
 ```
 
 ---
@@ -1673,33 +1743,12 @@ repositoryId
 repositoryId
 workflowId
 conclusion
-byGenerationWorkflowOrder:
-  [generation, workflowId, computationRunDate, githubRunId, attempt]
-byGenerationWorkflowTargetOrder:
-  [generation, workflowId, targetRepositoryId, computationRunDate, githubRunId, attempt]
 ```
 
-`computationRunDate` SHALL be the normalized first valid Run timestamp in this
-order: `startedAt`, `createdAt`, then `updatedAt`. It is a disposable projection
-field used to implement the `runtime-health` ordering contract and MUST preserve
-the source fields from which it was derived.
-
-`byGenerationWorkflowOrder` supports orchestrator evaluation.
-`byGenerationWorkflowTargetOrder` supports worker-target evaluation. The
-computation engine SHALL traverse these indexes newest-first and stop each
-partition after the first successful Run, except when complete-partition
-evidence is required because no success is retained. It SHOULD use one
-target-ordered range cursor with seeks between partitions when that reduces
-storage requests. A worker Run without `targetRepositoryId` SHALL be excluded
-from the target index and handled as incomplete evidence.
-
-These two ordered indexes are REQUIRED when IndexedDB materializes
-`runtime-health`; an implementation MUST NOT replace them with an all-Runs scan
-and in-memory sort.
-
-Run-information ingestion SHOULD maintain each computation partition's
-fingerprint while processing its Run summaries. Runtime-fact computation MUST
-NOT rescan historical Runs merely to calculate that fingerprint.
+The generation-ordered runtime-computation indexes described by Section 73 are
+reserved for the physical version that implements the computation projection.
+They are not part of IndexedDB version 20. That implementation MUST increment
+the physical version and update Section 5.1 before relying on those indexes.
 
 ### run-linked tables
 
@@ -1720,92 +1769,55 @@ Every secondary index increases storage and write amplification.
 
 ---
 
-# 29. Generation-Aware Browser Storage
+# 29. Canonical Browser Reconciliation
 
-Every canonical row SHALL belong to a data generation.
+Canonical entity rows SHALL use `id` as the primary key and SHALL NOT carry a
+canonical generation key in IndexedDB version 20. Ingestion serializes writers,
+normalizes source observations, validates complete in-memory batches where the
+input mode permits it, and reconciles each store in bounded transactions.
 
-Implementations SHOULD use either:
-
-```text
-[generation, id]
-```
-
-compound keys, or an equivalent partitioning strategy.
-
-Queries MUST normally resolve only against:
-
-```text
-meta.activeGeneration
-```
+Normalized JSONL streaming MAY commit bounded batches before the complete shard
+has been received. Therefore a database read during ingestion MAY observe an
+intermediate state. Query subscriptions that depend on the unfinished phase
+MUST retain their prior complete payload until the phase succeeds.
 
 ---
 
-# 30. Generation Lifecycle
+# 30. Ingestion Receipts and Retry
 
-Generation states SHALL include:
+The `transactions` store SHALL record content-addressed ingestion receipts and
+failures. A source shard MAY be skipped only when its payload identity,
+ingestion version, and adaptation context match a successful receipt.
 
-```text
-staging
-validating
-complete
-failed
-retired
-```
-
-Only a `complete` generation MAY become active.
+An interrupted or failed shard MUST remain retryable. A failed receipt MUST NOT
+be interpreted as source freshness, completeness, or successful activation.
+The ingestion lock is coordination state in the same store and MUST NOT be
+treated as durable evidence.
 
 ---
 
-# 31. Fail-Safe Generation Replacement
+# 31. Derived Projection Generations
 
-The browser SHALL build new generations separately from active state.
+Generation staging and atomic activation apply only to derived projections that
+declare a metadata pointer, including the daily Overview aggregates in Section
+72 and the future computation projection in Section 73. They do not describe
+canonical entity-store writes.
 
-```text
-GENERATION A
-ACTIVE
-   |
-   | dashboard continues reading A
-   |
-   +------------------------------+
+For those projections:
 
-GENERATION B
-STAGING
-   |
-   +--> fetch
-   +--> verify
-   +--> normalize
-   +--> write
-   +--> checkpoint
-   +--> validate
-   |
-   v
-COMPLETE
-   |
-   v
-atomic active-generation update
-   |
-   v
-GENERATION B
-ACTIVE
-```
+**GEN-001** — A rebuild MUST write under a new generation without mutating the
+published generation.
 
-### Requirements
+**GEN-002** — Readers MUST resolve only the generation referenced by compatible
+metadata.
 
-**GEN-001** — A new generation MUST begin as `staging`.
+**GEN-003** — Metadata publication MUST be atomic.
 
-**GEN-002** — Staging MUST NOT mutate the active generation.
+**GEN-004** — Interrupted, stale, or incompatible generations MUST fail closed
+to the canonical query path or an explicit unavailable result.
 
-**GEN-003** — Active data MUST remain queryable during ingestion.
-
-**GEN-004** — A generation MUST pass validation before activation.
-
-**GEN-005** — Activation MUST be a small atomic transaction.
-
-**GEN-006** — Failure before activation MUST leave the previous generation active.
-
-**GEN-007** — A previous known-good generation SHOULD temporarily remain available after activation where storage allows.
-
-**GEN-008** — Retired generations MAY then be garbage-collected.
+**GEN-005** — Superseded and unpublished generations MAY be garbage-collected
+without changing canonical records.
 
 ---
 
@@ -2015,15 +2027,16 @@ Correctness MUST NOT depend on persistent storage being granted.
 
 When storage is insufficient:
 
-1. active generation MUST remain active;
-2. staging ingestion MUST stop;
-3. staging records MAY be deleted;
-4. retired generations MAY be removed;
-5. expendable payload/search caches MAY be removed;
-6. ingestion MAY retry if sufficient space becomes available;
-7. the dashboard SHOULD surface a storage diagnostic.
+1. the failed bounded transaction MUST abort;
+2. unpublished derived projection generations MAY be removed;
+3. expendable payload/search caches MAY be removed;
+4. the canonical retention set MAY be reduced by evicting complete oldest Run
+   subtrees;
+5. ingestion MAY retry with the smaller relationship-safe batch; and
+6. the dashboard SHOULD surface a storage diagnostic.
 
-A quota failure MUST NEVER activate partial data.
+A quota failure MUST NOT create a successful ingestion receipt or publish an
+incomplete derived projection generation.
 
 ---
 
@@ -2032,14 +2045,15 @@ A quota failure MUST NEVER activate partial data.
 When space is required, cleanup SHOULD proceed in this order:
 
 ```text
-1. failed staging generations
-2. retired generations
+1. unpublished derived projection generations
+2. superseded derived projection generations
 3. payload cache
 4. search indexes
-5. warm local history
+5. oldest complete Run subtrees
 ```
 
-The only active valid generation MUST NOT be deleted merely to create a replacement.
+Canonical storage capping MUST remove a Run and all of its run-owned records
+together. It MUST NOT leave orphaned Domain, Tool, Audit, or Issue records.
 
 ---
 
@@ -2332,25 +2346,26 @@ canonical query output
 
 ### Exit criteria
 
-Every view reads the active canonical generation, replacement failures are explicit, and no legacy browser path remains.
+Every view reads the canonical query boundary, update failures are explicit,
+and no legacy browser path remains.
 
 ---
 
-## Phase 7 — Generation safety
+## Phase 7 — Derived projection generation safety
 
 Implement:
 
 ```text
-staging generations
-validation
-active-generation pointer
-atomic activation
-rollback behavior
+projection-specific staging generations
+metadata compatibility validation
+atomic metadata publication
+stale-generation cleanup
 ```
 
 ### Exit criteria
 
-Interrupted/failed replacement cannot damage active data.
+Interrupted or failed materialization cannot publish a partial derived
+projection.
 
 ---
 
@@ -2437,7 +2452,9 @@ Workflow path change does not incorrectly duplicate a known workflow.
 
 ### T-MODEL-003 — Run attempts
 
-Reruns are distinguishable.
+Repeated attempts remain visible in source evidence, and normalization
+converges them to one repository-scoped Run identity with the winning
+observation's attempt.
 
 ### T-MODEL-004 — Run-owned record composition
 
@@ -2506,13 +2523,15 @@ Required query paths return expected results.
 
 Idempotent writes preserve record count.
 
-### T-IDB-004 — Generation isolation
+### T-IDB-004 — Interrupted reconciliation
 
-Staging records never appear in active-generation queries.
+Interrupted bounded writes remain retryable and do not create a successful
+ingestion receipt.
 
-### T-IDB-005 — Atomic activation
+### T-IDB-005 — Derived projection activation
 
-Changing active generation exposes either A or B, never mixed state.
+Changing a derived projection metadata pointer exposes either generation A or
+B, never mixed projection records.
 
 ---
 
@@ -2542,7 +2561,8 @@ Cause IndexedDB write failure.
 
 Expected:
 
-Previous active generation remains usable.
+The failed transaction aborts, no successful receipt is written, and retry may
+reduce storage by evicting complete oldest Run subtrees.
 
 ### T-FAIL-004 — Invalid schema
 
@@ -2726,7 +2746,9 @@ Because IndexedDB is not authoritative:
 
 > Rebuildability is more important than preserving stale derived rows.
 
-A known-good active generation SHOULD remain available until its replacement has completed.
+Physical schema upgrades SHALL rebuild the database. Derived projections that
+use generations SHOULD keep the published generation available until compatible
+replacement metadata is committed.
 
 ---
 
@@ -2865,8 +2887,8 @@ The subsystem is complete when:
 * query API works;
 * Node tests exercise IndexedDB interfaces;
 * native browser tests pass;
-* active/staging generation isolation works;
-* failed replacement preserves active data;
+* interrupted canonical writes retry without a successful receipt;
+* derived projection generation isolation works where materialized;
 * recovery from empty IndexedDB works.
 
 ---
@@ -2938,7 +2960,7 @@ published inputs
  ingestion adapters
   |
   v
-active-generation queries
+canonical queries
         |
         v
       views
@@ -2962,7 +2984,7 @@ A dashboard data change SHOULD be rejected if it:
 * creates a second canonical representation;
 * relies on ingestion order for identity;
 * makes IndexedDB authoritative;
-* writes staging data into the active generation;
+* exposes an unpublished derived projection generation;
 * requires a full dataset in memory;
 * silently drops unknown observations;
 * introduces random IDs for otherwise stable entities;
@@ -3013,11 +3035,11 @@ canonical query integration
 replaced browser data-path deletion
 ```
 
-### PR 5 — Generation isolation
+### PR 5 — Derived projection generation isolation
 
 ```text
-active/staging generations
-activation transaction
+projection generations
+metadata publication transaction
 failure tests
 ```
 
@@ -3137,16 +3159,17 @@ The implementation SHALL be guided by the following rules:
 | Query layer between DB and views               | MUST                           |
 | Native browser testing                         | MUST                           |
 | Node IndexedDB testing                         | MUST                           |
-| Staging generation                             | MUST                           |
-| Atomic activation                              | MUST                           |
-| Failed replacement preserves active generation | MUST                           |
+| Content-addressed ingestion receipts           | MUST                           |
+| Retry after interrupted bounded writes         | MUST                           |
+| Derived projection generation isolation        | MUST where materialized        |
+| Derived projection atomic activation           | MUST where materialized        |
 | Bounded ingestion                              | MUST                           |
 | Explicit quota handling                        | MUST                           |
 | Chunk digest verification                      | MUST when chunking enabled     |
 | Resume checkpoints                             | MUST for large-data mode       |
 | Web Worker ingestion                           | SHOULD                         |
 | Local retention tiers                          | SHOULD for large installations |
-| Previous generation retention                  | SHOULD where storage permits   |
+| Previous derived-generation retention          | SHOULD where storage permits   |
 | Full-text derived search index                 | MAY                            |
 | Chunked publishing before canonical model      | SHOULD NOT                     |
 
@@ -3277,9 +3300,8 @@ query path.
 
 ## 72.5 Generations and crash safety
 
-Publication follows the same generation discipline defined in
-§§29–31 (Generation-Aware Browser Storage, Generation Lifecycle,
-Fail-Safe Generation Replacement): a
+Publication follows the derived projection generation discipline defined in
+Section 31: a
 refresh constructs a new generation, persists it in bounded
 transactions, validates it, and only then atomically republishes the
 metadata record's `activeGeneration`. The previously active generation
@@ -3327,6 +3349,12 @@ with INV-004 and §59 (Full Rebuild Requirement).
 ---
 
 # 73. Materialized Computation Projection
+
+This section defines the next physical storage profile. IndexedDB version 20
+does not contain `computationResults`, `computationMetadata`, or the ordered
+runtime-computation indexes. Implementing this section SHALL increment the
+physical IndexedDB version, update Section 5.1, and add the conformance tests
+below in the same change. Until then, no query may assume these stores exist.
 
 ## 73.1 Purpose and authority
 
@@ -3487,15 +3515,15 @@ measure versions, partition uniqueness, bounds, fingerprints, relationships,
 and quality, then atomically mark the corresponding metadata ready. Results
 MUST NOT become queryable as ready before their metadata publication succeeds.
 
-A query SHALL join computation results only to canonical records with the same
-generation. Activating a new canonical generation MUST make prior-generation
-computation results ineligible for the active query, even when measure versions
-and partition keys match.
+A query SHALL use a computation generation only when its metadata and
+`inputFingerprint` match the canonical inputs captured for that materialization.
+A later canonical ingestion MUST invalidate incompatible computation metadata,
+even when measure versions and partition keys match.
 
-Selected-partition cause and action computations MAY publish into the active
-generation after activation. The worker SHALL write the complete result and
-its metadata update in one transaction. A failed or aborted write MUST preserve
-any known-good compatible result.
+Selected-partition cause and action computations MAY publish into the currently
+referenced computation generation after its bulk phase. The worker SHALL write
+the complete result and its metadata update in one transaction. A failed or
+aborted write MUST preserve any known-good compatible result.
 
 When an orchestrator gate transitions away from `eligible`, the data worker
 SHALL atomically publish the replacement Campaign summary and delete or
@@ -3504,15 +3532,15 @@ absent from active attention indexes. This operation MUST NOT delete canonical
 worker Runs, which remain available for explicitly requested historical
 inspection.
 
-Retired-generation computation results MAY be garbage-collected with their
-canonical generation. Deleting either computation store MUST leave canonical
+Retired computation generations MAY be garbage-collected after their metadata
+is no longer referenced. Deleting either computation store MUST leave canonical
 data intact and MUST permit complete projection reconstruction.
 
 ## 73.6 Cache compatibility and invalidation
 
 A cached result is compatible only when all of these values match:
 
-- active canonical generation;
+- referenced computation generation;
 - measure ID;
 - measure version;
 - partition key and hash;
@@ -3605,6 +3633,22 @@ or broaden the partition.
 ---
 
 # 74. Change Log
+
+## Version 1.7.0 — Implemented storage alignment
+
+* Defined the canonical model, IndexedDB, SQLite-backed IndexedDB, and SQL
+  interchange as four separately versioned contracts.
+* Recorded the exact IndexedDB version 20 stores, key paths, and indexes.
+* Clarified that local SQLite mirrors IndexedDB logical stores through metadata
+  and JSON record tables rather than defining a separate relational domain
+  schema.
+* Updated SQL export references to version 3.
+* Aligned canonical Run identity with repository coordinates plus GitHub run ID
+  and retained attempt as source evidence rather than identity.
+* Replaced unimplemented canonical generation activation requirements with the
+  bounded reconciliation, ingestion receipt, and retry contract.
+* Scoped generation activation to materialized derived projections and marked
+  the computation projection as a future physical-version contract.
 
 ## Version 1.6.0 — Orchestrator-first computation gate
 
