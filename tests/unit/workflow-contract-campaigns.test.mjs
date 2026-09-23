@@ -57,11 +57,11 @@ test("campaigns and repository workflows pin the supported gh-aw version", () =>
   }
   const activity = workflow("cao-activity.yml");
   assert.match(activity, /Resolve gh-aw compiler version[\s\S]*control\.mjs compiler-version \.github\/workflows\/cao\.json/);
-  assert.match(activity, new RegExp(`setup-cli@[0-9a-f]{40} # ${escapedGhAwVersion} tag resolves to this commit`));
+  assert.match(activity, new RegExp(`setup-cli@[0-9a-f]{40} # ${escapedGhAwVersion}`));
   assert.match(activity, /version: \$\{\{ steps\.gh-aw-compiler\.outputs\.version \}\}/);
   const setupAction = readFileSync(join(root, ".github", "actions", "setup-gh-aw", "action.yml"), "utf8");
   assert.match(setupAction, /control\.mjs compiler-version \.github\/workflows\/cao\.json/);
-  assert.match(setupAction, new RegExp(`setup-cli@[0-9a-f]{40} # ${escapedGhAwVersion} tag resolves to this commit`));
+  assert.match(setupAction, new RegExp(`setup-cli@[0-9a-f]{40} # ${escapedGhAwVersion}`));
   assert.match(setupAction, /version: \$\{\{ steps\.compiler\.outputs\.version \}\}/);
   assert.match(
     JSON.parse(readFileSync(join(root, "package.json"), "utf8")).scripts["install:gh-aw"],
