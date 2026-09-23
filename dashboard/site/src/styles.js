@@ -402,7 +402,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .cli-action-output { min-height: 160px; flex: 1 1 auto; margin: 0; }
 .cli-action-dialog-footer { min-height: 58px; display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--border); background: var(--canvas-subtle); }
 .cli-action-status { min-width: 0; flex: 1; color: var(--muted); font-size: .75rem; }
-.cli-action-cancel, .cli-action-confirm { min-height: 34px; padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer; }
+.cli-action-cancel, .cli-action-confirm { min-height: 34px; display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer; }
 .cli-action-cancel { background: var(--canvas); color: var(--fg); }
 .cli-action-confirm { border-color: var(--accent); background: var(--accent); color: var(--on-emphasis); }
 .cli-action-cancel:hover { background: var(--neutral-muted); }
