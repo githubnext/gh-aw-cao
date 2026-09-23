@@ -57,7 +57,7 @@ describe('dashboard sidebar', () => {
     const sidebar = renderDashboardNavigation([{ id: 'runs', title: 'Runs' }], 'Example', undefined);
     const page = document.createElement('section');
     page.className = 'dashboard-page';
-    for (const [mode, pressed] of [['chart', 'true'], ['table', 'false'], ['card', 'false']]) {
+    for (const [mode, pressed] of [['chart', 'true'], ['card', 'false'], ['table', 'false']]) {
       const button = document.createElement('button');
       button.dataset.viewModeValue = mode;
       button.setAttribute('aria-pressed', pressed);
@@ -81,13 +81,13 @@ describe('dashboard sidebar', () => {
     const toggle = /** @type {HTMLButtonElement} */ (sidebar.querySelector('.mobile-view-mode-toggle'));
     expect(toggle.hidden).toBe(false);
     expect(toggle.dataset.viewMode).toBe('chart');
-    expect(toggle.getAttribute('aria-label')).toBe('Switch to Table view');
+    expect(toggle.getAttribute('aria-label')).toBe('Switch to Cards view');
     expect(toggle.querySelector('.octicon-graph')).not.toBeNull();
 
     toggle.click();
-    expect(toggle.dataset.viewMode).toBe('table');
-    expect(toggle.getAttribute('aria-label')).toBe('Switch to Cards view');
-    expect(toggle.querySelector('.octicon-table')).not.toBeNull();
+    expect(toggle.dataset.viewMode).toBe('card');
+    expect(toggle.getAttribute('aria-label')).toBe('Switch to Table view');
+    expect(toggle.querySelector('.octicon-stack')).not.toBeNull();
   });
 });
 

@@ -231,6 +231,7 @@ describe('Configuration dashboard view', () => {
     const dataNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => candidate.label === 'Data');
 
     expect(page.title).toBe('Maintenance');
+    expect(page['filter-bar']).toBe(false);
     expect(page.views.map((/** @type {{ data: { source: string } }} */ view) => view.data.source))
       .toEqual(['campaigns', 'maintenance-repositories']);
     expect(page.views[0].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field))

@@ -1558,6 +1558,13 @@ function validatePage(page, pageNode, path, pageIds, errors) {
   if (page['class-name'] !== undefined) {
     validateRequiredIdentifier(page['class-name'], `${path}.class-name`, 'page class name', errors);
   }
+  if (page['filter-bar'] !== undefined && typeof page['filter-bar'] !== 'boolean') {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      'filter-bar must be a Boolean when present.',
+      `${path}.filter-bar`
+    ));
+  }
   if (page.icon !== undefined) {
     validateStringField(page.icon, `${path}.icon`, true, errors);
     if (typeof page.icon === 'string' && !PAGE_ICON_VALUES.includes(page.icon)) {

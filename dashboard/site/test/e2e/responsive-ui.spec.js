@@ -111,7 +111,7 @@ test('notification filters and view controls are hidden on mobile', async ({ pag
 
   const notifications = page.locator('[data-page-id="notifications"]');
   await expect(notifications).toHaveClass(/notifications-page/);
-  await expect(notifications.locator(':scope > .filter-bar')).toBeHidden();
+  await expect(notifications.locator(':scope > .page-chrome > .filter-bar')).toBeHidden();
   await expect(notifications.locator('.view-mode-control')).toBeHidden();
   await expect(notifications.locator('.entity-card-list-status-danger .octicon-x-circle-fill')).toBeVisible();
 });
