@@ -1,4 +1,6 @@
 import { elementLoadsSourcesAsync } from "../../dashboard/site/src/components/ui-elements.js";
+import { resolveDashboardDocument } from "../../dashboard/site/src/dashboard-chunks.js";
+import { renderDashboardQueryUsageGraph } from "../../dashboard/site/src/query-usage.js";
 
 // Pages excluded from the informational dashboard view assessment.
 export const ignoredDashboardPageIds = ["operations", "readiness"];
@@ -50,6 +52,11 @@ export function dashboardPageRendersBeforeSources(pageDefinition, reusableViews 
       && typeof view.element === "string"
       && elementLoadsSourcesAsync(view.element);
   });
+}
+
+export function renderAssessedDashboardQueryUsageGraph(dashboard, pageChunks) {
+  const resolved = resolveDashboardDocument(dashboard, pageChunks);
+  return renderDashboardQueryUsageGraph(resolved.dashboard);
 }
 
 // The assessment loads every selected page in its own browser page, so the test

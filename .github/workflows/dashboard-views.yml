@@ -166,6 +166,19 @@ jobs:
               })
               const passed = results.filter((result) => result.status === 'passed').length
               const blocker = summary.blocker ? safeSummaryText(summary.blocker) : ''
+              const queryUsageGraph =
+                typeof summary.queryUsageGraph === 'string'
+                  ? summary.queryUsageGraph.replaceAll('```', '` ` `').trim().slice(0, 40_000)
+                  : ''
+              const queryUsageGraphSection = queryUsageGraph ? [
+                '<details><summary><b>View-query graph</b></summary>',
+                '',
+                '```mermaid',
+                queryUsageGraph,
+                '```',
+                '',
+                '</details>',
+              ].join('\n') : ''
               body = [
                 marker,
                 '### Dashboard view assessment',
@@ -184,6 +197,8 @@ jobs:
                 '| View | Result | DOM nodes | Findings |',
                 '|---|---:|---:|---|',
                 ...rows,
+                '',
+                queryUsageGraphSection,
                 '',
                 `[View the workflow run](${runUrl}).`,
               ].filter(Boolean).join('\n')

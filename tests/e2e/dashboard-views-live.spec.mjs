@@ -11,6 +11,7 @@ import {
   ignoredDashboardPageIds,
   isIgnoredDashboardPageId,
   isSpuriousAbortAfterSuccessResponse,
+  renderAssessedDashboardQueryUsageGraph,
   visibleBusyViewSelector,
   visibleLoadingViewSelector,
   visibleViewSelector,
@@ -42,7 +43,7 @@ function messageText(value) {
 
 async function loadPageDefinition(previewUrl, pageDefinition) {
   const chunkPath = dashboardPageChunkPath(pageDefinition);
-  if (!chunkPath) return pageDefinition;
+  if (!chunkPath) return { page: pageDefinition, queries: [] };
   const response = await fetch(new URL(chunkPath, `${previewUrl.replace(/\/$/, "")}/`));
   if (!response.ok) {
     throw new Error(
@@ -50,7 +51,10 @@ async function loadPageDefinition(previewUrl, pageDefinition) {
     );
   }
   const chunk = normalizeDashboardPageChunk(await response.json());
-  return mergeDashboardPage(pageDefinition, chunk.page);
+  return {
+    page: mergeDashboardPage(pageDefinition, chunk.page),
+    queries: chunk.queries,
+  };
 }
 
 test("each selected dashboard view renders with live data", async ({ page }, testInfo) => {
@@ -84,14 +88,16 @@ test("each selected dashboard view renders with live data", async ({ page }, tes
       throw new Error(`Unable to load composed dashboard.json: HTTP ${dashboardResponse.status}.`);
     }
     const dashboard = await dashboardResponse.json();
-    const pages = await Promise.all(
+    const pageChunks = await Promise.all(
       selectedPages(dashboard).map((page) => loadPageDefinition(preview.url, page)),
     );
+    const pages = pageChunks.map((chunk) => chunk.page);
     summary.selectedPageIds = pages.map((page) => page.id);
     if (pages.length === 0) {
       if (summary.selectionMode === "affected") return;
       throw new Error("No selected page IDs exist in the composed dashboard.");
     }
+    summary.queryUsageGraph = renderAssessedDashboardQueryUsageGraph(dashboard, pageChunks);
     test.setTimeout(dashboardAssessmentTimeout(pages.length));
 
     await page.setViewportSize({ width: 1440, height: 900 });

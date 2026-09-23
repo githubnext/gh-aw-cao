@@ -12,6 +12,7 @@ import {
   isIgnoredDashboardPageId,
   isSpuriousAbortAfterSuccessResponse,
   maximumDashboardAssessmentTimeoutMs,
+  renderAssessedDashboardQueryUsageGraph,
   visibleBusyViewSelector,
   visibleLoadingViewSelector,
   visibleViewSelector,
@@ -52,6 +53,33 @@ test("identifies pages that render before companion sources resolve", () => {
     kind: "built-in",
     definition: { views: [{ mark: "table" }] },
   }), false);
+});
+
+test("renders the assessed page chunks as a view-query graph", () => {
+  const dashboard = {
+    "language-version": "0.1.0",
+    dashboard: {
+      queries: [],
+      pages: [
+        { id: "overview", kind: "custom", chunk: "dashboard-pages/overview.json" },
+        { id: "cost", kind: "custom", chunk: "dashboard-pages/cost.json" },
+      ],
+    },
+  };
+  const graph = renderAssessedDashboardQueryUsageGraph(dashboard, [{
+    page: {
+      id: "overview",
+      kind: "custom",
+      views: [{ id: "run-count", data: { source: "used" } }],
+    },
+    queries: [{ name: "used", from: "runs" }],
+  }]);
+
+  assert.equal(graph, `flowchart LR
+  n0["Query: used"]
+  n1["View: overview / run-count"]
+  n1 --> n0`);
+  assert.doesNotMatch(graph, /cost/);
 });
 
 test("grows the assessment timeout with the number of selected views", () => {

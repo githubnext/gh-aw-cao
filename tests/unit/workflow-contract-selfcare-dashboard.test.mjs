@@ -15,6 +15,13 @@ test("dashboard view assessment issues are ready for agent assignment", () => {
   assert.match(issueReporter, /\*\*Action:\*\* Assign this issue to Copilot/);
   assert.match(issueReporter, /<details><summary><b>Agent prompt<\/b><\/summary>/);
   assert.match(issueReporter, /npm run test:e2e:dashboard-views/);
+  assert.match(source, /typeof summary\.queryUsageGraph === 'string'/);
+  assert.match(source, /replaceAll\('```', '` ` `'\)/);
+  assert.match(source, /slice\(0, 40_000\)/);
+  assert.match(source, /const queryUsageGraphSection = queryUsageGraph/);
+  assert.match(source, /<details><summary><b>View-query graph<\/b><\/summary>/);
+  assert.match(source, /'```mermaid'/);
+  assert.match(source, /queryUsageGraphSection/);
 });
 
 test("SelfCare dashboard data schema worker tracks every deployed source with Data Health inference", () => {
