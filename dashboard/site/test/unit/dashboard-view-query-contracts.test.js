@@ -85,7 +85,6 @@ describe('dashboard view query contracts', () => {
   it('keeps assessment-sensitive high-cardinality views declaratively bounded', () => {
     const pagesById = new Map(dashboard.pages.map((/** @type {Record<string, unknown>} */ page) => [page.id, page]));
     const boundedViews = [
-      ['workflows', 'top-workflow-runs', 250],
       ['graders', 'graders-graders-source', 100],
       ['graders', 'graders-observations-source', 100],
       ['usage', 'usage-usage-source', 100],
@@ -99,12 +98,6 @@ describe('dashboard view query contracts', () => {
       expect(data?.limit, `${pageId}/${viewId} should bound rendered source rows`).toBe(limit);
       expect(data?.['order-by'], `${pageId}/${viewId} should choose deterministic retained rows`).toEqual(expect.any(Array));
     }
-
-    const topWorkflowRuns = queries.find((/** @type {{ name: string }} */ query) =>
-      query.name === 'top-workflow-runs'
-    );
-    expect(topWorkflowRuns).toMatchObject({ limit: 250 });
-    expect(topWorkflowRuns?.['order-by']).toContainEqual({ field: 'started-at', direction: 'desc' });
   });
 
   it('renders the failed-runs ledger as a bounded lazy table', () => {

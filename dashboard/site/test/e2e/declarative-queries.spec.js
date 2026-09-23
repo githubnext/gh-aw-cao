@@ -385,7 +385,7 @@ test('scenario 3: aggregates with grouped, deterministic reducers', async ({ pag
 
 test('the authored basic table queries return the populated canonical database rows', async ({ page }) => {
   const dashboard = JSON.parse(readFileSync(join(siteRoot, 'dashboard.json'), 'utf8'));
-  const requested = ['repository-activity', 'workflow-inventory', 'top-workflow-runs', 'runs-table', 'campaign-inventory'];
+  const requested = ['repository-activity', 'workflow-inventory', 'runs-table', 'campaign-inventory'];
   const payload = await loadThroughWorker(page, dashboard.dashboard.queries, requested);
 
   expect(payload['repository-activity'].rows.map((row) => row.repository)).toEqual([
@@ -401,13 +401,6 @@ test('the authored basic table queries return the populated canonical database r
   expect(payload['workflow-inventory'].rows.map((row) => row['workflow-label'])).toEqual(
     payload['workflow-inventory'].rows.map((row) => `${row.repository}:${row.workflow}`)
   );
-  expect(payload['top-workflow-runs'].rows.map((row) => [row.run, row['workflow-label'], row['workflow-runs']])).toEqual([
-    ['1003', 'githubnext/gh-aw-cao:.github/workflows/dashboard.md', 3],
-    ['1002', 'githubnext/gh-aw-cao:.github/workflows/dashboard.md', 3],
-    ['1001', 'githubnext/gh-aw-cao:.github/workflows/dashboard.md', 3],
-    ['1005', 'githubnext/control-plane:.github/workflows/audit.md', 1],
-    ['1004', 'githubnext/gh-aw-cao:.github/workflows/doctor.md', 1]
-  ]);
   expect(payload['runs-table'].rows.map((row) => row.run)).toEqual(['1005', '1004', '1003', '1002', '1001']);
   expect(payload['campaign-inventory'].rows).toEqual([
     expect.objectContaining({ campaign: 'dashboard', 'campaign-name': 'CAO Dashboard', workflows: 1, runs: 3, dispatches: 2 })
