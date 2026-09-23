@@ -202,6 +202,30 @@ test("excludes internal campaigns from user-facing campaign inventory", () => {
   assert.deepEqual(sources.campaigns.rows, []);
 });
 
+test("dashboard report excludes internal campaigns from user-facing campaign inventory", () => {
+  const sources = buildDashboardLanguageSources({
+    deployed: { generatedAt: "2026-09-11T00:00:00Z", workflows: [] },
+    usage: {},
+    operationalValues: {},
+    report: { generatedAt: "2026-09-11T00:00:00Z", records: [] },
+    inventory: {
+      bundles: [{
+        id: "dashboard",
+        controlCampaign: "dashboard",
+        name: "CAO Dashboard",
+      }],
+      campaigns: [{ id: "dashboard", name: "CAO Dashboard" }],
+    },
+    controlSettings: {
+      campaigns: {
+        dashboard: { deploy: false },
+      },
+    },
+  });
+
+  assert.deepEqual(sources.campaigns.rows, []);
+});
+
 test("inventory configuration policy source reports unavailable control policy resolution", () => {
   const sources = buildInventoryDashboardSources({
     repository: "githubnext/control",

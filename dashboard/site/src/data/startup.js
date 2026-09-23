@@ -12,6 +12,81 @@ import {
 import { configureSourceLoader, refreshSources as refreshBoundSources } from "../source-store.js";
 import { dashboardViewAliasName } from "./queries/view-payload-compiler.js";
 
+/** @typedef {{ pageId?: string, viewId?: string, sourceIndex?: number, queryContext?: DashboardQueryContext }} BatchedSourceOptions */
+
+/**
+ * Coalesces source requests issued by one view in the same turn so the worker
+ * reads and projects their shared canonical dependencies only once.
+ *
+ * @param {{ githubUrlBase?: string, dashboardRepository?: string | null, pages: unknown[], queries?: unknown[], views?: unknown[] }} dashboardContext
+ * @returns {(name: string, options?: BatchedSourceOptions) => Promise<import("../presenter.js").LogicalSourceInput | undefined>}
+ */
+export function createBatchedSourceLoader(dashboardContext) {
+  /** @type {Array<{ name: string, options: BatchedSourceOptions, resolve: (source: import("../presenter.js").LogicalSourceInput | undefined) => void, reject: (error: unknown) => void }>} */
+  let pending = [];
+  let scheduled = false;
+
+  const flush = async () => {
+    scheduled = false;
+    const requests = pending;
+    pending = [];
+    try {
+      /** @type {Map<string, typeof requests>} */
+      const groups = new Map();
+      for (const request of requests) {
+        const key = JSON.stringify([
+          request.options?.pageId ?? null,
+          request.options?.viewId ?? null,
+          request.options?.queryContext ?? null,
+        ]);
+        const group = groups.get(key) ?? [];
+        group.push(request);
+        groups.set(key, group);
+      }
+
+      await Promise.all([...groups.values()].map(async (group) => {
+        const [{ options }] = group;
+        const names = [...new Set(group.map(({ name }) => name))];
+        try {
+          const sources = await loadCanonicalDashboardPage(
+            names,
+            dashboardContext,
+            undefined,
+            {
+              pageId: options?.pageId,
+              viewId: options?.viewId,
+              queryContext: options?.queryContext,
+            },
+          );
+          for (const request of group) {
+            const alias = request.options?.pageId && request.options.viewId
+              ? dashboardViewAliasName(
+                  request.options.pageId,
+                  { id: request.options.viewId },
+                  0,
+                  request.name,
+                  request.options.sourceIndex ?? 0,
+                )
+              : request.name;
+            request.resolve(sources[alias] ?? sources[request.name]);
+          }
+        } catch (error) {
+          for (const request of group) request.reject(error);
+        }
+      }));
+    } catch (error) {
+      for (const request of requests) request.reject(error);
+    }
+  };
+
+  return (name, options = {}) => new Promise((resolve, reject) => {
+    pending.push({ name, options, resolve, reject });
+    if (scheduled) return;
+    scheduled = true;
+    queueMicrotask(() => void flush());
+  });
+}
+
 /** @typedef {Record<string, import('../presenter.js').LogicalSourceInput>} DashboardSources */
 /** @typedef {{ filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc' | 'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' }} DashboardQueryContext */
 /** @typedef {{ signal: AbortSignal, onUpdate: (sources: DashboardSources) => void, routeParameters?: Record<string, string>, queryContext?: DashboardQueryContext }} PageLoadOptions */
@@ -146,28 +221,7 @@ export async function startDashboardData(options) {
   loadPageSources.prepare = async (pageId) => {
     await preparePage?.(pageId);
   };
-  configureSourceLoader(async (name, options) => {
-    const sources = await loadCanonicalDashboardPage(
-      [name],
-      dashboardContext,
-      undefined,
-      {
-        pageId: options?.pageId,
-        viewId: options?.viewId,
-        queryContext: options?.queryContext,
-      },
-    );
-    const alias = options?.pageId && options.viewId
-      ? dashboardViewAliasName(
-          options.pageId,
-          { id: options.viewId },
-          0,
-          name,
-          options.sourceIndex ?? 0,
-        )
-      : name;
-    return sources[alias] ?? sources[name];
-  });
+  configureSourceLoader(createBatchedSourceLoader(dashboardContext));
   const startAutomaticUpdates = () => {
     stopAutomaticDataUpdates = startAutomaticDashboardDataUpdates([
       new URL("./payload-hashes.json", sourceUrl).href,
