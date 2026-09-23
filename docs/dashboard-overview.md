@@ -24,7 +24,7 @@ operational signals, not stages in a conversion funnel.
 
 | Dashboard area | What it tells you | Where it leads |
 | --- | --- | --- |
-| **Status header** | Whether runs are queued or in progress, the current evidence-based status, and the number of retained issue and pull request outputs. | Runs, outputs, or Operational value when the status is unexpected. |
+| **Status header** | Whether runs are queued or in progress and the current evidence-based status. | Runs, outputs, or Operational value when the status is unexpected. |
 | **Factory rhythm** | Successful runs for each weekday in the current week, with previous-week context for weekdays not yet reached. | Runs when the cadence changes unexpectedly. |
 | **Repositories registered** | Distinct repositories represented in the retained control-plane scope. | Repositories for the complete inventory. |
 | **Successful runs** | Runs that completed successfully, with failed runs shown separately. | Runs with the success or failure filter applied. |

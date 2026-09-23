@@ -171,6 +171,108 @@ The canonical query collections are `repositories`, `workflows`, `runs`, `jobs`,
 `sessions`, `events`, and `transactions`. Run `cao help` (or `cao --help`) for the
 current command syntax.
 
+### Evaluate dashboard query complexity
+
+Evaluate every generated or modified Dashboard Language query before accepting it:
+
+```bash
+cao dashboard-complexity --input dashboard/site/dashboard.json
+```
+
+The command reports a normalized upper-bound row-read estimate, symbolic source
+coefficients, stage-level reads, parent queries and views that consume each query, and a
+ranking from highest to lowest computation pressure. Pressure includes the selected query
+plus each unique transitive dependency materialized once, matching compiler reuse within one
+execution batch.
+
+Inspect one generated query directly by passing its query ID before the options:
+
+```bash
+cao dashboard-complexity QUERY_ID --input dashboard/site/dashboard.json
+```
+
+Use `--format markdown` for a review-ready ranking and `--limit COUNT` to bound graph-wide
+output. When generating or revising queries, compare the targeted query and full ranking
+before and after the change. Question any massive increase in direct row reads, dependency
+row reads, source coefficients, or pressure rank. Do not accept a large increase merely
+because the query is declarative; look for an existing base query, a narrower source,
+earlier filtering, fewer joins, or reusable intermediate aggregation. If the increase is
+intentional, explain the evidence and tradeoff in the review.
+
+The normalized model sets every external source to one row and assumes no selectivity.
+Use the symbolic source coefficients to reason about real cardinalities rather than treating
+the normalized totals as runtime measurements.
+
+### Prune and reuse dashboard queries
+
+Before adding generated queries or views to a Dashboard Language document, analyze it for
+reuse opportunities:
+
+```bash
+cao prune-dashboard --input dashboard.json
+```
+
+The JSON report lists exact/compatible queries that can be consolidated, similarity
+suggestions against earlier queries, shared query chains, and unreferenced queries and
+reusable views. Similarity is a weighted score from `0` to `1`: source, joins, filters,
+computes, projections, ordering, and other query stages receive explicit weights; exact
+stages receive full credit, the same structure modulo field names receives 85% credit, and
+partial structural overlap receives up to 60% credit. Suggestions include the detected field
+mapping and the stages that can form a shared chain.
+
+The report also includes a complete final query inventory. Each query lists its source,
+execution stages, direct dependencies and dependents, rendered consumers, dependency depth,
+fan-in, fan-out, and every above-threshold similarity match. Aggregate statistics compare the
+query graph before and after pruning, including stage counts, dependency edges, root and nested
+query counts, maximum and average depth, pairs compared, similarity relation counts, and score
+buckets.
+
+Write the optimized document only after reviewing that report:
+
+```bash
+cao prune-dashboard \
+  --input dashboard.json \
+  --output dashboard.pruned.json
+```
+
+The optimizer preserves public query names where possible. It merges compatible projections,
+rewrites query references, extracts repeated `from`/`union`/`time`/`joins`/`filter` prefixes
+into a named base query, and rewrites the original declarations to chain from that base:
+
+Base query names must describe the shared subject, not generation order. Prefer normalized
+concepts shared by the child query names (`failure-run-base`, `event-base`). When the child
+names share no useful concept, use the source and shared stage (`run-filter-base`,
+`audit-union-base`). Never emit numeric placeholders such as `shared-query-1-base`.
+
+```json
+[
+  {
+    "name": "failure-run-base",
+    "intent": "Reuse shared query stages for failed-run-cost",
+    "from": "runs",
+    "filter": {
+      "predicates": [{ "field": "conclusion", "equals": "failure" }]
+    }
+  },
+  {
+    "name": "failed-run-cost",
+    "from": "failure-run-base",
+    "compute": [
+      {
+        "as": "cost",
+        "function": "multiply",
+        "args": [{ "field": "tokens" }, { "value": 2 }]
+      }
+    ]
+  }
+]
+```
+
+Reusable views referenced by a page or declaring drill, view-all, or navigation behavior are
+retained. Queries are then retained transitively from pages, retained reusable views, callouts,
+sections, and other queries. Page declarations remain unchanged because application code may
+link to a page outside the dashboard document.
+
 ### gh-like surface
 
 Use this when you need familiar GitHub CLI-shaped commands for runs and
