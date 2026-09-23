@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { ENTITY_STORES } from "../../dashboard/site/src/data/storage/indexeddb.js";
 import config from "../playwright/configs/dashboard-deployed.config.mjs";
 import {
   deployedDashboardUrl,
@@ -23,6 +24,9 @@ test("deployed dashboard check targets declared navigation pages", () => {
 
   for (const { pageId } of populatedDashboardPages) {
     assert.ok(navigationPageIds.has(pageId), `${pageId} is a declared navigation page`);
+  }
+  for (const { storeName } of populatedDashboardPages) {
+    assert.ok(ENTITY_STORES.includes(storeName), `${storeName} is a canonical entity store`);
   }
 });
 
