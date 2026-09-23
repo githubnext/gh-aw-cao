@@ -56,7 +56,6 @@ Run `npm run check` for complete repository validation. It executes, in order: `
 | `npm run test:load` | Synthetic enterprise-scale load tests (100 000 repos) |
 | `npm run check:svg` | SVG visual-language compliance via `scripts/check-svg-visual-language.mjs` |
 | `npm run dashboard:local -- --repo OWNER/REPOSITORY` | Download dashboard data and start a local preview |
-| `npm run dashboard:local:copilot` | Start the local dashboard preview with Copilot-assisted editing |
 | `npm run compile` | Dry-run compile of workflow `.md` sources with `gh aw compile` (no lock-file writes) |
 | `npm run compile:locks` | Compile and update `.lock.yml` files |
 | `npm run docs:build` | Build the Astro/Starlight documentation site |

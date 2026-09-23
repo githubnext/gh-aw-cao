@@ -4006,7 +4006,6 @@ test('desktop navigation collapses to an icon rail and expands back to text', as
   await page.setContent(dashboardContent);
   await expect(page.locator('.app-shell')).not.toHaveClass(/sidebar-collapsed/);
 
-  await page.locator('.dashboard-root').evaluate((root) => root.classList.add('dashboard-copilot-enabled'));
   await expect(page.locator('.org-sidebar')).toHaveCSS('width', '200px');
 });
 

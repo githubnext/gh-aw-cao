@@ -303,7 +303,6 @@ commands:
       workflow_compile_locks: npm run compile:locks
       docs_build: npm run docs:build
       dashboard_local: "npm run dashboard:local -- --repo OWNER/REPOSITORY"
-      dashboard_local_copilot: npm run dashboard:local:copilot
       runtime_health: cao computation runtime-health [--campaign SLUG]
   dashboard_site:
     working_directory: dashboard/site/
