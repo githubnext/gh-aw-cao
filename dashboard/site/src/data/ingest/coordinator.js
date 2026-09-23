@@ -301,17 +301,10 @@ export async function readCurrentIngestion(indexedDB, kind, scope) {
 
 /**
  * @param {IDBFactory} indexedDB
- * @param {{ payloadIdentity: string, payloadScope: string }} options
+ * @param {string} payloadIdentity
  */
-async function readCachedJsonlShardReceipt(indexedDB, options) {
-  const receiptId = cachedJsonlShardTransactionId(options.payloadIdentity);
-  const receipt = await readTransaction(indexedDB, receiptId);
-  if (receipt) return receipt;
-  const legacyReceipt = await readCurrentIngestion(indexedDB, 'ingest-jsonl', options.payloadScope);
-  if (legacyReceipt?.payloadHash === options.payloadIdentity) {
-    await recordTransaction(indexedDB, { ...legacyReceipt, id: receiptId });
-  }
-  return legacyReceipt;
+async function readCachedJsonlShardReceipt(indexedDB, payloadIdentity) {
+  return await readTransaction(indexedDB, cachedJsonlShardTransactionId(payloadIdentity));
 }
 
 /**
@@ -320,7 +313,7 @@ async function readCachedJsonlShardReceipt(indexedDB, options) {
  */
 export async function isCachedGhAwJsonlCurrent(indexedDB, options) {
   const adaptationContext = cachedJsonlAdaptationContext(options);
-  const receipt = await readCachedJsonlShardReceipt(indexedDB, options);
+  const receipt = await readCachedJsonlShardReceipt(indexedDB, options.payloadIdentity);
   return receipt?.payloadHash === options.payloadIdentity
     && receipt.adaptationContext === adaptationContext
     && receipt.ingestionVersion === GH_AW_JSONL_INGESTION_VERSION;
@@ -695,10 +688,7 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
     const scope = options.payloadScope ?? 'gh-aw-jsonl';
     const publishedIdentity = options.payloadIdentity;
     if (publishedIdentity) {
-      const current = await readCachedJsonlShardReceipt(indexedDB, {
-        payloadIdentity: publishedIdentity,
-        payloadScope: scope
-      });
+      const current = await readCachedJsonlShardReceipt(indexedDB, publishedIdentity);
       if (current?.payloadHash === publishedIdentity
           && current.adaptationContext === adaptationContext
           && current.ingestionVersion === GH_AW_JSONL_INGESTION_VERSION) {
@@ -728,10 +718,7 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
     const parsingMs = monotonicNow() - startedAt;
     const current = publishedIdentity
       ? null
-      : await readCachedJsonlShardReceipt(indexedDB, {
-          payloadIdentity,
-          payloadScope: scope
-        });
+      : await readCachedJsonlShardReceipt(indexedDB, payloadIdentity);
     if (current?.payloadHash === payloadIdentity
         && current.adaptationContext === adaptationContext
         && current.ingestionVersion === GH_AW_JSONL_INGESTION_VERSION) {
