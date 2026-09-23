@@ -1625,14 +1625,19 @@
         ]
       },
       {
-        "name": "entity-events",
-        "intent": "Project all run-owned records for reusable cards and run drill-down.",
+        "name": "shared-query-1-base",
+        "intent": "Reuse shared query stages for entity-events, event-runs",
         "from": "audits",
         "union": [
           "domains",
           "tools",
           "issues"
-        ],
+        ]
+      },
+      {
+        "name": "entity-events",
+        "intent": "Project all run-owned records for reusable cards and run drill-down.",
+        "from": "shared-query-1-base",
         "compute": [
           {
             "as": "event-url",
@@ -2474,8 +2479,8 @@
         }
       },
       {
-        "name": "failed-runs",
-        "intent": "List failed workflow runs that need operator attention.",
+        "name": "shared-query-2-base",
+        "intent": "Reuse shared query stages for failed-runs, overview-failing-runs",
         "from": "runs",
         "filter": {
           "predicates": [
@@ -2489,7 +2494,12 @@
               ]
             }
           ]
-        },
+        }
+      },
+      {
+        "name": "failed-runs",
+        "intent": "List failed workflow runs that need operator attention.",
+        "from": "shared-query-2-base",
         "order-by": [
           {
             "field": "started-at",
@@ -2500,20 +2510,7 @@
       {
         "name": "overview-failing-runs",
         "intent": "Identify failed runs in the selected snapshot horizon so subsequent streak logic can use the same declarative failure definition.",
-        "from": "runs",
-        "filter": {
-          "predicates": [
-            {
-              "field": "run-conclusion",
-              "in": [
-                "failure",
-                "startup-failure",
-                "stale",
-                "timed-out"
-              ]
-            }
-          ]
-        },
+        "from": "shared-query-2-base",
         "aggregate": {
           "by": [
             "organization",
@@ -3207,12 +3204,7 @@
         "name": "event-runs",
         "intent": "Identify each workflow run that has one or more imported run-owned records.",
         "description": "Distinct workflow runs represented by imported domain, tool, audit, or issue records.",
-        "from": "audits",
-        "union": [
-          "domains",
-          "tools",
-          "issues"
-        ],
+        "from": "shared-query-1-base",
         "aggregate": {
           "by": [
             "organization",
@@ -11831,115 +11823,115 @@
         "class-name": "maintenance-page",
         "description": "Review CAO campaign packages and gh-aw compiler versions. Vendored agents and skills require separate provenance-backed inventory.",
         "views": [
-            {
-              "id": "maintenance-campaigns",
-              "title": "CAO packages",
-              "description": "Installed campaign revisions and the latest catalog revisions observed for this control repository.",
-              "data": {
-                "source": "campaigns"
-              },
-              "mark": "table",
-              "controls": "interactive",
-              "lazy-list": true,
-              "empty-message": "No CAO campaign packages were observed.",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "campaign-name",
-                    "type": "nominal",
-                    "title": "Package"
-                  },
-                  {
-                    "field": "campaign-version",
-                    "type": "nominal",
-                    "title": "Installed"
-                  },
-                  {
-                    "field": "campaign-current-version",
-                    "type": "nominal",
-                    "title": "Latest"
-                  },
-                  {
-                    "field": "campaign-update-state",
-                    "type": "nominal",
-                    "title": "Update",
-                    "display": "status"
-                  },
-                  {
-                    "field": "campaign-registration",
-                    "type": "nominal",
-                    "title": "Registration",
-                    "display": "active-state"
-                  }
-                ],
-                "actions": [
-                  {
-                    "action": "update-campaign",
-                    "presentation": "cli-action",
-                    "icon": "sync",
-                    "label": "Update campaign",
-                    "context": [
-                      "campaign"
-                    ],
-                    "when": {
-                      "field": "campaign-update-state",
-                      "equals": "update-available"
-                    }
-                  }
-                ]
-              },
-              "layout": "full"
+          {
+            "id": "maintenance-campaigns",
+            "title": "CAO packages",
+            "description": "Installed campaign revisions and the latest catalog revisions observed for this control repository.",
+            "data": {
+              "source": "campaigns"
             },
-            {
-              "id": "maintenance-repositories",
-              "disclosure": "supplemental",
-              "description": "Installed and current gh-aw compiler versions observed for each repository.",
-              "data": {
-                "source": "maintenance-repositories"
-              },
-              "mark": "table",
-              "controls": "interactive",
-              "lazy-list": true,
-              "empty-message": "No Agentic Workflow compiler versions were observed.",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "repository",
-                    "type": "nominal",
-                    "title": "Repository"
-                  },
-                  {
-                    "field": "gh-aw-version",
-                    "type": "nominal",
-                    "title": "Installed"
-                  },
-                  {
-                    "field": "gh-aw-current-version",
-                    "type": "nominal",
-                    "title": "Latest"
-                  },
-                  {
-                    "field": "upgrade-state",
-                    "type": "nominal",
-                    "title": "Upgrade",
-                    "display": "status"
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "empty-message": "No CAO campaign packages were observed.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "campaign-name",
+                  "type": "nominal",
+                  "title": "Package"
+                },
+                {
+                  "field": "campaign-version",
+                  "type": "nominal",
+                  "title": "Installed"
+                },
+                {
+                  "field": "campaign-current-version",
+                  "type": "nominal",
+                  "title": "Latest"
+                },
+                {
+                  "field": "campaign-update-state",
+                  "type": "nominal",
+                  "title": "Update",
+                  "display": "status"
+                },
+                {
+                  "field": "campaign-registration",
+                  "type": "nominal",
+                  "title": "Registration",
+                  "display": "active-state"
+                }
+              ],
+              "actions": [
+                {
+                  "action": "update-campaign",
+                  "presentation": "cli-action",
+                  "icon": "sync",
+                  "label": "Update campaign",
+                  "context": [
+                    "campaign"
+                  ],
+                  "when": {
+                    "field": "campaign-update-state",
+                    "equals": "update-available"
                   }
-                ],
-                "actions": [
-                  {
-                    "action": "upgrade-target-repository",
-                    "presentation": "cli-action",
-                    "icon": "download",
-                    "label": "Upgrade repository",
-                    "context": [
-                      "repository"
-                    ]
-                  }
-                ]
-              },
-              "layout": "full"
-            }
-          ]
+                }
+              ]
+            },
+            "layout": "full"
+          },
+          {
+            "id": "maintenance-repositories",
+            "disclosure": "supplemental",
+            "description": "Installed and current gh-aw compiler versions observed for each repository.",
+            "data": {
+              "source": "maintenance-repositories"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "empty-message": "No Agentic Workflow compiler versions were observed.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "gh-aw-version",
+                  "type": "nominal",
+                  "title": "Installed"
+                },
+                {
+                  "field": "gh-aw-current-version",
+                  "type": "nominal",
+                  "title": "Latest"
+                },
+                {
+                  "field": "upgrade-state",
+                  "type": "nominal",
+                  "title": "Upgrade",
+                  "display": "status"
+                }
+              ],
+              "actions": [
+                {
+                  "action": "upgrade-target-repository",
+                  "presentation": "cli-action",
+                  "icon": "download",
+                  "label": "Upgrade repository",
+                  "context": [
+                    "repository"
+                  ]
+                }
+              ]
+            },
+            "layout": "full"
+          }
+        ]
       },
       {
         "id": "configuration",

@@ -175,8 +175,11 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
   });
   const filterPlans = [...requested].flatMap((name) => {
     const definition = index.get(name);
-    const operators = definition && !defects.has(name) ? indexedRunOperators(definition) : null;
-    return operators ? [{ name, definition, operators }] : [];
+    const executable = definition && !defects.has(name)
+      ? flattenIndexedRunQuery(index, definition)
+      : null;
+    const operators = executable ? indexedRunOperators(executable) : null;
+    return operators ? [{ name, definition: executable, operators }] : [];
   });
   const stores = [...new Set(countPlans.map(({ source }) => source))];
   const counts = await countCollections(
@@ -220,6 +223,35 @@ const RUN_QUERY_FIELDS = new Map([
   ['run-conclusion', 'conclusion'],
   ['started-at', 'startedAt']
 ]);
+
+/**
+ * Flattens query chains whose ancestors add only a run filter. This preserves
+ * IndexedDB predicate pushdown for generated base queries while leaving general
+ * query composition to the declarative engine.
+ *
+ * @param {Map<string, Record<string, any>>} index
+ * @param {Record<string, any>} definition
+ * @param {Set<string>} [seen]
+ * @returns {Record<string, any> | null}
+ */
+function flattenIndexedRunQuery(index, definition, seen = new Set()) {
+  if (definition.from === 'runs') return definition;
+  if (seen.has(definition.name)) return null;
+  const parent = index.get(definition.from);
+  if (!parent) return null;
+  seen.add(definition.name);
+  /** @type {Record<string, any> | null} */
+  const flattenedParent = flattenIndexedRunQuery(index, parent, seen);
+  if (!flattenedParent) return null;
+  const operationalParentKeys = Object.keys(flattenedParent)
+    .filter((key) => !['name', 'intent', 'description', 'from', 'filter'].includes(key));
+  if (operationalParentKeys.length > 0 || (flattenedParent.filter && definition.filter)) return null;
+  return {
+    ...definition,
+    from: flattenedParent.from,
+    ...(flattenedParent.filter ? { filter: flattenedParent.filter } : {})
+  };
+}
 
 /** @param {Record<string, any>} definition */
 function indexedRunOperators(definition) {

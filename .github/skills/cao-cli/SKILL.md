@@ -171,6 +171,64 @@ The canonical query collections are `repositories`, `workflows`, `runs`, `jobs`,
 `sessions`, `events`, and `transactions`. Run `cao help` (or `cao --help`) for the
 current command syntax.
 
+### Prune and reuse dashboard queries
+
+Before adding generated queries or views to a Dashboard Language document, analyze it for
+reuse opportunities:
+
+```bash
+cao prune-dashboard --input dashboard.json
+```
+
+The JSON report lists exact/compatible queries that can be consolidated, similarity
+suggestions against earlier queries, shared query chains, and unreferenced queries and
+reusable views. Similarity is a weighted score from `0` to `1`: source, joins, filters,
+computes, projections, ordering, and other query stages receive explicit weights; exact
+stages receive full credit, the same structure modulo field names receives 85% credit, and
+partial structural overlap receives up to 60% credit. Suggestions include the detected field
+mapping and the stages that can form a shared chain.
+
+Write the optimized document only after reviewing that report:
+
+```bash
+cao prune-dashboard \
+  --input dashboard.json \
+  --output dashboard.pruned.json
+```
+
+The optimizer preserves public query names where possible. It merges compatible projections,
+rewrites query references, extracts repeated `from`/`union`/`time`/`joins`/`filter` prefixes
+into a named base query, and rewrites the original declarations to chain from that base:
+
+```json
+[
+  {
+    "name": "failed-run-base",
+    "intent": "Reuse shared query stages for failed-run-cost",
+    "from": "runs",
+    "filter": {
+      "predicates": [{ "field": "conclusion", "equals": "failure" }]
+    }
+  },
+  {
+    "name": "failed-run-cost",
+    "from": "failed-run-base",
+    "compute": [
+      {
+        "as": "cost",
+        "function": "multiply",
+        "args": [{ "field": "tokens" }, { "value": 2 }]
+      }
+    ]
+  }
+]
+```
+
+Reusable views referenced by a page or declaring drill, view-all, or navigation behavior are
+retained. Queries are then retained transitively from pages, retained reusable views, callouts,
+sections, and other queries. Page declarations remain unchanged because application code may
+link to a page outside the dashboard document.
+
 ### gh-like surface
 
 Use this when you need familiar GitHub CLI-shaped commands for runs and

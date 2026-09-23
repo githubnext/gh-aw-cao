@@ -29,6 +29,7 @@ import { installSqliteIndexedDB } from '../dashboard/site/src/data/storage/sqlit
 import { discoverInventory } from './inventory.mjs';
 import { discoverInventoryDashboardSources } from './inventory-sources.mjs';
 import { hasComputation, queryComputation } from './computations/index.mjs';
+import { pruneDashboardDocument } from './dashboard-prune.mjs';
 
 const debug = createDebug('ingest');
 const debugHash = createDebug('hash-payloads');
@@ -58,7 +59,7 @@ const GH_AW_INSTALLER_COMMAND = 'curl --fail --silent --show-error --location ht
 const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json';
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
-const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'enable', 'disable', 'discover-workflows', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'query', 'computation', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
+const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'enable', 'disable', 'discover-workflows', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'query', 'computation', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
 
 // Intentional CLI misuse that should print usage without an internal stack trace.
 class UsageError extends Error {}
@@ -71,6 +72,7 @@ const USAGE = `Usage:
   cao enable CAMPAIGN...
   cao disable CAMPAIGN...
   cao discover-workflows --control-settings FILE --inventory FILE --output FILE --repo OWNER/REPO [--root DIRECTORY]
+  cao prune-dashboard --input FILE [--output FILE]
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY|--runs-dir DIRECTORY --records-dir DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input-dir SHARD_DIRECTORY]
@@ -87,6 +89,7 @@ const USAGE = `Usage:
 
 Query local CAO data as JSON. Download the deployed snapshot before querying:
   cao download
+  cao prune-dashboard --input dashboard.json --output dashboard.pruned.json
   cao computation runtime-health
   cao computation runtime-health --campaign dependabot
   cao computation runtime-health --campaign dependabot --diagnose
@@ -1949,6 +1952,26 @@ export async function discoverWorkflows({
   };
 }
 
+export async function pruneDashboardFile({ inputPath, outputPath } = {}) {
+  let document;
+  try {
+    document = JSON.parse(await readFile(path.resolve(inputPath), 'utf8'));
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error(`${inputPath} contains invalid JSON: ${error.message}`);
+    }
+    throw error;
+  }
+  const result = pruneDashboardDocument(document);
+  if (outputPath) await writeJsonAtomically(outputPath, result.document);
+  return {
+    command: 'prune-dashboard',
+    input: inputPath,
+    ...(outputPath ? { output: outputPath } : {}),
+    ...result.report
+  };
+}
+
 export async function runCli(arguments_, input = process.stdin) {
   const [command, ...optionArguments] = arguments_;
   if (!command || command === '--help' || command === 'help') return USAGE;
@@ -1994,6 +2017,13 @@ export async function runCli(arguments_, input = process.stdin) {
       inventoryPath: option(options, 'inventory'),
       outputPath: option(options, 'output'),
       repository: option(options, 'repo'),
+    });
+  }
+  if (command === 'prune-dashboard') {
+    rejectUnknownOptions(options, ['input', 'output']);
+    return pruneDashboardFile({
+      inputPath: option(options, 'input'),
+      outputPath: option(options, 'output', false)
     });
   }
   if (command === 'audit-jsonl') {
