@@ -28,7 +28,13 @@ export const DEFAULT_QUERY_COST_CANDIDATES = 10;
 const BENCHMARK_TIMEOUT_MS = 600_000;
 const BENCHMARK_MAX_OPERATIONS = 2_000_000_000;
 
-/** @param {string} databasePath */
+/**
+ * Installs the SQLite-backed IndexedDB shim. The factory holds no connection
+ * of its own: each `open()` creates and closes its own SQLite connection, so
+ * callers only restore the previously installed globals.
+ *
+ * @param {string} databasePath
+ */
 export function openDeployedDatabase(databasePath) {
   return installSqliteIndexedDB(path.resolve(databasePath));
 }
