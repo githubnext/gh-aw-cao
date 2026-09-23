@@ -442,12 +442,7 @@ function renderCampaignStatusGridElement(context) {
             )
           )
         );
-      })),
-    h(
-      'a',
-      { className: 'overview-campaigns-view-all', href: '#page-campaigns' },
-      'View all campaigns'
-    )
+      })      )
   );
 }
 

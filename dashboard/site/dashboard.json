@@ -9523,124 +9523,6 @@
         ]
       },
       {
-        "id": "campaigns",
-        "kind": "built-in",
-        "page": "campaigns",
-        "title": "Campaigns",
-        "icon": "goal",
-        "class-name": "campaigns-page",
-        "description": "Activity from centrally managed campaigns.",
-        "definition": {
-          "data-state": {
-            "availability": true
-          },
-          "views": [
-            {
-              "id": "campaigns-value-created",
-              "title": "Ops Value by campaign",
-              "description": "The share of observed operational value created by each centrally managed campaign.",
-              "data": {
-                "source": "campaign-inventory"
-              },
-              "mark": "chart",
-              "chart": "pie",
-              "layout": "horizontal",
-              "empty-message": "No campaign operational value was observed in the selected horizon.",
-              "encoding": {
-                "x": {
-                  "field": "campaign-name",
-                  "type": "nominal",
-                  "title": "Campaign"
-                },
-                "y": {
-                  "field": "value-created",
-                  "type": "quantitative",
-                  "aggregate": "sum",
-                  "as": "total-value-created",
-                  "title": "Ops Value",
-                  "unit": "ops-value"
-                },
-                "href": {
-                  "field": "campaign-dashboard-link",
-                  "type": "nominal"
-                }
-              }
-            },
-            {
-              "id": "campaigns-inventory",
-              "title": "Campaigns",
-              "description": "Centrally managed campaign inventory and observed execution totals.",
-              "data": {
-                "source": "campaign-inventory"
-              },
-              "mark": "table",
-              "controls": "interactive",
-              "lazy-list": true,
-              "column-summaries": true,
-              "layout": "full-view",
-              "empty-message": "No campaigns discovered.",
-              "encoding": {
-                "href": {
-                  "field": "campaign-dashboard-link",
-                  "type": "nominal"
-                },
-                "columns": [
-                  {
-                    "field": "campaign-name",
-                    "type": "nominal",
-                    "title": "Campaign"
-                  },
-                  {
-                    "field": "workflows",
-                    "type": "quantitative",
-                    "title": "Workflows"
-                  },
-                  {
-                    "field": "roles",
-                    "type": "nominal",
-                    "title": "Roles"
-                  },
-                  {
-                    "field": "modes",
-                    "type": "nominal",
-                    "title": "Modes",
-                    "display": "mode"
-                  },
-                  {
-                    "field": "runs",
-                    "type": "quantitative",
-                    "title": "Runs"
-                  },
-                  {
-                    "field": "dispatches",
-                    "type": "quantitative",
-                    "title": "Dispatches"
-                  },
-                  {
-                    "field": "aic",
-                    "type": "quantitative",
-                    "title": "AIC",
-                    "unit": "aic"
-                  },
-                  {
-                    "field": "value-created",
-                    "type": "quantitative",
-                    "title": "Ops Value",
-                    "unit": "ops-value"
-                  },
-                  {
-                    "field": "registration",
-                    "type": "nominal",
-                    "title": "Registration",
-                    "display": "active-state"
-                  }
-                ]
-              }
-            }
-          ]
-        }
-      },
-      {
         "id": "campaign-insights",
         "kind": "custom",
         "title": "Campaign",
@@ -9657,6 +9539,7 @@
             "data": {
               "sources": [
                 "workflows",
+                "campaign-inventory",
                 "campaign-operational-value-series"
               ],
               "arguments": [
@@ -12303,7 +12186,6 @@
       {
         "pages": [
           "overview",
-          "campaigns",
           "configuration"
         ]
       },

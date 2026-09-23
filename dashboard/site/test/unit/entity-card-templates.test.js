@@ -53,13 +53,6 @@ describe('entity card templates', () => {
         'fallback-icon': 'goal'
       }
     });
-    expect(pages.campaigns.definition.views.find(
-      (/** @type {Record<string, any>} */ view) => view.id === 'campaigns-inventory'
-    )).toMatchObject({
-      title: 'Campaigns',
-      data: { source: 'campaign-inventory' },
-      mark: 'table'
-    });
   });
 
   it('presents runs like a GitHub Actions run row', () => {

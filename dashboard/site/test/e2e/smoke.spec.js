@@ -1360,7 +1360,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
 
   const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
   const data = page.locator('.nav-section').first();
-  await expect(cleanNavigation).toHaveText(['Overview', 'Campaigns', 'Settings']);
+  await expect(cleanNavigation).toHaveText(['Overview', 'Settings']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
   await expect(data.getByRole('link')).toHaveText(['Maintenance', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Models & Agents', 'Firewall', 'MCPs']);
@@ -2073,7 +2073,7 @@ test('pie charts match the report layout at medium viewport widths', async ({ pa
   await expect(legend).toBeVisible();
 });
 
-test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory, and campaign activity in browser', async ({ page }) => {
+test('campaign detail pages render in browser', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const queryDefinitions = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8')).dashboard.queries;
   const campaignInsightsPage = authoritativeDashboard.dashboard.pages.find(
@@ -2125,11 +2125,6 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
           title: 'Central Agentic Ops',
           queries: ${JSON.stringify(queryDefinitions)},
           pages: [
-            ${JSON.stringify(builtInPage('campaigns', {
-              id: 'campaigns',
-              title: 'Campaigns',
-              description: 'Activity from centrally managed campaigns.',
-            }))},
             ${JSON.stringify(campaignInsightsPage)},
             ${JSON.stringify(campaignProblemsPage)},
             {
@@ -2389,7 +2384,10 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
         sources,
         { queryContext: options.queryContext, routeParameters: options.routeParameters }
       );
-      const viewSources = await loadPageSources('campaigns', {});
+      window.location.hash = '#page-campaign-detail?campaign=ambient-context';
+      const viewSources = await loadPageSources('campaign-detail', {
+        routeParameters: { campaign: 'ambient-context' }
+      });
       document.querySelector('#root').append(renderDashboard({
         document: documentModel,
         sources: viewSources,
@@ -2398,49 +2396,8 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
     </script>
   `);
 
-  await expect(page.getByRole('heading', { name: 'Campaigns', level: 1 })).toBeVisible();
-  const valueChart = page.locator('[data-view-id="campaigns-value-created"]');
-  await expect(valueChart.locator('[data-chart-widget="pie"]')).toBeVisible();
-  await expect(valueChart.locator('.chart-legend-pie')).toContainText('Ambient Context');
-  await expect(valueChart.locator('.chart-legend-pie')).toContainText('AW Doctor');
-  await page.getByRole('button', { name: 'Table' }).click();
-  await expect(page.locator('[data-page-id="campaigns"] [data-view-layout="full-view"]')).toBeVisible();
-  await expect(page.locator('[data-page-id="campaigns"] [data-lazy-list]')).toBeVisible();
-  await expect(page.locator('[data-page-id="campaigns"] [data-table-filter]')).toBeVisible();
-  await expect(page.locator('[data-page-id="campaigns"] .table-summary-row')).toBeVisible();
-  const campaignRows = page.locator('[data-page-id="campaigns"] .custom-table tbody tr');
-  await expect(campaignRows).toHaveCount(2);
-  await expect(page.locator('[data-page-id="campaigns"] .custom-table thead tr').first().locator('th')).toHaveText([
-    'Campaign',
-    'Workflows',
-    'Roles',
-    'Modes',
-    'Runs',
-    'Dispatches',
-    'AIC',
-    'Ops Value',
-    'Registration'
-  ]);
-  const awDoctorSummary = campaignRows.filter({ hasText: 'AW Doctor' });
-  await expect(awDoctorSummary).toContainText('AW Doctor');
-  await expect(awDoctorSummary).toContainText('23.9');
-  await expect(awDoctorSummary.locator('[data-field="value-created"]')).toHaveText('0.25');
-  await expect(awDoctorSummary.getByRole('button', { name: 'Update campaign' })).toHaveCount(0);
-  await expect(awDoctorSummary.getByRole('link', { name: 'View AW Doctor campaign dashboard' })).toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
-  await expect(awDoctorSummary.locator('[data-field="modes"] .mode-badge')).toHaveText('review');
-  await expect(awDoctorSummary.locator('[data-field="registration"] .status')).toHaveText('true');
-  await page.getByRole('button', { name: 'Cards' }).click();
-  const awDoctorCard = page.locator('[data-page-id="campaigns"] [data-mobile-card-list] .entity-card-list-card').filter({ hasText: 'AW Doctor' });
-  await expect(awDoctorCard.locator('[data-card-drill]')).toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
-  await awDoctorCard.click({ position: { x: 6, y: 6 } });
-  await expect(page).toHaveURL(/#page-campaign-insights\?campaign=aw-doctor$/);
-  await expect(page.locator('[data-page-id="campaign-insights"] .campaign-tabs')).toBeVisible();
-  await page.evaluate(() => {
-    window.location.hash = '#page-campaign-detail?campaign=ambient-context';
-  });
   await expect(page.locator('[data-breadcrumb-page]')).toHaveText('Ambient Context');
   await expect(page.locator('[data-page-mode]')).toHaveText('Review');
-  await expect(page.locator('[data-nav-page-id="campaigns"]')).toHaveAttribute('aria-current', 'page');
   const campaignNavigation = page.getByRole('navigation', { name: 'Ambient Context views' });
   await expect(campaignNavigation).toContainText('InsightsProblemsDispatchesIssuesInfo');
   await expect(campaignNavigation).toHaveCSS('display', 'flex');

@@ -61,7 +61,6 @@ export function renderCampaignRouteShell(context, config) {
           title: campaignName,
           description: config.description.replace('{campaignName}', campaignName),
           ...(config.currentTab === 'problems' ? {} : { mode: campaignModeForRoute(workflows) }),
-          navigationPage: 'campaigns'
         },
         content: config.bodyRenderer?.({ context, campaignId, campaignName, workflows }) ?? null
       };
