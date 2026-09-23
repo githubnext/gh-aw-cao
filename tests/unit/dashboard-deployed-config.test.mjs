@@ -16,10 +16,12 @@ test("deployed dashboard test has enough time for sequential refresh checks", ()
 test("deployed dashboard check targets declared navigation pages", () => {
   const dashboard = JSON.parse(readFileSync("dashboard/site/dashboard.json", "utf8"));
   const navigationPageIds = new Set(dashboard.dashboard.navigation.flatMap(({ pages }) => pages));
+  const integrationTest = readFileSync("tests/e2e/dashboard-deployed-refresh.spec.mjs", "utf8");
 
   for (const pageId of populatedDashboardPageIds) {
     assert.ok(navigationPageIds.has(pageId), `${pageId} is a declared navigation page`);
   }
+  assert.match(integrationTest, /diagnostics\.database\.counts\.runs/);
 });
 
 test("deployed dashboard scrolling uses a stable view snapshot", async () => {

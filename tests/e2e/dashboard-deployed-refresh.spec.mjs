@@ -103,7 +103,7 @@ test("deployed dashboard refreshes and renders populated views", async ({ page }
     expect(diagnostics.passed, JSON.stringify(diagnostics.checks, null, 2)).toBe(true);
     expect(diagnostics.database.counts.repositories).toBeGreaterThan(0);
     expect(diagnostics.database.counts.workflows).toBeGreaterThan(0);
-    expect(diagnostics.database.counts.events).toBeGreaterThan(0);
+    expect(diagnostics.database.counts.runs).toBeGreaterThan(0);
     expect(browserErrors).toEqual([]);
     expect(failedRequests).toEqual([]);
   } finally {
