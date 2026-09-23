@@ -45,6 +45,7 @@ export function renderCampaignRouteShell(context, config) {
     tabListClassName: 'campaign-tabs',
     tabListAriaLabel: (title) => `${title} views`,
     tabs: ({ routeValue }) => campaignTabs(routeValue),
+    pageLevelTabs: true,
     renderMatched: (routeValue) => {
       const campaignId = normalizeCampaignRoute(routeValue);
       const workflows = allWorkflows

@@ -31,6 +31,7 @@ import { renderRouteTabSet } from './route-tab-set.js';
  *   tabListClassName: string,
  *   tabListAriaLabel: (title: string, routeValue: string) => string,
  *   tabs: RoutePageTab[] | ((args: { routeValue: string, title: string }) => RoutePageTab[]),
+ *   pageLevelTabs?: boolean,
  *   renderMatched: RoutePageMatchRenderer
  * }} RoutePageShellOptions
  */
@@ -61,10 +62,24 @@ export function createRoutePageShell(context, options) {
         bubbles: true,
         detail: allocation
       }));
-      return h('div', null, match.content);
+      if (options.pageLevelTabs) return h('div', null, match.content);
+      const tabs = typeof options.tabs === 'function'
+        ? options.tabs({ routeValue, title })
+        : options.tabs;
+      return h(
+        'div',
+        null,
+        renderRouteTabSet({
+          className: options.tabListClassName,
+          ariaLabel: options.tabListAriaLabel(title, routeValue),
+          currentTab: options.currentTab,
+          tabs
+        }),
+        match.content
+      );
     }
   });
-  root.addEventListener('dashboard-route-change', (event) => {
+  if (options.pageLevelTabs) root.addEventListener('dashboard-route-change', (event) => {
     if (!(event instanceof CustomEvent) || event.detail?.parameter !== (context.routeParameter ?? options.routeParameter)) return;
     const routeValue = typeof event.detail.value === 'string' ? event.detail.value : '';
     const hasSelection = options.hasSelection ? options.hasSelection(routeValue) : routeValue.trim().length > 0;
