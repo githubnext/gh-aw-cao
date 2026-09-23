@@ -45,6 +45,7 @@ export async function scrollRenderedViewsIntoView(activePage) {
       try {
         await viewHandle.evaluate((element) => {
           element.scrollIntoView({ block: "center", inline: "nearest" });
+          element.focus({ preventScroll: true });
         });
       } catch (error) {
         if (!isDetachedViewError(error)) throw error;

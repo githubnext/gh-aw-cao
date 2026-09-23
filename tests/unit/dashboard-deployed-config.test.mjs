@@ -30,10 +30,17 @@ test("deployed dashboard check targets declared navigation pages", () => {
 
 test("deployed dashboard scrolling uses a stable view snapshot", async () => {
   const scrollCalls = [];
+  const focusCalls = [];
   const disposed = [];
   const elements = [
-    { scrollIntoView: (options) => scrollCalls.push(options) },
-    { scrollIntoView: (options) => scrollCalls.push(options) },
+    {
+      scrollIntoView: (options) => scrollCalls.push(options),
+      focus: (options) => focusCalls.push(options),
+    },
+    {
+      scrollIntoView: (options) => scrollCalls.push(options),
+      focus: (options) => focusCalls.push(options),
+    },
   ];
   let locatorSelector;
   const activePage = {
@@ -60,6 +67,10 @@ test("deployed dashboard scrolling uses a stable view snapshot", async () => {
   assert.deepEqual(scrollCalls, [
     { block: "center", inline: "nearest" },
     { block: "center", inline: "nearest" },
+  ]);
+  assert.deepEqual(focusCalls, [
+    { preventScroll: true },
+    { preventScroll: true },
   ]);
   assert.deepEqual(disposed, [0, 1]);
 });
