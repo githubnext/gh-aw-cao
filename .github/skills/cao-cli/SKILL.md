@@ -180,9 +180,10 @@ cao dashboard-complexity --input dashboard/site/dashboard.json
 ```
 
 The command reports a normalized upper-bound row-read estimate, symbolic source
-coefficients, stage-level reads, and a ranking from highest to lowest computation pressure.
-Pressure includes the selected query plus each unique transitive dependency materialized
-once, matching compiler reuse within one execution batch.
+coefficients, stage-level reads, parent queries and views that consume each query, and a
+ranking from highest to lowest computation pressure. Pressure includes the selected query
+plus each unique transitive dependency materialized once, matching compiler reuse within one
+execution batch.
 
 Inspect one generated query directly by passing its query ID before the options:
 

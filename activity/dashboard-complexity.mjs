@@ -9,16 +9,22 @@ export function analyzeDashboardComplexity(document) {
   }
   const definitions = (Array.isArray(document.dashboard.queries) ? document.dashboard.queries : [])
     .filter((query) => isRecord(query) && typeof query.name === 'string');
+  const consumers = dashboardQueryConsumers(document.dashboard, definitions);
   const estimates = queryComplexityEstimates(
     new Map(definitions.map((query) => [query.name, query]))
   );
+  const ranking = estimates.summary['computation-pressure'].map((query) => ({
+    ...query,
+    'used-by': consumers.get(query.name) ?? []
+  }));
   return {
     queries: definitions.length,
     summary: estimates.summary,
-    ranking: estimates.summary['computation-pressure'],
+    ranking,
     inventory: definitions.map((query) => ({
       name: query.name,
       rank: estimates.ranks.get(query.name),
+      'used-by': consumers.get(query.name) ?? [],
       ...estimates.queries.get(query.name)
     }))
   };
@@ -40,6 +46,7 @@ export function formatDashboardComplexityMarkdown(analysis, { limit, queryId } =
   const rows = ranking.map((query) => [
     query.rank,
     markdownCode(query.name),
+    formatConsumers(query['used-by']),
     query['total-row-read-units'],
     query['direct-row-read-units'],
     query['dependency-row-read-units'],
@@ -56,8 +63,8 @@ export function formatDashboardComplexityMarkdown(analysis, { limit, queryId } =
     '',
     `Source coefficients: ${sources}.`,
     '',
-    '| Rank | Query | Total | Direct | Dependencies | Complexity |',
-    '| ---: | --- | ---: | ---: | ---: | --- |',
+    '| Rank | Query | Used by | Total | Direct | Dependencies | Complexity |',
+    '| ---: | --- | --- | ---: | ---: | ---: | --- |',
     ...rows.map((row) => `| ${row} |`),
     ...(queryId === undefined && ranking.length < analysis.ranking.length
       ? ['', `_Showing ${ranking.length} of ${analysis.ranking.length} queries._`]
@@ -65,6 +72,76 @@ export function formatDashboardComplexityMarkdown(analysis, { limit, queryId } =
     '',
     `Model: ${analysis.summary.model}. ${analysis.summary.assumptions}`
   ].join('\n');
+}
+
+/**
+ * @param {Record<string, any>} dashboard
+ * @param {Record<string, any>[]} definitions
+ */
+function dashboardQueryConsumers(dashboard, definitions) {
+  const consumers = new Map(definitions.map((query) => [query.name, new Set()]));
+  for (const query of definitions) {
+    for (const dependency of queryInputNames(query)) {
+      consumers.get(dependency)?.add(`query:${query.name}`);
+    }
+  }
+  for (const view of Array.isArray(dashboard.views) ? dashboard.views : []) {
+    if (!isRecord(view)) continue;
+    addViewConsumers(
+      view,
+      `view:${typeof view.id === 'string' ? view.id : 'anonymous'}`,
+      consumers
+    );
+  }
+  for (const [pageIndex, page] of (Array.isArray(dashboard.pages) ? dashboard.pages : []).entries()) {
+    if (!isRecord(page)) continue;
+    const pageId = typeof page.id === 'string' ? page.id : String(pageIndex);
+    const definition = page.kind === 'built-in' && isRecord(page.definition) ? page.definition : page;
+    for (const [viewIndex, view] of (Array.isArray(definition.views) ? definition.views : []).entries()) {
+      if (!isRecord(view)) continue;
+      addViewConsumers(
+        view,
+        `page:${pageId}/view:${typeof view.id === 'string' ? view.id : viewIndex}`,
+        consumers
+      );
+    }
+    for (const [sectionIndex, section] of (Array.isArray(definition.sections) ? definition.sections : []).entries()) {
+      if (!isRecord(section)) continue;
+      for (const name of [
+        section['count-source'],
+        ...(Array.isArray(section['count-sources']) ? section['count-sources'] : [])
+      ]) {
+        if (typeof name === 'string') consumers.get(name)?.add(`page:${pageId}/section:${sectionIndex}`);
+      }
+    }
+  }
+  for (const [index, callout] of (Array.isArray(dashboard.callouts) ? dashboard.callouts : []).entries()) {
+    const source = isRecord(callout) && isRecord(callout['visible-when'])
+      ? callout['visible-when'].source
+      : undefined;
+    if (typeof source === 'string') consumers.get(source)?.add(`callout:${index}`);
+  }
+  return new Map([...consumers].map(([name, labels]) => [name, [...labels].toSorted()]));
+}
+
+/** @param {Record<string, any>} view @param {string} label @param {Map<string, Set<string>>} consumers */
+function addViewConsumers(view, label, consumers) {
+  for (const name of viewQueryNames(view)) consumers.get(name)?.add(label);
+}
+
+/** @param {Record<string, any>} view */
+function viewQueryNames(view) {
+  const names = [];
+  if (isRecord(view.data)) {
+    if (typeof view.data.source === 'string') names.push(view.data.source);
+    if (Array.isArray(view.data.sources)) {
+      names.push(...view.data.sources.filter((name) => typeof name === 'string'));
+    }
+  }
+  if (isRecord(view.list) && isRecord(view.list.drill) && typeof view.list.drill.query === 'string') {
+    names.push(view.list.drill.query);
+  }
+  return names;
 }
 
 /**
@@ -288,6 +365,11 @@ function coefficientsObject(coefficients) {
 function markdownCode(value) {
   const safe = String(value).replaceAll('`', "'").replaceAll('|', '\\|').replaceAll('\n', ' ');
   return `\`${safe}\``;
+}
+
+/** @param {string[]} consumers */
+function formatConsumers(consumers) {
+  return consumers.length === 0 ? '—' : consumers.map(markdownCode).join('<br>');
 }
 
 /** @param {unknown} value */

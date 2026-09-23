@@ -40,7 +40,17 @@ function dashboard() {
           select: [{ field: 'run' }, { field: 'organization' }]
         }
       ],
-      pages: [],
+      views: [
+        { id: 'joined-view', data: { source: 'joined' } }
+      ],
+      pages: [{
+        id: 'overview',
+        kind: 'custom',
+        views: [
+          { id: 'summary-card', data: { source: 'summary' } },
+          'joined-view'
+        ]
+      }],
       navigation: []
     }
   };
@@ -53,6 +63,7 @@ test('estimates row reads and ranks queries by dependency-amortized pressure', (
   assert.deepEqual(byName.base, {
     name: 'base',
     rank: 3,
+    'used-by': ['query:joined', 'query:summary'],
     model: 'normalized-upper-bound',
     assumptions: 'Each external source has one row; selectivity is 1; query dependencies materialize once per batch.',
     class: 'linear-row-reads',
@@ -69,7 +80,9 @@ test('estimates row reads and ranks queries by dependency-amortized pressure', (
     }
   });
   assert.equal(byName.summary['total-row-read-units'], 5);
+  assert.deepEqual(byName.summary['used-by'], ['page:overview/view:summary-card']);
   assert.equal(byName.joined['total-row-read-units'], 7);
+  assert.deepEqual(byName.joined['used-by'], ['view:joined-view']);
   assert.deepEqual(analysis.ranking.map(({ rank, name, score }) => ({ rank, name, score })), [
     { rank: 1, name: 'joined', score: 7 },
     { rank: 2, name: 'summary', score: 5 },
@@ -84,8 +97,9 @@ test('formats a bounded markdown complexity ranking', () => {
   });
 
   assert.match(markdown, /^## Dashboard query complexity/m);
-  assert.match(markdown, /\| 1 \| `joined` \| 7 \| 4 \| 3 \| linear \|/);
-  assert.match(markdown, /\| 2 \| `summary` \| 5 \| 2 \| 3 \| linear \|/);
+  assert.match(markdown, /\| Rank \| Query \| Used by \| Total \|/);
+  assert.match(markdown, /\| 1 \| `joined` \| `view:joined-view` \| 7 \| 4 \| 3 \| linear \|/);
+  assert.match(markdown, /\| 2 \| `summary` \| `page:overview\/view:summary-card` \| 5 \| 2 \| 3 \| linear \|/);
   assert.doesNotMatch(markdown, /\| 3 \| `base`/);
   assert.match(markdown, /Showing 2 of 3 queries/);
 });
@@ -105,6 +119,7 @@ test('cao dashboard-complexity reports the full graph or one query id', async ()
     assert.equal(selected.command, 'dashboard-complexity');
     assert.equal(selected.query.name, 'summary');
     assert.equal(selected.query.rank, 2);
+    assert.deepEqual(selected.query['used-by'], ['page:overview/view:summary-card']);
     assert.equal(selected.query['total-row-read-units'], 5);
 
     const markdown = await runCli([
