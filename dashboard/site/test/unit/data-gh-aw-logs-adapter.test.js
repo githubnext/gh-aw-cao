@@ -68,7 +68,7 @@ describe('gh-aw logs adapter', () => {
           attempt: 1,
           number: 7,
           workflowName: 'Dashboard',
-          displayTitle: 'Dashboard worker · github/gh-aw · review',
+          displayTitle: 'Dashboard worker · github/gh-aw · live',
           event: 'workflow_dispatch',
           status: 'completed',
           conclusion: 'success',
@@ -90,7 +90,7 @@ describe('gh-aw logs adapter', () => {
           repository: 'githubnext/gh-aw-cao',
           workflow_name: 'Dashboard',
           workflow_path: '.github/workflows/dashboard.md',
-          display_title: 'Dashboard worker · github/gh-aw · review',
+          display_title: 'Dashboard worker · github/gh-aw · live',
           event: 'workflow_dispatch',
           status: 'completed',
           conclusion: 'success',
@@ -99,6 +99,7 @@ describe('gh-aw logs adapter', () => {
           started_at: '2026-09-09T04:00:00Z',
           updated_at: '2026-09-09T04:01:00Z',
           token_usage_summary: { total_aic: 2.5 },
+          tool_calls: [{ tool: 'report_incomplete', server: 'safeoutputs', status: 'incomplete' }],
           job_details: [{
             id: 404,
             name: 'agent',
@@ -216,6 +217,17 @@ describe('gh-aw logs adapter', () => {
       },
       {
         schema_version: 2,
+        kind: 'safe_output_item',
+        safe_output: {
+          run_id: 303,
+          type: 'report_incomplete',
+          reason: 'Required vulnerability-alert evidence was unavailable.',
+          details: 'Verbose diagnostic evidence that must not become the event summary.',
+          timestamp: '2026-09-09T04:00:55Z'
+        }
+      },
+      {
+        schema_version: 2,
         kind: 'github_api_rate_limit',
         rate_limit: {
           host: 'github.com',
@@ -230,12 +242,12 @@ describe('gh-aw logs adapter', () => {
     const batch = normalize(adapted.observations);
 
     expect(adapted).toMatchObject({
-      records: 5,
+      records: 6,
       rawPayloadRecords: 1,
       rawRuns: 1,
       agenticRuns: 1,
-      safeOutputItems: 1,
-      mappedSafeOutputItems: 1,
+      safeOutputItems: 2,
+      mappedSafeOutputItems: 2,
       rateLimits: 1,
       mappedRateLimits: 1
     });
@@ -246,6 +258,9 @@ describe('gh-aw logs adapter', () => {
         workflowPath: '.github/workflows/dashboard.md',
         number: 7,
         targetRepository: 'github/gh-aw',
+        rolloutMode: 'live',
+        terminalOutcome: 'report_incomplete',
+        terminalOutcomeDetail: 'The agent reported that required evidence or access was unavailable.',
         aicTotal: 2.5,
         agentId: 'copilot',
         agentVersion: '1.0.83',
@@ -298,6 +313,14 @@ describe('gh-aw logs adapter', () => {
         runId: 'github:run:303:attempt:1',
         payloadRef: 'gh-aw-logs-shards#L4',
         isPullRequest: true
+      })
+    ]));
+    expect(batch.audits).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        source: 'safe-output',
+        type: 'safe_output.created',
+        safeOutputType: 'report_incomplete',
+        summary: 'Required vulnerability-alert evidence was unavailable.'
       })
     ]));
     expect(batch.domains).toEqual(expect.arrayContaining([

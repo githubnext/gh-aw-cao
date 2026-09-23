@@ -1,10 +1,11 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { formatHumanFriendlyTimestamp } from '../view-formatters.js';
-import { text } from './count-formatters.js';
+import { renderModeBadge } from './badge.js';
+import { text, titleCase } from './count-formatters.js';
 import { renderIntentAction } from './data-view.js';
 import { findLink, renderSafeLink } from './link-content.js';
-import { renderCountBadge } from './ui-primitives.js';
+import { isSafeHttpsUrl, renderCountBadge } from './ui-primitives.js';
 import { rowsFor } from './source-rows.js';
 import { renderPageSection, renderViewSectionChrome } from './view-chrome.js';
 
@@ -20,12 +21,15 @@ const FIX_ACTION = {
     'workflow-role',
     'runtime-repository',
     'target-repository',
+    'rollout-mode',
     'problem-kind',
     'failure-count',
     'error-signature',
     'occurrence-count',
     'status',
     'status-detail',
+    'outcome-kind',
+    'outcome-diagnosis',
     'failure-job',
     'failure-message',
     'failure-step',
@@ -61,10 +65,14 @@ function problemMetadata(row) {
   const values = [
     problemDetail(row),
     text(row['failure-job']) ? `Job: ${text(row['failure-job'])}` : '',
-    text(row['failure-step']) ? `Step: ${text(row['failure-step'])}` : '',
-    row['started-at'] ? formatHumanFriendlyTimestamp(row['started-at']) : ''
+    text(row['failure-step']) ? `Step: ${text(row['failure-step'])}` : ''
   ].filter(Boolean);
   return values.join(' · ');
+}
+
+/** @param {Record<string, unknown>} row */
+function problemAge(row) {
+  return row['started-at'] ? formatHumanFriendlyTimestamp(row['started-at']) : '';
 }
 
 /** @param {Record<string, unknown>} row */
@@ -73,11 +81,26 @@ function problemTarget(row) {
 }
 
 /** @param {Record<string, unknown>} row */
+function problemMode(row) {
+  const mode = text(row['rollout-mode']).toLowerCase();
+  return mode === 'live' || mode === 'review' ? mode : '';
+}
+
+/** @param {Record<string, unknown>} row */
+function problemRunLink(row) {
+  const link = findLink(row, 'run-link');
+  if (link) return link;
+  const href = text(row['run-link']);
+  return isSafeHttpsUrl(href) ? { href, label: 'Evidence' } : null;
+}
+
+/** @param {Record<string, unknown>} row */
 function renderProblem(row) {
-  const run = text(row.run);
-  const runLink = findLink(row, 'run-link');
+  const runLink = problemRunLink(row);
   const occurrences = Number(row['occurrence-count']) || 0;
   const metadata = problemMetadata(row);
+  const age = problemAge(row);
+  const mode = problemMode(row);
   return h(
     'li',
     { className: 'campaign-problem-item' },
@@ -88,37 +111,37 @@ function renderProblem(row) {
       h(
         'p',
         { className: 'campaign-problem-message' },
-        problemMessage(row)
+        h(
+          'span',
+          { className: 'campaign-problem-title' },
+          runLink ? renderSafeLink(problemMessage(row), runLink) : problemMessage(row)
+        ),
+        occurrences > 1 ? ' ' : null,
+        occurrences > 1
+          ? renderCountBadge(`${occurrences}×`, `Seen ${occurrences} times, most recently below`)
+          : null,
+        age ? ` · ${age}` : null
       ),
       h(
         'p',
         { className: 'campaign-problem-target' },
-        'Target repository: ',
-        h('strong', {}, problemTarget(row))
+        h(
+          'span',
+          {},
+          'Target repository: ',
+          h('strong', {}, problemTarget(row)),
+          mode ? ' ' : null,
+          mode ? renderModeBadge(titleCase(mode)) : null
+        )
       ),
-      metadata || runLink
+      metadata
         ? h(
             'p',
             { className: 'campaign-problem-metadata' },
-            metadata,
-            runLink
-              ? h(
-                  'span',
-                  { className: 'campaign-problem-run-link' },
-                  metadata ? ' · ' : '',
-                  renderSafeLink(run ? `Latest Run ${run}` : 'Open Run', runLink)
-                )
-              : null
+            metadata
           )
         : null
     ),
-    occurrences > 1
-      ? h(
-          'span',
-          { className: 'campaign-problem-occurrences' },
-          renderCountBadge(`${occurrences}×`, `Seen ${occurrences} times, most recently below`)
-        )
-      : null,
     renderIntentAction(FIX_ACTION, row)
   );
 }
@@ -137,19 +160,6 @@ function groupProblems(rows) {
 }
 
 /** @param {Record<string, unknown>[]} rows */
-function problemCount(rows) {
-  const partitions = new Map();
-  for (const row of rows) {
-    const key = text(row['runtime-repository']) || 'orchestrator';
-    const count = text(row['problem-kind']) === 'not-observed'
-      ? 1
-      : Math.max(1, Number(row['failure-count']) || 0);
-    partitions.set(key, Math.max(partitions.get(key) ?? 0, count));
-  }
-  return [...partitions.values()].reduce((total, count) => total + count, 0);
-}
-
-/** @param {Record<string, unknown>[]} rows */
 function renderProblemGroup(rows) {
   const first = rows[0] ?? {};
   const name = text(first['workflow-name']) || text(first.workflow) || 'Unknown workflow';
@@ -161,8 +171,7 @@ function renderProblemGroup(rows) {
       'header',
       { className: 'campaign-problem-group-header' },
       h('h4', { className: 'campaign-problem-group-name' }, name),
-      workflow ? h('span', { className: 'campaign-problem-group-path' }, workflow) : null,
-      renderCountBadge(problemCount(rows), `${problemCount(rows)} current problems`)
+      workflow ? h('span', { className: 'campaign-problem-group-path' }, workflow) : null
     ),
     h('ul', { className: 'campaign-problem-items' }, ...rows.map(renderProblem))
   );
