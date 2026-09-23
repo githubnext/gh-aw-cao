@@ -9,13 +9,15 @@ import { dashboardViewAliasName } from '../data/queries/view-payload-compiler.js
 /** @typedef {Record<string, unknown>} Row */
 /** @typedef {{ rows: () => Row[], pending: () => boolean, unavailable: () => boolean }} SourceBinding */
 /** @typedef {Record<string, SourceBinding>} SourceBindings */
-/** @typedef {{ total: number, registered: number, unavailable: boolean, registeredUnavailable: boolean }} Coverage */
+/** @typedef {{ total: number, registered: number, averageCoverage: number, unavailable: boolean, registeredUnavailable: boolean, coverageUnavailable: boolean }} Coverage */
 /** @typedef {{ operations: number, live: number, review: number }} Motion */
 /** @typedef {{ singular: string, plural: string }} PluralText */
 
 /**
  * @typedef {{
  *   campaigns: () => number,
+ *   campaignTotal: () => number,
+ *   campaignHealth: () => number,
  *   issues: () => number,
  *   successfulRuns: () => number,
  *   failedRuns: () => number,
@@ -89,17 +91,25 @@ export function createFactoryMetrics(sources) {
   /** @param {string} name */
   const row = (name) => sources[name]?.rows()[0] ?? {};
   return {
-    campaigns: () => numberField(row('database-campaign-count'), 'campaigns'),
+    campaigns: () => numberField(row('overview-healthy-campaign-count'), 'healthy-campaigns'),
+    campaignTotal: () => numberField(row('database-campaign-count'), 'campaigns'),
+     campaignHealth: () => {
+       const total = numberField(row('database-campaign-count'), 'campaigns');
+       const healthy = numberField(row('overview-healthy-campaign-count'), 'healthy-campaigns');
+       return total > 0 ? healthy / total : 0;
+     },
     issues: () => numberField(row('database-issue-count'), 'issues'),
     successfulRuns: () => numberField(row('overview-run-summary'), 'successful-runs'),
     failedRuns: () => numberField(row('overview-run-summary'), 'failed-runs'),
     activeRuns: () => numberField(row('overview-run-summary'), 'active-runs'),
     valueGains: () => numberField(row('overview-value-summary'), 'value-gains'),
     coverage: () => ({
-      total: numberField(row('overview-delivery-summary'), 'delivered-repositories'),
-      registered: numberField(row('overview-registered-repository-summary'), 'registered-repositories'),
+      total: numberField(row('overview-repository-coverage'), 'reached-repositories'),
+      registered: numberField(row('overview-repository-coverage'), 'registered-repositories-total'),
+      averageCoverage: Math.min(1, Math.max(0, numberField(row('overview-repository-coverage'), 'repository-coverage'))),
       unavailable: sources['overview-delivery-summary']?.unavailable() ?? true,
-      registeredUnavailable: sources['overview-registered-repository-summary']?.unavailable() ?? true
+      registeredUnavailable: sources['overview-registered-repository-summary']?.unavailable() ?? true,
+      coverageUnavailable: sources['overview-repository-coverage']?.unavailable() ?? true
     }),
     workers: () => numberField(row('overview-worker-summary'), 'workers'),
     dispatches: () => numberField(row('overview-dispatch-summary'), 'dispatches'),

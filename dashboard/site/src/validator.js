@@ -57,6 +57,7 @@ import {
   FIELD_DISPLAY_VALUES,
   FIELD_FORMAT_VALUES,
   FIELD_TYPE_VALUES,
+  FACTORY_FLOOR_STATION_VALUES,
   FACTORY_OVERVIEW_SECTION_VALUES,
   FILTER_DIMENSION_VALUES,
   DETECTION_STATE_VALUES,
@@ -2613,6 +2614,42 @@ function validateView(view, viewNode, path, viewIds, errors) {
          'config.sections is supported only for the work-project-view and outcomes-overview elements.',
          `${path}.config.sections`
        ));
+      }
+      if (view.config.stations !== undefined) {
+        if (view.element !== 'factory-floor') {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'config.stations is supported only for the factory-floor element.',
+            `${path}.config.stations`
+          ));
+        } else if (!Array.isArray(view.config.stations) || view.config.stations.length === 0) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'factory-floor config.stations must be a non-empty list.',
+            `${path}.config.stations`
+          ));
+        } else {
+          const seenStations = new Set();
+          for (let index = 0; index < view.config.stations.length; index += 1) {
+            const station = view.config.stations[index];
+            validateStringField(station, `${path}.config.stations[${index}]`, true, errors);
+            if (seenStations.has(station)) {
+              errors.push(createError(
+                ERROR_CODES.unknownOrDuplicateKey,
+                'factory-floor config.stations values must be unique.',
+                `${path}.config.stations[${index}]`
+              ));
+            }
+            seenStations.add(station);
+            if (typeof station === 'string' && !FACTORY_FLOOR_STATION_VALUES.includes(station)) {
+              errors.push(createError(
+                ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+                'factory-floor config.stations must use canonical station values.',
+                `${path}.config.stations[${index}]`
+              ));
+            }
+          }
+        }
       }
       if (view.config.labels !== undefined) {
         if (!PLURAL_LABEL_ELEMENTS.includes(String(view.element))) {

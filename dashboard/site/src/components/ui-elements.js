@@ -45,7 +45,7 @@ import { renderCampaignProblemList } from './campaign-problem-list.js';
  *   element?: string,
  *   viewId?: string,
  *   viewIndex?: number,
- *   elementConfig?: { body?: string, sections?: string[], section?: string, labels?: Record<string, unknown>, animate?: string, 'view-all-page'?: string, 'view-all-label'?: string, 'label-field'?: string, 'link-field'?: string, 'icon-field'?: string, 'fallback-icon'?: string, 'indicator-field'?: string, 'indicator-label-field'?: string, 'empty-message'?: string },
+ *   elementConfig?: { body?: string, sections?: string[], stations?: string[], section?: string, labels?: Record<string, unknown>, animate?: string, 'view-all-page'?: string, 'view-all-label'?: string, 'label-field'?: string, 'link-field'?: string, 'icon-field'?: string, 'fallback-icon'?: string, 'indicator-field'?: string, 'indicator-label-field'?: string, 'empty-message'?: string },
  *   headingTag: 'h3'|'h4'
  * }} ElementRenderContext
  */
@@ -442,7 +442,11 @@ function renderCampaignStatusGridElement(context) {
             )
           )
         );
-      })
+      })),
+    h(
+      'a',
+      { className: 'overview-campaigns-view-all', href: '#page-campaigns' },
+      'View all campaigns'
     )
   );
 }

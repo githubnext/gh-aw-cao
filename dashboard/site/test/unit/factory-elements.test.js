@@ -137,12 +137,14 @@ it('renders the factory header from only its declared JSON sources', () => {
 it('renders the factory floor from its independent JSON view and configuration', () => {
   const rendered = renderUiElement('factory-floor', context('factory-floor', {
     'database-campaign-count': source('database-campaign-count', [{ campaigns: 2 }]),
+    'overview-healthy-campaign-count': source('overview-healthy-campaign-count', [{ 'healthy-campaigns': 2 }]),
     'overview-outcome-summary': source('overview-outcome-summary', [{ 'useful-outputs': 2 }]),
     'overview-run-summary': source('overview-run-summary', [{ 'successful-runs': 2, 'failed-runs': 2, 'active-runs': 4 }]),
     'overview-dispatch-summary': source('overview-dispatch-summary', [{ dispatches: 4, 'failed-dispatches': 2 }]),
     'overview-delivery-summary': source('overview-delivery-summary', [{ 'delivered-repositories': 3 }]),
     'overview-value-summary': source('overview-value-summary', [{ 'value-gains': 1 }]),
     'overview-registered-repository-summary': source('overview-registered-repository-summary', [{ 'registered-repositories': 6 }]),
+    'overview-repository-coverage': source('overview-repository-coverage', [{ 'repository-coverage': 0.5, 'reached-repositories': 3, 'registered-repositories-total': 6 }]),
     'overview-worker-summary': source('overview-worker-summary', [{ workers: 2 }]),
     'database-issue-count': source('database-issue-count', [{ issues: 5 }])
   }, {
@@ -154,8 +156,8 @@ it('renders the factory floor from its independent JSON view and configuration',
 
   expect(rendered?.classList.contains('factory-floor-active')).toBe(true);
   expect([...rendered?.querySelectorAll('.factory-station') ?? []].map((station) => station.textContent)).toEqual([
-    'Campaigns2',
-    'Repositories6',
+    'Factory health100%2/2 healthy campaigns',
+    'Repository coverage50%3/6 repositories reached',
     'Issues & PRs5',
     'Successful runs22 failed',
     'Successful dispatches42 failed',
@@ -166,25 +168,27 @@ it('renders the factory floor from its independent JSON view and configuration',
   expect(rendered?.querySelector('.factory-station:nth-child(4) strong .metric-number-animated')).not.toBeNull();
   expect(rendered?.querySelector('.factory-station:nth-child(5) small a')?.getAttribute('href'))
     .toBe('#page-dispatches?campaign-worker-dispatches.status=failure');
-  expect(rendered?.getAttribute('aria-label')).toContain('6 repositories with 3 delivered to');
+  expect(rendered?.getAttribute('aria-label')).toContain('50% average repository coverage');
 });
 
 it('keeps unavailable registered repository evidence distinct from zero', () => {
   const rendered = renderUiElement('factory-floor', context('factory-floor', {
     'database-campaign-count': source('database-campaign-count', [{ campaigns: 0 }]),
+    'overview-healthy-campaign-count': source('overview-healthy-campaign-count', [{ 'healthy-campaigns': 0 }]),
     'overview-outcome-summary': source('overview-outcome-summary', [{ 'useful-outputs': 0 }]),
     'overview-run-summary': source('overview-run-summary', [{ 'successful-runs': 0, 'failed-runs': 0, 'active-runs': 0 }]),
     'overview-dispatch-summary': source('overview-dispatch-summary', [{ dispatches: 0, 'failed-dispatches': 0 }]),
     'overview-delivery-summary': source('overview-delivery-summary', [{ 'delivered-repositories': 3 }]),
     'overview-value-summary': source('overview-value-summary', [{ 'value-gains': 0 }]),
     'overview-registered-repository-summary': source('overview-registered-repository-summary', [], { availability: 'unavailable' }),
+    'overview-repository-coverage': source('overview-repository-coverage', [], { availability: 'unavailable' }),
     'overview-worker-summary': source('overview-worker-summary', [{ workers: 0 }]),
     'database-issue-count': source('database-issue-count', [{ issues: 0 }])
   }));
 
-  expect(rendered?.querySelector('.factory-station:nth-child(2)')?.textContent).toBe('RepositoriesUnavailable');
+  expect(rendered?.querySelector('.factory-station:nth-child(2)')?.textContent).toBe('Repository coverageUnavailable0/0 repositories reached');
   expect(rendered?.querySelector('.factory-station:nth-child(2) strong a')).toBeNull();
-  expect(rendered?.getAttribute('aria-label')).toContain('Repositories unavailable');
+  expect(rendered?.getAttribute('aria-label')).toContain('Repository coverage unavailable');
 });
 
 it('renders both elements immediately and updates only widgets whose query resolves', async () => {
@@ -209,9 +213,13 @@ it('renders both elements immediately and updates only widgets whose query resol
   expect(requests.map(({ name }) => name)).toEqual([
     'overview-outcome-summary',
     'overview-factory-status',
+    'database-campaign-count',
+    'overview-healthy-campaign-count',
     'overview-rhythm',
     'database-campaign-count',
+    'overview-healthy-campaign-count',
     'overview-registered-repository-summary',
+    'overview-repository-coverage',
     'database-issue-count',
     'overview-outcome-summary',
     'overview-run-summary',

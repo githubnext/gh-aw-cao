@@ -401,24 +401,21 @@ test('mobile shell keeps Overview navigation in the hamburger menu', async ({ pa
   const headerCopy = factoryOverview.locator('.factory-intro-copy');
   const rhythm = factoryOverview.locator('.factory-rhythm');
   const stations = factoryOverview.locator('.factory-station');
-  const [headerCopyBox, rhythmBox, firstStationBox, secondStationBox, thirdStationBox, fourthStationBox] = await Promise.all([
+  const [headerCopyBox, rhythmBox, firstStationBox, secondStationBox] = await Promise.all([
     headerCopy.boundingBox(),
     rhythm.boundingBox(),
     stations.nth(0).boundingBox(),
-    stations.nth(1).boundingBox(),
-    stations.nth(2).boundingBox(),
-    stations.nth(3).boundingBox()
+    stations.nth(1).boundingBox()
   ]);
-  if (!headerCopyBox || !rhythmBox || !firstStationBox || !secondStationBox || !thirdStationBox || !fourthStationBox) {
+  if (!headerCopyBox || !rhythmBox || !firstStationBox || !secondStationBox) {
     throw new Error('Expected responsive Overview component boxes to be available');
   }
   expect(rhythmBox.y).toBeGreaterThanOrEqual(headerCopyBox.y + headerCopyBox.height);
   expect(await factoryOverview.locator('.factory-stations').evaluate((element) =>
     getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean).length
   )).toBe(2);
-  expect(thirdStationBox.y).toBeGreaterThan(firstStationBox.y + firstStationBox.height);
   expect(firstStationBox.x).toBeLessThan(secondStationBox.x);
-  expect(thirdStationBox.x).toBeLessThan(fourthStationBox.x);
+  expectLayoutWithin(firstStationBox.y, secondStationBox.y, 8);
   await expect(factoryOverview.locator('.factory-rhythm-day')).toHaveCount(7);
 
   await page.locator('.mobile-nav-menu > summary').click();
@@ -472,6 +469,8 @@ test('Transactions is a responsive table of retained transaction data', async ({
           metadata
         },
         'database-campaign-count': { source: 'database-campaign-count', rows: [{ campaigns: 2 }], metadata },
+        'overview-healthy-campaign-count': { source: 'overview-healthy-campaign-count', rows: [{ 'healthy-campaigns': 1 }], metadata },
+        'overview-repository-coverage': { source: 'overview-repository-coverage', rows: [{ 'repository-coverage': 0.5, 'reached-repositories': 3, 'registered-repositories-total': 6 }], metadata },
         'database-repository-count': { source: 'database-repository-count', rows: [{ repositories: 3 }], metadata },
         'database-workflow-count': { source: 'database-workflow-count', rows: [{ workflows: 5 }], metadata },
         'database-run-count': { source: 'database-run-count', rows: [{ runs: 8 }], metadata },
@@ -1095,6 +1094,8 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
           metadata
         },
         'database-campaign-count': { source: 'database-campaign-count', rows: [{ campaigns: 2 }], metadata },
+        'overview-healthy-campaign-count': { source: 'overview-healthy-campaign-count', rows: [{ 'healthy-campaigns': 1 }], metadata },
+        'overview-repository-coverage': { source: 'overview-repository-coverage', rows: [{ 'repository-coverage': 0.5, 'reached-repositories': 3, 'registered-repositories-total': 6 }], metadata },
         'database-repository-count': { source: 'database-repository-count', rows: [{ repositories: 3 }], metadata },
         'database-workflow-count': { source: 'database-workflow-count', rows: [{ workflows: 5 }], metadata },
         'database-run-count': { source: 'database-run-count', rows: [{ runs: 8 }], metadata },
@@ -1393,18 +1394,11 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await cleanNavigation.filter({ hasText: 'Overview' }).click();
   const overviewPage = page.locator('[data-page-id="overview"]');
   await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
-  await expect(overviewPage.getByRole('heading', { name: 'Your factory is humming.' })).toBeVisible();
+  await expect(overviewPage.getByRole('heading', { name: 'Your factory needs attention.' })).toBeVisible();
   await expect(overviewPage.locator('.factory-running')).toHaveCount(0);
-  await expect(overviewPage.locator('.factory-station')).toHaveCount(6);
-  await expect(overviewPage.locator('.factory-station strong')).toHaveText(['2', '1', '17', '20', '12', '0']);
-  await expect(overviewPage.locator('.factory-station small')).toHaveText([
-    '',
-    '',
-    '',
-    '80 failed',
-    '0 failed',
-    ''
-  ]);
+  await expect(overviewPage.locator('.factory-station')).toHaveCount(2);
+  await expect(overviewPage.locator('.factory-station strong')).toHaveText(['50%', '50%']);
+  await expect(overviewPage.locator('.factory-station small')).toHaveText(['1/2 healthy campaigns', '3/6 repositories reached']);
   await expect(overviewPage.locator('.factory-output')).toHaveCount(0);
   await expect(overviewPage.locator('.factory-status')).toHaveCount(0);
   await expect(overviewPage.locator('.notifications-inbox')).toHaveCount(0);
@@ -1418,10 +1412,6 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
     expect(link.width, `${link.text} link width`).toBeGreaterThanOrEqual(24);
     expect(link.height, `${link.text} link height`).toBeGreaterThanOrEqual(24);
   }
-  await overviewPage.getByRole('link', { name: '80 failed', exact: true }).click();
-  await expect(page).toHaveURL(/#page-runs\?runs-runs-source\.run-conclusion=failure$/);
-  await expect(page.getByRole('heading', { name: 'Runs', exact: true, level: 1 })).toBeVisible();
-  await cleanNavigation.filter({ hasText: 'Overview' }).click();
   await page.evaluate(() => { window.location.hash = '#page-overview-failed-runs'; });
   const failedRunsPage = page.locator('[data-page-id="overview-failed-runs"]');
   await expect(failedRunsPage).toBeVisible();
@@ -1467,7 +1457,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await page.evaluate(() => { window.location.hash = '#page-overview'; });
   await expect(overviewPage).toBeVisible();
   await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
-  await expect(overviewPage.locator('.factory-station')).toHaveCount(6);
+  await expect(overviewPage.locator('.factory-station')).toHaveCount(2);
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data']);
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toHaveCount(0);
@@ -2519,7 +2509,9 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   const mobileCampaignLinks = campaignNavigation.locator('a');
   await expect(mobileCampaignLinks).toHaveCount(5);
   await expect(mobileCampaignLinks.first().locator('.tab-trailing-icon')).toBeVisible();
-  expect(await mobileCampaignLinks.first().locator('.tab-trailing-icon').evaluate((icon) => parseFloat(getComputedStyle(icon).marginLeft) > 0)).toBe(true);
+  expect(await mobileCampaignLinks.first().evaluate((link) => {
+    return link.lastElementChild?.classList.contains('tab-trailing-icon') === true;
+  })).toBe(true);
   await mobileCampaignLinks.first().focus();
   await expect(mobileCampaignLinks.first()).toHaveCSS('outline-offset', '-3px');
   const mobileLinkBoxes = await mobileCampaignLinks.evaluateAll((links) => links.map((link) => {

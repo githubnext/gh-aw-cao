@@ -6,9 +6,10 @@ import { renderReactiveGrid } from './reactive-grid.js';
 /** @typedef {{ operations: number, live: number, review: number }} Motion */
 /** @typedef {{ rows: () => Record<string, unknown>[], pending: () => boolean, unavailable: () => boolean }} SourceBinding */
 /** @typedef {Record<string, SourceBinding>} SourceBindings */
-/** @typedef {{ total: number, registered: number, unavailable: boolean, registeredUnavailable: boolean }} Coverage */
-/** @typedef {{ campaigns: () => number, issues: () => number, successfulRuns: () => number, failedRuns: () => number, activeRuns: () => number, valueGains: () => number, coverage: () => Coverage, workers: () => number, dispatches: () => number, failedDispatches: () => number, usefulOutputs: () => number, deliveredRepositories: () => number, motion: () => Motion }} OverviewMetrics */
+/** @typedef {{ total: number, registered: number, averageCoverage: number, unavailable: boolean, registeredUnavailable: boolean, coverageUnavailable: boolean }} Coverage */
+/** @typedef {{ campaigns: () => number, campaignTotal: () => number, campaignHealth: () => number, issues: () => number, successfulRuns: () => number, failedRuns: () => number, activeRuns: () => number, valueGains: () => number, coverage: () => Coverage, workers: () => number, dispatches: () => number, failedDispatches: () => number, usefulOutputs: () => number, deliveredRepositories: () => number, motion: () => Motion }} OverviewMetrics */
 /** @typedef {{ signal: AbortSignal, motion: import('../reactive.js').State<Motion> }} FactoryFloorScope */
+/** @typedef {'campaigns'|'repositories'|'issues'|'successful-runs'|'dispatches'|'value-gains'} FactoryStationId */
 
 /**
  * @param {SourceBindings} sources
@@ -16,10 +17,11 @@ import { renderReactiveGrid } from './reactive-grid.js';
  * @param {(labelId: string, count: number) => string} label
  * @param {boolean} animateNumbers
  * @param {FactoryFloorScope} scope
+ * @param {FactoryStationId[]} [selectedStations]
  */
-export function renderFactoryFloor(sources, metrics, label, animateNumbers, scope) {
-  const campaigns = renderFactoryStation('project', { animate: animateNumbers, href: '#page-campaigns', signal: scope.signal });
-  const repositories = renderFactoryStation('repo', { animate: animateNumbers, href: '#page-repositories', signal: scope.signal });
+export function renderFactoryFloor(sources, metrics, label, animateNumbers, scope, selectedStations) {
+  const campaigns = renderFactoryStation('organization', { animate: animateNumbers, format: 'percent', href: '#page-campaigns', signal: scope.signal });
+  const repositories = renderFactoryStation('repo', { animate: animateNumbers, format: 'percent', href: '#page-repositories', signal: scope.signal });
   const issues = renderFactoryStation('issue', { animate: animateNumbers, href: '#page-issues', signal: scope.signal });
   const runs = renderFactoryStation('play', { animate: animateNumbers, href: '#page-runs?runs-runs-source.run-conclusion=success', signal: scope.signal });
   const dispatches = renderFactoryStation('workflow', { animate: animateNumbers, href: '#page-runs', signal: scope.signal });
@@ -27,23 +29,24 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
 
   campaigns.bind(() => {
     const count = metrics.campaigns();
+    const total = metrics.campaignTotal();
     return {
-      pending: sources['database-campaign-count'].pending(),
-      unavailable: sources['database-campaign-count'].unavailable(),
-      label: label('campaigns', count),
-      value: count,
-      detail: { text: '' }
+      pending: sources['overview-healthy-campaign-count']?.pending() ?? true,
+      unavailable: sources['overview-healthy-campaign-count']?.unavailable() ?? true,
+      label: 'Factory health',
+      value: total > 0 ? count / total : 0,
+      detail: { text: `${formatCount(count)}/${formatCount(total)} healthy campaigns` }
     };
   });
 
   repositories.bind(() => {
     const coverage = metrics.coverage();
     return {
-      pending: sources['overview-registered-repository-summary'].pending(),
-      unavailable: coverage.registeredUnavailable,
-      label: label('repositories', coverage.registered),
-      value: coverage.registered,
-      detail: { text: '' }
+      pending: sources['overview-repository-coverage']?.pending() ?? true,
+      unavailable: coverage.coverageUnavailable,
+      label: 'Repository coverage',
+      value: coverage.averageCoverage,
+      detail: { text: `${formatCount(coverage.total)}/${formatCount(coverage.registered)} repositories reached` }
     };
   });
 
@@ -96,43 +99,66 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
     };
   });
 
-  const stations = [
+  /** @type {Array<{ id: FactoryStationId, element: HTMLElement }>} */
+  const allStations = [
     { id: 'campaigns', element: campaigns.element },
     { id: 'repositories', element: repositories.element },
     { id: 'issues', element: issues.element },
-    { id: 'runs', element: runs.element },
+    { id: 'successful-runs', element: runs.element },
     { id: 'dispatches', element: dispatches.element },
     { id: 'value-gains', element: valueGains.element }
   ];
+  const stationById = new Map(allStations.map((station) => [station.id, station]));
+  const stationOrder = selectedStations?.length ? [...new Set(selectedStations)] : allStations.map(({ id }) => id);
+  const stations = stationOrder.map((id) => stationById.get(id)).filter((station) => station !== undefined);
+  /** @type {Record<FactoryStationId, () => string>} */
+  const stationDescriptions = {
+    campaigns: () => {
+      return `${Math.round(metrics.campaignHealth() * 100)}% factory health`;
+    },
+    repositories: () => {
+      const coverage = metrics.coverage();
+      return coverage.coverageUnavailable
+        ? 'Repository coverage unavailable'
+        : `${Math.round(coverage.averageCoverage * 100)}% average repository coverage`;
+    },
+    issues: () => {
+      const count = metrics.issues();
+      return `${formatCount(count)} ${label('issues', count).toLowerCase()}`;
+    },
+    'successful-runs': () => {
+      const count = metrics.successfulRuns();
+      return `${formatCount(count)} ${label('successful-runs', count).toLowerCase()}`;
+    },
+    dispatches: () => {
+      const count = metrics.dispatches();
+      const workers = metrics.workers();
+      return `${formatCount(count)} workflow ${label('dispatches', count).toLowerCase()} across ${formatCount(workers)} ${workers === 1 ? 'worker' : 'workers'}`;
+    },
+    'value-gains': () => {
+      const gains = metrics.valueGains();
+      const usefulOutputs = metrics.usefulOutputs();
+      return `${formatCount(gains)} grader ${gains === 1 ? 'value' : 'values'} above threshold, and ${formatCount(usefulOutputs)} issue or pull request ${usefulOutputs === 1 ? 'output' : 'outputs'}`;
+    }
+  };
   return renderReactiveGrid({
-    className: 'factory-floor',
+    className: stations.length <= 2 ? 'factory-floor factory-floor-compact' : 'factory-floor',
     activeClassName: 'factory-floor-active',
     listClassName: 'factory-stations',
     items: () => stations,
     key: (station) => station.id,
     renderItem: (station) => station.element,
     active: () => scope.motion.get().operations > 0,
-    ariaLabel: () => {
-      const campaignCount = metrics.campaigns();
-      const coverage = metrics.coverage();
-      const issueCount = metrics.issues();
-      const successfulRuns = metrics.successfulRuns();
-      const dispatchCount = metrics.dispatches();
-      const workers = metrics.workers();
-      const gains = metrics.valueGains();
-      const usefulOutputs = metrics.usefulOutputs();
-      const repositoriesDescription = coverage.registeredUnavailable
-        ? 'Repositories unavailable'
-        : `${formatCount(coverage.registered)} ${label('repositories', coverage.registered).toLowerCase()}${coverage.unavailable ? '; repository delivery evidence unavailable' : ` with ${formatCount(coverage.total)} delivered to`}`;
-      return `${formatCount(campaignCount)} ${label('campaigns', campaignCount).toLowerCase()}, ${repositoriesDescription}, ${formatCount(issueCount)} ${label('issues', issueCount).toLowerCase()}, ${formatCount(successfulRuns)} ${label('successful-runs', successfulRuns).toLowerCase()}, ${formatCount(dispatchCount)} workflow ${label('dispatches', dispatchCount).toLowerCase()} across ${formatCount(workers)} ${workers === 1 ? 'worker' : 'workers'}, ${formatCount(gains)} grader ${gains === 1 ? 'value' : 'values'} above threshold, and ${formatCount(usefulOutputs)} issue or pull request ${usefulOutputs === 1 ? 'output' : 'outputs'}.`;
-    },
+    ariaLabel: () => `${stations.map(({ id }) => stationDescriptions[id]()).join(', ')}.`,
     signal: scope.signal
   });
 }
 
 const FLOOR_SOURCE_NAMES = [
   'database-campaign-count',
+  'overview-healthy-campaign-count',
   'overview-registered-repository-summary',
+  'overview-repository-coverage',
   'database-issue-count',
   'overview-outcome-summary',
   'overview-run-summary',
@@ -161,7 +187,10 @@ export function renderFactoryFloorElement(context) {
     metrics,
     factoryStationLabel(context.elementConfig),
     context.elementConfig?.animate === 'number',
-    scope
+    scope,
+    Array.isArray(context.elementConfig?.stations)
+      ? /** @type {FactoryStationId[]} */ (context.elementConfig.stations.filter((station) => typeof station === 'string'))
+      : undefined
   );
   scope.bind(rendered);
   return rendered;
