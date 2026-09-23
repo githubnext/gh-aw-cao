@@ -89,6 +89,10 @@ async function dispatchExtendedEvent(listener, event) {
 }
 
 describe('dashboard service worker', () => {
+  it('leaves the server-side data API outside application caches', () => {
+    expect(source).toContain("!url.pathname.startsWith('/api/')");
+  });
+
   it('rejects manifests without compacted run-information shards', async () => {
     const { listeners, fetch } = serviceWorkerHarness();
     const payloadHashes = JSON.stringify({

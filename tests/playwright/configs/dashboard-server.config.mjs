@@ -1,0 +1,40 @@
+import { existsSync } from "node:fs";
+import { defineConfig } from "@playwright/test";
+
+const chromiumExecutable = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+  || (existsSync("/usr/bin/chromium") ? "/usr/bin/chromium" : undefined);
+const origin = "https://127.0.0.1:8443";
+const accessToken = process.env.DASHBOARD_SERVER_ACCESS_TOKEN
+  || "0123456789abcdef0123456789abcdef";
+const serverCommand = process.env.DASHBOARD_SERVER_COMMAND
+  || `go -C server run ./cmd/cao-dashboard serve --source testdata/deployed-subset --access-token ${accessToken}`;
+
+export default defineConfig({
+  testDir: "../../e2e",
+  testMatch: ["**/dashboard-server.spec.mjs"],
+  outputDir: "../../../test-results/dashboard-server/playwright",
+  timeout: 120_000,
+  workers: 1,
+  preserveOutput: "always",
+  webServer: {
+    command: serverCommand,
+    url: `${origin}/api/v1/health`,
+    ignoreHTTPSErrors: true,
+    reuseExistingServer: false,
+    timeout: 120_000,
+    stdout: "pipe",
+    stderr: "pipe",
+  },
+  use: {
+    baseURL: origin,
+    browserName: "chromium",
+    headless: true,
+    ignoreHTTPSErrors: true,
+    launchOptions: {
+      args: ["--no-sandbox", "--disable-dev-shm-usage"],
+      ...(chromiumExecutable ? { executablePath: chromiumExecutable } : {}),
+    },
+    screenshot: "only-on-failure",
+    trace: "retain-on-failure",
+  },
+});

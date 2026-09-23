@@ -13,6 +13,8 @@ project:
     - JSONL
     - SQLite
     - IndexedDB
+    - Redis Stack
+    - Go
     - Dashboard Language
     - Astro/Starlight
 
@@ -25,6 +27,7 @@ structure:
   activity: activity/
   dashboard: dashboard/
   dashboard_data: dashboard/site/src/data/
+  dashboard_redis_server: server/
   workflow_sources: .github/workflows/*.md
   workflow_artifacts: .github/workflows/*.lock.yml
   workflow_shared: .github/workflows/shared/
@@ -115,6 +118,12 @@ components:
   indexeddb_projection:
     path: dashboard/site/src/data/
     responsibility: rebuildable per-browser data projection
+  redis_projection:
+    path: server/
+    responsibility: disposable generation-scoped local dashboard projection with RediSearch indexes
+  dashboard_https_server:
+    path: server/
+    responsibility: ingest deployed dashboard artifacts, execute Dashboard Language queries server-side, and serve bounded results with static dashboard assets over loopback HTTPS
   dashboard_language_queries:
     path: dashboard/site/src/data/
     responsibility: declarative query definitions executed by the browser data worker
@@ -153,6 +162,10 @@ dependencies:
   - dashboard_publisher -> browser_data_worker
   - browser_data_worker -> indexeddb_projection
   - browser_data_worker -> dashboard_language_queries
+  - dashboard_publisher -> dashboard_https_server
+  - dashboard_https_server -> redis_projection
+  - redis_projection -> dashboard_https_server
+  - dashboard_https_server -> dashboard_language_queries
   - sqlite_projection -> computations
   - indexeddb_projection -> computations
   - computations -> computation_reference_runtime
@@ -207,11 +220,15 @@ invariants:
   - "Dispatch envelopes include identity, mode, review destination, and provenance; they MUST NOT include credentials."
   - "Activity evidence MUST NOT determine rollout, outcomes, or operational value."
   - "JSONL snapshots are authoritative; caches, SQLite, and IndexedDB are disposable projections."
+  - "Local Redis generations are disposable projections activated atomically from verified deployed dashboard artifacts."
   - "Dashboard ingestion MUST load every run-information shard before record shards; every domain, tool, audit, and issue MUST identify its owning run."
   - "The deployed dashboard artifact MUST NOT contain or manifest raw Activity JSONL; browser ingestion MUST consume compacted normalized run and record JSONL and fail closed when run-information shards are absent."
   - "Normalized Activity shards MUST be JSONL and browser consumers MUST stream bounded record batches without buffering a complete shard."
   - "Missing, stale, partial, and zero evidence are distinct states."
-  - "Dashboard data operations MUST be declared in Dashboard Language and execute in the data Web Worker."
+  - "Dashboard data operations MUST be declared in Dashboard Language and execute outside the browser main thread: in the data Web Worker for static deployment or in the Go HTTPS server for the local Redis profile."
+  - "In the local Redis profile, Dashboard Language queries execute in the Go HTTPS server and compatible stages MUST be pushed into Redis before bounded Go fallback."
+  - "The local Redis profile MUST bind to loopback, serve HTTPS, and MUST NOT expose Redis endpoints or credentials to browser code."
+  - "Remote Redis dashboard exposure, authentication, GitHub live querying, and webhooks are outside the local profile."
   - "Computations MUST consume canonical evidence, preserve evidence quality and provenance, and emit bounded, versioned results."
   - "Computation results MUST NOT grant authority or turn runtime success into verification, accepted outcomes, or operational value."
   - "Successful-Run value computations MUST report produced outputs, native operational-value measurements, and efficiency as separate axes; output creation MUST NOT imply acceptance or value, and no composite score may be invented."
@@ -254,6 +271,16 @@ flows:
     - indexeddb_projection
     - computations
     - computation_projection
+    - dashboard_language_queries
+    - dashboard_ui
+  activity_dashboard_local_redis:
+    - gh_aw_logs
+    - activity_jsonl_shards
+    - activity_run_information_shards
+    - activity_record_shards
+    - dashboard_publisher
+    - dashboard_https_server
+    - redis_projection
     - dashboard_language_queries
     - dashboard_ui
   activity_cli:
@@ -303,6 +330,9 @@ commands:
       workflow_compile_locks: npm run compile:locks
       docs_build: npm run docs:build
       dashboard_local: "npm run dashboard:local -- --repo OWNER/REPOSITORY"
+      dashboard_server_lint: npm run dashboard:server:lint
+      dashboard_server_tests: npm run dashboard:server:test
+      dashboard_server_e2e: npm run test:e2e:dashboard-server
       runtime_health: cao computation runtime-health [--campaign SLUG]
   dashboard_site:
     working_directory: dashboard/site/
@@ -313,6 +343,12 @@ commands:
       lint: npm run lint
       typecheck: npm run typecheck
       corpus_validation: npm run validate:corpus
+  dashboard_redis_server:
+    working_directory: server/
+    entries:
+      tests: go test ./...
+      redis_up: docker compose up -d
+      redis_down: docker compose down
 
 validation:
   default_command_refs:
@@ -324,6 +360,11 @@ validation:
     - commands.dashboard_site.entries.lint
     - commands.dashboard_site.entries.typecheck
     - commands.dashboard_site.entries.corpus_validation
+  dashboard_redis_server_command_refs:
+    - commands.repository_root.entries.dashboard_server_lint
+    - commands.repository_root.entries.dashboard_server_tests
+    - commands.repository_root.entries.dashboard_server_e2e
+    - commands.dashboard_redis_server.entries.tests
   workflow_source_command_refs:
     - commands.repository_root.entries.workflow_compile
   workflow_source_generated_artifact_command_refs:
@@ -344,7 +385,7 @@ validation:
     - "Verify campaign contents against root and campaign aw.yml manifests."
     - "Verify policy and workflow changes are reviewed together."
     - "Verify workflow sources, not generated lock files, are edited."
-    - "Verify dashboard data access crosses the Web Worker and declarative query boundary."
+    - "Verify dashboard data access crosses either the Web Worker or Go HTTPS server declarative query boundary."
 
 provenance:
   source: ARCHITECTURE.md

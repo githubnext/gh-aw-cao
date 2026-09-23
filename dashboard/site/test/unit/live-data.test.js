@@ -20,7 +20,7 @@ describe("live Dashboard Language sources", () => {
     const startup = readFileSync(resolve("src/data/startup.js"), "utf8");
 
     expect(shell).toContain('<script type="module" src="./src/main.js"></script>');
-    expect(main).toContain('if (!window.indexedDB)');
+    expect(main).toContain('if (!window.indexedDB && !usesRemoteDataBackend(document))');
     expect(main).toContain('renderIndexedDBUnsupported()');
     expect(main).toContain('await import("./dashboard-app.js")');
     expect(preview).toContain('fetch("./dashboard.json", { cache: "no-store" })');

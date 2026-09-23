@@ -1,0 +1,72 @@
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+  relative-path-mode: gomod
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - contextcheck
+    - durationcheck
+    - errcheck
+    - errorlint
+    - exhaustive
+    - gocritic
+    - gosec
+    - govet
+    - ineffassign
+    - misspell
+    - nilerr
+    - nilnil
+    - noctx
+    - prealloc
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - staticcheck
+    - unconvert
+    - unparam
+    - unused
+    - wastedassign
+    - whitespace
+  settings:
+    exhaustive:
+      # Map exhaustiveness is usually intentional for dynamic dashboard records.
+      check:
+        - switch
+      default-signifies-exhaustive: true
+    nilnil:
+      # A nil interface is a valid "missing value" in the dynamic query engine.
+      checked-types:
+        - chan
+        - func
+        - map
+        - ptr
+        - uintptr
+        - unsafeptr
+    revive:
+      rules:
+        # The server is internal application code; API-doc comments would be
+        # style-only churn while the package boundaries are still evolving.
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
+  exclusions:
+    # Only compiler-recognized generated files are excluded.
+    generated: strict
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/githubnext/gh-aw-cao/server
+  exclusions:
+    # Keep generated files byte-for-byte reproducible from their generators.
+    generated: strict

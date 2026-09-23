@@ -6,6 +6,13 @@ import { normalize } from './data/normalize/index.js';
 import { batch } from './reactive.js';
 import { publishNotification } from './notification-service.js';
 import { withDebugParameter } from './debug.js';
+import {
+  queryRemoteDashboard,
+  queryRemoteDiagnostics,
+  refreshRemoteDashboard,
+  subscribeRemoteRevision,
+  usesRemoteDataBackend
+} from './remote-data-backend.js';
 
 /** Milliseconds a cooperative cancellation is given before the worker is terminated. */
 const CANCELLATION_GRACE_MS = 250;
@@ -33,7 +40,10 @@ const pending = new Map();
  *   snapshot: Record<string, import('./presenter.js').LogicalSourceInput> | null,
  *   snapshotRevision: number | null,
  *   frame: number | null,
- *   emitCurrent: boolean
+ *   emitCurrent: boolean,
+ *   remoteStop?: () => void,
+ *   remoteQueryRunning?: boolean,
+ *   remoteRevision?: number | null
  * }} ViewSubscription
  */
 /** @type {Map<string, ViewSubscription>} */
@@ -257,6 +267,7 @@ export function loadDashboardQuerySources(sources, options = {}) {
  * data worker.
  */
 export function queryCanonicalDatabaseDiagnostics() {
+  if (usesRemoteDataBackend()) return queryRemoteDiagnostics();
   return /** @type {Promise<import('./diagnostics.js').DatabaseDiagnostics>} */ (processRequest(
     { operation: 'query-canonical-database-diagnostics' },
     () => Promise.reject(new Error('Database diagnostics require a data worker.')),
@@ -276,6 +287,9 @@ export function queryCanonicalDatabaseDiagnostics() {
  * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
  */
 export function loadCanonicalDashboardSources(sourceUrl, sourceNames, context, pagination, options = {}) {
+  if (usesRemoteDataBackend()) {
+    return queryRemoteDashboard(sourceNames, context, pagination, options).then(({ sources }) => sources);
+  }
   return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (processRequest(
     { operation: 'load-canonical-dashboard', sourceUrl, sourceNames, context, pagination, ...options },
     () => Promise.reject(new Error('Live canonical dashboard loading requires a data worker.')),
@@ -293,6 +307,9 @@ export function loadCanonicalDashboardSources(sourceUrl, sourceNames, context, p
  * @returns {Promise<{ sources: Record<string, import('./presenter.js').LogicalSourceInput>, changed: boolean }>}
  */
 export function refreshCanonicalDashboardSources(sourceUrl, sourceNames, context, pagination, options = {}) {
+  if (usesRemoteDataBackend()) {
+    return refreshRemoteDashboard(sourceNames, context, pagination, options);
+  }
   return /** @type {Promise<{ sources: Record<string, import('./presenter.js').LogicalSourceInput>, changed: boolean }>} */ (processRequest(
     { operation: 'load-canonical-dashboard', sourceUrl, sourceNames, context, pagination, reportActivation: true, ...options },
     () => Promise.reject(new Error('Live canonical dashboard refresh requires a data worker.')),
@@ -309,6 +326,9 @@ export function refreshCanonicalDashboardSources(sourceUrl, sourceNames, context
  * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
  */
 export function loadCanonicalDashboardPage(sourceNames, context, pagination, options = {}) {
+  if (usesRemoteDataBackend()) {
+    return queryRemoteDashboard(sourceNames, context, pagination, options).then(({ sources }) => sources);
+  }
   return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (processRequest(
     { operation: 'query-canonical-dashboard', sourceNames, context, pagination, ...options },
     () => Promise.reject(new Error('Live canonical dashboard queries require a data worker.')),
@@ -377,8 +397,12 @@ export function subscribeCanonicalDashboardView(viewId, sourceNames, context, li
   }
   const unsubscribeFromSignal = () => unsubscribe();
   options.signal?.addEventListener('abort', unsubscribeFromSignal, { once: true });
-  const processor = getWorker();
-  if (processor) registerSubscription(processor, subscription);
+  if (usesRemoteDataBackend()) {
+    registerRemoteSubscription(subscription);
+  } else {
+    const processor = getWorker();
+    if (processor) registerSubscription(processor, subscription);
+  }
 
   let active = true;
   const unsubscribe = () => {
@@ -398,6 +422,8 @@ export function subscribeCanonicalDashboardView(viewId, sourceNames, context, li
       globalThis.cancelAnimationFrame(current.frame);
     }
     current.frame = null;
+    current.remoteStop?.();
+    current.remoteStop = undefined;
     current.registeredWorker?.postMessage({
       operation: 'unsubscribe-canonical-dashboard',
       subscriptionId: viewId
@@ -405,6 +431,64 @@ export function subscribeCanonicalDashboardView(viewId, sourceNames, context, li
     current.registeredWorker = null;
   };
   return unsubscribe;
+}
+
+/** @param {ViewSubscription} subscription */
+function registerRemoteSubscription(subscription) {
+  if (subscription.remoteStop) return;
+  let active = true;
+  /** @type {number | null} */
+  let queuedRevision = null;
+  const query = async () => {
+    if (!active || subscription.remoteQueryRunning) return;
+    subscription.remoteQueryRunning = true;
+    try {
+      const result = await queryRemoteDashboard(
+        subscription.sourceNames,
+        subscription.context,
+        subscription.pagination,
+        {
+          pageId: subscription.pageId,
+          routeParameters: subscription.routeParameters,
+          queryContext: subscription.queryContext
+        }
+      );
+      if (!active || subscriptions.get(subscription.id) !== subscription) return;
+      subscription.remoteRevision = result.revision;
+      enqueueSubscriptionUpdate(subscription, result.sources, result.revision);
+    } catch (error) {
+      if (!active) return;
+      const failure = error instanceof Error ? error : new Error(String(error));
+      for (const listener of [...subscription.listeners]) {
+        if (subscription.listeners.has(listener) && listener.onError) {
+          invokeSubscriber(() => listener.onError?.(failure));
+        }
+      }
+    } finally {
+      subscription.remoteQueryRunning = false;
+      if (queuedRevision !== null && queuedRevision !== subscription.remoteRevision) {
+        queuedRevision = null;
+        void query();
+      }
+    }
+  };
+  const stopEvents = subscribeRemoteRevision((revision) => {
+    if (revision === subscription.remoteRevision) return;
+    queuedRevision = revision;
+    void query();
+  }, (error) => {
+    if (!active) return;
+    for (const listener of [...subscription.listeners]) {
+      if (subscription.listeners.has(listener) && listener.onError) {
+        invokeSubscriber(() => listener.onError?.(error));
+      }
+    }
+  });
+  subscription.remoteStop = () => {
+    active = false;
+    stopEvents();
+  };
+  if (subscription.emitCurrent) void query();
 }
 
 /** @param {ViewSubscription} subscription @param {string[]} sourceNames @param {ViewSubscription['context']} context @param {ViewSubscription['pagination']} pagination @param {{ pageId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options] */

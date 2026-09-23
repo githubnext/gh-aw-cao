@@ -1,7 +1,7 @@
 ---
 title: Central Agentic Ops Dashboard Data Architecture Specification
 description: Canonical data model, ingestion, IndexedDB persistence, consistency, recovery, and scale requirements for the gh-aw-cao dashboard.
-version: 1.7.0
+version: 1.8.0
 status: Working Draft
 editors:
   - GitHub Next
@@ -9,7 +9,7 @@ editors:
 
 # Central Agentic Ops Dashboard Data Architecture Specification
 
-**Version:** 1.7.0
+**Version:** 1.8.0
 **Status:** Working Draft
 **Repository:** `githubnext/gh-aw-cao`
 **Target implementation:** Dashboard data subsystem
@@ -46,9 +46,12 @@ Repository
             └── Issue
 ```
 
-The browser SHALL maintain this canonical model in IndexedDB.
+The static deployment SHALL maintain this canonical model in IndexedDB. The
+local server profile SHALL maintain an equivalent disposable generation in
+Redis and SHALL execute dashboard queries in its Go HTTPS server.
 
-IndexedDB SHALL be treated exclusively as disposable, reconstructable, derived state and MUST NOT become authoritative storage.
+IndexedDB and Redis generations SHALL be treated exclusively as disposable,
+reconstructable, derived state and MUST NOT become authoritative storage.
 
 Domain records SHALL contain allowed and blocked firewall observations. Tool
 records SHALL contain MCP, Bash, and skill calls, with skills identified as a
@@ -64,7 +67,9 @@ real-browser testing. Derived projections MAY use immutable generations and
 atomic activation, but the canonical entity stores use bounded incremental
 reconciliation and MUST NOT be described as generation-atomic.
 
-Dashboard views SHALL consume only the canonical query layer and SHALL NOT parse upstream source formats directly.
+Dashboard views SHALL consume only bounded results from the canonical query
+layer and SHALL NOT parse upstream source formats directly. Redis endpoints and
+credentials MUST NOT be exposed to browser code.
 
 ---
 
@@ -186,6 +191,9 @@ Views MUST NOT parse:
 
 IndexedDB MUST be disposable and reconstructable.
 
+The local Redis projection MUST also be disposable, generation-scoped, and
+reconstructable from the deployed dashboard artifact.
+
 ## INV-005 — Authoritative inputs remain external
 
 Deletion of IndexedDB MUST NOT cause permanent information loss.
@@ -213,6 +221,9 @@ retain their last complete result until that phase succeeds.
 
 Correctness MUST NOT require loading the complete historical dataset into browser memory.
 
+The local server profile MUST push compatible selection, range filtering,
+aggregation, ordering, and limiting into Redis before bounded Go fallbacks.
+
 ## INV-011 — Test parity
 
 Node tests and browser runtime SHOULD exercise the same canonical and persistence interfaces.
@@ -235,6 +246,9 @@ flowchart LR
   sqlite --> cli["CLI"]
   source --> indexeddb["IndexedDB<br/>browser"]
   indexeddb --> views["Dashboard views"]
+  source --> redis["Redis<br/>local server"]
+  redis --> go["Go HTTPS query server"]
+  go --> views
 ```
 
 The SQLite and IndexedDB projections SHALL be independently reconstructable
@@ -276,7 +290,31 @@ The implementation profile defined by this specification is:
 | Canonical model | 13 | Campaign, Repository, Workflow, Run, Domain, Tool, Audit, and Issue records |
 | Browser IndexedDB | 20 | Eight canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
 | Local SQLite projection | IndexedDB 20 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records`, containing the same logical stores and JSON records as IndexedDB |
+| Local Redis server projection | Canonical model 13 | Immutable active generation of logical-source hashes plus RediSearch indexes, queried only through the loopback Go HTTPS server |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
+
+## 5.2 Local Redis server profile
+
+The local Redis profile SHALL be implemented independently of the existing
+Node.js dashboard preview server. It SHALL:
+
+* ingest `inventory-sources.json`, `payload-hashes.json`, and compacted
+  `gh-aw-logs-runs/*.jsonl` and `gh-aw-logs-records/*.jsonl` from a deployed
+  dashboard artifact;
+* verify every manifested shard hash and require run-information shards before
+  activating a new generation;
+* activate a complete Redis generation atomically and preserve the prior active
+  generation when ingestion fails;
+* serve the built dashboard and its query API over HTTPS on loopback;
+* keep the Redis URL and any Redis credentials exclusively in the Go process;
+* execute Dashboard Language queries on the server and push every compatible
+  filter, search, numeric/time range, aggregation, ordering, and limit into
+  RediSearch before bounded Go execution of unsupported stages;
+* keep active browser views subscribed to generation changes and return fresh,
+  bounded query payloads after successful ingestion.
+
+This profile is for local testing. Remote exposure, GitHub authentication, live
+GitHub querying, and webhook-driven ingestion are outside this version.
 
 `gh-aw-cao-dashboard-data` is the logical database name. Every implemented
 store uses `id` as its key path. The implemented secondary indexes are:

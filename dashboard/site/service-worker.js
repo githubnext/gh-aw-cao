@@ -76,6 +76,7 @@ function isAppAssetUrl(value) {
     const url = new URL(value, self.location.href);
     return url.origin === self.location.origin
       && url.href.startsWith(self.registration.scope)
+      && !url.pathname.startsWith('/api/')
       && !isDashboardDataUrl(url.href)
       && !url.pathname.endsWith('/service-worker.js')
       && !url.pathname.endsWith('/.dashboard-data-update-config');
