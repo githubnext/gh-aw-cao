@@ -508,7 +508,6 @@ function renderEntityCardItems(rows, options) {
           })
         )
       ),
-      actions.length > 0 ? h('div', { className: 'entity-card-list-actions' }, ...actions) : null,
       h(
         'ul',
         { className: 'issue-list-labels', 'aria-label': labelsDescription ? `${titleText || 'Item'} ${labelsDescription}` : undefined },
@@ -524,7 +523,8 @@ function renderEntityCardItems(rows, options) {
         : null,
       chevron && target
         ? h('span', { className: 'entity-card-list-chevron', 'aria-hidden': 'true' }, octicon('chevron-right'))
-        : null
+        : null,
+      actions.length > 0 ? h('div', { className: 'entity-card-list-actions' }, ...actions) : null
     );
   });
 }
