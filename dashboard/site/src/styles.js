@@ -257,6 +257,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .entity-card-list-timing-icon .octicon { width: 14px; height: 14px; }
 .entity-card-list-timing-value { font-variant-numeric: tabular-nums; }
 .entity-card-list-timing-value time { color: inherit; }
+.entity-card-list-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .entity-card-list-grouped { overflow: hidden; border: 1px solid var(--border); border-radius: 14px; background: var(--canvas); }
 .entity-card-list-grouped .entity-card-list-card { grid-template-columns: 20px minmax(0, 1fr) auto auto; align-items: center; padding: 12px 16px; }
 .entity-card-list-grouped .entity-card-list-card:first-child { border-top: 0; }

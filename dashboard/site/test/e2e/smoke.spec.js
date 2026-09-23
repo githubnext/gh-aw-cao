@@ -3727,6 +3727,7 @@ test('outcome page template follows its JSON-declared hash query route in browse
             kind: 'custom',
             title: 'Outcome',
             description: 'Outcome details.',
+            'filter-bar': true,
             route: { 'hash-query-parameter': 'outcome' },
             views: [{
               id: 'outcome-record',

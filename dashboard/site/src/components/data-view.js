@@ -96,7 +96,7 @@ function resolveGithubEntityLink(row, field, fallbackLabel) {
  *   buildChartPoints: (pageId: string, title: string, rows: Array<Record<string, unknown>>, x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, hrefField: string | null, weight?: Record<string, any> | null) => ChartPoint[],
  *   prepareChartPoints: (points: ChartPoint[], x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, data: unknown) => ChartPoint[],
  *   toText: (value: unknown) => string,
- *   cardTemplates?: Record<string, { icon: string, 'icon-field'?: string, status?: { field: string, 'fallback-field'?: string, title?: string }, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[] }>,
+ *   cardTemplates?: Record<string, { icon: string, 'icon-field'?: string, status?: { field: string, 'fallback-field'?: string, title?: string }, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], actions?: Array<{ action: string, context: string[], when?: { field: string, equals: unknown } }> }>,
  *   continuation?: { token: string, totalRows: number, load: (token: string) => Promise<{ rows: Array<Record<string, unknown>>, continuationToken?: string }> }
  * }} DataViewContext
  */
@@ -376,7 +376,7 @@ function renderEntityCardListView(options) {
  *   title: string,
  *   renderValue: (column: string | TableField, value: unknown, row: Record<string, unknown>) => string | HTMLElement,
  *   toText: (value: unknown) => string,
- *   definition: { icon: string, 'icon-field'?: string, status?: { field: string, 'fallback-field'?: string, title?: string }, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], metrics?: TableField[], timing?: Array<TableField & { icon: string }> },
+ *   definition: { icon: string, 'icon-field'?: string, status?: { field: string, 'fallback-field'?: string, title?: string }, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], metrics?: TableField[], timing?: Array<TableField & { icon: string }>, actions?: Array<{ action: string, context: string[], when?: { field: string, equals: unknown } }> },
  *   drill?: Record<string, unknown> | null,
  *   keyOffset?: number,
  *   chevron?: boolean
@@ -438,6 +438,15 @@ function renderEntityCardItems(rows, options) {
         h('span', null, fieldTitle(column))
       )];
     });
+    const actions = (definition.actions ?? []).flatMap((action) => {
+      if (!actionMatches(action, row)) return [];
+      const values = Object.fromEntries(action.context.flatMap((field) => {
+        const value = row[field];
+        return typeof value === 'string' ? [[field, value]] : [];
+      }));
+      const rendered = renderRowCliAction(action.action, values, { showLabel: true });
+      return rendered ? [rendered] : [];
+    });
     const labelsDescription = [
       ...(labels.length > 0 ? ['labels'] : []),
       ...(metrics.length > 0 ? ['metrics'] : [])
@@ -490,6 +499,7 @@ function renderEntityCardItems(rows, options) {
           })
         )
       ),
+      actions.length > 0 ? h('div', { className: 'entity-card-list-actions' }, ...actions) : null,
       h(
         'ul',
         { className: 'issue-list-labels', 'aria-label': labelsDescription ? `${titleText || 'Item'} ${labelsDescription}` : undefined },

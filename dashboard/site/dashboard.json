@@ -453,6 +453,81 @@
             "unit": "aic"
           }
         ]
+      },
+      {
+        "id": "maintenance-campaign",
+        "icon": "workflow",
+        "title": {
+          "field": "campaign-name",
+          "title": "Package"
+        },
+        "details": [
+          {
+            "field": "campaign-version",
+            "title": "Installed"
+          },
+          {
+            "field": "campaign-current-version",
+            "title": "Latest"
+          },
+          {
+            "field": "campaign-update-state",
+            "title": "Update",
+            "display": "status"
+          }
+        ],
+        "actions": [
+          {
+            "action": "update-campaign",
+            "context": [
+              "campaign"
+            ],
+            "when": {
+              "field": "campaign-update-state",
+              "equals": "update-available"
+            }
+          }
+        ],
+        "labels": [
+          {
+            "field": "campaign-registration",
+            "title": "Registration",
+            "display": "active-state"
+          }
+        ]
+      },
+      {
+        "id": "maintenance-repository",
+        "icon": "repo",
+        "title": {
+          "field": "repository",
+          "title": "Repository"
+        },
+        "details": [
+          {
+            "field": "gh-aw-version",
+            "title": "Installed"
+          },
+          {
+            "field": "gh-aw-current-version",
+            "title": "Latest"
+          }
+        ],
+        "actions": [
+          {
+            "action": "upgrade-target-repository",
+            "context": [
+              "repository"
+            ]
+          }
+        ],
+        "labels": [
+          {
+            "field": "upgrade-state",
+            "title": "Upgrade",
+            "display": "status"
+          }
+        ]
       }
     ],
     "views": [
@@ -10964,6 +11039,7 @@
         "page": "runs",
         "title": "Runs",
         "icon": "play",
+        "filter-bar": true,
         "definition": {
           "data-state": {
             "availability": true
@@ -11831,115 +11907,95 @@
         "class-name": "maintenance-page",
         "description": "Review CAO campaign packages and gh-aw compiler versions. Vendored agents and skills require separate provenance-backed inventory.",
         "views": [
-            {
-              "id": "maintenance-campaigns",
-              "title": "CAO packages",
-              "description": "Installed campaign revisions and the latest catalog revisions observed for this control repository.",
-              "data": {
-                "source": "campaigns"
-              },
-              "mark": "table",
-              "controls": "interactive",
-              "lazy-list": true,
-              "empty-message": "No CAO campaign packages were observed.",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "campaign-name",
-                    "type": "nominal",
-                    "title": "Package"
-                  },
-                  {
-                    "field": "campaign-version",
-                    "type": "nominal",
-                    "title": "Installed"
-                  },
-                  {
-                    "field": "campaign-current-version",
-                    "type": "nominal",
-                    "title": "Latest"
-                  },
-                  {
-                    "field": "campaign-update-state",
-                    "type": "nominal",
-                    "title": "Update",
-                    "display": "status"
-                  },
-                  {
-                    "field": "campaign-registration",
-                    "type": "nominal",
-                    "title": "Registration",
-                    "display": "active-state"
-                  }
-                ],
-                "actions": [
-                  {
-                    "action": "update-campaign",
-                    "presentation": "cli-action",
-                    "icon": "sync",
-                    "label": "Update campaign",
-                    "context": [
-                      "campaign"
-                    ],
-                    "when": {
-                      "field": "campaign-update-state",
-                      "equals": "update-available"
-                    }
-                  }
-                ]
-              },
-              "layout": "full"
+          {
+            "id": "maintenance-campaigns",
+            "title": "CAO packages",
+            "description": "Installed campaign revisions and the latest catalog revisions observed for this control repository.",
+            "data": {
+              "source": "campaigns"
             },
-            {
-              "id": "maintenance-repositories",
-              "disclosure": "supplemental",
-              "description": "Installed and current gh-aw compiler versions observed for each repository.",
-              "data": {
-                "source": "maintenance-repositories"
-              },
-              "mark": "table",
-              "controls": "interactive",
-              "lazy-list": true,
-              "empty-message": "No Agentic Workflow compiler versions were observed.",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "repository",
-                    "type": "nominal",
-                    "title": "Repository"
-                  },
-                  {
-                    "field": "gh-aw-version",
-                    "type": "nominal",
-                    "title": "Installed"
-                  },
-                  {
-                    "field": "gh-aw-current-version",
-                    "type": "nominal",
-                    "title": "Latest"
-                  },
-                  {
-                    "field": "upgrade-state",
-                    "type": "nominal",
-                    "title": "Upgrade",
-                    "display": "status"
-                  }
-                ],
-                "actions": [
-                  {
-                    "action": "upgrade-target-repository",
-                    "presentation": "cli-action",
-                    "icon": "download",
-                    "label": "Upgrade repository",
-                    "context": [
-                      "repository"
-                    ]
-                  }
-                ]
-              },
-              "layout": "full"
+            "mark": "list",
+            "empty-message": "No CAO campaign packages were observed.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "campaign-name",
+                  "type": "nominal",
+                  "title": "Package"
+                },
+                {
+                  "field": "campaign-version",
+                  "type": "nominal",
+                  "title": "Installed"
+                },
+                {
+                  "field": "campaign-current-version",
+                  "type": "nominal",
+                  "title": "Latest"
+                },
+                {
+                  "field": "campaign-update-state",
+                  "type": "nominal",
+                  "title": "Update",
+                  "display": "status"
+                },
+                {
+                  "field": "campaign-registration",
+                  "type": "nominal",
+                  "title": "Registration",
+                  "display": "active-state"
+                }
+              ]
+            },
+            "layout": "full",
+            "list": {
+              "style": "entity-cards",
+              "card": "maintenance-campaign",
+              "icon": "workflow"
             }
-          ]
+          },
+          {
+            "id": "maintenance-repositories",
+            "disclosure": "supplemental",
+            "description": "Installed and current gh-aw compiler versions observed for each repository.",
+            "data": {
+              "source": "maintenance-repositories"
+            },
+            "mark": "list",
+            "empty-message": "No Agentic Workflow compiler versions were observed.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "gh-aw-version",
+                  "type": "nominal",
+                  "title": "Installed"
+                },
+                {
+                  "field": "gh-aw-current-version",
+                  "type": "nominal",
+                  "title": "Latest"
+                },
+                {
+                  "field": "upgrade-state",
+                  "type": "nominal",
+                  "title": "Upgrade",
+                  "display": "status"
+                }
+              ]
+            },
+            "layout": "full",
+            "list": {
+              "style": "entity-cards",
+              "card": "maintenance-repository",
+              "icon": "repo"
+            }
+          }
+        ]
       },
       {
         "id": "configuration",
