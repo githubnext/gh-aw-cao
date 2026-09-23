@@ -171,6 +171,37 @@ The canonical query collections are `repositories`, `workflows`, `runs`, `jobs`,
 `sessions`, `events`, and `transactions`. Run `cao help` (or `cao --help`) for the
 current command syntax.
 
+### Evaluate dashboard query complexity
+
+Evaluate every generated or modified Dashboard Language query before accepting it:
+
+```bash
+cao dashboard-complexity --input dashboard/site/dashboard.json
+```
+
+The command reports a normalized upper-bound row-read estimate, symbolic source
+coefficients, stage-level reads, and a ranking from highest to lowest computation pressure.
+Pressure includes the selected query plus each unique transitive dependency materialized
+once, matching compiler reuse within one execution batch.
+
+Inspect one generated query directly by passing its query ID before the options:
+
+```bash
+cao dashboard-complexity QUERY_ID --input dashboard/site/dashboard.json
+```
+
+Use `--format markdown` for a review-ready ranking and `--limit COUNT` to bound graph-wide
+output. When generating or revising queries, compare the targeted query and full ranking
+before and after the change. Question any massive increase in direct row reads, dependency
+row reads, source coefficients, or pressure rank. Do not accept a large increase merely
+because the query is declarative; look for an existing base query, a narrower source,
+earlier filtering, fewer joins, or reusable intermediate aggregation. If the increase is
+intentional, explain the evidence and tradeoff in the review.
+
+The normalized model sets every external source to one row and assumes no selectivity.
+Use the symbolic source coefficients to reason about real cardinalities rather than treating
+the normalized totals as runtime measurements.
+
 ### Prune and reuse dashboard queries
 
 Before adding generated queries or views to a Dashboard Language document, analyze it for
@@ -194,17 +225,6 @@ fan-in, fan-out, and every above-threshold similarity match. Aggregate statistic
 query graph before and after pruning, including stage counts, dependency edges, root and nested
 query counts, maximum and average depth, pairs compared, similarity relation counts, and score
 buckets.
-
-Each query also includes a static row-read complexity estimate derived from the declarative
-executor's source-copy, join, and row-operator scan behavior. The normalized upper-bound model
-sets every external source to one row and assumes no selectivity; symbolic source coefficients
-let agents substitute real cardinalities. The report lists direct, dependency, and total
-row-read units, stage-level reads, output units, and the complexity class.
-
-`stats.after.row-read-estimate.computation-pressure` lists every query from highest to lowest
-pressure. Pressure is the dependency-amortized normalized row-read total: the query plus each
-unique transitive dependency materialized once, matching compiler reuse within one execution
-batch.
 
 Write the optimized document only after reviewing that report:
 

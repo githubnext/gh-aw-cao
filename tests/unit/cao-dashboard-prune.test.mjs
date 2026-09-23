@@ -128,8 +128,7 @@ test('consolidates compatible query projections and rewrites every query referen
   }]);
   assert.deepEqual(report.queries.chains, []);
   assert.deepEqual(report.queries.removed, ['unused']);
-  const { 'row-read-estimate': beforeRowReads, ...beforeStats } = report.queries.stats.before;
-  assert.deepEqual(beforeStats, {
+  assert.deepEqual(report.queries.stats.before, {
     queries: 4,
     'dependency-edges': 1,
     'root-queries': 3,
@@ -151,14 +150,11 @@ test('consolidates compatible query projections and rewrites every query referen
       limit: 0
     }
   });
-  assert.equal(beforeRowReads['materialize-all-row-read-units'], 8);
-  assert.equal(beforeRowReads['computation-pressure'][0].name, 'failure-summary');
   assert.equal(report.queries.stats.after.queries, 2);
   assert.equal(report.queries.stats.similarity['pairs-compared'], 6);
   assert.equal(report.queries.inventory.length, 2);
   const failedRunsInventory = report.queries.inventory.find((query) => query.name === 'failed-runs');
-  const { complexity: failedRunsComplexity, ...failedRunsSummary } = failedRunsInventory;
-  assert.deepEqual({ ...failedRunsSummary, similarities: [] }, {
+  assert.deepEqual({ ...failedRunsInventory, similarities: [] }, {
     name: 'failed-runs',
     index: 0,
     from: 'runs',
@@ -171,10 +167,6 @@ test('consolidates compatible query projections and rewrites every query referen
     'fan-out': 1,
     similarities: []
   });
-  assert.equal(failedRunsComplexity.model, 'normalized-upper-bound');
-  assert.equal(failedRunsComplexity['direct-row-read-units'], 3);
-  assert.equal(failedRunsComplexity['total-row-read-units'], 3);
-  assert.equal(failedRunsComplexity['computation-pressure-rank'], 2);
   assert.equal(failedRunsInventory.similarities[0].query, 'failed-run-repositories');
   assert.ok(failedRunsInventory.similarities[0].score >= 0.95);
   assert.equal(report.queries.similar[0].query, 'failed-run-repositories');
@@ -429,78 +421,6 @@ test('names shared chains from normalized query concepts and source stages', () 
   assert.ok(report.queries.chains.every((chain) => !chain.base.startsWith('shared-query-')));
 });
 
-test('estimates row reads and ranks queries by dependency-amortized computation pressure', () => {
-    const input = dashboard({
-      queries: [
-        {
-          name: 'base',
-          from: 'runs',
-          filter: { predicates: [{ field: 'conclusion', equals: 'failure' }] },
-          select: [{ field: 'run' }, { field: 'repository' }]
-        },
-        {
-          name: 'summary',
-          from: 'base',
-          aggregate: { values: [{ field: 'run', as: 'runs', reducer: 'count' }] }
-        },
-        {
-          name: 'joined',
-          from: 'base',
-          joins: [{
-            source: 'repositories',
-            type: 'left',
-            on: [{ left: 'repository', right: 'repository' }],
-            fields: [{ field: 'organization', as: 'organization' }]
-          }],
-          select: [{ field: 'run' }, { field: 'organization' }]
-        }
-      ],
-      pages: [{
-        id: 'overview',
-        kind: 'custom',
-        views: [
-          { id: 'summary', data: { source: 'summary' } },
-          { id: 'joined', data: { source: 'joined' } }
-        ]
-      }],
-      navigation: [{ pages: ['overview'] }]
-    });
-
-    const { report } = pruneDashboardDocument(input);
-    const byName = Object.fromEntries(report.queries.inventory.map((query) => [query.name, query.complexity]));
-    const pressure = report.queries.stats.after['row-read-estimate']['computation-pressure'];
-
-    assert.deepEqual(byName.base, {
-      model: 'normalized-upper-bound',
-      assumptions: 'Each external source has one row; selectivity is 1; query dependencies materialize once per batch.',
-      class: 'linear-row-reads',
-      'direct-row-read-units': 3,
-      'dependency-row-read-units': 0,
-      'total-row-read-units': 3,
-      'output-row-units': 1,
-      'source-coefficients': { runs: 3 },
-      'direct-source-coefficients': { runs: 3 },
-      'stage-row-reads': {
-        from: { runs: 1 },
-        filter: { runs: 1 },
-        select: { runs: 1 }
-      },
-      'computation-pressure-rank': 3
-    });
-    assert.equal(byName.summary['direct-row-read-units'], 2);
-    assert.equal(byName.summary['dependency-row-read-units'], 3);
-    assert.equal(byName.summary['total-row-read-units'], 5);
-    assert.equal(byName.joined['direct-row-read-units'], 4);
-    assert.equal(byName.joined['dependency-row-read-units'], 3);
-    assert.equal(byName.joined['total-row-read-units'], 7);
-    assert.deepEqual(pressure.map(({ rank, name, score }) => ({ rank, name, score })), [
-      { rank: 1, name: 'joined', score: 7 },
-      { rank: 2, name: 'summary', score: 5 },
-      { rank: 3, name: 'base', score: 3 }
-    ]);
-    assert.equal(report.queries.stats.after['row-read-estimate']['materialize-all-row-read-units'], 9);
-});
-
 test('prunes reusable views that are not referenced by a page or route behavior', () => {
   const input = dashboard({
     queries: [
@@ -598,8 +518,7 @@ test('cao prune-dashboard can analyze without writing an output file', async () 
     assert.equal(report.command, 'prune-dashboard');
     assert.equal(report.output, undefined);
     assert.equal(report.queries.after, 1);
-    const { complexity, ...inventory } = report.queries.inventory[0];
-    assert.deepEqual(inventory, {
+    assert.deepEqual(report.queries.inventory[0], {
       name: 'used',
       index: 0,
       from: 'runs',
@@ -612,8 +531,6 @@ test('cao prune-dashboard can analyze without writing an output file', async () 
       'fan-out': 0,
       similarities: []
     });
-    assert.equal(complexity['direct-row-read-units'], 1);
-    assert.equal(complexity['computation-pressure-rank'], 1);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
