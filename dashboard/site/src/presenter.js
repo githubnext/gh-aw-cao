@@ -829,7 +829,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
     };
   let currentFilters = new Map(Object.entries(queryContext?.filters ?? {}));
   let currentTimeWindow = queryContext?.timeWindow;
-  const filterBar = withFilterBar && page.id !== 'overview' && page['filter-bar'] !== false
+  const filterBar = withFilterBar && page['filter-bar'] === true
     ? renderFilterBar((filters, timeWindow) => {
       currentFilters = filters;
       currentTimeWindow = timeWindow;

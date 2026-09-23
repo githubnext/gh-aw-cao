@@ -845,9 +845,9 @@ The optional page `navigation-label` provides a concise sidebar label when the p
 
 A navigation section may set `experimental: true`. Presenters combine pages from all experimental sections into one visible **Experimental** navigation section that is collapsed by default. Activating a direct deep link to an experimental page expands that section. This metadata changes navigation presentation only and does not grant authorization or access to data.
 
-The optional page `class-name` is a canonical identifier that a renderer adds to the page container. It lets a document opt into page-specific presentation without requiring the renderer to infer styling from a page ID or built-in page name. The optional Boolean page `filter-bar` defaults to `true`; `false` omits the shared filter bar while retaining view-mode controls in the page chrome.
+The optional page `class-name` is a canonical identifier that a renderer adds to the page container. It lets a document opt into page-specific presentation without requiring the renderer to infer styling from a page ID or built-in page name. The optional Boolean page `filter-bar` defaults to `false`; `true` adds the shared filter bar while retaining view-mode controls in the page chrome.
 
-The presenter provides one filter bar in the view chrome for every page. Activating the horizon control toggles its free-form filters, time-horizon controls, and rollout-mode controls. The presenter applies edits automatically to matching source fields, treating values for one field as alternatives and filters for different fields as conjunctive. Time-horizon and rollout-mode selections are global client-side settings persisted in local storage. All rollout modes are active by default.
+For pages that opt in to `filter-bar: true`, the presenter renders a filter bar in the view chrome. Activating the horizon control toggles its free-form filters, time-horizon controls, and rollout-mode controls. The presenter applies edits automatically to matching source fields, treating values for one field as alternatives and filters for different fields as conjunctive. Time-horizon and rollout-mode selections are global client-side settings persisted in local storage. All rollout modes are active by default.
 
 ### 10.2 Required Content
 
@@ -868,7 +868,7 @@ The presenter provides one filter bar in the view chrome for every page. Activat
 - **DLS-PAGE-015:** The `campaigns` page **MUST** expose centrally managed campaign inventory, rollout-mode filtering, actual campaign AIC against summed per-run limits without treating missing usage as zero, the complete-attempt AIC allowance, retained usage coverage, and time-ordered successful, failed, and cancelled campaign-run trends.
 - **DLS-PAGE-016:** When `class-name` is present, it **MUST** be a canonical identifier and a renderer **MUST** add it to the page container without deriving additional CSS class names from `id` or `page`.
 - **DLS-PAGE-017:** The `issues` page **MUST** use the predefined built-in page configuration and the reusable `issue` entity-card definition, bind to a declared query with issue arguments, and drill to each issue's safe GitHub URL.
-- **DLS-PAGE-017:** A presenter **MUST** render one filter bar in the view chrome for every page unless that page declares `filter-bar: false`, toggle its tuning controls from the horizon text, and apply valid filter edits automatically. A presenter **MUST** persist time-horizon and rollout-mode settings globally in local storage and activate all rollout modes by default. Available view-mode controls **MUST** remain in page chrome when the filter bar is omitted.
+- **DLS-PAGE-017:** A presenter **MUST** render one filter bar in the view chrome only when that page declares `filter-bar: true`, toggle its tuning controls from the horizon text, and apply valid filter edits automatically. A presenter **MUST** persist time-horizon and rollout-mode settings globally in local storage and activate all rollout modes by default. Available view-mode controls **MUST** remain in page chrome when the filter bar is omitted.
 
 ---
 

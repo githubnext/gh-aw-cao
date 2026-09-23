@@ -1539,7 +1539,6 @@ describe('presenter built-in and custom pages', () => {
           id: 'runs',
           kind: /** @type {'custom'} */ ('custom'),
           title: 'Runs',
-          'filter-bar': false,
           views: [
             {
               id: 'runs-chart',
