@@ -828,27 +828,12 @@ describe('declarative dashboard queries', () => {
     ).rows).toThrow(DashboardQueryCancelledError);
   });
 
-  it('projects the Models & agents view from its request-scoped dashboard query', () => {
-    const events = {
-      source: 'audits',
-      rows: [
-        {
-          organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1,
-          'event-source': 'agent', 'event-type': 'agent_turn', 'event-summary': 'First turn',
-          'event-timestamp': '2026-09-01T00:00:00Z'
-        },
-        {
-          organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1,
-          'event-source': 'agent', 'event-type': 'assistant_message', 'event-summary': 'Second turn',
-          'event-timestamp': '2026-09-02T00:00:00Z'
-        },
-        {
-          organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1,
-          'event-source': 'gateway', 'event-type': 'tool_call', 'event-timestamp': '2026-09-02T00:01:00Z'
-        }
-      ],
-      metadata: metadata('audits')
-    };
+  it('projects the Models & agents view from canonical run metadata', () => {
+    expect(resolveDashboardQuerySources(
+      dashboardQueries,
+      ['engines-models-usage']
+    )).toEqual(['engines-models-usage', 'runs']);
+
     const runs = {
       source: 'runs',
       rows: usage.rows.map((row) => ({
@@ -861,7 +846,7 @@ describe('declarative dashboard queries', () => {
     };
     const derived = executeDashboardQueries(
       dashboardQueries,
-      { audits: events, runs },
+      { runs },
       ['engines-models-usage']
     );
 
@@ -871,7 +856,7 @@ describe('declarative dashboard queries', () => {
       rows: [
         {
           summary: 'copilot / model-b',
-          events: 2
+          runs: 2
         }
       ],
       metadata: { 'source-kind': 'derived', 'query-name': 'engines-models-usage' }

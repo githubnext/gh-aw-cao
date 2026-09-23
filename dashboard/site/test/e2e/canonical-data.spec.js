@@ -750,7 +750,7 @@ test('data worker executes declarative queries and returns only the derived proj
   }
 });
 
-test('data worker returns the Models & agents query on initial and navigated requests', async ({ page }) => {
+test('data worker returns the Models & agents run distribution on initial and navigated requests', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;
     const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
@@ -775,7 +775,7 @@ test('data worker returns the Models & agents query on initial and navigated req
       source: 'engines-models-usage',
       rows: [{
         summary: 'copilot / model-b',
-        events: 1
+        runs: 1
       }],
       metadata: { 'source-kind': 'derived', 'query-name': 'engines-models-usage' }
     });
