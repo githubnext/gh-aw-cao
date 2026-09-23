@@ -16,7 +16,7 @@ test('Node CLI ingests a gh-aw artifact directory through IndexedDB queries', as
   const output = JSON.parse(stdout);
 
   assert.equal(output.result.updated, true);
-  assert.equal(output.runs[0].id, 'github:run:303:attempt:1');
+  assert.equal(output.runs[0].id, 'github:run:githubnext/gh-aw-cao:303');
   assert.equal(output.records.every((record) => record.runId === output.runs[0].id), true);
   assert.deepEqual(output.records.map((record) => record.type), [
     'net_allowed',

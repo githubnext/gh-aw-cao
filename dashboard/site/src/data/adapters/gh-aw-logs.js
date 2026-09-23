@@ -940,7 +940,7 @@ function createCachedGhAwJsonlAccumulator(options) {
         `gh-aw JSONL line ${line}.run.workflow_path`
       );
       const githubRunId = identifier(run.run_id, `gh-aw JSONL line ${line}.run.run_id`);
-      const attempt = positiveInteger(
+      positiveInteger(
         run.run_attempt ?? 1,
         `gh-aw JSONL line ${line}.run.run_attempt`
       );
@@ -982,7 +982,7 @@ function createCachedGhAwJsonlAccumulator(options) {
         run.databaseId,
         `gh-aw JSONL line ${line}.payload[${payloadIndex}].databaseId`
       );
-      const attempt = positiveInteger(
+      positiveInteger(
         run.attempt ?? 1,
         `gh-aw JSONL line ${line}.payload[${payloadIndex}].attempt`
       );
@@ -1750,24 +1750,42 @@ function createCachedGhAwJsonlAccumulator(options) {
       'gh-aw JSONL collection context observedAt'
     );
     const contextRun = objectValue(context.run, 'gh-aw JSONL collection context run');
-    const contextRepository = objectValue(
-      context.repository,
-      'gh-aw JSONL collection context repository'
+    const contextGithubRunId = identifier(
+      contextRun.githubRunId,
+      'gh-aw JSONL collection context run.githubRunId'
     );
-    const owner = requiredString(
-      contextRepository.owner,
-      'gh-aw JSONL collection context repository.owner'
-    );
-    const name = requiredString(
-      contextRepository.name,
-      'gh-aw JSONL collection context repository.name'
-    );
-    const collectionRunId = runId(
-      owner,
-      name,
-      identifier(contextRun.githubRunId, 'gh-aw JSONL collection context run.githubRunId')
-    );
+    let contextRepository;
+    let owner;
+    let name;
+    let collectionRunId = latestRunByGithubId.get(String(contextGithubRunId));
+    if (!collectionRunId) {
+      contextRepository = objectValue(
+        context.repository,
+        'gh-aw JSONL collection context repository'
+      );
+      owner = requiredString(
+        contextRepository.owner,
+        'gh-aw JSONL collection context repository.owner'
+      );
+      name = requiredString(
+        contextRepository.name,
+        'gh-aw JSONL collection context repository.name'
+      );
+      collectionRunId = runId(owner, name, contextGithubRunId);
+    }
     if (!runIds.has(collectionRunId)) {
+      contextRepository ??= objectValue(
+        context.repository,
+        'gh-aw JSONL collection context repository'
+      );
+      owner ??= requiredString(
+        contextRepository.owner,
+        'gh-aw JSONL collection context repository.owner'
+      );
+      name ??= requiredString(
+        contextRepository.name,
+        'gh-aw JSONL collection context repository.name'
+      );
       const contextWorkflow = objectValue(
         context.workflow,
         'gh-aw JSONL collection context workflow'

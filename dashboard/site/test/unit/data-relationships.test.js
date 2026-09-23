@@ -34,12 +34,14 @@ function completeGraph() {
     observation('run', 'run-3', {
       githubRunId: 3,
       attempt: 1,
+      owner: 'githubnext',
+      repository: 'gh-aw-cao',
       repositoryId: 'github:repository:1',
       workflowId: 'github:workflow:2'
     }),
     observation('audit', 'audit-6', {
       id: 'audit:6',
-      runId: 'github:run:3:attempt:1',
+      runId: 'github:run:githubnext/gh-aw-cao:3',
       timestamp: observedAt,
       source: 'runtime',
       type: 'runtime.started'
@@ -61,11 +63,11 @@ describe('canonical entity relationships', () => {
         campaignId: 'campaign:fixture:dashboard'
       }],
       runs: [{
-        id: 'github:run:3:attempt:1',
+        id: 'github:run:githubnext/gh-aw-cao:3',
         repositoryId: 'github:repository:1',
         workflowId: 'github:workflow:2'
       }],
-      audits: [{ id: 'audit:6', runId: 'github:run:3:attempt:1', sequence: 0 }]
+      audits: [{ id: 'audit:6', runId: 'github:run:githubnext/gh-aw-cao:3', sequence: 0 }]
     });
   });
 
@@ -79,7 +81,7 @@ describe('canonical entity relationships', () => {
     expect(relationshipErrors(batch)).toEqual([
       'github:workflow:2.repositoryId does not reference an existing repository',
       'github:workflow:2.campaignId does not reference an existing campaign',
-      'github:run:3:attempt:1.workflowId does not reference an existing workflow',
+      'github:run:githubnext/gh-aw-cao:3.workflowId does not reference an existing workflow',
       'audit:6.runId does not reference an existing run'
     ]);
   });
@@ -97,7 +99,7 @@ describe('canonical entity relationships', () => {
     batch.audits[0].runId = 'github:run:9:attempt:1';
 
     expect(relationshipErrors(batch)).toEqual([
-      'github:run:3:attempt:1.workflowId references a workflow from another repository'
+      'github:run:githubnext/gh-aw-cao:3.workflowId references a workflow from another repository'
     ]);
   });
 });

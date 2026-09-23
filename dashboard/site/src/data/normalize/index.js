@@ -33,7 +33,8 @@ function withoutUndefined(value) {
 /** @param {import('../model/schema.js').CanonicalObservation} observation */
 function identityFor(observation) {
   const data = observation.data;
-  if (typeof data.id === 'string' && data.id.trim()) return data.id.trim();
+  if (!['run', 'issue'].includes(observation.kind)
+    && typeof data.id === 'string' && data.id.trim()) return data.id.trim();
   switch (observation.kind) {
     case 'campaign':
       return sourceId('campaign', observation.source, requiredIdentifier(data.slug, 'campaign.slug'));

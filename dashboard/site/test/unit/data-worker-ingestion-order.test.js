@@ -121,6 +121,6 @@ describe('canonical dashboard worker ingestion order', () => {
       expect.objectContaining({ cache: 'no-store', signal: expect.any(AbortSignal) }),
       expect.objectContaining({ cache: 'no-store', signal: expect.any(AbortSignal) })
     ]);
-    expect(storedRunIds).toEqual(['github:run:303:attempt:1']);
+    expect(storedRunIds).toEqual(['github:run:githubnext/gh-aw-cao:303']);
   }, 30_000);
 });

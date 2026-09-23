@@ -273,7 +273,7 @@ describe('canonical source ingestion and queries', () => {
 
     expect(repositories).toHaveLength(1);
     expect(workflows).toHaveLength(1);
-    expect(runs).toEqual([expect.objectContaining({ id: 'github:run:12345:attempt:2' })]);
+    expect(runs).toEqual([expect.objectContaining({ id: 'github:run:githubnext/gh-aw-cao:12345' })]);
     expect(await queries.runs.recentFailures()).toHaveLength(1);
   });
 
@@ -410,11 +410,11 @@ describe('canonical source ingestion and queries', () => {
 
     const queries = createCanonicalQueries(indexedDB);
     expect((await queries.runs.list()).map((run) => run.id)).toEqual([
-      'github:run:12345:attempt:2',
-      'github:run:303:attempt:1'
+      'github:run:githubnext/gh-aw-cao:12345',
+      'github:run:githubnext/gh-aw-cao:303'
     ]);
-    expect(await queries.audits.forRun('github:run:303:attempt:1')).toHaveLength(1);
-    expect(await queries.domains.forRun('github:run:303:attempt:1')).toHaveLength(1);
+    expect(await queries.audits.forRun('github:run:githubnext/gh-aw-cao:303')).toHaveLength(1);
+    expect(await queries.domains.forRun('github:run:githubnext/gh-aw-cao:303')).toHaveLength(1);
   });
 
   it('upserts complete gh-aw transaction logs onto retained canonical records', async () => {
@@ -467,10 +467,10 @@ describe('canonical source ingestion and queries', () => {
       })
     ]);
     expect(activeRuns.map((run) => run.id)).toEqual([
-      'github:run:12345:attempt:2',
-      'github:run:303:attempt:1'
+      'github:run:githubnext/gh-aw-cao:12345',
+      'github:run:githubnext/gh-aw-cao:303'
     ]);
-    expect(await queries.audits.forRun('github:run:303:attempt:1')).toEqual([
+    expect(await queries.audits.forRun('github:run:githubnext/gh-aw-cao:303')).toEqual([
       expect.objectContaining({ source: 'agent', type: 'agent_turn', sequence: 0 })
     ]);
   });
@@ -498,7 +498,7 @@ describe('canonical source ingestion and queries', () => {
     const queries = createCanonicalQueries(indexedDB);
     await expect(queries.repositories.list()).resolves.toEqual([repositoryBefore]);
     await expect(queries.runs.list()).resolves.toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'github:run:303:attempt:1' })
+      expect.objectContaining({ id: 'github:run:githubnext/gh-aw-cao:303' })
     ]));
   });
 
@@ -576,7 +576,7 @@ describe('canonical source ingestion and queries', () => {
     });
     await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([
       expect.objectContaining({
-        id: 'github:run:303:attempt:1',
+        id: 'github:run:githubnext/gh-aw-cao:303',
         repositoryFullName: 'githubnext/gh-aw-cao',
         agentId: 'copilot',
         agentVersion: '1.2.3',
@@ -586,7 +586,7 @@ describe('canonical source ingestion and queries', () => {
         aicTotal: 2.5
       })
     ]);
-    await expect(createCanonicalQueries(indexedDB).tools.forRun('github:run:303:attempt:1')).resolves.toEqual(
+    await expect(createCanonicalQueries(indexedDB).tools.forRun('github:run:githubnext/gh-aw-cao:303')).resolves.toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           source: 'mcp',
@@ -640,7 +640,7 @@ describe('canonical source ingestion and queries', () => {
       now: Date.parse('2026-02-02T00:00:00Z')
     });
     expect((await createCanonicalQueries(indexedDB).runs.list()).map((run) => run.id).sort()).toEqual([
-      'github:run:1:attempt:1', 'github:run:2:attempt:1'
+      'github:run:githubnext/gh-aw-cao:1', 'github:run:githubnext/gh-aw-cao:2'
     ]);
   });
 
@@ -740,7 +740,7 @@ describe('canonical source ingestion and queries', () => {
     const queries = createCanonicalQueries(indexedDB);
     await expect(queries.repositories.list()).resolves.toEqual([repositoryBefore]);
     await expect(queries.runs.list()).resolves.toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'github:run:303:attempt:1' })
+      expect.objectContaining({ id: 'github:run:githubnext/gh-aw-cao:303' })
     ]));
   });
 

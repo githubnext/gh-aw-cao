@@ -268,7 +268,7 @@ test("downloads the deployed activity shards and SQLite file without rebuilding"
       ], { cwd: root });
       const runs = JSON.parse(runsStdout);
       assert.equal(runs.length, 1);
-      assert.equal(runs[0].id, "github:run:303:attempt:1");
+      assert.equal(runs[0].id, "github:run:githubnext/gh-aw-cao:303");
 
       const { stdout: stdinStdout } = await executeFileWithInput(cao, [
         "query",
