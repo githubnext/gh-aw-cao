@@ -2493,9 +2493,9 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   await page.getByRole('button', { name: 'Chart' }).click();
   await campaignNavigation.getByRole('link', { name: 'Issues' }).click();
   await expect(campaignNavigation.getByRole('link', { name: 'Issues' })).toHaveAttribute('aria-current', 'page');
-  await page.getByRole('button', { name: 'Table' }).click();
+  await page.getByRole('button', { name: 'Cards' }).click();
   await expect(page.locator('[data-page-id="campaign-issues"] [data-view-id="campaign-issue-table"]')).toBeVisible();
-  await expect(page.locator('[data-page-id="campaign-issues"] [data-view-id="campaign-issue-table"] tbody tr')).toHaveCount(1);
+  await expect(page.locator('[data-page-id="campaign-issues"] [data-view-id="campaign-issue-table"] [data-custom-view-mark="list"] > li')).toHaveCount(1);
   await expect(page.locator('[data-page-id="campaign-issues"] [data-view-id="campaign-issue-table"]')).toContainText('Review worker finding');
   await expect(page.locator('[data-page-id="campaign-issues"] [data-view-id="campaign-issue-table"]')).not.toContainText('Review ambient context proposal');
   await page.getByRole('button', { name: 'Chart' }).click();
