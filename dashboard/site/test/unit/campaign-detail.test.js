@@ -210,6 +210,22 @@ describe('campaign detail route', () => {
     expect(rendered.textContent).not.toContain('Other');
   });
 
+  it('keeps campaign facets above the page filter bar', () => {
+    const page = document.createElement('section');
+    page.className = 'dashboard-page';
+    const filterBar = document.createElement('div');
+    filterBar.className = 'filter-bar';
+    const rendered = renderCampaignRouteVariant(context(), 'overview');
+    page.append(filterBar, rendered);
+
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'campaign', value: 'ambient-context' }
+    }));
+
+    expect(page.children[0]).toBe(page.querySelector('.campaign-tabs'));
+    expect(page.children[1]).toBe(filterBar);
+  });
+
   it('keeps non-facet workflow composition available without adding a selected tab', () => {
     const rendered = renderCampaignRouteVariant(context(), 'workflows');
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
@@ -320,7 +336,7 @@ describe('campaign detail route', () => {
       rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
         detail: { parameter: 'campaign', value: 'missing' }
       }));
-      expect(rendered.textContent).toBe('Campaign not found.');
+      expect(rendered.textContent).toContain('Campaign not found.');
 
       const unavailableContext = context();
       const unavailable = renderCampaignRouteView({
@@ -339,7 +355,7 @@ describe('campaign detail route', () => {
       unavailable.dispatchEvent(new CustomEvent('dashboard-route-change', {
         detail: { parameter: 'campaign', value: 'ambient-context' }
       }));
-      expect(unavailable.textContent).toBe('Campaign data is unavailable.');
+      expect(unavailable.textContent).toContain('Campaign data is unavailable.');
     });
   });
 
@@ -355,7 +371,7 @@ describe('campaign detail route', () => {
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
       detail: { parameter: 'campaign', value: 'missing' }
     }));
-    expect(rendered.textContent).toBe('Campaign not found.');
+    expect(rendered.textContent).toContain('Campaign not found.');
   });
 
   it('renders the same unavailable state for workflow and report navigation', () => {
@@ -377,7 +393,8 @@ describe('campaign detail route', () => {
       rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
         detail: { parameter: 'campaign', value: 'ambient-context' }
       }));
-      expect(rendered.textContent).toBe('Campaign data is unavailable.');
+      expect(rendered.textContent).toContain('Campaign data is unavailable.');
+      expect(rendered.querySelector('.campaign-tabs')).not.toBeNull();
     }
   });
 });
