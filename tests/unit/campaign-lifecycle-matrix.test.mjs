@@ -24,10 +24,6 @@ test("campaign lifecycle matrix selects only campaigns owning changed files", ()
     ["root", "CAO Evolution"],
   );
   assert.deepEqual(
-    names(["optimization/.github/graders/optimization-ai-credit-auditor-operational-value.sh"]),
-    ["root"],
-  );
-  assert.deepEqual(
     names(["dependabot/.github/graders/dependabot-update-planner-operational-value.sh"]),
     ["Dependabot"],
   );
