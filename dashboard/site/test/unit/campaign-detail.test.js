@@ -210,7 +210,7 @@ describe('campaign detail route', () => {
     expect(rendered.textContent).not.toContain('Other');
   });
 
-  it('keeps campaign facets above the page filter bar', () => {
+  it('keeps campaign facets above the page filter bar for the route view lifetime', async () => {
     const page = document.createElement('section');
     page.className = 'dashboard-page';
     const filterBar = document.createElement('div');
@@ -224,6 +224,10 @@ describe('campaign detail route', () => {
 
     expect(page.children[0]).toBe(page.querySelector('.campaign-tabs'));
     expect(page.children[1]).toBe(filterBar);
+
+    rendered.remove();
+    await Promise.resolve();
+    expect(page.querySelector('.campaign-tabs')).toBeNull();
   });
 
   it('keeps non-facet workflow composition available without adding a selected tab', () => {
