@@ -47,6 +47,23 @@ Names, paths, timestamps, and ingestion order are not canonical identities. Stab
 
 The current dashboard publication does not include immutable GitHub repository or workflow IDs. Its compatibility adapter therefore uses namespaced deterministic source coordinates for those entities. These IDs are explicitly transitional and MUST be replaced by immutable GitHub IDs when publication supplies them.
 
+## Maintenance inventory
+
+The top-level Maintenance page combines two distinct inventory concerns:
+
+- **CAO packages** use Campaign records and compare `campaign-version` with
+  `campaign-current-version`. These are installed campaign revisions resolved
+  from the control repository's catalog sources.
+- **Agentic Workflow compilers** use workflow inventory and compare
+  `gh-aw-version` with `gh-aw-current-version` for each repository.
+
+These records do not constitute an inventory of vendored agents or project
+skills. Runtime skill calls are retained as Tool records with
+`toolType="skill"` and `isSkill=true`, but a call observation does not prove
+that a skill is installed, pinned, or updateable. A future agent-assets view
+must publish explicit scope and provenance (for example, a `gh skill` source,
+revision, or lock record) before it can report maintenance state.
+
 ## Run-owned records
 
 A Run owns ordered Domain, Tool, Audit, and Issue records combining observations

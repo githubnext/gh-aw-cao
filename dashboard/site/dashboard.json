@@ -11816,6 +11816,125 @@
         }
       },
       {
+        "id": "maintenance",
+        "kind": "custom",
+        "title": "Maintenance",
+        "navigation-label": "Maintenance",
+        "icon": "tools",
+        "class-name": "maintenance-page",
+        "description": "Review CAO campaign packages and gh-aw compiler versions. Vendored agents and skills require separate provenance-backed inventory.",
+        "views": [
+            {
+              "id": "maintenance-campaigns",
+              "title": "CAO packages",
+              "description": "Installed campaign revisions and the latest catalog revisions observed for this control repository.",
+              "data": {
+                "source": "campaigns"
+              },
+              "mark": "table",
+              "controls": "interactive",
+              "lazy-list": true,
+              "empty-message": "No CAO campaign packages were observed.",
+              "encoding": {
+                "columns": [
+                  {
+                    "field": "campaign-name",
+                    "type": "nominal",
+                    "title": "Package"
+                  },
+                  {
+                    "field": "campaign-version",
+                    "type": "nominal",
+                    "title": "Installed"
+                  },
+                  {
+                    "field": "campaign-current-version",
+                    "type": "nominal",
+                    "title": "Latest"
+                  },
+                  {
+                    "field": "campaign-update-state",
+                    "type": "nominal",
+                    "title": "Update",
+                    "display": "status"
+                  },
+                  {
+                    "field": "campaign-registration",
+                    "type": "nominal",
+                    "title": "Registration",
+                    "display": "active-state"
+                  }
+                ],
+                "actions": [
+                  {
+                    "action": "update-campaign",
+                    "presentation": "cli-action",
+                    "icon": "sync",
+                    "label": "Update campaign",
+                    "context": [
+                      "campaign"
+                    ],
+                    "when": {
+                      "field": "campaign-update-state",
+                      "equals": "update-available"
+                    }
+                  }
+                ]
+              },
+              "layout": "full"
+            },
+            {
+              "id": "maintenance-repositories",
+              "disclosure": "supplemental",
+              "description": "Installed and current gh-aw compiler versions observed for each repository.",
+              "data": {
+                "source": "maintenance-repositories"
+              },
+              "mark": "table",
+              "controls": "interactive",
+              "lazy-list": true,
+              "empty-message": "No Agentic Workflow compiler versions were observed.",
+              "encoding": {
+                "columns": [
+                  {
+                    "field": "repository",
+                    "type": "nominal",
+                    "title": "Repository"
+                  },
+                  {
+                    "field": "gh-aw-version",
+                    "type": "nominal",
+                    "title": "Installed"
+                  },
+                  {
+                    "field": "gh-aw-current-version",
+                    "type": "nominal",
+                    "title": "Latest"
+                  },
+                  {
+                    "field": "upgrade-state",
+                    "type": "nominal",
+                    "title": "Upgrade",
+                    "display": "status"
+                  }
+                ],
+                "actions": [
+                  {
+                    "action": "upgrade-target-repository",
+                    "presentation": "cli-action",
+                    "icon": "download",
+                    "label": "Upgrade repository",
+                    "context": [
+                      "repository"
+                    ]
+                  }
+                ]
+              },
+              "layout": "full"
+            }
+          ]
+      },
+      {
         "id": "configuration",
         "kind": "custom",
         "title": "Settings",
@@ -12233,6 +12352,7 @@
         "pages": [
           "overview",
           "campaigns",
+          "maintenance",
           "configuration"
         ]
       },

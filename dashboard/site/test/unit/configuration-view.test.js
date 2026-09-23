@@ -225,6 +225,32 @@ describe('Configuration dashboard view', () => {
       .every((/** @type {{ placement: string }} */ action) => action.placement === 'view')).toBe(true);
   });
 
+  it('separates CAO package and compiler maintenance inventory', () => {
+    const dashboard = JSON.parse(readFileSync(resolve('dashboard.json'), 'utf8')).dashboard;
+    const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'maintenance');
+    const cleanNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => !candidate.label);
+
+    expect(page.title).toBe('Maintenance');
+    expect(page.views.map((/** @type {{ data: { source: string } }} */ view) => view.data.source))
+      .toEqual(['campaigns', 'maintenance-repositories']);
+    expect(page.views[0].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field))
+      .toEqual([
+        'campaign-name',
+        'campaign-version',
+        'campaign-current-version',
+        'campaign-update-state',
+        'campaign-registration'
+      ]);
+    expect(page.views[1].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field))
+      .toEqual([
+        'repository',
+        'gh-aw-version',
+        'gh-aw-current-version',
+        'upgrade-state'
+      ]);
+    expect(cleanNavigation.pages).toContain('maintenance');
+  });
+
   it('wires the Settings view to a supported UI element', () => {
     const dashboard = JSON.parse(readFileSync(resolve('dashboard.json'), 'utf8')).dashboard;
     const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'configuration');
