@@ -120,7 +120,6 @@ it('renders a link button list skeleton until its source resolves', async () => 
 
 it('renders the factory header from only its declared JSON sources', () => {
   const rendered = renderUiElement('factory-header', context('factory-header', {
-    'overview-outcome-summary': source('overview-outcome-summary', [{ 'useful-outputs': 2, 'delivered-repositories': 3 }]),
     'overview-run-summary': source('overview-run-summary', [{ 'active-runs': 4, 'active-live': 1, 'active-review': 3 }]),
     'overview-factory-status': source('overview-factory-status', [{ 'factory-heading': 'Your campaigns are delivering value.' }]),
     'overview-rhythm': source('overview-rhythm', [{ rhythm }])
@@ -129,8 +128,7 @@ it('renders the factory header from only its declared JSON sources', () => {
   expect(rendered?.classList.contains('factory-intro')).toBe(true);
   expect(rendered?.querySelector('.factory-running')).toBeNull();
   expect(rendered?.querySelector('h2')?.textContent).toBe('Your campaigns are delivering value.');
-  expect(rendered?.querySelector('.factory-intro-copy > p:last-child')?.textContent)
-    .toBe('2 retained issue and pull request outputs are backed by Actions evidence across 3 repositories.');
+  expect(rendered?.querySelector('.factory-intro-copy > p')).toBeNull();
   expect(rendered?.querySelectorAll('.factory-rhythm-day')).toHaveLength(7);
 });
 
@@ -211,7 +209,6 @@ it('renders both elements immediately and updates only widgets whose query resol
   expect(floor?.classList.contains('factory-floor')).toBe(true);
   expect(floor?.querySelectorAll('.factory-station-pending')).toHaveLength(6);
   expect(requests.map(({ name }) => name)).toEqual([
-    'overview-outcome-summary',
     'overview-factory-status',
     'database-campaign-count',
     'overview-healthy-campaign-count',
@@ -250,7 +247,6 @@ it('renders both elements immediately and updates only widgets whose query resol
 
 it('stops updating an element after its rendered root is removed', async () => {
   const first = renderUiElement('factory-header', context('factory-header', {
-    'overview-outcome-summary': source('overview-outcome-summary', []),
     'overview-factory-status': source('overview-factory-status', [{ 'factory-heading': 'First status' }]),
     'overview-rhythm': source('overview-rhythm', [{ rhythm }])
   }));
@@ -258,9 +254,7 @@ it('stops updating an element after its rendered root is removed', async () => {
   document.body.append(first);
   first.remove();
   await new Promise((resolve) => setTimeout(resolve, 0));
-
   renderUiElement('factory-header', context('factory-header', {
-    'overview-outcome-summary': source('overview-outcome-summary', []),
     'overview-factory-status': source('overview-factory-status', [{ 'factory-heading': 'Second status' }]),
     'overview-rhythm': source('overview-rhythm', [{ rhythm }])
   }));

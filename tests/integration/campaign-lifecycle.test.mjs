@@ -62,7 +62,6 @@ const activityExpectedFiles = [
 const caoEvolutionExpectedFiles = [
   "cao-evolution/.github/graders/cao-evolution-failures-investigator-operational-value.sh",
   "cao-evolution/.github/graders/cao-evolution-compiler-security-operational-value.sh",
-  "cao-evolution/dashboard.json",
   ".github/workflows/graders/cao-evolution-failures-investigator-operational-value.sh",
   ".github/workflows/graders/cao-evolution-compiler-security-operational-value.sh",
   ".github/workflows/cao-evolution-failures-investigator.md",
@@ -76,14 +75,12 @@ const caoEvolutionExpectedFiles = [
 ];
 const ukAiAdvisoryExpectedFiles = [
   "uk-ai-advisory/implementation-status.md",
-  "uk-ai-advisory/dashboard.json",
   ".github/workflows/uk-ai-advisory-campaign-maintainer.md",
   ".github/workflows/uk-ai-advisory-operational-resilience.md",
   ".github/workflows/uk-ai-advisory.md",
   ".github/workflows/shared/control.md",
 ];
 const craExpectedFiles = [
-  "eu-cra-compliance/dashboard.json",
   "eu-cra-compliance/implementation-status.md",
   "eu-cra-compliance/eu-cra-report-operational-value-runtime.bash",
   "eu-cra-compliance/.github/graders/eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
@@ -118,7 +115,6 @@ const dashboardExpectedFiles = [
   ).matchAll(/^\s+destination: (.+)$/gm)].map((match) => match[1]),
 ];
 const selfCareExpectedFiles = [
-  "self-care/dashboard.json",
   "self-care/.github/graders/self-care-docs-build-time-investigator-operational-value.sh",
   ".github/workflows/graders/self-care-docs-build-time-investigator-operational-value.sh",
   ".github/workflows/self-care-accessibility-checker.md",
@@ -129,7 +125,6 @@ const selfCareExpectedFiles = [
   ".github/workflows/self-care-data-acquisition-audit.md",
   ".github/workflows/self-care-dashboard-language-refactor.md",
   ".github/workflows/self-care-dashboard-review.md",
-  ".github/workflows/self-care-experimental-views.md",
   ".github/workflows/self-care-docs-build-time-investigator.md",
   ".github/workflows/self-care-glossary.md",
   ".github/workflows/self-care-open-source-failures.md",
@@ -141,7 +136,6 @@ const selfCareExpectedFiles = [
   ".github/workflows/shared/control.md",
 ];
 const softwareDevelopmentPracticesExpectedFiles = [
-  "software-development-practices/dashboard.json",
   "software-development-practices/software-development-guidance-operational-value-runtime.bash",
   "software-development-practices/.github/graders/software-development-practices-github-well-architected-operational-value.sh",
   "software-development-practices/.github/graders/software-development-practices-nist-ssdf-operational-value.sh",
@@ -305,7 +299,6 @@ test("gh aw add installs the focused EU CRA campaign contract", { timeout: 180_0
     assert.deepEqual(
       installedManifest.files.map(({ destination }) => destination).sort(),
       [
-        "eu-cra-compliance/dashboard.json",
         "eu-cra-compliance/implementation-status.md",
         "eu-cra-compliance/eu-cra-report-operational-value-runtime.bash",
         "eu-cra-compliance/.github/graders/eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
@@ -360,7 +353,6 @@ test("gh aw add installs the focused UK AI Advisory campaign contract", { timeou
       installedManifest.files.map(({ destination }) => destination).sort(),
       [
         "uk-ai-advisory/implementation-status.md",
-        "uk-ai-advisory/dashboard.json",
         ".github/workflows/uk-ai-advisory-campaign-maintainer.md",
         ".github/workflows/uk-ai-advisory.md",
       ].toSorted(),
@@ -418,7 +410,6 @@ test("gh aw add installs the focused Software Development Practices campaign con
     assert.deepEqual(
       installedManifest.files.map(({ destination }) => destination).sort(),
       [
-        "software-development-practices/dashboard.json",
         "software-development-practices/.github/graders/software-development-practices-github-well-architected-operational-value.sh",
         "software-development-practices/.github/graders/software-development-practices-nist-ssdf-operational-value.sh",
         "software-development-practices/software-development-guidance-operational-value-runtime.bash",
@@ -428,7 +419,7 @@ test("gh aw add installs the focused Software Development Practices campaign con
         ".github/workflows/software-development-practices-nist-ssdf.md",
         ".github/workflows/software-development-practices.md",
       ],
-      "focused Software Development Practices campaign manifest must own its entry workflows, evaluators, runtime, and dashboard",
+      "focused Software Development Practices campaign manifest must own its entry workflows, evaluators, and runtime",
     );
   } finally {
     rmSync(consumer, { recursive: true, force: true });

@@ -86,8 +86,8 @@ test("token optimizer observations use the Activity JSONL boundary, not issue te
     join(root, "dashboard", "site", "src", "data", "queries", "database.js"),
     "utf8",
   );
-  const dashboard = readFileSync(
-    join(root, "optimization", "dashboard.json"),
+  const tokenEfficiencyQueries = readFileSync(
+    join(root, "optimization", "token-efficiency-queries.json"),
     "utf8",
   );
 
@@ -97,10 +97,10 @@ test("token optimizer observations use the Activity JSONL boundary, not issue te
   assert.match(adapter, /'token_efficiency\.opportunity'/);
   assert.match(adapter, /'token_efficiency\.intervention'/);
   assert.doesNotMatch(sources, /tokenEfficiencySources/);
-  assert.doesNotMatch(dashboard, /"name": "token-efficiency-opportunities"/);
-  assert.match(dashboard, /"name": "token-efficiency-portfolio-candidates"[\s\S]*?"from": "token-efficiency-portfolio-candidate-evaluation"/);
-  assert.match(dashboard, /"name": "token-efficiency-optimizer-assignments"[\s\S]*?"from": "token-efficiency-portfolio-candidates"/);
-  assert.match(dashboard, /"name": "token-efficiency-interventions"[\s\S]*?"from": "audits"/);
+  assert.doesNotMatch(tokenEfficiencyQueries, /"name": "token-efficiency-opportunities"/);
+  assert.match(tokenEfficiencyQueries, /"name": "token-efficiency-portfolio-candidates"[\s\S]*?"from": "token-efficiency-portfolio-candidate-evaluation"/);
+  assert.match(tokenEfficiencyQueries, /"name": "token-efficiency-optimizer-assignments"[\s\S]*?"from": "token-efficiency-portfolio-candidates"/);
+  assert.match(tokenEfficiencyQueries, /"name": "token-efficiency-interventions"[\s\S]*?"from": "audits"/);
   assert.doesNotMatch(adapter, /token_efficiency[\s\S]{0,1000}(title|body)/i);
 });
 

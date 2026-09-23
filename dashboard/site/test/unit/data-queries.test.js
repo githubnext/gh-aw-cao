@@ -828,27 +828,12 @@ describe('declarative dashboard queries', () => {
     ).rows).toThrow(DashboardQueryCancelledError);
   });
 
-  it('projects the Models & agents view from its request-scoped dashboard query', () => {
-    const events = {
-      source: 'audits',
-      rows: [
-        {
-          organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1,
-          'event-source': 'agent', 'event-type': 'agent_turn', 'event-summary': 'First turn',
-          'event-timestamp': '2026-09-01T00:00:00Z'
-        },
-        {
-          organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1,
-          'event-source': 'agent', 'event-type': 'assistant_message', 'event-summary': 'Second turn',
-          'event-timestamp': '2026-09-02T00:00:00Z'
-        },
-        {
-          organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1,
-          'event-source': 'gateway', 'event-type': 'tool_call', 'event-timestamp': '2026-09-02T00:01:00Z'
-        }
-      ],
-      metadata: metadata('audits')
-    };
+  it('projects the Models & agents view from canonical run metadata', () => {
+    expect(resolveDashboardQuerySources(
+      dashboardQueries,
+      ['engines-models-usage']
+    )).toEqual(['engines-models-usage', 'runs']);
+
     const runs = {
       source: 'runs',
       rows: usage.rows.map((row) => ({
@@ -861,7 +846,7 @@ describe('declarative dashboard queries', () => {
     };
     const derived = executeDashboardQueries(
       dashboardQueries,
-      { audits: events, runs },
+      { runs },
       ['engines-models-usage']
     );
 
@@ -871,7 +856,7 @@ describe('declarative dashboard queries', () => {
       rows: [
         {
           summary: 'copilot / model-b',
-          events: 2
+          runs: 2
         }
       ],
       metadata: { 'source-kind': 'derived', 'query-name': 'engines-models-usage' }
@@ -1786,6 +1771,75 @@ describe('declarative dashboard queries', () => {
 
     structuredClone(derived);
     expect(budget.operations).toBe(8);
+  });
+
+  it('reuses shared nested query materializations across a dependency diamond', () => {
+    let sourceReads = 0;
+    const budget = createDashboardQueryBudget();
+    const definitions = [
+      {
+        name: 'base',
+        from: 'usage',
+        select: [{ field: 'workflow' }, { field: 'aic' }]
+      },
+      {
+        name: 'higher-cost',
+        from: 'base',
+        filter: { predicates: [{ field: 'aic', gte: 5 }] }
+      },
+      {
+        name: 'lower-cost',
+        from: 'base',
+        filter: { predicates: [{ field: 'aic', lt: 5 }] }
+      },
+      {
+        name: 'combined',
+        from: 'higher-cost',
+        union: ['lower-cost'],
+        'order-by': [{ field: 'aic', direction: 'asc' }]
+      },
+      {
+        name: 'summary',
+        from: 'combined',
+        aggregate: {
+          values: [{ field: 'workflow', as: 'workflows', reducer: 'count' }]
+        }
+      }
+    ];
+    const derived = executeDashboardQueries(
+      definitions,
+      {
+        usage: {
+          ...usage,
+          get rows() {
+            sourceReads += 1;
+            return usage.rows;
+          }
+        }
+      },
+      definitions.map((definition) => definition.name),
+      { budget }
+    );
+
+    expect(sourceReads).toBe(0);
+    expect(budget.operations).toBe(0);
+    expect(derived.summary.rows).toEqual([{ workflows: 2 }]);
+    const readsAfterSummary = sourceReads;
+    const operationsAfterSummary = budget.operations;
+    expect(readsAfterSummary).toBeGreaterThan(0);
+
+    expect(derived.combined.rows).toEqual([
+      { workflow: 'a.md', aic: 4 },
+      { workflow: 'a.md', aic: 6 }
+    ]);
+    expect(derived['higher-cost'].rows).toEqual([{ workflow: 'a.md', aic: 6 }]);
+    expect(derived['lower-cost'].rows).toEqual([{ workflow: 'a.md', aic: 4 }]);
+    expect(derived.base.rows).toEqual([
+      { workflow: 'a.md', aic: 4 },
+      { workflow: 'a.md', aic: 6 }
+    ]);
+    expect(sourceReads).toBe(readsAfterSummary);
+    expect(budget.operations).toBe(operationsAfterSummary);
   });
 
   it.each(['constructor', '__proto__'])('lazily executes a query named %s', (name) => {

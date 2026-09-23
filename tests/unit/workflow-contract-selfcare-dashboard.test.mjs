@@ -201,9 +201,6 @@ test("SelfCare dashboard reviewer checks deployments through stakeholder persona
 
 test("SelfCare dashboard performance worker selects one highest-ROI small win", () => {
   const source = workflow("self-care-dashboard-performance.md");
-  const dashboard = JSON.parse(readFileSync(join(root, "self-care", "dashboard.json"), "utf8"));
-  const views = dashboard.dashboard.pages[0].views;
-
   assert.match(source, /^name: "SelfCare \/ Dashboard Performance"$/m);
   assert.match(source, /campaign: self-care\n\s+role: worker\n\s+worker: dashboard-performance/);
   assert.match(source, /safe_output_mode` is `live`/);
@@ -223,50 +220,19 @@ test("SelfCare dashboard performance worker selects one highest-ROI small win", 
   for (const persona of ["CFO", "CTO", "CSO"]) {
     assert.match(source, new RegExp(persona));
   }
-  assert.ok(views.some(({ id }) => id === "self-care-dashboard-performance-runs"));
-  assert.ok(views.some(({ id }) => id === "self-care-dashboard-performance-outcomes"));
-  assert.ok(views
-    .filter(({ id }) => id.startsWith("self-care-dashboard-performance"))
-    .every((view) => view.data.filters.workflow.includes(".github/workflows/self-care-dashboard-performance.md")));
   assert.doesNotMatch(source, /^evals:/m);
   assert.doesNotMatch(source, /^graders:/m);
 });
 
-test("SelfCare experimental views worker exhaustively checks editable views across browsers and source shapes", () => {
-  const source = workflow("self-care-experimental-views.md");
+test("SelfCare no longer dispatches the obsolete experimental views worker", () => {
   const orchestrator = workflow("self-care.md");
 
-  assert.match(source, /^name: "SelfCare \/ Experimental Views"$/m);
-  assert.match(source, /campaign: self-care\n\s+role: worker\n\s+worker: experimental-views/);
-  assert.match(source, /skip-if-match: 'is:pr is:open "gh-aw-workflow-id: self-care-experimental-views" in:body'/);
-  assert.match(source, /browsers: \[chromium, webkit\]/);
-  assert.match(source, /Require `\.github\/workflows\/cao\.json` to set `control-plane\.web\.experimental` to the Boolean `true`/);
-  assert.match(source, /every source experimental navigation section and page to remain in the assembled `dashboard\.json`/);
-  assert.match(source, /https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/dashboard\.json/);
-  assert.match(source, /Navigate every deployed experimental route/);
-  assert.match(source, /Do not infer availability from the policy setting alone/);
-  assert.match(source, /Operations page shell, every editable view on that page/);
-  assert.match(source, /navigation sections with `experimental: true`/);
-  assert.match(source, /Ignore every view with `locked: true`/);
-  assert.match(source, /Ignore all views on top-level pages in non-experimental navigation sections/);
-  assert.match(source, /In PR mode, test at most the first five in-scope views in the source-definition order of the derived inventory/);
-  assert.match(source, /schema-valid empty, single-row, representative multi-row, missing-optional-field, and high-cardinality inputs/);
-  assert.match(source, /document\.querySelectorAll\('\*'\)\.length/);
-  assert.match(source, /`disclosure: supplemental`/);
-  assert.match(source, /cap the initially rendered records/);
-  assert.match(source, /accessible lazy\/virtualized list/);
-  assert.match(source, /create-pull-request:/);
-  assert.match(source, /draft: true/);
-  assert.match(source, /Call `create_pull_request` exactly once/);
-  assert.match(orchestrator, /dispatch `self-care-experimental-views` before inspecting run history or dispatching any other worker/);
-  assert.match(orchestrator, /Do this on every selected repository run; this worker is not cadence-limited/);
+  assert.doesNotMatch(orchestrator, /self-care-experimental-views/);
+  assert.doesNotMatch(orchestrator, /experimental-views/);
 });
 
 test("SelfCare Pages health worker audits every deployed view on three profiles", () => {
   const source = workflow("self-care-pages-health.md");
-  const dashboard = JSON.parse(readFileSync(join(root, "self-care", "dashboard.json"), "utf8"));
-  const views = dashboard.dashboard.pages[0].views;
-
   assert.match(source, /^name: "SelfCare \/ Pages Health"$/m);
   assert.match(source, /^\s+workflow_dispatch:$/m);
   assert.doesNotMatch(source, /^\s+schedule:/m);
@@ -285,11 +251,6 @@ test("SelfCare Pages health worker audits every deployed view on three profiles"
   assert.match(source, /containing exactly three numbered, evidence-backed, small JavaScript improvements/);
   assert.match(source, /Call `create_pull_request` exactly once/);
   assert.match(source, /Fix only the selected quick wins/);
-  assert.ok(views.some(({ id }) => id === "self-care-pages-health-runs"));
-  assert.ok(views.some(({ id }) => id === "self-care-pages-health-outcomes"));
-  assert.ok(views
-    .filter(({ id }) => id.startsWith("self-care-pages-health"))
-    .every((view) => view.data.filters.workflow.includes(".github/workflows/self-care-pages-health.md")));
   assert.doesNotMatch(source, /^evals:/m);
   assert.doesNotMatch(source, /^graders:/m);
 });

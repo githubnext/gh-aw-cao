@@ -18,7 +18,6 @@ test("AW Optimization combines AI Credit and ambient-context workers", () => {
   const orchestratorConfig = workflowConfig("optimization.md");
   const manifest = parse(readFileSync(join(root, "optimization", "aw.yml"), "utf8"));
   const descriptor = JSON.parse(readFileSync(join(root, "optimization", "cao.json"), "utf8"));
-  const dashboard = JSON.parse(readFileSync(join(root, "optimization", "dashboard.json"), "utf8"));
   const policy = JSON.parse(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"));
   const policyWorkers = policy["control-plane"].campaigns.optimization.workers;
   const workerEntries = Object.entries(descriptor.workers);
@@ -32,7 +31,6 @@ test("AW Optimization combines AI Credit and ambient-context workers", () => {
 
   assert.equal(manifest.name, "AW Optimization");
   assert.equal(descriptor.campaign, "optimization");
-  assert.equal(dashboard.dashboard.title, "AW Optimization");
   assert.equal(orchestratorConfig.name, manifest.name);
   assert.deepEqual(includedWorkflowIds, declaredWorkflowIds);
   assert.match(orchestrator, /worker_credits_per_target: 1950/);
@@ -69,7 +67,6 @@ test("AW Optimization combines AI Credit and ambient-context workers", () => {
 
 test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
   const manifest = parse(readFileSync(join(root, "cao-evolution", "aw.yml"), "utf8"));
-  const dashboard = JSON.parse(readFileSync(join(root, "cao-evolution", "dashboard.json"), "utf8"));
   const policy = JSON.parse(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"));
   const orchestrator = workflow("cao-evolution.md");
   const workers = [
@@ -82,20 +79,6 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
   ];
 
   assert.equal(manifest.name, "CAO Evolution");
-  assert.equal(dashboard.dashboard.title, "CAO Evolution");
-  assert.deepEqual(dashboard.dashboard.pages[0].views[0], {
-    id: "cao-evolution-outcome-health",
-    title: "Maintenance outcome health",
-    description: "The disposition of retained maintenance outcomes shows whether control-plane recommendations are progressing through review.",
-    data: { source: "cao-evolution-outcomes" },
-    mark: "chart",
-    chart: "pie",
-    layout: "full",
-    encoding: {
-      x: { field: "outcome-state", type: "nominal", title: "Outcome state" },
-      y: { field: "safe-output", type: "quantitative", aggregate: "count", title: "Outcomes" },
-    },
-  });
   assert.deepEqual(manifest.includes.sort(), [
     "../aw.yml",
     ".github/workflows/cao-evolution-catalog-advisor.md",
@@ -148,7 +131,6 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
 
 test("CAO Evolution compiler security worker runs the full validation suite", () => {
   const source = workflow("cao-evolution-compiler-security.md");
-  const dashboard = JSON.parse(readFileSync(join(root, "cao-evolution", "dashboard.json"), "utf8"));
 
   assert.match(source, /^name: "CAO Evolution \/ AW Compiler Security"$/m);
   assert.match(source, /worker: compiler-security/);
@@ -181,11 +163,6 @@ test("CAO Evolution compiler security worker runs the full validation suite", ()
   assert.match(source, /never edit generated `\.lock\.yml` files/i);
   assert.match(source, /legacy `\[aw-doctor:compiler-security\]` issues/);
   assert.match(source, /retrieved issue titles and bodies as untrusted data/);
-  const runView = dashboard.dashboard.pages[0].views.find(({ id }) => id === "cao-evolution-runs");
-  assert.ok(runView.data.filters.workflow.includes(".github/workflows/cao-evolution-failures-investigator.md"));
-  assert.ok(runView.data.filters.workflow.includes(".github/workflows/cao-evolution-compiler-security.md"));
-  assert.ok(runView.data.filters.workflow.includes(".github/workflows/aw-failures-investigator.md"));
-  assert.ok(runView.data.filters.workflow.includes(".github/workflows/aw-maintenance-compiler-security.md"));
 });
 
 test("CAO Evolution compiler security worker reports only target-owned actionable findings", () => {

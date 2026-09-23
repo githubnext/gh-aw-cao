@@ -749,8 +749,8 @@ describe('presenter built-in and custom pages', () => {
         'engines-models-usage': {
           source: 'engines-models-usage',
           rows: [
-            { summary: 'copilot / gpt-5.6-sol', events: 2 },
-            { summary: 'pi / claude-sonnet-5', events: 1 }
+            { summary: 'copilot / gpt-5.6-sol', runs: 2 },
+            { summary: 'pi / claude-sonnet-5', runs: 1 }
           ],
           metadata
         },

@@ -62,7 +62,7 @@ test("dashboard site ignores the legacy flat dashboards directory", async () => 
   }
 });
 
-test("docs dashboard installs renderer assets and configured campaign pages", async () => {
+test("docs dashboard installs renderer assets without experimental campaign pages", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "dashboard-site-build-"));
   const destination = pathToFileURL(`${root}/cao/`);
   const controlSettings = {
@@ -74,8 +74,8 @@ test("docs dashboard installs renderer assets and configured campaign pages", as
     await buildDashboardSite({ destination, controlSettings });
     const dashboard = JSON.parse(await readFile(new URL("dashboard.json", destination), "utf8"));
     const pageIds = dashboard.dashboard.pages.map(({ id }) => id);
-    assert.ok(pageIds.includes("uk-ai-advisory-dashboard"));
-    assert.ok(pageIds.includes("dependabot-dashboard"));
+    assert.ok(!pageIds.includes("uk-ai-advisory-dashboard"));
+    assert.ok(!pageIds.includes("dependabot-dashboard"));
     assert.ok(!pageIds.includes("ambient-context-dashboard"));
     assert.match(
       await readFile(new URL("index.html", destination), "utf8"),
@@ -109,9 +109,8 @@ test("docs dashboard installs renderer assets and configured campaign pages", as
       /octicon-rocket/,
       "bundled JavaScript includes Octicon glyphs",
     );
-    for (const pageId of ["uk-ai-advisory-dashboard", "dependabot-dashboard"]) {
-      assert.match(await readFile(new URL(`${pageId}/index.html`, destination), "utf8"), new RegExp(`#page-${pageId}`));
-    }
+    await assert.rejects(readFile(new URL("uk-ai-advisory-dashboard/index.html", destination), "utf8"), { code: "ENOENT" });
+    await assert.rejects(readFile(new URL("dependabot-dashboard/index.html", destination), "utf8"), { code: "ENOENT" });
     assert.match(
       await readFile(new URL("service-worker.js", destination), "utf8"),
       /periodicsync/,

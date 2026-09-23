@@ -79,6 +79,8 @@ test("dashboard CI runs the campaign quality gates", () => {
   const lintUnit = jobs.get("lint-unit");
   const playwrightIntegration = jobs.get("playwright-integration");
   const ingestionScale = jobs.get("ingestion-scale");
+  const queryComplexity = jobs.get("query-complexity");
+  const queryComplexityComment = jobs.get("query-complexity-comment");
   const lighthousePerformance = jobs.get("lighthouse-performance");
   const lighthouseComment = jobs.get("lighthouse-comment");
 
@@ -87,7 +89,15 @@ test("dashboard CI runs the campaign quality gates", () => {
   assert.match(source, /cache-dependency-path: dashboard\/site\/package-lock\.json/);
   assert.deepEqual(
     [...jobs.keys()],
-    ["lint-unit", "playwright-integration", "ingestion-scale", "lighthouse-performance", "lighthouse-comment"]
+    [
+      "lint-unit",
+      "playwright-integration",
+      "ingestion-scale",
+      "query-complexity",
+      "query-complexity-comment",
+      "lighthouse-performance",
+      "lighthouse-comment"
+    ]
   );
   assert.deepEqual(lintUnit.needs, []);
   assert.deepEqual(playwrightIntegration.needs, []);
@@ -95,6 +105,25 @@ test("dashboard CI runs the campaign quality gates", () => {
   // The synthetic ingestion payload is slow, so the gate stays on main.
   assert.match(ingestionScale.block, /if: github\.ref == 'refs\/heads\/main'/);
   assert.match(ingestionScale.block, /run: npm run test:e2e:dashboard-ingestion/);
+  assert.deepEqual(queryComplexity.needs, []);
+  assert.match(queryComplexity.block, /node activity\/cao\.mjs dashboard-complexity/);
+  assert.match(queryComplexity.block, /--input dashboard\/site\/dashboard\.json/);
+  assert.match(queryComplexity.block, /--format markdown > query-complexity\.md/);
+  assert.match(queryComplexity.block, /cat query-complexity\.md >> "\$GITHUB_STEP_SUMMARY"/);
+  assert.match(queryComplexity.block, /uses: actions\/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a/);
+  assert.match(queryComplexity.block, /name: dashboard-query-complexity/);
+  assert.deepEqual(queryComplexityComment.needs, ["query-complexity"]);
+  assert.match(
+    queryComplexityComment.block,
+    /if: >-\s+always\(\).*github\.event_name == 'pull_request'.*github\.event\.pull_request\.head\.repo\.full_name == github\.repository/s
+  );
+  assert.match(queryComplexityComment.block, /pull-requests: write/);
+  assert.doesNotMatch(queryComplexityComment.block, /issues: write/);
+  assert.match(queryComplexityComment.block, /name: dashboard-query-complexity/);
+  assert.match(queryComplexityComment.block, /<!-- dashboard-query-complexity -->/);
+  assert.match(queryComplexityComment.block, /maximumReportLength = 60000/);
+  assert.match(queryComplexityComment.block, /issues\.updateComment/);
+  assert.match(queryComplexityComment.block, /issues\.createComment/);
   assert.deepEqual(lighthousePerformance.needs, []);
   assert.deepEqual(lighthouseComment.needs, ["lighthouse-performance"]);
   for (const command of ["npm run typecheck", "npm run lint", "npm test"]) {

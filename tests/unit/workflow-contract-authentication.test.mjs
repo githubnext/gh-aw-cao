@@ -74,7 +74,6 @@ test("repository-local SelfCare uses organization-billed Copilot authentication"
     "self-care-data-acquisition-audit",
     "self-care-dashboard-language-refactor",
     "self-care-dashboard-review",
-    "self-care-experimental-views",
     "self-care-docs-build-time-investigator",
     "self-care-glossary",
     "self-care-open-source-failures",
