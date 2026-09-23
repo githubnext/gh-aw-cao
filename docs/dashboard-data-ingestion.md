@@ -122,7 +122,11 @@ Download the JSONL and SQLite projection published by the deployed CAO Pages sit
 cao download
 ```
 
-This writes `.cao/payload-hashes.json`, `.cao/gh-aw-logs-shards/`, and `.cao/gh-aw-logs.sqlite` by default. Set `DASHBOARD_DATA_URL`, pass `--url URL`, or pass `--output DIRECTORY` to change the source or destination. The command downloads both files unchanged; it does not run ingestion locally.
+This writes `.cao/payload-hashes.json`, the published compacted
+`.cao/gh-aw-logs-runs/` and `.cao/gh-aw-logs-records/` shards, and
+`.cao/gh-aw-logs.sqlite` by default. Set `DASHBOARD_DATA_URL`, pass `--url URL`,
+or pass `--output DIRECTORY` to change the source or destination. The command
+downloads the published files unchanged; it does not run ingestion locally.
 
 Query a canonical collection:
 

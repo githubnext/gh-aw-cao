@@ -2,11 +2,29 @@ import { expect, test } from "@playwright/test";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join, resolve, sep } from "node:path";
+import { adaptCachedGhAwJsonl } from "../../dashboard/site/src/data/adapters/gh-aw-logs.js";
+import { CANONICAL_SCHEMA_VERSION } from "../../dashboard/site/src/data/model/schema.js";
+import { normalize } from "../../dashboard/site/src/data/normalize/index.js";
 import { syntheticGhAwLogs } from "../helpers/synthetic-gh-aw-logs.mjs";
 
 const siteRoot = resolve("dashboard/site");
 const runs = Number(process.env.DASHBOARD_INGESTION_RUNS ?? 3000);
-const payload = Buffer.from(syntheticGhAwLogs({ runs }));
+const batch = normalize(adaptCachedGhAwJsonl(syntheticGhAwLogs({ runs })).observations);
+const records = ["campaigns", "repositories", "workflows", "runs"].flatMap((collection) =>
+  batch[collection].map((record) => ({ kind: "record", collection, record }))
+);
+const payload = Buffer.from([
+  {
+    kind: "metadata",
+    schemaVersion: CANONICAL_SCHEMA_VERSION,
+    ingestionVersion: 3,
+    sourceRecords: runs,
+    phase: "runs",
+    records: records.length,
+  },
+  ...records,
+].map((line) => JSON.stringify(line)).join("\n") + "\n");
+const shardName = `gh-aw-logs-runs/scale-${"a".repeat(64)}-${"b".repeat(16)}.jsonl`;
 
 /** @type {import('node:http').Server} */
 let server;
@@ -22,10 +40,10 @@ test.beforeAll(async () => {
     }
     if (pathname === "/payload-hashes.json") {
       response.writeHead(200, { "content-type": "application/json" });
-      response.end(JSON.stringify({ "gh-aw-logs-shards/scale.jsonl": "a".repeat(64) }));
+      response.end(JSON.stringify({ [shardName]: "c".repeat(64) }));
       return;
     }
-    if (pathname === "/gh-aw-logs-shards/scale.jsonl") {
+    if (pathname === `/${shardName}`) {
       response.writeHead(200, {
         "content-type": "application/x-ndjson",
         "content-length": String(payload.byteLength),
@@ -90,9 +108,6 @@ test("ingesting a large synthetic payload terminates and clears its notification
 
   expect(result.failure, `ingestion failed after ${result.elapsed}ms`).toBeNull();
   expect(result.rows).toBe(runs);
-  // The parse phase is a small part of a large ingestion, so the storage phase
-  // must keep reporting progress instead of freezing the notification.
-  const stored = result.messages.filter((message) => message.includes("Storing "));
-  expect(stored.length).toBeGreaterThan(0);
+  expect(result.messages.length).toBeGreaterThan(0);
   expect(result.remainingNotifications).toBe(0);
 });

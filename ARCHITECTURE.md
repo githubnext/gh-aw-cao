@@ -101,7 +101,11 @@ Activity collects a bounded snapshot once and publishes immutable cache
 artifacts. SQLite and IndexedDB are independently rebuildable projections of
 the authoritative inputs. It deterministically separates compact, immutable run
 information from detailed run-linked records so the browser data worker loads every run
-before continuing with event shards. Browser download, normalization,
+before continuing with event shards. Raw Activity JSONL remains available only
+inside the Activity cache for audits and projection rebuilds. The deployed
+dashboard artifact contains the SQLite projection, inventory, and compacted
+normalized run and record JSONL; browser ingestion fails closed rather than
+falling back to raw Activity JSONL. Browser download, normalization,
 persistence, and queries run in a dedicated Web Worker. The main thread receives
 only bounded view payloads. Versioned computations transform canonical evidence
 into partitioned measures and actionable insights so consumers do not repeatedly

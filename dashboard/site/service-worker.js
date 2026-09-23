@@ -8,8 +8,6 @@ const UPDATE_INTERVAL_MS = 60 * 60 * 1000;
 const DOWNLOAD_TIMEOUT_MS = 2 * 60 * 1000;
 const DATA_FILES = new Set(['payload-hashes.json', 'inventory-sources.json']);
 const DEBUG_PREFIX = 'cao';
-const JSONL_SHARD_PATH = /\/gh-aw-logs-shards\/[A-Za-z0-9._-]+\.jsonl$/;
-const NORMALIZED_SHARD_PATH = /\/gh-aw-logs-normalized\/[a-f0-9]{64}-[a-f0-9]{16}\.jsonl$/i;
 const RUN_SHARD_PATH = /\/gh-aw-logs-runs\/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\.jsonl$/i;
 const RECORD_SHARD_PATH = /\/gh-aw-logs-records\/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\.jsonl$/i;
 
@@ -66,8 +64,6 @@ function isDashboardDataUrl(value) {
     const url = new URL(value, self.location.href);
     return url.origin === self.location.origin
       && (DATA_FILES.has(url.pathname.split('/').at(-1))
-        || JSONL_SHARD_PATH.test(url.pathname)
-        || NORMALIZED_SHARD_PATH.test(url.pathname)
         || RUN_SHARD_PATH.test(url.pathname)
         || RECORD_SHARD_PATH.test(url.pathname));
   } catch {
@@ -152,19 +148,10 @@ async function downloadData(urls) {
       && /^[a-f0-9]{64}$/i.test(hash))
     .sort(([left], [right]) => left.localeCompare(right));
   const phasedEntries = runEntries.length > 0 ? [...runEntries, ...eventEntries] : [];
-  const normalizedEntries = Object.entries(currentHashes)
-    .filter(([name, hash]) => /^gh-aw-logs-normalized\/[a-f0-9]{64}-[a-f0-9]{16}\.jsonl$/i.test(name)
-      && typeof hash === 'string'
-      && /^[a-f0-9]{64}$/i.test(hash))
-    .sort(([left], [right]) => left.localeCompare(right));
-  const shardEntries = phasedEntries.length > 0
-    ? phasedEntries
-    : (normalizedEntries.length > 0 ? normalizedEntries : Object.entries(currentHashes)
-      .filter(([name, hash]) => /^gh-aw-logs-shards\/[A-Za-z0-9._-]+\.jsonl$/.test(name)
-        && typeof hash === 'string'
-        && /^[a-f0-9]{64}$/i.test(hash)))
-      .sort(([left], [right]) => left.localeCompare(right));
-  if (shardEntries.length === 0) throw new Error('Dashboard activity shard manifest is empty.');
+  const shardEntries = phasedEntries;
+  if (shardEntries.length === 0) {
+    throw new Error('Dashboard activity shard manifest contains no compacted run-information shards.');
+  }
   debugLog('data:ingestion:sw', 'published activity manifest', { shardCount: shardEntries.length });
   const currentShardUrls = new Set();
   for (const [index, [name, hash]] of shardEntries.entries()) {
@@ -185,9 +172,7 @@ async function downloadData(urls) {
     debugLog('data:ingestion:sw', 'cached shard', { name, index: index + 1, shardCount: shardEntries.length });
   }
   for (const request of await cache.keys()) {
-    if ((JSONL_SHARD_PATH.test(new URL(request.url).pathname)
-          || NORMALIZED_SHARD_PATH.test(new URL(request.url).pathname)
-          || RUN_SHARD_PATH.test(new URL(request.url).pathname)
+    if ((RUN_SHARD_PATH.test(new URL(request.url).pathname)
           || RECORD_SHARD_PATH.test(new URL(request.url).pathname))
         && !currentShardUrls.has(request.url)) {
       await cache.delete(request);

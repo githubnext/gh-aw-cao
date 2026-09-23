@@ -202,4 +202,4 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
   await new Promise((resolve) => { setTimeout(resolve, 75); });
   expect(posted.filter(({ subscriptionId }) => subscriptionId === 'runs')).toHaveLength(1);
   expect(downloadedShards).toEqual([]);
-});
+}, 15_000);

@@ -1,6 +1,9 @@
 // @vitest-environment node
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { adaptCachedGhAwJsonl } from '../../src/data/adapters/gh-aw-logs.js';
+import { CANONICAL_SCHEMA_VERSION } from '../../src/data/model/schema.js';
+import { normalize } from '../../src/data/normalize/index.js';
 import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
 
 vi.mock('../../src/retry.js', async (importOriginal) => {
@@ -59,6 +62,24 @@ describe('canonical dashboard worker ingestion order', () => {
         created_at: '2026-09-09T05:00:00Z'
       }
     };
+    const batch = normalize(adaptCachedGhAwJsonl(`${JSON.stringify(run)}\n`).observations);
+    /** @type {(keyof import('../../src/data/model/schema.js').CanonicalBatch)[]} */
+    const runCollections = ['campaigns', 'repositories', 'workflows', 'runs'];
+    const runRecords = runCollections.flatMap((collection) =>
+      batch[collection].map((record) => ({ kind: 'record', collection, record }))
+    );
+    const normalizedRuns = [
+      {
+        kind: 'metadata',
+        schemaVersion: CANONICAL_SCHEMA_VERSION,
+        ingestionVersion: 3,
+        sourceRecords: 1,
+        phase: 'runs',
+        records: runRecords.length
+      },
+      ...runRecords
+    ].map((line) => JSON.stringify(line)).join('\n') + '\n';
+    const runName = `gh-aw-logs-runs/logs-${'a'.repeat(64)}-${'b'.repeat(16)}.jsonl`;
     const inventory = {
       repositories: {
         rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }],
@@ -80,9 +101,9 @@ describe('canonical dashboard worker ingestion order', () => {
         return Response.json(inventory);
       }
       if (url.endsWith('/payload-hashes.json')) {
-        return Response.json({ 'gh-aw-logs-shards/logs-1.jsonl': 'a'.repeat(64) });
+        return Response.json({ [runName]: 'a'.repeat(64) });
       }
-      return new Response(`${JSON.stringify(run)}\n`);
+      return new Response(normalizedRuns);
     });
 
     /** @type {string[]} */

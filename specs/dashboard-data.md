@@ -232,6 +232,13 @@ from authoritative external inputs. Neither projection SHALL become the source
 for the other. Publishing SQLite MAY support headless consumers, but browser
 ingestion SHALL continue to use the published JSONL and inventory inputs.
 
+The deployed dashboard payload SHALL publish only compacted normalized
+run-information and run-record JSONL shards for browser ingestion. Raw Activity
+JSONL MAY remain in the private Activity cache for audit and rebuild operations,
+but MUST NOT be copied into the dashboard artifact or listed in its deployed
+payload manifest. The browser MUST fail closed when compacted run-information
+shards are absent; it MUST NOT fall back to raw Activity JSONL.
+
 SQLite and IndexedDB SHALL use the same adapters, identities, normalization,
 and relationship validation. They MAY use different retention windows because
 SQLite can serve a historical archive while IndexedDB remains a bounded browser

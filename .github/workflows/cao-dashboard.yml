@@ -117,7 +117,6 @@ jobs:
           run-id: ${{ steps.activity-artifact-run.outputs.run-id }}
 
       - name: Upgrade fallback activity data
-        if: steps.activity-cache.outputs.cache-matched-key == ''
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
@@ -271,7 +270,6 @@ jobs:
             const collectedFiles = [
               'inventory-sources.json',
               'gh-aw-logs.sqlite',
-              'payload-hashes.json',
             ]
             for (const fileName of collectedFiles) {
               const destination = path.join(process.env.REPORT_OUTPUT, fileName)
@@ -281,14 +279,28 @@ jobs:
               )
               core.info(`Copied ${fileName} (${formatFileSize(fs.statSync(destination).size)})`)
             }
-            for (const directory of ['gh-aw-logs-shards', 'gh-aw-logs-runs', 'gh-aw-logs-records']) {
+            const sourceManifest = JSON.parse(fs.readFileSync(
+              path.join(process.env.RUNNER_TEMP, 'cao-activity', 'payload-hashes.json'),
+              'utf8',
+            ))
+            const payloadHashes = Object.fromEntries(Object.entries(sourceManifest).filter(([name]) =>
+              name === 'gh-aw-logs.sqlite'
+              || /^gh-aw-logs-(?:runs|records)\/[^/]+\.jsonl$/.test(name),
+            ))
+            if (!Object.keys(payloadHashes).some((name) => name.startsWith('gh-aw-logs-runs/'))) {
+              throw new Error('Dashboard payload contains no compacted run-information shards')
+            }
+            const payloadManifest = path.join(process.env.REPORT_OUTPUT, 'payload-hashes.json')
+            fs.writeFileSync(payloadManifest, `${JSON.stringify(payloadHashes, null, 2)}\n`)
+            core.info(`Wrote payload-hashes.json (${formatFileSize(fs.statSync(payloadManifest).size)})`)
+            for (const directory of ['gh-aw-logs-runs', 'gh-aw-logs-records']) {
               fs.cpSync(
                 path.join(process.env.RUNNER_TEMP, 'cao-activity', directory),
                 path.join(process.env.REPORT_OUTPUT, directory),
                 { recursive: true },
               )
             }
-            core.info(`Dashboard artifact assembly completed (${collectedFiles.length} collected data files)`)
+            core.info(`Dashboard artifact assembly completed (${collectedFiles.length + 1} collected data files)`)
 
       - name: Upload dashboard artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

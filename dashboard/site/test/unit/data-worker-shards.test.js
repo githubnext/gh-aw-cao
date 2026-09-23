@@ -1,30 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   publishedRunRecordShards,
-  publishedJsonlShards,
-  publishedNormalizedShards,
   publishedPhasedActivityShards,
   publishedRunInformationShards
 } from '../../src/data-worker.js';
 
 describe('published activity shards', () => {
-  it('recognizes hashed normalized JSONL independently from compatibility JSONL', () => {
-    const hashes = {
-      'gh-aw-logs-shards/logs-1.jsonl': 'a'.repeat(64),
-      [`gh-aw-logs-normalized/${'b'.repeat(64)}-${'c'.repeat(16)}.jsonl`]: 'd'.repeat(64),
-      'gh-aw-logs-normalized/invalid.json': 'e'.repeat(64)
-    };
-
-    expect(publishedNormalizedShards(hashes)).toEqual([{
-      name: `gh-aw-logs-normalized/${'b'.repeat(64)}-${'c'.repeat(16)}.jsonl`,
-      hash: 'd'.repeat(64)
-    }]);
-    expect(publishedJsonlShards(hashes)).toEqual([{
-      name: 'gh-aw-logs-shards/logs-1.jsonl',
-      hash: 'a'.repeat(64)
-    }]);
-  });
-
   it('recognizes phased run-information and record shards', () => {
     const name = `gh-aw-logs-1000-a-${'b'.repeat(64)}-${'c'.repeat(16)}.jsonl`;
     const hashes = {
@@ -78,7 +59,6 @@ describe('published activity shards', () => {
       [`gh-aw-logs-records/${phased}`]: hash
     };
 
-    expect(publishedNormalizedShards(hashes)).toEqual([]);
     expect(publishedRunInformationShards(hashes)).toEqual([]);
     expect(publishedRunRecordShards(hashes)).toEqual([]);
     expect(publishedPhasedActivityShards(hashes)).toEqual([]);

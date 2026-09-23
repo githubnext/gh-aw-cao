@@ -108,7 +108,7 @@ components:
     responsibility: rebuildable local query projection for the cao CLI and agents
   dashboard_publisher:
     path: dashboard/
-    responsibility: publish immutable Activity evidence cache artifacts
+    responsibility: publish inventory, SQLite, and compacted normalized run and record shards without raw Activity JSONL
   browser_data_worker:
     path: dashboard/site/src/data/
     responsibility: download, normalize, persist, and query browser data off the main thread
@@ -208,6 +208,7 @@ invariants:
   - "Activity evidence MUST NOT determine rollout, outcomes, or operational value."
   - "JSONL snapshots are authoritative; caches, SQLite, and IndexedDB are disposable projections."
   - "Dashboard ingestion MUST load every run-information shard before record shards; every domain, tool, audit, and issue MUST identify its owning run."
+  - "The deployed dashboard artifact MUST NOT contain or manifest raw Activity JSONL; browser ingestion MUST consume compacted normalized run and record JSONL and fail closed when run-information shards are absent."
   - "Normalized Activity shards MUST be JSONL and browser consumers MUST stream bounded record batches without buffering a complete shard."
   - "Missing, stale, partial, and zero evidence are distinct states."
   - "Dashboard data operations MUST be declared in Dashboard Language and execute in the data Web Worker."

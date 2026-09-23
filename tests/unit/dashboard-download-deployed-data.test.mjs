@@ -188,13 +188,14 @@ test("rejects combining ingest-jsonl input modes", async () => {
   );
 });
 
-test("downloads the deployed activity shards and SQLite file without rebuilding", async () => {
+test("downloads the deployed compacted activity shards and SQLite file without rebuilding", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "deployed-dashboard-data-"));
   const output = path.join(root, "activity");
-  const logsContent = '{"schema_version":2,"kind":"run","run":{"run_id":303}}\n';
+  const runsContent = '{"kind":"metadata","phase":"runs","records":0}\n';
+  const recordsContent = '{"kind":"metadata","phase":"records","records":0}\n';
   const manifest = JSON.stringify({
-    "gh-aw-logs-shards/fixture.jsonl": createHash("sha256").update(logsContent).digest("hex"),
-    "gh-aw-logs-shards/empty.jsonl": createHash("sha256").update("").digest("hex"),
+    "gh-aw-logs-runs/fixture.jsonl": createHash("sha256").update(runsContent).digest("hex"),
+    "gh-aw-logs-records/fixture.jsonl": createHash("sha256").update(recordsContent).digest("hex"),
   });
   const databaseContent = Buffer.from("published sqlite bytes");
   const inventoryContent = JSON.stringify({ campaigns: { rows: [] } });
@@ -203,9 +204,10 @@ test("downloads the deployed activity shards and SQLite file without rebuilding"
     requests.push(request.url);
     response.writeHead(200, { "content-type": "application/x-ndjson" });
     response.end(request.url?.endsWith(".sqlite")
-      ? databaseContent : request.url?.endsWith("empty.jsonl") ? ""
+      ? databaseContent
       : request.url?.endsWith("inventory-sources.json") ? inventoryContent
-      : request.url?.endsWith("payload-hashes.json") ? manifest : logsContent);
+      : request.url?.endsWith("payload-hashes.json") ? manifest
+      : request.url?.includes("/gh-aw-logs-runs/") ? runsContent : recordsContent);
   });
 
   test("uses .cao as the default download location", async () => {
@@ -313,28 +315,22 @@ test("downloads the deployed activity shards and SQLite file without rebuilding"
       output,
     ]);
     const result = JSON.parse(stdout);
-    assert.equal(await readFile(path.join(output, "gh-aw-logs-shards", "fixture.jsonl"), "utf8"), logsContent);
-    await assert.rejects(
-      readFile(path.join(output, "gh-aw-logs-shards", "empty.jsonl")),
-      { code: "ENOENT" },
-    );
-    assert.equal(
-      Object.hasOwn(
-        JSON.parse(await readFile(path.join(output, "payload-hashes.json"), "utf8")),
-        "gh-aw-logs-shards/empty.jsonl",
-      ),
-      false,
-    );
+    assert.equal(await readFile(path.join(output, "gh-aw-logs-runs", "fixture.jsonl"), "utf8"), runsContent);
+    assert.equal(await readFile(path.join(output, "gh-aw-logs-records", "fixture.jsonl"), "utf8"), recordsContent);
     assert.deepEqual(await readFile(path.join(output, "gh-aw-logs.sqlite")), databaseContent);
     assert.equal(await readFile(path.join(output, "inventory-sources.json"), "utf8"), inventoryContent);
     assert.deepEqual(requests.toSorted(), [
-      "/cao/gh-aw-logs-shards/empty.jsonl",
-      "/cao/gh-aw-logs-shards/fixture.jsonl",
+      "/cao/gh-aw-logs-records/fixture.jsonl",
+      "/cao/gh-aw-logs-runs/fixture.jsonl",
       "/cao/gh-aw-logs.sqlite",
       "/cao/inventory-sources.json",
       "/cao/payload-hashes.json",
     ]);
     assert.match(result.databaseUrl, /\/cao\/gh-aw-logs\.sqlite$/);
+    assert.deepEqual(result.payloadDirectories.map((directory) => path.basename(directory)).toSorted(), [
+      "gh-aw-logs-records",
+      "gh-aw-logs-runs",
+    ]);
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await rm(root, { recursive: true, force: true });

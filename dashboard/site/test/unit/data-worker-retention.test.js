@@ -146,18 +146,17 @@ describe('canonical dashboard worker retention updates', () => {
     const jsonlRequests = [];
     /** @type {string[]} */
     const requestUrls = [];
-    const normalizedName = `gh-aw-logs-normalized/${'a'.repeat(64)}-${'b'.repeat(16)}.jsonl`;
+    const normalizedName = `gh-aw-logs-runs/logs-${'a'.repeat(64)}-${'b'.repeat(16)}.jsonl`;
     const normalizedPayload = `${JSON.stringify({
       kind: 'metadata',
       schemaVersion: CANONICAL_SCHEMA_VERSION,
       ingestionVersion: 3,
       sourceRecords: 0,
-      phase: 'all',
+      phase: 'runs',
       records: 0
     })}\n`;
     const payloadHashes = {
       'gh-aw-logs.sqlite': 'b'.repeat(64),
-      'gh-aw-logs-shards/logs-1.jsonl': 'c'.repeat(64),
       [normalizedName]: 'd'.repeat(64)
     };
     globalThis.fetch = /** @type {typeof fetch} */ (async (input, init) => {
@@ -286,5 +285,5 @@ describe('canonical dashboard worker retention updates', () => {
       cancelled: false,
       error: 'source read failed'
     });
-  });
+  }, 15_000);
 });

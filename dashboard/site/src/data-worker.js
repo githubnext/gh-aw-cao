@@ -3,10 +3,8 @@ import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
 import { queryDashboardSourceObservations } from './data/queries/ingestion.js';
 import {
-  ingestCachedGhAwJsonl,
   ingestDashboardSources,
   ingestNormalizedJsonl,
-  isCachedGhAwJsonlCurrent,
   isNormalizedJsonCurrent,
   NORMALIZED_JSONL_INGESTION_VERSION
 } from './data/ingest/coordinator.js';
@@ -401,28 +399,6 @@ function dashboardContext(value) {
   };
 }
 
-/** @param {unknown} hashes */
-export function publishedJsonlShards(hashes) {
-  if (!hashes || typeof hashes !== 'object' || Array.isArray(hashes)) return [];
-  return Object.entries(/** @type {Record<string, unknown>} */ (hashes))
-    .filter(([name, hash]) => /^gh-aw-logs-shards\/[a-zA-Z0-9._-]+\.jsonl$/.test(name)
-      && typeof hash === 'string'
-      && /^[a-f0-9]{64}$/i.test(hash))
-    .map(([name, hash]) => ({ name, hash: /** @type {string} */ (hash).toLowerCase() }))
-    .sort((left, right) => left.name.localeCompare(right.name));
-}
-
-/** @param {unknown} hashes */
-export function publishedNormalizedShards(hashes) {
-  if (!hashes || typeof hashes !== 'object' || Array.isArray(hashes)) return [];
-  return Object.entries(/** @type {Record<string, unknown>} */ (hashes))
-    .filter(([name, hash]) => /^gh-aw-logs-normalized\/[a-f0-9]{64}-[a-f0-9]{16}\.jsonl$/i.test(name)
-      && typeof hash === 'string'
-      && /^[a-f0-9]{64}$/i.test(hash))
-    .map(([name, hash]) => ({ name, hash: /** @type {string} */ (hash).toLowerCase() }))
-    .sort((left, right) => left.name.localeCompare(right.name));
-}
-
 /** @param {unknown} hashes @param {'runs' | 'records'} phase */
 function publishedPhaseShards(hashes, phase) {
   if (!hashes || typeof hashes !== 'object' || Array.isArray(hashes)) return [];
@@ -543,13 +519,8 @@ export function processDataRequest(request, signal) {
             : null;
           const runInformationShards = publishedRunInformationShards(payloadHashes);
           const phasedShards = publishedPhasedActivityShards(payloadHashes);
-          const normalizedShards = publishedNormalizedShards(payloadHashes);
-          const publishedShards = phasedShards.length > 0
-            ? phasedShards
-            : normalizedShards.length > 0 ? normalizedShards : publishedJsonlShards(payloadHashes);
           const shardLimit = debugShardLimit();
-          const shards = shardLimit === undefined ? publishedShards : publishedShards.slice(0, shardLimit);
-          const normalized = phasedShards.length > 0 || normalizedShards.length > 0;
+          const shards = shardLimit === undefined ? phasedShards : phasedShards.slice(0, shardLimit);
           const shardCount = shards.length;
           debugIngestion('loaded activity manifest', {
             source: sourceUrl.pathname,
@@ -561,48 +532,18 @@ export function processDataRequest(request, signal) {
             progress.log(`Published activity data includes ${shardCount.toLocaleString('en-US')} `
               + `${shardCount === 1 ? 'shard' : 'shards'}.`);
           }
-          const workflowSource = sources.workflows && typeof sources.workflows === 'object'
-            ? /** @type {{ rows?: unknown }} */ (sources.workflows)
-            : null;
-          const workflowRows = Array.isArray(workflowSource?.rows) ? workflowSource.rows : [];
-          const workflowHints = workflowRows.flatMap((/** @type {unknown} */ candidate) => {
-            if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return [];
-            const row = /** @type {Record<string, unknown>} */ (candidate);
-            return typeof row.organization === 'string'
-              && typeof row.repository === 'string'
-              && typeof row['workflow-name'] === 'string'
-              && typeof row.workflow === 'string'
-              ? [{
-                  owner: row.organization,
-                  repository: row.repository,
-                  name: row['workflow-name'],
-                  path: row.workflow
-                }]
-              : [];
-          });
-          progress.log(`Prepared ${workflowHints.length} workflow ${workflowHints.length === 1 ? 'hint' : 'hints'} for normalization.`);
-          const collectionContext = request.context && typeof request.context === 'object'
-            ? /** @type {Record<string, unknown>} */ (request.context).collectionContext
-            : undefined;
           if (shards.length === 0) {
-            throw new Error('Activity shard manifest is missing or contains no valid activity shards.');
+            throw new Error('Activity shard manifest is missing compacted run-information shards.');
           }
           /** @type {Array<{ index: number, shard: { name: string, hash: string }, shardUrl: URL, current: boolean, sizeBytes: number | undefined }>} */
           const shardStates = [];
           for (const [index, shard] of shards.entries()) {
             if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
             const shardUrl = new URL(`./${shard.name}`, payloadHashesUrl);
-            const current = normalized
-              ? await isNormalizedJsonCurrent(indexedDB, {
-                  payloadIdentity: shard.hash,
-                  payloadScope: shardUrl.href
-                }, NORMALIZED_JSONL_INGESTION_VERSION)
-              : await isCachedGhAwJsonlCurrent(indexedDB, {
-                  payloadIdentity: shard.hash,
-                  payloadScope: shardUrl.href,
-                  context: collectionContext,
-                  workflowHints
-                });
+            const current = await isNormalizedJsonCurrent(indexedDB, {
+              payloadIdentity: shard.hash,
+              payloadScope: shardUrl.href
+            }, NORMALIZED_JSONL_INGESTION_VERSION);
             shardStates.push({ index, shard, shardUrl, current, sizeBytes: undefined });
           }
           const pendingShards = shardStates.filter(({ current }) => !current);
@@ -685,22 +626,11 @@ export function processDataRequest(request, signal) {
                 payloadScope: shardUrl.href,
                 expectedPhase
               };
-              const ingestion = normalized
-                ? await ingestNormalizedJsonl(
-                    indexedDB,
-                    responseChunks(/** @type {ReadableStream<Uint8Array>} */ (response.body)),
-                    ingestionOptions
-                  )
-                : await ingestCachedGhAwJsonl(indexedDB, responseChunks(/** @type {ReadableStream<Uint8Array>} */ (response.body)), {
-                    ...ingestionOptions,
-                    workflowHints,
-                    onProgress: ({ bytesProcessed, recordsIngested }) => progress.update({
-                      bytesProcessed: processedBytes + (compressed ? 0 : bytesProcessed),
-                      recordsIngested: processedRecords + recordsIngested,
-                      totalBytes: workloadBytes
-                    }),
-                    context: collectionContext
-                  });
+              const ingestion = await ingestNormalizedJsonl(
+                indexedDB,
+                responseChunks(/** @type {ReadableStream<Uint8Array>} */ (response.body)),
+                ingestionOptions
+              );
               processedBytes += payloadBytes ?? 0;
               const sourceRecords = 'records' in ingestion ? ingestion.records : 0;
               processedRecords += sourceRecords;

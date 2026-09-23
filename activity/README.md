@@ -101,6 +101,12 @@ repeated records.
 Dashboard ingestion checks this sidecar first, then falls back to ETag validation
 and finally a downloaded-content hash when neither server-side identity is usable.
 
+The Activity cache retains raw source shards for audits and rebuilds. The
+deployed dashboard artifact filters its manifest and files to the SQLite
+projection plus compacted `gh-aw-logs-runs/*.jsonl` and
+`gh-aw-logs-records/*.jsonl`; browser ingestion never downloads raw source
+shards.
+
 Workflow inventory discovery can be reproduced locally with:
 
 ```bash

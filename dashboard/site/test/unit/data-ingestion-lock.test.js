@@ -6,7 +6,10 @@ import {
   DATABASE_NAME,
   openCanonicalDatabase
 } from '../../src/data/storage/indexeddb.js';
+import { adaptCachedGhAwJsonl } from '../../src/data/adapters/gh-aw-logs.js';
 import { ingestCachedGhAwJsonl } from '../../src/data/ingest/coordinator.js';
+import { CANONICAL_SCHEMA_VERSION } from '../../src/data/model/schema.js';
+import { normalize } from '../../src/data/normalize/index.js';
 
 /** @param {number} runId */
 function runLine(runId) {
@@ -25,6 +28,27 @@ function runLine(runId) {
       created_at: '2026-09-09T05:00:00Z'
     }
   })}\n`;
+}
+
+/** @param {number} runId */
+function normalizedRunPhase(runId) {
+  const batch = normalize(adaptCachedGhAwJsonl(runLine(runId)).observations);
+  /** @type {(keyof import('../../src/data/model/schema.js').CanonicalBatch)[]} */
+  const runCollections = ['campaigns', 'repositories', 'workflows', 'runs'];
+  const records = runCollections.flatMap((collection) =>
+    batch[collection].map((record) => ({ kind: 'record', collection, record }))
+  );
+  return [
+    {
+      kind: 'metadata',
+      schemaVersion: CANONICAL_SCHEMA_VERSION,
+      ingestionVersion: 3,
+      sourceRecords: 1,
+      phase: 'runs',
+      records: records.length
+    },
+    ...records
+  ].map((line) => JSON.stringify(line)).join('\n') + '\n';
 }
 
 /** Records the lease a tab terminated mid-ingestion would leave behind. */
@@ -75,15 +99,14 @@ describe('canonical ingestion locking', () => {
     }));
     await import('../../src/data-worker.js');
 
-    const payloadHashes = {
-      'gh-aw-logs-shards/logs-1.jsonl': 'a'.repeat(64),
-      'gh-aw-logs-shards/logs-2.jsonl': 'b'.repeat(64)
-    };
+    const first = `gh-aw-logs-runs/logs-1-${'c'.repeat(64)}-${'d'.repeat(16)}.jsonl`;
+    const second = `gh-aw-logs-runs/logs-2-${'e'.repeat(64)}-${'f'.repeat(16)}.jsonl`;
+    const payloadHashes = { [first]: 'a'.repeat(64), [second]: 'b'.repeat(64) };
     globalThis.fetch = /** @type {typeof fetch} */ (async (input) => {
       const url = String(input);
       if (url.endsWith('/payload-hashes.json')) return Response.json(payloadHashes);
       if (url.endsWith('/inventory-sources.json')) return new Response('', { status: 404 });
-      return new Response(runLine(url.endsWith('logs-1.jsonl') ? 301 : 302));
+      return new Response(normalizedRunPhase(url.endsWith(first) ? 301 : 302));
     });
 
     await writeAbandonedLease();
