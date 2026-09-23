@@ -255,7 +255,6 @@ it('stops updating an element after its rendered root is removed', async () => {
   first.remove();
   await new Promise((resolve) => setTimeout(resolve, 0));
   renderUiElement('factory-header', context('factory-header', {
-  renderUiElement('factory-header', context('factory-header', {
     'overview-factory-status': source('overview-factory-status', [{ 'factory-heading': 'Second status' }]),
     'overview-rhythm': source('overview-rhythm', [{ rhythm }])
   }));
