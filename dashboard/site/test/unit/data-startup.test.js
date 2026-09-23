@@ -16,7 +16,7 @@ const updates = vi.hoisted(() => ({
 vi.mock("../../src/data-processor.js", () => dataProcessor);
 vi.mock("../../src/dashboard-data-updates.js", () => updates);
 
-import { startDashboardData } from "../../src/data/startup.js";
+import { createBatchedSourceLoader, startDashboardData } from "../../src/data/startup.js";
 
 const cachedSources = {
   runs: { source: "runs", rows: [{ run: "cached" }] },
@@ -62,6 +62,7 @@ describe("dashboard data startup", () => {
       calls.push("cache");
       return cachedSources;
     });
+
     dataProcessor.subscribeCanonicalDashboardView.mockImplementation(
       (_id, _sources, _context, listener, _pagination, options) => {
         void dataProcessor.loadCanonicalDashboardPage().then(listener, options.onError);
@@ -76,6 +77,32 @@ describe("dashboard data startup", () => {
       calls.push("automatic");
       return () => {};
     });
+  });
+
+  it("loads source requests from the same view in one worker query", async () => {
+    const runs = { source: "runs", rows: [{ run: "1" }] };
+    const outcomes = { source: "outcomes", rows: [{ outcome: "1" }] };
+    dataProcessor.loadCanonicalDashboardPage.mockResolvedValue({ runs, outcomes });
+    const loader = createBatchedSourceLoader({ pages: [], queries: [] });
+
+    const [loadedRuns, loadedOutcomes] = await Promise.all([
+      loader("runs", { pageId: "overview", viewId: "overview-floor", sourceIndex: 0 }),
+      loader("outcomes", { pageId: "overview", viewId: "overview-floor", sourceIndex: 1 }),
+    ]);
+
+    expect(dataProcessor.loadCanonicalDashboardPage).toHaveBeenCalledOnce();
+    expect(dataProcessor.loadCanonicalDashboardPage).toHaveBeenCalledWith(
+      ["runs", "outcomes"],
+      { pages: [], queries: [] },
+      undefined,
+      {
+        pageId: "overview",
+        viewId: "overview-floor",
+        queryContext: undefined,
+      },
+    );
+    expect(loadedRuns).toBe(runs);
+    expect(loadedOutcomes).toBe(outcomes);
   });
 
   it("renders cached data and lets the UI settle before any download starts", async () => {
