@@ -30,49 +30,53 @@ export function createBatchedSourceLoader(dashboardContext) {
     scheduled = false;
     const requests = pending;
     pending = [];
-    /** @type {Map<string, typeof requests>} */
-    const groups = new Map();
-    for (const request of requests) {
-      const key = JSON.stringify([
-        request.options?.pageId ?? null,
-        request.options?.viewId ?? null,
-        request.options?.queryContext ?? null,
-      ]);
-      const group = groups.get(key) ?? [];
-      group.push(request);
-      groups.set(key, group);
-    }
-
-    await Promise.all([...groups.values()].map(async (group) => {
-      const [{ options }] = group;
-      const names = [...new Set(group.map(({ name }) => name))];
-      try {
-        const sources = await loadCanonicalDashboardPage(
-          names,
-          dashboardContext,
-          undefined,
-          {
-            pageId: options?.pageId,
-            viewId: options?.viewId,
-            queryContext: options?.queryContext,
-          },
-        );
-        for (const request of group) {
-          const alias = request.options?.pageId && request.options.viewId
-            ? dashboardViewAliasName(
-                request.options.pageId,
-                { id: request.options.viewId },
-                0,
-                request.name,
-                request.options.sourceIndex ?? 0,
-              )
-            : request.name;
-          request.resolve(sources[alias] ?? sources[request.name]);
-        }
-      } catch (error) {
-        for (const request of group) request.reject(error);
+    try {
+      /** @type {Map<string, typeof requests>} */
+      const groups = new Map();
+      for (const request of requests) {
+        const key = JSON.stringify([
+          request.options?.pageId ?? null,
+          request.options?.viewId ?? null,
+          request.options?.queryContext ?? null,
+        ]);
+        const group = groups.get(key) ?? [];
+        group.push(request);
+        groups.set(key, group);
       }
-    }));
+
+      await Promise.all([...groups.values()].map(async (group) => {
+        const [{ options }] = group;
+        const names = [...new Set(group.map(({ name }) => name))];
+        try {
+          const sources = await loadCanonicalDashboardPage(
+            names,
+            dashboardContext,
+            undefined,
+            {
+              pageId: options?.pageId,
+              viewId: options?.viewId,
+              queryContext: options?.queryContext,
+            },
+          );
+          for (const request of group) {
+            const alias = request.options?.pageId && request.options.viewId
+              ? dashboardViewAliasName(
+                  request.options.pageId,
+                  { id: request.options.viewId },
+                  0,
+                  request.name,
+                  request.options.sourceIndex ?? 0,
+                )
+              : request.name;
+            request.resolve(sources[alias] ?? sources[request.name]);
+          }
+        } catch (error) {
+          for (const request of group) request.reject(error);
+        }
+      }));
+    } catch (error) {
+      for (const request of requests) request.reject(error);
+    }
   };
 
   return (name, options = {}) => new Promise((resolve, reject) => {
