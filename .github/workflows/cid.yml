@@ -164,8 +164,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       actions: read
-      issues: write
-      pull-requests: read
+      pull-requests: write
     steps:
       - name: Download query complexity report
         id: download

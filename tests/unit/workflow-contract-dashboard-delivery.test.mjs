@@ -117,8 +117,8 @@ test("dashboard CI runs the campaign quality gates", () => {
     queryComplexityComment.block,
     /if: >-\s+always\(\).*github\.event_name == 'pull_request'.*github\.event\.pull_request\.head\.repo\.full_name == github\.repository/s
   );
-  assert.match(queryComplexityComment.block, /issues: write/);
-  assert.match(queryComplexityComment.block, /pull-requests: read/);
+  assert.match(queryComplexityComment.block, /pull-requests: write/);
+  assert.doesNotMatch(queryComplexityComment.block, /issues: write/);
   assert.match(queryComplexityComment.block, /name: dashboard-query-complexity/);
   assert.match(queryComplexityComment.block, /<!-- dashboard-query-complexity -->/);
   assert.match(queryComplexityComment.block, /maximumReportLength = 60000/);
