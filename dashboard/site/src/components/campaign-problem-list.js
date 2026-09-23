@@ -97,6 +97,7 @@ function problemRunLink(row) {
 /** @param {Record<string, unknown>} row */
 function renderProblem(row) {
   const runLink = problemRunLink(row);
+  const message = problemMessage(row);
   const occurrences = Number(row['occurrence-count']) || 0;
   const metadata = problemMetadata(row);
   const age = problemAge(row);
@@ -114,7 +115,7 @@ function renderProblem(row) {
         h(
           'span',
           { className: 'campaign-problem-title' },
-          runLink ? renderSafeLink(problemMessage(row), runLink) : problemMessage(row)
+          runLink ? renderSafeLink(message, { ...runLink, label: message }) : message
         ),
         occurrences > 1 ? ' ' : null,
         occurrences > 1

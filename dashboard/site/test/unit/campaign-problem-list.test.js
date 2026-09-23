@@ -90,6 +90,8 @@ describe('campaign problem list', () => {
       .toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/123');
     expect(rendered.querySelector('.campaign-problem-title a')?.textContent)
       .toBe('Process completed with exit code 1.');
+    expect(rendered.querySelector('.campaign-problem-title a')?.getAttribute('aria-label'))
+      .toBe('Process completed with exit code 1.');
     expect(rendered.querySelector('[data-intent-presentation="copy-prompt"]')?.textContent)
       .toContain('Fix It');
     expect(rendered.querySelector('.table-intent-dialog')?.textContent)
