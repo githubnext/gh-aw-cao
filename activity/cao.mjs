@@ -1005,6 +1005,38 @@ async function hashFileContents(filePath) {
   return hash.digest('hex');
 }
 
+function compactRunObservation(record, line) {
+  if (!['run', 'token_efficiency_run_context'].includes(record?.kind)) return null;
+  const run = record.run;
+  if (!run || typeof run !== 'object' || Array.isArray(run)) return null;
+  if (!['string', 'number'].includes(typeof run.run_id)) return null;
+  const attempt = Number(run.run_attempt ?? 1);
+  if (!Number.isSafeInteger(attempt) || attempt < 1) return null;
+  const observedAt = typeof run.updated_at === 'string' && Number.isFinite(Date.parse(run.updated_at))
+    ? run.updated_at
+    : null;
+  return {
+    key: `${record.kind}:${String(run.run_id)}:${attempt}`,
+    line,
+    observedAt,
+    record
+  };
+}
+
+function preferCompactRun(left, right) {
+  const leftTime = left.observedAt === null ? Number.NEGATIVE_INFINITY : Date.parse(left.observedAt);
+  const rightTime = right.observedAt === null ? Number.NEGATIVE_INFINITY : Date.parse(right.observedAt);
+  if (rightTime < leftTime) return left;
+  if (rightTime > leftTime) return right;
+  return {
+    ...right,
+    record: {
+      ...right.record,
+      run: { ...left.record.run, ...right.record.run }
+    }
+  };
+}
+
 function* normalizedJsonlLines(payload) {
   const records = Object.values(payload.batch)
     .reduce((total, collection) => total + collection.length, 0);
@@ -1027,14 +1059,43 @@ async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
   const sourcePaths = names.map((name) => path.join(directory, name));
   const sourceBytes = (await Promise.all(sourcePaths.map(async (filePath) => (await stat(filePath)).size)))
     .reduce((sum, size) => sum + size, 0);
-  if (sourcePaths.length <= 1 && sourceBytes <= maxBytes) {
-    let sourceRecords = 0;
-    for await (const line of jsonlLines(sourcePaths)) sourceRecords += 1;
+  let sourceRecords = 0;
+  let duplicateRecords = 0;
+  const compactRuns = new Map();
+  const exactRecords = new Set();
+  for await (const line of jsonlLines(sourcePaths)) {
+    sourceRecords += 1;
+    let parsed;
+    try {
+      parsed = JSON.parse(line);
+    } catch {
+      parsed = null;
+    }
+    const run = compactRunObservation(parsed, sourceRecords);
+    if (run) {
+      const previous = compactRuns.get(run.key);
+      if (previous) {
+        compactRuns.set(run.key, {
+          firstLine: previous.firstLine,
+          preferred: preferCompactRun(previous.preferred, run)
+        });
+        duplicateRecords += 1;
+      } else {
+        compactRuns.set(run.key, { firstLine: sourceRecords, preferred: run });
+      }
+      continue;
+    }
+    const hash = createHash('sha256').update(line).digest('hex');
+    if (exactRecords.has(hash)) duplicateRecords += 1;
+    else exactRecords.add(hash);
+  }
+  if (sourcePaths.length <= 1 && sourceBytes <= maxBytes && duplicateRecords === 0) {
     return {
       prefix,
       sourceFiles: sourcePaths.length,
       sourceRecords,
       retainedRecords: sourceRecords,
+      duplicateRecords,
       sourceBytes,
       compactedBytes: sourceBytes,
       output: sourcePaths[0] ?? null,
@@ -1068,8 +1129,28 @@ async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
     bufferedBytes = 0;
   };
   try {
+    let sourceLine = 0;
+    const emittedExactRecords = new Set();
     for await (const line of jsonlLines(sourcePaths)) {
-      const outputLine = `${line}\n`;
+      sourceLine += 1;
+      let parsed;
+      try {
+        parsed = JSON.parse(line);
+      } catch {
+        parsed = null;
+      }
+      const run = compactRunObservation(parsed, sourceLine);
+      let retainedLine = line;
+      if (run) {
+        const compact = compactRuns.get(run.key);
+        if (compact.firstLine !== sourceLine) continue;
+        retainedLine = JSON.stringify(compact.preferred.record);
+      } else {
+        const hash = createHash('sha256').update(line).digest('hex');
+        if (emittedExactRecords.has(hash)) continue;
+        emittedExactRecords.add(hash);
+      }
+      const outputLine = `${retainedLine}\n`;
       const lineBytes = Buffer.byteLength(outputLine);
       if (bufferedLines.length > 0 && bufferedBytes + lineBytes > maxBytes) await flush();
       bufferedLines.push(outputLine);
@@ -1087,8 +1168,9 @@ async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
   return {
     prefix,
     sourceFiles: sourcePaths.length,
-    sourceRecords: retainedRecords,
+    sourceRecords,
     retainedRecords,
+    duplicateRecords,
     sourceBytes,
     compactedBytes,
     output: outputPaths[0] ?? null,

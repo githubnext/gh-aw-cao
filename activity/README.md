@@ -30,10 +30,12 @@ trailing wildcard shard prefix instead of a single growing file. The wildcard sh
 directory itself is part of the shared activity cache, so `gh aw logs`
 recognizes previously discovered runs across job runs without re-seeding a
 snapshot. After a successful collection, `cao compact-jsonl` consolidates that
-repository's retained files into bounded shards without removing or reordering
-records. The bounded files limit peak browser parsing memory while preserving
-observation precedence and dependent-record association. Failed collections
-leave the prior files untouched. Shards containing only
+repository's retained files into bounded shards. It drops exact duplicate
+records and merges repeated run observations with the same precedence rules as
+canonical ingestion, emitting each merged run at its first observation position
+so dependent records remain associated. The bounded, deduplicated files limit
+browser storage and peak parsing memory without changing the populated
+database. Failed collections leave the prior files untouched. Shards containing only
 out-of-range dated records are pruned by `gh aw logs --cache-before`. The
 ingestion step passes the shard directory to `cao ingest-jsonl --input-dir`,
 which tracks each compacted shard by content hash.
@@ -169,10 +171,9 @@ are moved from the logs output directory into the activity snapshot so storage
 accounting does not mistake them for a cached log file.
 
 The scheduled collector is intentionally rolling and bounded. It requests a
-30-day run window and at most 1,000 matching enriched runs from each resolved
-repository. The compacted JSONL can contain non-identical observations of the same run;
-canonical ingestion merges those observations by stable run identity. Use a
-separate source and SQLite database when a complete historical archive is
+30-day run window and at most 10,000 matching enriched runs from each resolved
+repository. The compacted JSONL retains one merged observation per run identity. Use a
+separate source and SQLite database when a complete observation history is
 required.
 
 The `gh-aw-logs.mjs` resource provides the shared parser for consumers of the

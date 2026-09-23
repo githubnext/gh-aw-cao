@@ -142,7 +142,7 @@ test('ingest-jsonl --input ingests a single JSONL file', async () => {
   assert.equal(transactions[0].payloadScope, 'gh-aw-jsonl');
 });
 
-test('compact-jsonl consolidates exact-prefix shards without reordering observations', async () => {
+test('compact-jsonl consolidates exact-prefix shards and drops duplicate observations', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'activity-compact-jsonl-'));
   const prefix = 'githubnext-gh-aw-cao-logs-';
   const firstPath = path.join(root, `${prefix}1000-aaaa.jsonl`);
@@ -173,7 +173,8 @@ test('compact-jsonl consolidates exact-prefix shards without reordering observat
   const compacted = result.groups.find((group) => group.prefix === prefix);
   assert.equal(compacted.sourceFiles, 2);
   assert.equal(compacted.sourceRecords, 4);
-  assert.equal(compacted.retainedRecords, 4);
+  assert.equal(compacted.retainedRecords, 3);
+  assert.equal(compacted.duplicateRecords, 1);
   assert.equal(
     result.groups.find((group) => group.prefix === overlappingPrefix).sourceFiles,
     1,
@@ -182,10 +183,99 @@ test('compact-jsonl consolidates exact-prefix shards without reordering observat
   const compactedName = path.basename(compacted.output);
   assert.deepEqual(
     (await readFile(path.join(root, compactedName), 'utf8')).trim().split('\n'),
-    [first, second, first, third],
+    [first, second, third],
   );
   assert.equal(await readFile(unrelatedPath, 'utf8'), `${unrelated}\n`);
   assert.equal(await readFile(overlappingPrefixPath, 'utf8'), `${third}\n`);
+});
+
+test('compact-jsonl applies run attempt and timestamp precedence at the first observation position', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'activity-compact-jsonl-runs-'));
+  const prefix = 'githubnext-gh-aw-cao-logs-';
+  const initial = {
+    schema_version: 2,
+    kind: 'run',
+    run: {
+      run_id: 1,
+      repository: 'githubnext/gh-aw-cao',
+      run_attempt: 1,
+      created_at: '2026-09-01T00:00:00Z',
+      updated_at: '2026-09-01T00:01:00Z',
+      workflow_name: 'Activity',
+      status: 'in_progress',
+    },
+  };
+  const dependent = {
+    schema_version: 2,
+    kind: 'safe_output_item',
+    safe_output: { run_id: 1, type: 'issue' },
+  };
+  const completed = {
+    schema_version: 2,
+    kind: 'run',
+    run: {
+      run_id: 1,
+      repository: 'githubnext/gh-aw-cao',
+      run_attempt: 1,
+      created_at: '2026-09-01T00:00:00Z',
+      updated_at: '2026-09-01T00:02:00Z',
+      status: 'completed',
+      conclusion: 'success',
+    },
+  };
+  const completedEnriched = {
+    schema_version: 2,
+    kind: 'run',
+    run: {
+      run_id: 1,
+      repository: 'githubnext/gh-aw-cao',
+      run_attempt: 1,
+      created_at: '2026-09-01T00:00:00Z',
+      updated_at: '2026-09-01T00:02:00Z',
+      model: 'gpt-test',
+    },
+  };
+  const rerun = {
+    schema_version: 2,
+    kind: 'run',
+    run: {
+      run_id: 1,
+      repository: 'githubnext/gh-aw-cao',
+      run_attempt: 2,
+      created_at: '2026-09-01T00:03:00Z',
+      updated_at: '2026-09-01T00:04:00Z',
+      workflow_name: 'Activity',
+      status: 'completed',
+      conclusion: 'failure',
+    },
+  };
+  await writeFile(
+    path.join(root, `${prefix}1000-aaaa.jsonl`),
+    `${JSON.stringify(initial)}\n${JSON.stringify(dependent)}\n${JSON.stringify(completed)}\n${JSON.stringify(completedEnriched)}\n${JSON.stringify(rerun)}\n`,
+  );
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    path.resolve('activity/cao.mjs'),
+    'compact-jsonl',
+    '--input-dir',
+    root,
+    '--group',
+    `githubnext/gh-aw-cao=${prefix}`,
+  ]);
+  const [group] = JSON.parse(stdout).groups;
+  const lines = (await readFile(group.output, 'utf8')).trim().split('\n').map(JSON.parse);
+
+  assert.equal(group.sourceRecords, 5);
+  assert.equal(group.retainedRecords, 3);
+  assert.equal(group.duplicateRecords, 2);
+  assert.equal(lines[0].kind, 'run');
+  assert.equal(Object.hasOwn(lines[0].run, 'workflow_name'), false);
+  assert.equal(lines[0].run.status, 'completed');
+  assert.equal(lines[0].run.conclusion, 'success');
+  assert.equal(lines[0].run.model, 'gpt-test');
+  assert.deepEqual(lines[1], dependent);
+  assert.equal(lines[2].run.run_attempt, 2);
+  assert.equal(lines[2].run.conclusion, 'failure');
 });
 
 test('compact-jsonl bounds retained shards without reordering observations', async () => {
