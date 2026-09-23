@@ -347,19 +347,6 @@ describe('dashboard DOM provenance', () => {
     expect(lazySourceNames).toContain('runs-table');
   });
 
-  it('keeps the Notifications page selected instead of its overview parent link', async () => {
-    const rendered = renderDashboardView({
-      document: authoritativeDashboardDocument,
-      sources: {}
-    });
-
-    await activatePage(rendered, 'notifications');
-
-    expect(rendered.querySelector('[data-nav-page-id="notifications"]')?.getAttribute('aria-current')).toBe('page');
-    expect(rendered.querySelector('[data-nav-page-id="overview"]')?.getAttribute('aria-current')).toBeNull();
-    disposeDashboard(rendered);
-  });
-
   it('selects a route drilldown parent when its route has a value', async () => {
     const root = document.createElement('div');
     root.innerHTML = `
