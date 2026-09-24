@@ -1,13 +1,13 @@
 ---
 name: add-operational-value
-description: "Design and optionally evaluate a deterministic operational-value measure for a GitHub Agentic Workflow using pre-adoption evidence. Use for workflow selection, outcome contracts, value functions, baseline comparison, and attainment evaluation. Usage: /aw-value OWNER/REPO [WORKFLOW-NAME]."
-argument-hint: "OWNER/REPO [WORKFLOW-NAME]"
+description: "Design and optionally evaluate a deterministic operational-value measure for a GitHub Agentic Workflow using pre-adoption evidence. Use for workflow or campaign-scoped selection, outcome contracts, value functions, baseline comparison, and attainment evaluation. Usage: /add-operational-value OWNER/REPO [WORKFLOW-NAME] [--campaign CAMPAIGN-SLUG]."
+argument-hint: "OWNER/REPO [WORKFLOW-NAME] [--campaign CAMPAIGN-SLUG]"
 allowed-tools: bash node gh
 metadata:
   version: "0.1.0"
 ---
 
-# AW Value
+# Add Operational Value
 
 ## Operational Value
 
@@ -23,20 +23,22 @@ Design the evidence contract only from information available by adoption. Never 
 
 ## Inputs
 
-Use `/aw-value OWNER/REPO` to list workflows or `/aw-value OWNER/REPO WORKFLOW-NAME` to design one.
+Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-operational-value OWNER/REPO WORKFLOW-NAME` to design one. Add `--campaign CAMPAIGN-SLUG` to restrict selection to workflows directly included by one campaign and place the resulting module under that campaign.
 
 - `OWNER/REPO`: repository containing the workflow. Outcome evidence may come from other affected repositories.
 - `WORKFLOW-NAME`: filename stem using lowercase letters, numbers, and single hyphens, such as `daily-file-diet`. Do not accept a path or `.md` suffix.
+- `CAMPAIGN-SLUG`: optional top-level campaign directory containing `aw.yml`. It scopes workflow selection and owns the shared CAO adapter. Never infer it from a workflow name.
 - After validation, set `WORKFLOW-PATH` to `.github/workflows/WORKFLOW-NAME.md` and use `WORKFLOW-NAME` unchanged as the slug.
-- Never infer either input from the workspace, environment, or Git remotes.
+- Never infer the repository, workflow, or campaign from the workspace, environment, or Git remotes.
 
 ## Workflow
 
 1. **Resolve the workflow.**
-  - Without `WORKFLOW-NAME`, run `.github/skills/add-operational-value/scripts/list-repository-workflows.mjs OWNER/REPO`. Reproduce every returned name in the assistant response as a Markdown list, ask the user to select one, and stop. Tool output is not user-visible; never say the list is "shown above." Do not summarize or truncate it.
-  - With `WORKFLOW-NAME`, run `.github/skills/add-operational-value/scripts/list-repository-workflows.mjs OWNER/REPO WORKFLOW-NAME`. Use its output as `WORKFLOW-PATH`. If resolution fails, ask for a valid name.
+  - Without `WORKFLOW-NAME`, run `.github/skills/add-operational-value/scripts/list-repository-workflows.mjs OWNER/REPO`, appending `--campaign CAMPAIGN-SLUG` when supplied. Reproduce every returned name in the assistant response as a Markdown list, ask the user to select one, and stop. Tool output is not user-visible; never say the list is "shown above." Do not summarize or truncate it.
+  - With `WORKFLOW-NAME`, run the same command with `WORKFLOW-NAME` before the optional campaign flag. Use its output as `WORKFLOW-PATH`. Campaign-scoped resolution must reject workflows not directly included by that campaign. If resolution fails, ask for a valid name.
+  - Design exactly one selected workflow per invocation. A campaign scopes ownership and selection; it does not combine distinct workflow outcome contracts.
 
-2. **Protect an existing design.** Run `.github/skills/add-operational-value/scripts/value-function-path.mjs OWNER/REPO WORKFLOW-NAME`. The default CAO package is `WORKFLOW-NAME`, the canonical module is `WORKFLOW-NAME/operational-value/WORKFLOW-NAME.mjs`, and its CAO adapter is `WORKFLOW-NAME/operational-value.mjs`. If the module exists, verify it with `.github/skills/add-operational-value/scripts/verify-value-function.mjs --cao-adapter WORKFLOW-NAME/operational-value.mjs <path>`, report that it was left unchanged, and continue at step 7. Do not inspect post-adoption evidence or redesign it.
+2. **Protect an existing design.** Run `.github/skills/add-operational-value/scripts/value-function-path.mjs OWNER/REPO WORKFLOW-NAME [CAMPAIGN-SLUG]`. Without a campaign, the default package is `WORKFLOW-NAME`. With a campaign, the canonical module is `CAMPAIGN-SLUG/operational-value/WORKFLOW-NAME.mjs` and the shared adapter is `CAMPAIGN-SLUG/operational-value.mjs`. If the module exists, verify it with `.github/skills/add-operational-value/scripts/verify-value-function.mjs --cao-adapter <adapter> <path>`, report that it was left unchanged, and continue at step 7. Do not inspect post-adoption evidence or redesign it.
 
 3. **Recover adoption-time intent.** Run `.github/skills/add-operational-value/scripts/extract-workflow-intent.mjs OWNER/REPO WORKFLOW-PATH`. Treat its adoption commit as adoption and its first parent as the baseline; if there is no parent, no historical baseline exists. Infer intent from adoption-time frontmatter, imports, instructions, and compiled workflow. Use triggers and skip rules to identify opportunities, and checkout, tools, permissions, and safe outputs to identify accessible or affected repositories.
 
@@ -66,16 +68,17 @@ Use `/aw-value OWNER/REPO` to list workflows or `/aw-value OWNER/REPO WORKFLOW-N
   - Select exactly one direct primary metric using outcome relevance plus pre-adoption observations and validation examples. Never use post-adoption results to compare metric sensitivity. Do not use a population-wide rate dominated by unaffected items when a direct severity or attainment measure better exposes the intended change. For thresholded populations, compare worst-violation severity, compliant opportunity share, and compliant mass share when the same snapshot supports them; retain only dimensions that can meaningfully disagree. Do not normalize raw counts with arbitrary transforms. Never invent normalization caps, targets, or weights absent from pre-adoption evidence.
   - Create the canonical shared module directly from the Module Interface below. Do not search report directories for examples or conventions.
   - The module owns the frozen contract, batch collector, and scoring functions. It must not read stdin, emit output, or depend on the CAO or report adapters.
-  - Create one thin package-level `operational-value.mjs` adapter beside the module's `operational-value/` directory. It reads CAO's schema-version-1 request from stdin, collects only the current observation for supported repositories, scores every metric from that one evidence object, and emits CAO JSONL `{timestamp, repository, valueId, value}` records. It emits nothing for unrelated repositories.
-  - When the package has an `aw.yml`, include the adapter and shared module so installed control repositories receive both files. Do not create or enroll a campaign solely to host an evaluation example.
-  - Run `.github/skills/add-operational-value/scripts/verify-value-function.mjs --collector --cao-adapter WORKFLOW-NAME/operational-value.mjs <path>` and do not report success unless it passes.
+  - Reuse the standard package-level `operational-value.mjs` adapter for every workflow in a campaign. It discovers all modules under the campaign's `operational-value/` directory, collects one current observation per supported repository and module, and emits namespaced CAO JSONL IDs in the form `WORKFLOW-SLUG.METRIC-ID`. Namespacing prevents collisions between workflows in the same campaign.
+  - For a campaign, run `.github/skills/add-operational-value/scripts/wire-campaign.mjs CAMPAIGN-SLUG WORKFLOW-NAME`. It creates the standard adapter only when absent, refuses to overwrite a nonstandard adapter, and idempotently includes the adapter and selected module in `aw.yml`. Resolve a nonstandard existing adapter deliberately; never replace it automatically.
+  - Without a campaign manifest, create the standard adapter beside the module but do not create or enroll a campaign solely to host an evaluation example.
+  - Run `.github/skills/add-operational-value/scripts/verify-value-function.mjs --collector --cao-adapter <adapter> <path>` and do not report success unless it passes.
   - Report the outcome contract, evidence shape, metrics and roles, agreement or disagreement, rejected metrics, limitations, selected model, generated module and adapter, and successful verification command. Do not create evaluation artifacts yet.
 
 7. **Offer deterministic evaluation.** Ask whether to evaluate the verified function now. If declined, stop. If accepted, capture one UTC endpoint and run:
 
   ```bash
   END_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-  .github/skills/add-operational-value/scripts/evaluate.mjs --end "$END_AT" OWNER/REPO WORKFLOW-NAME
+  .github/skills/add-operational-value/scripts/evaluate.mjs --end "$END_AT" [--campaign CAMPAIGN-SLUG] OWNER/REPO WORKFLOW-NAME
   ```
 
   Use the repository and slug from the verified definition. Never let evaluation evidence alter the frozen function, contract, formulas, targets, roles, or classification. Use `--refresh` only when explicitly requested. Report the endpoint and artifact paths. Describe baseline-comparable results as association, attainment-only results as attainment, and neither as causation. State that evaluation artifacts were generated deterministically from the frozen function. Offer AI interpretation only with explicit consent and label it as interpretation.
@@ -118,10 +121,10 @@ Use `/aw-value OWNER/REPO` to list workflows or `/aw-value OWNER/REPO WORKFLOW-N
 
 ### CAO Adapter Interface
 
-- The package-level adapter reads one `{schemaVersion: 1, timestamp, repositories, database}` request from stdin.
-- It derives one current observation window per supported repository from the frozen duration and maturation period. Routine CAO collection must never rebuild historical windows.
-- It calls `collectBatch` once for all supported repositories and calls `scoreMetric` for every metric using the returned evidence.
-- It emits one JSONL record per non-null metric with exactly `timestamp`, `repository`, `valueId`, and finite numeric `value`.
+- The package-level adapter reads one `{schemaVersion: 1, timestamp, repositories, database}` request from stdin and discovers every slug-named `.mjs` module directly under its `operational-value/` directory.
+- For each module, it derives one current observation window per supported repository from the frozen duration and maturation period. Routine CAO collection must never rebuild historical windows.
+- It calls each module's `collectBatch` once for all supported repositories and calls `scoreMetric` for every metric using the returned evidence.
+- It emits one JSONL record per non-null metric with exactly `timestamp`, `repository`, namespaced `valueId` (`WORKFLOW-SLUG.METRIC-ID`), and finite numeric `value`.
 - It emits no record for unsupported repositories and fails closed on malformed requests, inaccessible evidence, or invalid collection results.
 - Historical evaluation and CAO collection must import the same shared module so evidence and scoring cannot drift.
   

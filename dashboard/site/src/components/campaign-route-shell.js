@@ -20,7 +20,7 @@ const CAMPAIGN_TAB_COUNT_SOURCES = Object.freeze({
  *   rootClassName: string,
  *   selectMessage: string,
  *   description: string,
- *   currentTab: 'overview'|'workflows'|'runs'|'issues'|'pull-requests'|'repositories'|'insights'|'problems'|'reports',
+ *   currentTab: 'overview'|'workflows'|'runs'|'issues'|'repositories'|'insights'|'problems'|'reports',
  *   bodyRenderer: CampaignRouteBodyRenderer | undefined
  * }} CampaignRouteShellConfig
  */
@@ -54,7 +54,12 @@ export function renderCampaignRouteShell(context, config) {
     selectMessage: config.selectMessage,
     notFoundMessage: 'Campaign not found.',
     unavailableMessage: 'Campaign data is unavailable.',
-    isUnavailable: () => bindings.workflows.unavailable(),
+    isUnavailable: () => {
+      if (bindings.workflows.unavailable()) return true;
+      return !bindings.workflows.pending()
+        && bindings.workflows.empty()
+        && bindings.workflows.source()?.metadata?.completeness === 'complete';
+    },
     hasSelection: (routeValue) => normalizeCampaignRoute(routeValue).length > 0,
     currentTab: config.currentTab,
     tabListClassName: 'campaign-tabs',
@@ -71,10 +76,8 @@ export function renderCampaignRouteShell(context, config) {
       const workflows = bindings.workflows.rows()
         .filter((workflow) => campaignId && String(workflow.campaign).toLowerCase() === campaignId.toLowerCase());
       if (workflows.length === 0) {
-        const workflowsSource = bindings.workflows.source();
-        const stillCollecting = workflowsSource?.metadata?.availability !== 'unavailable'
-          && workflowsSource?.metadata?.completeness !== 'complete';
-        if (stillCollecting) {
+        const databaseLoading = bindings.workflows.pending();
+        if (databaseLoading) {
           const campaignName = campaignNameForRoute(campaignId, workflows);
           return {
             allocation: {
@@ -86,6 +89,34 @@ export function renderCampaignRouteShell(context, config) {
               role: 'status',
               'aria-busy': 'true'
             })
+          };
+        }
+        const workflowsSource = bindings.workflows.source();
+        const stillCollecting = workflowsSource?.metadata?.availability !== 'unavailable'
+          && workflowsSource?.metadata?.completeness !== 'complete';
+        if (stillCollecting && workflowsSource?.metadata?.completeness === 'partial') {
+          const campaignName = campaignNameForRoute(campaignId, workflows);
+          return {
+            allocation: {
+              title: campaignName,
+              description: config.description.replace('{campaignName}', campaignName),
+              navigationPage: 'campaigns'
+            },
+            content: renderEmptyMessage('Loading campaign data...', {
+              role: 'status',
+              'aria-busy': 'true'
+            })
+          };
+        }
+        if (bindings.workflows.empty()) {
+          const campaignName = campaignNameForRoute(campaignId, workflows);
+          return {
+            allocation: {
+              title: campaignName,
+              description: config.description.replace('{campaignName}', campaignName),
+              navigationPage: 'campaigns'
+            },
+            content: renderEmptyMessage('Campaign data will appear after the first data load completes.')
           };
         }
         return null;
@@ -105,6 +136,7 @@ export function renderCampaignRouteShell(context, config) {
     for (const binding of Object.values(bindings)) {
       binding.rows();
       binding.pending();
+      binding.empty();
       binding.unavailable();
     }
     const routeValue = root.dataset.campaign ?? '';

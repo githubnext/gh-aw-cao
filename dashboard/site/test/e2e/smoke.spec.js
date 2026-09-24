@@ -509,7 +509,7 @@ test('mobile shell keeps Overview navigation in the hamburger menu', async ({ pa
 
 
 
-test('Transactions is a responsive table of retained transaction data', async ({ page }) => {
+test('Indexing shows CAO Activity status, size trend, and retained transactions', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
@@ -532,6 +532,7 @@ test('Transactions is a responsive table of retained transaction data', async ({
         duplicateRawRunObservations: index,
         duplicateAgenticRunObservations: index,
         unenrichedRuns: index,
+        'activity-status': 'success',
         error: ''
       }));
       const metadata = {
@@ -545,6 +546,11 @@ test('Transactions is a responsive table of retained transaction data', async ({
       };
       const sources = {
         transactions: { source: 'transactions', rows, metadata },
+        'indexing-daily-ingestion': {
+          source: 'indexing-daily-ingestion',
+          rows: [{ day: '2026-09-12', records: 7950, 'workflow-runs': 6950 }],
+          metadata
+        },
         'configuration-policy': {
           source: 'configuration-policy',
           rows: [{ document: { version: 1 }, raw: '{"version":1}', diagnostics: [] }],
@@ -566,22 +572,22 @@ test('Transactions is a responsive table of retained transaction data', async ({
     </script>
   `);
 
-  const dataNavigation = page.locator('.nav-section').filter({ hasText: 'Data' });
-  await expect(dataNavigation.getByRole('link', { name: 'Transactions' })).toHaveCount(0);
-  await page.getByRole('link', { name: 'Settings' }).click();
-  await page.getByRole('link', { name: 'View retained transactions table' }).click();
+  const maintenanceNavigation = page.locator('.nav-section').filter({ hasText: 'Maintenance' });
+  await maintenanceNavigation.getByRole('link', { name: 'Indexing' }).click();
 
   const root = page.locator('.dashboard-root');
-  const transactionsPage = page.locator('[data-page-id="transactions"]');
-  const view = transactionsPage.locator('[data-view-layout="full-view"]');
+  const transactionsPage = page.locator('[data-page-id="indexing"]');
+  const view = transactionsPage.locator('[data-view-id="transaction-entries"]');
   const scroll = view.locator('.table-scroll');
-  await expect(transactionsPage.locator('[data-view-id]')).toHaveCount(1);
+  await expect(transactionsPage.locator('[data-view-id]')).toHaveCount(3);
   await expect(transactionsPage.getByRole('heading', { name: 'Local database' })).toHaveCount(0);
-  await expect(root).toHaveClass(/dashboard-full-view/);
-  await expect(transactionsPage.locator('.line-chart-series')).toHaveCount(0);
+  await expect(transactionsPage.locator('[data-chart-widget="bar"]')).toHaveCount(2);
+  await transactionsPage.getByRole('button', { name: 'Table' }).click();
+  await expect(transactionsPage.getByRole('columnheader', { name: 'CAO Activity status' })).toBeVisible();
+  await expect(transactionsPage.getByRole('cell', { name: 'success' }).first()).toBeVisible();
   await expect(view).toBeVisible();
   await expect(view.locator('[data-lazy-list]')).toHaveCount(1);
-  await expect(view.getByRole('searchbox', { name: 'Filter Transactions' })).toBeVisible();
+  await expect(view.getByRole('searchbox', { name: 'Filter Ingestion rate' })).toBeVisible();
   await expect(view.getByRole('cell', { name: 'ingest-jsonl' }).first()).toBeVisible();
   const headings = await view.locator('thead tr').first().getByRole('columnheader').allTextContents();
   expect(headings.at(-1)?.trim()).toBe('Created');
@@ -595,21 +601,16 @@ test('Transactions is a responsive table of retained transaction data', async ({
   ]));
   const scope = view.getByRole('link', { name: 'https://dashboard.example/.../logs-99.jsonl' }).first();
   await expect(scope).toHaveAttribute('href', 'https://dashboard.example/gh-aw-logs-shards/logs-99.jsonl');
-  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(900);
 
   await scroll.evaluate((element) => {
     element.scrollTop = 100;
     element.dispatchEvent(new Event('scroll'));
   });
-  await expect(root).toHaveClass(/dashboard-full-view-scrolled/);
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(root).not.toHaveClass(/dashboard-full-view-scrolled/);
   await expect(page.locator('.org-sidebar')).toBeVisible();
   await expect(transactionsPage.locator(':scope > .page-chrome > .filter-bar')).toBeHidden();
   await expect(view).toBeVisible();
-  await expect(root).toHaveClass(/dashboard-full-view/);
-  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
   await expect.poll(async () => scroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
   await expect.poll(async () => scroll.locator(':scope > .table-filter').evaluate(
     (element) => element.scrollWidth <= element.clientWidth
@@ -624,7 +625,7 @@ test('Transactions is a responsive table of retained transaction data', async ({
   await expect(page.locator('.top-nav')).toBeHidden();
 });
 
-test('Runs renders a last-week line graph above its responsive table and scrolls like Cost', async ({ page }) => {
+test('Runs renders a last-week stacked area graph above its responsive table and scrolls like Cost', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
@@ -715,7 +716,7 @@ test('Runs renders a last-week line graph above its responsive table and scrolls
   const view = runsPage.locator('[data-view-layout="full-view"]');
   const table = view.locator('[data-lazy-list]');
   const scroll = view.locator('.table-scroll');
-  const lineGraph = runsPage.locator('[data-view-id="runs-last-week"]');
+  const areaGraph = runsPage.locator('[data-view-id="runs-last-week"]');
   const columnHeaders = view.locator('thead > tr:first-child > th');
   const facetControl = columnHeaders.locator('.filter-select-control').first();
   const expectAlignedColumnHeaders = async () => {
@@ -726,18 +727,18 @@ test('Runs renders a last-week line graph above its responsive table and scrolls
   await expect(page.locator('[data-nav-page-id="runs"]')).toHaveAttribute('aria-current', 'page');
   await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view/);
   await expect(view).toHaveCount(1);
-  await expect(lineGraph.locator('[data-chart-widget="line"]')).toBeVisible();
-  await expect(lineGraph.locator('.line-chart-series')).toHaveCount(2);
-  await expect(lineGraph.locator('.chart-legend-line')).toContainText('failure');
-  await expect(lineGraph.locator('.chart-legend-line')).toContainText('success');
-  await expect(lineGraph.locator('.line-chart-y-axis text')).toHaveText(['50', '25', '0']);
-  const lineGraphHeadingBox = await lineGraph.getByRole('heading', { name: 'Runs in the last week' }).boundingBox();
-  const lineGraphChartBox = await lineGraph.locator('[data-chart-widget="line"] svg').boundingBox();
-  if (lineGraphHeadingBox === null || lineGraphChartBox === null) {
-    throw new Error('Expected line graph heading and chart boxes to be measurable.');
+  await expect(areaGraph.locator('[data-chart-widget="area"]')).toBeVisible();
+  await expect(areaGraph.locator('.area-chart-area')).toHaveCount(2);
+  await expect(areaGraph.locator('.chart-legend-area')).toContainText('failure');
+  await expect(areaGraph.locator('.chart-legend-area')).toContainText('success');
+  await expect(areaGraph.locator('.line-chart-y-axis text')).toHaveText(['100', '50', '0']);
+  const areaGraphHeadingBox = await areaGraph.getByRole('heading', { name: 'Runs in the last week' }).boundingBox();
+  const areaGraphChartBox = await areaGraph.locator('[data-chart-widget="area"] svg').boundingBox();
+  if (areaGraphHeadingBox === null || areaGraphChartBox === null) {
+    throw new Error('Expected area graph heading and chart boxes to be measurable.');
   }
-  expect(lineGraphChartBox.width).toBeGreaterThan(0);
-  expect(lineGraphChartBox.height).toBeGreaterThan(0);
+  expect(areaGraphChartBox.width).toBeGreaterThan(0);
+  expect(areaGraphChartBox.height).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'Table', exact: true }).click();
   await expect(table).toBeVisible();
   await expect(table.locator('tbody > tr')).toHaveCount(25);
@@ -773,17 +774,17 @@ test('Runs renders a last-week line graph above its responsive table and scrolls
   expect(scrolledSummaryBox.y - (facetControlBox.y + facetControlBox.height)).toBeGreaterThanOrEqual(4);
   await page.getByRole('button', { name: 'Cards' }).click();
   await page.getByRole('button', { name: 'Chart' }).click();
-  await expect(lineGraph).toBeVisible();
+  await expect(areaGraph).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   const mobileViewModeToggle = page.locator('.mobile-view-mode-toggle');
   await expect(runsPage.locator(':scope > .page-chrome > .filter-bar')).toBeHidden();
-  await expect(lineGraph).toBeVisible();
+  await expect(areaGraph).toBeVisible();
   await expect(table).toBeHidden();
   await expect(mobileViewModeToggle).toHaveAttribute('aria-label', 'Switch to Cards view');
   await mobileViewModeToggle.click();
   await mobileViewModeToggle.click();
-  await expect(lineGraph).toBeHidden();
+  await expect(areaGraph).toBeHidden();
   await expect(table).toBeVisible();
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
   await expectAlignedColumnHeaders();
@@ -1440,18 +1441,18 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
 
   const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
   const data = page.locator('.nav-section').filter({ hasText: 'Data' });
-  const manage = page.locator('.nav-section').filter({ hasText: 'Manage' });
+  const maintenance = page.locator('.nav-section').filter({ hasText: 'Maintenance' });
   await expect(cleanNavigation).toHaveText(['Overview']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
   await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Cost', 'Models & Agents', 'Firewall', 'MCPs']);
-  await expect(manage.locator('summary')).toHaveText('Manage');
-  await expect(manage.getByRole('link')).toHaveText(['Maintenance', 'Settings']);
-  await expect(manage).toHaveClass(/nav-section-bottom/);
+  await expect(maintenance.locator('summary')).toHaveText('Maintenance');
+  await expect(maintenance.getByRole('link')).toHaveText(['Maintenance', 'Indexing', 'Settings']);
+  await expect(maintenance).toHaveClass(/nav-section-bottom/);
   await expect.poll(async () => {
     const [navBox, manageBox] = await Promise.all([
       page.locator('.primary-nav').boundingBox(),
-      manage.boundingBox()
+      maintenance.boundingBox()
     ]);
     return navBox !== null && manageBox !== null
       ? Math.round(navBox.y + navBox.height - (manageBox.y + manageBox.height))
@@ -1482,9 +1483,6 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(resetDialog).toContainText('This action cannot be undone.');
   await resetDialog.getByRole('button', { name: 'Cancel' }).click();
   await expect(resetDialog).not.toBeVisible();
-  await page.getByRole('link', { name: 'View retained transactions table' }).click();
-  await expect(page).toHaveURL(/#page-transactions$/);
-  await page.getByRole('link', { name: 'Settings' }).click();
   const description = page.locator('.overview-header .lede');
   expect(await description.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(true);
   await expect(page.getByText('Dashboard Next', { exact: true })).toHaveCount(0);
@@ -1558,7 +1556,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
   await expect(overviewPage.locator('.factory-station')).toHaveCount(2);
   await page.locator('.mobile-nav-menu > summary').click();
-  await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Manage']);
+  await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Maintenance']);
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toHaveCount(0);
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(overviewPage.locator('.factory-intro')).toBeInViewport();

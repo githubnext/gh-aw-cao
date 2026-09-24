@@ -881,7 +881,35 @@
     "name": "transactions",
     "stores": ["transactions"],
     "from": "$transactions",
+    "compute": [
+      {
+        "as": "error-text",
+        "function": "coalesce",
+        "args": [
+          { "field": "error" },
+          { "value": "no-error" }
+        ]
+      },
+      {
+        "as": "ingestion-succeeded",
+        "function": "equals-any",
+        "args": [
+          { "field": "error-text" },
+          { "value": "no-error" }
+        ]
+      },
+      {
+        "as": "activity-status",
+        "function": "if",
+        "args": [
+          { "field": "ingestion-succeeded" },
+          { "value": "success" },
+          { "value": "failure" }
+        ]
+      }
+    ],
     "select": [
+      { "field": "activity-status" },
       { "field": "id" },
       { "field": "kind" },
       { "field": "createdAt" },

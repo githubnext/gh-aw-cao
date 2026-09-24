@@ -436,7 +436,7 @@ export const TABLE_FIELDS = {
   tools: [...RUN_RECORD_FIELDS, 'tool-type', 'is-skill', 'name'],
   audits: RUN_RECORD_FIELDS,
   issues: [...RUN_RECORD_FIELDS, 'is-pull-request'],
-  transactions: ['id', 'kind', 'createdAt', 'payloadScope', 'payloadHash', 'payloadEtag', 'records', 'committedRecords', 'rawPayloadRecords', 'rawRuns', 'agenticRunRecords', 'agenticRuns', 'duplicateRawRunObservations', 'duplicateAgenticRunObservations', 'unenrichedRuns', 'error'],
+  transactions: ['activity-status', 'id', 'kind', 'createdAt', 'payloadScope', 'payloadHash', 'payloadEtag', 'records', 'committedRecords', 'rawPayloadRecords', 'rawRuns', 'agenticRunRecords', 'agenticRuns', 'duplicateRawRunObservations', 'duplicateAgenticRunObservations', 'unenrichedRuns', 'error'],
   admissions: ['organization', 'repository', 'workflow', 'run', 'observed-at', 'campaign', 'workflow-role', 'worker', 'target-repository', 'admission-status', 'admission-reason', 'failed-check', 'github-api-status', 'github-api-remaining', 'github-api-required', 'github-api-reset-at', 'runner-disk-status', 'runner-disk-available-mb', 'runner-disk-required-mb', 'run-link'],
   'admission-checks': ['organization', 'repository', 'workflow', 'run', 'observed-at', 'campaign', 'workflow-role', 'worker', 'target-repository', 'admission-status', 'admission-reason', 'failed-check', 'check', 'check-order', 'check-status', 'github-api-status', 'github-api-remaining', 'github-api-required', 'github-api-reset-at', 'runner-disk-status', 'runner-disk-available-mb', 'runner-disk-required-mb', 'run-link'],
   'run-performance': ['organization', 'repository', 'workflow', 'run', 'started-at', 'run-conclusion', 'rollout-mode', 'run-duration-seconds', 'sandbox-runtime', 'engine', 'model', 'run-link'],

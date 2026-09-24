@@ -10,13 +10,14 @@ import {
 } from "./common.mjs";
 
 function usage() {
-  return "usage: evaluate.mjs [--end ISO-8601] [--output-dir DIR] [--function PATH] [--no-runs] [--refresh] OWNER/REPO WORKFLOW-NAME-OR-PATH";
+  return "usage: evaluate.mjs [--end ISO-8601] [--output-dir DIR] [--function PATH] [--campaign SLUG] [--no-runs] [--refresh] OWNER/REPO WORKFLOW-NAME-OR-PATH";
 }
 
 const args = process.argv.slice(2);
 let endAt = nowUtc();
 let outputRoot = "docs/operational-value/reports";
 let valueFunction;
+let campaign;
 let collectRuns = true;
 let refresh = false;
 while (args[0]?.startsWith("-")) {
@@ -24,6 +25,7 @@ while (args[0]?.startsWith("-")) {
   if (option === "--end") endAt = args.shift() ?? fail("--end requires an ISO-8601 timestamp");
   else if (option === "--output-dir") outputRoot = args.shift() ?? fail("--output-dir requires a directory");
   else if (option === "--function") valueFunction = args.shift() ?? fail("--function requires a path");
+  else if (option === "--campaign") campaign = args.shift() ?? fail("--campaign requires a slug");
   else if (option === "--no-runs") collectRuns = false;
   else if (option === "--refresh") refresh = true;
   else if (["-h", "--help"].includes(option)) {
@@ -34,8 +36,12 @@ while (args[0]?.startsWith("-")) {
 if (args.length !== 2) fail(usage());
 const [repository, workflowInput] = args;
 const workflowSlug = path.basename(workflowInput, ".md");
+if (campaign && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(campaign)) fail("--campaign requires a valid campaign slug");
 process.chdir(repoRoot);
-const canonicalFunction = run(path.join(scriptDir, "value-function-path.mjs"), [repository, workflowSlug]).trim();
+const canonicalFunction = run(
+  path.join(scriptDir, "value-function-path.mjs"),
+  [repository, workflowSlug, ...(campaign ? [campaign] : [])],
+).trim();
 valueFunction ??= canonicalFunction;
 if (!existsSync(valueFunction)) fail(`value function not found: ${valueFunction}`);
 if (!isIsoUtc(endAt)) fail("--end must use UTC ISO-8601 format: YYYY-MM-DDTHH:MM:SSZ");
