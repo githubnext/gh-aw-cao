@@ -11421,23 +11421,23 @@
           },
           "views": [
             {
-              "id": "workflows-by-runs",
-              "title": "Workflows by runs",
-              "description": "Declared workflows ranked by the number of observed runs.",
+              "id": "workflows-by-aic-per-run",
+              "title": "Average AIC per run by workflow",
+              "description": "Declared workflows ranked by average AI Credit cost per observed run.",
               "data": {
                 "source": "workflow-inventory",
                 "order-by": [
                   {
-                    "field": "runs",
+                    "field": "aic-per-run",
                     "direction": "desc"
                   }
                 ],
                 "limit": 10
               },
               "mark": "chart",
-              "chart": "pie",
-              "layout": "horizontal",
-              "empty-message": "No workflow runs observed.",
+              "chart": "horizontal-bar",
+              "layout": "full",
+              "empty-message": "No workflow AI Credit cost data is available.",
               "encoding": {
                 "x": {
                   "field": "workflow-label",
@@ -11446,9 +11446,10 @@
                   "title": "Workflow"
                 },
                 "y": {
-                  "field": "runs",
+                  "field": "aic-per-run",
                   "type": "quantitative",
-                  "title": "Runs"
+                  "title": "Average AIC per run",
+                  "unit": "aic-per-run"
                 },
                 "href": {
                   "field": "workflow-link",

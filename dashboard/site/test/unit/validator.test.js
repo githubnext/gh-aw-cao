@@ -712,19 +712,19 @@ describe('dashboard document validation', () => {
     );
 
     expect(page.definition.views.find((/** @type {{ id: string }} */ view) =>
-      view.id === 'workflows-by-runs'
+      view.id === 'workflows-by-aic-per-run'
     )).toMatchObject({
       data: {
         source: 'workflow-inventory',
-        'order-by': [{ field: 'runs', direction: 'desc' }],
+        'order-by': [{ field: 'aic-per-run', direction: 'desc' }],
         limit: 10
       },
       mark: 'chart',
-      chart: 'pie',
-      layout: 'horizontal',
+      chart: 'horizontal-bar',
+      layout: 'full',
       encoding: {
         x: { field: 'workflow-label', type: 'nominal', format: 'workflow-identity-label' },
-        y: { field: 'runs', type: 'quantitative' },
+        y: { field: 'aic-per-run', type: 'quantitative', unit: 'aic-per-run' },
         href: { field: 'workflow-link', type: 'nominal' }
       }
     });
