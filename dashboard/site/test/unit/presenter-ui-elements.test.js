@@ -53,6 +53,27 @@ describe('dashboard sidebar', () => {
     expect(labels).toEqual(['Main', 'Experimental']);
   });
 
+  it('anchors bottom navigation sections after the standard sections', () => {
+    const sidebar = renderDashboardNavigation([
+      { id: 'overview', title: 'Overview' },
+      { id: 'runs', title: 'Runs' },
+      { id: 'maintenance', title: 'Maintenance' },
+      { id: 'configuration', title: 'Settings' }
+    ], 'Example', [
+      { label: 'Main', pages: ['overview'] },
+      { label: 'Data', pages: ['runs'] },
+      { label: 'Manage', placement: 'bottom', pages: ['maintenance', 'configuration'] }
+    ]);
+
+    const sectionLabels = [...sidebar.querySelectorAll('.nav-section-label')].map((element) => element.textContent);
+    expect(sectionLabels).toEqual(['Main', 'Data', 'Manage']);
+    const bottomSection = sidebar.querySelector('.nav-section-bottom');
+    expect(bottomSection?.querySelector('.nav-section-label')?.textContent).toBe('Manage');
+    expect([...bottomSection?.querySelectorAll('[data-nav-page-id]') ?? []].map((element) => element.textContent))
+      .toEqual(['Maintenance', 'Settings']);
+    expect(bottomSection?.hasAttribute('open')).toBe(true);
+  });
+
   it('cycles the active page view from the mobile header control', () => {
     const sidebar = renderDashboardNavigation([{ id: 'runs', title: 'Runs' }], 'Example', undefined);
     const page = document.createElement('section');

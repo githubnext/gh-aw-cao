@@ -1545,6 +1545,13 @@ function validateNavigation(navigation, navigationNode, pageIds, errors) {
         `${sectionPath}.experimental`
       ));
     }
+    if (section.placement !== undefined && section.placement !== 'bottom') {
+      errors.push(createError(
+        ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+        'navigation section placement must be bottom when present.',
+        `${sectionPath}.placement`
+      ));
+    }
 
     if (!Array.isArray(section.pages) || section.pages.length === 0) {
       errors.push(createError(

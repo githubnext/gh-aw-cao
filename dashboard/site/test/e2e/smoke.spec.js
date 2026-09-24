@@ -1360,11 +1360,24 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   `);
 
   const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
-  const data = page.locator('.nav-section').first();
-  await expect(cleanNavigation).toHaveText(['Overview', 'Settings']);
+  const data = page.locator('.nav-section').filter({ hasText: 'Data' });
+  const manage = page.locator('.nav-section').filter({ hasText: 'Manage' });
+  await expect(cleanNavigation).toHaveText(['Overview']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
-  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Maintenance', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Models & Agents', 'Firewall', 'MCPs']);
+  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Models & Agents', 'Firewall', 'MCPs']);
+  await expect(manage.locator('summary')).toHaveText('Manage');
+  await expect(manage.getByRole('link')).toHaveText(['Maintenance', 'Settings']);
+  await expect(manage).toHaveClass(/nav-section-bottom/);
+  await expect.poll(async () => {
+    const [navBox, manageBox] = await Promise.all([
+      page.locator('.primary-nav').boundingBox(),
+      manage.boundingBox()
+    ]);
+    return navBox !== null && manageBox !== null
+      ? Math.round(navBox.y + navBox.height - (manageBox.y + manageBox.height))
+      : null;
+  }).toBeLessThanOrEqual(1);
   await expect(page.locator('.nav-section').filter({ hasText: 'Experimental' })).toHaveCount(0);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
   await expect(page.locator('.account-menu')).toHaveCount(0);
@@ -1460,7 +1473,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
   await expect(overviewPage.locator('.factory-station')).toHaveCount(2);
   await page.locator('.mobile-nav-menu > summary').click();
-  await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data']);
+  await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Manage']);
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toHaveCount(0);
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(overviewPage.locator('.factory-intro')).toBeInViewport();
