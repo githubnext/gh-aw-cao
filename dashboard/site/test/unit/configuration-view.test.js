@@ -259,6 +259,9 @@ describe('Configuration dashboard view', () => {
       action: 'upgrade-target-repository',
       context: ['repository']
     }]);
+    expect(dashboard['cli-actions']
+      .find((/** @type {{ id: string }} */ action) => action.id === 'update-campaign')
+      .command).toBe('./cao.sh update {{campaign}}');
     expect(manageNavigation.placement).toBe('bottom');
     expect(manageNavigation.pages).toContain('maintenance');
   });

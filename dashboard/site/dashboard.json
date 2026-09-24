@@ -1287,7 +1287,7 @@
         "label": "Update campaign",
         "description": "Update this campaign's agentic workflow.",
         "icon": "sync",
-        "command": "./cao.sh add {{campaign}}",
+        "command": "./cao.sh update {{campaign}}",
         "placement": "row"
       },
       {
