@@ -98,6 +98,10 @@ export function elementHandlesUnavailableSource(name) {
   return UNAVAILABLE_AWARE_ELEMENTS.has(name);
 }
 
+export function registeredUiElementNames() {
+  return [...ELEMENT_RENDERERS.keys()];
+}
+
 /**
  * @param {ElementRenderContext} context
  * @returns {HTMLElement | null}

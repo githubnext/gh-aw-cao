@@ -24,7 +24,7 @@ export async function pruneDashboardFile({ inputPath, outputPath } = {}) {
   };
 }
 
-async function discoverStaticDashboardPageLinks(dashboardDirectory) {
+export async function discoverStaticDashboardPageLinks(dashboardDirectory) {
   const sourceDirectory = path.join(dashboardDirectory, 'src');
   const links = new Set();
   const pending = [sourceDirectory];
@@ -45,12 +45,22 @@ async function discoverStaticDashboardPageLinks(dashboardDirectory) {
       }
       if (!entry.isFile() || (!entry.name.endsWith('.js') && !entry.name.endsWith('.json'))) continue;
       const source = await readFile(entryPath, 'utf8');
-      for (const match of source.matchAll(/#page-([a-z0-9-]+)/gi)) links.add(match[1]);
-      for (const match of source.matchAll(/\b\w+Tab\(\s*['"]([a-z0-9-]+)['"]/gi)) links.add(match[1]);
-      if (entry.name.endsWith('.json')) {
-        for (const match of source.matchAll(/"page"\s*:\s*"([a-z0-9-]+)"/gi)) links.add(match[1]);
-      }
+      for (const pageId of findStaticDashboardPageLinks(source, {
+        json: entry.name.endsWith('.json')
+      })) links.add(pageId);
     }
+  }
+  return links;
+}
+
+export function findStaticDashboardPageLinks(source, { json = false } = {}) {
+  const links = new Set();
+  for (const match of source.matchAll(/\bhref\s*[:=]\s*['"`][^'"`\r\n]*#page-([a-z0-9-]+)/gi)) {
+    links.add(match[1]);
+  }
+  for (const match of source.matchAll(/\b\w+Tab\(\s*['"]([a-z0-9-]+)['"]/gi)) links.add(match[1]);
+  if (json) {
+    for (const match of source.matchAll(/"page"\s*:\s*"([a-z0-9-]+)"/gi)) links.add(match[1]);
   }
   return links;
 }

@@ -1,8 +1,11 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { relative, resolve } from 'node:path';
 import { parse } from 'yaml';
+import { discoverStaticDashboardPageLinks } from '../../../activity/dashboard-prune-command.mjs';
+import { registeredUiElementNames } from '../src/components/ui-elements.js';
 import { renderDashboardQueryUsageGraph } from '../src/query-usage.js';
 import { validateDashboardDocument } from '../src/validator.js';
+import { findMissingStaticDashboardReferences } from './dashboard-static-references.mjs';
 
 const repositoryRoot = resolve(process.cwd(), '../..');
 const ignoredDirectories = new Set(['.cao', '.git', 'coverage', 'dist', 'node_modules', 'test-results']);
@@ -35,6 +38,16 @@ for (const dashboardPath of dashboardPaths) {
   const source = await readFile(dashboardPath, 'utf8');
   const result = validateDashboardDocument(source);
   const displayPath = relative(repositoryRoot, dashboardPath);
+  let staticReferenceErrors = [];
+  try {
+    const document = parse(source);
+    staticReferenceErrors = findMissingStaticDashboardReferences(document, {
+      linkedPageIds: await discoverStaticDashboardPageLinks(resolve(dashboardPath, '..')),
+      registeredElementIds: registeredUiElementNames()
+    });
+  } catch {
+    // Document parsing errors are reported by the validator below.
+  }
   const hasDeadQueries = !result.ok && result.errors.some((error) => error.code === 'DLS-E015');
   if (renderQueryGraphs || hasDeadQueries) {
     try {
@@ -47,11 +60,16 @@ for (const dashboardPath of dashboardPaths) {
       // Validation below reports malformed input without aborting analysis of other documents.
     }
   }
-  if (result.ok) continue;
+  if (result.ok && staticReferenceErrors.length === 0) continue;
 
   invalidCount += 1;
-  for (const error of result.errors) {
-    console.error(`${displayPath}:${error.path}: ${error.code} ${error.message}`);
+  if (!result.ok) {
+    for (const error of result.errors) {
+      console.error(`${displayPath}:${error.path}: ${error.code} ${error.message}`);
+    }
+  }
+  for (const error of staticReferenceErrors) {
+    console.error(`${displayPath}: ${error}`);
   }
 }
 

@@ -8,6 +8,7 @@ import {
   pruneDashboardDocument,
   scoreDashboardQuerySimilarity
 } from '../../activity/dashboard-prune.mjs';
+import { findStaticDashboardPageLinks } from '../../activity/dashboard-prune-command.mjs';
 import { runCli } from '../../activity/cao.mjs';
 
 function dashboard(overrides = {}) {
@@ -40,6 +41,21 @@ const SIMILARITY_STAGE_KEYS = [
   'limit'
 ];
 const FIELD_REFERENCE_KEYS = new Set(['field', 'left', 'right', 'as']);
+
+test('finds source navigation without treating CSS or DOM selectors as links', () => {
+  const source = `
+    const link = { href: '#page-campaigns' };
+    element.href = \`\${baseUrl}#page-transactions\`;
+    workflowTab('workflow-runs', 'Runs');
+    root.querySelector('#page-title');
+    const styles = \`#page-preview { display: grid; }\`;
+  `;
+
+  assert.deepEqual(
+    [...findStaticDashboardPageLinks(source)].sort(),
+    ['campaigns', 'transactions', 'workflow-runs']
+  );
+});
 
 function seededRandom(seed) {
   let state = seed >>> 0;
