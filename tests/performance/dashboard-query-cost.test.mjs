@@ -96,6 +96,20 @@ test("static query cost evaluator selects the queries to investigate", () => {
 });
 
 test(
+  "deployed snapshot matches the canonical schema version",
+  { skip: snapshotAvailable ? false : "deployed SQLite snapshot is unavailable" },
+  () => {
+    assert.ok(report, "benchmark report is available");
+    // An older snapshot is rebuilt from scratch on open, which discards every
+    // record and turns the benchmark into a meaningless all-zero report.
+    assert.ok(
+      report.database["version-compatible"],
+      `Deployed snapshot ${report.database.path} records canonical schema version ${report.database["snapshot-version"]}, but the reader expects ${report.database["expected-version"]}.`,
+    );
+  },
+);
+
+test(
   "deployed snapshot projects records to measure",
   { skip: snapshotAvailable ? false : "deployed SQLite snapshot is unavailable" },
   () => {

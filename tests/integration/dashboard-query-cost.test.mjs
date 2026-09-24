@@ -4,9 +4,12 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { DatabaseSync } from "node:sqlite";
+import { DATABASE_VERSION } from "../../dashboard/site/src/data/storage/indexeddb.js";
 import {
   benchmarkDashboardQueryCost,
   dashboardQueryCostMarkdown,
+  readSnapshotDatabaseVersion,
 } from "../helpers/dashboard-query-cost.mjs";
 
 const dashboardDocument = JSON.parse(
@@ -51,6 +54,8 @@ test("benchmark measures computational and space cost per query", async (t) => {
   assert.equal(report.measurements.length, 3);
   assert.equal(report.queries, dashboardDocument.dashboard.queries.length);
   assert.ok(report.database["records-read"] > 0);
+  assert.equal(report.database["snapshot-version"], DATABASE_VERSION);
+  assert.equal(report.database["version-compatible"], true);
   for (const measurement of report.measurements) {
     assert.notEqual(measurement.status, "failed", measurement.failure ?? "");
     assert.ok(measurement["duration-ms"] >= 0);
@@ -95,6 +100,8 @@ test("benchmark reports an empty snapshot instead of an all-zero measurement", a
     limit: 3,
   });
   assert.equal(report.database["records-read"], 0);
+  assert.equal(report.database["snapshot-version"], null);
+  assert.equal(report.database["version-compatible"], false);
   assert.deepEqual(
     report.database["empty-sources"].toSorted(),
     Object.keys(report.database["source-records"]).toSorted(),
@@ -103,4 +110,37 @@ test("benchmark reports an empty snapshot instead of an all-zero measurement", a
     dashboardQueryCostMarkdown(report),
     /canonical projection returned no records/,
   );
+});
+
+test("benchmark reads an outdated snapshot without destroying it", async (t) => {
+  const { root, database } = await syntheticSnapshot();
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const outdated = DATABASE_VERSION - 1;
+  const connection = new DatabaseSync(database);
+  connection.prepare("UPDATE __idb_databases SET version = ?").run(outdated);
+  connection.close();
+  const before = new DatabaseSync(database, { readOnly: true });
+  const records = Number(before.prepare("SELECT count(*) AS c FROM __idb_records").get().c);
+  before.close();
+  assert.ok(records > 0);
+
+  assert.equal(readSnapshotDatabaseVersion(database), outdated);
+  const report = await benchmarkDashboardQueryCost({
+    databasePath: database,
+    document: dashboardDocument,
+    limit: 2,
+  });
+  assert.equal(report.database["snapshot-version"], outdated);
+  assert.equal(report.database["version-compatible"], false);
+  assert.ok(
+    dashboardQueryCostMarkdown(report)
+      .includes(`written at canonical schema version **${outdated}** but the reader expects **${DATABASE_VERSION}**`),
+  );
+
+  // Opening an outdated canonical database rebuilds its stores, so the
+  // benchmark must measure a copy and leave the downloaded snapshot intact.
+  const after = new DatabaseSync(database, { readOnly: true });
+  assert.equal(Number(after.prepare("SELECT count(*) AS c FROM __idb_records").get().c), records);
+  assert.equal(Number(after.prepare("SELECT version FROM __idb_databases").get().version), outdated);
+  after.close();
 });

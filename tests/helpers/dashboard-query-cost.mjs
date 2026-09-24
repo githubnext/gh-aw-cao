@@ -8,7 +8,10 @@
  * operation count, result size, and retained heap footprint are observable in
  * CI without a browser.
  */
-import { readFile } from "node:fs/promises";
+import { DatabaseSync } from "node:sqlite";
+import { copyFile, mkdtemp, readFile, rm } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { analyzeDashboardComplexity } from "../../activity/dashboard-complexity.mjs";
 import {
@@ -20,6 +23,10 @@ import {
   resolveDashboardQuerySources,
 } from "../../dashboard/site/src/data/queries/declarative.js";
 import { queryDatabaseSources } from "../../dashboard/site/src/data/queries/database.js";
+import {
+  canonicalDatabaseName,
+  DATABASE_VERSION,
+} from "../../dashboard/site/src/data/storage/indexeddb.js";
 import { installSqliteIndexedDB } from "../../dashboard/site/src/data/storage/sqlite-indexeddb.js";
 
 export const DEFAULT_QUERY_COST_CANDIDATES = 10;
@@ -29,22 +36,59 @@ const BENCHMARK_TIMEOUT_MS = 600_000;
 const BENCHMARK_MAX_OPERATIONS = 2_000_000_000;
 
 /**
- * Installs the SQLite-backed IndexedDB shim and returns a disposer that
- * restores the previously installed globals. The factory holds no connection
- * of its own: each `open()` creates and closes its own SQLite connection, so
- * restoring the globals releases everything the benchmark installed.
+ * Reads the canonical schema version recorded in a SQLite snapshot without
+ * opening it through the IndexedDB shim, which would trigger a destructive
+ * upgrade when the versions differ.
+ *
+ * @param {string} databasePath
+ * @returns {number | null}
+ */
+export function readSnapshotDatabaseVersion(databasePath) {
+  const filename = path.resolve(databasePath);
+  if (!existsSync(filename)) return null;
+  const connection = new DatabaseSync(filename, { readOnly: true });
+  try {
+    const table = connection
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = '__idb_databases'")
+      .get();
+    if (!table) return null;
+    const row = connection
+      .prepare("SELECT version FROM __idb_databases WHERE name = ?")
+      .get(canonicalDatabaseName());
+    const version = Number(/** @type {any} */ (row)?.version);
+    return Number.isInteger(version) ? version : null;
+  } finally {
+    connection.close();
+  }
+}
+
+/**
+ * Copies the snapshot and installs the SQLite-backed IndexedDB shim over the
+ * copy, returning a disposer that removes it and restores the previously
+ * installed globals.
+ *
+ * Opening the canonical database deletes every object store when the stored
+ * schema version is older than `DATABASE_VERSION`, so measuring the downloaded
+ * file directly would destroy it and silently report an empty projection.
  *
  * @param {string} databasePath
  */
-export function openDeployedDatabase(databasePath) {
+export async function openDeployedDatabase(databasePath) {
   const previousIndexedDB = globalThis.indexedDB;
   const previousKeyRange = globalThis.IDBKeyRange;
-  const indexedDB = installSqliteIndexedDB(path.resolve(databasePath));
+  const directory = await mkdtemp(path.join(tmpdir(), "cao-query-cost-snapshot-"));
+  const copy = path.join(directory, "snapshot.sqlite");
+  if (existsSync(path.resolve(databasePath))) {
+    await copyFile(path.resolve(databasePath), copy);
+  }
+  const indexedDB = installSqliteIndexedDB(copy);
   return {
     indexedDB,
-    close() {
+    path: copy,
+    async close() {
       globalThis.indexedDB = previousIndexedDB;
       globalThis.IDBKeyRange = previousKeyRange;
+      await rm(directory, { recursive: true, force: true });
     },
   };
 }
@@ -192,7 +236,9 @@ export async function benchmarkDashboardQueryCost({ databasePath, document, limi
     .filter((query) => query && typeof query.name === "string")
     .map((query) => [query.name, query]));
   const defects = dashboardQueryDefects(definitions);
-  const database = openDeployedDatabase(databasePath);
+  // Read before opening: the shim's upgrade path rewrites the stored version.
+  const snapshotVersion = readSnapshotDatabaseVersion(databasePath);
+  const database = await openDeployedDatabase(databasePath);
   const indexedDB = database.indexedDB;
   try {
     const required = resolveDashboardQuerySources(definitions, candidates.map(({ name }) => name));
@@ -240,6 +286,9 @@ export async function benchmarkDashboardQueryCost({ databasePath, document, limi
         "empty-sources": Object.entries(sourceRecords)
           .filter(([, count]) => count === 0)
           .map(([name]) => name),
+        "snapshot-version": snapshotVersion,
+        "expected-version": DATABASE_VERSION,
+        "version-compatible": snapshotVersion === DATABASE_VERSION,
       },
       "static-model": analysis.summary.model,
       "static-materialize-all-row-read-units": analysis.summary["materialize-all-row-read-units"],
@@ -248,7 +297,7 @@ export async function benchmarkDashboardQueryCost({ databasePath, document, limi
       "most-costly-by-memory": rankMeasurements(measurements, "result-bytes", "retained-heap-bytes"),
     };
   } finally {
-    database.close();
+    await database.close();
   }
 }
 
@@ -300,6 +349,16 @@ export function dashboardQueryCostMarkdown(report) {
   const sourceRecords = Object.entries(report.database["source-records"] ?? {})
     .toSorted(([left, leftCount], [right, rightCount]) => rightCount - leftCount || left.localeCompare(right));
   const emptySources = report.database["empty-sources"] ?? [];
+  const snapshotVersion = report.database["snapshot-version"];
+  const expectedVersion = report.database["expected-version"];
+  const versionDiagnostic = report.database["version-compatible"]
+    ? []
+    : [
+      "",
+      snapshotVersion === null
+        ? `> The snapshot records no canonical schema version, so it is not a canonical dashboard database. The reader expects version ${expectedVersion}.`
+        : `> The snapshot was written at canonical schema version **${snapshotVersion}** but the reader expects **${expectedVersion}**. Opening an older snapshot rebuilds the canonical stores from scratch, which discards every record; republish the deployed data from the current schema.`,
+    ];
   return [
     "## Dashboard query cost (deployed SQLite snapshot)",
     "",
@@ -310,8 +369,9 @@ export function dashboardQueryCostMarkdown(report) {
       ? []
       : [
         "",
-        "> The canonical projection returned no records, so every measurement below is meaningless. The snapshot is empty, stale, or was written with an incompatible canonical schema version.",
+        "> The canonical projection returned no records, so every measurement below is meaningless.",
       ]),
+    ...versionDiagnostic,
     ...(sourceRecords.length === 0
       ? []
       : [
