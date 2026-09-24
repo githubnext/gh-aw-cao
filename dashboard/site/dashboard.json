@@ -12544,6 +12544,99 @@
         ]
       },
       {
+        "id": "operational-values",
+        "kind": "custom",
+        "title": "Operational Values",
+        "navigation-label": "Operational Values",
+        "icon": "graph",
+        "description": "Analyze retained operational-value observations across repositories and workflows.",
+        "views": [
+          {
+            "id": "operational-values-table",
+            "title": "Operational Values",
+            "description": "Retained operational-value observations with their scope, definition, value, and evidence.",
+            "data": {
+              "source": "operational-values",
+              "order-by": [
+                {
+                  "field": "observed-at",
+                  "direction": "desc"
+                }
+              ]
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "column-summaries": true,
+            "layout": "full-view",
+            "empty-message": "No operational values have been observed.",
+            "encoding": {
+              "href": {
+                "field": "run-link",
+                "type": "nominal"
+              },
+              "columns": [
+                {
+                  "field": "observed-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Observed"
+                },
+                {
+                  "field": "operational-value-definition",
+                  "type": "nominal",
+                  "title": "Definition"
+                },
+                {
+                  "field": "operational-value",
+                  "type": "quantitative",
+                  "title": "Value"
+                },
+                {
+                  "field": "operational-value-unit",
+                  "type": "nominal",
+                  "title": "Unit"
+                },
+                {
+                  "field": "operational-value-direction",
+                  "type": "nominal",
+                  "title": "Direction"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository",
+                  "display": "repository-link"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "title": "Workflow",
+                  "display": "workflow-link"
+                },
+                {
+                  "field": "rollout-mode",
+                  "type": "nominal",
+                  "title": "Mode",
+                  "display": "mode"
+                },
+                {
+                  "field": "experiment",
+                  "type": "nominal",
+                  "title": "Experiment"
+                },
+                {
+                  "field": "run",
+                  "type": "nominal",
+                  "title": "Run",
+                  "display": "run-link"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
         "id": "transactions",
         "kind": "custom",
         "title": "Transactions",
@@ -13365,6 +13458,7 @@
           "workflows",
           "runs",
           "issues",
+          "operational-values",
           "engines-models",
           "firewall",
           "mcps"

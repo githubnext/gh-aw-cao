@@ -118,6 +118,46 @@ describe('dashboard view query contracts', () => {
     }]);
   });
 
+  it('renders operational values as a full-view interactive lazy table under Data', () => {
+    const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) =>
+      candidate.id === 'operational-values'
+    );
+    const dataNavigation = dashboard.navigation.find(
+      (/** @type {Record<string, unknown>} */ section) => section.label === 'Data'
+    );
+
+    expect(/** @type {Record<string, unknown>} */ (dataNavigation).pages).toContain('operational-values');
+    expect(page).toMatchObject({
+      kind: 'custom',
+      title: 'Operational Values',
+      views: [{
+        id: 'operational-values-table',
+        data: {
+          source: 'operational-values',
+          'order-by': [{ field: 'observed-at', direction: 'desc' }]
+        },
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        layout: 'full-view'
+      }]
+    });
+    expect(viewsOf(page)[0]?.encoding?.columns.map(
+      (/** @type {{ field: string }} */ column) => column.field
+    )).toEqual([
+      'observed-at',
+      'operational-value-definition',
+      'operational-value',
+      'operational-value-unit',
+      'operational-value-direction',
+      'repository',
+      'workflow',
+      'rollout-mode',
+      'experiment',
+      'run'
+    ]);
+  });
+
   it('keeps campaign run navigation first and failure views scoped to dispatches', () => {
     const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-runs');
     const views = viewsOf(page);
