@@ -1,0 +1,81 @@
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import test from 'node:test';
+
+const root = path.resolve(import.meta.dirname, '..', '..');
+const cao = path.join(root, 'activity', 'cao.mjs');
+
+test('cao operational-value runs package scripts and ingests emitted JSONL', () => {
+  const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-value-'));
+  const packageDirectory = path.join(temporary, 'example');
+  const output = path.join(temporary, 'values.jsonl');
+  const database = path.join(temporary, 'dashboard.sqlite');
+  mkdirSync(packageDirectory);
+  const script = path.join(packageDirectory, 'operational-value.sh');
+  writeFileSync(script, `#!/usr/bin/env bash
+set -euo pipefail
+jq -cr '.repositories[] as $repository | {timestamp:.timestamp,repository:$repository,valueId:"example-count",value:2}'\n`);
+  chmodSync(script, 0o755);
+
+  const result = JSON.parse(execFileSync(process.execPath, [
+    cao,
+    'operational-value',
+    '--database', database,
+    '--root', temporary,
+    '--output', output,
+    '--timestamp', '2026-09-24T10:00:00Z',
+    '--repository', 'githubnext/gh-aw-cao',
+    '--repository', 'github/gh-aw',
+  ], { encoding: 'utf8' }));
+
+  assert.deepEqual(result.scripts, ['example']);
+  assert.equal(result.values.length, 2);
+  const envelopes = readFileSync(output, 'utf8').trim().split('\n').map(JSON.parse);
+  assert.deepEqual(envelopes.map((entry) => entry.kind), ['operational_value', 'operational_value']);
+
+  execFileSync(process.execPath, [cao, 'ingest-jsonl', '--database', database, '--input', output]);
+  const stored = JSON.parse(execFileSync(process.execPath, [
+    cao, 'query', '--database', database, '--collection', 'operationalValues'
+  ], { encoding: 'utf8' }));
+  assert.deepEqual(stored.map(({ repository, valueId, value }) => ({ repository, valueId, value })), [
+    { repository: 'github/gh-aw', valueId: 'example-count', value: 2 },
+    { repository: 'githubnext/gh-aw-cao', valueId: 'example-count', value: 2 },
+  ]);
+});
+
+test('Dependabot operational value counts open labelled issues and excludes pull requests', () => {
+  const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-dependabot-value-'));
+  const fakeGh = path.join(temporary, 'gh');
+  writeFileSync(fakeGh, `#!/usr/bin/env bash
+set -euo pipefail
+if [[ " $* " == *" rate_limit "* ]]; then
+  printf '5000\\n'
+else
+  printf '[[{"number":1},{"number":2,"pull_request":{}}]]\\n'
+fi\n`);
+  chmodSync(fakeGh, 0o755);
+  const request = JSON.stringify({
+    schemaVersion: 1,
+    timestamp: '2026-09-24T10:00:00.000Z',
+    repositories: ['githubnext/gh-aw-cao']
+  });
+
+  const result = JSON.parse(execFileSync(
+    path.join(root, 'dependabot', 'operational-value.sh'),
+    { encoding: 'utf8', input: request, env: {
+      ...process.env,
+      PATH: `${temporary}:${process.env.PATH}`,
+      CAO_GITHUB_API_MIN_REMAINING: '2000'
+    } }
+  ));
+
+  assert.deepEqual(result, {
+    timestamp: '2026-09-24T10:00:00.000Z',
+    repository: 'githubnext/gh-aw-cao',
+    valueId: 'dependabot-issues',
+    value: 1
+  });
+});

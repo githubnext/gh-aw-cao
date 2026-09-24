@@ -7,7 +7,7 @@ import { tidy } from '../../data-operations.js';
 const debug = createDebug('data:indexeddb');
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 21;
+export const DATABASE_VERSION = 22;
 
 /** @param {string} [pathname] */
 export function canonicalDatabaseName(pathname) {
@@ -22,7 +22,8 @@ export const ENTITY_STORES = /** @type {const} */ ([
   'domains',
   'tools',
   'audits',
-  'issues'
+  'issues',
+  'operationalValues'
 ]);
 export const TRANSACTION_STORE = 'transactions';
 export const DATABASE_STORES = /** @type {const} */ ([...ENTITY_STORES, TRANSACTION_STORE]);
@@ -85,6 +86,13 @@ export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
       byRun: 'runId'
     }
   },
+  operationalValues: {
+    keyPath: 'id',
+    indexes: {
+      byRepository: 'repositoryId',
+      byValue: 'valueId'
+    }
+  },
   transactions: {
     keyPath: 'id',
     indexes: { byCreatedAt: 'createdAt' }
@@ -107,13 +115,14 @@ const INGESTION_LOCK_RETRY_DELAY_MS = 25;
 const INGESTION_LOCK_WAITING_NOTICE_DELAY_MS = 500;
 const MAX_QUERY_INDEX_LOOKUPS = 32;
 const RECORD_OVERHEAD_BYTES = 512;
-const RETENTION_TIMESTAMPS = new Set(['runs', 'domains', 'tools', 'audits', 'issues']);
+const RETENTION_TIMESTAMPS = new Set(['runs', 'domains', 'tools', 'audits', 'issues', 'operationalValues']);
 const RUN_LINKED_STORES = /** @type {const} */ (['domains', 'tools', 'audits', 'issues']);
 const QUERYABLE_STRING_KEY_PATHS = new Set([
   'slug',
   'repositoryId',
   'workflowId',
   'runId',
+  'valueId',
   'conclusion',
   'event'
 ]);
@@ -323,7 +332,7 @@ export async function upsertCanonicalBatch(indexedDB, batch, options = {}) {
     let committedBatches = 0;
     for (const storeName of ENTITY_STORES) {
       options.signal?.throwIfAborted();
-      const records = batch[storeName];
+      const records = batch[storeName] ?? [];
       for (let offset = 0; offset < records.length; offset += batchSize) {
         options.signal?.throwIfAborted();
         const boundedRecords = records.slice(offset, offset + batchSize);

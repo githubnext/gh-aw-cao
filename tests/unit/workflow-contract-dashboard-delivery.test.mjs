@@ -400,7 +400,7 @@ test("Activity campaign owns the shared collected-data cache contract", () => {
   assert.equal((workflow.match(/pull-requests: read/g) || []).length, 3);
   assert.match(workflow, /Generate GitHub App token for activity[\s\S]*?GH_AW_GITHUB_READ_APP_ID[\s\S]*?GH_AW_GITHUB_READ_APP_PRIVATE_KEY/);
   assert.match(workflow, /actions\/create-github-app-token@[0-9a-f]{40}/);
-  assert.equal((workflow.match(/steps\.activity-app-token\.outputs\.token \|\| github\.token/g) || []).length, 3);
+  assert.equal((workflow.match(/steps\.activity-app-token\.outputs\.token \|\| github\.token/g) || []).length, 4);
   assert.doesNotMatch(workflow, /ACTIVITY_INDEXER|ACTIVITY_LOGS|ACTIVITY_RUNNER|GITHUB_TELEMETRY|cao-gh\.jsonl/);
   assert.match(workflow, /Collect dashboard inventory[\s\S]*?uses: actions\/github-script@[0-9a-f]{40}[\s\S]*?core\.info\('Workflow discovery started'\)[\s\S]*?'discover-workflows'[\s\S]*?core\.info\('Workflow discovery completed'\)/);
   assert.match(workflow, /Restore activity cache[\s\S]*?Download agentic workflow logs[\s\S]*?Upload activity snapshot[\s\S]*?cache:[\s\S]*?needs: index[\s\S]*?Download activity snapshot[\s\S]*?Save activity cache/);
@@ -408,6 +408,7 @@ test("Activity campaign owns the shared collected-data cache contract", () => {
   assert.match(workflow, /bash activity\/collect-logs\.sh/);
   assert.match(activityCollector, /gh aw logs --audit/);
   assert.match(workflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl/);
+  assert.match(workflow, /Compute repository operational value[\s\S]*?cao\.mjs operational-value[\s\S]*?--max-github-api-rate-limit -2000/);
   assert.equal((workflow.match(/path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/gm) || []).length, 1);
   assert.match(workflow, /cao-activity-v5-\$\{\{ github\.run_id \}\}-/);
   assert.equal(campaignDocument.scripts["activity:local"], undefined);

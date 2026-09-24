@@ -46,6 +46,11 @@ export function createCanonicalQueries(indexedDB) {
     tools: runLinkedQueries(indexedDB, 'tools'),
     audits: runLinkedQueries(indexedDB, 'audits'),
     issues: runLinkedQueries(indexedDB, 'issues'),
+    operationalValues: {
+      list: () => readCollection(indexedDB, 'operationalValues'),
+      forRepository: (/** @type {string} */ repositoryId) =>
+        readIndex(indexedDB, 'operationalValues', 'byRepository', [repositoryId])
+    },
     transactions: {
       list: () => readTransactions(indexedDB)
     }

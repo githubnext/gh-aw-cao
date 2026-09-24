@@ -21,7 +21,7 @@ import {
   NORMALIZED_JSONL_INGESTION_VERSION
 } from '../dashboard/site/src/data/ingest/coordinator.js';
 import { normalize } from '../dashboard/site/src/data/normalize/index.js';
-import { CANONICAL_SCHEMA_VERSION } from '../dashboard/site/src/data/model/schema.js';
+import { canonicalTimestamp, CANONICAL_SCHEMA_VERSION } from '../dashboard/site/src/data/model/schema.js';
 import { executeDashboardQuery, queryInputNames } from '../dashboard/site/src/data/queries/declarative.js';
 import { createCanonicalQueries } from '../dashboard/site/src/data/queries/index.js';
 import { readCollection, readRecord, readTransactions } from '../dashboard/site/src/data/storage/indexeddb.js';
@@ -47,7 +47,8 @@ const ENTITY_COLLECTIONS = [
   'domains',
   'tools',
   'audits',
-  'issues'
+  'issues',
+  'operationalValues'
 ];
 const NORMALIZED_COLLECTIONS = ['campaigns', ...ENTITY_COLLECTIONS];
 const QUERY_COLLECTIONS = [...ENTITY_COLLECTIONS, 'transactions'];
@@ -80,7 +81,7 @@ const GH_AW_INSTALLER_COMMAND = 'curl --fail --silent --show-error --location ht
 const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json';
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
-const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'query', 'computation', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
+const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'query', 'computation', 'operational-value', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
 
 // Intentional CLI misuse that should print usage without an internal stack trace.
 class UsageError extends Error {}
@@ -101,6 +102,7 @@ const USAGE = `Usage:
   cao compact-jsonl --input-dir SHARD_DIRECTORY --group OWNER/REPOSITORY=SHARD_PREFIX [--group OWNER/REPOSITORY=SHARD_PREFIX...] [--max-bytes BYTES]
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao computation runtime-health [--database FILE] [--inventory FILE] [--campaign SLUG] [--diagnose]
+  cao operational-value [--database FILE] [--root DIRECTORY] [--output FILE] [--timestamp TIME] [--repository OWNER/REPO] [--max-github-api-rate-limit LIMIT]
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
   cao download [--url URL] [--output DIRECTORY]
   cao hash-payloads [--database FILE] [--shard-dir SHARD_DIRECTORY] [--normalized-dir DIRECTORY] [--runs-dir DIRECTORY] [--records-dir DIRECTORY] [--inventory FILE] [--output FILE]
@@ -117,6 +119,7 @@ Query local CAO data as JSON. Download the deployed snapshot before querying:
   cao computation runtime-health
   cao computation runtime-health --campaign dependabot
   cao computation runtime-health --campaign dependabot --diagnose
+  cao operational-value --output .cao/gh-aw-logs-shards/operational-values.jsonl --max-github-api-rate-limit -2000
   cao gh runs -R githubnext/gh-aw-cao -w cao-activity --status failure --since 2026-09-01 --until 2026-09-15
   cao gh issues -R githubnext/gh-aw-cao --since 2026-09-01
   cao gh prs -R githubnext/gh-aw-cao -w cao-activity -L 10
@@ -155,6 +158,11 @@ Activity stats defaults (uses the "gh" CLI and requires GH_TOKEN):
   WORKFLOW  ${DEFAULT_ACTIVITY_STATS_WORKFLOW}
   ARTIFACT  ${DEFAULT_ACTIVITY_STATS_ARTIFACT}
   LIMIT     ${DEFAULT_ACTIVITY_STATS_LIMIT}
+
+Operational value scripts:
+  cao operational-value discovers <package>/operational-value.sh below --root.
+  Each script receives one JSON request on stdin and emits JSONL records with
+  timestamp, repository, valueId, and a finite numeric value.
 
 `;
 
@@ -235,6 +243,158 @@ async function writeJsonAtomically(filePath, document) {
   } finally {
     await rm(temporaryPath, { force: true });
   }
+}
+
+const REPOSITORY_COORDINATE = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
+const OPERATIONAL_VALUE_ID = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
+
+  async function discoverOperationalValueScripts(root) {
+    const directory = path.resolve(root);
+    const entries = await readdir(directory, { withFileTypes: true });
+    const scripts = [];
+    for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+      if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+      const script = path.join(directory, entry.name, 'operational-value.sh');
+      try {
+        if ((await stat(script)).isFile()) scripts.push({ package: entry.name, script });
+      } catch (error) {
+        if (!(error && error.code === 'ENOENT')) throw error;
+      }
+    }
+    return scripts;
+  }
+
+  function githubApiRemaining() {
+    const result = spawnSync('gh', ['api', 'rate_limit', '--jq', '.resources.core.remaining'], {
+      encoding: 'utf8',
+      env: process.env
+    });
+    if (result.error || result.status !== 0) {
+      throw new Error(`Unable to read GitHub API rate limit: ${commandFailureMessage(result, 'gh api rate_limit failed')}`);
+    }
+    const remaining = Number(String(result.stdout).trim());
+    if (!Number.isSafeInteger(remaining) || remaining < 0) {
+      throw new Error('GitHub API returned an invalid core rate limit');
+    }
+    return remaining;
+  }
+
+  function operationalValueReserve(value) {
+    if (value === undefined) return undefined;
+    const parsed = Number(value);
+    if (!Number.isSafeInteger(parsed) || parsed === 0) {
+      throw new UsageError('--max-github-api-rate-limit must be a non-zero integer');
+    }
+    return Math.abs(parsed);
+  }
+
+  function parseOperationalValueOutput(content, source, repositories) {
+    const allowedRepositories = new Set(repositories.map((repository) => repository.toLowerCase()));
+    return String(content).split(/\r?\n/).flatMap((line, index) => {
+      if (!line.trim()) return [];
+      let record;
+      try {
+        record = JSON.parse(line);
+      } catch (error) {
+        throw new Error(`${source}:${index + 1} emitted invalid JSON: ${error.message}`);
+      }
+      if (!record || typeof record !== 'object' || Array.isArray(record)) {
+        throw new Error(`${source}:${index + 1} must emit a JSON object`);
+      }
+      const timestamp = canonicalTimestamp(record.timestamp, `${source}:${index + 1}.timestamp`);
+      const repository = String(record.repository ?? '');
+      const valueId = String(record.valueId ?? '');
+      const value = Number(record.value);
+      if (!REPOSITORY_COORDINATE.test(repository) || !allowedRepositories.has(repository.toLowerCase())) {
+        throw new Error(`${source}:${index + 1}.repository must identify a requested repository`);
+      }
+      if (!OPERATIONAL_VALUE_ID.test(valueId)) {
+        throw new Error(`${source}:${index + 1}.valueId must be a lowercase metric identifier`);
+      }
+      if (!Number.isFinite(value)) {
+        throw new Error(`${source}:${index + 1}.value must be a finite number`);
+      }
+      return [{ timestamp, repository, valueId, value }];
+    });
+  }
+
+  async function runOperationalValue({
+    indexedDB,
+    databasePath,
+    root = '.',
+    outputPath,
+    timestamp = new Date().toISOString(),
+    repositories = [],
+    rateLimitReserve
+  }) {
+    const observedAt = canonicalTimestamp(timestamp, '--timestamp');
+    const selectedRepositories = repositories.length > 0
+      ? repositories
+      : (await readCollection(indexedDB, 'repositories'))
+        .map((record) => String(record.fullName ?? ''))
+        .filter((repository) => REPOSITORY_COORDINATE.test(repository));
+    const uniqueRepositories = [...new Map(
+      selectedRepositories.map((repository) => [repository.toLowerCase(), repository])
+    ).values()].sort((left, right) => left.localeCompare(right));
+    if (uniqueRepositories.length === 0) {
+      throw new Error('Operational value requires at least one repository in the dashboard database or --repository');
+    }
+    const scripts = await discoverOperationalValueScripts(root);
+    const request = `${JSON.stringify({
+      schemaVersion: 1,
+      timestamp: observedAt,
+      repositories: uniqueRepositories,
+      database: path.resolve(databasePath)
+    })}\n`;
+    const values = [];
+    for (const entry of scripts) {
+      if (rateLimitReserve !== undefined && githubApiRemaining() <= rateLimitReserve) {
+        throw new Error(`GitHub API core remaining is at or below the reserved ${rateLimitReserve} requests`);
+      }
+      const result = spawnSync('bash', [entry.script], {
+        encoding: 'utf8',
+        input: request,
+        maxBuffer: 16 * 1024 * 1024,
+        env: {
+          ...process.env,
+          CAO_DATABASE: path.resolve(databasePath),
+          CAO_OPERATIONAL_VALUE_TIMESTAMP: observedAt,
+          ...(rateLimitReserve === undefined
+            ? {}
+            : { CAO_GITHUB_API_MIN_REMAINING: String(rateLimitReserve) })
+        }
+      });
+      if (result.error || result.status !== 0) {
+        throw new Error(`${entry.script} failed: ${commandFailureMessage(result, 'operational-value.sh failed')}`);
+      }
+      values.push(...parseOperationalValueOutput(result.stdout, entry.script, uniqueRepositories));
+    }
+    if (rateLimitReserve !== undefined && githubApiRemaining() < rateLimitReserve) {
+      throw new Error(`Operational value crossed the reserved GitHub API floor of ${rateLimitReserve} requests`);
+    }
+    const output = outputPath ? path.resolve(outputPath) : undefined;
+    if (output) {
+      await mkdir(path.dirname(output), { recursive: true });
+      const jsonl = values.map((record) => JSON.stringify({
+        schema_version: 2,
+        kind: 'operational_value',
+        operational_value: {
+          timestamp: record.timestamp,
+          repository: record.repository,
+          value_id: record.valueId,
+          value: record.value
+        }
+      })).join('\n');
+      await writeFile(output, jsonl ? `${jsonl}\n` : '');
+    }
+    return {
+      command: 'operational-value',
+      timestamp: observedAt,
+      repositories: uniqueRepositories.length,
+      scripts: scripts.map((entry) => entry.package),
+      values,
+      output: output ?? null
+    };
 }
 
 function minimalPolicy(version) {
@@ -807,7 +967,7 @@ function parseOptions(arguments_) {
     const value = arguments_[index + 1];
     if (!value || value.startsWith('--')) throw new UsageError(`Missing value for --${name}`);
     index += 1;
-    if (name === 'where' || name === 'group') {
+    if (name === 'where' || name === 'group' || name === 'repository') {
       const existing = options[name];
       options[name] = [...(Array.isArray(existing) ? existing : []), value];
     } else if (options[name] !== undefined) {
@@ -1697,7 +1857,8 @@ async function hashActivityPayloads({
               domains: [],
               tools: [],
               audits: [],
-              issues: []
+              issues: [],
+              operationalValues: []
             }
           },
           records: {
@@ -1713,7 +1874,8 @@ async function hashActivityPayloads({
               audits: batch.audits.filter((audit) =>
                 String(audit.status ?? '').trim().toLowerCase() !== 'info'
               ),
-              issues: batch.issues
+              issues: batch.issues,
+              operationalValues: batch.operationalValues
             }
           }
         };
@@ -2398,6 +2560,26 @@ export async function runCli(arguments_, input = process.stdin) {
       campaign: option(options, 'campaign', false),
       diagnose: Boolean(options.diagnose),
       inventorySources
+    });
+  }
+  if (command === 'operational-value') {
+    rejectUnknownOptions(options, ['database', 'root', 'output', 'timestamp', 'repository', 'max-github-api-rate-limit']);
+    const repositoryOptions = options.repository === undefined
+      ? []
+      : Array.isArray(options.repository) ? options.repository : [options.repository];
+    for (const repository of repositoryOptions) {
+      if (!REPOSITORY_COORDINATE.test(repository)) {
+        throw new UsageError('--repository must use OWNER/REPO form');
+      }
+    }
+    return runOperationalValue({
+      indexedDB,
+      databasePath,
+      root: option(options, 'root', false) || '.',
+      outputPath: option(options, 'output', false),
+      timestamp: option(options, 'timestamp', false) || new Date().toISOString(),
+      repositories: repositoryOptions,
+      rateLimitReserve: operationalValueReserve(option(options, 'max-github-api-rate-limit', false))
     });
   }
 

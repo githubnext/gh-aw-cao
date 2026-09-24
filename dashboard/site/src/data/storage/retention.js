@@ -17,7 +17,8 @@ const RETENTION_TIMESTAMPS = {
   domains: ['timestamp', 'observedAt'],
   tools: ['timestamp', 'observedAt'],
   audits: ['timestamp', 'observedAt'],
-  issues: ['timestamp', 'observedAt']
+  issues: ['timestamp', 'observedAt'],
+  operationalValues: ['timestamp', 'observedAt']
 };
 
 const STORES = /** @type {const} */ ([
@@ -122,6 +123,7 @@ export function capCanonicalBatchSize(batch, maxBytes) {
     repositories: batch.repositories,
     workflows: batch.workflows,
     runs: batch.runs.filter((record) => !evictedRuns.has(String(record.id))),
+    operationalValues: batch.operationalValues ?? [],
     ...Object.fromEntries(RUN_LINKED_STORES.map((storeName) => [
       storeName,
       batch[storeName].filter((record) => !evictedRuns.has(String(record.runId)))

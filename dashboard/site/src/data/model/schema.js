@@ -1,4 +1,4 @@
-export const CANONICAL_SCHEMA_VERSION = 13;
+export const CANONICAL_SCHEMA_VERSION = 14;
 
 export const ENTITY_KINDS = /** @type {const} */ ([
   'campaign',
@@ -8,7 +8,8 @@ export const ENTITY_KINDS = /** @type {const} */ ([
   'domain',
   'tool',
   'audit',
-  'issue'
+  'issue',
+  'operational-value'
 ]);
 const RUN_LINKED_COLLECTIONS = /** @type {const} */ (['domains', 'tools', 'audits', 'issues']);
 
@@ -36,6 +37,7 @@ const RUN_LINKED_COLLECTIONS = /** @type {const} */ (['domains', 'tools', 'audit
  * @property {Record<string, unknown>[]} tools
  * @property {Record<string, unknown>[]} audits
  * @property {Record<string, unknown>[]} issues
+ * @property {Record<string, unknown>[]} operationalValues
  */
 
 /**
@@ -123,6 +125,9 @@ export function relationshipErrors(batch) {
     for (const record of batch[collection]) {
       requireReference(record, 'runId', 'runs');
     }
+  }
+  for (const record of batch.operationalValues ?? []) {
+    requireReference(record, 'repositoryId', 'repositories');
   }
 
   return errors;
