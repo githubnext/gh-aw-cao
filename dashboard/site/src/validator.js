@@ -1264,7 +1264,10 @@ function validateDashboard(dashboard, dashboardNode, errors) {
               ))
             : []);
           const destinationBindsQuery = Array.isArray(targetViews) && targetViews.some((targetView) => {
-            if (!isPlainObject(targetView) || !isPlainObject(targetView.data) || targetView.data.source !== drill.query) return false;
+            if (!isPlainObject(targetView) || !isPlainObject(targetView.data)) return false;
+            const bindsQuery = targetView.data.source === drill.query
+              || (Array.isArray(targetView.data.sources) && targetView.data.sources.includes(drill.query));
+            if (!bindsQuery) return false;
             const boundNames = new Set(Array.isArray(targetView.data.arguments)
               ? targetView.data.arguments.flatMap((argument) => (
                   isPlainObject(argument) && typeof argument.name === 'string' ? [argument.name] : []

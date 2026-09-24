@@ -1365,7 +1365,9 @@
         "title": "Problem",
         "description": "Evidence and repair guidance for this campaign runtime problem.",
         "data": {
-          "source": "campaign-problem-items",
+          "sources": [
+            "campaign-problem-items"
+          ],
           "arguments": [
             {
               "name": "campaign",
@@ -1387,7 +1389,6 @@
         },
         "mark": "element",
         "element": "problem-detail",
-        "empty-message": "This runtime problem is no longer present in the selected horizon.",
         "layout": "full"
       }
     ],

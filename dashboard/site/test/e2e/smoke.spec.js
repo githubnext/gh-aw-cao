@@ -2479,6 +2479,16 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await expect(campaignNavigation.getByRole('link', { name: 'Problems' })).toHaveAttribute('aria-current', 'page');
   expect(await campaignNavigation.locator('.count-badge').allTextContents()).toEqual(campaignTabBadges);
   await expect(page.locator('[data-page-id="campaign-problems"] [data-view-id="campaign-current-runtime-problems"]')).toBeVisible();
+  const runtimeProblem = page.locator('[data-page-id="campaign-problems"] .entity-card-list-card').first();
+  await runtimeProblem.click();
+  await expect(page).toHaveURL(/#page-campaign-problem-detail\?/);
+  const problemDetail = page.locator('[data-page-id="campaign-problem-detail"] .problem-view');
+  await expect(problemDetail).toBeVisible();
+  await expect(problemDetail.locator('table')).toHaveCount(0);
+  await expect(problemDetail.getByRole('heading', { name: 'Failure' })).toBeVisible();
+  await expect(problemDetail.getByRole('heading', { name: 'Scope' })).toBeVisible();
+  await expect(problemDetail.getByRole('heading', { name: 'Runtime environment' })).toBeVisible();
+  await expect(problemDetail.getByRole('button', { name: 'Fix It' })).toBeVisible();
   await page.evaluate(() => {
     window.location.hash = '#page-campaign-workflows?campaign=ambient-context';
   });
