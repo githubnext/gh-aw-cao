@@ -589,7 +589,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
   min-height: 0;
   flex: 1;
 }
-.dashboard-full-view .custom-view[data-view-layout="full-view"] > .view-state-card { margin-inline: 24px; }
+.dashboard-full-view .custom-view[data-view-layout="full-view"] > .view-state-card { margin-inline: var(--dashboard-page-padding-inline); }
 .dashboard-full-view .custom-view[data-view-layout="full-view"] > .table-region {
   margin: 0;
   overflow: hidden;
@@ -760,7 +760,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .swimlane-mark-unknown { stroke: var(--muted); }
 .swimlane-mark:hover, .swimlane-mark:focus-visible { filter: brightness(1.2); stroke-width: 4; }
 .swimlane-mark:focus-visible { outline: none; }
-.dashboard-full-view .custom-view-grid > .chart-view-swimlane { padding: 0 24px 14px; }
+.dashboard-full-view .custom-view-grid > .chart-view-swimlane { padding: 0 var(--dashboard-page-padding-inline) 14px; }
 .chart-widget .chart-series-7 { stroke: var(--pink); }
 .chart-widget .chart-series-8 { stroke: var(--coral); }
 .chart-widget .chart-series-9 { stroke: var(--yellow); }
@@ -2242,8 +2242,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .dashboard-full-view main.dashboard-prototype { padding: 0 var(--dashboard-page-padding-inline); }
   /* Paired with the mobile main padding above: cancel top/inline overview inset, but do not negate bottom padding. */
   .dashboard-overview-page { margin: calc(-1 * var(--dashboard-mobile-page-padding-top)) calc(-1 * var(--dashboard-page-padding-inline)) 0; }
-  .dashboard-full-view .custom-view[data-view-layout="full-view"] > .view-state-card { margin-inline: 14px; }
-  .dashboard-full-view .custom-view-grid > .chart-view-swimlane { padding: 0 14px 12px; }
+  .dashboard-full-view .custom-view-grid > .chart-view-swimlane { padding-bottom: 12px; }
   .data-state-summary, .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .layout-section[data-section-layout="wide"], .layout-section[data-section-layout="narrow"] { grid-column: span 12; }
   .custom-view[data-view-layout="half"], .custom-view[data-view-layout="third"] { grid-column: span 12; }
