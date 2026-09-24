@@ -1,8 +1,11 @@
 # Server security
 
-The Go dashboard server is designed for local development and integration
-testing. It processes private operational data and must not be exposed as an
-internet service without an explicit remote-deployment security design.
+The Go dashboard server has two security profiles:
+
+- the default local profile used by `cao-dashboard serve`, for one trusted
+  operator on loopback; and
+- the explicit Azure Functions profile, for remote access through GitHub OAuth,
+  server-side sessions, Azure trusted-proxy headers, and Redis Enterprise.
 
 ## Supported security boundary
 
@@ -18,7 +21,7 @@ The supported deployment is:
 
 GitHub authentication, organization authorization, multi-user access, public
 hosting, reverse proxies, tunnels, and webhook ingestion are not part of the
-current security boundary.
+local profile. Do not expose `serve` through a tunnel or public reverse proxy.
 
 ## Dashboard access capability
 
@@ -69,6 +72,69 @@ telemetry. Restart the server to rotate an automatically generated token.
 The capability mechanism is local access control, not a replacement for
 identity-aware authentication in a remote service.
 
+## Azure Functions profile
+
+Azure Functions mode is enabled only by constructing the app with
+`HostingModeAzureFunctions` or by using `NewAzureFunctionsHandlerFromEnv`. It
+does not start its own listener, does not accept `--access-token`, and does not
+support PATs. Requests are handled by the Azure Functions HTTP runtime and the
+same Go dashboard HTTP handler.
+
+Azure mode fails closed unless configuration includes:
+
+- `rediss://` Redis transport and a Redis namespace;
+- an explicit trusted host allow-list from `CAO_AZURE_ALLOWED_HOSTS`;
+- HTTPS forwarded-protocol enforcement;
+- GitHub OAuth App client ID, client secret, redirect URL, and a session secret
+  of at least 32 characters; and
+- at least one allowed GitHub organization or `org/team-slug` value.
+
+The trusted-proxy policy is intentionally separate from local `Host` checks.
+Local requests must still use loopback hosts. Azure requests may use forwarded
+host/protocol headers only when the forwarded host exactly matches the
+configured allow-list and the forwarded protocol is HTTPS.
+
+### GitHub OAuth and authorization
+
+Azure mode implements the GitHub OAuth authorization-code flow. It requests the
+minimum `read:org` scope needed for active organization or team membership
+authorization. Successful GitHub authentication alone is insufficient: the
+server must verify an allowed organization or team membership before creating a
+session.
+
+Access tokens and refresh tokens remain server-side. They are encrypted with an
+AES-GCM key derived from `CAO_SESSION_SECRET` before being stored in Redis under
+the deployment namespace. Browser cookies contain only an opaque session ID and
+a CSRF token; GitHub tokens are never placed in browser-readable storage,
+URLs, API responses, logs, telemetry, or Bicep outputs.
+
+Session cookies are `Secure`, `HttpOnly`, and `SameSite=Lax`. Mutating
+endpoints require the session-bound `X-CSRF-Token` header. The injected
+dashboard bootstrap adds this header for same-origin browser requests.
+
+When an access token is near expiry, the server uses the refresh token, stores
+rotated token values, and continues the request. If refresh fails or the
+refresh token has expired, the session is deleted, cookies are cleared, and the
+client must reauthenticate. Logout revokes both the current access token and
+the current refresh token when GitHub accepts revocation, deletes the Redis
+session, and clears cookies.
+
+### Azure lifecycle and transport limits
+
+Cold starts rebuild the app from environment configuration, validate Redis
+connectivity, and check RediSearch with `FT._LIST` before serving. Request
+cancellation is propagated through `request.Context()` to Redis calls.
+
+Health checks remain at `GET /api/v1/health`. Unauthenticated health responses
+only report Redis connectivity and data availability. Authenticated sessions
+also receive revision and count metadata.
+
+Server-Sent Events at `GET /api/v1/events` are best-effort in Azure Functions.
+The endpoint works while the platform keeps the invocation alive, but scale-in,
+cold starts, idle timeouts, proxies, and plan limits can terminate long-lived
+connections. Clients must continue to use `/api/v1/refresh` as the reliable
+revision check. WebSockets are not part of this profile.
+
 ## Redis transport and isolation
 
 - Plaintext `redis://` connections are accepted only for `localhost` or a
@@ -87,6 +153,14 @@ Namespace isolation prevents accidental collisions between local deployments.
 It does not replace Redis ACLs. Use a dedicated Redis instance or database and
 credentials restricted to the deployment namespace for separate trust
 boundaries.
+
+For Azure, use Redis Enterprise with the RediSearch module and encrypted client
+protocol. `server/azure/main.bicep` sets Redis public network access to
+disabled and expects the Redis URL to be delivered through Key Vault-backed app
+settings. Redis Enterprise client authentication currently relies on access
+keys; do not output them. To rotate, regenerate the Redis access key, update
+the `cao-redis-url` Key Vault secret with the new `rediss://` URL, then restart
+the Function App so Key Vault references resolve the latest secret version.
 
 ## Artifact ingestion protections
 
@@ -136,15 +210,19 @@ local dashboard generation. There is no per-source or per-row authorization.
 
 ## Secrets and logging
 
-- Never place Redis credentials or the dashboard access token in committed
+- Never place Redis credentials, GitHub OAuth secrets, GitHub access/refresh
+  tokens, session secrets, or the local dashboard access token in committed
   files, dashboard documents, test fixtures intended for production, query
   payloads, or browser-readable metadata.
 - Prefer environment variables or local command arguments supplied by a secret
   manager for Redis credentials.
+- In Azure, prefer Key Vault references in app settings. Bicep outputs must not
+  include secret values or secret-bearing connection strings.
 - The server intentionally prints the local capability URL for the operator.
   Protect terminal logs accordingly.
 - Error responses should describe request failures without including Redis
-  credentials, raw RESP traffic, private keys, or complete source records.
+  credentials, GitHub tokens, raw RESP traffic, private keys, or complete
+  source records.
 
 ## Validation
 
