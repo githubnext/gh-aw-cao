@@ -701,6 +701,12 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
   const views = Array.isArray(page.views)
     ? page.views.map((view) => applyDashboardDefaults(view, effectiveDashboardDefaults))
     : [];
+  const routeParameter = typeof page.route?.['hash-query-parameter'] === 'string'
+    ? page.route['hash-query-parameter']
+    : undefined;
+  const routeNavigationPage = typeof page.route?.['navigation-page'] === 'string'
+    ? page.route['navigation-page']
+    : undefined;
   const viewModes = page.id === 'overview' ? [] : availableViewModes(views);
   const selectedViewMode = /** @type {'chart'|'table'|'card'|undefined} */ (
     viewModes.includes(queryContext?.viewMode ?? 'chart')
@@ -714,12 +720,6 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
     const view = views.find((candidate) => isPlainObject(candidate) && candidate.id === viewId);
     return isPlainObject(view) && view.mark === 'callout' ? [viewId] : [];
   }));
-  const routeParameter = typeof page.route?.['hash-query-parameter'] === 'string'
-    ? page.route['hash-query-parameter']
-    : undefined;
-  const routeNavigationPage = typeof page.route?.['navigation-page'] === 'string'
-    ? page.route['navigation-page']
-    : undefined;
   /** @type {Map<string, LogicalSourceInput>} */
   const pageSources = new Map();
   for (const view of views) {
@@ -743,6 +743,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
         || (isPlainObject(view.data) && typeof view.data['route-field'] === 'string')
       )
     );
+    const isNavigationCompositeView = isPlainObject(view) && view.mark === 'element';
     const render = () => {
       const rendered = renderCustomView(page.id, view, index, sources, units, cardTemplates, headingTag, routeParameter, queryContext);
       suppressSupplementalTableHeading(rendered, view, index);
@@ -754,7 +755,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       if (isPlainObject(view) && view['lazy-list'] === true) {
         rendered.setAttribute('data-view-lazy-list', '');
       }
-      rendered.dataset.viewModeContent = viewModeForView(view);
+      if (!isNavigationCompositeView) rendered.dataset.viewModeContent = viewModeForView(view);
       return rendered;
     };
     const rendered = isRouteView
@@ -776,7 +777,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
     if (isPlainObject(view) && view['lazy-list'] === true) {
       rendered.setAttribute('data-view-lazy-list', '');
     }
-    rendered.dataset.viewModeContent = viewModeForView(view);
+    if (!isNavigationCompositeView) rendered.dataset.viewModeContent = viewModeForView(view);
     if (disclosure === 'essential') {
       return rendered;
     }
@@ -877,9 +878,20 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
   return root;
 }
 
+/**
+ * A `mark: element` view is navigation/composite chrome (for example the `campaign-route`
+ * summary), not a chart/table/card representation of page content, so it must not create a
+ * phantom "chart" mode or gate data loading for the page's actual content views.
+ * @param {Array<unknown>} views
+ * @returns {Array<unknown>}
+ */
+function contentViewsForModeSelection(views) {
+  return views.filter((view) => !(isPlainObject(view) && view.mark === 'element'));
+}
+
 /** @param {Array<unknown>} views @returns {Array<'chart'|'table'|'card'>} */
 function availableViewModes(views) {
-  const modes = new Set(views.map(viewModeForView));
+  const modes = new Set(contentViewsForModeSelection(views).map(viewModeForView));
   if (modes.has('table')) modes.add('card');
   const orderedModes = /** @type {const} */ (['chart', 'card', 'table']);
   return orderedModes.filter((mode) => modes.has(mode));
@@ -887,7 +899,7 @@ function availableViewModes(views) {
 
 /** @param {Array<unknown>} views @returns {'chart'|'table'|'card'|undefined} */
 function defaultViewMode(views) {
-  const modes = new Set(views.map(viewModeForView));
+  const modes = new Set(contentViewsForModeSelection(views).map(viewModeForView));
   if (modes.has('chart')) return 'chart';
   if (modes.has('table')) return 'table';
   if (modes.has('card')) return 'card';

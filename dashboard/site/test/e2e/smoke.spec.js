@@ -2500,7 +2500,6 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await expect(campaignWorkflowRows.first().locator('td').nth(5)).toHaveText('0');
   await expect(campaignWorkflowRows.first().locator('td').nth(6)).toHaveText('0');
   await expect(campaignWorkflowRows.nth(1)).toContainText('WorkerAmbient Context Worker');
-  await page.getByRole('button', { name: 'Chart' }).click();
   await campaignNavigation.getByRole('link', { name: 'Dispatches' }).click();
   await expect(page).toHaveURL(/#page-campaign-dispatches\?campaign=ambient-context$/);
   const campaignRunsPage = page.locator('[data-page-id="campaign-dispatches"]');
