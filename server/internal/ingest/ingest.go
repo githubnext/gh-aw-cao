@@ -182,7 +182,7 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 		if _, err := store.PutSource(ctx, generation, source); err != nil {
 			return Result{}, fmt.Errorf("stage generation %s: %w", generation, err)
 		}
-		ingestLog.Printf("staged source name=%s rows=%d", name, len(source.Rows))
+		ingestLog.Printf("staged source rows=%d", len(source.Rows))
 		counts[name] = len(source.Rows)
 	}
 	diagnostics := buildDiagnostics(canonical)

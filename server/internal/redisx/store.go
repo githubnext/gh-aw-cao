@@ -120,7 +120,7 @@ func (s *Store) Activate(ctx context.Context, generation, dataRevision string, e
 }
 
 func (s *Store) PutSource(ctx context.Context, generation string, source model.Source) (map[string]string, error) {
-	redisLog.Printf("staging source name=%s rows=%d", source.Source, len(source.Rows))
+	redisLog.Printf("staging source rows=%d", len(source.Rows))
 	aliases, types := sourceSchema(source.Rows)
 	prefix := s.rowPrefix(generation, source.Source)
 	index := s.indexName(generation, source.Source)
@@ -230,7 +230,7 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 		return model.Source{}, model.Metrics{}, err
 	}
 	plan := PlanQuery(s.indexName(generation, name), name, definition, aliases, types)
-	redisLog.Printf("planned source name=%s pushed_down=%d fallback=%d", name, len(plan.PushedDown), len(plan.Fallback))
+	redisLog.Printf("planned source pushed_down=%d fallback=%d", len(plan.PushedDown), len(plan.Fallback))
 	metrics := model.Metrics{PushedDown: plan.PushedDown, FallbackOperations: plan.Fallback, RedisCommands: 1}
 	if len(plan.PushedDown) > 0 {
 		value, searchErr := s.Client.Do(ctx, plan.Command...)
@@ -253,7 +253,7 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 					}
 				}
 				metrics.RedisRows = len(rows)
-				redisLog.Printf("loaded source name=%s rows=%d mode=search", name, len(rows))
+				redisLog.Printf("loaded source rows=%d mode=search", len(rows))
 				return model.Source{Source: name, Rows: rows, Metadata: metadata}, metrics, nil
 			}
 		}
@@ -299,7 +299,7 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 		}
 	}
 	metrics.RedisRows = len(rows)
-	redisLog.Printf("loaded source name=%s rows=%d mode=fallback", name, len(rows))
+	redisLog.Printf("loaded source rows=%d mode=fallback", len(rows))
 	return model.Source{Source: name, Rows: rows, Metadata: metadata}, metrics, nil
 }
 

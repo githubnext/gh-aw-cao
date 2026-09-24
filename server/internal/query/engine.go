@@ -233,7 +233,7 @@ func (e *Engine) Execute(definitions []Definition, requested []string) (map[stri
 	for _, name := range order {
 		definition, isQuery := index[name]
 		if !isQuery {
-			queryLog.Printf("loading source name=%s", name)
+			queryLog.Printf("loading source")
 			if err := load(name, nil); err != nil {
 				return nil, metrics, err
 			}
@@ -280,7 +280,7 @@ func (e *Engine) Execute(definitions []Definition, requested []string) (map[stri
 		if err != nil {
 			return nil, metrics, err
 		}
-		queryLog.Printf("executed query name=%s rows=%d operations=%d fallback=%d", name, len(result.Rows), used, len(fallback))
+		queryLog.Printf("executed query rows=%d operations=%d fallback=%d", len(result.Rows), used, len(fallback))
 		sources[name] = result
 	}
 	output := make(map[string]model.Source, len(requested))
