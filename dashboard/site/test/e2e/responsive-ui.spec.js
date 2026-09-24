@@ -332,7 +332,7 @@ test('campaign card actions wrap together on narrow screens', async ({ page }) =
         }
       },
       sourceName: 'campaigns',
-      rows: [{ campaign: 'aw-optimization', 'campaign-name': 'AW Optimization' }],
+      rows: [{ campaign: 'aw-optimization', 'campaign-name': 'Optimization' }],
       metadata: { 'source-id': 'fixture', 'source-kind': 'fixture', 'as-of': '2026-09-18T00:00:00Z', 'retrieved-at': '2026-09-18T00:00:00Z', completeness: 'complete', freshness: 'fresh', availability: 'available' },
       contextDetails: [],
       headingTag: 'h3',

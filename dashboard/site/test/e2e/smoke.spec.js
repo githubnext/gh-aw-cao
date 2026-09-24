@@ -1598,7 +1598,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
         availability: 'available'
       };
       const emptySource = (source) => ({ source, rows: [], metadata });
-      const campaigns = ['EU CRA', 'Repository Ops', 'AW Optimization'];
+      const campaigns = ['EU CRA', 'Repository Ops', 'Optimization'];
       const roles = ['orchestrator', 'worker'];
       const modes = ['review', 'live', 'staged'];
       const sources = {

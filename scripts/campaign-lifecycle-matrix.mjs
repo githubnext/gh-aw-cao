@@ -96,9 +96,9 @@ const suites = [
     ],
   },
   {
-    name: "AW Optimization",
+    name: "Optimization",
     manifest: "optimization/aw.yml",
-    testPattern: "focused AW Optimization campaign contract",
+    testPattern: "focused Optimization campaign contract",
     prefixes: [
       "optimization/.github/graders/",
       ".github/workflows/graders/optimization-",

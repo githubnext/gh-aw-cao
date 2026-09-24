@@ -39,7 +39,7 @@ Each campaign under `control-plane.campaigns` has its own mode and limits. Revie
 | Worker kill switch | `workers.<worker>.enabled` | `true` |
 | Optional worker mode ceiling | `workers.<worker>.max-mode` | Inherit campaign or exact-target mode |
 
-Changing one operation does not change another. For example, Dependabot may be live while AW Optimization remains in review.
+Changing one operation does not change another. For example, Dependabot may be live while Optimization remains in review.
 
 An exact campaign target can advance independently while the campaign remains in review elsewhere:
 

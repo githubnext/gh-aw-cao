@@ -1,10 +1,10 @@
 ---
-name: "AW Optimization"
+name: "Optimization"
 
 description: "Selects repositories with measurable agentic-workflow usage and dispatches bounded token audits and optimization reviews."
 intent: Reduce avoidable AI Credit and token consumption while preserving workflow reliability and accepted outcomes.
 
-run-name: "${{ github.event_name == 'schedule' && 'AW Optimization · scheduled' || format('AW Optimization · {0} · {1}', inputs.target_repo || 'discovery', inputs.safe_output_mode || 'review') }}"
+run-name: "${{ github.event_name == 'schedule' && 'Optimization · scheduled' || format('Optimization · {0} · {1}', inputs.target_repo || 'discovery', inputs.safe_output_mode || 'review') }}"
 
 max-ai-credits: 250
 max-daily-ai-credits: -1
@@ -96,7 +96,7 @@ safe-outputs:
   threat-detection: false
 ---
 
-# AW Optimization
+# Optimization
 
 Select repositories with recent, measurable GitHub Agentic Workflow activity and dispatch the two Optimization workers. Selection and dispatch are the only responsibilities of this orchestrator. Never inspect or optimize an individual workflow here.
 

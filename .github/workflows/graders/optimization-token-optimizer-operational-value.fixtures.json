@@ -3,7 +3,7 @@
     "name": "attained",
     "request": {
       "schemaVersion": 1,
-      "run": {"id": "1", "repository": "githubnext/gh-aw-cao", "workflow": "AW Optimization / Token Optimizer"},
+      "run": {"id": "1", "repository": "githubnext/gh-aw-cao", "workflow": "Optimization / Token Optimizer"},
       "event": {"inputs": {"target_repo": "octo/service"}},
       "outputs": [{"type": "create_issue", "title": "Optimize .github/workflows/check.md in octo/service", "body": "octo/service has one evidence-complete candidate.\n\n**Action:** Assign this issue to Copilot and accept only after validation passes.\n\n### Recommendation\n- **Measured baseline:** 2.4 AIC per successful run\n- **Proposed change:** narrow the always-loaded context\n- **Reliability safeguard:** failure rate must not increase\n- **Accepted outcome safeguard:** accepted outcome rate must not decrease\n- **Validation:** compile and compare a complete seven-day window\n\n<details><summary><b>Agent prompt</b></summary>\nImplement and validate the named change.\n</details>"}],
       "config": {}
@@ -14,7 +14,7 @@
     "name": "missed",
     "request": {
       "schemaVersion": 1,
-      "run": {"id": "2", "repository": "githubnext/gh-aw-cao", "workflow": "AW Optimization / Token Optimizer"},
+      "run": {"id": "2", "repository": "githubnext/gh-aw-cao", "workflow": "Optimization / Token Optimizer"},
       "event": {"inputs": {"target_repo": "octo/service"}},
       "outputs": [{"type": "update_issue", "title": "Generic optimization", "body": "Reduce tokens."}],
       "config": {}

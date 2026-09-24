@@ -1,5 +1,5 @@
 ---
-name: "AW Optimization / Token Auditor"
+name: "Optimization / Token Auditor"
 
 description: "Audits one repository's measured agentic-workflow AI Credit, token use, and reliability."
 intent: Give maintainers one evidence-complete repository-level view of agentic-workflow cost and reliability so they can prioritize optimization safely.

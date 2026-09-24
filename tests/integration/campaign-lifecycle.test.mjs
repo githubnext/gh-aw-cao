@@ -398,15 +398,15 @@ test("gh aw add installs the focused CAO Evolution campaign contract", { timeout
   }
 });
 
-test("gh aw add installs the focused AW Optimization campaign contract", { timeout: 180_000 }, async () => {
+test("gh aw add installs the focused Optimization campaign contract", { timeout: 180_000 }, async () => {
   const consumer = await installCampaign(optimizationCampaignSource);
   try {
     for (const relativePath of optimizationExpectedFiles) {
-      assert.ok(existsSync(join(consumer, relativePath)), `focused AW Optimization campaign omitted ${relativePath}`);
+      assert.ok(existsSync(join(consumer, relativePath)), `focused Optimization campaign omitted ${relativePath}`);
     }
     assert.ok(
       !existsSync(join(consumer, ".github", "workflows", "dependabot.md")),
-      "focused AW Optimization campaign installed an unrelated orchestrator",
+      "focused Optimization campaign installed an unrelated orchestrator",
     );
   } finally {
     rmSync(consumer, { recursive: true, force: true });

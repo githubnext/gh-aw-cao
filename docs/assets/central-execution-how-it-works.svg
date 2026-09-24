@@ -38,7 +38,7 @@
   <text x="338" y="281" class="label">Dependabot</text><text x="338" y="300" class="small">orchestrator + worker</text>
   <circle cx="406" cy="326" r="2.5" fill="var(--muted)"/><circle cx="406" cy="337" r="2.5" fill="var(--muted)"/><circle cx="406" cy="348" r="2.5" fill="var(--muted)"/>
   <rect x="320" y="362" width="172" height="54" rx="6" class="node"/>
-  <text x="338" y="385" class="label">AW Optimization</text><text x="338" y="404" class="small">orchestrator + workers</text>
+  <text x="338" y="385" class="label">Optimization</text><text x="338" y="404" class="small">orchestrator + workers</text>
 
   <line x1="580" y1="76" x2="580" y2="476" stroke="var(--border)" stroke-width="2" stroke-dasharray="5 7"/>
   <text x="620" y="92" class="eyebrow" transform="rotate(90 620 92)">REPOSITORY BOUNDARY</text>

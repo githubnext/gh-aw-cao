@@ -1,9 +1,9 @@
-# AW Optimization
+# Optimization
 
 > [!NOTE]
 > **Experimental campaign:** Worker boundaries and output contracts may change as review evidence accumulates.
 
-AW Optimization gives maintainers evidence-bounded audits and recommendations for reducing avoidable GitHub Agentic Workflow AI Credit and token consumption, while preserving workflow reliability and accepted outcome quality. Its orchestrator selects one repository with measurable agentic-workflow usage and dispatches bounded token audits and optimization reviews.
+Optimization gives maintainers evidence-bounded audits and recommendations for reducing avoidable GitHub Agentic Workflow AI Credit and token consumption, while preserving workflow reliability and accepted outcome quality. Its orchestrator selects one repository with measurable agentic-workflow usage and dispatches bounded token audits and optimization reviews.
 
 ## Campaign Contents
 
@@ -51,7 +51,7 @@ The omitted fields default to an enabled campaign and worker and 100 percent rol
 
 ## Validate in review mode
 
-1. Open the generated **AW Optimization** workflow in the control repository's **Actions** tab.
+1. Open the generated **Optimization** workflow in the control repository's **Actions** tab.
 2. Select **Run workflow**.
 3. Leave `target_repo` blank to discover an eligible repository, or set it to one fully qualified `owner/repository` name.
 4. Keep `max_repos` at `1` and `safe_output_mode` at `review`.

@@ -3,7 +3,7 @@
   "queries": [
     {
       "name": "optimization-retained-outcomes",
-      "intent": "List retained AW Optimization audits and recommendations without presenting proposed savings or context changes as realized value.",
+      "intent": "List retained Optimization audits and recommendations without presenting proposed savings or context changes as realized value.",
       "from": "outcomes",
       "filter": {
         "predicates": [

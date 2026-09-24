@@ -413,7 +413,7 @@ export async function buildLifecycleObservation({
     optimizerRunId,
     optimizerRunAttempt,
     optimizerWorkflowPath: ".github/workflows/optimization-token-optimizer.md",
-    optimizerWorkflowName: "AW Optimization / Token Optimizer",
+    optimizerWorkflowName: "Optimization / Token Optimizer",
     targetRepo: proposal.targetRepo,
     workflowPath: proposal.workflowPath,
     opportunityId,

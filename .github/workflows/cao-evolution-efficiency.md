@@ -144,7 +144,7 @@ Find structural control-plane waste:
 4. AI Credit, token, duration, storage, and API allocation that is disproportionate to attained operational value or accepted review outcomes at the campaign portfolio level.
 5. Redundant data transformations, artifacts, dashboard queries, or campaign outputs that compute the same control-plane fact independently.
 
-Preserve hard boundaries. Never recommend weakening admission, target authority, review routing, exact-SHA policy resolution, credential separation, evidence completeness, or fail-closed behavior to save cost. Do not duplicate `AW Optimization`: leave per-workflow prompt tuning, model/turn optimization, `AGENTS.md`, and skill curation to that campaign. Recommend only CAO portfolio, shared-runtime, acquisition, dispatch, and dashboard architecture improvements.
+Preserve hard boundaries. Never recommend weakening admission, target authority, review routing, exact-SHA policy resolution, credential separation, evidence completeness, or fail-closed behavior to save cost. Do not duplicate `Optimization`: leave per-workflow prompt tuning, model/turn optimization, `AGENTS.md`, and skill curation to that campaign. Recommend only CAO portfolio, shared-runtime, acquisition, dispatch, and dashboard architecture improvements.
 
 ## Outcome
 

@@ -27,7 +27,7 @@ Declare the campaign and its workers in `.github/workflows/cao.json`. Begin in `
 - GitHub tools are read-only. Workers emit one stable, deduplicated attention issue, a materially changed update comment, or `noop`.
 - Catalog recommendations use an immutable published catalog release. They never install campaigns, edit `.github/workflows/cao.json`, enable workers, promote rollout mode, or dispatch suggested operations.
 - Campaign health uses the authoritative activity and safe-output evidence that feeds the dashboard. Browser IndexedDB remains disposable per-browser derived state and is never queried as workflow authority.
-- Agentic-workflow failure investigation and compiler-security maintenance are part of CAO Evolution. General gh-aw upgrades remain outside this campaign. Per-workflow prompt, model, AI Credit, `AGENTS.md`, and skill optimization remain with AW Optimization.
+- Agentic-workflow failure investigation and compiler-security maintenance are part of CAO Evolution. General gh-aw upgrades remain outside this campaign. Per-workflow prompt, model, AI Credit, `AGENTS.md`, and skill optimization remain with Optimization.
 - This campaign does not delete caches or artifacts.
 
 Operational-value design is intentionally deferred until each worker has adoption-time evidence.

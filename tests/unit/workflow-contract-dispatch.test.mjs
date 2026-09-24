@@ -114,7 +114,7 @@ test("orchestrators dispatch workers only through safe-output tools", () => {
   assert.match(precompute, /const item = inWorkflows/);
 });
 
-test("AW Optimization emits a no-op safe output when no workers are dispatched", () => {
+test("Optimization emits a no-op safe output when no workers are dispatched", () => {
   const optimization = workflow("optimization.md");
 
   assert.match(

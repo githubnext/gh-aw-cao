@@ -1,5 +1,5 @@
 ---
-name: "AW Optimization / Token Optimizer"
+name: "Optimization / Token Optimizer"
 
 description: "Finds one evidence-complete agentic workflow and recommends a conservative measurable efficiency change."
 intent: Reduce avoidable AI Credit or token use for one agentic workflow while preserving reliability and accepted outcome quality.

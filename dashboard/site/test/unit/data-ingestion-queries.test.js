@@ -162,7 +162,7 @@ describe('dashboard source ingestion queries', () => {
       packages: {
         rows: [{
           package: 'optimization',
-          'package-name': 'AW Optimization',
+          'package-name': 'Optimization',
           'package-description': 'Improves workflow efficiency.',
           'package-icon': 'zap',
           'package-mode': 'review',
@@ -181,9 +181,9 @@ describe('dashboard source ingestion queries', () => {
           repository: 'gh-aw-cao',
           workflow: '.github/workflows/optimization-token-optimizer.md',
           package: 'optimization',
-          'package-name': 'AW Optimization',
+          'package-name': 'Optimization',
           'package-icon': 'zap',
-          'workflow-name': 'AW Optimization / Token Optimizer',
+          'workflow-name': 'Optimization / Token Optimizer',
           'workflow-role': 'worker'
         }],
         metadata
@@ -194,7 +194,7 @@ describe('dashboard source ingestion queries', () => {
 
     expect(batch.campaigns[0]).toMatchObject({
       slug: 'optimization',
-      name: 'AW Optimization',
+      name: 'Optimization',
       description: 'Improves workflow efficiency.',
       icon: 'zap',
       mode: 'review',
@@ -204,7 +204,7 @@ describe('dashboard source ingestion queries', () => {
     expect(batch.workflows[0]).toMatchObject({
       campaignId: batch.campaigns[0].id,
       campaign: 'optimization',
-      campaignName: 'AW Optimization',
+      campaignName: 'Optimization',
       campaignIcon: 'zap'
     });
     expect(relationshipErrors(batch)).toEqual([]);
@@ -275,7 +275,7 @@ describe('dashboard source ingestion queries', () => {
           'target-workflow-path': '.github/workflows/review.md',
           'optimizer-run-attempt': 1,
           'optimizer-workflow-path': '.github/workflows/optimization-token-optimizer.md',
-          'optimizer-workflow-name': 'AW Optimization / Token Optimizer',
+          'optimizer-workflow-name': 'Optimization / Token Optimizer',
           'claim-run-id': '1189001',
           'claim-run-attempt': 1,
           actor: 'maintainer',
@@ -317,7 +317,7 @@ describe('dashboard source ingestion queries', () => {
       targetWorkflowPath: '.github/workflows/review.md',
       optimizerRunAttempt: 1,
       optimizerWorkflowPath: '.github/workflows/optimization-token-optimizer.md',
-      optimizerWorkflowName: 'AW Optimization / Token Optimizer',
+      optimizerWorkflowName: 'Optimization / Token Optimizer',
       claimRunId: '1189001',
       claimRunAttempt: 1,
       actor: 'maintainer',

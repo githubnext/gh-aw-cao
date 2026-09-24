@@ -100,7 +100,7 @@ describe('SQL export adapter', () => {
       optimization_implementation_run_ids: ['7001'],
       optimization_optimizer_run_attempt: 1,
       optimization_optimizer_workflow_path: '.github/workflows/optimization-token-optimizer.md',
-      optimization_optimizer_workflow_name: 'AW Optimization / Token Optimizer',
+      optimization_optimizer_workflow_name: 'Optimization / Token Optimizer',
       optimization_claim_run_id: '1189001',
       optimization_claim_run_attempt: 1,
       optimization_actor: 'maintainer',

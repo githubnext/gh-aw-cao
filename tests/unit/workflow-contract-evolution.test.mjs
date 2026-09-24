@@ -5,7 +5,7 @@ import test from "node:test";
 import { parse } from "yaml";
 import { root, workflow } from "./workflow-contract.helpers.mjs";
 
-// CAO Evolution and AW Optimization operation contracts.
+// CAO Evolution and Optimization operation contracts.
 
 function workflowConfig(name) {
   const frontmatter = /^---\n([\s\S]*?)\n---/.exec(workflow(name))?.[1];
@@ -13,7 +13,7 @@ function workflowConfig(name) {
   return parse(frontmatter);
 }
 
-test("AW Optimization installs its bounded token workers", () => {
+test("Optimization installs its bounded token workers", () => {
   const orchestrator = workflow("optimization.md");
   const orchestratorConfig = workflowConfig("optimization.md");
   const manifest = parse(readFileSync(join(root, "optimization", "aw.yml"), "utf8"));
@@ -29,7 +29,7 @@ test("AW Optimization installs its bounded token workers", () => {
   const dispatchWorkflows = orchestratorConfig["safe-outputs"]["dispatch-workflow"].workflows;
   const controlImport = orchestratorConfig.imports.find((entry) => entry.uses === "shared/control.md");
 
-  assert.equal(manifest.name, "AW Optimization");
+  assert.equal(manifest.name, "Optimization");
   assert.equal(descriptor.campaign, "optimization");
   assert.equal(orchestratorConfig.name, manifest.name);
   assert.deepEqual(includedWorkflowIds, declaredWorkflowIds);
@@ -120,7 +120,7 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
   assert.match(efficiency, /Never attempt to open, download, or treat browser IndexedDB as shared or authoritative storage/);
   assert.match(efficiency, /open review backlog, oldest review age, review-decision latency, accepted outcomes, rejected or closed-unmerged outcomes/);
   assert.match(efficiency, /Select one campaign and one change to cadence, target selection, worker boundaries, evidence reuse, budget allocation, or review-output quality/);
-  assert.match(efficiency, /Do not duplicate `AW Optimization`/);
+  assert.match(efficiency, /Do not duplicate `Optimization`/);
 
   const campaignSkill = readFileSync(join(root, "skills", "create-cao-campaign", "SKILL.md"), "utf8");
   assert.match(campaignSkill, /When a worker optimizes a campaign or campaign portfolio/);

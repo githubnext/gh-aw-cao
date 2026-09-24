@@ -39,7 +39,7 @@ function envelopes(extra = []) {
         run_attempt: 1,
         organization: "githubnext",
         repository: "githubnext/gh-aw-cao",
-        workflow_name: "AW Optimization / Token Optimizer",
+        workflow_name: "Optimization / Token Optimizer",
         workflow_path: ".github/workflows/optimization-token-optimizer.md",
         created_at: "2026-09-15T03:00:00Z",
         updated_at: "2026-09-15T04:00:00Z",
