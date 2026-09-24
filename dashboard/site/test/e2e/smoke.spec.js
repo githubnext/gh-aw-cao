@@ -648,6 +648,7 @@ test('Runs renders a last-week line graph above its responsive table and scrolls
   await expect(lineGraph.locator('.line-chart-series')).toHaveCount(2);
   await expect(lineGraph.locator('.chart-legend-line')).toContainText('failure');
   await expect(lineGraph.locator('.chart-legend-line')).toContainText('success');
+  await expect(lineGraph.locator('.line-chart-y-axis text')).toHaveText(['50', '25', '0']);
   const lineGraphHeadingBox = await lineGraph.getByRole('heading', { name: 'Runs in the last week' }).boundingBox();
   const lineGraphChartBox = await lineGraph.locator('[data-chart-widget="line"] svg').boundingBox();
   if (lineGraphHeadingBox === null || lineGraphChartBox === null) {
