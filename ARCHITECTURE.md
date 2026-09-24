@@ -124,7 +124,7 @@ same `computation` namespace.
 Successful-Run value computations keep produced safe outputs, native
 operational-value measurements, and efficiency evidence separate; they do not
 turn runtime success or output creation into accepted value.
-Package-level `operational-value.sh` programs compute repository-scoped metric
+Package-level `operational-value.mjs` programs compute repository-scoped metric
 records through `cao operational-value`. Activity appends those timestamped
 records to authoritative JSONL before the canonical Operational Value collection
 is rebuilt in SQLite, IndexedDB, and the local Redis projection.
@@ -139,7 +139,7 @@ reconstructable.
 | --- | --- |
 | `aw.yml` | Root catalog manifest and default CAO installation bundle. |
 | `<operation>/aw.yml` | Campaign boundary and installation manifest for an operation. User-facing operations include `cao-evolution/`, `dependabot/`, `eu-cra-compliance/`, `optimization/`, `repo-assist/`, `self-care/`, `software-development-practices/`, and `uk-ai-advisory/`. |
-| `<operation>/operational-value.sh` | Optional deterministic repository-scoped operational-value computation installed with its package. |
+| `<operation>/operational-value.mjs` | Optional deterministic repository-scoped operational-value computation installed with its package. |
 | `activity/` | Deterministic Activity collection, JSONL ingestion, SQLite projection, and the `cao` CLI. |
 | `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and static browser application. |
 | `server/` | Local-only Go HTTP(S) host, deployed-artifact ingester, Redis projection, and server-side Dashboard Language query engine. |

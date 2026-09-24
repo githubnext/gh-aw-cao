@@ -165,7 +165,7 @@ Activity stats defaults (uses the "gh" CLI and requires GH_TOKEN):
   LIMIT     ${DEFAULT_ACTIVITY_STATS_LIMIT}
 
 Operational value scripts:
-  cao operational-value discovers <package>/operational-value.sh below --root.
+  cao operational-value discovers <package>/operational-value.mjs below --root.
   Each script receives one JSON request on stdin and emits JSONL records with
   timestamp, repository, valueId, and a finite numeric value.
 

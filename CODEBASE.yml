@@ -131,7 +131,7 @@ components:
     path: specs/computations.md
     responsibility: define deterministic partitioned measures that transform canonical evidence into bounded actionable insights
   package_operational_value:
-    path: <operation>/operational-value.sh
+    path: <operation>/operational-value.mjs
     responsibility: compute timestamped repository-scoped metrics for installed packages through the cao operational-value command
   computation_reference_runtime:
     path: research/computations/

@@ -17,7 +17,7 @@ async function discoverOperationalValueScripts(root) {
   const scripts = [];
   for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
     if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
-    const script = path.join(directory, entry.name, 'operational-value.sh');
+    const script = path.join(directory, entry.name, 'operational-value.mjs');
     try {
       if ((await stat(script)).isFile()) scripts.push({ package: entry.name, script });
     } catch (error) {
@@ -137,7 +137,7 @@ export async function runOperationalValue({
     if (rateLimitReserve !== undefined && githubApiRemaining() <= rateLimitReserve) {
       throw new Error(`GitHub API core remaining is at or below the reserved ${rateLimitReserve} requests`);
     }
-    const result = spawnSync('bash', [entry.script], {
+    const result = spawnSync(process.execPath, [entry.script], {
       encoding: 'utf8',
       input: request,
       maxBuffer: 16 * 1024 * 1024,
@@ -151,7 +151,7 @@ export async function runOperationalValue({
       }
     });
     if (result.error || result.status !== 0) {
-      throw new Error(`${entry.script} failed: ${commandFailureMessage(result, 'operational-value.sh failed')}`);
+      throw new Error(`${entry.script} failed: ${commandFailureMessage(result, 'operational-value.mjs failed')}`);
     }
     values.push(...parseOperationalValueOutput(result.stdout, entry.script, uniqueRepositories));
   }

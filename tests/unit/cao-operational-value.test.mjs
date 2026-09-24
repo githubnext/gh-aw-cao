@@ -14,10 +14,12 @@ test('cao operational-value runs package scripts and ingests emitted JSONL', () 
   const output = path.join(temporary, 'values.jsonl');
   const database = path.join(temporary, 'dashboard.sqlite');
   mkdirSync(packageDirectory);
-  const script = path.join(packageDirectory, 'operational-value.sh');
-  writeFileSync(script, `#!/usr/bin/env bash
-set -euo pipefail
-jq -cr '.repositories[] as $repository | {timestamp:.timestamp,repository:$repository,valueId:"example-count",value:2}'\n`);
+  const script = path.join(packageDirectory, 'operational-value.mjs');
+  writeFileSync(script, `import { readFileSync } from 'node:fs';
+const request = JSON.parse(readFileSync(0, 'utf8'));
+for (const repository of request.repositories) {
+  console.log(JSON.stringify({timestamp:request.timestamp,repository,valueId:"example-count",value:2}));
+}\n`);
   chmodSync(script, 0o755);
 
   const result = JSON.parse(execFileSync(process.execPath, [
@@ -64,7 +66,8 @@ fi\n`);
   });
 
   const result = JSON.parse(execFileSync(
-    path.join(root, 'dependabot', 'operational-value.sh'),
+    process.execPath,
+    [path.join(root, 'dependabot', 'operational-value.mjs')],
     { encoding: 'utf8', input: request, env: {
       ...process.env,
       PATH: `${temporary}:${process.env.PATH}`,
@@ -85,10 +88,9 @@ test('cao operational-value rejects non-numeric metrics and bounds retained outp
   const packageDirectory = path.join(temporary, 'example');
   const output = path.join(temporary, 'values.jsonl');
   mkdirSync(packageDirectory);
-  const script = path.join(packageDirectory, 'operational-value.sh');
-  writeFileSync(script, `#!/usr/bin/env bash
-set -euo pipefail
-jq -cn '{timestamp:"2026-09-24T10:00:00.000Z",repository:"githubnext/gh-aw-cao",valueId:"example",value:1}'\n`);
+  const script = path.join(packageDirectory, 'operational-value.mjs');
+  writeFileSync(script, `process.stdin.resume();
+process.stdin.on('end', () => console.log(JSON.stringify({timestamp:"2026-09-24T10:00:00.000Z",repository:"githubnext/gh-aw-cao",valueId:"example",value:1})));\n`);
   chmodSync(script, 0o755);
   writeFileSync(output, [
     JSON.stringify({ schema_version: 2, kind: 'operational_value', operational_value: {
@@ -107,9 +109,8 @@ jq -cn '{timestamp:"2026-09-24T10:00:00.000Z",repository:"githubnext/gh-aw-cao",
   const envelopes = readFileSync(output, 'utf8').trim().split('\n').map(JSON.parse);
   assert.deepEqual(envelopes.map((entry) => entry.operational_value.value_id), ['retained', 'example']);
 
-  writeFileSync(script, `#!/usr/bin/env bash
-cat >/dev/null
-printf '%s\\n' '{"timestamp":"2026-09-24T10:00:00Z","repository":"githubnext/gh-aw-cao","valueId":"invalid","value":null}'\n`);
+  writeFileSync(script, `process.stdin.resume();
+process.stdin.on('end', () => console.log(JSON.stringify({timestamp:"2026-09-24T10:00:00Z",repository:"githubnext/gh-aw-cao",valueId:"invalid",value:null})));\n`);
   assert.throws(() => execFileSync(process.execPath, [
     cao, 'operational-value', '--database', path.join(temporary, 'dashboard.sqlite'),
     '--root', temporary, '--repository', 'githubnext/gh-aw-cao'
