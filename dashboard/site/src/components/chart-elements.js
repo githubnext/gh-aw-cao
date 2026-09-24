@@ -24,8 +24,11 @@ const LINE_CHART_BOTTOM = 38;
 const LINE_CHART_HEIGHT = 34;
 const LINE_CHART_MIN_LEFT = 5;
 const LINE_CHART_LABEL_GAP = 2;
-// At the 2.6px axis font size, numeric labels average about 1.6 viewBox units per glyph.
-const LINE_CHART_LABEL_CHARACTER_WIDTH = 1.6;
+// Approximate the 2.6px SVG axis font in viewBox units before the labels are attached.
+const LINE_CHART_LABEL_DIGIT_WIDTH = 1.5;
+const LINE_CHART_LABEL_DEFAULT_WIDTH = 1.6;
+const LINE_CHART_LABEL_NARROW_WIDTH = 0.75;
+const LINE_CHART_LABEL_WIDE_WIDTH = 2.1;
 const MAX_BAR_AXIS_TICKS = 5;
 const MAX_HORIZONTAL_BARS = 100;
 const BAR_CHART_LEFT = 12;
@@ -431,7 +434,7 @@ function renderInteractiveChartMark({ className, entryIndex, label, shape, toolt
  * @param {ChartSeriesDescriptor[]} series
  * @param {{ entries: Array<[string, number]>, total: number } | null} [pieSummary]
  * @param {string} [totalLabel]
- * @param {{ name: string, symbol: string, significant: number } | null} [unit]
+ * @param {{ name: string, symbol: string, significant: number, format?: string } | null} [unit]
  * @param {Record<string, unknown> | null} [timeRange]
  * @param {string | null} [referenceField]
  * @returns {HTMLElement}
@@ -701,7 +704,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
     const yTickLabels = yTicks.map((value) => formatChartAxisTick(value, unit));
     const lineChartLeft = Math.max(
       LINE_CHART_MIN_LEFT,
-      Math.ceil(Math.max(...yTickLabels.map((label) => label.length)) * LINE_CHART_LABEL_CHARACTER_WIDTH + LINE_CHART_LABEL_GAP)
+      Math.ceil(Math.max(...yTickLabels.map(estimateLineChartLabelWidth)) + LINE_CHART_LABEL_GAP)
     );
     const plotWidth = LINE_CHART_RIGHT - lineChartLeft;
     for (const coordinates of areaCoordinates.values()) {
@@ -1505,6 +1508,19 @@ function formatChartAxisTick(value, unit) {
   }).format(value);
   if (unit?.format === 'usd') return compact.startsWith('-') ? `-$${compact.slice(1)}` : `$${compact}`;
   return unit && unit.format !== 'number' ? `${compact} ${unit.symbol}` : compact;
+}
+
+/** @param {string} label */
+function estimateLineChartLabelWidth(label) {
+  return [...label].reduce((width, character) => width + (
+    /\d/.test(character)
+      ? LINE_CHART_LABEL_DIGIT_WIDTH
+      : /[.,:\s]/.test(character)
+        ? LINE_CHART_LABEL_NARROW_WIDTH
+        : /[MW%@]/.test(character)
+          ? LINE_CHART_LABEL_WIDE_WIDTH
+          : LINE_CHART_LABEL_DEFAULT_WIDTH
+  ), 0);
 }
 
 /**

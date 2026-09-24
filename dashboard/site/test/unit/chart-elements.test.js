@@ -610,6 +610,29 @@ describe('chart element helpers', () => {
     expect(chart.querySelector('.line-chart-series')?.getAttribute('points')).toBe('7,4 100,38');
   });
 
+  it('accounts for punctuation and wide glyphs when packing the y-axis gutter', () => {
+    const points = [
+      { x: '2026-09-10', y: 9_999, color: null },
+      { x: '2026-09-11', y: 0, color: null }
+    ];
+    const currencyChart = renderChartWidget('line', points, [], null, 'Total', {
+      name: 'US dollars',
+      symbol: 'USD',
+      significant: 2,
+      format: 'usd'
+    });
+    const unitChart = renderChartWidget('line', points, [], null, 'Total', {
+      name: 'Megawatts',
+      symbol: 'MW',
+      significant: 2
+    });
+
+    expect([...currencyChart.querySelectorAll('.line-chart-y-axis text')].map((tick) => tick.textContent))
+      .toEqual(['$9,999.00', '$4,999.50', '$0.00']);
+    expect(currencyChart.getAttribute('style')).toBe('--line-chart-left: 15%;');
+    expect(unitChart.getAttribute('style')).toBe('--line-chart-left: 15%;');
+  });
+
   it('renders area marks and stacks color series over the shared ordered axis', () => {
     const points = [
       { x: '2026-09-01', y: 2, color: 'review' },
@@ -666,7 +689,7 @@ describe('chart element helpers', () => {
       .sort((left, right) => left - right);
 
     expect(scatter.getAttribute('data-chart-widget')).toBe('scatter');
-    expect(xCoordinates).toEqual([12, 34, 100]);
+    expect(xCoordinates).toEqual([11, 33.25, 100]);
     expect([...scatter.querySelectorAll('.timeline-chart-axis span')].map((tick) => tick.getAttribute('title'))).toEqual([
       '2026-09-04T10:00:00.000Z',
       '2026-09-04T12:00:00.000Z',
