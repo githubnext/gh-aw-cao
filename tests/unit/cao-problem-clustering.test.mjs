@@ -197,11 +197,15 @@ test('cancellation terminates the active worker and stops package processing', a
   const packageRoot = path.join(temporary, 'packages');
   const controller = new AbortController();
   try {
-    await mkdir(path.join(packageRoot, 'a-hanging'), { recursive: true });
+    await mkdir(path.join(packageRoot, 'a-healthy'), { recursive: true });
+    await mkdir(path.join(packageRoot, 'b-hanging'), { recursive: true });
     await mkdir(path.join(packageRoot, 'z-unreached'), { recursive: true });
     new DatabaseSync(databasePath).close();
+    await writeFile(path.join(packageRoot, 'a-healthy', 'problem-clustering.mjs'), `
+      console.log(JSON.stringify({ id: 'completed', title: 'Completed problem' }));
+    `);
     await writeFile(
-      path.join(packageRoot, 'a-hanging', 'problem-clustering.mjs'),
+      path.join(packageRoot, 'b-hanging', 'problem-clustering.mjs'),
       'setInterval(() => {}, 1_000);\n'
     );
     await writeFile(path.join(packageRoot, 'z-unreached', 'problem-clustering.mjs'), `
@@ -220,7 +224,11 @@ test('cancellation terminates the active worker and stops package processing', a
     );
     const verify = new DatabaseSync(databasePath);
     try {
-      assert.equal(verify.prepare('SELECT COUNT(*) AS count FROM cao_problems').get().count, 0);
+      assert.deepEqual(
+        verify.prepare('SELECT producer, problem_id FROM cao_problems').all()
+          .map((row) => ({ ...row })),
+        [{ producer: 'a-healthy', problem_id: 'completed' }]
+      );
     } finally {
       verify.close();
     }

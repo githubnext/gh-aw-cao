@@ -133,6 +133,11 @@ function runWorker(entry, request, databasePath, { signal, timeoutMs }) {
       }
       resolve(Buffer.concat(stdout).toString('utf8'));
     });
+    child.stdin.on('error', (error) => {
+      if (workerSignal.aborted) return;
+      child.kill('SIGKILL');
+      reject(new Error(`${entry.script} failed to read its request: ${error.message}`));
+    });
     child.stdin.end(request);
   });
 }
