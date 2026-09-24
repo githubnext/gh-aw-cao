@@ -46,6 +46,12 @@ function parseResponse(output) {
   if (separator < 0) fail('GitHub API returned a response without headers');
   const headers = normalized.slice(0, separator);
   const body = normalized.slice(separator + 2);
+  const status = headers.split('\n')[0]?.match(/^HTTP\/\S+\s+(\d{3})(?:\s+(.*))?$/i);
+  if (!status) fail('GitHub API returned a response without an HTTP status');
+  const statusCode = Number(status[1]);
+  if (statusCode < 200 || statusCode >= 300) {
+    fail(`GitHub API returned HTTP ${statusCode}${status[2] ? ` ${status[2]}` : ''} for Dependabot alerts`);
+  }
   const link = headers.split('\n')
     .find((line) => /^link:/i.test(line))
     ?.replace(/^link:\s*/i, '');
@@ -85,6 +91,7 @@ for (const repository of request.repositories) {
       endpoint,
       ...fields
     ]));
+    // Next links already carry state and per_page, so only the first request supplies fields.
     fields = [];
     endpoint = response.next;
     const alerts = JSON.parse(response.body);
