@@ -282,6 +282,7 @@ describe('declarative dashboard queries', () => {
         organization: 'githubnext',
         repository: 'gh-aw-cao',
         workflow: 'a.md',
+        'workflow-source-url': 'https://github.com/githubnext/gh-aw-cao/blob/HEAD/a.md',
         runs: 2,
         accepted: 2,
         blocked: 8
@@ -291,6 +292,7 @@ describe('declarative dashboard queries', () => {
         organization: 'githubnext',
         repository: 'other',
         workflow: 'c.md',
+        'workflow-source-url': 'https://github.com/githubnext/other/blob/HEAD/c.md',
         runs: 1,
         accepted: 7,
         blocked: 0

@@ -766,7 +766,11 @@
         "list": {
           "style": "entity-cards",
           "card": "firewall-workflow",
-          "icon": "workflow"
+          "icon": "workflow",
+          "drill": {
+            "type": "external",
+            "field": "workflow-source-url"
+          }
         },
         "empty-message": "No workflows allowed or blocked requests to this domain.",
         "layout": "full-view",
@@ -782,6 +786,11 @@
               "field": "repository",
               "type": "nominal",
               "title": "Repository"
+            },
+            {
+              "field": "workflow-source-url",
+              "type": "nominal",
+              "title": "Workflow source"
             },
             {
               "field": "runs",
@@ -3285,12 +3294,39 @@
             }
           ]
         },
+        "compute": [
+          {
+            "as": "workflow-source-url",
+            "function": "concat",
+            "args": [
+              {
+                "value": "https://github.com/"
+              },
+              {
+                "field": "organization"
+              },
+              {
+                "value": "/"
+              },
+              {
+                "field": "repository"
+              },
+              {
+                "value": "/blob/HEAD/"
+              },
+              {
+                "field": "workflow"
+              }
+            ]
+          }
+        ],
         "aggregate": {
           "by": [
             "domain",
             "organization",
             "repository",
-            "workflow"
+            "workflow",
+            "workflow-source-url"
           ],
           "values": [
             {
