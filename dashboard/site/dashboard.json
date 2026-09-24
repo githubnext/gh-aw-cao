@@ -3652,8 +3652,8 @@
       },
       {
         "name": "audit-event-summary-buckets",
-        "intent": "Aggregate high- and medium-severity audit events with the same summary by workflow.",
-        "description": "The 20 most frequent high- and medium-severity audit event counts grouped by workflow and shared summary.",
+        "intent": "Aggregate high- and medium-severity audit events with the same severity and summary by workflow.",
+        "description": "High- and medium-severity audit event counts grouped by severity, workflow, and shared summary.",
         "from": "audits",
         "union": [
           "tools"
@@ -3711,6 +3711,7 @@
         "aggregate": {
           "by": [
             "campaign",
+            "event-status",
             "workflow",
             "event-summary"
           ],
@@ -3727,6 +3728,9 @@
             "field": "campaign"
           },
           {
+            "field": "event-status"
+          },
+          {
             "field": "workflow"
           },
           {
@@ -3737,6 +3741,10 @@
           }
         ],
         "order-by": [
+          {
+            "field": "event-status",
+            "direction": "asc"
+          },
           {
             "field": "events",
             "direction": "desc"
@@ -10480,12 +10488,22 @@
           },
           {
             "id": "campaign-audit-event-summary-buckets",
-            "title": "High and medium severity audit events",
-            "description": "The 20 most frequent audit-event buckets for this campaign, grouped by workflow and shared summary after info-level events are excluded.",
+            "title": "Severity audit events",
+            "description": "The 20 most frequent audit-event buckets for this campaign, sorted by severity and event count after info-level events are excluded.",
             "data": {
               "source": "audit-event-summary-buckets",
               "route-field": "campaign",
-              "limit": 20
+              "limit": 20,
+              "order-by": [
+                {
+                  "field": "event-status",
+                  "direction": "asc"
+                },
+                {
+                  "field": "events",
+                  "direction": "desc"
+                }
+              ]
             },
             "mark": "chart",
             "chart": "horizontal-bar",
