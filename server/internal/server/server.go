@@ -258,32 +258,47 @@ func (a *App) capabilityURL() string {
 func (a *App) requireAccess(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		if a.oauth != nil {
+			a.logAuthBranch("access.hosted_mode")
 			a.requireGitHubAccess(next).ServeHTTP(response, request)
 			return
 		}
 		if !validLocalRequestHost(request.Host) {
+			a.logAuthBranch("access.local_host_rejected")
 			http.Error(response, "invalid request host", http.StatusMisdirectedRequest)
 			return
 		}
 		if publicServiceEndpoint(request.URL.Path) || request.URL.Path == "/api/github/webhook" {
+			a.logAuthBranch("access.local_public_allowed")
 			next.ServeHTTP(response, request)
 			return
 		}
 		if !strings.HasPrefix(request.URL.Path, "/api/") {
 			if (request.Method == http.MethodGet || request.Method == http.MethodHead) &&
 				constantTimeTokenEqual(request.URL.Query().Get("access_token"), a.accessToken) {
+				a.logAuthBranch("access.local_capability_accepted")
 				a.serveIndex(response, a.accessToken)
 				return
 			}
+			a.logAuthBranch("access.local_static_allowed")
 			next.ServeHTTP(response, request)
 			return
 		}
 		if a.authorized(request) {
+			a.logAuthBranch("access.local_bearer_accepted")
 			next.ServeHTTP(response, request)
 			return
 		}
+		a.logAuthBranch("access.local_bearer_rejected")
 		writeError(response, http.StatusUnauthorized, "dashboard access token is required")
 	})
+}
+
+func (a *App) logAuthBranch(branch string) {
+	if a.oauth != nil {
+		a.oauth.emitAuthBranch(branch)
+		return
+	}
+	serverLog.Printf("oauth branch=%s", branch)
 }
 
 func validLocalRequestHost(value string) bool {
@@ -310,6 +325,7 @@ func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 			policy = a.config.AzureProxy
 		}
 		if !validAzureProxyRequest(request, policy) {
+			a.logAuthBranch("access.proxy_rejected")
 			http.Error(response, "invalid forwarded request host", http.StatusMisdirectedRequest)
 			return
 		}
@@ -318,30 +334,40 @@ func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 			strings.HasPrefix(request.URL.Path, "/auth/login") ||
 			strings.HasPrefix(request.URL.Path, "/auth/logged-out") ||
 			strings.HasPrefix(request.URL.Path, "/auth/callback") {
+			a.logAuthBranch("access.public_allowed")
 			next.ServeHTTP(response, request)
 			return
 		}
 		var session oauthSession
 		var ok bool
 		if request.URL.Path == "/auth/logout" || request.URL.Path == "/auth/switch-account" {
+			a.logAuthBranch("access.mutation_session_checked")
 			session, ok = a.oauth.loadRequestSession(request)
 		} else {
+			a.logAuthBranch("access.refreshable_session_checked")
 			session, ok = a.oauth.session(response, request)
 		}
 		if !ok {
 			if strings.HasPrefix(request.URL.Path, "/api/") || request.URL.Path == "/auth/logout" {
+				a.logAuthBranch("access.unauthorized")
 				writeError(response, http.StatusUnauthorized, "GitHub authentication is required")
 				return
 			}
+			a.logAuthBranch("access.login_redirected")
 			http.Redirect(response, request, "/auth/login", http.StatusFound)
 			return
 		}
 		if request.Method != http.MethodGet && request.Method != http.MethodHead && request.Method != http.MethodOptions {
 			if !constantTimeTokenEqual(request.Header.Get("X-CSRF-Token"), session.CSRFToken) {
+				a.logAuthBranch("access.csrf_rejected")
 				writeError(response, http.StatusForbidden, "CSRF token is required")
 				return
 			}
+			a.logAuthBranch("access.csrf_accepted")
+		} else {
+			a.logAuthBranch("access.safe_method")
 		}
+		a.logAuthBranch("access.authorized")
 		request = request.WithContext(context.WithValue(request.Context(), oauthSessionContextKey{}, session))
 		next.ServeHTTP(response, request)
 	})
@@ -351,17 +377,21 @@ type oauthSessionContextKey struct{}
 
 func (a *App) adminAuthorized(request *http.Request) bool {
 	if a.oauth == nil {
+		a.logAuthBranch("admin.local_mode_allowed")
 		return true
 	}
 	session, ok := request.Context().Value(oauthSessionContextKey{}).(oauthSession)
 	if !ok {
+		a.logAuthBranch("admin.session_missing")
 		return false
 	}
 	for _, login := range a.config.AdminUsers {
 		if strings.EqualFold(strings.TrimSpace(login), session.Login) {
+			a.logAuthBranch("admin.allowed")
 			return true
 		}
 	}
+	a.logAuthBranch("admin.denied")
 	return false
 }
 
@@ -402,7 +432,11 @@ func (a *App) health(response http.ResponseWriter, request *http.Request) {
 	if !redisHealthy {
 		payload["status"] = "unhealthy"
 	}
-	if a.authorized(request) || (a.oauth != nil && a.oauth.requestHasSession(request)) {
+	detailsAuthorized := a.authorized(request) || (a.oauth != nil && a.oauth.requestHasSession(request))
+	if detailsAuthorized {
+		if a.oauth != nil {
+			a.logAuthBranch("health.details_authorized")
+		}
 		rowCount := 0
 		for _, count := range active.Counts {
 			rowCount += count
@@ -412,6 +446,8 @@ func (a *App) health(response http.ResponseWriter, request *http.Request) {
 		payload["counts"] = active.Counts
 		payload["sourceCount"] = len(active.Counts)
 		payload["rowCount"] = rowCount
+	} else if a.oauth != nil {
+		a.logAuthBranch("health.details_redacted")
 	}
 	writeJSON(response, status, payload)
 }

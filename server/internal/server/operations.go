@@ -156,9 +156,11 @@ func (a *App) githubWebhook(response http.ResponseWriter, request *http.Request)
 		return
 	}
 	if !validWebhookSignature(payload, request.Header.Get("X-Hub-Signature-256"), a.webhookSecret) {
+		a.logAuthBranch("webhook.signature_rejected")
 		writeError(response, http.StatusUnauthorized, "invalid webhook signature")
 		return
 	}
+	a.logAuthBranch("webhook.signature_accepted")
 	delivery := strings.TrimSpace(request.Header.Get("X-GitHub-Delivery"))
 	event := strings.TrimSpace(request.Header.Get("X-GitHub-Event"))
 	if delivery == "" || event == "" {

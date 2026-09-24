@@ -75,13 +75,26 @@ func TestWebhookReconcilesThroughInjectedCanonicalUpdater(t *testing.T) {
 		t.Fatal(err)
 	}
 	reconciler := &testReconciler{called: make(chan struct{})}
+	var authBranches []string
 	app := &App{
 		store:         redisx.NewStore(client, "webhook-test"),
 		reconciler:    reconciler,
 		webhookSecret: []byte("webhook-secret"),
 		hub:           newEventHub(),
+		oauth: &githubOAuth{log: func(branch string) {
+			authBranches = append(authBranches, branch)
+		}},
 	}
 	payload := `{"action":"completed"}`
+	rejected := httptest.NewRecorder()
+	rejectedRequest := httptest.NewRequestWithContext(
+		t.Context(), http.MethodPost, "/api/github/webhook", strings.NewReader(payload),
+	)
+	rejectedRequest.Header.Set("X-Hub-Signature-256", "sha256=invalid")
+	app.githubWebhook(rejected, rejectedRequest)
+	if rejected.Code != http.StatusUnauthorized {
+		t.Fatalf("invalid webhook signature returned %d", rejected.Code)
+	}
 	mac := hmac.New(sha256.New, app.webhookSecret)
 	_, _ = mac.Write([]byte(payload))
 	request := httptest.NewRequestWithContext(
@@ -114,6 +127,9 @@ func TestWebhookReconcilesThroughInjectedCanonicalUpdater(t *testing.T) {
 	}
 	if reconciler.calls != 1 || reconciler.event.Event != "workflow_run" {
 		t.Fatalf("webhook was not reconciled: %#v", reconciler)
+	}
+	if strings.Join(authBranches, ",") != "webhook.signature_rejected,webhook.signature_accepted" {
+		t.Fatalf("unexpected webhook authentication branch logs: %v", authBranches)
 	}
 }
 
@@ -148,8 +164,11 @@ func TestEmptyRedisIsHealthyButNotReady(t *testing.T) {
 }
 
 func TestHostedRebuildRequiresExplicitAdministrator(t *testing.T) {
+	var branches []string
 	app := &App{
-		oauth:  &githubOAuth{},
+		oauth: &githubOAuth{log: func(branch string) {
+			branches = append(branches, branch)
+		}},
 		config: Config{AdminUsers: []string{"cao-admin"}},
 	}
 	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/admin/rebuild", nil)
@@ -168,5 +187,8 @@ func TestHostedRebuildRequiresExplicitAdministrator(t *testing.T) {
 	))
 	if !app.adminAuthorized(request) {
 		t.Fatal("explicit administrator was denied")
+	}
+	if strings.Join(branches, ",") != "admin.denied,admin.allowed" {
+		t.Fatalf("unexpected administrator branch logs: %v", branches)
 	}
 }

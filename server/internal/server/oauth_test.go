@@ -2,10 +2,15 @@ package server
 
 import (
 	"encoding/json"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -365,6 +370,108 @@ func TestHostedOAuthLoggedOutPageRequiresExplicitLogin(t *testing.T) {
 	}
 	if response.Header().Get("Location") != "" {
 		t.Fatal("logged-out page unexpectedly restarted OAuth")
+	}
+}
+
+func TestHostedOAuthLogsBranchesWithoutCredentialValues(t *testing.T) {
+	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
+	app := newAzureTestApp(t, github.URL)
+	var branches []string
+	app.oauth.log = func(branch string) {
+		branches = append(branches, branch)
+	}
+
+	sessionCookie, csrfCookie := callbackSession(t, app)
+	current := httptest.NewRecorder()
+	request := azureRequest(t, http.MethodGet, "/api/auth/session")
+	request.AddCookie(sessionCookie)
+	app.Handler().ServeHTTP(current, request)
+
+	app.Handler().ServeHTTP(httptest.NewRecorder(), azureRequest(t, http.MethodGet, "/api/health"))
+	health := httptest.NewRecorder()
+	request = azureRequest(t, http.MethodGet, "/api/health")
+	request.AddCookie(sessionCookie)
+	app.Handler().ServeHTTP(health, request)
+
+	rejected := httptest.NewRecorder()
+	request = azureRequest(t, http.MethodPost, "/auth/logout")
+	request.AddCookie(sessionCookie)
+	app.Handler().ServeHTTP(rejected, request)
+
+	logout := authenticatedAuthMutation(t, app, "/auth/logout", sessionCookie, csrfCookie)
+	if logout.Code != http.StatusNoContent {
+		t.Fatalf("logout returned %d: %s", logout.Code, logout.Body.String())
+	}
+	app.Handler().ServeHTTP(httptest.NewRecorder(), azureRequest(t, http.MethodGet, "/auth/logged-out"))
+
+	for _, expected := range []string{
+		"access.public_allowed",
+		"login.default_account_requested",
+		"exchange.succeeded",
+		"identity.loaded",
+		"organization_membership.active",
+		"authorization.organization_allowed",
+		"callback.succeeded",
+		"access.safe_method",
+		"current_account.succeeded",
+		"health.details_redacted",
+		"health.details_authorized",
+		"access.csrf_rejected",
+		"session_clear.revocation_staged",
+		"session_clear.revocation_completed",
+		"logout.succeeded",
+		"logged_out.rendered",
+	} {
+		if !slices.Contains(branches, expected) {
+			t.Errorf("missing authentication branch log %q in %v", expected, branches)
+		}
+	}
+	logged := strings.Join(branches, "\n")
+	for _, secret := range []string{
+		sessionCookie.Value,
+		csrfCookie.Value,
+		"access-old",
+		"refresh-old",
+		"octocat",
+		app.oauth.config.ClientSecret,
+		app.oauth.config.SessionSecret,
+	} {
+		if secret != "" && strings.Contains(logged, secret) {
+			t.Errorf("authentication branch logs contain sensitive value %q", secret)
+		}
+	}
+}
+
+func TestOAuthBranchLogsUseFixedIdentifiers(t *testing.T) {
+	for _, path := range []string{"oauth.go", "operations.go", "server.go"} {
+		file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ast.Inspect(file, func(node ast.Node) bool {
+			call, ok := node.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			selector, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok || (selector.Sel.Name != "logBranch" && selector.Sel.Name != "logAuthBranch") {
+				return true
+			}
+			if len(call.Args) != 1 {
+				t.Errorf("%s logBranch call must have exactly one argument", path)
+				return true
+			}
+			literal, ok := call.Args[0].(*ast.BasicLit)
+			if !ok || literal.Kind != token.STRING {
+				t.Errorf("%s logBranch argument must be a fixed string literal", path)
+				return true
+			}
+			branch, err := strconv.Unquote(literal.Value)
+			if err != nil || branch == "" || strings.ContainsAny(branch, " \t\r\n%") {
+				t.Errorf("%s logBranch identifier %q is invalid", path, literal.Value)
+			}
+			return true
+		})
 	}
 }
 

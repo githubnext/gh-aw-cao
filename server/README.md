@@ -26,7 +26,9 @@ Available namespaces are `cao:cli`, `cao:server`, `cao:ingest`, `cao:query`,
 and `cao:redis`. `ACTIONS_RUNNER_DEBUG=true` enables all namespaces when
 `DEBUG` is unset. Logs contain operation names, counts, timings, and status;
 they do not include access tokens, OAuth credentials, Redis credentials,
-query payloads, or source records.
+query payloads, or source records. Authentication paths emit fixed
+`oauth branch=<operation>.<outcome>` identifiers for every decision and outcome;
+the identifiers never contain user, request, session, or credential values.
 
 > [!IMPORTANT]
 > The default `serve` command remains local-only: it uses a local bearer
