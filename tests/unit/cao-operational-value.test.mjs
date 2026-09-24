@@ -94,157 +94,74 @@ console.log(JSON.stringify({timestamp:request.timestamp,repository:request.repos
   assert.deepEqual(envelopes.map((entry) => entry.operational_value.campaign), ['successful']);
 });
 
-test('Dependabot operational value counts open vulnerability alerts', () => {
+test('Dependabot operational value measures mature plan consumption signals', () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-dependabot-value-'));
   const fakeGh = path.join(temporary, 'gh');
   const calls = path.join(temporary, 'calls.log');
   writeFileSync(fakeGh, `#!/usr/bin/env bash
 set -euo pipefail
 printf '%s\\n' "$*" >> ${JSON.stringify(calls)}
-if [[ " $* " =~ (^|[[:space:]?&])page= ]]; then
-  echo 'page parameter is not supported' >&2
+if [[ " $* " == *" repos/githubnext/gh-aw-cao/issues "* ]]; then
+  printf '%s\\n' '[[{"number":41,"title":"[dependabot:update-planner] Dependency update plan for octo/example","body":"<!-- dependabot-update-plan:repository=octo/example -->","created_at":"2026-09-10T00:00:00Z","state":"open","user":{"login":"cao-test[bot]"}}]]'
+elif [[ " $* " == *"/issues/41/sub_issues"* ]]; then
+  printf '%s\\n' '[[{"number":42,"state":"closed","state_reason":"completed","user":{"login":"cao-test[bot]"}}]]'
+elif [[ " $* " == *"/issues/41/comments"* ]]; then
+  printf '%s\\n' '[[{"created_at":"2026-09-11T00:00:00Z","user":{"login":"maintainer"}}]]'
+elif [[ " $* " == *"/issues/41/timeline"* ]]; then
+  printf '%s\\n' '[[{"event":"assigned","created_at":"2026-09-11T00:00:00Z"},{"event":"cross-referenced","created_at":"2026-09-12T00:00:00Z","source":{"issue":{"pull_request":{"url":"https://api.github.test/pulls/7"}}}},{"event":"closed","created_at":"2026-09-13T00:00:00Z"}]]'
+elif [[ " $* " == *"/issues/42/comments"* ]]; then
+  printf '%s\\n' '[[]]'
+elif [[ " $* " == *"/issues/42/timeline"* ]]; then
+  printf '%s\\n' '[[{"event":"closed","state_reason":"completed","created_at":"2026-09-14T00:00:00Z"}]]'
+else
+  echo "unexpected gh api arguments: $*" >&2
   exit 1
-fi
-if [[ " $* " == *" rate_limit "* ]]; then
-  printf '5000\\n'
-elif [[ " $* " == *"after=cursor"* ]]; then
-  printf 'HTTP/2 200\\n\\n[{"number":3}]\\n'
-else
-  if [[ " $* " != *" repos/githubnext/gh-aw-cao/dependabot/alerts "* ]] || [[ " $* " != *" state=open "* ]] || [[ " $* " != *" per_page=100 "* ]]; then
-    echo "unexpected gh api arguments: $*" >&2
-    exit 1
-  fi
-  printf 'HTTP/1.1 100 Continue\\n\\nHTTP/2 200\\nlink: <https://api.github.com/repos/githubnext/gh-aw-cao/dependabot/alerts?state=open&per_page=100&after=cursor>; rel="next"; type="application/json"\\n\\n[\\n{"number":1},\\n\\n{"number":2}\\n]\\n'
 fi\n`);
   chmodSync(fakeGh, 0o755);
   const request = JSON.stringify({
     schemaVersion: 1,
-    timestamp: '2026-09-24T10:00:00.000Z',
+    timestamp: '2026-10-01T10:00:00.000Z',
     repositories: ['githubnext/gh-aw-cao']
   });
 
-  const result = JSON.parse(execFileSync(
+  const result = execFileSync(
     process.execPath,
     [path.join(root, 'dependabot', 'operational-value.mjs')],
     { encoding: 'utf8', input: request, env: {
       ...process.env,
-      PATH: `${temporary}:${process.env.PATH}`,
-      CAO_GITHUB_API_MIN_REMAINING: '2000'
+      PATH: `${temporary}:${process.env.PATH}`
     } }
-  ));
+  ).trim().split('\n').map(JSON.parse);
 
-  assert.deepEqual(result, {
-    timestamp: '2026-09-24T10:00:00.000Z',
-    repository: 'githubnext/gh-aw-cao',
-    valueId: 'dependabot-vulnerability-alerts',
-    value: 3
-  });
+  assert.deepEqual(result.map(({ valueId, value }) => ({ valueId, value })), [
+    { valueId: 'dependabot-update-planner.consumed-plan-share', value: 1 },
+    { valueId: 'dependabot-update-planner.assigned-plan-share', value: 1 },
+    { valueId: 'dependabot-update-planner.participated-plan-share', value: 1 },
+    { valueId: 'dependabot-update-planner.progressed-plan-share', value: 1 },
+    { valueId: 'dependabot-update-planner.linked-plan-share', value: 1 },
+    { valueId: 'dependabot-update-planner.closed-plan-share', value: 1 }
+  ]);
   const ghCalls = readFileSync(calls, 'utf8');
-  assert.doesNotMatch(ghCalls, /(^|[\s?&])page=/);
-  assert.match(ghCalls, /after=cursor/);
+  assert.match(ghCalls, /--paginate --slurp repos\/githubnext\/gh-aw-cao\/issues/);
+  assert.equal(ghCalls.match(/\/issues\/41\/timeline/g)?.length, 1);
 });
 
-test('Dependabot operational value rejects non-success alert responses', () => {
-  const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-dependabot-value-status-'));
-  const fakeGh = path.join(temporary, 'gh');
-  writeFileSync(fakeGh, `#!/usr/bin/env bash
-set -euo pipefail
-if [[ " $* " == *" rate_limit "* ]]; then
-  printf '5000\\n'
-else
-  printf 'HTTP/2 403 Forbidden\\n\\n{"message":"Dependabot alerts are disabled"}\\n'
-fi\n`);
-  chmodSync(fakeGh, 0o755);
-  const request = JSON.stringify({
-    schemaVersion: 1,
-    timestamp: '2026-09-24T10:00:00.000Z',
-    repositories: ['githubnext/gh-aw-cao']
-  });
-
-  assert.throws(() => execFileSync(
-    process.execPath,
-    [path.join(root, 'dependabot', 'operational-value.mjs')],
-    { encoding: 'utf8', input: request, env: {
-      ...process.env,
-      PATH: `${temporary}:${process.env.PATH}`,
-      CAO_GITHUB_API_MIN_REMAINING: '2000'
-    }, stdio: 'pipe' }
-  ), /GitHub API returned HTTP 403 Forbidden for githubnext\/gh-aw-cao Dependabot alerts/);
-});
-
-test('Dependabot operational value rejects repeated pagination links', () => {
-  const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-dependabot-value-loop-'));
-  const fakeGh = path.join(temporary, 'gh');
-  writeFileSync(fakeGh, `#!/usr/bin/env bash
-set -euo pipefail
-if [[ " $* " == *" rate_limit "* ]]; then
-  printf '5000\\n'
-else
-  printf 'HTTP/2 200\\nlink: <https://api.github.com/repos/githubnext/gh-aw-cao/dependabot/alerts?state=open&per_page=100&after=same>; rel="next"; type="application/json"\\n\\n[]\\n'
-fi\n`);
-  chmodSync(fakeGh, 0o755);
-  const request = JSON.stringify({
-    schemaVersion: 1,
-    timestamp: '2026-09-24T10:00:00.000Z',
-    repositories: ['githubnext/gh-aw-cao']
-  });
-
-  assert.throws(() => execFileSync(
-    process.execPath,
-    [path.join(root, 'dependabot', 'operational-value.mjs')],
-    { encoding: 'utf8', input: request, env: {
-      ...process.env,
-      PATH: `${temporary}:${process.env.PATH}`,
-      CAO_GITHUB_API_MIN_REMAINING: '2000'
-    }, stdio: 'pipe' }
-  ), /Dependabot alerts pagination repeated a page/);
-});
-
-test('Dependabot operational value rejects unexpected pagination links', () => {
-  const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-dependabot-value-link-'));
-  const fakeGh = path.join(temporary, 'gh');
-  writeFileSync(fakeGh, `#!/usr/bin/env bash
-set -euo pipefail
-if [[ " $* " == *" rate_limit "* ]]; then
-  printf '5000\\n'
-else
-  printf 'HTTP/2 200\\nlink: <https://example.com/repos/githubnext/gh-aw-cao/dependabot/alerts?state=open&per_page=100&after=cursor>; rel="next"\\n\\n[]\\n'
-fi\n`);
-  chmodSync(fakeGh, 0o755);
-  const request = JSON.stringify({
-    schemaVersion: 1,
-    timestamp: '2026-09-24T10:00:00.000Z',
-    repositories: ['githubnext/gh-aw-cao']
-  });
-
-  assert.throws(() => execFileSync(
-    process.execPath,
-    [path.join(root, 'dependabot', 'operational-value.mjs')],
-    { encoding: 'utf8', input: request, env: {
-      ...process.env,
-      PATH: `${temporary}:${process.env.PATH}`,
-      CAO_GITHUB_API_MIN_REMAINING: '2000'
-    }, stdio: 'pipe' }
-  ), /GitHub API returned an unexpected Dependabot alerts next link/);
-});
-
-test('Dependabot operational value rejects excessive pagination', () => {
+test('Dependabot operational value fails closed on unbounded child evidence', () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-dependabot-value-pages-'));
   const fakeGh = path.join(temporary, 'gh');
   writeFileSync(fakeGh, `#!/usr/bin/env bash
 set -euo pipefail
-if [[ " $* " == *" rate_limit "* ]]; then
-  printf '5000\\n'
+if [[ " $* " == *" repos/githubnext/gh-aw-cao/issues "* ]]; then
+  printf '%s\\n' '[[{"number":41,"title":"Dependency update plan for octo/example","body":"","created_at":"2026-09-10T00:00:00Z","state":"open","user":{"login":"cao-test[bot]"}}]]'
+elif [[ " $* " == *"/issues/41/sub_issues"* ]]; then
+  printf '%s\\n' '[[],[]]'
 else
-  cursor="$(sed -n 's/.*after=\\([0-9][0-9]*\\).*/\\1/p' <<< "$*")"
-  if [[ -z "$cursor" ]]; then cursor=0; fi
-  next=$((cursor + 1))
-  printf 'HTTP/2 200\\nlink: <https://api.github.com/repos/githubnext/gh-aw-cao/dependabot/alerts?state=open&per_page=100&after=%s>; rel="next"\\n\\n[]\\n' "$next"
+  printf '%s\\n' '[[]]'
 fi\n`);
   chmodSync(fakeGh, 0o755);
   const request = JSON.stringify({
     schemaVersion: 1,
-    timestamp: '2026-09-24T10:00:00.000Z',
+    timestamp: '2026-10-01T10:00:00.000Z',
     repositories: ['githubnext/gh-aw-cao']
   });
 
@@ -253,11 +170,9 @@ fi\n`);
     [path.join(root, 'dependabot', 'operational-value.mjs')],
     { encoding: 'utf8', input: request, env: {
       ...process.env,
-      PATH: `${temporary}:${process.env.PATH}`,
-      CAO_DEPENDABOT_ALERTS_MAX_PAGES: '2',
-      CAO_GITHUB_API_MIN_REMAINING: '2000'
+      PATH: `${temporary}:${process.env.PATH}`
     }, stdio: 'pipe' }
-  ), /Dependabot alerts pagination exceeded 2 pages/);
+  ), /evidence exceeded its bounded page/);
 });
 
 test('Daily File Diet shares one value module between CAO collection and historical evaluation', async () => {

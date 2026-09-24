@@ -172,6 +172,8 @@ function signalFromTimeline(events, cutoff, kind) {
     if (at === null || at > cutoff) return false;
     if (kind === "assigned") return event.event === "assigned";
     if (kind === "linked") return event.event === "cross-referenced" && event.source?.issue?.pull_request;
+    if (kind === "closed") return event.event === "closed";
+    if (kind === "completed") return event.event === "closed" && event.state_reason === "completed";
     return false;
   });
 }
@@ -195,6 +197,7 @@ function collectPlan(repository, issue) {
   let participated = false;
   let progressed = false;
   let linked = false;
+  let closed = false;
   const issueNumbers = [issue.number, ...children.map(({ number }) => number)];
   for (const number of issueNumbers) {
     const record = number === issue.number ? issue : children.find((child) => child.number === number);
@@ -204,15 +207,11 @@ function collectPlan(repository, issue) {
     participated ||= externalParticipation(comments, cutoff, String(record?.user?.login ?? ""));
     linked ||= signalFromTimeline(timeline, cutoff, "linked");
     if (number !== issue.number) {
-      const closedAt = parseTime(record?.closed_at);
-      progressed ||= record?.state === "closed"
-        && record?.state_reason === "completed"
-        && closedAt !== null
-        && closedAt <= cutoff;
+      progressed ||= signalFromTimeline(timeline, cutoff, "completed");
+    } else {
+      closed ||= signalFromTimeline(timeline, cutoff, "closed");
     }
   }
-  const closedAt = parseTime(issue.closed_at);
-  const closed = issue.state === "closed" && closedAt !== null && closedAt <= cutoff;
   return {
     assigned,
     participated,
@@ -263,6 +262,21 @@ export async function collectBatch(requests) {
     issuesByRepository.set(repository, pages.flat().filter((issue) => !issue.pull_request && targetOf(issue)));
   }
 
+  const planEvidence = new Map();
+  for (const [repository, issues] of issuesByRepository) {
+    const windows = grouped.get(repository);
+    for (const issue of issues) {
+      const createdAt = parseTime(issue.created_at);
+      const requested = createdAt !== null && windows.some((request) => (
+        createdAt >= parseTime(request.windowStart)
+        && createdAt < parseTime(request.windowEnd)
+        && parseTime(request.observedAt) >= createdAt + definition.evidence.window.maturationDays * DAY_MS
+      ));
+      if (!requested) continue;
+      planEvidence.set(`${repository.toLowerCase()}:${issue.number}`, collectPlan(repository, issue));
+    }
+  }
+
   return requests.map((request) => {
     const repository = request.repository ?? definition.evidence.repositories[0];
     const start = parseTime(request.windowStart);
@@ -275,7 +289,10 @@ export async function collectBatch(requests) {
         && createdAt < end
         && observedAt >= createdAt + definition.evidence.window.maturationDays * DAY_MS;
     });
-    const plans = candidates.map((issue) => ({ issue, signals: collectPlan(repository, issue) }));
+    const plans = candidates.map((issue) => ({
+      issue,
+      signals: planEvidence.get(`${repository.toLowerCase()}:${issue.number}`),
+    }));
     const count = (field) => plans.filter(({ signals }) => signals[field]).length;
     return {
       evidence: {
