@@ -288,8 +288,8 @@ The implementation profile defined by this specification is:
 | Layer | Version | Physical structure |
 | --- | ---: | --- |
 | Canonical model | 13 | Campaign, Repository, Workflow, Run, Domain, Tool, Audit, and Issue records |
-| Browser IndexedDB | 20 | Eight canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
-| Local SQLite projection | IndexedDB 20 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records`, containing the same logical stores and JSON records as IndexedDB |
+| Browser IndexedDB | 21 | Eight canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
+| Local SQLite projection | IndexedDB 21 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records`, containing the same logical stores and JSON records as IndexedDB |
 | Local Redis server projection | Canonical model 13 | Immutable active generation of logical-source hashes plus RediSearch indexes, queried only through the loopback Go HTTP(S) server |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
 
@@ -325,7 +325,7 @@ store uses `id` as its key path. The implemented secondary indexes are:
 | `campaigns` | `bySlug -> slug` |
 | `repositories` | none |
 | `workflows` | `byRepository -> repositoryId` |
-| `runs` | `byRepository -> repositoryId`, `byWorkflow -> workflowId`, `byConclusion -> conclusion` |
+| `runs` | `byRepository -> repositoryId`, `byWorkflow -> workflowId`, `byConclusion -> conclusion`, `byEvent -> event`, `byEventConclusion -> [event, conclusion]` |
 | `domains`, `tools`, `audits`, `issues` | `byRun -> runId` |
 | `transactions` | `byCreatedAt -> createdAt` |
 | `dailyOverviewAggregates` | `byGenerationDay -> [generation, day]` |
@@ -1720,7 +1720,7 @@ The canonical browser database SHALL use:
 
 ```js
 const DATABASE_NAME = "gh-aw-cao-dashboard-data";
-const DATABASE_VERSION = 20;
+const DATABASE_VERSION = 21;
 ```
 
 The name MAY be scoped by deployment path to prevent unrelated dashboard
@@ -1732,7 +1732,7 @@ rows.
 
 # 27. Object Stores
 
-IndexedDB version 20 SHALL define:
+IndexedDB version 21 SHALL define:
 
 ```text
 campaigns
@@ -1786,7 +1786,7 @@ conclusion
 
 The generation-ordered runtime-computation indexes described by Section 73 are
 reserved for the physical version that implements the computation projection.
-They are not part of IndexedDB version 20. That implementation MUST increment
+They are not part of IndexedDB version 21. That implementation MUST increment
 the physical version and update Section 5.1 before relying on those indexes.
 
 ### run-linked tables
@@ -1811,7 +1811,7 @@ Every secondary index increases storage and write amplification.
 # 29. Canonical Browser Reconciliation
 
 Canonical entity rows SHALL use `id` as the primary key and SHALL NOT carry a
-canonical generation key in IndexedDB version 20. Ingestion serializes writers,
+canonical generation key in IndexedDB version 21. Ingestion serializes writers,
 normalizes source observations, validates complete in-memory batches where the
 input mode permits it, and reconciles each store in bounded transactions.
 
@@ -3385,11 +3385,50 @@ or schema deletion MUST allow the projection and its metadata to be
 fully reconstructed from a subsequent canonical ingestion, consistent
 with INV-004 and §59 (Full Rebuild Requirement).
 
+## 72.9 Indexed run aggregate pushdown
+
+Independently of the materialized projection, the declarative query
+planner SHALL push additive run aggregations down to IndexedDB indexes
+whenever every grouping and filtering key of a query is a queryable run
+key path. The `runs` store therefore SHALL expose `byEvent` and
+`byEventConclusion` in addition to `byRepository`, `byWorkflow`, and
+`byConclusion`, and `event` SHALL be a queryable string key path.
+
+This path is generic: it is selected from the shape of the declarative
+query alone and MUST NOT be selected by query name. When both this path
+and the §72 projection can satisfy the same query, the materialized
+projection takes precedence, and both MUST produce results identical to
+the canonical path (§72.6).
+
+## 72.10 Data-worker heap budgets
+
+The data worker's peak heap SHALL be measured against the deployed
+dataset rather than synthetic fixtures. Measurement MUST read the heap
+of the dedicated-worker isolate itself, because `performance.memory`
+and `performance.measureUserAgentSpecificMemory` are unavailable inside
+a Chromium dedicated worker; the supported technique is a raw Chrome
+DevTools Protocol connection to the worker target followed by
+`Runtime.getHeapUsage`.
+
+Measurement MUST fail closed: a run that records no worker heap sample
+MUST fail rather than vacuously satisfy its budget. Budgets SHALL bound
+Overview rendering, post-render retained heap, and whole-dataset
+ingestion separately, because ingestion dominates the peak.
+
+## 72.11 Eager ingestion diagnostics
+
+The worker ingests activity shards lazily and publishes a run-phase
+result before later phases complete. For diagnostics and measurement,
+the `debug-eager-ingest` parameter SHALL force every published shard to
+be ingested before results are published, disable any shard limit, and
+suppress run-phase-only publication. It is a diagnostic control only
+and MUST NOT change canonical results.
+
 ---
 
 # 73. Materialized Computation Projection
 
-This section defines the next physical storage profile. IndexedDB version 20
+This section defines the next physical storage profile. IndexedDB version 21
 does not contain `computationResults`, `computationMetadata`, or the ordered
 runtime-computation indexes. Implementing this section SHALL increment the
 physical IndexedDB version, update Section 5.1, and add the conformance tests
@@ -3672,6 +3711,19 @@ or broaden the partition.
 ---
 
 # 74. Change Log
+
+## Version 1.8.0 — Indexed run aggregate pushdown and worker heap budgets
+
+* Added §72.9, requiring the declarative planner to push additive run
+  aggregations down to IndexedDB indexes based on query shape alone, never on
+  query name, alongside the existing materialized projection.
+* Added the `byEvent` and `byEventConclusion` run indexes and the `event`
+  queryable string key path, raising IndexedDB to version 21.
+* Added §72.10, requiring deployed-data measurement of the data worker's heap
+  through a raw DevTools Protocol connection to the worker isolate, and
+  requiring unmeasured runs to fail rather than pass vacuously.
+* Added §72.11, defining `debug-eager-ingest` as a diagnostic control that
+  forces full shard ingestion without changing canonical results.
 
 ## Version 1.7.0 — Implemented storage alignment
 

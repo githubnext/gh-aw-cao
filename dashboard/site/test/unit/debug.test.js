@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createDebug, debugShardLimit, fullDebugUrl, isDebugEnabled, withDebugParameter } from '../../src/debug.js';
+import {
+  createDebug,
+  debugEagerIngest,
+  debugShardLimit,
+  fullDebugUrl,
+  isDebugEnabled,
+  withDebugParameter
+} from '../../src/debug.js';
 
 describe('dashboard debug logging', () => {
   it('builds a full-debug reload URL without losing the current route', () => {
@@ -36,6 +43,19 @@ describe('dashboard debug logging', () => {
     expect(debugShardLimit('?debug-shard-limit=0')).toBeUndefined();
     expect(debugShardLimit('?debug-shard-limit=1.5')).toBeUndefined();
     expect(debugShardLimit('?debug-shard-limit=9007199254740992')).toBeUndefined();
+  });
+
+  it('forces eager ingestion unless the parameter is absent or disabled', () => {
+    expect(debugEagerIngest('?debug-eager-ingest=1')).toBe(true);
+    expect(debugEagerIngest('?debug-eager-ingest')).toBe(true);
+    expect(debugEagerIngest('?debug-eager-ingest=0')).toBe(false);
+    expect(debugEagerIngest('?debug-eager-ingest=FALSE')).toBe(false);
+    expect(debugEagerIngest('?mode=live')).toBe(false);
+  });
+
+  it('forwards the eager ingestion parameter onto the worker script URL', () => {
+    const url = withDebugParameter(new URL('https://example.test/data-worker.js'), '?debug-eager-ingest=1');
+    expect(url.href).toBe('https://example.test/data-worker.js?debug-eager-ingest=1');
   });
 
   it('checks the query once when created and prefixes matching output', () => {

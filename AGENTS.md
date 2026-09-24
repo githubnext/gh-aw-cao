@@ -89,6 +89,14 @@ Run these commands from the `dashboard/site/` directory:
 - Narrow noisy sessions with category filters such as `?debug=data:query,-render:*`, and use `?debug-shard-limit=N` to profile with fewer activity shards.
 - Attribute a slow page to its declarative queries before changing view code; query cost belongs to the query engine in the data Web Worker, not to components.
 
+### Dashboard data-worker memory testing
+
+- Guard data-worker heap regressions with `npm run test:memory:dashboard-overview` from the repository root. It ingests the deployed dataset, loads the Overview page, and asserts the worker's isolated heap against the budgets in `specs/dashboard-data.md` §72.8. Override budgets with `DASHBOARD_OVERVIEW_MAX_WORKER_HEAP_MB`, `..._MAX_RETAINED_WORKER_HEAP_MB`, and `..._MAX_INGESTION_WORKER_HEAP_MB`, and point it at other data with `DASHBOARD_DATA_URL`.
+- Dedicated workers expose neither `performance.memory` nor `performance.measureUserAgentSpecificMemory`, and Playwright's `newCDPSession(page)` targets the page. Worker heap must be read by launching Chromium with `--remote-debugging-port`, finding the `type: "worker"` target, and calling `Runtime.getHeapUsage`; `tests/e2e/dashboard-worker-memory.mjs` encapsulates this.
+- Attribute a heap regression with `npm run debug:dashboard-worker-memory`, which prints a heap timeline, the worker's own debug output, and every canonical collection read labelled `scoped` or `WHOLE-DATABASE`.
+- Ingestion, not query execution, dominates worker memory: `ingestCanonicalBatch` reads every entity store to merge each batch. That is the only expected whole-database read — a second one is a defect.
+- Measure page budgets against a fully ingested database by adding `?debug-eager-ingest=1`, which ingests every shard up front, ignores `debug-shard-limit`, and suppresses run-phase-first publication.
+
 ### CI workflows
 
 | Workflow file | Scope | Trigger |
@@ -102,6 +110,7 @@ Run these commands from the `dashboard/site/` directory:
 
 - Editing control-plane sources under `.github/workflows/shared/` → `npm run typecheck:cao && npm test`
 - Editing dashboard site under `dashboard/site/` → from that directory: `npm test && npm run test:e2e && npm run test:performance && npm run lint && npm run typecheck`
+- Editing dashboard ingestion, canonical storage, or the query engine → also run `npm run test:memory:dashboard-overview` from the repository root
 - Debugging downloaded dashboard data → use `npm run dashboard:local -- --repo OWNER/REPOSITORY`
 - Editing the Activity workflow or JSONL parser under `activity/` → run the focused activity tests and `npm run compile`
 - Editing workflow `.md` files → `npm run compile` (add `compile:locks` if lock files should update)

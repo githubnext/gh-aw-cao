@@ -1,5 +1,6 @@
 const DEBUG_PARAMETER = 'debug';
 const DEBUG_SHARD_LIMIT_PARAMETER = 'debug-shard-limit';
+const DEBUG_EAGER_INGEST_PARAMETER = 'debug-eager-ingest';
 const DEBUG_PREFIX = 'cao';
 const patternCache = new Map();
 const disabledDebug = () => {};
@@ -65,7 +66,11 @@ export function fullDebugUrl(href = globalThis.location?.href ?? '') {
 export function withDebugParameter(url, search = globalThis.location?.search ?? '') {
   const result = new URL(url);
   const parameters = new URLSearchParams(search);
-  for (const parameter of [DEBUG_PARAMETER, DEBUG_SHARD_LIMIT_PARAMETER]) {
+  for (const parameter of [
+    DEBUG_PARAMETER,
+    DEBUG_SHARD_LIMIT_PARAMETER,
+    DEBUG_EAGER_INGEST_PARAMETER
+  ]) {
     const value = parameters.get(parameter);
     if (value) result.searchParams.set(parameter, value);
   }
@@ -82,6 +87,19 @@ export function debugShardLimit(search = globalThis.location?.search ?? '') {
   if (!value || !/^[1-9]\d*$/.test(value)) return undefined;
   const limit = Number(value);
   return Number.isSafeInteger(limit) ? limit : undefined;
+}
+
+/**
+ * Reports whether the dashboard was asked to ingest every published activity
+ * shard before the first query result, instead of publishing run-phase results
+ * as soon as run information is available. Measurement and diagnostic runs use
+ * this to work against a fully ingested canonical database.
+ * @param {string} [search]
+ * @returns {boolean}
+ */
+export function debugEagerIngest(search = globalThis.location?.search ?? '') {
+  const value = new URLSearchParams(search).get(DEBUG_EAGER_INGEST_PARAMETER);
+  return value !== null && value !== '0' && value.toLowerCase() !== 'false';
 }
 
 /**

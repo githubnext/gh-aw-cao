@@ -7,7 +7,7 @@ import { tidy } from '../../data-operations.js';
 const debug = createDebug('data:indexeddb');
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 20;
+export const DATABASE_VERSION = 21;
 
 /** @param {string} [pathname] */
 export function canonicalDatabaseName(pathname) {
@@ -62,7 +62,9 @@ export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
    indexes: {
      byRepository: 'repositoryId',
      byWorkflow: 'workflowId',
-     byConclusion: 'conclusion'
+     byConclusion: 'conclusion',
+     byEvent: 'event',
+     byEventConclusion: ['event', 'conclusion']
    }
  },
  domains: {
@@ -112,7 +114,8 @@ const QUERYABLE_STRING_KEY_PATHS = new Set([
   'repositoryId',
   'workflowId',
   'runId',
-  'conclusion'
+  'conclusion',
+  'event'
 ]);
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 
@@ -533,6 +536,7 @@ export async function readCollections(indexedDB, storeNames) {
     debug('completed multi-store collection read', {
       storeCount: storeNames.length,
       requestCount: storeNames.length,
+      stores: [...storeNames].join('|'),
       durationMs: monotonicNow() - startedAt
     });
     return Object.fromEntries(storeNames.map((storeName, index) => [storeName, records[index]]));
@@ -564,6 +568,7 @@ export async function countCollections(indexedDB, storeNames) {
     debug('completed multi-store collection count', {
       storeCount: storeNames.length,
       requestCount: storeNames.length,
+      stores: [...storeNames].join('|'),
       durationMs: monotonicNow() - startedAt
     });
     return Object.fromEntries(storeNames.map((storeName, index) => [storeName, counts[index]]));

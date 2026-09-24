@@ -178,7 +178,9 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
     const executable = definition && !defects.has(name)
       ? flattenIndexedRunQuery(index, definition)
       : null;
-    const operators = executable ? indexedRunOperators(executable) : null;
+    const operators = executable
+      ? indexedRunOperators(executable) ?? indexedRunAggregateOperators(executable)
+      : null;
     return operators ? [{ name, definition: executable, operators }] : [];
   });
   const stores = [...new Set(countPlans.map(({ source }) => source))];
@@ -221,8 +223,17 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
 
 const RUN_QUERY_FIELDS = new Map([
   ['run-conclusion', 'conclusion'],
-  ['started-at', 'startedAt']
+  ['started-at', 'startedAt'],
+  ['event', 'event']
 ]);
+/** Canonical run key paths the storage layer can resolve through an index. */
+const QUERYABLE_RUN_KEY_PATHS = new Set(['conclusion', 'event']);
+/**
+ * Fields a count aggregate may reduce while reading candidates from storage.
+ * Every entry is produced by the `runs` projection without the workflow join,
+ * so a pushed-down read can never change what the aggregate counts.
+ */
+const COUNTABLE_RUN_FIELDS = new Set(['id', 'run', ...RUN_QUERY_FIELDS.keys()]);
 
 /**
  * Flattens query chains whose ancestors add only a run filter. This preserves
@@ -288,6 +299,55 @@ function indexedRunOperators(definition) {
       limit: definition.limit
     }] : [])
   ];
+}
+
+/**
+ * Plans an IndexedDB candidate read for counting queries whose predicates are
+ * all indexable run fields, so declarative count aggregates over `runs` read
+ * only matching records instead of the whole collection. The declarative
+ * engine still executes the query itself; this only narrows what it reads.
+ *
+ * @param {Record<string, any>} definition
+ */
+function indexedRunAggregateOperators(definition) {
+  if (definition.from !== 'runs'
+      || definition.union?.length
+      || definition.joins?.length
+      || definition.compute?.length
+      || definition['temporal-series']
+      || definition.predict?.length
+      || definition.select?.length
+      || definition['order-by']?.length
+      || definition.limit !== undefined
+      || definition.filter?.search) return null;
+  const values = definition.aggregate?.values;
+  if (!Array.isArray(values) || values.length === 0) return null;
+  const groupedBy = definition.aggregate?.by ?? [];
+  if (!Array.isArray(groupedBy) || groupedBy.some((field) => !RUN_QUERY_FIELDS.has(field))) return null;
+  const valuePredicates = values.flatMap((value) => {
+    if (value?.reducer !== 'count') return [null];
+    if (value.field !== undefined && !COUNTABLE_RUN_FIELDS.has(value.field)) return [null];
+    const predicates = value.filter?.predicates;
+    if (value.filter && (value.filter.search || !Array.isArray(predicates))) return [null];
+    return predicates ?? [];
+  });
+  if (valuePredicates.some((predicate) => (
+    !predicate || !RUN_QUERY_FIELDS.has(predicate.field)
+  ))) return null;
+  const predicates = definition.filter?.predicates;
+  if (!Array.isArray(predicates)
+      || predicates.length === 0
+      || predicates.some((predicate) => !RUN_QUERY_FIELDS.has(predicate.field))
+      || !predicates.some((predicate) => (
+        QUERYABLE_RUN_KEY_PATHS.has(String(RUN_QUERY_FIELDS.get(predicate.field)))
+      ))) return null;
+  return [{
+    op: /** @type {const} */ ('filter'),
+    predicates: predicates.map((predicate) => ({
+      ...predicate,
+      field: RUN_QUERY_FIELDS.get(predicate.field)
+    }))
+  }];
 }
 
 /** @param {string} name */

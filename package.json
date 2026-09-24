@@ -45,6 +45,8 @@
     "test:performance:dashboard-queries": "playwright test --config=tests/playwright/configs/dashboard-query-performance.config.mjs",
     "test:e2e:dashboard-ingestion": "playwright test --config=tests/playwright/configs/dashboard-ingestion.config.mjs",
     "test:stress:dashboard": "playwright test --config=tests/playwright/configs/dashboard-massive-scale.config.mjs",
+    "test:memory:dashboard-overview": "playwright test --config=tests/playwright/configs/dashboard-overview-memory.config.mjs",
+    "debug:dashboard-worker-memory": "node tests/e2e/dashboard-worker-memory-trace.mjs --eager --debug=data:indexeddb,data:ingestion,data:performance",
     "test:e2e:local-server": "playwright test --config=tests/playwright/configs/local-server.config.mjs"
   },
   "dependencies": {

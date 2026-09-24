@@ -26,11 +26,18 @@ import { DashboardQueryCancelledError, continuationRevision, executeDashboardQue
 import { deriveDataHealthCalloutSources } from './data-health.js';
 import { formatDataSize, startIngestionProgress } from './ingestion-progress.js';
 import { loadDashboardSources } from './source-loader.js';
-import { createDebug, debugShardLimit } from './debug.js';
+import { createDebug, debugEagerIngest, debugShardLimit } from './debug.js';
 import { withRetries } from './retry.js';
 
 const debugIngestion = createDebug('data:ingestion');
 const debugPerformance = createDebug('data:performance');
+/**
+ * Forces every published activity shard to be ingested before results are
+ * published, so diagnostics and measurement runs observe a fully ingested
+ * canonical database instead of run-phase-only data.
+ */
+const eagerIngest = debugEagerIngest();
+if (eagerIngest) debugIngestion('eager ingestion requested', { eagerIngest });
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 const workerScope = typeof self !== 'undefined' && 'postMessage' in self ? self : null;
 
@@ -361,12 +368,18 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
  * @returns {Promise<void>}
  */
 function refreshDashboardSubscriptions(logicalSources, runsOnly) {
+  const runPhasePublication = runsOnly && !eagerIngest;
+  if (runsOnly !== runPhasePublication) {
+    debugIngestion('publishing every phase because eager ingestion is active', {
+      subscriptions: dashboardSubscriptions.size
+    });
+  }
   liveDashboard = {
     logicalSources,
     revision: (liveDashboard?.revision ?? 0) + 1
   };
-  runPhaseOnly = runsOnly;
-  scheduleDashboardSubscriptions(runsOnly
+  runPhaseOnly = runPhasePublication;
+  scheduleDashboardSubscriptions(runPhasePublication
     ? [...dashboardSubscriptions]
         .filter(([, subscription]) => isRunPhaseSubscription(subscription))
         .map(([id]) => id)
@@ -519,13 +532,14 @@ export function processDataRequest(request, signal) {
             : null;
           const runInformationShards = publishedRunInformationShards(payloadHashes);
           const phasedShards = publishedPhasedActivityShards(payloadHashes);
-          const shardLimit = debugShardLimit();
+          const shardLimit = eagerIngest ? undefined : debugShardLimit();
           const shards = shardLimit === undefined ? phasedShards : phasedShards.slice(0, shardLimit);
           const shardCount = shards.length;
           debugIngestion('loaded activity manifest', {
             source: sourceUrl.pathname,
             shardCount,
             shardLimit,
+            eagerIngest,
             manifestAvailable: payloadHashesResponse?.ok === true
           });
           if (shardCount > 0) {
@@ -547,12 +561,19 @@ export function processDataRequest(request, signal) {
             shardStates.push({ index, shard, shardUrl, current, sizeBytes: undefined });
           }
           const pendingShards = shardStates.filter(({ current }) => !current);
-          const runPhaseShardCount = phasedShards.length > 0
+          const runPhaseShardCount = phasedShards.length > 0 && !eagerIngest
             ? Math.min(runInformationShards.length, shardStates.length)
             : 0;
           const initialPendingShards = runPhaseShardCount > 0
             ? pendingShards.filter(({ index }) => index < runPhaseShardCount)
             : pendingShards;
+          debugIngestion('planned shard ingestion phases', {
+            shardCount,
+            pendingShardCount: pendingShards.length,
+            runPhaseShardCount,
+            initialPendingShardCount: initialPendingShards.length,
+            eagerIngest
+          });
           if (pendingShards.length > 0) {
             progress.start();
             progress.reportShardImportProgress(shardStates.length - pendingShards.length, shardCount);

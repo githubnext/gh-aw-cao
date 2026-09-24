@@ -40,8 +40,22 @@ async function putCanonicalRecord(storeName, record) {
   });
   database.close();
 }
-const sources = {
-  campaigns: {
+/** @param {string} storeName */
+async function readCanonicalRecords(storeName) {
+  const database = await new Promise((resolve, reject) => {
+    const request = indexedDB.open(DATABASE_NAME);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  const records = await new Promise((resolve, reject) => {
+    const request = database.transaction(storeName, 'readonly').objectStore(storeName).getAll();
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  database.close();
+  return records;
+}
+const sources = {  campaigns: {
     rows: [{
       campaign: 'dashboard', 'campaign-name': 'CAO Dashboard', 'campaign-description': 'Deploy the dashboard.',
       'campaign-icon': 'graph', 'campaign-mode': 'review', 'campaign-enabled': true,
@@ -314,6 +328,62 @@ describe('canonical view sources', () => {
     });
     expect(indexedReads).toHaveBeenCalledTimes(4);
     expect(collectionReads).not.toHaveBeenCalled();
+  });
+
+  it('pushes the Overview dispatch aggregate into the canonical run event index', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+    const seeded = (await queryCanonicalViewSources(indexedDB, sources, ['runs']));
+    expect(seeded.runs.rows).toHaveLength(1);
+    const stored = await readCanonicalRecords('runs');
+    for (const [index, [event, conclusion]] of [
+      ['workflow_dispatch', 'success'],
+      ['workflow_dispatch', 'timed-out'],
+      ['push', 'failure']
+    ].entries()) {
+      await putCanonicalRecord('runs', {
+        ...stored[0],
+        id: `${stored[0].id}-dispatch-${index}`,
+        githubRunId: `${900 + index}`,
+        event,
+        conclusion
+      });
+    }
+    const canonical = await queryCanonicalViewSources(indexedDB, sources, [...DATABASE_STORES]);
+    const collectionReads = vi.spyOn(IDBObjectStore.prototype, 'getAll');
+    const indexedReads = vi.spyOn(IDBIndex.prototype, 'getAll');
+
+    const native = await queryNativeCountSources(
+      indexedDB,
+      sources,
+      dashboardQueries,
+      ['overview-dispatch-summary']
+    );
+    const declarative = executeDashboardQueries(
+      dashboardQueries,
+      canonical,
+      ['overview-dispatch-summary']
+    );
+
+    expect(native['overview-dispatch-summary'].rows).toEqual([
+      { dispatches: 2, 'failed-dispatches': 1 }
+    ]);
+    expect(native['overview-dispatch-summary'].rows)
+      .toEqual(declarative['overview-dispatch-summary'].rows);
+    expect(indexedReads).toHaveBeenCalledOnce();
+    expect(collectionReads).not.toHaveBeenCalled();
+  });
+
+  it('keeps computed daily run aggregates in the declarative engine', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+
+    const native = await queryNativeCountSources(
+      indexedDB,
+      sources,
+      dashboardQueries,
+      ['runs-daily-conclusions', 'overview-dispatch-summary']
+    );
+
+    expect(Object.keys(native)).toEqual(['overview-dispatch-summary']);
   });
 
   it('falls back for joins, transformed counts, invalid queries, and non-table sources', async () => {
