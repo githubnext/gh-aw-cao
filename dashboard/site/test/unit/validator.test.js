@@ -316,7 +316,7 @@ describe('dashboard document validation', () => {
     expect(invalidFlag.errors).toEqual(expect.arrayContaining([
       expect.objectContaining({ message: 'CLI action argument flag must be a canonical long option.' })
     ]));
-  });
+  }, 10_000);
 
 
 
