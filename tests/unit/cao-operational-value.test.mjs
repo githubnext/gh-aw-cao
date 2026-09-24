@@ -68,7 +68,7 @@ else
     echo "unexpected gh api arguments: $*" >&2
     exit 1
   fi
-  printf 'HTTP/2 200\\nlink: <https://api.github.com/repos/githubnext/gh-aw-cao/dependabot/alerts?state=open&per_page=100&after=cursor>; rel="next"\\n\\n[{"number":1},{"number":2}]\\n'
+  printf 'HTTP/2 200\\nlink: <https://api.github.com/repos/githubnext/gh-aw-cao/dependabot/alerts?state=open&per_page=100&after=cursor>; rel="next"\\n\\n[\\n{"number":1},\\n\\n{"number":2}\\n]\\n'
 fi\n`);
   chmodSync(fakeGh, 0o755);
   const request = JSON.stringify({
@@ -96,6 +96,34 @@ fi\n`);
   const ghCalls = readFileSync(calls, 'utf8');
   assert.doesNotMatch(ghCalls, /(^|[\s?&])page=/);
   assert.match(ghCalls, /after=cursor/);
+});
+
+test('Dependabot operational value rejects repeated pagination links', () => {
+  const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-dependabot-value-loop-'));
+  const fakeGh = path.join(temporary, 'gh');
+  writeFileSync(fakeGh, `#!/usr/bin/env bash
+set -euo pipefail
+if [[ " $* " == *" rate_limit "* ]]; then
+  printf '5000\\n'
+else
+  printf 'HTTP/2 200\\nlink: <https://api.github.com/repos/githubnext/gh-aw-cao/dependabot/alerts?state=open&per_page=100&after=same>; rel="next"\\n\\n[]\\n'
+fi\n`);
+  chmodSync(fakeGh, 0o755);
+  const request = JSON.stringify({
+    schemaVersion: 1,
+    timestamp: '2026-09-24T10:00:00.000Z',
+    repositories: ['githubnext/gh-aw-cao']
+  });
+
+  assert.throws(() => execFileSync(
+    process.execPath,
+    [path.join(root, 'dependabot', 'operational-value.mjs')],
+    { encoding: 'utf8', input: request, env: {
+      ...process.env,
+      PATH: `${temporary}:${process.env.PATH}`,
+      CAO_GITHUB_API_MIN_REMAINING: '2000'
+    }, stdio: 'pipe' }
+  ), /Dependabot alerts pagination repeated a page/);
 });
 
 test('cao operational-value rejects non-numeric metrics and bounds retained output', () => {

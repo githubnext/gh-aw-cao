@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
 const REPOSITORY_COORDINATE = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
+const MAX_ALERT_PAGES = 1000;
 
 function fail(message) {
   console.error(message);
@@ -41,7 +42,7 @@ function ghApi(arguments_) {
 
 function parseResponse(output) {
   const normalized = String(output).replace(/\r\n/g, '\n');
-  const separator = normalized.lastIndexOf('\n\n');
+  const separator = normalized.indexOf('\n\n');
   if (separator < 0) fail('GitHub API returned a response without headers');
   const headers = normalized.slice(0, separator);
   const body = normalized.slice(separator + 2);
@@ -58,8 +59,18 @@ function parseResponse(output) {
 for (const repository of request.repositories) {
   let endpoint = `repos/${repository}/dependabot/alerts`;
   let fields = ['-f', 'state=open', '-f', 'per_page=100'];
+  let pages = 0;
+  const visited = new Set();
   let value = 0;
   while (endpoint) {
+    if (pages >= MAX_ALERT_PAGES) {
+      fail(`Dependabot alerts pagination exceeded ${MAX_ALERT_PAGES} pages for ${repository}`);
+    }
+    if (visited.has(endpoint)) {
+      fail(`Dependabot alerts pagination repeated a page for ${repository}`);
+    }
+    visited.add(endpoint);
+    pages += 1;
     if (minimumRemaining > 0) {
       const remaining = Number(ghApi(['rate_limit', '--jq', '.resources.core.remaining']).trim());
       if (!Number.isSafeInteger(remaining) || remaining < 0) {
