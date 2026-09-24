@@ -173,6 +173,27 @@ func TestAzureOAuthRefreshRotationLogoutAndRefreshFailure(t *testing.T) {
 	if failed.Code != http.StatusUnauthorized {
 		t.Fatalf("refresh failure returned %d: %s", failed.Code, failed.Body.String())
 	}
+
+	removedGitHub := fakeGitHub(t, fakeGitHubOptions{
+		membershipState:          "active",
+		refreshedMembershipState: "inactive",
+		accessExpiresIn:          -60,
+		refreshSucceeds:          true,
+	})
+	app = newAzureTestApp(t, removedGitHub.URL)
+	sessionCookie, csrfCookie = callbackSession(t, app)
+	removed := httptest.NewRecorder()
+	request = azureRequest(t, http.MethodPost, "/api/v1/refresh")
+	request.AddCookie(sessionCookie)
+	request.AddCookie(csrfCookie)
+	request.Header.Set("X-CSRF-Token", csrfCookie.Value)
+	app.Handler().ServeHTTP(removed, request)
+	if removed.Code != http.StatusUnauthorized {
+		t.Fatalf("removed member refresh returned %d: %s", removed.Code, removed.Body.String())
+	}
+	if !removedGitHub.sawRevocation("access-new") {
+		t.Fatalf("removed member's refreshed token was not revoked: %#v", removedGitHub.revoked)
+	}
 }
 
 func TestHostedOAuthExposesAndSwitchesCurrentAccount(t *testing.T) {
@@ -225,9 +246,10 @@ func TestAzureProxyPolicyFailsClosed(t *testing.T) {
 }
 
 type fakeGitHubOptions struct {
-	membershipState string
-	accessExpiresIn int64
-	refreshSucceeds bool
+	membershipState          string
+	refreshedMembershipState string
+	accessExpiresIn          int64
+	refreshSucceeds          bool
 }
 
 type fakeGitHubServer struct {
@@ -261,7 +283,11 @@ func fakeGitHub(t *testing.T, options fakeGitHubOptions) *fakeGitHubServer {
 		_ = json.NewEncoder(response).Encode(map[string]string{"login": "octocat"})
 	})
 	mux.HandleFunc("/user/memberships/orgs/example", func(response http.ResponseWriter, request *http.Request) {
-		_ = json.NewEncoder(response).Encode(map[string]string{"state": options.membershipState})
+		state := options.membershipState
+		if options.refreshedMembershipState != "" && request.Header.Get("Authorization") == "Bearer "+"access-new" {
+			state = options.refreshedMembershipState
+		}
+		_ = json.NewEncoder(response).Encode(map[string]string{"state": state})
 	})
 	mux.HandleFunc("/applications/client/token", func(response http.ResponseWriter, request *http.Request) {
 		clientID, clientSecret, ok := request.BasicAuth()

@@ -266,6 +266,17 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 		oauth.clearSessionCookies(response)
 		return oauthSession{}, false
 	}
+	login, err := oauth.authorizedLogin(request.Context(), refreshed.AccessToken)
+	if err != nil || !strings.EqualFold(login, session.Login) {
+		_ = oauth.revoke(request.Context(), session.AccessToken)
+		_ = oauth.revoke(request.Context(), session.RefreshToken)
+		_ = oauth.revoke(request.Context(), refreshed.AccessToken)
+		_ = oauth.revoke(request.Context(), refreshed.RefreshToken)
+		_ = oauth.deleteSession(request.Context(), session.ID)
+		oauth.clearSessionCookies(response)
+		serverLog.Printf("oauth authorization revalidation failed")
+		return oauthSession{}, false
+	}
 	now := time.Now().UTC()
 	session.AccessToken = refreshed.AccessToken
 	if refreshed.RefreshToken != "" {

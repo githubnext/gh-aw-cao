@@ -135,6 +135,10 @@ session. Do not add PAT handling to Azure mode; PATs bypass the required
 browser login, refresh-token rotation, revocation, and explicit membership
 authorization controls.
 
+Organization and team authorization is revalidated whenever an OAuth access
+token is refreshed. Failed revalidation deletes the session and revokes both
+the previous and newly issued credentials.
+
 Users with multiple personal or managed-user GitHub identities can explicitly
 switch accounts from the dashboard. Switching is a CSRF-protected mutation that
 revokes and deletes the current server session before redirecting to GitHub's
