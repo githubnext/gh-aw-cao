@@ -13,6 +13,7 @@ import { pathToFileURL } from 'node:url';
 import { createDebug } from './debug.mjs';
 import { adaptCachedGhAwJsonlStream, createCachedJsonlPayloadHasher } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
 import {
+  finalizeNormalizedJsonlIngestion,
   ingestCachedGhAwJsonl,
   ingestGhAwLogs,
   ingestNormalizedJsonl,
@@ -1382,6 +1383,7 @@ async function ingestNormalizedShardDirectories(indexedDB, directories, options 
         createReadStream(shardPath),
         {
           ...options,
+          deferMaintenance: true,
           expectedPhase: phase,
           payloadScope: `gh-aw-${phase}:${name}`,
           payloadIdentity
@@ -1407,6 +1409,11 @@ async function ingestNormalizedShardDirectories(indexedDB, directories, options 
       phaseCommittedRecords,
       Date.now() - phaseStartedAt
     );
+  }
+  if (updated) {
+    const maintenanceStartedAt = Date.now();
+    await finalizeNormalizedJsonlIngestion(indexedDB, options);
+    debug('applied deferred canonical maintenance durationMs=%d', Date.now() - maintenanceStartedAt);
   }
   return { updated, committedRecords, shards };
 }
