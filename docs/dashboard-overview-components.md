@@ -26,7 +26,7 @@ as separate views in `dashboard.json`:
 
 - `header` owns status, retained-output context, work-in-motion state, and
   Factory rhythm.
-- `floor` owns the four linked metric stations and their aggregate accessible
+- `floor` owns the two linked metric stations and their aggregate accessible
   summary.
 
 The default dashboard declares `factory-header` followed by `factory-floor`.
@@ -45,9 +45,8 @@ same meaning, data, and reading order, but their layout may differ when a narrow
 screen needs a better way to scan or compare information. Mobile does not have
 to reproduce the desktop arrangement or simply stack every block.
 
-In Overview, the narrative and seven-day rhythm form one reading column, while
-the four related metrics become a 2 x 2 comparison grid. No content or evidence
-is removed.
+In Overview, the narrative and seven-day rhythm form one reading column, while the two related metrics remain a compact comparison grid. No content or
+evidence is removed.
 
 ## Component guides
 
@@ -57,12 +56,5 @@ is removed.
 	successful-run comparison.
 - [Registered repositories](dashboard-overview-registered-repositories.md)
 	explains the repository-scope count.
-- [Successful runs](dashboard-overview-successful-runs.md) explains the success
-	and failure counts.
-- [Dispatches](dashboard-overview-dispatches.md) explains dispatched work and
-	failed dispatches.
-- [Value gains](dashboard-overview-value-gains.md) explains the grader evidence
-	associated with operational value.
-
 Each guide follows the same structure: what the component shows, how to read
 it, which Dashboard Language query supplies its data, and when to investigate.

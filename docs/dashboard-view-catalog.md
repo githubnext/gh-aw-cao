@@ -19,7 +19,7 @@ These are the default product destinations. They are custom pages composed from 
 
 | Page ID | Navigation title | Named element | Purpose |
 | --- | --- | --- | --- |
-| `overview` | Overview | `factory-header`, `factory-floor`, `link-button-list` | Summarizes current motion, outcomes, delivery, runs, dispatches, value, weekly rhythm, and campaign shortcuts. |
+| `overview` | Overview | `factory-header`, `factory-floor`, `link-button-list` | Summarizes campaign health, repository coverage, weekly rhythm, and campaign shortcuts. |
 | `work` | Work | `work-project-view` | Presents delegated work as board, task, and roadmap modes. |
 | `agents` | Operations | `agent-marketplace-view` | Presents the policy-scoped campaign and agent marketplace. |
 | `insights` | Insights | `insights-overview` | Composes outcomes, value, usage, runtime, security, and experiment evidence. |
