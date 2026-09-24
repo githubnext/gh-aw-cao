@@ -67,6 +67,13 @@ test("comment-writing workflow actions are explicitly inventoried", () => {
     "dashboard-views.yml",
     "svg-contrast-check.yml",
   ]);
+  for (const name of commentWriters) {
+    assert.doesNotMatch(
+      workflow(name),
+      /'<\/details>',\n(?!\s*'',)/,
+      `${name} must leave an empty line after each closing details element`,
+    );
+  }
   assert.match(workflow("svg-contrast-check.yml"), /### Affected files/);
   assert.doesNotMatch(workflow("svg-contrast-check.yml"), /\? '## Affected files/);
 });
