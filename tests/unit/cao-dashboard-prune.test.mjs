@@ -504,6 +504,60 @@ test('prunes pages, reusable views, and queries unreachable from navigation or l
   });
 });
 
+test('retains pages linked by facts produced through transitive queries', () => {
+  const input = dashboard({
+    queries: [
+      {
+        name: 'campaign-facts',
+        from: 'campaigns',
+        compute: [{
+          as: 'campaign-link',
+          function: 'concat',
+          args: [
+            { value: '#page-campaign-insights?campaign=' },
+            { field: 'campaign' }
+          ]
+        }]
+      },
+      {
+        name: 'overview-campaign-facts',
+        from: 'campaign-facts',
+        select: [
+          { field: 'campaign' },
+          { field: 'campaign-link' }
+        ]
+      }
+    ],
+    pages: [
+      {
+        id: 'overview',
+        kind: 'custom',
+        views: [{ id: 'campaigns', data: { source: 'overview-campaign-facts' } }]
+      },
+      {
+        id: 'campaign-insights',
+        kind: 'custom',
+        views: [{ id: 'insights', data: { source: 'campaign-facts' } }]
+      },
+      {
+        id: 'evals',
+        kind: 'custom',
+        views: []
+      }
+    ],
+    navigation: [{ pages: ['overview'] }]
+  });
+
+  const { document, report } = pruneDashboardDocument(input);
+
+  assert.deepEqual(document.dashboard.pages.map((page) => page.id), ['overview', 'campaign-insights']);
+  assert.deepEqual(document.dashboard.queries.map((query) => query.name), [
+    'campaign-facts',
+    'overview-campaign-facts'
+  ]);
+  assert.deepEqual(report.pages.removed, ['evals']);
+});
+
 test('cao prune-dashboard writes the optimized document and returns an analysis report', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'cao-prune-dashboard-'));
   const inputPath = path.join(directory, 'dashboard.json');
