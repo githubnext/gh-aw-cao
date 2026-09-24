@@ -199,17 +199,23 @@ const horizontalBarFixtureLabel = '.github/workflows/extremely-long-dependabot-u
 const horizontalBarFixtureSuffix = 'planner.md';
 
 /** @param {import('@playwright/test').Page} page */
-async function renderHorizontalBarFixture(page) {
+async function renderHorizontalBarFixture(page, {
+  labels = [horizontalBarFixtureLabel],
+  stageWidth = 220
+} = {}) {
   await page.setContent(`
     <style id="dashboard-styles"></style>
-    <main class="chart-stage" style="width: 220px"></main>
+    <main class="chart-stage" style="width: ${stageWidth}px"></main>
     <script type="module">
       import { getPrimerStyles } from 'http://dashboard.test/src/styles.js';
       import { renderChartWidget } from 'http://dashboard.test/src/components/chart-elements.js';
       document.querySelector('#dashboard-styles').textContent = getPrimerStyles();
-      document.querySelector('.chart-stage').append(renderChartWidget('horizontal-bar', [
-        { x: ${JSON.stringify(horizontalBarFixtureLabel)}, y: 27 }
-      ], [{ name: 'value', className: 'chart-series-1' }]));
+      const labels = ${JSON.stringify(labels)};
+      document.querySelector('.chart-stage').append(renderChartWidget(
+        'horizontal-bar',
+        labels.map((label, index) => ({ x: label, y: 27 - index })),
+        [{ name: 'value', className: 'chart-series-1' }]
+      ));
     </script>
   `);
 }
@@ -317,6 +323,23 @@ test('desktop horizontal bar labels keep standard end truncation', async ({ page
   expect(labelRendering.text.startsWith(expectedVisiblePrefix)).toBe(true);
   expect(labelRendering.textOverflowed).toBe(true);
   expect(labelRendering.suffixRight).toBeGreaterThan(labelRendering.textRight);
+});
+
+test('large-screen horizontal bars show complete labels with shared prefixes', async ({ page }) => {
+  const labels = [
+    '.github/workflows/dependabot-update-planner.md',
+    '.github/workflows/dependabot-update-worker.md'
+  ];
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await renderHorizontalBarFixture(page, { labels, stageWidth: 1000 });
+
+  const renderedLabels = page.locator('.horizontal-bar-chart-label-text');
+  await expect(renderedLabels).toHaveCount(labels.length);
+  await expect(renderedLabels.nth(0)).toHaveText(labels[0]);
+  await expect(renderedLabels.nth(1)).toHaveText(labels[1]);
+  await expect.poll(() => renderedLabels.evaluateAll((elements) => (
+    elements.every((element) => element.scrollWidth <= element.clientWidth)
+  ))).toBe(true);
 });
 
 test('issue card labels stay compact with centered text and balanced padding', async ({ page }) => {

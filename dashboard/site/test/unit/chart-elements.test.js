@@ -247,7 +247,7 @@ describe('chart element helpers', () => {
       .toContain('Alpha repository: 40');
   });
 
-  it('elides shared horizontal bar label prefixes while preserving full titles and accessible values', () => {
+  it('preserves complete horizontal bar labels with shared prefixes', () => {
     const points = [
       { x: 'dependabot-update-planner: Review error logs', y: 25, color: 'success' },
       { x: 'dependabot-update-planner: Update advisory summary', y: 13, color: 'failure' }
@@ -255,10 +255,7 @@ describe('chart element helpers', () => {
     const chart = renderChartWidget('horizontal-bar', points, listChartSeries(points));
     const labels = [...chart.querySelectorAll('.horizontal-bar-chart-label')];
 
-    expect(labels.map((label) => label.textContent)).toEqual([
-      '…Review error logs',
-      '…Update advisory summary'
-    ]);
+    expect(labels.map((label) => label.textContent)).toEqual(points.map((point) => point.x));
     expect(labels.map((label) => label.getAttribute('title'))).toEqual(points.map((point) => point.x));
     expect(chart.querySelector('.horizontal-bar-chart-value')?.getAttribute('aria-label'))
       .toBe('dependabot-update-planner: Review error logs: 25, success');
