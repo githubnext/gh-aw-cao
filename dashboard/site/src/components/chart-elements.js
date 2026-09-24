@@ -19,7 +19,7 @@ const NON_SCALING_POINT_LENGTH = 0.001;
 const MAX_INTERACTIVE_LINE_POINTS = 500;
 const MAX_RENDERED_LINE_POINTS = 2_000;
 const MAX_TIMELINE_TICKS = 5;
-const LINE_CHART_LEFT = 12;
+const LINE_CHART_LEFT = 16;
 const LINE_CHART_RIGHT = 100;
 const LINE_CHART_BOTTOM = 38;
 const LINE_CHART_HEIGHT = 34;
@@ -699,6 +699,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
     const pointSize = lineChartPointSize(points.length);
     const dotPointRadius = dotChartPointRadius(points.length);
     const yTicks = [maximum, maximum / 2, 0];
+    const yTickLabels = yTicks.map((value) => formatChartAxisTick(value, unit));
     const gridLines = yTicks.map((value) => {
       const y = LINE_CHART_BOTTOM - ((value / maximum) * LINE_CHART_HEIGHT);
       return h('line', {
@@ -751,7 +752,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
             const y = LINE_CHART_BOTTOM - ((value / maximum) * LINE_CHART_HEIGHT);
             return [
               gridLines[index],
-              h('text', { x: LINE_CHART_LEFT - 1.5, y: y + 1, 'text-anchor': 'end' }, formatNumber(value, unit))
+              h('text', { x: LINE_CHART_LEFT - 1.5, y: y + 1, 'text-anchor': 'end' }, yTickLabels[index])
             ];
           }),
           h('line', {
@@ -1480,6 +1481,20 @@ function sampledIndexes(valueCount, maximumCount) {
 function compactAxisLabel(value) {
   const formatted = formatTimelineTick(value);
   return formatted.length > 12 ? `${formatted.slice(0, 11)}…` : formatted;
+}
+
+/**
+ * @param {number} value
+ * @param {{ name: string, symbol: string, significant: number, format?: string } | null} unit
+ */
+function formatChartAxisTick(value, unit) {
+  if (Math.abs(value) < 10_000) return formatNumber(value, unit);
+  const compact = new Intl.NumberFormat('en', {
+    notation: 'compact',
+    maximumFractionDigits: 1
+  }).format(value);
+  if (unit?.format === 'usd') return compact.startsWith('-') ? `-$${compact.slice(1)}` : `$${compact}`;
+  return unit && unit.format !== 'number' ? `${compact} ${unit.symbol}` : compact;
 }
 
 /**
