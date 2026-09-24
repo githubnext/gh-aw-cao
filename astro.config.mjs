@@ -145,6 +145,7 @@ export default defineConfig({
             { label: "Control plane overview", link: "/architecture/" },
             { label: "What is CAO?", link: "/architecture-at-a-glance/" },
             { label: "CAO Activity", link: "/activity/" },
+            { label: "Operational value", link: "/operational-value/" },
             { label: "Deployment and governance", link: "/deployment-and-governance/" },
             { label: "Execution and safety", link: "/execution-and-safety/" },
             { label: "Agentic workflow smells", link: "/agentic-workflow-smells/" },

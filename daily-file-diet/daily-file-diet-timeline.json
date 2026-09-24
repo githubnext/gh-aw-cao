@@ -1,0 +1,3639 @@
+{
+  "repository": "github/gh-aw",
+  "workflowName": "Daily File Diet",
+  "adoptionAt": "2025-11-15T13:36:21Z",
+  "evaluationMode": "baseline-comparable",
+  "window": {
+    "startAt": "2025-10-25T13:36:21Z",
+    "endAt": "2026-07-31T04:23:55Z"
+  },
+  "evidenceCoverage": {
+    "completeFromAdoption": true,
+    "hasPreAdoptionBaseline": true,
+    "baselineDescription": "3 cadence-aligned observations precede adoption. The adoption commit first parent is fc43d399fbe304278d3920906b90413db31184b8.",
+    "reason": null
+  },
+  "runs": [
+    {
+      "runId": 19390621532,
+      "createdAt": "2025-11-15T13:36:44Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/19390621532"
+    },
+    {
+      "runId": 19397085978,
+      "createdAt": "2025-11-15T23:27:16Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/19397085978"
+    },
+    {
+      "runId": 19397310710,
+      "createdAt": "2025-11-15T23:48:56Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/19397310710"
+    },
+    {
+      "runId": 19397818146,
+      "createdAt": "2025-11-16T00:35:56Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/19397818146"
+    },
+    {
+      "runId": 19430961649,
+      "createdAt": "2025-11-17T13:17:30Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/19430961649"
+    },
+    {
+      "runId": 19467551355,
+      "createdAt": "2025-11-18T13:17:01Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/19467551355"
+    },
+    {
+      "runId": 19473409411,
+      "createdAt": "2025-11-18T16:28:15Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/19473409411"
+    },
+    {
+      "runId": 19473876156,
+      "createdAt": "2025-11-18T16:43:36Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/19473876156"
+    },
+    {
+      "runId": 19502652250,
+      "createdAt": "2025-11-19T13:17:17Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/19502652250"
+    },
+    {
+      "runId": 19538160005,
+      "createdAt": "2025-11-20T13:16:24Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/19538160005"
+    },
+    {
+      "runId": 19571657852,
+      "createdAt": "2025-11-21T13:15:11Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/19571657852"
+    },
+    {
+      "runId": 19635690172,
+      "createdAt": "2025-11-24T13:17:57Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/19635690172"
+    },
+    {
+      "runId": 19670866472,
+      "createdAt": "2025-11-25T13:17:56Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/19670866472"
+    },
+    {
+      "runId": 19705088630,
+      "createdAt": "2025-11-26T13:19:01Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/19705088630"
+    },
+    {
+      "runId": 19737552595,
+      "createdAt": "2025-11-27T13:16:51Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/19737552595"
+    },
+    {
+      "runId": 19764930505,
+      "createdAt": "2025-11-28T13:16:39Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/19764930505"
+    },
+    {
+      "runId": 19824047424,
+      "createdAt": "2025-12-01T13:19:15Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/19824047424"
+    },
+    {
+      "runId": 19860009854,
+      "createdAt": "2025-12-02T13:19:40Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/19860009854"
+    },
+    {
+      "runId": 19895238505,
+      "createdAt": "2025-12-03T13:19:14Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/19895238505"
+    },
+    {
+      "runId": 19930389502,
+      "createdAt": "2025-12-04T13:19:50Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/19930389502"
+    },
+    {
+      "runId": 19964153215,
+      "createdAt": "2025-12-05T13:17:05Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/19964153215"
+    },
+    {
+      "runId": 20029487165,
+      "createdAt": "2025-12-08T13:18:58Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20029487165"
+    },
+    {
+      "runId": 20064890300,
+      "createdAt": "2025-12-09T13:19:21Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20064890300"
+    },
+    {
+      "runId": 20100026898,
+      "createdAt": "2025-12-10T13:20:04Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20100026898"
+    },
+    {
+      "runId": 20134500365,
+      "createdAt": "2025-12-11T13:20:34Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20134500365"
+    },
+    {
+      "runId": 20233713070,
+      "createdAt": "2025-12-15T13:21:26Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20233713070"
+    },
+    {
+      "runId": 20323537118,
+      "createdAt": "2025-12-18T02:05:51Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20323537118"
+    },
+    {
+      "runId": 20330678188,
+      "createdAt": "2025-12-18T08:26:15Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20330678188"
+    },
+    {
+      "runId": 20338205995,
+      "createdAt": "2025-12-18T13:15:53Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20338205995"
+    },
+    {
+      "runId": 20349306145,
+      "createdAt": "2025-12-18T19:46:39Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20349306145"
+    },
+    {
+      "runId": 20350654702,
+      "createdAt": "2025-12-18T20:39:42Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20350654702"
+    },
+    {
+      "runId": 20371111055,
+      "createdAt": "2025-12-19T13:14:35Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20371111055"
+    },
+    {
+      "runId": 20432965851,
+      "createdAt": "2025-12-22T13:14:59Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20432965851"
+    },
+    {
+      "runId": 20461590547,
+      "createdAt": "2025-12-23T13:09:49Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/20461590547"
+    },
+    {
+      "runId": 20461729243,
+      "createdAt": "2025-12-23T13:15:51Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20461729243"
+    },
+    {
+      "runId": 20461867952,
+      "createdAt": "2025-12-23T13:21:53Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/20461867952"
+    },
+    {
+      "runId": 20463203435,
+      "createdAt": "2025-12-23T14:21:39Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/20463203435"
+    },
+    {
+      "runId": 20463430842,
+      "createdAt": "2025-12-23T14:31:32Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/20463430842"
+    },
+    {
+      "runId": 20463741542,
+      "createdAt": "2025-12-23T14:45:08Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/20463741542"
+    },
+    {
+      "runId": 20486951241,
+      "createdAt": "2025-12-24T13:13:46Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20486951241"
+    },
+    {
+      "runId": 20490551992,
+      "createdAt": "2025-12-24T16:58:34Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/20490551992"
+    },
+    {
+      "runId": 20490847821,
+      "createdAt": "2025-12-24T17:17:37Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/20490847821"
+    },
+    {
+      "runId": 20490887667,
+      "createdAt": "2025-12-24T17:20:14Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/20490887667"
+    },
+    {
+      "runId": 20490995855,
+      "createdAt": "2025-12-24T17:27:17Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/20490995855"
+    },
+    {
+      "runId": 20491009366,
+      "createdAt": "2025-12-24T17:28:16Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/20491009366"
+    },
+    {
+      "runId": 20505681937,
+      "createdAt": "2025-12-25T13:17:07Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20505681937"
+    },
+    {
+      "runId": 20523085216,
+      "createdAt": "2025-12-26T13:17:24Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20523085216"
+    },
+    {
+      "runId": 20573850105,
+      "createdAt": "2025-12-29T13:19:52Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20573850105"
+    },
+    {
+      "runId": 20597447319,
+      "createdAt": "2025-12-30T13:19:22Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20597447319"
+    },
+    {
+      "runId": 20610415309,
+      "createdAt": "2025-12-31T02:19:01Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20610415309"
+    },
+    {
+      "runId": 20619788434,
+      "createdAt": "2025-12-31T13:17:34Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20619788434"
+    },
+    {
+      "runId": 20639226414,
+      "createdAt": "2026-01-01T13:18:25Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20639226414"
+    },
+    {
+      "runId": 20658682561,
+      "createdAt": "2026-01-02T13:17:16Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20658682561"
+    },
+    {
+      "runId": 20685188165,
+      "createdAt": "2026-01-04T00:40:32Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/20685188165"
+    },
+    {
+      "runId": 20685249115,
+      "createdAt": "2026-01-04T00:45:59Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/20685249115"
+    },
+    {
+      "runId": 20685352229,
+      "createdAt": "2026-01-04T00:55:42Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/20685352229"
+    },
+    {
+      "runId": 20716632453,
+      "createdAt": "2026-01-05T13:18:36Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20716632453"
+    },
+    {
+      "runId": 20749452757,
+      "createdAt": "2026-01-06T13:17:02Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20749452757"
+    },
+    {
+      "runId": 20782787018,
+      "createdAt": "2026-01-07T13:17:53Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20782787018"
+    },
+    {
+      "runId": 20818165287,
+      "createdAt": "2026-01-08T13:18:16Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20818165287"
+    },
+    {
+      "runId": 20853140701,
+      "createdAt": "2026-01-09T13:17:20Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20853140701"
+    },
+    {
+      "runId": 20920816416,
+      "createdAt": "2026-01-12T13:18:50Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20920816416"
+    },
+    {
+      "runId": 20958173458,
+      "createdAt": "2026-01-13T13:18:35Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20958173458"
+    },
+    {
+      "runId": 20995531260,
+      "createdAt": "2026-01-14T13:18:33Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/20995531260"
+    },
+    {
+      "runId": 21032663218,
+      "createdAt": "2026-01-15T13:18:04Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/21032663218"
+    },
+    {
+      "runId": 21067906616,
+      "createdAt": "2026-01-16T13:17:19Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/21067906616"
+    },
+    {
+      "runId": 21078189318,
+      "createdAt": "2026-01-16T19:24:25Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/21078189318"
+    },
+    {
+      "runId": 21139020290,
+      "createdAt": "2026-01-19T13:20:25Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/21139020290"
+    },
+    {
+      "runId": 21173015542,
+      "createdAt": "2026-01-20T13:20:44Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/21173015542"
+    },
+    {
+      "runId": 21211118946,
+      "createdAt": "2026-01-21T13:20:15Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/21211118946"
+    },
+    {
+      "runId": 21250026924,
+      "createdAt": "2026-01-22T13:20:52Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/21250026924"
+    },
+    {
+      "runId": 21287544489,
+      "createdAt": "2026-01-23T13:19:20Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/21287544489"
+    },
+    {
+      "runId": 21359144897,
+      "createdAt": "2026-01-26T13:20:41Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/21359144897"
+    },
+    {
+      "runId": 21398784064,
+      "createdAt": "2026-01-27T13:20:54Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/21398784064"
+    },
+    {
+      "runId": 21439877180,
+      "createdAt": "2026-01-28T13:21:38Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/21439877180"
+    },
+    {
+      "runId": 21479976022,
+      "createdAt": "2026-01-29T13:27:54Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/21479976022"
+    },
+    {
+      "runId": 21517385442,
+      "createdAt": "2026-01-30T13:26:41Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/21517385442"
+    },
+    {
+      "runId": 21591999156,
+      "createdAt": "2026-02-02T13:29:37Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/21591999156"
+    },
+    {
+      "runId": 21632117892,
+      "createdAt": "2026-02-03T13:29:02Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/21632117892"
+    },
+    {
+      "runId": 21673324312,
+      "createdAt": "2026-02-04T13:29:20Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/21673324312"
+    },
+    {
+      "runId": 21713397002,
+      "createdAt": "2026-02-05T13:30:39Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/21713397002"
+    },
+    {
+      "runId": 21752253536,
+      "createdAt": "2026-02-06T13:28:48Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/21752253536"
+    },
+    {
+      "runId": 21827150208,
+      "createdAt": "2026-02-09T13:33:51Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/21827150208"
+    },
+    {
+      "runId": 21866997470,
+      "createdAt": "2026-02-10T13:33:58Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/21866997470"
+    },
+    {
+      "runId": 21907155050,
+      "createdAt": "2026-02-11T13:33:47Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/21907155050"
+    },
+    {
+      "runId": 21948711923,
+      "createdAt": "2026-02-12T13:33:24Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/21948711923"
+    },
+    {
+      "runId": 21988605819,
+      "createdAt": "2026-02-13T13:29:19Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/21988605819"
+    },
+    {
+      "runId": 22064690036,
+      "createdAt": "2026-02-16T13:31:00Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/22064690036"
+    },
+    {
+      "runId": 22100422522,
+      "createdAt": "2026-02-17T13:31:03Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/22100422522"
+    },
+    {
+      "runId": 22141795030,
+      "createdAt": "2026-02-18T13:31:53Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/22141795030"
+    },
+    {
+      "runId": 22183884465,
+      "createdAt": "2026-02-19T13:32:53Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/22183884465"
+    },
+    {
+      "runId": 22225948334,
+      "createdAt": "2026-02-20T13:28:10Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/22225948334"
+    },
+    {
+      "runId": 22308275991,
+      "createdAt": "2026-02-23T13:32:09Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/22308275991"
+    },
+    {
+      "runId": 22340323445,
+      "createdAt": "2026-02-24T07:04:59Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/22340323445"
+    },
+    {
+      "runId": 22340470018,
+      "createdAt": "2026-02-24T07:10:27Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/22340470018"
+    },
+    {
+      "runId": 22340744368,
+      "createdAt": "2026-02-24T07:20:59Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/22340744368"
+    },
+    {
+      "runId": 22353073728,
+      "createdAt": "2026-02-24T13:32:43Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/22353073728"
+    },
+    {
+      "runId": 22399090298,
+      "createdAt": "2026-02-25T13:32:22Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/22399090298"
+    },
+    {
+      "runId": 22444341699,
+      "createdAt": "2026-02-26T13:32:46Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/22444341699"
+    },
+    {
+      "runId": 22488102624,
+      "createdAt": "2026-02-27T13:27:20Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/22488102624"
+    },
+    {
+      "runId": 22578126726,
+      "createdAt": "2026-03-02T13:28:46Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/22578126726"
+    },
+    {
+      "runId": 22625108583,
+      "createdAt": "2026-03-03T13:27:41Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/22625108583"
+    },
+    {
+      "runId": 22671382998,
+      "createdAt": "2026-03-04T13:27:05Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/22671382998"
+    },
+    {
+      "runId": 22720164203,
+      "createdAt": "2026-03-05T13:29:32Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/22720164203"
+    },
+    {
+      "runId": 22765384896,
+      "createdAt": "2026-03-06T13:25:38Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/22765384896"
+    },
+    {
+      "runId": 22855865903,
+      "createdAt": "2026-03-09T13:31:40Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/22855865903"
+    },
+    {
+      "runId": 22904892817,
+      "createdAt": "2026-03-10T13:30:20Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/22904892817"
+    },
+    {
+      "runId": 22955041823,
+      "createdAt": "2026-03-11T13:30:26Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/22955041823"
+    },
+    {
+      "runId": 23004394031,
+      "createdAt": "2026-03-12T13:29:55Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/23004394031"
+    },
+    {
+      "runId": 23053038268,
+      "createdAt": "2026-03-13T13:28:25Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/23053038268"
+    },
+    {
+      "runId": 23073877757,
+      "createdAt": "2026-03-13T22:59:28Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/23073877757"
+    },
+    {
+      "runId": 23089446270,
+      "createdAt": "2026-03-14T14:02:56Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/23089446270"
+    },
+    {
+      "runId": 23113738237,
+      "createdAt": "2026-03-15T15:47:47Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/23113738237"
+    },
+    {
+      "runId": 23146381503,
+      "createdAt": "2026-03-16T13:34:54Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/23146381503"
+    },
+    {
+      "runId": 23162316172,
+      "createdAt": "2026-03-16T19:35:26Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/23162316172"
+    },
+    {
+      "runId": 23162366585,
+      "createdAt": "2026-03-16T19:36:42Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/23162366585"
+    },
+    {
+      "runId": 23196822119,
+      "createdAt": "2026-03-17T13:34:05Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/23196822119"
+    },
+    {
+      "runId": 23201718070,
+      "createdAt": "2026-03-17T15:19:48Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/23201718070"
+    },
+    {
+      "runId": 23201843522,
+      "createdAt": "2026-03-17T15:22:27Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/23201843522"
+    },
+    {
+      "runId": 23215790432,
+      "createdAt": "2026-03-17T20:49:47Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/23215790432"
+    },
+    {
+      "runId": 23216124617,
+      "createdAt": "2026-03-17T20:58:26Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/23216124617"
+    },
+    {
+      "runId": 23217102684,
+      "createdAt": "2026-03-17T21:25:08Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/23217102684"
+    },
+    {
+      "runId": 23217810168,
+      "createdAt": "2026-03-17T21:43:56Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/23217810168"
+    },
+    {
+      "runId": 23219499513,
+      "createdAt": "2026-03-17T22:32:06Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/23219499513"
+    },
+    {
+      "runId": 23247328902,
+      "createdAt": "2026-03-18T13:34:45Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/23247328902"
+    },
+    {
+      "runId": 23297393909,
+      "createdAt": "2026-03-19T13:32:39Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/23297393909"
+    },
+    {
+      "runId": 23344981242,
+      "createdAt": "2026-03-20T13:28:42Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/23344981242"
+    },
+    {
+      "runId": 23439978141,
+      "createdAt": "2026-03-23T13:34:09Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/23439978141"
+    },
+    {
+      "runId": 23492172073,
+      "createdAt": "2026-03-24T13:33:52Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/23492172073"
+    },
+    {
+      "runId": 23543735251,
+      "createdAt": "2026-03-25T13:33:48Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/23543735251"
+    },
+    {
+      "runId": 23597112359,
+      "createdAt": "2026-03-26T13:33:48Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/23597112359"
+    },
+    {
+      "runId": 23648662967,
+      "createdAt": "2026-03-27T13:32:20Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/23648662967"
+    },
+    {
+      "runId": 23747516792,
+      "createdAt": "2026-03-30T13:35:01Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/23747516792"
+    },
+    {
+      "runId": 23800156553,
+      "createdAt": "2026-03-31T13:35:06Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/23800156553"
+    },
+    {
+      "runId": 23851351591,
+      "createdAt": "2026-04-01T13:34:37Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/23851351591"
+    },
+    {
+      "runId": 23903049085,
+      "createdAt": "2026-04-02T13:34:08Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/23903049085"
+    },
+    {
+      "runId": 23946829409,
+      "createdAt": "2026-04-03T12:52:36Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/23946829409"
+    },
+    {
+      "runId": 24032532181,
+      "createdAt": "2026-04-06T12:53:05Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/24032532181"
+    },
+    {
+      "runId": 24082391438,
+      "createdAt": "2026-04-07T12:54:13Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/24082391438"
+    },
+    {
+      "runId": 24136401453,
+      "createdAt": "2026-04-08T12:54:07Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/24136401453"
+    },
+    {
+      "runId": 24191255065,
+      "createdAt": "2026-04-09T12:54:23Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/24191255065"
+    },
+    {
+      "runId": 24243877161,
+      "createdAt": "2026-04-10T12:53:08Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/24243877161"
+    },
+    {
+      "runId": 24344446924,
+      "createdAt": "2026-04-13T12:54:09Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/24344446924"
+    },
+    {
+      "runId": 24400051020,
+      "createdAt": "2026-04-14T12:54:15Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/24400051020"
+    },
+    {
+      "runId": 24455630160,
+      "createdAt": "2026-04-15T12:54:12Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/24455630160"
+    },
+    {
+      "runId": 24511404989,
+      "createdAt": "2026-04-16T12:55:25Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/24511404989"
+    },
+    {
+      "runId": 24566083756,
+      "createdAt": "2026-04-17T12:53:37Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/24566083756"
+    },
+    {
+      "runId": 24667701334,
+      "createdAt": "2026-04-20T12:55:31Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/24667701334"
+    },
+    {
+      "runId": 24723468455,
+      "createdAt": "2026-04-21T12:54:02Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/24723468455"
+    },
+    {
+      "runId": 24779381944,
+      "createdAt": "2026-04-22T12:54:04Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/24779381944"
+    },
+    {
+      "runId": 24836360535,
+      "createdAt": "2026-04-23T12:54:00Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/24836360535"
+    },
+    {
+      "runId": 24890547522,
+      "createdAt": "2026-04-24T12:54:06Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/24890547522"
+    },
+    {
+      "runId": 24996759284,
+      "createdAt": "2026-04-27T13:05:55Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/24996759284"
+    },
+    {
+      "runId": 25054673683,
+      "createdAt": "2026-04-28T13:08:24Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/25054673683"
+    },
+    {
+      "runId": 25110649608,
+      "createdAt": "2026-04-29T13:07:02Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/25110649608"
+    },
+    {
+      "runId": 25167059982,
+      "createdAt": "2026-04-30T13:06:18Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/25167059982"
+    },
+    {
+      "runId": 25214967567,
+      "createdAt": "2026-05-01T12:53:30Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/25214967567"
+    },
+    {
+      "runId": 25297161815,
+      "createdAt": "2026-05-04T01:49:12Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/25297161815"
+    },
+    {
+      "runId": 25320735246,
+      "createdAt": "2026-05-04T13:06:45Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/25320735246"
+    },
+    {
+      "runId": 25377737019,
+      "createdAt": "2026-05-05T12:57:38Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/25377737019"
+    },
+    {
+      "runId": 25437225560,
+      "createdAt": "2026-05-06T13:08:58Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/25437225560"
+    },
+    {
+      "runId": 25497887394,
+      "createdAt": "2026-05-07T13:11:00Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/25497887394"
+    },
+    {
+      "runId": 25556873104,
+      "createdAt": "2026-05-08T12:58:42Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/25556873104"
+    },
+    {
+      "runId": 25673364533,
+      "createdAt": "2026-05-11T13:32:09Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/25673364533"
+    },
+    {
+      "runId": 25737068483,
+      "createdAt": "2026-05-12T13:18:28Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/25737068483"
+    },
+    {
+      "runId": 25801774116,
+      "createdAt": "2026-05-13T13:20:51Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/25801774116"
+    },
+    {
+      "runId": 25861845312,
+      "createdAt": "2026-05-14T13:10:15Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/25861845312"
+    },
+    {
+      "runId": 25919572727,
+      "createdAt": "2026-05-15T13:09:50Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/25919572727"
+    },
+    {
+      "runId": 26037784605,
+      "createdAt": "2026-05-18T13:51:14Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/26037784605"
+    },
+    {
+      "runId": 26100919545,
+      "createdAt": "2026-05-19T13:38:33Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/26100919545"
+    },
+    {
+      "runId": 26165547945,
+      "createdAt": "2026-05-20T13:25:59Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/26165547945"
+    },
+    {
+      "runId": 26229580176,
+      "createdAt": "2026-05-21T13:39:02Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/26229580176"
+    },
+    {
+      "runId": 26290387865,
+      "createdAt": "2026-05-22T13:23:44Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/26290387865"
+    },
+    {
+      "runId": 26403578678,
+      "createdAt": "2026-05-25T13:43:12Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/26403578678"
+    },
+    {
+      "runId": 26451337019,
+      "createdAt": "2026-05-26T13:35:00Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/26451337019"
+    },
+    {
+      "runId": 26515130897,
+      "createdAt": "2026-05-27T13:46:27Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/26515130897"
+    },
+    {
+      "runId": 26578944997,
+      "createdAt": "2026-05-28T13:51:57Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/26578944997"
+    },
+    {
+      "runId": 26640618380,
+      "createdAt": "2026-05-29T13:39:59Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/26640618380"
+    },
+    {
+      "runId": 26761696809,
+      "createdAt": "2026-06-01T14:36:24Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/26761696809"
+    },
+    {
+      "runId": 26824386634,
+      "createdAt": "2026-06-02T13:53:45Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/26824386634"
+    },
+    {
+      "runId": 26890406922,
+      "createdAt": "2026-06-03T14:10:47Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/26890406922"
+    },
+    {
+      "runId": 26955289756,
+      "createdAt": "2026-06-04T13:37:36Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/26955289756"
+    },
+    {
+      "runId": 27018073756,
+      "createdAt": "2026-06-05T13:35:57Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/27018073756"
+    },
+    {
+      "runId": 27142578117,
+      "createdAt": "2026-06-08T13:54:48Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/27142578117"
+    },
+    {
+      "runId": 27209667059,
+      "createdAt": "2026-06-09T13:31:08Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/27209667059"
+    },
+    {
+      "runId": 27280878811,
+      "createdAt": "2026-06-10T13:47:39Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/27280878811"
+    },
+    {
+      "runId": 27351791652,
+      "createdAt": "2026-06-11T13:53:13Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/27351791652"
+    },
+    {
+      "runId": 27419552025,
+      "createdAt": "2026-06-12T13:43:27Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/27419552025"
+    },
+    {
+      "runId": 27554075354,
+      "createdAt": "2026-06-15T14:39:18Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/27554075354"
+    },
+    {
+      "runId": 27624346952,
+      "createdAt": "2026-06-16T14:20:48Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/27624346952"
+    },
+    {
+      "runId": 27693868099,
+      "createdAt": "2026-06-17T13:50:10Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/27693868099"
+    },
+    {
+      "runId": 27763773760,
+      "createdAt": "2026-06-18T13:43:21Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/27763773760"
+    },
+    {
+      "runId": 27829528464,
+      "createdAt": "2026-06-19T13:47:20Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/27829528464"
+    },
+    {
+      "runId": 28029846668,
+      "createdAt": "2026-06-23T13:29:29Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/28029846668"
+    },
+    {
+      "runId": 28101588784,
+      "createdAt": "2026-06-24T13:21:22Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/28101588784"
+    },
+    {
+      "runId": 28173147331,
+      "createdAt": "2026-06-25T13:20:53Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/28173147331"
+    },
+    {
+      "runId": 28240588056,
+      "createdAt": "2026-06-26T13:17:49Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/28240588056"
+    },
+    {
+      "runId": 28377307007,
+      "createdAt": "2026-06-29T13:55:25Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/28377307007"
+    },
+    {
+      "runId": 28447102836,
+      "createdAt": "2026-06-30T13:14:34Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/28447102836"
+    },
+    {
+      "runId": 28521028309,
+      "createdAt": "2026-07-01T13:26:59Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/28521028309"
+    },
+    {
+      "runId": 28592648430,
+      "createdAt": "2026-07-02T13:11:02Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/28592648430"
+    },
+    {
+      "runId": 28662832475,
+      "createdAt": "2026-07-03T13:12:28Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/28662832475"
+    },
+    {
+      "runId": 28796537677,
+      "createdAt": "2026-07-06T13:50:24Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/28796537677"
+    },
+    {
+      "runId": 28869415585,
+      "createdAt": "2026-07-07T13:20:57Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/28869415585"
+    },
+    {
+      "runId": 28944904611,
+      "createdAt": "2026-07-08T13:05:43Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/28944904611"
+    },
+    {
+      "runId": 29021814573,
+      "createdAt": "2026-07-09T13:33:45Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/29021814573"
+    },
+    {
+      "runId": 29095520039,
+      "createdAt": "2026-07-10T13:17:33Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/29095520039"
+    },
+    {
+      "runId": 29253457998,
+      "createdAt": "2026-07-13T13:21:27Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/29253457998"
+    },
+    {
+      "runId": 29259392613,
+      "createdAt": "2026-07-13T14:46:41Z",
+      "conclusion": "failure",
+      "url": "https://github.com/github/gh-aw/actions/runs/29259392613"
+    },
+    {
+      "runId": 29334428759,
+      "createdAt": "2026-07-14T12:56:13Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/29334428759"
+    },
+    {
+      "runId": 29417320094,
+      "createdAt": "2026-07-15T12:58:52Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/29417320094"
+    },
+    {
+      "runId": 29500681351,
+      "createdAt": "2026-07-16T13:04:34Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/29500681351"
+    },
+    {
+      "runId": 29582040955,
+      "createdAt": "2026-07-17T12:55:48Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/29582040955"
+    },
+    {
+      "runId": 29745552264,
+      "createdAt": "2026-07-20T13:16:30Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/29745552264"
+    },
+    {
+      "runId": 29832725845,
+      "createdAt": "2026-07-21T13:03:13Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/29832725845"
+    },
+    {
+      "runId": 29922407626,
+      "createdAt": "2026-07-22T13:05:56Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/29922407626"
+    },
+    {
+      "runId": 30009783992,
+      "createdAt": "2026-07-23T13:06:36Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/30009783992"
+    },
+    {
+      "runId": 30095453692,
+      "createdAt": "2026-07-24T13:04:28Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/30095453692"
+    },
+    {
+      "runId": 30270526830,
+      "createdAt": "2026-07-27T13:29:37Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/30270526830"
+    },
+    {
+      "runId": 30362113607,
+      "createdAt": "2026-07-28T13:08:38Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/30362113607"
+    },
+    {
+      "runId": 30454859691,
+      "createdAt": "2026-07-29T13:11:09Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/30454859691"
+    },
+    {
+      "runId": 30545488231,
+      "createdAt": "2026-07-30T13:07:16Z",
+      "conclusion": "success",
+      "url": "https://github.com/github/gh-aw/actions/runs/30545488231"
+    }
+  ],
+  "caveat": "The evidence is observational and does not establish that workflow adoption caused an outcome change.",
+  "schemaVersion": 2,
+  "definitionSchemaVersion": 3,
+  "generatedAt": "2026-07-31T04:34:20Z",
+  "workflowSlug": "daily-file-diet",
+  "sourcePath": ".github/workflows/daily-file-diet.md",
+  "valueFunction": {
+    "path": "functions/github-gh-aw/daily-file-diet.sh",
+    "sha256": "5761268f6daa1be3670334efe876aa0c6f5363969a7937c79d05d695a6edd301",
+    "definition": {
+      "schemaVersion": 3,
+      "slug": "daily-file-diet",
+      "sourcePath": ".github/workflows/daily-file-diet.md",
+      "repository": "github/gh-aw",
+      "workflowName": "Daily File Diet",
+      "adoption": {
+        "commit": "1186030a620f4113f655c156bedf70cf2c164f79",
+        "adoptedAt": "2025-11-15T13:36:21Z",
+        "baselineCommit": "fc43d399fbe304278d3920906b90413db31184b8",
+        "baselineAt": "2025-11-15T13:27:11Z"
+      },
+      "evaluation": {
+        "mode": "baseline-comparable"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "A weekly immutable snapshot containing at least one non-test Go source file under pkg/.",
+        "filters": [
+          "Include pkg/**/*.go.",
+          "Exclude files whose names end in _test.go.",
+          "Use the last commit on main at or before windowEnd.",
+          "A file is compliant when its physical line count is at most 999."
+        ],
+        "collection": "Resolve all requested cutoffs from batched main-branch commit history, fetch each selected immutable commit archive once, and derive line counts locally. An empty eligible population is missing; when eligible files exist, zero compliant line mass is a valid zero.",
+        "window": {
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        }
+      },
+      "model": {
+        "architecture": "Direct threshold-severity primary with a separate compliant-mass diagnostic.",
+        "recommendation": "Use largest-file health as the operational-value measure and retain compliant line mass only as a non-composite diagnostic because the measures can disagree.",
+        "presentation": {
+          "label": "Go file-size health",
+          "betterLabel": "Higher means the largest eligible file is closer to or within the 999-line healthy range."
+        }
+      },
+      "summary": {
+        "nativeLabel": "Largest eligible Go file line count"
+      },
+      "metrics": [
+        {
+          "id": "largest-file-health",
+          "name": "Largest-file health",
+          "role": "primary",
+          "formula": "min(1, 999 / largestFileLines) when at least one eligible file exists",
+          "direction": "decrease",
+          "presentation": {
+            "name": "Largest-file health",
+            "legendLabel": "Largest-file health",
+            "transform": "complement"
+          }
+        },
+        {
+          "id": "compliant-line-mass-share",
+          "name": "Compliant line-mass share",
+          "role": "diagnostic",
+          "formula": "compliantLines / totalLines when at least one eligible file and positive line mass exist",
+          "direction": "increase",
+          "presentation": {
+            "name": "Compliant line-mass share",
+            "legendLabel": "Compliant line mass",
+            "transform": "identity"
+          }
+        }
+      ],
+      "validationExamples": {
+        "targetAttained": {
+          "eligibleFileCount": 2,
+          "totalLines": 1500,
+          "largestFileLines": 800,
+          "compliantLines": 1500
+        },
+        "targetMissed": {
+          "eligibleFileCount": 2,
+          "totalLines": 2400,
+          "largestFileLines": 1900,
+          "compliantLines": 500
+        },
+        "missing": {
+          "eligibleFileCount": 0,
+          "totalLines": 0,
+          "largestFileLines": null,
+          "compliantLines": 0
+        },
+        "malformed": {
+          "eligibleFileCount": "two",
+          "totalLines": -1,
+          "largestFileLines": "large",
+          "compliantLines": 4
+        }
+      }
+    }
+  },
+  "metricReview": {
+    "architecture": "Direct threshold-severity primary with a separate compliant-mass diagnostic.",
+    "recommendation": "Use largest-file health as the operational-value measure and retain compliant line mass only as a non-composite diagnostic because the measures can disagree.",
+    "presentation": {
+      "label": "Go file-size health",
+      "betterLabel": "Higher means the largest eligible file is closer to or within the 999-line healthy range."
+    },
+    "metrics": [
+      {
+        "id": "largest-file-health",
+        "name": "Largest-file health",
+        "role": "primary",
+        "formula": "min(1, 999 / largestFileLines) when at least one eligible file exists",
+        "direction": "decrease",
+        "presentation": {
+          "name": "Largest-file health",
+          "legendLabel": "Largest-file health",
+          "transform": "complement"
+        },
+        "status": "evaluated",
+        "beforeValue": 0.358707361,
+        "afterValue": 0.867940921,
+        "attainmentValue": null,
+        "improvement": 0.50923356
+      },
+      {
+        "id": "compliant-line-mass-share",
+        "name": "Compliant line-mass share",
+        "role": "diagnostic",
+        "formula": "compliantLines / totalLines when at least one eligible file and positive line mass exist",
+        "direction": "increase",
+        "presentation": {
+          "name": "Compliant line-mass share",
+          "legendLabel": "Compliant line mass",
+          "transform": "identity"
+        },
+        "status": "evaluated",
+        "beforeValue": 0.823787452,
+        "afterValue": 0.947452999,
+        "attainmentValue": null,
+        "improvement": 0.12366554699999999
+      }
+    ]
+  },
+  "summary": {
+    "nativeLabel": "Largest eligible Go file line count"
+  },
+  "snapshots": [
+    {
+      "observedAt": "2025-10-25T13:36:21Z",
+      "window": {
+        "startAt": "2025-10-18T13:36:21Z",
+        "endAt": "2025-10-25T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2025-10-18T13:36:21Z",
+          "endAt": "2025-10-25T13:36:21Z",
+          "observedAt": "2025-10-25T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 159,
+        "totalLines": 48328,
+        "largestFilePath": "pkg/cli/logs.go",
+        "largestFileLines": 2785,
+        "compliantFileCount": 154,
+        "compliantLines": 39812
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "ef91039c91eb39b27a84e6ae23de14b151976d42"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/ef91039c91eb39b27a84e6ae23de14b151976d42"
+        }
+      ],
+      "commit": "ef91039c91eb39b27a84e6ae23de14b151976d42",
+      "metrics": {
+        "largest-file-health": 0.358707361,
+        "compliant-line-mass-share": 0.823787452
+      }
+    },
+    {
+      "observedAt": "2025-11-01T13:36:21Z",
+      "window": {
+        "startAt": "2025-10-25T13:36:21Z",
+        "endAt": "2025-11-01T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2025-10-25T13:36:21Z",
+          "endAt": "2025-11-01T13:36:21Z",
+          "observedAt": "2025-11-01T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 177,
+        "totalLines": 52338,
+        "largestFilePath": "pkg/cli/logs.go",
+        "largestFileLines": 2746,
+        "compliantFileCount": 171,
+        "compliantLines": 42655
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "9545f45859a3eecc5c8af0826fd029fb84f17a04"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/9545f45859a3eecc5c8af0826fd029fb84f17a04"
+        }
+      ],
+      "commit": "9545f45859a3eecc5c8af0826fd029fb84f17a04",
+      "metrics": {
+        "largest-file-health": 0.363801894,
+        "compliant-line-mass-share": 0.81499102
+      }
+    },
+    {
+      "observedAt": "2025-11-08T13:36:21Z",
+      "window": {
+        "startAt": "2025-11-01T13:36:21Z",
+        "endAt": "2025-11-08T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2025-11-01T13:36:21Z",
+          "endAt": "2025-11-08T13:36:21Z",
+          "observedAt": "2025-11-08T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 191,
+        "totalLines": 55802,
+        "largestFilePath": "pkg/cli/logs.go",
+        "largestFileLines": 2812,
+        "compliantFileCount": 184,
+        "compliantLines": 44840
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "1880e5172c2aaefc2ca1736a02987abb79cb33e9"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/1880e5172c2aaefc2ca1736a02987abb79cb33e9"
+        }
+      ],
+      "commit": "1880e5172c2aaefc2ca1736a02987abb79cb33e9",
+      "metrics": {
+        "largest-file-health": 0.355263158,
+        "compliant-line-mass-share": 0.803555428
+      }
+    },
+    {
+      "observedAt": "2025-11-15T13:36:21Z",
+      "window": {
+        "startAt": "2025-11-08T13:36:21Z",
+        "endAt": "2025-11-15T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2025-11-08T13:36:21Z",
+          "endAt": "2025-11-15T13:36:21Z",
+          "observedAt": "2025-11-15T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 216,
+        "totalLines": 59712,
+        "largestFilePath": "pkg/parser/frontmatter.go",
+        "largestFileLines": 1907,
+        "compliantFileCount": 210,
+        "compliantLines": 50673
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "1186030a620f4113f655c156bedf70cf2c164f79"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/1186030a620f4113f655c156bedf70cf2c164f79"
+        }
+      ],
+      "commit": "1186030a620f4113f655c156bedf70cf2c164f79",
+      "metrics": {
+        "largest-file-health": 0.523859465,
+        "compliant-line-mass-share": 0.848623392
+      }
+    },
+    {
+      "observedAt": "2025-11-22T13:36:21Z",
+      "window": {
+        "startAt": "2025-11-15T13:36:21Z",
+        "endAt": "2025-11-22T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2025-11-15T13:36:21Z",
+          "endAt": "2025-11-22T13:36:21Z",
+          "observedAt": "2025-11-22T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 234,
+        "totalLines": 64134,
+        "largestFilePath": "pkg/cli/trial_command.go",
+        "largestFileLines": 1801,
+        "compliantFileCount": 224,
+        "compliantLines": 51183
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "4137d2b58ea85f38be71a2e33185e16d1a337f51"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/4137d2b58ea85f38be71a2e33185e16d1a337f51"
+        }
+      ],
+      "commit": "4137d2b58ea85f38be71a2e33185e16d1a337f51",
+      "metrics": {
+        "largest-file-health": 0.554691838,
+        "compliant-line-mass-share": 0.79806343
+      }
+    },
+    {
+      "observedAt": "2025-11-29T13:36:21Z",
+      "window": {
+        "startAt": "2025-11-22T13:36:21Z",
+        "endAt": "2025-11-29T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2025-11-22T13:36:21Z",
+          "endAt": "2025-11-29T13:36:21Z",
+          "observedAt": "2025-11-29T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 246,
+        "totalLines": 68625,
+        "largestFilePath": "pkg/cli/trial_command.go",
+        "largestFileLines": 1811,
+        "compliantFileCount": 235,
+        "compliantLines": 53633
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "27c3e6e9637da61366e01b4546420f3ea94e7400"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/27c3e6e9637da61366e01b4546420f3ea94e7400"
+        }
+      ],
+      "commit": "27c3e6e9637da61366e01b4546420f3ea94e7400",
+      "metrics": {
+        "largest-file-health": 0.551628934,
+        "compliant-line-mass-share": 0.781537341
+      }
+    },
+    {
+      "observedAt": "2025-12-06T13:36:21Z",
+      "window": {
+        "startAt": "2025-11-29T13:36:21Z",
+        "endAt": "2025-12-06T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2025-11-29T13:36:21Z",
+          "endAt": "2025-12-06T13:36:21Z",
+          "observedAt": "2025-12-06T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 269,
+        "totalLines": 75162,
+        "largestFilePath": "pkg/cli/logs.go",
+        "largestFileLines": 1613,
+        "compliantFileCount": 258,
+        "compliantLines": 61066
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "b4bb6e4399445209f0b1ef641d5a533f20425fb5"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/b4bb6e4399445209f0b1ef641d5a533f20425fb5"
+        }
+      ],
+      "commit": "b4bb6e4399445209f0b1ef641d5a533f20425fb5",
+      "metrics": {
+        "largest-file-health": 0.619342839,
+        "compliant-line-mass-share": 0.812458423
+      }
+    },
+    {
+      "observedAt": "2025-12-13T13:36:21Z",
+      "window": {
+        "startAt": "2025-12-06T13:36:21Z",
+        "endAt": "2025-12-13T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2025-12-06T13:36:21Z",
+          "endAt": "2025-12-13T13:36:21Z",
+          "observedAt": "2025-12-13T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 296,
+        "totalLines": 82659,
+        "largestFilePath": "pkg/workflow/compiler_jobs.go",
+        "largestFileLines": 1452,
+        "compliantFileCount": 287,
+        "compliantLines": 71207
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "5fbe5f18769df003c3747fca47e5b735ea891c67"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/5fbe5f18769df003c3747fca47e5b735ea891c67"
+        }
+      ],
+      "commit": "5fbe5f18769df003c3747fca47e5b735ea891c67",
+      "metrics": {
+        "largest-file-health": 0.688016529,
+        "compliant-line-mass-share": 0.861454893
+      }
+    },
+    {
+      "observedAt": "2025-12-20T13:36:21Z",
+      "window": {
+        "startAt": "2025-12-13T13:36:21Z",
+        "endAt": "2025-12-20T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2025-12-13T13:36:21Z",
+          "endAt": "2025-12-20T13:36:21Z",
+          "observedAt": "2025-12-20T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 325,
+        "totalLines": 88378,
+        "largestFilePath": "pkg/parser/frontmatter.go",
+        "largestFileLines": 1294,
+        "compliantFileCount": 318,
+        "compliantLines": 80299
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "b42bd9e44d20042afa0b9d58b311020e5fccd9ba"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/b42bd9e44d20042afa0b9d58b311020e5fccd9ba"
+        }
+      ],
+      "commit": "b42bd9e44d20042afa0b9d58b311020e5fccd9ba",
+      "metrics": {
+        "largest-file-health": 0.77202473,
+        "compliant-line-mass-share": 0.908585847
+      }
+    },
+    {
+      "observedAt": "2025-12-27T13:36:21Z",
+      "window": {
+        "startAt": "2025-12-20T13:36:21Z",
+        "endAt": "2025-12-27T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2025-12-20T13:36:21Z",
+          "endAt": "2025-12-27T13:36:21Z",
+          "observedAt": "2025-12-27T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 358,
+        "totalLines": 93950,
+        "largestFilePath": "pkg/workflow/copilot_engine.go",
+        "largestFileLines": 1167,
+        "compliantFileCount": 355,
+        "compliantLines": 90539
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "67317018f9a92e6fa1a7b803d77f3aea80b1c331"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/67317018f9a92e6fa1a7b803d77f3aea80b1c331"
+        }
+      ],
+      "commit": "67317018f9a92e6fa1a7b803d77f3aea80b1c331",
+      "metrics": {
+        "largest-file-health": 0.856041131,
+        "compliant-line-mass-share": 0.963693454
+      }
+    },
+    {
+      "observedAt": "2026-01-03T13:36:21Z",
+      "window": {
+        "startAt": "2025-12-27T13:36:21Z",
+        "endAt": "2026-01-03T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2025-12-27T13:36:21Z",
+          "endAt": "2026-01-03T13:36:21Z",
+          "observedAt": "2026-01-03T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 389,
+        "totalLines": 98560,
+        "largestFilePath": "pkg/workflow/compiler_safe_outputs_core.go",
+        "largestFileLines": 1074,
+        "compliantFileCount": 386,
+        "compliantLines": 95467
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "7b097824ff27ad3147e7ceeaa8469f595b4f883c"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/7b097824ff27ad3147e7ceeaa8469f595b4f883c"
+        }
+      ],
+      "commit": "7b097824ff27ad3147e7ceeaa8469f595b4f883c",
+      "metrics": {
+        "largest-file-health": 0.930167598,
+        "compliant-line-mass-share": 0.968618101
+      }
+    },
+    {
+      "observedAt": "2026-01-10T13:36:21Z",
+      "window": {
+        "startAt": "2026-01-03T13:36:21Z",
+        "endAt": "2026-01-10T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-01-03T13:36:21Z",
+          "endAt": "2026-01-10T13:36:21Z",
+          "observedAt": "2026-01-10T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 417,
+        "totalLines": 103834,
+        "largestFilePath": "pkg/workflow/mcp-config.go",
+        "largestFileLines": 1214,
+        "compliantFileCount": 414,
+        "compliantLines": 100506
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "e486b681b387b6bca6390d84ea23f8d52f65029d"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/e486b681b387b6bca6390d84ea23f8d52f65029d"
+        }
+      ],
+      "commit": "e486b681b387b6bca6390d84ea23f8d52f65029d",
+      "metrics": {
+        "largest-file-health": 0.822899506,
+        "compliant-line-mass-share": 0.967948841
+      }
+    },
+    {
+      "observedAt": "2026-01-17T13:36:21Z",
+      "window": {
+        "startAt": "2026-01-10T13:36:21Z",
+        "endAt": "2026-01-17T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-01-10T13:36:21Z",
+          "endAt": "2026-01-17T13:36:21Z",
+          "observedAt": "2026-01-17T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 430,
+        "totalLines": 108908,
+        "largestFilePath": "pkg/workflow/mcp-config.go",
+        "largestFileLines": 1301,
+        "compliantFileCount": 425,
+        "compliantLines": 103273
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "4cfc11df47abf69e9d55ce3ecbb5b7501de5c254"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/4cfc11df47abf69e9d55ce3ecbb5b7501de5c254"
+        }
+      ],
+      "commit": "4cfc11df47abf69e9d55ce3ecbb5b7501de5c254",
+      "metrics": {
+        "largest-file-health": 0.767870869,
+        "compliant-line-mass-share": 0.948259081
+      }
+    },
+    {
+      "observedAt": "2026-01-24T13:36:21Z",
+      "window": {
+        "startAt": "2026-01-17T13:36:21Z",
+        "endAt": "2026-01-24T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-01-17T13:36:21Z",
+          "endAt": "2026-01-24T13:36:21Z",
+          "observedAt": "2026-01-24T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 462,
+        "totalLines": 113737,
+        "largestFilePath": "pkg/cli/init.go",
+        "largestFileLines": 1127,
+        "compliantFileCount": 457,
+        "compliantLines": 108570
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "8f1f2d2b8c9493bc38a26994efb4241fe3870339"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/8f1f2d2b8c9493bc38a26994efb4241fe3870339"
+        }
+      ],
+      "commit": "8f1f2d2b8c9493bc38a26994efb4241fe3870339",
+      "metrics": {
+        "largest-file-health": 0.886424135,
+        "compliant-line-mass-share": 0.954570632
+      }
+    },
+    {
+      "observedAt": "2026-01-31T13:36:21Z",
+      "window": {
+        "startAt": "2026-01-24T13:36:21Z",
+        "endAt": "2026-01-31T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-01-24T13:36:21Z",
+          "endAt": "2026-01-31T13:36:21Z",
+          "observedAt": "2026-01-31T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 488,
+        "totalLines": 116383,
+        "largestFilePath": "pkg/workflow/safe_outputs_config_generation.go",
+        "largestFileLines": 1032,
+        "compliantFileCount": 485,
+        "compliantLines": 113351
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "1d7b78bb617af7763d01c016c47e4e883ed5508f"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/1d7b78bb617af7763d01c016c47e4e883ed5508f"
+        }
+      ],
+      "commit": "1d7b78bb617af7763d01c016c47e4e883ed5508f",
+      "metrics": {
+        "largest-file-health": 0.968023256,
+        "compliant-line-mass-share": 0.973948085
+      }
+    },
+    {
+      "observedAt": "2026-02-07T13:36:21Z",
+      "window": {
+        "startAt": "2026-01-31T13:36:21Z",
+        "endAt": "2026-02-07T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-01-31T13:36:21Z",
+          "endAt": "2026-02-07T13:36:21Z",
+          "observedAt": "2026-02-07T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 493,
+        "totalLines": 118943,
+        "largestFilePath": "pkg/cli/mcp_server.go",
+        "largestFileLines": 1080,
+        "compliantFileCount": 490,
+        "compliantLines": 115824
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "24d9291fe63f0e4f7887a308346306883d3018e8"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/24d9291fe63f0e4f7887a308346306883d3018e8"
+        }
+      ],
+      "commit": "24d9291fe63f0e4f7887a308346306883d3018e8",
+      "metrics": {
+        "largest-file-health": 0.925,
+        "compliant-line-mass-share": 0.973777356
+      }
+    },
+    {
+      "observedAt": "2026-02-14T13:36:21Z",
+      "window": {
+        "startAt": "2026-02-07T13:36:21Z",
+        "endAt": "2026-02-14T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-02-07T13:36:21Z",
+          "endAt": "2026-02-14T13:36:21Z",
+          "observedAt": "2026-02-14T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 504,
+        "totalLines": 123279,
+        "largestFilePath": "pkg/cli/mcp_server.go",
+        "largestFileLines": 1345,
+        "compliantFileCount": 501,
+        "compliantLines": 119841
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "823fcf3eff7ae4b2ec1302025202063e2bcd837e"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/823fcf3eff7ae4b2ec1302025202063e2bcd837e"
+        }
+      ],
+      "commit": "823fcf3eff7ae4b2ec1302025202063e2bcd837e",
+      "metrics": {
+        "largest-file-health": 0.742750929,
+        "compliant-line-mass-share": 0.972112039
+      }
+    },
+    {
+      "observedAt": "2026-02-21T13:36:21Z",
+      "window": {
+        "startAt": "2026-02-14T13:36:21Z",
+        "endAt": "2026-02-21T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-02-14T13:36:21Z",
+          "endAt": "2026-02-21T13:36:21Z",
+          "observedAt": "2026-02-21T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 554,
+        "totalLines": 129141,
+        "largestFilePath": "pkg/parser/import_processor.go",
+        "largestFileLines": 1109,
+        "compliantFileCount": 550,
+        "compliantLines": 124993
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "0ba5a8b05850d527bc1d45d9dc7d2218900011a4"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/0ba5a8b05850d527bc1d45d9dc7d2218900011a4"
+        }
+      ],
+      "commit": "0ba5a8b05850d527bc1d45d9dc7d2218900011a4",
+      "metrics": {
+        "largest-file-health": 0.900811542,
+        "compliant-line-mass-share": 0.967880069
+      }
+    },
+    {
+      "observedAt": "2026-02-28T13:36:21Z",
+      "window": {
+        "startAt": "2026-02-21T13:36:21Z",
+        "endAt": "2026-02-28T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-02-21T13:36:21Z",
+          "endAt": "2026-02-28T13:36:21Z",
+          "observedAt": "2026-02-28T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 542,
+        "totalLines": 126182,
+        "largestFilePath": "pkg/parser/import_processor.go",
+        "largestFileLines": 1106,
+        "compliantFileCount": 538,
+        "compliantLines": 121994
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "3d5916a6b280c9fd7f11c8edd37b6e11a793432c"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/3d5916a6b280c9fd7f11c8edd37b6e11a793432c"
+        }
+      ],
+      "commit": "3d5916a6b280c9fd7f11c8edd37b6e11a793432c",
+      "metrics": {
+        "largest-file-health": 0.903254973,
+        "compliant-line-mass-share": 0.966809846
+      }
+    },
+    {
+      "observedAt": "2026-03-07T13:36:21Z",
+      "window": {
+        "startAt": "2026-02-28T13:36:21Z",
+        "endAt": "2026-03-07T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-02-28T13:36:21Z",
+          "endAt": "2026-03-07T13:36:21Z",
+          "observedAt": "2026-03-07T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 543,
+        "totalLines": 125787,
+        "largestFilePath": "pkg/workflow/safe_outputs_generation.go",
+        "largestFileLines": 1603,
+        "compliantFileCount": 539,
+        "compliantLines": 121092
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "a359a3b50cc2c71e46e36cb9da5d4df7ce4cf943"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/a359a3b50cc2c71e46e36cb9da5d4df7ce4cf943"
+        }
+      ],
+      "commit": "a359a3b50cc2c71e46e36cb9da5d4df7ce4cf943",
+      "metrics": {
+        "largest-file-health": 0.623206488,
+        "compliant-line-mass-share": 0.962674998
+      }
+    },
+    {
+      "observedAt": "2026-03-14T13:36:21Z",
+      "window": {
+        "startAt": "2026-03-07T13:36:21Z",
+        "endAt": "2026-03-14T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-03-07T13:36:21Z",
+          "endAt": "2026-03-14T13:36:21Z",
+          "observedAt": "2026-03-14T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 574,
+        "totalLines": 131235,
+        "largestFilePath": "pkg/constants/constants.go",
+        "largestFileLines": 1030,
+        "compliantFileCount": 573,
+        "compliantLines": 130205
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "d9f56e6004da91a3ba9888446802fd9efb5bda06"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/d9f56e6004da91a3ba9888446802fd9efb5bda06"
+        }
+      ],
+      "commit": "d9f56e6004da91a3ba9888446802fd9efb5bda06",
+      "metrics": {
+        "largest-file-health": 0.969902913,
+        "compliant-line-mass-share": 0.992151484
+      }
+    },
+    {
+      "observedAt": "2026-03-21T13:36:21Z",
+      "window": {
+        "startAt": "2026-03-14T13:36:21Z",
+        "endAt": "2026-03-21T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-03-14T13:36:21Z",
+          "endAt": "2026-03-21T13:36:21Z",
+          "observedAt": "2026-03-21T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 597,
+        "totalLines": 137531,
+        "largestFilePath": "pkg/cli/gateway_logs.go",
+        "largestFileLines": 1126,
+        "compliantFileCount": 592,
+        "compliantLines": 132309
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "69d40fed61df15414d2e60121b082dc7667ebc85"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/69d40fed61df15414d2e60121b082dc7667ebc85"
+        }
+      ],
+      "commit": "69d40fed61df15414d2e60121b082dc7667ebc85",
+      "metrics": {
+        "largest-file-health": 0.887211368,
+        "compliant-line-mass-share": 0.962030379
+      }
+    },
+    {
+      "observedAt": "2026-03-28T13:36:21Z",
+      "window": {
+        "startAt": "2026-03-21T13:36:21Z",
+        "endAt": "2026-03-28T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-03-21T13:36:21Z",
+          "endAt": "2026-03-28T13:36:21Z",
+          "observedAt": "2026-03-28T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 622,
+        "totalLines": 147469,
+        "largestFilePath": "pkg/cli/gateway_logs.go",
+        "largestFileLines": 1332,
+        "compliantFileCount": 616,
+        "compliantLines": 140889
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "3239a61ef60615fab86261b74ffbb014f5330ca3"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/3239a61ef60615fab86261b74ffbb014f5330ca3"
+        }
+      ],
+      "commit": "3239a61ef60615fab86261b74ffbb014f5330ca3",
+      "metrics": {
+        "largest-file-health": 0.75,
+        "compliant-line-mass-share": 0.955380453
+      }
+    },
+    {
+      "observedAt": "2026-04-04T13:36:21Z",
+      "window": {
+        "startAt": "2026-03-28T13:36:21Z",
+        "endAt": "2026-04-04T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-03-28T13:36:21Z",
+          "endAt": "2026-04-04T13:36:21Z",
+          "observedAt": "2026-04-04T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 657,
+        "totalLines": 152556,
+        "largestFilePath": "pkg/cli/gateway_logs.go",
+        "largestFileLines": 1332,
+        "compliantFileCount": 653,
+        "compliantLines": 148049
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "db0eea231fca24eef588673eb403a95ed45fb280"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/db0eea231fca24eef588673eb403a95ed45fb280"
+        }
+      ],
+      "commit": "db0eea231fca24eef588673eb403a95ed45fb280",
+      "metrics": {
+        "largest-file-health": 0.75,
+        "compliant-line-mass-share": 0.97045675
+      }
+    },
+    {
+      "observedAt": "2026-04-11T13:36:21Z",
+      "window": {
+        "startAt": "2026-04-04T13:36:21Z",
+        "endAt": "2026-04-11T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-04-04T13:36:21Z",
+          "endAt": "2026-04-11T13:36:21Z",
+          "observedAt": "2026-04-11T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 667,
+        "totalLines": 156367,
+        "largestFilePath": "pkg/cli/gateway_logs.go",
+        "largestFileLines": 1332,
+        "compliantFileCount": 661,
+        "compliantLines": 149660
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "87085b3477d30beea73e9e5668ff9a9b3224a6d5"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/87085b3477d30beea73e9e5668ff9a9b3224a6d5"
+        }
+      ],
+      "commit": "87085b3477d30beea73e9e5668ff9a9b3224a6d5",
+      "metrics": {
+        "largest-file-health": 0.75,
+        "compliant-line-mass-share": 0.957107318
+      }
+    },
+    {
+      "observedAt": "2026-04-18T13:36:21Z",
+      "window": {
+        "startAt": "2026-04-11T13:36:21Z",
+        "endAt": "2026-04-18T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-04-11T13:36:21Z",
+          "endAt": "2026-04-18T13:36:21Z",
+          "observedAt": "2026-04-18T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 711,
+        "totalLines": 161991,
+        "largestFilePath": "pkg/workflow/cache.go",
+        "largestFileLines": 1002,
+        "compliantFileCount": 710,
+        "compliantLines": 160989
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "395fb25ee80fc80976cb83e107b090fd4af675d5"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/395fb25ee80fc80976cb83e107b090fd4af675d5"
+        }
+      ],
+      "commit": "395fb25ee80fc80976cb83e107b090fd4af675d5",
+      "metrics": {
+        "largest-file-health": 0.997005988,
+        "compliant-line-mass-share": 0.993814471
+      }
+    },
+    {
+      "observedAt": "2026-04-25T13:36:21Z",
+      "window": {
+        "startAt": "2026-04-18T13:36:21Z",
+        "endAt": "2026-04-25T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-04-18T13:36:21Z",
+          "endAt": "2026-04-25T13:36:21Z",
+          "observedAt": "2026-04-25T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 727,
+        "totalLines": 166846,
+        "largestFilePath": "pkg/workflow/domains.go",
+        "largestFileLines": 1015,
+        "compliantFileCount": 726,
+        "compliantLines": 165831
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "14ace4d41d59a9ff93f17cd987b900b01a4252bd"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/14ace4d41d59a9ff93f17cd987b900b01a4252bd"
+        }
+      ],
+      "commit": "14ace4d41d59a9ff93f17cd987b900b01a4252bd",
+      "metrics": {
+        "largest-file-health": 0.984236453,
+        "compliant-line-mass-share": 0.993916546
+      }
+    },
+    {
+      "observedAt": "2026-05-02T13:36:21Z",
+      "window": {
+        "startAt": "2026-04-25T13:36:21Z",
+        "endAt": "2026-05-02T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-04-25T13:36:21Z",
+          "endAt": "2026-05-02T13:36:21Z",
+          "observedAt": "2026-05-02T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 748,
+        "totalLines": 174647,
+        "largestFilePath": "pkg/workflow/frontmatter_extraction_yaml.go",
+        "largestFileLines": 1087,
+        "compliantFileCount": 742,
+        "compliantLines": 168474
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "20ed6d74a03c3dd94e02550e4ea2231fa449d5fd"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/20ed6d74a03c3dd94e02550e4ea2231fa449d5fd"
+        }
+      ],
+      "commit": "20ed6d74a03c3dd94e02550e4ea2231fa449d5fd",
+      "metrics": {
+        "largest-file-health": 0.919043238,
+        "compliant-line-mass-share": 0.964654417
+      }
+    },
+    {
+      "observedAt": "2026-05-09T13:36:21Z",
+      "window": {
+        "startAt": "2026-05-02T13:36:21Z",
+        "endAt": "2026-05-09T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-05-02T13:36:21Z",
+          "endAt": "2026-05-09T13:36:21Z",
+          "observedAt": "2026-05-09T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 766,
+        "totalLines": 181883,
+        "largestFilePath": "pkg/parser/import_field_extractor.go",
+        "largestFileLines": 1102,
+        "compliantFileCount": 759,
+        "compliantLines": 174495
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "8363dfc8b7570480ed9245f7f61f8dfc4531ed07"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/8363dfc8b7570480ed9245f7f61f8dfc4531ed07"
+        }
+      ],
+      "commit": "8363dfc8b7570480ed9245f7f61f8dfc4531ed07",
+      "metrics": {
+        "largest-file-health": 0.906533575,
+        "compliant-line-mass-share": 0.959380481
+      }
+    },
+    {
+      "observedAt": "2026-05-16T13:36:21Z",
+      "window": {
+        "startAt": "2026-05-09T13:36:21Z",
+        "endAt": "2026-05-16T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-05-09T13:36:21Z",
+          "endAt": "2026-05-16T13:36:21Z",
+          "observedAt": "2026-05-16T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 798,
+        "totalLines": 190787,
+        "largestFilePath": "pkg/parser/import_field_extractor.go",
+        "largestFileLines": 1172,
+        "compliantFileCount": 790,
+        "compliantLines": 182060
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "b4ba4b59ae076e0f30c2167029aa954becd9371d"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/b4ba4b59ae076e0f30c2167029aa954becd9371d"
+        }
+      ],
+      "commit": "b4ba4b59ae076e0f30c2167029aa954becd9371d",
+      "metrics": {
+        "largest-file-health": 0.852389078,
+        "compliant-line-mass-share": 0.95425789
+      }
+    },
+    {
+      "observedAt": "2026-05-23T13:36:21Z",
+      "window": {
+        "startAt": "2026-05-16T13:36:21Z",
+        "endAt": "2026-05-23T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-05-16T13:36:21Z",
+          "endAt": "2026-05-23T13:36:21Z",
+          "observedAt": "2026-05-23T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 835,
+        "totalLines": 199383,
+        "largestFilePath": "pkg/parser/import_field_extractor.go",
+        "largestFileLines": 1221,
+        "compliantFileCount": 826,
+        "compliantLines": 189520
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "fcb0d612b43f1895a49d76570f1639c26fef03ba"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/fcb0d612b43f1895a49d76570f1639c26fef03ba"
+        }
+      ],
+      "commit": "fcb0d612b43f1895a49d76570f1639c26fef03ba",
+      "metrics": {
+        "largest-file-health": 0.818181818,
+        "compliant-line-mass-share": 0.950532392
+      }
+    },
+    {
+      "observedAt": "2026-05-30T13:36:21Z",
+      "window": {
+        "startAt": "2026-05-23T13:36:21Z",
+        "endAt": "2026-05-30T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-05-23T13:36:21Z",
+          "endAt": "2026-05-30T13:36:21Z",
+          "observedAt": "2026-05-30T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 868,
+        "totalLines": 207313,
+        "largestFilePath": "pkg/workflow/safe_outputs_config.go",
+        "largestFileLines": 1859,
+        "compliantFileCount": 855,
+        "compliantLines": 192206
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "715d8a2403e3bd2f52687cfc8345442ad46c95c8"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/715d8a2403e3bd2f52687cfc8345442ad46c95c8"
+        }
+      ],
+      "commit": "715d8a2403e3bd2f52687cfc8345442ad46c95c8",
+      "metrics": {
+        "largest-file-health": 0.537385691,
+        "compliant-line-mass-share": 0.927129509
+      }
+    },
+    {
+      "observedAt": "2026-06-06T13:36:21Z",
+      "window": {
+        "startAt": "2026-05-30T13:36:21Z",
+        "endAt": "2026-06-06T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-05-30T13:36:21Z",
+          "endAt": "2026-06-06T13:36:21Z",
+          "observedAt": "2026-06-06T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 884,
+        "totalLines": 211969,
+        "largestFilePath": "pkg/parser/remote_fetch.go",
+        "largestFileLines": 1342,
+        "compliantFileCount": 871,
+        "compliantLines": 197319
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "27a462bc93132da324f9f7be01933ea514b5dc5b"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/27a462bc93132da324f9f7be01933ea514b5dc5b"
+        }
+      ],
+      "commit": "27a462bc93132da324f9f7be01933ea514b5dc5b",
+      "metrics": {
+        "largest-file-health": 0.744411326,
+        "compliant-line-mass-share": 0.93088612
+      }
+    },
+    {
+      "observedAt": "2026-06-13T13:36:21Z",
+      "window": {
+        "startAt": "2026-06-06T13:36:21Z",
+        "endAt": "2026-06-13T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-06-06T13:36:21Z",
+          "endAt": "2026-06-13T13:36:21Z",
+          "observedAt": "2026-06-13T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 913,
+        "totalLines": 218159,
+        "largestFilePath": "pkg/cli/forecast.go",
+        "largestFileLines": 1443,
+        "compliantFileCount": 899,
+        "compliantLines": 202099
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "247bb74f09008e5fe1455256c1d258584713d2d1"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/247bb74f09008e5fe1455256c1d258584713d2d1"
+        }
+      ],
+      "commit": "247bb74f09008e5fe1455256c1d258584713d2d1",
+      "metrics": {
+        "largest-file-health": 0.692307692,
+        "compliant-line-mass-share": 0.926383968
+      }
+    },
+    {
+      "observedAt": "2026-06-20T13:36:21Z",
+      "window": {
+        "startAt": "2026-06-13T13:36:21Z",
+        "endAt": "2026-06-20T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-06-13T13:36:21Z",
+          "endAt": "2026-06-20T13:36:21Z",
+          "observedAt": "2026-06-20T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 937,
+        "totalLines": 222999,
+        "largestFilePath": "pkg/parser/remote_fetch.go",
+        "largestFileLines": 1560,
+        "compliantFileCount": 922,
+        "compliantLines": 205142
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "e1d2f30e59a8beae8c5a6c97cd9eedd5fc573753"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/e1d2f30e59a8beae8c5a6c97cd9eedd5fc573753"
+        }
+      ],
+      "commit": "e1d2f30e59a8beae8c5a6c97cd9eedd5fc573753",
+      "metrics": {
+        "largest-file-health": 0.640384615,
+        "compliant-line-mass-share": 0.919923408
+      }
+    },
+    {
+      "observedAt": "2026-06-27T13:36:21Z",
+      "window": {
+        "startAt": "2026-06-20T13:36:21Z",
+        "endAt": "2026-06-27T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-06-20T13:36:21Z",
+          "endAt": "2026-06-27T13:36:21Z",
+          "observedAt": "2026-06-27T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 964,
+        "totalLines": 229264,
+        "largestFilePath": "pkg/parser/remote_fetch.go",
+        "largestFileLines": 1542,
+        "compliantFileCount": 949,
+        "compliantLines": 211843
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "0956abe81cc5f7ecc0b6ec0441dd585a65101e12"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/0956abe81cc5f7ecc0b6ec0441dd585a65101e12"
+        }
+      ],
+      "commit": "0956abe81cc5f7ecc0b6ec0441dd585a65101e12",
+      "metrics": {
+        "largest-file-health": 0.647859922,
+        "compliant-line-mass-share": 0.924013365
+      }
+    },
+    {
+      "observedAt": "2026-07-04T13:36:21Z",
+      "window": {
+        "startAt": "2026-06-27T13:36:21Z",
+        "endAt": "2026-07-04T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-06-27T13:36:21Z",
+          "endAt": "2026-07-04T13:36:21Z",
+          "observedAt": "2026-07-04T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 1001,
+        "totalLines": 235102,
+        "largestFilePath": "pkg/parser/remote_fetch.go",
+        "largestFileLines": 1553,
+        "compliantFileCount": 985,
+        "compliantLines": 216599
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "0f1f3a21f0b6ee560dc49038a82fca45d15d5e0d"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/0f1f3a21f0b6ee560dc49038a82fca45d15d5e0d"
+        }
+      ],
+      "commit": "0f1f3a21f0b6ee560dc49038a82fca45d15d5e0d",
+      "metrics": {
+        "largest-file-health": 0.643271088,
+        "compliant-line-mass-share": 0.92129799
+      }
+    },
+    {
+      "observedAt": "2026-07-11T13:36:21Z",
+      "window": {
+        "startAt": "2026-07-04T13:36:21Z",
+        "endAt": "2026-07-11T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-07-04T13:36:21Z",
+          "endAt": "2026-07-11T13:36:21Z",
+          "observedAt": "2026-07-11T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 1057,
+        "totalLines": 241141,
+        "largestFilePath": "pkg/workflow/frontmatter_extraction_yaml.go",
+        "largestFileLines": 1183,
+        "compliantFileCount": 1048,
+        "compliantLines": 231438
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "79c42da5f2ecd8c892b96ffb64b7d9aab3326db7"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/79c42da5f2ecd8c892b96ffb64b7d9aab3326db7"
+        }
+      ],
+      "commit": "79c42da5f2ecd8c892b96ffb64b7d9aab3326db7",
+      "metrics": {
+        "largest-file-health": 0.844463229,
+        "compliant-line-mass-share": 0.959762131
+      }
+    },
+    {
+      "observedAt": "2026-07-18T13:36:21Z",
+      "window": {
+        "startAt": "2026-07-11T13:36:21Z",
+        "endAt": "2026-07-18T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-07-11T13:36:21Z",
+          "endAt": "2026-07-18T13:36:21Z",
+          "observedAt": "2026-07-18T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 1104,
+        "totalLines": 250598,
+        "largestFilePath": "pkg/cli/bootstrap_profile_runner.go",
+        "largestFileLines": 1259,
+        "compliantFileCount": 1092,
+        "compliantLines": 237804
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "e79fc5743a453b2f1655351f8aa40437694a3f73"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/e79fc5743a453b2f1655351f8aa40437694a3f73"
+        }
+      ],
+      "commit": "e79fc5743a453b2f1655351f8aa40437694a3f73",
+      "metrics": {
+        "largest-file-health": 0.793486894,
+        "compliant-line-mass-share": 0.948946121
+      }
+    },
+    {
+      "observedAt": "2026-07-25T13:36:21Z",
+      "window": {
+        "startAt": "2026-07-18T13:36:21Z",
+        "endAt": "2026-07-25T13:36:21Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-07-18T13:36:21Z",
+          "endAt": "2026-07-25T13:36:21Z",
+          "observedAt": "2026-07-25T13:36:21Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 1148,
+        "totalLines": 256603,
+        "largestFilePath": "pkg/cli/token_usage.go",
+        "largestFileLines": 1141,
+        "compliantFileCount": 1135,
+        "compliantLines": 242946
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "d8e3d685d6fde4cc75a17a7bdbed9501e820edef"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/d8e3d685d6fde4cc75a17a7bdbed9501e820edef"
+        }
+      ],
+      "commit": "d8e3d685d6fde4cc75a17a7bdbed9501e820edef",
+      "metrics": {
+        "largest-file-health": 0.875547765,
+        "compliant-line-mass-share": 0.946777707
+      }
+    },
+    {
+      "observedAt": "2026-07-31T04:23:55Z",
+      "window": {
+        "startAt": "2026-07-24T04:23:55Z",
+        "endAt": "2026-07-31T04:23:55Z"
+      },
+      "evidence": {
+        "key": "weekly-pkg-go-file-size-snapshot",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Non-test Go source files under pkg/ at the immutable cutoff commit.",
+        "filters": [
+          "pkg/**/*.go",
+          "exclude *_test.go",
+          "healthy line-count threshold <= 999",
+          "main commit at or before windowEnd"
+        ],
+        "collection": "Physical line counts derived locally from one immutable GitHub commit archive.",
+        "window": {
+          "startAt": "2026-07-24T04:23:55Z",
+          "endAt": "2026-07-31T04:23:55Z",
+          "observedAt": "2026-07-31T04:23:55Z",
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        },
+        "eligibleFileCount": 1171,
+        "totalLines": 262603,
+        "largestFilePath": "pkg/cli/logs_download.go",
+        "largestFileLines": 1151,
+        "compliantFileCount": 1158,
+        "compliantLines": 248804
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "git-commit",
+          "ref": "5adcdb6d4ec153409feab88c1688a9929fa07008"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "github-archive",
+          "ref": "repos/github/gh-aw/tarball/5adcdb6d4ec153409feab88c1688a9929fa07008"
+        }
+      ],
+      "commit": "5adcdb6d4ec153409feab88c1688a9929fa07008",
+      "metrics": {
+        "largest-file-health": 0.867940921,
+        "compliant-line-mass-share": 0.947452999
+      }
+    }
+  ]
+}
