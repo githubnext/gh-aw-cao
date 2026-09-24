@@ -9526,7 +9526,7 @@
             {
               "id": "insights",
               "label": "Insights",
-              "icon": "graph",
+              "icon": "credit-card",
               "page": "repository-insights"
             },
             {
@@ -13016,7 +13016,7 @@
         "views": [
           {
             "id": "cost-by-campaign",
-            "title": "AIC cost per campaign",
+            "title": "Cost per campaign",
             "description": "The share of observed AI Credit cost attributed to each centrally managed campaign.",
             "data": {
               "source": "cost-by-campaign"
@@ -13041,7 +13041,7 @@
           },
           {
             "id": "cost-by-repository",
-            "title": "AIC cost per repository",
+            "title": "Cost per repository",
             "description": "The share of observed AI Credit cost attributed to each repository.",
             "data": {
               "source": "cost-by-repository"
@@ -13066,13 +13066,13 @@
           },
           {
             "id": "cost-by-workflow",
-            "title": "AIC cost per workflow",
+            "title": "Cost per workflow",
             "description": "The share of observed AI Credit cost attributed to each workflow.",
             "data": {
               "source": "cost-by-workflow"
             },
             "mark": "chart",
-            "chart": "pie",
+            "chart": "horizontal-bar",
             "layout": "full",
             "empty-message": "No workflow AI Credit cost was observed.",
             "encoding": {
