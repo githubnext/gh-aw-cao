@@ -3191,6 +3191,7 @@ describe('presenter built-in and custom pages', () => {
   });
 
   it('animates query drills forward and browser back navigation backward', () => {
+    /** @type {Array<string | undefined>} */
     const directions = [];
     Object.defineProperty(document, 'startViewTransition', {
       configurable: true,
