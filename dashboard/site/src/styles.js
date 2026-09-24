@@ -1826,6 +1826,20 @@ tbody tr:hover { background: var(--canvas-subtle); }
 .outcome-meta h2 { margin: 0 0 8px; color: var(--muted); font-size: .75rem; }
 .outcome-meta p { margin: 0; overflow-wrap: anywhere; }
 .outcome-meta a { display: inline-flex; align-items: center; gap: 5px; }
+.problem-view { display: grid; gap: 24px; }
+.problem-view-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+.problem-view-badges { display: flex; flex-wrap: wrap; gap: 8px; }
+.problem-view-summary { max-width: 72ch; margin: 12px 0 0; color: var(--muted); overflow-wrap: anywhere; }
+.problem-view-highlights { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); }
+.problem-view-highlights > div { min-width: 0; padding: 16px; border-right: 1px solid var(--border); }
+.problem-view-highlights > div:last-child { border-right: 0; }
+.problem-view-highlights dt, .problem-view-section dt { color: var(--muted); font-size: .75rem; font-weight: 600; }
+.problem-view-highlights dd { margin: 5px 0 0; overflow-wrap: anywhere; font-size: 1rem; font-weight: 600; }
+.problem-view-sections { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.problem-view-section { min-width: 0; padding: 20px; border: 1px solid var(--border); border-radius: 6px; }
+.problem-view-section h2 { margin: 0 0 16px; font-size: 1rem; }
+.problem-view-section dl { display: grid; gap: 14px; margin: 0; }
+.problem-view-section dd { margin: 4px 0 0; overflow-wrap: anywhere; }
 .mode-indicator { min-height: 22px; display: inline-flex; flex: none; align-items: center; gap: 5px; padding: 1px 7px; border: 1px solid var(--border); border-radius: 2em; font-size: .6875rem; font-weight: 600; text-transform: none; white-space: nowrap; }
 .mode-indicator[hidden] { display: none; }
 .mode-indicator .octicon { width: 13px; height: 13px; flex-basis: 13px; }
@@ -2012,6 +2026,10 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .repository-health .section-heading { align-items: flex-start; flex-direction: column; }
   .outcome-view { grid-template-columns: 1fr; }
   .outcome-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
+  .problem-view-highlights { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .problem-view-highlights > div:nth-child(2) { border-right: 0; }
+  .problem-view-highlights > div:nth-child(-n+2) { border-bottom: 1px solid var(--border); }
+  .problem-view-sections { grid-template-columns: 1fr; }
   .pie-chart-card, .chart-horizontal-card { grid-template-columns: 1fr; }
   .pie-chart-layout { grid-column: 1; grid-row: auto; }
   .pie-chart-layout .chart-widget, .pie-chart-table-toggle { grid-column: 1; grid-row: 1; }
@@ -2221,6 +2239,10 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .entity-card-list-card:has(.entity-card-list-timing) { grid-template-columns: 20px minmax(0, 1fr); }
   .entity-card-list-timing { grid-column: 2; }
   .outcome-meta { grid-template-columns: 1fr; }
+  .problem-view-header { align-items: stretch; flex-direction: column; }
+  .problem-view-highlights { grid-template-columns: 1fr; }
+  .problem-view-highlights > div, .problem-view-highlights > div:nth-child(2) { border-right: 0; border-bottom: 1px solid var(--border); }
+  .problem-view-highlights > div:last-child { border-bottom: 0; }
   .configuration-editor-toolbar { align-items: stretch; flex-direction: column; }
   .configuration-editor-toolbar > div { justify-content: space-between; }
   .configuration-editor-actions { justify-content: flex-start; }
