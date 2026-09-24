@@ -7,8 +7,10 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
 type HostingMode string
@@ -81,7 +83,50 @@ func forwardedHeader(request *http.Request, name string) string {
 	return strings.TrimSpace(request.Header.Get(name))
 }
 
+// processTelemetry lazily installs the OpenTelemetry tracer provider exactly
+// once for the life of the process. The Azure Functions runtime reuses the
+// process across invocations, so the exporter it configures must outlive any
+// single request; bundling the sync.Once and its cached error into one type
+// keeps that pairing in a single place instead of spreading a package-level
+// mutex and error variable across the file.
+type processTelemetry struct {
+	once sync.Once
+	err  error
+}
+
+// ensure configures telemetry on the first call and returns the cached
+// outcome on every call thereafter. A configuration failure is logged at
+// most once, on the call that performed the setup, and is treated as
+// non-fatal: callers keep serving requests without exported traces rather
+// than failing the whole handler over a bad exporter configuration.
+func (p *processTelemetry) ensure(logger *log.Logger) error {
+	p.once.Do(func() {
+		p.err = configureProcessTelemetry()
+		if p.err != nil && logger != nil {
+			logger.Printf("telemetry configuration failed, continuing without exported traces: %v", p.err)
+		}
+	})
+	return p.err
+}
+
+// configureProcessTelemetry installs the tracer provider with a process-
+// lifetime context rather than a request-scoped one, since the resulting
+// exporter is shared by every future invocation handled by this process.
+func configureProcessTelemetry() error {
+	version := strings.TrimSpace(os.Getenv("CAO_BUILD_VERSION"))
+	if version == "" {
+		version = "unknown"
+	}
+	_, err := telemetry.Setup(context.Background(), version)
+	return err
+}
+
+var azureProcessTelemetry processTelemetry
+
 func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboardQueriesPath string, logger *log.Logger) (http.Handler, error) {
+	//nolint:contextcheck // configureProcessTelemetry intentionally uses context.Background(): the exporter it
+	// configures must outlive the single request/invocation that happens to trigger processTelemetry.ensure.
+	_ = azureProcessTelemetry.ensure(logger)
 	redisURL := strings.TrimSpace(os.Getenv("CAO_REDIS_URL"))
 	if redisURL == "" {
 		return nil, errors.New("CAO_REDIS_URL is required")

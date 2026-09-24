@@ -21,11 +21,17 @@ import (
 	"sync"
 	"time"
 
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
 var serverLog = logger.New("cao:server")
@@ -148,18 +154,49 @@ func (a *App) Serve(ctx context.Context) error {
 
 func (a *App) Handler() http.Handler {
 	mux := http.NewServeMux()
-	if a.oauth != nil {
-		mux.HandleFunc("GET /auth/login", a.oauth.login)
-		mux.HandleFunc("GET /auth/callback", a.oauth.callback)
-		mux.HandleFunc("POST /auth/logout", a.oauth.logout)
+	routePatterns := map[string]struct{}{}
+	register := func(pattern string, handler http.HandlerFunc) {
+		mux.HandleFunc(pattern, handler)
+		routePatterns[pattern] = struct{}{}
 	}
-	mux.HandleFunc("GET /api/v1/health", a.health)
-	mux.HandleFunc("GET /api/v1/events", a.events)
-	mux.HandleFunc("POST /api/v1/query", a.query)
-	mux.HandleFunc("GET /api/v1/diagnostics", a.diagnostics)
-	mux.HandleFunc("POST /api/v1/refresh", a.refresh)
+	if a.oauth != nil {
+		register("GET /auth/login", a.oauth.login)
+		register("GET /auth/callback", a.oauth.callback)
+		register("POST /auth/logout", a.oauth.logout)
+	}
+	register("GET /api/v1/health", a.health)
+	register("GET /api/v1/events", a.events)
+	register("POST /api/v1/query", a.query)
+	register("GET /api/v1/diagnostics", a.diagnostics)
+	register("POST /api/v1/refresh", a.refresh)
 	mux.HandleFunc("/", a.static)
-	return securityHeaders(a.requireAccess(mux))
+	instrumented := otelhttp.NewHandler(withResponseTraceHeaders(mux), telemetry.ServiceName,
+		otelhttp.WithSpanNameFormatter(func(_ string, request *http.Request) string {
+			// Match against the fixed, small set of registered API/auth
+			// patterns directly instead of calling mux.Handler, which
+			// would re-run ServeMux's route resolution a second time per
+			// request just to name the span. Every other path (static
+			// dashboard assets) is bucketed under one low-cardinality
+			// span name.
+			pattern := request.Method + " " + request.URL.Path
+			if _, ok := routePatterns[pattern]; ok {
+				return pattern
+			}
+			return request.Method + " /*"
+		}),
+	)
+	return securityHeaders(a.requireAccess(instrumented))
+}
+
+// withResponseTraceHeaders exposes the W3C trace/span ids that otelhttp
+// assigned to the in-flight request as response headers, so operators can
+// correlate a client-visible request with exported spans without requiring
+// the client to send its own traceparent header.
+func withResponseTraceHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		telemetry.SetResponseTraceHeaders(response, trace.SpanContextFromContext(request.Context()))
+		next.ServeHTTP(response, request)
+	})
 }
 
 func generateAccessToken() (string, error) {
@@ -374,15 +411,23 @@ type paginationRequest struct {
 }
 
 func (a *App) query(response http.ResponseWriter, request *http.Request) {
+	ctx, span := telemetry.Tracer().Start(request.Context(), "cao_dashboard.query.execute")
+	defer span.End()
+	request = request.WithContext(ctx)
+	fail := func(status int, message string) {
+		span.RecordError(errors.New(message))
+		span.SetStatus(codes.Error, message)
+		writeError(response, status, message)
+	}
 	request.Body = http.MaxBytesReader(response, request.Body, 8<<20)
 	decoder := json.NewDecoder(request.Body)
 	var input queryRequest
 	if err := decoder.Decode(&input); err != nil {
-		writeError(response, http.StatusBadRequest, "invalid query request")
+		fail(http.StatusBadRequest, "invalid query request")
 		return
 	}
 	if len(input.SourceNames) > 256 || len(input.Aliases) > 256 || len(input.ReplacedSources) > 256 {
-		writeError(response, http.StatusBadRequest, "query request exceeds source limits")
+		fail(http.StatusBadRequest, "query request exceeds source limits")
 		return
 	}
 	serverLog.Printf(
@@ -391,15 +436,20 @@ func (a *App) query(response http.ResponseWriter, request *http.Request) {
 	)
 	for _, name := range append(append([]string{}, input.SourceNames...), input.Aliases...) {
 		if strings.TrimSpace(name) == "" {
-			writeError(response, http.StatusBadRequest, "source names must be non-empty")
+			fail(http.StatusBadRequest, "source names must be non-empty")
 			return
 		}
 	}
-	active, err := a.store.Active(request.Context())
+	active, err := a.store.Active(ctx)
 	if err != nil || active.Generation == "" {
-		writeError(response, http.StatusServiceUnavailable, "dashboard data is unavailable")
+		fail(http.StatusServiceUnavailable, "dashboard data is unavailable")
 		return
 	}
+	span.SetAttributes(
+		attribute.Int64("cao_dashboard.query.revision", active.Revision),
+		attribute.Int("cao_dashboard.query.source_count", len(input.SourceNames)),
+		attribute.Int("cao_dashboard.query.alias_count", len(input.Aliases)),
+	)
 	evaluatedAt := evaluationTime(active)
 	if len(input.SourceNames) == 0 && len(input.Aliases) == 0 {
 		writeJSON(response, http.StatusOK, map[string]any{
@@ -430,12 +480,12 @@ func (a *App) query(response http.ResponseWriter, request *http.Request) {
 		}
 	}
 	started := time.Now()
-	loader := &generationLoader{ctx: request.Context(), store: a.store, generation: active.Generation}
+	loader := &generationLoader{ctx: ctx, store: a.store, generation: active.Generation}
 	engine := query.New(loader)
 	sources, metrics, err := engine.Execute(definitions, requested)
 	if err != nil {
 		serverLog.Printf("query failed")
-		writeError(response, http.StatusBadRequest, err.Error())
+		fail(http.StatusBadRequest, err.Error())
 		return
 	}
 	for name, page := range input.Pagination {
@@ -445,13 +495,19 @@ func (a *App) query(response http.ResponseWriter, request *http.Request) {
 		}
 		paginated, err := paginate(source, strconv.FormatInt(active.Revision, 10), page)
 		if err != nil {
-			writeError(response, http.StatusBadRequest, err.Error())
+			fail(http.StatusBadRequest, err.Error())
 			return
 		}
 		sources[name] = paginated
 	}
 	metrics.DurationMS = time.Since(started).Milliseconds()
 	serverLog.Printf("query completed sources=%d duration_ms=%d redis_commands=%d redis_rows=%d", len(sources), metrics.DurationMS, metrics.RedisCommands, metrics.RedisRows)
+	span.SetAttributes(
+		attribute.Int64("cao_dashboard.query.duration_ms", metrics.DurationMS),
+		attribute.Int("cao_dashboard.query.pushed_down_count", len(metrics.PushedDown)),
+		attribute.Int("cao_dashboard.query.fallback_count", len(metrics.FallbackOperations)),
+	)
+	span.SetStatus(codes.Ok, "")
 	writeJSON(response, http.StatusOK, map[string]any{"revision": active.Revision, "evaluatedAt": evaluatedAt, "sources": sources, "metrics": metrics})
 }
 
