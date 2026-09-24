@@ -271,6 +271,10 @@ func (oauth *githubOAuth) switchAccount(response http.ResponseWriter, request *h
 	for _, sessionID := range oauth.loadAccountIDs(request) {
 		session, err := oauth.loadSession(request.Context(), sessionID)
 		if err == nil && strings.EqualFold(session.Login, strings.TrimSpace(payload.Login)) {
+			session, ok := oauth.validatedSession(request.Context(), session)
+			if !ok {
+				continue
+			}
 			oauth.setSessionCookies(response, session)
 			oauth.writeAccountsForSession(response, request.Context(), session, oauth.loadAccountIDs(request))
 			return
@@ -284,15 +288,22 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 	if !ok {
 		return oauthSession{}, false
 	}
+	session, ok = oauth.validatedSession(request.Context(), session)
+	if !ok {
+		oauth.clearSessionCookies(response)
+	}
+	return session, ok
+}
+
+func (oauth *githubOAuth) validatedSession(ctx context.Context, session oauthSession) (oauthSession, bool) {
 	if time.Now().UTC().Add(tokenRefreshSkew).Before(session.AccessExpires) {
 		return session, true
 	}
 	if session.RefreshToken == "" || time.Now().UTC().After(session.RefreshExpires) {
-		_ = oauth.deleteSession(request.Context(), session.ID)
-		oauth.clearSessionCookies(response)
+		_ = oauth.deleteSession(ctx, session.ID)
 		return oauthSession{}, false
 	}
-	refreshed, err := oauth.exchange(request.Context(), url.Values{
+	refreshed, err := oauth.exchange(ctx, url.Values{
 		"client_id":     {oauth.config.ClientID},
 		"client_secret": {oauth.config.ClientSecret},
 		"grant_type":    {"refresh_token"},
@@ -300,8 +311,7 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 	})
 	if err != nil {
 		serverLog.Printf("oauth token refresh failed")
-		_ = oauth.deleteSession(request.Context(), session.ID)
-		oauth.clearSessionCookies(response)
+		_ = oauth.deleteSession(ctx, session.ID)
 		return oauthSession{}, false
 	}
 	now := time.Now().UTC()
@@ -316,7 +326,7 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 	if refreshed.ExpiresIn <= 0 {
 		session.AccessExpires = now.Add(time.Hour)
 	}
-	if err := oauth.saveSession(request.Context(), session); err != nil {
+	if err := oauth.saveSession(ctx, session); err != nil {
 		serverLog.Printf("oauth refreshed session save failed")
 		return oauthSession{}, false
 	}
@@ -578,6 +588,10 @@ func (oauth *githubOAuth) firstAvailableSession(ctx context.Context, accounts []
 	for _, sessionID := range accounts {
 		session, err := oauth.loadSession(ctx, sessionID)
 		if err == nil {
+			session, ok := oauth.validatedSession(ctx, session)
+			if !ok {
+				continue
+			}
 			return session, true
 		}
 	}
@@ -597,9 +611,10 @@ func (oauth *githubOAuth) writeAccountsForSession(response http.ResponseWriter, 
 	accounts := make([]oauthAccount, 0, len(accountIDs))
 	for _, sessionID := range accountIDs {
 		session, err := oauth.loadSession(ctx, sessionID)
-		if err != nil {
+		if err != nil || !oauth.sessionMayRefresh(session) {
 			continue
 		}
+
 		accounts = append(accounts, oauthAccount{
 			Login: session.Login, Name: session.Name, AvatarURL: session.AvatarURL, Active: session.ID == active.ID,
 		})
@@ -609,6 +624,12 @@ func (oauth *githubOAuth) writeAccountsForSession(response http.ResponseWriter, 
 		"active":        oauthAccount{Login: active.Login, Name: active.Name, AvatarURL: active.AvatarURL, Active: true},
 		"accounts":      accounts,
 	})
+}
+
+func (oauth *githubOAuth) sessionMayRefresh(session oauthSession) bool {
+	now := time.Now().UTC()
+	return now.Before(session.AccessExpires) ||
+		(session.RefreshToken != "" && now.Before(session.RefreshExpires))
 }
 
 func removeAccountID(accounts []string, target string) []string {

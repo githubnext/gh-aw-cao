@@ -193,14 +193,22 @@ func TestAzureOAuthListsSwitchesAndRetainsMultipleAccounts(t *testing.T) {
 		AccessToken: "access-two", RefreshToken: "refresh-two", AccessExpires: time.Now().Add(time.Hour),
 		RefreshExpires: time.Now().Add(2 * time.Hour), CSRFToken: "csrf-two",
 	}
+	expired := oauthSession{
+		ID: "session-expired", Login: "ghost", AccessToken: "access-expired",
+		AccessExpires: time.Now().Add(-2 * time.Hour), RefreshExpires: time.Now().Add(-time.Hour),
+		CSRFToken: "csrf-expired",
+	}
 	if err := app.oauth.saveSession(t.Context(), first); err != nil {
 		t.Fatal(err)
 	}
 	if err := app.oauth.saveSession(t.Context(), second); err != nil {
 		t.Fatal(err)
 	}
+	if err := app.oauth.saveSession(t.Context(), expired); err != nil {
+		t.Fatal(err)
+	}
 	accountCookies := httptest.NewRecorder()
-	app.oauth.setAccountsCookie(accountCookies, []string{first.ID, second.ID})
+	app.oauth.setAccountsCookie(accountCookies, []string{first.ID, second.ID, expired.ID})
 	accountsCookie := firstCookie(t, accountCookies.Result(), accountsCookieName)
 
 	profile := httptest.NewRecorder()
@@ -213,6 +221,9 @@ func TestAzureOAuthListsSwitchesAndRetainsMultipleAccounts(t *testing.T) {
 	}
 	if strings.Contains(profile.Body.String(), "access-one") || strings.Contains(profile.Body.String(), "csrf-one") {
 		t.Fatalf("account profile leaked session credentials: %s", profile.Body.String())
+	}
+	if strings.Contains(profile.Body.String(), `"login":"ghost"`) {
+		t.Fatalf("account profile exposed an expired session: %s", profile.Body.String())
 	}
 
 	switched := httptest.NewRecorder()
