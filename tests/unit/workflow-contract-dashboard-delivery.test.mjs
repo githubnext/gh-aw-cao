@@ -419,7 +419,7 @@ test("Activity campaign owns the shared collected-data cache contract", () => {
   assert.match(workflow, /REPORT_GH_AW_LOGS_SHARDS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-shards/);
   assert.match(workflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-gh-aw-logs/);
   assert.match(workflow, /bash activity\/collect-logs\.sh/);
-  assert.doesNotMatch(workflow, /issues: read/);
+  assert.equal((workflow.match(/issues: read/g) || []).length, 3);
   assert.equal((workflow.match(/pull-requests: read/g) || []).length, 3);
   assert.match(workflow, /Generate GitHub App token for activity[\s\S]*?GH_AW_GITHUB_READ_APP_ID[\s\S]*?GH_AW_GITHUB_READ_APP_PRIVATE_KEY/);
   assert.match(workflow, /actions\/create-github-app-token@[0-9a-f]{40}/);
