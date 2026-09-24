@@ -183,6 +183,16 @@ describe('entity card templates', () => {
   });
 
   it('drills from repositories through workflows and runs to events', () => {
+    expect(templates.repository).toMatchObject({
+      title: { field: 'repository-coordinate' },
+      details: [{ field: 'runs', title: 'Runs' }]
+    });
+    expect(templates.repository.actions).toBeUndefined();
+    expect(views['entity-repositories'].data.source).toBe('repository-activity');
+    expect(views['entity-repositories'].encoding.columns).toEqual([
+      { field: 'repository-coordinate', type: 'nominal', title: 'Repository' },
+      { field: 'runs', type: 'quantitative', title: 'Runs' }
+    ]);
     expect(views['entity-repositories'].list).toMatchObject({
       card: 'repository',
       drill: {

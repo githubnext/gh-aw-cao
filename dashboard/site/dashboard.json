@@ -16,13 +16,8 @@
         "labels": [],
         "details": [
           {
-            "field": "organization",
-            "title": "Organization"
-          },
-          {
-            "field": "observed-at",
-            "title": "Observed",
-            "format": "human-friendly-timestamp"
+            "field": "runs",
+            "title": "Runs"
           }
         ]
       },
@@ -656,7 +651,7 @@
         "title": "Repositories",
         "description": "Select a repository to inspect its declared workflows.",
         "data": {
-          "source": "repositories"
+          "source": "repository-activity"
         },
         "mark": "list",
         "list": {
@@ -690,20 +685,9 @@
               "title": "Repository"
             },
             {
-              "field": "organization",
-              "type": "nominal",
-              "title": "Organization"
-            },
-            {
-              "field": "repository",
-              "type": "nominal",
-              "title": "Repository name"
-            },
-            {
-              "field": "observed-at",
-              "type": "temporal",
-              "title": "Observed",
-              "format": "human-friendly-timestamp"
+              "field": "runs",
+              "type": "quantitative",
+              "title": "Runs"
             }
           ]
         }
