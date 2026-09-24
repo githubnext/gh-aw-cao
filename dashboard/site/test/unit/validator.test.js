@@ -905,7 +905,7 @@ dashboard:
           mark: element
           element: campaign-route
           config:
-            body: pull-requests
+            body: repositories
 `);
     expect(accepted.ok).toBe(true);
 

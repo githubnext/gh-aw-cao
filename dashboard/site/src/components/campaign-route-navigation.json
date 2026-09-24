@@ -5,7 +5,7 @@
     { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
     { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
   ],
-  "additional-bodies": ["overview", "workflows", "runs", "pull-requests", "repositories", "reports"],
+  "additional-bodies": ["overview", "workflows", "runs", "repositories", "reports"],
   "aliases": {
     "dispatches": "runs"
   }

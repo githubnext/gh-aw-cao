@@ -13,11 +13,11 @@ import {
 import { renderCampaignReadme } from './campaign-readme.js';
 
 /**
- * @typedef {'overview'|'workflows'|'runs'|'issues'|'pull-requests'|'repositories'|'insights'|'problems'|'reports'|'dispatches'} CampaignRouteBody
+ * @typedef {'overview'|'workflows'|'runs'|'issues'|'repositories'|'insights'|'problems'|'reports'|'dispatches'} CampaignRouteBody
  */
 
 /**
- * @typedef {'overview'|'workflows'|'runs'|'issues'|'pull-requests'|'repositories'|'insights'|'problems'|'reports'} CampaignRouteTab
+ * @typedef {'overview'|'workflows'|'runs'|'issues'|'repositories'|'insights'|'problems'|'reports'} CampaignRouteTab
  */
 
 /**
@@ -60,13 +60,6 @@ const CAMPAIGN_ROUTE_COMPOSITIONS = {
     selectMessage: 'Select a campaign to view its generated issues.',
     description: 'Operational activity for the {campaignName} campaign.',
     currentTab: 'issues',
-    bodyRenderer: undefined
-  },
-  'pull-requests': {
-    rootClassName: 'campaign-pull-requests',
-    selectMessage: 'Select a campaign to view its generated pull requests.',
-    description: 'Operational activity for the {campaignName} campaign.',
-    currentTab: 'pull-requests',
     bodyRenderer: undefined
   },
   runs: {
