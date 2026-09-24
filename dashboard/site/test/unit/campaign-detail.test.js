@@ -331,12 +331,11 @@ describe('campaign detail route', () => {
       expect(detail).toEqual({
         title: 'Ambient Context',
         description: 'Workflow runs for the Ambient Context campaign.',
-        mode: 'review',
         navigationPage: 'campaigns'
       });
     });
 
-    it('uses the trusted target mode for campaign navigation', () => {
+    it('keeps rollout mode out of shared campaign identity chrome', () => {
       const host = document.createElement('div');
       const targetModeWorkflows = workflows.map((workflow) => workflow.campaign === 'ambient-context'
         ? { ...workflow, 'campaign-targets': [{ repository: 'githubnext/gh-aw-cao', mode: 'live' }] }
@@ -355,11 +354,11 @@ describe('campaign detail route', () => {
         detail: { parameter: 'campaign', value: 'ambient-context' }
       }));
 
-      expect(detail).toEqual(expect.objectContaining({ mode: 'live' }));
+      expect(detail).not.toHaveProperty('mode');
     });
   });
 
-  it('reallocates campaign title, description, mode, and parent navigation', () => {
+  it('reallocates campaign title, description, and parent navigation', () => {
     const host = document.createElement('div');
     const rendered = renderCampaignRouteVariant(context(), 'overview');
     host.append(rendered);
@@ -375,7 +374,6 @@ describe('campaign detail route', () => {
     expect(detail).toEqual({
       title: 'Ambient Context',
       description: 'Overview of the Ambient Context campaign.',
-      mode: 'review',
       navigationPage: 'campaigns'
     });
   });
@@ -406,7 +404,6 @@ describe('campaign detail route', () => {
       expect(detail).toEqual({
         title: 'Ambient Context',
         description: 'Durable reports produced by the Ambient Context campaign.',
-        mode: 'review',
         navigationPage: 'campaigns'
       });
 

@@ -4,7 +4,7 @@
 
 import { rowsFor } from './source-rows.js';
 import { createRoutePageShell } from './route-page-shell.js';
-import { normalizeCampaignRoute, campaignModeForRoute, campaignNameForRoute } from './campaign-route-composition.js';
+import { normalizeCampaignRoute, campaignNameForRoute } from './campaign-route-composition.js';
 import { CAMPAIGN_ROUTE_TABS } from './route-body-specification.js';
 import { renderEmptyMessage } from './ui-primitives.js';
 
@@ -82,7 +82,6 @@ export function renderCampaignRouteShell(context, config) {
         allocation: {
           title: campaignName,
           description: config.description.replace('{campaignName}', campaignName),
-          ...(config.currentTab === 'problems' ? {} : { mode: campaignModeForRoute(workflows) }),
           navigationPage: 'campaigns'
         },
         content: config.bodyRenderer?.({ context, campaignId, campaignName, workflows }) ?? null

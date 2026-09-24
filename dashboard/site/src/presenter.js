@@ -66,7 +66,7 @@ import {
  */
 
 /**
- * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, description?: string, icon?: string, ['class-name']?: string, ['filter-bar']?: boolean, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
+ * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, description?: string, icon?: string, ['class-name']?: string, ['filter-bar']?: boolean, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string, ['title-format']?: 'title-case' }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
  */
 
 /**
@@ -643,6 +643,7 @@ function renderPagePlaceholder(page) {
     'data-page-description': payload.description ?? '',
     'data-route-parameter': routeParameter,
     'data-route-navigation-page': routeNavigationPage,
+    'data-route-title-format': payload.route?.['title-format'],
     'data-page-pending': ''
   });
 }
@@ -867,6 +868,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       'data-page-description': page.description ?? '',
       'data-route-parameter': routeParameter,
       'data-route-navigation-page': routeNavigationPage,
+      'data-route-title-format': page.route?.['title-format'],
       'data-view-mode': selectedViewMode
     },
     renderedRouteTabs,
@@ -1305,7 +1307,10 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       if (breadcrumbDashboard instanceof HTMLAnchorElement) breadcrumbDashboard.hidden = true;
     }
     const queryTitle = resolveQueryDrillPageTitle(parameters, knownQueries);
-    const title = queryTitle || provisionalTitle.trim() || routeValue || page?.dataset.pageTitle || '';
+    const formattedRouteTitle = page?.dataset.routeTitleFormat === 'title-case'
+      ? titleCase(routeValue)
+      : routeValue;
+    const title = queryTitle || provisionalTitle.trim() || formattedRouteTitle || page?.dataset.pageTitle || '';
     const description = page?.dataset.pageDescription ?? '';
     if (breadcrumbPage) breadcrumbPage.textContent = title;
     if (pageTitle) pageTitle.textContent = title;

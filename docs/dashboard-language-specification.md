@@ -243,7 +243,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Custom page | `id`, `kind`, `title`, `navigation-label`, `description`, `icon`, `class-name`, `route`, `views`, `sections` |
 | Navigation section | `label`, `pages`, `experimental`, `placement` |
 | Page section | `id`, `title`, `description`, `layout`, `views`, `count-source`, `count-sources`, `count-field`, `count-label` |
-| Custom page `route` | `hash-query-parameter`, `navigation-page`, `tab`, `tabs` |
+| Custom page `route` | `hash-query-parameter`, `navigation-page`, `title-format`, `tab`, `tabs` |
 | View | `id`, `title`, `description`, `intent`, `locked`, `data`, `mark`, `element`, `config`, `callout`, `chart`, `metric`, `list`, `tree`, `layout`, `disclosure`, `controls`, `lazy-list`, `column-summaries`, `empty-message`, `title-link`, `encoding` |
 | View `data` | `source` or `sources`, `scope`, `time`, `filters`, `arguments`, `limit`, `order-by` |
 | View data argument | `name`, `field` |
@@ -870,6 +870,7 @@ For pages that opt in to `filter-bar: true`, the presenter renders a filter bar 
 - **DLS-PAGE-016:** When `class-name` is present, it **MUST** be a canonical identifier and a renderer **MUST** add it to the page container without deriving additional CSS class names from `id` or `page`.
 - **DLS-PAGE-017:** The `issues` page **MUST** use the predefined built-in page configuration and the reusable `issue` entity-card definition, bind to a declared query with issue arguments, and drill to each issue's safe GitHub URL.
 - **DLS-PAGE-017:** A presenter **MUST** render one filter bar in the view chrome only when that page declares `filter-bar: true`, toggle its tuning controls from the horizon text, and apply valid filter edits automatically. A presenter **MUST** persist time-horizon and rollout-mode settings globally in local storage and activate all rollout modes by default. Available view-mode controls **MUST** remain in page chrome when the filter bar is omitted.
+- **DLS-PAGE-018:** A routed custom page **MAY** declare `route.title-format: title-case`. Before route-owned data resolves, a presenter **MUST** format the route value by capitalizing its hyphen- or underscore-separated words instead of exposing the raw route slug as page identity. A later route allocation **MUST** replace that provisional identity with the authoritative title.
 
 ---
 
