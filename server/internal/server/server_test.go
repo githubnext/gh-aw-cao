@@ -16,6 +16,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
 const testAccessToken = "0123456789abcdef0123456789abcdef"
@@ -91,6 +92,59 @@ func TestAPINeverReturnsRedisCredentials(t *testing.T) {
 		if strings.Contains(body, forbidden) {
 			t.Fatalf("API response leaked %q: %s", forbidden, body)
 		}
+	}
+}
+
+func TestAPIResponsesCarryStandardizedTraceIdentifiers(t *testing.T) {
+	t.Setenv("OTEL_SDK_DISABLED", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://127.0.0.1:4318")
+	shutdown, err := telemetry.Setup(t.Context(), "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 0)
+		defer cancel()
+		_ = shutdown(ctx)
+	})
+	address, closeServer := fakeRedis(t)
+	defer closeServer()
+	client, err := redisx.New("redis://" + address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	site, err := os.MkdirTemp(".", ".test-site-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.RemoveAll(site); err != nil {
+			t.Errorf("remove test site: %v", err)
+		}
+	})
+	if err := os.WriteFile(site+"/index.html", []byte("<html><head></head><body></body></html>"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	app, err := New(redisx.NewStore(client, "test"), Config{
+		Listen: "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "https://localhost/api/v1/health", nil)
+	authorize(request)
+	response := httptest.NewRecorder()
+	app.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("health returned %d: %s", response.Code, response.Body.String())
+	}
+	traceID := response.Header().Get("X-Trace-Id")
+	spanID := response.Header().Get("X-Span-Id")
+	if len(traceID) != 32 {
+		t.Fatalf("expected a 32-character W3C trace id, got %q", traceID)
+	}
+	if len(spanID) != 16 {
+		t.Fatalf("expected a 16-character W3C span id, got %q", spanID)
 	}
 }
 

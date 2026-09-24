@@ -3,13 +3,18 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
+
+var setupTelemetryOnce sync.Once
 
 type HostingMode string
 
@@ -82,6 +87,20 @@ func forwardedHeader(request *http.Request, name string) string {
 }
 
 func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboardQueriesPath string, logger *log.Logger) (http.Handler, error) {
+	var telemetryErr error
+	setupTelemetryOnce.Do(func() {
+		// The Function App process is reused across invocations, so the
+		// tracer provider is installed once for the process lifetime
+		// instead of per request/cold start.
+		version := strings.TrimSpace(os.Getenv("CAO_BUILD_VERSION"))
+		if version == "" {
+			version = "unknown"
+		}
+		_, telemetryErr = telemetry.Setup(ctx, version)
+	})
+	if telemetryErr != nil {
+		return nil, fmt.Errorf("configure telemetry: %w", telemetryErr)
+	}
 	redisURL := strings.TrimSpace(os.Getenv("CAO_REDIS_URL"))
 	if redisURL == "" {
 		return nil, errors.New("CAO_REDIS_URL is required")

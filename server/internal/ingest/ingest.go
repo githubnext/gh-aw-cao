@@ -16,9 +16,13 @@ import (
 	"strings"
 	"time"
 
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
 var collections = []string{"campaigns", "repositories", "workflows", "runs", "domains", "tools", "audits", "issues"}
@@ -109,7 +113,21 @@ func DirectoryRevision(manifest Manifest, inventory []byte) string {
 	return "sha256:" + hex.EncodeToString(hasher.Sum(nil))
 }
 
-func Run(ctx context.Context, store *redisx.Store, directory string, options Options) (Result, error) {
+func Run(ctx context.Context, store *redisx.Store, directory string, options Options) (result Result, err error) {
+	ctx, span := telemetry.Tracer().Start(ctx, "cao_dashboard.ingest.run")
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		} else {
+			span.SetAttributes(
+				attribute.Int64("cao_dashboard.ingest.revision", result.Revision),
+				attribute.Int("cao_dashboard.ingest.source_count", len(result.Counts)),
+			)
+			span.SetStatus(codes.Ok, "")
+		}
+		span.End()
+	}()
 	manifest, runs, records, err := ValidateManifest(directory)
 	if err != nil {
 		return Result{}, err
@@ -136,6 +154,7 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 		if evaluatedAt.IsZero() {
 			evaluatedAt = time.Unix(0, 0).UTC()
 		}
+		span.SetAttributes(attribute.Bool("cao_dashboard.ingest.reused_generation", true))
 		return Result{
 			Generation: active.Generation, Revision: active.Revision,
 			DataRevision: dataRevision, EvaluatedAt: evaluatedAt.UTC().Format(time.RFC3339Nano),
