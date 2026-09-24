@@ -121,7 +121,7 @@ func computeArity(function string) (int, int, bool) {
 	arities := map[string][2]int{
 		"coalesce": {2, 8}, "concat": {2, 8}, "lower": {1, 1}, "upper": {1, 1},
 		"title-case": {1, 1}, "trim": {1, 1}, "replace-suffix": {3, 3}, "url-encode": {1, 1},
-		"date-day": {1, 1}, "calendar-week-point": {3, 3}, "dashboard-link": {3, 4},
+		"date-day": {1, 1}, "calendar-week-point": {3, 3}, "dashboard-link": {3, 4}, "link-href": {1, 1},
 		"equals-any": {2, 8}, "greater-than": {2, 2}, "if": {3, 3}, "format-count": {1, 1},
 		"format-percent": {1, 1}, "array-length": {1, 1}, "failure-streak-point": {3, 3},
 		"number": {1, 1}, "positive-integer": {2, 2}, "sum": {2, 8}, "difference": {2, 2},
@@ -686,6 +686,16 @@ func computeValue(row model.Row, definition ComputedField) (any, error) {
 		}
 		result["dashboard-href"], result["dashboard-label"] = href, label
 		return result, nil
+	case "link-href":
+		link, ok := values[0].(map[string]any)
+		if !ok {
+			return nil, nil
+		}
+		href, ok := link["href"].(string)
+		if !ok || href == "" {
+			return nil, nil
+		}
+		return href, nil
 	case "equals-any":
 		for _, value := range values[1:] {
 			if same(values[0], value) {
