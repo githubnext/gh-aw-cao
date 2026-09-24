@@ -586,7 +586,7 @@ func (a *App) static(response http.ResponseWriter, request *http.Request) {
 
 func (a *App) serveIndex(response http.ResponseWriter, accessToken string) {
 	path := filepath.Join(a.config.SiteDirectory, "index.html")
-	// #nosec G304 -- path is constrained to the configured site directory.
+	// #nosec G304,G703 -- path is constrained to the configured site directory.
 	content, err := os.ReadFile(path)
 	if err != nil {
 		http.Error(response, "not found", http.StatusNotFound)

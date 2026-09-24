@@ -267,13 +267,14 @@ func (oauth *githubOAuth) validState(request *http.Request) bool {
 }
 
 func (oauth *githubOAuth) exchange(ctx context.Context, values url.Values) (tokenResponse, error) {
+	// #nosec G704 -- endpoints are fixed GitHub defaults in production and test-only overrides are explicit configuration.
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, oauth.config.TokenURL, strings.NewReader(values.Encode()))
 	if err != nil {
 		return tokenResponse{}, err
 	}
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	response, err := oauth.client.Do(request)
+	response, err := oauth.client.Do(request) // #nosec G704 -- see endpoint validation note above.
 	if err != nil {
 		return tokenResponse{}, err
 	}
@@ -408,7 +409,7 @@ func (oauth *githubOAuth) loadSession(ctx context.Context, sessionID string) (oa
 }
 
 func (oauth *githubOAuth) saveSession(ctx context.Context, session oauthSession) error {
-	data, err := json.Marshal(session)
+	data, err := json.Marshal(session) // #nosec G117 -- marshaled token fields are encrypted with AES-GCM before Redis storage.
 	if err != nil {
 		return err
 	}
@@ -439,12 +440,14 @@ func (oauth *githubOAuth) sessionKey(sessionID string) string {
 
 func (oauth *githubOAuth) setSessionCookies(response http.ResponseWriter, session oauthSession) {
 	http.SetCookie(response, &http.Cookie{Name: sessionCookieName, Value: session.ID, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: int(sessionTTL.Seconds())})
+	// #nosec G124 -- CSRF token must be browser-readable so same-origin fetch requests can mirror it in X-CSRF-Token.
 	http.SetCookie(response, &http.Cookie{Name: csrfCookieName, Value: url.QueryEscape(session.CSRFToken), Path: "/", Secure: true, HttpOnly: false, SameSite: http.SameSiteLaxMode, MaxAge: int(sessionTTL.Seconds())})
 	oauth.clearStateCookie(response)
 }
 
 func (oauth *githubOAuth) clearSessionCookies(response http.ResponseWriter) {
 	http.SetCookie(response, &http.Cookie{Name: sessionCookieName, Value: "", Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: -1})
+	// #nosec G124 -- CSRF token cookie is intentionally not HttpOnly; it carries no session authority.
 	http.SetCookie(response, &http.Cookie{Name: csrfCookieName, Value: "", Path: "/", Secure: true, HttpOnly: false, SameSite: http.SameSiteLaxMode, MaxAge: -1})
 }
 

@@ -52,10 +52,10 @@ func TestAzureModeRequiresCompleteGitHubOAuthPolicy(t *testing.T) {
 
 func TestAzureOAuthLoginCallbackAndAuthorizedAPI(t *testing.T) {
 	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
-	app := newAzureTestApp(t, github.URL, nil)
+	app := newAzureTestApp(t, github.URL)
 
 	login := httptest.NewRecorder()
-	request := azureRequest(t, http.MethodGet, "/auth/login", nil)
+	request := azureRequest(t, http.MethodGet, "/auth/login")
 	app.Handler().ServeHTTP(login, request)
 	if login.Code != http.StatusFound {
 		t.Fatalf("login returned %d: %s", login.Code, login.Body.String())
@@ -71,7 +71,7 @@ func TestAzureOAuthLoginCallbackAndAuthorizedAPI(t *testing.T) {
 	}
 
 	callback := httptest.NewRecorder()
-	request = azureRequest(t, http.MethodGet, "/auth/callback?code=code-1&state="+url.QueryEscape(state), nil)
+	request = azureRequest(t, http.MethodGet, "/auth/callback?code=code-1&state="+url.QueryEscape(state))
 	request.AddCookie(stateCookie)
 	app.Handler().ServeHTTP(callback, request)
 	if callback.Code != http.StatusFound {
@@ -91,7 +91,7 @@ func TestAzureOAuthLoginCallbackAndAuthorizedAPI(t *testing.T) {
 	}
 
 	unauthorized := httptest.NewRecorder()
-	request = azureRequest(t, http.MethodPost, "/api/v1/refresh", nil)
+	request = azureRequest(t, http.MethodPost, "/api/v1/refresh")
 	request.Header.Set("Authorization", "Bearer "+testAccessToken)
 	app.Handler().ServeHTTP(unauthorized, request)
 	if unauthorized.Code != http.StatusUnauthorized {
@@ -99,7 +99,7 @@ func TestAzureOAuthLoginCallbackAndAuthorizedAPI(t *testing.T) {
 	}
 
 	authorized := httptest.NewRecorder()
-	request = azureRequest(t, http.MethodPost, "/api/v1/refresh", nil)
+	request = azureRequest(t, http.MethodPost, "/api/v1/refresh")
 	request.AddCookie(sessionCookie)
 	request.AddCookie(csrfCookie)
 	request.Header.Set("X-CSRF-Token", csrfCookie.Value)
@@ -111,18 +111,18 @@ func TestAzureOAuthLoginCallbackAndAuthorizedAPI(t *testing.T) {
 
 func TestAzureOAuthRejectsInvalidStateAndDeniedMembership(t *testing.T) {
 	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
-	app := newAzureTestApp(t, github.URL, nil)
+	app := newAzureTestApp(t, github.URL)
 	response := httptest.NewRecorder()
-	app.Handler().ServeHTTP(response, azureRequest(t, http.MethodGet, "/auth/callback?code=code-1&state=bad", nil))
+	app.Handler().ServeHTTP(response, azureRequest(t, http.MethodGet, "/auth/callback?code=code-1&state=bad"))
 	if response.Code != http.StatusBadRequest {
 		t.Fatalf("invalid state returned %d", response.Code)
 	}
 
 	deniedGitHub := fakeGitHub(t, fakeGitHubOptions{membershipState: "pending", accessExpiresIn: 3600})
-	app = newAzureTestApp(t, deniedGitHub.URL, nil)
+	app = newAzureTestApp(t, deniedGitHub.URL)
 	stateCookie, state := loginState(t, app)
 	response = httptest.NewRecorder()
-	request := azureRequest(t, http.MethodGet, "/auth/callback?code=code-1&state="+url.QueryEscape(state), nil)
+	request := azureRequest(t, http.MethodGet, "/auth/callback?code=code-1&state="+url.QueryEscape(state))
 	request.AddCookie(stateCookie)
 	app.Handler().ServeHTTP(response, request)
 	if response.Code != http.StatusForbidden {
@@ -135,11 +135,11 @@ func TestAzureOAuthRejectsInvalidStateAndDeniedMembership(t *testing.T) {
 
 func TestAzureOAuthRefreshRotationLogoutAndRefreshFailure(t *testing.T) {
 	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: -60, refreshSucceeds: true})
-	app := newAzureTestApp(t, github.URL, nil)
+	app := newAzureTestApp(t, github.URL)
 	sessionCookie, csrfCookie := callbackSession(t, app)
 
 	refreshed := httptest.NewRecorder()
-	request := azureRequest(t, http.MethodPost, "/api/v1/refresh", nil)
+	request := azureRequest(t, http.MethodPost, "/api/v1/refresh")
 	request.AddCookie(sessionCookie)
 	request.AddCookie(csrfCookie)
 	request.Header.Set("X-CSRF-Token", csrfCookie.Value)
@@ -149,7 +149,7 @@ func TestAzureOAuthRefreshRotationLogoutAndRefreshFailure(t *testing.T) {
 	}
 
 	logout := httptest.NewRecorder()
-	request = azureRequest(t, http.MethodPost, "/auth/logout", nil)
+	request = azureRequest(t, http.MethodPost, "/auth/logout")
 	request.AddCookie(sessionCookie)
 	request.AddCookie(csrfCookie)
 	request.Header.Set("X-CSRF-Token", csrfCookie.Value)
@@ -162,10 +162,10 @@ func TestAzureOAuthRefreshRotationLogoutAndRefreshFailure(t *testing.T) {
 	}
 
 	failingGitHub := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: -60, refreshSucceeds: false})
-	app = newAzureTestApp(t, failingGitHub.URL, nil)
+	app = newAzureTestApp(t, failingGitHub.URL)
 	sessionCookie, csrfCookie = callbackSession(t, app)
 	failed := httptest.NewRecorder()
-	request = azureRequest(t, http.MethodPost, "/api/v1/refresh", nil)
+	request = azureRequest(t, http.MethodPost, "/api/v1/refresh")
 	request.AddCookie(sessionCookie)
 	request.AddCookie(csrfCookie)
 	request.Header.Set("X-CSRF-Token", csrfCookie.Value)
@@ -176,7 +176,7 @@ func TestAzureOAuthRefreshRotationLogoutAndRefreshFailure(t *testing.T) {
 }
 
 func TestAzureProxyPolicyFailsClosed(t *testing.T) {
-	app := newAzureTestApp(t, fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600}).URL, nil)
+	app := newAzureTestApp(t, fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600}).URL)
 	response := httptest.NewRecorder()
 	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "https://evil.example/api/v1/health", nil)
 	request.Host = "evil.example"
@@ -213,9 +213,11 @@ func fakeGitHub(t *testing.T, options fakeGitHubOptions) *fakeGitHubServer {
 				response.WriteHeader(http.StatusUnauthorized)
 				return
 			}
+			// #nosec G117 -- test fixture intentionally models GitHub's token endpoint JSON.
 			_ = json.NewEncoder(response).Encode(tokenResponse{AccessToken: "access-new", RefreshToken: "refresh-new", ExpiresIn: 3600, RefreshTokenExpiresIn: 7200})
 			return
 		}
+		// #nosec G117 -- test fixture intentionally models GitHub's token endpoint JSON.
 		_ = json.NewEncoder(response).Encode(tokenResponse{AccessToken: "access-old", RefreshToken: "refresh-old", ExpiresIn: options.accessExpiresIn, RefreshTokenExpiresIn: 7200})
 	})
 	mux.HandleFunc("/user", func(response http.ResponseWriter, request *http.Request) {
@@ -244,7 +246,7 @@ func (server *fakeGitHubServer) sawRevocation(token string) bool {
 	return false
 }
 
-func newAzureTestApp(t *testing.T, githubURL string, mutate func(*Config)) *App {
+func newAzureTestApp(t *testing.T, githubURL string) *App {
 	t.Helper()
 	address, closeServer := fakeRedis(t)
 	t.Cleanup(closeServer)
@@ -261,9 +263,6 @@ func newAzureTestApp(t *testing.T, githubURL string, mutate func(*Config)) *App 
 		SiteDirectory: site,
 		AzureProxy:    AzureProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
 		GitHubOAuth:   validOAuthConfig(githubURL),
-	}
-	if mutate != nil {
-		mutate(&config)
 	}
 	app, err := New(redisx.NewStore(client, "test"), config)
 	if err != nil {
@@ -287,15 +286,9 @@ func validOAuthConfig(baseURL string) *GitHubOAuthConfig {
 	}
 }
 
-func azureRequest(t *testing.T, method, path string, body *strings.Reader) *http.Request {
+func azureRequest(t *testing.T, method, path string) *http.Request {
 	t.Helper()
-	var reader *strings.Reader
-	if body == nil {
-		reader = strings.NewReader("")
-	} else {
-		reader = body
-	}
-	request := httptest.NewRequestWithContext(t.Context(), method, "https://dashboard.example.com"+path, reader)
+	request := httptest.NewRequestWithContext(t.Context(), method, "https://dashboard.example.com"+path, strings.NewReader(""))
 	request.Host = "dashboard.example.com"
 	request.Header.Set("X-Forwarded-Host", "dashboard.example.com")
 	request.Header.Set("X-Forwarded-Proto", "https")
@@ -305,7 +298,7 @@ func azureRequest(t *testing.T, method, path string, body *strings.Reader) *http
 func loginState(t *testing.T, app *App) (*http.Cookie, string) {
 	t.Helper()
 	response := httptest.NewRecorder()
-	app.Handler().ServeHTTP(response, azureRequest(t, http.MethodGet, "/auth/login", nil))
+	app.Handler().ServeHTTP(response, azureRequest(t, http.MethodGet, "/auth/login"))
 	location, err := url.Parse(response.Header().Get("Location"))
 	if err != nil {
 		t.Fatal(err)
@@ -317,7 +310,7 @@ func callbackSession(t *testing.T, app *App) (*http.Cookie, *http.Cookie) {
 	t.Helper()
 	stateCookie, state := loginState(t, app)
 	response := httptest.NewRecorder()
-	request := azureRequest(t, http.MethodGet, "/auth/callback?code=code-1&state="+url.QueryEscape(state), nil)
+	request := azureRequest(t, http.MethodGet, "/auth/callback?code=code-1&state="+url.QueryEscape(state))
 	request.AddCookie(stateCookie)
 	app.Handler().ServeHTTP(response, request)
 	if response.Code != http.StatusFound {

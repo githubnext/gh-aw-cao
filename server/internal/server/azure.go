@@ -28,19 +28,19 @@ func validateAzureMode(store *redisx.Store, config *Config) error {
 		return nil
 	}
 	if strings.TrimSpace(config.Listen) != "" || config.CertFile != "" || config.KeyFile != "" {
-		return errors.New("Azure Functions mode must not configure a listener or TLS files")
+		return errors.New("azure Functions mode must not configure a listener or TLS files")
 	}
 	if strings.TrimSpace(config.AccessToken) != "" {
-		return errors.New("Azure Functions mode does not support local bearer capabilities")
+		return errors.New("azure Functions mode does not support local bearer capabilities")
 	}
 	if store == nil {
-		return errors.New("Azure Functions mode requires Redis")
+		return errors.New("azure Functions mode requires Redis")
 	}
 	if len(config.AzureProxy.AllowedHosts) == 0 {
-		return errors.New("Azure Functions mode requires an explicit trusted proxy host policy")
+		return errors.New("azure Functions mode requires an explicit trusted proxy host policy")
 	}
 	if config.GitHubOAuth == nil {
-		return errors.New("Azure Functions mode requires GitHub OAuth configuration")
+		return errors.New("azure Functions mode requires GitHub OAuth configuration")
 	}
 	if err := config.GitHubOAuth.validate(); err != nil {
 		return err
@@ -87,7 +87,7 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 		return nil, errors.New("CAO_REDIS_URL is required")
 	}
 	if !strings.HasPrefix(strings.ToLower(redisURL), "rediss://") {
-		return nil, errors.New("Azure Functions mode requires rediss:// Redis transport")
+		return nil, errors.New("azure Functions mode requires rediss:// Redis transport")
 	}
 	client, err := redisx.New(redisURL)
 	if err != nil {
