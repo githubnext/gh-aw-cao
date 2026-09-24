@@ -1297,86 +1297,101 @@ export async function downloadDeployedDashboardData({
   const inventoryUrl = new URL('inventory-sources.json', manifestUrl);
   const outputDirectory = path.resolve(output);
   await mkdir(outputDirectory, { recursive: true });
-  const temporaryDirectory = await mkdtemp(path.join(outputDirectory, '.deployed-dashboard-'));
-  const temporaryManifest = path.join(temporaryDirectory, 'payload-hashes.json');
-  const temporaryPayloads = path.join(temporaryDirectory, 'payloads');
-  const temporaryDatabase = path.join(temporaryDirectory, 'gh-aw-logs.sqlite');
-  const temporaryInventory = path.join(temporaryDirectory, 'inventory-sources.json');
   const manifestPath = path.join(outputDirectory, 'payload-hashes.json');
   const databasePath = path.join(outputDirectory, 'gh-aw-logs.sqlite');
   const inventoryPath = path.join(outputDirectory, 'inventory-sources.json');
+  const isChecksumMismatch = (error) => error instanceof Error
+    && /^Activity (?:SQLite|shard) checksum mismatch: /.test(error.message);
 
-  try {
-    await Promise.all([
-      downloadFile(manifestUrl, temporaryManifest),
-      downloadFile(databaseUrl, temporaryDatabase),
-      downloadFile(inventoryUrl, temporaryInventory)
-    ]);
-    const inventorySources = JSON.parse(await readFile(temporaryInventory, 'utf8'));
-    if (!isMapping(inventorySources)) {
-      throw new Error('Deployed inventory sources must contain a JSON object.');
-    }
-    const hashes = JSON.parse(await readFile(temporaryManifest, 'utf8'));
-    const validDigest = (digest) => /^[a-f0-9]{64}$/i.test(String(digest));
-    const expectedDatabaseDigest = hashes['gh-aw-logs.sqlite'];
-    if (!validDigest(expectedDatabaseDigest)) {
-      throw new Error('Activity snapshot manifest contains no valid SQLite checksum.');
-    }
-    const databaseDigest = await hashFileContents(temporaryDatabase);
-    if (databaseDigest !== expectedDatabaseDigest.toLowerCase()) {
-      throw new Error('Activity SQLite checksum mismatch: gh-aw-logs.sqlite');
-    }
-    const runEntries = Object.entries(hashes)
-      .filter(([name, digest]) => /^gh-aw-logs-runs\/[^/]+\.jsonl$/.test(name)
-        && validDigest(digest))
-      .sort(([left], [right]) => left.localeCompare(right));
-    const recordEntries = Object.entries(hashes)
-      .filter(([name, digest]) => /^gh-aw-logs-records\/[^/]+\.jsonl$/.test(name)
-        && validDigest(digest))
-      .sort(([left], [right]) => left.localeCompare(right));
-    const rawEntries = Object.entries(hashes)
-      .filter(([name, digest]) => /^gh-aw-logs-shards\/[^/]+\.jsonl$/.test(name)
-        && validDigest(digest))
-      .sort(([left], [right]) => left.localeCompare(right));
-    const payloadEntries = runEntries.length > 0 ? [...runEntries, ...recordEntries] : rawEntries;
-    if (payloadEntries.length === 0) throw new Error('Activity shard manifest contains no valid JSONL shards.');
-    await mkdir(temporaryPayloads);
-    for (const [name, expectedDigest] of payloadEntries) {
-      const destination = path.join(temporaryPayloads, name);
-      await mkdir(path.dirname(destination), { recursive: true });
-      const size = await downloadFile(new URL(name, manifestUrl), destination, { allowEmpty: true });
-      const hash = createHash('sha256');
-      for await (const chunk of createReadStream(destination)) hash.update(chunk);
-      if (hash.digest('hex') !== expectedDigest.toLowerCase()) {
-        throw new Error(`Activity shard checksum mismatch: ${name}`);
+  const downloadAttempt = async () => {
+    const temporaryDirectory = await mkdtemp(path.join(outputDirectory, '.deployed-dashboard-'));
+    const temporaryManifest = path.join(temporaryDirectory, 'payload-hashes.json');
+    const temporaryPayloads = path.join(temporaryDirectory, 'payloads');
+    const temporaryDatabase = path.join(temporaryDirectory, 'gh-aw-logs.sqlite');
+    const temporaryInventory = path.join(temporaryDirectory, 'inventory-sources.json');
+    try {
+      await Promise.all([
+        downloadFile(manifestUrl, temporaryManifest),
+        downloadFile(databaseUrl, temporaryDatabase),
+        downloadFile(inventoryUrl, temporaryInventory)
+      ]);
+      const inventorySources = JSON.parse(await readFile(temporaryInventory, 'utf8'));
+      if (!isMapping(inventorySources)) {
+        throw new Error('Deployed inventory sources must contain a JSON object.');
       }
-      if (size === 0) {
-        delete hashes[name];
-        await rm(destination);
+      const hashes = JSON.parse(await readFile(temporaryManifest, 'utf8'));
+      const validDigest = (digest) => /^[a-f0-9]{64}$/i.test(String(digest));
+      const expectedDatabaseDigest = hashes['gh-aw-logs.sqlite'];
+      if (!validDigest(expectedDatabaseDigest)) {
+        throw new Error('Activity snapshot manifest contains no valid SQLite checksum.');
       }
+      const databaseDigest = await hashFileContents(temporaryDatabase);
+      if (databaseDigest !== expectedDatabaseDigest.toLowerCase()) {
+        throw new Error('Activity SQLite checksum mismatch: gh-aw-logs.sqlite');
+      }
+      const runEntries = Object.entries(hashes)
+        .filter(([name, digest]) => /^gh-aw-logs-runs\/[^/]+\.jsonl$/.test(name)
+          && validDigest(digest))
+        .sort(([left], [right]) => left.localeCompare(right));
+      const recordEntries = Object.entries(hashes)
+        .filter(([name, digest]) => /^gh-aw-logs-records\/[^/]+\.jsonl$/.test(name)
+          && validDigest(digest))
+        .sort(([left], [right]) => left.localeCompare(right));
+      const rawEntries = Object.entries(hashes)
+        .filter(([name, digest]) => /^gh-aw-logs-shards\/[^/]+\.jsonl$/.test(name)
+          && validDigest(digest))
+        .sort(([left], [right]) => left.localeCompare(right));
+      const payloadEntries = runEntries.length > 0 ? [...runEntries, ...recordEntries] : rawEntries;
+      if (payloadEntries.length === 0) throw new Error('Activity shard manifest contains no valid JSONL shards.');
+      await mkdir(temporaryPayloads);
+      for (const [name, expectedDigest] of payloadEntries) {
+        const destination = path.join(temporaryPayloads, name);
+        await mkdir(path.dirname(destination), { recursive: true });
+        const size = await downloadFile(new URL(name, manifestUrl), destination, { allowEmpty: true });
+        const hash = createHash('sha256');
+        for await (const chunk of createReadStream(destination)) hash.update(chunk);
+        if (hash.digest('hex') !== expectedDigest.toLowerCase()) {
+          throw new Error(`Activity shard checksum mismatch: ${name}`);
+        }
+        if (size === 0) {
+          delete hashes[name];
+          await rm(destination);
+        }
+      }
+      await writeFile(temporaryManifest, `${JSON.stringify(hashes, null, 2)}\n`);
+      const payloadDirectories = [...new Set(payloadEntries.map(([name]) => name.split('/')[0]))];
+      for (const directory of payloadDirectories) {
+        const destination = path.join(outputDirectory, directory);
+        await rm(destination, { recursive: true, force: true });
+        await rename(path.join(temporaryPayloads, directory), destination);
+      }
+      await replaceFile(temporaryManifest, manifestPath);
+      await replaceFile(temporaryDatabase, databasePath);
+      await replaceFile(temporaryInventory, inventoryPath);
+      return {
+        manifestUrl: manifestUrl.href,
+        databaseUrl: databaseUrl.href,
+        inventoryUrl: inventoryUrl.href,
+        manifest: manifestPath,
+        payloadDirectories: payloadDirectories.map((directory) => path.join(outputDirectory, directory)),
+        database: databasePath,
+        inventory: inventoryPath
+      };
+    } finally {
+      await rm(temporaryDirectory, { recursive: true, force: true });
     }
-    await writeFile(temporaryManifest, `${JSON.stringify(hashes, null, 2)}\n`);
-    const payloadDirectories = [...new Set(payloadEntries.map(([name]) => name.split('/')[0]))];
-    for (const directory of payloadDirectories) {
-      const destination = path.join(outputDirectory, directory);
-      await rm(destination, { recursive: true, force: true });
-      await rename(path.join(temporaryPayloads, directory), destination);
+  };
+
+  let lastError;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      return await downloadAttempt();
+    } catch (error) {
+      lastError = error;
+      if (!isChecksumMismatch(error) || attempt === 3) throw error;
     }
-    await replaceFile(temporaryManifest, manifestPath);
-    await replaceFile(temporaryDatabase, databasePath);
-    await replaceFile(temporaryInventory, inventoryPath);
-    return {
-      manifestUrl: manifestUrl.href,
-      databaseUrl: databaseUrl.href,
-      inventoryUrl: inventoryUrl.href,
-      manifest: manifestPath,
-      payloadDirectories: payloadDirectories.map((directory) => path.join(outputDirectory, directory)),
-      database: databasePath,
-      inventory: inventoryPath
-    };
-  } finally {
-    await rm(temporaryDirectory, { recursive: true, force: true });
   }
+  throw lastError;
 }
 
 export async function ingestGhAwLogDirectory(indexedDB, contextPath, logDirectory, options = {}) {
