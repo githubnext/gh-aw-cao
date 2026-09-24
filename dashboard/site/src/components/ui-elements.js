@@ -13,6 +13,7 @@ import { renderFactoryFloorElement } from './factory-floor.js';
 import { renderFactoryHeaderElement } from './factory-header.js';
 import { renderLinkButtonList } from './link-button-list.js';
 import { renderCampaignProblemList } from './campaign-problem-list.js';
+import { renderPanel } from './panel.js';
 
 /**
  * @typedef {{
@@ -49,9 +50,14 @@ const ELEMENT_RENDERERS = new Map([
   ['campaign-problem-list', renderCampaignProblemList]
 ]);
 
+/** Version 0.1.0 aliases retained outside the active renderer registry. */
+const COMPATIBILITY_ELEMENT_RENDERERS = new Map([
+  ['outcomes-overview', renderLegacyFactoryOverview]
+]);
+
 /** Elements that load declared sources independently of the active page subscription. */
-const ASYNC_SOURCE_ELEMENTS = new Set(['factory-header', 'factory-floor', 'link-button-list']);
-const EMPTY_AWARE_ELEMENTS = new Set(['campaign-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'factory-header', 'factory-floor', 'link-button-list', 'campaign-problem-list']);
+const ASYNC_SOURCE_ELEMENTS = new Set(['factory-header', 'factory-floor', 'link-button-list', 'outcomes-overview']);
+const EMPTY_AWARE_ELEMENTS = new Set(['campaign-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'factory-header', 'factory-floor', 'link-button-list', 'campaign-problem-list', 'outcomes-overview']);
 const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy']);
 
 /**
@@ -94,7 +100,8 @@ const LAZY_ELEMENT_RENDERERS = new Map([
  * @returns {HTMLElement | null}
  */
 export function renderUiElement(name, context) {
-  return ELEMENT_RENDERERS.get(name)?.({ ...context, element: name }) ?? null;
+  const renderer = ELEMENT_RENDERERS.get(name) ?? COMPATIBILITY_ELEMENT_RENDERERS.get(name);
+  return renderer?.({ ...context, element: name }) ?? null;
 }
 
 /**
@@ -121,6 +128,29 @@ function renderOutcomeDetailSectionElement(context) {
   const outcomeId = stringValue(context.scope?.['safe-output']);
   const outcome = outcomes.find((row) => String(row['safe-output']) === outcomeId);
   return outcome ? renderOutcomeDetailSection(outcome, sectionConfig.body) : null;
+}
+
+/**
+ * Preserves the version 0.1.0 outcomes-overview contract while active
+ * dashboards compose the two factory elements as independent views.
+ * @param {ElementRenderContext} context
+ */
+function renderLegacyFactoryOverview(context) {
+  const configured = Array.isArray(context.elementConfig?.sections)
+    ? context.elementConfig.sections
+    : ['header', 'floor'];
+  const sections = configured.filter((section, index) => (
+    (section === 'header' || section === 'floor') && configured.indexOf(section) === index
+  ));
+  const selected = sections.length > 0 ? sections : ['header', 'floor'];
+  return renderPanel({
+    className: 'agent-factory',
+    labelledBy: selected.includes('header') ? 'agent-factory-heading' : undefined,
+    label: context.title || 'Factory overview',
+    children: selected.map((section) => section === 'header'
+      ? renderFactoryHeaderElement(context)
+      : renderFactoryFloorElement(context))
+  });
 }
 
 /**

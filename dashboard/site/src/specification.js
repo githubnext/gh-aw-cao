@@ -91,7 +91,8 @@ export const VIEW_ELEMENT_VALUES = [
   'factory-header',
   'factory-floor',
   'link-button-list',
-  'campaign-problem-list'
+  'campaign-problem-list',
+  'outcomes-overview'
 ];
 export const VIEW_CHART_VALUES = ['area', 'bar', 'dot', 'heatmap', 'histogram', 'horizontal-bar', 'line', 'pie', 'scatter', 'swimlane'];
 export const VIEW_METRIC_KEYS = ['style', 'icon', 'tone', 'navigation-page', 'animate'];

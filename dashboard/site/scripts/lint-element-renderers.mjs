@@ -33,7 +33,12 @@ export function referencedElementNames(document) {
 async function findDashboardDocuments(directory) {
   const documents = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
-    if (entry.isDirectory() && !ignoredDirectories.has(entry.name) && !entry.name.startsWith('.cao-')) {
+    if (
+      entry.isDirectory()
+      && !ignoredDirectories.has(entry.name)
+      && !entry.name.startsWith('.cao-')
+      && !entry.name.startsWith('.lazy-page-chunks-')
+    ) {
       documents.push(...await findDashboardDocuments(resolve(directory, entry.name)));
     } else if (entry.isFile() && entry.name === 'dashboard.json') {
       documents.push(resolve(directory, entry.name));

@@ -1181,7 +1181,7 @@ dashboard:
     }
   });
 
-  it('rejects the removed outcomes overview compatibility alias', () => {
+  it('keeps the version 0.1.0 outcomes overview element valid as a compatibility alias', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
   id: legacy-overview
@@ -1205,7 +1205,7 @@ dashboard:
                 plural: Repositories
 `);
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(true);
   });
 
 
