@@ -217,7 +217,11 @@ function dashboardQueries() {
       ([key, item]) => [key, resolveContext(item)],
     ));
   };
-  return resolveContext(document.dashboard.queries);
+  // Ingestion receipts describe each backend's own writes, so their values are
+  // intentionally backend-local rather than cross-backend query results.
+  return resolveContext(document.dashboard.queries).filter(
+    (query) => query.from !== "transactions",
+  );
 }
 
 function rowsByQuery(result, names) {
