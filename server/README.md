@@ -52,6 +52,65 @@ flowchart LR
 | Shared API model | `internal/model/` | Defines logical sources, active-generation metadata, diagnostics, and query metrics. |
 | Local Redis | `docker-compose.yml` | Runs Redis Stack with RediSearch on `127.0.0.1:6379`. |
 
+### Hosted Azure architecture
+
+The Azure Functions profile keeps the dashboard browser isolated from Redis,
+GitHub tokens, refresh tokens, Redis access keys, and Key Vault secret values.
+The Function App is the only public application boundary and the only component
+that talks to GitHub APIs, Key Vault references, and Redis Enterprise.
+
+```mermaid
+flowchart LR
+  Browser["Authorized user's browser"]
+  Edge["Azure HTTPS edge / App Service front end<br/>sets forwarded host + proto"]
+  Function["Function App<br/>Go dashboard HTTP handler<br/>GitHub OAuth sessions + CSRF"]
+  GitHubOAuth["GitHub OAuth + API<br/>login, refresh, org/team membership"]
+  KeyVault["Azure Key Vault<br/>OAuth secret, session secret, Redis URL"]
+  Redis["Azure Redis Enterprise<br/>TLS + RediSearch<br/>derived dashboard projection"]
+  Storage["Functions storage account<br/>runtime state only"]
+  Insights["Application Insights<br/>non-secret operational telemetry"]
+  Operators["Control-plane operators<br/>deploy Bicep + rotate secrets"]
+
+  Browser -->|"HTTPS static assets + API + best-effort SSE"| Edge
+  Edge -->|"trusted forwarded host/proto only when allow-listed"| Function
+  Function -->|"OAuth code, refresh, membership checks"| GitHubOAuth
+  Function -->|"Key Vault references resolved by managed identity"| KeyVault
+  Function -->|"rediss:// FT.SEARCH / FT.AGGREGATE"| Redis
+  Function -->|"runtime binding state"| Storage
+  Function -->|"no tokens, no Redis URL, no source records"| Insights
+  Operators -->|"reviewed Bicep + secret rotation"| KeyVault
+  Operators -->|"deploy package + app settings"| Function
+
+  classDef boundary fill:#eef6ff,stroke:#0969da,stroke-width:2px;
+  class Function,KeyVault,Redis boundary;
+```
+
+Primary actors and responsibilities:
+
+- **Dashboard user**: authenticates through GitHub OAuth, must satisfy the
+  configured organization/team authorization policy, and receives only
+  same-origin dashboard HTML/API responses.
+- **Azure platform**: terminates HTTPS, invokes the custom Functions handler,
+  resolves Key Vault references through managed identity, and may cold-start,
+  scale in, or terminate long-lived SSE requests.
+- **GitHub OAuth/API**: issues expiring access/refresh tokens and confirms
+  organization/team membership; GitHub tokens never leave the server.
+- **Redis Enterprise**: stores disposable, namespaced dashboard projections and
+  RediSearch indexes; it is not an authority or source of truth.
+- **Control-plane operator**: reviews Bicep/app settings, keeps Key Vault
+  mandatory, rotates credentials, and validates compliance evidence.
+
+Trust boundaries:
+
+- Browser ↔ Function App: authenticated same-origin HTTPS with `Secure`,
+  `HttpOnly`, `SameSite=Lax` session cookies and CSRF headers for mutation.
+- Function App ↔ GitHub: server-side OAuth/token refresh/membership calls; no
+  PATs and no GitHub tokens forwarded to the browser.
+- Function App ↔ Key Vault: managed identity and RBAC only; no secret values in
+  Bicep outputs, logs, checked-in parameters, or browser-readable state.
+- Function App ↔ Redis Enterprise: TLS-only `rediss://` and a deployment
+  namespace for disposable derived data.
+
 ## Data ingestion
 
 The `ingest` command consumes a directory with the deployed dashboard data

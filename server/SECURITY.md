@@ -137,6 +137,63 @@ cold starts, idle timeouts, proxies, and plan limits can terminate long-lived
 connections. Clients must continue to use `/api/v1/refresh` as the reliable
 revision check. WebSockets are not part of this profile.
 
+### Threat model
+
+The Azure Functions profile assumes the following actors:
+
+| Actor | Capabilities | Security expectation |
+| --- | --- | --- |
+| Authorized dashboard user | Opens the hosted dashboard and makes browser API requests. | Must authenticate through GitHub OAuth, satisfy explicit org/team authorization, send CSRF headers for mutation, and receive no Redis credentials or GitHub tokens. |
+| Unauthenticated or unauthorized user | Can reach the public Function App URL. | Can read only minimal health status; all static dashboard access redirects to login and all data APIs fail closed. |
+| Browser attacker | Can attempt CSRF, stale session reuse, URL injection, or token exfiltration through browser storage. | Session authority is in `Secure`, `HttpOnly`, `SameSite=Lax` cookies; CSRF tokens are session-bound; GitHub tokens and Redis URLs are never browser-readable. |
+| Network attacker | Can observe or interfere with traffic outside Azure/GitHub TLS channels. | HTTPS-only Function App, TLS Redis, verified Redis certificates, and no plaintext remote Redis are required. |
+| Azure platform/operator | Can deploy Bicep, configure app settings, rotate keys, and view platform metadata. | Uses reviewed Bicep, managed identity, Key Vault RBAC, non-secret outputs, and secret rotation procedures; does not copy secret values into logs, tickets, or checked-in files. |
+| GitHub OAuth/API | Issues tokens and reports membership. | OAuth client secret remains in Key Vault, tokens remain server-side, refresh failures clear sessions, and membership is rechecked before session creation. |
+| Redis Enterprise | Stores disposable projection rows, indexes, encrypted OAuth session records, and active-generation pointers. | Is not authoritative; data can be rebuilt from trusted dashboard artifacts; access is TLS-only and namespace-scoped. |
+| Telemetry/diagnostics reader | Can view Application Insights and operational logs. | Sees only structured, non-secret operational metadata; no tokens, cookies, Redis URLs, prompt contents, source records, or secret values are logged. |
+
+Protected assets:
+
+- GitHub OAuth client secret, access tokens, refresh tokens, and membership
+  authorization decisions;
+- `CAO_SESSION_SECRET`, encrypted session records, session cookies, and CSRF
+  tokens;
+- Redis Enterprise URL/access key and namespaced dashboard projection;
+- compacted dashboard source artifacts, logical source rows, diagnostics, and
+  query results;
+- Bicep, app settings, Key Vault RBAC assignments, deployment history, and
+  telemetry used as compliance evidence.
+
+Primary threats and mitigations:
+
+- **Credential disclosure**: mitigated by mandatory Key Vault references,
+  managed identity/RBAC, non-secret Bicep outputs, server-side token storage,
+  AES-GCM encryption before Redis persistence, and no secrets in telemetry or
+  browser-readable state.
+- **PAT or bearer bypass**: mitigated by rejecting local bearer capabilities in
+  Azure mode and documenting PATs as unsupported. Only GitHub OAuth plus
+  explicit org/team authorization can create a session.
+- **CSRF and session fixation**: mitigated by signed OAuth state, opaque session
+  IDs, `Secure`/`HttpOnly`/`SameSite=Lax` cookies, per-session CSRF tokens, and
+  session deletion on refresh failure/logout.
+- **Untrusted proxy headers**: mitigated by an explicit
+  `CAO_AZURE_ALLOWED_HOSTS` allow-list and required HTTPS forwarded protocol.
+  The local profile keeps separate loopback `Host` protections.
+- **Redis compromise or data confusion**: mitigated by treating Redis as
+  disposable derived state, using TLS-only Redis Enterprise with RediSearch,
+  namespacing every key/index, disabling Redis public network access in Bicep,
+  and rebuilding from trusted artifacts when needed.
+- **Long-lived connection assumptions**: mitigated by treating SSE as
+  best-effort in Functions and requiring `/api/v1/refresh` polling as the
+  reliable revision check.
+- **Over-broad observability**: mitigated by logging only structured
+  operational metadata and excluding tokens, cookies, Redis URLs, source
+  records, and prompt contents from Application Insights and diagnostics.
+- **Deployment drift**: mitigated by using checked-in Bicep as the reviewed
+  contract, focused Bicep contract tests for Key Vault and platform security
+  controls, and compliance review of Azure activity logs and Function App
+  configuration changes.
+
 ### Azure secure-computing and compliance controls
 
 Key Vault is mandatory for every secret-bearing Azure setting. The deployment
