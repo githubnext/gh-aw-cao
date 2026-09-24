@@ -29,6 +29,11 @@ test('package clustering scripts replace only their validated problem rows', asy
         workflow: 'example',
         evidence: { source: 'test' }
       }));
+      console.log(JSON.stringify({
+        id: 'missing-owner',
+        title: 'Workflow has no owner',
+        severity: 'medium'
+      }));
     `);
     await writeFile(path.join(failing, 'problem-clustering.mjs'), 'process.exit(1);\n');
 
@@ -38,12 +43,17 @@ test('package clustering scripts replace only their validated problem rows', asy
       timestamp
     });
     assert.deepEqual(first.scripts, ['alpha', 'failing']);
-    assert.equal(first.problems.length, 1);
+    assert.deepEqual(first.problems.map((problem) => problem.id), [
+      'stale-workflow',
+      'missing-owner'
+    ]);
     assert.deepEqual(first.warnings.map((warning) => warning.package), ['failing']);
 
     let database = new DatabaseSync(databasePath);
     try {
-      const row = database.prepare('SELECT * FROM cao_problems').get();
+      const rows = database.prepare('SELECT * FROM cao_problems ORDER BY rowid').all();
+      assert.equal(rows.length, 2);
+      const row = rows[0];
       assert.equal(row.producer, 'alpha');
       assert.equal(row.problem_id, 'stale-workflow');
       assert.equal(row.observed_at, timestamp);

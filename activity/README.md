@@ -97,8 +97,9 @@ Each script receives one JSON request on standard input:
 }
 ```
 
-The same isolated snapshot path is available as `CAO_DATABASE`. Scripts emit
-one JSON object per line with required `id` and `title` fields. Optional fields
+The same isolated snapshot path is available as `CAO_DATABASE`. Scripts emit a
+JSONL sequence containing zero or more problem objects, one object per line,
+with required `id` and `title` fields. Optional fields
 are `observedAt`, `severity`, `summary`, `campaign`, `repository`, `workflow`,
 `targetRepository`, and an object-valued `evidence`. Severity is one of
 `critical`, `high`, `medium`, `low`, or `info`.
