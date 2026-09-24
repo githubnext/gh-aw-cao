@@ -59,6 +59,8 @@ test('package clustering scripts replace only their validated problem rows', asy
       assert.equal(row.observed_at, timestamp);
       assert.equal(row.severity, 'high');
       assert.deepEqual(JSON.parse(row.evidence), { source: 'test' });
+      assert.equal(rows[1].problem_id, 'missing-owner');
+      assert.equal(rows[1].severity, 'medium');
       database.prepare(`
         INSERT INTO cao_problems (
           producer, problem_id, observed_at, severity, title, summary,

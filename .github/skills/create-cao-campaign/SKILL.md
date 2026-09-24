@@ -82,9 +82,10 @@ Emit a JSONL sequence: zero or more newline-delimited JSON objects, one problem
 per line. Every problem requires stable lowercase `id` and non-empty `title`
 fields. It may include `observedAt`, `severity`, `summary`, `campaign`,
 `repository`, `workflow`, `targetRepository`, and object-valued `evidence`.
-Use stable IDs for the same unresolved problem across runs. Do not emit a JSON
-array, wrapper object, prose, Markdown, or logs on standard output; diagnostics
-belong on standard error.
+`severity` defaults to `medium` and accepts `critical`, `high`, `medium`, `low`,
+or `info`. Use stable IDs for the same unresolved problem across runs. Do not
+emit a JSON array, wrapper object, prose, Markdown, or logs on standard output;
+diagnostics belong on standard error.
 
 Keep the script dependency-free, deterministic, and bounded. Activity runs each
 contributor in a fault-isolated, timed, cancelable subprocess, validates the
