@@ -785,7 +785,7 @@ describe('presenter built-in and custom pages', () => {
   });
 
 
-  it('renders indexing status, size trend, and transaction ingestion rate', async () => {
+  it('renders indexing trends, database table counts, and transaction cards', async () => {
     const metadata = {
       'source-id': 'transactions-fixture',
       'source-kind': 'fixture',
@@ -829,25 +829,16 @@ describe('presenter built-in and custom pages', () => {
       window.location.hash = '#page-indexing';
       await vi.waitFor(() => expect(rendered.querySelector('[data-page-id="indexing"]')?.hasAttribute('data-page-pending')).toBe(false));
       const page = rendered.querySelector('[data-page-id="indexing"]');
-      expect(page?.querySelectorAll('[data-view-id]')).toHaveLength(3);
+      expect(page?.querySelectorAll('[data-view-id]')).toHaveLength(4);
       expect(page?.querySelectorAll('[data-chart-widget="bar"]')).toHaveLength(2);
-      expect(page?.textContent).toContain('success');
+      expect(page?.querySelectorAll('[data-chart-widget="horizontal-bar"]')).toHaveLength(1);
       expect(page?.textContent).not.toContain('Local database');
-      expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
-      expect(page?.querySelector('input[type="search"]')).not.toBeNull();
       expect(page?.textContent).toContain('ingest-jsonl');
-      expect(page?.textContent).toContain('https://dashboard.example/.../logs-1.jsonl');
-      expect(page?.querySelector('tbody a')?.getAttribute('href')).toBe('https://dashboard.example/gh-aw-logs-shards/logs-1.jsonl');
-      const headings = [...page?.querySelectorAll('thead tr:first-child th') ?? []].map((heading) => heading.textContent?.trim());
-      expect(headings.at(-1)).toBe('Created');
-      expect(headings).toEqual(expect.arrayContaining([
-        'Committed records',
-        'Records',
-        'Raw payload records',
-        'Transaction',
-        'Payload hash',
-        'Payload ETag'
-      ]));
+      const transactions = page?.querySelector('[data-view-id="transaction-entries"]');
+      expect(transactions?.querySelector('.entity-card-list-card')).not.toBeNull();
+      expect(transactions?.textContent).toContain('Committed records');
+      expect(transactions?.textContent).toContain('Payload hash');
+      expect(transactions?.querySelector('input[type="search"]')).toBeNull();
     } finally {
       rendered.remove();
       window.history.replaceState(null, '', '/');
