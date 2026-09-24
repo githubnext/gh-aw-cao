@@ -55,8 +55,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
-      security-events: read
-      vulnerability-alerts: read
+      issues: read
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -76,14 +75,16 @@ jobs:
             --root . \
             --output "$RUNNER_TEMP/operational-values.jsonl" \
             --repository "$GITHUB_REPOSITORY" \
-            --max-github-api-rate-limit -100
-          jq -e -s '
-            length == 1
-            and .[0].kind == "operational_value"
-            and .[0].operational_value.repository == env.GITHUB_REPOSITORY
-            and .[0].operational_value.value_id == "dependabot-vulnerability-alerts"
-            and (.[0].operational_value.value | type) == "number"
-          ' "$RUNNER_TEMP/operational-values.jsonl"
+            --max-github-api-rate-limit -100 \
+            > "$RUNNER_TEMP/operational-value-summary.json"
+          jq -e '
+            (.scripts | index("dependabot")) != null
+            and ([.warnings[] | select(.package == "dependabot")] | length) == 0
+            and all(
+              .values[] | select(.campaign == "dependabot");
+              .valueId | startswith("dependabot-update-planner.")
+            )
+          ' "$RUNNER_TEMP/operational-value-summary.json"
 
   campaign-lifecycle-changes:
     name: Select campaign lifecycle tests

@@ -115,11 +115,11 @@ test("workflow contracts isolate authenticated campaign lifecycle checks", () =>
   assert.match(contracts, /npm run check/);
   assert.doesNotMatch(contracts, /GH_TOKEN|CENTRAL_AGENTIC_OPS_CAMPAIGN_SOURCE|test:campaign-lifecycle/);
   assert.match(operationalValue, /name: Dependabot operational value integration/);
-  assert.match(operationalValue, /permissions:\n\s+contents: read\n\s+security-events: read\n\s+vulnerability-alerts: read/);
+  assert.match(operationalValue, /permissions:\n\s+contents: read\n\s+issues: read/);
   assert.match(operationalValue, /GH_TOKEN: \$\{\{ github\.token \}\}/);
   assert.match(operationalValue, /--repository "\$GITHUB_REPOSITORY"/);
   assert.match(operationalValue, /--max-github-api-rate-limit -100/);
-  assert.match(operationalValue, /value_id == "dependabot-vulnerability-alerts"/);
+  assert.match(operationalValue, /startswith\("dependabot-update-planner\."\)/);
   assert.match(campaignLifecycle, /gh api rate_limit --jq '\.resources\.core\.remaining'/);
   assert.match(campaignLifecycle, /remaining < 500/);
   assert.match(campaignLifecycle, /max-parallel: 1/);

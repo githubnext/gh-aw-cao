@@ -43,8 +43,8 @@ test("operational-value runs locally and contains an injected GitHub permission 
         repository: "githubnext/gh-aw-cao",
         campaign: "dependabot",
         campaign_id: "campaign:dependabot",
-        value_id: "dependabot-vulnerability-alerts",
-        value: 4,
+        value_id: "dependabot-update-planner.consumed-plan-share",
+        value: 1,
       },
     })}\n`);
     writeFileSync(fakeGh, `#!/usr/bin/env bash
@@ -53,7 +53,7 @@ if [[ " $* " == *"repos/github/gh-aw/tarball/"* ]]; then
   cat ${JSON.stringify(archive)}
 elif [[ " $* " == *"repos/github/gh-aw/commits"* ]]; then
   printf '[{"sha":"${commit}","commit":{"committer":{"date":"2026-09-24T18:00:00Z"}}}]\\n'
-elif [[ " $* " == *"/dependabot/alerts"* ]]; then
+elif [[ " $* " == *"repos/githubnext/gh-aw-cao/issues"* ]]; then
   echo "gh: Resource not accessible by integration: $GH_TOKEN (HTTP 403)" >&2
   exit 1
 else
@@ -105,7 +105,7 @@ fi
         value: value.value,
       })),
       [
-        { campaign: "dependabot", valueId: "dependabot-vulnerability-alerts", value: 4 },
+        { campaign: "dependabot", valueId: "dependabot-update-planner.consumed-plan-share", value: 1 },
         { campaign: "daily-file-diet", valueId: "daily-file-diet.largest-file-health", value: 0.8325 },
         { campaign: "daily-file-diet", valueId: "daily-file-diet.compliant-line-mass-share", value: 0.4 },
       ],
