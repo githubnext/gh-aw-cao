@@ -237,6 +237,31 @@ client authentication today; store the `rediss://` URL in Key Vault, rotate the
 Redis key in Azure, update the Key Vault secret version, and restart the
 Function App so it resolves the new reference.
 
+### Azure secure-computing baseline
+
+Treat the Bicep file as the minimum secure baseline for remote dashboard
+hosting:
+
+- Do not use PATs. Azure mode supports only the GitHub OAuth
+  authorization-code flow and configured organization/team authorization.
+- Keep Key Vault mandatory for every secret-bearing value, including the GitHub
+  OAuth client secret, `CAO_SESSION_SECRET`, and `CAO_REDIS_URL`. Do not replace
+  Key Vault references with literal app settings, deployment outputs, or
+  checked-in parameter files.
+- Use the Function App's system-assigned managed identity with Key Vault RBAC
+  to read secrets. Do not copy Key Vault secret values into logs, telemetry,
+  tickets, dashboard documents, or browser-readable configuration.
+- Keep HTTPS-only Functions, TLS-only Redis, disabled FTPS, disabled Redis
+  public network access, storage HTTPS enforcement, Key Vault soft delete, and
+  non-secret Bicep outputs enabled for compliance review.
+- Treat the Redis projection as disposable derived state. Compliance evidence
+  comes from the checked-in Bicep, GitHub OAuth authorization policy, Key Vault
+  access controls, Azure activity logs, Application Insights without secrets,
+  and the CAO source artifacts that feed Redis.
+- Rotate OAuth, session, storage, and Redis credentials through Key Vault and
+  Azure platform controls; then restart the Function App so current secret
+  versions are resolved.
+
 See [`SECURITY.md`](SECURITY.md) for the complete protection model, operational
 guidance, limitations, and private vulnerability-reporting process.
 

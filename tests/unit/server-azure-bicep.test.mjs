@@ -24,3 +24,21 @@ test('Azure dashboard Bicep does not output secrets or PAT-based configuration',
   assert.doesNotMatch(bicep, /CAO_GITHUB_PAT|GITHUB_PAT|PERSONAL_ACCESS_TOKEN/i);
   assert.match(bicep, /OAuth authorization-code flow/);
 });
+
+test('Azure dashboard Bicep keeps secret-bearing settings in Key Vault', () => {
+  assert.match(bicep, /resource keyVault 'Microsoft\.KeyVault\/vaults@/);
+  assert.match(bicep, /enableRbacAuthorization:\s*true/);
+  assert.match(bicep, /enableSoftDelete:\s*true/);
+  assert.match(bicep, /identity:\s*{\s*type:\s*'SystemAssigned'/);
+  assert.match(bicep, /Key Vault Secrets User/);
+
+  for (const setting of ['CAO_REDIS_URL', 'CAO_GITHUB_CLIENT_SECRET', 'CAO_SESSION_SECRET']) {
+    const pattern = new RegExp(`name:\\s*'${setting}'[\\s\\S]*?value:\\s*'@Microsoft\\.KeyVault\\(SecretUri=`);
+    assert.match(bicep, pattern, `${setting} must use a Key Vault reference`);
+  }
+
+  assert.match(bicep, /httpsOnly:\s*true/);
+  assert.match(bicep, /ftpsState:\s*'Disabled'/);
+  assert.match(bicep, /allowBlobPublicAccess:\s*false/);
+  assert.match(bicep, /supportsHttpsTrafficOnly:\s*true/);
+});

@@ -100,7 +100,9 @@ Azure mode implements the GitHub OAuth authorization-code flow. It requests the
 minimum `read:org` scope needed for active organization or team membership
 authorization. Successful GitHub authentication alone is insufficient: the
 server must verify an allowed organization or team membership before creating a
-session.
+session. Do not add PAT handling to Azure mode; PATs bypass the required
+browser login, refresh-token rotation, revocation, and explicit membership
+authorization controls.
 
 Access tokens and refresh tokens remain server-side. They are encrypted with an
 AES-GCM key derived from `CAO_SESSION_SECRET` before being stored in Redis under
@@ -134,6 +136,35 @@ The endpoint works while the platform keeps the invocation alive, but scale-in,
 cold starts, idle timeouts, proxies, and plan limits can terminate long-lived
 connections. Clients must continue to use `/api/v1/refresh` as the reliable
 revision check. WebSockets are not part of this profile.
+
+### Azure secure-computing and compliance controls
+
+Key Vault is mandatory for every secret-bearing Azure setting. The deployment
+contract must keep the GitHub OAuth client secret, session secret, and Redis
+`rediss://` URL in Key Vault and wire the Function App through Key Vault
+references. Do not emit these values from Bicep, commit them in parameter
+files, copy them into app settings as literals, or log them during deployment.
+
+Use a system-assigned managed identity and Key Vault RBAC for secret reads.
+Review Key Vault access policies/role assignments, Azure activity logs, and
+Function App configuration changes as part of compliance evidence. Secret
+rotation should happen through GitHub OAuth settings, Azure Redis/storage key
+rotation, and new Key Vault secret versions, followed by a Function App restart
+to resolve current references.
+
+Keep the Azure secure-computing baseline enabled:
+
+- HTTPS-only Function App, TLS 1.2 or newer, disabled FTPS, and no local bearer
+  capability in Azure mode;
+- Redis Enterprise encrypted client protocol, RediSearch module, disabled Redis
+  public network access, and no Redis credentials in browser payloads;
+- storage HTTPS enforcement and no public blob access for Functions runtime
+  state;
+- Key Vault RBAC authorization, soft delete, and no secret values in Bicep
+  outputs; and
+- Application Insights/telemetry with structured operational metadata only,
+  never GitHub tokens, Redis URLs, session secrets, cookies, authorization
+  headers, source records, or prompt contents.
 
 ## Redis transport and isolation
 
