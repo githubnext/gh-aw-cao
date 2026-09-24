@@ -2551,6 +2551,8 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await campaignNavigation.getByRole('link', { name: 'Insights' }).click();
   const campaignInsights = page.locator('[data-page-id="campaign-insights"]');
   await expect(campaignInsights).toBeVisible();
+  await expect(campaignInsights).toHaveAttribute('data-view-mode', 'chart');
+  await expect(campaignInsights.locator('.view-mode-control')).toHaveCount(0);
   await expect(campaignInsights.getByRole('navigation', { name: 'Ambient Context views' })).toBeVisible();
   await expect(campaignInsights.getByRole('navigation', { name: 'Ambient Context views' })).toHaveCSS('display', 'grid');
   const mobileBack = page.getByRole('button', { name: 'Go back' });
