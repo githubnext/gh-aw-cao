@@ -182,10 +182,10 @@ function queryComplexityEstimates(index, tableWeights) {
   /** @param {string} source */
   const sourceOutput = (source) => {
     if (!index.has(source)) {
-      return new Map((DATABASE_SOURCE_TABLES.get(source) ?? []).map((table) => [
-        table,
-        tableWeights.weights.get(table) ?? 1
-      ]));
+      const table = DATABASE_SOURCE_TABLES.get(source);
+      return table === undefined
+        ? new Map()
+        : new Map([[table, tableWeights.weights.get(table) ?? 1]]);
     }
     return estimate(source).output;
   };
@@ -238,16 +238,18 @@ function queryComplexityEstimates(index, tableWeights) {
       total = addCoefficients(total, direct.get(dependency)?.reads ?? new Map());
     }
     const own = direct.get(name) ?? emptyComplexityEstimate();
+    const directRowReads = normalizedCoefficient(coefficientTotal(own.reads));
+    const totalRowReads = normalizedCoefficient(coefficientTotal(total));
     queries.set(name, {
       model: tableWeights.counts ? 'deployment-weighted-upper-bound' : 'normalized-upper-bound',
       assumptions: tableWeights.counts
         ? 'Database tables are weighted by deployed row counts normalized to the largest table; selectivity is 1; query dependencies materialize once per batch.'
         : 'Each database table has weight 1; selectivity is 1; query dependencies materialize once per batch.',
       class: own.class,
-      'direct-row-read-units': coefficientTotal(own.reads),
-      'dependency-row-read-units': coefficientTotal(total) - coefficientTotal(own.reads),
-      'total-row-read-units': coefficientTotal(total),
-      'output-row-units': coefficientTotal(own.output),
+      'direct-row-read-units': directRowReads,
+      'dependency-row-read-units': normalizedCoefficient(totalRowReads - directRowReads),
+      'total-row-read-units': totalRowReads,
+      'output-row-units': normalizedCoefficient(coefficientTotal(own.output)),
       'source-coefficients': coefficientsObject(total),
       'direct-source-coefficients': coefficientsObject(own.reads),
       'stage-row-reads': own['stage-reads']
@@ -286,11 +288,13 @@ function queryComplexityEstimates(index, tableWeights) {
       assumptions: tableWeights.counts
         ? 'Database tables are weighted by deployed row counts normalized to the largest table; selectivity is 1; all queries materialize once with shared dependencies reused.'
         : 'Each database table has weight 1; selectivity is 1; all queries materialize once with shared dependencies reused.',
-      'materialize-all-row-read-units': coefficientTotal(graphReads),
+      'materialize-all-row-read-units': normalizedCoefficient(coefficientTotal(graphReads)),
       'source-coefficients': coefficientsObject(graphReads),
       ...(tableWeights.counts ? { 'database-table-row-counts': tableWeights.counts } : {}),
       'stage-row-read-units': Object.fromEntries(
-        Object.entries(stageTotals).toSorted(([left], [right]) => left.localeCompare(right))
+        Object.entries(stageTotals)
+          .map(([stage, total]) => [stage, normalizedCoefficient(total)])
+          .toSorted(([left], [right]) => left.localeCompare(right))
       ),
       'computation-pressure-definition': 'Dependency-amortized normalized row-read units; each unique transitive dependency materializes once.',
       'computation-pressure': pressure
@@ -400,13 +404,18 @@ function databaseSourceTables(definitions) {
   const sources = new Map();
   for (const definition of definitions) {
     if (!isRecord(definition) || typeof definition.name !== 'string') continue;
-    if (Array.isArray(definition.stores) && definition.stores.length > 0) {
-      sources.set(definition.name, [...new Set(definition.stores.filter((table) => typeof table === 'string'))]);
-    }
+    const stores = Array.isArray(definition.stores)
+      ? definition.stores.filter((table) => typeof table === 'string')
+      : [];
+    const directTable = typeof definition.from === 'string' && definition.from.startsWith('$')
+      ? definition.from.slice(1)
+      : stores.find((table) => !['repositories', 'workflows', 'runs'].includes(table));
+    if (directTable && stores.includes(directTable)) sources.set(definition.name, directTable);
     if (!isRecord(definition['stores-by-source'])) continue;
     for (const [source, tables] of Object.entries(definition['stores-by-source'])) {
       if (Array.isArray(tables) && tables.length > 0) {
-        sources.set(source, [...new Set(tables.filter((table) => typeof table === 'string'))]);
+        const table = tables.findLast((candidate) => typeof candidate === 'string');
+        if (table) sources.set(source, table);
       }
     }
   }
@@ -417,9 +426,12 @@ function databaseSourceTables(definitions) {
 function normalizedTableWeights(counts) {
   if (counts === undefined) return { weights: new Map(), counts: undefined };
   const entries = Object.entries(counts);
-  const maximum = Math.max(1, ...entries.map(([, count]) => Math.max(1, Number(count))));
+  if (entries.some(([, count]) => !Number.isFinite(Number(count)) || Number(count) < 0)) {
+    throw new TypeError('Database table row counts must be non-negative finite numbers');
+  }
+  const maximum = Math.max(1, ...entries.map(([, count]) => Number(count)));
   return {
-    weights: new Map(entries.map(([table, count]) => [table, Math.max(1, Number(count)) / maximum])),
+    weights: new Map(entries.map(([table, count]) => [table, Number(count) / maximum])),
     counts: Object.fromEntries(entries.toSorted(([left], [right]) => left.localeCompare(right)))
   };
 }

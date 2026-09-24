@@ -70,32 +70,31 @@ test('estimates row reads and ranks queries by dependency-amortized pressure', (
     model: 'normalized-upper-bound',
     assumptions: 'Each database table has weight 1; selectivity is 1; query dependencies materialize once per batch.',
     class: 'linear-row-reads',
-    'direct-row-read-units': 6,
+    'direct-row-read-units': 3,
     'dependency-row-read-units': 0,
-    'total-row-read-units': 6,
-    'output-row-units': 2,
-    'source-coefficients': { runs: 3, workflows: 3 },
-    'direct-source-coefficients': { runs: 3, workflows: 3 },
+    'total-row-read-units': 3,
+    'output-row-units': 1,
+    'source-coefficients': { runs: 3 },
+    'direct-source-coefficients': { runs: 3 },
     'stage-row-reads': {
-      from: { runs: 1, workflows: 1 },
-      filter: { runs: 1, workflows: 1 },
-      select: { runs: 1, workflows: 1 }
+      from: { runs: 1 },
+      filter: { runs: 1 },
+      select: { runs: 1 }
     }
   });
-  assert.equal(byName.summary['total-row-read-units'], 10);
+  assert.equal(byName.summary['total-row-read-units'], 5);
   assert.deepEqual(byName.summary['used-by'], ['page:overview/view:summary-card']);
-  assert.equal(byName.joined['total-row-read-units'], 13);
+  assert.equal(byName.joined['total-row-read-units'], 7);
   assert.deepEqual(byName.joined['used-by'], ['view:joined-view']);
   assert.deepEqual(analysis.ranking.map(({ rank, name, score }) => ({ rank, name, score })), [
-    { rank: 1, name: 'joined', score: 13 },
-    { rank: 2, name: 'summary', score: 10 },
-    { rank: 3, name: 'base', score: 6 }
+    { rank: 1, name: 'joined', score: 7 },
+    { rank: 2, name: 'summary', score: 5 },
+    { rank: 3, name: 'base', score: 3 }
   ]);
-  assert.equal(analysis.summary['materialize-all-row-read-units'], 17);
+  assert.equal(analysis.summary['materialize-all-row-read-units'], 9);
   assert.deepEqual(Object.keys(analysis.summary['source-coefficients']), [
     'repositories',
-    'runs',
-    'workflows'
+    'runs'
   ]);
 });
 
@@ -106,9 +105,9 @@ test('formats a bounded markdown complexity ranking', () => {
 
   assert.match(markdown, /^### Dashboard query complexity/m);
   assert.match(markdown, /\| Rank \| Query \| Used by \| Total \|/);
-  assert.match(markdown, /Database table coefficients: `runs` 8, `workflows` 8, `repositories` 1/);
-  assert.match(markdown, /\| 1 \| `joined` \| `view:joined-view` \| 13 \| 7 \| 6 \| linear \|/);
-  assert.match(markdown, /\| 2 \| `summary` \| `page:overview\/view:summary-card` \| 10 \| 4 \| 6 \| linear \|/);
+  assert.match(markdown, /Database table coefficients: `runs` 8, `repositories` 1/);
+  assert.match(markdown, /\| 1 \| `joined` \| `view:joined-view` \| 7 \| 4 \| 3 \| linear \|/);
+  assert.match(markdown, /\| 2 \| `summary` \| `page:overview\/view:summary-card` \| 5 \| 2 \| 3 \| linear \|/);
   assert.doesNotMatch(markdown, /\| 3 \| `base`/);
   assert.match(markdown, /Showing 2 of 3 queries/);
 });
@@ -129,7 +128,7 @@ test('cao dashboard-complexity reports the full graph or one query id', async ()
     assert.equal(selected.query.name, 'summary');
     assert.equal(selected.query.rank, 2);
     assert.deepEqual(selected.query['used-by'], ['page:overview/view:summary-card']);
-    assert.equal(selected.query['total-row-read-units'], 10);
+    assert.equal(selected.query['total-row-read-units'], 5);
 
     const markdown = await runCli([
       'dashboard-complexity',
@@ -173,17 +172,26 @@ test('weights database tables by normalized deployed row counts', async (t) => {
   const byName = Object.fromEntries(analysis.inventory.map((query) => [query.name, query]));
 
   assert.equal(analysis.summary.model, 'deployment-weighted-upper-bound');
-  assert.equal(analysis.summary['materialize-all-row-read-units'], 10.5);
+  assert.equal(analysis.summary['materialize-all-row-read-units'], 8.5);
   assert.deepEqual(analysis.summary['source-coefficients'], {
     repositories: 0.5,
-    runs: 8,
-    workflows: 2
+    runs: 8
   });
-  assert.equal(byName.joined['total-row-read-units'], 8);
+  assert.equal(byName.joined['total-row-read-units'], 6.5);
   assert.match(
     formatDashboardComplexityMarkdown(analysis),
     /Deployed table rows: `repositories` 4, `runs` 8, `workflows` 2/
   );
+
+  const emptyTable = analyzeDashboardComplexity({
+    dashboard: {
+      queries: [{ name: 'empty-campaigns', from: 'campaigns' }]
+    }
+  }, {
+    tableCounts: { campaigns: 0, runs: 8 }
+  });
+  assert.equal(emptyTable.summary['materialize-all-row-read-units'], 0);
+  assert.deepEqual(emptyTable.summary['source-coefficients'], { campaigns: 0 });
 });
 
 test('cao dashboard-complexity rejects unknown queries and invalid limits', async () => {
