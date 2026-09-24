@@ -184,7 +184,11 @@ test('compact-jsonl consolidates exact-prefix shards without reordering observat
     (await readFile(path.join(root, compactedName), 'utf8')).trim().split('\n'),
     [first, second, first, third],
   );
-  assert.equal(await readFile(unrelatedPath, 'utf8'), `${unrelated}\n`);
+  // A shard whose repository has no matching --group (for example a
+  // repository that was removed from the control plane's allowed
+  // repositories) is garbage collected instead of lingering forever.
+  assert.deepEqual(result.orphanedShards, [path.basename(unrelatedPath)]);
+  await assert.rejects(() => readFile(unrelatedPath, 'utf8'), { code: 'ENOENT' });
   assert.equal(await readFile(overlappingPrefixPath, 'utf8'), `${third}\n`);
 });
 

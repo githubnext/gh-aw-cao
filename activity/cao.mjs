@@ -37,6 +37,7 @@ import { pruneDashboardDocument } from './dashboard-prune.mjs';
 
 const debug = createDebug('ingest');
 const debugHash = createDebug('hash-payloads');
+const debugCompact = createDebug('compact-jsonl');
 
 const ENTITY_COLLECTIONS = [
   'repositories',
@@ -1146,10 +1147,13 @@ export async function compactJsonlShards(
     groupsByRepository.set(repository, { prefix, names: [] });
   }
   const directory = path.resolve(inputDirectory);
-  for (const name of (await readdir(directory)).filter((name) => name.endsWith('.jsonl')).sort()) {
+  const allShardNames = (await readdir(directory)).filter((name) => name.endsWith('.jsonl')).sort();
+  const matchedNames = new Set();
+  for (const name of allShardNames) {
     const repository = await shardRepository(path.join(directory, name));
     if (repository && groupsByRepository.has(repository)) {
       groupsByRepository.get(repository).names.push(name);
+      matchedNames.add(name);
     }
   }
   const groups = [];
@@ -1159,10 +1163,23 @@ export async function compactJsonlShards(
       ...await compactJsonlShardGroup(directory, prefix, names, maxBytes)
     });
   }
+  // Shard files that were not claimed by any requested `--group` (for example,
+  // logs collected for a repository that has since been removed from the
+  // control plane's allowed repositories, or a shard whose repository could
+  // not be identified) are garbage: nothing will ever compact or ingest them
+  // again, so leaving them in place only grows the cache/artifact footprint
+  // and the cost of re-hashing every shard on every run. Garbage collect them
+  // here, since compact-jsonl already owns pruning the shard directory.
+  const orphanedShards = allShardNames.filter((name) => !matchedNames.has(name));
+  if (orphanedShards.length > 0) {
+    debugCompact('garbage collecting %d orphaned shard(s) in %s: %s', orphanedShards.length, directory, orphanedShards.join(', '));
+  }
+  await Promise.all(orphanedShards.map((name) => rm(path.join(directory, name), { force: true })));
   return {
     command: 'compact-jsonl',
     inputDirectory: directory,
-    groups
+    groups,
+    orphanedShards
   };
 }
 
