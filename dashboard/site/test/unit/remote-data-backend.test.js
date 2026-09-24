@@ -23,6 +23,32 @@ describe("remote dashboard data backend", () => {
     expect(usesRemoteDataBackend(document)).toBe(true);
   });
 
+  it("sends same-origin session cookies for the GitHub-authenticated backend", async () => {
+    const backend = document.createElement("meta");
+    backend.name = "dashboard-data-backend";
+    backend.content = "redis-http";
+    const authentication = document.createElement("meta");
+    authentication.name = "dashboard-authentication";
+    authentication.content = "github";
+    document.head.append(backend, authentication);
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ revision: 1 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ revision: 1, sources: {} }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await queryRemoteDashboard([], { pages: [], queries: [], views: [] });
+
+    expect(fetchMock).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({
+      credentials: "same-origin",
+    }));
+  });
+
   it("removes static dashboard workers and caches in remote mode", async () => {
     const unregister = vi.fn().mockResolvedValue(true);
     const deleteCache = vi.fn().mockResolvedValue(true);

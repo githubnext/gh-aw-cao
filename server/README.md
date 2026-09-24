@@ -246,6 +246,8 @@ IndexedDB ingestion:
 | `POST /api/v1/refresh` | Return the current revision and authoritative evaluation time without ingesting data. |
 | `GET /api/v1/events` | Server-Sent Events stream that notifies active views when the Redis revision changes. |
 | `GET /api/v1/diagnostics` | Canonical schema counts, relationship errors, and duplicate IDs for the active generation. |
+| `GET /api/v1/auth/session` | Return the authorized GitHub profiles available in the current browser session, without tokens or session identifiers. |
+| `POST /api/v1/auth/switch` | Select another authorized GitHub profile and rotate the active session and CSRF cookies. |
 
 API responses use `Cache-Control: no-store`. The dashboard service worker
 excludes `/api/` so query results and event streams are never placed in browser
@@ -335,9 +337,11 @@ PATs. Login alone does not grant access: after exchanging the OAuth code, the
 server calls GitHub with the minimum `read:org` scope needed for organization
 or team membership checks. Access and refresh tokens remain server-side,
 encrypted before storage in Redis, and are never written to browser-readable
-storage, URLs, API payloads, or Bicep outputs. Session cookies are `Secure`,
-`HttpOnly`, and `SameSite=Lax`; mutating API requests must include the
-session-bound CSRF token.
+storage, URLs, API payloads, or Bicep outputs. Session and encrypted,
+bounded account-selection cookies are `Secure`, `HttpOnly`, and
+`SameSite=Lax`; mutating API requests must include the active session-bound
+CSRF token. A browser can retain up to five authorized profiles, switch the
+active session, and revoke the selected profile on logout.
 
 `GET /api/v1/events` is available through Azure Functions only while the
 platform keeps the invocation alive. Clients must treat SSE as best-effort and

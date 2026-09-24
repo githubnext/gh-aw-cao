@@ -22,10 +22,12 @@ import (
 )
 
 const (
-	sessionCookieName = "cao_session"
-	csrfCookieName    = "cao_csrf"
-	sessionTTL        = 30 * 24 * time.Hour
-	tokenRefreshSkew  = 5 * time.Minute
+	sessionCookieName  = "cao_session"
+	csrfCookieName     = "cao_csrf"
+	accountsCookieName = "cao_accounts"
+	sessionTTL         = 30 * 24 * time.Hour
+	tokenRefreshSkew   = 5 * time.Minute
+	maxAccounts        = 5
 )
 
 type GitHubOAuthConfig struct {
@@ -54,11 +56,26 @@ type githubOAuth struct {
 type oauthSession struct {
 	ID             string    `json:"id"`
 	Login          string    `json:"login"`
+	Name           string    `json:"name,omitempty"`
+	AvatarURL      string    `json:"avatarUrl,omitempty"`
 	AccessToken    string    `json:"accessToken"`
 	RefreshToken   string    `json:"refreshToken"`
 	AccessExpires  time.Time `json:"accessExpires"`
 	RefreshExpires time.Time `json:"refreshExpires"`
 	CSRFToken      string    `json:"csrfToken"`
+}
+
+type githubUser struct {
+	Login     string `json:"login"`
+	Name      string `json:"name"`
+	AvatarURL string `json:"avatar_url"`
+}
+
+type oauthAccount struct {
+	Login     string `json:"login"`
+	Name      string `json:"name,omitempty"`
+	AvatarURL string `json:"avatarUrl,omitempty"`
+	Active    bool   `json:"active"`
 }
 
 type tokenResponse struct {
@@ -139,6 +156,9 @@ func (oauth *githubOAuth) login(response http.ResponseWriter, request *http.Requ
 	values.Set("redirect_uri", oauth.config.RedirectURL)
 	values.Set("state", state)
 	values.Set("scope", "read:org")
+	if request.URL.Query().Get("select_account") == "1" {
+		values.Set("prompt", "select_account")
+	}
 	target.RawQuery = values.Encode()
 	http.Redirect(response, request, target.String(), http.StatusFound)
 }
@@ -166,7 +186,7 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 		writeError(response, http.StatusUnauthorized, "GitHub OAuth exchange failed")
 		return
 	}
-	login, err := oauth.authorizedLogin(request.Context(), tokens.AccessToken)
+	user, err := oauth.authorizedUser(request.Context(), tokens.AccessToken)
 	if err != nil {
 		serverLog.Printf("oauth authorization failed")
 		writeError(response, http.StatusForbidden, "GitHub authorization failed")
@@ -185,7 +205,9 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 	now := time.Now().UTC()
 	session := oauthSession{
 		ID:             sessionID,
-		Login:          login,
+		Login:          user.Login,
+		Name:           user.Name,
+		AvatarURL:      user.AvatarURL,
 		AccessToken:    tokens.AccessToken,
 		RefreshToken:   tokens.RefreshToken,
 		AccessExpires:  now.Add(time.Duration(tokens.ExpiresIn) * time.Second),
@@ -203,21 +225,58 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 		writeError(response, http.StatusServiceUnavailable, "failed to create session")
 		return
 	}
+	accounts := oauth.loadAccountIDs(request)
+	accounts = oauth.withAccount(request.Context(), accounts, session)
 	oauth.setSessionCookies(response, session)
+	oauth.setAccountsCookie(response, accounts)
 	serverLog.Printf("oauth callback completed")
 	http.Redirect(response, request, "/", http.StatusFound)
 }
 
 func (oauth *githubOAuth) logout(response http.ResponseWriter, request *http.Request) {
 	session, ok := oauth.loadRequestSession(request)
+	accounts := oauth.loadAccountIDs(request)
 	if ok {
 		_ = oauth.revoke(request.Context(), session.AccessToken)
 		_ = oauth.revoke(request.Context(), session.RefreshToken)
 		_ = oauth.deleteSession(request.Context(), session.ID)
 	}
-	oauth.clearSessionCookies(response)
+	accounts = removeAccountID(accounts, session.ID)
+	if next, found := oauth.firstAvailableSession(request.Context(), accounts); found {
+		oauth.setSessionCookies(response, next)
+		oauth.setAccountsCookie(response, accounts)
+		serverLog.Printf("oauth logout completed")
+		oauth.writeAccountsForSession(response, request.Context(), next, accounts)
+		return
+	} else {
+		oauth.clearSessionCookies(response)
+		oauth.clearAccountsCookie(response)
+	}
 	serverLog.Printf("oauth logout completed")
-	response.WriteHeader(http.StatusNoContent)
+	writeJSON(response, http.StatusOK, map[string]any{"authenticated": false, "accounts": []oauthAccount{}})
+}
+
+func (oauth *githubOAuth) account(response http.ResponseWriter, request *http.Request) {
+	oauth.writeAccounts(response, request)
+}
+
+func (oauth *githubOAuth) switchAccount(response http.ResponseWriter, request *http.Request) {
+	var payload struct {
+		Login string `json:"login"`
+	}
+	if err := json.NewDecoder(io.LimitReader(request.Body, 1<<16)).Decode(&payload); err != nil {
+		writeError(response, http.StatusBadRequest, "invalid account selection")
+		return
+	}
+	for _, sessionID := range oauth.loadAccountIDs(request) {
+		session, err := oauth.loadSession(request.Context(), sessionID)
+		if err == nil && strings.EqualFold(session.Login, strings.TrimSpace(payload.Login)) {
+			oauth.setSessionCookies(response, session)
+			oauth.writeAccountsForSession(response, request.Context(), session, oauth.loadAccountIDs(request))
+			return
+		}
+	}
+	writeError(response, http.StatusNotFound, "GitHub account is unavailable")
 }
 
 func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Request) (oauthSession, bool) {
@@ -305,36 +364,34 @@ func (oauth *githubOAuth) exchange(ctx context.Context, values url.Values) (toke
 	return tokens, nil
 }
 
-func (oauth *githubOAuth) authorizedLogin(ctx context.Context, accessToken string) (string, error) {
-	login, err := oauth.githubLogin(ctx, accessToken)
+func (oauth *githubOAuth) authorizedUser(ctx context.Context, accessToken string) (githubUser, error) {
+	user, err := oauth.githubUser(ctx, accessToken)
 	if err != nil {
-		return "", err
+		return githubUser{}, err
 	}
 	for _, org := range oauth.config.AllowedOrganizations {
 		if oauth.orgAuthorized(ctx, accessToken, org) {
-			return login, nil
+			return user, nil
 		}
 	}
 	for _, team := range oauth.config.AllowedTeams {
 		parts := strings.Split(team, "/")
-		if len(parts) == 2 && oauth.teamAuthorized(ctx, accessToken, parts[0], parts[1], login) {
-			return login, nil
+		if len(parts) == 2 && oauth.teamAuthorized(ctx, accessToken, parts[0], parts[1], user.Login) {
+			return user, nil
 		}
 	}
-	return "", errors.New("GitHub user is not authorized")
+	return githubUser{}, errors.New("GitHub user is not authorized")
 }
 
-func (oauth *githubOAuth) githubLogin(ctx context.Context, accessToken string) (string, error) {
-	var payload struct {
-		Login string `json:"login"`
+func (oauth *githubOAuth) githubUser(ctx context.Context, accessToken string) (githubUser, error) {
+	var user githubUser
+	if err := oauth.githubJSON(ctx, http.MethodGet, oauth.config.UserURL, accessToken, nil, &user); err != nil {
+		return githubUser{}, err
 	}
-	if err := oauth.githubJSON(ctx, http.MethodGet, oauth.config.UserURL, accessToken, nil, &payload); err != nil {
-		return "", err
+	if strings.TrimSpace(user.Login) == "" {
+		return githubUser{}, errors.New("GitHub user response did not include a login")
 	}
-	if strings.TrimSpace(payload.Login) == "" {
-		return "", errors.New("GitHub user response did not include a login")
-	}
-	return payload.Login, nil
+	return user, nil
 }
 
 func (oauth *githubOAuth) orgAuthorized(ctx context.Context, accessToken, org string) bool {
@@ -453,6 +510,115 @@ func (oauth *githubOAuth) setSessionCookies(response http.ResponseWriter, sessio
 	// #nosec G124 -- CSRF token must be browser-readable so same-origin fetch requests can mirror it in X-CSRF-Token.
 	http.SetCookie(response, &http.Cookie{Name: csrfCookieName, Value: url.QueryEscape(session.CSRFToken), Path: "/", Secure: true, HttpOnly: false, SameSite: http.SameSiteLaxMode, MaxAge: int(sessionTTL.Seconds())})
 	oauth.clearStateCookie(response)
+}
+
+func (oauth *githubOAuth) loadAccountIDs(request *http.Request) []string {
+	cookie, err := request.Cookie(accountsCookieName)
+	if err != nil || cookie.Value == "" {
+		if session, ok := oauth.loadRequestSession(request); ok {
+			return []string{session.ID}
+		}
+		return nil
+	}
+	plain, err := oauth.open(cookie.Value)
+	if err != nil {
+		return nil
+	}
+	var accounts []string
+	if json.Unmarshal(plain, &accounts) != nil {
+		return nil
+	}
+	if len(accounts) > maxAccounts {
+		accounts = accounts[:maxAccounts]
+	}
+	return accounts
+}
+
+func (oauth *githubOAuth) withAccount(ctx context.Context, accounts []string, current oauthSession) []string {
+	next := []string{current.ID}
+	for _, sessionID := range accounts {
+		if sessionID == current.ID {
+			continue
+		}
+		session, err := oauth.loadSession(ctx, sessionID)
+		if err != nil {
+			continue
+		}
+		if strings.EqualFold(session.Login, current.Login) {
+			_ = oauth.revoke(ctx, session.AccessToken)
+			_ = oauth.revoke(ctx, session.RefreshToken)
+			_ = oauth.deleteSession(ctx, session.ID)
+			continue
+		}
+		next = append(next, session.ID)
+		if len(next) == maxAccounts {
+			break
+		}
+	}
+	return next
+}
+
+func (oauth *githubOAuth) setAccountsCookie(response http.ResponseWriter, accounts []string) {
+	data, err := json.Marshal(accounts)
+	if err != nil {
+		return
+	}
+	sealed, err := oauth.seal(data)
+	if err != nil {
+		return
+	}
+	http.SetCookie(response, &http.Cookie{Name: accountsCookieName, Value: sealed, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: int(sessionTTL.Seconds())})
+}
+
+func (oauth *githubOAuth) clearAccountsCookie(response http.ResponseWriter) {
+	http.SetCookie(response, &http.Cookie{Name: accountsCookieName, Value: "", Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: -1})
+}
+
+func (oauth *githubOAuth) firstAvailableSession(ctx context.Context, accounts []string) (oauthSession, bool) {
+	for _, sessionID := range accounts {
+		session, err := oauth.loadSession(ctx, sessionID)
+		if err == nil {
+			return session, true
+		}
+	}
+	return oauthSession{}, false
+}
+
+func (oauth *githubOAuth) writeAccounts(response http.ResponseWriter, request *http.Request) {
+	session, ok := oauth.loadRequestSession(request)
+	if !ok {
+		writeJSON(response, http.StatusOK, map[string]any{"authenticated": false, "accounts": []oauthAccount{}})
+		return
+	}
+	oauth.writeAccountsForSession(response, request.Context(), session, oauth.loadAccountIDs(request))
+}
+
+func (oauth *githubOAuth) writeAccountsForSession(response http.ResponseWriter, ctx context.Context, active oauthSession, accountIDs []string) {
+	accounts := make([]oauthAccount, 0, len(accountIDs))
+	for _, sessionID := range accountIDs {
+		session, err := oauth.loadSession(ctx, sessionID)
+		if err != nil {
+			continue
+		}
+		accounts = append(accounts, oauthAccount{
+			Login: session.Login, Name: session.Name, AvatarURL: session.AvatarURL, Active: session.ID == active.ID,
+		})
+	}
+	writeJSON(response, http.StatusOK, map[string]any{
+		"authenticated": true,
+		"active":        oauthAccount{Login: active.Login, Name: active.Name, AvatarURL: active.AvatarURL, Active: true},
+		"accounts":      accounts,
+	})
+}
+
+func removeAccountID(accounts []string, target string) []string {
+	next := make([]string, 0, len(accounts))
+	for _, sessionID := range accounts {
+		if sessionID != target {
+			next = append(next, sessionID)
+		}
+	}
+	return next
 }
 
 func (oauth *githubOAuth) clearSessionCookies(response http.ResponseWriter) {

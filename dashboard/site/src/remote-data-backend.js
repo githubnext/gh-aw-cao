@@ -32,6 +32,10 @@ export function usesRemoteDataBackend(document = globalThis.document) {
   return document?.querySelector?.(`meta[name="${BACKEND_META_NAME}"]`)?.getAttribute("content") === REMOTE_BACKEND;
 }
 
+export function usesGitHubAuthentication(document = globalThis.document) {
+  return document?.querySelector?.('meta[name="dashboard-authentication"]')?.getAttribute("content") === "github";
+}
+
 /**
  * Removes static-dashboard PWA state from the server-backed origin. A worker
  * controlling the current page remains until navigation, but unregistering it
@@ -72,7 +76,7 @@ async function apiRequest(path, init = {}, signal) {
     ...init,
     signal,
     cache: "no-store",
-    credentials: "omit",
+    credentials: usesGitHubAuthentication() ? "same-origin" : "omit",
     headers: {
       Accept: "application/json",
       ...(init.body ? { "Content-Type": "application/json" } : {}),
@@ -199,7 +203,7 @@ export function subscribeRemoteRevision(onRevision, onError) {
     try {
       const response = await fetch(apiUrl("/api/v1/events"), {
         cache: "no-store",
-        credentials: "omit",
+        credentials: usesGitHubAuthentication() ? "same-origin" : "omit",
         headers: {
           Accept: "text/event-stream",
           ...(accessToken() ? { Authorization: `Bearer ${accessToken()}` } : {}),

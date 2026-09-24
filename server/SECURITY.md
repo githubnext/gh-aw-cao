@@ -117,9 +117,13 @@ the deployment namespace. Browser cookies contain only an opaque session ID and
 a CSRF token; GitHub tokens are never placed in browser-readable storage,
 URLs, API responses, logs, telemetry, or Bicep outputs.
 
-Session cookies are `Secure`, `HttpOnly`, and `SameSite=Lax`. Mutating
-endpoints require the session-bound `X-CSRF-Token` header. The injected
-dashboard bootstrap adds this header for same-origin browser requests.
+Session cookies and the encrypted, bounded multi-account selector are
+`Secure`, `HttpOnly`, and `SameSite=Lax`. Account APIs expose only GitHub
+profile fields; they never return OAuth tokens or opaque session identifiers.
+Mutating endpoints require the active session-bound `X-CSRF-Token` header.
+Switching accounts rotates both the active session and browser-readable CSRF
+cookie, and logout revokes only the selected account before falling back to
+another authorized profile when available.
 
 When an access token is near expiry, the server uses the refresh token, stores
 rotated token values, and continues the request. If refresh fails or the

@@ -23,6 +23,7 @@ import { dashboardViewAliasName } from './data/queries/view-payload-compiler.js'
 import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
 import { sourceContinuation } from './data/continuation.js';
 import { renderDashboardNavigation, enableDashboardNavigation, syncMobileViewModeToggle } from './components/dashboard-navigation.js';
+import { enableGitHubAccountMenu, renderGitHubAccountMenu } from './components/github-account-menu.js';
 import { renderDashboardHeader } from './components/dashboard-header.js';
 import { renderDashboardFooter } from './components/dashboard-footer.js';
 import { renderDashboardFrame } from './components/dashboard-frame.js';
@@ -201,7 +202,8 @@ export function renderDashboard(input) {
   const styleEl = h('style', null, getPrimerStyles());
   const skipLink = h('a', { href: '#main-content', className: 'skip-link' }, 'Skip to main content');
 
-  const sidebar = renderDashboardNavigation(pages, sidebarTitle, document.dashboard.navigation);
+  const githubAccountMenu = renderGitHubAccountMenu();
+  const sidebar = renderDashboardNavigation(pages, sidebarTitle, document.dashboard.navigation, githubAccountMenu);
   const initialPage = pages.find((page) => page.id !== 'configuration') ?? pages[0];
   const overviewPage = pages.find((page) => page.id === 'overview');
   const initialPageHref = initialPage ? `#page-${encodeURIComponent(initialPage.id)}` : '#main-content';
@@ -228,6 +230,7 @@ export function renderDashboard(input) {
     appShell
   );
   const dashboardOwner = new AbortController();
+  enableGitHubAccountMenu(root, dashboardOwner.signal);
   void enableDashboardDomProvenanceWhenDebugging(root, document).catch((error) => {
     root.dataset.domProvenanceError = String(error?.message ?? error);
   });

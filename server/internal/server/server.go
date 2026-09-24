@@ -163,6 +163,8 @@ func (a *App) Handler() http.Handler {
 		register("GET /auth/login", a.oauth.login)
 		register("GET /auth/callback", a.oauth.callback)
 		register("POST /auth/logout", a.oauth.logout)
+		register("GET /api/v1/auth/session", a.oauth.account)
+		register("POST /api/v1/auth/switch", a.oauth.switchAccount)
 	}
 	register("GET /api/v1/health", a.health)
 	register("GET /api/v1/events", a.events)
@@ -669,7 +671,7 @@ func (a *App) serveIndex(response http.ResponseWriter, accessToken string) {
 	html := string(content)
 	injections := `<meta name="dashboard-data-backend" content="redis-http">`
 	if a.oauth != nil {
-		injections += `<script>const m=document.cookie.match(/(?:^|;\s*)cao_csrf=([^;]+)/);if(m){const c=decodeURIComponent(m[1]);const f=window.fetch.bind(window);window.fetch=(i,n={})=>{const u=typeof i==="string"?i:i.url;if(u&&new URL(u,location.href).origin===location.origin){const h=new Headers(n.headers||{});if(!h.has("X-CSRF-Token"))h.set("X-CSRF-Token",c);n={...n,headers:h};}return f(i,n);};}</script>`
+		injections += `<meta name="dashboard-authentication" content="github"><script>const f=window.fetch.bind(window);window.fetch=(i,n={})=>{const u=typeof i==="string"?i:i.url;if(u&&new URL(u,location.href).origin===location.origin){const m=document.cookie.match(/(?:^|;\s*)cao_csrf=([^;]+)/);const h=new Headers(n.headers||{});if(m&&!h.has("X-CSRF-Token"))h.set("X-CSRF-Token",decodeURIComponent(m[1]));n={...n,credentials:"same-origin",headers:h};}return f(i,n);};</script>`
 	} else if accessToken != "" {
 		token, _ := json.Marshal(accessToken)
 		injections += fmt.Sprintf(

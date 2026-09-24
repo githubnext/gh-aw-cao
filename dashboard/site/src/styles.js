@@ -451,6 +451,24 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .account-menu-action { width: 100%; min-height: 34px; display: flex; align-items: center; gap: 9px; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--fg); font: inherit; font-size: .8125rem; font-weight: 500; text-align: left; text-decoration: none; cursor: pointer; }
 .account-menu-action:hover { background: var(--neutral-muted); }
 .account-menu-action .octicon { width: 15px; height: 15px; color: var(--muted); }
+.sidebar-account-menu { flex: 0 0 auto; margin-top: auto; }
+.sidebar-account-menu > summary { width: 100%; min-height: 36px; display: flex; align-items: center; gap: 10px; padding: 3px 8px; border-radius: 6px; }
+.sidebar-account-menu .account-menu-avatar-content { width: 20px; height: 20px; display: grid; flex: 0 0 20px; place-items: center; overflow: hidden; border-radius: 50%; }
+.sidebar-account-menu .account-menu-popover { top: auto; right: auto; bottom: calc(100% + 8px); left: 0; }
+.account-menu-profile { min-width: 0; display: flex; align-items: center; gap: 10px; padding: 6px 8px 10px; border-bottom: 1px solid var(--border-muted); }
+.account-menu-profile > .account-menu-avatar-image, .account-menu-profile > .octicon { width: 32px; height: 32px; flex: 0 0 32px; border-radius: 50%; }
+.account-menu-profile-text { min-width: 0; display: grid; font-size: .8125rem; }
+.account-menu-profile-text > :is(strong, span) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-menu-profile-text > span, .account-menu-status { color: var(--muted); font-size: .75rem; }
+.account-menu-accounts { display: grid; gap: 2px; }
+.account-menu-action[disabled] { cursor: default; opacity: 1; }
+.account-menu-action[aria-current="true"] { background: var(--neutral-muted); }
+.account-menu-action > .account-menu-avatar-image { width: 20px; height: 20px; flex: 0 0 20px; }
+.account-menu-action > .octicon-check { margin-left: auto; color: var(--success-fg); }
+.account-menu-sign-out { border-top: 1px solid var(--border-muted); border-radius: 0 0 6px 6px; }
+.account-menu-error { margin: 0; padding: 4px 8px; color: var(--danger-fg); font-size: .75rem; }
+.sidebar-collapsed .sidebar-account-menu .nav-label { display: none; }
+.sidebar-collapsed .sidebar-account-menu > summary { justify-content: center; padding-inline: 6px; }
 .reset-dashboard-dialog { width: min(480px, calc(100vw - 32px)); max-width: none; max-height: calc(100vh - 32px); height: fit-content; margin: auto; padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); box-shadow: 0 16px 48px color-mix(in srgb, var(--canvas-inset) 70%, transparent); color: var(--fg); }
 .reset-dashboard-dialog[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
 .reset-dashboard-dialog::backdrop { background: color-mix(in srgb, var(--canvas-inset) 72%, transparent); }

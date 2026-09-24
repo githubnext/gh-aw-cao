@@ -2,12 +2,14 @@ package server
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
@@ -68,6 +70,9 @@ func TestAzureOAuthLoginCallbackAndAuthorizedAPI(t *testing.T) {
 	state := location.Query().Get("state")
 	if state == "" || location.Query().Get("scope") != "read:org" {
 		t.Fatalf("unexpected login redirect: %s", location.String())
+	}
+	if location.Query().Has("prompt") {
+		t.Fatalf("ordinary login unexpectedly forces account selection: %s", location.String())
 	}
 
 	callback := httptest.NewRecorder()
@@ -154,7 +159,7 @@ func TestAzureOAuthRefreshRotationLogoutAndRefreshFailure(t *testing.T) {
 	request.AddCookie(csrfCookie)
 	request.Header.Set("X-CSRF-Token", csrfCookie.Value)
 	app.Handler().ServeHTTP(logout, request)
-	if logout.Code != http.StatusNoContent {
+	if logout.Code != http.StatusOK {
 		t.Fatalf("logout returned %d", logout.Code)
 	}
 	if !github.sawRevocation("access-new") || !github.sawRevocation("refresh-new") {
@@ -172,6 +177,60 @@ func TestAzureOAuthRefreshRotationLogoutAndRefreshFailure(t *testing.T) {
 	app.Handler().ServeHTTP(failed, request)
 	if failed.Code != http.StatusUnauthorized {
 		t.Fatalf("refresh failure returned %d: %s", failed.Code, failed.Body.String())
+	}
+}
+
+func TestAzureOAuthListsSwitchesAndRetainsMultipleAccounts(t *testing.T) {
+	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
+	app := newAzureTestApp(t, github.URL)
+	first := oauthSession{
+		ID: "session-one", Login: "octocat", Name: "Octo Cat", AvatarURL: "https://avatars.example/octocat",
+		AccessToken: "access-one", RefreshToken: "refresh-one", AccessExpires: time.Now().Add(time.Hour),
+		RefreshExpires: time.Now().Add(2 * time.Hour), CSRFToken: "csrf-one",
+	}
+	second := oauthSession{
+		ID: "session-two", Login: "hubot", Name: "Hubot", AvatarURL: "https://avatars.example/hubot",
+		AccessToken: "access-two", RefreshToken: "refresh-two", AccessExpires: time.Now().Add(time.Hour),
+		RefreshExpires: time.Now().Add(2 * time.Hour), CSRFToken: "csrf-two",
+	}
+	if err := app.oauth.saveSession(t.Context(), first); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.oauth.saveSession(t.Context(), second); err != nil {
+		t.Fatal(err)
+	}
+	accountCookies := httptest.NewRecorder()
+	app.oauth.setAccountsCookie(accountCookies, []string{first.ID, second.ID})
+	accountsCookie := firstCookie(t, accountCookies.Result(), accountsCookieName)
+
+	profile := httptest.NewRecorder()
+	request := azureRequest(t, http.MethodGet, "/api/v1/auth/session")
+	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: first.ID})
+	request.AddCookie(accountsCookie)
+	app.Handler().ServeHTTP(profile, request)
+	if profile.Code != http.StatusOK || !strings.Contains(profile.Body.String(), `"login":"hubot"`) {
+		t.Fatalf("account profile returned %d: %s", profile.Code, profile.Body.String())
+	}
+	if strings.Contains(profile.Body.String(), "access-one") || strings.Contains(profile.Body.String(), "csrf-one") {
+		t.Fatalf("account profile leaked session credentials: %s", profile.Body.String())
+	}
+
+	switched := httptest.NewRecorder()
+	request = azureRequest(t, http.MethodPost, "/api/v1/auth/switch")
+	request.Body = io.NopCloser(strings.NewReader(`{"login":"hubot"}`))
+	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: first.ID})
+	request.AddCookie(&http.Cookie{Name: csrfCookieName, Value: first.CSRFToken})
+	request.AddCookie(accountsCookie)
+	request.Header.Set("X-CSRF-Token", first.CSRFToken)
+	app.Handler().ServeHTTP(switched, request)
+	if switched.Code != http.StatusOK {
+		t.Fatalf("account switch returned %d: %s", switched.Code, switched.Body.String())
+	}
+	if cookie := firstCookie(t, switched.Result(), sessionCookieName); cookie.Value != second.ID {
+		t.Fatalf("account switch selected %q", cookie.Value)
+	}
+	if csrf := firstCookie(t, switched.Result(), csrfCookieName); csrf.Value != second.CSRFToken {
+		t.Fatalf("account switch did not rotate CSRF cookie: %q", csrf.Value)
 	}
 }
 
@@ -221,7 +280,9 @@ func fakeGitHub(t *testing.T, options fakeGitHubOptions) *fakeGitHubServer {
 		_ = json.NewEncoder(response).Encode(tokenResponse{AccessToken: "access-old", RefreshToken: "refresh-old", ExpiresIn: options.accessExpiresIn, RefreshTokenExpiresIn: 7200})
 	})
 	mux.HandleFunc("/user", func(response http.ResponseWriter, request *http.Request) {
-		_ = json.NewEncoder(response).Encode(map[string]string{"login": "octocat"})
+		_ = json.NewEncoder(response).Encode(map[string]string{
+			"login": "octocat", "name": "Octo Cat", "avatar_url": "https://avatars.example/octocat",
+		})
 	})
 	mux.HandleFunc("/user/memberships/orgs/example", func(response http.ResponseWriter, request *http.Request) {
 		_ = json.NewEncoder(response).Encode(map[string]string{"state": options.membershipState})
