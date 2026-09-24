@@ -77,9 +77,10 @@ flowchart LR
     Publisher["Dashboard publisher"]
     Worker["Browser data Web Worker"]
     IndexedDB["IndexedDB projection"]
-    Redis["Redis projection<br/>local server profile"]
+    Redis["Redis projection<br/>optional server profile"]
     Query["Dashboard Language queries"]
     GoServer["Go HTTP(S) query server"]
+    GitHub["GitHub / gh-aw<br/>authoritative state"]
     Compute["Versioned computations<br/>bounded insights"]
     Results["Materialized computation results<br/>generation-scoped"]
     UI["Static dashboard"]
@@ -94,6 +95,7 @@ flowchart LR
     Worker --> IndexedDB
     IndexedDB --> Query
     Publisher --> GoServer --> Redis
+    GitHub -->|"webhooks + rebuild input"| GoServer
     Redis --> GoServer --> Query
     IndexedDB --> Compute --> Results --> Query
     SQLite --> Compute
@@ -110,10 +112,15 @@ inside the Activity cache for audits and projection rebuilds. The deployed
 dashboard artifact contains the SQLite projection, inventory, and compacted
 normalized run and record JSONL; browser ingestion fails closed rather than
 falling back to raw Activity JSONL. Static-browser download, normalization, persistence, and queries run in a
-dedicated Web Worker. The local Redis profile ingests the same deployed
-dashboard artifact in a loopback-only Go HTTP(S) server, keeps Redis credentials
-server-side, pushes compatible Dashboard Language operations into RediSearch,
-and returns only bounded query payloads to the browser. The main thread receives
+dedicated Web Worker. The optional Redis profile ingests the same deployed
+dashboard artifact in a Go HTTP(S) server, keeps Redis credentials server-side,
+pushes compatible Dashboard Language operations into RediSearch, and returns
+only canonical, bounded query payloads to the browser. Its local mode remains
+loopback-only. Its host-neutral mode uses GitHub OAuth and explicit organization
+or team authorization, verifies and deduplicates GitHub webhooks, and rebuilds
+through a staged generation before atomically changing the active pointer.
+Redis remains reconstructable from GitHub / gh-aw state and never becomes an
+authority. The main thread receives
 only bounded view payloads in either profile. Versioned computations transform canonical evidence
 into partitioned measures and actionable insights so consumers do not repeatedly
 scan the full Activity corpus. Computation results remain derived evidence:
@@ -137,7 +144,7 @@ reconstructable.
 | `<operation>/aw.yml` | Campaign boundary and installation manifest for an operation. User-facing operations include `cao-evolution/`, `dependabot/`, `eu-cra-compliance/`, `optimization/`, `repo-assist/`, `self-care/`, `software-development-practices/`, and `uk-ai-advisory/`. |
 | `activity/` | Deterministic Activity collection, JSONL ingestion, SQLite projection, and the `cao` CLI. |
 | `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and static browser application. |
-| `server/` | Local-only Go HTTP(S) host, deployed-artifact ingester, Redis projection, and server-side Dashboard Language query engine. |
+| `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Redis projection, and server-side Dashboard Language query engine. |
 | `dashboard/site/src/data/` | Canonical browser data model, adapters, normalization, storage, and declarative query engine. |
 | `research/` | Executable notebooks and experimental reference runtimes used to validate proposed computation semantics against canonical data; these are not dashboard production code. |
 | `specs/computations.md` | Versioned computation, bounded insight, provenance, quality, and measure contracts. |
@@ -216,15 +223,22 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   valid upstream results.
 - Dashboard selection, filtering, joins, grouping, aggregation, ordering, and
   pagination are declared in Dashboard Language. They execute in the data Web
-  Worker for static deployment and in the Go query server for the local Redis
+  Worker for static deployment and in the Go query server for the Redis
   profile; compatible server plans push filtering, aggregation, ordering, and
   limiting into Redis.
 - UI effects and components render query results; they do not reconstruct
   business relationships or query source data.
-- The local Redis profile binds to loopback, serves HTTP for local debugging and
-  HTTPS only with operator-supplied certificate files,
-  and never sends Redis endpoints or credentials to browser code. Remote
-  exposure, authentication, and webhooks are outside this profile.
+- The local Redis profile binds to loopback and serves HTTP for local debugging
+  or HTTPS only with operator-supplied certificate files.
+- The hosted Redis profile runs behind an explicitly trusted HTTPS proxy,
+  authenticates users through GitHub OAuth plus explicit organization or team
+  authorization, verifies webhook signatures, deduplicates deliveries, and
+  coordinates rebuilds through Redis so multiple stateless replicas cannot
+  replace the projection concurrently.
+- Browsers and external clients never receive Redis endpoints or credentials.
+  Redis generations are staged and validated before atomic activation; a failed
+  rebuild leaves the previous generation active, and an empty Redis instance is
+  healthy but not ready until rebuilt from authoritative GitHub / gh-aw inputs.
 
 ### Source and generated artifacts
 
@@ -245,8 +259,9 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   collection, data, and local tooling.
 - **JSONL** is the bounded evidence interchange; **SQLite** supports local tools
   and agents; **IndexedDB** supports the static browser dashboard; **Redis
-  Stack/RediSearch** supports the optional local server-hosted dashboard.
-- **Go** implements the isolated local HTTP(S) ingestion and query server.
+  Stack/RediSearch** supports the optional disposable server projection.
+- **Go** implements the isolated host-neutral HTTP(S) ingestion, reconciliation,
+  rebuild, and query service.
 - **Dashboard Language** keeps data operations declarative and off the browser
   main thread.
 - **Astro/Starlight** builds the documentation site. The operational dashboard

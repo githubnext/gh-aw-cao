@@ -419,54 +419,60 @@ func fakeRedis(t *testing.T) (string, func()) {
 					_ = connection.Close()
 				}()
 				reader := bufio.NewReader(connection)
-				command, err := readCommand(reader)
-				if err != nil {
-					return
-				}
-				if len(command) > 0 && command[0] == "AUTH" {
-					_, _ = fmt.Fprint(connection, "+OK\r\n")
-					command, err = readCommand(reader)
+				for {
+					command, err := readCommand(reader)
 					if err != nil {
 						return
 					}
-				}
-				switch command[0] {
-				case "PING":
-					_, _ = fmt.Fprint(connection, "+PONG\r\n")
-				case "FT._LIST":
-					_, _ = fmt.Fprint(connection, "*0\r\n")
-				case "SET":
-					mu.Lock()
-					values[command[1]] = command[2]
-					mu.Unlock()
-					_, _ = fmt.Fprint(connection, "+OK\r\n")
-				case "GET":
-					mu.Lock()
-					value, ok := values[command[1]]
-					mu.Unlock()
-					if !ok {
-						_, _ = fmt.Fprint(connection, "$-1\r\n")
-					} else {
-						_, _ = fmt.Fprintf(connection, "$%d\r\n%s\r\n", len(value), value)
-					}
-				case "DEL":
-					mu.Lock()
-					_, ok := values[command[1]]
-					delete(values, command[1])
-					mu.Unlock()
-					if ok {
+					switch command[0] {
+					case "AUTH", "SELECT":
+						_, _ = fmt.Fprint(connection, "+OK\r\n")
+					case "PING":
+						_, _ = fmt.Fprint(connection, "+PONG\r\n")
+					case "FT._LIST":
+						_, _ = fmt.Fprint(connection, "*0\r\n")
+					case "SET":
+						mu.Lock()
+						_, exists := values[command[1]]
+						if len(command) < 4 || command[3] != "NX" || !exists {
+							values[command[1]] = command[2]
+						}
+						mu.Unlock()
+						if len(command) >= 4 && command[3] == "NX" && exists {
+							_, _ = fmt.Fprint(connection, "$-1\r\n")
+						} else {
+							_, _ = fmt.Fprint(connection, "+OK\r\n")
+						}
+					case "GET":
+						mu.Lock()
+						value, ok := values[command[1]]
+						mu.Unlock()
+						if !ok {
+							_, _ = fmt.Fprint(connection, "$-1\r\n")
+						} else {
+							_, _ = fmt.Fprintf(connection, "$%d\r\n%s\r\n", len(value), value)
+						}
+					case "DEL":
+						mu.Lock()
+						_, ok := values[command[1]]
+						delete(values, command[1])
+						mu.Unlock()
+						if ok {
+							_, _ = fmt.Fprint(connection, ":1\r\n")
+						} else {
+							_, _ = fmt.Fprint(connection, ":0\r\n")
+						}
+					case "EVAL":
 						_, _ = fmt.Fprint(connection, ":1\r\n")
-					} else {
-						_, _ = fmt.Fprint(connection, ":0\r\n")
+					case "HGETALL":
+						_, _ = fmt.Fprint(connection, "*10\r\n$10\r\ngeneration\r\n$2\r\ng1\r\n$8\r\nrevision\r\n$1\r\n1\r\n$6\r\ncounts\r\n$2\r\n{}\r\n$11\r\nactivatedAt\r\n$20\r\n2026-01-01T00:00:00Z\r\n$11\r\nevaluatedAt\r\n$20\r\n2026-02-03T04:05:06Z\r\n")
+					case "HMGET":
+						_, _ = fmt.Fprint(connection, "*3\r\n$28\r\n{\"availability\":\"available\"}\r\n$2\r\n{}\r\n$2\r\n{}\r\n")
+					case "SMEMBERS":
+						_, _ = fmt.Fprint(connection, "*0\r\n")
+					default:
+						_, _ = fmt.Fprint(connection, "-ERR unsupported\r\n")
 					}
-				case "HGETALL":
-					_, _ = fmt.Fprint(connection, "*10\r\n$10\r\ngeneration\r\n$2\r\ng1\r\n$8\r\nrevision\r\n$1\r\n1\r\n$6\r\ncounts\r\n$2\r\n{}\r\n$11\r\nactivatedAt\r\n$20\r\n2026-01-01T00:00:00Z\r\n$11\r\nevaluatedAt\r\n$20\r\n2026-02-03T04:05:06Z\r\n")
-				case "HMGET":
-					_, _ = fmt.Fprint(connection, "*3\r\n$28\r\n{\"availability\":\"available\"}\r\n$2\r\n{}\r\n$2\r\n{}\r\n")
-				case "SMEMBERS":
-					_, _ = fmt.Fprint(connection, "*0\r\n")
-				default:
-					_, _ = fmt.Fprint(connection, "-ERR unsupported\r\n")
 				}
 			}()
 			select {

@@ -1,11 +1,13 @@
 # Server security
 
-The Go dashboard server has two security profiles:
+The Go dashboard server has three security profiles:
 
 - the default local profile used by `cao-dashboard serve`, for one trusted
   operator on loopback; and
 - the explicit Azure Functions profile, for remote access through GitHub OAuth,
-  server-side sessions, Azure trusted-proxy headers, and Redis Enterprise.
+  server-side sessions, Azure trusted-proxy headers, and Redis Enterprise; and
+- the host-neutral `serve-hosted` profile, with the same GitHub identity boundary
+  behind an explicitly trusted HTTPS proxy and any compatible managed Redis.
 
 ## Supported security boundary
 
@@ -21,7 +23,27 @@ The supported deployment is:
 
 GitHub authentication, organization authorization, multi-user access, public
 hosting, reverse proxies, tunnels, and webhook ingestion are not part of the
-local profile. Do not expose `serve` through a tunnel or public reverse proxy.
+local profile. Use `serve-hosted` rather than exposing `serve` through a tunnel
+or public reverse proxy.
+
+## Host-neutral hosted profile
+
+Hosted mode rejects local bearer capabilities and requires GitHub OAuth,
+explicit organization or team authorization, and an exact trusted-host policy.
+Mutating browser requests require the session-bound CSRF token. The webhook
+route is exempt from browser authentication only because it independently
+requires a valid `X-Hub-Signature-256` signature and delivery identity.
+
+Webhook delivery IDs and projection leases are stored in the deployment Redis
+namespace. Failed reconciliation removes its delivery marker so GitHub can
+retry. Full rebuilds and webhook reconciliation share a distributed lease;
+only a complete staged generation is atomically activated. Redis remains
+disposable, and health distinguishes an available service from ready data.
+
+`CAO_REDIS_URL`, OAuth secrets, the webhook secret, and session secrets are
+process-only configuration. They are never returned by APIs or written to
+logs. Remote Redis uses `rediss://` with certificate and hostname verification;
+the core service imports no cloud identity or secret-management SDK.
 
 ## Dashboard access capability
 

@@ -137,6 +137,24 @@ func TestSourceEvaluationTimeUsesLatestCanonicalOrSourceTimestamp(t *testing.T) 
 	}
 }
 
+func TestValidateDiagnosticsRejectsInvalidStagingGeneration(t *testing.T) {
+	if err := validateDiagnostics(model.Diagnostics{
+		RelationshipErrors: []string{"session.runId does not reference an existing run"},
+	}); err == nil {
+		t.Fatal("relationship errors were accepted")
+	}
+	if err := validateDiagnostics(model.Diagnostics{
+		DuplicateRecordIDs: map[string][]string{"runs": {"run-1"}},
+	}); err == nil {
+		t.Fatal("duplicate canonical IDs were accepted")
+	}
+	if err := validateDiagnostics(model.Diagnostics{
+		DuplicateRecordIDs: map[string][]string{},
+	}); err != nil {
+		t.Fatalf("valid diagnostics were rejected: %v", err)
+	}
+}
+
 func TestMergeLogicalReconcilesWorkflowIdentity(t *testing.T) {
 	canonical := model.Source{
 		Source: "workflows",

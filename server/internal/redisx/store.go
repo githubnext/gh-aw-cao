@@ -21,11 +21,16 @@ const redisWriteBatchSize = 100
 var ErrSourceUnavailable = errors.New("redis source is unavailable")
 
 type Store struct {
-	Client    *Client
+	Client    CommandClient
 	namespace string
 }
 
-func NewStore(client *Client, namespaces ...string) *Store {
+type CommandClient interface {
+	Do(context.Context, ...string) (any, error)
+	DoMany(context.Context, [][]string) ([]any, error)
+}
+
+func NewStore(client CommandClient, namespaces ...string) *Store {
 	var namespace string
 	switch len(namespaces) {
 	case 0:

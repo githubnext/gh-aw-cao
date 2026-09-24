@@ -1,11 +1,11 @@
 # Go and Redis dashboard server
 
-The `server/` module is a local-only backend for running the Central Agentic
-Ops dashboard with server-owned persistence and query execution. It ingests the
+The `server/` module is an optional backend for running the Central Agentic Ops
+dashboard with server-owned persistence and query execution. It ingests the
 same compacted data published with the deployed dashboard, materializes
 generation-scoped logical sources in Redis Stack, executes Dashboard Language
-queries in Go with RediSearch pushdown, and serves the built dashboard over
-loopback HTTP by default or operator-configured HTTPS.
+queries in Go with RediSearch pushdown, and serves the built dashboard either
+over loopback HTTP or through an authenticated host-neutral service profile.
 
 The browser never connects to Redis and never receives the Redis URL or
 credentials. It communicates only with the same-origin HTTP(S) API.
@@ -31,7 +31,7 @@ query payloads, or source records.
 > [!IMPORTANT]
 > The default `serve` command remains local-only: it uses a local bearer
 > capability and intentionally rejects non-loopback listen addresses. Remote
-> hosting is supported only through the explicit Azure Functions profile, which
+> Hosted use requires the explicit `serve-hosted` or Azure Functions profile, which
 > replaces the local capability with GitHub OAuth, refresh-token-backed
 > server-side sessions, explicit GitHub organization/team authorization, and an
 > Azure trusted-proxy policy. PATs are not supported. The Azure Functions
@@ -72,6 +72,36 @@ flowchart LR
 | Shared API model | `internal/model/` | Defines logical sources, active-generation metadata, diagnostics, and query metrics. |
 | Telemetry | `internal/telemetry/` | Configures the OpenTelemetry TracerProvider from standard `OTEL_*` environment variables, exposes the server's tracer, and writes W3C trace/span id response headers. |
 | Local Redis | `docker-compose.yml` | Runs Redis Stack with RediSearch on `127.0.0.1:6379`. |
+
+## Hosted service profile
+
+`serve-hosted` runs the same stateless Go service behind a trusted HTTPS proxy
+on a container, VM, Kubernetes workload, or comparable host. It is not coupled
+to a Redis provider or cloud SDK. Configuration is supplied through:
+
+| Variable | Purpose |
+| --- | --- |
+| `CAO_REDIS_URL` | Required `redis://` loopback or TLS `rediss://` endpoint. Credentials remain server-side. |
+| `CAO_REDIS_NAMESPACE` | Optional deployment namespace; defaults to `hosted-dashboard`. |
+| `CAO_ALLOWED_HOSTS` | Required comma-separated trusted public host names. |
+| `CAO_REQUIRE_HTTPS` | Enforce forwarded HTTPS; defaults to `true`. |
+| `CAO_GITHUB_CLIENT_ID`, `CAO_GITHUB_CLIENT_SECRET`, `CAO_GITHUB_REDIRECT_URL` | GitHub OAuth application. |
+| `CAO_SESSION_SECRET` | Session encryption/signing secret of at least 32 characters. |
+| `CAO_GITHUB_ALLOWED_ORGS`, `CAO_GITHUB_ALLOWED_TEAMS` | Explicit authorization policy. |
+| `CAO_GITHUB_WEBHOOK_SECRET` | Required GitHub webhook signature secret of at least 32 characters. |
+| `CAO_SOURCE_DIRECTORY` | Required authoritative deployed gh-aw artifact directory used by rebuild/reconciliation. |
+
+The hosted server exposes canonical repository/run APIs, verifies and
+deduplicates webhook deliveries, and coordinates projection updates with a
+Redis lease so multiple replicas do not rebuild concurrently. Webhooks trigger
+authoritative re-ingestion; they are not treated as complete canonical records.
+`POST /api/admin/rebuild` always forces a new staged generation, validates it,
+then atomically activates it. A failed rebuild leaves the previous generation
+active.
+
+The Redis command client reuses a bounded connection pool, applies operation
+deadlines, and retries read-only commands once when a pooled connection has
+gone stale. Write commands are not replayed automatically.
 
 ### Hosted Azure architecture
 
@@ -242,10 +272,18 @@ IndexedDB ingestion:
 | Endpoint | Purpose |
 | --- | --- |
 | `GET /api/v1/health` | Public readiness exposes only Redis connectivity and data availability; capability-authenticated requests also receive generation/revision and source/row counts. |
+| `GET /api/health` | Public liveness; an empty Redis instance is healthy and reports `rebuildRequired`. |
+| `GET /api/readiness` | Public readiness; returns 503 until an active generation exists. |
 | `POST /api/v1/query` | Execute requested Dashboard Language queries and return bounded logical sources plus metrics. |
 | `POST /api/v1/refresh` | Return the current revision and authoritative evaluation time without ingesting data. |
 | `GET /api/v1/events` | Server-Sent Events stream that notifies active views when the Redis revision changes. |
 | `GET /api/v1/diagnostics` | Canonical schema counts, relationship errors, and duplicate IDs for the active generation. |
+| `GET /api/repositories` and `GET /api/repositories/:id` | Return canonical repository objects. |
+| `GET /api/repositories/:id/runs` and `GET /api/workflows/:id/runs` | Return related canonical runs. |
+| `GET /api/runs/:id/jobs`, `GET /api/runs/:id/sessions`, `GET /api/sessions/:id/events` | Return related canonical execution records when published. |
+| `POST /api/github/webhook` | Verify, deduplicate, and reconcile a GitHub delivery. |
+| `POST /api/admin/rebuild` | Force a staged full rebuild and atomic activation. |
+| `GET /api/admin/rebuild/status` | Return shared rebuild state for all replicas. |
 
 API responses use `Cache-Control: no-store`. The dashboard service worker
 excludes `/api/` so query results and event streams are never placed in browser

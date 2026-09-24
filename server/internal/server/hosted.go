@@ -45,14 +45,22 @@ func NewHostedAppFromEnv(
 	if err != nil {
 		return nil, err
 	}
+	sourceDirectory := strings.TrimSpace(os.Getenv("CAO_SOURCE_DIRECTORY"))
+	if sourceDirectory == "" {
+		return nil, errors.New("CAO_SOURCE_DIRECTORY is required")
+	}
+	webhookSecret := os.Getenv("CAO_GITHUB_WEBHOOK_SECRET")
+	if len(webhookSecret) < 32 {
+		return nil, errors.New("CAO_GITHUB_WEBHOOK_SECRET must contain at least 32 characters")
+	}
 	config := Config{
 		HostingMode:         HostingModeHosted,
 		Listen:              listen,
 		SiteDirectory:       siteDirectory,
 		DashboardQueries:    definitions,
 		DatabaseQueriesPath: databaseQueriesPath,
-		SourceDirectory:     strings.TrimSpace(os.Getenv("CAO_SOURCE_DIRECTORY")),
-		WebhookSecret:       os.Getenv("CAO_GITHUB_WEBHOOK_SECRET"),
+		SourceDirectory:     sourceDirectory,
+		WebhookSecret:       webhookSecret,
 		Proxy: ProxyPolicy{
 			AllowedHosts: splitCSV(os.Getenv("CAO_ALLOWED_HOSTS")),
 			RequireHTTPS: strings.TrimSpace(os.Getenv("CAO_REQUIRE_HTTPS")) != "false",
