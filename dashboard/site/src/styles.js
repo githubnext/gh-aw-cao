@@ -2138,7 +2138,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .horizontal-bar-chart-label { direction: rtl; text-align: left; }
   .horizontal-bar-chart-label-text { display: inline; overflow: visible; direction: ltr; unicode-bidi: isolate; }
   :is(.mode-badge, .mode-indicator) .octicon { display: none; }
-  .dashboard-root { --dashboard-page-padding-inline: 14px; --dashboard-mobile-page-padding-top: 16px; --dashboard-mobile-page-padding-inline: var(--dashboard-page-padding-inline); --dashboard-mobile-page-padding-bottom: 28px; height: auto; min-height: 100vh; overflow: visible; }
+  .dashboard-root { --dashboard-page-padding-inline: 14px; --dashboard-mobile-page-padding-top: 16px; --dashboard-mobile-page-padding-bottom: 28px; height: auto; min-height: 100vh; overflow: visible; }
   .app-shell { height: auto; min-height: 100vh; display: block; overflow: visible; }
   .dashboard-root.dashboard-full-view { height: 100dvh; min-height: 0; overflow: hidden; }
   .dashboard-full-view .app-shell { height: 100%; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); overflow: hidden; }
@@ -2238,10 +2238,10 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .time-window-control > button { min-height: 44px; }
   .app-main { height: auto; overflow: visible; }
   .dashboard-full-view .app-main { height: 100%; min-height: 0; overflow: hidden; }
-  main.dashboard-prototype { overflow: visible; overflow-x: clip; padding: var(--dashboard-mobile-page-padding-top) var(--dashboard-mobile-page-padding-inline) var(--dashboard-mobile-page-padding-bottom); }
+  main.dashboard-prototype { overflow: visible; overflow-x: clip; padding: var(--dashboard-mobile-page-padding-top) var(--dashboard-page-padding-inline) var(--dashboard-mobile-page-padding-bottom); }
   .dashboard-full-view main.dashboard-prototype { padding: 0 var(--dashboard-page-padding-inline); }
   /* Paired with the mobile main padding above: cancel top/inline overview inset, but do not negate bottom padding. */
-  .dashboard-overview-page { margin: calc(-1 * var(--dashboard-mobile-page-padding-top)) calc(-1 * var(--dashboard-mobile-page-padding-inline)) 0; }
+  .dashboard-overview-page { margin: calc(-1 * var(--dashboard-mobile-page-padding-top)) calc(-1 * var(--dashboard-page-padding-inline)) 0; }
   .dashboard-full-view .custom-view[data-view-layout="full-view"] > .view-state-card { margin-inline: 14px; }
   .dashboard-full-view .custom-view-grid > .chart-view-swimlane { padding: 0 14px 12px; }
   .data-state-summary, .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }

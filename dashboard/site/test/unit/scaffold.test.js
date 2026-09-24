@@ -242,7 +242,7 @@ describe('DLS-CONF-004 scaffold gates', () => {
     const styles = readFileSync(resolve('src/styles.js'), 'utf8');
 
     expect(styles).toContain('.primary-nav { display: none; }');
-    expect(styles).toContain('.dashboard-overview-page { margin: calc(-1 * var(--dashboard-mobile-page-padding-top)) calc(-1 * var(--dashboard-mobile-page-padding-inline)) 0; }');
+    expect(styles).toContain('.dashboard-overview-page { margin: calc(-1 * var(--dashboard-mobile-page-padding-top)) calc(-1 * var(--dashboard-page-padding-inline)) 0; }');
   });
 
   it('stacks the expanded filter panel above the page header and hides the horizon tooltip', () => {
