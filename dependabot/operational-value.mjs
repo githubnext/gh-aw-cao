@@ -42,10 +42,16 @@ function ghApi(arguments_) {
 
 function parseResponse(output) {
   const normalized = String(output).replace(/\r\n/g, '\n');
-  const separator = normalized.indexOf('\n\n');
-  if (separator < 0) fail('GitHub API returned a response without headers');
-  const headers = normalized.slice(0, separator);
-  const body = normalized.slice(separator + 2);
+  let offset = 0;
+  let headers = '';
+  while (/^HTTP\/\S+/i.test(normalized.slice(offset))) {
+    const separator = normalized.indexOf('\n\n', offset);
+    if (separator < 0) fail('GitHub API returned a response without headers');
+    headers = normalized.slice(offset, separator);
+    offset = separator + 2;
+  }
+  if (!headers) fail('GitHub API returned a response without headers');
+  const body = normalized.slice(offset);
   const status = headers.split('\n')[0]?.match(/^HTTP\/\S+\s+(\d{3})(?:\s+(.*))?$/i);
   if (!status) fail('GitHub API returned a response without an HTTP status');
   const statusCode = Number(status[1]);
