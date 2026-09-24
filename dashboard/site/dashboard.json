@@ -9526,7 +9526,7 @@
             {
               "id": "insights",
               "label": "Insights",
-              "icon": "credit-card",
+              "icon": "graph",
               "page": "repository-insights"
             },
             {
@@ -13011,7 +13011,7 @@
         "kind": "custom",
         "title": "Cost",
         "navigation-label": "Cost",
-        "icon": "graph",
+        "icon": "credit-card",
         "description": "Observed AI Credit cost across campaigns, repositories, and workflows.",
         "views": [
           {
@@ -13069,7 +13069,14 @@
             "title": "Cost per workflow",
             "description": "The share of observed AI Credit cost attributed to each workflow.",
             "data": {
-              "source": "cost-by-workflow"
+              "source": "cost-by-workflow",
+              "order-by": [
+                {
+                  "field": "aic",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 100
             },
             "mark": "chart",
             "chart": "horizontal-bar",
