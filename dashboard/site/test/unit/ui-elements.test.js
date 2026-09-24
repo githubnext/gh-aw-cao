@@ -35,7 +35,6 @@ describe('UI elements', () => {
       'insights-overview',
       'local-database',
       'needs-attention-list',
-      'outcomes-overview',
       'readiness-verdict',
       'signal-list',
       'summary-grid',
@@ -52,6 +51,7 @@ describe('UI elements', () => {
     expect(elementLoadsSourcesAsync('factory-header')).toBe(true);
     expect(elementLoadsSourcesAsync('factory-floor')).toBe(true);
     expect(elementLoadsSourcesAsync('link-button-list')).toBe(true);
+    expect(elementLoadsSourcesAsync('outcomes-overview')).toBe(true);
   });
 
   it('retains the referenced custom element renderers', () => {
@@ -59,5 +59,6 @@ describe('UI elements', () => {
     expect(elementHandlesEmptyRows('campaign-route')).toBe(true);
     expect(elementHandlesEmptyRows('workflow-route-page')).toBe(true);
     expect(elementHandlesEmptyRows('configuration-policy')).toBe(true);
+    expect(renderUiElement('outcomes-overview', context)).not.toBeNull();
   });
 });

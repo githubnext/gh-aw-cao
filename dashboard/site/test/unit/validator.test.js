@@ -1049,7 +1049,32 @@ dashboard:
     }
   });
 
+  it('keeps the version 0.1.0 outcomes overview element valid as a compatibility alias', () => {
+    const result = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: legacy-overview
+  title: Legacy overview
+  pages:
+    - id: overview
+      kind: custom
+      title: Overview
+      views:
+        - id: outcomes
+          data:
+            sources: [runs, outcomes]
+          mark: element
+          element: outcomes-overview
+          config:
+            sections: [header, floor]
+            animate: number
+            labels:
+              repositories:
+                singular: Repository
+                plural: Repositories
+`);
 
+    expect(result.ok).toBe(true);
+  });
 
   it('accepts every campaign dashboard document', () => {
     for (const source of campaignDashboardSources) {

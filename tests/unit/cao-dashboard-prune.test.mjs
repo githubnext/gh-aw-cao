@@ -446,8 +446,8 @@ test('prunes pages, reusable views, and queries unreachable from navigation or l
       }
     ],
     views: [
-      { id: 'detail-view', data: { source: 'detail-query' } },
-      { id: 'orphan-view', data: { source: 'orphan-query' } },
+      { id: 'detail-view', data: { source: 'detail-query' }, mark: 'element', element: 'live-element' },
+      { id: 'orphan-view', data: { source: 'orphan-query' }, mark: 'element', element: 'dead-view-element' },
       { id: 'eval-view', data: { source: 'eval-query' } }
     ],
     pages: [
@@ -497,10 +497,10 @@ test('prunes pages, reusable views, and queries unreachable from navigation or l
   assert.deepEqual(report.views.removed, ['orphan-view', 'eval-view']);
   assert.deepEqual(report.queries.removed, ['orphan-query', 'eval-query']);
   assert.deepEqual(report.elements, {
-    before: 1,
-    after: 0,
-    retained: [],
-    removed: ['dead-element']
+    before: 3,
+    after: 1,
+    retained: ['live-element'],
+    removed: ['dead-element', 'dead-view-element']
   });
 });
 

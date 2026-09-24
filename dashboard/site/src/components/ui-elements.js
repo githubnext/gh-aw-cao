@@ -11,6 +11,7 @@ import { renderFactoryFloorElement } from './factory-floor.js';
 import { renderFactoryHeaderElement } from './factory-header.js';
 import { renderLinkButtonList } from './link-button-list.js';
 import { renderCampaignProblemList } from './campaign-problem-list.js';
+import { renderPanel } from './panel.js';
 import { rowsFor } from './source-rows.js';
 
 /**
@@ -45,10 +46,11 @@ const ELEMENT_RENDERERS = new Map([
   ['factory-header', renderFactoryHeaderElement],
   ['factory-floor', renderFactoryFloorElement],
   ['link-button-list', renderLinkButtonList],
-  ['campaign-problem-list', renderCampaignProblemList]
+  ['campaign-problem-list', renderCampaignProblemList],
+  ['outcomes-overview', renderLegacyFactoryOverview]
 ]);
 
-const ASYNC_SOURCE_ELEMENTS = new Set(['factory-header', 'factory-floor', 'link-button-list']);
+const ASYNC_SOURCE_ELEMENTS = new Set(['factory-header', 'factory-floor', 'link-button-list', 'outcomes-overview']);
 const EMPTY_AWARE_ELEMENTS = new Set([
   'campaign-route',
   'workflow-route-page',
@@ -58,7 +60,8 @@ const EMPTY_AWARE_ELEMENTS = new Set([
   'factory-header',
   'factory-floor',
   'link-button-list',
-  'campaign-problem-list'
+  'campaign-problem-list',
+  'outcomes-overview'
 ]);
 const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy']);
 
@@ -113,4 +116,26 @@ function renderOutcomeDetailSectionElement(context) {
   const outcome = rowsFor(context.sources, 'outcomes')
     .find((row) => String(row['safe-output']) === outcomeId);
   return outcome ? renderOutcomeDetailSection(outcome, sectionConfig.body) : null;
+}
+
+/**
+ * Preserves the version 0.1.0 outcomes-overview contract for existing documents.
+ * @param {ElementRenderContext} context
+ */
+function renderLegacyFactoryOverview(context) {
+  const configured = Array.isArray(context.elementConfig?.sections)
+    ? context.elementConfig.sections
+    : ['header', 'floor'];
+  const sections = configured.filter((section, index) => (
+    (section === 'header' || section === 'floor') && configured.indexOf(section) === index
+  ));
+  const selected = sections.length > 0 ? sections : ['header', 'floor'];
+  return renderPanel({
+    className: 'agent-factory',
+    labelledBy: selected.includes('header') ? 'agent-factory-heading' : undefined,
+    label: context.title || 'Factory overview',
+    children: selected.map((section) => section === 'header'
+      ? renderFactoryHeaderElement(context)
+      : renderFactoryFloorElement(context))
+  });
 }

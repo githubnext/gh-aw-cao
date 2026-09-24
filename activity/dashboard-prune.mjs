@@ -33,7 +33,6 @@ export function pruneDashboardDocument(document, options = {}) {
   const queries = Array.isArray(dashboard.queries) ? dashboard.queries : [];
   const similarQueries = analyzeDashboardQueries(queries);
   const pages = Array.isArray(dashboard.pages) ? dashboard.pages : [];
-  const customElements = referencedCustomElementIds(pages);
   const livePageIds = findLivePageIds(dashboard, options.linkedPageIds);
   const removedPages = pages
     .filter((page) => isRecord(page) && typeof page.id === 'string' && !livePageIds.has(page.id))
@@ -42,7 +41,6 @@ export function pruneDashboardDocument(document, options = {}) {
     !isRecord(page) || typeof page.id !== 'string' || livePageIds.has(page.id)
   ));
   dashboard.pages = retainedPages;
-  const retainedCustomElements = referencedCustomElementIds(retainedPages);
   const reusableViews = Array.isArray(dashboard.views) ? dashboard.views : [];
   const referencedViewIds = referencedReusableViewIds(retainedPages);
   const removedViews = reusableViews
@@ -53,6 +51,8 @@ export function pruneDashboardDocument(document, options = {}) {
   ));
   if (retainedViews.length > 0) dashboard.views = retainedViews;
   else delete dashboard.views;
+  const customElements = referencedCustomElementIds([...pages, ...reusableViews]);
+  const retainedCustomElements = referencedCustomElementIds([...retainedPages, ...retainedViews]);
 
   const { queries: consolidatedQueries, aliases, groups } = consolidateQueries(queries);
   dashboard.queries = consolidatedQueries;
