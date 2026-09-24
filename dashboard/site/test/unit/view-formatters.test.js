@@ -69,7 +69,7 @@ describe('view formatter helpers', () => {
     const usd = { name: 'US dollars', symbol: 'USD', significant: 0.001, format: 'usd' };
     expect(formatNumber(0.0341, usd)).toBe('$0.035');
     expect(formatNumber(1, usd)).toBe('$1.00');
-    const aicc = { name: 'AICc($)', symbol: 'AIC', significant: 2, format: 'aicc' };
+    const aicc = { name: 'AICc($)', symbol: 'AICc', significant: 2, format: 'aicc' };
     expect(formatNumber(341, aicc)).toBe('$3.42');
     expect(formatNumber(2.5, aicc)).toBe('$0.02');
     expect(formatNumber(-2.5, aicc)).toBe('-$0.02');

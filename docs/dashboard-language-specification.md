@@ -660,7 +660,7 @@ A dashboard may declare reusable units in `dashboard.units`. A field definition 
 units:
   aic:
     name: AICc($)
-    symbol: AIC
+    symbol: AICc
     significant: 2
     format: aicc
   usd:
