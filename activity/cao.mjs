@@ -102,7 +102,7 @@ const USAGE = `Usage:
   cao compact-jsonl --input-dir SHARD_DIRECTORY --group OWNER/REPOSITORY=SHARD_PREFIX [--group OWNER/REPOSITORY=SHARD_PREFIX...] [--max-bytes BYTES]
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao computation runtime-health [--database FILE] [--inventory FILE] [--campaign SLUG] [--diagnose]
-  cao operational-value [--database FILE] [--root DIRECTORY] [--output FILE] [--timestamp TIME] [--repository OWNER/REPO] [--max-github-api-rate-limit LIMIT]
+  cao operational-value [--database FILE] [--root DIRECTORY] [--output FILE] [--timestamp TIME] [--repository OWNER/REPO] [--retention-days DAYS|all] [--max-github-api-rate-limit LIMIT]
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
   cao download [--url URL] [--output DIRECTORY]
   cao hash-payloads [--database FILE] [--shard-dir SHARD_DIRECTORY] [--normalized-dir DIRECTORY] [--runs-dir DIRECTORY] [--records-dir DIRECTORY] [--inventory FILE] [--output FILE]
@@ -248,7 +248,7 @@ async function writeJsonAtomically(filePath, document) {
 const REPOSITORY_COORDINATE = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
 const OPERATIONAL_VALUE_ID = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
 
-  async function discoverOperationalValueScripts(root) {
+async function discoverOperationalValueScripts(root) {
     const directory = path.resolve(root);
     const entries = await readdir(directory, { withFileTypes: true });
     const scripts = [];
@@ -264,7 +264,7 @@ const OPERATIONAL_VALUE_ID = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
     return scripts;
   }
 
-  function githubApiRemaining() {
+function githubApiRemaining() {
     const result = spawnSync('gh', ['api', 'rate_limit', '--jq', '.resources.core.remaining'], {
       encoding: 'utf8',
       env: process.env
@@ -279,7 +279,7 @@ const OPERATIONAL_VALUE_ID = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
     return remaining;
   }
 
-  function operationalValueReserve(value) {
+function operationalValueReserve(value) {
     if (value === undefined) return undefined;
     const parsed = Number(value);
     if (!Number.isSafeInteger(parsed) || parsed === 0) {
@@ -288,7 +288,7 @@ const OPERATIONAL_VALUE_ID = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
     return Math.abs(parsed);
   }
 
-  function parseOperationalValueOutput(content, source, repositories) {
+function parseOperationalValueOutput(content, source, repositories) {
     const allowedRepositories = new Set(repositories.map((repository) => repository.toLowerCase()));
     return String(content).split(/\r?\n/).flatMap((line, index) => {
       if (!line.trim()) return [];
@@ -304,28 +304,51 @@ const OPERATIONAL_VALUE_ID = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
       const timestamp = canonicalTimestamp(record.timestamp, `${source}:${index + 1}.timestamp`);
       const repository = String(record.repository ?? '');
       const valueId = String(record.valueId ?? '');
-      const value = Number(record.value);
+      const value = record.value;
       if (!REPOSITORY_COORDINATE.test(repository) || !allowedRepositories.has(repository.toLowerCase())) {
         throw new Error(`${source}:${index + 1}.repository must identify a requested repository`);
       }
       if (!OPERATIONAL_VALUE_ID.test(valueId)) {
         throw new Error(`${source}:${index + 1}.valueId must be a lowercase metric identifier`);
       }
-      if (!Number.isFinite(value)) {
+      if (typeof value !== 'number' || !Number.isFinite(value)) {
         throw new Error(`${source}:${index + 1}.value must be a finite number`);
       }
       return [{ timestamp, repository, valueId, value }];
     });
   }
 
-  async function runOperationalValue({
+async function retainedOperationalValueEnvelopes(outputPath, cutoff) {
+  let content;
+  try {
+    content = await readFile(outputPath, 'utf8');
+  } catch (error) {
+    if (error && error.code === 'ENOENT') return [];
+    throw error;
+  }
+  return content.split(/\r?\n/).flatMap((line, index) => {
+    if (!line.trim()) return [];
+    const envelope = JSON.parse(line);
+    if (envelope?.schema_version !== 2 || envelope?.kind !== 'operational_value') {
+      throw new Error(`${outputPath}:${index + 1} is not an operational value envelope`);
+    }
+    const timestamp = Date.parse(envelope.operational_value?.timestamp);
+    if (!Number.isFinite(timestamp)) {
+      throw new Error(`${outputPath}:${index + 1} has an invalid operational value timestamp`);
+    }
+    return timestamp >= cutoff ? [envelope] : [];
+  });
+}
+
+async function runOperationalValue({
     indexedDB,
     databasePath,
     root = '.',
     outputPath,
     timestamp = new Date().toISOString(),
     repositories = [],
-    rateLimitReserve
+    rateLimitReserve,
+    retentionWindow
   }) {
     const observedAt = canonicalTimestamp(timestamp, '--timestamp');
     const selectedRepositories = repositories.length > 0
@@ -375,7 +398,7 @@ const OPERATIONAL_VALUE_ID = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
     const output = outputPath ? path.resolve(outputPath) : undefined;
     if (output) {
       await mkdir(path.dirname(output), { recursive: true });
-      const jsonl = values.map((record) => JSON.stringify({
+      const envelopes = values.map((record) => ({
         schema_version: 2,
         kind: 'operational_value',
         operational_value: {
@@ -384,8 +407,22 @@ const OPERATIONAL_VALUE_ID = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
           value_id: record.valueId,
           value: record.value
         }
-      })).join('\n');
-      await writeFile(output, jsonl ? `${jsonl}\n` : '');
+      }));
+      const retained = retentionWindow === undefined
+        ? []
+        : await retainedOperationalValueEnvelopes(output, Date.parse(observedAt) - retentionWindow);
+      const merged = new Map([...retained, ...envelopes].map((envelope) => {
+        const value = envelope.operational_value;
+        return [`${String(value.repository).toLowerCase()}\0${value.value_id}\0${value.timestamp}`, envelope];
+      }));
+      const jsonl = [...merged.values()].map((envelope) => JSON.stringify(envelope)).join('\n');
+      const temporary = `${output}.tmp-${process.pid}-${Date.now()}`;
+      try {
+        await writeFile(temporary, jsonl ? `${jsonl}\n` : '', { flag: 'wx' });
+        await rename(temporary, output);
+      } finally {
+        await rm(temporary, { force: true });
+      }
     }
     return {
       command: 'operational-value',
@@ -2563,7 +2600,7 @@ export async function runCli(arguments_, input = process.stdin) {
     });
   }
   if (command === 'operational-value') {
-    rejectUnknownOptions(options, ['database', 'root', 'output', 'timestamp', 'repository', 'max-github-api-rate-limit']);
+    rejectUnknownOptions(options, ['database', 'root', 'output', 'timestamp', 'repository', 'retention-days', 'max-github-api-rate-limit']);
     const repositoryOptions = options.repository === undefined
       ? []
       : Array.isArray(options.repository) ? options.repository : [options.repository];
@@ -2579,7 +2616,8 @@ export async function runCli(arguments_, input = process.stdin) {
       outputPath: option(options, 'output', false),
       timestamp: option(options, 'timestamp', false) || new Date().toISOString(),
       repositories: repositoryOptions,
-      rateLimitReserve: operationalValueReserve(option(options, 'max-github-api-rate-limit', false))
+      rateLimitReserve: operationalValueReserve(option(options, 'max-github-api-rate-limit', false)),
+      retentionWindow: retentionWindowMs(options)
     });
   }
 

@@ -230,7 +230,8 @@ jobs:
           node activity/cao.mjs operational-value \
             --database "$ACTIVITY_DATABASE" \
             --root . \
-            --output "$REPORT_GH_AW_LOGS_SHARDS/operational-values-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.jsonl" \
+            --output "$REPORT_GH_AW_LOGS_SHARDS/operational-values.jsonl" \
+            --retention-days 30 \
             --max-github-api-rate-limit -2000
 
           node activity/cao.mjs hash-payloads \

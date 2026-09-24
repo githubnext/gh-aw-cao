@@ -79,3 +79,39 @@ fi\n`);
     value: 1
   });
 });
+
+test('cao operational-value rejects non-numeric metrics and bounds retained output', () => {
+  const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-retention-'));
+  const packageDirectory = path.join(temporary, 'example');
+  const output = path.join(temporary, 'values.jsonl');
+  mkdirSync(packageDirectory);
+  const script = path.join(packageDirectory, 'operational-value.sh');
+  writeFileSync(script, `#!/usr/bin/env bash
+set -euo pipefail
+jq -cn '{timestamp:"2026-09-24T10:00:00.000Z",repository:"githubnext/gh-aw-cao",valueId:"example",value:1}'\n`);
+  chmodSync(script, 0o755);
+  writeFileSync(output, [
+    JSON.stringify({ schema_version: 2, kind: 'operational_value', operational_value: {
+      timestamp: '2026-08-01T10:00:00.000Z', repository: 'githubnext/gh-aw-cao', value_id: 'old', value: 1
+    } }),
+    JSON.stringify({ schema_version: 2, kind: 'operational_value', operational_value: {
+      timestamp: '2026-09-20T10:00:00.000Z', repository: 'githubnext/gh-aw-cao', value_id: 'retained', value: 1
+    } })
+  ].join('\n'));
+
+  execFileSync(process.execPath, [
+    cao, 'operational-value', '--database', path.join(temporary, 'dashboard.sqlite'),
+    '--root', temporary, '--output', output, '--timestamp', '2026-09-24T10:00:00Z',
+    '--repository', 'githubnext/gh-aw-cao', '--retention-days', '30'
+  ]);
+  const envelopes = readFileSync(output, 'utf8').trim().split('\n').map(JSON.parse);
+  assert.deepEqual(envelopes.map((entry) => entry.operational_value.value_id), ['retained', 'example']);
+
+  writeFileSync(script, `#!/usr/bin/env bash
+cat >/dev/null
+printf '%s\\n' '{"timestamp":"2026-09-24T10:00:00Z","repository":"githubnext/gh-aw-cao","valueId":"invalid","value":null}'\n`);
+  assert.throws(() => execFileSync(process.execPath, [
+    cao, 'operational-value', '--database', path.join(temporary, 'dashboard.sqlite'),
+    '--root', temporary, '--repository', 'githubnext/gh-aw-cao'
+  ], { stdio: 'pipe' }), /must be a finite number/);
+});
