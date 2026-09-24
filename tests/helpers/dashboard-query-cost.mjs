@@ -9,9 +9,11 @@
  * CI without a browser.
  */
 import { DatabaseSync } from "node:sqlite";
+import { execFileSync } from "node:child_process";
 import { copyFile, mkdtemp, readFile, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { analyzeDashboardComplexity } from "../../activity/dashboard-complexity.mjs";
 import {
@@ -28,6 +30,8 @@ import {
   DATABASE_VERSION,
 } from "../../dashboard/site/src/data/storage/indexeddb.js";
 import { installSqliteIndexedDB } from "../../dashboard/site/src/data/storage/sqlite-indexeddb.js";
+
+const CAO_CLI = fileURLToPath(new URL("../../activity/cao.mjs", import.meta.url));
 
 export const DEFAULT_QUERY_COST_CANDIDATES = 10;
 // Generous bounds: the benchmark measures cost instead of enforcing the
@@ -63,13 +67,55 @@ export function readSnapshotDatabaseVersion(databasePath) {
 }
 
 /**
- * Copies the snapshot and installs the SQLite-backed IndexedDB shim over the
- * copy, returning a disposer that removes it and restores the previously
- * installed globals.
+ * Locates the deployed JSONL payload directories published alongside the
+ * SQLite snapshot. Canonical data is a derived cache, so these shards are the
+ * authoritative input the snapshot is built from.
  *
- * Opening the canonical database deletes every object store when the stored
- * schema version is older than `DATABASE_VERSION`, so measuring the downloaded
- * file directly would destroy it and silently report an empty projection.
+ * @param {string} databasePath
+ */
+export function deployedPayloadSources(databasePath) {
+  const directory = path.dirname(path.resolve(databasePath));
+  const runs = path.join(directory, "gh-aw-logs-runs");
+  const records = path.join(directory, "gh-aw-logs-records");
+  if (existsSync(runs) && existsSync(records)) {
+    return { kind: "phased", arguments: ["--runs-dir", runs, "--records-dir", records] };
+  }
+  const shards = path.join(directory, "gh-aw-logs-shards");
+  if (existsSync(shards)) {
+    return { kind: "shards", arguments: ["--input-dir", shards] };
+  }
+  return null;
+}
+
+/**
+ * Rebuilds a canonical database at the current schema version from the
+ * deployed JSONL payloads using the shipped ingestion path.
+ *
+ * @param {ReturnType<typeof deployedPayloadSources>} payloads
+ * @param {string} destination
+ */
+function rebuildCanonicalDatabase(payloads, destination) {
+  execFileSync(process.execPath, [
+    CAO_CLI,
+    "ingest-jsonl",
+    "--database", destination,
+    ...(payloads?.arguments ?? []),
+    "--retention-days", "all",
+    "--run-retention-days", "all",
+  ], { stdio: ["ignore", "ignore", "pipe"] });
+}
+
+/**
+ * Prepares a measurable canonical database and installs the SQLite-backed
+ * IndexedDB shim over it, returning a disposer that removes the working copy
+ * and restores the previously installed globals.
+ *
+ * The snapshot is never opened in place: opening the canonical database
+ * deletes every object store when the stored schema version is older than
+ * `DATABASE_VERSION`, so measuring the downloaded file directly would destroy
+ * it and silently report an empty projection. When the published snapshot
+ * lags the reader, the deployed JSONL payloads are re-ingested at the current
+ * schema version so the benchmark still measures real deployed data.
  *
  * @param {string} databasePath
  */
@@ -77,14 +123,30 @@ export async function openDeployedDatabase(databasePath) {
   const previousIndexedDB = globalThis.indexedDB;
   const previousKeyRange = globalThis.IDBKeyRange;
   const directory = await mkdtemp(path.join(tmpdir(), "cao-query-cost-snapshot-"));
-  const copy = path.join(directory, "snapshot.sqlite");
-  if (existsSync(path.resolve(databasePath))) {
-    await copyFile(path.resolve(databasePath), copy);
+  const working = path.join(directory, "snapshot.sqlite");
+  const snapshot = path.resolve(databasePath);
+  const version = readSnapshotDatabaseVersion(snapshot);
+  const payloads = version === DATABASE_VERSION ? null : deployedPayloadSources(snapshot);
+  let rebuilt = false;
+  let rebuildFailure;
+  if (payloads) {
+    try {
+      rebuildCanonicalDatabase(payloads, working);
+      rebuilt = true;
+    } catch (error) {
+      rebuildFailure = error instanceof Error ? error.message : String(error);
+      await rm(working, { force: true });
+    }
   }
-  const indexedDB = installSqliteIndexedDB(copy);
+  if (!rebuilt && existsSync(snapshot)) {
+    await copyFile(snapshot, working);
+  }
+  const indexedDB = installSqliteIndexedDB(working);
   return {
     indexedDB,
-    path: copy,
+    path: working,
+    rebuilt,
+    ...(rebuildFailure ? { rebuildFailure } : {}),
     async close() {
       globalThis.indexedDB = previousIndexedDB;
       globalThis.IDBKeyRange = previousKeyRange;
@@ -289,6 +351,8 @@ export async function benchmarkDashboardQueryCost({ databasePath, document, limi
         "snapshot-version": snapshotVersion,
         "expected-version": DATABASE_VERSION,
         "version-compatible": snapshotVersion === DATABASE_VERSION,
+        "rebuilt-from-payloads": database.rebuilt,
+        ...(database.rebuildFailure ? { "rebuild-error": database.rebuildFailure } : {}),
       },
       "static-model": analysis.summary.model,
       "static-materialize-all-row-read-units": analysis.summary["materialize-all-row-read-units"],
@@ -353,12 +417,20 @@ export function dashboardQueryCostMarkdown(report) {
   const expectedVersion = report.database["expected-version"];
   const versionDiagnostic = report.database["version-compatible"]
     ? []
-    : [
-      "",
-      snapshotVersion === null
-        ? `> The snapshot records no canonical schema version, so it is not a canonical dashboard database. The reader expects version ${expectedVersion}.`
-        : `> The snapshot was written at canonical schema version **${snapshotVersion}** but the reader expects **${expectedVersion}**. Opening an older snapshot rebuilds the canonical stores from scratch, which discards every record; republish the deployed data from the current schema.`,
-    ];
+    : report.database["rebuilt-from-payloads"]
+      ? [
+        "",
+        `> The published snapshot is at canonical schema version **${snapshotVersion ?? "unknown"}** while the reader expects **${expectedVersion}**, so the canonical database was rebuilt from the deployed JSONL payloads before measuring. Republish the deployed snapshot from the current schema to measure it directly.`,
+      ]
+      : [
+        "",
+        snapshotVersion === null
+          ? `> The snapshot records no canonical schema version, so it is not a canonical dashboard database. The reader expects version ${expectedVersion}.`
+          : `> The snapshot was written at canonical schema version **${snapshotVersion}** but the reader expects **${expectedVersion}**. Opening an older snapshot rebuilds the canonical stores from scratch, which discards every record; republish the deployed data from the current schema.`,
+        ...(report.database["rebuild-error"]
+          ? [`> Rebuilding from the deployed JSONL payloads failed: ${report.database["rebuild-error"]}`]
+          : ["> The deployed JSONL payloads were not available to rebuild the canonical database."]),
+      ];
   return [
     "## Dashboard query cost (deployed SQLite snapshot)",
     "",

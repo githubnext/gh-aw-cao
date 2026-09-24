@@ -112,19 +112,33 @@ test("benchmark reports an empty snapshot instead of an all-zero measurement", a
   );
 });
 
-test("benchmark reads an outdated snapshot without destroying it", async (t) => {
+/** Rewrites a snapshot's recorded schema version to simulate lagging data. */
+function downgradeSnapshot(database, version) {
+  const connection = new DatabaseSync(database);
+  connection.prepare("UPDATE __idb_databases SET version = ?").run(version);
+  connection.close();
+  const reader = new DatabaseSync(database, { readOnly: true });
+  const records = Number(reader.prepare("SELECT count(*) AS c FROM __idb_records").get().c);
+  reader.close();
+  return records;
+}
+
+/** Asserts the downloaded snapshot was neither emptied nor upgraded in place. */
+function assertSnapshotIntact(database, records, version) {
+  const after = new DatabaseSync(database, { readOnly: true });
+  assert.equal(Number(after.prepare("SELECT count(*) AS c FROM __idb_records").get().c), records);
+  assert.equal(Number(after.prepare("SELECT version FROM __idb_databases").get().version), version);
+  after.close();
+}
+
+test("benchmark rebuilds an outdated snapshot from the deployed payloads", async (t) => {
   const { root, database } = await syntheticSnapshot();
   t.after(() => rm(root, { recursive: true, force: true }));
   const outdated = DATABASE_VERSION - 1;
-  const connection = new DatabaseSync(database);
-  connection.prepare("UPDATE __idb_databases SET version = ?").run(outdated);
-  connection.close();
-  const before = new DatabaseSync(database, { readOnly: true });
-  const records = Number(before.prepare("SELECT count(*) AS c FROM __idb_records").get().c);
-  before.close();
+  const records = downgradeSnapshot(database, outdated);
   assert.ok(records > 0);
-
   assert.equal(readSnapshotDatabaseVersion(database), outdated);
+
   const report = await benchmarkDashboardQueryCost({
     databasePath: database,
     document: dashboardDocument,
@@ -132,6 +146,31 @@ test("benchmark reads an outdated snapshot without destroying it", async (t) => 
   });
   assert.equal(report.database["snapshot-version"], outdated);
   assert.equal(report.database["version-compatible"], false);
+  // The published snapshot lags the reader after a schema bump, so the
+  // authoritative JSONL payloads are re-ingested instead of measuring nothing.
+  assert.equal(report.database["rebuilt-from-payloads"], true);
+  assert.ok(report.database["records-read"] > 0);
+  assert.match(
+    dashboardQueryCostMarkdown(report),
+    /rebuilt from the deployed JSONL payloads before measuring/,
+  );
+
+  assertSnapshotIntact(database, records, outdated);
+});
+
+test("benchmark reports an outdated snapshot it cannot rebuild", async (t) => {
+  const { root, database } = await syntheticSnapshot();
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await rm(path.join(root, "gh-aw-logs-shards"), { recursive: true, force: true });
+  const outdated = DATABASE_VERSION - 1;
+  const records = downgradeSnapshot(database, outdated);
+
+  const report = await benchmarkDashboardQueryCost({
+    databasePath: database,
+    document: dashboardDocument,
+    limit: 2,
+  });
+  assert.equal(report.database["rebuilt-from-payloads"], false);
   assert.ok(
     dashboardQueryCostMarkdown(report)
       .includes(`written at canonical schema version **${outdated}** but the reader expects **${DATABASE_VERSION}**`),
@@ -139,8 +178,5 @@ test("benchmark reads an outdated snapshot without destroying it", async (t) => 
 
   // Opening an outdated canonical database rebuilds its stores, so the
   // benchmark must measure a copy and leave the downloaded snapshot intact.
-  const after = new DatabaseSync(database, { readOnly: true });
-  assert.equal(Number(after.prepare("SELECT count(*) AS c FROM __idb_records").get().c), records);
-  assert.equal(Number(after.prepare("SELECT version FROM __idb_databases").get().version), outdated);
-  after.close();
+  assertSnapshotIntact(database, records, outdated);
 });
