@@ -8627,6 +8627,103 @@
         ]
       },
       {
+        "name": "cost-by-campaign",
+        "intent": "Present observed AI Credit cost grouped by centrally managed campaign.",
+        "from": "campaign-inventory",
+        "select": [
+          {
+            "field": "campaign-name"
+          },
+          {
+            "field": "aic"
+          }
+        ],
+        "order-by": [
+          {
+            "field": "aic",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
+        "name": "cost-by-repository",
+        "intent": "Present observed AI Credit cost grouped by repository.",
+        "from": "repository-aic-totals",
+        "compute": [
+          {
+            "as": "repository-coordinate",
+            "function": "concat",
+            "args": [
+              {
+                "field": "organization"
+              },
+              {
+                "value": "/"
+              },
+              {
+                "field": "repository"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "repository-coordinate"
+          },
+          {
+            "field": "aic"
+          }
+        ],
+        "order-by": [
+          {
+            "field": "aic",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
+        "name": "cost-by-workflow",
+        "intent": "Present observed AI Credit cost grouped by repository-owned workflow.",
+        "from": "workflow-aic-totals",
+        "compute": [
+          {
+            "as": "workflow-coordinate",
+            "function": "concat",
+            "args": [
+              {
+                "field": "organization"
+              },
+              {
+                "value": "/"
+              },
+              {
+                "field": "repository"
+              },
+              {
+                "value": ":"
+              },
+              {
+                "field": "workflow"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "workflow-coordinate"
+          },
+          {
+            "field": "aic"
+          }
+        ],
+        "order-by": [
+          {
+            "field": "aic",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
         "name": "maintenance-repository-versions",
         "intent": "Group installed and current gh-aw compiler versions and upgrade evidence by repository.",
         "from": "workflows",
@@ -12757,6 +12854,91 @@
         ]
       },
       {
+        "id": "cost",
+        "kind": "custom",
+        "title": "Cost",
+        "navigation-label": "Cost",
+        "icon": "graph",
+        "description": "Observed AI Credit cost across campaigns, repositories, and workflows.",
+        "views": [
+          {
+            "id": "cost-by-campaign",
+            "title": "AIC cost per campaign",
+            "description": "The share of observed AI Credit cost attributed to each centrally managed campaign.",
+            "data": {
+              "source": "cost-by-campaign"
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "layout": "full",
+            "empty-message": "No campaign AI Credit cost was observed.",
+            "encoding": {
+              "x": {
+                "field": "campaign-name",
+                "type": "nominal",
+                "title": "Campaign"
+              },
+              "y": {
+                "field": "aic",
+                "type": "quantitative",
+                "title": "AIC cost",
+                "unit": "aic"
+              }
+            }
+          },
+          {
+            "id": "cost-by-repository",
+            "title": "AIC cost per repository",
+            "description": "The share of observed AI Credit cost attributed to each repository.",
+            "data": {
+              "source": "cost-by-repository"
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "layout": "full",
+            "empty-message": "No repository AI Credit cost was observed.",
+            "encoding": {
+              "x": {
+                "field": "repository-coordinate",
+                "type": "nominal",
+                "title": "Repository"
+              },
+              "y": {
+                "field": "aic",
+                "type": "quantitative",
+                "title": "AIC cost",
+                "unit": "aic"
+              }
+            }
+          },
+          {
+            "id": "cost-by-workflow",
+            "title": "AIC cost per workflow",
+            "description": "The share of observed AI Credit cost attributed to each workflow.",
+            "data": {
+              "source": "cost-by-workflow"
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "layout": "full",
+            "empty-message": "No workflow AI Credit cost was observed.",
+            "encoding": {
+              "x": {
+                "field": "workflow-coordinate",
+                "type": "nominal",
+                "title": "Workflow"
+              },
+              "y": {
+                "field": "aic",
+                "type": "quantitative",
+                "title": "AIC cost",
+                "unit": "aic"
+              }
+            }
+          }
+        ]
+      },
+      {
         "id": "notifications",
         "kind": "custom",
         "class-name": "notifications-page",
@@ -13069,6 +13251,7 @@
           "workflows",
           "runs",
           "issues",
+          "cost",
           "engines-models",
           "firewall",
           "mcps"
