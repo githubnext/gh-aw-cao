@@ -44,7 +44,7 @@ const lines = source.split("\n");
 const includesIndex = lines.findIndex((line) => line === "includes:");
 if (includesIndex < 0) fail(`${campaign}/aw.yml has no includes list`);
 let insertIndex = includesIndex + 1;
-while (insertIndex < lines.length && (/^\s+-\s+/.test(lines[insertIndex]) || lines[insertIndex] === "")) {
+while (insertIndex < lines.length && /^\s+-\s+/.test(lines[insertIndex])) {
   insertIndex += 1;
 }
 const required = [

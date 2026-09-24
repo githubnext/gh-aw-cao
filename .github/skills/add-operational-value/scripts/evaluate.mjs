@@ -61,7 +61,12 @@ if (definition.repository.toLowerCase() !== repository.toLowerCase() || definiti
 
 const mode = definition.evaluation?.mode ?? "baseline-comparable";
 const preAdoptionPeriods = mode === "attainment-only" ? 0 : 3;
-const startAt = shiftDays(definition.adoption.adoptedAt, -definition.evidence.window.cadenceDays * preAdoptionPeriods);
+const startAt = mode === "attainment-only"
+  ? shiftDays(
+    definition.adoption.adoptedAt,
+    definition.evidence.window.durationDays + definition.evidence.window.maturationDays,
+  )
+  : shiftDays(definition.adoption.adoptedAt, -definition.evidence.window.cadenceDays * preAdoptionPeriods);
 if (Date.parse(endAt) <= Date.parse(startAt)) fail(`evaluation end must follow ${startAt}`);
 const initialSha = sha256File(valueFunction);
 let archive = { schemaVersion: 1, repository, workflowSlug, functions: {} };
