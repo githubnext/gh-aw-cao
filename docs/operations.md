@@ -142,7 +142,7 @@ Optional observability imports for Sentry, Grafana, and Datadog configure export
 
 Every orchestrator emits a `central-agentic-ops.dispatcher.run` span after normalized agent output is available. Its attributes contain only the campaign, policy state, limits, and aggregate candidate, requested dispatch, target, workflow, and incomplete counts; target names, workflow inputs, run URLs, and error payloads are excluded. A `requested` status records dispatch intent before safe-output handlers call the GitHub API. Use gh-aw outcome spans and GitHub Actions run history to determine dispatch success or failure.
 
-## Publishing Reviewed Operation Issues
+## Publishing Reviewed Campaign Issues
 
 The optional Ops Publish add-on turns an explicit human label into a deterministic issue publication without rerunning AI. It remains outside the Agentic Workflow campaign catalog: copy `ops-publish/ops-publish.yml` and `ops-publish/ops-publish.mjs` from a pinned catalog revision into the private repository that receives review issues.
 
@@ -202,7 +202,7 @@ The Activity workflow restores its log cache, runs one bounded `gh aw logs --aud
 
 Target repository Git history, Actions run metadata, and accepted evidence are the reconstructable authority for operational value. gh-aw's local weekly shards and the installed control repository's Actions observation cache are accelerators, not archives; either may be deleted or evicted. The current Pages artifact is a presentation snapshot. No private organization-specific observation ledger belongs in the public catalog. Organizations that require an independently durable derived archive must persist the versioned observation records in an access-controlled control-plane data store and retain their source identity and evidence lineage.
 
-Repository pages are outcome projections, not campaign projections. Reports and operational-value insights are grouped by their subject repository whether they were produced by a repository-local workflow or by a centrally executed worker. The report retains the producer identity `(runtime_repository, workflow_path)`, the durable output repository, and optional operation membership as separate provenance. Local Actions health and AI Credit usage remain labeled as local execution data; a central worker run is not counted as a target repository run.
+Repository pages are outcome projections, not campaign projections. Reports and operational-value insights are grouped by their subject repository whether they were produced by a repository-local workflow or by a centrally executed worker. The report retains the producer identity `(runtime_repository, workflow_path)`, the durable output repository, and optional campaign membership as separate provenance. Local Actions health and AI Credit usage remain labeled as local execution data; a central worker run is not counted as a target repository run.
 
 Collection is bounded by the configured repository scope and available credentials. Inaccessible downstream repositories are reported as incomplete coverage rather than inferred from another source. Cross-repository private collection therefore requires the deliberately scoped GitHub App extension described above.
 
@@ -295,7 +295,7 @@ credential_action: app-installation-revoked
 
 Do not include tokens, private keys, or secret values in the incident record.
 
-If shared authentication or shared control caused the incident, perform the control-plane-wide emergency stop. Otherwise, preserve unaffected campaign operation.
+If shared authentication or shared control caused the incident, perform the control-plane-wide emergency stop. Otherwise, preserve unaffected campaigns.
 
 ## Update CAO
 

@@ -3,11 +3,11 @@ title: Glossary
 description: Definitions for Central Agentic Ops terminology.
 ---
 
-CAO names the work from the operator's point of view and preserves the canonical [GitHub Agentic Workflows terminology](https://github.github.com/gh-aw/reference/glossary/) for its implementation. An **operation** is the capability being supervised. A **coordinator** selects work for that operation, a **worker** performs one bounded task, and an **AI agent** reasons within an agentic workflow through a selected engine. An **operator** is always a person.
+CAO names the work from the operator's point of view and preserves the canonical [GitHub Agentic Workflows terminology](https://github.github.com/gh-aw/reference/glossary/) for its implementation. A **campaign** is the capability being supervised. A **coordinator** selects work for that campaign, a **worker** performs one bounded task, and an **AI agent** reasons within an agentic workflow through a selected engine. An **operator** is always a person.
 
 ```text
 human operator
-  └─ supervises operation
+  └─ supervises campaign
 	  ├─ coordinator (orchestrator workflow)
 	  │    └─ dispatches work
 	  └─ worker workflow
@@ -16,7 +16,7 @@ human operator
 
 ## AI agent
 
-The reasoning component that interprets an agentic workflow's instructions, uses its configured tools, and generates outputs from repository context. GitHub Actions runs the AI agent through a selected engine. An AI agent is not the operation itself or the human supervising it. See the canonical gh-aw definition of [AI Agent](https://github.github.com/gh-aw/reference/glossary/#ai-agent).
+The reasoning component that interprets an agentic workflow's instructions, uses its configured tools, and generates outputs from repository context. GitHub Actions runs the AI agent through a selected engine. An AI agent is not the campaign itself or the human supervising it. See the canonical gh-aw definition of [AI Agent](https://github.github.com/gh-aw/reference/glossary/#ai-agent).
 
 ## Agentic workflow smell
 
@@ -24,7 +24,11 @@ An evidence-backed warning that a workflow may be harder to control, secure, ope
 
 ## Automation
 
-A general description for work performed with limited manual intervention. Automation is not a distinct CAO entity or workflow role. Prefer the specific term **operation**, **coordinator**, **worker**, or **run** when naming something in the product or documentation.
+A general description for work performed with limited manual intervention. Automation is not a distinct CAO entity or workflow role. Prefer the specific term **campaign**, **coordinator**, **worker**, or **run** when naming something in the product or documentation.
+
+## Campaign
+
+A bounded repository-management capability that an operator configures, supervises, and evaluates, together with its distributable workflows, shared dependencies, and manifest. A campaign is implemented by one coordinator and one or more workers. Examples include Dependabot review, workflow optimization, and compliance assessment.
 
 ## Canonical data
 
@@ -32,7 +36,7 @@ The consistent entities, identities, and relationships produced by applying the 
 
 ## Coordinator
 
-The CAO operator-facing name for the workflow that selects and dispatches work for an operation. The canonical gh-aw term is [Orchestrator Workflow](https://github.github.com/gh-aw/reference/glossary/#orchestrator-workflow). Workflow source, policy, campaign manifests, and other technical contracts use the role name `orchestrator`.
+The CAO operator-facing name for the workflow that selects and dispatches work for a campaign. The canonical gh-aw term is [Orchestrator Workflow](https://github.github.com/gh-aw/reference/glossary/#orchestrator-workflow). Workflow source, policy, campaign manifests, and other technical contracts use the role name `orchestrator`.
 
 ## Control plane
 
@@ -48,23 +52,19 @@ A reusable result declared in `dashboard.queries` as a closed, structured projec
 
 ## Dispatch
 
-The bounded handoff by which a coordinator starts a worker with one selected target and a resolved control envelope. A dispatch is an event within an operation run, not an operation or agent.
+The bounded handoff by which a coordinator starts a worker with one selected target and a resolved control envelope. A dispatch is an event within a campaign run, not a campaign or agent.
 
 ## Engine
 
-The runtime and provider integration used to execute an AI agent. The engine is selected in workflow frontmatter and is distinct from the agent's reasoning role, the workflow being executed, and the operation being supervised. See the canonical gh-aw definition of [Engine](https://github.github.com/gh-aw/reference/glossary/#engine).
+The runtime and provider integration used to execute an AI agent. The engine is selected in workflow frontmatter and is distinct from the agent's reasoning role, the workflow being executed, and the campaign being supervised. See the canonical gh-aw definition of [Engine](https://github.github.com/gh-aw/reference/glossary/#engine).
 
 ## Live authority
 
-The control repository's exclusive right to admit a `live` worker for an operation and target, decided solely from `.github/workflows/cao.json` at the exact workflow SHA. A target repository's files cannot widen, narrow, or veto this decision.
-
-## Operation
-
-A bounded repository-management capability that an operator configures, supervises, and evaluates. An operation is implemented by one coordinator and one or more workers. Examples include Dependabot review, workflow optimization, and compliance assessment.
+The control repository's exclusive right to admit a `live` worker for a campaign and target, decided solely from `.github/workflows/cao.json` at the exact workflow SHA. A target repository's files cannot widen, narrow, or veto this decision.
 
 ## Operator
 
-A person who configures, supervises, pauses, reviews, or evaluates operations. Do not use **operator** as a synonym for coordinator, orchestrator, worker, or agent.
+A person who configures, supervises, pauses, reviews, or evaluates campaigns. Do not use **operator** as a synonym for coordinator, orchestrator, worker, or agent.
 
 ## Orchestrator
 
@@ -82,17 +82,13 @@ A package-defined, timestamped numeric metric for one repository and campaign. A
 
 The run-scoped result produced by gh-aw's upstream `operational-value` grader protocol. The protocol identifier remains `operational-value` for compatibility, but CAO refers to the resulting grader evidence as an operational grader so it is not confused with package-defined repository operational value.
 
-## Campaign
-
-A distributable collection of an operation's workflows, shared dependencies, and manifest.
-
 ## Run
 
 One execution of a coordinator, worker, or standalone workflow. A coordinator run may produce many dispatches; each dispatch starts a separate worker run. A run records activity and evidence, but successful completion alone does not prove operational value. Use **run** rather than **session**: a run is the canonical execution entity, and canonical Domain, Tool, Audit, and Issue records link directly to it.
 
 ## Rollout mode
 
-The effective mode in which an operation runs for an admitted target: `review`, `live`, or `unknown` when retained evidence does not identify the mode. Review mode directs safe outputs to a review destination; live mode requires explicit authority in the control repository's reviewed policy.
+The effective mode in which a campaign runs for an admitted target: `review`, `live`, or `unknown` when retained evidence does not identify the mode. Review mode directs safe outputs to a review destination; live mode requires explicit authority in the control repository's reviewed policy.
 
 ## Safe output
 
@@ -100,8 +96,8 @@ A declared, bounded way for a workflow to produce an external effect, such as cr
 
 ## Target repository
 
-A repository enrolled for an operation. A target can provide data and receive declared safe outputs, but does not run the control plane's workflows and does not declare live authority in its own files.
+A repository enrolled for a campaign. A target can provide data and receive declared safe outputs, but does not run the control plane's workflows and does not declare live authority in its own files.
 
 ## Worker
 
-A workflow that receives one selected target and performs one bounded task for an operation. Workers revalidate their control envelope and can only narrow the policy they receive. **Worker** is both the operator-facing and technical term; it is not synonymous with AI agent or engine because it describes the workflow's role. See the canonical gh-aw definition of [Worker Workflow](https://github.github.com/gh-aw/reference/glossary/#worker-workflow).
+A workflow that receives one selected target and performs one bounded task for a campaign. Workers revalidate their control envelope and can only narrow the policy they receive. **Worker** is both the operator-facing and technical term; it is not synonymous with AI agent or engine because it describes the workflow's role. See the canonical gh-aw definition of [Worker Workflow](https://github.github.com/gh-aw/reference/glossary/#worker-workflow).

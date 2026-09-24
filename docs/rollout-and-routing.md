@@ -1,21 +1,21 @@
 ---
-title: Roll Out an Operation Safely
-description: Promote one operation from review through limited and scheduled live operation.
+title: Roll Out a Campaign Safely
+description: Promote one campaign from review through limited and scheduled live operation.
 ---
 
-Roll out each operation independently. Begin with one explicit target in `review`, inspect the proposal in the private review repository, and allow target writes only after that bounded scenario succeeds.
+Roll out each campaign independently. Begin with one explicit target in `review`, inspect the proposal in the private review repository, and allow target writes only after that bounded scenario succeeds.
 
 ## Promotion at a Glance
 
-1. Run the installed operation in `review` against one target.
+1. Run the installed campaign in `review` against one target.
 2. Verify the private review destination changed and the target did not.
 3. Run one low-risk target in `live` and verify the resulting output and downstream checks.
-4. Enable scheduled live operation with `max_repos` kept small.
+4. Enable the scheduled live campaign with `max_repos` kept small.
 5. Increase limits only from observed evidence.
 
 Set the campaign's checked-in `enabled` field to `false` whenever authentication, routing, output quality, cost, or provenance is uncertain. Resume in `review` after correcting the issue.
 
-![A control plane promotes bounded operations from review to live across organization repositories.](assets/control-plane-scale.svg)
+![A control plane promotes bounded campaigns from review to live across organization repositories.](assets/control-plane-scale.svg)
 
 ```text
 review --approve--> limited live --observe--> scheduled live
@@ -24,7 +24,7 @@ review --approve--> limited live --observe--> scheduled live
                   uncertainty: disable, then review
 ```
 
-## Operation-Level Control
+## Campaign-Level Control
 
 Each campaign under `control-plane.campaigns` has its own mode and limits. Review safe outputs route to the current control-plane repository unless a manual run supplies an allowed `safe_output_repo`. This is the primary unit of gradual rollout.
 
@@ -39,7 +39,7 @@ Each campaign under `control-plane.campaigns` has its own mode and limits. Revie
 | Worker kill switch | `workers.<worker>.enabled` | `true` |
 | Optional worker mode ceiling | `workers.<worker>.max-mode` | Inherit campaign or exact-target mode |
 
-Changing one operation does not change another. For example, Dependabot may be live while Optimization remains in review.
+Changing one campaign does not change another. For example, Dependabot may be live while Optimization remains in review.
 
 An exact campaign target can advance independently while the campaign remains in review elsewhere:
 
@@ -66,16 +66,16 @@ Automatic discovery scans at most `control-plane.inventory.max-scan-repositories
 
 ### Live Authority Check
 
-The control repository's `.github/workflows/cao.json` is the sole live-activation decision marker. Before promoting an operation to `live`, operators must declare the campaign mode, worker ceiling, allowed owner or exact repository, and any target-specific mode in that policy. Workers resolve it at the exact workflow SHA, so a target repository cannot widen, narrow, or veto the decision by adding, changing, or removing its own files.
+The control repository's `.github/workflows/cao.json` is the sole live-activation decision marker. Before promoting a campaign to `live`, operators must declare the campaign mode, worker ceiling, allowed owner or exact repository, and any target-specific mode in that policy. Workers resolve it at the exact workflow SHA, so a target repository cannot widen, narrow, or veto the decision by adding, changing, or removing its own files.
 
-If an enterprise and organization runtime both select the same target and operation, keep both in `review` until operators choose one control repository and remove live scope from the other. Do not rely on run timing or workflow concurrency to resolve the conflict. Separate control repositories have independent queues and kill switches.
+If an enterprise and organization runtime both select the same target and campaign, keep both in `review` until operators choose one control repository and remove live scope from the other. Do not rely on run timing or workflow concurrency to resolve the conflict. Separate control repositories have independent queues and kill switches.
 
 ## Modes
 
 | Mode | Target behavior | Intended use |
 | --- | --- | --- |
 | `review` | safe outputs route to the current control-plane repository, with an optional manual `safe_output_repo` override | Human review of proposed effects before target mutation |
-| `live` | Declared worker workflow safe outputs may write to the selected target | Production operation after promotion gates pass |
+| `live` | Declared worker workflow safe outputs may write to the selected target | Production campaign after promotion gates pass |
 
 Review mode is the installation default. It resolves its destination from the manual `safe_output_repo` workflow input, then `github.repository`.
 
@@ -118,18 +118,18 @@ safe_output_repo: ""
 
 ## Promotion Plan
 
-Promote each operation independently:
+Promote each campaign independently:
 
 1. **Installed in review**: credentials and repository access are configured; proposals route to the private review destination without target writes.
 2. **Review verified**: run against one representative repository; inspect selection, prompts, permissions, correlation data, and the actionable proposal. For a Pages report, also verify that the access-controlled review site updates and production Pages does not.
 3. **Enrolled**: record target-owner approval and commit the assigned control repository to the target's protected `.github/workflows/cao.json`.
-4. **Limited live**: confirm no other control repository has live authority for the same operation, then manually target one low-risk repository and verify the resulting safe output and downstream CI. For a Pages report, verify the production site update independently of the review site.
-5. **Scheduled live**: enable scheduled operation with `max_repos` kept small, then increase limits only from observed evidence.
+4. **Limited live**: confirm no other control repository has live authority for the same campaign, then manually target one low-risk repository and verify the resulting safe output and downstream CI. For a Pages report, verify the production site update independently of the review site.
+5. **Scheduled live**: enable the scheduled campaign with `max_repos` kept small, then increase limits only from observed evidence.
 
 Promotion evidence should cover successful authentication, correct target selection, safe output routing, no unexpected writes, worker workflow completion, useful safe output quality, and acceptable AI Credit consumption.
 
 :::tip[Promote evidence, not elapsed time]
-An operation does not become safer because it remained in a mode for several days. Promote only after a representative run satisfies that mode's checks.
+A campaign does not become safer because it remained in a mode for several days. Promote only after a representative run satisfies that mode's checks.
 :::
 
 ## Rollback
@@ -143,6 +143,6 @@ The first rollback action is to set the affected campaign's `enabled` field to `
 5. otherwise, correct the affected policy or worker behavior and compile every affected workflow;
 6. re-enable the campaign in review mode and repeat promotion gates.
 
-Do not reduce another operation's mode unless the incident involves shared authentication or shared control behavior.
+Do not reduce another campaign's mode unless the incident involves shared authentication or shared control behavior.
 
-If two runtimes were found mutating the same `(target repository, operation)` pair, disable that operation in every conflicting control repository, cancel active runs, and assign one live authority before resuming in review. Stopping only one runtime is insufficient until its queued and in-progress runs are also canceled.
+If two runtimes were found mutating the same `(target repository, campaign)` pair, disable that campaign in every conflicting control repository, cancel active runs, and assign one live authority before resuming in review. Stopping only one runtime is insufficient until its queued and in-progress runs are also canceled.
