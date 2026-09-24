@@ -7974,6 +7974,93 @@
         }
       },
       {
+        "name": "campaign-operational-value-plot-inventory",
+        "intent": "Describe each rendered operational-value plot using the shared campaign Insights plot contract.",
+        "description": "One plot-inventory row for every operational-value measure or diagnostic rendered on campaign Insights.",
+        "from": "campaign-operational-value-series"
+      },
+      {
+        "name": "campaign-audit-summary-plot-inventory",
+        "intent": "Describe the rendered audit-summary chart using the shared campaign Insights plot contract.",
+        "description": "One plot-inventory row per campaign when its high- and medium-severity audit summary chart has data.",
+        "from": "audit-event-summary-buckets",
+        "aggregate": {
+          "by": [
+            "campaign"
+          ],
+          "values": [
+            {
+              "field": "event-summary",
+              "as": "buckets",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "campaign-insight-plot-inventory",
+        "intent": "Inventory every plot rendered on each campaign Insights page through one reusable plot contract.",
+        "description": "One campaign row per rendered Insights plot, independent of the plot's data source or renderer.",
+        "from": "campaign-operational-value-plot-inventory",
+        "union": [
+          "campaign-audit-summary-plot-inventory"
+        ]
+      },
+      {
+        "name": "campaign-insight-tab-counts",
+        "intent": "Count the plots declared by the shared campaign Insights plot inventory.",
+        "description": "One campaign row with the number of rendered Insights plots, independent of plot type.",
+        "from": "campaign-insight-plot-inventory",
+        "aggregate": {
+          "by": [
+            "campaign"
+          ],
+          "values": [
+            {
+            "field": "campaign",
+              "as": "items",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "campaign-problem-tab-counts",
+        "intent": "Count the current runtime problem items available for each campaign Problems tab.",
+        "description": "One campaign row with the number of current runtime problem groups.",
+        "from": "campaign-problem-items",
+        "aggregate": {
+          "by": [
+            "campaign"
+          ],
+          "values": [
+            {
+              "field": "campaign",
+              "as": "items",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "campaign-issue-tab-counts",
+        "intent": "Count the retained worker issues available for each campaign Issues tab.",
+        "description": "One campaign row with the number of retained issue outcomes produced by campaign workers.",
+        "from": "campaign-worker-issues",
+        "aggregate": {
+          "by": [
+            "campaign"
+          ],
+          "values": [
+            {
+              "field": "campaign",
+              "as": "items",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
         "name": "campaign-operational-value-totals",
         "intent": "Summarize the operational value created by each centrally managed campaign.",
         "description": "Observed operational value totals attributed to centrally managed campaign workflows.",
@@ -10273,10 +10360,9 @@
             "data": {
               "sources": [
                 "workflows",
-                "audit-events",
-                "campaign-problem-items",
-                "campaign-runs",
-                "campaign-worker-issues"
+                "campaign-insight-tab-counts",
+                "campaign-problem-tab-counts",
+                "campaign-issue-tab-counts"
               ],
               "arguments": [
                 {
@@ -10434,10 +10520,9 @@
             "data": {
               "sources": [
                 "workflows",
-                "audit-events",
-                "campaign-problem-items",
-                "campaign-runs",
-                "campaign-worker-issues"
+                "campaign-insight-tab-counts",
+                "campaign-problem-tab-counts",
+                "campaign-issue-tab-counts"
               ],
               "arguments": [
                 {
@@ -10569,10 +10654,9 @@
             "data": {
               "sources": [
                 "workflows",
-                "audit-events",
-                "campaign-problem-items",
-                "campaign-runs",
-                "campaign-worker-issues"
+                "campaign-insight-tab-counts",
+                "campaign-problem-tab-counts",
+                "campaign-issue-tab-counts"
               ],
               "arguments": [
                 {
@@ -10707,10 +10791,9 @@
             "data": {
               "sources": [
                 "workflows",
-                "audit-events",
-                "campaign-problem-items",
-                "campaign-runs",
-                "campaign-worker-issues"
+                "campaign-insight-tab-counts",
+                "campaign-problem-tab-counts",
+                "campaign-issue-tab-counts"
               ],
               "arguments": [
                 {
@@ -10933,10 +11016,9 @@
             "data": {
               "sources": [
                 "workflows",
-                "audit-events",
-                "campaign-problem-items",
-                "campaign-runs",
-                "campaign-worker-issues"
+                "campaign-insight-tab-counts",
+                "campaign-problem-tab-counts",
+                "campaign-issue-tab-counts"
               ],
               "arguments": [
                 {

@@ -3,11 +3,9 @@
   "tabs": [
     { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
     { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-    { "id": "runs", "label": "Dispatches", "icon": "play", "page": "campaign-runs" },
-    { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" },
-    { "id": "overview", "label": "Info", "icon": "info", "page": "campaign-detail" }
+    { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
   ],
-  "additional-bodies": ["workflows", "pull-requests", "repositories", "reports"],
+  "additional-bodies": ["overview", "workflows", "runs", "pull-requests", "repositories", "reports"],
   "aliases": {
     "dispatches": "runs"
   }

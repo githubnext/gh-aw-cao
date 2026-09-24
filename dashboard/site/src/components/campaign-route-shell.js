@@ -6,12 +6,12 @@ import { rowsFor } from './source-rows.js';
 import { createRoutePageShell } from './route-page-shell.js';
 import { normalizeCampaignRoute, campaignModeForRoute, campaignNameForRoute } from './campaign-route-composition.js';
 import { CAMPAIGN_ROUTE_TABS } from './route-body-specification.js';
+import { renderEmptyMessage } from './ui-primitives.js';
 
-const CAMPAIGN_TAB_SOURCES = Object.freeze({
-  insights: 'audit-events',
-  problems: 'campaign-problem-items',
-  runs: 'campaign-runs',
-  issues: 'campaign-worker-issues'
+const CAMPAIGN_TAB_COUNT_SOURCES = Object.freeze({
+  insights: 'campaign-insight-tab-counts',
+  problems: 'campaign-problem-tab-counts',
+  issues: 'campaign-issue-tab-counts'
 });
 
 /**
@@ -58,6 +58,23 @@ export function renderCampaignRouteShell(context, config) {
       const workflows = allWorkflows
         .filter((workflow) => campaignId && String(workflow.campaign).toLowerCase() === campaignId.toLowerCase());
       if (workflows.length === 0) {
+        const workflowsSource = context.sources.workflows;
+        const stillCollecting = workflowsSource?.metadata?.availability !== 'unavailable'
+          && workflowsSource?.metadata?.completeness !== 'complete';
+        if (stillCollecting) {
+          const campaignName = campaignNameForRoute(campaignId, workflows);
+          return {
+            allocation: {
+              title: campaignName,
+              description: config.description.replace('{campaignName}', campaignName),
+              navigationPage: 'campaigns'
+            },
+            content: renderEmptyMessage('Loading campaign data...', {
+              role: 'status',
+              'aria-busy': 'true'
+            })
+          };
+        }
         return null;
       }
       const campaignName = campaignNameForRoute(campaignId, workflows);
@@ -79,12 +96,12 @@ export function renderCampaignRouteShell(context, config) {
  * @param {import('./ui-elements.js').ElementRenderContext['sources']} sources
  */
 function campaignTabCounts(campaignId, sources) {
-  return Object.fromEntries(Object.entries(CAMPAIGN_TAB_SOURCES).map(([tabId, sourceName]) => [
-    tabId,
-    rowsFor(sources, sourceName)
-      .filter((row) => String(row.campaign).toLowerCase() === campaignId.toLowerCase())
-      .length
-  ]));
+  return Object.fromEntries(Object.entries(CAMPAIGN_TAB_COUNT_SOURCES).map(([tabId, sourceName]) => {
+    const row = rowsFor(sources, sourceName)
+      .find((candidate) => String(candidate.campaign).toLowerCase() === campaignId.toLowerCase());
+    const count = Number(row?.items);
+    return [tabId, Number.isFinite(count) && count > 0 ? count : 0];
+  }));
 }
 
 /**

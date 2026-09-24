@@ -145,10 +145,9 @@ describe('dashboard view query contracts', () => {
         data: {
           sources: [
             'workflows',
-            'audit-events',
-            'campaign-problem-items',
-            'campaign-runs',
-            'campaign-worker-issues'
+            'campaign-insight-tab-counts',
+            'campaign-problem-tab-counts',
+            'campaign-issue-tab-counts'
           ],
           arguments: [{ name: 'campaign', field: 'campaign' }]
         },

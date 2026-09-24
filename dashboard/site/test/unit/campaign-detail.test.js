@@ -169,28 +169,24 @@ describe('campaign detail route', () => {
     expect(rendered.querySelector('.measure-history')).toBeNull();
   });
 
-  it('renders reusable navigation for the selected campaign workflow view', () => {
+  it('keeps the compatibility Info route outside the reusable campaign tabs', () => {
     const rendered = renderCampaignRouteVariant(context(), 'overview');
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
       detail: { parameter: 'campaign', value: 'ambient-context' }
     }));
 
     expect(rendered.dataset.campaign).toBe('ambient-context');
-    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('InsightsProblemsDispatchesIssuesInfo');
-    expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-campaign-detail?campaign=ambient-context');
+    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('InsightsProblemsIssues');
+    expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')).toBeNull();
     expect([...rendered.querySelectorAll('.campaign-tabs a')].map((link) => link.getAttribute('href'))).toEqual([
       '#page-campaign-insights?campaign=ambient-context',
       '#page-campaign-problems?campaign=ambient-context',
-      '#page-campaign-runs?campaign=ambient-context',
-      '#page-campaign-issues?campaign=ambient-context',
-      '#page-campaign-detail?campaign=ambient-context'
+      '#page-campaign-issues?campaign=ambient-context'
     ]);
     expect([...rendered.querySelectorAll('.campaign-tabs a')].map((link) => link.getAttribute('data-nav-page-id'))).toEqual([
       'campaign-insights',
       'campaign-problems',
-      'campaign-runs',
-      'campaign-issues',
-      'campaign-detail'
+      'campaign-issues'
     ]);
     expect(rendered.querySelector('.campaign-readme h1')?.textContent).toBe('Ambient Context');
     expect(rendered.querySelector('.campaign-readme h2')?.textContent).toBe('Capabilities');
@@ -214,39 +210,29 @@ describe('campaign detail route', () => {
     const base = context();
     const rendered = renderCampaignRouteVariant({
       ...base,
-      sourceNames: ['workflows', 'audit-events', 'campaign-problem-items', 'campaign-runs', 'campaign-worker-issues'],
+      sourceNames: ['workflows', 'campaign-insight-tab-counts', 'campaign-problem-tab-counts', 'campaign-issue-tab-counts'],
       sources: {
         ...base.sources,
-        'audit-events': {
-          source: 'audit-events',
+        'campaign-insight-tab-counts': {
+          source: 'campaign-insight-tab-counts',
           metadata,
           rows: [
-            { campaign: 'ambient-context', event: '1' },
-            { campaign: 'other', event: '2' }
+            { campaign: 'ambient-context', items: 4 },
+            { campaign: 'other', items: 1 }
           ]
         },
-        'campaign-problem-items': {
-          source: 'campaign-problem-items',
+        'campaign-problem-tab-counts': {
+          source: 'campaign-problem-tab-counts',
           metadata,
           rows: [
-            { campaign: 'ambient-context', 'target-repository': 'octo-org/api' },
-            { campaign: 'ambient-context', 'target-repository': 'octo-org/web' }
+            { campaign: 'ambient-context', items: 2 }
           ]
         },
-        'campaign-runs': {
-          source: 'campaign-runs',
+        'campaign-issue-tab-counts': {
+          source: 'campaign-issue-tab-counts',
           metadata,
           rows: [
-            { campaign: 'ambient-context', run: '100' },
-            { campaign: 'ambient-context', run: '101' },
-            { campaign: 'ambient-context', run: '102' }
-          ]
-        },
-        'campaign-worker-issues': {
-          source: 'campaign-worker-issues',
-          metadata,
-          rows: [
-            { campaign: 'ambient-context', 'safe-output': 'issue-1' }
+            { campaign: 'ambient-context', items: 1 }
           ]
         }
       }
@@ -265,11 +251,9 @@ describe('campaign detail route', () => {
       label: link.querySelector('span')?.textContent,
       count: link.querySelector('.count-badge')?.textContent
     }))).toEqual([
-      { label: 'Insights', count: '1' },
+      { label: 'Insights', count: '4' },
       { label: 'Problems', count: '2' },
-      { label: 'Dispatches', count: '3' },
-      { label: 'Issues', count: '1' },
-      { label: 'Info', count: undefined }
+      { label: 'Issues', count: '1' }
     ]);
     expect(allocation).toEqual({
       title: 'Ambient Context',
@@ -326,7 +310,7 @@ describe('campaign detail route', () => {
     }));
 
     expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')).toBeNull();
-    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('InsightsProblemsDispatchesIssuesInfo');
+    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('InsightsProblemsIssues');
   });
 
   describe('workflow run navigation', () => {
@@ -343,7 +327,7 @@ describe('campaign detail route', () => {
         detail: { parameter: 'campaign', value: 'ambient-context' }
       }));
 
-      expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-campaign-runs?campaign=ambient-context');
+      expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')).toBeNull();
       expect(detail).toEqual({
         title: 'Ambient Context',
         description: 'Workflow runs for the Ambient Context campaign.',
@@ -465,6 +449,43 @@ describe('campaign detail route', () => {
       detail: { parameter: 'campaign', value: 'missing' }
     }));
     expect(rendered.textContent).toContain('Campaign not found.');
+  });
+
+  it('keeps a canonical campaign identity while workflow inventory is still loading', () => {
+    const loadingContext = context();
+    const rendered = renderCampaignRouteVariant({
+      ...loadingContext,
+      sources: {
+        ...loadingContext.sources,
+        workflows: {
+          source: 'workflows',
+          rows: [],
+          metadata: {
+            ...metadata,
+            completeness: /** @type {'partial'} */ ('partial')
+          }
+        }
+      }
+    }, 'insights');
+    const host = document.createElement('div');
+    host.append(rendered);
+    let detail;
+    host.addEventListener('dashboard-route-allocation', (event) => {
+      if (event instanceof CustomEvent) detail = event.detail;
+    });
+
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'campaign', value: 'dependabot' }
+    }));
+
+    expect(detail).toEqual({
+      title: 'Dependabot',
+      description: 'Audit events observed for the Dependabot campaign.',
+      navigationPage: 'campaigns'
+    });
+    expect(rendered.textContent).toContain('Loading campaign data...');
+    expect(rendered.textContent).not.toContain('Campaign not found.');
+    expect(rendered.querySelector('[aria-busy="true"]')?.getAttribute('role')).toBe('status');
   });
 
   it('renders the same unavailable state for workflow and report navigation', () => {

@@ -761,8 +761,8 @@ describe('UI elements', () => {
       detail: { parameter: 'campaign', value: 'sample-campaign' }
     }));
 
-    expect(rendered?.querySelector('.campaign-tabs [aria-current="page"]')?.textContent).toBe('Info');
-    expect(rendered?.querySelector('.campaign-tabs')?.textContent).toBe('InsightsProblemsDispatchesIssuesInfo');
+    expect(rendered?.querySelector('.campaign-tabs [aria-current="page"]')).toBeNull();
+    expect(rendered?.querySelector('.campaign-tabs')?.textContent).toBe('InsightsProblemsIssues');
   });
 
   it('renders the campaigns page shell through one declarative element composition', () => {

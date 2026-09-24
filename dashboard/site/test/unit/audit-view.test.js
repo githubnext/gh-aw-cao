@@ -30,10 +30,9 @@ describe('Audit dashboard view', () => {
     expect(insights.views[0].data).toMatchObject({
       sources: [
         'workflows',
-        'audit-events',
-        'campaign-problem-items',
-        'campaign-runs',
-        'campaign-worker-issues'
+        'campaign-insight-tab-counts',
+        'campaign-problem-tab-counts',
+        'campaign-issue-tab-counts'
       ],
       arguments: [{ name: 'campaign', field: 'campaign' }]
     });
@@ -253,6 +252,58 @@ describe('Audit dashboard view', () => {
         'event-summary': 'Repeated finding',
         events: 1
       }
+    ]);
+  });
+
+  it('counts every rendered Insights plot through the shared plot inventory', () => {
+    const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries',
+      queries: dashboard.queries,
+      sourceNames: ['campaign-insight-tab-counts'],
+      sources: {
+        audits: {
+          source: 'audits',
+          rows: [
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'combined.md', event: '1', 'event-type': 'audit.finding', 'event-status': 'high', 'event-summary': 'Repeated finding' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'combined.md', event: '2', 'event-type': 'audit.recommendation', 'event-status': 'medium', 'event-summary': 'Repeated finding' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'audit-only.md', event: '3', 'event-type': 'audit.finding', 'event-status': 'high', 'event-summary': 'Audit-only finding' }
+          ],
+          metadata
+        },
+        tools: { source: 'tools', rows: [], metadata },
+        workflows: {
+          source: 'workflows',
+          rows: [
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'combined.md', campaign: 'combined' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'audit-only.md', campaign: 'audit-only' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'empty.md', campaign: 'empty' }
+          ],
+          metadata
+        },
+        'operational-values': {
+          source: 'operational-values',
+          rows: [{
+            organization: 'githubnext',
+            repository: 'gh-aw-cao',
+            workflow: 'combined.md',
+            run: '1',
+            'observed-at': '2026-09-16T10:00:00Z',
+            'operational-value': 0.75,
+            'operational-value-definition': 'repository-readiness',
+            diagnostics: { quality: 0.85, efficiency: 0.7 },
+            'diagnostic-definitions': [
+              { id: 'quality', name: 'Quality' },
+              { id: 'efficiency', name: 'Efficiency' }
+            ]
+          }],
+          metadata
+        }
+      }
+    }));
+
+    expect(result['campaign-insight-tab-counts'].rows).toEqual([
+      { campaign: 'combined', items: 4 },
+      { campaign: 'audit-only', items: 1 }
     ]);
   });
 });
