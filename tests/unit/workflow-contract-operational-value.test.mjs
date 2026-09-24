@@ -32,6 +32,7 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
     "eu-cra-compliance-security-requirements-auditor-operational-value.sh",
     "eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh",
     "eu-cra-compliance-vulnerability-handling-auditor-operational-value.sh",
+    "optimization-agents-md-curator-operational-value.sh",
     "optimization-token-auditor-operational-value.sh",
     "optimization-token-optimizer-operational-value.sh",
     "repo-assist-issue-fix-operational-value.sh",
@@ -43,6 +44,7 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
     "software-development-practices-nist-ssdf-operational-value.sh",
   ]);
   const oneShotGraders = new Set([
+    "optimization-agents-md-curator-operational-value.sh",
     "optimization-token-auditor-operational-value.sh",
     "optimization-token-optimizer-operational-value.sh",
     "repo-assist-issue-fix-operational-value.sh",

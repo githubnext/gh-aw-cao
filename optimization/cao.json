@@ -2,6 +2,7 @@
   "campaign": "optimization",
   "orchestrator": "optimization",
   "workers": {
+    "agents-md-curator": "optimization-agents-md-curator",
     "token-auditor": "optimization-token-auditor",
     "token-optimizer": "optimization-token-optimizer"
   }

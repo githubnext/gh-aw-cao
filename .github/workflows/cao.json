@@ -127,6 +127,10 @@
         "mode": "review",
         "max-repositories": 1,
         "workers": {
+          "agents-md-curator": {
+            "workflow": "optimization-agents-md-curator",
+            "max-mode": "review"
+          },
           "token-auditor": {
             "workflow": "optimization-token-auditor",
             "max-mode": "review"

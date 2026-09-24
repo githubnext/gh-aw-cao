@@ -3,7 +3,7 @@ emoji: ":compass:"
 
 description: "Weekly ambient context curation for one repository: audits an existing AGENTS.md against git, pull request, and agent-run evidence and files one issue containing a ready-to-run agentic update prompt"
 
-name: "AW Optimization / AGENTS.md"
+name: "Optimization / AGENTS.md"
 
 max-ai-credits: 400
 max-daily-ai-credits: -1
@@ -80,7 +80,7 @@ network:
     - defaults
     - github
 
-run-name: "AW Optimization / AGENTS.md · ${{ inputs.target_repo }} · ${{ inputs.safe_output_mode || 'review' }}"
+run-name: "Optimization / AGENTS.md · ${{ inputs.target_repo }} · ${{ inputs.safe_output_mode || 'review' }}"
 
 concurrency:
   group: "${{ github.workflow }}-${{ inputs.target_repo }}"

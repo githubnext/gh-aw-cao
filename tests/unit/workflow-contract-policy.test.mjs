@@ -263,6 +263,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "eu-cra-compliance-security-requirements-auditor.md": { credits: 100, timeout: 30 },
     "eu-cra-compliance-supply-chain-sbom-auditor.md": { credits: 100, timeout: 30 },
     "eu-cra-compliance-vulnerability-handling-auditor.md": { credits: 100, timeout: 30 },
+    "optimization-agents-md-curator.md": { credits: 400, timeout: 35 },
     "optimization-token-auditor.md": { credits: 400, timeout: 30 },
     "optimization-token-optimizer.md": { credits: 500, timeout: 40 },
     "software-development-practices.md": { credits: 250, timeout: 15, dispatchMax: 20, workers: 2 },

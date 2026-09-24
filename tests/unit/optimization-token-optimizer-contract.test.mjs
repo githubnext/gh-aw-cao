@@ -30,17 +30,19 @@ test("Optimization workers use deterministic one-shot operational-value contract
   }
 });
 
-test("Optimization campaign installs exactly two workers and their evaluators", () => {
+test("Optimization campaign installs its workers and token evaluators", () => {
   const manifest = readFileSync(join(root, "optimization", "aw.yml"), "utf8");
   const descriptor = JSON.parse(readFileSync(join(root, "optimization", "cao.json"), "utf8"));
 
   assert.deepEqual(descriptor.workers, {
+    "agents-md-curator": "optimization-agents-md-curator",
     "token-auditor": "optimization-token-auditor",
     "token-optimizer": "optimization-token-optimizer",
   });
+  assert.match(manifest, /\.github\/workflows\/optimization-agents-md-curator\.md/);
   assert.match(manifest, /\.github\/workflows\/optimization-token-auditor\.md/);
   assert.match(manifest, /\.github\/workflows\/optimization-token-optimizer\.md/);
-  assert.doesNotMatch(manifest, /ai-credit|agents-md|skills-curator|token-efficiency|intervention-tracker/);
+  assert.doesNotMatch(manifest, /ai-credit|skills-curator|token-efficiency|intervention-tracker/);
   for (const worker of workers) {
     assert.match(
       readFileSync(join(root, "optimization", ".github", "graders", `${worker}-operational-value.sh`), "utf8"),
@@ -67,7 +69,7 @@ test("Optimization workers are review-capped, target-scoped, and idempotent", ()
   }
 });
 
-test("Optimization orchestrator dispatches exactly the two campaign workers", () => {
+test("Optimization orchestrator dispatches exactly the two token workers", () => {
   const source = workflow("optimization.md");
 
   assert.match(source, /workflows: \[optimization-token-auditor, optimization-token-optimizer\]/);
