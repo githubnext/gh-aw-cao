@@ -3297,25 +3297,10 @@
         "compute": [
           {
             "as": "workflow-source-url",
-            "function": "concat",
+            "function": "link-href",
             "args": [
               {
-                "value": "https://github.com/"
-              },
-              {
-                "field": "organization"
-              },
-              {
-                "value": "/"
-              },
-              {
-                "field": "repository"
-              },
-              {
-                "value": "/blob/HEAD/"
-              },
-              {
-                "field": "workflow"
+                "field": "workflow-link"
               }
             ]
           }

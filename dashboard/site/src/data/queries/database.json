@@ -808,7 +808,8 @@
       { "field": "review-label" },
       { "field": "review-priority" },
       { "field": "run-link" },
-      { "field": "evidence-link" }
+      { "field": "evidence-link" },
+      { "field": "workflow-link" }
     ]
   },
   {

@@ -473,6 +473,7 @@ Computed fields use only the following typed, deterministic functions with the s
 | Function | Arguments | Result |
 |---|---|---|
 | `coalesce` | 2–8 | first argument that is not null, empty text, or a structured value |
+| `link-href` | 1 | text `href` read from a structured link field, or null |
 | `concat` | 2–8 | text |
 | `lower`, `upper`, `title-case`, `trim`, `url-encode` | 1 | text |
 | `date-day` | 1 | UTC calendar date text |

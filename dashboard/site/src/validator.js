@@ -3937,7 +3937,7 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
                 `${argumentPath}.field`,
                 typeof computed.function !== 'string' ? 'read'
                   : NUMERIC_COMPUTE_FUNCTIONS.includes(computed.function) ? 'numeric'
-                    : ['coalesce', 'dashboard-link'].includes(computed.function) ? 'read' : 'scalar'
+                    : ['coalesce', 'dashboard-link', 'link-href'].includes(computed.function) ? 'read' : 'scalar'
               );
             } else if (hasContext && argument.context !== 'time-end') {
               errors.push(createError(
