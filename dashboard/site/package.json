@@ -11,6 +11,7 @@
     "test:performance": "node ./scripts/build.mjs dist test/performance/fixtures/control-settings.json && node ./test/performance/lighthouse.mjs",
     "validate:corpus": "node ./scripts/validate-corpus.mjs",
     "validate:dashboards": "node ./scripts/validate-dashboards.mjs",
+    "analyze:dead-views": "node ./scripts/render-dead-views.mjs",
     "analyze:query-graphs": "node ./scripts/validate-dashboards.mjs --render-query-graphs",
     "dev": "cd .. && node local-server.mjs"
   },
