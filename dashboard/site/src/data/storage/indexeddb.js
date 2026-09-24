@@ -356,7 +356,7 @@ function estimatedRecordBytes(record) {
  * never materializes the canonical database or its large linked-record stores.
  *
  * @param {IDBFactory} indexedDB
- * @param {{ now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes: number, usageBytes?: number | null }} options
+ * @param {{ now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes: number, usageBytes?: number | null, reconcileRelationships?: boolean, preserveEntityIds?: { repositories?: string[], workflows?: string[] } }} options
  */
 export async function maintainCanonicalDatabase(indexedDB, options) {
     const now = options.now ?? Date.now();
@@ -372,6 +372,13 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
     const expiredRunIds = [];
     /** @type {Map<string, number>} */
     const linkedBytesByRun = new Map();
+    const campaignIds = new Set();
+    const repositoryIds = new Set();
+    /** @type {Map<string, string>} */
+    const workflowRepositories = new Map();
+    const validRunIds = new Set();
+    const referencedWorkflowIds = new Set();
+    const referencedRepositoryIds = new Set();
     const database = await openCanonicalDatabase(indexedDB);
     try {
       for (const storeName of ENTITY_STORES) {
@@ -380,6 +387,41 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
         const store = transaction.objectStore(storeName);
         /** @param {Record<string, unknown>} record @param {() => void} remove */
         const visit = (record, remove) => {
+          const id = String(record.id);
+          if (options.reconcileRelationships) {
+            if (storeName === 'campaigns') {
+              campaignIds.add(id);
+            } else if (storeName === 'repositories') {
+              repositoryIds.add(id);
+            } else if (storeName === 'workflows') {
+              const repositoryId = String(record.repositoryId);
+              const campaignId = record.campaignId === undefined || record.campaignId === null
+                ? null
+                : String(record.campaignId);
+              if (!repositoryIds.has(repositoryId) || (campaignId !== null && !campaignIds.has(campaignId))) {
+                remove();
+                deletedRecords += 1;
+                return;
+              }
+              workflowRepositories.set(id, repositoryId);
+            } else if (storeName === 'runs') {
+              const repositoryId = String(record.repositoryId);
+              const workflowId = String(record.workflowId);
+              if (!repositoryIds.has(repositoryId) || workflowRepositories.get(workflowId) !== repositoryId) {
+                expiredRunIds.push(id);
+                return;
+              }
+              validRunIds.add(id);
+              referencedWorkflowIds.add(workflowId);
+              referencedRepositoryIds.add(repositoryId);
+            } else if (RUN_LINKED_STORES.includes(
+              /** @type {typeof RUN_LINKED_STORES[number]} */ (storeName)
+            ) && !validRunIds.has(String(record.runId))) {
+              remove();
+              deletedRecords += 1;
+              return;
+            }
+          }
           const configuredWindow = options.retentionWindowMsByStore?.[storeName];
           const windowMs = Number.isFinite(configuredWindow)
             ? Math.max(0, Number(configuredWindow))
@@ -428,6 +470,53 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
           });
         }
         await done;
+      }
+
+      if (options.reconcileRelationships) {
+        const preservedWorkflows = new Set(options.preserveEntityIds?.workflows ?? []);
+        const survivingWorkflows = new Set([...referencedWorkflowIds, ...preservedWorkflows]);
+        for (const workflowId of survivingWorkflows) {
+          const repositoryId = workflowRepositories.get(workflowId);
+          if (repositoryId) referencedRepositoryIds.add(repositoryId);
+        }
+        const parentStores = [
+          ['workflows', survivingWorkflows],
+          ['repositories', new Set([
+            ...referencedRepositoryIds,
+            ...(options.preserveEntityIds?.repositories ?? [])
+          ])]
+        ];
+        for (const [storeName, retainedIds] of parentStores) {
+          const transaction = readwriteTransaction(database, /** @type {string} */ (storeName));
+          const done = transactionDone(transaction);
+          const store = transaction.objectStore(/** @type {string} */ (storeName));
+          /** @param {IDBValidKey} id @param {() => void} remove */
+          const removeUnreferenced = (id, remove) => {
+            if (/** @type {Set<string>} */ (retainedIds).has(String(id))) return;
+            remove();
+            deletedRecords += 1;
+          };
+          if (typeof store.openCursor !== 'function') {
+            for (const record of await requestResult(store.getAll())) {
+              removeUnreferenced(record.id, () => store.delete(record.id));
+            }
+          } else {
+            await new Promise((resolve, reject) => {
+              const request = store.openCursor();
+              request.onerror = () => reject(request.error ?? new Error('IndexedDB cursor failed'));
+              request.onsuccess = () => {
+                const cursor = request.result;
+                if (!cursor) {
+                  resolve(undefined);
+                  return;
+                }
+                removeUnreferenced(cursor.primaryKey, () => cursor.delete());
+                cursor.continue();
+              };
+            });
+          }
+          await done;
+        }
       }
 
       for (const runId of expiredRunIds) {

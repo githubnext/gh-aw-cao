@@ -155,6 +155,57 @@ describe('canonical IndexedDB', () => {
       .toEqual(retainedRuns.map((record) => record.id));
   });
 
+  it('reconciles canonical relationships with cursors while preserving current structural records', async () => {
+    await writeRecords('campaigns', [{ id: 'campaign:1' }]);
+    await writeRecords('repositories', [
+      { id: 'repository:kept' },
+      { id: 'repository:preserved' },
+      { id: 'repository:unused' }
+    ]);
+    await writeRecords('workflows', [
+      { id: 'workflow:kept', repositoryId: 'repository:kept', campaignId: 'campaign:1' },
+      { id: 'workflow:preserved', repositoryId: 'repository:preserved' },
+      { id: 'workflow:unused', repositoryId: 'repository:unused' },
+      { id: 'workflow:orphan', repositoryId: 'repository:missing' }
+    ]);
+    await writeRecords('runs', [
+      {
+        id: 'run:kept',
+        repositoryId: 'repository:kept',
+        workflowId: 'workflow:kept',
+        observedAt: '2026-09-09T00:00:00Z'
+      },
+      {
+        id: 'run:orphan',
+        repositoryId: 'repository:kept',
+        workflowId: 'workflow:orphan',
+        observedAt: '2026-09-09T00:00:00Z'
+      }
+    ]);
+    await writeRecords('audits', [
+      { id: 'audit:kept', runId: 'run:kept', observedAt: '2026-09-09T00:00:00Z' },
+      { id: 'audit:orphan', runId: 'run:missing', observedAt: '2026-09-09T00:00:00Z' }
+    ]);
+
+    await maintainCanonicalDatabase(indexedDB, {
+      now: Date.parse('2026-09-10T00:00:00Z'),
+      retentionWindowMs: 30 * 24 * 60 * 60 * 1000,
+      maxDatabaseBytes: Number.MAX_SAFE_INTEGER,
+      reconcileRelationships: true,
+      preserveEntityIds: {
+        repositories: ['repository:preserved'],
+        workflows: ['workflow:preserved']
+      }
+    });
+
+    expect((await readCollection(indexedDB, 'repositories')).map(({ id }) => id))
+      .toEqual(['repository:kept', 'repository:preserved']);
+    expect((await readCollection(indexedDB, 'workflows')).map(({ id }) => id))
+      .toEqual(['workflow:kept', 'workflow:preserved']);
+    expect((await readCollection(indexedDB, 'runs')).map(({ id }) => id)).toEqual(['run:kept']);
+    expect((await readCollection(indexedDB, 'audits')).map(({ id }) => id)).toEqual(['audit:kept']);
+  });
+
   it('initializes the simplified database schema', async () => {
     const database = await openCanonicalDatabase(indexedDB);
 

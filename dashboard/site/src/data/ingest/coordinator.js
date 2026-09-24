@@ -13,14 +13,13 @@ import { normalize, orderRunRecords } from '../normalize/index.js';
 import {
   publishDailyOverviewAggregates,
   pruneStaleDailyOverviewAggregates,
-  countCollections,
   ENTITY_STORES,
   maintainCanonicalDatabase,
+  readCanonicalBatch,
   readCollection,
   readRecord,
   readTransaction,
   recordTransaction,
-  replaceCanonicalBatch,
   upsertCanonicalBatch,
   withCanonicalIngestionLock
 } from '../storage/indexeddb.js';
@@ -482,7 +481,12 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
         now: options.now,
         retentionWindowMs: options.retentionWindowMs,
         retentionWindowMsByStore: options.retentionWindowMsByStore,
-        maxDatabaseBytes: Math.floor(maxDatabaseBytes * 0.5)
+        maxDatabaseBytes: Math.floor(maxDatabaseBytes * 0.5),
+        reconcileRelationships: true,
+        preserveEntityIds: {
+          repositories: batch.repositories.map((record) => String(record.id)),
+          workflows: batch.workflows.map((record) => String(record.id))
+        }
       });
       debug('retrying canonical write after quota pressure', {
         attempt: attempt + 1,
@@ -501,35 +505,46 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
       debug('shrinking canonical batch after storage usage check', {
         attempt: attempt + 1,
         databaseUsage,
-        maxDatabaseBytes,
-        storedRuns: (await countCollections(indexedDB, ['runs'])).runs
+        maxDatabaseBytes
       });
-      await maintainCanonicalDatabase(indexedDB, {
+      const maintenance = await maintainCanonicalDatabase(indexedDB, {
         now: options.now,
         retentionWindowMs: options.retentionWindowMs,
         retentionWindowMsByStore: options.retentionWindowMsByStore,
         maxDatabaseBytes,
-        usageBytes: databaseUsage
+        usageBytes: databaseUsage,
+        reconcileRelationships: true,
+        preserveEntityIds: {
+          repositories: batch.repositories.map((record) => String(record.id)),
+          workflows: batch.workflows.map((record) => String(record.id))
+        }
       });
+      writeMetrics.deletedRecords += maintenance.deletedRecords;
     }
   }
-  await maintainCanonicalDatabase(indexedDB, {
+  const maintenance = await maintainCanonicalDatabase(indexedDB, {
     now: options.now,
     retentionWindowMs: options.retentionWindowMs,
     retentionWindowMsByStore: options.retentionWindowMsByStore,
     maxDatabaseBytes,
-    usageBytes: databaseUsage
+    usageBytes: databaseUsage,
+    reconcileRelationships: true,
+    preserveEntityIds: {
+      repositories: batch.repositories.map((record) => String(record.id)),
+      workflows: batch.workflows.map((record) => String(record.id))
+    }
   });
+  writeMetrics.deletedRecords += maintenance.deletedRecords;
   const runs = await readCollection(indexedDB, 'runs');
-  await publishDailyOverviewAggregatesForBatch(indexedDB, {
+  const runsOnlyBatch = /** @type {import('../model/schema.js').CanonicalBatch} */ ({
     ...Object.fromEntries(ENTITY_STORES.map((storeName) => [storeName, []])),
     runs
   });
-  const counts = await countCollections(indexedDB, ENTITY_STORES);
+  await publishDailyOverviewAggregatesForBatch(indexedDB, runsOnlyBatch);
   return {
     updated: true,
     committedBatches: writeMetrics.committedBatches,
-    committedRecords: Object.values(counts).reduce((total, count) => total + count, 0),
+    committedRecords: Object.values(batch).reduce((total, records) => total + records.length, 0),
     idb: writeMetrics
   };
 }

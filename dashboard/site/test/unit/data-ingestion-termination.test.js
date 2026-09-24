@@ -7,12 +7,16 @@ vi.mock('../../src/debug.js', () => ({ createDebug: () => debug }));
 const actualStorage = /** @type {typeof import('../../src/data/storage/indexeddb.js')} */ (
   await vi.importActual('../../src/data/storage/indexeddb.js')
 );
-const replaceCanonicalBatch = vi.fn(
-  /** @type {(...parameters: unknown[]) => Promise<void>} */ (actualStorage.replaceCanonicalBatch)
+const upsertCanonicalBatch = vi.fn(
+  /** @type {(...parameters: unknown[]) => Promise<unknown>} */ (actualStorage.upsertCanonicalBatch)
+);
+const readCanonicalBatch = vi.fn(
+  /** @type {(...parameters: unknown[]) => Promise<unknown>} */ (actualStorage.readCanonicalBatch)
 );
 vi.mock('../../src/data/storage/indexeddb.js', async () => ({
   ...actualStorage,
-  replaceCanonicalBatch: (/** @type {unknown[]} */ ...parameters) => replaceCanonicalBatch(...parameters)
+  readCanonicalBatch: (/** @type {unknown[]} */ ...parameters) => readCanonicalBatch(...parameters),
+  upsertCanonicalBatch: (/** @type {unknown[]} */ ...parameters) => upsertCanonicalBatch(...parameters)
 }));
 
 const { ingestDashboardSources } = await import('../../src/data/ingest/coordinator.js');
@@ -63,9 +67,10 @@ function quotaExceededError() {
 
 beforeEach(async () => {
   debug.mockClear();
-  replaceCanonicalBatch.mockClear();
-  replaceCanonicalBatch.mockImplementation(
-    /** @type {(...parameters: unknown[]) => Promise<void>} */ (actualStorage.replaceCanonicalBatch)
+  readCanonicalBatch.mockClear();
+  upsertCanonicalBatch.mockClear();
+  upsertCanonicalBatch.mockImplementation(
+    /** @type {(...parameters: unknown[]) => Promise<unknown>} */ (actualStorage.upsertCanonicalBatch)
   );
   await new Promise((resolve, reject) => {
     const request = indexedDB.deleteDatabase(DATABASE_NAME);
@@ -82,7 +87,7 @@ describe('canonical ingestion termination', () => {
     await expect(ingestDashboardSources(indexedDB, sourcesWithRuns(5), {
       signal: controller.signal
     })).rejects.toMatchObject({ name: 'AbortError' });
-    expect(replaceCanonicalBatch).not.toHaveBeenCalled();
+    expect(upsertCanonicalBatch).not.toHaveBeenCalled();
   });
 
   it('reports storage progress so long writes never look stalled', async () => {
@@ -99,31 +104,32 @@ describe('canonical ingestion termination', () => {
     expect(last?.totalRecords).toBe(7);
     expect(progress.map((entry) => entry.storedRecords))
       .toEqual([...progress.map((entry) => entry.storedRecords)].sort((left, right) => left - right));
+    expect(readCanonicalBatch).not.toHaveBeenCalled();
   });
 
   it('stops retrying an exhausted quota after a bounded number of attempts', async () => {
-    replaceCanonicalBatch.mockRejectedValue(quotaExceededError());
+    upsertCanonicalBatch.mockRejectedValue(quotaExceededError());
 
     await expect(ingestDashboardSources(indexedDB, sourcesWithRuns(64)))
       .rejects.toMatchObject({ name: 'CanonicalIngestionError', code: 'QUOTA_EXCEEDED' });
-    expect(replaceCanonicalBatch.mock.calls.length).toBeLessThanOrEqual(5);
+    expect(upsertCanonicalBatch.mock.calls.length).toBeLessThanOrEqual(5);
   });
 
   it('refreshes reconciliation state after a quota failure with partial writes', async () => {
     let attempt = 0;
-    replaceCanonicalBatch.mockImplementation(async (...parameters) => {
-      const [factory, incoming, options] = /** @type {Parameters<typeof actualStorage.replaceCanonicalBatch>} */ (
+    upsertCanonicalBatch.mockImplementation(async (...parameters) => {
+      const [factory, incoming, options] = /** @type {Parameters<typeof actualStorage.upsertCanonicalBatch>} */ (
         parameters
       );
       attempt += 1;
       if (attempt === 1) {
         const partial = structuredClone(incoming);
         partial.runs = partial.runs.slice(0, 1);
-        await actualStorage.replaceCanonicalBatch(factory, partial, options);
+        await actualStorage.upsertCanonicalBatch(factory, partial, options);
         throw quotaExceededError();
       }
-      expect(options?.previousBatch?.runs).toHaveLength(1);
-      return actualStorage.replaceCanonicalBatch(factory, incoming, options);
+      expect(await actualStorage.readCollection(factory, 'runs')).toHaveLength(1);
+      return actualStorage.upsertCanonicalBatch(factory, incoming, options);
     });
 
     await expect(ingestDashboardSources(indexedDB, sourcesWithRuns(64)))
@@ -131,7 +137,7 @@ describe('canonical ingestion termination', () => {
     expect(attempt).toBe(2);
     expect(debug).toHaveBeenCalledWith(
       'retrying canonical write after quota pressure',
-      expect.objectContaining({ attempt: 1, retainedRecords: 3 })
+      expect.objectContaining({ attempt: 1 })
     );
   });
 
@@ -149,7 +155,7 @@ describe('canonical ingestion termination', () => {
       storage,
       maxDatabaseBytes: 1_000_000
     })).resolves.toMatchObject({ updated: true });
-    expect(replaceCanonicalBatch.mock.calls.length).toBeLessThanOrEqual(5);
+    expect(upsertCanonicalBatch.mock.calls.length).toBeLessThanOrEqual(5);
     expect(debug).toHaveBeenCalledWith(
       'shrinking canonical batch after storage usage check',
       expect.objectContaining({
