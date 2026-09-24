@@ -3012,6 +3012,7 @@ describe('presenter built-in and custom pages', () => {
     expect(titleLink.getAttribute('rel')).toBe('noopener noreferrer');
     expect(rendered.ownerDocument.title).toBe('Linked issue · Page Navigation');
 
+    secondLink.dataset.routeTitle = 'Canonical second';
     secondLink.click();
 
     expect(first.hidden).toBe(true);
@@ -3025,10 +3026,10 @@ describe('presenter built-in and custom pages', () => {
     expect(second.getAttribute('aria-label')).toBe('Loading view');
     expect(secondLink.getAttribute('aria-current')).toBe('page');
     expect(rendered.ownerDocument.defaultView?.location.hash).toBe('#page-second');
-    expect(rendered.querySelector('#page-title')?.textContent).toBe('Second');
-    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Second');
+    expect(rendered.querySelector('#page-title')?.textContent).toBe('Canonical second');
+    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Canonical second');
     expect(rendered.querySelector('[data-page-description]')?.textContent).toBe('Second page description');
-    expect(rendered.ownerDocument.title).toBe('Second · Page Navigation');
+    expect(rendered.ownerDocument.title).toBe('Canonical second · Page Navigation');
     expect(titleLink.hidden).toBe(true);
     expect(titleLink.hasAttribute('href')).toBe(false);
     expect(rendered.ownerDocument.activeElement).toBe(rendered.querySelector('#page-title'));
@@ -3039,6 +3040,7 @@ describe('presenter built-in and custom pages', () => {
     expect(renderedSecond.hidden).toBe(false);
     expect(renderedSecond.hasAttribute('data-page-pending')).toBe(false);
     expect(renderedSecond.hasAttribute('aria-busy')).toBe(false);
+    expect(rendered.querySelector('#page-title')?.textContent).toBe('Canonical second');
 
     pageScroller.scrollTop = 80;
     firstLink.click();

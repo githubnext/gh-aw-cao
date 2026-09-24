@@ -1048,10 +1048,13 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     return disposeNavigation;
   }
 
-  /** @param {string} pageId */
-  const primePageChrome = (pageId) => {
+  /**
+   * @param {string} pageId
+   * @param {string} [routeTitle]
+   */
+  const primePageChrome = (pageId, routeTitle = '') => {
     const page = pages.find((candidate) => candidate.dataset.pageId === pageId);
-    const title = page?.dataset.pageTitle ?? '';
+    const title = routeTitle.trim() || page?.dataset.pageTitle || '';
     const description = page?.dataset.pageDescription ?? '';
     if (breadcrumbPage) breadcrumbPage.textContent = title;
     if (pageTitle) pageTitle.textContent = title;
@@ -1152,8 +1155,9 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
    * @param {string} pageId
    * @param {URLSearchParams} [parameters]
    * @param {boolean} [deferPopulation]
+   * @param {string} [provisionalTitle]
    */
-  const activate = (pageId, parameters = new URLSearchParams(), deferPopulation = false) => {
+  const activate = (pageId, parameters = new URLSearchParams(), deferPopulation = false, provisionalTitle = '') => {
      if (navigationOwner.signal.aborted) return;
      const revision = ++activationRevision;
     pageOwner.abort();
@@ -1301,7 +1305,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       if (breadcrumbDashboard instanceof HTMLAnchorElement) breadcrumbDashboard.hidden = true;
     }
     const queryTitle = resolveQueryDrillPageTitle(parameters, knownQueries);
-    const title = queryTitle || routeValue || page?.dataset.pageTitle || '';
+    const title = queryTitle || provisionalTitle.trim() || routeValue || page?.dataset.pageTitle || '';
     const description = page?.dataset.pageDescription ?? '';
     if (breadcrumbPage) breadcrumbPage.textContent = title;
     if (pageTitle) pageTitle.textContent = title;
@@ -1419,11 +1423,12 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     pendingNavigationHash = undefined;
     const pageId = getNavigationPageId(link);
     if (!pageId || !availableIds.has(pageId)) return;
+    const provisionalTitle = link.dataset.routeTitle ?? '';
     navigationIndex += 1;
     defaultView?.history.pushState({ [NAVIGATION_INDEX_STATE_KEY]: navigationIndex }, '', link.href);
     syncHistoryBack();
-    primePageChrome(pageId);
-    updateWithViewTransition(root.ownerDocument, () => activate(pageId, routeFromHash()?.parameters, true), 'forward');
+    primePageChrome(pageId, provisionalTitle);
+    updateWithViewTransition(root.ownerDocument, () => activate(pageId, routeFromHash()?.parameters, true, provisionalTitle), 'forward');
     if (pageTitle instanceof HTMLElement) pageTitle.focus();
   }, { signal: navigationOwner.signal });
   root.addEventListener('dashboard-query-context-change', (event) => {
