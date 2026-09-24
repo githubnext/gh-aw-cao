@@ -235,7 +235,9 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   authorization, limits rebuild control to explicit administrators, verifies
   webhook signatures, deduplicates deliveries, and coordinates bounded
   request-independent rebuilds through Redis so multiple stateless replicas
-  cannot replace the projection concurrently.
+  cannot replace the projection concurrently. Its client exposes the active
+  GitHub login and supports explicit account switching through a fresh OAuth
+  account-selection flow without combining account authority.
 - Browsers and external clients never receive Redis endpoints or credentials.
   Redis generations are staged and validated before atomic activation; a failed
   rebuild leaves the previous generation active, and an empty Redis instance is

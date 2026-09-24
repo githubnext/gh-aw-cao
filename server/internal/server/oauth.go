@@ -139,6 +139,9 @@ func (oauth *githubOAuth) login(response http.ResponseWriter, request *http.Requ
 	values.Set("redirect_uri", oauth.config.RedirectURL)
 	values.Set("state", state)
 	values.Set("scope", "read:org")
+	if request.URL.Query().Get("select_account") == "1" {
+		values.Set("prompt", "select_account")
+	}
 	target.RawQuery = values.Encode()
 	http.Redirect(response, request, target.String(), http.StatusFound)
 }
@@ -209,6 +212,25 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 }
 
 func (oauth *githubOAuth) logout(response http.ResponseWriter, request *http.Request) {
+	oauth.clearRequestSession(response, request)
+	response.WriteHeader(http.StatusNoContent)
+}
+
+func (oauth *githubOAuth) switchAccount(response http.ResponseWriter, request *http.Request) {
+	oauth.clearRequestSession(response, request)
+	writeJSON(response, http.StatusOK, map[string]string{"loginUrl": "/auth/login?select_account=1"})
+}
+
+func (oauth *githubOAuth) currentAccount(response http.ResponseWriter, request *http.Request) {
+	session, ok := oauth.loadRequestSession(request)
+	if !ok {
+		writeError(response, http.StatusUnauthorized, "GitHub authentication is required")
+		return
+	}
+	writeJSON(response, http.StatusOK, map[string]string{"login": session.Login})
+}
+
+func (oauth *githubOAuth) clearRequestSession(response http.ResponseWriter, request *http.Request) {
 	session, ok := oauth.loadRequestSession(request)
 	if ok {
 		_ = oauth.revoke(request.Context(), session.AccessToken)
@@ -217,7 +239,6 @@ func (oauth *githubOAuth) logout(response http.ResponseWriter, request *http.Req
 	}
 	oauth.clearSessionCookies(response)
 	serverLog.Printf("oauth logout completed")
-	response.WriteHeader(http.StatusNoContent)
 }
 
 func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Request) (oauthSession, bool) {

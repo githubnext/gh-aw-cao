@@ -102,6 +102,11 @@ administrators may call `POST /api/admin/rebuild`; it always forces a new staged
 generation, validates it, then atomically activates it. A failed rebuild leaves
 the previous generation active.
 
+The dashboard account menu shows the active GitHub login. “Use another GitHub
+account” clears and revokes the current CAO session, then starts a fresh OAuth
+flow with GitHub's account chooser. Only the newly selected account is retained
+in the browser session; tokens for every account remain server-side.
+
 The Redis command client reuses a bounded connection pool, applies operation
 deadlines, and retries read-only commands once when a pooled connection has
 gone stale. Write commands are not replayed automatically.

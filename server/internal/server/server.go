@@ -185,6 +185,8 @@ func (a *App) Handler() http.Handler {
 		register("GET /auth/login", a.oauth.login)
 		register("GET /auth/callback", a.oauth.callback)
 		register("POST /auth/logout", a.oauth.logout)
+		register("POST /auth/switch-account", a.oauth.switchAccount)
+		register("GET /api/auth/session", a.oauth.currentAccount)
 	}
 	register("GET /api/v1/health", a.health)
 	register("GET /api/health", a.health)
@@ -755,6 +757,7 @@ func (a *App) serveIndex(response http.ResponseWriter, accessToken string) {
 	html := string(content)
 	injections := `<meta name="dashboard-data-backend" content="redis-http">`
 	if a.oauth != nil {
+		injections += `<meta name="cao-auth-mode" content="github">`
 		injections += `<script>const m=document.cookie.match(/(?:^|;\s*)cao_csrf=([^;]+)/);if(m){const c=decodeURIComponent(m[1]);const f=window.fetch.bind(window);window.fetch=(i,n={})=>{const u=typeof i==="string"?i:i.url;if(u&&new URL(u,location.href).origin===location.origin){const h=new Headers(n.headers||{});if(!h.has("X-CSRF-Token"))h.set("X-CSRF-Token",c);n={...n,headers:h};}return f(i,n);};}</script>`
 	} else if accessToken != "" {
 		token, _ := json.Marshal(accessToken)

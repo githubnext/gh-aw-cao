@@ -175,6 +175,43 @@ func TestAzureOAuthRefreshRotationLogoutAndRefreshFailure(t *testing.T) {
 	}
 }
 
+func TestHostedOAuthExposesAndSwitchesCurrentAccount(t *testing.T) {
+	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
+	app := newAzureTestApp(t, github.URL)
+	sessionCookie, csrfCookie := callbackSession(t, app)
+
+	current := httptest.NewRecorder()
+	request := azureRequest(t, http.MethodGet, "/api/auth/session")
+	request.AddCookie(sessionCookie)
+	app.Handler().ServeHTTP(current, request)
+	if current.Code != http.StatusOK || !strings.Contains(current.Body.String(), `"login":"octocat"`) {
+		t.Fatalf("current account returned %d: %s", current.Code, current.Body.String())
+	}
+
+	switched := httptest.NewRecorder()
+	request = azureRequest(t, http.MethodPost, "/auth/switch-account")
+	request.AddCookie(sessionCookie)
+	request.AddCookie(csrfCookie)
+	request.Header.Set("X-CSRF-Token", csrfCookie.Value)
+	app.Handler().ServeHTTP(switched, request)
+	if switched.Code != http.StatusOK || !strings.Contains(switched.Body.String(), `/auth/login?select_account=1`) {
+		t.Fatalf("account switch returned %d: %s", switched.Code, switched.Body.String())
+	}
+	if firstCookie(t, switched.Result(), sessionCookieName).MaxAge >= 0 {
+		t.Fatal("account switch did not clear the existing session cookie")
+	}
+
+	login := httptest.NewRecorder()
+	app.Handler().ServeHTTP(login, azureRequest(t, http.MethodGet, "/auth/login?select_account=1"))
+	location, err := url.Parse(login.Header().Get("Location"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if location.Query().Get("prompt") != "select_account" {
+		t.Fatalf("account switch did not request GitHub account selection: %s", location.String())
+	}
+}
+
 func TestAzureProxyPolicyFailsClosed(t *testing.T) {
 	app := newAzureTestApp(t, fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600}).URL)
 	response := httptest.NewRecorder()

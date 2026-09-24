@@ -244,7 +244,7 @@ invariants:
   - "Dashboard data operations MUST be declared in Dashboard Language and execute outside the browser main thread: in the data Web Worker for static deployment or in the Go HTTP(S) server for the Redis profile."
   - "In the Redis profile, Dashboard Language queries execute in the Go HTTP(S) server and compatible stages MUST be pushed into Redis before bounded Go fallback."
   - "The local Redis profile MUST bind to loopback, use HTTP by default for localhost debugging, enable HTTPS only with operator-supplied certificate files, and MUST NOT expose Redis endpoints or credentials to browser code."
-  - "The hosted Redis profile MUST use GitHub OAuth with explicit organization or team authorization, explicit rebuild administrators, an explicit trusted HTTPS proxy policy, and server-side secrets and sessions."
+  - "The hosted Redis profile MUST use GitHub OAuth with explicit organization or team authorization, explicit rebuild administrators, an explicit trusted HTTPS proxy policy, server-side secrets and sessions, and an explicit account-selection flow for switching GitHub identities."
   - "GitHub webhook deliveries MUST be signature-verified and deduplicated before reconciliation; webhook payloads are invalidation signals rather than projection authority."
   - "Redis rebuilds MUST use a distributed lock, stage and validate a fresh immutable generation, and atomically activate it without modifying the active generation in place."
   - "An empty Redis instance is healthy but not ready and MUST report that a rebuild is required."

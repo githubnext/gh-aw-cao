@@ -135,6 +135,12 @@ session. Do not add PAT handling to Azure mode; PATs bypass the required
 browser login, refresh-token rotation, revocation, and explicit membership
 authorization controls.
 
+Users with multiple personal or managed-user GitHub identities can explicitly
+switch accounts from the dashboard. Switching is a CSRF-protected mutation that
+revokes and deletes the current server session before redirecting to GitHub's
+account chooser; CAO never combines authority or tokens from multiple accounts
+in one browser session.
+
 Access tokens and refresh tokens remain server-side. They are encrypted with an
 AES-GCM key derived from `CAO_SESSION_SECRET` before being stored in Redis under
 the deployment namespace. Browser cookies contain only an opaque session ID and
