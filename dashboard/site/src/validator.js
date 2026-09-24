@@ -62,7 +62,6 @@ import {
   FACTORY_FLOOR_STATION_VALUES,
   FACTORY_HEADER_SOURCE_ROLES,
   FACTORY_FLOOR_SOURCE_ROLES,
-  FACTORY_OVERVIEW_SECTION_VALUES,
   FILTER_DIMENSION_VALUES,
   DETECTION_STATE_VALUES,
   FINDING_SEVERITY_VALUES,
@@ -81,6 +80,7 @@ import {
   ORDER_DIRECTION_VALUES,
   OUTCOME_STATE_VALUES,
   PAGE_ROUTE_KEYS,
+  PAGE_ROUTE_TITLE_FORMAT_VALUES,
   PAGE_ROUTE_TAB_KEYS,
   MAX_PAGE_ROUTE_TABS,
   PAGE_ICON_VALUES,
@@ -142,7 +142,6 @@ import {
 import {
   OUTCOME_DETAIL_SECTION_BODY_VALUES,
   CAMPAIGN_ROUTE_BODY_VALUES,
-  WORK_VIEW_BODY_VALUES,
   WORKFLOW_ROUTE_BODY_VALUES
 } from './components/route-body-specification.js';
 import { cliActionTemplateFields } from './cli-action-template.js';
@@ -2234,7 +2233,7 @@ function validateRouteTabs(route, routePath, errors) {
       identifiers.add(tab.id);
     }
   }
-  if (typeof route.tab !== 'string' || !identifiers.has(route.tab)) {
+  if (route.tab !== undefined && (typeof route.tab !== 'string' || !identifiers.has(route.tab))) {
     errors.push(createError(
       ERROR_CODES.missingOrInvalidRequiredField,
       'route tab must name one declared route tab id.',
@@ -2288,6 +2287,24 @@ function validateCustomPage(page, pageNode, path, errors) {
           page.route['navigation-page'],
           `${routePath}.navigation-page`,
           'route navigation page',
+          errors
+        );
+      }
+      const routeTitleFormat = page.route['title-format'];
+      if (routeTitleFormat !== undefined
+          && (typeof routeTitleFormat !== 'string'
+            || !PAGE_ROUTE_TITLE_FORMAT_VALUES.includes(routeTitleFormat))) {
+        errors.push(createError(
+          ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+          `route title-format must be one of: ${PAGE_ROUTE_TITLE_FORMAT_VALUES.join(', ')}.`,
+          `${routePath}.title-format`
+        ));
+      }
+      if (page.route['tabs-class-name'] !== undefined) {
+        validateRequiredIdentifier(
+          page.route['tabs-class-name'],
+          `${routePath}.tabs-class-name`,
+          'route tabs class name',
           errors
         );
       }
@@ -2624,15 +2641,13 @@ function validateView(view, viewNode, path, viewIds, errors) {
     } else {
       const configNode = getValueNodeByKey(viewNode, 'config');
       validateObjectKeys(configNode, VIEW_ELEMENT_CONFIG_KEYS, `${path}.config`, errors);
-      if ((view.element === 'workflow-route' || view.element === 'workflow-route-page' || view.element === 'campaign-route' || view.element === 'outcome-detail-section' || view.element === 'work-project-view') && view.config.body !== undefined) {
+      if ((view.element === 'workflow-route-page' || view.element === 'campaign-route' || view.element === 'outcome-detail-section') && view.config.body !== undefined) {
         validateStringField(view.config.body, `${path}.config.body`, true, errors);
-       const allowedBodies = view.element === 'workflow-route' || view.element === 'workflow-route-page'
+       const allowedBodies = view.element === 'workflow-route-page'
          ? WORKFLOW_ROUTE_BODY_VALUES
          : view.element === 'campaign-route'
            ? CAMPAIGN_ROUTE_BODY_VALUES
-           : view.element === 'work-project-view'
-             ? WORK_VIEW_BODY_VALUES
-             : OUTCOME_DETAIL_SECTION_BODY_VALUES;
+           : OUTCOME_DETAIL_SECTION_BODY_VALUES;
        if (typeof view.config.body === 'string' && !allowedBodies.includes(view.config.body)) {
          errors.push(createError(
            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
@@ -2643,68 +2658,30 @@ function validateView(view, viewNode, path, viewIds, errors) {
       } else if (view.config.body !== undefined) {
        errors.push(createError(
          ERROR_CODES.missingOrInvalidRequiredField,
-         'config.body is supported only for the workflow-route, workflow-route-page, campaign-route, outcome-detail-section, and work-project-view elements.',
+         'config.body is supported only for the workflow-route-page, campaign-route, and outcome-detail-section elements.',
          `${path}.config.body`
        ));
       }
       if (view.config['view-all-page'] !== undefined) {
         validateStringField(view.config['view-all-page'], `${path}.config.view-all-page`, true, errors);
-        if (view.element !== 'signal-list' && view.element !== 'needs-attention-list') {
-          errors.push(createError(
-            ERROR_CODES.missingOrInvalidRequiredField,
-            'config.view-all-page is supported only for the signal-list element.',
-            `${path}.config.view-all-page`
-          ));
-        }
+        errors.push(createError(
+          ERROR_CODES.missingOrInvalidRequiredField,
+          'config.view-all-page is not supported by a registered element.',
+          `${path}.config.view-all-page`
+        ));
       }
       if (view.config['view-all-label'] !== undefined) {
         validateStringField(view.config['view-all-label'], `${path}.config.view-all-label`, true, errors);
-        if (view.element !== 'signal-list' && view.element !== 'needs-attention-list') {
-          errors.push(createError(
-            ERROR_CODES.missingOrInvalidRequiredField,
-            'config.view-all-label is supported only for the signal-list element.',
-            `${path}.config.view-all-label`
-          ));
-        }
+        errors.push(createError(
+          ERROR_CODES.missingOrInvalidRequiredField,
+          'config.view-all-label is not supported by a registered element.',
+          `${path}.config.view-all-label`
+        ));
       }
-      const allowedSections = view.element === 'work-project-view'
-        ? WORK_VIEW_BODY_VALUES
-        : view.element === 'outcomes-overview'
-          ? FACTORY_OVERVIEW_SECTION_VALUES
-          : null;
-      if (allowedSections && view.config.sections !== undefined) {
-       if (!Array.isArray(view.config.sections) || view.config.sections.length === 0) {
-         errors.push(createError(
-           ERROR_CODES.missingOrInvalidRequiredField,
-           `${view.element} config.sections must be a non-empty list.`,
-           `${path}.config.sections`
-         ));
-       } else {
-         const seenSections = new Set();
-         for (let index = 0; index < view.config.sections.length; index += 1) {
-           const section = view.config.sections[index];
-           validateStringField(section, `${path}.config.sections[${index}]`, true, errors);
-           if (seenSections.has(section)) {
-             errors.push(createError(
-               ERROR_CODES.unknownOrDuplicateKey,
-               `${view.element} config.sections values must be unique.`,
-               `${path}.config.sections[${index}]`
-             ));
-           }
-           seenSections.add(section);
-           if (typeof section === 'string' && !allowedSections.includes(section)) {
-             errors.push(createError(
-               ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-               `${view.element} config.sections must use canonical section values.`,
-               `${path}.config.sections[${index}]`
-             ));
-           }
-         }
-       }
-      } else if (view.config.sections !== undefined) {
+      if (view.config.sections !== undefined) {
        errors.push(createError(
          ERROR_CODES.missingOrInvalidRequiredField,
-         'config.sections is supported only for the work-project-view and outcomes-overview elements.',
+         'config.sections is not supported by a registered element.',
          `${path}.config.sections`
        ));
       }
@@ -2756,10 +2733,10 @@ function validateView(view, viewNode, path, viewIds, errors) {
         }
       }
       if (view.config.animate !== undefined) {
-        if (view.element !== 'factory-floor' && view.element !== 'outcomes-overview') {
+        if (view.element !== 'factory-floor') {
           errors.push(createError(
             ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-            'config.animate is supported only for the factory-floor and outcomes-overview elements.',
+            'config.animate is supported only for the factory-floor element.',
             `${path}.config.animate`
           ));
         }
@@ -3918,7 +3895,7 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
                 `${argumentPath}.field`,
                 typeof computed.function !== 'string' ? 'read'
                   : NUMERIC_COMPUTE_FUNCTIONS.includes(computed.function) ? 'numeric'
-                    : ['coalesce', 'dashboard-link'].includes(computed.function) ? 'read' : 'scalar'
+                    : ['coalesce', 'dashboard-link', 'link-href'].includes(computed.function) ? 'read' : 'scalar'
               );
             } else if (hasContext && argument.context !== 'time-end') {
               errors.push(createError(

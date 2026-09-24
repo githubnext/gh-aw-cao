@@ -53,7 +53,8 @@ const NORMALIZED_BATCH_COLLECTIONS = /** @type {const} */ ([
   'domains',
   'tools',
   'audits',
-  'issues'
+  'issues',
+  'operationalValues'
 ]);
 const NORMALIZED_JSONL_WRITE_BATCH_SIZE = 250;
 const LEGACY_PACKAGE_FIELD_ALIASES = /** @type {const} */ ({
@@ -164,9 +165,7 @@ function migrateLegacyPackageAliases(candidate) {
  * @returns {import('../model/schema.js').CanonicalBatch}
  */
 function migrateNormalizedBatch(batch) {
-  if (!Array.isArray(batch.packages)) {
-    return /** @type {import('../model/schema.js').CanonicalBatch} */ (batch);
-  }
+  if (!Array.isArray(batch.operationalValues)) batch = { ...batch, operationalValues: [] };
   const migrated = { ...batch };
   if (!Array.isArray(migrated.campaigns) && Array.isArray(migrated.packages)) {
     migrated.campaigns = migrated.packages.map(migrateLegacyPackageAliases);
@@ -671,7 +670,7 @@ export function ingestNormalizedJson(indexedDB, input, options) {
       }
 
       const payload = /** @type {{ schemaVersion?: unknown, ingestionVersion?: unknown, sourceRecords?: unknown, phase?: unknown, batch?: unknown }} */ (input);
-      if (payload.schemaVersion !== CANONICAL_SCHEMA_VERSION && payload.schemaVersion !== 12) {
+      if (![CANONICAL_SCHEMA_VERSION, 13, 12].includes(Number(payload.schemaVersion))) {
         throw new TypeError(`Unsupported normalized activity schema: ${String(payload.schemaVersion)}`);
       }
       if (payload.ingestionVersion !== NORMALIZED_JSON_INGESTION_VERSION) {
@@ -694,7 +693,7 @@ export function ingestNormalizedJson(indexedDB, input, options) {
           throw new TypeError(`Normalized activity payload phase must be ${options.expectedPhase}`);
         }
         const excluded = options.expectedPhase === 'runs'
-          ? ['domains', 'tools', 'audits', 'issues']
+          ? ['domains', 'tools', 'audits', 'issues', 'operationalValues']
           : ['campaigns', 'repositories', 'workflows', 'runs'];
         for (const collection of excluded) {
           if (batch[/** @type {keyof import('../model/schema.js').CanonicalBatch} */ (collection)].length > 0) {
@@ -802,7 +801,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
       const encoder = new TextEncoder();
       let pending = '';
       let lineNumber = 0;
-      /** @type {{ phase: 'all' | 'runs' | 'records', records: number, sourceRecords?: number } | null} */
+      /** @type {{ phase: 'all' | 'runs' | 'records', records: number, sourceRecords?: number, schemaVersion: number } | null} */
       let header = null;
       let batch = emptyNormalizedBatch();
       let bufferedRecords = 0;
@@ -811,6 +810,8 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
       const flush = async () => {
         if (bufferedRecords === 0) return;
         phase = 'writing';
+        batch = migrateNormalizedBatch(/** @type {Record<string, unknown>} */ (batch));
+        if (header?.schemaVersion === 12) batch = await migrateSchema12Batch(indexedDB, batch);
         await preserveStreamedStructuralMetadata(indexedDB, batch);
         const result = await upsertCanonicalBatch(indexedDB, batch, {
           validateRelationships: false,
@@ -845,7 +846,8 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
           if (envelope.kind !== 'metadata') {
             throw new TypeError('Normalized activity JSONL must start with metadata');
           }
-          if (envelope.schemaVersion !== CANONICAL_SCHEMA_VERSION) {
+          const schemaVersion = Number(envelope.schemaVersion);
+          if (![CANONICAL_SCHEMA_VERSION, 13, 12].includes(schemaVersion)) {
             throw new TypeError(`Unsupported normalized activity schema: ${String(envelope.schemaVersion)}`);
           }
           if (envelope.ingestionVersion !== NORMALIZED_JSONL_INGESTION_VERSION) {
@@ -864,6 +866,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
           header = {
             phase: /** @type {'all' | 'runs' | 'records'} */ (envelope.phase),
             records: Number(envelope.records),
+            schemaVersion,
             sourceRecords: Number.isSafeInteger(envelope.sourceRecords)
               ? Number(envelope.sourceRecords)
               : undefined
@@ -882,7 +885,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
           throw new TypeError(`Normalized activity JSONL line ${lineNumber} must contain a canonical record`);
         }
         const excluded = header.phase === 'runs'
-          ? ['domains', 'tools', 'audits', 'issues']
+          ? ['domains', 'tools', 'audits', 'issues', 'operationalValues']
           : header.phase === 'records'
             ? ['campaigns', 'repositories', 'workflows', 'runs']
             : [];

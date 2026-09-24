@@ -7,7 +7,7 @@ import { createRouteView } from './route-empty-state.js';
 import { renderRouteTabSet } from './route-tab-set.js';
 
 /**
- * @typedef {{ id: string, label: string, icon: string, href: string, count?: number, trailingIcon?: string }} RoutePageTab
+ * @typedef {{ id: string, label: string, icon: string, href: string, count?: number, trailingIcon?: string, routeTitle?: string, routeDescription?: string }} RoutePageTab
  */
 
 /**
@@ -30,7 +30,7 @@ import { renderRouteTabSet } from './route-tab-set.js';
  *   currentTab: string,
  *   tabListClassName: string,
  *   tabListAriaLabel: (title: string, routeValue: string) => string,
- *   tabs: RoutePageTab[] | ((args: { routeValue: string, title: string }) => RoutePageTab[]),
+ *   tabs: RoutePageTab[] | ((args: { routeValue: string, title: string, description: string }) => RoutePageTab[]),
  *   pageLevelTabs?: boolean,
  *   renderMatched: RoutePageMatchRenderer
  * }} RoutePageShellOptions
@@ -46,6 +46,7 @@ import { renderRouteTabSet } from './route-tab-set.js';
  */
 export function createRoutePageShell(context, options) {
   let routeTitle = '';
+  let routeDescription = '';
   /** @type {HTMLElement | null} */
   let promotedTabs = null;
   /** @type {MutationObserver | null} */
@@ -73,7 +74,7 @@ export function createRoutePageShell(context, options) {
           ariaLabel: options.tabListAriaLabel(title, routeValue),
           currentTab: options.currentTab,
           tabs: typeof options.tabs === 'function'
-            ? options.tabs({ routeValue, title })
+            ? options.tabs({ routeValue, title, description: routeDescription })
             : options.tabs
         })
         : null;
@@ -83,6 +84,9 @@ export function createRoutePageShell(context, options) {
       const pageElement = root.closest('.dashboard-page');
       const page = pageElement instanceof HTMLElement ? pageElement : null;
       if (tabs && page) {
+        for (const existingTabs of page.querySelectorAll(':scope > .route-tab-navigation, :scope > [data-route-tabs]')) {
+          existingTabs.remove();
+        }
         page.insertBefore(
           tabs,
           page.querySelector(':scope > .page-chrome, :scope > .filter-bar, :scope > .page-layout-grid, :scope > .custom-view-grid')
@@ -105,20 +109,23 @@ export function createRoutePageShell(context, options) {
         root.prepend(tabs);
       }
       routeTitle = '';
+      routeDescription = '';
     },
     renderMatched: (routeValue) => {
       const match = options.renderMatched(routeValue, root);
       if (!match) return null;
       const allocation = match.allocation;
       const title = typeof allocation.title === 'string' ? allocation.title : '';
+      const description = typeof allocation.description === 'string' ? allocation.description : '';
       routeTitle = title;
+      routeDescription = description;
       root.dispatchEvent(new CustomEvent('dashboard-route-allocation', {
         bubbles: true,
         detail: allocation
       }));
       if (options.pageLevelTabs) return h('div', null, match.content);
       const tabs = typeof options.tabs === 'function'
-        ? options.tabs({ routeValue, title })
+        ? options.tabs({ routeValue, title, description })
         : options.tabs;
       return h(
         'div',

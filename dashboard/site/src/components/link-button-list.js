@@ -27,28 +27,41 @@ export function renderLinkButtonList(context) {
       const label = text(row[labelField]) || 'Link';
       const indicator = text(row[indicatorField]);
       const indicatorLabel = text(row[indicatorLabelField]);
+      const link = renderSafeLink(
+        h('span', { className: 'link-button-list-content' },
+          renderIconSpan('link-button-list-icon', text(row[iconField]) || fallbackIcon, { ariaHidden: true }),
+          h('span', null, label),
+          indicator
+            ? h(
+                'span',
+                {
+                  className: 'link-button-list-indicator',
+                  title: indicatorLabel || undefined,
+                  'aria-label': indicatorLabel || undefined
+                },
+                renderIconSpan('', indicator, { ariaHidden: true })
+              )
+            : null,
+          renderIconSpan('link-button-list-chevron', 'chevron-right', { ariaHidden: true })
+        ),
+        findLink(row, linkField)
+      );
+      if (link instanceof HTMLAnchorElement) {
+        link.dataset.routeTitle = label;
+        const href = link.getAttribute('href') ?? '';
+        const route = href.match(/^#page-([^?]+)/)?.[1];
+        if (route) {
+          try {
+            link.dataset.navPageId = decodeURIComponent(route);
+          } catch {
+            link.removeAttribute('data-nav-page-id');
+          }
+        }
+      }
       return h(
         'li',
         { className: 'link-button-list-item' },
-        renderSafeLink(
-          h('span', { className: 'link-button-list-content' },
-            renderIconSpan('link-button-list-icon', text(row[iconField]) || fallbackIcon, { ariaHidden: true }),
-            h('span', null, label),
-            indicator
-              ? h(
-                  'span',
-                  {
-                    className: 'link-button-list-indicator',
-                    title: indicatorLabel || undefined,
-                    'aria-label': indicatorLabel || undefined
-                  },
-                  renderIconSpan('', indicator, { ariaHidden: true })
-                )
-              : null,
-            renderIconSpan('link-button-list-chevron', 'chevron-right', { ariaHidden: true })
-          ),
-          findLink(row, linkField)
-        )
+        link
       );
     },
     (row, index) => findLink(row, linkField)?.href || text(row[labelField]) || String(index)

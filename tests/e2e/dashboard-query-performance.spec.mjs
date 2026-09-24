@@ -10,6 +10,7 @@ import {
 } from "./dashboard-deployed-refresh-helpers.mjs";
 import {
   QUERY_CHUNK_SIZE,
+  availableDeployedActivityShardEntries,
   deployedProxyTarget,
   parseQueryPerformanceShard,
   partitionQueryDefinitions,
@@ -78,7 +79,13 @@ async function serveDashboard(request, response) {
     ? undefined
     : Buffer.from(await deployedResponse.arrayBuffer());
   if (pathname === "/payload-hashes.json" && body) {
-    const entries = deployedActivityShardEntries(JSON.parse(body.toString("utf8")));
+    const entries = await availableDeployedActivityShardEntries(
+      deployedActivityShardEntries(JSON.parse(body.toString("utf8"))),
+      { baseUrl: deployedDashboardUrl },
+    );
+    if (!entries.some(({ name }) => name.startsWith("gh-aw-logs-runs/"))) {
+      throw new Error("No available deployed run-information shards remain after availability checks.");
+    }
     deployedShardSources.clear();
     for (const { name, sourceName } of entries) deployedShardSources.set(`/${name}`, `/${sourceName}`);
     body = Buffer.from(JSON.stringify(Object.fromEntries(entries.map(({ name, hash }) => [name, hash]))));

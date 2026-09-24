@@ -67,7 +67,7 @@ import {
  */
 
 /**
- * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, description?: string, icon?: string, ['class-name']?: string, ['filter-bar']?: boolean, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
+ * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, description?: string, icon?: string, ['class-name']?: string, ['filter-bar']?: boolean, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string, ['title-format']?: 'title-case' }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
  */
 
 /**
@@ -466,7 +466,9 @@ function queryParametersMatch(left, right) {
  * @param {HTMLElement | null} routeTabs
  */
 function showPageSkeleton(page, routeTabs) {
-  page.replaceChildren(...(routeTabs ? [routeTabs, renderPageSkeleton()] : [renderPageSkeleton()]));
+  const declaredRouteTabs = page.querySelector(':scope > .route-tab-navigation, :scope > [data-route-tabs]');
+  const preservedRouteTabs = routeTabs ?? (declaredRouteTabs instanceof HTMLElement ? declaredRouteTabs : null);
+  page.replaceChildren(...(preservedRouteTabs ? [preservedRouteTabs, renderPageSkeleton()] : [renderPageSkeleton()]));
   page.setAttribute('aria-busy', 'true');
   page.setAttribute('aria-label', 'Loading view');
 }
@@ -650,6 +652,7 @@ function renderPagePlaceholder(page) {
     'data-page-description': payload.description ?? '',
     'data-route-parameter': routeParameter,
     'data-route-navigation-page': routeNavigationPage,
+    'data-route-title-format': payload.route?.['title-format'],
     'data-page-pending': ''
   });
 }
@@ -660,9 +663,22 @@ function renderPagePlaceholder(page) {
  */
 function renderPageLoadingSkeleton(page) {
   const placeholder = renderPagePlaceholder(page);
+  const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page;
+  const routeParameter = typeof payload.route?.['hash-query-parameter'] === 'string'
+    ? payload.route['hash-query-parameter']
+    : undefined;
+  const routeTabs = routeParameter ? declaredRouteTabs(payload.route) : null;
   placeholder.removeAttribute('data-page-pending');
   placeholder.setAttribute('aria-busy', 'true');
   placeholder.setAttribute('aria-label', 'Loading view');
+  if (routeTabs && routeParameter) {
+    placeholder.append(renderDeclaredRouteTabs({
+      routeParameter,
+      currentTab: routeTabs.currentTab,
+      tabs: routeTabs.tabs,
+      className: routeTabs.className
+    }));
+  }
   placeholder.append(renderPageSkeleton());
   return placeholder;
 }
@@ -809,7 +825,8 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
     ? renderDeclaredRouteTabs({
       routeParameter,
       currentTab: routeTabs.currentTab,
-      tabs: routeTabs.tabs
+      tabs: routeTabs.tabs,
+      className: routeTabs.className
     })
     : null;
   const pageClassName = typeof page['class-name'] === 'string' && page['class-name'].length > 0
@@ -874,6 +891,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       'data-page-description': page.description ?? '',
       'data-route-parameter': routeParameter,
       'data-route-navigation-page': routeNavigationPage,
+      'data-route-title-format': page.route?.['title-format'],
       'data-view-mode': selectedViewMode
     },
     renderedRouteTabs,
@@ -1055,6 +1073,26 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     return disposeNavigation;
   }
 
+  /**
+   * @param {string} pageId
+   * @param {string} [routeTitle]
+   * @param {string} [routeDescription]
+   */
+  const primePageChrome = (pageId, routeTitle = '', routeDescription = '') => {
+    const page = pages.find((candidate) => candidate.dataset.pageId === pageId);
+    const title = routeTitle.trim() || page?.dataset.pageTitle || '';
+    const description = routeDescription.trim() || page?.dataset.pageDescription || '';
+    if (breadcrumbPage) breadcrumbPage.textContent = title;
+    if (pageTitle) pageTitle.textContent = title;
+    updateDocumentTitle(root.ownerDocument, title, dashboardTitle);
+    renderPageTitleLink(pageTitleLink, null);
+    if (pageDescription) {
+      pageDescription.textContent = description;
+      pageDescription.toggleAttribute('hidden', description.length === 0);
+    }
+    renderPageMode(pageMode, '');
+  };
+
   root.addEventListener('dashboard-route-allocation', (event) => {
     if (!(event instanceof CustomEvent) || !(event.target instanceof Element)) return;
     const page = event.target.closest('.dashboard-page');
@@ -1143,8 +1181,16 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
    * @param {string} pageId
    * @param {URLSearchParams} [parameters]
    * @param {boolean} [deferPopulation]
+   * @param {string} [provisionalTitle]
+   * @param {string} [provisionalDescription]
    */
-  const activate = (pageId, parameters = new URLSearchParams(), deferPopulation = false) => {
+  const activate = (
+    pageId,
+    parameters = new URLSearchParams(),
+    deferPopulation = false,
+    provisionalTitle = '',
+    provisionalDescription = ''
+  ) => {
      if (navigationOwner.signal.aborted) return;
      const revision = ++activationRevision;
     pageOwner.abort();
@@ -1292,8 +1338,11 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       if (breadcrumbDashboard instanceof HTMLAnchorElement) breadcrumbDashboard.hidden = true;
     }
     const queryTitle = resolveQueryDrillPageTitle(parameters, knownQueries);
-    const title = queryTitle || routeValue || page?.dataset.pageTitle || '';
-    const description = page?.dataset.pageDescription ?? '';
+    const formattedRouteTitle = page?.dataset.routeTitleFormat === 'title-case'
+      ? titleCase(routeValue)
+      : routeValue;
+    const title = queryTitle || provisionalTitle.trim() || formattedRouteTitle || page?.dataset.pageTitle || '';
+    const description = provisionalDescription.trim() || page?.dataset.pageDescription || '';
     if (breadcrumbPage) breadcrumbPage.textContent = title;
     if (pageTitle) pageTitle.textContent = title;
     updateDocumentTitle(root.ownerDocument, title, dashboardTitle);
@@ -1410,10 +1459,17 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     pendingNavigationHash = undefined;
     const pageId = getNavigationPageId(link);
     if (!pageId || !availableIds.has(pageId)) return;
+    const provisionalTitle = link.dataset.routeTitle ?? '';
+    const provisionalDescription = link.dataset.routeDescription ?? '';
     navigationIndex += 1;
     defaultView?.history.pushState({ [NAVIGATION_INDEX_STATE_KEY]: navigationIndex }, '', link.href);
     syncHistoryBack();
-    updateWithViewTransition(root.ownerDocument, () => activate(pageId, routeFromHash()?.parameters, true), 'forward');
+    primePageChrome(pageId, provisionalTitle, provisionalDescription);
+    updateWithViewTransition(
+      root.ownerDocument,
+      () => activate(pageId, routeFromHash()?.parameters, true, provisionalTitle, provisionalDescription),
+      'forward'
+    );
     if (pageTitle instanceof HTMLElement) pageTitle.focus();
   }, { signal: navigationOwner.signal });
   root.addEventListener('dashboard-query-context-change', (event) => {
@@ -1466,6 +1522,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       : undefined;
     pendingNavigationDirection = undefined;
     pendingNavigationHash = undefined;
+    primePageChrome(route?.pageId ?? initialPageId);
     updateWithViewTransition(root.ownerDocument, () => activate(
       route?.pageId ?? initialPageId,
       route?.parameters,

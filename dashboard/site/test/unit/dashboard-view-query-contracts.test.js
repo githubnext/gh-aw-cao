@@ -129,6 +129,97 @@ describe('dashboard view query contracts', () => {
     }
   });
 
+  it('uses one shared route shell first across every primary campaign tab', () => {
+    const primaryPages = {
+      'campaign-insights': 'insights',
+      'campaign-problems': 'problems',
+      'campaign-runs': 'runs',
+      'campaign-issues': 'issues',
+      'campaign-detail': 'overview'
+    };
+
+    for (const [pageId, body] of Object.entries(primaryPages)) {
+      const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === pageId);
+      const firstView = viewsOf(page)[0];
+      expect(firstView).toMatchObject({
+        data: {
+          sources: [
+            'workflows',
+            'campaign-insight-tab-counts',
+            'campaign-problem-tab-counts',
+            'campaign-issue-tab-counts'
+          ],
+          arguments: [{ name: 'campaign', field: 'campaign' }]
+        },
+        mark: 'element',
+        element: 'campaign-route',
+        config: { body }
+      });
+    }
+
+    expect(dashboard.pages.some((/** @type {Record<string, unknown>} */ page) => page.id === 'campaign-dispatches')).toBe(false);
+  });
+
+  it('uses one declarative route template and Insights destination for every campaign entry path', () => {
+    const campaignPages = dashboard.pages.filter((/** @type {Record<string, unknown>} */ page) => (
+      /** @type {Record<string, unknown> | undefined} */ (page.route)?.['hash-query-parameter'] === 'campaign'
+    ));
+    const expectedTabs = [
+      { id: 'insights', label: 'Insights', icon: 'graph', page: 'campaign-insights' },
+      { id: 'problems', label: 'Problems', icon: 'alert', page: 'campaign-problems' },
+      { id: 'issues', label: 'Issues', icon: 'issue-opened', page: 'campaign-issues' }
+    ];
+
+    for (const page of campaignPages) {
+      expect(page.route).toMatchObject({
+        'title-format': 'title-case',
+        'tabs-class-name': 'campaign-tabs',
+        tabs: expectedTabs
+      });
+    }
+    expect(JSON.stringify(dashboard.queries)).not.toContain('#page-campaign-detail?campaign=');
+    expect(JSON.stringify(dashboard.queries)).toContain('#page-campaign-insights?campaign=');
+  });
+
+  it('renders campaign issues with the reusable issue card template', () => {
+    const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-issues');
+    const issueView = viewsOf(page).find((view) => view.id === 'campaign-issue-table');
+
+    expect(issueView).toMatchObject({
+      data: { source: 'campaign-worker-issues', 'route-field': 'campaign' },
+      mark: 'list',
+      list: {
+        style: 'entity-cards',
+        card: 'issue',
+        drill: { type: 'external', field: 'issue-link' }
+      }
+    });
+  });
+
+  it('keeps campaign content data-driven through reusable views and templates', () => {
+    const insights = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-insights');
+    const problems = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-problems');
+    const runs = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-runs');
+
+    expect(viewsOf(insights)[1]).toMatchObject({
+      data: {
+        sources: ['campaign-operational-value-series'],
+        arguments: [{ name: 'campaign', field: 'campaign' }]
+      },
+      mark: 'element',
+      element: 'measure-history'
+    });
+    expect(viewsOf(problems).find((view) => view.id === 'campaign-current-runtime-problems')).toMatchObject({
+      data: { source: 'campaign-problem-items' },
+      mark: 'list',
+      list: { style: 'entity-cards', card: 'problem' }
+    });
+    expect(viewsOf(runs).find((view) => view.id === 'campaign-run-status')).toMatchObject({
+      data: { source: 'campaign-runs', 'route-field': 'campaign' },
+      mark: 'chart'
+    });
+  });
+
   it('renders issues per repository and one activity inventory', () => {
     const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'repositories');
     const views = viewsOf(page);

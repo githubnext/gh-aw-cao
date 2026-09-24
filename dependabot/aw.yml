@@ -4,5 +4,6 @@ min-version: v0.89.20
 experimental: true
 includes:
   - ../aw.yml
+  - operational-value.mjs
   - .github/workflows/dependabot.md
   - .github/workflows/dependabot-update-planner.md

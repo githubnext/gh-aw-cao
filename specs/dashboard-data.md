@@ -294,7 +294,7 @@ MUST NOT be confused with the local SQLite projection.
 
 IndexedDB and the Activity SQLite database SHALL retain all available canonical
 Repository, Workflow, and Run summaries. They SHALL retain detailed Domain,
-Tool, Audit, and Issue records for the bounded 30-day operational window.
+Tool, Audit, Issue, and Operational Value records for the bounded 30-day operational window.
 Expiring run-owned records MUST NOT remove their retained Run or the Run's
 structural parents.
 
@@ -304,10 +304,10 @@ The implementation profile defined by this specification is:
 
 | Layer | Version | Physical structure |
 | --- | ---: | --- |
-| Canonical model | 13 | Campaign, Repository, Workflow, Run, Domain, Tool, Audit, and Issue records |
-| Browser IndexedDB | 21 | Eight canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
-| Local SQLite projection | IndexedDB 21 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records`, containing the same logical stores and JSON records as IndexedDB |
-| Local Redis server projection | Canonical model 13 | Immutable active generation of logical-source hashes plus RediSearch indexes, queried only through the loopback Go HTTP(S) server |
+| Canonical model | 14 | Campaign, Repository, Workflow, Run, Domain, Tool, Audit, Issue, and Operational Value records |
+| Browser IndexedDB | 22 | Nine canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
+| Local SQLite projection | IndexedDB 22 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records`, containing the same logical stores and JSON records as IndexedDB |
+| Local Redis server projection | Canonical model 14 | Immutable active generation of logical-source hashes plus RediSearch indexes, queried only through the loopback Go HTTP(S) server |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
 
 ## 5.2 Local Redis server profile
@@ -344,6 +344,7 @@ store uses `id` as its key path. The implemented secondary indexes are:
 | `workflows` | `byRepository -> repositoryId` |
 | `runs` | `byRepository -> repositoryId`, `byWorkflow -> workflowId`, `byConclusion -> conclusion`, `byEvent -> event`, `byEventConclusion -> [event, conclusion]` |
 | `domains`, `tools`, `audits`, `issues` | `byRun -> runId` |
+| `operationalValues` | `byRepository -> repositoryId`, `byValue -> valueId` |
 | `transactions` | `byCreatedAt -> createdAt` |
 | `dailyOverviewAggregates` | `byGenerationDay -> [generation, day]` |
 | `overviewAggregateMetadata` | none |
@@ -1737,7 +1738,7 @@ The canonical browser database SHALL use:
 
 ```js
 const DATABASE_NAME = "gh-aw-cao-dashboard-data";
-const DATABASE_VERSION = 21;
+const DATABASE_VERSION = 22;
 ```
 
 The name MAY be scoped by deployment path to prevent unrelated dashboard
@@ -1749,7 +1750,7 @@ rows.
 
 # 27. Object Stores
 
-IndexedDB version 21 SHALL define:
+IndexedDB version 22 SHALL define:
 
 ```text
 campaigns
@@ -1760,6 +1761,7 @@ domains
 tools
 audits
 issues
+operationalValues
 transactions
 dailyOverviewAggregates
 overviewAggregateMetadata
@@ -1803,7 +1805,7 @@ conclusion
 
 The generation-ordered runtime-computation indexes described by Section 73 are
 reserved for the physical version that implements the computation projection.
-They are not part of IndexedDB version 21. That implementation MUST increment
+They are not part of IndexedDB version 22. That implementation MUST increment
 the physical version and update Section 5.1 before relying on those indexes.
 
 ### run-linked tables
@@ -1813,6 +1815,13 @@ domains: runId
 tools: runId
 audits: runId
 issues: runId
+```
+
+### operational values
+
+```text
+repositoryId
+valueId
 ```
 
 These indexes correspond to the shipped campaign lookup, repository/workflow

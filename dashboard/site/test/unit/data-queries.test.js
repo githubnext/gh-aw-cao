@@ -241,10 +241,10 @@ describe('declarative dashboard queries', () => {
         'firewall-observations': {
           source: 'firewall-observations',
           rows: [
-            { domain: 'api.github.com', organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', decision: 'allowed', 'request-count': 2 },
-            { domain: 'api.github.com', organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', decision: 'denied', 'request-count': 5 },
-            { domain: 'api.github.com', organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', decision: 'denied', 'request-count': 3 },
-            { domain: 'uploads.github.com', organization: 'githubnext', repository: 'other', workflow: 'c.md', run: '3', decision: 'allowed', 'request-count': 7 }
+            { domain: 'api.github.com', organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', decision: 'allowed', 'request-count': 2, 'workflow-link': { href: 'https://github.com/githubnext/gh-aw-cao/blob/HEAD/a.md' } },
+            { domain: 'api.github.com', organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', decision: 'denied', 'request-count': 5, 'workflow-link': { href: 'https://github.com/githubnext/gh-aw-cao/blob/HEAD/a.md' } },
+            { domain: 'api.github.com', organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', decision: 'denied', 'request-count': 3, 'workflow-link': { href: 'https://github.com/githubnext/gh-aw-cao/blob/HEAD/a.md' } },
+            { domain: 'uploads.github.com', organization: 'githubnext', repository: 'other', workflow: 'c.md', run: '3', decision: 'allowed', 'request-count': 7, 'workflow-link': { href: 'https://github.example.com/githubnext/other/blob/HEAD/c.md' } }
           ],
           metadata: metadata('firewall-observations')
         },
@@ -282,6 +282,7 @@ describe('declarative dashboard queries', () => {
         organization: 'githubnext',
         repository: 'gh-aw-cao',
         workflow: 'a.md',
+        'workflow-source-url': 'https://github.com/githubnext/gh-aw-cao/blob/HEAD/a.md',
         runs: 2,
         accepted: 2,
         blocked: 8
@@ -291,6 +292,7 @@ describe('declarative dashboard queries', () => {
         organization: 'githubnext',
         repository: 'other',
         workflow: 'c.md',
+        'workflow-source-url': 'https://github.example.com/githubnext/other/blob/HEAD/c.md',
         runs: 1,
         accepted: 7,
         blocked: 0

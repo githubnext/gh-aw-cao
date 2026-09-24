@@ -7,7 +7,7 @@ import { tidy } from '../../data-operations.js';
 const debug = createDebug('data:indexeddb');
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 21;
+export const DATABASE_VERSION = 22;
 
 /** @param {string} [pathname] */
 export function canonicalDatabaseName(pathname) {
@@ -22,7 +22,8 @@ export const ENTITY_STORES = /** @type {const} */ ([
   'domains',
   'tools',
   'audits',
-  'issues'
+  'issues',
+  'operationalValues'
 ]);
 export const TRANSACTION_STORE = 'transactions';
 export const DATABASE_STORES = /** @type {const} */ ([...ENTITY_STORES, TRANSACTION_STORE]);
@@ -85,6 +86,13 @@ export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
       byRun: 'runId'
     }
   },
+  operationalValues: {
+    keyPath: 'id',
+    indexes: {
+      byRepository: 'repositoryId',
+      byValue: 'valueId'
+    }
+  },
   transactions: {
     keyPath: 'id',
     indexes: { byCreatedAt: 'createdAt' }
@@ -107,13 +115,14 @@ const INGESTION_LOCK_RETRY_DELAY_MS = 25;
 const INGESTION_LOCK_WAITING_NOTICE_DELAY_MS = 500;
 const MAX_QUERY_INDEX_LOOKUPS = 32;
 const RECORD_OVERHEAD_BYTES = 512;
-const RETENTION_TIMESTAMPS = new Set(['runs', 'domains', 'tools', 'audits', 'issues']);
+const RETENTION_TIMESTAMPS = new Set(['runs', 'domains', 'tools', 'audits', 'issues', 'operationalValues']);
 const RUN_LINKED_STORES = /** @type {const} */ (['domains', 'tools', 'audits', 'issues']);
 const QUERYABLE_STRING_KEY_PATHS = new Set([
   'slug',
   'repositoryId',
   'workflowId',
   'runId',
+  'valueId',
   'conclusion',
   'event'
 ]);
@@ -323,7 +332,7 @@ export async function upsertCanonicalBatch(indexedDB, batch, options = {}) {
     let committedBatches = 0;
     for (const storeName of ENTITY_STORES) {
       options.signal?.throwIfAborted();
-      const records = batch[storeName];
+      const records = batch[storeName] ?? [];
       for (let offset = 0; offset < records.length; offset += batchSize) {
         options.signal?.throwIfAborted();
         const boundedRecords = records.slice(offset, offset + batchSize);
@@ -836,7 +845,7 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
   const recordsToWrite = Object.fromEntries(ENTITY_STORES.map((storeName) => {
     const previous = new Map((options.previousBatch?.[storeName] ?? [])
       .map((record) => [String(record.id), record]));
-    return [storeName, batch[storeName].filter((record) => {
+    return [storeName, (batch[storeName] ?? []).filter((record) => {
       const retained = previous.get(String(record.id));
       return retained !== record
         && (!retained || JSON.stringify(retained) !== JSON.stringify(record));
@@ -845,8 +854,8 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
   const previousBatch = options.previousBatch;
   const recordsToDelete = previousBatch
     ? Object.fromEntries(ENTITY_STORES.map((storeName) => {
-        const retained = new Set(batch[storeName].map((record) => String(record.id)));
-        return [storeName, previousBatch[storeName]
+        const retained = new Set((batch[storeName] ?? []).map((record) => String(record.id)));
+        return [storeName, (previousBatch[storeName] ?? [])
           .map((record) => record.id)
           .filter((id) => !retained.has(String(id)))];
       }))
@@ -875,7 +884,7 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
   const database = await openCanonicalDatabase(indexedDB);
   try {
     for (const storeName of ENTITY_STORES) {
-      const records = batch[storeName];
+      const records = batch[storeName] ?? [];
       const retained = new Set(records.map((record) => String(record.id)));
       // Evict first so reclaimed space is available to the writes that follow.
       const removal = readwriteTransaction(database, storeName);

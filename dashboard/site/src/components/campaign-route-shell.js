@@ -2,10 +2,18 @@
  * Shared campaign-route shell primitives for declarative composition.
  */
 
-import { rowsFor } from './source-rows.js';
 import { createRoutePageShell } from './route-page-shell.js';
-import { normalizeCampaignRoute, campaignModeForRoute, campaignNameForRoute } from './campaign-route-composition.js';
+import { normalizeCampaignRoute, campaignNameForRoute } from './campaign-route-composition.js';
 import { CAMPAIGN_ROUTE_TABS } from './route-body-specification.js';
+import { renderEmptyMessage } from './ui-primitives.js';
+import { bindFactorySources, createFactoryScope } from './factory-elements.js';
+import { effect } from '../reactive.js';
+
+const CAMPAIGN_TAB_COUNT_SOURCES = Object.freeze({
+  insights: 'campaign-insight-tab-counts',
+  problems: 'campaign-problem-tab-counts',
+  issues: 'campaign-issue-tab-counts'
+});
 
 /**
  * @typedef {{
@@ -32,27 +40,54 @@ import { CAMPAIGN_ROUTE_TABS } from './route-body-specification.js';
  * @returns {HTMLElement}
  */
 export function renderCampaignRouteShell(context, config) {
-  const allWorkflows = rowsFor(context.sources, 'workflows');
-  const problemCount = rowsFor(context.sources, 'campaign-problem-items').length;
-  const allIssues = rowsFor(context.sources, 'campaign-worker-issues');
-  return createRoutePageShell(context, {
+  const workflowBindings = bindFactorySources(context.sources, ['workflows'], context);
+  const countBindings = bindFactorySources(
+    context.sources,
+    Object.values(CAMPAIGN_TAB_COUNT_SOURCES),
+    context
+  );
+  const bindings = { ...workflowBindings, ...countBindings };
+  const scope = createFactoryScope();
+  const root = createRoutePageShell(context, {
     rootClassName: config.rootClassName,
     datasetKey: 'campaign',
     selectMessage: config.selectMessage,
     notFoundMessage: 'Campaign not found.',
     unavailableMessage: 'Campaign data is unavailable.',
-    isUnavailable: () => context.sources.workflows?.metadata?.availability === 'unavailable',
+    isUnavailable: () => bindings.workflows.unavailable(),
     hasSelection: (routeValue) => normalizeCampaignRoute(routeValue).length > 0,
     currentTab: config.currentTab,
     tabListClassName: 'campaign-tabs',
     tabListAriaLabel: (title) => `${title} views`,
-    tabs: ({ routeValue }) => campaignTabs(routeValue, problemCount, campaignIssueCount(routeValue, allIssues)),
+    tabs: ({ routeValue, title, description }) => campaignTabs(
+      routeValue,
+      title,
+      description,
+      campaignTabCounts(routeValue, bindings)
+    ),
     pageLevelTabs: true,
     renderMatched: (routeValue) => {
       const campaignId = normalizeCampaignRoute(routeValue);
-      const workflows = allWorkflows
+      const workflows = bindings.workflows.rows()
         .filter((workflow) => campaignId && String(workflow.campaign).toLowerCase() === campaignId.toLowerCase());
       if (workflows.length === 0) {
+        const workflowsSource = bindings.workflows.source();
+        const stillCollecting = workflowsSource?.metadata?.availability !== 'unavailable'
+          && workflowsSource?.metadata?.completeness !== 'complete';
+        if (stillCollecting) {
+          const campaignName = campaignNameForRoute(campaignId, workflows);
+          return {
+            allocation: {
+              title: campaignName,
+              description: config.description.replace('{campaignName}', campaignName),
+              navigationPage: 'campaigns'
+            },
+            content: renderEmptyMessage('Loading campaign data...', {
+              role: 'status',
+              'aria-busy': 'true'
+            })
+          };
+        }
         return null;
       }
       const campaignName = campaignNameForRoute(campaignId, workflows);
@@ -60,40 +95,60 @@ export function renderCampaignRouteShell(context, config) {
         allocation: {
           title: campaignName,
           description: config.description.replace('{campaignName}', campaignName),
-          ...(config.currentTab === 'problems' ? {} : { mode: campaignModeForRoute(workflows) }),
           navigationPage: 'campaigns'
         },
         content: config.bodyRenderer?.({ context, campaignId, campaignName, workflows }) ?? null
       };
     }
   });
+  effect(() => {
+    for (const binding of Object.values(bindings)) {
+      binding.rows();
+      binding.pending();
+      binding.unavailable();
+    }
+    const routeValue = root.dataset.campaign ?? '';
+    if (!routeValue) return;
+    root.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: {
+        parameter: context.routeParameter,
+        value: routeValue
+      }
+    }));
+  }, { signal: scope.signal });
+  scope.bind(root);
+  return root;
 }
 
 /**
  * @param {string} campaignId
- * @param {Array<Record<string, unknown>>} issues
+ * @param {Record<string, { rows: () => Array<Record<string, unknown>> }>} bindings
  */
-function campaignIssueCount(campaignId, issues) {
-  return issues.filter((row) => String(row.campaign).toLowerCase() === campaignId.toLowerCase()).length;
+function campaignTabCounts(campaignId, bindings) {
+  return Object.fromEntries(Object.entries(CAMPAIGN_TAB_COUNT_SOURCES).map(([tabId, sourceName]) => {
+    const row = bindings[sourceName].rows()
+      .find((candidate) => String(candidate.campaign).toLowerCase() === campaignId.toLowerCase());
+    const count = Number(row?.items);
+    return [tabId, Number.isFinite(count) && count > 0 ? count : 0];
+  }));
 }
 
 /**
  * @param {string} campaignId
- * @param {number} problemCount
- * @param {number} issueCount
+ * @param {string} campaignName
+ * @param {string} campaignDescription
+ * @param {Record<string, number>} counts
  */
-function campaignTabs(campaignId, problemCount, issueCount) {
+function campaignTabs(campaignId, campaignName, campaignDescription, counts) {
   const campaignQuery = `?campaign=${encodeURIComponent(campaignId)}`;
   return CAMPAIGN_ROUTE_TABS.map((tab) => ({
     id: tab.id,
     label: tab.label,
     icon: tab.icon,
     href: `#page-${tab.page}${campaignQuery}`,
-    count: tab.id === 'problems' && problemCount > 0
-      ? problemCount
-      : tab.id === 'issues' && issueCount > 0
-        ? issueCount
-        : undefined,
-    trailingIcon: 'chevron-right'
+    count: (counts[tab.id] ?? 0) > 0 ? counts[tab.id] : undefined,
+    trailingIcon: 'chevron-right',
+    routeTitle: campaignName,
+    routeDescription: campaignDescription
   }));
 }

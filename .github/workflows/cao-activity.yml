@@ -21,6 +21,7 @@ permissions:
   actions: read
   contents: read
   pull-requests: read
+  vulnerability-alerts: read
 
 concurrency:
   group: central-agentic-ops-activity
@@ -35,6 +36,7 @@ jobs:
       actions: read
       contents: read
       pull-requests: read
+      vulnerability-alerts: read
     steps:
       - name: Checkout trusted activity source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -126,6 +128,7 @@ jobs:
           permission-actions: read
           permission-contents: read
           permission-pull-requests: read
+          permission-vulnerability-alerts: read
 
       - name: Resolve gh-aw compiler version
         id: gh-aw-compiler
@@ -220,6 +223,45 @@ jobs:
             --records-dir "$REPORT_GH_AW_LOGS_RECORDS" \
             --retention-days 30 \
             --run-retention-days 30
+
+      - name: Compute repository operational value
+        env:
+          ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
+          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
+          REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
+        run: |
+          node activity/cao.mjs operational-value \
+            --database "$ACTIVITY_DATABASE" \
+            --root . \
+            --output "$REPORT_GH_AW_LOGS_SHARDS/operational-values.jsonl" \
+            --retention-days 30 \
+            --max-github-api-rate-limit -2000
+
+      - name: Generate operational value shards
+        env:
+          REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
+        run: |
+          node activity/cao.mjs hash-payloads \
+            --shard-dir "$REPORT_GH_AW_LOGS_SHARDS" \
+            --runs-dir "$RUNNER_TEMP/cao-activity/gh-aw-logs-runs" \
+            --records-dir "$RUNNER_TEMP/cao-activity/gh-aw-logs-records" \
+            --inventory "$RUNNER_TEMP/cao-activity/inventory-sources.json"
+
+      - name: Ingest operational value
+        env:
+          ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
+        run: |
+          node activity/cao.mjs ingest-jsonl \
+            --database "$ACTIVITY_DATABASE" \
+            --runs-dir "$RUNNER_TEMP/cao-activity/gh-aw-logs-runs" \
+            --records-dir "$RUNNER_TEMP/cao-activity/gh-aw-logs-records" \
+            --retention-days 30 \
+            --run-retention-days 30
+
+      - name: Validate activity database
+        env:
+          ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
+        run: |
           node activity/cao.mjs doctor \
             --database "$ACTIVITY_DATABASE" \
             --ttl-days 30 \

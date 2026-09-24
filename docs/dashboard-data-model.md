@@ -18,6 +18,7 @@ erDiagram
   CAMPAIGN o|--o{ WORKFLOW : classifies
   REPOSITORY ||--o{ WORKFLOW : contains
   REPOSITORY ||--o{ RUN : executes
+  REPOSITORY ||--o{ OPERATIONAL_VALUE : measures
   WORKFLOW ||--o{ RUN : defines
   RUN ||--o{ DOMAIN : records
   RUN ||--o{ TOOL : invokes
@@ -42,6 +43,7 @@ the exact identities and parent relationships.
 | **Tool** | Namespaced deterministic source ID | Run | Records MCP, Bash, and skill calls. |
 | **Audit** | Namespaced deterministic source ID | Run | Records lifecycle, policy, grader, agent, and other execution observations. |
 | **Issue** | `github:issue:<owner>/<repository>:<number>` | Run | Records issue and pull-request safe outputs. |
+| **Operational Value** | Deterministic repository, value ID, and timestamp identity | Repository | Records a package-defined numeric repository metric. |
 
 Names, paths, timestamps, and ingestion order are not canonical identities. Stable upstream IDs take precedence; deterministic source coordinates are used only when an upstream system provides no stable ID.
 
@@ -87,10 +89,10 @@ The activity shard manifest is the dashboard's published operational input. Norm
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
-The canonical model is version 13. The browser database is
-`gh-aw-cao-dashboard-data`, IndexedDB version 21. Its canonical stores are
+The canonical model is version 14. The browser database is
+`gh-aw-cao-dashboard-data`, IndexedDB version 22. Its canonical stores are
 `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `audits`,
-and `issues`; all use `id` as the key. The `transactions` store records
+`issues`, and `operationalValues`; all use `id` as the key. The `transactions` store records
 ingestion outcomes and is indexed by `createdAt`. Two additional disposable
 stores, `dailyOverviewAggregates` and `overviewAggregateMetadata`, implement the
 versioned Overview fast path. Schema upgrades rebuild all stores from

@@ -9,7 +9,14 @@ describe('renderRouteTabSet', () => {
       ariaLabel: 'Reusable route tabs',
       currentTab: 'reports',
       tabs: [
-        { id: 'insights', label: 'Insights', icon: 'graph', href: '#page-insights' },
+        {
+          id: 'insights',
+          label: 'Insights',
+          icon: 'graph',
+          href: '#page-insights',
+          routeTitle: 'Dependabot',
+          routeDescription: 'Operational activity for the Dependabot campaign.'
+        },
         { id: 'reports', label: 'Reports', icon: 'issue', href: '#page-reports' }
       ]
     });
@@ -25,5 +32,9 @@ describe('renderRouteTabSet', () => {
       'insights',
       'reports'
     ]);
+    expect(rendered.querySelector('a')?.dataset).toMatchObject({
+      routeTitle: 'Dependabot',
+      routeDescription: 'Operational activity for the Dependabot campaign.'
+    });
   });
 });

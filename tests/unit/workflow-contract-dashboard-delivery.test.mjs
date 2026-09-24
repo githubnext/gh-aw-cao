@@ -78,6 +78,8 @@ test("dashboard CI runs the campaign quality gates", () => {
   const lintUnit = jobs.get("lint-unit");
   const playwrightIntegration = jobs.get("playwright-integration");
   const ingestionScale = jobs.get("ingestion-scale");
+  const deadViews = jobs.get("dead-views");
+  const deadViewsComment = jobs.get("dead-views-comment");
   const queryComplexity = jobs.get("query-complexity");
   const queryComplexityComment = jobs.get("query-complexity-comment");
   const lighthousePerformance = jobs.get("lighthouse-performance");
@@ -92,6 +94,8 @@ test("dashboard CI runs the campaign quality gates", () => {
       "lint-unit",
       "playwright-integration",
       "ingestion-scale",
+      "dead-views",
+      "dead-views-comment",
       "query-complexity",
       "query-complexity-comment",
       "lighthouse-performance",
@@ -104,6 +108,21 @@ test("dashboard CI runs the campaign quality gates", () => {
   // The synthetic ingestion payload is slow, so the gate stays on main.
   assert.match(ingestionScale.block, /if: github\.ref == 'refs\/heads\/main'/);
   assert.match(ingestionScale.block, /run: npm run test:e2e:dashboard-ingestion/);
+  assert.deepEqual(deadViews.needs, []);
+  assert.match(deadViews.block, /npm run --silent analyze:dead-views > dead-views\.md/);
+  assert.match(deadViews.block, /cat dead-views\.md >> "\$GITHUB_STEP_SUMMARY"/);
+  assert.match(deadViews.block, /name: dashboard-dead-views/);
+  assert.deepEqual(deadViewsComment.needs, ["dead-views"]);
+  assert.match(
+    deadViewsComment.block,
+    /if: >-\s+always\(\).*github\.event_name == 'pull_request'.*github\.event\.pull_request\.head\.repo\.full_name == github\.repository/s
+  );
+  assert.match(deadViewsComment.block, /pull-requests: write/);
+  assert.doesNotMatch(deadViewsComment.block, /issues: write/);
+  assert.match(deadViewsComment.block, /<!-- dashboard-dead-views -->/);
+  assert.match(deadViewsComment.block, /<details><summary><b>Dashboard dead views<\/b><\/summary>/);
+  assert.match(deadViewsComment.block, /issues\.updateComment/);
+  assert.match(deadViewsComment.block, /issues\.createComment/);
   assert.deepEqual(queryComplexity.needs, []);
   assert.match(queryComplexity.block, /node activity\/cao\.mjs dashboard-complexity/);
   assert.match(queryComplexity.block, /npm run dashboard:data:download/);
@@ -232,6 +251,8 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(activityWorkflow, /run-name: CAO Activity \/ \$\{\{ inputs\.request-id \|\| github\.run_id \}\}/);
   assert.match(activityWorkflow, /Resolve activity cache key[\s\S]*?cao-activity-v5-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
   assert.match(activityIndexJob, /permissions:\n\s+actions: read\n\s+contents: read/);
+  assert.match(activityIndexJob, /pull-requests: read\n\s+vulnerability-alerts: read/);
+  assert.match(activityIndexJob, /permission-vulnerability-alerts: read/);
   assert.doesNotMatch(activityIndexJob, /actions\/cache\/save@/);
   assert.match(activityIndexJob, /Upload activity snapshot[\s\S]*?retention-days: 1/);
   assert.match(activityCacheJob, /needs: index[\s\S]*?actions: write[\s\S]*?contents: none/);
@@ -402,7 +423,7 @@ test("Activity campaign owns the shared collected-data cache contract", () => {
   assert.equal((workflow.match(/pull-requests: read/g) || []).length, 3);
   assert.match(workflow, /Generate GitHub App token for activity[\s\S]*?GH_AW_GITHUB_READ_APP_ID[\s\S]*?GH_AW_GITHUB_READ_APP_PRIVATE_KEY/);
   assert.match(workflow, /actions\/create-github-app-token@[0-9a-f]{40}/);
-  assert.equal((workflow.match(/steps\.activity-app-token\.outputs\.token \|\| github\.token/g) || []).length, 3);
+  assert.equal((workflow.match(/steps\.activity-app-token\.outputs\.token \|\| github\.token/g) || []).length, 4);
   assert.doesNotMatch(workflow, /ACTIVITY_INDEXER|ACTIVITY_LOGS|ACTIVITY_RUNNER|GITHUB_TELEMETRY|cao-gh\.jsonl/);
   assert.match(workflow, /Collect dashboard inventory[\s\S]*?uses: actions\/github-script@[0-9a-f]{40}[\s\S]*?core\.info\('Workflow discovery started'\)[\s\S]*?'discover-workflows'[\s\S]*?core\.info\('Workflow discovery completed'\)/);
   assert.match(workflow, /Restore activity cache[\s\S]*?Download agentic workflow logs[\s\S]*?Upload activity snapshot[\s\S]*?cache:[\s\S]*?needs: index[\s\S]*?Download activity snapshot[\s\S]*?Save activity cache/);
@@ -410,6 +431,7 @@ test("Activity campaign owns the shared collected-data cache contract", () => {
   assert.match(workflow, /bash activity\/collect-logs\.sh/);
   assert.match(activityCollector, /gh aw logs --audit/);
   assert.match(workflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl/);
+  assert.match(workflow, /Compute repository operational value[\s\S]*?cao\.mjs operational-value[\s\S]*?--max-github-api-rate-limit -2000/);
   assert.equal((workflow.match(/path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/gm) || []).length, 1);
   assert.match(workflow, /cao-activity-v5-\$\{\{ github\.run_id \}\}-/);
   assert.equal(campaignDocument.scripts["activity:local"], undefined);

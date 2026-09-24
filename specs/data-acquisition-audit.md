@@ -52,6 +52,8 @@ The inventory distinguishes:
 
 All bounded production log collectors reserve 2,000 GitHub API requests through `--max-github-api-rate-limit -2000`. This is fail-closed protection, not shared coordination: concurrent collectors using the same credential can each begin work and then independently stop at the reserve.
 
+Dependabot operational-value collection also bounds Dependabot-alert pagination with `CAO_DEPENDABOT_ALERTS_MAX_PAGES`, which defaults to 1,000 pages. This guard is independent of the rate-limit reserve: a repeated or excessive alerts `Link` chain fails closed before it can consume unbounded API requests.
+
 `gh aw forecast` in the auditor and `agentics-maintenance.yml` may read or build gh-aw log caches internally. They are not additional literal `gh aw logs` calls, but they overlap the same run-history domain and must be considered when measuring actual API traffic.
 
 ## 3. GitHub API and predownload inventory

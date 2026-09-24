@@ -23,18 +23,32 @@ describe('Audit dashboard view', () => {
 
     expect(insights.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual([
       'campaign-insights-navigation',
+      'campaign-operational-value-history',
       'campaign-audit-event-summary-buckets',
       'campaign-audit-events-table'
     ]);
     expect(insights.views[0].data).toMatchObject({
-      sources: ['workflows', 'campaign-operational-value-series'],
+      sources: [
+        'workflows',
+        'campaign-insight-tab-counts',
+        'campaign-problem-tab-counts',
+        'campaign-issue-tab-counts'
+      ],
       arguments: [{ name: 'campaign', field: 'campaign' }]
     });
-    expect(insights.views.slice(1).map((/** @type {{ data: Record<string, string> }} */ view) => view.data)).toEqual([
+    expect(insights.views[1]).toMatchObject({
+      data: {
+        sources: ['campaign-operational-value-series'],
+        arguments: [{ name: 'campaign', field: 'campaign' }]
+      },
+      mark: 'element',
+      element: 'measure-history'
+    });
+    expect(insights.views.slice(2).map((/** @type {{ data: Record<string, string> }} */ view) => view.data)).toEqual([
       expect.objectContaining({ source: 'audit-event-summary-buckets', 'route-field': 'campaign' }),
       expect.objectContaining({ source: 'audit-events', 'route-field': 'campaign' })
     ]);
-    expect(insights.views[1]).toMatchObject({
+    expect(insights.views[2]).toMatchObject({
       chart: 'horizontal-bar',
       data: { limit: 20 },
       encoding: {
@@ -144,7 +158,7 @@ describe('Audit dashboard view', () => {
   it('slices campaign operational-value extracts by route and selected horizon in the worker', () => {
     const insights = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'campaign-insights');
     const payload = compileDashboardViewPayloadQueries(insights, 'campaign-insights', {
-      viewId: 'campaign-insights-navigation',
+      viewId: 'campaign-operational-value-history',
       routeParameters: { campaign: 'alpha-campaign' },
       queryContext: { timeWindow: { start: '2026-09-02T00:00:00Z', end: '2026-09-04T00:00:00Z' } },
       queries: dashboard.queries
@@ -169,7 +183,7 @@ describe('Audit dashboard view', () => {
         metadata
       }
     }, payload.aliases);
-    const valueAlias = payload.aliases.find((alias) => alias.endsWith('campaign-operational-value-series-2'));
+    const valueAlias = payload.aliases.find((alias) => alias.includes('campaign-operational-value-series'));
 
     expect(valueAlias).toBeDefined();
     expect(result[valueAlias ?? ''].rows).toEqual([
@@ -239,5 +253,69 @@ describe('Audit dashboard view', () => {
         events: 1
       }
     ]);
+  });
+
+  it('counts every rendered Insights plot through the shared plot inventory', () => {
+    const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries',
+      queries: dashboard.queries,
+      sourceNames: ['campaign-insight-tab-counts'],
+      sources: {
+        audits: {
+          source: 'audits',
+          rows: [
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'combined.md', event: '1', 'event-type': 'audit.finding', 'event-status': 'high', 'event-summary': 'Repeated finding' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'combined.md', event: '2', 'event-type': 'audit.recommendation', 'event-status': 'medium', 'event-summary': 'Repeated finding' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'audit-only.md', event: '3', 'event-type': 'audit.finding', 'event-status': 'high', 'event-summary': 'Audit-only finding' },
+            ...Array.from({ length: 20 }, (_, index) => [0, 1].map((duplicate) => ({
+              organization: 'githubnext',
+              repository: 'gh-aw-cao',
+              workflow: 'noise.md',
+              event: `noise-${index}-${duplicate}`,
+              'event-type': 'audit.finding',
+              'event-status': 'high',
+              'event-summary': `Noise finding ${index}`
+            }))).flat()
+          ],
+          metadata
+        },
+        tools: { source: 'tools', rows: [], metadata },
+        workflows: {
+          source: 'workflows',
+          rows: [
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'combined.md', campaign: 'combined' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'audit-only.md', campaign: 'audit-only' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'noise.md', campaign: 'noise' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'empty.md', campaign: 'empty' }
+          ],
+          metadata
+        },
+        'operational-values': {
+          source: 'operational-values',
+          rows: [{
+            organization: 'githubnext',
+            repository: 'gh-aw-cao',
+            workflow: 'combined.md',
+            run: '1',
+            'observed-at': '2026-09-16T10:00:00Z',
+            'operational-value': 0.75,
+            'operational-value-definition': 'repository-readiness',
+            diagnostics: { quality: 0.85, efficiency: 0.7 },
+            'diagnostic-definitions': [
+              { id: 'quality', name: 'Quality' },
+              { id: 'efficiency', name: 'Efficiency' }
+            ]
+          }],
+          metadata
+        }
+      }
+    }));
+
+    expect(result['campaign-insight-tab-counts'].rows).toHaveLength(3);
+    expect(result['campaign-insight-tab-counts'].rows).toEqual(expect.arrayContaining([
+      { campaign: 'combined', items: 4 },
+      { campaign: 'audit-only', items: 1 },
+      { campaign: 'noise', items: 1 }
+    ]));
   });
 });

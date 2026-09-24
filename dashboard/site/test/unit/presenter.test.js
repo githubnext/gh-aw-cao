@@ -402,7 +402,7 @@ describe('dashboard DOM provenance', () => {
                   id: 'summary',
                   title: 'Summary',
                   mark: 'element',
-                  element: 'summary-grid',
+                  element: 'measure-history',
                   data: { source: 'summary' }
                 },
                 {
@@ -425,7 +425,11 @@ describe('dashboard DOM provenance', () => {
         sources: {
           summary: {
             source: 'summary',
-            rows: [{ label: 'Runs', value: 2 }],
+            rows: [{
+              'metric-kind': 'primary',
+              'metric-name': 'runs',
+              points: [{ x: '2026-09-07T18:00:00Z', y: 2, color: 'Runs', key: 'runs-1' }]
+            }],
             metadata: {
               'source-id': 'summary-fixture',
               'source-kind': 'fixture',
@@ -450,7 +454,7 @@ describe('dashboard DOM provenance', () => {
       expect(page?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0]');
       expect(section?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].sections[0]');
       expect(summary?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
-      expect(summary?.querySelector('dt')?.getAttribute('data-js-view')).toBe('summary-grid');
+      expect(summary?.querySelector('h2')?.getAttribute('data-js-view')).toBe('measure-history');
       expect(metric?.querySelector('.metric-value')?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[1]');
       await vi.waitFor(() => {
         expect([...rendered.querySelectorAll('*')].every((element) => element.hasAttribute('data-json-path'))).toBe(true);
@@ -460,7 +464,7 @@ describe('dashboard DOM provenance', () => {
       summary?.append(dynamicChild);
       await vi.waitFor(() => {
         expect(dynamicChild.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
-        expect(dynamicChild.getAttribute('data-js-view')).toBe('summary-grid');
+        expect(dynamicChild.getAttribute('data-js-view')).toBe('measure-history');
       });
 
       const replacementSection = rendered.ownerDocument.createElement('section');
@@ -474,7 +478,7 @@ describe('dashboard DOM provenance', () => {
       await vi.waitFor(() => {
         expect(replacementSection.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].sections[0]');
         expect(replacementView.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
-        expect(replacementView.querySelector('dt')?.getAttribute('data-js-view')).toBe('summary-grid');
+        expect(replacementView.querySelector('dt')?.getAttribute('data-js-view')).toBe('measure-history');
       });
     } finally {
       window.history.pushState(null, '', '/');
@@ -3015,6 +3019,8 @@ describe('presenter built-in and custom pages', () => {
     expect(titleLink.getAttribute('rel')).toBe('noopener noreferrer');
     expect(rendered.ownerDocument.title).toBe('Linked issue · Page Navigation');
 
+    secondLink.dataset.routeTitle = 'Canonical second';
+    secondLink.dataset.routeDescription = 'Canonical second description';
     secondLink.click();
 
     expect(first.hidden).toBe(true);
@@ -3028,10 +3034,10 @@ describe('presenter built-in and custom pages', () => {
     expect(second.getAttribute('aria-label')).toBe('Loading view');
     expect(secondLink.getAttribute('aria-current')).toBe('page');
     expect(rendered.ownerDocument.defaultView?.location.hash).toBe('#page-second');
-    expect(rendered.querySelector('#page-title')?.textContent).toBe('Second');
-    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Second');
-    expect(rendered.querySelector('[data-page-description]')?.textContent).toBe('Second page description');
-    expect(rendered.ownerDocument.title).toBe('Second · Page Navigation');
+    expect(rendered.querySelector('#page-title')?.textContent).toBe('Canonical second');
+    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Canonical second');
+    expect(rendered.querySelector('[data-page-description]')?.textContent).toBe('Canonical second description');
+    expect(rendered.ownerDocument.title).toBe('Canonical second · Page Navigation');
     expect(titleLink.hidden).toBe(true);
     expect(titleLink.hasAttribute('href')).toBe(false);
     expect(rendered.ownerDocument.activeElement).toBe(rendered.querySelector('#page-title'));
@@ -3042,6 +3048,8 @@ describe('presenter built-in and custom pages', () => {
     expect(renderedSecond.hidden).toBe(false);
     expect(renderedSecond.hasAttribute('data-page-pending')).toBe(false);
     expect(renderedSecond.hasAttribute('aria-busy')).toBe(false);
+    expect(rendered.querySelector('#page-title')?.textContent).toBe('Canonical second');
+    expect(rendered.querySelector('[data-page-description]')?.textContent).toBe('Canonical second description');
 
     pageScroller.scrollTop = 80;
     firstLink.click();
@@ -3182,6 +3190,52 @@ describe('presenter built-in and custom pages', () => {
       disposeNavigation();
     } finally {
       root.remove();
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
+  it('animates query drills forward and browser back navigation backward', () => {
+    /** @type {Array<string | undefined>} */
+    const directions = [];
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      value: vi.fn((callback) => {
+        directions.push(document.documentElement.dataset.navigationDirection);
+        callback();
+        return { finished: Promise.resolve() };
+      })
+    });
+    const root = document.createElement('div');
+    root.innerHTML = `
+      <a data-nav-page-id="first" href="#page-first">First</a>
+      <a data-card-drill="query" data-nav-page-id="second" href="#page-second?query=items&title=Item">Item</a>
+      <main class="dashboard-prototype">
+        <section class="dashboard-page" id="page-first" data-page-id="first"></section>
+        <section class="dashboard-page" id="page-second" data-page-id="second"></section>
+      </main>
+    `;
+    document.body.append(root);
+    try {
+      const disposeNavigation = enableDashboardPageNavigation(root, 'Dashboard', () => null, 'first');
+      /** @type {HTMLAnchorElement} */ (root.querySelector('[data-card-drill="query"]')).click();
+
+      window.history.replaceState(
+        { centralAgenticOpsNavigationIndex: 0 },
+        '',
+        '/#page-first'
+      );
+      window.dispatchEvent(new PopStateEvent('popstate', {
+        state: { centralAgenticOpsNavigationIndex: 0 }
+      }));
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+
+      expect(directions.at(0)).toBe('forward');
+      expect(directions.at(-1)).toBe('backward');
+      disposeNavigation();
+    } finally {
+      root.remove();
+      Reflect.deleteProperty(document, 'startViewTransition');
+      delete document.documentElement.dataset.navigationDirection;
       window.history.replaceState(null, '', '/');
     }
   });

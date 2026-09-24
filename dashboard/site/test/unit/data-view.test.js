@@ -488,6 +488,8 @@ describe('data view renderer', () => {
     const queryLink = /** @type {HTMLAnchorElement} */ (query?.querySelector('.entity-card-list-title a'));
     expect(queryLink?.getAttribute('href'))
       .toBe('#page-issue-events?query=issue-events&title=Investigate+failing+compiler+run&issue-id=42');
+    expect(queryLink?.dataset.navPageId).toBe('issue-events');
+    expect(queryLink?.dataset.routeTitle).toBe('Investigate failing compiler run');
     const activate = vi.spyOn(queryLink, 'click');
     query?.querySelector('.entity-card-list-card')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(activate).toHaveBeenCalledOnce();

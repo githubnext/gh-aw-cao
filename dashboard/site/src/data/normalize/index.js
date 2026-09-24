@@ -1,4 +1,4 @@
-import { issueCoordinates, issueId, repositoryId, runId, sourceId, workflowId } from '../model/ids.js';
+import { issueCoordinates, issueId, operationalValueId, repositoryId, runId, sourceId, workflowId } from '../model/ids.js';
 import { canonicalTimestamp, requiredString } from '../model/schema.js';
 
 /** @type {Record<import('../model/schema.js').EntityKind, keyof import('../model/schema.js').CanonicalBatch>} */
@@ -10,7 +10,8 @@ const COLLECTIONS = {
   domain: 'domains',
   tool: 'tools',
   audit: 'audits',
-  issue: 'issues'
+  issue: 'issues',
+  'operational-value': 'operationalValues'
 };
 const RUN_LINKED_COLLECTIONS = /** @type {const} */ (['domains', 'tools', 'audits', 'issues']);
 
@@ -57,6 +58,12 @@ function identityFor(observation) {
         requiredIdentifier(coordinates.number, 'issue.number')
       );
     }
+    case 'operational-value':
+      return operationalValueId(
+        requiredString(data.repository, 'operationalValue.repository'),
+        requiredString(data.valueId, 'operationalValue.valueId'),
+        requiredString(data.timestamp, 'operationalValue.timestamp')
+      );
     case 'domain':
     case 'tool':
     case 'audit':
@@ -131,7 +138,8 @@ export function normalize(observations, options = {}) {
     domains: new Map(),
     tools: new Map(),
     audits: new Map(),
-    issues: new Map()
+    issues: new Map(),
+    operationalValues: new Map()
   };
 
   const sorted = [...observations].sort((left, right) => compareObservations(left, right, sourcePrecedence));

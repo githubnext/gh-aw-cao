@@ -147,6 +147,7 @@ const sources = {  campaigns: {
   },
   domains: { rows: /** @type {Record<string, unknown>[]} */ ([]), metadata },
   issues: { rows: /** @type {Record<string, unknown>[]} */ ([]), metadata },
+  operationalValues: { rows: /** @type {Record<string, unknown>[]} */ ([]), metadata },
   usage: {
     rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run: '42', aic: 17 }],
     metadata
@@ -240,6 +241,46 @@ describe('canonical view sources', () => {
     }
     expect(nativeCounts).toHaveBeenCalledTimes(tableNames.length);
     expect(collectionReads).not.toHaveBeenCalled();
+  });
+
+  it('projects canonical operational values with campaign fields', async () => {
+    await processDataRequest({ operation: 'query-canonical-database-diagnostics' });
+    await putCanonicalRecord('repositories', {
+      id: 'repository:fixture',
+      owner: 'githubnext',
+      name: 'gh-aw-cao',
+      fullName: 'githubnext/gh-aw-cao',
+      repositoryLink: { href: 'https://github.com/githubnext/gh-aw-cao' }
+    });
+    await putCanonicalRecord('campaigns', {
+      id: 'campaign:dependabot',
+      slug: 'dependabot',
+      name: 'Dependabot',
+      icon: 'dependabot',
+      campaignLink: { href: '#page-campaign?campaign=dependabot' }
+    });
+    await putCanonicalRecord('operationalValues', {
+      id: 'operational-value:dependabot',
+      repositoryId: 'repository:fixture',
+      repository: 'githubnext/gh-aw-cao',
+      campaign: 'dependabot',
+      valueId: 'dependabot-vulnerability-alerts',
+      value: 4,
+      timestamp: '2026-09-09T04:00:00Z',
+      observedAt: '2026-09-09T04:00:00Z'
+    });
+
+    const result = await queryCanonicalViewSources(indexedDB, sources, ['operational-values']);
+
+    expect(result['operational-values'].rows).toEqual([expect.objectContaining({
+      organization: 'githubnext',
+      repository: 'gh-aw-cao',
+      campaign: 'dependabot',
+      'campaign-name': 'Dependabot',
+      'operational-value-definition': 'dependabot-vulnerability-alerts',
+      'operational-value': 4,
+      'observed-at': '2026-09-09T04:00:00Z'
+    })]);
   });
 
   it('returns the same zero counts as declarative execution for empty tables', async () => {

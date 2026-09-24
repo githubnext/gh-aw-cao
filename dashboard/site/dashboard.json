@@ -313,6 +313,11 @@
             "field": "safe-output-type",
             "title": "Safe output",
             "display": "label"
+          },
+          {
+            "field": "outcome-status",
+            "title": "Status",
+            "display": "status"
           }
         ],
         "details": [
@@ -761,7 +766,11 @@
         "list": {
           "style": "entity-cards",
           "card": "firewall-workflow",
-          "icon": "workflow"
+          "icon": "workflow",
+          "drill": {
+            "type": "external",
+            "field": "workflow-source-url"
+          }
         },
         "empty-message": "No workflows allowed or blocked requests to this domain.",
         "layout": "full-view",
@@ -777,6 +786,11 @@
               "field": "repository",
               "type": "nominal",
               "title": "Repository"
+            },
+            {
+              "field": "workflow-source-url",
+              "type": "nominal",
+              "title": "Workflow source"
             },
             {
               "field": "runs",
@@ -3280,12 +3294,24 @@
             }
           ]
         },
+        "compute": [
+          {
+            "as": "workflow-source-url",
+            "function": "link-href",
+            "args": [
+              {
+                "field": "workflow-link"
+              }
+            ]
+          }
+        ],
         "aggregate": {
           "by": [
             "domain",
             "organization",
             "repository",
-            "workflow"
+            "workflow",
+            "workflow-source-url"
           ],
           "values": [
             {
@@ -3974,8 +4000,7 @@
             "field": "event-summary",
             "direction": "asc"
           }
-        ],
-        "limit": 20
+        ]
       },
       {
         "name": "engines-models-usage",
@@ -4458,7 +4483,7 @@
             "function": "concat",
             "args": [
               {
-                "value": "#page-campaign-detail?campaign="
+                "value": "#page-campaign-insights?campaign="
               },
               {
                 "field": "encoded-campaign"
@@ -5205,10 +5230,20 @@
             "field": "campaign"
           },
           {
+            "field": "organization"
+          },
+          {
+            "field": "repository"
+          },
+          {
             "field": "safe-output"
           },
           {
             "field": "outcome-number"
+          },
+          {
+            "field": "outcome-title",
+            "as": "event-summary"
           },
           {
             "field": "outcome-title"
@@ -5223,10 +5258,17 @@
             "field": "outcome-state"
           },
           {
+            "field": "outcome-category",
+            "as": "safe-output-type"
+          },
+          {
             "field": "workflow"
           },
           {
             "field": "workflow-name"
+          },
+          {
+            "field": "run"
           },
           {
             "field": "observed-at"
@@ -7914,10 +7956,16 @@
         "intent": "Retain every operational-value extract and diagnostic for campaign-scoped temporal analysis.",
         "description": "Operational-value observations attributed to centrally managed campaigns by repository and workflow identity.",
         "from": "operational-values",
+        "order-by": [
+          {
+            "field": "observed-at",
+            "direction": "asc"
+          }
+        ],
         "joins": [
           {
             "source": "workflows",
-            "type": "inner",
+            "type": "left",
             "on": [
               {
                 "left": "organization",
@@ -7935,19 +7983,142 @@
             "fields": [
               {
                 "field": "campaign",
-                "as": "campaign"
+                "as": "_workflow-campaign"
               },
               {
                 "field": "campaign-name",
-                "as": "campaign-name"
+                "as": "_workflow-campaign-name"
               }
             ]
           }
         ],
-        "order-by": [
+        "compute": [
           {
-            "field": "observed-at",
-            "direction": "asc"
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "campaign"
+              },
+              {
+                "field": "_workflow-campaign"
+              }
+            ],
+            "as": "_campaign"
+          },
+          {
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "campaign-name"
+              },
+              {
+                "field": "_workflow-campaign-name"
+              }
+            ],
+            "as": "_campaign-name"
+          }
+        ],
+        "select": [
+          {
+            "field": "organization"
+          },
+          {
+            "field": "repository"
+          },
+          {
+            "field": "repository-name"
+          },
+          {
+            "field": "_campaign",
+            "as": "campaign"
+          },
+          {
+            "field": "_campaign-name",
+            "as": "campaign-name"
+          },
+          {
+            "field": "campaign-icon"
+          },
+          {
+            "field": "workflow"
+          },
+          {
+            "field": "run"
+          },
+          {
+            "field": "run-attempt"
+          },
+          {
+            "field": "observation-id"
+          },
+          {
+            "field": "experiment"
+          },
+          {
+            "field": "operational-case"
+          },
+          {
+            "field": "evaluator-digest"
+          },
+          {
+            "field": "rollout-mode"
+          },
+          {
+            "field": "operational-value"
+          },
+          {
+            "field": "operational-value-definition"
+          },
+          {
+            "field": "operational-value-unit"
+          },
+          {
+            "field": "operational-value-direction"
+          },
+          {
+            "field": "requested-evidence-at"
+          },
+          {
+            "field": "evidence-cutoff"
+          },
+          {
+            "field": "maturity-at"
+          },
+          {
+            "field": "maturity-status"
+          },
+          {
+            "field": "baseline-value"
+          },
+          {
+            "field": "delta-from-baseline"
+          },
+          {
+            "field": "accepted-evidence-provenance"
+          },
+          {
+            "field": "diagnostics"
+          },
+          {
+            "field": "diagnostic-definitions"
+          },
+          {
+            "field": "observed-at"
+          },
+          {
+            "field": "evidence-link"
+          },
+          {
+            "field": "organization-link"
+          },
+          {
+            "field": "repository-link"
+          },
+          {
+            "field": "workflow-link"
+          },
+          {
+            "field": "run-link"
           }
         ]
       },
@@ -7976,6 +8147,93 @@
               "definitions": "diagnostic-definitions",
               "group": "operational-value-definition",
               "kind": "diagnostic"
+            }
+          ]
+        }
+      },
+      {
+        "name": "campaign-operational-value-plot-inventory",
+        "intent": "Describe each rendered operational-value plot using the shared campaign Insights plot contract.",
+        "description": "One plot-inventory row for every operational-value measure or diagnostic rendered on campaign Insights.",
+        "from": "campaign-operational-value-series"
+      },
+      {
+        "name": "campaign-audit-summary-plot-inventory",
+        "intent": "Describe the rendered audit-summary chart using the shared campaign Insights plot contract.",
+        "description": "One plot-inventory row per campaign when its high- and medium-severity audit summary chart has data.",
+        "from": "audit-event-summary-buckets",
+        "aggregate": {
+          "by": [
+            "campaign"
+          ],
+          "values": [
+            {
+              "field": "event-summary",
+              "as": "buckets",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "campaign-insight-plot-inventory",
+        "intent": "Inventory every plot rendered on each campaign Insights page through one reusable plot contract.",
+        "description": "One campaign row per rendered Insights plot, independent of the plot's data source or renderer.",
+        "from": "campaign-operational-value-plot-inventory",
+        "union": [
+          "campaign-audit-summary-plot-inventory"
+        ]
+      },
+      {
+        "name": "campaign-insight-tab-counts",
+        "intent": "Count the plots declared by the shared campaign Insights plot inventory.",
+        "description": "One campaign row with the number of rendered Insights plots, independent of plot type.",
+        "from": "campaign-insight-plot-inventory",
+        "aggregate": {
+          "by": [
+            "campaign"
+          ],
+          "values": [
+            {
+            "field": "campaign",
+              "as": "items",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "campaign-problem-tab-counts",
+        "intent": "Count the current runtime problem items available for each campaign Problems tab.",
+        "description": "One campaign row with the number of current runtime problem groups.",
+        "from": "campaign-problem-items",
+        "aggregate": {
+          "by": [
+            "campaign"
+          ],
+          "values": [
+            {
+              "field": "campaign",
+              "as": "items",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "campaign-issue-tab-counts",
+        "intent": "Count the retained worker issues available for each campaign Issues tab.",
+        "description": "One campaign row with the number of retained issue outcomes produced by campaign workers.",
+        "from": "campaign-worker-issues",
+        "aggregate": {
+          "by": [
+            "campaign"
+          ],
+          "values": [
+            {
+              "field": "campaign",
+              "as": "items",
+              "reducer": "count"
             }
           ]
         }
@@ -8179,26 +8437,11 @@
             ]
           },
           {
-            "as": "campaign-dashboard-page-prefix",
-            "function": "if",
-            "args": [
-              {
-                "field": "has-runtime-problems"
-              },
-              {
-                "value": "#page-campaign-problems?campaign="
-              },
-              {
-                "value": "#page-campaign-insights?campaign="
-              }
-            ]
-          },
-          {
             "as": "campaign-dashboard-href",
             "function": "concat",
             "args": [
               {
-                "field": "campaign-dashboard-page-prefix"
+                "value": "#page-campaign-insights?campaign="
               },
               {
                 "field": "encoded-campaign"
@@ -10428,11 +10671,19 @@
         "id": "campaign-insights",
         "kind": "custom",
         "title": "Campaign",
-        "description": "Audit events observed for this campaign.",
+        "description": "Operational activity for this campaign.",
         "icon": "graph",
         "class-name": "campaign-insights-page",
         "route": {
-          "hash-query-parameter": "campaign"
+          "hash-query-parameter": "campaign",
+          "title-format": "title-case",
+          "tabs-class-name": "campaign-tabs",
+          "tab": "insights",
+          "tabs": [
+            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
+            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
+            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+          ]
         },
         "views": [
           {
@@ -10441,7 +10692,9 @@
             "data": {
               "sources": [
                 "workflows",
-                "campaign-operational-value-series"
+                "campaign-insight-tab-counts",
+                "campaign-problem-tab-counts",
+                "campaign-issue-tab-counts"
               ],
               "arguments": [
                 {
@@ -10456,6 +10709,25 @@
             "config": {
               "body": "insights"
             }
+          },
+          {
+            "id": "campaign-operational-value-history",
+            "title": "Measure and diagnostic history",
+            "description": "Every retained operational-value measure and diagnostic, separated by metric and workflow series.",
+            "data": {
+              "sources": [
+                "campaign-operational-value-series"
+              ],
+              "arguments": [
+                {
+                  "name": "campaign",
+                  "field": "campaign"
+                }
+              ]
+            },
+            "mark": "element",
+            "element": "measure-history",
+            "layout": "full"
           },
           {
             "id": "campaign-audit-event-summary-buckets",
@@ -10567,11 +10839,19 @@
         "id": "campaign-problems",
         "kind": "custom",
         "title": "Campaign",
-        "description": "Current runtime failures and retained evidence for this campaign.",
+        "description": "Operational activity for this campaign.",
         "icon": "alert",
         "class-name": "campaign-problems-page",
         "route": {
-          "hash-query-parameter": "campaign"
+          "hash-query-parameter": "campaign",
+          "title-format": "title-case",
+          "tabs-class-name": "campaign-tabs",
+          "tab": "problems",
+          "tabs": [
+            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
+            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
+            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+          ]
         },
         "views": [
           {
@@ -10580,7 +10860,9 @@
             "data": {
               "sources": [
                 "workflows",
-                "campaign-problem-items"
+                "campaign-insight-tab-counts",
+                "campaign-problem-tab-counts",
+                "campaign-issue-tab-counts"
               ],
               "arguments": [
                 {
@@ -10699,11 +10981,18 @@
         "id": "campaign-detail",
         "kind": "custom",
         "title": "Campaign",
-        "description": "Overview of this campaign.",
+        "description": "Operational activity for this campaign.",
         "icon": "goal",
         "class-name": "campaign-detail-page",
         "route": {
-          "hash-query-parameter": "campaign"
+          "hash-query-parameter": "campaign",
+          "title-format": "title-case",
+          "tabs-class-name": "campaign-tabs",
+          "tabs": [
+            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
+            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
+            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+          ]
         },
         "views": [
           {
@@ -10711,7 +11000,16 @@
             "title": "Campaign overview",
             "data": {
               "sources": [
-                "workflows"
+                "workflows",
+                "campaign-insight-tab-counts",
+                "campaign-problem-tab-counts",
+                "campaign-issue-tab-counts"
+              ],
+              "arguments": [
+                {
+                  "name": "campaign",
+                  "field": "campaign"
+                }
               ]
             },
             "mark": "element",
@@ -10727,11 +11025,18 @@
         "id": "campaign-workflows",
         "kind": "custom",
         "title": "Campaign",
-        "description": "Orchestrator and worker workflows in this campaign.",
+        "description": "Operational activity for this campaign.",
         "icon": "workflow",
         "class-name": "campaign-workflows-page",
         "route": {
-          "hash-query-parameter": "campaign"
+          "hash-query-parameter": "campaign",
+          "title-format": "title-case",
+          "tabs-class-name": "campaign-tabs",
+          "tabs": [
+            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
+            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
+            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+          ]
         },
         "views": [
           {
@@ -10827,13 +11132,45 @@
         "id": "campaign-issues",
         "kind": "custom",
         "title": "Campaign",
-        "description": "Issues generated by this campaign.",
+        "description": "Operational activity for this campaign.",
         "icon": "issue-opened",
         "class-name": "campaign-issues-page",
         "route": {
-          "hash-query-parameter": "campaign"
+          "hash-query-parameter": "campaign",
+          "title-format": "title-case",
+          "tabs-class-name": "campaign-tabs",
+          "tab": "issues",
+          "tabs": [
+            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
+            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
+            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+          ]
         },
         "views": [
+          {
+            "id": "campaign-issue-navigation",
+            "title": "Campaign issues",
+            "data": {
+              "sources": [
+                "workflows",
+                "campaign-insight-tab-counts",
+                "campaign-problem-tab-counts",
+                "campaign-issue-tab-counts"
+              ],
+              "arguments": [
+                {
+                  "name": "campaign",
+                  "field": "campaign"
+                }
+              ]
+            },
+            "mark": "element",
+            "element": "campaign-route",
+            "layout": "full",
+            "config": {
+              "body": "issues"
+            }
+          },
           {
             "id": "campaign-issue-status",
             "title": "Generated issue status",
@@ -10860,22 +11197,6 @@
             }
           },
           {
-            "id": "campaign-issue-navigation",
-            "title": "Campaign issues",
-            "data": {
-              "sources": [
-                "workflows",
-                "campaign-worker-issues"
-              ]
-            },
-            "mark": "element",
-            "element": "campaign-route",
-            "layout": "full",
-            "config": {
-              "body": "issues"
-            }
-          },
-          {
             "id": "campaign-issue-table",
             "title": "Generated issues",
             "data": {
@@ -10890,8 +11211,13 @@
             },
             "mark": "list",
             "list": {
-              "style": "issues",
-              "icon": "issue-opened"
+              "style": "entity-cards",
+              "card": "issue",
+              "icon": "issue-opened",
+              "drill": {
+                "type": "external",
+                "field": "issue-link"
+              }
             },
             "empty-message": "No generated issues have been attributed to this campaign.",
             "encoding": {
@@ -10931,11 +11257,18 @@
         "id": "campaign-pull-requests",
         "kind": "custom",
         "title": "Campaign",
-        "description": "Pull requests generated by this campaign.",
+        "description": "Operational activity for this campaign.",
         "icon": "git-pull-request",
         "class-name": "campaign-pull-requests-page",
         "route": {
-          "hash-query-parameter": "campaign"
+          "hash-query-parameter": "campaign",
+          "title-format": "title-case",
+          "tabs-class-name": "campaign-tabs",
+          "tabs": [
+            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
+            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
+            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+          ]
         },
         "views": [
           {
@@ -11039,11 +11372,18 @@
         "id": "campaign-runs",
         "kind": "custom",
         "title": "Campaign",
-        "description": "Workflow runs for this campaign.",
+        "description": "Operational activity for this campaign.",
         "icon": "play",
         "class-name": "campaign-runs-page",
         "route": {
-          "hash-query-parameter": "campaign"
+          "hash-query-parameter": "campaign",
+          "title-format": "title-case",
+          "tabs-class-name": "campaign-tabs",
+          "tabs": [
+            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
+            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
+            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+          ]
         },
         "views": [
           {
@@ -11051,7 +11391,16 @@
             "title": "Campaign workflow runs",
             "data": {
               "sources": [
-                "workflows"
+                "workflows",
+                "campaign-insight-tab-counts",
+                "campaign-problem-tab-counts",
+                "campaign-issue-tab-counts"
+              ],
+              "arguments": [
+                {
+                  "name": "campaign",
+                  "field": "campaign"
+                }
               ]
             },
             "mark": "element",
@@ -11274,115 +11623,21 @@
         ]
       },
       {
-        "id": "campaign-dispatches",
-        "kind": "custom",
-        "title": "Campaign",
-        "description": "Workflow dispatch runs for this campaign.",
-        "icon": "play",
-        "class-name": "campaign-runs-page",
-        "route": {
-          "hash-query-parameter": "campaign"
-        },
-        "views": [
-          {
-            "id": "campaign-dispatch-compatibility-status",
-            "title": "Workflow dispatch status",
-            "description": "Observed workflow-dispatch conclusions for this campaign.",
-            "data": {
-              "source": "dispatches",
-              "route-field": "campaign"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "status",
-                "type": "nominal",
-                "title": "Status"
-              },
-              "y": {
-                "field": "run",
-                "type": "quantitative",
-                "aggregate": "distinct-count",
-                "title": "Dispatches"
-              }
-            }
-          },
-          {
-            "id": "campaign-dispatch-compatibility-navigation",
-            "title": "Campaign workflow runs",
-            "data": {
-              "sources": [
-                "workflows"
-              ]
-            },
-            "mark": "element",
-            "element": "campaign-route",
-            "layout": "full",
-            "config": {
-              "body": "dispatches"
-            }
-          },
-          {
-            "id": "campaign-dispatch-compatibility-table",
-            "title": "Workflow dispatches",
-            "data": {
-              "source": "dispatches",
-              "route-field": "campaign"
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "empty-message": "No workflow dispatch runs were observed for this campaign.",
-            "encoding": {
-              "href": {
-                "field": "run-link",
-                "type": "nominal"
-              },
-              "columns": [
-                {
-                  "field": "started-at",
-                  "type": "temporal",
-                  "format": "human-friendly-timestamp",
-                  "title": "Started"
-                },
-                {
-                  "field": "workflow-name",
-                  "type": "nominal",
-                  "title": "Workflow"
-                },
-                {
-                  "field": "status",
-                  "type": "nominal",
-                  "title": "Status",
-                  "display": "status"
-                }
-              ],
-              "actions": [
-                {
-                  "intent": "Open the precise GitHub Actions run page without executing an action.",
-                  "presentation": "external-link",
-                  "icon": "mark-github",
-                  "label": "Open run on GitHub",
-                  "context": [
-                    "run-link"
-                  ]
-                }
-              ]
-            },
-            "layout": "full"
-          }
-        ]
-      },
-      {
         "id": "campaign-repositories",
         "kind": "custom",
         "title": "Campaign",
-        "description": "Repositories associated with this campaign.",
+        "description": "Operational activity for this campaign.",
         "icon": "repo",
         "class-name": "campaign-repositories-page",
         "route": {
-          "hash-query-parameter": "campaign"
+          "hash-query-parameter": "campaign",
+          "title-format": "title-case",
+          "tabs-class-name": "campaign-tabs",
+          "tabs": [
+            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
+            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
+            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+          ]
         },
         "views": [
           {
@@ -11488,11 +11743,18 @@
         "id": "campaign-reports",
         "kind": "custom",
         "title": "Campaign",
-        "description": "Durable reports produced by this campaign.",
+        "description": "Operational activity for this campaign.",
         "icon": "goal",
         "class-name": "campaign-reports-page",
         "route": {
-          "hash-query-parameter": "campaign"
+          "hash-query-parameter": "campaign",
+          "title-format": "title-case",
+          "tabs-class-name": "campaign-tabs",
+          "tabs": [
+            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
+            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
+            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+          ]
         },
         "views": [
           {
@@ -12790,7 +13052,7 @@
           {
             "id": "overview-campaigns",
             "title": "Campaigns",
-            "intent": "Provide direct navigation to every registered campaign, opening current problems first when attention is required.",
+            "intent": "Provide direct navigation to every registered campaign through the same Insights route used by the campaign inventory.",
             "data": {
               "sources": [
                 "overview-campaign-links"
