@@ -47,30 +47,20 @@ let insertIndex = includesIndex + 1;
 while (insertIndex < lines.length && /^\s+-\s+/.test(lines[insertIndex])) {
   insertIndex += 1;
 }
+const adapterDestination = `${campaign}/operational-value.mjs`;
 const valueModuleInclude = `operational-value/${workflow}.mjs`;
-const includeAdditions = lines.some((line) => line.trim() === `- ${valueModuleInclude}`)
-  ? []
-  : [`  - ${valueModuleInclude}`];
+const includeAdditions = [
+  ...(lines.some((line) => line.trim() === `destination: ${adapterDestination}`)
+    ? []
+    : ["  - source: operational-value.mjs", `    destination: ${adapterDestination}`]),
+  ...(lines.some((line) => line.trim() === `- ${valueModuleInclude}`)
+    ? []
+    : [`  - ${valueModuleInclude}`]),
+];
 if (includeAdditions.length > 0) {
   lines.splice(insertIndex, 0, ...includeAdditions);
 }
-const adapterDestination = `${campaign}/operational-value.mjs`;
-if (!lines.some((line) => line.trim() === `destination: ${adapterDestination}`)) {
-  let resourcesIndex = lines.findIndex((line) => line === "resources:");
-  if (resourcesIndex < 0) {
-    if (lines.at(-1) === "") lines.pop();
-    lines.push("resources:");
-    resourcesIndex = lines.length - 1;
-  }
-  let resourceInsertIndex = resourcesIndex + 1;
-  while (resourceInsertIndex < lines.length && (lines[resourceInsertIndex] === "" || /^\s+/.test(lines[resourceInsertIndex]))) {
-    resourceInsertIndex += 1;
-  }
-  lines.splice(resourceInsertIndex, 0,
-    "  - source: operational-value.mjs",
-    `    destination: ${adapterDestination}`);
-}
-if (includeAdditions.length > 0 || !source.includes(`destination: ${adapterDestination}`)) {
+if (includeAdditions.length > 0) {
   writeFileSync(manifest, `${lines.join("\n")}\n`);
 }
 

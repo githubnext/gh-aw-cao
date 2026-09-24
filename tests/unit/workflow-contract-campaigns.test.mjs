@@ -242,12 +242,7 @@ test("operational campaigns install declarations matching their workflow identit
     const declaration = JSON.parse(readFileSync(join(root, campaignName, "cao.json"), "utf8"));
     const manifest = parse(readFileSync(join(root, campaignName, "aw.yml"), "utf8"));
     assert.equal(declaration.campaign, campaignName);
-    const resources = manifest.resources ?? [];
-    assert.deepEqual(
-      resources.filter((resource) => resource.source !== "operational-value.mjs" || resource.destination !== `${campaignName}/operational-value.mjs`),
-      [],
-      campaignName,
-    );
+    assert.equal(manifest.resources, undefined, campaignName);
     assert.ok(existsSync(join(root, campaignName, "cao.json")), campaignName);
 
     const orchestrator = workflow(`${declaration.orchestrator}.md`);

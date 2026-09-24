@@ -247,6 +247,16 @@ describe('dashboard view query contracts', () => {
 
     expect(viewsOf(insights)[1]).toMatchObject({
       data: {
+        sources: ['campaign-operational-value-primary-series'],
+        arguments: [{ name: 'campaign', field: 'campaign' }]
+      },
+      mark: 'element',
+      element: 'measure-history',
+      config: { 'measure-source': 'operational-value' }
+    });
+
+    expect(viewsOf(insights)[2]).toMatchObject({
+      data: {
         sources: ['campaign-operational-grader-series'],
         arguments: [{ name: 'campaign', field: 'campaign' }]
       },
