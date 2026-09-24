@@ -75,7 +75,7 @@ Review the orchestrator report, worker runs, central review issues, and review-b
 
 ## Operational Value
 
-Each worker registers a deterministic one-shot operational-value evaluator:
+Each worker registers a deterministic one-shot operational grader through gh-aw's `operational-value` protocol:
 
 | Worker | Primary metric | Attained evidence |
 | --- | --- | --- |

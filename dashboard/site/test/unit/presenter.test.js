@@ -1367,7 +1367,7 @@ describe('presenter built-in and custom pages', () => {
         },
         outcomes: { source: 'outcomes', rows: [], metadata },
         'safe-output-performance': { source: 'safe-output-performance', rows: [], metadata },
-        'operational-values': { source: 'operational-values', rows: [], metadata },
+        'operational-graders': { source: 'operational-graders', rows: [], metadata },
         usage: { source: 'usage', rows: [], metadata },
         runs: { source: 'runs', rows: [], metadata },
         repositories: { source: 'repositories', rows: [], metadata },

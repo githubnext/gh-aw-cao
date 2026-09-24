@@ -65,8 +65,8 @@ function renderMeasureRow(metric) {
  */
 function describeMeasure(kind, title, points, seriesCount) {
   const lead = kind === 'primary'
-    ? `Primary operational-value measure “${title}” extracted by this package's workflows.`
-    : `Diagnostic measure “${title}” reported alongside the primary operational value.`;
+    ? `Primary operational-grader measure “${title}” extracted from this package's workflow runs.`
+    : `Diagnostic measure “${title}” reported alongside the primary operational grader.`;
   const extracts = `${formatNumber(points.length)} ${points.length === 1 ? 'extract' : 'extracts'}`;
   const seriesText = `${formatNumber(seriesCount)} workflow series`;
   const first = points[0] ? formatInstant(points[0].x) : '';

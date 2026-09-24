@@ -20,6 +20,7 @@ on:
 permissions:
   actions: read
   contents: read
+  issues: read
   pull-requests: read
   vulnerability-alerts: read
 
@@ -35,6 +36,7 @@ jobs:
     permissions:
       actions: read
       contents: read
+      issues: read
       pull-requests: read
       vulnerability-alerts: read
     steps:
@@ -127,6 +129,7 @@ jobs:
           github-api-url: ${{ github.api_url }}
           permission-actions: read
           permission-contents: read
+          permission-issues: read
           permission-pull-requests: read
           permission-vulnerability-alerts: read
 
@@ -180,12 +183,15 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
           REPORT_AIC_CACHE: ${{ runner.temp }}/cao-gh-aw-logs
+          REPORT_ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
           REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity/control-settings.json
           REPORT_DRAIN3_WEIGHTS: ${{ runner.temp }}/cao-activity/drain3_weights.json
           REPORT_GH_AW_LOGS_EXIT_CODE: ${{ runner.temp }}/cao-activity/gh-aw-logs-exit-code
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
           REPORT_LOG_TIMEOUT: "15"
           REPORT_MAX_GITHUB_API_RATE_LIMIT: "-4000"
+          REPORT_ISSUE_STATUS_GRAPHQL_COST_BUDGET: "25"
+          REPORT_ISSUE_STATUS_GRAPHQL_MIN_REMAINING: "500"
           REPORT_MAX_STORAGE: "1200"
           REPORT_RUN_LIMIT: "10000"
           REPORT_RUN_WINDOW_DAYS: "30"

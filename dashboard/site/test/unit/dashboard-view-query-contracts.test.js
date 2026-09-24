@@ -203,7 +203,7 @@ describe('dashboard view query contracts', () => {
 
     expect(viewsOf(insights)[1]).toMatchObject({
       data: {
-        sources: ['campaign-operational-value-series'],
+        sources: ['campaign-operational-grader-series'],
         arguments: [{ name: 'campaign', field: 'campaign' }]
       },
       mark: 'element',

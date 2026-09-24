@@ -59,13 +59,13 @@ const workflows = [
   }
 ];
 
-const operationalValues = [
+const operationalGraders = [
   {
     organization: 'githubnext',
     repository: 'gh-aw-cao',
     workflow: '.github/workflows/ambient-context-agents-md-curator.md',
     run: '100',
-    'operational-value': 0.5,
+    'operational-grader': 0.5,
     'operational-case': 'repository:github/example',
     'evaluator-digest': 'sha256:current',
     'requested-evidence-at': '2026-08-17T18:00:00Z',
@@ -77,7 +77,7 @@ const operationalValues = [
     repository: 'gh-aw-cao',
     workflow: '.github/workflows/ambient-context-agents-md-curator.md',
     run: '101',
-    'operational-value': 0.75,
+    'operational-grader': 0.75,
     'operational-case': 'repository:github/example-2',
     'evaluator-digest': 'sha256:current',
     'requested-evidence-at': '2026-08-24T18:00:00Z',
@@ -89,7 +89,7 @@ const operationalValues = [
     repository: 'gh-aw-cao',
     workflow: '.github/workflows/other.md',
     run: '102',
-    'operational-value': 1,
+    'operational-grader': 1,
     'operational-case': 'repository:github/other',
     'evaluator-digest': 'sha256:other',
     'requested-evidence-at': '2026-08-24T18:00:00Z',
@@ -149,7 +149,7 @@ function context() {
     sources: {
       workflows: { source: 'workflows', metadata, rows: workflows },
       outcomes: { source: 'outcomes', metadata, rows: outcomes },
-      'operational-values': { source: 'operational-values', metadata, rows: operationalValues }
+      'operational-graders': { source: 'operational-graders', metadata, rows: operationalGraders }
     }
   };
 }

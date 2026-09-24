@@ -133,13 +133,15 @@ This specification defines three conformance classes:
 | AI Credits (`aic`) | A normalized usage or accounting measure supplied by an authoritative source; not a token count. |
 | Run conclusion | The terminal GitHub Actions result of a completed run. |
 | Outcome | A later repository-state evaluation of a safe output, distinct from run status and conclusion. |
-| Operational value | An ordered set of native finite numeric metrics or `null` published by gh-aw; the first metric is primary and later metrics are diagnostics. |
+| Operational value | A package-defined, timestamped numeric metric for one repository and campaign. |
+| Operational grader | An ordered set of native finite numeric metrics or `null` published by gh-aw for one run; the first metric is primary and later metrics are diagnostics. |
 
 ### 3.2 Entity Relationships
 
 ```text
 organization
   └─ repository
+       ├─ operational-value observation → campaign
        ├─ campaign
        │    ├─ orchestrator workflow
        │    └─ worker workflow
@@ -151,7 +153,7 @@ organization
                  ├─ eval observations
                  ├─ outcome observations
                  ├─ findings
-                 └─ operational-value observations
+                 └─ operational-grader observations
 ```
 
 Every workflow role may have runs and their associated observations; the diagram expands that relationship once for brevity. Graders and evals are definitions. Grader observations and eval observations are records produced using those definitions. An experiment assignment associates one run with one named variant, but this language does not manage experiments.
@@ -170,10 +172,10 @@ Every workflow role may have runs and their associated observations; the diagram
 - **DLS-SEM-010:** A usage observation **MUST** retain raw `input-tokens`, `output-tokens`, `cache-read-tokens`, `cache-write-tokens`, and `reasoning-tokens` as separate measures and **MUST NOT** label any of them as `aic`.
 - **DLS-SEM-011:** An AIC observation **MUST** be represented by `aic` and **MUST NOT** be inferred from raw tokens unless the data provenance identifies an authoritative conversion.
 - **DLS-SEM-012:** A run-associated usage observation **MUST** preserve `engine`, `requested-model`, and `resolved-model` as distinct dimensions; an unavailable value **MUST** be `unknown`.
-- **DLS-SEM-013:** An operational-value observation **MUST** preserve the ordered metrics published by gh-aw. Each metric **MUST** retain its identifier and native finite numeric value or `null`; the first metric is primary and later metrics are diagnostics. The grader's declared name, unit, and direction **MUST** remain associated with the primary metric.
-- **DLS-SEM-014:** An implementation **MUST NOT** present experiment, grader, eval, usage, outcome, finding, or operational-value associations as causal conclusions.
+- **DLS-SEM-013:** An operational-grader observation **MUST** preserve the ordered metrics published by gh-aw. Each metric **MUST** retain its identifier and native finite numeric value or `null`; the first metric is primary and later metrics are diagnostics. The grader's declared name, unit, and direction **MUST** remain associated with the primary metric.
+- **DLS-SEM-014:** An implementation **MUST NOT** present experiment, grader, operational-grader, eval, usage, outcome, finding, or operational-value associations as causal conclusions.
 - **DLS-SEM-015:** An outcome observation **MUST** identify its safe output and use `accepted`, `rejected`, `ignored`, `pending`, `lifecycle`, or `lifecycle-close`; upstream `lifecycle_close` **MUST** normalize to `lifecycle-close`. It **MUST NOT** be represented as a run conclusion.
-- **DLS-SEM-016:** A dashboard **MUST NOT** normalize, clamp, rescale, replay, mature, or infer a baseline for operational-value metrics. It **MUST NOT** replace `null` with zero.
+- **DLS-SEM-016:** A dashboard **MUST NOT** normalize, clamp, rescale, replay, mature, or infer a baseline for operational-grader metrics. It **MUST NOT** replace `null` with zero.
 
 ---
 
@@ -315,7 +317,8 @@ The database table vocabulary is closed in version 0.1.0. Views continue to use
 | `engine-usage-summary` | agentic engine usage summary | `engine`, `runs`, `invocations`, `total-aic`, `estimated-usd`, `min-engine-version`, `max-engine-version`, `models` |
 | `outcomes` | safe-output outcome observation | scope IDs, `campaign`, `runtime-repository`, `workflow-name`, `run`, `run-conclusion`, `safe-output`, `outcome-number`, `outcome-title`, `outcome-summary`, `outcome-body-html`, `outcome-category`, `outcome-status`, `outcome-state`, `evidence-strength`, `rollout-mode`, `engine`, `engine-version`, `requested-model`, `resolved-model`, `published-at`, `observed-at`, `issue-link`, `pull-request-link`, `run-link`, `external-link`, `organization-link`, `repository-link`, `workflow-link` |
 | `findings` | finding | scope IDs, `run`, `finding`, `finding-severity`, `finding-status`, `finding-summary`, `observed-at`, `engine`, `engine-version`, `requested-model`, `resolved-model`, `issue-link`, `pull-request-link`, `run-link`, `external-link`, `organization-link`, `repository-link`, `workflow-link` |
-| `operational-values` | gh-aw operational-value result | scope IDs, `observation-id`, `run`, `run-attempt`, `experiment`, `rollout-mode`, `operational-value`, `operational-value-definition`, `operational-value-unit`, `operational-value-direction`, `diagnostics`, `diagnostic-definitions`, `observed-at`, `evidence-link`, `organization-link`, `repository-link`, `workflow-link`, `run-link` |
+| `operational-values` | Package-defined repository metric | repository and campaign scope IDs, `operational-value`, `operational-value-definition`, `observed-at`, `organization-link`, `repository-link`, `campaign-link` |
+| `operational-graders` | gh-aw `operational-value` grader result | scope IDs, `observation-id`, `run`, `run-attempt`, `experiment`, `rollout-mode`, `operational-grader`, `operational-grader-definition`, `operational-grader-unit`, `operational-grader-direction`, `diagnostics`, `diagnostic-definitions`, `observed-at`, `evidence-link`, `organization-link`, `repository-link`, `workflow-link`, `run-link` |
 | `token-efficiency-opportunities` | one stable frozen token-efficiency opportunity | scope IDs, `opportunity-id`, `opportunity-kind`, `assignment-run`, `experiment`, `evidence-window-start`, `evidence-window-end`, `evidence-state`, `evidence-confidence`, `cost-grain`, `observed-at`, `evidence-link`, `repository-link`, `workflow-link`, `run-link` |
 | `token-efficiency-interventions` | one append-only lifecycle observation for one token-efficiency intervention | scope IDs, `opportunity-id`, `intervention-id`, `lifecycle-observation-id`, `previous-intervention-state`, `intervention-state`, `previous-recommendation-disposition`, `recommendation-disposition`, `supersedes-intervention-id`, `superseded-by-intervention-id`, `recommendation-churn-count`, `recommendation-churn-rate`, `experiment`, `control-variant`, `optimized-variant`, `proposed-savings-aic`, `evidence-state`, `missing-reason`, `safe-output-id`, `implementation-change-id`, `implementation-run-ids`, `accepted-at`, `implementation-started-at`, `implementation-completed-at`, `rejected-at`, `superseded-at`, `observed-at`, `issue-link`, `pull-request-link`, `evidence-link`, `repository-link`, `workflow-link`, `run-link` |
 | `token-efficiency-comparisons` | one matured or pending comparison for one intervention and evidence cutoff | scope IDs, `opportunity-id`, `intervention-id`, `comparison-id`, `experiment`, `evaluator-digest`, `evidence-state`, `cost-grain`, `baseline-aic-per-accepted-outcome`, `optimized-aic-per-accepted-outcome`, `accepted-target-outcome-count`, `baseline-failure-rate`, `optimized-failure-rate`, `outcome-quality-preserved`, `gross-realized-savings-aic`, `optimization-overhead-aic`, `net-realized-savings-aic`, `verified-net-gain`, `maturity-at`, `evidence-cutoff`, `observed-at`, `evidence-link`, `repository-link`, `workflow-link`, `run-link` |
@@ -365,14 +368,14 @@ The canonical raw-token measures are `input-tokens`, `output-tokens`, `cache-rea
 
 ### 5.3 Campaigns, Graders, Evals, and Operational Value
 
-A campaign groups one orchestrator and one or more workers that execute centrally managed operations. `max-ai-credits` is the configured per-run limit for one workflow; `campaign-aic-allowance` is the sum of those limits for one complete campaign attempt and is not actual usage. `campaign-inventory-warnings` is the campaign-level count of missing compiled orchestration and declared worker inventory. A grader applies a named grading criterion and produces a deterministic grader observation. An eval is a binary evaluation question and produces a `yes`, `no`, or `unknown` observation; it may use an AI model. Operational value is the ordered native metric result published by gh-aw for one run. These concepts are not interchangeable.
+A campaign groups one orchestrator and one or more workers that execute centrally managed operations. `max-ai-credits` is the configured per-run limit for one workflow; `campaign-aic-allowance` is the sum of those limits for one complete campaign attempt and is not actual usage. `campaign-inventory-warnings` is the campaign-level count of missing compiled orchestration and declared worker inventory. A grader applies a named grading criterion and produces a deterministic grader observation. An operational grader is the ordered native metric result published by gh-aw's `operational-value` protocol for one run. Operational value is a separate package-defined repository metric linked to its campaign. An eval is a binary evaluation question and produces a `yes`, `no`, or `unknown` observation; it may use an AI model. These concepts are not interchangeable.
 
 ### 5.4 Normative Source Requirements
 
 - **DLS-SEM-017:** A `metric`, `table`, `list`, or `chart` view `data.source` **MUST** name exactly one Section 5.1 database table or one declared query. An `element` view `data.sources` **MUST** name one or more unique Section 5.1 database tables or declared queries. An optional `data.route-field` **MUST** name one field from `data.source`.
 - **DLS-SEM-018:** Each database table **MUST** preserve the grain declared in Section 5.1; duplicated observations **MUST** retain distinct observation identifiers in provenance.
 - **DLS-SEM-019:** A `usage` row **MUST** represent one model invocation and **MUST NOT** repeat invocation-level AIC across token-class rows.
-- **DLS-SEM-020:** Grader values, eval results, AIC, each raw-token measure, outcome states, and operational value **MUST** remain separately named throughout filtering, aggregation, and presentation.
+- **DLS-SEM-020:** Grader values, operational-grader results, eval results, AIC, each raw-token measure, outcome states, and operational value **MUST** remain separately named throughout filtering, aggregation, and presentation.
 - **DLS-SEM-021:** `rollout-mode` **MUST** use `review`, `live`, or `unknown`.
 - **DLS-SEM-022:** `workflow-role` **MUST** use `orchestrator`, `worker`, or `standalone`. An orchestrator or worker workflow **MUST** identify its `campaign`; a standalone workflow **MUST NOT** identify a campaign.
 - **DLS-SEM-023:** `max-ai-credits` and `campaign-aic-allowance`, when available, **MUST** be non-negative. `campaign-aic-allowance` **MUST** equal the sum of the campaign's available configured per-run workflow limits and **MUST NOT** be presented as actual AIC usage.
@@ -706,7 +709,7 @@ A presenter **MUST** apply `limit` only after the canonical post-aggregation row
 - **DLS-AGG-002:** `sum` **MUST** be accepted only for the five raw-token measures and `aic`.
 - **DLS-AGG-003:** Different raw-token measures **MUST NOT** be combined into a derived total because provider reporting classes may overlap; a combined presentation **MUST** retain separate measures.
 - **DLS-AGG-004:** AIC aggregation **MUST** sum only available, non-negative AIC observations, retain all contributing provenance, and **MUST NOT** substitute zero for missing AIC.
-- **DLS-AGG-005:** Grader `value` and `operational-value` **MUST** use `none`, `mean`, `min`, or `max`, and aggregation **MUST** retain grader identity or operational-value definition, respectively.
+- **DLS-AGG-005:** Grader `value`, `operational-grader`, and `operational-value` **MUST** use `none`, `mean`, `min`, or `max`, and aggregation **MUST** retain grader identity, operational-grader definition, or operational-value definition, respectively.
 - **DLS-AGG-006:** `count` and `distinct-count` **MUST** ignore absent values and **MUST NOT** substitute zero.
 - **DLS-AGG-007:** A time unit **MUST** be applied before grouping and **MUST** use the UTC boundaries in Section 7.3.
 - **DLS-AGG-008:** Rankings **MUST** disclose the ranked measure, direction, filters, time range, scope, and tie behavior; the ranking key **MUST** be resolved against the post-aggregation output identifier before applying `limit`, and ties **MUST** then be broken using the canonical post-aggregation row order defined above for every post-aggregation output grain, entity-grain or group-grain, not only entity-grain outputs.
@@ -864,7 +867,7 @@ For pages that opt in to `filter-bar: true`, the presenter renders a filter bar 
 - **DLS-PAGE-009:** The `evals` page **MUST** keep eval definitions and eval observations distinguishable and expose observed subject, `YES`, `NO`, or `UNKNOWN` result, evaluation model when available, time, and provenance.
 - **DLS-PAGE-010:** The `usage` page **MUST** present each raw-token measure separately from AIC and expose estimated USD, engine, engine version, requested model, resolved model, scope, rollout mode, time, and provenance.
 - **DLS-PAGE-011:** The `engines-models` page **MUST** expose model and agentic-engine summaries with AIC totals, estimated pricing, run counts, engine version ranges, plus run-level engine, requested model, and resolved model evidence where available.
-- **DLS-PAGE-012:** The `operational-value` page **MUST** expose time-ordered native primary metrics with their metric identifiers, units, directions, run provenance, and applicable experiment assignments. Ordered diagnostic metrics **MUST** remain separate from the primary metric and from diagnostics with other identifiers. Null observations **MUST** remain unavailable rather than becoming zero.
+- **DLS-PAGE-012:** The `operational-value` page **MUST** expose time-ordered package-defined repository metrics with their value identifiers, campaigns, repositories, and observation timestamps. Null observations **MUST** remain unavailable rather than becoming zero.
 - **DLS-PAGE-013:** The `findings` page **MUST** expose finding summary, severity, status, scope, time, provenance, and available issue, pull-request, and run links.
 - **DLS-PAGE-014:** Every built-in page **MUST** honor the dashboard scope, time, and filters and expose availability.
 - **DLS-PAGE-015:** The `campaigns` page **MUST** expose centrally managed campaign inventory, rollout-mode filtering, actual campaign AIC against summed per-run limits without treating missing usage as zero, the complete-attempt AIC allowance, retained usage coverage, and time-ordered successful, failed, and cancelled campaign-run trends.
@@ -1526,11 +1529,12 @@ Invalid because operational value is non-additive and cannot use `sum`.
 | Concept | Example question answered | Not equivalent to |
 |---|---|---|
 | Raw tokens | How many provider-reported input tokens were observed? | AIC, cost, outcome, or value |
-| AIC | How many authoritative AI Credits were attributed? | Raw tokens or operational value |
+| AIC | How many authoritative AI Credits were attributed? | Raw tokens, operational grader, or operational value |
 | Run conclusion | Did the completed run succeed, fail, time out, or end another way? | Downstream outcome, grader result, or eval result |
-| Outcome | Was a safe output later accepted, rejected, pending, ignored, or otherwise classified? | Run conclusion or operational value |
+| Outcome | Was a safe output later accepted, rejected, pending, ignored, or otherwise classified? | Run conclusion, operational grader, or operational value |
 | Grader observation | What result did a named grading criterion emit? | Eval observation or run conclusion |
-| Eval observation | Did a named binary evaluation return `yes`, `no`, or `unknown`? | Grader observation or operational value |
-| Operational value | What native metric value did gh-aw publish under a named metric identifier? | AIC, outcome, normalized score, or causal impact |
+| Eval observation | Did a named binary evaluation return `yes`, `no`, or `unknown`? | Grader observation, operational grader, or operational value |
+| Operational grader | What native metric value did gh-aw publish for one run under the `operational-value` protocol? | Repository operational value, AIC, outcome, normalized score, or causal impact |
+| Operational value | What package-defined metric was observed for one repository and campaign? | Run-scoped operational grader, AIC, outcome, or causal impact |
 
 ---

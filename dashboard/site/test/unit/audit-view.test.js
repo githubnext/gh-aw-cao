@@ -23,7 +23,7 @@ describe('Audit dashboard view', () => {
 
     expect(insights.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual([
       'campaign-insights-navigation',
-      'campaign-operational-value-history',
+      'campaign-operational-grader-history',
       'campaign-audit-event-summary-buckets',
       'campaign-audit-events-table'
     ]);
@@ -38,7 +38,7 @@ describe('Audit dashboard view', () => {
     });
     expect(insights.views[1]).toMatchObject({
       data: {
-        sources: ['campaign-operational-value-series'],
+        sources: ['campaign-operational-grader-series'],
         arguments: [{ name: 'campaign', field: 'campaign' }]
       },
       mark: 'element',
@@ -122,18 +122,18 @@ describe('Audit dashboard view', () => {
     ]);
   });
 
-  it('attributes every operational-value extract using repository-qualified workflow identity', () => {
+  it('attributes every operational-grader result using repository-qualified workflow identity', () => {
     const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
       queries: dashboard.queries,
-      sourceNames: ['campaign-operational-values'],
+      sourceNames: ['campaign-operational-graders'],
       sources: {
-        'operational-values': {
-          source: 'operational-values',
+        'operational-graders': {
+          source: 'operational-graders',
           rows: [
-            { organization: 'githubnext', repository: 'alpha', workflow: '.github/workflows/worker.md', run: '1', 'observed-at': '2026-09-01T00:00:00Z', 'operational-value': 40, diagnostics: { quality: 50 } },
-            { organization: 'githubnext', repository: 'alpha', workflow: '.github/workflows/worker.md', run: '2', 'observed-at': '2026-09-02T00:00:00Z', 'operational-value': 70, diagnostics: { quality: 80 } },
-            { organization: 'githubnext', repository: 'beta', workflow: '.github/workflows/worker.md', run: '3', 'observed-at': '2026-09-03T00:00:00Z', 'operational-value': 90 }
+            { organization: 'githubnext', repository: 'alpha', workflow: '.github/workflows/worker.md', run: '1', 'observed-at': '2026-09-01T00:00:00Z', 'operational-grader': 40, diagnostics: { quality: 50 } },
+            { organization: 'githubnext', repository: 'alpha', workflow: '.github/workflows/worker.md', run: '2', 'observed-at': '2026-09-02T00:00:00Z', 'operational-grader': 70, diagnostics: { quality: 80 } },
+            { organization: 'githubnext', repository: 'beta', workflow: '.github/workflows/worker.md', run: '3', 'observed-at': '2026-09-03T00:00:00Z', 'operational-grader': 90 }
           ],
           metadata
         },
@@ -148,17 +148,17 @@ describe('Audit dashboard view', () => {
       }
     }));
 
-    expect(result['campaign-operational-values'].rows).toEqual([
+    expect(result['campaign-operational-graders'].rows).toEqual([
       expect.objectContaining({ campaign: 'alpha-campaign', run: '1', diagnostics: { quality: 50 } }),
       expect.objectContaining({ campaign: 'alpha-campaign', run: '2', diagnostics: { quality: 80 } }),
       expect.objectContaining({ campaign: 'beta-campaign', run: '3' })
     ]);
   });
 
-  it('slices campaign operational-value extracts by route and selected horizon in the worker', () => {
+  it('slices campaign operational-grader results by route and selected horizon in the worker', () => {
     const insights = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'campaign-insights');
     const payload = compileDashboardViewPayloadQueries(insights, 'campaign-insights', {
-      viewId: 'campaign-operational-value-history',
+      viewId: 'campaign-operational-grader-history',
       routeParameters: { campaign: 'alpha-campaign' },
       queryContext: { timeWindow: { start: '2026-09-02T00:00:00Z', end: '2026-09-04T00:00:00Z' } },
       queries: dashboard.queries
@@ -172,24 +172,24 @@ describe('Audit dashboard view', () => {
         ],
         metadata
       },
-      'operational-values': {
-        source: 'operational-values',
+      'operational-graders': {
+        source: 'operational-graders',
         rows: [
-          { organization: 'githubnext', repository: 'alpha', workflow: 'worker.md', run: 'before', 'observed-at': '2026-09-01T00:00:00Z', 'operational-value': 20 },
-          { organization: 'githubnext', repository: 'alpha', workflow: 'worker.md', run: 'inside-1', 'observed-at': '2026-09-02T00:00:00Z', 'operational-value': 40 },
-          { organization: 'githubnext', repository: 'alpha', workflow: 'worker.md', run: 'inside-2', 'observed-at': '2026-09-03T00:00:00Z', 'operational-value': 70 },
-          { organization: 'githubnext', repository: 'beta', workflow: 'worker.md', run: 'other-campaign', 'observed-at': '2026-09-03T00:00:00Z', 'operational-value': 90 }
+          { organization: 'githubnext', repository: 'alpha', workflow: 'worker.md', run: 'before', 'observed-at': '2026-09-01T00:00:00Z', 'operational-grader': 20 },
+          { organization: 'githubnext', repository: 'alpha', workflow: 'worker.md', run: 'inside-1', 'observed-at': '2026-09-02T00:00:00Z', 'operational-grader': 40 },
+          { organization: 'githubnext', repository: 'alpha', workflow: 'worker.md', run: 'inside-2', 'observed-at': '2026-09-03T00:00:00Z', 'operational-grader': 70 },
+          { organization: 'githubnext', repository: 'beta', workflow: 'worker.md', run: 'other-campaign', 'observed-at': '2026-09-03T00:00:00Z', 'operational-grader': 90 }
         ],
         metadata
       }
     }, payload.aliases);
-    const valueAlias = payload.aliases.find((alias) => alias.includes('campaign-operational-value-series'));
+    const valueAlias = payload.aliases.find((alias) => alias.includes('campaign-operational-grader-series'));
 
     expect(valueAlias).toBeDefined();
     expect(result[valueAlias ?? ''].rows).toEqual([
       expect.objectContaining({
         campaign: 'alpha-campaign',
-        'metric-key': 'primary:operational-value',
+        'metric-key': 'primary:operational-grader',
         points: [
           expect.objectContaining({ x: '2026-09-02T00:00:00Z', y: 40 }),
           expect.objectContaining({ x: '2026-09-03T00:00:00Z', y: 70 })
@@ -290,16 +290,16 @@ describe('Audit dashboard view', () => {
           ],
           metadata
         },
-        'operational-values': {
-          source: 'operational-values',
+        'operational-graders': {
+          source: 'operational-graders',
           rows: [{
             organization: 'githubnext',
             repository: 'gh-aw-cao',
             workflow: 'combined.md',
             run: '1',
             'observed-at': '2026-09-16T10:00:00Z',
-            'operational-value': 0.75,
-            'operational-value-definition': 'repository-readiness',
+            'operational-grader': 0.75,
+            'operational-grader-definition': 'repository-readiness',
             diagnostics: { quality: 0.85, efficiency: 0.7 },
             'diagnostic-definitions': [
               { id: 'quality', name: 'Quality' },

@@ -68,6 +68,9 @@ const DEFAULT_ACTIVITY_STATS_WORKFLOW = 'cao-activity.yml';
 const DEFAULT_ACTIVITY_STATS_ARTIFACT = 'cao-activity-index';
 const DEFAULT_ACTIVITY_STATS_LIMIT = 5;
 const DEFAULT_GH_LIMIT = 30;
+const DEFAULT_ISSUE_STATUS_BATCH_SIZE = 50;
+const DEFAULT_ISSUE_STATUS_GRAPHQL_COST_BUDGET = 25;
+const DEFAULT_ISSUE_STATUS_GRAPHQL_MIN_REMAINING = 500;
 const DEFAULT_COMPACTED_JSONL_SHARD_BYTES = 4 * 1024 * 1024;
 // Per-shard normalization output is retained only as an incremental cache. It lives
 // in a subdirectory so it is never published, hashed into the manifest, or ingested.
@@ -88,7 +91,7 @@ const GH_AW_INSTALLER_COMMAND = 'curl --fail --silent --show-error --location ht
 const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json';
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
-const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'query', 'computation', 'operational-value', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
+const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'issue-status', 'query', 'computation', 'operational-value', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
 
 // Intentional CLI misuse that should print usage without an internal stack trace.
 class UsageError extends Error {}
@@ -107,6 +110,7 @@ const USAGE = `Usage:
   cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY|--runs-dir DIRECTORY --records-dir DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input-dir SHARD_DIRECTORY]
   cao compact-jsonl --input-dir SHARD_DIRECTORY --group OWNER/REPOSITORY=SHARD_PREFIX [--group OWNER/REPOSITORY=SHARD_PREFIX...] [--max-bytes BYTES]
+  cao issue-status [--database FILE] --input-dir SHARD_DIRECTORY [--batch-size COUNT] [--graphql-cost-budget POINTS] [--graphql-min-remaining POINTS]
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao computation runtime-health [--database FILE] [--inventory FILE] [--campaign SLUG] [--diagnose]
   cao operational-value [--database FILE] [--root DIRECTORY] [--output FILE] [--timestamp TIME] [--repository OWNER/REPO] [--retention-days DAYS|all] [--max-github-api-rate-limit LIMIT]
@@ -123,6 +127,7 @@ Query local CAO data as JSON. Download the deployed snapshot before querying:
   cao dashboard-complexity --input dashboard/site/dashboard.json
   cao dashboard-complexity campaign-inventory --input dashboard/site/dashboard.json
   cao prune-dashboard --input dashboard.json --output dashboard.pruned.json
+  cao issue-status --input-dir .cao/gh-aw-logs-shards --graphql-cost-budget 25 --graphql-min-remaining 500
   cao computation runtime-health
   cao computation runtime-health --campaign dependabot
   cao computation runtime-health --campaign dependabot --diagnose
@@ -2135,6 +2140,255 @@ function inTimeRange(timestamp, range) {
     && (range.until === undefined || timestamp <= range.until);
 }
 
+function boundedPositiveInteger(value, name, defaultValue, maximum) {
+  if (value === undefined) return defaultValue;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > maximum) {
+    throw new UsageError(`--${name} must be an integer from 1 to ${maximum}`);
+  }
+  return parsed;
+}
+
+function nonNegativeInteger(value, name, defaultValue) {
+  if (value === undefined) return defaultValue;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 0) {
+    throw new UsageError(`--${name} must be a non-negative integer`);
+  }
+  return parsed;
+}
+
+function graphqlDocument(query, variables = {}) {
+  const arguments_ = ['api', 'graphql', '-f', `query=${query}`];
+  for (const [name, value] of Object.entries(variables)) {
+    arguments_.push('-f', `${name}=${value}`);
+  }
+  const result = spawnSync('gh', arguments_, {
+    encoding: 'utf8',
+    env: { ...process.env, GH_PAGER: 'cat' },
+    maxBuffer: 16 * 1024 * 1024
+  });
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    throw new Error(`GitHub GraphQL query failed: ${String(result.stderr || result.stdout).trim() || `exit ${result.status}`}`);
+  }
+  let document;
+  try {
+    document = JSON.parse(result.stdout);
+  } catch {
+    throw new Error('GitHub GraphQL query returned invalid JSON');
+  }
+  if (Array.isArray(document.errors) && document.errors.length > 0) {
+    throw new Error(`GitHub GraphQL query failed: ${document.errors.map((error) => error.message).join('; ')}`);
+  }
+  return document;
+}
+
+function graphqlRateLimit(document) {
+  const rateLimit = document?.data?.rateLimit;
+  if (![rateLimit?.cost, rateLimit?.remaining].every(Number.isSafeInteger)) {
+    throw new Error('GitHub GraphQL response did not include rate-limit cost and remaining points');
+  }
+  return {
+    cost: rateLimit.cost,
+    remaining: rateLimit.remaining,
+    resetAt: typeof rateLimit.resetAt === 'string' ? rateLimit.resetAt : null
+  };
+}
+
+function issueStatusKey(repository, number) {
+  return `${repository.toLowerCase()}#${number}`;
+}
+
+function issueStatusTargets(issues) {
+  const targets = new Map();
+  for (const issue of issues) {
+    if (issue.isPullRequest === true) continue;
+    const repository = String(issue.repositoryFullName ?? (
+      typeof issue.owner === 'string' && typeof issue.repository === 'string'
+        ? `${issue.owner}/${issue.repository}`
+        : ''
+    ));
+    const number = Number(issue.number);
+    if (!repository.includes('/') || !Number.isSafeInteger(number) || number < 1) continue;
+    const [owner, ...repositoryParts] = repository.split('/');
+    const name = repositoryParts.join('/');
+    if (!owner || !name || name.includes('/')) continue;
+    targets.set(issueStatusKey(repository, number), {
+      owner,
+      name,
+      repository: `${owner}/${name}`,
+      number,
+      statusObservedAt: issue.statusObservedAt
+    });
+  }
+  return [...targets.values()].sort((left, right) => {
+    const leftObserved = Date.parse(String(left.statusObservedAt ?? ''));
+    const rightObserved = Date.parse(String(right.statusObservedAt ?? ''));
+    const freshness = (Number.isFinite(leftObserved) ? leftObserved : Number.NEGATIVE_INFINITY)
+      - (Number.isFinite(rightObserved) ? rightObserved : Number.NEGATIVE_INFINITY);
+    return freshness || left.repository.localeCompare(right.repository) || left.number - right.number;
+  });
+}
+
+function issueStatusQuery(batch) {
+  const fields = batch.map((target, index) => (
+    `i${index}: issue(number: ${target.number}) { number state stateReason closedAt url }`
+  )).join('\n');
+  return `query($owner: String!, $name: String!) {
+  repository(owner: $owner, name: $name) {
+    ${fields}
+  }
+  rateLimit { cost remaining resetAt }
+}`;
+}
+
+async function applyIssueStatuses(directory, statuses) {
+  let updatedFiles = 0;
+  let updatedRecords = 0;
+  const names = (await readdir(directory)).filter((name) => name.endsWith('.jsonl')).sort();
+  for (const name of names) {
+    const filePath = path.join(directory, name);
+    const lines = [];
+    let changed = false;
+    for await (const line of jsonlLines([filePath])) {
+      const envelope = JSON.parse(line);
+      const entity = envelope?.kind === 'safe_output_item'
+        ? githubEntityUrl(envelope.safe_output?.url)
+        : undefined;
+      const status = entity && !entity.url.includes('/pull/')
+        ? statuses.get(issueStatusKey(entity.repository, entity.number))
+        : undefined;
+      if (status) {
+        envelope.safe_output = { ...envelope.safe_output, github_issue_status: status };
+        changed = true;
+        updatedRecords += 1;
+        lines.push(JSON.stringify(envelope));
+      } else {
+        lines.push(line);
+      }
+    }
+    if (!changed) continue;
+    const temporaryPath = `${filePath}.${process.pid}.tmp`;
+    await writeFile(temporaryPath, `${lines.join('\n')}\n`, { flag: 'wx' });
+    await rename(temporaryPath, filePath);
+    updatedFiles += 1;
+  }
+  return { updatedFiles, updatedRecords };
+}
+
+export async function updateIssueStatuses(indexedDB, inputDirectory, options) {
+  const batchSize = boundedPositiveInteger(
+    option(options, 'batch-size', false),
+    'batch-size',
+    DEFAULT_ISSUE_STATUS_BATCH_SIZE,
+    100
+  );
+  const costBudget = boundedPositiveInteger(
+    option(options, 'graphql-cost-budget', false),
+    'graphql-cost-budget',
+    DEFAULT_ISSUE_STATUS_GRAPHQL_COST_BUDGET,
+    5000
+  );
+  const minimumRemaining = nonNegativeInteger(
+    option(options, 'graphql-min-remaining', false),
+    'graphql-min-remaining',
+    DEFAULT_ISSUE_STATUS_GRAPHQL_MIN_REMAINING
+  );
+  const targets = issueStatusTargets(await readCollection(indexedDB, 'issues'));
+  if (targets.length === 0) {
+    return {
+      command: 'issue-status',
+      issues: 0,
+      queried: 0,
+      statuses: 0,
+      updatedFiles: 0,
+      updatedRecords: 0,
+      rateLimit: {
+        budget: costBudget,
+        cost: 0,
+        minimumRemaining,
+        remaining: null,
+        resetAt: null
+      },
+      stopped: null,
+      errors: []
+    };
+  }
+  const initialDocument = graphqlDocument('query { rateLimit { cost remaining resetAt } }');
+  let rateLimit = graphqlRateLimit(initialDocument);
+  let cost = rateLimit.cost;
+  const statuses = new Map();
+  const errors = [];
+  let queried = 0;
+  let stopped = null;
+
+  const byRepository = Map.groupBy(targets, (target) => target.repository);
+  outer: for (const repositoryTargets of byRepository.values()) {
+    for (let offset = 0; offset < repositoryTargets.length; offset += batchSize) {
+      if (cost + 1 > costBudget) {
+        stopped = 'cost-budget';
+        break outer;
+      }
+      if (rateLimit.remaining - 1 < minimumRemaining) {
+        stopped = 'remaining-floor';
+        break outer;
+      }
+      const batch = repositoryTargets.slice(offset, offset + batchSize);
+      const [{ owner, name, repository }] = batch;
+      let document;
+      try {
+        document = graphqlDocument(issueStatusQuery(batch), { owner, name });
+      } catch (error) {
+        errors.push({
+          repository,
+          message: error instanceof Error ? error.message : String(error)
+        });
+        stopped = 'query-error';
+        break outer;
+      }
+      rateLimit = graphqlRateLimit(document);
+      cost += rateLimit.cost;
+      const result = document.data?.repository;
+      for (let index = 0; index < batch.length; index += 1) {
+        queried += 1;
+        const issue = result?.[`i${index}`];
+        if (!issue) continue;
+        const target = batch[index];
+        statuses.set(issueStatusKey(target.repository, target.number), {
+          state: issue.state,
+          closed: issue.state === 'CLOSED',
+          state_reason: issue.stateReason ?? null,
+          closed_at: issue.closedAt ?? null,
+          observed_at: new Date().toISOString()
+        });
+      }
+      if (cost > costBudget) {
+        stopped = 'cost-budget';
+        break outer;
+      }
+    }
+  }
+
+  const updates = await applyIssueStatuses(path.resolve(inputDirectory), statuses);
+  return {
+    command: 'issue-status',
+    issues: targets.length,
+    queried,
+    statuses: statuses.size,
+    ...updates,
+    rateLimit: {
+      budget: costBudget,
+      cost,
+      minimumRemaining,
+      remaining: rateLimit.remaining,
+      resetAt: rateLimit.resetAt
+    },
+    stopped,
+    errors
+  };
+}
+
 export async function queryGhData(indexedDB, resource, options) {
   if (!GH_RESOURCES.has(resource)) throw new Error(`Unknown gh resource: ${resource}`);
   const [repositories, workflows, runs, issues] = await Promise.all([
@@ -2503,6 +2757,20 @@ export async function runCli(arguments_, input = process.stdin) {
   }
   const indexedDB = await createDatabase(databasePath);
 
+  if (command === 'issue-status') {
+    rejectUnknownOptions(options, [
+      'database',
+      'input-dir',
+      'batch-size',
+      'graphql-cost-budget',
+      'graphql-min-remaining'
+    ]);
+    return updateIssueStatuses(
+      indexedDB,
+      option(options, 'input-dir'),
+      options
+    );
+  }
   if (command === 'gh') {
     rejectUnknownOptions(options, ['database', 'repo', 'workflow', 'status', 'since', 'until', 'limit']);
     if (ghResource !== 'runs' && options.status) {

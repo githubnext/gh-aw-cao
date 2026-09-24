@@ -33,7 +33,7 @@ Use the shared dashboard notification service only for brief, actionable runtime
 
 Use [`gh aw logs`](https://github.com/github/gh-aw/blob/main/docs/src/content/docs/troubleshooting/debugging.md) as the source of workflow-run evidence. The published activity shards use the gh-aw [`logs-jsonl.schema.json`](https://github.com/github/gh-aw/blob/main/schemas/logs-jsonl.schema.json); consult that schema rather than inferring fields from fixtures or individual deployed records.
 
-Operational-value evaluator design and result semantics belong to gh-aw. Dashboard work may consume the canonical grader result, but must not redefine, normalize, clamp, replay, mature, or reconstruct its metrics.
+Operational-grader design and result semantics belong to gh-aw's `operational-value` protocol. Dashboard work may consume the canonical grader result, but must not redefine, normalize, clamp, replay, mature, reconstruct its metrics, or confuse it with package-defined repository operational value.
 
 For live feature-development data, run `cao download`. It downloads the deployed Pages site's shard manifest, activity shards, and `gh-aw-logs.sqlite` into `.cao/` by default. Set `DASHBOARD_DATA_URL` or pass `--url URL` for another deployment, and pass `--output DIRECTORY` for another destination. Query the downloaded SQLite database with `cao query`, and use `cao help` for the supported collections and filters. Live data is development evidence, not a schema authority; keep code aligned with the specifications and JSONL schema.
 

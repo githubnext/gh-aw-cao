@@ -476,9 +476,9 @@
             "title": "# dispatches"
           },
           {
-            "field": "value-created",
-            "title": "# value",
-            "unit": "ops-value"
+            "field": "grader-result",
+            "title": "# grader",
+            "unit": "ops-grader"
           },
           {
             "field": "aic",
@@ -1637,9 +1637,9 @@
         "significant": 0.001,
         "format": "number"
       },
-      "ops-value": {
-        "name": "Ops Value",
-        "symbol": "ops",
+      "ops-grader": {
+        "name": "Operational grader",
+        "symbol": "grader",
         "significant": 0.01,
         "format": "number"
       },
@@ -7272,9 +7272,9 @@
       },
       {
         "name": "repository-evaluated-workflow-totals",
-        "intent": "Summarize distinct workflows with operational-value evaluations by repository.",
+        "intent": "Summarize distinct workflows with operational-grader evaluations by repository.",
         "description": "Distinct evaluated workflow totals for each repository.",
-        "from": "operational-values",
+        "from": "operational-graders",
         "aggregate": {
           "by": [
             "organization",
@@ -7934,28 +7934,28 @@
         ]
       },
       {
-        "name": "workflow-operational-value-totals",
-        "intent": "Summarize the operational value created by each evaluated workflow.",
-        "description": "Observed operational value totals grouped by producing workflow.",
-        "from": "operational-values",
+        "name": "workflow-operational-grader-totals",
+        "intent": "Summarize operational-grader results for each evaluated workflow.",
+        "description": "Observed operational-grader totals grouped by producing workflow.",
+        "from": "operational-graders",
         "aggregate": {
           "by": [
             "workflow"
           ],
           "values": [
             {
-              "field": "operational-value",
-              "as": "value-created",
+              "field": "operational-grader",
+              "as": "grader-result",
               "reducer": "sum"
             }
           ]
         }
       },
       {
-        "name": "campaign-operational-values",
-        "intent": "Retain every operational-value extract and diagnostic for campaign-scoped temporal analysis.",
-        "description": "Operational-value observations attributed to centrally managed campaigns by repository and workflow identity.",
-        "from": "operational-values",
+        "name": "campaign-operational-graders",
+        "intent": "Retain every operational-grader result and diagnostic for campaign-scoped temporal analysis.",
+        "description": "Operational-grader observations attributed to centrally managed campaigns by repository and workflow identity.",
+        "from": "operational-graders",
         "order-by": [
           {
             "field": "observed-at",
@@ -8064,16 +8064,16 @@
             "field": "rollout-mode"
           },
           {
-            "field": "operational-value"
+            "field": "operational-grader"
           },
           {
-            "field": "operational-value-definition"
+            "field": "operational-grader-definition"
           },
           {
-            "field": "operational-value-unit"
+            "field": "operational-grader-unit"
           },
           {
-            "field": "operational-value-direction"
+            "field": "operational-grader-direction"
           },
           {
             "field": "requested-evidence-at"
@@ -8123,10 +8123,10 @@
         ]
       },
       {
-        "name": "campaign-operational-value-series",
-        "intent": "Project campaign operational-value measures and diagnostics into reusable temporal series.",
-        "description": "Tidy temporal metric rows for campaign operational-value analysis.",
-        "from": "campaign-operational-values",
+        "name": "campaign-operational-grader-series",
+        "intent": "Project campaign operational-grader measures and diagnostics into reusable temporal series.",
+        "description": "Tidy temporal metric rows for campaign operational-grader analysis.",
+        "from": "campaign-operational-graders",
         "temporal-series": {
           "time": "observed-at",
           "series": "workflow",
@@ -8136,8 +8136,8 @@
           ],
           "measures": [
             {
-              "field": "operational-value",
-              "key": "operational-value-definition",
+              "field": "operational-grader",
+              "key": "operational-grader-definition",
               "kind": "primary"
             }
           ],
@@ -8145,17 +8145,17 @@
             {
               "field": "diagnostics",
               "definitions": "diagnostic-definitions",
-              "group": "operational-value-definition",
+              "group": "operational-grader-definition",
               "kind": "diagnostic"
             }
           ]
         }
       },
       {
-        "name": "campaign-operational-value-plot-inventory",
-        "intent": "Describe each rendered operational-value plot using the shared campaign Insights plot contract.",
-        "description": "One plot-inventory row for every operational-value measure or diagnostic rendered on campaign Insights.",
-        "from": "campaign-operational-value-series"
+        "name": "campaign-operational-grader-plot-inventory",
+        "intent": "Describe each rendered operational-grader plot using the shared campaign Insights plot contract.",
+        "description": "One plot-inventory row for every operational-grader measure or diagnostic rendered on campaign Insights.",
+        "from": "campaign-operational-grader-series"
       },
       {
         "name": "campaign-audit-summary-plot-inventory",
@@ -8179,7 +8179,7 @@
         "name": "campaign-insight-plot-inventory",
         "intent": "Inventory every plot rendered on each campaign Insights page through one reusable plot contract.",
         "description": "One campaign row per rendered Insights plot, independent of the plot's data source or renderer.",
-        "from": "campaign-operational-value-plot-inventory",
+        "from": "campaign-operational-grader-plot-inventory",
         "union": [
           "campaign-audit-summary-plot-inventory"
         ]
@@ -8239,13 +8239,13 @@
         }
       },
       {
-        "name": "campaign-operational-value-totals",
-        "intent": "Summarize the operational value created by each centrally managed campaign.",
-        "description": "Observed operational value totals attributed to centrally managed campaign workflows.",
+        "name": "campaign-operational-grader-totals",
+        "intent": "Summarize operational-grader results for each centrally managed campaign.",
+        "description": "Observed operational-grader totals attributed to centrally managed campaign workflows.",
         "from": "workflow-inventory",
         "joins": [
           {
-            "source": "workflow-operational-value-totals",
+            "source": "workflow-operational-grader-totals",
             "type": "inner",
             "on": [
               {
@@ -8255,8 +8255,8 @@
             ],
             "fields": [
               {
-                "field": "value-created",
-                "as": "workflow-value-created"
+                "field": "grader-result",
+                "as": "workflow-grader-result"
               }
             ]
           }
@@ -8282,8 +8282,8 @@
           ],
           "values": [
             {
-              "field": "workflow-value-created",
-              "as": "value-created",
+              "field": "workflow-grader-result",
+              "as": "grader-result",
               "reducer": "sum"
             }
           ]
@@ -8648,7 +8648,7 @@
             ]
           },
           {
-            "source": "campaign-operational-value-totals",
+            "source": "campaign-operational-grader-totals",
             "type": "left",
             "on": [
               {
@@ -8658,8 +8658,8 @@
             ],
             "fields": [
               {
-                "field": "value-created",
-                "as": "value-created"
+                "field": "grader-result",
+                "as": "grader-result"
               }
             ]
           },
@@ -8867,7 +8867,7 @@
             "field": "aic"
           },
           {
-            "field": "value-created"
+            "field": "grader-result"
           }
         ],
         "order-by": [
@@ -10405,7 +10405,7 @@
                 "workflows",
                 "runs",
                 "usage",
-                "operational-values"
+                "operational-graders"
               ]
             },
             "mark": "element",
@@ -10650,10 +10650,10 @@
                     "unit": "aic"
                   },
                   {
-                    "field": "value-created",
+                    "field": "grader-result",
                     "type": "quantitative",
-                    "title": "Ops Value",
-                    "unit": "ops-value"
+                    "title": "Ops Grader",
+                    "unit": "ops-grader"
                   },
                   {
                     "field": "registration",
@@ -10711,12 +10711,12 @@
             }
           },
           {
-            "id": "campaign-operational-value-history",
-            "title": "Measure and diagnostic history",
-            "description": "Every retained operational-value measure and diagnostic, separated by metric and workflow series.",
+            "id": "campaign-operational-grader-history",
+            "title": "Operational grader history",
+            "description": "Every retained operational-grader measure and diagnostic, separated by metric and workflow series.",
             "data": {
               "sources": [
-                "campaign-operational-value-series"
+                "campaign-operational-grader-series"
               ],
               "arguments": [
                 {

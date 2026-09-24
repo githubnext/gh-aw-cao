@@ -85,12 +85,12 @@ SQL uses the versioned `gh-aw-cao.dashboard-sql-export` interchange contract. Da
 
 Observations can arrive at different times and enrich an existing entity. Explicit source precedence and observation time resolve conflicting fields; arrival order alone never decides the result.
 
-The activity shard manifest is the dashboard's published operational input. Normalized run-information and record shards are JSONL streams: a metadata envelope is followed by one canonical record envelope per line. The worker imports every run-information stream before downloading the larger record streams and writes bounded batches as response bytes arrive; it never parses a normalized shard as one JSON object. Run records include immutable agent, model, duration, firewall, MCP, operational-value, and audit-priority aggregates; every Domain, Tool, Audit, and Issue includes its owning `runId`. Run queries may refresh between phases, but that intermediate state is not a complete snapshot and record-dependent queries remain stale until record ingestion succeeds. Legacy schema-v2 JSONL remains a compatibility input. `github_api_rate_limit` envelopes create Audits only when explicit collection context identifies their owning run; browser ingestion does not fabricate that ownership. Unknown kinds and unsupported non-empty schema versions fail explicitly.
+The activity shard manifest is the dashboard's published operational input. Normalized run-information and record shards are JSONL streams: a metadata envelope is followed by one canonical record envelope per line. The worker imports every run-information stream before downloading the larger record streams and writes bounded batches as response bytes arrive; it never parses a normalized shard as one JSON object. Run records include immutable agent, model, duration, firewall, MCP, operational-grader, and audit-priority aggregates; every Domain, Tool, Audit, and Issue includes its owning `runId`. Run queries may refresh between phases, but that intermediate state is not a complete snapshot and record-dependent queries remain stale until record ingestion succeeds. Legacy schema-v2 JSONL remains a compatibility input. `github_api_rate_limit` envelopes create Audits only when explicit collection context identifies their owning run; browser ingestion does not fabricate that ownership. Unknown kinds and unsupported non-empty schema versions fail explicitly.
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
-The canonical model is version 14. The browser database is
-`gh-aw-cao-dashboard-data`, IndexedDB version 22. Its canonical stores are
+The canonical model is version 15. The browser database is
+`gh-aw-cao-dashboard-data`, IndexedDB version 23. Its canonical stores are
 `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `audits`,
 `issues`, and `operationalValues`; all use `id` as the key. The `transactions` store records
 ingestion outcomes and is indexed by `createdAt`. Two additional disposable

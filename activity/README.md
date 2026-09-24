@@ -39,6 +39,14 @@ out-of-range dated records are pruned by `gh aw logs --cache-before`. The
 ingestion step passes the shard directory to `cao ingest-jsonl --input-dir`,
 which tracks each compacted shard by content hash.
 
+After compaction, `cao issue-status` reads the canonical Issue records from the
+refreshed local SQLite projection, batches issue lookups by repository through
+GitHub GraphQL, and enriches matching safe-output records with authoritative
+closed state, state reason, and closure time. The command has independent
+GraphQL point-budget and remaining-capacity-floor controls. Pull requests are
+excluded, inaccessible issues remain unchanged, and the enriched source records
+flow through the same normalized dashboard shard pipeline.
+
 Collection is serial by repository so audits share refreshed Drain3 weights and
 do not multiply concurrent GitHub API pressure. A cold collection must discover
 the bounded run window for every repository. Later collections reuse each

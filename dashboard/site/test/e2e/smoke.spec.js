@@ -1276,18 +1276,18 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
           rows: [{ 'safe-output-count': 1, 'observed-at': '2026-08-29T09:40:00Z' }],
           metadata
         },
-        'operational-values': {
-          source: 'operational-values',
+        'operational-graders': {
+          source: 'operational-graders',
           rows: [
             {
-              'operational-value': 0.6,
-              'operational-value-definition': 'accepted-outcome',
+              'operational-grader': 0.6,
+              'operational-grader-definition': 'accepted-outcome',
               'observed-at': '2026-08-01T09:45:00Z',
               'evidence-link': evidenceLink
             },
             {
-              'operational-value': 0.8,
-              'operational-value-definition': 'accepted-outcome',
+              'operational-grader': 0.8,
+              'operational-grader-definition': 'accepted-outcome',
               'observed-at': '2026-08-29T09:45:00Z',
               'evidence-link': evidenceLink
             }
@@ -2388,22 +2388,22 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
           ],
           metadata
         },
-        'operational-values': {
-          source: 'operational-values',
+        'operational-graders': {
+          source: 'operational-graders',
           rows: [
             {
               organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/ambient-context-worker.md', run: '3',
-              'observed-at': '2026-09-13T14:00:00Z', 'operational-value': 0.5, 'operational-value-definition': 'repository-readiness',
+              'observed-at': '2026-09-13T14:00:00Z', 'operational-grader': 0.5, 'operational-grader-definition': 'repository-readiness',
               diagnostics: { quality: 0.6, efficiency: 0.8 },
               'diagnostic-definitions': [{ id: 'quality', name: 'Quality' }, { id: 'efficiency', name: 'Efficiency' }]
             },
             {
               organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/ambient-context-worker.md', run: '4',
-              'observed-at': '2026-09-14T14:00:00Z', 'operational-value': 0.75, 'operational-value-definition': 'repository-readiness',
+              'observed-at': '2026-09-14T14:00:00Z', 'operational-grader': 0.75, 'operational-grader-definition': 'repository-readiness',
               diagnostics: { quality: 0.85, efficiency: 0.7 },
               'diagnostic-definitions': [{ id: 'quality', name: 'Quality' }, { id: 'efficiency', name: 'Efficiency' }]
             },
-            { workflow: '.github/workflows/aw-doctor.md', run: '1', 'operational-value': 0.25 }
+            { workflow: '.github/workflows/aw-doctor.md', run: '1', 'operational-grader': 0.25 }
           ],
           metadata
         }
@@ -2443,13 +2443,13 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
     'Runs',
     'Dispatches',
     'AIC',
-    'Ops Value',
+    'Ops Grader',
     'Registration'
   ]);
   const awDoctorSummary = campaignRows.filter({ hasText: 'AW Doctor' });
   await expect(awDoctorSummary).toContainText('AW Doctor');
   await expect(awDoctorSummary).toContainText('23.9');
-  await expect(awDoctorSummary.locator('[data-field="value-created"]')).toHaveText('0.25');
+  await expect(awDoctorSummary.locator('[data-field="grader-result"]')).toHaveText('0.25');
   await expect(awDoctorSummary.getByRole('button', { name: 'Update campaign' })).toHaveCount(0);
   await expect(awDoctorSummary.getByRole('link', { name: 'View AW Doctor campaign dashboard' })).toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
   await expect(awDoctorSummary.locator('[data-field="modes"] .mode-badge')).toHaveText('review');
@@ -3145,7 +3145,7 @@ test('repository page template follows its JSON-declared hash query route in bro
         runs: { source: 'runs', metadata, rows: [] },
         outcomes: { source: 'outcomes', metadata, rows: [] },
         audits: { source: 'audits', metadata, rows: [] },
-        'operational-values': { source: 'operational-values', metadata, rows: [] }
+        'operational-graders': { source: 'operational-graders', metadata, rows: [] }
       };
       const loadPageSources = (pageId, options) => prepareDashboardViewSources(
         dashboardDocument,
@@ -3629,7 +3629,7 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
             views: [{
               id: 'workflow-runtime-route',
               title: 'Workflow runtime',
-              data: { sources: ['workflows', 'runs', 'usage', 'operational-values'] },
+              data: { sources: ['workflows', 'runs', 'usage', 'operational-graders'] },
               mark: 'element',
               element: 'workflow-route-page',
               config: { body: 'insights' }
@@ -3685,8 +3685,8 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
             aic: 962.7
           }]
         },
-        'operational-values': {
-          source: 'operational-values',
+        'operational-graders': {
+          source: 'operational-graders',
           metadata,
           rows: []
         }

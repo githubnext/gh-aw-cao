@@ -29,7 +29,7 @@
     "typecheck:cao": "npx tsc -p .github/workflows/shared/tsconfig.json",
     "test": "npm run test:unit && npm run test:integration",
     "test:unit": "node --test tests/unit/*.test.mjs",
-    "test:integration": "node --test --test-concurrency=1 tests/integration/activity-cache.test.mjs tests/integration/activity-discovery-cli.test.mjs tests/integration/cao-configuration-cli.test.mjs tests/integration/control-admission.test.mjs tests/integration/control-failure.test.mjs tests/integration/control-policy-resolver.test.mjs tests/integration/dashboard-inventory-ingestion.test.mjs tests/integration/dashboard-query-cost.test.mjs",
+    "test:integration": "node --test --test-concurrency=1 tests/integration/activity-cache.test.mjs tests/integration/activity-discovery-cli.test.mjs tests/integration/cao-configuration-cli.test.mjs tests/integration/cao-issue-status.test.mjs tests/integration/control-admission.test.mjs tests/integration/control-failure.test.mjs tests/integration/control-policy-resolver.test.mjs tests/integration/dashboard-inventory-ingestion.test.mjs tests/integration/dashboard-query-cost.test.mjs",
     "test:campaign-lifecycle": "node --test --test-concurrency=1 tests/integration/campaign-lifecycle.test.mjs",
     "test:campaign-root": "node --test --test-concurrency=1 --test-name-pattern=\"^root campaign bootstraps\" tests/integration/campaign-lifecycle.test.mjs",
     "test:load": "node --test tests/load/*.test.mjs",

@@ -131,7 +131,7 @@ For every active agentic workflow, measure:
 - input, output, cache-read, cache-write, and reasoning token classes separately;
 - turns, duration, warnings, errors, and retries;
 - total and median AI Credit per successful run;
-- accepted outcome and operational-value observations when available, kept separate from runtime success.
+- accepted outcomes and operational-grader observations when available, kept separate from runtime success and repository operational value.
 
 Do not synthesize total tokens from raw token classes. Do not combine invocation-level and run-aggregate AI Credit. Do not describe proposed savings as realized savings. Exclude this Optimization campaign from rankings when auditing another control repository.
 

@@ -47,7 +47,11 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
 
   assert.ok(indexJob);
   assert.ok(cacheJob);
-  assert.match(indexJob, /permissions:\n\s+actions: read\n\s+contents: read/);
+  assert.match(indexJob, /permissions:\n\s+actions: read\n\s+contents: read\n\s+issues: read/);
+  assert.match(
+    indexJob,
+    /Generate GitHub App token for activity[\s\S]*?permission-actions: read[\s\S]*?permission-contents: read[\s\S]*?permission-issues: read/,
+  );
   assert.doesNotMatch(indexJob, /actions\/cache\/save@/);
   assert.match(
     indexJob,

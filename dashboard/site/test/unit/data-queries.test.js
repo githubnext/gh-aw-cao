@@ -1010,16 +1010,16 @@ describe('declarative dashboard queries', () => {
       rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', 'safe-output': 'report-1' }],
       metadata: metadata('outcomes')
     };
-    const operationalValues = {
-      source: 'operational-values',
-      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', 'operational-value': 1 }],
-      metadata: metadata('operational-values')
+    const operationalGraders = {
+      source: 'operational-graders',
+      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', 'operational-grader': 1 }],
+      metadata: metadata('operational-graders')
     };
 
     const derived = executeDashboardQueries(
       dashboardQueries,
-      { ...emptyRunRecordSources, campaigns, repositories, workflows: queryWorkflows, runs, audits: events, outcomes, 'operational-values': operationalValues, usage },
-      ['entity-workflows', 'repository-activity', 'workflow-inventory', 'campaign-operational-value-totals', 'campaign-repository-coverage', 'campaign-inventory']
+      { ...emptyRunRecordSources, campaigns, repositories, workflows: queryWorkflows, runs, audits: events, outcomes, 'operational-graders': operationalGraders, usage },
+      ['entity-workflows', 'repository-activity', 'workflow-inventory', 'campaign-operational-grader-totals', 'campaign-repository-coverage', 'campaign-inventory']
     );
 
     expect(derived['entity-workflows'].rows).toEqual([
@@ -1043,9 +1043,9 @@ describe('declarative dashboard queries', () => {
       expect.objectContaining({ workflow: 'b.md', runs: 0, 'successful-runs': 0, 'failed-runs': 0, 'aic-per-run': null, ingestion: null }),
       expect.objectContaining({ workflow: 'c.md', runs: 1, 'successful-runs': 1, 'failed-runs': 0, 'aic-per-run': 0, ingestion: '100%' })
     ]);
-    expect(derived['campaign-operational-value-totals'].rows).toEqual([{
+    expect(derived['campaign-operational-grader-totals'].rows).toEqual([{
       campaign: 'aw-doctor',
-      'value-created': 1
+      'grader-result': 1
     }]);
     expect(derived['campaign-repository-coverage'].rows).toEqual([{
       campaign: 'aw-doctor',
@@ -1066,7 +1066,7 @@ describe('declarative dashboard queries', () => {
       dispatches: 2,
       'covered-repositories': 1,
       aic: 10,
-      'value-created': 1
+      'grader-result': 1
     }]);
   });
 

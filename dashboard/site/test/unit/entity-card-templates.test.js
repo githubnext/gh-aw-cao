@@ -35,7 +35,7 @@ describe('entity card templates', () => {
       ],
       details: [
         { field: 'dispatches', title: '# dispatches' },
-        { field: 'value-created', title: '# value', unit: 'ops-value' },
+        { field: 'grader-result', title: '# grader', unit: 'ops-grader' },
         { field: 'aic', title: '# aic', unit: 'aic' }
       ]
     });
