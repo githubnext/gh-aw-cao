@@ -661,7 +661,7 @@ units:
   aic:
     name: AICc($)
     symbol: AIC
-    significant: 1
+    significant: 2
     format: aicc
   usd:
     name: US dollars
@@ -675,12 +675,12 @@ units:
     format: duration
 ```
 
-The AIC definition uses a significance of `1` because one AI Credit is the integral accounting unit worth one cent. Its `aicc` format divides the rounded AIC value by `100` and presents the result as US currency through the browser internationalization API. The `number` format presents the rounded numeric value without appending the unit symbol. The `duration` format interprets values as seconds and presents compact cascading components. It presents values below one minute as seconds (`45s`), values below one hour as minutes and seconds (`1m 30s`), values below one day as hours and minutes (`1h 23m`), and longer values as days and hours (`1d 3h`). The lower component is retained when zero, and components below the selected precision are omitted. The `usd` format presents US dollars with a dollar sign, two fractional digits when fewer are needed, and no more than three fractional digits. Values requiring more than three fractional digits are rounded upward at the third fractional digit.
+The AIC definition uses a significance of `2`. Its `aicc` format divides the rounded AIC value by `100` and presents the result as US currency through the browser internationalization API. The `number` format presents the rounded numeric value without appending the unit symbol. The `duration` format interprets values as seconds and presents compact cascading components. It presents values below one minute as seconds (`45s`), values below one hour as minutes and seconds (`1m 30s`), values below one day as hours and minutes (`1h 23m`), and longer values as days and hours (`1d 3h`). The lower component is retained when zero, and components below the selected precision are omitted. The `usd` format presents US dollars with a dollar sign, two fractional digits when fewer are needed, and no more than three fractional digits. Values requiring more than three fractional digits are rounded upward at the third fractional digit.
 
 - **DLS-UNIT-001:** A field `unit`, when present, **MUST** reference exactly one unit declared by `dashboard.units`.
 - **DLS-UNIT-002:** Unit formatting **MUST** affect presentation only and **MUST NOT** change filtering, aggregation, ordering, limiting, source data, or provenance.
 - **DLS-UNIT-003:** For a unit without `format`, a presenter **MUST** append the declared `symbol` to a unit-bearing value and round it to the nearest multiple of `significant`, with halfway cases rounded away from zero. A `number` unit **MUST** apply the same rounding without appending the symbol.
-- **DLS-UNIT-004:** `format`, when present, **MUST** be `aicc`, `duration`, `number`, or `usd`. An `aicc` unit **MUST** declare `name: AICc($)`. A presenter **MUST** round its AIC value to the declared significance, divide it by `100`, and present the result as `USD` currency using the browser internationalization API. A `duration` unit **MUST** declare `symbol: s` and `significant: 1`. A presenter **MUST** round its value to the nearest whole second with halfway cases rounded away from zero, preserve the sign, and present its absolute components using the compact cascading form defined above. Component suffixes are intrinsic to these formats, so the presenter **MUST NOT** append another `symbol`.
+- **DLS-UNIT-004:** `format`, when present, **MUST** be `aicc`, `duration`, `number`, or `usd`. An `aicc` unit **MUST** declare `name: AICc($)` and `significant: 2`. A presenter **MUST** round its AIC value to the declared significance, divide it by `100`, and present the result as `USD` currency using the browser internationalization API. A `duration` unit **MUST** declare `symbol: s` and `significant: 1`. A presenter **MUST** round its value to the nearest whole second with halfway cases rounded away from zero, preserve the sign, and present its absolute components using the compact cascading form defined above. Component suffixes are intrinsic to these formats, so the presenter **MUST NOT** append another `symbol`.
 - **DLS-UNIT-005:** A `usd` unit **MUST** declare `symbol: USD` and `significant: 0.001`. A presenter **MUST** prefix its value with the dollar sign, retain at least two and no more than three fractional digits, and round upward at the third fractional digit. The currency marker is intrinsic to this format, so the presenter **MUST NOT** append another `symbol`.
 
 ### 7.3 Aggregates

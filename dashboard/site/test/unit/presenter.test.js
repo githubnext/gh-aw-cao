@@ -772,7 +772,7 @@ describe('presenter built-in and custom pages', () => {
     expect([...(page?.querySelectorAll('[data-view-id="engines-models-cost"] .horizontal-bar-chart-label') ?? [])].map((value) => value.textContent))
       .toEqual(['pi / claude-sonnet-5', 'copilot / gpt-5.6-sol']);
     expect([...(page?.querySelectorAll('[data-view-id="engines-models-cost"] .horizontal-bar-chart-value') ?? [])].map((value) => value.textContent))
-      .toEqual(['$0.08', '$0.05']);
+      .toEqual(['$0.08', '$0.06']);
     expect(page?.getAttribute('data-page-title')).toBe('Models & Agents');
     expect(page?.textContent).toContain('copilot');
     expect(page?.textContent).toContain('gpt-5.6-sol');

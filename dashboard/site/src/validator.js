@@ -1404,10 +1404,10 @@ function validateDashboard(dashboard, dashboardNode, errors) {
             path
           ));
         }
-        if (definition.format === 'aicc' && definition.name !== 'AICc($)') {
+        if (definition.format === 'aicc' && (definition.name !== 'AICc($)' || definition.significant !== 2)) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
-            'AIC cost units must use name "AICc($)".',
+            'AIC cost units must use name "AICc($)" and significant 2.',
             path
           ));
         }
