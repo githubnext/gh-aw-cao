@@ -1,6 +1,6 @@
 name: Dreaming
 description: Evidence-bounded curation of AGENTS.md and other ambient agentic context, and future skill extraction and refinement.
-min-version: v0.89.20
+min-version: v0.89.21
 experimental: true
 includes:
   - ../aw.yml

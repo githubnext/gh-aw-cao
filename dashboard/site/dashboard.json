@@ -10,19 +10,14 @@
         "id": "repository",
         "icon": "repo",
         "title": {
-          "field": "repository-coordinate",
+          "field": "repository",
           "title": "Repository"
         },
         "labels": [],
         "details": [
           {
-            "field": "organization",
-            "title": "Organization"
-          },
-          {
-            "field": "observed-at",
-            "title": "Observed",
-            "format": "human-friendly-timestamp"
+            "field": "runs",
+            "title": "Runs"
           }
         ]
       },
@@ -680,7 +675,7 @@
         "title": "Repositories",
         "description": "Select a repository to inspect its declared workflows.",
         "data": {
-          "source": "repositories"
+          "source": "repository-activity"
         },
         "mark": "list",
         "list": {
@@ -691,7 +686,7 @@
             "type": "query",
             "page": "repository-workflows",
             "query": "entity-workflows",
-            "title-field": "repository-coordinate",
+            "title-field": "repository",
             "arguments": [
               {
                 "name": "organization",
@@ -699,7 +694,7 @@
               },
               {
                 "name": "repository",
-                "field": "repository"
+                "field": "repository-name"
               }
             ]
           }
@@ -709,25 +704,14 @@
         "encoding": {
           "columns": [
             {
-              "field": "repository-coordinate",
+              "field": "repository",
               "type": "nominal",
               "title": "Repository"
             },
             {
-              "field": "organization",
-              "type": "nominal",
-              "title": "Organization"
-            },
-            {
-              "field": "repository",
-              "type": "nominal",
-              "title": "Repository name"
-            },
-            {
-              "field": "observed-at",
-              "type": "temporal",
-              "title": "Observed",
-              "format": "human-friendly-timestamp"
+              "field": "runs",
+              "type": "quantitative",
+              "title": "Runs"
             }
           ]
         }
@@ -7796,6 +7780,13 @@
           }
         ],
         "select": [
+          {
+            "field": "organization"
+          },
+          {
+            "field": "repository",
+            "as": "repository-name"
+          },
           {
             "field": "repository-slug",
             "as": "repository"
