@@ -1,0 +1,131 @@
+import assert from 'node:assert/strict';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import test from 'node:test';
+import { runProblemClustering } from '../../activity/problem-clustering.mjs';
+
+test('package clustering scripts replace only their validated problem rows', async () => {
+  const temporary = await mkdtemp(path.join(os.tmpdir(), 'cao-problem-clustering-'));
+  const databasePath = path.join(temporary, 'activity.sqlite');
+  const packageRoot = path.join(temporary, 'packages');
+  const alpha = path.join(packageRoot, 'alpha');
+  const failing = path.join(packageRoot, 'failing');
+  const timestamp = '2026-09-24T23:05:09.441Z';
+  try {
+    await mkdir(alpha, { recursive: true });
+    await mkdir(failing, { recursive: true });
+    new DatabaseSync(databasePath).close();
+    await writeFile(path.join(alpha, 'problem-clustering.mjs'), `
+      import { readFileSync } from 'node:fs';
+      const request = JSON.parse(readFileSync(0, 'utf8'));
+      if (request.database !== process.env.CAO_DATABASE) process.exit(2);
+      console.log(JSON.stringify({
+        id: 'stale-workflow',
+        title: 'Workflow has stale evidence',
+        severity: 'high',
+        repository: 'githubnext/gh-aw-cao',
+        workflow: 'example',
+        evidence: { source: 'test' }
+      }));
+    `);
+    await writeFile(path.join(failing, 'problem-clustering.mjs'), 'process.exit(1);\n');
+
+    const first = await runProblemClustering({
+      databasePath,
+      root: packageRoot,
+      timestamp
+    });
+    assert.deepEqual(first.scripts, ['alpha', 'failing']);
+    assert.equal(first.problems.length, 1);
+    assert.deepEqual(first.warnings.map((warning) => warning.package), ['failing']);
+
+    let database = new DatabaseSync(databasePath);
+    try {
+      const row = database.prepare('SELECT * FROM cao_problems').get();
+      assert.equal(row.producer, 'alpha');
+      assert.equal(row.problem_id, 'stale-workflow');
+      assert.equal(row.observed_at, timestamp);
+      assert.equal(row.severity, 'high');
+      assert.deepEqual(JSON.parse(row.evidence), { source: 'test' });
+      database.prepare(`
+        INSERT INTO cao_problems (
+          producer, problem_id, observed_at, severity, title, summary,
+          campaign, repository, workflow, target_repository, evidence
+        ) VALUES ('failing', 'retained', ?, 'low', 'Retained', '', 'failing', '', '', '', '{}')
+      `).run(timestamp);
+    } finally {
+      database.close();
+    }
+
+    await writeFile(path.join(alpha, 'problem-clustering.mjs'), '');
+    await runProblemClustering({ databasePath, root: packageRoot, timestamp });
+    database = new DatabaseSync(databasePath);
+    try {
+      assert.deepEqual(
+        database.prepare('SELECT producer, problem_id FROM cao_problems ORDER BY producer').all()
+          .map((row) => ({ ...row })),
+        [{ producer: 'failing', problem_id: 'retained' }]
+      );
+    } finally {
+      database.close();
+    }
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
+});
+
+test('invalid package output leaves existing rows intact', async () => {
+  const temporary = await mkdtemp(path.join(os.tmpdir(), 'cao-problem-clustering-invalid-'));
+  const databasePath = path.join(temporary, 'activity.sqlite');
+  const packageRoot = path.join(temporary, 'packages');
+  const packageDirectory = path.join(packageRoot, 'alpha');
+  try {
+    await mkdir(packageDirectory, { recursive: true });
+    const database = new DatabaseSync(databasePath);
+    database.exec(`
+      CREATE TABLE cao_problems (
+        producer TEXT NOT NULL,
+        problem_id TEXT NOT NULL,
+        observed_at TEXT NOT NULL,
+        severity TEXT NOT NULL,
+        title TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        campaign TEXT NOT NULL,
+        repository TEXT NOT NULL,
+        workflow TEXT NOT NULL,
+        target_repository TEXT NOT NULL,
+        evidence TEXT NOT NULL,
+        PRIMARY KEY (producer, problem_id)
+      ) STRICT;
+      INSERT INTO cao_problems VALUES (
+        'alpha', 'existing', '2026-09-24T23:05:09.441Z', 'low',
+        'Existing', '', 'alpha', '', '', '', '{}'
+      );
+    `);
+    database.close();
+    await writeFile(path.join(packageDirectory, 'problem-clustering.mjs'), `
+      console.log(JSON.stringify({ id: 'INVALID ID', title: 'Invalid' }));
+    `);
+
+    const result = await runProblemClustering({
+      databasePath,
+      root: packageRoot,
+      timestamp: '2026-09-24T23:05:09.441Z'
+    });
+    assert.equal(result.warnings.length, 1);
+    const verify = new DatabaseSync(databasePath);
+    try {
+      assert.deepEqual(
+        verify.prepare('SELECT producer, problem_id FROM cao_problems').all()
+          .map((row) => ({ ...row })),
+        [{ producer: 'alpha', problem_id: 'existing' }]
+      );
+    } finally {
+      verify.close();
+    }
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
+});

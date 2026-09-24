@@ -79,6 +79,42 @@ records by `organization` and `repository`, and left-joins those query results
 in the data Web Worker. Activity collection and browser components do not
 reconstruct those relationships.
 
+## Package problem clustering
+
+After canonical ingestion and operational-value collection, Activity runs
+`cao cluster-problems`. The command discovers one optional
+`<package>/problem-clustering.mjs` file in each installed top-level package.
+This lets packages contribute deterministic problem computations without
+adding package-specific branches to the Activity workflow.
+
+Each script receives one JSON request on standard input:
+
+```json
+{
+  "schemaVersion": 1,
+  "timestamp": "2026-09-24T23:05:09.441Z",
+  "database": "/tmp/cao-problem-clustering-…/activity.sqlite"
+}
+```
+
+The same isolated snapshot path is available as `CAO_DATABASE`. Scripts emit
+one JSON object per line with required `id` and `title` fields. Optional fields
+are `observedAt`, `severity`, `summary`, `campaign`, `repository`, `workflow`,
+`targetRepository`, and an object-valued `evidence`. Severity is one of
+`critical`, `high`, `medium`, `low`, or `info`.
+
+Activity validates and bounds the output, then atomically replaces only that
+package's rows in the `cao_problems` SQLite table. A failing script leaves its
+previous rows intact and does not prevent other packages from contributing.
+Scripts receive a private database snapshot and cannot mutate the canonical
+Activity projection directly.
+
+Run the same discovery locally with:
+
+```bash
+cao cluster-problems --database .cao/gh-aw-logs.sqlite --root .
+```
+
 ## Cache contract
 
 The cache contains:

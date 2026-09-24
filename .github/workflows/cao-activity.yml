@@ -269,6 +269,14 @@ jobs:
             --retention-days 30 \
             --run-retention-days 30
 
+      - name: Compute package problems
+        env:
+          ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
+        run: |
+          node activity/cao.mjs cluster-problems \
+            --database "$ACTIVITY_DATABASE" \
+            --root .
+
       - name: Validate activity database
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
