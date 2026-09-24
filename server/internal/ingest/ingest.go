@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
@@ -24,6 +25,8 @@ import (
 var collections = []string{"campaigns", "repositories", "workflows", "runs", "domains", "tools", "audits", "issues"}
 
 const projectionBatchSize = 25_000
+
+var ingestLog = logger.New("cao:ingest")
 
 type Result struct {
 	Generation   string         `json:"generation"`
@@ -110,10 +113,12 @@ func DirectoryRevision(manifest Manifest, inventory []byte) string {
 }
 
 func Run(ctx context.Context, store *redisx.Store, directory string, options Options) (Result, error) {
+	ingestLog.Printf("starting ingestion")
 	manifest, runs, records, err := ValidateManifest(directory)
 	if err != nil {
 		return Result{}, err
 	}
+	ingestLog.Printf("validated manifest entries=%d run_shards=%d record_shards=%d", len(manifest), len(runs), len(records))
 	// #nosec G304 -- the filename is fixed within the caller-selected deployment directory.
 	inventoryContent, err := os.ReadFile(filepath.Join(directory, "inventory-sources.json"))
 	if err != nil {
@@ -129,6 +134,7 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 		return Result{}, fmt.Errorf("read active Redis generation: %w", err)
 	}
 	if active.Generation != "" && active.DataRevision == dataRevision {
+		ingestLog.Printf("reusing active generation revision=%d sources=%d", active.Revision, len(active.Counts))
 		evaluatedAt := active.EvaluatedAt
 		if evaluatedAt.IsZero() {
 			evaluatedAt = active.Activated
@@ -151,6 +157,7 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 			return Result{}, err
 		}
 	}
+	ingestLog.Printf("loaded canonical shards collections=%d", len(canonical))
 	definitions, err := loadDefinitions(options.DatabaseQueriesPath)
 	if err != nil {
 		return Result{}, err
@@ -159,6 +166,7 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 	if err != nil {
 		return Result{}, err
 	}
+	ingestLog.Printf("projected logical sources count=%d", len(sources))
 	generation := time.Now().UTC().Format("20060102T150405.000000000Z") + "-" + dataRevision[len(dataRevision)-12:]
 	counts := map[string]int{}
 	for _, name := range sortedSourceNames(sources) {
@@ -174,6 +182,7 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 		if _, err := store.PutSource(ctx, generation, source); err != nil {
 			return Result{}, fmt.Errorf("stage generation %s: %w", generation, err)
 		}
+		ingestLog.Printf("staged source name=%s rows=%d", name, len(source.Rows))
 		counts[name] = len(source.Rows)
 	}
 	diagnostics := buildDiagnostics(canonical)
@@ -185,6 +194,7 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 	if err != nil {
 		return Result{}, err
 	}
+	ingestLog.Printf("activated generation revision=%d sources=%d", revision, len(counts))
 	return Result{
 		Generation: generation, Revision: revision, DataRevision: dataRevision,
 		EvaluatedAt: evaluatedAt.Format(time.RFC3339Nano), Counts: counts,

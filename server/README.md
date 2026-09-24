@@ -10,6 +10,24 @@ loopback HTTP by default or operator-configured HTTPS.
 The browser never connects to Redis and never receives the Redis URL or
 credentials. It communicates only with the same-origin HTTP(S) API.
 
+### Debug logging
+
+The server includes the namespace logger helpers from `github/gh-aw`. Debug
+logs are disabled by default and always go to stderr. Enable selected
+components with `DEBUG`, for example:
+
+```bash
+DEBUG=cao:server,cao:query npm run dashboard:server:serve
+DEBUG=cao:* npm run dashboard:server:ingest -- --source DIRECTORY
+DEBUG='cao:*,-cao:redis' npm run dashboard:server:serve
+```
+
+Available namespaces are `cao:cli`, `cao:server`, `cao:ingest`, `cao:query`,
+and `cao:redis`. `ACTIONS_RUNNER_DEBUG=true` enables all namespaces when
+`DEBUG` is unset. Logs contain operation names, counts, timings, and status;
+they do not include access tokens, OAuth credentials, Redis credentials,
+query payloads, or source records.
+
 > [!IMPORTANT]
 > The default `serve` command remains local-only: it uses a local bearer
 > capability and intentionally rejects non-loopback listen addresses. Remote
