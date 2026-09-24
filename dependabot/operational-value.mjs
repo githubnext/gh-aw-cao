@@ -44,7 +44,10 @@ function parseResponse(output) {
   const normalized = String(output).replace(/\r\n/g, '\n');
   let offset = 0;
   let headers = '';
-  while (/^HTTP\/\S+/i.test(normalized.slice(offset))) {
+  const headerStart = /HTTP\/\S+/iy;
+  while (true) {
+    headerStart.lastIndex = offset;
+    if (!headerStart.test(normalized)) break;
     const separator = normalized.indexOf('\n\n', offset);
     if (separator < 0) fail('GitHub API returned a response without headers');
     headers = normalized.slice(offset, separator);
