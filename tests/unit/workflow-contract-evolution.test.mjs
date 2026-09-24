@@ -13,7 +13,7 @@ function workflowConfig(name) {
   return parse(frontmatter);
 }
 
-test("Optimization installs its bounded workers", () => {
+test("Optimization installs its bounded token workers", () => {
   const orchestrator = workflow("optimization.md");
   const orchestratorConfig = workflowConfig("optimization.md");
   const manifest = parse(readFileSync(join(root, "optimization", "aw.yml"), "utf8"));
@@ -33,12 +33,8 @@ test("Optimization installs its bounded workers", () => {
   assert.equal(descriptor.campaign, "optimization");
   assert.equal(orchestratorConfig.name, manifest.name);
   assert.deepEqual(includedWorkflowIds, declaredWorkflowIds);
-  assert.match(orchestrator, /worker_credits_per_target: 1300/);
-  assert.deepEqual([...dispatchWorkflows].sort(), [
-    "optimization-agents-md-curator",
-    "optimization-token-auditor",
-    "optimization-token-optimizer",
-  ], "orchestrator dispatches every declared campaign worker");
+  assert.match(orchestrator, /worker_credits_per_target: 900/);
+  assert.deepEqual([...dispatchWorkflows].sort(), Object.values(descriptor.workers).sort());
   assert.equal(new Set(dispatchWorkflows).size, dispatchWorkflows.length, "dispatch allowlist must not contain duplicates");
   assert.equal(controlImport.with.campaign, descriptor.campaign);
   assert.equal(controlImport.with.role, "orchestrator");

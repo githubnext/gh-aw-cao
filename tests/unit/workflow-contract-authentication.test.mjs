@@ -41,7 +41,6 @@ test("root CAO workflows use organization-billed Copilot authentication", () => 
     "dependabot",
     "optimization-token-auditor",
     "optimization-token-optimizer",
-    "optimization-agents-md-curator",
     "optimization",
   ];
   const rootManifest = readFileSync(join(root, "aw.yml"), "utf8");

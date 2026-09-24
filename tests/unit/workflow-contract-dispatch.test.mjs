@@ -145,7 +145,6 @@ test("every worker uses the standard dispatch envelope and safe mode vocabulary"
     ["eu-cra-compliance-vulnerability-handling-auditor.md", "eu-cra-compliance", "vulnerability-handling-auditor"],
     ["optimization-token-auditor.md", "optimization", "token-auditor"],
     ["optimization-token-optimizer.md", "optimization", "token-optimizer"],
-    ["optimization-agents-md-curator.md", "optimization", "agents-md-curator"],
     ["software-development-practices-github-well-architected.md", "software-development-practices", "github-well-architected"],
     ["software-development-practices-nist-ssdf.md", "software-development-practices", "nist-ssdf"],
     ["self-care-accessibility-checker.md", "self-care", "accessibility-checker"],

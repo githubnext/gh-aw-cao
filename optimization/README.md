@@ -10,11 +10,10 @@ Optimization gives maintainers evidence-bounded audits and recommendations for r
 | Workflow | Responsibility |
 | --- | --- |
 | [`optimization`](../.github/workflows/optimization.md) | Hourly and manually dispatchable orchestrator that selects a repository and dispatches campaign workers. |
-| [`optimization-agents-md-curator`](../.github/workflows/optimization-agents-md-curator.md) | Audits one repository's `AGENTS.md` against bounded repository evidence and files a review issue with a ready-to-run update prompt. |
 | [`optimization-token-auditor`](../.github/workflows/optimization-token-auditor.md) | Audits one repository's measured agentic-workflow AI Credit, token use, and reliability. |
 | [`optimization-token-optimizer`](../.github/workflows/optimization-token-optimizer.md) | Finds one evidence-complete agentic workflow and recommends a conservative, measurable efficiency change. |
 
-Workers are independently dispatchable and handle exactly one authorized target repository. The orchestrator dispatches all three workers. Review mode routes findings and recommendations to the control repository; live mode may open the equivalent issue on the target repository.
+Workers are independently dispatchable and handle exactly one authorized target repository. Review mode routes findings and recommendations to the control repository; live mode may open the equivalent issue on the target repository.
 
 ## Install
 
@@ -39,7 +38,6 @@ Declare the campaign in `.github/workflows/cao.json`:
 				"mode": "review",
 				"max-repositories": 1,
 				"workers": {
-					"agents-md-curator": { "workflow": "optimization-agents-md-curator", "max-mode": "review" },
 					"token-auditor": { "workflow": "optimization-token-auditor", "max-mode": "review" },
 					"token-optimizer": { "workflow": "optimization-token-optimizer", "max-mode": "review" }
 				}
@@ -64,7 +62,7 @@ The omitted fields default to an enabled campaign and worker and 100 percent rol
 - CAO policy decides whether and where the campaign may run; workflow capabilities do not grant rollout authority.
 - Orchestrators only rank and dispatch. Workers cannot discover repositories, dispatch more work, or widen mode.
 - GitHub reads use scoped tools. Repository mutations use declared safe outputs only.
-- All three workers are review-capped: `max-mode` limits them to `review` regardless of the campaign's resolved mode.
+- Both workers are review-capped: `max-mode` limits them to `review` regardless of the campaign's resolved mode.
 - Stable titles and deduplication prevent equivalent audits and optimization recommendations from being recreated.
 
 ## Operational Value
@@ -73,7 +71,6 @@ Each worker registers a deterministic one-shot operational-value evaluator:
 
 | Worker | Primary metric | Attained evidence |
 | --- | --- | --- |
-| AGENTS.md Curator | `agents-md-optimization-request-conformance` | One target-bound AGENTS.md update issue includes evidence-complete, ready-to-run prompt content. |
 | Token Auditor | `actionable-token-audit` | One target-bound audit request includes its required cost, activity, reliability, and action fields. |
 | Token Optimizer | `actionable-optimization-recommendation` | One target- and workflow-bound recommendation includes a measured baseline, proposed change, safeguards, validation, and agent prompt. |
 
