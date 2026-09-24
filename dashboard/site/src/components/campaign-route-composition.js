@@ -11,7 +11,6 @@ import {
   CAMPAIGN_ROUTE_VARIANT_VALUES
 } from './route-body-specification.js';
 import { renderCampaignReadme } from './campaign-readme.js';
-import { renderCampaignOperationalValueHistory } from './insights-overview.js';
 
 /**
  * @typedef {'overview'|'workflows'|'runs'|'issues'|'pull-requests'|'repositories'|'insights'|'problems'|'reports'|'dispatches'} CampaignRouteBody
@@ -89,7 +88,7 @@ const CAMPAIGN_ROUTE_COMPOSITIONS = {
     selectMessage: 'Select a campaign to view its audit insights.',
     description: 'Audit events observed for the {campaignName} campaign.',
     currentTab: 'insights',
-    bodyRenderer: ({ context }) => renderCampaignOperationalValueHistory(context)
+    bodyRenderer: undefined
   },
   problems: {
     rootClassName: 'campaign-problems',

@@ -100,18 +100,13 @@ describe('UI elements', () => {
     }
   });
 
-  it('renders every campaign operational-value extract in separate primary and diagnostic histories', () => {
-    const rendered = renderUiElement('campaign-route', {
+  it('renders every grouped measure extract in separate primary and diagnostic histories', () => {
+    const rendered = renderUiElement('measure-history', {
       pageId: 'campaign-insights', title: 'Operational value history',
       routeParameter: 'campaign',
-      elementConfig: { body: 'insights' },
-      sourceNames: ['workflows', 'campaign-operational-value-series'],
+      elementConfig: {},
+      sourceNames: ['campaign-operational-value-series'],
       sources: {
-        workflows: {
-          source: 'workflows',
-          metadata,
-          rows: [{ campaign: 'alpha-campaign', 'campaign-name': 'Alpha campaign', workflow: '.github/workflows/worker.md' }]
-        },
         'campaign-operational-value-series': {
           source: 'campaign-operational-value-series',
           metadata,
@@ -125,10 +120,6 @@ describe('UI elements', () => {
       contextDetails: [],
       headingTag: 'h3'
     });
-    rendered?.dispatchEvent(new CustomEvent('dashboard-route-change', {
-      detail: { parameter: 'campaign', value: 'alpha-campaign' }
-    }));
-
     expect(rendered?.querySelectorAll('[data-chart-widget="line"]')).toHaveLength(3);
     expect([...rendered?.querySelectorAll('.insights-measure-row h3') ?? []].map((heading) => heading.textContent)).toEqual([
       'Repository readiness',
@@ -738,10 +729,11 @@ describe('UI elements', () => {
     expect(summary?.textContent).toContain('Daily Ops');
   });
 
-  it('renders campaign-detail through the reusable campaign-route variant without relying on page identity', () => {
-    const rendered = renderUiElement('campaign-detail', {
+  it('renders campaign info through the reusable campaign-route element without relying on page identity', () => {
+    const rendered = renderUiElement('campaign-route', {
       pageId: 'totally-custom-campaign-page',
       title: 'Campaign workflows',
+      elementConfig: { body: 'overview' },
       sourceNames: ['workflows'],
       routeParameter: 'campaign',
       headingTag: 'h3',

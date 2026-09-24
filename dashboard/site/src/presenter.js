@@ -1048,6 +1048,22 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     return disposeNavigation;
   }
 
+  /** @param {string} pageId */
+  const primePageChrome = (pageId) => {
+    const page = pages.find((candidate) => candidate.dataset.pageId === pageId);
+    const title = page?.dataset.pageTitle ?? '';
+    const description = page?.dataset.pageDescription ?? '';
+    if (breadcrumbPage) breadcrumbPage.textContent = title;
+    if (pageTitle) pageTitle.textContent = title;
+    updateDocumentTitle(root.ownerDocument, title, dashboardTitle);
+    renderPageTitleLink(pageTitleLink, null);
+    if (pageDescription) {
+      pageDescription.textContent = description;
+      pageDescription.toggleAttribute('hidden', description.length === 0);
+    }
+    renderPageMode(pageMode, '');
+  };
+
   root.addEventListener('dashboard-route-allocation', (event) => {
     if (!(event instanceof CustomEvent) || !(event.target instanceof Element)) return;
     const page = event.target.closest('.dashboard-page');
@@ -1406,6 +1422,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     navigationIndex += 1;
     defaultView?.history.pushState({ [NAVIGATION_INDEX_STATE_KEY]: navigationIndex }, '', link.href);
     syncHistoryBack();
+    primePageChrome(pageId);
     updateWithViewTransition(root.ownerDocument, () => activate(pageId, routeFromHash()?.parameters, true), 'forward');
     if (pageTitle instanceof HTMLElement) pageTitle.focus();
   }, { signal: navigationOwner.signal });
@@ -1459,6 +1476,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       : undefined;
     pendingNavigationDirection = undefined;
     pendingNavigationHash = undefined;
+    primePageChrome(route?.pageId ?? initialPageId);
     updateWithViewTransition(root.ownerDocument, () => activate(
       route?.pageId ?? initialPageId,
       route?.parameters,

@@ -63,7 +63,7 @@ it('renders campaign shortcuts through the reusable link button list', () => {
         'problem-indicator': 'alert',
         'problem-indicator-label': 'Current failing workflow or target partitions: 2',
         'campaign-dashboard-link': {
-          'dashboard-href': '#page-campaign-problems?campaign=aw-doctor',
+          'dashboard-href': '#page-campaign-insights?campaign=aw-doctor',
           'dashboard-label': 'View AW Doctor campaign dashboard'
         }
       }
@@ -81,7 +81,7 @@ it('renders campaign shortcuts through the reusable link button list', () => {
 
   expect(rendered?.querySelectorAll('.link-button-list-item')).toHaveLength(1);
   expect(rendered?.querySelector('.link-button-list-item a')?.getAttribute('href'))
-    .toBe('#page-campaign-problems?campaign=aw-doctor');
+    .toBe('#page-campaign-insights?campaign=aw-doctor');
   expect(rendered?.querySelector('.link-button-list-item a')?.getAttribute('aria-label'))
     .toBe('View AW Doctor campaign dashboard');
   expect(rendered?.querySelector('.link-button-list-indicator')?.getAttribute('aria-label'))

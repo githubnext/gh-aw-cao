@@ -23,18 +23,27 @@ describe('Audit dashboard view', () => {
 
     expect(insights.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual([
       'campaign-insights-navigation',
+      'campaign-operational-value-history',
       'campaign-audit-event-summary-buckets',
       'campaign-audit-events-table'
     ]);
     expect(insights.views[0].data).toMatchObject({
-      sources: ['workflows', 'campaign-operational-value-series'],
+      sources: ['workflows'],
       arguments: [{ name: 'campaign', field: 'campaign' }]
     });
-    expect(insights.views.slice(1).map((/** @type {{ data: Record<string, string> }} */ view) => view.data)).toEqual([
+    expect(insights.views[1]).toMatchObject({
+      data: {
+        sources: ['campaign-operational-value-series'],
+        arguments: [{ name: 'campaign', field: 'campaign' }]
+      },
+      mark: 'element',
+      element: 'measure-history'
+    });
+    expect(insights.views.slice(2).map((/** @type {{ data: Record<string, string> }} */ view) => view.data)).toEqual([
       expect.objectContaining({ source: 'audit-event-summary-buckets', 'route-field': 'campaign' }),
       expect.objectContaining({ source: 'audit-events', 'route-field': 'campaign' })
     ]);
-    expect(insights.views[1]).toMatchObject({
+    expect(insights.views[2]).toMatchObject({
       chart: 'horizontal-bar',
       data: { limit: 20 },
       encoding: {
@@ -144,7 +153,7 @@ describe('Audit dashboard view', () => {
   it('slices campaign operational-value extracts by route and selected horizon in the worker', () => {
     const insights = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'campaign-insights');
     const payload = compileDashboardViewPayloadQueries(insights, 'campaign-insights', {
-      viewId: 'campaign-insights-navigation',
+      viewId: 'campaign-operational-value-history',
       routeParameters: { campaign: 'alpha-campaign' },
       queryContext: { timeWindow: { start: '2026-09-02T00:00:00Z', end: '2026-09-04T00:00:00Z' } },
       queries: dashboard.queries
@@ -169,7 +178,7 @@ describe('Audit dashboard view', () => {
         metadata
       }
     }, payload.aliases);
-    const valueAlias = payload.aliases.find((alias) => alias.endsWith('campaign-operational-value-series-2'));
+    const valueAlias = payload.aliases.find((alias) => alias.includes('campaign-operational-value-series'));
 
     expect(valueAlias).toBeDefined();
     expect(result[valueAlias ?? ''].rows).toEqual([

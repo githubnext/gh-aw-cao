@@ -154,7 +154,7 @@ function context() {
 }
 
 describe('campaign detail route', () => {
-  it('renders the Insights facet for the selected campaign', () => {
+  it('renders the shared navigation shell for the selected campaign Insights facet', () => {
     const rendered = renderCampaignRouteView({
       ...context(),
       pageId: 'campaign-insights',
@@ -166,7 +166,7 @@ describe('campaign detail route', () => {
     }));
 
     expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.textContent).toBe('Insights');
-  expect(rendered.querySelector('.campaign-value-history')?.textContent).toContain('No operational-value extracts were observed');
+    expect(rendered.querySelector('.measure-history')).toBeNull();
   });
 
   it('renders reusable navigation for the selected campaign workflow view', () => {
@@ -181,14 +181,14 @@ describe('campaign detail route', () => {
     expect([...rendered.querySelectorAll('.campaign-tabs a')].map((link) => link.getAttribute('href'))).toEqual([
       '#page-campaign-insights?campaign=ambient-context',
       '#page-campaign-problems?campaign=ambient-context',
-      '#page-campaign-dispatches?campaign=ambient-context',
+      '#page-campaign-runs?campaign=ambient-context',
       '#page-campaign-issues?campaign=ambient-context',
       '#page-campaign-detail?campaign=ambient-context'
     ]);
     expect([...rendered.querySelectorAll('.campaign-tabs a')].map((link) => link.getAttribute('data-nav-page-id'))).toEqual([
       'campaign-insights',
       'campaign-problems',
-      'campaign-dispatches',
+      'campaign-runs',
       'campaign-issues',
       'campaign-detail'
     ]);
@@ -300,7 +300,7 @@ describe('campaign detail route', () => {
   describe('workflow run navigation', () => {
     it('renders campaign-scoped workflow run navigation and identity', () => {
       const host = document.createElement('div');
-      const rendered = renderCampaignRouteView({ ...context(), pageId: 'campaign-dispatches', elementConfig: { body: 'dispatches' } });
+      const rendered = renderCampaignRouteView({ ...context(), pageId: 'campaign-runs', elementConfig: { body: 'runs' } });
       host.append(rendered);
       let detail;
       host.addEventListener('dashboard-route-allocation', (event) => {
@@ -311,7 +311,7 @@ describe('campaign detail route', () => {
         detail: { parameter: 'campaign', value: 'ambient-context' }
       }));
 
-      expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-campaign-dispatches?campaign=ambient-context');
+      expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-campaign-runs?campaign=ambient-context');
       expect(detail).toEqual({
         title: 'Ambient Context',
         description: 'Workflow runs for the Ambient Context campaign.',

@@ -7,7 +7,7 @@ import { octicon } from '../octicons.js';
 import { formatClockDuration, formatHumanFriendlyTimestamp } from '../view-formatters.js';
 import { findLink, renderSafeLink } from './link-content.js';
 import { renderCampaignsView, renderCampaignSummary, renderCampaignUtilization, renderRunTrend } from './campaigns-view.js';
-import { renderCampaignRouteVariant, renderCampaignRouteView } from './campaign-route-view.js';
+import { renderCampaignRouteView } from './campaign-route-view.js';
 import { renderOutcomeDetail } from './outcome-detail.js';
 import { isOutcomeDetailSectionConfig, renderOutcomeDetailSection } from './outcome-detail-sections.js';
 import { renderSectionHeading, isPlainObject, renderIdentityLink, renderDlRow, renderIconSpan, renderLabeledSpan, renderListOrEmptyMessage, renderCountBadge } from './ui-primitives.js';
@@ -19,6 +19,7 @@ import { renderConfigurationView } from './configuration-view.js';
 import { renderConfigurationActions } from './configuration-actions.js';
 import { renderWorkProjectView } from './work-project-view.js';
 import { renderInsightsOverview } from './insights-overview.js';
+import { renderMeasureHistory } from './measure-history.js';
 import { modeBadgeClassName } from './badge.js';
 import { rowsFor as rowsForSource } from './source-rows.js';
 import { renderCampaignsModeShell } from './campaigns-mode-shell.js';
@@ -65,10 +66,6 @@ const ELEMENT_RENDERERS = new Map([
   ['campaign-run-trend', ({ sources }) => renderRunTrend(sources)],
   ['campaign-summary-table', ({ sources }) => renderCampaignSummary(sources)],
   ['campaign-activity-shell', renderCampaignActivityShellElement],
-  ['campaign-insights', (context) => renderCampaignRouteVariant(context, 'insights')],
-  ['campaign-detail', (context) => renderCampaignRouteVariant(context, 'overview')],
-  ['campaign-dispatches', (context) => renderCampaignRouteVariant(context, 'runs')],
-  ['campaign-reports', (context) => renderCampaignRouteVariant(context, 'reports')],
   ['campaign-route', renderCampaignRouteView],
   ['workflow-route', renderWorkflowRouteView],
   ['workflow-route-page', renderWorkflowRoutePage],
@@ -77,6 +74,7 @@ const ELEMENT_RENDERERS = new Map([
   ['configuration-policy', renderConfigurationView],
   ['configuration-actions', renderConfigurationActions],
   ['work-project-view', renderWorkProjectView],
+  ['measure-history', renderMeasureHistory],
   ['insights-overview', renderInsightsOverview],
   ['factory-header', renderFactoryHeaderElement],
   ['factory-floor', renderFactoryFloorElement],
@@ -97,7 +95,7 @@ export function elementLoadsSourcesAsync(name) {
   return ASYNC_SOURCE_ELEMENTS.has(name);
 }
 
-const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'needs-attention-list', 'campaign-insights', 'campaign-detail', 'campaign-dispatches', 'campaign-reports', 'campaign-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'campaign-activity-shell', 'work-project-view', 'insights-overview', 'factory-header', 'factory-floor', 'link-button-list', 'outcomes-overview', 'local-database']);
+const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'needs-attention-list', 'campaign-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'campaign-activity-shell', 'work-project-view', 'measure-history', 'insights-overview', 'factory-header', 'factory-floor', 'link-button-list', 'outcomes-overview', 'local-database']);
 const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy']);
 
 /**
@@ -141,22 +139,6 @@ const LAZY_ELEMENT_RENDERERS = new Map([
         { id: 'summary', render: (mode) => renderCampaignSummary(context.sources, mode) }
       ]
     })
-  )],
-  ['campaign-insights-lazy', lazyElementRenderer(
-    () => import('./campaign-route-view.js'),
-    ({ renderCampaignRouteVariant }, context) => renderCampaignRouteVariant(context, 'insights')
-  )],
-  ['campaign-detail-lazy', lazyElementRenderer(
-    () => import('./campaign-route-view.js'),
-    ({ renderCampaignRouteVariant }, context) => renderCampaignRouteVariant(context, 'overview')
-  )],
-  ['campaign-dispatches-lazy', lazyElementRenderer(
-    () => import('./campaign-route-view.js'),
-    ({ renderCampaignRouteVariant }, context) => renderCampaignRouteVariant(context, 'runs')
-  )],
-  ['campaign-reports-lazy', lazyElementRenderer(
-    () => import('./campaign-route-view.js'),
-    ({ renderCampaignRouteVariant }, context) => renderCampaignRouteVariant(context, 'reports')
   )],
   ['campaign-route-lazy', lazyElementRenderer(
     () => import('./campaign-route-view.js'),

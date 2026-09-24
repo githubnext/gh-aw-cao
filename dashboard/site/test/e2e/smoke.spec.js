@@ -2203,7 +2203,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
               ]
             },
             {
-              id: 'campaign-dispatches',
+              id: 'campaign-runs',
               kind: 'custom',
               title: 'Campaign',
               route: { 'hash-query-parameter': 'campaign' },
@@ -2214,7 +2214,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
                   data: { sources: ['workflows'] },
                   mark: 'element',
                   element: 'campaign-route',
-                  config: { body: 'dispatches' }
+                  config: { body: 'runs' }
                 },
                 {
                   id: 'campaign-run-status',
@@ -2501,8 +2501,8 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await expect(campaignWorkflowRows.first().locator('td').nth(6)).toHaveText('0');
   await expect(campaignWorkflowRows.nth(1)).toContainText('WorkerAmbient Context Worker');
   await campaignNavigation.getByRole('link', { name: 'Dispatches' }).click();
-  await expect(page).toHaveURL(/#page-campaign-dispatches\?campaign=ambient-context$/);
-  const campaignRunsPage = page.locator('[data-page-id="campaign-dispatches"]');
+  await expect(page).toHaveURL(/#page-campaign-runs\?campaign=ambient-context$/);
+  const campaignRunsPage = page.locator('[data-page-id="campaign-runs"]');
   await expect(campaignRunsPage.locator('.custom-view-grid > .custom-view').first()).toHaveAttribute('data-view-id', 'campaign-run-navigation');
   await expect(campaignNavigation.getByRole('link', { name: 'Dispatches' })).toHaveAttribute('aria-current', 'page');
   await expect(campaignRunsPage.locator('[data-view-id="campaign-run-status"] [data-chart-widget="pie"]')).toBeVisible();
@@ -2550,11 +2550,11 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   const mobileBack = page.getByRole('button', { name: 'Go back' });
   await expect(mobileBack).toBeVisible();
   await expect(page.locator('.overview-header')).toContainText('Audit events observed for the Ambient Context campaign.');
-  await expect(campaignInsights.locator('.campaign-value-history [data-chart-widget="line"]')).toHaveCount(3);
-  await expect(campaignInsights.locator('.campaign-value-history .chart-point')).toHaveCount(6);
-  await expect(campaignInsights.locator('.campaign-value-history')).toContainText('Repository readiness');
-  await expect(campaignInsights.locator('.campaign-value-history')).toContainText('Quality');
-  await expect(campaignInsights.locator('.campaign-value-history')).toContainText('Efficiency');
+  await expect(campaignInsights.locator('.measure-history [data-chart-widget="line"]')).toHaveCount(3);
+  await expect(campaignInsights.locator('.measure-history .chart-point')).toHaveCount(6);
+  await expect(campaignInsights.locator('.measure-history')).toContainText('Repository readiness');
+  await expect(campaignInsights.locator('.measure-history')).toContainText('Quality');
+  await expect(campaignInsights.locator('.measure-history')).toContainText('Efficiency');
   await expect(campaignInsights.locator('.insights-measure-rows > .insights-measure-row')).toHaveCount(3);
   await expect(campaignInsights.locator('.insights-measure-row').first().locator('.insights-axis-x')).toHaveText('Observation time (UTC)');
   const measureReadout = campaignInsights.locator('.insights-measure-row').first().locator('.insights-point-readout');
