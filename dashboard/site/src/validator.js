@@ -648,6 +648,7 @@ function validateCardTemplates(templates, templatesNode, errors) {
     validateCardTemplateStatus(template.status, getValueNodeByKey(templateNode, 'status'), `${path}.status`, errors);
     validateCardTemplateTiming(template.timing, getValueNodeByKey(templateNode, 'timing'), `${path}.timing`, errors);
     validateCardTemplateActions(template.actions, getValueNodeByKey(templateNode, 'actions'), `${path}.actions`, errors);
+    validateListDrill(template.drill, getValueNodeByKey(templateNode, 'drill'), path, 'entity-cards', errors);
     for (const key of ['labels', 'details']) {
       const fields = template[key];
       if (!Array.isArray(fields) || (key === 'details' && fields.length === 0)) {

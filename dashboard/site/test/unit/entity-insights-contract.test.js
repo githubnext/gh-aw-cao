@@ -5,9 +5,9 @@ const dashboard = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'ut
 
 describe('canonical entity insights', () => {
   for (const entity of [
-    { id: 'domain', source: 'domains', identifier: 'domain' },
-    { id: 'tool', source: 'mcp-tool-calls', identifier: 'mcp-tool-label' },
-    { id: 'audit', source: 'audits', identifier: 'event-summary' }
+    { id: 'domain', card: 'firewall-domain', source: 'domains', identifier: 'domain' },
+    { id: 'tool', card: 'mcp-tool', source: 'mcp-tool-calls', identifier: 'mcp-tool-label' },
+    { id: 'audit', card: 'audit', source: 'audits', identifier: 'event-summary' }
   ]) {
     it(`gives ${entity.id} entities an Insights chart, native link, and related Runs facet`, () => {
       const insights = dashboard.pages.find((/** @type {Record<string, any>} */ page) => page.id === `${entity.id}-insights`);
@@ -23,6 +23,13 @@ describe('canonical entity insights', () => {
       expect(chrome?.['title-link']).toEqual({
         'href-field': 'run-link',
         'identifier-field': entity.identifier
+      });
+      expect(dashboard['card-templates'].find(
+        (/** @type {Record<string, any>} */ template) => template.id === entity.card
+      )?.drill).toMatchObject({
+        page: `${entity.id}-insights`,
+        query: `${entity.id}-entity-insights`,
+        'title-field': entity.identifier
       });
       expect(runs?.views).toEqual(expect.arrayContaining([
         expect.objectContaining({

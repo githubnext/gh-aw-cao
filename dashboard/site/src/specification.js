@@ -19,7 +19,7 @@ export const IDENTIFIER_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
 export const ROOT_KEYS = ['language-version', 'dashboard'];
 export const DASHBOARD_KEYS = ['id', 'title', 'description', 'defaults', 'units', 'queries', 'card-templates', 'views', 'pages', 'github-url-base', 'repository', 'navigation', 'horizon', 'callouts', 'cli-actions'];
-export const CARD_TEMPLATE_KEYS = ['id', 'icon', 'icon-field', 'status', 'title', 'subtitle', 'labels', 'details', 'detail-labels', 'timing', 'actions'];
+export const CARD_TEMPLATE_KEYS = ['id', 'icon', 'icon-field', 'status', 'title', 'subtitle', 'labels', 'details', 'detail-labels', 'timing', 'actions', 'drill'];
 export const CARD_DETAIL_LABEL_VALUES = ['hidden', 'visible'];
 export const CARD_TEMPLATE_ACTION_KEYS = ['action', 'context', 'when'];
 export const CARD_STATUS_KEYS = ['field', 'fallback-field', 'title'];

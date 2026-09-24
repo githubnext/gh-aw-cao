@@ -49,7 +49,7 @@ describe('Audit dashboard view', () => {
       expect.objectContaining({ source: 'audit-event-summary-buckets', 'route-field': 'campaign' })
     ]);
     expect(insights.views.filter((/** @type {{ mark: string }} */ view) => view.mark !== 'element')
-      .map((/** @type {{ mark: string }} */ view) => view.mark)).toEqual(['chart', 'table']);
+      .map((/** @type {{ mark: string }} */ view) => view.mark)).toEqual(['chart', 'list']);
     expect(insights.views[2]).toMatchObject({
       chart: 'horizontal-bar',
       data: { limit: 20 },

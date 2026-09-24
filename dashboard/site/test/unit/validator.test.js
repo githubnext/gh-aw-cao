@@ -458,13 +458,7 @@ describe('dashboard document validation', () => {
       controls: 'interactive',
       'lazy-list': true,
       'column-summaries': true,
-      'card-drill': {
-        type: 'query',
-        page: 'domain-insights',
-        query: 'domain-entity-insights',
-        'title-field': 'domain',
-        arguments: [{ name: 'domain', field: 'domain' }]
-      },
+
       layout: 'full-view',
       data: {
         source: 'firewall-domain-totals',

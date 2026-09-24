@@ -189,6 +189,18 @@
       {
         "id": "audit",
         "icon": "checklist",
+        "drill": {
+          "type": "query",
+          "page": "audit-insights",
+          "query": "audit-entity-insights",
+          "title-field": "event-summary",
+          "arguments": [
+            {
+              "name": "audit",
+              "field": "event-summary"
+            }
+          ]
+        },
         "title": {
           "field": "event-summary",
           "title": "Audit event"
@@ -230,8 +242,20 @@
       {
         "id": "mcp-tool",
         "icon": "mcp",
+        "drill": {
+          "type": "query",
+          "page": "tool-insights",
+          "query": "tool-entity-insights",
+          "title-field": "mcp-tool-label",
+          "arguments": [
+            {
+              "name": "tool",
+              "field": "mcp-tool-label"
+            }
+          ]
+        },
         "title": {
-          "field": "mcp-tool",
+          "field": "mcp-tool-label",
           "title": "MCP tool"
         },
         "subtitle": {
@@ -253,6 +277,18 @@
       {
         "id": "firewall-domain",
         "icon": "globe",
+        "drill": {
+          "type": "query",
+          "page": "domain-insights",
+          "query": "domain-entity-insights",
+          "title-field": "domain",
+          "arguments": [
+            {
+              "name": "domain",
+              "field": "domain"
+            }
+          ]
+        },
         "title": {
           "field": "domain",
           "title": "Domain"
@@ -8968,18 +9004,6 @@
             "controls": "interactive",
             "lazy-list": true,
             "column-summaries": true,
-            "card-drill": {
-              "type": "query",
-              "page": "domain-insights",
-              "query": "domain-entity-insights",
-              "title-field": "domain",
-              "arguments": [
-                {
-                  "name": "domain",
-                  "field": "domain"
-                }
-              ]
-            },
             "layout": "full-view",
             "empty-message": "No observed firewall domains are available for this selection.",
             "encoding": {
@@ -9089,18 +9113,6 @@
                   "field": "workflows",
                   "type": "quantitative",
                   "title": "Workflows"
-                }
-              ]
-            },
-            "card-drill": {
-              "type": "query",
-              "page": "tool-insights",
-              "query": "tool-entity-insights",
-              "title-field": "mcp-tool-label",
-              "arguments": [
-                {
-                  "name": "tool",
-                  "field": "mcp-tool-label"
                 }
               ]
             }
@@ -10617,20 +10629,11 @@
               "route-field": "campaign",
               "limit": 20
             },
-            "mark": "table",
-            "controls": "interactive",
-            "lazy-list": true,
-            "card-drill": {
-              "type": "query",
-              "page": "audit-insights",
-              "query": "audit-entity-insights",
-              "title-field": "event-summary",
-              "arguments": [
-                {
-                  "name": "audit",
-                  "field": "event-summary"
-                }
-              ]
+            "mark": "list",
+            "list": {
+              "style": "entity-cards",
+              "card": "audit",
+              "icon": "checklist"
             },
             "layout": "full-view",
             "empty-message": "No high- or medium-severity audit events were observed for this campaign in the current run window.",

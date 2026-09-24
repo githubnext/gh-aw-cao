@@ -653,7 +653,14 @@ describe('data view renderer', () => {
           'icon-field': 'operation-icon',
           title: { field: 'operation-name' },
           labels: [],
-          details: []
+          details: [],
+          drill: {
+            type: 'query',
+            page: 'operation-insights',
+            query: 'operation-insights',
+            'title-field': 'operation-name',
+            arguments: [{ name: 'operation', field: 'operation-name' }]
+          }
         }
       },
       metadata,
@@ -669,6 +676,45 @@ describe('data view renderer', () => {
     expect(rendered?.querySelector('.issue-list-card-icon .octicon-gear')).not.toBeNull();
     expect(rendered?.querySelector('[data-card-drill]')?.getAttribute('href'))
       .toBe('#page-campaign-insights?campaign=doctor');
+  });
+
+  it('uses the known entity type drill when the view does not define one', () => {
+    const rendered = renderDataView('list', {
+      pageId: 'audits',
+      title: 'Audit events',
+      sourceName: 'audit-events',
+      view: {
+        mark: 'list',
+        list: { style: 'entity-cards', card: 'audit', icon: 'checklist' },
+        encoding: { columns: [{ field: 'event-summary' }] }
+      },
+      rows: [{ 'event-summary': 'Policy mismatch' }],
+      cardTemplates: {
+        audit: {
+          icon: 'checklist',
+          title: { field: 'event-summary' },
+          labels: [],
+          details: [],
+          drill: {
+            type: 'query',
+            page: 'audit-insights',
+            query: 'audit-entity-insights',
+            'title-field': 'event-summary',
+            arguments: [{ name: 'audit', field: 'event-summary' }]
+          }
+        }
+      },
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    expect(rendered?.querySelector('[data-card-drill]')?.getAttribute('href'))
+      .toBe('#page-audit-insights?query=audit-entity-insights&title=Policy+mismatch&audit=Policy+mismatch');
   });
 
   it('renders grouped entity-card lists with a trailing disclosure chevron', () => {
