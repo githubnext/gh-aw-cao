@@ -644,7 +644,7 @@ function validateCardTemplates(templates, templatesNode, errors) {
       validateCardTemplateField(template.subtitle, getValueNodeByKey(templateNode, 'subtitle'), `${path}.subtitle`, errors);
     }
     if (template['detail-labels'] !== undefined && !CARD_DETAIL_LABEL_VALUES.includes(String(template['detail-labels']))) {
-      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'card template detail labels must be hidden or visible.', `${path}.detail-labels`));
+      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'card template detail-labels must be hidden or visible.', `${path}.detail-labels`));
     }
     validateCardTemplateStatus(template.status, getValueNodeByKey(templateNode, 'status'), `${path}.status`, errors);
     validateCardTemplateTiming(template.timing, getValueNodeByKey(templateNode, 'timing'), `${path}.timing`, errors);
