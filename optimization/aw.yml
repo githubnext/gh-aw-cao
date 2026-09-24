@@ -7,6 +7,3 @@ includes:
   - .github/workflows/optimization-token-auditor.md
   - .github/workflows/optimization-token-optimizer.md
   - .github/workflows/optimization.md
-  - source: operational-value.mjs
-    destination: optimization/operational-value.mjs
-  - operational-value/optimization-token-optimizer.mjs

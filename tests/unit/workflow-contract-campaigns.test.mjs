@@ -205,7 +205,7 @@ test("focused campaign manifests do not cross-own campaign files", () => {
     const files = [
       ...(manifest.includes ?? []).filter((entry) => entry !== "../aw.yml").map((entry) => typeof entry === "string" ? {
         source: entry,
-        destination: entry,
+        destination: entry.startsWith(".github/workflows/") ? entry : `${campaignName}/${entry}`,
       } : entry),
       ...(manifest.resources ?? []),
     ];

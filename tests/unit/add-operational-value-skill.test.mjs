@@ -41,7 +41,7 @@ includes:
   ), /workflow not found: unrelated/);
 });
 
-test("campaign wiring creates one standard adapter and idempotent manifest entries", () => {
+test("campaign wiring creates one standard adapter without unsupported manifest entries", () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), "operational-value-campaign-wire-"));
   mkdirSync(path.join(temporary, "example/operational-value"), { recursive: true });
   writeFileSync(path.join(temporary, "example/aw.yml"), `name: Example
@@ -68,9 +68,8 @@ includes:
     readFileSync(path.join(root, ".github/skills/add-operational-value/templates/campaign-operational-value.mjs"), "utf8"),
   );
   const manifest = readFileSync(path.join(temporary, "example/aw.yml"), "utf8");
-  assert.equal((manifest.match(/source: operational-value\.mjs/g) ?? []).length, 1);
-  assert.match(manifest, /destination: example\/operational-value\.mjs/);
-  assert.equal((manifest.match(/- operational-value\/example\.mjs/g) ?? []).length, 1);
+  assert.equal(manifest.includes("operational-value.mjs"), false);
+  assert.equal(manifest.includes("operational-value/example.mjs"), false);
   assert.equal(manifest.endsWith("\n"), true);
 
   writeFileSync(path.join(temporary, "example/operational-value.mjs"), "custom adapter\n");
