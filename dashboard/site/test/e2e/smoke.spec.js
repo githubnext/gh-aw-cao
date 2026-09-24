@@ -720,13 +720,16 @@ test('Runs renders a last-week stacked area graph above its responsive table and
   await expect(areaGraph.locator('.chart-legend-area')).toContainText('failure');
   await expect(areaGraph.locator('.chart-legend-area')).toContainText('success');
   await expect(areaGraph.locator('.line-chart-y-axis text')).toHaveText(['100', '50', '0']);
+  await expect(areaGraph.locator('[data-chart-widget="area"]')).toHaveAttribute('style', '--line-chart-left: 7%;');
   const areaGraphHeadingBox = await areaGraph.getByRole('heading', { name: 'Runs in the last week' }).boundingBox();
   const areaGraphChartBox = await areaGraph.locator('[data-chart-widget="area"] svg').boundingBox();
-  if (areaGraphHeadingBox === null || areaGraphChartBox === null) {
+  const areaGraphTimelineBox = await areaGraph.locator('.timeline-chart-axis').boundingBox();
+  if (areaGraphHeadingBox === null || areaGraphChartBox === null || areaGraphTimelineBox === null) {
     throw new Error('Expected area graph heading and chart boxes to be measurable.');
   }
   expect(areaGraphChartBox.width).toBeGreaterThan(0);
   expect(areaGraphChartBox.height).toBeGreaterThan(0);
+  expect(areaGraphTimelineBox.x).toBeCloseTo(areaGraphChartBox.x + (areaGraphChartBox.width * 0.07), 0);
   await page.getByRole('button', { name: 'Table', exact: true }).click();
   await expect(table).toBeVisible();
   await expect(table.locator('tbody > tr')).toHaveCount(25);
