@@ -111,7 +111,7 @@ const sources = {
     modes: ['review'],
     registration: ['active'],
     runs: 20,
-    'value-created': 7,
+    'grader-result': 7,
     dispatches: 12,
     aic: 42
   }]),

@@ -553,7 +553,7 @@ Examples of domain labels include:
 
 - **CAOD-OUT-006:** An operational grader **MUST** preserve the ordered metrics published by gh-aw, including each metric identifier, native finite numeric value or `null`, unit, direction, run, and observation time. Operational value **MUST** preserve its package-defined value ID, numeric value, repository, campaign, and timestamp.
 - **CAOD-OUT-007:** The presenter **MUST NOT** normalize, clamp, rescale, replay, mature, or infer a baseline for an operational-grader metric.
-- **CAOD-OUT-008:** Operational-value observations using different metric identifiers, units, or directions **MUST NOT** be combined into one total or average.
+- **CAOD-OUT-008:** Operational-grader observations using different metric identifiers, units, or directions **MUST NOT** be combined into one total or average.
 - **CAOD-OUT-009:** A null or missing metric **MUST** produce `unavailable`, not zero.
 - **CAOD-OUT-010:** Temporal association between a workflow and an outcome **MUST NOT** be presented as causal impact.
 

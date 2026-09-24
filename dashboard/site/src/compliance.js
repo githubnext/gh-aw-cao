@@ -94,12 +94,12 @@ dashboard:
           - id: value-overview
             disclosure: supplemental
             data:
-              source: operational-values
+              source: operational-graders
             mark: table
             encoding:
               columns:
-                - field: operational-value
-                - field: operational-value-definition
+                - field: operational-grader
+                - field: operational-grader-definition
                 - field: observed-at
     - id: workflows
       kind: built-in
@@ -228,11 +228,11 @@ dashboard:
       views:
         - id: value-total
           data:
-            source: operational-values
+            source: operational-graders
           mark: metric
           encoding:
             value:
-              field: operational-value
+              field: operational-grader
               aggregate: sum
 `,
     expectedCode: 'DLS-E010'
@@ -753,11 +753,11 @@ dashboard:
           - id: experiments-value
             disclosure: supplemental
             data:
-              source: operational-values
+              source: operational-graders
             mark: table
             encoding:
               columns:
-                - field: operational-value
+                - field: operational-grader
     - id: semantic-custom
       kind: custom
       title: Semantic Custom
@@ -809,15 +809,15 @@ dashboard:
               - field: grader
               - field: value
               - field: status
-        - id: operational-values
+        - id: operational-graders
           disclosure: supplemental
           data:
-            source: operational-values
+            source: operational-graders
           mark: table
           encoding:
             columns:
-              - field: operational-value-definition
-              - field: operational-value
+              - field: operational-grader-definition
+              - field: operational-grader
               - field: delta-from-baseline
               - field: requested-evidence-at
               - field: evidence-cutoff
@@ -996,8 +996,8 @@ function createAppendixASources() {
         }
       ]
     },
-    'operational-values': {
-      source: 'operational-values',
+    'operational-graders': {
+      source: 'operational-graders',
       metadata: {
         'source-id': 'value-source',
         'source-kind': 'fixture',
@@ -1231,10 +1231,10 @@ function createSemanticFixtureSources() {
         }
       ]
     },
-    'operational-values': {
-      source: 'operational-values',
+    'operational-graders': {
+      source: 'operational-graders',
       metadata: {
-        'source-id': 'operational-values-source',
+        'source-id': 'operational-graders-source',
         'source-kind': 'fixture',
         'as-of': '2026-08-29T12:00:00Z',
         'retrieved-at': '2026-08-29T12:05:00Z',
@@ -1252,8 +1252,8 @@ function createSemanticFixtureSources() {
           'operational-case': 'merge-latency',
           'evaluator-digest': 'digest-1',
           'rollout-mode': 'review',
-          'operational-value': 0.72,
-          'operational-value-definition': 'merge-speed',
+          'operational-grader': 0.72,
+          'operational-grader-definition': 'merge-speed',
           'requested-evidence-at': '2026-08-28T12:00:00Z',
           'evidence-cutoff': '2026-08-29T08:00:00Z',
           'maturity-at': '2026-08-29T11:00:00Z',

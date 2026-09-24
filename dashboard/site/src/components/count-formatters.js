@@ -99,7 +99,7 @@ export function formatAic(value) {
  * Coerces a value to a finite number, returning `0` for values that cannot
  * be parsed as a finite number (e.g. `null`, `undefined`, or non-numeric
  * strings). Shared by views that sum or aggregate loosely-typed measured
- * quantities such as AIC usage and operational-value observations.
+ * quantities such as AIC usage and operational-grader observations.
  * @param {unknown} value
  * @returns {number}
  */

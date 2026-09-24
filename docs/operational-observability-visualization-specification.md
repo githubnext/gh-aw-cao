@@ -168,7 +168,7 @@ The attention overview **MUST** represent these domains when applicable evidence
 |---|---|---|
 | Runtime health | Are executions failing, blocked, or incomplete? | Runs and runtime triage. |
 | Security and controls | Do control gates, explicit warnings, or assurance evidence require review? | Security and control evidence. |
-| Value and outcomes | Which operational-value metrics are available, and what do their declared units and directions mean? | Grader and outcome evidence. |
+| Value and outcomes | Which operational-grader metrics are available, and what do their declared units and directions mean? | Grader and outcome evidence. |
 | Episodes and autonomy | Are orchestrator and worker behaviors attributable through exact evidence? | Correlated execution episodes. |
 | Cost and efficiency | What resource allocation is measured, and can a budget or anomaly verdict be supported? | Usage and efficiency evidence. |
 | Evidence quality | Which collection, inventory, or attribution gaps limit dashboard claims? | Coverage diagnostics. |

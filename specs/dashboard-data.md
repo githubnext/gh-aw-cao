@@ -706,7 +706,7 @@ discovery and recommendations for other targets. `net-realized-savings-aic` is
 gross savings less that overhead and MAY be negative for diagnostics.
 
 `verified-net-gain` is a token-optimization comparison diagnostic, not a gh-aw
-operational-value metric. It retains the native ratio produced by the formula
+operational-grader metric. It retains the native ratio produced by the formula
 without clamping or rescaling. Gross, overhead, and net values are null unless evidence is complete. A non-applied
 recommendation, failed implementation start, reliability or quality regression,
 or non-positive net result records zero verified net gain. The underlying gross

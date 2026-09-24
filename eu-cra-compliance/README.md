@@ -76,4 +76,4 @@ The omitted fields default to an enabled campaign and workers, `review` mode, on
 - Regulatory dates and interpretations are verified against current authoritative sources; non-binding guidance is labeled.
 - All campaign agents use Pi with the GitHub Copilot backend through the CLI and GitHub proxies.
 
-Direct checkouts include frozen operational-value evaluators for all six repository workers and the campaign maintainer. `gh aw add` transports the focused campaign's workflow-local campaign-maintainer evaluator with the installed workflow.
+Direct checkouts include frozen operational graders, registered through gh-aw's `operational-value` protocol, for all six repository workers and the campaign maintainer. `gh aw add` transports the focused campaign's workflow-local campaign-maintainer grader with the installed workflow.

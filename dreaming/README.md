@@ -65,7 +65,7 @@ The omitted fields default to an enabled campaign and worker and 100 percent rol
 
 ## Operational Value
 
-The worker registers a deterministic one-shot operational-value evaluator:
+The worker registers a deterministic one-shot operational grader through gh-aw's `operational-value` protocol:
 
 | Worker | Primary metric | Attained evidence |
 | --- | --- | --- |

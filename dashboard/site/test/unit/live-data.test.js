@@ -329,11 +329,11 @@ describe("live Dashboard Language sources", () => {
       });
       expect(sources.outcomes.rows[0]["outcome-state"]).toBe("pending");
       expect(sources.outcomes.rows[0]["run-conclusion"]).toBe("failure");
-      expect(sources["operational-values"].rows[0]).toMatchObject({
-        "operational-value": 75,
-        "operational-value-definition": "accepted-dependency-updates",
-        "operational-value-unit": "count",
-        "operational-value-direction": "higher_is_better",
+      expect(sources["operational-graders"].rows[0]).toMatchObject({
+        "operational-grader": 75,
+        "operational-grader-definition": "accepted-dependency-updates",
+        "operational-grader-unit": "count",
+        "operational-grader-direction": "higher_is_better",
       });
 
       const rateLimitedReport = {

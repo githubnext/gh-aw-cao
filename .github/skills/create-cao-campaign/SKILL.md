@@ -31,13 +31,13 @@ Add `copilot-requests: write` directly to every Copilot-backed orchestrator and 
    - evidence that constitutes completion or a no-op
 4. Ask only for decisions that cannot be inferred safely. If the strategy is broad, split it into workers by independently dispatchable responsibility, not by implementation step.
 5. Create the orchestrator and every worker under `.github/workflows/` in the same change. After each worker's intent and acceptance conditions are stable, use the upstream `github/gh-aw` `.github/skills/operational-value-designer/SKILL.md` through the router to design its deterministic per-run evaluator. Adopt a measurable worker and its evaluator together in one commit when the skill identifies a meaningful measurable outcome; record an explicit not-measurable conclusion when it does not.
-6. Compile and validate all new source workflows and verify every registered operational-value evaluator with the upstream skill's verifier. Repair failures before finishing.
+6. Compile and validate all new source workflows and verify every registered operational grader with the upstream skill's verifier. Repair failures before finishing.
 7. Before finalizing the campaign, compare the intended campaign state with the current `.github/workflows/cao.json` and the dashboard's live control-plane view. Confirm what is actually running, in which mode, and on which repositories. If the configuration drifts from reality, raise the mismatch to the user on the dashboard before proceeding.
-8. When an adopted worker already has an operational-value evaluator, preserve it under `.github/workflows/graders/` and keep its workflow-relative `graders.operational-value` registration. Update its evaluator only when the workflow's intent or acceptance criteria change, and update the workflow and evaluator together using the upstream operational-value designer.
+8. When an adopted worker already has an operational grader, preserve it under `.github/workflows/graders/` and keep its workflow-relative `graders.operational-value` registration. Update its evaluator only when the workflow's intent or acceptance criteria change, and update the workflow and evaluator together using the upstream operational-value designer.
 
 ## Deterministic Add-on Exception
 
-The top-level `dashboard/` campaign is conventional GitHub Actions automation, not an agentic operation. Do not create an orchestrator, workers, runtime steering, rollout variables, or operational-value evaluators for it.
+The top-level `dashboard/` campaign is conventional GitHub Actions automation, not an agentic operation. Do not create an orchestrator, workers, runtime steering, rollout variables, or operational graders for it.
 
 - Install the dashboard workflow from root `aw.yml`, keep `dashboard/aw.yml` as its included component manifest rather than a standalone installation entry point, and materialize the canonical `dashboard/` source directory. Never fold it into an operational campaign.
 - Install `.github/workflows/cao-dashboard.yml` directly from the dashboard campaign manifest.
@@ -163,7 +163,7 @@ Follow the GitHub/gh-aw report conventions for every human-facing durable worker
 
 ### Worker Value
 
-Operational-value evaluator design, protocol, metric semantics, and verification are owned by gh-aw. Invoke the upstream `github/gh-aw` operational-value designer and follow its current instructions exactly; do not restate or extend that contract in this skill. Keep any resulting evaluator and fixtures with the worker and compile them together.
+Operational-grader design, protocol, metric semantics, and verification are owned by gh-aw under its `operational-value` protocol. Invoke the upstream `github/gh-aw` operational-value designer and follow its current instructions exactly; do not restate or extend that contract in this skill. Keep any resulting evaluator and fixtures with the worker and compile them together.
 
 ## Shared Components
 
@@ -212,4 +212,4 @@ Before finishing:
 16. For workflows that consume recent run history, confirm they prefer a valid activity cache, preserve a bounded API fallback for cache misses or incomplete coverage, and do not publish or mutate the shared cache themselves.
 17. Confirm orchestrator concurrency is campaign-singleton, dispatch tuples are unique per run, worker concurrency is repository-scoped, and output-specific idempotency prevents retries or later runs from creating equivalent repository items. Confirm expiration is used only for cleanup and grouping is not treated as duplicate prevention.
 
-Report the created campaign, worker responsibilities, shared imports, checked-in policy fields, per-worker operational-value metric or not-measurable conclusion, and validation results.
+Report the created campaign, worker responsibilities, shared imports, checked-in policy fields, per-worker operational-grader metric or not-measurable conclusion, and validation results.

@@ -141,6 +141,7 @@ This specification defines three conformance classes:
 ```text
 organization
   └─ repository
+       ├─ operational-value observation → campaign
        ├─ campaign
        │    ├─ orchestrator workflow
        │    └─ worker workflow
@@ -152,7 +153,6 @@ organization
                  ├─ eval observations
                  ├─ outcome observations
                  ├─ findings
-                 ├─ operational-value observations
                  └─ operational-grader observations
 ```
 
@@ -867,7 +867,7 @@ For pages that opt in to `filter-bar: true`, the presenter renders a filter bar 
 - **DLS-PAGE-009:** The `evals` page **MUST** keep eval definitions and eval observations distinguishable and expose observed subject, `YES`, `NO`, or `UNKNOWN` result, evaluation model when available, time, and provenance.
 - **DLS-PAGE-010:** The `usage` page **MUST** present each raw-token measure separately from AIC and expose estimated USD, engine, engine version, requested model, resolved model, scope, rollout mode, time, and provenance.
 - **DLS-PAGE-011:** The `engines-models` page **MUST** expose model and agentic-engine summaries with AIC totals, estimated pricing, run counts, engine version ranges, plus run-level engine, requested model, and resolved model evidence where available.
-- **DLS-PAGE-012:** The `operational-value` page **MUST** expose time-ordered native primary metrics with their metric identifiers, units, directions, run provenance, and applicable experiment assignments. Ordered diagnostic metrics **MUST** remain separate from the primary metric and from diagnostics with other identifiers. Null observations **MUST** remain unavailable rather than becoming zero.
+- **DLS-PAGE-012:** The `operational-value` page **MUST** expose time-ordered package-defined repository metrics with their value identifiers, campaigns, repositories, and observation timestamps. Null observations **MUST** remain unavailable rather than becoming zero.
 - **DLS-PAGE-013:** The `findings` page **MUST** expose finding summary, severity, status, scope, time, provenance, and available issue, pull-request, and run links.
 - **DLS-PAGE-014:** Every built-in page **MUST** honor the dashboard scope, time, and filters and expose availability.
 - **DLS-PAGE-015:** The `campaigns` page **MUST** expose centrally managed campaign inventory, rollout-mode filtering, actual campaign AIC against summed per-run limits without treating missing usage as zero, the complete-attempt AIC allowance, retained usage coverage, and time-ordered successful, failed, and cancelled campaign-run trends.
@@ -1529,11 +1529,12 @@ Invalid because operational value is non-additive and cannot use `sum`.
 | Concept | Example question answered | Not equivalent to |
 |---|---|---|
 | Raw tokens | How many provider-reported input tokens were observed? | AIC, cost, outcome, or value |
-| AIC | How many authoritative AI Credits were attributed? | Raw tokens or operational value |
+| AIC | How many authoritative AI Credits were attributed? | Raw tokens, operational grader, or operational value |
 | Run conclusion | Did the completed run succeed, fail, time out, or end another way? | Downstream outcome, grader result, or eval result |
-| Outcome | Was a safe output later accepted, rejected, pending, ignored, or otherwise classified? | Run conclusion or operational value |
+| Outcome | Was a safe output later accepted, rejected, pending, ignored, or otherwise classified? | Run conclusion, operational grader, or operational value |
 | Grader observation | What result did a named grading criterion emit? | Eval observation or run conclusion |
-| Eval observation | Did a named binary evaluation return `yes`, `no`, or `unknown`? | Grader observation or operational value |
-| Operational value | What native metric value did gh-aw publish under a named metric identifier? | AIC, outcome, normalized score, or causal impact |
+| Eval observation | Did a named binary evaluation return `yes`, `no`, or `unknown`? | Grader observation, operational grader, or operational value |
+| Operational grader | What native metric value did gh-aw publish for one run under the `operational-value` protocol? | Repository operational value, AIC, outcome, normalized score, or causal impact |
+| Operational value | What package-defined metric was observed for one repository and campaign? | Run-scoped operational grader, AIC, outcome, or causal impact |
 
 ---

@@ -325,7 +325,7 @@ export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
     'run-aggregate-summary': ['engine', 'engine-version', 'requested-model', 'resolved-model', 'run-conclusion', 'runs', 'run-link']
   },
   'operational-value': {
-    'operational-values': ['observed-at', 'operational-value', 'operational-value-definition', 'operational-value-unit', 'operational-value-direction', 'diagnostics', 'diagnostic-definitions', 'run-link', 'experiment']
+    'operational-values': ['observed-at', 'operational-value', 'operational-value-definition', 'repository', 'campaign']
   },
   findings: {
     findings: ['finding-summary', 'finding-severity', 'finding-status', 'organization', 'repository', 'workflow', 'observed-at', 'issue-link', 'pull-request-link', 'run-link']

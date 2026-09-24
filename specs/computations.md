@@ -1459,7 +1459,7 @@ A conforming test suite for `how-well-does-it-run` MUST cover:
   `none-observed`, while missing evidence produces `unknown`;
 - **T-HW-006:** output creation does not become acceptance, verification, or
   operational value;
-- **T-HW-007:** a finite passed operational-value result preserves its native
+- **T-HW-007:** a finite passed operational-grader result preserves its native
   value, including zero, unit, and direction;
 - **T-HW-008:** grader error and unavailable states do not become measured
   zero;
@@ -1634,7 +1634,7 @@ referenced failures. The action retains links to all three upstream results.
 ### Version 0.8.0 (Working Draft)
 
 - Added `how-well-does-it-run@1.0.0` over successful Run partitions.
-- Separated produced outputs, native operational-value measurements, and
+- Separated produced outputs, native operational-grader measurements, and
   resource efficiency without a composite score.
 - Required stable safe-output deduplication and prohibited treating creation as
   acceptance or value.

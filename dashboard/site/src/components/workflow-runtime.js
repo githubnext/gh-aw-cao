@@ -192,9 +192,9 @@ function renderValueReport(workflowName, repository, workflowPath, observations,
         'div',
         { className: 'value-empty' },
         octicon('graph'),
-        h('h3', null, unavailable ? 'Operational-value evidence unavailable' : 'No workflow observations yet'),
+        h('h3', null, unavailable ? 'Operational-grader evidence unavailable' : 'No workflow observations yet'),
         unavailable
-          ? h('p', null, 'Operational-value collection was unavailable for this dashboard refresh.')
+          ? h('p', null, 'Operational-grader collection was unavailable for this dashboard refresh.')
           : h('p', null, 'Operational grader results will appear after this workflow publishes a valid ', h('code', null, 'grader_results.json'), '.')
       ),
       h('div', { className: 'value-details-unavailable' }, 'Run evidence unavailable')
@@ -219,7 +219,7 @@ function renderValueReport(workflowName, repository, workflowPath, observations,
     ),
     h(
       'div',
-      { className: 'value-chart', role: 'group', 'aria-label': 'Operational-value summary' },
+      { className: 'value-chart', role: 'group', 'aria-label': 'Operational-grader summary' },
       renderValueHistory(observations),
       h(
         'dl',
