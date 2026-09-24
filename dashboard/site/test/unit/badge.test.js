@@ -57,4 +57,14 @@ describe('badge', () => {
   ])('color-codes data confidence %s as %s', (confidence, expectedClass) => {
     expect(renderStatusBadge(confidence).className).toBe(`status ${expectedClass}`);
   });
+
+  it.each([
+    ['Upgrade recommended', 'status-attention'],
+    ['update-available', 'status-attention'],
+    ['Current', 'status-success'],
+    ['up-to-date', 'status-success'],
+    ['Upgrade status unavailable', 'status-muted']
+  ])('color-codes maintenance state %s as %s', (state, expectedClass) => {
+    expect(renderStatusBadge(state).className).toBe(`status ${expectedClass}`);
+  });
 });

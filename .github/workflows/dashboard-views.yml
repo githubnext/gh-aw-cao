@@ -178,6 +178,7 @@ jobs:
                 '```',
                 '',
                 '</details>',
+                '',
               ].join('\n') : ''
               const resultsSection = rows.length > 0 ? [
                 '<details><summary><b>View assessment results</b></summary>',
@@ -187,6 +188,7 @@ jobs:
                 ...rows,
                 '',
                 '</details>',
+                '',
               ].join('\n') : ''
               body = [
                 marker,
@@ -250,6 +252,7 @@ jobs:
                 '5. Validate the affected assessment plus `npm test`, `npm run lint`, and `npm run typecheck` from `dashboard/site/`.',
                 '',
                 '</details>',
+                '',
               ].join('\n')
               const issues = await github.paginate(github.rest.issues.listForRepo, {
                 ...context.repo,
