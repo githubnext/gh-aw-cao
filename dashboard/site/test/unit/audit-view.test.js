@@ -266,7 +266,16 @@ describe('Audit dashboard view', () => {
           rows: [
             { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'combined.md', event: '1', 'event-type': 'audit.finding', 'event-status': 'high', 'event-summary': 'Repeated finding' },
             { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'combined.md', event: '2', 'event-type': 'audit.recommendation', 'event-status': 'medium', 'event-summary': 'Repeated finding' },
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'audit-only.md', event: '3', 'event-type': 'audit.finding', 'event-status': 'high', 'event-summary': 'Audit-only finding' }
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'audit-only.md', event: '3', 'event-type': 'audit.finding', 'event-status': 'high', 'event-summary': 'Audit-only finding' },
+            ...Array.from({ length: 20 }, (_, index) => [0, 1].map((duplicate) => ({
+              organization: 'githubnext',
+              repository: 'gh-aw-cao',
+              workflow: 'noise.md',
+              event: `noise-${index}-${duplicate}`,
+              'event-type': 'audit.finding',
+              'event-status': 'high',
+              'event-summary': `Noise finding ${index}`
+            }))).flat()
           ],
           metadata
         },
@@ -276,6 +285,7 @@ describe('Audit dashboard view', () => {
           rows: [
             { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'combined.md', campaign: 'combined' },
             { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'audit-only.md', campaign: 'audit-only' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'noise.md', campaign: 'noise' },
             { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'empty.md', campaign: 'empty' }
           ],
           metadata
@@ -303,7 +313,8 @@ describe('Audit dashboard view', () => {
 
     expect(result['campaign-insight-tab-counts'].rows).toEqual([
       { campaign: 'combined', items: 4 },
-      { campaign: 'audit-only', items: 1 }
+      { campaign: 'audit-only', items: 1 },
+      { campaign: 'noise', items: 1 }
     ]);
   });
 });

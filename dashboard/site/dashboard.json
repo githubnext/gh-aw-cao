@@ -3979,8 +3979,7 @@
             "field": "event-summary",
             "direction": "asc"
           }
-        ],
-        "limit": 20
+        ]
       },
       {
         "name": "engines-models-usage",
