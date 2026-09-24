@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 
 const REPOSITORY_COORDINATE = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
 const MAX_ALERT_PAGES = 1000;
+const GITHUB_API_URL = new URL(process.env.GITHUB_API_URL ?? 'https://api.github.com');
 
 function fail(message) {
   console.error(message);
@@ -49,7 +50,7 @@ function parseResponse(output) {
     headerStart.lastIndex = offset;
     if (!headerStart.test(normalized)) break;
     const separator = normalized.indexOf('\n\n', offset);
-    if (separator < 0) fail('GitHub API returned a response without headers');
+    if (separator < 0) fail('GitHub API returned a truncated header block');
     headers = normalized.slice(offset, separator);
     offset = separator + 2;
   }
@@ -69,6 +70,25 @@ function parseResponse(output) {
     .find((entry) => /(?:^|;)\s*rel="?next"?\s*(?:;|$)/i.test(entry))
     ?.match(/^<([^>]+)>/)?.[1];
   return { body, next };
+}
+
+function validateNextEndpoint(next, repository) {
+  if (!next) return undefined;
+  let url;
+  try {
+    url = new URL(next);
+  } catch {
+    fail('GitHub API returned an invalid Dependabot alerts next link');
+  }
+  const apiPath = GITHUB_API_URL.pathname.replace(/\/$/, '');
+  const expectedPath = `${apiPath}/repos/${repository}/dependabot/alerts`;
+  if (
+    url.origin !== GITHUB_API_URL.origin
+    || decodeURIComponent(url.pathname).toLowerCase() !== expectedPath.toLowerCase()
+  ) {
+    fail('GitHub API returned an unexpected Dependabot alerts next link');
+  }
+  return next;
 }
 
 for (const repository of request.repositories) {
@@ -102,7 +122,7 @@ for (const repository of request.repositories) {
     ]));
     // Next links already carry state and per_page, so only the first request supplies fields.
     fields = [];
-    endpoint = response.next;
+    endpoint = validateNextEndpoint(response.next, repository);
     const alerts = JSON.parse(response.body);
     if (!Array.isArray(alerts)) fail('GitHub API returned an invalid Dependabot alerts page');
     value += alerts.length;
