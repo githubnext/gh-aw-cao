@@ -4364,6 +4364,18 @@
             ]
           },
           {
+            "as": "has-observed-runs",
+            "function": "greater-than",
+            "args": [
+              {
+                "field": "total-runs"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
             "as": "total-failed-runs",
             "function": "coalesce",
             "args": [
@@ -4668,6 +4680,9 @@
             "field": "aic-per-run"
           },
           {
+            "field": "has-observed-runs"
+          },
+          {
             "field": "ingestion"
           },
           {
@@ -4693,6 +4708,20 @@
             "direction": "asc"
           }
         ]
+      },
+      {
+        "name": "workflow-aic-per-run",
+        "intent": "List declared workflows with observed runs and their average AI Credit cost per run.",
+        "description": "Workflow AI Credit averages limited to workflows with at least one observed run.",
+        "from": "workflow-inventory",
+        "filter": {
+          "predicates": [
+            {
+              "field": "has-observed-runs",
+              "equals": true
+            }
+          ]
+        }
       },
       {
         "name": "campaign-workflows",
@@ -11425,7 +11454,7 @@
               "title": "Average AIC per run by workflow",
               "description": "Declared workflows ranked by average AI Credit cost per observed run.",
               "data": {
-                "source": "workflow-inventory",
+                "source": "workflow-aic-per-run",
                 "order-by": [
                   {
                     "field": "aic-per-run",

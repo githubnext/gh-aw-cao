@@ -966,13 +966,11 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('.filter-tuning-controls .horizon-details [aria-label="Data status"]')).toBeNull();
     expect(page?.querySelector('[data-chart-widget="horizontal-bar"]')).not.toBeNull();
     expect([...(page?.querySelectorAll('[data-view-id="workflows-by-aic-per-run"] .horizontal-bar-chart-label') ?? [])].map((value) => value.textContent))
-      .toEqual([
-        'dependabot.yml (githubnext/gh-aw-cao)',
-        'ci.yml (github/target-service)',
-        'dependabot-update-planner.yml (githubnext/gh-aw-cao)'
-      ]);
+      .toEqual(['dependabot.yml (githubnext/gh-aw-cao)', 'ci.yml (github/target-service)']);
     expect([...(page?.querySelectorAll('[data-view-id="workflows-by-aic-per-run"] .horizontal-bar-chart-value') ?? [])].map((value) => value.textContent))
-      .toEqual(['15', '5', '0']);
+      .toEqual(['15', '5']);
+    expect(page?.querySelector('[data-view-id="workflows-by-aic-per-run"] .horizontal-bar-chart-label a')?.getAttribute('href'))
+      .toContain('#page-workflow-runtime?workflow=');
     expect(page?.querySelector('[data-view-id="workflows-inventory"][data-view-layout="full-view"]')).not.toBeNull();
     const rocket = rendered.querySelector('[data-nav-page-id="workflows"] .octicon-rocket');
     expect(rocket?.classList.contains('octicon-rocket')).toBe(true);

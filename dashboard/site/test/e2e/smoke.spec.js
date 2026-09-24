@@ -4210,6 +4210,30 @@ test('phone Workflows page cycles through chart, table, and card-list views', as
         }
       },
       sources: {
+        'workflow-aic-per-run': {
+          source: 'workflow-aic-per-run',
+          rows: [{
+            'campaign-name': 'Maintenance',
+            repository: 'githubnext/gh-aw-cao',
+            workflow: '.github/workflows/aw-maintenance.md',
+            'workflow-name': 'AW Maintenance',
+            'workflow-label': 'githubnext/gh-aw-cao:.github/workflows/aw-maintenance.md',
+            'workflow-role': 'orchestrator',
+            'rollout-mode': 'review',
+            'workflow-active': 'active',
+            aic: 12,
+            runs: 4,
+            'aic-per-run': 3,
+            ingestion: '100%',
+            'workflow-link': { relation: 'workflow', href: '#page-workflow-runtime', label: 'View AW Maintenance' },
+            'repository-link': { relation: 'repository', href: '#page-repository-detail', label: 'View githubnext/gh-aw-cao' }
+          }],
+          metadata: {
+            availability: 'available',
+            completeness: 'complete',
+            freshness: 'fresh'
+          }
+        },
         'workflow-inventory': {
           source: 'workflow-inventory',
           rows: [{
