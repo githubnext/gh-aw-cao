@@ -106,6 +106,8 @@ test("dashboard CI runs the campaign quality gates", () => {
   assert.match(ingestionScale.block, /run: npm run test:e2e:dashboard-ingestion/);
   assert.deepEqual(queryComplexity.needs, []);
   assert.match(queryComplexity.block, /node activity\/cao\.mjs dashboard-complexity/);
+  assert.match(queryComplexity.block, /npm run dashboard:data:download/);
+  assert.match(queryComplexity.block, /--database \.cao\/gh-aw-logs\.sqlite/);
   assert.match(queryComplexity.block, /--input dashboard\/site\/dashboard\.json/);
   assert.match(queryComplexity.block, /--format markdown > query-complexity\.md/);
   assert.match(queryComplexity.block, /cat query-complexity\.md >> "\$GITHUB_STEP_SUMMARY"/);
