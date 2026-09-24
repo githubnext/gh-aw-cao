@@ -1,4 +1,4 @@
-import { execFile, spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { readFile, readdir, mkdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { canonicalTimestamp } from '../dashboard/site/src/data/model/schema.js';
@@ -7,6 +7,7 @@ import { readCollection } from '../dashboard/site/src/data/storage/indexeddb.js'
 export const REPOSITORY_COORDINATE = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
 const OPERATIONAL_VALUE_ID = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
 const WORKER_TIMEOUT_MS = 2 * 60 * 1000;
+const RATE_LIMIT_TIMEOUT_MS = 30 * 1000;
 const WORKER_ENVIRONMENT = [
   'CI',
   'HOME',
@@ -45,13 +46,18 @@ async function discoverOperationalValueScripts(root) {
   return scripts;
 }
 
-function githubApiRemaining(env) {
-  const result = spawnSync('gh', ['api', 'rate_limit', '--jq', '.resources.core.remaining'], {
-    encoding: 'utf8',
-    env
+async function githubApiRemaining(env, signal) {
+  const result = await runChildProcess('gh', ['api', 'rate_limit', '--jq', '.resources.core.remaining'], {
+    env,
+    signal,
+    timeoutMs: RATE_LIMIT_TIMEOUT_MS
   });
+  signal?.throwIfAborted();
   if (result.error || result.status !== 0) {
-    throw new Error(`Unable to read GitHub API rate limit: ${commandFailureMessage(result, 'gh api rate_limit failed')}`);
+    const message = result.timedOut
+      ? `timed out after ${RATE_LIMIT_TIMEOUT_MS} ms`
+      : commandFailureMessage(result, 'gh api rate_limit failed');
+    throw new Error(`Unable to read GitHub API rate limit: ${message}`);
   }
   const remaining = Number(String(result.stdout).trim());
   if (!Number.isSafeInteger(remaining) || remaining < 0) {
@@ -84,6 +90,10 @@ function terminateProcessTree(child) {
     spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true });
     return;
   }
+  try {
+    process.kill(-child.pid, 'SIGKILL');
+    return;
+  } catch {}
   const processes = spawnSync('ps', ['-eo', 'pid=,ppid='], { encoding: 'utf8' });
   const children = new Map();
   for (const line of String(processes.stdout ?? '').split(/\r?\n/)) {
@@ -111,33 +121,76 @@ function terminateProcessTree(child) {
   }
 }
 
-function runOperationalValueWorker(entry, request, env, { signal, timeoutMs = WORKER_TIMEOUT_MS } = {}) {
+function runChildProcess(command, args, {
+  env,
+  input,
+  maxBuffer = 16 * 1024 * 1024,
+  signal,
+  timeoutMs
+} = {}) {
   const timeoutSignal = AbortSignal.timeout(timeoutMs);
   const workerSignal = signal
     ? AbortSignal.any([signal, timeoutSignal])
     : timeoutSignal;
-  return new Promise((resolve, reject) => {
-    const child = execFile(process.execPath, [entry.script], {
-      encoding: 'utf8',
-      maxBuffer: 16 * 1024 * 1024,
-      killSignal: 'SIGKILL',
-      env
-    }, (error, stdout, stderr) => {
-      workerSignal.removeEventListener('abort', abortWorker);
-      if (error) {
-        const message = timeoutSignal.aborted && !signal?.aborted
-          ? `timed out after ${timeoutMs} ms`
-          : commandFailureMessage({ error, stderr }, 'operational-value.mjs failed');
-        reject(new Error(`${entry.script} failed: ${message}`, { cause: error }));
-        return;
+  return new Promise((resolve) => {
+    const child = spawn(command, args, {
+      detached: process.platform !== 'win32',
+      env,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      windowsHide: true
+    });
+    const stdout = [];
+    const stderr = [];
+    let stdoutLength = 0;
+    let stderrLength = 0;
+    let error;
+    const collect = (chunks, chunk, stream) => {
+      chunks.push(chunk);
+      if (stream === 'stdout') stdoutLength += chunk.length;
+      else stderrLength += chunk.length;
+      if (stdoutLength > maxBuffer || stderrLength > maxBuffer) {
+        error ??= new Error(`${stream} exceeded maxBuffer`);
+        terminateProcessTree(child);
       }
-      resolve(stdout);
+    };
+    child.stdout.on('data', (chunk) => collect(stdout, chunk, 'stdout'));
+    child.stderr.on('data', (chunk) => collect(stderr, chunk, 'stderr'));
+    child.once('error', (cause) => {
+      error = cause;
+    });
+    child.once('close', (status) => {
+      workerSignal.removeEventListener('abort', abortWorker);
+      terminateProcessTree(child);
+      resolve({
+        error,
+        status,
+        stdout: Buffer.concat(stdout).toString('utf8'),
+        stderr: Buffer.concat(stderr).toString('utf8'),
+        timedOut: timeoutSignal.aborted && !signal?.aborted
+      });
     });
     const abortWorker = () => terminateProcessTree(child);
     workerSignal.addEventListener('abort', abortWorker, { once: true });
     if (workerSignal.aborted) abortWorker();
-    child.stdin.end(request, () => {});
+    child.stdin.end(input, () => {});
   });
+}
+
+async function runOperationalValueWorker(entry, request, env, { signal, timeoutMs = WORKER_TIMEOUT_MS } = {}) {
+  const result = await runChildProcess(process.execPath, [entry.script], {
+    env,
+    input: request,
+    signal,
+    timeoutMs
+  });
+  signal?.throwIfAborted();
+  if (result.error || result.status !== 0) {
+    const message = result.timedOut
+      ? `timed out after ${timeoutMs} ms`
+      : commandFailureMessage(result, 'operational-value.mjs failed');
+    throw new Error(`${entry.script} failed: ${message}`, { cause: result.error });
+  }
+  return result.stdout;
 }
 
 export function operationalValueReserve(value, UsageError = Error) {
@@ -270,7 +323,7 @@ export async function runOperationalValue({
   for (const entry of scripts) {
     try {
       signal?.throwIfAborted();
-      if (rateLimitReserve !== undefined && githubApiRemaining(worker.env) <= rateLimitReserve) {
+      if (rateLimitReserve !== undefined && await githubApiRemaining(worker.env, signal) <= rateLimitReserve) {
         throw new Error(`GitHub API core remaining is at or below the reserved ${rateLimitReserve} requests`);
       }
       const output = await runOperationalValueWorker(entry, request, worker.env, {
@@ -287,7 +340,7 @@ export async function runOperationalValue({
   signal?.throwIfAborted();
   if (rateLimitReserve !== undefined) {
     try {
-      if (githubApiRemaining(worker.env) < rateLimitReserve) {
+      if (await githubApiRemaining(worker.env, signal) < rateLimitReserve) {
         throw new Error(`Operational value crossed the reserved GitHub API floor of ${rateLimitReserve} requests`);
       }
     } catch (error) {

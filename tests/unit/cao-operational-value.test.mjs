@@ -73,6 +73,34 @@ console.log(JSON.stringify({timestamp:request.timestamp,repository:request.repos
   }
 });
 
+test('operational-value cleans up descendants after worker failure', async () => {
+  const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-value-failure-tree-'));
+  const packageDirectory = path.join(temporary, 'failed');
+  const orphanMarker = path.join(temporary, 'orphan');
+  mkdirSync(packageDirectory);
+  writeFileSync(path.join(packageDirectory, 'operational-value.mjs'), `
+import { spawn } from 'node:child_process';
+spawn(process.execPath, ['-e', ${JSON.stringify(
+  `setTimeout(() => require('node:fs').writeFileSync(${JSON.stringify(orphanMarker)}, 'alive'), 150); setInterval(() => {}, 1_000);`
+)}]);
+process.exit(1);\n`);
+
+  try {
+    const result = await runOperationalValue({
+      indexedDB: null,
+      databasePath: path.join(temporary, 'dashboard.sqlite'),
+      root: temporary,
+      repositories: ['githubnext/gh-aw-cao']
+    });
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    assert.equal(result.warnings.length, 1);
+    assert.equal(existsSync(orphanMarker), false);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
 test('cao operational-value terminates worker process trees on SIGTERM', async () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-value-sigterm-'));
   const packageDirectory = path.join(temporary, 'example');
