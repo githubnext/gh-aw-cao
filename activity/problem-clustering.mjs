@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { backup, DatabaseSync } from 'node:sqlite';
 import { canonicalTimestamp } from '../dashboard/site/src/data/model/schema.js';
+import { createDebug } from './debug.mjs';
 import { REPOSITORY_COORDINATE } from './operational-value.mjs';
 
 const PROBLEM_ID = /^[a-z0-9]+(?:[._:-][a-z0-9]+)*$/;
@@ -26,6 +27,7 @@ const WORKER_ENVIRONMENT = [
   'TMPDIR',
   'USERPROFILE'
 ];
+const debug = createDebug('problem-clustering');
 
 const PROBLEMS_SCHEMA = `
   CREATE TABLE IF NOT EXISTS cao_problems (
@@ -73,6 +75,7 @@ async function discoverProblemClusteringScripts(root) {
       if (!(error && error.code === 'ENOENT')) throw error;
     }
   }
+  debug('discovery completed scripts=%d packages=%o', scripts.length, scripts.map((entry) => entry.package));
   return scripts;
 }
 
@@ -88,6 +91,8 @@ function workerEnvironment(databasePath, timestamp) {
 
 function runWorker(entry, request, databasePath, { signal, timeoutMs }) {
   signal?.throwIfAborted();
+  const startedAt = performance.now();
+  debug('worker starting package=%s timeout_ms=%d', entry.package, timeoutMs);
   const timeout = AbortSignal.timeout(timeoutMs);
   const workerSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
   const child = spawn(process.execPath, [entry.script], {
@@ -105,6 +110,7 @@ function runWorker(entry, request, databasePath, { signal, timeoutMs }) {
       outputBytes += chunk.length;
       if (outputBytes > MAX_WORKER_OUTPUT_BYTES) {
         outputError = `output exceeded ${MAX_WORKER_OUTPUT_BYTES} bytes`;
+        debug('worker output limit exceeded package=%s output_bytes=%d', entry.package, outputBytes);
         child.kill('SIGKILL');
         return;
       }
@@ -119,18 +125,33 @@ function runWorker(entry, request, databasePath, { signal, timeoutMs }) {
     });
     child.on('close', (code) => {
       if (signal?.aborted) {
+        debug('worker cancelled package=%s duration_ms=%d', entry.package, Math.round(performance.now() - startedAt));
         reject(signal.reason);
         return;
       }
       if (timeout.aborted) {
+        debug('worker timed out package=%s duration_ms=%d', entry.package, Math.round(performance.now() - startedAt));
         reject(new Error(`${entry.script} timed out after ${timeoutMs} ms`));
         return;
       }
       const detail = Buffer.concat(stderr).toString('utf8').trim();
       if (outputError || code !== 0) {
+        debug(
+          'worker failed package=%s duration_ms=%d exit_code=%s output_bytes=%d',
+          entry.package,
+          Math.round(performance.now() - startedAt),
+          code,
+          outputBytes
+        );
         reject(new Error(`${entry.script} failed: ${outputError || detail || 'problem clustering failed'}`));
         return;
       }
+      debug(
+        'worker completed package=%s duration_ms=%d output_bytes=%d',
+        entry.package,
+        Math.round(performance.now() - startedAt),
+        outputBytes
+      );
       resolve(Buffer.concat(stdout).toString('utf8'));
     });
     child.stdin.on('error', (error) => {
@@ -233,6 +254,7 @@ function replaceProblems(databasePath, producer, problems) {
         );
       }
       database.exec('COMMIT');
+      debug('problems replaced package=%s count=%d', producer, problems.length);
     } catch (error) {
       database.exec('ROLLBACK');
       throw error;
@@ -248,11 +270,14 @@ function removeUninstalledProducerProblems(databasePath, producers) {
     database.exec('PRAGMA busy_timeout = 5000');
     database.exec(PROBLEMS_SCHEMA);
     if (producers.length === 0) {
-      database.exec('DELETE FROM cao_problems');
+      const removed = database.prepare('DELETE FROM cao_problems').run().changes;
+      debug('uninstalled producer cleanup active_producers=0 removed=%d', removed);
       return;
     }
     const placeholders = producers.map(() => '?').join(', ');
-    database.prepare(`DELETE FROM cao_problems WHERE producer NOT IN (${placeholders})`).run(...producers);
+    const removed = database.prepare(`DELETE FROM cao_problems WHERE producer NOT IN (${placeholders})`)
+      .run(...producers).changes;
+    debug('uninstalled producer cleanup active_producers=%d removed=%d', producers.length, removed);
   } finally {
     database.close();
   }
@@ -266,18 +291,23 @@ export async function runProblemClustering({
   workerTimeoutMs = WORKER_TIMEOUT_MS
 }) {
   signal?.throwIfAborted();
+  const startedAt = performance.now();
   const observedAt = canonicalTimestamp(timestamp, '--timestamp');
   const resolvedDatabase = path.resolve(databasePath);
+  debug('clustering started timestamp=%s', observedAt);
   const scripts = await discoverProblemClusteringScripts(root);
+  signal?.throwIfAborted();
   removeUninstalledProducerProblems(resolvedDatabase, scripts.map((entry) => entry.package));
   const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'cao-problem-clustering-'));
   const snapshot = path.join(temporaryDirectory, 'activity.sqlite');
   const values = [];
   const warnings = [];
+  let completedPackages = 0;
   try {
     const source = new DatabaseSync(resolvedDatabase);
     try {
       await backup(source, snapshot);
+      debug('database snapshot completed');
     } finally {
       source.close();
     }
@@ -299,16 +329,29 @@ export async function runProblemClustering({
           ...problem,
           evidence: JSON.parse(evidence)
         })));
+        completedPackages += 1;
       } catch (error) {
-        if (signal?.aborted) throw signal.reason;
+        if (signal?.aborted) {
+          debug('clustering cancelled completed_packages=%d duration_ms=%d', completedPackages, Math.round(performance.now() - startedAt));
+          throw signal.reason;
+        }
         const message = error instanceof Error ? error.message : String(error);
         warnings.push({ package: entry.package, message });
+        debug('package retained after failure package=%s warnings=%d', entry.package, warnings.length);
         console.warn(`Warning: ${message}`);
       }
     }
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
+    debug('temporary snapshot removed');
   }
+  debug(
+    'clustering completed scripts=%d problems=%d warnings=%d duration_ms=%d',
+    scripts.length,
+    values.length,
+    warnings.length,
+    Math.round(performance.now() - startedAt)
+  );
   return {
     command: 'cluster-problems',
     timestamp: observedAt,

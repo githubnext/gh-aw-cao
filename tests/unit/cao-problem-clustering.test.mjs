@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -223,7 +224,7 @@ test('cancellation terminates the active worker and stops package processing', a
     await writeFile(path.join(packageRoot, 'z-unreached', 'problem-clustering.mjs'), `
       console.log(JSON.stringify({ id: 'unexpected', title: 'Unexpected problem' }));
     `);
-    setTimeout(() => controller.abort(new Error('clustering cancelled')), 50).unref();
+    setTimeout(() => controller.abort(new Error('clustering cancelled')), 500).unref();
 
     await assert.rejects(
       runProblemClustering({
@@ -244,6 +245,49 @@ test('cancellation terminates the active worker and stops package processing', a
     } finally {
       verify.close();
     }
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
+});
+
+test('debug logging reports lifecycle metadata without problem evidence', async () => {
+  const temporary = await mkdtemp(path.join(os.tmpdir(), 'cao-problem-clustering-debug-'));
+  const databasePath = path.join(temporary, 'activity.sqlite');
+  const packageRoot = path.join(temporary, 'packages');
+  const packageDirectory = path.join(packageRoot, 'alpha');
+  const sensitiveEvidence = 'must-not-appear-in-debug-output';
+  try {
+    await mkdir(packageDirectory, { recursive: true });
+    new DatabaseSync(databasePath).close();
+    await writeFile(path.join(packageDirectory, 'problem-clustering.mjs'), `
+      console.log(JSON.stringify({
+        id: 'debug-problem',
+        title: 'Debug problem',
+        evidence: { detail: '${sensitiveEvidence}' }
+      }));
+    `);
+    const moduleUrl = new URL('../../activity/problem-clustering.mjs', import.meta.url).href;
+    const execution = spawnSync(process.execPath, [
+      '--input-type=module',
+      '--eval',
+      `import { runProblemClustering } from ${JSON.stringify(moduleUrl)};
+       await runProblemClustering(${JSON.stringify({
+         databasePath,
+         root: packageRoot,
+         timestamp: '2026-09-24T23:05:09.441Z'
+       })});`
+    ], {
+      encoding: 'utf8',
+      env: { ...process.env, NODE_DEBUG: 'cao:problem-clustering' }
+    });
+
+    assert.equal(execution.status, 0, execution.stderr);
+    assert.match(execution.stderr, /clustering started/);
+    assert.match(execution.stderr, /worker starting package=alpha/);
+    assert.match(execution.stderr, /worker completed package=alpha/);
+    assert.match(execution.stderr, /problems replaced package=alpha count=1/);
+    assert.match(execution.stderr, /clustering completed scripts=1 problems=1 warnings=0/);
+    assert.doesNotMatch(execution.stderr, new RegExp(sensitiveEvidence));
   } finally {
     await rm(temporary, { recursive: true, force: true });
   }

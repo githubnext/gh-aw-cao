@@ -115,6 +115,12 @@ and timeouts are isolated per package; cancellation terminates the active worker
 and stops further package processing while retaining rows committed by workers
 that already completed.
 
+Set `NODE_DEBUG=cao:problem-clustering` to trace discovery, snapshot creation,
+worker lifecycle and duration, bounded output size, persistence counts, failure
+retention, cleanup, and cancellation. Debug events contain package names and
+aggregate metadata only; they do not include problem records, evidence, worker
+output, database contents, or credentials.
+
 Run the same discovery locally with:
 
 ```bash
