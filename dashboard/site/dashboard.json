@@ -12714,6 +12714,12 @@
             "description": "Average AI Credit cost per observed workflow run by agent and model combination.",
             "data": {
               "source": "engines-models-usage",
+              "order-by": [
+                {
+                  "field": "average-aic-per-run",
+                  "direction": "desc"
+                }
+              ],
               "limit": 100
             },
             "mark": "chart",

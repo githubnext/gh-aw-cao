@@ -769,6 +769,10 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelectorAll('[data-chart-widget="pie"]')).toHaveLength(1);
     expect(page?.querySelectorAll('[data-chart-widget="horizontal-bar"]')).toHaveLength(1);
     expect(page?.querySelector('[data-view-id="engines-models-distribution"] + [data-view-id="engines-models-cost"] + [data-view-id="engines-models-usage"]')).not.toBeNull();
+    expect([...(page?.querySelectorAll('[data-view-id="engines-models-cost"] .horizontal-bar-chart-label') ?? [])].map((value) => value.textContent))
+      .toEqual(['pi / claude-sonnet-5', 'copilot / gpt-5.6-sol']);
+    expect([...(page?.querySelectorAll('[data-view-id="engines-models-cost"] .horizontal-bar-chart-value') ?? [])].map((value) => value.textContent))
+      .toEqual(['8', '5']);
     expect(page?.getAttribute('data-page-title')).toBe('Models & Agents');
     expect(page?.textContent).toContain('copilot');
     expect(page?.textContent).toContain('gpt-5.6-sol');
