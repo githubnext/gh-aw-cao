@@ -234,12 +234,20 @@ jobs:
             --retention-days 30 \
             --max-github-api-rate-limit -2000
 
+      - name: Generate operational value shards
+        env:
+          REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
+        run: |
           node activity/cao.mjs hash-payloads \
             --shard-dir "$REPORT_GH_AW_LOGS_SHARDS" \
             --runs-dir "$RUNNER_TEMP/cao-activity/gh-aw-logs-runs" \
             --records-dir "$RUNNER_TEMP/cao-activity/gh-aw-logs-records" \
             --inventory "$RUNNER_TEMP/cao-activity/inventory-sources.json"
 
+      - name: Ingest operational value
+        env:
+          ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
+        run: |
           node activity/cao.mjs ingest-jsonl \
             --database "$ACTIVITY_DATABASE" \
             --runs-dir "$RUNNER_TEMP/cao-activity/gh-aw-logs-runs" \
