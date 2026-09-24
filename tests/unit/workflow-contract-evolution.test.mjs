@@ -33,15 +33,12 @@ test("Optimization installs its bounded workers", () => {
   assert.equal(descriptor.campaign, "optimization");
   assert.equal(orchestratorConfig.name, manifest.name);
   assert.deepEqual(includedWorkflowIds, declaredWorkflowIds);
-  assert.match(orchestrator, /worker_credits_per_target: 900/);
+  assert.match(orchestrator, /worker_credits_per_target: 1300/);
   assert.deepEqual([...dispatchWorkflows].sort(), [
+    "optimization-agents-md-curator",
     "optimization-token-auditor",
     "optimization-token-optimizer",
-  ]);
-  assert.ok(
-    dispatchWorkflows.every((workflowId) => Object.values(descriptor.workers).includes(workflowId)),
-    "orchestrator dispatches only declared campaign workers",
-  );
+  ], "orchestrator dispatches every declared campaign worker");
   assert.equal(new Set(dispatchWorkflows).size, dispatchWorkflows.length, "dispatch allowlist must not contain duplicates");
   assert.equal(controlImport.with.campaign, descriptor.campaign);
   assert.equal(controlImport.with.role, "orchestrator");

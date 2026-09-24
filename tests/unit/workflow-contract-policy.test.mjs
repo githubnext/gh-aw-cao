@@ -252,7 +252,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "eslint-rules-librarian.md": { credits: 300, timeout: 25 },
     "eu-cra-compliance.md": { credits: 200, timeout: 15, dispatchMax: 48, workers: 6 },
     "eu-cra-compliance-campaign-maintainer.md": { credits: 200, timeout: 20 },
-    "optimization.md": { credits: 250, timeout: 15, dispatchMax: 12, workers: 2 },
+    "optimization.md": { credits: 250, timeout: 15, dispatchMax: 12, workers: 3 },
     "self-care.md": { credits: 200, timeout: 15, dispatchMax: 15, workers: 15 },
     "cao-evolution-failures-investigator.md": { credits: 500, timeout: 30 },
     "cao-evolution-compiler-security.md": { credits: 500, timeout: 45 },

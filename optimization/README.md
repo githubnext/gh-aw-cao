@@ -14,7 +14,7 @@ Optimization gives maintainers evidence-bounded audits and recommendations for r
 | [`optimization-token-auditor`](../.github/workflows/optimization-token-auditor.md) | Audits one repository's measured agentic-workflow AI Credit, token use, and reliability. |
 | [`optimization-token-optimizer`](../.github/workflows/optimization-token-optimizer.md) | Finds one evidence-complete agentic workflow and recommends a conservative, measurable efficiency change. |
 
-Workers are independently dispatchable and handle exactly one authorized target repository. The orchestrator dispatches the token workers; the `AGENTS.md` curator is available for an explicitly authorized worker dispatch. Review mode routes findings and recommendations to the control repository; live mode may open the equivalent issue on the target repository.
+Workers are independently dispatchable and handle exactly one authorized target repository. The orchestrator dispatches all three workers. Review mode routes findings and recommendations to the control repository; live mode may open the equivalent issue on the target repository.
 
 ## Install
 

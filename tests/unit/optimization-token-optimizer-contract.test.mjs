@@ -30,7 +30,7 @@ test("Optimization workers use deterministic one-shot operational-value contract
   }
 });
 
-test("Optimization campaign installs its workers and token evaluators", () => {
+test("Optimization campaign installs its workers and evaluators", () => {
   const manifest = readFileSync(join(root, "optimization", "aw.yml"), "utf8");
   const descriptor = JSON.parse(readFileSync(join(root, "optimization", "cao.json"), "utf8"));
 
@@ -69,10 +69,10 @@ test("Optimization workers are review-capped, target-scoped, and idempotent", ()
   }
 });
 
-test("Optimization orchestrator dispatches exactly the two token workers", () => {
+test("Optimization orchestrator dispatches all three workers", () => {
   const source = workflow("optimization.md");
 
-  assert.match(source, /workflows: \[optimization-token-auditor, optimization-token-optimizer\]/);
+  assert.match(source, /workflows: \[optimization-agents-md-curator, optimization-token-auditor, optimization-token-optimizer\]/);
   assert.match(source, /threat-detection: false/);
   assert.match(source, /group: "\$\{\{ github\.workflow \}\}"/);
   assert.match(source, /\{\{#runtime-import\? \.github\/cao\/optimization\.md\}\}/);
