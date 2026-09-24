@@ -1266,15 +1266,46 @@ function deployedDataUrl(value) {
   return url;
 }
 
+class TransientDownloadError extends Error {}
+
+function isTransientTransportError(error) {
+  const transientCodes = new Set([
+    'EAI_AGAIN',
+    'ECONNREFUSED',
+    'ECONNRESET',
+    'ENETUNREACH',
+    'EPIPE',
+    'ETIMEDOUT',
+    'UND_ERR_SOCKET'
+  ]);
+  return error instanceof TypeError
+    || error?.name === 'AbortError'
+    || error?.name === 'TimeoutError'
+    || transientCodes.has(error?.code)
+    || (error?.cause && isTransientTransportError(error.cause));
+}
+
 async function downloadFile(url, destination, { allowEmpty = false } = {}) {
-  const response = await fetch(url, {
-    headers: { accept: 'application/x-ndjson, application/json, text/plain' },
-    redirect: 'follow',
-    signal: AbortSignal.timeout(120_000)
-  });
+  let response;
+  try {
+    response = await fetch(url, {
+      headers: { accept: 'application/x-ndjson, application/json, text/plain' },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(120_000)
+    });
+  } catch (error) {
+    throw new TransientDownloadError(`Unable to download ${url}: transport failure`, { cause: error });
+  }
   if (!response.ok) throw new Error(`Unable to download ${url}: HTTP ${response.status}`);
   if (!response.body) throw new Error(`Unable to download ${url}: response body is empty`);
-  await pipeline(Readable.fromWeb(response.body), createWriteStream(destination, { flags: 'wx' }));
+  try {
+    await pipeline(Readable.fromWeb(response.body), createWriteStream(destination, { flags: 'wx' }));
+  } catch (error) {
+    if (isTransientTransportError(error)) {
+      throw new TransientDownloadError(`Unable to download ${url}: interrupted response`, { cause: error });
+    }
+    throw error;
+  }
   const size = (await stat(destination)).size;
   if (!allowEmpty && size === 0) {
     throw new Error(`Unable to download ${url}: response body is empty`);
@@ -1304,8 +1335,8 @@ export async function downloadDeployedDashboardData({
   const inventoryPath = path.join(outputDirectory, 'inventory-sources.json');
   const isChecksumMismatch = (error) => error instanceof Error
     && /^Activity (?:SQLite|shard) checksum mismatch: /.test(error.message);
-  const isTransientDownloadFailure = (error) => error instanceof Error
-    && /: HTTP (?:408|425|429|5\d\d)$/.test(error.message);
+  const isTransientDownloadFailure = (error) => error instanceof TransientDownloadError
+    || (error instanceof Error && /: HTTP (?:408|425|429|5\d\d)$/.test(error.message));
 
   const downloadAttempt = async () => {
     const temporaryDirectory = await mkdtemp(path.join(outputDirectory, '.deployed-dashboard-'));

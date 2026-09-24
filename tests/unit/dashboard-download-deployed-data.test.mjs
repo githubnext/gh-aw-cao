@@ -340,7 +340,7 @@ test("downloads the deployed compacted activity shards and SQLite file without r
     }
   });
 
-  test("retries transient deployed shard HTTP failures", async () => {
+  test("retries transient deployed shard HTTP and transport failures", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "deployed-dashboard-http-retry-"));
     const output = path.join(root, "activity");
     const runsContent = '{"kind":"metadata","phase":"runs","records":0}\n';
@@ -357,6 +357,10 @@ test("downloads the deployed compacted activity shards and SQLite file without r
         if (shardRequests === 1) {
           response.writeHead(503);
           response.end();
+          return;
+        }
+        if (shardRequests === 2) {
+          response.destroy();
           return;
         }
       }
@@ -381,7 +385,7 @@ test("downloads the deployed compacted activity shards and SQLite file without r
         "--output",
         output,
       ]);
-      assert.equal(shardRequests, 2);
+      assert.equal(shardRequests, 3);
       assert.equal(await readFile(path.join(output, "gh-aw-logs-runs", "fixture.jsonl"), "utf8"), runsContent);
     } finally {
       await new Promise((resolve) => server.close(resolve));
