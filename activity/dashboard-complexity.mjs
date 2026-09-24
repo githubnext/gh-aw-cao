@@ -56,7 +56,7 @@ export function formatDashboardComplexityMarkdown(analysis, { limit, queryId } =
     ? 'none'
     : sourceCoefficients.map(([source, coefficient]) => `${markdownCode(source)} ${coefficient}`).join(', ');
   return [
-    '## Dashboard query complexity',
+    '### Dashboard query complexity',
     '',
     `Estimated **${analysis.summary['materialize-all-row-read-units']} normalized row-read units** to materialize all ${analysis.queries} queries once with shared dependencies reused.`,
     ...(queryId === undefined ? [] : ['', `Selected query: ${markdownCode(queryId)}.`]),

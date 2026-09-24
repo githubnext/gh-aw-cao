@@ -121,6 +121,7 @@ test("dashboard CI runs the campaign quality gates", () => {
   assert.match(queryComplexityComment.block, /name: dashboard-query-complexity/);
   assert.match(queryComplexityComment.block, /<!-- dashboard-query-complexity -->/);
   assert.match(queryComplexityComment.block, /maximumReportLength = 60000/);
+  assert.match(queryComplexityComment.block, /<details><summary><b>Query complexity report<\/b><\/summary>/);
   assert.match(queryComplexityComment.block, /issues\.updateComment/);
   assert.match(queryComplexityComment.block, /issues\.createComment/);
   assert.deepEqual(lighthousePerformance.needs, []);
@@ -472,6 +473,8 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(workflow, /mobile-analysis-comment:[\s\S]*?permissions:[\s\S]*?pull-requests: write/);
   assert.match(workflow, /github\.event_name == 'pull_request'[\s\S]*?Comment with mobile analysis[\s\S]*?mobile-dashboard-analysis/);
   assert.match(workflow, /\| Visible target size \| Visible reflow \| Zoom \| Visible accessible names \|/);
+  assert.match(workflow, /### Mobile dashboard analysis/);
+  assert.match(workflow, /<details><summary><b>Mobile analysis measurements<\/b><\/summary>[\s\S]*?\| Visible target size \|[\s\S]*?<\/details>/);
   assert.match(workflow, /no visible targets/);
   assert.match(workflow, /existsSync\('mobile-analysis'\)/);
   assert.match(workflow, /width min.*height min/);

@@ -109,4 +109,4 @@ Move open pull requests labeled `sous-chef` toward merge by fixing actionable co
 8. Break ties by lower pull request number so repeated runs are deterministic.
 9. If no candidate needs a code change, call `noop` with concise counts for evaluated, pending, blocked-but-not-fixable, and ready pull requests.
 
-Never target another repository. Never use raw GitHub writes; all branch pushes and comments must use their declared safe outputs.
+Never target another repository. Never use raw GitHub writes; all branch pushes and comments must use their declared safe outputs. In every comment body, use `###` for every heading; never use `#`, `##`, or `####` and deeper headings. Put every Markdown table inside a clearly named `<details>` element.

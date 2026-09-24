@@ -82,4 +82,6 @@ Review the pull request's changed lines with the smallest relevant set of the in
    - `APPROVE` only when no actionable defect remains.
 9. If the context cannot support a review, call `noop` with the specific missing evidence. Otherwise, approve a pull request with no actionable defect instead of posting generic praise.
 
+In every inline comment and overall review body, use `###` for every heading; never use `#`, `##`, or `####` and deeper headings. Put every Markdown table inside a clearly named `<details>` element.
+
 Do not fetch the full diff again. If the 3000-line prefetch is insufficient, state the review limitation instead of making unsupported claims.

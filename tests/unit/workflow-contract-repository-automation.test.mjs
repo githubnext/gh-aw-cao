@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { generatedJobs, root, workflow } from "./workflow-contract.helpers.mjs";
@@ -47,7 +47,27 @@ test("Actions lint failures create new pull request comments without comment loo
 
   assert.match(pullRequestReporter, /needs\.lint\.outputs\.failed == 'true'/);
   assert.match(pullRequestReporter, /github\.rest\.issues\.createComment/);
+  assert.match(pullRequestReporter, /### GitHub Actions lint failures/);
+  assert.doesNotMatch(pullRequestReporter, /['"`]#{1,2} /);
   assert.doesNotMatch(pullRequestReporter, /listComments|updateComment|deleteComment/);
+});
+
+test("comment-writing workflow actions are explicitly inventoried", () => {
+  const commentWriters = readdirSync(join(root, ".github", "workflows"))
+    .filter((name) => name.endsWith(".yml"))
+    .filter((name) => workflow(name).includes("github.rest.issues.createComment"))
+    .toSorted();
+
+  assert.deepEqual(commentWriters, [
+    "action-lint.yml",
+    "actions.yml",
+    "cid.yml",
+    "dashboard-deployed-integration.yml",
+    "dashboard-views.yml",
+    "svg-contrast-check.yml",
+  ]);
+  assert.match(workflow("svg-contrast-check.yml"), /### Affected files/);
+  assert.doesNotMatch(workflow("svg-contrast-check.yml"), /\? '## Affected files/);
 });
 
 test("Actions lint issue reporter uses GraphQL issue APIs", () => {

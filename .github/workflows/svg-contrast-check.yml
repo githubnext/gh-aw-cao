@@ -136,7 +136,7 @@ jobs:
               'This can make diagrams unreadable — for example, white text on a white background.',
               '',
               fileBlocks.length > 0
-                ? '## Affected files\n\n' + fileBlocks.join('\n\n')
+                ? '### Affected files\n\n' + fileBlocks.join('\n\n')
                 : 'See the workflow run for the full list of violations and which files to fix.',
             ].join('\n')
 
