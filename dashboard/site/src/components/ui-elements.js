@@ -5,6 +5,7 @@
 import { renderCampaignRouteView } from './campaign-route-view.js';
 import { text as stringValue } from './count-formatters.js';
 import { renderConfigurationView } from './configuration-view.js';
+import { renderEntityRoute } from './entity-route.js';
 import { renderFactoryFloorElement } from './factory-floor.js';
 import { renderFactoryHeaderElement } from './factory-header.js';
 import { renderLinkButtonList } from './link-button-list.js';
@@ -45,6 +46,7 @@ const ELEMENT_RENDERERS = new Map([
   ['outcome-detail-section', renderOutcomeDetailSectionElement],
   ['problem-detail', renderProblemDetail],
   ['configuration-policy', renderConfigurationView],
+  ['entity-route', renderEntityRoute],
   ['measure-history', renderMeasureHistory],
   ['factory-header', renderFactoryHeaderElement],
   ['factory-floor', renderFactoryFloorElement],
@@ -70,6 +72,7 @@ const EMPTY_AWARE_ELEMENTS = new Set([
   'outcome-detail-section',
   'problem-detail',
   'configuration-policy',
+  'entity-route',
   'measure-history',
   'factory-header',
   'factory-floor',

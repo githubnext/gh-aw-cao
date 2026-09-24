@@ -7944,7 +7944,7 @@
           ],
           "values": [
             {
-            "field": "campaign",
+              "field": "campaign",
               "as": "items",
               "reducer": "count"
             }
@@ -8821,6 +8821,90 @@
             "direction": "asc"
           }
         ]
+      },
+      {
+        "name": "domain-entity-insights",
+        "intent": "Summarize one domain entity for its dedicated Insights view.",
+        "from": "domains",
+        "aggregate": {
+          "by": [
+            "domain",
+            "decision"
+          ],
+          "values": [
+            {
+              "field": "id",
+              "as": "observations",
+              "reducer": "count"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "observations",
+            "direction": "desc"
+          },
+          {
+            "field": "decision",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
+        "name": "tool-entity-insights",
+        "intent": "Summarize one tool entity for its dedicated Insights view.",
+        "from": "tools",
+        "aggregate": {
+          "by": [
+            "name",
+            "event-status"
+          ],
+          "values": [
+            {
+              "field": "id",
+              "as": "observations",
+              "reducer": "count"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "observations",
+            "direction": "desc"
+          },
+          {
+            "field": "event-status",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
+        "name": "audit-entity-insights",
+        "intent": "Summarize one audit event entity for its dedicated Insights view.",
+        "from": "audits",
+        "aggregate": {
+          "by": [
+            "event-summary",
+            "event-status"
+          ],
+          "values": [
+            {
+              "field": "id",
+              "as": "observations",
+              "reducer": "count"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "observations",
+            "direction": "desc"
+          },
+          {
+            "field": "event-status",
+            "direction": "asc"
+          }
+        ]
       }
     ],
     "pages": [
@@ -8884,8 +8968,8 @@
             "column-summaries": true,
             "card-drill": {
               "type": "query",
-              "page": "firewall-domain-workflows",
-              "query": "firewall-domain-workflows",
+              "page": "domain-insights",
+              "query": "domain-entity-insights",
               "title-field": "domain",
               "arguments": [
                 {
@@ -9003,6 +9087,18 @@
                   "field": "workflows",
                   "type": "quantitative",
                   "title": "Workflows"
+                }
+              ]
+            },
+            "card-drill": {
+              "type": "query",
+              "page": "tool-insights",
+              "query": "tool-entity-insights",
+              "title-field": "mcp-tool",
+              "arguments": [
+                {
+                  "name": "tool",
+                  "field": "mcp-tool"
                 }
               ]
             }
@@ -10429,9 +10525,24 @@
           "tabs-class-name": "campaign-tabs",
           "tab": "insights",
           "tabs": [
-            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            }
           ]
         },
         "views": [
@@ -10525,9 +10636,24 @@
           "tabs-class-name": "campaign-tabs",
           "tab": "problems",
           "tabs": [
-            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            }
           ]
         },
         "views": [
@@ -10666,9 +10792,24 @@
           "title-format": "title-case",
           "tabs-class-name": "campaign-tabs",
           "tabs": [
-            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            }
           ]
         },
         "views": [
@@ -10710,9 +10851,24 @@
           "title-format": "title-case",
           "tabs-class-name": "campaign-tabs",
           "tabs": [
-            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            }
           ]
         },
         "views": [
@@ -10818,9 +10974,24 @@
           "tabs-class-name": "campaign-tabs",
           "tab": "issues",
           "tabs": [
-            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            }
           ]
         },
         "views": [
@@ -10942,9 +11113,24 @@
           "title-format": "title-case",
           "tabs-class-name": "campaign-tabs",
           "tabs": [
-            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            }
           ]
         },
         "views": [
@@ -11057,9 +11243,24 @@
           "title-format": "title-case",
           "tabs-class-name": "campaign-tabs",
           "tabs": [
-            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            }
           ]
         },
         "views": [
@@ -11311,9 +11512,24 @@
           "title-format": "title-case",
           "tabs-class-name": "campaign-tabs",
           "tabs": [
-            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            }
           ]
         },
         "views": [
@@ -11428,9 +11644,24 @@
           "title-format": "title-case",
           "tabs-class-name": "campaign-tabs",
           "tabs": [
-            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            }
           ]
         },
         "views": [
@@ -13048,6 +13279,561 @@
                   "type": "nominal",
                   "title": "Finding",
                   "display": "run-link"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "domain-insights",
+        "kind": "custom",
+        "title": "Domain",
+        "icon": "graph",
+        "description": "Insights for the selected domain entity.",
+        "route": {
+          "hash-query-parameter": "domain",
+          "navigation-page": "firewall",
+          "tab": "insights",
+          "tabs": [
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "domain-insights"
+            },
+            {
+              "id": "runs",
+              "label": "Runs",
+              "icon": "play",
+              "page": "domain-runs"
+            }
+          ]
+        },
+        "views": [
+          {
+            "id": "domain-route-chrome",
+            "title": "Domain insights",
+            "data": {
+              "sources": [
+                "domains"
+              ],
+              "arguments": [
+                {
+                  "name": "domain",
+                  "field": "domain"
+                }
+              ]
+            },
+            "mark": "element",
+            "element": "entity-route",
+            "layout": "full",
+            "title-link": {
+              "href-field": "run-link",
+              "identifier-field": "domain"
+            }
+          },
+          {
+            "id": "domain-insights-chart",
+            "title": "Requests by firewall decision",
+            "data": {
+              "source": "domain-entity-insights",
+              "arguments": [
+                {
+                  "name": "domain",
+                  "field": "domain"
+                }
+              ]
+            },
+            "mark": "chart",
+            "chart": "bar",
+            "layout": "full",
+            "encoding": {
+              "x": {
+                "field": "decision",
+                "type": "nominal",
+                "title": "Decision"
+              },
+              "y": {
+                "field": "observations",
+                "type": "quantitative",
+                "title": "Observations"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": "domain-runs",
+        "kind": "custom",
+        "title": "Domain",
+        "icon": "play",
+        "description": "Runs related to the selected domain entity.",
+        "route": {
+          "hash-query-parameter": "domain",
+          "navigation-page": "firewall",
+          "tab": "runs",
+          "tabs": [
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "domain-insights"
+            },
+            {
+              "id": "runs",
+              "label": "Runs",
+              "icon": "play",
+              "page": "domain-runs"
+            }
+          ]
+        },
+        "views": [
+          {
+            "id": "domain-runs-route-chrome",
+            "title": "Domain runs",
+            "data": {
+              "sources": [
+                "domains"
+              ],
+              "arguments": [
+                {
+                  "name": "domain",
+                  "field": "domain"
+                }
+              ]
+            },
+            "mark": "element",
+            "element": "entity-route",
+            "layout": "full",
+            "title-link": {
+              "href-field": "run-link",
+              "identifier-field": "domain"
+            }
+          },
+          {
+            "id": "domain-runs-table",
+            "title": "Related runs",
+            "description": "Run records related to this domain.",
+            "data": {
+              "source": "domains",
+              "arguments": [
+                {
+                  "name": "domain",
+                  "field": "domain"
+                }
+              ],
+              "order-by": [
+                {
+                  "field": "observed-at",
+                  "direction": "desc"
+                }
+              ]
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "column-summaries": true,
+            "layout": "full-view",
+            "empty-message": "No related runs are available.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "run",
+                  "type": "nominal",
+                  "title": "Run",
+                  "display": "run-link"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "decision",
+                  "type": "nominal",
+                  "title": "Decision",
+                  "display": "status"
+                },
+                {
+                  "field": "observed-at",
+                  "type": "temporal",
+                  "title": "Observed"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "tool-insights",
+        "kind": "custom",
+        "title": "Tool",
+        "icon": "graph",
+        "description": "Insights for the selected tool entity.",
+        "route": {
+          "hash-query-parameter": "tool",
+          "navigation-page": "mcps",
+          "tab": "insights",
+          "tabs": [
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "tool-insights"
+            },
+            {
+              "id": "runs",
+              "label": "Runs",
+              "icon": "play",
+              "page": "tool-runs"
+            }
+          ]
+        },
+        "views": [
+          {
+            "id": "tool-route-chrome",
+            "title": "Tool insights",
+            "data": {
+              "sources": [
+                "tools"
+              ],
+              "arguments": [
+                {
+                  "name": "tool",
+                  "field": "name"
+                }
+              ]
+            },
+            "mark": "element",
+            "element": "entity-route",
+            "layout": "full",
+            "title-link": {
+              "href-field": "run-link",
+              "identifier-field": "name"
+            }
+          },
+          {
+            "id": "tool-insights-chart",
+            "title": "Calls by status",
+            "data": {
+              "source": "tool-entity-insights",
+              "arguments": [
+                {
+                  "name": "tool",
+                  "field": "name"
+                }
+              ]
+            },
+            "mark": "chart",
+            "chart": "bar",
+            "layout": "full",
+            "encoding": {
+              "x": {
+                "field": "event-status",
+                "type": "nominal",
+                "title": "Status"
+              },
+              "y": {
+                "field": "observations",
+                "type": "quantitative",
+                "title": "Observations"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": "tool-runs",
+        "kind": "custom",
+        "title": "Tool",
+        "icon": "play",
+        "description": "Runs related to the selected tool entity.",
+        "route": {
+          "hash-query-parameter": "tool",
+          "navigation-page": "mcps",
+          "tab": "runs",
+          "tabs": [
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "tool-insights"
+            },
+            {
+              "id": "runs",
+              "label": "Runs",
+              "icon": "play",
+              "page": "tool-runs"
+            }
+          ]
+        },
+        "views": [
+          {
+            "id": "tool-runs-route-chrome",
+            "title": "Tool runs",
+            "data": {
+              "sources": [
+                "tools"
+              ],
+              "arguments": [
+                {
+                  "name": "tool",
+                  "field": "name"
+                }
+              ]
+            },
+            "mark": "element",
+            "element": "entity-route",
+            "layout": "full",
+            "title-link": {
+              "href-field": "run-link",
+              "identifier-field": "name"
+            }
+          },
+          {
+            "id": "tool-runs-table",
+            "title": "Related runs",
+            "description": "Run records related to this tool.",
+            "data": {
+              "source": "tools",
+              "arguments": [
+                {
+                  "name": "tool",
+                  "field": "name"
+                }
+              ],
+              "order-by": [
+                {
+                  "field": "observed-at",
+                  "direction": "desc"
+                }
+              ]
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "column-summaries": true,
+            "layout": "full-view",
+            "empty-message": "No related runs are available.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "run",
+                  "type": "nominal",
+                  "title": "Run",
+                  "display": "run-link"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "event-status",
+                  "type": "nominal",
+                  "title": "Status",
+                  "display": "status"
+                },
+                {
+                  "field": "observed-at",
+                  "type": "temporal",
+                  "title": "Observed"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "audit-insights",
+        "kind": "custom",
+        "title": "Audit event",
+        "icon": "graph",
+        "description": "Insights for the selected audit event entity.",
+        "route": {
+          "hash-query-parameter": "audit",
+          "navigation-page": "runs",
+          "tab": "insights",
+          "tabs": [
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "audit-insights"
+            },
+            {
+              "id": "runs",
+              "label": "Runs",
+              "icon": "play",
+              "page": "audit-runs"
+            }
+          ]
+        },
+        "views": [
+          {
+            "id": "audit-route-chrome",
+            "title": "Audit event insights",
+            "data": {
+              "sources": [
+                "audits"
+              ],
+              "arguments": [
+                {
+                  "name": "audit",
+                  "field": "event-summary"
+                }
+              ]
+            },
+            "mark": "element",
+            "element": "entity-route",
+            "layout": "full",
+            "title-link": {
+              "href-field": "run-link",
+              "identifier-field": "event-summary"
+            }
+          },
+          {
+            "id": "audit-insights-chart",
+            "title": "Observations by status",
+            "data": {
+              "source": "audit-entity-insights",
+              "arguments": [
+                {
+                  "name": "audit",
+                  "field": "event-summary"
+                }
+              ]
+            },
+            "mark": "chart",
+            "chart": "bar",
+            "layout": "full",
+            "encoding": {
+              "x": {
+                "field": "event-status",
+                "type": "nominal",
+                "title": "Status"
+              },
+              "y": {
+                "field": "observations",
+                "type": "quantitative",
+                "title": "Observations"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": "audit-runs",
+        "kind": "custom",
+        "title": "Audit event",
+        "icon": "play",
+        "description": "Runs related to the selected audit event entity.",
+        "route": {
+          "hash-query-parameter": "audit",
+          "navigation-page": "runs",
+          "tab": "runs",
+          "tabs": [
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "audit-insights"
+            },
+            {
+              "id": "runs",
+              "label": "Runs",
+              "icon": "play",
+              "page": "audit-runs"
+            }
+          ]
+        },
+        "views": [
+          {
+            "id": "audit-runs-route-chrome",
+            "title": "Audit event runs",
+            "data": {
+              "sources": [
+                "audits"
+              ],
+              "arguments": [
+                {
+                  "name": "audit",
+                  "field": "event-summary"
+                }
+              ]
+            },
+            "mark": "element",
+            "element": "entity-route",
+            "layout": "full",
+            "title-link": {
+              "href-field": "run-link",
+              "identifier-field": "event-summary"
+            }
+          },
+          {
+            "id": "audit-runs-table",
+            "title": "Related runs",
+            "description": "Run records related to this audit event.",
+            "data": {
+              "source": "audits",
+              "arguments": [
+                {
+                  "name": "audit",
+                  "field": "event-summary"
+                }
+              ],
+              "order-by": [
+                {
+                  "field": "observed-at",
+                  "direction": "desc"
+                }
+              ]
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "column-summaries": true,
+            "layout": "full-view",
+            "empty-message": "No related runs are available.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "run",
+                  "type": "nominal",
+                  "title": "Run",
+                  "display": "run-link"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "event-status",
+                  "type": "nominal",
+                  "title": "Status",
+                  "display": "status"
+                },
+                {
+                  "field": "observed-at",
+                  "type": "temporal",
+                  "title": "Observed"
                 }
               ]
             }

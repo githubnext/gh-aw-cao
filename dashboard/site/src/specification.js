@@ -88,6 +88,7 @@ export const VIEW_ELEMENT_VALUES = [
   'outcome-detail',
   'outcome-detail-section',
   'problem-detail',
+  'entity-route',
   'configuration-policy',
   'measure-history',
   'factory-header',
