@@ -1,14 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { state } from '../../src/reactive.js';
-import { FLOOR_DEFAULT_SOURCES, renderFactoryFloor } from '../../src/components/factory-floor.js';
-import { HEADER_DEFAULT_SOURCES, renderFactoryHeader } from '../../src/components/factory-header.js';
+import { renderFactoryFloor } from '../../src/components/factory-floor.js';
+import { renderFactoryHeader } from '../../src/components/factory-header.js';
 import { renderFactoryRhythm } from '../../src/components/factory-rhythm.js';
 import { renderFactoryStation } from '../../src/components/factory-station.js';
-
-/** @typedef {{ operations: number, live: number, review: number }} Motion */
-/** @typedef {{ total: number, registered: number, averageCoverage: number, unavailable: boolean, registeredUnavailable: boolean, coverageUnavailable: boolean }} Coverage */
-/** @typedef {{ campaigns: () => number, campaignTotal: () => number, campaignHealth: () => number, issues: () => number, successfulRuns: () => number, failedRuns: () => number, activeRuns: () => number, valueGains: () => number, coverage: () => Coverage, workers: () => number, dispatches: () => number, failedDispatches: () => number, usefulOutputs: () => number, deliveredRepositories: () => number, motion: () => Motion }} TestMetrics */
 
 /**
  * @param {{ pending?: boolean, unavailable?: boolean, rows?: Record<string, unknown>[] }} [options]
@@ -18,48 +14,6 @@ function binding({ pending = false, unavailable = false, rows = [] } = {}) {
     rows: () => rows,
     pending: () => pending,
     unavailable: () => unavailable
-  };
-}
-
-/**
- * @param {Partial<{ campaigns: number, campaignTotal: number, campaignHealth: number, issues: number, successfulRuns: number, failedRuns: number, activeRuns: number, valueGains: number, coverage: Coverage, workers: number, dispatches: number, failedDispatches: number, usefulOutputs: number, deliveredRepositories: number, motion: Motion }>} [overrides]
- * @returns {TestMetrics}
- */
-function metrics(overrides = {}) {
-  const values = {
-    campaigns: 2,
-    campaignTotal: 3,
-    campaignHealth: 2 / 3,
-    issues: 5,
-    successfulRuns: 8,
-    failedRuns: 2,
-    activeRuns: 1,
-    valueGains: 3,
-    coverage: { total: 4, registered: 6, averageCoverage: 0.5, unavailable: false, registeredUnavailable: false, coverageUnavailable: false },
-    workers: 2,
-    dispatches: 7,
-    failedDispatches: 1,
-    usefulOutputs: 5,
-    deliveredRepositories: 4,
-    motion: { operations: 1, live: 1, review: 0 },
-    ...overrides
-  };
-  return {
-    campaigns: () => values.campaigns,
-    campaignTotal: () => values.campaignTotal,
-    campaignHealth: () => values.campaignHealth,
-    issues: () => values.issues,
-    successfulRuns: () => values.successfulRuns,
-    failedRuns: () => values.failedRuns,
-    activeRuns: () => values.activeRuns,
-    valueGains: () => values.valueGains,
-    coverage: () => values.coverage,
-    workers: () => values.workers,
-    dispatches: () => values.dispatches,
-    failedDispatches: () => values.failedDispatches,
-    usefulOutputs: () => values.usefulOutputs,
-    deliveredRepositories: () => values.deliveredRepositories,
-    motion: () => values.motion
   };
 }
 
@@ -138,54 +92,51 @@ describe('Overview component boundaries', () => {
 
   it('floor composes selected stations and owns their aggregate accessible summary', () => {
     const controller = new AbortController();
-    const motion = state({ operations: 1, live: 1, review: 0 });
     const sources = {
-      'database-campaign-count': binding(),
-      'overview-healthy-campaign-count': binding(),
-      'overview-registered-repository-summary': binding(),
-      'overview-repository-coverage': binding(),
-      'database-issue-count': binding(),
-      'overview-run-summary': binding(),
-      'overview-dispatch-summary': binding(),
-      'overview-value-summary': binding()
+      'overview-campaign-station': binding({ rows: [{
+        value: 2 / 3,
+        'display-value': '66.7%',
+        detail: '2/3 healthy campaigns',
+        description: '67% campaign health',
+        active: true
+      }] }),
+      'overview-repository-station': binding({ rows: [{
+        value: 0.5,
+        'display-value': '50%',
+        detail: '4/6 repositories reached',
+        description: '50% average repository coverage'
+      }] })
     };
-    /** @type {(name: string, count: number) => string} */
-    const label = (name, count) => ({
-      repositories: count === 1 ? 'Repository' : 'Repositories',
-      campaigns: count === 1 ? 'Campaign' : 'Campaigns',
-      issues: count === 1 ? 'Issue & PR' : 'Issues & PRs',
-      'successful-runs': count === 1 ? 'Successful run' : 'Successful runs',
-      dispatches: count === 1 ? 'Dispatch' : 'Dispatches',
-      'value-gains': count === 1 ? 'Value gain' : 'Value gains'
-    })[name] ?? name;
-    const scope = { signal: controller.signal, motion };
-    const rendered = renderFactoryFloor(sources, metrics(), label, false, scope, FLOOR_DEFAULT_SOURCES, ['campaigns', 'repositories']);
+    const rendered = renderFactoryFloor(
+      sources,
+      false,
+      { signal: controller.signal },
+      { campaigns: 'overview-campaign-station', repositories: 'overview-repository-station' },
+      ['campaigns', 'repositories']
+    );
 
     expect([...rendered.querySelectorAll('.factory-station strong')].map((element) => element.textContent)).toEqual(['66.7%', '50%']);
     expect([...rendered.querySelectorAll('.factory-station small')].map((element) => element.textContent)).toEqual(['2/3 healthy campaigns', '4/6 repositories reached']);
     expect(rendered.classList.contains('factory-floor-active')).toBe(true);
     expect(rendered.getAttribute('aria-label')).toBe('67% campaign health, 50% average repository coverage.');
-    motion.set({ operations: 0, live: 0, review: 0 });
-    expect(rendered.classList.contains('factory-floor-active')).toBe(false);
     controller.abort();
   });
 
-  it('header presents heading priority and rhythm composition without subtext', () => {
+  it('header presents declarative heading and rhythm composition without subtext', () => {
     const controller = new AbortController();
     const sources = {
-      'overview-factory-status': binding({ rows: [{ 'factory-heading': 'Your campaigns are delivering value.' }] }),
+      'overview-header-presentation': binding({ rows: [{ heading: 'Your campaigns are delivering value.' }] }),
       'overview-rhythm': binding({ rows: rhythmRows() })
     };
     const rendered = renderFactoryHeader(
       sources,
-      metrics(),
       { signal: controller.signal },
-      HEADER_DEFAULT_SOURCES
+      { presentation: 'overview-header-presentation', rhythm: 'overview-rhythm' }
     );
 
     expect(rendered.querySelector('.factory-running')).toBeNull();
     expect(rendered.querySelector('h2')?.textContent).toBe('Your campaigns are delivering value.');
-    expect(rendered.querySelector('.factory-intro-copy > p')).toBeNull();
+    expect(rendered.querySelector('.factory-intro-copy > p')?.hasAttribute('hidden')).toBe(true);
     expect(rendered.querySelector('.factory-rhythm')).not.toBeNull();
 
     controller.abort();

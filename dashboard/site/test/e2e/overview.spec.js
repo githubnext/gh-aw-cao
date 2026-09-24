@@ -53,6 +53,21 @@ const sources = {
   'overview-repository-coverage': source('overview-repository-coverage', [{ 'repository-coverage': 0.5, 'reached-repositories': 3, 'registered-repositories-total': 6 }]),
   'overview-value-summary': source('overview-value-summary', [{ 'value-gains': 1 }]),
   'overview-factory-status': source('overview-factory-status', [{ 'factory-heading': 'Your campaigns are delivering value.' }]),
+  'overview-header-presentation': source('overview-header-presentation', [{ heading: 'Your campaigns need attention.' }]),
+  'overview-campaign-station': source('overview-campaign-station', [{
+    value: 0.5,
+    'display-value': '50%',
+    detail: '1/2 healthy campaigns',
+    description: '50% campaign health',
+    active: true
+  }]),
+  'overview-repository-station': source('overview-repository-station', [{
+    value: 0.5,
+    'display-value': '50%',
+    detail: '3/6 repositories reached',
+    description: '50% average repository coverage',
+    active: true
+  }]),
   'overview-registered-repository-summary': source('overview-registered-repository-summary', [{ 'registered-repositories': 6 }]),
   'overview-worker-summary': source('overview-worker-summary', [{ workers: 3 }]),
   'database-campaign-count': source('database-campaign-count', [{ campaigns: 2 }]),
@@ -283,7 +298,7 @@ test('renders the Overview structure before mixed page data resolves', async ({ 
   });
 
   expect(immediate).toEqual({
-    sourceLoadCalls: 16,
+    sourceLoadCalls: 5,
     pageLoadCalls: 0,
     header: true,
     floor: true,

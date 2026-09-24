@@ -143,12 +143,12 @@ describe('dashboard document validation', () => {
     const overview = document.dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'overview');
     const floor = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'factory-floor');
     const header = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'factory-header');
-    floor.config.sources = { issues: 'database-issue-count' };
+    floor.config.sources = { campaigns: 'overview-campaign-station' };
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-    floor.config.sources = { workers: 'overview-worker-summary' };
+    floor.config.sources = { issues: 'database-issue-count' };
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
     delete floor.config.sources;
-    header.config = { sources: { status: 'overview-factory-status' } };
+    header.config = { sources: { presentation: 'overview-header-presentation' } };
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
     const links = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'link-button-list');
     links.config.sources = { status: 'overview-factory-status' };
@@ -728,10 +728,7 @@ describe('dashboard document validation', () => {
       expect.objectContaining({
         id: 'overview-header',
         description: 'Campaign health measures campaigns without current runtime errors; repository coverage measures registered repositories reached by successful worker execution.',
-        data: { sources: expect.arrayContaining([
-          'overview-factory-status',
-          'overview-rhythm'
-        ]) },
+        data: { sources: ['overview-header-presentation', 'overview-rhythm'] },
         mark: 'element',
         element: 'factory-header',
         layout: 'full',
@@ -739,14 +736,7 @@ describe('dashboard document validation', () => {
       }),
       expect.objectContaining({
         id: 'overview-floor',
-        data: { sources: expect.arrayContaining([
-          'overview-outcome-summary',
-          'overview-run-summary',
-          'overview-dispatch-summary',
-          'overview-value-summary',
-          'overview-registered-repository-summary',
-          'overview-worker-summary'
-        ]) },
+        data: { sources: ['overview-campaign-station', 'overview-repository-station'] },
         mark: 'element',
         element: 'factory-floor',
         config: expect.objectContaining({ animate: 'number' }),

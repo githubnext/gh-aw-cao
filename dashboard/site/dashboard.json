@@ -1804,152 +1804,6 @@
         }
       },
       {
-        "name": "database-issue-count",
-        "intent": "Count issues and pull requests in the dashboard database.",
-        "from": "issues",
-        "aggregate": {
-          "values": [
-            {
-              "field": "id",
-              "as": "issues",
-              "reducer": "count"
-            }
-          ]
-        }
-      },
-      {
-        "name": "overview-outcome-summary",
-        "intent": "Summarize distinct retained issue and pull request outputs and their delivered repositories.",
-        "from": "outcomes",
-        "compute": [
-          {
-            "as": "category-useful",
-            "function": "equals-any",
-            "args": [
-              {
-                "field": "outcome-category"
-              },
-              {
-                "value": "issue"
-              },
-              {
-                "value": "pull-request"
-              }
-            ]
-          },
-          {
-            "as": "kind-useful",
-            "function": "equals-any",
-            "args": [
-              {
-                "field": "safe-output-kind"
-              },
-              {
-                "value": "create-issue"
-              },
-              {
-                "value": "create-pull-request"
-              }
-            ]
-          },
-          {
-            "as": "category-score",
-            "function": "if",
-            "args": [
-              {
-                "field": "category-useful"
-              },
-              {
-                "value": 1
-              },
-              {
-                "value": 0
-              }
-            ]
-          },
-          {
-            "as": "kind-score",
-            "function": "if",
-            "args": [
-              {
-                "field": "kind-useful"
-              },
-              {
-                "value": 1
-              },
-              {
-                "value": 0
-              }
-            ]
-          },
-          {
-            "as": "useful-score",
-            "function": "sum",
-            "args": [
-              {
-                "field": "category-score"
-              },
-              {
-                "field": "kind-score"
-              }
-            ]
-          },
-          {
-            "as": "useful",
-            "function": "greater-than",
-            "args": [
-              {
-                "field": "useful-score"
-              },
-              {
-                "value": 0
-              }
-            ]
-          },
-          {
-            "as": "useful-output",
-            "function": "if",
-            "args": [
-              {
-                "field": "useful"
-              },
-              {
-                "field": "safe-output"
-              },
-              {
-                "value": ""
-              }
-            ]
-          }
-        ],
-        "aggregate": {
-          "values": [
-            {
-              "field": "useful-output",
-              "as": "useful-outputs",
-              "reducer": "distinct-count"
-            },
-            {
-              "field": "repository",
-              "as": "delivered-repositories",
-              "reducer": "distinct-count",
-              "filter": {
-                "predicates": [
-                  {
-                    "field": "outcome-state",
-                    "in": [
-                      "accepted",
-                      "completed",
-                      "lifecycle-close"
-                    ]
-                  }
-                ]
-              }
-            }
-          ]
-        }
-      },
-      {
         "name": "overview-run-summary",
         "intent": "Summarize successful, failed, and active runs with rollout-mode counts.",
         "from": "runs",
@@ -2067,46 +1921,6 @@
                   {
                     "field": "rollout-mode",
                     "equals": "review"
-                  }
-                ]
-              }
-            }
-          ]
-        }
-      },
-      {
-        "name": "overview-dispatch-summary",
-        "intent": "Count workflow dispatch runs and failures in the selected horizon.",
-        "from": "runs",
-        "filter": {
-          "predicates": [
-            {
-              "field": "event",
-              "equals": "workflow_dispatch"
-            }
-          ]
-        },
-        "aggregate": {
-          "values": [
-            {
-              "field": "run",
-              "as": "dispatches",
-              "reducer": "count"
-            },
-            {
-              "field": "run-conclusion",
-              "as": "failed-dispatches",
-              "reducer": "count",
-              "filter": {
-                "predicates": [
-                  {
-                    "field": "run-conclusion",
-                    "in": [
-                      "failure",
-                      "startup-failure",
-                      "stale",
-                      "timed-out"
-                    ]
                   }
                 ]
               }
@@ -2496,28 +2310,6 @@
             "field": "coverage-key"
           }
         ]
-      },
-      {
-        "name": "overview-worker-summary",
-        "intent": "Count declared campaign worker workflows.",
-        "from": "workflows",
-        "filter": {
-          "predicates": [
-            {
-              "field": "workflow-role",
-              "equals": "worker"
-            }
-          ]
-        },
-        "aggregate": {
-          "values": [
-            {
-              "field": "workflow",
-              "as": "workers",
-              "reducer": "count"
-            }
-          ]
-        }
       },
       {
         "name": "overview-rhythm",
@@ -6186,6 +5978,499 @@
             }
           ]
         }
+      },
+      {
+        "name": "overview-campaign-count-presentation-input",
+        "intent": "Prepare the campaign inventory count for Overview presentation queries.",
+        "from": "database-campaign-count",
+        "compute": [
+          {
+            "as": "overview-presentation-key",
+            "function": "concat",
+            "args": [
+              {
+                "value": "overview"
+              },
+              {
+                "value": "-presentation"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "overview-presentation-key"
+          },
+          {
+            "field": "campaigns"
+          }
+        ]
+      },
+      {
+        "name": "overview-healthy-campaign-presentation-input",
+        "intent": "Prepare the healthy campaign count for Overview presentation queries.",
+        "from": "overview-healthy-campaign-count",
+        "compute": [
+          {
+            "as": "overview-presentation-key",
+            "function": "concat",
+            "args": [
+              {
+                "value": "overview"
+              },
+              {
+                "value": "-presentation"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "overview-presentation-key"
+          },
+          {
+            "field": "healthy-campaigns"
+          }
+        ]
+      },
+      {
+        "name": "overview-campaign-health-presentation",
+        "intent": "Produce presentation-ready campaign health values for the Overview header and floor.",
+        "from": "overview-healthy-campaign-presentation-input",
+        "joins": [
+          {
+            "source": "overview-campaign-count-presentation-input",
+            "type": "left",
+            "on": [
+              {
+                "left": "overview-presentation-key",
+                "right": "overview-presentation-key"
+              }
+            ],
+            "fields": [
+              {
+                "field": "campaigns",
+                "as": "campaigns"
+              }
+            ]
+          }
+        ],
+        "compute": [
+          {
+            "as": "campaign-health",
+            "function": "quotient",
+            "args": [
+              {
+                "field": "healthy-campaigns"
+              },
+              {
+                "field": "campaigns"
+              }
+            ]
+          },
+          {
+            "as": "campaign-health-display",
+            "function": "format-percent",
+            "args": [
+              {
+                "field": "campaign-health"
+              }
+            ]
+          },
+          {
+            "as": "healthy-campaigns-display",
+            "function": "format-count",
+            "args": [
+              {
+                "field": "healthy-campaigns"
+              }
+            ]
+          },
+          {
+            "as": "campaigns-display",
+            "function": "format-count",
+            "args": [
+              {
+                "field": "campaigns"
+              }
+            ]
+          },
+          {
+            "as": "campaign-health-detail",
+            "function": "concat",
+            "args": [
+              {
+                "field": "healthy-campaigns-display"
+              },
+              {
+                "value": "/"
+              },
+              {
+                "field": "campaigns-display"
+              },
+              {
+                "value": " healthy campaigns"
+              }
+            ]
+          },
+          {
+            "as": "campaign-health-description",
+            "function": "concat",
+            "args": [
+              {
+                "field": "campaign-health-display"
+              },
+              {
+                "value": " campaign health"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "overview-presentation-key"
+          },
+          {
+            "field": "campaign-health"
+          },
+          {
+            "field": "campaign-health-display"
+          },
+          {
+            "field": "campaign-health-detail"
+          },
+          {
+            "field": "campaign-health-description"
+          }
+        ]
+      },
+      {
+        "name": "overview-header-status-presentation-input",
+        "intent": "Prepare the factory status heading for the declarative Overview header.",
+        "from": "overview-factory-status",
+        "compute": [
+          {
+            "as": "overview-presentation-key",
+            "function": "concat",
+            "args": [
+              {
+                "value": "overview"
+              },
+              {
+                "value": "-presentation"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "overview-presentation-key"
+          },
+          {
+            "field": "factory-heading"
+          }
+        ]
+      },
+      {
+        "name": "overview-header-presentation",
+        "intent": "Resolve the Overview heading from declarative status and campaign-health evidence.",
+        "from": "overview-header-status-presentation-input",
+        "joins": [
+          {
+            "source": "overview-campaign-health-presentation",
+            "type": "left",
+            "on": [
+              {
+                "left": "overview-presentation-key",
+                "right": "overview-presentation-key"
+              }
+            ],
+            "fields": [
+              {
+                "field": "campaign-health",
+                "as": "campaign-health"
+              }
+            ]
+          }
+        ],
+        "compute": [
+          {
+            "as": "campaign-health-positive",
+            "function": "greater-than",
+            "args": [
+              {
+                "field": "campaign-health"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "campaign-health-below-threshold",
+            "function": "greater-than",
+            "args": [
+              {
+                "value": 0.66
+              },
+              {
+                "field": "campaign-health"
+              }
+            ]
+          },
+          {
+            "as": "positive-campaign-health-heading",
+            "function": "if",
+            "args": [
+              {
+                "field": "campaign-health-below-threshold"
+              },
+              {
+                "value": "Your campaigns need attention."
+              },
+              {
+                "field": "factory-heading"
+              }
+            ]
+          },
+          {
+            "as": "heading",
+            "function": "if",
+            "args": [
+              {
+                "field": "campaign-health-positive"
+              },
+              {
+                "field": "positive-campaign-health-heading"
+              },
+              {
+                "field": "factory-heading"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "heading"
+          }
+        ]
+      },
+      {
+        "name": "overview-run-motion-presentation-input",
+        "intent": "Prepare active run state for Overview station presentation.",
+        "from": "overview-run-summary",
+        "compute": [
+          {
+            "as": "overview-presentation-key",
+            "function": "concat",
+            "args": [
+              {
+                "value": "overview"
+              },
+              {
+                "value": "-presentation"
+              }
+            ]
+          },
+          {
+            "as": "active",
+            "function": "greater-than",
+            "args": [
+              {
+                "field": "active-runs"
+              },
+              {
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "overview-presentation-key"
+          },
+          {
+            "field": "active"
+          }
+        ]
+      },
+      {
+        "name": "overview-campaign-station",
+        "intent": "Provide the presentation-ready campaign health station for Overview.",
+        "from": "overview-campaign-health-presentation",
+        "joins": [
+          {
+            "source": "overview-run-motion-presentation-input",
+            "type": "left",
+            "on": [
+              {
+                "left": "overview-presentation-key",
+                "right": "overview-presentation-key"
+              }
+            ],
+            "fields": [
+              {
+                "field": "active",
+                "as": "active"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "campaign-health",
+            "as": "value"
+          },
+          {
+            "field": "campaign-health-display",
+            "as": "display-value"
+          },
+          {
+            "field": "campaign-health-detail",
+            "as": "detail"
+          },
+          {
+            "field": "campaign-health-description",
+            "as": "description"
+          },
+          {
+            "field": "active"
+          }
+        ]
+      },
+      {
+        "name": "overview-repository-station-presentation-input",
+        "intent": "Prepare repository coverage for the presentation-ready Overview station.",
+        "from": "overview-repository-coverage",
+        "compute": [
+          {
+            "as": "overview-presentation-key",
+            "function": "concat",
+            "args": [
+              {
+                "value": "overview"
+              },
+              {
+                "value": "-presentation"
+              }
+            ]
+          },
+          {
+            "as": "display-value",
+            "function": "format-percent",
+            "args": [
+              {
+                "field": "repository-coverage"
+              }
+            ]
+          },
+          {
+            "as": "reached-repositories-display",
+            "function": "format-count",
+            "args": [
+              {
+                "field": "reached-repositories"
+              }
+            ]
+          },
+          {
+            "as": "registered-repositories-display",
+            "function": "format-count",
+            "args": [
+              {
+                "field": "registered-repositories-total"
+              }
+            ]
+          },
+          {
+            "as": "detail",
+            "function": "concat",
+            "args": [
+              {
+                "field": "reached-repositories-display"
+              },
+              {
+                "value": "/"
+              },
+              {
+                "field": "registered-repositories-display"
+              },
+              {
+                "value": " repositories reached"
+              }
+            ]
+          },
+          {
+            "as": "description",
+            "function": "concat",
+            "args": [
+              {
+                "field": "display-value"
+              },
+              {
+                "value": " average repository coverage"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "overview-presentation-key"
+          },
+          {
+            "field": "repository-coverage",
+            "as": "value"
+          },
+          {
+            "field": "display-value"
+          },
+          {
+            "field": "detail"
+          },
+          {
+            "field": "description"
+          }
+        ]
+      },
+      {
+        "name": "overview-repository-station",
+        "intent": "Provide the presentation-ready repository coverage station for Overview.",
+        "from": "overview-repository-station-presentation-input",
+        "joins": [
+          {
+            "source": "overview-run-motion-presentation-input",
+            "type": "left",
+            "on": [
+              {
+                "left": "overview-presentation-key",
+                "right": "overview-presentation-key"
+              }
+            ],
+            "fields": [
+              {
+                "field": "active",
+                "as": "active"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "value"
+          },
+          {
+            "field": "display-value"
+          },
+          {
+            "field": "detail"
+          },
+          {
+            "field": "description"
+          },
+          {
+            "field": "active"
+          }
+        ]
       },
       {
         "name": "campaign-problem-runs",
@@ -11786,9 +12071,7 @@
             "description": "Campaign health measures campaigns without current runtime errors; repository coverage measures registered repositories reached by successful worker execution.",
             "data": {
               "sources": [
-                "overview-factory-status",
-                "database-campaign-count",
-                "overview-healthy-campaign-count",
+                "overview-header-presentation",
                 "overview-rhythm"
               ]
             },
@@ -11802,17 +12085,8 @@
             "intent": "Show the registered campaign and repository inventory while preserving their investigation routes.",
             "data": {
               "sources": [
-                "database-campaign-count",
-                "overview-healthy-campaign-count",
-                "overview-registered-repository-summary",
-                "overview-repository-coverage",
-                "database-issue-count",
-                "overview-outcome-summary",
-                "overview-run-summary",
-                "overview-dispatch-summary",
-                "overview-delivery-summary",
-                "overview-value-summary",
-                "overview-worker-summary"
+                "overview-campaign-station",
+                "overview-repository-station"
               ]
             },
             "mark": "element",
@@ -11822,17 +12096,7 @@
               "stations": [
                 "campaigns",
                 "repositories"
-              ],
-              "labels": {
-                "campaigns": {
-                  "singular": "Campaign",
-                  "plural": "Campaigns"
-                },
-                "repositories": {
-                  "singular": "Repository",
-                  "plural": "Repositories"
-                }
-              }
+              ]
             },
             "layout": "full"
           },

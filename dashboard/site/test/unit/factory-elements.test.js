@@ -120,24 +120,23 @@ it('renders a link button list skeleton until its source resolves', async () => 
 
 it('renders the factory header from only its declared JSON sources', () => {
   const rendered = renderUiElement('factory-header', context('factory-header', {
-    'overview-run-summary': source('overview-run-summary', [{ 'active-runs': 4, 'active-live': 1, 'active-review': 3 }]),
-    'overview-factory-status': source('overview-factory-status', [{ 'factory-heading': 'Your campaigns are delivering value.' }]),
+    'overview-header-presentation': source('overview-header-presentation', [{ heading: 'Your campaigns are delivering value.' }]),
     'overview-rhythm': source('overview-rhythm', [{ rhythm }])
   }));
 
   expect(rendered?.classList.contains('factory-intro')).toBe(true);
   expect(rendered?.querySelector('.factory-running')).toBeNull();
   expect(rendered?.querySelector('h2')?.textContent).toBe('Your campaigns are delivering value.');
-  expect(rendered?.querySelector('.factory-intro-copy > p')).toBeNull();
+  expect(rendered?.querySelector('.factory-intro-copy > p')?.hasAttribute('hidden')).toBe(true);
   expect(rendered?.querySelectorAll('.factory-rhythm-day')).toHaveLength(7);
 });
 
 it('rebinds the factory header to differently named sources through config.sources', () => {
   const rendered = renderUiElement('factory-header', context('factory-header', {
-    'custom-status': source('custom-status', [{ 'factory-heading': 'Custom campaign status.' }]),
+    'custom-presentation': source('custom-presentation', [{ heading: 'Custom campaign status.' }]),
     'custom-rhythm': source('custom-rhythm', [{ rhythm }])
   }, {
-    sources: { status: 'custom-status', rhythm: 'custom-rhythm' }
+    sources: { presentation: 'custom-presentation', rhythm: 'custom-rhythm' }
   }));
 
   expect(rendered?.querySelector('h2')?.textContent).toBe('Custom campaign status.');
@@ -146,55 +145,43 @@ it('rebinds the factory header to differently named sources through config.sourc
 
 it('renders the factory floor from its independent JSON view and configuration', () => {
   const rendered = renderUiElement('factory-floor', context('factory-floor', {
-    'database-campaign-count': source('database-campaign-count', [{ campaigns: 2 }]),
-    'overview-healthy-campaign-count': source('overview-healthy-campaign-count', [{ 'healthy-campaigns': 2 }]),
-    'overview-outcome-summary': source('overview-outcome-summary', [{ 'useful-outputs': 2 }]),
-    'overview-run-summary': source('overview-run-summary', [{ 'successful-runs': 2, 'failed-runs': 2, 'active-runs': 4 }]),
-    'overview-dispatch-summary': source('overview-dispatch-summary', [{ dispatches: 4, 'failed-dispatches': 2 }]),
-    'overview-delivery-summary': source('overview-delivery-summary', [{ 'delivered-repositories': 3 }]),
-    'overview-value-summary': source('overview-value-summary', [{ 'value-gains': 1 }]),
-    'overview-registered-repository-summary': source('overview-registered-repository-summary', [{ 'registered-repositories': 6 }]),
-    'overview-repository-coverage': source('overview-repository-coverage', [{ 'repository-coverage': 0.5, 'reached-repositories': 3, 'registered-repositories-total': 6 }]),
-    'overview-worker-summary': source('overview-worker-summary', [{ workers: 2 }]),
-    'database-issue-count': source('database-issue-count', [{ issues: 5 }])
+    'overview-campaign-station': source('overview-campaign-station', [{
+      value: 1,
+      'display-value': '100%',
+      detail: '2/2 healthy campaigns',
+      description: '100% campaign health',
+      active: true
+    }]),
+    'overview-repository-station': source('overview-repository-station', [{
+      value: 0.5,
+      'display-value': '50%',
+      detail: '3/6 repositories reached',
+      description: '50% average repository coverage'
+    }])
   }, {
     animate: 'number',
-    labels: {
-      dispatches: { singular: 'Successful dispatch', plural: 'Successful dispatches' }
-    }
+    stations: ['campaigns', 'repositories']
   }));
 
   expect(rendered?.classList.contains('factory-floor-active')).toBe(true);
   expect([...rendered?.querySelectorAll('.factory-station') ?? []].map((station) => station.textContent)).toEqual([
     'Campaign health100%2/2 healthy campaigns',
-    'Repository coverage50%3/6 repositories reached',
-    'Issues & PRs5',
-    'Successful runs22 failed',
-    'Successful dispatches42 failed',
-    'Value gain1'
+    'Repository coverage50%3/6 repositories reached'
   ]);
-  expect(rendered?.querySelector('.factory-station:nth-child(3) strong a')?.getAttribute('href'))
-    .toBe('#page-issues');
-  expect(rendered?.querySelector('.factory-station:nth-child(4) strong .metric-number-animated')).not.toBeNull();
-  expect(rendered?.querySelector('.factory-station:nth-child(5) small a')?.getAttribute('href'))
-    .toBe('#page-dispatches?campaign-worker-dispatches.status=failure');
+  expect(rendered?.querySelector('.factory-station:nth-child(1) strong .metric-number-animated')).not.toBeNull();
   expect(rendered?.getAttribute('aria-label')).toContain('50% average repository coverage');
 });
 
 it('keeps unavailable registered repository evidence distinct from zero', () => {
   const rendered = renderUiElement('factory-floor', context('factory-floor', {
-    'database-campaign-count': source('database-campaign-count', [{ campaigns: 0 }]),
-    'overview-healthy-campaign-count': source('overview-healthy-campaign-count', [{ 'healthy-campaigns': 0 }]),
-    'overview-outcome-summary': source('overview-outcome-summary', [{ 'useful-outputs': 0 }]),
-    'overview-run-summary': source('overview-run-summary', [{ 'successful-runs': 0, 'failed-runs': 0, 'active-runs': 0 }]),
-    'overview-dispatch-summary': source('overview-dispatch-summary', [{ dispatches: 0, 'failed-dispatches': 0 }]),
-    'overview-delivery-summary': source('overview-delivery-summary', [{ 'delivered-repositories': 3 }]),
-    'overview-value-summary': source('overview-value-summary', [{ 'value-gains': 0 }]),
-    'overview-registered-repository-summary': source('overview-registered-repository-summary', [], { availability: 'unavailable' }),
-    'overview-repository-coverage': source('overview-repository-coverage', [], { availability: 'unavailable' }),
-    'overview-worker-summary': source('overview-worker-summary', [{ workers: 0 }]),
-    'database-issue-count': source('database-issue-count', [{ issues: 0 }])
-  }));
+    'overview-campaign-station': source('overview-campaign-station', [{
+      value: 0,
+      'display-value': '0%',
+      detail: '0/0 healthy campaigns',
+      description: '0% campaign health'
+    }]),
+    'overview-repository-station': source('overview-repository-station', [], { availability: 'unavailable' })
+  }, { stations: ['campaigns', 'repositories'] }));
 
   expect(rendered?.querySelector('.factory-station:nth-child(2)')?.textContent).toBe('Repository coverageUnavailable0/0 repositories reached');
   expect(rendered?.querySelector('.factory-station:nth-child(2) strong a')).toBeNull();
@@ -203,13 +190,18 @@ it('keeps unavailable registered repository evidence distinct from zero', () => 
 
 it('rebinds the factory floor to differently named sources through config.sources', () => {
   const rendered = renderUiElement('factory-floor', context('factory-floor', {
-    'custom-issue-count': source('custom-issue-count', [{ issues: 7 }])
+    'custom-campaign-station': source('custom-campaign-station', [{
+      value: 0.75,
+      'display-value': '75%',
+      detail: '3/4 healthy campaigns',
+      description: '75% campaign health'
+    }])
   }, {
-    stations: ['issues'],
-    sources: { issues: 'custom-issue-count' }
+    stations: ['campaigns'],
+    sources: { campaigns: 'custom-campaign-station' }
   }));
 
-  expect(rendered?.querySelector('.factory-station')?.textContent).toBe('Issues & PRs7');
+  expect(rendered?.querySelector('.factory-station')?.textContent).toBe('Campaign health75%3/4 healthy campaigns');
 });
 
 it('renders both elements immediately and updates only widgets whose query resolves', async () => {
@@ -230,47 +222,36 @@ it('renders both elements immediately and updates only widgets whose query resol
   expect(header?.querySelector('.factory-heading-pending')).not.toBeNull();
   expect(header?.querySelector('.factory-rhythm-pending')).not.toBeNull();
   expect(floor?.classList.contains('factory-floor')).toBe(true);
-  expect(floor?.querySelectorAll('.factory-station-pending')).toHaveLength(6);
+  expect(floor?.querySelectorAll('.factory-station-pending')).toHaveLength(2);
   expect(requests.map(({ name }) => name)).toEqual([
-    'overview-factory-status',
-    'database-campaign-count',
-    'overview-healthy-campaign-count',
+    'overview-header-presentation',
     'overview-rhythm',
-    'database-campaign-count',
-    'overview-healthy-campaign-count',
-    'overview-registered-repository-summary',
-    'overview-repository-coverage',
-    'database-issue-count',
-    'overview-outcome-summary',
-    'overview-run-summary',
-    'overview-dispatch-summary',
-    'overview-delivery-summary',
-    'overview-value-summary',
-    'overview-worker-summary'
+    'overview-campaign-station',
+    'overview-repository-station'
   ]);
   expect(requests.every(({ pageId }) => pageId === 'overview')).toBe(true);
 
-  const runSummary = source('overview-run-summary', [{
-    'successful-runs': 3,
-    'failed-runs': 1,
-    'active-runs': 2,
-    'active-live': 1,
-    'active-review': 1
+  const campaignStation = source('overview-campaign-station', [{
+    value: 0.75,
+    'display-value': '75%',
+    detail: '3/4 healthy campaigns',
+    description: '75% campaign health',
+    active: true
   }]);
-  resolvers.get('overview-floor:overview-run-summary')?.(runSummary);
+  resolvers.get('overview-floor:overview-campaign-station')?.(campaignStation);
   await Promise.resolve();
   await Promise.resolve();
 
   expect(header?.querySelector('.factory-running')).toBeNull();
-  expect(floor?.querySelector('.factory-station:nth-child(4)')?.textContent).toBe('Successful runs31 failed');
-  expect(floor?.querySelector('.factory-station:nth-child(4)')?.classList.contains('factory-station-pending')).toBe(false);
-  expect(floor?.querySelector('.factory-station:nth-child(5)')?.classList.contains('factory-station-pending')).toBe(true);
+  expect(floor?.querySelector('.factory-station:nth-child(1)')?.textContent).toBe('Campaign health75%3/4 healthy campaigns');
+  expect(floor?.querySelector('.factory-station:nth-child(1)')?.classList.contains('factory-station-pending')).toBe(false);
+  expect(floor?.querySelector('.factory-station:nth-child(2)')?.classList.contains('factory-station-pending')).toBe(true);
   expect(floor?.classList.contains('custom-view')).toBe(true);
 });
 
 it('stops updating an element after its rendered root is removed', async () => {
   const first = renderUiElement('factory-header', context('factory-header', {
-    'overview-factory-status': source('overview-factory-status', [{ 'factory-heading': 'First status' }]),
+    'overview-header-presentation': source('overview-header-presentation', [{ heading: 'First status' }]),
     'overview-rhythm': source('overview-rhythm', [{ rhythm }])
   }));
   if (!first) throw new Error('Expected the factory header element.');
@@ -278,7 +259,7 @@ it('stops updating an element after its rendered root is removed', async () => {
   first.remove();
   await new Promise((resolve) => setTimeout(resolve, 0));
   renderUiElement('factory-header', context('factory-header', {
-    'overview-factory-status': source('overview-factory-status', [{ 'factory-heading': 'Second status' }]),
+    'overview-header-presentation': source('overview-header-presentation', [{ heading: 'Second status' }]),
     'overview-rhythm': source('overview-rhythm', [{ rhythm }])
   }));
 

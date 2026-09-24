@@ -10,7 +10,7 @@ import { formatPercent } from '../view-formatters.js';
 /**
  * @param {string} icon
  * @param {{ animate?: boolean, final?: boolean, format?: 'count'|'percent', href?: string, signal: AbortSignal }} options
- * @returns {{ element: HTMLElement, bind: (read: () => { pending: boolean, unavailable?: boolean, label: string, value: number, detail?: StationDetail }) => void }}
+ * @returns {{ element: HTMLElement, bind: (read: () => { pending: boolean, unavailable?: boolean, label: string, value: number, displayValue?: string, detail?: StationDetail }) => void }}
  */
 export function renderFactoryStation(icon, options) {
   const element = h('li', { className: 'factory-station' });
@@ -27,7 +27,7 @@ export function renderFactoryStation(icon, options) {
         else element.removeAttribute('aria-busy');
         const count = station.pending ? '' : station.unavailable
           ? 'Unavailable'
-          : options.format === 'percent' ? formatPercent(station.value) : formatCount(station.value);
+          : station.displayValue ?? (options.format === 'percent' ? formatPercent(station.value) : formatCount(station.value));
         value.set({
           text: count,
           target: !station.pending && !station.unavailable ? station.value : undefined,

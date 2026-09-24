@@ -1,43 +1,47 @@
 import { h } from '../dom.js';
 import { render } from '../reactive.js';
-import { bindFactorySources, createFactoryMetrics, createFactoryScope, resolveFactorySourceNames } from './factory-elements.js';
+import { bindFactorySources, createFactoryScope, resolveFactorySourceNames } from './factory-elements.js';
 import { renderFactoryRhythm } from './factory-rhythm.js';
 
 /** @typedef {{ rows: () => Record<string, unknown>[], pending: () => boolean, unavailable: () => boolean }} SourceBinding */
 /** @typedef {Record<string, SourceBinding>} SourceBindings */
-/** @typedef {{ campaignHealth: () => number }} HeaderMetrics */
 /** @typedef {{ signal: AbortSignal }} HeaderScope */
 
 /**
  * @param {SourceBindings} sources
- * @param {HeaderMetrics} metrics
  * @param {HeaderScope} scope
  * @param {Record<string, string>} roleNames
  */
-export function renderFactoryHeader(sources, metrics, scope, roleNames) {
+export function renderFactoryHeader(sources, scope, roleNames) {
   const heading = h('h2', { id: 'agent-factory-heading' });
+  const summary = h('p');
 
   render(heading, () => {
-    const status = sources[roleNames.status];
-    const pending = status.pending();
-    const candidate = status.rows()[0]?.['factory-heading'];
-    const healthSourcePending = sources[roleNames['healthy-campaigns']]?.pending() ?? true;
-    const campaignHealth = metrics.campaignHealth();
+    const presentation = sources[roleNames.presentation];
+    const pending = presentation.pending();
+    const candidate = presentation.rows()[0]?.heading;
     heading.classList.toggle('factory-heading-pending', pending);
     heading.toggleAttribute('aria-busy', pending);
     return pending
       ? ''
-      : !healthSourcePending && campaignHealth > 0 && campaignHealth < 0.66
-      ? 'Your campaigns need attention.'
-      : !status.unavailable() && typeof candidate === 'string' && candidate
+      : !presentation.unavailable() && typeof candidate === 'string' && candidate
       ? candidate
       : 'Your campaign status is unavailable.';
+  }, { signal: scope.signal });
+
+  render(summary, () => {
+    const presentation = sources[roleNames.presentation];
+    const pending = presentation.pending();
+    const candidate = presentation.rows()[0]?.summary;
+    const text = typeof candidate === 'string' ? candidate : '';
+    summary.hidden = pending || !text;
+    return pending ? '' : text;
   }, { signal: scope.signal });
 
   return h(
     'header',
     { className: 'factory-intro' },
-    h('div', { className: 'factory-intro-copy' }, heading),
+    h('div', { className: 'factory-intro-copy' }, heading, summary),
     renderFactoryRhythm(sources[roleNames.rhythm], scope)
   );
 }
@@ -49,9 +53,7 @@ export function renderFactoryHeader(sources, metrics, scope, roleNames) {
  * @type {Record<string, string>}
  */
 export const HEADER_DEFAULT_SOURCES = {
-  status: 'overview-factory-status',
-  campaigns: 'database-campaign-count',
-  'healthy-campaigns': 'overview-healthy-campaign-count',
+  presentation: 'overview-header-presentation',
   rhythm: 'overview-rhythm'
 };
 
@@ -68,9 +70,8 @@ export function renderFactoryHeaderElement(context) {
     sourceNames: context.sourceNames,
     queryContext: context.queryContext
   });
-  const metrics = createFactoryMetrics(sources, roleNames);
-  const scope = createFactoryScope(metrics);
-  const rendered = renderFactoryHeader(sources, metrics, scope, roleNames);
+  const scope = createFactoryScope();
+  const rendered = renderFactoryHeader(sources, scope, roleNames);
   scope.bind(rendered);
   return rendered;
 }
