@@ -154,12 +154,12 @@ func TestAPIResponsesCarryStandardizedTraceIdentifiers(t *testing.T) {
 }
 
 func TestAzureFunctionsHandlerLogsTelemetryFailureOnceAndKeepsServing(t *testing.T) {
-	// NewAzureFunctionsHandlerFromEnv is the only caller of setupTelemetryOnce
+	// NewAzureFunctionsHandlerFromEnv is the only caller of azureProcessTelemetry
 	// in the process, and this is its only test, so the shared sync.Once
 	// has not fired yet; sync.Once cannot be copied/reset, so no
 	// save/restore is attempted here.
-	previousErr := setupTelemetryErr
-	t.Cleanup(func() { setupTelemetryErr = previousErr })
+	previousErr := azureProcessTelemetry.err
+	t.Cleanup(func() { azureProcessTelemetry.err = previousErr })
 
 	// An OTLP endpoint plus a malformed OTEL_RESOURCE_ATTRIBUTES value
 	// forces telemetry.Setup to fail while building the OpenTelemetry
