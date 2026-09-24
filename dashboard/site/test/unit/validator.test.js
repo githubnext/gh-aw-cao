@@ -2843,7 +2843,7 @@ dashboard:
     expect(result.ok).toBe(true);
   });
 
-  it('DLS-SEM-017 accepts every canonical Section 5.1 source name', () => {
+  it('DLS-SEM-017 accepts every Section 5.1 database table name', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
   id: source-catalog

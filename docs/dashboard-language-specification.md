@@ -369,7 +369,7 @@ A campaign groups one orchestrator and one or more workers that execute centrall
 
 ### 5.4 Normative Source Requirements
 
-- **DLS-SEM-017:** A `metric`, `table`, `list`, or `chart` view `data.source` **MUST** name exactly one source from Section 5.1. An `element` view `data.sources` **MUST** name one or more unique sources from Section 5.1. An optional `data.route-field` **MUST** name one field from `data.source`.
+- **DLS-SEM-017:** A `metric`, `table`, `list`, or `chart` view `data.source` **MUST** name exactly one Section 5.1 database table or one declared query. An `element` view `data.sources` **MUST** name one or more unique Section 5.1 database tables or declared queries. An optional `data.route-field` **MUST** name one field from `data.source`.
 - **DLS-SEM-018:** Each database table **MUST** preserve the grain declared in Section 5.1; duplicated observations **MUST** retain distinct observation identifiers in provenance.
 - **DLS-SEM-019:** A `usage` row **MUST** represent one model invocation and **MUST NOT** repeat invocation-level AIC across token-class rows.
 - **DLS-SEM-020:** Grader values, eval results, AIC, each raw-token measure, outcome states, and operational value **MUST** remain separately named throughout filtering, aggregation, and presentation.

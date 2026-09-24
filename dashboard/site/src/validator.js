@@ -1845,7 +1845,7 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
         if (typeof sourceName !== 'string' || (!TABLE_VALUES.includes(sourceName) && !declaredQueries.has(sourceName))) {
           errors.push(createError(
             ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-            'source must use one canonical Section 5.1 source name or one declared query name.',
+            'source must name one Section 5.1 database table or one declared query.',
             `${viewPath}.data.sources`
           ));
           continue;
