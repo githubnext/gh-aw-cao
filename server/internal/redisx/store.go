@@ -243,6 +243,7 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 			}
 		}
 		metrics.FallbackOperations = append(metrics.FallbackOperations, "redis-search-error")
+		metrics.PushedDown = nil
 	}
 	value, err := s.Client.Do(ctx, "SMEMBERS", s.sourceSetKey(generation, name))
 	metrics.RedisCommands++

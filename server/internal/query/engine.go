@@ -459,7 +459,11 @@ func applyJoin(left, right []model.Row, join Join, operations *int, remaining in
 			if join.Type != "left" {
 				continue
 			}
-			output = append(output, cloneRow(row))
+			combined := cloneRow(row)
+			for _, field := range join.Fields {
+				combined[alias(field)] = nil
+			}
+			output = append(output, combined)
 			continue
 		}
 		combined := cloneRow(row)
@@ -643,7 +647,7 @@ func computeValue(row model.Row, definition ComputedField) (any, error) {
 		}
 		return input, nil
 	case "url-encode":
-		return url.PathEscape(text(values[0])), nil
+		return strings.ReplaceAll(url.QueryEscape(text(values[0])), "+", "%20"), nil
 	case "date-day":
 		if instant, ok := timestamp(values[0]); ok {
 			return instant.UTC().Format("2006-01-02"), nil
@@ -655,7 +659,7 @@ func computeValue(row model.Row, definition ComputedField) (any, error) {
 		if !okLeft || !okRight {
 			return nil, nil
 		}
-		data, _ := json.Marshal([]any{left.UnixMilli(), right.UnixMilli(), values[2] == true})
+		data, _ := json.Marshal([]any{left.UnixMilli(), right.UnixMilli(), values[2] == "success"})
 		return string(data), nil
 	case "dashboard-link":
 		href, label := text(values[1]), strings.TrimSpace(text(values[2]))
@@ -783,7 +787,9 @@ func aggregateRows(rows []model.Row, aggregate Aggregate) []model.Row {
 		row := model.Row{}
 		for _, field := range aggregate.By {
 			if len(group) > 0 {
-				row[field] = group[0][field]
+				if value, present := group[0][field]; present {
+					row[field] = value
+				}
 			}
 		}
 		for _, value := range aggregate.Values {

@@ -63,6 +63,7 @@ test("comment-writing workflow actions are explicitly inventoried", () => {
     "actions.yml",
     "cid.yml",
     "dashboard-deployed-integration.yml",
+    "dashboard-query-parity.yml",
     "dashboard-views.yml",
     "svg-contrast-check.yml",
   ]);
