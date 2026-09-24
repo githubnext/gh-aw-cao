@@ -432,7 +432,7 @@ export function dashboardQueryCostMarkdown(report) {
           : ["> The deployed JSONL payloads were not available to rebuild the canonical database."]),
       ];
   return [
-    "## Dashboard query cost (deployed SQLite snapshot)",
+    "### Dashboard query cost (deployed SQLite snapshot)",
     "",
     `Measured the **${report.candidates} most expensive of ${report.queries} queries** chosen by the static query cost evaluator (${report["static-model"]}, ${formatCount(report["static-materialize-all-row-read-units"])} normalized row-read units to materialize all queries).`,
     "",

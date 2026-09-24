@@ -209,18 +209,19 @@ test("workers inherit human-first progressive report disclosure", () => {
     .filter(([, source]) => /^\s+role: worker$/m.test(source));
 
   assert.match(campaignSkill, /when `safe-outputs\.create-issue` or `safe-outputs\.create-pull-request` is enabled, require every created issue or pull request body to follow the complete Worker Report Formatting contract/);
-  assert.match(campaignSkill, /mandatory for every worker that creates issues or pull requests and applies to the complete issue or pull request body/);
+  assert.match(campaignSkill, /mandatory for every worker that creates issues, pull requests, comments, or reviews and applies to the complete output body/);
   assert.match(campaignSkill, /Make the report delightful to read, precise, terse, and easy to scan/);
   assert.match(campaignSkill, /Use plain language, short sentences, compact bullets, and descriptive labels/);
   assert.match(campaignSkill, /Keep the entire visible report to a single screen at normal GitHub desktop viewing/);
   assert.match(campaignSkill, /Show only the decision essentials; move everything else into progressive disclosure/);
   assert.match(campaignSkill, /Start directly with a concise executive-summary paragraph/);
   assert.match(campaignSkill, /Do not add a heading before this opening paragraph because the first paragraph is always the executive summary/);
-  assert.match(campaignSkill, /After the opening paragraph, use `###` for every main section and `####` for subsections; never use `#` or `##`/);
+  assert.match(campaignSkill, /After the opening paragraph, use `###` for every heading; never use `#`, `##`, or `####` and deeper headings/);
   assert.doesNotMatch(campaignSkill, /Start with the h3 heading `### Summary`/);
   assert.match(campaignSkill, /states what happened, the decision-relevant result, critical findings, and key metrics/);
   assert.match(campaignSkill, /Immediately follow the summary with one clear `\*\*Action:\*\*` sentence naming who should do what next and the acceptance check/);
-  assert.match(campaignSkill, /non-essential background, verbose evidence, logs, secondary metrics, and per-item breakdowns in clearly named `<details><summary><b>\.\.\.<\/b><\/summary>/);
+  assert.match(campaignSkill, /non-essential background, verbose evidence, logs, secondary metrics, per-item breakdowns, and every Markdown table in clearly named `<details><summary><b>\.\.\.<\/b><\/summary>/);
+  assert.match(campaignSkill, /every Markdown table in clearly named `<details>/);
   assert.match(campaignSkill, /`\> \[!NOTE\]` for neutral status/);
   assert.match(campaignSkill, /`\> \[!WARNING\]` for warnings/);
   assert.match(campaignSkill, /`\> \[!CAUTION\]` for high-risk or blocking findings/);
@@ -233,6 +234,8 @@ test("workers inherit human-first progressive report disclosure", () => {
   assert.match(sharedControl, /when no action is required, say `\*\*Action:\*\* None\.`/);
   assert.doesNotMatch(sharedControl, /### Executive Summary/);
   assert.match(sharedControl, /non-essential background, verbose supporting evidence, logs, secondary metrics, and per-item breakdowns inside clearly named `<details>/);
+  assert.match(sharedControl, /In comments and reviews, use `###` for every heading; never use `#`, `##`, or `####` and deeper headings/);
+  assert.match(sharedControl, /Put every Markdown table inside a clearly named `<details>` element/);
   assert.ok(workers.length > 0, "expected at least one worker workflow");
   for (const [name] of workers) {
     const generated = workflow(name.replace(/\.md$/, ".lock.yml"));
@@ -244,6 +247,50 @@ test("workers inherit human-first progressive report disclosure", () => {
     assert.doesNotMatch(generated, /### Executive Summary/, name);
     assert.match(generated, /non-essential background, verbose supporting evidence, logs, secondary metrics, and per-item breakdowns inside clearly named `<details>/, name);
   }
+});
+
+test("comment-producing safe outputs expose one formatting contract", () => {
+  const commentOutputs = new Set([
+    "add-comment",
+    "create-pull-request-review-comment",
+    "submit-pull-request-review",
+  ]);
+  const producers = [];
+
+  for (const name of readdirSync(workflowsDirectory).filter((entry) => entry.endsWith(".md"))) {
+    const source = workflow(name);
+    const frontmatter = /^---\n([\s\S]*?)\n---/.exec(source)?.[1];
+    if (!frontmatter) continue;
+    const config = parse(frontmatter);
+    const outputs = Object.keys(config["safe-outputs"] ?? {}).filter((output) => commentOutputs.has(output));
+    if (outputs.length === 0) continue;
+    producers.push([name, outputs.toSorted()]);
+
+    const importsSharedControl = config.imports?.some((entry) => entry.uses === "shared/control.md");
+    const formattingContract = importsSharedControl ? workflow("shared/control.md") : source;
+    assert.match(formattingContract, /use `###` for every heading/);
+    assert.match(formattingContract, /never use `#`, `##`, or `####` and deeper headings/);
+    assert.match(formattingContract, /every Markdown table inside a clearly named `<details>` element/);
+  }
+
+  assert.deepEqual(producers.toSorted(([left], [right]) => left.localeCompare(right)), [
+    ["cao-evolution-catalog-advisor.md", ["add-comment"]],
+    ["cao-evolution-efficiency.md", ["add-comment"]],
+    ["cao-evolution-integrity.md", ["add-comment"]],
+    ["cao-evolution-reliability.md", ["add-comment"]],
+    ["dependabot-update-planner.md", ["add-comment"]],
+    ["design-decision-gate.md", ["add-comment"]],
+    ["mattpocock-skills-reviewer.md", [
+      "create-pull-request-review-comment",
+      "submit-pull-request-review",
+    ]],
+    ["pr-reviewer.md", [
+      "create-pull-request-review-comment",
+      "submit-pull-request-review",
+    ]],
+    ["pr-sous-chef.md", ["add-comment"]],
+    ["repo-assist-issue-triage.md", ["add-comment"]],
+  ]);
 });
 
 test("repository PR automation remains bounded and adapted to CAO", () => {

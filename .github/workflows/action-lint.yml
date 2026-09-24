@@ -199,7 +199,7 @@ jobs:
               process.env.ZIZMOR_FAILED === '1' && 'zizmor',
             ].filter(Boolean)
             const body = [
-              '## GitHub Actions lint failures',
+              '### GitHub Actions lint failures',
               '',
               `Failed scanners: ${failedTools.join(', ') || 'unknown'}`,
               '',

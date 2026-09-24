@@ -241,7 +241,11 @@ jobs:
               : 'All measured queries stayed within their budgets.'
             const body = [
               marker,
+              '<details><summary><b>Dashboard query cost report</b></summary>',
+              '',
               summary,
+              '',
+              '</details>',
               '',
               outcome,
               '',
