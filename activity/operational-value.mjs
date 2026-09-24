@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { execFile, spawnSync } from 'node:child_process';
 import { readFile, readdir, mkdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { canonicalTimestamp } from '../dashboard/site/src/data/model/schema.js';
@@ -78,19 +78,30 @@ function redactToken(message, token) {
   return token ? String(message).replaceAll(token, '***') : String(message);
 }
 
-function runOperationalValueWorker(entry, request, env) {
-  const result = spawnSync(process.execPath, [entry.script], {
-    encoding: 'utf8',
-    input: request,
-    maxBuffer: 16 * 1024 * 1024,
-    timeout: WORKER_TIMEOUT_MS,
-    killSignal: 'SIGKILL',
-    env
+function runOperationalValueWorker(entry, request, env, { signal, timeoutMs = WORKER_TIMEOUT_MS } = {}) {
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+  const workerSignal = signal
+    ? AbortSignal.any([signal, timeoutSignal])
+    : timeoutSignal;
+  return new Promise((resolve, reject) => {
+    const child = execFile(process.execPath, [entry.script], {
+      encoding: 'utf8',
+      maxBuffer: 16 * 1024 * 1024,
+      killSignal: 'SIGKILL',
+      signal: workerSignal,
+      env
+    }, (error, stdout, stderr) => {
+      if (error) {
+        const message = timeoutSignal.aborted && !signal?.aborted
+          ? `timed out after ${timeoutMs} ms`
+          : commandFailureMessage({ error, stderr }, 'operational-value.mjs failed');
+        reject(new Error(`${entry.script} failed: ${message}`, { cause: error }));
+        return;
+      }
+      resolve(stdout);
+    });
+    child.stdin.end(request);
   });
-  if (result.error || result.status !== 0) {
-    throw new Error(`${entry.script} failed: ${commandFailureMessage(result, 'operational-value.mjs failed')}`);
-  }
-  return result.stdout;
 }
 
 export function operationalValueReserve(value, UsageError = Error) {
@@ -187,8 +198,11 @@ export async function runOperationalValue({
   timestamp = new Date().toISOString(),
   repositories = [],
   rateLimitReserve,
-  retentionWindow
+  retentionWindow,
+  signal,
+  workerTimeoutMs = WORKER_TIMEOUT_MS
 }) {
+  signal?.throwIfAborted();
   const observedAt = canonicalTimestamp(timestamp, '--timestamp');
   const selectedRepositories = repositories.length > 0
     ? repositories
@@ -219,16 +233,22 @@ export async function runOperationalValue({
   };
   for (const entry of scripts) {
     try {
+      signal?.throwIfAborted();
       if (rateLimitReserve !== undefined && githubApiRemaining(worker.env) <= rateLimitReserve) {
         throw new Error(`GitHub API core remaining is at or below the reserved ${rateLimitReserve} requests`);
       }
-      const output = runOperationalValueWorker(entry, request, worker.env);
+      const output = await runOperationalValueWorker(entry, request, worker.env, {
+        signal,
+        timeoutMs: workerTimeoutMs
+      });
       values.push(...parseOperationalValueOutput(output, entry.script, uniqueRepositories)
         .map((record) => ({ ...record, campaign: entry.package })));
     } catch (error) {
+      signal?.throwIfAborted();
       warn(entry, error);
     }
   }
+  signal?.throwIfAborted();
   if (rateLimitReserve !== undefined) {
     try {
       if (githubApiRemaining(worker.env) < rateLimitReserve) {

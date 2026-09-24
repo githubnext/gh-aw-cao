@@ -1,13 +1,69 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { pathToFileURL } from 'node:url';
+import { runOperationalValue } from '../../activity/operational-value.mjs';
 
 const root = path.resolve(import.meta.dirname, '..', '..');
 const cao = path.join(root, 'activity', 'cao.mjs');
+
+test('operational-value worker execution is cancellable', async () => {
+  const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-value-abort-'));
+  const packageDirectory = path.join(temporary, 'example');
+  mkdirSync(packageDirectory);
+  writeFileSync(path.join(packageDirectory, 'operational-value.mjs'), 'setInterval(() => {}, 1_000);\n');
+  const controller = new AbortController();
+  const reason = new Error('operational value cancelled');
+  const cancellation = setTimeout(() => controller.abort(reason), 50);
+
+  try {
+    await assert.rejects(runOperationalValue({
+      indexedDB: null,
+      databasePath: path.join(temporary, 'dashboard.sqlite'),
+      root: temporary,
+      repositories: ['githubnext/gh-aw-cao'],
+      signal: controller.signal
+    }), reason);
+  } finally {
+    clearTimeout(cancellation);
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('operational-value worker execution times out and continues', async () => {
+  const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-value-timeout-'));
+  const failedDirectory = path.join(temporary, 'failed');
+  const successfulDirectory = path.join(temporary, 'successful');
+  mkdirSync(failedDirectory);
+  mkdirSync(successfulDirectory);
+  writeFileSync(path.join(failedDirectory, 'operational-value.mjs'), 'setInterval(() => {}, 1_000);\n');
+  writeFileSync(path.join(successfulDirectory, 'operational-value.mjs'), `
+const chunks = [];
+for await (const chunk of process.stdin) chunks.push(chunk);
+const request = JSON.parse(Buffer.concat(chunks).toString());
+console.log(JSON.stringify({timestamp:request.timestamp,repository:request.repositories[0],valueId:"successful",value:1}));\n`);
+
+  try {
+    const result = await runOperationalValue({
+      indexedDB: null,
+      databasePath: path.join(temporary, 'dashboard.sqlite'),
+      root: temporary,
+      repositories: ['githubnext/gh-aw-cao'],
+      workerTimeoutMs: 50
+    });
+
+    assert.equal(result.warnings.length, 1);
+    assert.match(result.warnings[0].message, /timed out after 50 ms/);
+    assert.deepEqual(result.values.map(({ campaign, valueId }) => ({ campaign, valueId })), [
+      { campaign: 'successful', valueId: 'successful' }
+    ]);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
 
 test('cao operational-value runs package scripts and ingests emitted JSONL', () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-value-'));
