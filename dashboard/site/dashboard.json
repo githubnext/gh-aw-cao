@@ -1672,17 +1672,9 @@
     },
     "queries": [
       {
-        "name": "indexing-activity-status",
-        "intent": "Show the latest retained CAO Activity ingestion transaction as the current indexing status.",
+        "name": "indexing-transactions",
+        "intent": "Show retained indexing transactions with explicit success or failure status.",
         "from": "transactions",
-        "filter": {
-          "predicates": [
-            {
-              "field": "kind",
-              "equals": "ingest-jsonl"
-            }
-          ]
-        },
         "compute": [
           {
             "as": "error-text",
@@ -1692,7 +1684,7 @@
                 "field": "error"
               },
               {
-                "value": ""
+                "value": "no-error"
               }
             ]
           },
@@ -1704,7 +1696,7 @@
                 "field": "error-text"
               },
               {
-                "value": ""
+                "value": "no-error"
               }
             ]
           },
@@ -1723,14 +1715,7 @@
               }
             ]
           }
-        ],
-        "order-by": [
-          {
-            "field": "createdAt",
-            "direction": "desc"
-          }
-        ],
-        "limit": 1
+        ]
       },
       {
         "name": "indexing-daily-ingestion",
@@ -1753,21 +1738,11 @@
                 "field": "createdAt"
               }
             ]
-          },
-          {
-            "as": "series",
-            "function": "coalesce",
-            "args": [
-              {
-                "value": "CAO Activity"
-              }
-            ]
           }
         ],
         "aggregate": {
           "by": [
-            "day",
-            "series"
+            "day"
           ],
           "values": [
             {
@@ -1781,26 +1756,13 @@
               "reducer": "sum"
             }
           ]
-        }
-      },
-      {
-        "name": "indexing-size-series",
-        "intent": "Reshape daily CAO Activity workflow-run and record ingestion totals for the indexing size chart.",
-        "from": "indexing-daily-ingestion",
-        "temporal-series": {
-          "time": "day",
-          "series": "series",
-          "measures": [
-            {
-              "field": "workflow-runs",
-              "kind": "workflow-runs"
-            },
-            {
-              "field": "records",
-              "kind": "records"
-            }
-          ]
-        }
+        },
+        "order-by": [
+          {
+            "field": "day",
+            "direction": "asc"
+          }
+        ]
       },
       {
         "name": "runs-daily-conclusions",
@@ -12704,70 +12666,50 @@
         "description": "Monitor CAO Activity ingestion and inspect retained dashboard transactions.",
         "views": [
           {
-            "id": "indexing-activity-status",
-            "title": "CAO Activity action",
-            "description": "Latest retained activity-shard ingestion status and volume.",
-            "data": {
-              "source": "indexing-activity-status"
-            },
-            "mark": "table",
-            "controls": "static",
-            "layout": "full",
-            "empty-message": "No CAO Activity ingestion has been retained.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "activity-status",
-                  "type": "nominal",
-                  "title": "Status",
-                  "display": "status"
-                },
-                {
-                  "field": "createdAt",
-                  "type": "temporal",
-                  "format": "human-friendly-timestamp",
-                  "title": "Last indexed"
-                },
-                {
-                  "field": "rawRuns",
-                  "type": "quantitative",
-                  "title": "Workflow runs"
-                },
-                {
-                  "field": "records",
-                  "type": "quantitative",
-                  "title": "Records"
-                }
-              ]
-            }
-          },
-          {
             "id": "indexing-size",
             "title": "Indexed data over time",
             "description": "New workflow runs and records retained from CAO Activity each day.",
             "data": {
-              "source": "indexing-size-series"
+              "source": "indexing-daily-ingestion"
             },
             "mark": "chart",
-            "chart": "line",
+            "chart": "bar",
             "layout": "full",
             "empty-message": "No CAO Activity ingestion history has been retained.",
             "encoding": {
               "x": {
-                "field": "time",
-                "type": "temporal",
-                "format": "human-friendly-timestamp",
+                "field": "day",
+                "type": "nominal",
                 "title": "Indexed"
               },
               "y": {
-                "field": "value",
+                "field": "records",
                 "type": "quantitative",
-                "title": "New items"
-              },
-              "color": {
-                "field": "metric-name",
+                "title": "New records"
+              }
+            }
+          },
+          {
+            "id": "indexing-workflow-runs",
+            "title": "Workflow runs indexed",
+            "description": "New workflow runs retained from CAO Activity each day.",
+            "data": {
+              "source": "indexing-daily-ingestion"
+            },
+            "mark": "chart",
+            "chart": "bar",
+            "layout": "full",
+            "empty-message": "No CAO Activity workflow-run history has been retained.",
+            "encoding": {
+              "x": {
+                "field": "day",
                 "type": "nominal",
-                "title": "Measure"
+                "title": "Indexed"
+              },
+              "y": {
+                "field": "workflow-runs",
+                "type": "quantitative",
+                "title": "New workflow runs"
               }
             }
           },
@@ -12776,7 +12718,7 @@
             "title": "Ingestion rate",
             "description": "Retained transactions show the workflow-run and record volume processed by each ingestion operation.",
             "data": {
-              "source": "transactions",
+              "source": "indexing-transactions",
               "order-by": [
                 {
                   "field": "createdAt",
@@ -12791,6 +12733,12 @@
             "empty-message": "No ingestion transactions have been retained.",
             "encoding": {
               "columns": [
+                {
+                  "field": "activity-status",
+                  "type": "nominal",
+                  "title": "CAO Activity status",
+                  "display": "status"
+                },
                 {
                   "field": "id",
                   "type": "nominal",

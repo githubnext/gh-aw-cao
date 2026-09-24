@@ -463,6 +463,16 @@ test('Indexing shows CAO Activity status, size trend, and retained transactions'
       };
       const sources = {
         transactions: { source: 'transactions', rows, metadata },
+        'indexing-transactions': {
+          source: 'indexing-transactions',
+          rows: rows.map((row) => ({ ...row, 'activity-status': row.error ? 'failure' : 'success' })),
+          metadata
+        },
+        'indexing-daily-ingestion': {
+          source: 'indexing-daily-ingestion',
+          rows: [{ day: '2026-09-12', records: 7950, 'workflow-runs': 6950 }],
+          metadata
+        },
         'configuration-policy': {
           source: 'configuration-policy',
           rows: [{ document: { version: 1 }, raw: '{"version":1}', diagnostics: [] }],
@@ -493,12 +503,13 @@ test('Indexing shows CAO Activity status, size trend, and retained transactions'
   const scroll = view.locator('.table-scroll');
   await expect(transactionsPage.locator('[data-view-id]')).toHaveCount(3);
   await expect(transactionsPage.getByRole('heading', { name: 'Local database' })).toHaveCount(0);
-  await expect(transactionsPage.getByRole('heading', { name: 'CAO Activity action' })).toBeVisible();
-  await expect(transactionsPage.getByRole('cell', { name: 'success' })).toBeVisible();
-  await expect(transactionsPage.locator('.line-chart-series')).toHaveCount(2);
+  await expect(transactionsPage.locator('[data-chart-widget="bar"]')).toHaveCount(2);
+  await transactionsPage.getByRole('button', { name: 'Table' }).click();
+  await expect(transactionsPage.getByRole('columnheader', { name: 'CAO Activity status' })).toBeVisible();
+  await expect(transactionsPage.getByRole('cell', { name: 'success' }).first()).toBeVisible();
   await expect(view).toBeVisible();
   await expect(view.locator('[data-lazy-list]')).toHaveCount(1);
-  await expect(view.getByRole('searchbox', { name: 'Filter Transactions' })).toBeVisible();
+  await expect(view.getByRole('searchbox', { name: 'Filter Ingestion rate' })).toBeVisible();
   await expect(view.getByRole('cell', { name: 'ingest-jsonl' }).first()).toBeVisible();
   const headings = await view.locator('thead tr').first().getByRole('columnheader').allTextContents();
   expect(headings.at(-1)?.trim()).toBe('Created');
@@ -1351,18 +1362,18 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
 
   const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
   const data = page.locator('.nav-section').filter({ hasText: 'Data' });
-  const manage = page.locator('.nav-section').filter({ hasText: 'Manage' });
+  const maintenance = page.locator('.nav-section').filter({ hasText: 'Maintenance' });
   await expect(cleanNavigation).toHaveText(['Overview']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
   await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Models & Agents', 'Firewall', 'MCPs']);
-  await expect(manage.locator('summary')).toHaveText('Manage');
-  await expect(manage.getByRole('link')).toHaveText(['Maintenance', 'Settings']);
-  await expect(manage).toHaveClass(/nav-section-bottom/);
+  await expect(maintenance.locator('summary')).toHaveText('Maintenance');
+  await expect(maintenance.getByRole('link')).toHaveText(['Maintenance', 'Indexing', 'Settings']);
+  await expect(maintenance).toHaveClass(/nav-section-bottom/);
   await expect.poll(async () => {
     const [navBox, manageBox] = await Promise.all([
       page.locator('.primary-nav').boundingBox(),
-      manage.boundingBox()
+      maintenance.boundingBox()
     ]);
     return navBox !== null && manageBox !== null
       ? Math.round(navBox.y + navBox.height - (manageBox.y + manageBox.height))
@@ -1469,7 +1480,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
   await expect(overviewPage.locator('.factory-station')).toHaveCount(2);
   await page.locator('.mobile-nav-menu > summary').click();
-  await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Manage']);
+  await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Maintenance']);
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toHaveCount(0);
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(overviewPage.locator('.factory-intro')).toBeInViewport();

@@ -829,8 +829,7 @@ describe('presenter built-in and custom pages', () => {
       await vi.waitFor(() => expect(rendered.querySelector('[data-page-id="indexing"]')?.hasAttribute('data-page-pending')).toBe(false));
       const page = rendered.querySelector('[data-page-id="indexing"]');
       expect(page?.querySelectorAll('[data-view-id]')).toHaveLength(3);
-      expect(page?.querySelector('.line-chart-series')).not.toBeNull();
-      expect(page?.textContent).toContain('CAO Activity action');
+      expect(page?.querySelectorAll('[data-chart-widget="bar"]')).toHaveLength(2);
       expect(page?.textContent).toContain('success');
       expect(page?.textContent).not.toContain('Local database');
       expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
