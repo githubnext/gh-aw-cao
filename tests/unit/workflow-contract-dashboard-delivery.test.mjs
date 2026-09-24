@@ -78,6 +78,8 @@ test("dashboard CI runs the campaign quality gates", () => {
   const lintUnit = jobs.get("lint-unit");
   const playwrightIntegration = jobs.get("playwright-integration");
   const ingestionScale = jobs.get("ingestion-scale");
+  const deadViews = jobs.get("dead-views");
+  const deadViewsComment = jobs.get("dead-views-comment");
   const queryComplexity = jobs.get("query-complexity");
   const queryComplexityComment = jobs.get("query-complexity-comment");
   const lighthousePerformance = jobs.get("lighthouse-performance");
@@ -92,6 +94,8 @@ test("dashboard CI runs the campaign quality gates", () => {
       "lint-unit",
       "playwright-integration",
       "ingestion-scale",
+      "dead-views",
+      "dead-views-comment",
       "query-complexity",
       "query-complexity-comment",
       "lighthouse-performance",
@@ -104,6 +108,21 @@ test("dashboard CI runs the campaign quality gates", () => {
   // The synthetic ingestion payload is slow, so the gate stays on main.
   assert.match(ingestionScale.block, /if: github\.ref == 'refs\/heads\/main'/);
   assert.match(ingestionScale.block, /run: npm run test:e2e:dashboard-ingestion/);
+  assert.deepEqual(deadViews.needs, []);
+  assert.match(deadViews.block, /npm run --silent analyze:dead-views > dead-views\.md/);
+  assert.match(deadViews.block, /cat dead-views\.md >> "\$GITHUB_STEP_SUMMARY"/);
+  assert.match(deadViews.block, /name: dashboard-dead-views/);
+  assert.deepEqual(deadViewsComment.needs, ["dead-views"]);
+  assert.match(
+    deadViewsComment.block,
+    /if: >-\s+always\(\).*github\.event_name == 'pull_request'.*github\.event\.pull_request\.head\.repo\.full_name == github\.repository/s
+  );
+  assert.match(deadViewsComment.block, /pull-requests: write/);
+  assert.doesNotMatch(deadViewsComment.block, /issues: write/);
+  assert.match(deadViewsComment.block, /<!-- dashboard-dead-views -->/);
+  assert.match(deadViewsComment.block, /<details><summary><b>Dashboard dead views<\/b><\/summary>/);
+  assert.match(deadViewsComment.block, /issues\.updateComment/);
+  assert.match(deadViewsComment.block, /issues\.createComment/);
   assert.deepEqual(queryComplexity.needs, []);
   assert.match(queryComplexity.block, /node activity\/cao\.mjs dashboard-complexity/);
   assert.match(queryComplexity.block, /--input dashboard\/site\/dashboard\.json/);

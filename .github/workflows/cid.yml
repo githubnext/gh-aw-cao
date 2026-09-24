@@ -125,6 +125,115 @@ jobs:
       - name: Synthetic ingestion scale test
         run: npm run test:e2e:dashboard-ingestion
 
+  dead-views:
+    name: Dashboard dead views
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: dashboard/site
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - name: Render dead views
+        run: |
+          npm run --silent analyze:dead-views > dead-views.md
+          cat dead-views.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload dead views report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dashboard-dead-views
+          path: dashboard/site/dead-views.md
+          if-no-files-found: error
+          retention-days: 14
+
+  dead-views-comment:
+    name: Report dashboard dead views
+    if: >-
+      always() &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    needs: dead-views
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      pull-requests: write
+    steps:
+      - name: Download dead views report
+        id: download
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dashboard-dead-views
+          path: dead-views
+      - name: Comment with dead views
+        if: steps.download.outcome == 'success'
+        continue-on-error: true
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs')
+            const reportPath = 'dead-views/dead-views.md'
+            if (!fs.existsSync(reportPath)) {
+              core.warning(`Dead views report is unavailable at ${reportPath}; skipping PR feedback.`)
+              return
+            }
+            const marker = '<!-- dashboard-dead-views -->'
+            const runUrl =
+              `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            const report = fs.readFileSync(reportPath, 'utf8').trim()
+            const body = [
+              marker,
+              '<details><summary><b>Dashboard dead views</b></summary>',
+              '',
+              report,
+              '',
+              '</details>',
+              '',
+              '⚠️ This reachability report is informational and does not block the pull request.',
+              `🔎 [View the workflow run and report artifact](${runUrl}).`,
+            ].join('\n')
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              ...context.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            })
+            const existing = comments.filter((comment) =>
+              comment.user?.type === 'Bot' && comment.body?.includes(marker)
+            )
+            const deleteComments = async (commentsToDelete) => {
+              const results = await Promise.allSettled(commentsToDelete.map((comment) =>
+                github.rest.issues.deleteComment({
+                  ...context.repo,
+                  comment_id: comment.id,
+                })
+              ))
+              results.forEach((result, index) => {
+                if (result.status === 'rejected') {
+                  core.warning(`Could not delete dead views comment ${commentsToDelete[index].id}: ${result.reason}`)
+                }
+              })
+            }
+            if (existing.length > 0) {
+              await deleteComments(existing.slice(1))
+              await github.rest.issues.updateComment({
+                ...context.repo,
+                comment_id: existing[0].id,
+                body,
+              })
+            } else {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: context.issue.number,
+                body,
+              })
+            }
+
   query-complexity:
     name: Dashboard query complexity
     runs-on: ubuntu-latest
