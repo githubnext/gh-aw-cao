@@ -1489,6 +1489,14 @@ function compactAxisLabel(value) {
  */
 function formatChartAxisTick(value, unit) {
   if (Math.abs(value) < 10_000) return formatNumber(value, unit);
+  if (unit?.format === 'aicc') {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      notation: 'compact',
+      maximumFractionDigits: 1
+    }).format(value / 100);
+  }
   const compact = new Intl.NumberFormat('en', {
     notation: 'compact',
     maximumFractionDigits: 1

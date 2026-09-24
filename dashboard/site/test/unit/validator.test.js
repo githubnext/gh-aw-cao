@@ -3952,10 +3952,10 @@ dashboard:
   title: Unit Dashboard
   units:
     aic:
-      name: AI Credits
+      name: AICc($)
       symbol: AIC
       significant: 1
-      format: number
+      format: aicc
     human-duration:
       name: Human-friendly duration
       symbol: s

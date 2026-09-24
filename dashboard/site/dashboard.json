@@ -1550,16 +1550,16 @@
     },
     "units": {
       "aic": {
-        "name": "AI Credits",
+        "name": "AICc($)",
         "symbol": "AIC",
         "significant": 1,
-        "format": "number"
+        "format": "aicc"
       },
       "aic-per-run": {
-        "name": "AI Credits per run",
+        "name": "AICc($)",
         "symbol": "AIC/run",
         "significant": 0.01,
-        "format": "number"
+        "format": "aicc"
       },
       "usd": {
         "name": "US dollars",
