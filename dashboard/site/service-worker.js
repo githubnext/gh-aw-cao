@@ -8,8 +8,8 @@ const UPDATE_INTERVAL_MS = 60 * 60 * 1000;
 const DOWNLOAD_TIMEOUT_MS = 2 * 60 * 1000;
 const DATA_FILES = new Set(['payload-hashes.json', 'inventory-sources.json']);
 const DEBUG_PREFIX = 'cao';
-const RUN_SHARD_PATH = /\/gh-aw-logs-runs\/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\.jsonl$/i;
-const RECORD_SHARD_PATH = /\/gh-aw-logs-records\/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\.jsonl$/i;
+const RUN_SHARD_PATH = /\/gh-aw-logs-runs\/[^/]+\.jsonl$/i;
+const RECORD_SHARD_PATH = /\/gh-aw-logs-records\/[^/]+\.jsonl$/i;
 
 /**
  * Extracts the raw `debug` query parameter from a location search string
@@ -139,12 +139,12 @@ async function downloadData(urls) {
         : cache.put(url, response.clone())
   )));
   const runEntries = Object.entries(currentHashes)
-    .filter(([name, hash]) => /^gh-aw-logs-runs\/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\.jsonl$/i.test(name)
+    .filter(([name, hash]) => /^gh-aw-logs-runs\/[^/]+\.jsonl$/i.test(name)
       && typeof hash === 'string'
       && /^[a-f0-9]{64}$/i.test(hash))
     .sort(([left], [right]) => left.localeCompare(right));
   const eventEntries = Object.entries(currentHashes)
-    .filter(([name, hash]) => /^gh-aw-logs-records\/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\.jsonl$/i.test(name)
+    .filter(([name, hash]) => /^gh-aw-logs-records\/[^/]+\.jsonl$/i.test(name)
       && typeof hash === 'string'
       && /^[a-f0-9]{64}$/i.test(hash))
     .sort(([left], [right]) => left.localeCompare(right));

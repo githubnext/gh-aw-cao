@@ -143,6 +143,30 @@ describe('dashboard service worker', () => {
     expect(entries.has(`https://example.test/dashboard/gh-aw-logs-records/${secondStem}`)).toBe(true);
   });
 
+  it('downloads currently compacted phase shard names', async () => {
+    const { listeners, fetch, entries } = serviceWorkerHarness();
+    const runName = 'gh-aw-logs-runs/2026-08-19-0000-d87bcbb6fd3ba859.jsonl';
+    const recordName = 'gh-aw-logs-records/2026-09-11-0002-494f59593ace108c.jsonl';
+    const payloadHashes = JSON.stringify({
+      [runName]: 'd'.repeat(64),
+      [recordName]: 'e'.repeat(64)
+    });
+    fetch.mockImplementation(async (url) => new Response(
+      String(url).endsWith('/payload-hashes.json') ? payloadHashes : '[]'
+    ));
+
+    await dispatchExtendedEvent(listeners.message, {
+      data: {
+        type: 'DOWNLOAD_DATA',
+        urls: ['https://example.test/dashboard/payload-hashes.json']
+      },
+      ports: [{ postMessage: vi.fn() }]
+    });
+
+    expect(entries.has(`https://example.test/dashboard/${runName}`)).toBe(true);
+    expect(entries.has(`https://example.test/dashboard/${recordName}`)).toBe(true);
+  });
+
   it('downloads configured dashboard data during periodic background sync with no page open', async () => {
     const { listeners, worker, fetch, entries } = serviceWorkerHarness();
     const runName = `gh-aw-logs-runs/logs-${'a'.repeat(64)}-${'b'.repeat(16)}.jsonl`;

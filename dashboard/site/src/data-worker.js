@@ -416,10 +416,7 @@ function dashboardContext(value) {
 /** @param {unknown} hashes @param {'runs' | 'records'} phase */
 function publishedPhaseShards(hashes, phase) {
   if (!hashes || typeof hashes !== 'object' || Array.isArray(hashes)) return [];
-  const pattern = new RegExp(
-    `^gh-aw-logs-${phase}/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\\.jsonl$`,
-    'i'
-  );
+  const pattern = new RegExp(`^gh-aw-logs-${phase}/[^/]+\\.jsonl$`, 'i');
   return Object.entries(/** @type {Record<string, unknown>} */ (hashes))
     .filter(([name, hash]) => pattern.test(name)
       && typeof hash === 'string'
