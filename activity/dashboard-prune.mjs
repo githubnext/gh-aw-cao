@@ -32,8 +32,16 @@ export function pruneDashboardDocument(document) {
   const queries = Array.isArray(dashboard.queries) ? dashboard.queries : [];
   const similarQueries = analyzeDashboardQueries(queries);
   const pages = Array.isArray(dashboard.pages) ? dashboard.pages : [];
+  const livePageIds = findLivePageIds(dashboard);
+  const removedPages = pages
+    .filter((page) => isRecord(page) && typeof page.id === 'string' && !livePageIds.has(page.id))
+    .map((page) => page.id);
+  const retainedPages = pages.filter((page) => (
+    !isRecord(page) || typeof page.id !== 'string' || livePageIds.has(page.id)
+  ));
+  dashboard.pages = retainedPages;
   const reusableViews = Array.isArray(dashboard.views) ? dashboard.views : [];
-  const referencedViewIds = referencedReusableViewIds(pages, reusableViews);
+  const referencedViewIds = referencedReusableViewIds(retainedPages);
   const removedViews = reusableViews
     .filter((view) => isRecord(view) && typeof view.id === 'string' && !referencedViewIds.has(view.id))
     .map((view) => view.id);
@@ -81,11 +89,98 @@ export function pruneDashboardDocument(document) {
       },
       pages: {
         before: pages.length,
-        after: pages.length,
-        removed: []
+        after: retainedPages.length,
+        removed: removedPages
       }
     }
   };
+}
+
+/** @param {Record<string, any>} dashboard */
+function findLivePageIds(dashboard) {
+  const pages = Array.isArray(dashboard.pages) ? dashboard.pages : [];
+  const pageById = new Map(pages.flatMap((page) => (
+    isRecord(page) && typeof page.id === 'string' ? [[page.id, page]] : []
+  )));
+  const reusableViewById = new Map((Array.isArray(dashboard.views) ? dashboard.views : []).flatMap((view) => (
+    isRecord(view) && typeof view.id === 'string' ? [[view.id, view]] : []
+  )));
+  const queryByName = new Map((Array.isArray(dashboard.queries) ? dashboard.queries : []).flatMap((query) => (
+    isRecord(query) && typeof query.name === 'string' ? [[query.name, query]] : []
+  )));
+  const live = new Set();
+  const pending = [];
+  const addPage = (id) => {
+    if (!pageById.has(id) || live.has(id)) return;
+    live.add(id);
+    pending.push(id);
+  };
+
+  for (const section of Array.isArray(dashboard.navigation) ? dashboard.navigation : []) {
+    if (!isRecord(section) || !Array.isArray(section.pages)) continue;
+    for (const id of section.pages) {
+      if (typeof id === 'string') addPage(id);
+    }
+  }
+  for (const callout of Array.isArray(dashboard.callouts) ? dashboard.callouts : []) {
+    if (isRecord(callout) && typeof callout['navigation-page'] === 'string') {
+      addPage(callout['navigation-page']);
+    }
+  }
+
+  while (pending.length > 0) {
+    const page = pageById.get(pending.pop());
+    if (!page) continue;
+    const values = [page];
+    for (const view of pageViews(page)) {
+      if (typeof view === 'string' && reusableViewById.has(view)) {
+        values.push(reusableViewById.get(view));
+      }
+    }
+
+    const queryNames = new Set();
+    for (const view of pageViews(page)) {
+      const resolved = typeof view === 'string' ? reusableViewById.get(view) : view;
+      if (!isRecord(resolved)) continue;
+      for (const name of viewQueryNames(resolved)) queryNames.add(name);
+    }
+    const pendingQueries = [...queryNames];
+    while (pendingQueries.length > 0) {
+      const query = queryByName.get(pendingQueries.pop());
+      if (!query || values.includes(query)) continue;
+      values.push(query);
+      for (const dependency of queryInputNames(query)) pendingQueries.push(dependency);
+    }
+
+    for (const value of values) {
+      for (const linkedPageId of linkedPageIds(value, pageById)) addPage(linkedPageId);
+    }
+  }
+  return live;
+}
+
+/** @param {unknown} value @param {Map<string, Record<string, any>>} pageById */
+function linkedPageIds(value, pageById) {
+  const ids = new Set();
+  const visit = (candidate, key) => {
+    if (typeof candidate === 'string') {
+      if (['page', 'navigation-page', 'view-all-page'].includes(key) && pageById.has(candidate)) {
+        ids.add(candidate);
+      }
+      for (const match of candidate.matchAll(/#page-([a-z0-9-]+)/gi)) {
+        if (pageById.has(match[1])) ids.add(match[1]);
+      }
+      return;
+    }
+    if (Array.isArray(candidate)) {
+      for (const item of candidate) visit(item);
+      return;
+    }
+    if (!isRecord(candidate)) return;
+    for (const [childKey, child] of Object.entries(candidate)) visit(child, childKey);
+  };
+  visit(value);
+  return ids;
 }
 
 /**
@@ -418,21 +513,13 @@ function chainablePrefix(left, right) {
   return stages.length > 1 ? stages : [];
 }
 
-/** @param {unknown[]} pages @param {unknown[]} reusableViews */
-function referencedReusableViewIds(pages, reusableViews) {
+/** @param {unknown[]} pages */
+function referencedReusableViewIds(pages) {
   const ids = new Set();
   for (const page of pages) {
     if (!isRecord(page)) continue;
     for (const view of pageViews(page)) {
       if (typeof view === 'string') ids.add(view);
-    }
-  }
-  for (const view of reusableViews) {
-    if (!isRecord(view) || typeof view.id !== 'string') continue;
-    if ((isRecord(view.list) && (isRecord(view.list.drill) || isRecord(view.list['view-all'])))
-        || (isRecord(view.metric) && typeof view.metric['navigation-page'] === 'string')
-        || (isRecord(view.config) && typeof view.config['view-all-page'] === 'string')) {
-      ids.add(view.id);
     }
   }
   return ids;

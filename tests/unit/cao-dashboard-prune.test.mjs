@@ -421,7 +421,7 @@ test('names shared chains from normalized query concepts and source stages', () 
   assert.ok(report.queries.chains.every((chain) => !chain.base.startsWith('shared-query-')));
 });
 
-test('prunes reusable views that are not referenced by a page or route behavior', () => {
+test('prunes pages, reusable views, and queries unreachable from navigation or links', () => {
   const input = dashboard({
     queries: [
       {
@@ -438,11 +438,17 @@ test('prunes reusable views that are not referenced by a page or route behavior'
         name: 'orphan-query',
         from: 'runs',
         filter: { predicates: [{ field: 'status', equals: 'queued' }] }
+      },
+      {
+        name: 'eval-query',
+        from: 'runs',
+        filter: { predicates: [{ field: 'status', equals: 'completed' }] }
       }
     ],
     views: [
       { id: 'detail-view', data: { source: 'detail-query' } },
-      { id: 'orphan-view', data: { source: 'orphan-query' } }
+      { id: 'orphan-view', data: { source: 'orphan-query' } },
+      { id: 'eval-view', data: { source: 'eval-query' } }
     ],
     pages: [
       {
@@ -460,6 +466,16 @@ test('prunes reusable views that are not referenced by a page or route behavior'
         route: { 'navigation-page': 'overview', 'hash-query-parameter': 'run' },
         views: ['detail-view']
       },
+      {
+        id: 'orphan',
+        kind: 'custom',
+        views: ['orphan-view']
+      },
+      {
+        id: 'evals',
+        kind: 'custom',
+        views: ['eval-view']
+      }
     ],
     navigation: [{ pages: ['overview'] }]
   });
@@ -469,9 +485,9 @@ test('prunes reusable views that are not referenced by a page or route behavior'
   assert.deepEqual(document.dashboard.pages.map((page) => page.id), ['overview', 'detail']);
   assert.deepEqual(document.dashboard.views.map((view) => view.id), ['detail-view']);
   assert.deepEqual(document.dashboard.queries.map((query) => query.name), ['overview-query', 'detail-query']);
-  assert.deepEqual(report.pages.removed, []);
-  assert.deepEqual(report.views.removed, ['orphan-view']);
-  assert.deepEqual(report.queries.removed, ['orphan-query']);
+  assert.deepEqual(report.pages.removed, ['orphan', 'evals']);
+  assert.deepEqual(report.views.removed, ['orphan-view', 'eval-view']);
+  assert.deepEqual(report.queries.removed, ['orphan-query', 'eval-query']);
 });
 
 test('cao prune-dashboard writes the optimized document and returns an analysis report', async () => {
