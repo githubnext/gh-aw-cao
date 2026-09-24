@@ -556,7 +556,8 @@ describe('campaign detail route', () => {
     expect(firstLoad.textContent).not.toContain('unavailable');
 
     resetSourceStore();
-    let resolveWorkflows;
+    /** @type {(source: import('../../src/presenter.js').LogicalSourceInput) => void} */
+    let resolveWorkflows = () => {};
     configureSourceLoader((name) => name === 'workflows'
       ? new Promise((resolve) => { resolveWorkflows = resolve; })
       : Promise.resolve({ source: name, metadata, rows: [] }));
@@ -569,7 +570,7 @@ describe('campaign detail route', () => {
     }));
     expect(loading.textContent).toContain('Loading campaign data...');
     expect(loading.querySelector('[aria-busy="true"]')?.getAttribute('role')).toBe('status');
-    resolveWorkflows?.({
+    resolveWorkflows({
       source: 'workflows',
       metadata: { ...metadata, availability: 'empty', completeness: 'unknown' },
       rows: []
