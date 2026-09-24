@@ -3553,7 +3553,7 @@ function validateQueries(queries, queriesNode, errors) {
     if (name && (SOURCE_VALUES.includes(name) || declared.has(name))) {
       errors.push(createError(
         ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-        'query name must be unique and must not shadow a canonical source name.',
+        'query name must be unique and must not shadow a database table name.',
         `${path}.name`
       ));
     }
@@ -3593,7 +3593,7 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
     if (!SOURCE_VALUES.includes(source) && !declared.has(source)) {
       errors.push(createError(
         ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-        'query sources must name one canonical source or one previously declared query.',
+        'query sources must name one database table or one previously declared query.',
         sourcePath
       ));
       return undefined;
@@ -4291,7 +4291,7 @@ function validateSource(source, path, errors) {
 }
 
 /**
- * Resolves the declared field schema of a canonical source or of a derived
+ * Resolves the declared field schema of a database table or of a derived
  * query. Returns `undefined` when the schema cannot be derived statically, in
  * which case field references are not checked.
  * @param {string} sourceName
@@ -4312,7 +4312,7 @@ function validateSourceSequence(sources, path, errors) {
   if (!Array.isArray(sources) || sources.length === 0) {
     errors.push(createError(
       ERROR_CODES.missingOrInvalidRequiredField,
-      'sources must be a non-empty sequence of canonical source names.',
+      'sources must be a non-empty sequence of database table names.',
       path
     ));
     return;

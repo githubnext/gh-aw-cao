@@ -75,6 +75,7 @@ test("deployed dashboard cache populates canonical workflows, runs, and run reco
     console.error(`Canonical ${table} rows: ${entries.length}`);
     assert.ok(entries.length > 0, `canonical ${table} table must contain an entry`);
   }
+  assert.ok(audits.length > 0, "audits table must contain a detected event");
   assert.ok(domains.length + tools.length + audits.length + issues.length > 0);
 });
 

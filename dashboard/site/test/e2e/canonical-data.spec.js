@@ -576,7 +576,7 @@ test('data worker avoids unavailable legacy boundaries on initial and navigated 
     for (const source of Object.values(payload)) {
       expect(source.metadata.availability).not.toBe('unavailable');
     }
-    // `outcomes` is derived from the `issues` canonical source, so deleting the
+    // `outcomes` is derived from the `issues` database table, so deleting the
     // published `outcomes` boundary still yields the issue row pushed above.
     expect(payload.outcomes.rows).toHaveLength(1);
     expect(payload.outcomes.rows[0]).toMatchObject({

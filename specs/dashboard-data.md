@@ -3356,7 +3356,7 @@ rebuild.
 The daily aggregate fast path is owned by the query/storage execution
 boundary defined in §43 (Query Layer), not by Overview view or component code. Before
 using materialized data for a query, the planner MUST prove
-compatibility: supported canonical source, supported aggregate,
+compatibility: supported database table, supported aggregate,
 compatible time field and UTC day semantics, supported predicates, no
 unsupported joins, no unsupported compute operation, no distinct
 semantics, and a compatible aggregate metadata version. If any condition
@@ -3501,7 +3501,7 @@ not valid IndexedDB keys.
 
 The `result` payload MUST satisfy the bound declared by its measure. It MUST NOT
 contain raw prompts, credentials, arguments, response bodies, unbounded audit
-objects, or another copy of canonical source rows.
+objects, or another copy of database rows.
 
 A `computationMetadata` record SHALL have this shape:
 

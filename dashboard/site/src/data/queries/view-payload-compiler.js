@@ -92,7 +92,7 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
 }
 
 /**
- * Leaves an unmodified canonical source on its native IndexedDB read path.
+ * Leaves an unmodified database table on its native IndexedDB read path.
  * The presenter already resolves the source directly when no view alias exists.
  * @param {unknown} view
  * @param {string} sourceName

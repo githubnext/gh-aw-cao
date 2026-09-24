@@ -46,7 +46,7 @@ export function compileDashboardQueryTypes(definitions) {
       errors.push(error(
         ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
         SOURCE_VALUES.includes(value.name)
-          ? `query name "${value.name}" conflicts with a canonical source name.`
+          ? `query name "${value.name}" conflicts with a database table name.`
           : `query name "${value.name}" is declared more than once.`,
         `$.dashboard.queries[${index}].name`
       ));
@@ -67,7 +67,7 @@ export function compileDashboardQueryTypes(definitions) {
       if (!target) {
         errors.push(error(
           ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-          `query source "${reference.name}" is not a canonical source or previously declared query.`,
+          `query source "${reference.name}" is not a database table or previously declared query.`,
           reference.path
         ));
       } else if (target.index >= symbol.index) {

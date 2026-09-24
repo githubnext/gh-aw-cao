@@ -68,7 +68,7 @@ describe('dashboard query type checker', () => {
     ]));
   });
 
-  it('preserves permissive typing for canonical sources without a declared schema', () => {
+  it('preserves permissive typing for database tables without a declared schema', () => {
     const result = compileDashboardQueryTypes([
       query({
         name: 'overview-query',
@@ -352,7 +352,7 @@ describe('dashboard query type checker', () => {
         path: '$.dashboard.queries[1].name'
       }),
       expect.objectContaining({
-        message: 'query source "missing-source" is not a canonical source or previously declared query.',
+        message: 'query source "missing-source" is not a database table or previously declared query.',
         path: '$.dashboard.queries[2].from'
       }),
       expect.objectContaining({
