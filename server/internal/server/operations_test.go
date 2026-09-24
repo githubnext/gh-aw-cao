@@ -10,15 +10,16 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
 type testReconciler struct {
-	calls int
-	event GitHubWebhook
+	calls  int
+	event  GitHubWebhook
+	called chan struct{}
 }
 
 type emptyRedisClient struct{}
@@ -46,6 +47,9 @@ func (reconciler *testReconciler) Rebuild(context.Context) (ingest.Result, error
 func (reconciler *testReconciler) Reconcile(_ context.Context, event GitHubWebhook) (ingest.Result, error) {
 	reconciler.calls++
 	reconciler.event = event
+	if reconciler.called != nil {
+		close(reconciler.called)
+	}
 	return ingest.Result{Generation: "g2", Revision: 2}, nil
 }
 
@@ -70,7 +74,7 @@ func TestWebhookReconcilesThroughInjectedCanonicalUpdater(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reconciler := &testReconciler{}
+	reconciler := &testReconciler{called: make(chan struct{})}
 	app := &App{
 		store:         redisx.NewStore(client, "webhook-test"),
 		reconciler:    reconciler,
@@ -93,20 +97,23 @@ func TestWebhookReconcilesThroughInjectedCanonicalUpdater(t *testing.T) {
 	if response.Code != http.StatusAccepted {
 		t.Fatalf("webhook returned %d: %s", response.Code, response.Body.String())
 	}
+	<-reconciler.called
+	deadline := time.Now().Add(time.Second)
+	for {
+		held, err := app.store.LockHeld(t.Context(), "projection")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !held {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("projection lock was not released after reconciliation")
+		}
+		time.Sleep(time.Millisecond)
+	}
 	if reconciler.calls != 1 || reconciler.event.Event != "workflow_run" {
 		t.Fatalf("webhook was not reconciled: %#v", reconciler)
-	}
-}
-
-func TestCanonicalRelationshipFiltersUseCanonicalFields(t *testing.T) {
-	rows := filterRows([]model.Row{
-		{"runId": "run-1", "id": "session-1"},
-		{"runId": "run-2", "id": "session-2"},
-	}, func(row model.Row) bool {
-		return fieldEquals(row, "run-1", "runId")
-	})
-	if len(rows) != 1 || rows[0]["id"] != "session-1" {
-		t.Fatalf("unexpected related canonical rows: %#v", rows)
 	}
 }
 
@@ -137,5 +144,29 @@ func TestEmptyRedisIsHealthyButNotReady(t *testing.T) {
 	)
 	if readinessResponse.Code != http.StatusServiceUnavailable {
 		t.Fatalf("empty Redis readiness returned %d: %s", readinessResponse.Code, readinessResponse.Body.String())
+	}
+}
+
+func TestHostedRebuildRequiresExplicitAdministrator(t *testing.T) {
+	app := &App{
+		oauth:  &githubOAuth{},
+		config: Config{AdminUsers: []string{"cao-admin"}},
+	}
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/admin/rebuild", nil)
+	request = request.WithContext(context.WithValue(
+		request.Context(),
+		oauthSessionContextKey{},
+		oauthSession{Login: "dashboard-reader"},
+	))
+	if app.adminAuthorized(request) {
+		t.Fatal("non-administrator was authorized to rebuild")
+	}
+	request = request.WithContext(context.WithValue(
+		request.Context(),
+		oauthSessionContextKey{},
+		oauthSession{Login: "CAO-ADMIN"},
+	))
+	if !app.adminAuthorized(request) {
+		t.Fatal("explicit administrator was denied")
 	}
 }

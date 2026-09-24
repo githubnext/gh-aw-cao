@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
@@ -14,6 +13,8 @@ import (
 type canonicalService struct {
 	store *redisx.Store
 }
+
+var errCanonicalEntityNotFound = errors.New("canonical entity was not found")
 
 func (service canonicalService) rows(ctx context.Context, source string) ([]model.Row, error) {
 	active, err := service.store.Active(ctx)
@@ -66,7 +67,7 @@ func (service canonicalService) entity(ctx context.Context, source, id string) (
 	if len(rows) > 0 {
 		return rows[0], nil
 	}
-	return nil, nil
+	return nil, errCanonicalEntityNotFound
 }
 
 func (service canonicalService) repositoryRuns(ctx context.Context, id string) ([]model.Row, error) {
@@ -96,33 +97,6 @@ func (service canonicalService) related(ctx context.Context, source, id, field s
 	return service.filteredRows(ctx, source, map[string]any{field: id})
 }
 
-func matchesIdentifier(row model.Row, id string) bool {
-	return fieldEquals(row, id, "id", "githubId", "github-id", "workflow-id", "run", "session-id")
-}
-
-func fieldEquals(row model.Row, expected string, fields ...string) bool {
-	for _, field := range fields {
-		if value, ok := row[field]; ok && fmt.Sprint(value) == expected {
-			return true
-		}
-	}
-	return false
-}
-
-func valuesEqual(left, right any) bool {
-	return left != nil && right != nil && fmt.Sprint(left) == fmt.Sprint(right)
-}
-
-func filterRows(rows []model.Row, predicate func(model.Row) bool) []model.Row {
-	result := make([]model.Row, 0)
-	for _, row := range rows {
-		if predicate(row) {
-			result = append(result, row)
-		}
-	}
-	return result
-}
-
 func (a *App) repositories(response http.ResponseWriter, request *http.Request) {
 	rows, err := a.canonical.rows(request.Context(), "repositories")
 	a.writeCanonicalRows(response, rows, err)
@@ -130,12 +104,12 @@ func (a *App) repositories(response http.ResponseWriter, request *http.Request) 
 
 func (a *App) repository(response http.ResponseWriter, request *http.Request) {
 	row, err := a.canonical.entity(request.Context(), "repositories", request.PathValue("id"))
-	if err != nil {
-		writeError(response, http.StatusServiceUnavailable, "canonical data is unavailable")
+	if errors.Is(err, errCanonicalEntityNotFound) {
+		writeError(response, http.StatusNotFound, "repository was not found")
 		return
 	}
-	if row == nil {
-		writeError(response, http.StatusNotFound, "repository was not found")
+	if err != nil {
+		writeError(response, http.StatusServiceUnavailable, "canonical data is unavailable")
 		return
 	}
 	writeJSON(response, http.StatusOK, row)
@@ -167,6 +141,10 @@ func (a *App) sessionEvents(response http.ResponseWriter, request *http.Request)
 }
 
 func (a *App) writeCanonicalRows(response http.ResponseWriter, rows []model.Row, err error) {
+	if errors.Is(err, errCanonicalEntityNotFound) {
+		writeError(response, http.StatusNotFound, "canonical entity was not found")
+		return
+	}
 	if err != nil {
 		writeError(response, http.StatusServiceUnavailable, "canonical data is unavailable")
 		return

@@ -30,6 +30,8 @@ or public reverse proxy.
 
 Hosted mode rejects local bearer capabilities and requires GitHub OAuth,
 explicit organization or team authorization, and an exact trusted-host policy.
+Administrative rebuilds additionally require an explicit GitHub login in
+`CAO_GITHUB_ADMIN_USERS`.
 Mutating browser requests require the session-bound CSRF token. The webhook
 route is exempt from browser authentication only because it independently
 requires a valid `X-Hub-Signature-256` signature and delivery identity.

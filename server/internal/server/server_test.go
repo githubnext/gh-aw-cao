@@ -463,6 +463,13 @@ func fakeRedis(t *testing.T) (string, func()) {
 							_, _ = fmt.Fprint(connection, ":0\r\n")
 						}
 					case "EVAL":
+						if len(command) >= 5 && strings.Contains(command[1], `redis.call("DEL"`) {
+							mu.Lock()
+							if values[command[3]] == command[4] {
+								delete(values, command[3])
+							}
+							mu.Unlock()
+						}
 						_, _ = fmt.Fprint(connection, ":1\r\n")
 					case "HGETALL":
 						_, _ = fmt.Fprint(connection, "*10\r\n$10\r\ngeneration\r\n$2\r\ng1\r\n$8\r\nrevision\r\n$1\r\n1\r\n$6\r\ncounts\r\n$2\r\n{}\r\n$11\r\nactivatedAt\r\n$20\r\n2026-01-01T00:00:00Z\r\n$11\r\nevaluatedAt\r\n$20\r\n2026-02-03T04:05:06Z\r\n")

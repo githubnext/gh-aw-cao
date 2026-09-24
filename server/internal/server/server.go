@@ -51,6 +51,7 @@ type Config struct {
 	SourceDirectory     string
 	Reconciler          Reconciler
 	WebhookSecret       string
+	AdminUsers          []string
 	Logger              *log.Logger
 }
 
@@ -328,8 +329,27 @@ func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 				return
 			}
 		}
+		request = request.WithContext(context.WithValue(request.Context(), oauthSessionContextKey{}, session))
 		next.ServeHTTP(response, request)
 	})
+}
+
+type oauthSessionContextKey struct{}
+
+func (a *App) adminAuthorized(request *http.Request) bool {
+	if a.oauth == nil {
+		return true
+	}
+	session, ok := request.Context().Value(oauthSessionContextKey{}).(oauthSession)
+	if !ok {
+		return false
+	}
+	for _, login := range a.config.AdminUsers {
+		if strings.EqualFold(strings.TrimSpace(login), session.Login) {
+			return true
+		}
+	}
+	return false
 }
 
 func constantTimeTokenEqual(candidate, expected string) bool {

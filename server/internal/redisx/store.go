@@ -83,6 +83,14 @@ func (s *Store) Unlock(ctx context.Context, name, token string) error {
 	return err
 }
 
+func (s *Store) LockHeld(ctx context.Context, name string) (bool, error) {
+	value, err := s.Client.Do(ctx, "GET", s.Key("lock:"+name))
+	if err != nil {
+		return false, err
+	}
+	return value != nil, nil
+}
+
 func (s *Store) RememberDelivery(ctx context.Context, delivery string, ttl time.Duration) (bool, error) {
 	sum := sha256.Sum256([]byte(delivery))
 	key := s.Key("github-delivery:" + hex.EncodeToString(sum[:]))

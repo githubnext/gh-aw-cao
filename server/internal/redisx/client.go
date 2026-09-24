@@ -18,6 +18,8 @@ import (
 
 var redisLog = logger.New("cao:redis")
 
+const maxIdleConnectionAge = 5 * time.Minute
+
 type Client struct {
 	address   string
 	username  string
@@ -32,6 +34,7 @@ type redisConnection struct {
 	connection net.Conn
 	reader     *bufio.Reader
 	writer     *bufio.Writer
+	lastUsed   time.Time
 }
 
 type redisResponseError struct {
@@ -181,6 +184,11 @@ func (c *Client) DoMany(ctx context.Context, commands [][]string) ([]any, error)
 func (c *Client) acquire(ctx context.Context) (*redisConnection, bool, error) {
 	select {
 	case connection := <-c.pool:
+		if time.Since(connection.lastUsed) > maxIdleConnectionAge {
+			_ = connection.connection.Close()
+			fresh, err := c.connect(ctx)
+			return fresh, false, err
+		}
 		return connection, true, nil
 	default:
 		connection, err := c.connect(ctx)
@@ -197,6 +205,7 @@ func (c *Client) release(connection *redisConnection, reusable bool) {
 		return
 	}
 	_ = connection.connection.SetDeadline(time.Time{})
+	connection.lastUsed = time.Now()
 	select {
 	case c.pool <- connection:
 	default:

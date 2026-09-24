@@ -53,6 +53,10 @@ func NewHostedAppFromEnv(
 	if len(webhookSecret) < 32 {
 		return nil, errors.New("CAO_GITHUB_WEBHOOK_SECRET must contain at least 32 characters")
 	}
+	adminUsers := splitCSV(os.Getenv("CAO_GITHUB_ADMIN_USERS"))
+	if len(adminUsers) == 0 {
+		return nil, errors.New("CAO_GITHUB_ADMIN_USERS requires at least one GitHub login")
+	}
 	config := Config{
 		HostingMode:         HostingModeHosted,
 		Listen:              listen,
@@ -61,6 +65,7 @@ func NewHostedAppFromEnv(
 		DatabaseQueriesPath: databaseQueriesPath,
 		SourceDirectory:     sourceDirectory,
 		WebhookSecret:       webhookSecret,
+		AdminUsers:          adminUsers,
 		Proxy: ProxyPolicy{
 			AllowedHosts: splitCSV(os.Getenv("CAO_ALLOWED_HOSTS")),
 			RequireHTTPS: strings.TrimSpace(os.Getenv("CAO_REQUIRE_HTTPS")) != "false",

@@ -54,10 +54,6 @@ func validateHostedMode(store *redisx.Store, config *Config) error {
 	return nil
 }
 
-func validateAzureMode(store *redisx.Store, config *Config) error {
-	return validateHostedMode(store, config)
-}
-
 func validAzureProxyRequest(request *http.Request, policy AzureProxyPolicy) bool {
 	host := forwardedHeader(request, "X-Forwarded-Host")
 	if host == "" {

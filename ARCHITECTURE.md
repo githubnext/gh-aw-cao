@@ -232,9 +232,10 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   or HTTPS only with operator-supplied certificate files.
 - The hosted Redis profile runs behind an explicitly trusted HTTPS proxy,
   authenticates users through GitHub OAuth plus explicit organization or team
-  authorization, verifies webhook signatures, deduplicates deliveries, and
-  coordinates rebuilds through Redis so multiple stateless replicas cannot
-  replace the projection concurrently.
+  authorization, limits rebuild control to explicit administrators, verifies
+  webhook signatures, deduplicates deliveries, and coordinates bounded
+  request-independent rebuilds through Redis so multiple stateless replicas
+  cannot replace the projection concurrently.
 - Browsers and external clients never receive Redis endpoints or credentials.
   Redis generations are staged and validated before atomic activation; a failed
   rebuild leaves the previous generation active, and an empty Redis instance is

@@ -88,6 +88,7 @@ to a Redis provider or cloud SDK. Configuration is supplied through:
 | `CAO_GITHUB_CLIENT_ID`, `CAO_GITHUB_CLIENT_SECRET`, `CAO_GITHUB_REDIRECT_URL` | GitHub OAuth application. |
 | `CAO_SESSION_SECRET` | Session encryption/signing secret of at least 32 characters. |
 | `CAO_GITHUB_ALLOWED_ORGS`, `CAO_GITHUB_ALLOWED_TEAMS` | Explicit authorization policy. |
+| `CAO_GITHUB_ADMIN_USERS` | Required comma-separated GitHub logins allowed to trigger rebuilds. |
 | `CAO_GITHUB_WEBHOOK_SECRET` | Required GitHub webhook signature secret of at least 32 characters. |
 | `CAO_SOURCE_DIRECTORY` | Required authoritative deployed gh-aw artifact directory used by rebuild/reconciliation. |
 
@@ -95,9 +96,11 @@ The hosted server exposes canonical repository/run APIs, verifies and
 deduplicates webhook deliveries, and coordinates projection updates with a
 Redis lease so multiple replicas do not rebuild concurrently. Webhooks trigger
 authoritative re-ingestion; they are not treated as complete canonical records.
-`POST /api/admin/rebuild` always forces a new staged generation, validates it,
-then atomically activates it. A failed rebuild leaves the previous generation
-active.
+Validated webhook and rebuild requests return `202` before projection work
+continues under a bounded, request-independent context. Only explicitly listed
+administrators may call `POST /api/admin/rebuild`; it always forces a new staged
+generation, validates it, then atomically activates it. A failed rebuild leaves
+the previous generation active.
 
 The Redis command client reuses a bounded connection pool, applies operation
 deadlines, and retries read-only commands once when a pooled connection has
