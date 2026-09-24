@@ -16,7 +16,9 @@ credentials. It communicates only with the same-origin HTTP(S) API.
 > hosting is supported only through the explicit Azure Functions profile, which
 > replaces the local capability with GitHub OAuth, refresh-token-backed
 > server-side sessions, explicit GitHub organization/team authorization, and an
-> Azure trusted-proxy policy. PATs are not supported.
+> Azure trusted-proxy policy. PATs are not supported. The Azure Functions
+> profile is experimental: deploy it only after security review, staging
+> validation, and rollback planning for your Azure tenant.
 
 ## Architecture
 
@@ -53,6 +55,13 @@ flowchart LR
 | Local Redis | `docker-compose.yml` | Runs Redis Stack with RediSearch on `127.0.0.1:6379`. |
 
 ### Hosted Azure architecture
+
+> [!WARNING]
+> The hosted Azure architecture is an experimental production-readiness profile,
+> not a turnkey production certification. Treat the Bicep, OAuth policy, Redis
+> topology, and Key Vault access model as a reviewed baseline that must be
+> validated against your organization's Azure, GitHub, compliance, monitoring,
+> incident-response, and data-retention requirements before live use.
 
 The Azure Functions profile keeps the dashboard browser isolated from Redis,
 GitHub tokens, refresh tokens, Redis access keys, and Key Vault secret values.
@@ -258,7 +267,7 @@ The local capability profile is not suitable for remote or multi-user
 deployment. The capability authorizes its holder to read the full active
 dashboard generation; it provides no user identity or per-source authorization.
 
-The Azure Functions profile is the production-oriented remote profile. It is
+The Azure Functions profile is the experimental remote profile. It is
 enabled only by constructing the app with `HostingModeAzureFunctions` or by
 calling `NewAzureFunctionsHandlerFromEnv`; `serve` does not enable it. Azure
 mode fails closed unless all of the following are configured:
@@ -320,6 +329,11 @@ hosting:
 - Rotate OAuth, session, storage, and Redis credentials through Key Vault and
   Azure platform controls; then restart the Function App so current secret
   versions are resolved.
+
+Do not remove the experimental designation until the hosted profile has passed
+a deployment-specific security review, compliance review, load/cost validation,
+incident-response exercise, backup/rollback exercise, and Azure network-access
+review for the target tenant.
 
 See [`SECURITY.md`](SECURITY.md) for the complete protection model, operational
 guidance, limitations, and private vulnerability-reporting process.

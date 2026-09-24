@@ -1,9 +1,13 @@
 targetScope = 'resourceGroup'
 
+// Experimental Azure Functions deployment baseline for the Go dashboard server.
+// Review and validate tenant-specific security, compliance, networking,
+// monitoring, cost, rotation, and rollback requirements before live use.
+
 @description('Azure region for all dashboard resources.')
 param location string = resourceGroup().location
 
-@description('Globally unique Function App name.')
+@description('Globally unique Function App name for the experimental Azure Functions dashboard profile.')
 param functionAppName string
 
 @description('Azure App Service plan name for the Function App.')

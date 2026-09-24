@@ -74,6 +74,13 @@ identity-aware authentication in a remote service.
 
 ## Azure Functions profile
 
+> [!WARNING]
+> Azure Functions mode is experimental. It defines a security baseline for
+> review and staged evaluation, not a blanket production approval. Keep the
+> profile disabled for live use until the target tenant has completed security,
+> compliance, privacy, network, monitoring, incident-response, and rollback
+> reviews.
+
 Azure Functions mode is enabled only by constructing the app with
 `HostingModeAzureFunctions` or by using `NewAzureFunctionsHandlerFromEnv`. It
 does not start its own listener, does not accept `--access-token`, and does not
@@ -193,6 +200,22 @@ Primary threats and mitigations:
   contract, focused Bicep contract tests for Key Vault and platform security
   controls, and compliance review of Azure activity logs and Function App
   configuration changes.
+
+Open experimental risks that must be accepted or closed before live production
+use:
+
+- Azure Functions cold starts, scale-in, and platform timeouts may interrupt
+  long-lived SSE even when query/refresh endpoints continue to work.
+- The Bicep template is a baseline and does not by itself prove tenant-specific
+  network isolation, private endpoint reachability, cost limits, backup
+  posture, data residency, or regulatory compliance.
+- Redis Enterprise stores derived dashboard data plus encrypted sessions; an
+  organization must validate whether its data classification permits that
+  projection and retention model.
+- The profile has focused automated tests and Bicep contract checks, but it
+  still requires staged deployment, OAuth callback validation, key rotation
+  exercises, logging review, and rollback rehearsal with the actual Azure
+  tenant and GitHub organization.
 
 ### Azure secure-computing and compliance controls
 
