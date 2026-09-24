@@ -20,9 +20,6 @@ These are the default product destinations. They are custom pages composed from 
 | Page ID | Navigation title | Named element | Purpose |
 | --- | --- | --- | --- |
 | `overview` | Overview | `factory-header`, `factory-floor`, `link-button-list` | Summarizes campaign health, repository coverage, weekly rhythm, and campaign shortcuts. |
-| `work` | Work | `work-project-view` | Presents delegated work as board, task, and roadmap modes. |
-| `agents` | Operations | `agent-marketplace-view` | Presents the policy-scoped campaign and agent marketplace. |
-| `insights` | Insights | `insights-overview` | Composes outcomes, value, usage, runtime, security, and experiment evidence. |
 | `configuration` | Settings | `configuration-policy` | Presents checked-in control policy and its editable settings surface. |
 
 ## Built-in pages
@@ -79,39 +76,15 @@ Named elements own specialized DOM, accessibility, interaction, local state, and
 
 | Element | Purpose |
 | --- | --- |
-| `domain-attention` | Renders data-driven attention summaries by operational domain. |
-| `campaign-status-grid` | Shows compact status across installed campaigns. |
-| `summary-grid` | Presents a reusable grid of summarized values. |
-| `readiness-verdict` | Presents the control-plane readiness decision and supporting evidence. |
-| `context-summary` | Summarizes the active scope and contextual evidence. |
-| `anomaly-readiness` | Presents anomaly-detection readiness and gaps. |
-| `signal-list` | Presents a compact list of evidence-backed signals. |
-| `needs-attention-list` | Presents grouped unresolved evidence with observation time, one GitHub action link, and an optional full-list route. |
-| `campaign-activity` | Composes campaign activity views. |
-| `campaign-activity-shell` | Coordinates campaign activity modes and shared chrome. |
-| `campaign-utilization` | Presents campaign utilization measures. |
-| `campaign-run-trend` | Presents campaign run history and trend. |
-| `campaign-summary-table` | Presents the campaign summary table. |
-| `campaign-insights` | Presents the insights variant of a routed campaign page. |
-| `campaign-detail` | Presents the workflows variant of a routed campaign page. |
-| `campaign-dispatches` | Compatibility element that presents the workflow-runs variant of a routed campaign page. |
-| `campaign-reports` | Presents the reports variant of a routed campaign page. |
 | `campaign-route` | Resolves and composes a route-selected campaign experience. |
-| `workflow-route` | Resolves a route-selected workflow experience. |
 | `workflow-route-page` | Composes a complete routed workflow page. |
 | `outcome-detail` | Presents one outcome and its linked evidence. |
 | `outcome-detail-section` | Presents a declared section within an outcome detail. |
 | `configuration-policy` | Presents and edits checked-in CAO policy. |
-| `configuration-actions` | Presents approved configuration actions. |
-| `local-database` | Presents local canonical database diagnostics. |
-| `work-project-view` | Presents delegated work in board, task, and roadmap modes. |
-| `agent-marketplace-view` | Presents policy-scoped campaigns and agent capabilities. |
-| `insights-overview` | Composes the primary cross-domain Insights experience. |
 | `measure-history` | Presents reusable grouped temporal-measure history from declarative query results. |
 | `factory-header` | Presents factory status, retained-output context, work in motion, and weekly rhythm. |
 | `factory-floor` | Presents linked repository, run, dispatch, and value stations. |
 | `link-button-list` | Presents one source as an inset grouped list of Octicon navigation rows with disclosure chevrons. |
-| `outcomes-overview` | Compatibility alias that composes the factory header and floor for existing version 0.1.0 documents. |
 
 ## Testing standard
 

@@ -2,33 +2,18 @@
  * Registry for JSON-selected dashboard UI elements.
  */
 
-import { h } from '../dom.js';
-import { octicon } from '../octicons.js';
-import { formatClockDuration, formatHumanFriendlyTimestamp } from '../view-formatters.js';
-import { findLink, renderSafeLink } from './link-content.js';
-import { renderCampaignsView, renderCampaignSummary, renderCampaignUtilization, renderRunTrend } from './campaigns-view.js';
 import { renderCampaignRouteView } from './campaign-route-view.js';
-import { renderOutcomeDetail } from './outcome-detail.js';
-import { isOutcomeDetailSectionConfig, renderOutcomeDetailSection } from './outcome-detail-sections.js';
-import { renderSectionHeading, isPlainObject, renderIdentityLink, renderDlRow, renderIconSpan, renderLabeledSpan, renderListOrEmptyMessage, renderCountBadge } from './ui-primitives.js';
-import { slugify, clampPercent, text as stringValue } from './count-formatters.js';
-import { renderDefinitionList } from './view-chrome.js';
-import { renderAnomalyReadiness } from './anomaly-readiness.js';
-import { renderWorkflowRouteView } from './workflow-route-view.js';
+import { text as stringValue } from './count-formatters.js';
 import { renderConfigurationView } from './configuration-view.js';
-import { renderConfigurationActions } from './configuration-actions.js';
-import { renderWorkProjectView } from './work-project-view.js';
-import { renderInsightsOverview } from './insights-overview.js';
-import { renderMeasureHistory } from './measure-history.js';
-import { modeBadgeClassName } from './badge.js';
-import { rowsFor as rowsForSource } from './source-rows.js';
-import { renderCampaignsModeShell } from './campaigns-mode-shell.js';
-import { renderWorkflowRoutePage } from './workflow-route-page.js';
 import { renderFactoryFloorElement } from './factory-floor.js';
 import { renderFactoryHeaderElement } from './factory-header.js';
-import { renderLocalDatabaseView } from './local-database-view.js';
-import { renderPanel } from './panel.js';
 import { renderLinkButtonList } from './link-button-list.js';
+import { renderMeasureHistory } from './measure-history.js';
+import { renderOutcomeDetail } from './outcome-detail.js';
+import { isOutcomeDetailSectionConfig, renderOutcomeDetailSection } from './outcome-detail-sections.js';
+import { rowsFor as rowsForSource } from './source-rows.js';
+import { renderWorkflowRoutePage } from './workflow-route-page.js';
+
 /**
  * @typedef {{
  *   pageId: string,
@@ -53,38 +38,19 @@ export {};
 
 /** @type {Map<string, (context: ElementRenderContext) => HTMLElement | null>} */
 const ELEMENT_RENDERERS = new Map([
-  ['domain-attention', renderDomainAttentionElement],
-  ['campaign-status-grid', renderCampaignStatusGridElement],
-  ['summary-grid', renderSummaryGridElement],
-  ['readiness-verdict', renderReadinessVerdictElement],
-  ['context-summary', renderContextSummaryElement],
-  ['anomaly-readiness', renderAnomalyReadinessElement],
-  ['signal-list', renderSignalListElement],
-  ['needs-attention-list', (context) => renderSignalListElement(context, true)],
-  ['campaign-activity', ({ sources, pageId }) => renderCampaignsView(sources, pageId)],
-  ['campaign-utilization', ({ sources }) => renderCampaignUtilization(sources)],
-  ['campaign-run-trend', ({ sources }) => renderRunTrend(sources)],
-  ['campaign-summary-table', ({ sources }) => renderCampaignSummary(sources)],
-  ['campaign-activity-shell', renderCampaignActivityShellElement],
   ['campaign-route', renderCampaignRouteView],
-  ['workflow-route', renderWorkflowRouteView],
   ['workflow-route-page', renderWorkflowRoutePage],
   ['outcome-detail', renderOutcomeDetail],
   ['outcome-detail-section', renderOutcomeDetailSectionElement],
   ['configuration-policy', renderConfigurationView],
-  ['configuration-actions', renderConfigurationActions],
-  ['work-project-view', renderWorkProjectView],
   ['measure-history', renderMeasureHistory],
-  ['insights-overview', renderInsightsOverview],
   ['factory-header', renderFactoryHeaderElement],
   ['factory-floor', renderFactoryFloorElement],
-  ['link-button-list', renderLinkButtonList],
-  ['outcomes-overview', renderLegacyFactoryOverview],
-  ['local-database', renderLocalDatabaseView]
+  ['link-button-list', renderLinkButtonList]
 ]);
 
 /** Elements that load declared sources independently of the active page subscription. */
-const ASYNC_SOURCE_ELEMENTS = new Set(['factory-header', 'factory-floor', 'link-button-list', 'outcomes-overview']);
+const ASYNC_SOURCE_ELEMENTS = new Set(['factory-header', 'factory-floor', 'link-button-list']);
 
 /**
  * Reports whether an element loads its declared sources on its own.
@@ -95,7 +61,17 @@ export function elementLoadsSourcesAsync(name) {
   return ASYNC_SOURCE_ELEMENTS.has(name);
 }
 
-const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'needs-attention-list', 'campaign-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'campaign-activity-shell', 'work-project-view', 'measure-history', 'insights-overview', 'factory-header', 'factory-floor', 'link-button-list', 'outcomes-overview', 'local-database']);
+const EMPTY_AWARE_ELEMENTS = new Set([
+  'campaign-route',
+  'workflow-route-page',
+  'outcome-detail',
+  'outcome-detail-section',
+  'configuration-policy',
+  'measure-history',
+  'factory-header',
+  'factory-floor',
+  'link-button-list'
+]);
 const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy']);
 
 /**
@@ -113,40 +89,9 @@ function lazyElementRenderer(importModule, render) {
 
 /** @type {Map<string, (context: ElementRenderContext) => Promise<HTMLElement | null>>} */
 const LAZY_ELEMENT_RENDERERS = new Map([
-  ['campaign-activity-lazy', lazyElementRenderer(
-    () => import('./campaigns-view.js'),
-    ({ renderCampaignsView }, { sources, pageId }) => renderCampaignsView(sources, pageId)
-  )],
-  ['campaign-utilization-lazy', lazyElementRenderer(
-    () => import('./campaigns-view.js'),
-    ({ renderCampaignUtilization }, { sources }) => renderCampaignUtilization(sources)
-  )],
-  ['campaign-run-trend-lazy', lazyElementRenderer(
-    () => import('./campaigns-view.js'),
-    ({ renderRunTrend }, { sources }) => renderRunTrend(sources)
-  )],
-  ['campaign-summary-table-lazy', lazyElementRenderer(
-    () => import('./campaigns-view.js'),
-    ({ renderCampaignSummary }, { sources }) => renderCampaignSummary(sources)
-  )],
-  ['campaign-activity-shell-lazy', lazyElementRenderer(
-    () => import('./campaigns-view.js'),
-    ({ renderCampaignUtilization, renderRunTrend, renderCampaignSummary }, context) => renderCampaignsModeShell({
-      pageId: context.pageId,
-      sections: [
-        { id: 'utilization', render: (mode) => renderCampaignUtilization(context.sources, mode) },
-        { id: 'run-trend', render: (mode) => renderRunTrend(context.sources, mode) },
-        { id: 'summary', render: (mode) => renderCampaignSummary(context.sources, mode) }
-      ]
-    })
-  )],
   ['campaign-route-lazy', lazyElementRenderer(
     () => import('./campaign-route-view.js'),
     ({ renderCampaignRouteView }, context) => renderCampaignRouteView(context)
-  )],
-  ['workflow-route-lazy', lazyElementRenderer(
-    () => import('./workflow-route-view.js'),
-    ({ renderWorkflowRouteView }, context) => renderWorkflowRouteView(context)
   )],
   ['workflow-route-page-lazy', lazyElementRenderer(
     () => import('./workflow-route-page.js'),
@@ -175,29 +120,6 @@ export async function renderUiElementAsync(name, context) {
 }
 
 /**
- * Preserves the version 0.1.0 outcomes-overview contract for existing documents
- * while new dashboards compose the two factory elements as independent views.
- * @param {ElementRenderContext} context
- */
-function renderLegacyFactoryOverview(context) {
-  const configured = Array.isArray(context.elementConfig?.sections)
-    ? context.elementConfig.sections
-    : ['header', 'floor'];
-  const sections = configured.filter((section, index) => (
-    (section === 'header' || section === 'floor') && configured.indexOf(section) === index
-  ));
-  const selected = sections.length > 0 ? sections : ['header', 'floor'];
-  return renderPanel({
-    className: 'agent-factory',
-    labelledBy: selected.includes('header') ? 'agent-factory-heading' : undefined,
-    label: context.title || 'Factory overview',
-    children: selected.map((section) => section === 'header'
-      ? renderFactoryHeaderElement(context)
-      : renderFactoryFloorElement(context))
-  });
-}
-
-/**
  * @param {ElementRenderContext} context
  * @returns {HTMLElement | null}
  */
@@ -210,30 +132,6 @@ function renderOutcomeDetailSectionElement(context) {
   const outcomeId = stringValue(context.scope?.['safe-output']);
   const outcome = outcomes.find((row) => String(row['safe-output']) === outcomeId);
   return outcome ? renderOutcomeDetailSection(outcome, sectionConfig.body) : null;
-}
-
-/**
- * @param {ElementRenderContext} context
- * @returns {HTMLElement}
- */
-function renderCampaignActivityShellElement(context) {
-  return renderCampaignsModeShell({
-    pageId: context.pageId,
-    sections: [
-      {
-        id: 'utilization',
-        render: (mode) => renderCampaignUtilization(context.sources, mode)
-      },
-      {
-        id: 'run-trend',
-        render: (mode) => renderRunTrend(context.sources, mode)
-      },
-      {
-        id: 'summary',
-        render: (mode) => renderCampaignSummary(context.sources, mode)
-      }
-    ]
-  });
 }
 
 /**
@@ -254,512 +152,8 @@ export function elementHandlesUnavailableSource(name) {
 
 /**
  * @param {ElementRenderContext} context
- */
-function renderDomainAttentionElement(context) {
-  const rows = rowsFor(context, 'overview-attention-domains');
-  const headingId = `${context.pageId}-${slugify(context.title, 'element')}-heading`;
-  return h(
-    'section',
-    { className: 'overview-observability', 'aria-labelledby': headingId },
-    renderSectionHeading({
-      kicker: 'Current decision window',
-      id: headingId,
-      title: context.title,
-      description: context.description,
-      headingTag: 'h2'
-    }),
-    h(
-      'div',
-      { className: 'attention-domain-grid' },
-      ...rows.map((row) => h(
-        'a',
-        {
-          className: `attention-domain-card attention-domain-${stringValue(row.tone)}`,
-          href: stringValue(row.href)
-        },
-        h(
-          'header',
-          null,
-          renderIconSpan('attention-domain-icon', stringValue(row.icon)),
-          h('strong', null, stringValue(row.domain)),
-          h('span', { className: 'attention-domain-state' }, stringValue(row.state))
-        ),
-        h('span', { className: 'attention-domain-value' }, stringValue(row.value)),
-        h('p', null, stringValue(row.detail)),
-        h('footer', null, 'Open evidence')
-      ))
-    ),
-    h(
-      'p',
-      { className: 'overview-method-note' },
-      h('strong', null, 'State key:'),
-      ' Act now is a direct failure; Investigate is a direct control, collection, or attribution signal; Monitor has observations without a direct signal; Unavailable means a required threshold or evidence feed is absent.'
-    )
-  );
-}
-
-/**
- * @param {ElementRenderContext} context
- */
-function renderCampaignStatusGridElement(context) {
-  const rows = rowsFor(context, 'overview-managed-campaigns');
-  const headingId = `${context.pageId}-${slugify(context.title, 'element')}-heading`;
-  return h(
-    'section',
-    { className: 'overview-campaign-status', 'aria-labelledby': headingId },
-    renderSectionHeading({
-      kicker: 'Managed campaigns',
-      id: headingId,
-      title: context.title,
-      description: context.description,
-      headingTag: 'h2'
-    }),
-    h(
-      'div',
-      { className: 'campaign-status-grid' },
-      ...rows.map((row) => {
-        const liveCoveragePercent = Number(row['live-coverage-percent']);
-        const rolloutLiveRepositories = Number(row['rollout-live-repositories']);
-        const rolloutRepositories = Number(row['rollout-repositories']);
-        const coverageKnown = Number.isFinite(liveCoveragePercent) && Number.isFinite(rolloutLiveRepositories) && rolloutRepositories > 0;
-        const coveragePercent = coverageKnown ? clampPercent(liveCoveragePercent) : null;
-        const reviewRepositories = coverageKnown ? rolloutRepositories - rolloutLiveRepositories : null;
-        const dispatchCount = row['dispatch-count'] == null ? null : Number(row['dispatch-count']);
-        const runTelemetryUnavailable = context.sources.runs?.metadata?.availability === 'unavailable' || !context.sources.runs;
-        const outputCollectionUnavailable = context.sources.outcomes?.metadata?.availability === 'unavailable' || !context.sources.outcomes;
-        const dispatchStatus = campaignDispatchStatus(row, dispatchCount, runTelemetryUnavailable);
-        const outputDispatchCount = row['dispatches-with-safe-output'] == null ? null : Number(row['dispatches-with-safe-output']);
-        const dispatchText = Number.isFinite(dispatchCount)
-          ? `${dispatchCount} dispatch${dispatchCount === 1 ? '' : 'es'}`
-          : runTelemetryUnavailable ? 'Run telemetry unavailable' : 'Dispatches unavailable';
-        const outputCountsKnown = dispatchCount !== null && outputDispatchCount !== null && Number.isFinite(dispatchCount) && Number.isFinite(outputDispatchCount);
-        const outputText = outputCountsKnown
-          ? (dispatchCount ?? 0) > 0 ? `${outputDispatchCount}/${dispatchCount} produced output` : 'No output opportunity'
-          : outputCollectionUnavailable ? 'Output collection unavailable' : 'Outputs unavailable';
-        const noOutputWarning = outputCountsKnown && (dispatchCount ?? 0) > 0 && outputDispatchCount === 0;
-        const repoModes = Array.isArray(row['repository-modes']) ? row['repository-modes'].filter(isPlainObject) : [];
-        const repoEntries = repoModes.length > 0 ? repoModes.filter((entry) => typeof entry.repository === 'string' && entry.repository) : [];
-        const inventoryText = stringValue(row.inventory || 'Needs attention');
-        return h(
-          'article',
-          {
-            className: `campaign-status-card campaign-status-${stringValue(row['inventory-state']) === 'inventory-ready' ? 'ready' : 'attention'}`
-          },
-          h(
-            'header',
-            { className: 'campaign-status-header' },
-            h('strong', null, renderIdentityLink({ href: stringValue(row.href), icon: stringValue(row.icon) || 'goal', label: stringValue(row.title), className: 'campaign-status-identity' })),
-            inventoryText === 'Ready' ? null : h('span', { className: 'campaign-status-state' }, inventoryText)
-          ),
-          h(
-            'div',
-            { className: 'campaign-status-live-coverage' },
-            h(
-              'div',
-              { className: 'campaign-status-live-coverage-heading' },
-              h('div', null, h('span', null, 'Rollout'), h('strong', null, coverageKnown ? `${rolloutLiveRepositories} live · ${reviewRepositories} review` : 'No target data')),
-              h('strong', null, coverageKnown ? `${coveragePercent}% live` : 'Unknown')
-            ),
-            coverageKnown ? h('progress', {
-              max: 100,
-              value: coveragePercent,
-              'aria-label': `${rolloutLiveRepositories} of ${rolloutRepositories} target repositories are live`
-            }) : null
-          ),
-          h(
-            'div',
-            { className: 'campaign-status-runtime' },
-            h(
-              'div',
-              { className: 'campaign-status-repository-heading' },
-              h('span', null, 'Target repositories'),
-              h('span', null, 'Mode')
-            ),
-            renderListOrEmptyMessage(
-              'campaign-status-repositories',
-              repoEntries,
-              (entry) => {
-                const repoMode = stringValue(entry.mode || 'review');
-                return h(
-                  'li',
-                  null,
-                  h('span', { className: 'campaign-status-repository-name' }, octicon('repo'), h('span', null, stringValue(entry.repository))),
-                  h('span', { className: `mode-badge ${modeBadgeClassName(repoMode.toLowerCase())}`.trim() }, octicon('dot-fill'), capitalize(repoMode))
-                );
-              },
-              'campaign-status-repositories-empty',
-              'No repositories reported'
-            )
-          ),
-          h(
-            'a',
-            {
-              className: `campaign-status-activity${noOutputWarning ? ' campaign-status-activity-warning' : ''}`,
-              href: `#page-campaign-runs?campaign=${encodeURIComponent(stringValue(row.campaign))}`,
-              title: stringValue(row['activity-window']),
-              'aria-label': `Recent activity: ${dispatchStatus.detail}; ${dispatchText}; ${outputText}${noOutputWarning ? '; warning: dispatches produced no output' : ''}`
-            },
-            h(
-              'span',
-              { className: 'campaign-status-activity-heading' },
-              h('span', { className: 'campaign-status-activity-label' }, 'Recent'),
-              h(
-                'span',
-                {
-                  className: `campaign-status-activity-state campaign-status-activity-state-${dispatchStatus.tone}`,
-                  title: dispatchStatus.detail
-                },
-                octicon(dispatchStatus.icon),
-                dispatchStatus.label
-              )
-            ),
-            h('span', null, octicon('paper-airplane'), h('strong', null, dispatchText)),
-            h(
-              'span',
-              noOutputWarning ? { title: 'Dispatched but produced no output' } : null,
-              octicon(noOutputWarning ? 'alert' : 'shield-check'),
-              h('strong', null, outputText)
-            )
-          )
-        );
-      })),
-    h(
-      'a',
-      { className: 'overview-campaigns-view-all', href: '#page-campaigns' },
-      'View all campaigns'
-    )
-  );
-}
-
-/**
- * @param {Record<string, unknown>} row
- * @param {number | null} dispatchCount
- * @param {boolean} runTelemetryUnavailable
- */
-function campaignDispatchStatus(row, dispatchCount, runTelemetryUnavailable = false) {
-  const successful = row['dispatch-success-count'] == null ? null : Number(row['dispatch-success-count']);
-  const failed = row['dispatch-failure-count'] == null ? null : Number(row['dispatch-failure-count']);
-  const approval = row['dispatch-approval-count'] == null ? null : Number(row['dispatch-approval-count']);
-  const pending = row['dispatch-pending-count'] == null ? null : Number(row['dispatch-pending-count']);
-  if (![dispatchCount, successful, failed, approval, pending].every(Number.isFinite)) {
-    return {
-      tone: 'unknown',
-      icon: 'circle',
-      label: 'Unknown',
-      detail: runTelemetryUnavailable
-        ? 'Recent dispatch status is unavailable because run telemetry was not collected.'
-        : 'Recent dispatch status unavailable'
-    };
-  }
-
-  const other = Math.max(0, Number(dispatchCount) - Number(successful) - Number(failed) - Number(approval) - Number(pending));
-  const details = [
-    Number(successful) > 0 ? `${successful} succeeded` : '',
-    Number(failed) > 0 ? `${failed} failed` : '',
-    Number(approval) > 0 ? `${approval} awaiting approval` : '',
-    Number(pending) > 0 ? `${pending} in progress` : '',
-    other > 0 ? `${other} other` : ''
-  ].filter(Boolean);
-  const detail = details.join(', ') || 'No recent dispatches';
-  if (Number(failed) > 0) return { tone: 'failed', icon: 'x-circle', label: `${failed} failed`, detail };
-  if (Number(approval) > 0) return { tone: 'attention', icon: 'clock', label: `${approval} awaiting approval`, detail };
-  if (Number(pending) > 0) return { tone: 'attention', icon: 'sync', label: `${pending} in progress`, detail };
-  if (other > 0) return { tone: 'unknown', icon: 'alert', label: `${other} other`, detail };
-  if (Number(dispatchCount) > 0) return { tone: 'success', icon: 'check-circle', label: `${successful} succeeded`, detail };
-  return { tone: 'unknown', icon: 'dash', label: 'None', detail };
-}
-
-/** @param {ElementRenderContext} context */
-function renderSummaryGridElement(context) {
-  const rows = rowsFor(context, context.sourceNames[0]).map((row) => ({
-    label: stringValue(row.label),
-    value: stringValue(row.value)
-  }));
-  return renderDefinitionList('summary-grid', rows);
-}
-
-/** @param {ElementRenderContext} context */
-function renderReadinessVerdictElement(context) {
-  const rows = rowsFor(context, context.sourceNames[0]);
-  const verdict = stringValue(rows.find((row) => row.label === 'Control plane')?.value) || 'Evidence incomplete';
-  const tone = verdict === 'Ready to ship' ? 'ready' : verdict === 'Not ready' ? 'blocked' : 'unknown';
-  const checks = rowsFor(context, 'readiness-checks');
-  const signals = rowsFor(context, 'readiness-signals');
-  const observations = rowsFor(context, 'readiness-observations');
-  const metadata = context.sources[context.sourceNames[0]]?.metadata;
-  const blocking = signals.filter((row) => stringValue(row.tone) === 'critical' || Number(row.priority) === 0);
-  const stateLabel = tone === 'ready' ? 'READY' : tone === 'blocked' ? 'BLOCKED' : 'UNKNOWN';
-  const icon = tone === 'ready' ? 'check-circle' : tone === 'blocked' ? 'x-circle' : 'question';
-  const evidenceRows = rows.filter((row) => row.label !== 'Control plane' && row.label !== 'Unblock first');
-  return h(
-    'section',
-    { className: `readiness-verdict readiness-verdict-${tone}`, role: 'status', 'aria-label': 'Control-plane readiness' },
-    h(
-      'div',
-      { className: 'readiness-verdict-primary' },
-      h('div', { className: 'readiness-hero' },
-        h('small', null, 'Control-plane readiness'),
-        h('div', { className: 'readiness-state' },
-          renderIconSpan('readiness-verdict-icon', icon, { ariaHidden: true }),
-          h('strong', null, stateLabel)
-        ),
-        h('p', null, tone === 'ready'
-          ? 'The control plane is ready to execute the next scheduled operation.'
-          : tone === 'blocked'
-            ? 'The control plane should not be treated as ready for the next operation.'
-            : 'Current readiness cannot be determined reliably.'),
-        h('div', { className: 'readiness-snapshot-meta' },
-          renderLabeledSpan('Snapshot', ` ${snapshotAge(metadata)}`)
-        ),
-        h('span', { className: 'readiness-verdict-legacy' }, verdict)
-      ),
-      h('div', { className: 'readiness-verdict-summary' },
-        h('strong', null, tone === 'ready' ? 'All required readiness gates passed.' : tone === 'blocked' ? `${blocking.length} blocking gate${blocking.length === 1 ? '' : 's'}` : 'Evidence is stale or incomplete.'),
-        h('span', null, `${signals.filter((row) => stringValue(row.tone) === 'warning').length} warning${signals.filter((row) => stringValue(row.tone) === 'warning').length === 1 ? '' : 's'}`)
-      )
-    ),
-    h('div', { className: 'readiness-verdict-details' },
-      readinessBlock('Unblock first', blocking.length > 0
-        ? blocking.map((row) => h('article', { className: 'readiness-blocker' },
-          h('strong', null, stringValue(row.title || row.kind)),
-          h('p', null, stringValue(row.detail)),
-          h('small', null, stringValue(row.evidence))
-        ))
-        : rows.find((row) => row.label === 'Unblock first')
-          ? [h('p', { className: 'readiness-clear' }, stringValue(rows.find((row) => row.label === 'Unblock first')?.value))]
-        : [h('p', { className: 'readiness-clear' }, 'No blocking conditions.')]),
-      readinessBlock('Readiness gates', checks.map((row) => h('div', { className: `readiness-gate readiness-gate-${stringValue(row['readiness-state']).toLowerCase()}` },
-        octicon(stringValue(row['readiness-state']) === 'Ready' ? 'check-circle' : stringValue(row['readiness-state']) === 'Blocked' ? 'stop' : 'question'),
-        h('span', null, h('strong', null, stringValue(row.check)), h('small', null, stringValue(row.detail)))
-      ))),
-      readinessBlock(observations.length > 0 ? 'Other observations' : 'Evidence', observations.length > 0
-        ? observations.map((row) => h('div', { className: 'readiness-observation' },
-          h('strong', null, stringValue(row.signal)),
-          h('span', null, stringValue(row.detail))
-        ))
-        : evidenceRows.map((row) => h('div', { className: 'readiness-evidence-row' },
-          h('span', null, stringValue(row.label)),
-          h('strong', null, stringValue(row.value))
-        )))
-    )
-  );
-}
-
-/** @param {string} title @param {Array<HTMLElement|string|null>} content */
-function readinessBlock(title, content) {
-  return h('section', { className: 'readiness-block' }, h('h3', null, title), h('div', { className: 'readiness-block-content' }, ...content));
-}
-
-/** @param {import('../presenter.js').SourceMetadata | undefined} metadata */
-function snapshotAge(metadata) {
-  const value = metadata?.['as-of'] || metadata?.['retrieved-at'];
-  if (!value) return 'Unavailable';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? String(value) : `${date.toISOString().slice(0, 16).replace('T', ' ')} UTC · ${elapsedSince(date)}`;
-}
-
-/** @param {Date} date */
-function elapsedSince(date) {
-  const minutes = Math.max(0, Math.round((Date.now() - date.getTime()) / 60000));
-  return minutes < 60 ? `${minutes}m ago` : `${Math.floor(minutes / 60)}h ${minutes % 60}m ago`;
-}
-
-/**
- * @param {ElementRenderContext} context
- */
-function renderContextSummaryElement(context) {
-  const rows = context.sourceNames
-    .flatMap((sourceName) => rowsFor(context, sourceName))
-    .filter(isContextSummaryRow);
-  return h(
-    'dl',
-    { className: 'context-summary', 'aria-label': context.title },
-    ...rows.map((row) => renderDlRow(stringValue(row.label), renderContextSummaryValue(row)))
-  );
-}
-
-/** @param {ElementRenderContext} context */
-function renderAnomalyReadinessElement(context) {
-  const sourceName = context.sourceNames[0];
-  const row = sourceName ? rowsFor(context, sourceName)[0] : undefined;
-  return row ? renderAnomalyReadiness(row) : null;
-}
-
-/** @param {Record<string, unknown>} row */
-function isContextSummaryRow(row) {
-  return typeof row.label === 'string'
-    && (['string', 'number', 'boolean'].includes(typeof row.value) || Array.isArray(row.items));
-}
-
-/**
- * @param {Record<string, unknown>} row
- * @returns {Array<string | HTMLElement | null>}
- */
-function renderContextSummaryValue(row) {
-  if (!Array.isArray(row.items)) return [stringValue(row.value)];
-  return row.items.filter(isPlainObject).flatMap((item, index) => {
-    const label = stringValue(item.label);
-    const href = safeNavigationHref(item['navigation-href']);
-    return [
-      index > 0 ? ', ' : null,
-      href ? h('a', { href }, label) : label
-    ];
-  });
-}
-
-/** @param {ElementRenderContext} context @param {boolean} [isCanonicalAttention] */
-function renderSignalListElement(context, isCanonicalAttention = false) {
-  const sourceName = context.sourceNames[0];
-  const rows = rowsFor(context, sourceName);
-  const viewAllPage = stringValue(context.elementConfig?.['view-all-page']);
-  const viewAllLabel = stringValue(context.elementConfig?.['view-all-label']) || 'View all';
-  const list = h(
-    'div',
-    { className: 'signal-list-region' },
-    context.description ? h('p', { className: 'signal-boundary-note' }, context.description) : null,
-    h(
-      'ol',
-      { className: 'signal-list' },
-      ...(rows.length > 0
-        ? rows.map((row, index) => renderSignal(row, index, isCanonicalAttention))
-        : [h(
-          'li',
-          { className: 'signal-clear' },
-          renderIconSpan('signal-icon', 'check-circle'),
-          h('span', { className: 'signal-copy' }, h('strong', null, 'No signals require attention'))
-        )])
-    ),
-    viewAllPage
-      ? h(
-          'footer',
-          { className: 'signal-list-footer' },
-          h(
-            'a',
-            {
-              href: `#page-${encodeURIComponent(viewAllPage)}`,
-              dataset: { navPageId: viewAllPage }
-            },
-            viewAllLabel,
-            octicon('arrow-right')
-          )
-        )
-      : null
-  );
-  return list;
-}
-
-/**
- * @param {Record<string, unknown>} row
- * @param {number} index
- * @param {boolean} [isCanonicalAttention]
- */
-function renderSignal(row, index, isCanonicalAttention = false) {
-  const link = isCanonicalAttention
-    ? findLink(row, 'evidence-link') ?? findLink(row, 'run-link') ?? findLink(row, 'external-link')
-    : findLink(row, 'run-link') ?? findLink(row, 'external-link');
-  const navigationHref = safeNavigationHref(row['navigation-href']);
-  const navigationPage = stringValue(row['navigation-page']);
-  const consequence = stringValue(row['consequence-tier']);
-  const urgency = stringValue(row.urgency) || consequence;
-  const kind = stringValue(row.kind) || humanizeSignalLabel(row['signal-type']);
-  const title = stringValue(row.title) || stringValue(row.objective);
-  const reason = stringValue(row.detail) || stringValue(row.reason);
-  const count = Number(row['failure-count']);
-  const countBadge = isCanonicalAttention && Number.isInteger(count) && count > 1
-    ? renderCountBadge(count, `${count} consecutive failed runs`)
-    : null;
-  const scope = isCanonicalAttention ? stringValue(row.scope) : '';
-  const ageSeconds = Number(row['age-seconds']);
-  const age = isCanonicalAttention && Number.isFinite(ageSeconds)
-    ? `${formatClockDuration(ageSeconds * 1000)} old`
-    : '';
-  const observedAt = stringValue(row['observed-at']);
-  const observed = observedAt && Number.isFinite(Date.parse(observedAt))
-    ? h(
-        'time',
-        {
-          dateTime: observedAt,
-          title: `${new Date(observedAt).toISOString().replace('.000Z', 'Z')} UTC`
-        },
-        formatHumanFriendlyTimestamp(observedAt)
-      )
-    : null;
-  const evidence = stringValue(row.evidence) || (isCanonicalAttention
-    ? [stringValue(row['expected-actor']), age].filter(Boolean).join(' · ')
-    : '');
-  const tone = stringValue(row.tone) || canonicalAttentionTone(consequence);
-  const content = [
-    isCanonicalAttention
-      ? h(
-          'span',
-          { className: 'signal-rank signal-priority-rank', 'aria-hidden': 'true' },
-          h('strong', null, String(index + 1)),
-          h('small', null, 'Priority')
-        )
-      : h('span', { className: 'signal-rank', 'aria-hidden': 'true' }, String(index + 1)),
-    renderIconSpan('signal-icon', stringValue(row.icon) || 'issue'),
-    h(
-      'span',
-      { className: 'signal-copy' },
-      h('span', null, [urgency, kind].filter(Boolean).join(' · '), countBadge),
-      h('strong', null, title),
-      h('small', null, [scope, reason].filter(Boolean).join(' · '))
-    ),
-    h(
-      'span',
-      { className: 'signal-evidence' },
-      h('strong', null, observed ? ['Observed ', observed] : evidence),
-      observed && evidence ? h('span', null, evidence) : null,
-      h('small', null, stringValue(row.action) || 'View details')
-    )
-  ];
-  const className = `signal-item signal-${tone || 'informational'}${isCanonicalAttention ? ' canonical-attention-item' : ''}`;
-  if (link) {
-    return h('li', { className }, renderSafeLink(h('span', { className: 'signal-link-content' }, ...content), link));
-  }
-  if (navigationPage) {
-    return h('li', { className }, h('a', { href: `#page-${navigationPage}`, dataset: { navPageId: navigationPage } }, ...content));
-  }
-  if (navigationHref) {
-    return h('li', { className }, h('a', { href: navigationHref }, ...content));
-  }
-  return h('li', { className }, h('div', null, ...content));
-}
-
-/** @param {unknown} value */
-function humanizeSignalLabel(value) {
-  return stringValue(value).replace(/[-_]+/g, ' ');
-}
-
-/** @param {string} consequence */
-function canonicalAttentionTone(consequence) {
-  if (['critical', 'high'].includes(consequence.toLowerCase())) return 'critical';
-  if (consequence.toLowerCase() === 'low') return 'informational';
-  return 'action';
-}
-
-/** @param {unknown} value */
-function safeNavigationHref(value) {
-  if (typeof value !== 'string' || !value.startsWith('#')) return null;
-  try {
-    const url = new URL(value, 'https://dashboard.invalid/');
-    return url.origin === 'https://dashboard.invalid' && url.hash === value ? value : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * @param {ElementRenderContext} context
  * @param {string} sourceName
  */
 function rowsFor(context, sourceName) {
   return rowsForSource(context.sources, sourceName);
-}
-
-/**
- * @param {string} value
- */
-function capitalize(value) {
-  return value.length === 0 ? value : `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }

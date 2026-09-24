@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   deadElementRendererNames,
@@ -39,5 +41,21 @@ describe('dead element view analysis', () => {
       ['summary-grid', 'signal-list', 'context-summary'],
       ['summary-grid', 'context-summary']
     )).toEqual(['signal-list']);
+  });
+
+  it('keeps the production element registry reachable from the dashboard document', () => {
+    const rendererSource = readFileSync(
+      resolve(process.cwd(), 'src/components/ui-elements.js'),
+      'utf8'
+    );
+    const dashboard = JSON.parse(readFileSync(
+      resolve(process.cwd(), 'dashboard.json'),
+      'utf8'
+    ));
+
+    expect(deadElementRendererNames(
+      elementRendererNames(rendererSource),
+      referencedElementNames(dashboard)
+    )).toEqual([]);
   });
 });

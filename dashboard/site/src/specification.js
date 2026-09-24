@@ -76,42 +76,22 @@ export const VIEW_ELEMENT_CONFIG_KEYS = ['body', 'sections', 'stations', 'labels
 export const FACTORY_HEADER_SOURCE_ROLES = ['presentation', 'rhythm'];
 export const FACTORY_FLOOR_SOURCE_ROLES = ['campaigns', 'repositories'];
 export const VIEW_ELEMENT_ANIMATION_VALUES = ['number'];
-export const FACTORY_OVERVIEW_SECTION_VALUES = ['header', 'floor'];
 export const FACTORY_FLOOR_STATION_VALUES = ['campaigns', 'repositories'];
 export const PLURAL_TEXT_KEYS = ['singular', 'plural'];
-export const PLURAL_LABEL_ELEMENTS = ['factory-floor', 'outcomes-overview'];
+export const PLURAL_LABEL_ELEMENTS = ['factory-floor'];
 export const VIEW_TITLE_LINK_KEYS = ['href-field', 'identifier-field'];
 export const CALLOUT_KEYS = ['label', 'icon'];
 export const VIEW_MARK_VALUES = ['metric', 'table', 'list', 'chart', 'element', 'callout'];
 export const VIEW_ELEMENT_VALUES = [
-  'domain-attention',
-  'campaign-status-grid',
-  'summary-grid',
-  'readiness-verdict',
-  'context-summary',
-  'anomaly-readiness',
-  'signal-list',
-  'needs-attention-list',
-  'campaign-activity',
-  'campaign-activity-shell',
-  'campaign-utilization',
-  'campaign-run-trend',
-  'campaign-summary-table',
   'campaign-route',
-  'workflow-route',
   'workflow-route-page',
   'outcome-detail',
   'outcome-detail-section',
   'configuration-policy',
-  'configuration-actions',
-  'local-database',
-  'work-project-view',
   'measure-history',
-  'insights-overview',
   'factory-header',
   'factory-floor',
-  'link-button-list',
-  'outcomes-overview'
+  'link-button-list'
 ];
 export const VIEW_CHART_VALUES = ['area', 'bar', 'dot', 'heatmap', 'histogram', 'horizontal-bar', 'line', 'pie', 'scatter', 'swimlane'];
 export const VIEW_METRIC_KEYS = ['style', 'icon', 'tone', 'navigation-page', 'animate'];

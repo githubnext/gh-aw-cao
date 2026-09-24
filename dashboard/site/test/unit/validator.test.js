@@ -1015,77 +1015,6 @@ dashboard:
     }
   });
 
-  it('accepts work-project-view config and rejects unsupported values', () => {
-    const accepted = validateDashboardDocument(`language-version: "0.1.0"
-dashboard:
-  id: work-view-config
-  title: Work view config
-  pages:
-    - id: work-page
-      kind: custom
-      title: Work page
-      views:
-        - id: work-layouts
-          data:
-            sources: [work-items]
-          mark: element
-          element: work-project-view
-          config:
-            sections: [board, tasks]
-`);
-    expect(accepted.ok).toBe(true);
-
-    const invalidBody = validateDashboardDocument(`language-version: "0.1.0"
-dashboard:
-  id: work-view-config
-  title: Work view config
-  pages:
-    - id: work-page
-      kind: custom
-      title: Work page
-      views:
-        - id: work-layouts
-          data:
-            sources: [work-items]
-          mark: element
-          element: work-project-view
-          config:
-            body: backlog
-`);
-    expect(invalidBody.ok).toBe(false);
-    if (!invalidBody.ok) {
-      expect(invalidBody.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E005',
-        path: '$.dashboard.pages[0].views[0].config.body'
-      }));
-    }
-
-    const invalidSection = validateDashboardDocument(`language-version: "0.1.0"
-dashboard:
-  id: work-view-config
-  title: Work view config
-  pages:
-    - id: work-page
-      kind: custom
-      title: Work page
-      views:
-        - id: work-layouts
-          data:
-            sources: [work-items]
-          mark: element
-          element: work-project-view
-          config:
-            sections: [backlog]
-`);
-    expect(invalidSection.ok).toBe(false);
-    if (!invalidSection.ok) {
-      expect(invalidSection.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E005',
-        path: '$.dashboard.pages[0].views[0].config.sections[0]'
-      }));
-    }
-  });
-
   it('accepts plural text variables for overview labels and rejects malformed ones', () => {
     const accepted = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
@@ -1218,7 +1147,7 @@ dashboard:
     }
   });
 
-  it('keeps the version 0.1.0 outcomes overview element valid as a compatibility alias', () => {
+  it('rejects the removed outcomes overview compatibility alias', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
   id: legacy-overview
@@ -1242,7 +1171,13 @@ dashboard:
                 plural: Repositories
 `);
 
-    expect(result.ok).toBe(true);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E005',
+        path: '$.dashboard.pages[0].views[0].element'
+      }));
+    }
   });
 
 
@@ -1467,7 +1402,7 @@ dashboard:
 
     const supplementalElement = accepted.replace(
       '        - id: supporting-table\n          disclosure: supplemental\n          disclosure-label: Supporting table\n          data: { source: runs }\n          mark: table\n          encoding:\n            columns: [{ field: run, type: nominal }]\n',
-      '        - id: supporting-table\n          disclosure: supplemental\n          disclosure-label: Supporting table\n          data: { sources: [runs] }\n          mark: element\n          element: summary-grid\n'
+      '        - id: supporting-table\n          disclosure: supplemental\n          disclosure-label: Supporting table\n          data: { sources: [runs] }\n          mark: element\n          element: factory-header\n'
     );
     expect(validateDashboardDocument(supplementalElement).ok).toBe(true);
 
@@ -3649,7 +3584,7 @@ dashboard:
           data:
             sources: [workflows]
           mark: element
-          element: summary-grid
+          element: factory-header
         - id: runs
           data:
             source: runs
@@ -3677,7 +3612,7 @@ dashboard:
           data:
             sources: [workflows]
           mark: element
-          element: summary-grid
+          element: factory-header
 `;
     expect(validateDashboardDocument(elementDocument).ok).toBe(true);
 
@@ -3700,7 +3635,7 @@ dashboard:
         `          data:
             sources: [workflows]
           mark: element
-          element: summary-grid`,
+          element: factory-header`,
         `          data:
             source: runs
           mark: table
@@ -3732,7 +3667,7 @@ dashboard:
           data:
             sources: [workflows]
           mark: element
-          element: summary-grid
+          element: factory-header
 `;
     expect(validateDashboardDocument(lockedDocument).ok).toBe(true);
     expect(validateDashboardDocument(lockedDocument.replace('locked: true', 'locked: false')).ok).toBe(true);

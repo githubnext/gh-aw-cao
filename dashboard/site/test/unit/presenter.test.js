@@ -402,7 +402,7 @@ describe('dashboard DOM provenance', () => {
                   id: 'summary',
                   title: 'Summary',
                   mark: 'element',
-                  element: 'summary-grid',
+                  element: 'measure-history',
                   data: { source: 'summary' }
                 },
                 {
@@ -425,7 +425,11 @@ describe('dashboard DOM provenance', () => {
         sources: {
           summary: {
             source: 'summary',
-            rows: [{ label: 'Runs', value: 2 }],
+            rows: [{
+              'metric-kind': 'primary',
+              'metric-name': 'runs',
+              points: [{ x: '2026-09-07T18:00:00Z', y: 2, color: 'Runs', key: 'runs-1' }]
+            }],
             metadata: {
               'source-id': 'summary-fixture',
               'source-kind': 'fixture',
@@ -450,7 +454,7 @@ describe('dashboard DOM provenance', () => {
       expect(page?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0]');
       expect(section?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].sections[0]');
       expect(summary?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
-      expect(summary?.querySelector('dt')?.getAttribute('data-js-view')).toBe('summary-grid');
+      expect(summary?.querySelector('h2')?.getAttribute('data-js-view')).toBe('measure-history');
       expect(metric?.querySelector('.metric-value')?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[1]');
       await vi.waitFor(() => {
         expect([...rendered.querySelectorAll('*')].every((element) => element.hasAttribute('data-json-path'))).toBe(true);
@@ -460,7 +464,7 @@ describe('dashboard DOM provenance', () => {
       summary?.append(dynamicChild);
       await vi.waitFor(() => {
         expect(dynamicChild.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
-        expect(dynamicChild.getAttribute('data-js-view')).toBe('summary-grid');
+        expect(dynamicChild.getAttribute('data-js-view')).toBe('measure-history');
       });
 
       const replacementSection = rendered.ownerDocument.createElement('section');
@@ -474,7 +478,7 @@ describe('dashboard DOM provenance', () => {
       await vi.waitFor(() => {
         expect(replacementSection.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].sections[0]');
         expect(replacementView.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
-        expect(replacementView.querySelector('dt')?.getAttribute('data-js-view')).toBe('summary-grid');
+        expect(replacementView.querySelector('dt')?.getAttribute('data-js-view')).toBe('measure-history');
       });
     } finally {
       window.history.pushState(null, '', '/');
