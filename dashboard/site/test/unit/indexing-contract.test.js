@@ -36,6 +36,13 @@ describe('indexing dashboard', () => {
               createdAt: '2026-09-24T01:00:00Z',
               records: 8,
               rawRuns: 2
+            },
+            {
+              id: 'ingest-dashboard-sources:three',
+              kind: 'ingest-dashboard-sources',
+              createdAt: '2026-09-24T02:00:00Z',
+              records: 99,
+              rawRuns: 99
             }
           ],
           metadata
@@ -48,7 +55,8 @@ describe('indexing dashboard', () => {
       { day: '2026-09-24', records: 20, 'workflow-runs': 5 }
     ]);
     expect(results['indexing-database-table-counts'].rows).toEqual([
-      { kind: 'ingest-normalized-jsonl', transactions: 2 }
+      { kind: 'ingest-normalized-jsonl', transactions: 2 },
+      { kind: 'ingest-dashboard-sources', transactions: 1 }
     ]);
   });
 

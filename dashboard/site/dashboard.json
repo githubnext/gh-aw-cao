@@ -161,7 +161,7 @@
         "details": [
           {
             "field": "created-at",
-            "title": "Committed",
+            "title": "Committed at",
             "format": "human-friendly-timestamp"
           },
           {
@@ -1629,6 +1629,18 @@
         "name": "indexing-daily-ingestion",
         "intent": "Aggregate new workflow runs and records ingested from CAO Activity by UTC day.",
         "from": "transactions",
+        "filter": {
+          "predicates": [
+            {
+              "field": "kind",
+              "in": [
+                "ingest-jsonl",
+                "ingest-normalized-json",
+                "ingest-normalized-jsonl"
+              ]
+            }
+          ]
+        },
         "compute": [
           {
             "as": "day",
