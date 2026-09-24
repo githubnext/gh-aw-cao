@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -18,7 +18,8 @@ test('cao operational-value runs package scripts and ingests emitted JSONL', () 
   writeFileSync(script, `import { readFileSync } from 'node:fs';
 const request = JSON.parse(readFileSync(0, 'utf8'));
 for (const repository of request.repositories) {
-  console.log(JSON.stringify({timestamp:request.timestamp,repository,valueId:"example-count",value:2}));
+  const isolated = process.env.GH_TOKEN === "read-only-token" && process.env.UNRELATED_SECRET === undefined;
+  console.log(JSON.stringify({timestamp:request.timestamp,repository,valueId:"example-count",value:isolated ? 2 : 0}));
 }\n`);
   chmodSync(script, 0o755);
 
@@ -31,7 +32,11 @@ for (const repository of request.repositories) {
     '--timestamp', '2026-09-24T10:00:00Z',
     '--repository', 'githubnext/gh-aw-cao',
     '--repository', 'github/gh-aw',
-  ], { encoding: 'utf8' }));
+  ], { encoding: 'utf8', env: {
+    ...process.env,
+    CAO_OPERATIONAL_VALUE_GH_TOKEN: 'read-only-token',
+    UNRELATED_SECRET: 'must-not-reach-worker'
+  } }));
 
   assert.deepEqual(result.scripts, ['example']);
   assert.equal(result.values.length, 2);
@@ -46,6 +51,46 @@ for (const repository of request.repositories) {
     { repository: 'github/gh-aw', valueId: 'example-count', value: 2 },
     { repository: 'githubnext/gh-aw-cao', valueId: 'example-count', value: 2 },
   ]);
+});
+
+test('cao operational-value warns on worker failure and preserves successful values', () => {
+  const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-resilience-'));
+  const failedDirectory = path.join(temporary, 'failed');
+  const successfulDirectory = path.join(temporary, 'successful');
+  const output = path.join(temporary, 'values.jsonl');
+  mkdirSync(failedDirectory);
+  mkdirSync(successfulDirectory);
+  writeFileSync(path.join(failedDirectory, 'operational-value.mjs'), `
+console.error("permission denied for " + process.env.GH_TOKEN);
+process.exitCode = 1;\n`);
+  writeFileSync(path.join(successfulDirectory, 'operational-value.mjs'), `
+const chunks = [];
+for await (const chunk of process.stdin) chunks.push(chunk);
+const request = JSON.parse(Buffer.concat(chunks).toString());
+console.log(JSON.stringify({timestamp:request.timestamp,repository:request.repositories[0],valueId:"successful",value:1}));\n`);
+
+  const result = spawnSync(process.execPath, [
+    cao, 'operational-value',
+    '--database', path.join(temporary, 'dashboard.sqlite'),
+    '--root', temporary,
+    '--output', output,
+    '--timestamp', '2026-09-24T10:00:00Z',
+    '--repository', 'githubnext/gh-aw-cao'
+  ], {
+    encoding: 'utf8',
+    env: { ...process.env, CAO_OPERATIONAL_VALUE_GH_TOKEN: 'read-only-token' }
+  });
+
+  assert.equal(result.status, 0);
+  assert.match(result.stderr, /Warning: .*failed.*permission denied/);
+  assert.doesNotMatch(result.stderr, /read-only-token/);
+  const summary = JSON.parse(result.stdout);
+  assert.equal(summary.warnings.length, 1);
+  assert.deepEqual(summary.values.map(({ campaign, valueId }) => ({ campaign, valueId })), [
+    { campaign: 'successful', valueId: 'successful' }
+  ]);
+  const envelopes = readFileSync(output, 'utf8').trim().split('\n').map(JSON.parse);
+  assert.deepEqual(envelopes.map((entry) => entry.operational_value.campaign), ['successful']);
 });
 
 test('Dependabot operational value counts open vulnerability alerts', () => {
@@ -242,8 +287,10 @@ process.stdin.on('end', () => console.log(JSON.stringify({timestamp:"2026-09-24T
 
   writeFileSync(script, `process.stdin.resume();
 process.stdin.on('end', () => console.log(JSON.stringify({timestamp:"2026-09-24T10:00:00Z",repository:"githubnext/gh-aw-cao",valueId:"invalid",value:null})));\n`);
-  assert.throws(() => execFileSync(process.execPath, [
+  const invalid = spawnSync(process.execPath, [
     cao, 'operational-value', '--database', path.join(temporary, 'dashboard.sqlite'),
     '--root', temporary, '--repository', 'githubnext/gh-aw-cao'
-  ], { stdio: 'pipe' }), /must be a finite number/);
+  ], { encoding: 'utf8' });
+  assert.equal(invalid.status, 0);
+  assert.match(invalid.stderr, /Warning: .*must be a finite number/);
 });

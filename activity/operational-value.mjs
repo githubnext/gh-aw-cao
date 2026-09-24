@@ -6,6 +6,24 @@ import { readCollection } from '../dashboard/site/src/data/storage/indexeddb.js'
 
 export const REPOSITORY_COORDINATE = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
 const OPERATIONAL_VALUE_ID = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
+const WORKER_TIMEOUT_MS = 2 * 60 * 1000;
+const WORKER_ENVIRONMENT = [
+  'CI',
+  'HOME',
+  'LANG',
+  'LC_ALL',
+  'PATH',
+  'Path',
+  'SystemRoot',
+  'TEMP',
+  'TMP',
+  'TMPDIR',
+  'USERPROFILE',
+  'GH_HOST',
+  'GITHUB_API_URL',
+  'GITHUB_SERVER_URL',
+  'CAO_DEPENDABOT_ALERTS_MAX_PAGES'
+];
 
 function commandFailureMessage(result, fallback) {
   return (result.stderr || '').trim() || result.error?.message || fallback;
@@ -27,13 +45,46 @@ async function discoverOperationalValueScripts(root) {
   return scripts;
 }
 
-function githubApiRemaining() {
+function githubApiRemaining(env) {
   const result = spawnSync('gh', ['api', 'rate_limit', '--jq', '.resources.core.remaining'], {
     encoding: 'utf8',
-    env: process.env
+    env
   });
   if (result.error || result.status !== 0) {
     throw new Error(`Unable to read GitHub API rate limit: ${commandFailureMessage(result, 'gh api rate_limit failed')}`);
+  }
+
+  function operationalValueWorkerEnvironment(databasePath, observedAt, rateLimitReserve) {
+    const env = Object.fromEntries(WORKER_ENVIRONMENT.flatMap((name) => (
+      process.env[name] === undefined ? [] : [[name, process.env[name]]]
+    )));
+    const token = process.env.CAO_OPERATIONAL_VALUE_GH_TOKEN || process.env.GH_TOKEN;
+    if (token) env.GH_TOKEN = token;
+    env.CAO_DATABASE = path.resolve(databasePath);
+    env.CAO_OPERATIONAL_VALUE_TIMESTAMP = observedAt;
+    if (rateLimitReserve !== undefined) {
+      env.CAO_GITHUB_API_MIN_REMAINING = String(rateLimitReserve);
+    }
+    return { env, token };
+  }
+
+  function redactToken(message, token) {
+    return token ? String(message).replaceAll(token, '***') : String(message);
+  }
+
+  function runOperationalValueWorker(entry, request, env) {
+    const result = spawnSync(process.execPath, [entry.script], {
+      encoding: 'utf8',
+      input: request,
+      maxBuffer: 16 * 1024 * 1024,
+      timeout: WORKER_TIMEOUT_MS,
+      killSignal: 'SIGKILL',
+      env
+    });
+    if (result.error || result.status !== 0) {
+      throw new Error(`${entry.script} failed: ${commandFailureMessage(result, 'operational-value.mjs failed')}`);
+    }
+    return result.stdout;
   }
   const remaining = Number(String(result.stdout).trim());
   if (!Number.isSafeInteger(remaining) || remaining < 0) {
@@ -133,31 +184,34 @@ export async function runOperationalValue({
     database: path.resolve(databasePath)
   })}\n`;
   const values = [];
+  const warnings = [];
+  const worker = operationalValueWorkerEnvironment(databasePath, observedAt, rateLimitReserve);
+  const warn = (entry, error) => {
+    const message = redactToken(error instanceof Error ? error.message : error, worker.token);
+    const warning = { package: entry?.package ?? null, message };
+    warnings.push(warning);
+    console.warn(`Warning: ${message}`);
+  };
   for (const entry of scripts) {
-    if (rateLimitReserve !== undefined && githubApiRemaining() <= rateLimitReserve) {
-      throw new Error(`GitHub API core remaining is at or below the reserved ${rateLimitReserve} requests`);
-    }
-    const result = spawnSync(process.execPath, [entry.script], {
-      encoding: 'utf8',
-      input: request,
-      maxBuffer: 16 * 1024 * 1024,
-      env: {
-        ...process.env,
-        CAO_DATABASE: path.resolve(databasePath),
-        CAO_OPERATIONAL_VALUE_TIMESTAMP: observedAt,
-        ...(rateLimitReserve === undefined
-          ? {}
-          : { CAO_GITHUB_API_MIN_REMAINING: String(rateLimitReserve) })
+    try {
+      if (rateLimitReserve !== undefined && githubApiRemaining(worker.env) <= rateLimitReserve) {
+        throw new Error(`GitHub API core remaining is at or below the reserved ${rateLimitReserve} requests`);
       }
-    });
-    if (result.error || result.status !== 0) {
-      throw new Error(`${entry.script} failed: ${commandFailureMessage(result, 'operational-value.mjs failed')}`);
+      const output = runOperationalValueWorker(entry, request, worker.env);
+      values.push(...parseOperationalValueOutput(output, entry.script, uniqueRepositories)
+        .map((record) => ({ ...record, campaign: entry.package })));
+    } catch (error) {
+      warn(entry, error);
     }
-    values.push(...parseOperationalValueOutput(result.stdout, entry.script, uniqueRepositories)
-      .map((record) => ({ ...record, campaign: entry.package })));
   }
-  if (rateLimitReserve !== undefined && githubApiRemaining() < rateLimitReserve) {
-    throw new Error(`Operational value crossed the reserved GitHub API floor of ${rateLimitReserve} requests`);
+  if (rateLimitReserve !== undefined) {
+    try {
+      if (githubApiRemaining(worker.env) < rateLimitReserve) {
+        throw new Error(`Operational value crossed the reserved GitHub API floor of ${rateLimitReserve} requests`);
+      }
+    } catch (error) {
+      warn(null, error);
+    }
   }
   const output = outputPath ? path.resolve(outputPath) : undefined;
   if (output) {
@@ -196,6 +250,7 @@ export async function runOperationalValue({
     repositories: uniqueRepositories.length,
     scripts: scripts.map((entry) => entry.package),
     values,
+    warnings,
     output: output ?? null
   };
 }

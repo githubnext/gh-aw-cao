@@ -433,6 +433,8 @@ test("Activity campaign owns the shared collected-data cache contract", () => {
   assert.match(activityCollector, /gh aw logs --audit/);
   assert.match(workflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl/);
   assert.match(workflow, /Compute repository operational value[\s\S]*?cao\.mjs operational-value[\s\S]*?--max-github-api-rate-limit -2000/);
+  assert.match(workflow, /Compute repository operational value[\s\S]*?CAO_OPERATIONAL_VALUE_GH_TOKEN: \$\{\{ steps\.activity-app-token\.outputs\.token \|\| github\.token \}\}/);
+  assert.match(workflow, /if ! node activity\/cao\.mjs operational-value[\s\S]*?::warning::Operational value collection failed; continuing activity indexing\./);
   assert.equal((workflow.match(/path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/gm) || []).length, 1);
   assert.match(workflow, /cao-activity-v5-\$\{\{ github\.run_id \}\}-/);
   assert.equal(campaignDocument.scripts["activity:local"], undefined);
