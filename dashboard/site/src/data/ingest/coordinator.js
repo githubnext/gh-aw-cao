@@ -166,9 +166,6 @@ function migrateLegacyPackageAliases(candidate) {
  */
 function migrateNormalizedBatch(batch) {
   if (!Array.isArray(batch.operationalValues)) batch = { ...batch, operationalValues: [] };
-  if (!Array.isArray(batch.packages)) {
-    return /** @type {import('../model/schema.js').CanonicalBatch} */ (batch);
-  }
   const migrated = { ...batch };
   if (!Array.isArray(migrated.campaigns) && Array.isArray(migrated.packages)) {
     migrated.campaigns = migrated.packages.map(migrateLegacyPackageAliases);
@@ -804,7 +801,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
       const encoder = new TextEncoder();
       let pending = '';
       let lineNumber = 0;
-      /** @type {{ phase: 'all' | 'runs' | 'records', records: number, sourceRecords?: number } | null} */
+      /** @type {{ phase: 'all' | 'runs' | 'records', records: number, sourceRecords?: number, schemaVersion: number } | null} */
       let header = null;
       let batch = emptyNormalizedBatch();
       let bufferedRecords = 0;
@@ -813,6 +810,8 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
       const flush = async () => {
         if (bufferedRecords === 0) return;
         phase = 'writing';
+        batch = migrateNormalizedBatch(/** @type {Record<string, unknown>} */ (batch));
+        if (header?.schemaVersion === 12) batch = await migrateSchema12Batch(indexedDB, batch);
         await preserveStreamedStructuralMetadata(indexedDB, batch);
         const result = await upsertCanonicalBatch(indexedDB, batch, {
           validateRelationships: false,
@@ -847,7 +846,8 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
           if (envelope.kind !== 'metadata') {
             throw new TypeError('Normalized activity JSONL must start with metadata');
           }
-          if (envelope.schemaVersion !== CANONICAL_SCHEMA_VERSION) {
+          const schemaVersion = Number(envelope.schemaVersion);
+          if (![CANONICAL_SCHEMA_VERSION, 13, 12].includes(schemaVersion)) {
             throw new TypeError(`Unsupported normalized activity schema: ${String(envelope.schemaVersion)}`);
           }
           if (envelope.ingestionVersion !== NORMALIZED_JSONL_INGESTION_VERSION) {
@@ -866,6 +866,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
           header = {
             phase: /** @type {'all' | 'runs' | 'records'} */ (envelope.phase),
             records: Number(envelope.records),
+            schemaVersion,
             sourceRecords: Number.isSafeInteger(envelope.sourceRecords)
               ? Number(envelope.sourceRecords)
               : undefined
