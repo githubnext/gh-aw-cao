@@ -434,7 +434,7 @@ func (a *App) query(response http.ResponseWriter, request *http.Request) {
 	engine := query.New(loader)
 	sources, metrics, err := engine.Execute(definitions, requested)
 	if err != nil {
-		serverLog.Printf("query failed: %v", err)
+		serverLog.Printf("query failed")
 		writeError(response, http.StatusBadRequest, err.Error())
 		return
 	}

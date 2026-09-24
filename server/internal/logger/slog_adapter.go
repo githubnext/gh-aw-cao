@@ -34,7 +34,16 @@ func (h *SlogHandler) Handle(_ context.Context, record slog.Record) error {
 		_, _ = fmt.Fprintf(&message, " %s=%s", attribute.Key, attribute.Value.String())
 		return true
 	})
-	h.logger.Print(message.String())
+	levelPrefix := ""
+	switch record.Level {
+	case slog.LevelDebug, slog.LevelInfo:
+		levelPrefix = "· "
+	case slog.LevelWarn:
+		levelPrefix = "⚠ "
+	case slog.LevelError:
+		levelPrefix = "✗ "
+	}
+	h.logger.Print(levelPrefix + message.String())
 	return nil
 }
 

@@ -204,7 +204,7 @@ func Dependencies(definitions []Definition, requested []string) ([]string, error
 func (e *Engine) Execute(definitions []Definition, requested []string) (map[string]model.Source, model.Metrics, error) {
 	queryLog.Printf("executing definitions=%d requested=%d", len(definitions), len(requested))
 	if err := Validate(definitions); err != nil {
-		queryLog.Printf("validation failed: %v", err)
+		queryLog.Printf("validation failed")
 		return nil, model.Metrics{}, err
 	}
 	index := make(map[string]*Definition, len(definitions))

@@ -19,13 +19,15 @@ type Logger struct {
 	label     string
 }
 
+const colorPaletteSize = 12
+
 var (
 	// DEBUG is read once at initialization, matching the gh-aw logger.
 	debugEnv = initDebugEnv()
 
 	debugColors = os.Getenv("DEBUG_COLORS") != "0"
 
-	colorPalette = []int{36, 32, 33, 35, 93, 31, 90, 37, 34, 36, 32, 35}
+	colorPalette = [colorPaletteSize]int{36, 32, 33, 35, 93, 31, 90, 37, 34, 36, 32, 35}
 )
 
 // New creates a Logger for namespace.
@@ -123,7 +125,7 @@ func selectNamespaceLabel(namespace string) string {
 	if _, err := io.WriteString(hash, namespace); err != nil {
 		return namespace
 	}
-	color := colorPalette[hash.Sum32()%uint32(len(colorPalette))]
+	color := colorPalette[hash.Sum32()%colorPaletteSize]
 	return fmt.Sprintf("\x1b[%dm%s\x1b[0m", color, namespace)
 }
 

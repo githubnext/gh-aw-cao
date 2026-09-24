@@ -68,7 +68,7 @@ func TestSlogAdapter(t *testing.T) {
 	output := captureStderr(t, func() {
 		NewSlogLoggerWithHandler(handler.logger).Info("request complete", "status", 200)
 	})
-	if !strings.Contains(output, "request complete status=200") {
+	if !strings.Contains(output, "· request complete status=200") {
 		t.Fatalf("unexpected slog output: %q", output)
 	}
 }

@@ -156,7 +156,7 @@ func (c *Client) connect(ctx context.Context) (net.Conn, *bufio.Reader, *bufio.W
 		connection, err = dialer.DialContext(ctx, "tcp", c.address)
 	}
 	if err != nil {
-		redisLog.Printf("connection failed: %v", err)
+		redisLog.Printf("connection failed")
 		return nil, nil, nil, fmt.Errorf("connect to Redis: %w", err)
 	}
 	deadline := time.Now().Add(c.timeout)

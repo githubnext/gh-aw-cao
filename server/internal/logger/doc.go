@@ -1,5 +1,6 @@
-// Package logger provides namespace-based debug logging copied from the gh-aw
-// logger package and adapted to use only the Go standard library.
+// Package logger provides namespace-based debug logging copied from
+// github/gh-aw/pkg/logger at e6374a3 and adapted to use only the Go standard
+// library.
 //
 // Set DEBUG to a comma-separated list of namespace patterns to enable logs:
 //
