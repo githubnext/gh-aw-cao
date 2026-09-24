@@ -5,7 +5,13 @@ import { readFileSync } from 'node:fs';
 
 const REPOSITORY_COORDINATE = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
 const MAX_ALERT_PAGES = Number(process.env.CAO_DEPENDABOT_ALERTS_MAX_PAGES ?? 1000);
-const GITHUB_API_URL = new URL(process.env.GITHUB_API_URL ?? 'https://api.github.com');
+const GITHUB_API_URL = (() => {
+  try {
+    return new URL(process.env.GITHUB_API_URL ?? 'https://api.github.com');
+  } catch {
+    fail('GITHUB_API_URL must be a valid URL');
+  }
+})();
 
 function fail(message) {
   console.error(message);
@@ -44,7 +50,7 @@ function ghApi(arguments_) {
   return result.stdout;
 }
 
-function parseResponse(output) {
+function parseResponse(output, repository) {
   const normalized = String(output).replace(/\r\n/g, '\n');
   let offset = 0;
   let headers = '';
@@ -64,7 +70,7 @@ function parseResponse(output) {
   if (!status) fail('GitHub API returned a response without an HTTP status');
   const statusCode = Number(status[1]);
   if (statusCode < 200 || statusCode >= 300) {
-    fail(`GitHub API returned HTTP ${statusCode}${status[2] ? ` ${status[2]}` : ''} for Dependabot alerts`);
+    fail(`GitHub API returned HTTP ${statusCode}${status[2] ? ` ${status[2]}` : ''} for ${repository} Dependabot alerts`);
   }
   const link = headers.split('\n')
     .find((line) => /^link:/i.test(line))
@@ -94,7 +100,10 @@ function canonicalEndpoint(endpoint, repository, fields = []) {
   }
   for (let index = 0; index < fields.length; index += 2) {
     if (fields[index] !== '-f') continue;
-    const [name, value = ''] = String(fields[index + 1]).split('=', 2);
+    const field = String(fields[index + 1]);
+    const separator = field.indexOf('=');
+    const name = separator < 0 ? field : field.slice(0, separator);
+    const value = separator < 0 ? '' : field.slice(separator + 1);
     url.searchParams.set(name, value);
   }
   return url.toString();
@@ -140,7 +149,7 @@ for (const repository of request.repositories) {
       '--include',
       endpoint,
       ...fields
-    ]));
+    ]), repository);
     // Next links already carry state and per_page, so only the first request supplies fields.
     fields = [];
     endpoint = validateNextEndpoint(response.next, repository);

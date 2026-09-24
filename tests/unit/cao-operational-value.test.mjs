@@ -123,7 +123,7 @@ fi\n`);
       PATH: `${temporary}:${process.env.PATH}`,
       CAO_GITHUB_API_MIN_REMAINING: '2000'
     }, stdio: 'pipe' }
-  ), /GitHub API returned HTTP 403 Forbidden for Dependabot alerts/);
+  ), /GitHub API returned HTTP 403 Forbidden for githubnext\/gh-aw-cao Dependabot alerts/);
 });
 
 test('Dependabot operational value rejects repeated pagination links', () => {
