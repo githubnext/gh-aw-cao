@@ -175,6 +175,7 @@ test('full-view content keeps a responsive horizontal inset', async ({ page }) =
     };
   });
 
+  // The full-view modifier replaces the default stable gutter while preserving full-height content.
   await page.setViewportSize({ width: 1200, height: 800 });
   await expect.poll(contentLayout).toEqual({
     left: 24,
