@@ -353,7 +353,7 @@ test('phased shard names preserve source order for non-empty phase pairs', async
   assert.ok(hashes[`gh-aw-logs-records/${records[1]}`]);
 });
 
-test('hash-payloads preserves every detected audit in record shards and the database', async () => {
+test('hash-payloads excludes info-level audits and stores actionable audits in the database', async () => {
   const { root, shardDirectory, databasePath } = await fixture();
   const sourcePath = path.join(shardDirectory, 'gh-aw-logs-1000000000-aaaa.jsonl');
   const source = (await readFile(sourcePath, 'utf8')).trim().split('\n');
@@ -379,10 +379,7 @@ test('hash-payloads preserves every detected audit in record shards and the data
   const [recordShard] = await readdir(recordsDirectory);
   const payload = await readNormalizedJsonl(path.join(recordsDirectory, recordShard));
   const findings = payload.batch.audits.filter((audit) => audit.type === 'audit.finding');
-  assert.deepEqual(findings.map((audit) => audit.summary), [
-    'Informational finding',
-    'Actionable finding',
-  ]);
+  assert.deepEqual(findings.map((audit) => audit.summary), ['Actionable finding']);
 
   const runsDirectory = path.join(root, 'gh-aw-logs-runs');
   await execFileAsync(process.execPath, [
@@ -406,10 +403,7 @@ test('hash-payloads preserves every detected audit in record shards and the data
 
   const storedFindings = (await queryCollection(databasePath, 'audits'))
     .filter((audit) => audit.type === 'audit.finding');
-  assert.deepEqual(storedFindings.map((audit) => audit.summary), [
-    'Informational finding',
-    'Actionable finding',
-  ]);
+  assert.deepEqual(storedFindings.map((audit) => audit.summary), ['Actionable finding']);
 });
 
 test('hash-payloads drops empty phased shards from files and hashes', async () => {
