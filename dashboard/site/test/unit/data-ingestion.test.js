@@ -282,7 +282,8 @@ describe('canonical source ingestion and queries', () => {
         domains: [],
         tools: [],
         audits: [],
-        issues: []
+        issues: [],
+        operationalValues: []
       }
     };
     const options = {
@@ -441,7 +442,8 @@ describe('canonical source ingestion and queries', () => {
       domains: [],
       tools: [],
       audits: [],
-      issues: []
+      issues: [],
+      operationalValues: []
     });
     const runsBatch = emptyBatch();
     runsBatch.repositories.push(canonicalRecord(repositoryId, '2026-09-09T04:00:00Z'));

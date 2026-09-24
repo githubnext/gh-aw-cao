@@ -66,6 +66,7 @@ function batch() {
       observedAt,
       sequence: 1
     }],
+    operationalValues: [],
     audits: [{
       id: 'event:finding',
       sessionId: 'session:42',
