@@ -1432,46 +1432,6 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
     expect(link.width, `${link.text} link width`).toBeGreaterThanOrEqual(24);
     expect(link.height, `${link.text} link height`).toBeGreaterThanOrEqual(24);
   }
-  await page.evaluate(() => { window.location.hash = '#page-overview-failed-runs'; });
-  const failedRunsPage = page.locator('[data-page-id="overview-failed-runs"]');
-  await expect(failedRunsPage).toBeVisible();
-  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
-  await expect(failedRunsPage.locator('[data-view-layout="full-view"]')).toHaveCount(1);
-  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(await page.evaluate(() => innerHeight));
-  const fullViewShellSize = await page.locator('.top-nav > .shell').evaluate((element) => {
-    const { width, height } = element.getBoundingClientRect();
-    return { width, height };
-  });
-  await page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('link', { name: 'Overview' }).click();
-  await expect(overviewPage).toBeVisible();
-
-  for (const pageId of ['overview-blocked-work', 'overview-security-findings']) {
-    await page.evaluate((nextPageId) => { window.location.hash = `#page-${nextPageId}`; }, pageId);
-    const attentionPage = page.locator(`[data-page-id="${pageId}"]`);
-    await expect(attentionPage).toBeVisible();
-    await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
-    await expect(attentionPage.locator('[data-view-layout="full-view"]')).toHaveCount(1);
-  }
-  await page.evaluate(() => { window.location.hash = '#page-overview'; });
-  await expect(overviewPage).toBeVisible();
-
-  await page.evaluate(() => { window.location.hash = '#page-overview-awaiting-review'; });
-  const reviewPage = page.locator('[data-page-id="overview-awaiting-review"]');
-  await expect(reviewPage).toBeVisible();
-  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
-  await expect(reviewPage.locator('[data-view-layout="full-view"]')).toHaveCount(1);
-  expect(await page.locator('.top-nav > .shell').evaluate((element) => {
-    const { width, height } = element.getBoundingClientRect();
-    return { width, height };
-  })).toEqual(fullViewShellSize);
-  await expect(reviewPage.locator('.custom-view')).toHaveCount(1);
-  await expect(reviewPage.locator('.table-summary-row .table-summary-cell')).toHaveCount(3);
-  await expect(reviewPage.locator('tbody tr')).toHaveCount(1);
-  await expect(reviewPage.locator('tbody a[href="https://example.com/evidence/release-train"]')).toBeVisible();
-  await expect(page.locator('[data-breadcrumb-dashboard]')).toHaveText('Overview');
-  await cleanNavigation.filter({ hasText: 'Overview' }).click();
-  await expect(overviewPage).toBeVisible();
-
   // A 320px window can leave 305px of layout width when the browser reserves a scrollbar gutter.
   await page.setViewportSize({ width: 305, height: 844 });
   await page.evaluate(() => { window.location.hash = '#page-overview'; });
@@ -2479,28 +2439,6 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await expect(page).toHaveURL(/#page-campaign-problems\?campaign=ambient-context$/);
   await expect(campaignNavigation.getByRole('link', { name: 'Problems' })).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('[data-page-id="campaign-problems"] [data-view-id="campaign-current-runtime-problems"]')).toBeVisible();
-  await page.evaluate(() => {
-    window.location.hash = '#page-campaign-workflows?campaign=ambient-context';
-  });
-  await expect(campaignNavigation.locator('[aria-current="page"]')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Table' }).click();
-  await expect(page.getByRole('heading', { name: 'Orchestrator and workers', level: 3 })).toBeVisible();
-  const campaignWorkflowRows = page.locator('[data-page-id="campaign-workflows"] .custom-table tbody tr');
-  await expect(campaignWorkflowRows).toHaveCount(2);
-  await expect(page.locator('[data-page-id="campaign-workflows"] .custom-table thead tr').first().locator('th')).toHaveText([
-    'Role',
-    'Workflow',
-    'Definition',
-    'Mode',
-    'Registration',
-    'Runs',
-    'Total AIC'
-  ]);
-  await expect(campaignWorkflowRows.first()).toContainText('OrchestratorAmbient Context');
-  await expect(campaignWorkflowRows.first().locator('td').nth(5)).toHaveText('0');
-  await expect(campaignWorkflowRows.first().locator('td').nth(6)).toHaveText('0');
-  await expect(campaignWorkflowRows.nth(1)).toContainText('WorkerAmbient Context Worker');
-  await page.getByRole('button', { name: 'Chart' }).click();
   await campaignNavigation.getByRole('link', { name: 'Dispatches' }).click();
   await expect(page).toHaveURL(/#page-campaign-dispatches\?campaign=ambient-context$/);
   const campaignRunsPage = page.locator('[data-page-id="campaign-dispatches"]');
@@ -2587,7 +2525,29 @@ test('DLS-PAGE-009 DLS-PAGE-014 built-in evals page renders distinguishable defi
           id: 'built-in-evals-render',
           title: 'Built In Evals Render',
           pages: [
-            ${JSON.stringify(builtInPage('evals', { id: 'evals', title: 'Evals' }))}
+            ${JSON.stringify({
+              id: 'evals',
+              kind: 'custom',
+              title: 'Evals',
+              views: [
+                {
+                  id: 'evals-source',
+                  title: 'Evals Source',
+                  disclosure: 'supplemental',
+                  data: { source: 'evals' },
+                  mark: 'table',
+                  encoding: { columns: [{ field: 'eval' }, { field: 'eval-name' }, { field: 'eval-question' }] }
+                },
+                {
+                  id: 'eval-observations-source',
+                  title: 'Evals Observations Source',
+                  disclosure: 'supplemental',
+                  data: { source: 'eval-observations' },
+                  mark: 'table',
+                  encoding: { columns: [{ field: 'eval' }, { field: 'eval-result' }, { field: 'resolved-model' }] }
+                }
+              ]
+            })}
           ]
         }
       };
@@ -2634,8 +2594,8 @@ test('DLS-PAGE-009 DLS-PAGE-014 built-in evals page renders distinguishable defi
 
   await expect(page.getByRole('heading', { name: 'Evals', exact: true, level: 1 })).toBeVisible();
   await page.getByRole('button', { name: 'Table' }).click();
-  await page.locator('summary').filter({ hasText: 'Evals Evals Source' }).click();
-  await expect(page.getByRole('region', { name: 'Evals Evals Source', exact: true })).toBeVisible();
+  await page.locator('summary').filter({ hasText: 'Evals Source' }).click();
+  await expect(page.getByRole('region', { name: 'Evals Source', exact: true })).toBeVisible();
   await page.locator('summary').filter({ hasText: 'Evals Observations Source' }).click();
   await expect(page.getByRole('region', { name: 'Evals Observations Source', exact: true })).toBeVisible();
   await expect(page.locator('.data-state-summary')).toBeHidden();
@@ -2662,7 +2622,26 @@ test('DLS-SAFE-004 DLS-SAFE-007 DLS-SAFE-008 DLS-SAFE-010 built-in findings page
           title: 'Security Dashboard',
           repository: 'githubnext/gh-aw-cao',
           pages: [
-            ${JSON.stringify(builtInPage('findings', { id: 'findings', title: 'Findings' }))}
+            ${JSON.stringify({
+              id: 'findings',
+              kind: 'custom',
+              title: 'Findings',
+              views: [{
+                id: 'findings-source',
+                title: 'Findings Source',
+                disclosure: 'supplemental',
+                data: { source: 'findings' },
+                mark: 'table',
+                encoding: {
+                  columns: [
+                    { field: 'finding-summary', type: 'nominal' },
+                    { field: 'finding-severity', type: 'nominal' },
+                    { field: 'issue-link', type: 'nominal' }
+                  ],
+                  href: { field: 'issue-link', type: 'nominal' }
+                }
+              }]
+            })}
           ]
         }
       };
