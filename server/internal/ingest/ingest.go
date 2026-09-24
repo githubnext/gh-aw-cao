@@ -364,7 +364,11 @@ func projectSources(canonical map[string][]model.Row, inventory map[string]model
 		if err != nil {
 			return nil, fmt.Errorf("project %s: %w", name, err)
 		}
-		sources[name] = mergeLogical(sources[name], result)
+		if name == "operational-values" {
+			sources[name] = result
+		} else {
+			sources[name] = mergeLogical(sources[name], result)
+		}
 	}
 	runRecords, ok := index["run-records"]
 	if ok {

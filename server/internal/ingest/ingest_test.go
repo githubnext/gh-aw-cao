@@ -159,6 +159,35 @@ func TestProjectsOperationalValuesWithCampaign(t *testing.T) {
 	}
 }
 
+func TestOperationalValuesProjectionReplacesInventoryRows(t *testing.T) {
+	canonical := map[string][]model.Row{}
+	for _, collection := range collections {
+		canonical[collection] = []model.Row{}
+	}
+	inventory := map[string]model.Source{
+		"operational-values": {
+			Source: "operational-values",
+			Rows: []model.Row{{
+				"repository": "control-plane", "observed-at": "2026-09-23T18:05:00Z", "operational-value": 42,
+			}},
+			Metadata: model.Metadata{},
+		},
+	}
+	definitions, err := loadDefinitions("../../../dashboard/site/src/data/queries/database.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sources, err := projectSources(canonical, inventory, definitions)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if rows := sources["operational-values"].Rows; len(rows) != 0 {
+		t.Fatalf("expected canonical operational-values projection to replace inventory rows, got %#v", rows)
+	}
+}
+
 func TestOperationalValueRelationshipErrorReportedOnce(t *testing.T) {
 	canonical := map[string][]model.Row{}
 	for _, collection := range collections {
