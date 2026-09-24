@@ -68,7 +68,8 @@ includes:
     readFileSync(path.join(root, ".github/skills/add-operational-value/templates/campaign-operational-value.mjs"), "utf8"),
   );
   const manifest = readFileSync(path.join(temporary, "example/aw.yml"), "utf8");
-  assert.equal((manifest.match(/- operational-value\.mjs/g) ?? []).length, 1);
+  assert.equal((manifest.match(/source: operational-value\.mjs/g) ?? []).length, 1);
+  assert.match(manifest, /destination: example\/operational-value\.mjs/);
   assert.equal((manifest.match(/- operational-value\/example\.mjs/g) ?? []).length, 1);
   assert.equal(manifest.endsWith("\n"), true);
 

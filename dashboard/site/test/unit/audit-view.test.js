@@ -349,7 +349,7 @@ describe('Audit dashboard view', () => {
             'operational-value': 0.5,
             'operational-value-definition': 'combined.value',
             'operational-value-role': 'primary',
-            'maturity-status': 'mature',
+            'maturity-status': 'matured',
             'observed-at': '2026-09-16T10:00:00Z'
           }],
           metadata

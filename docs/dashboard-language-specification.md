@@ -249,7 +249,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | View | `id`, `title`, `description`, `intent`, `locked`, `data`, `mark`, `element`, `config`, `callout`, `chart`, `metric`, `list`, `tree`, `layout`, `disclosure`, `controls`, `lazy-list`, `column-summaries`, `empty-message`, `title-link`, `encoding` |
 | View `data` | `source` or `sources`, `scope`, `time`, `filters`, `arguments`, `limit`, `order-by` |
 | View data argument | `name`, `field` |
-| View `config` | `body`, `sections`, `labels` |
+| View `config` | `body`, `sections`, `labels`, `measure-source`, `empty-message` |
 | View `list` | `style`, `layout`, `icon`, `action`, `card`, `drill` |
 | List `drill` | `type`, `field`, `page`, `query`, `title-field`, `arguments` |
 | Query drill argument | `name`, `field` |

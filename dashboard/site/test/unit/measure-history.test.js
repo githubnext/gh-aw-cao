@@ -35,7 +35,10 @@ describe('Measure history', () => {
           }]
         }
       },
-      elementConfig: { 'measure-source': 'operational-value' }
+      elementConfig: { 'measure-source': 'operational-value' },
+      pageId: 'test-page',
+      contextDetails: [],
+      headingTag: 'h3'
     });
 
     expect(rendered.querySelector('h2')?.textContent).toBe('Repository operational-value history');

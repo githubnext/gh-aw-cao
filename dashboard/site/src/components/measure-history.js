@@ -39,6 +39,7 @@ export function renderMeasureHistory(context) {
 
 /**
  * @param {Record<string, unknown>} metric
+ * @param {'operational-value'|'operational-grader'} measureSource
  * @returns {HTMLElement}
  */
 function renderMeasureRow(metric, measureSource) {
@@ -77,6 +78,8 @@ function renderMeasureRow(metric, measureSource) {
  * @param {string} title
  * @param {Array<{ x: string, y: number }>} points
  * @param {number} seriesCount
+ * @param {'operational-value'|'operational-grader'} measureSource
+ * @param {string} maturityStatus
  * @returns {string}
  */
 function describeMeasure(kind, title, points, seriesCount, measureSource, maturityStatus) {

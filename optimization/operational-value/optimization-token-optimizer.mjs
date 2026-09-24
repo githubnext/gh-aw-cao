@@ -330,7 +330,16 @@ export async function collectBatch(requests, context = {}) {
       run(process.execPath, [ACTIVITY_CLI, "download", "--output", temporary]);
       database = path.join(temporary, "gh-aw-logs.sqlite");
     }
-    if (!existsSync(database)) fail(`CAO Activity database not found: ${database}`);
+    if (!existsSync(database)) {
+      return requests.map(() => ({
+        evidence: {
+          key: definition.evidence.key,
+          maturityStatus: "unavailable",
+          unavailableReason: "cao-activity-database-missing",
+        },
+        provenance: [],
+      }));
+    }
     const records = queryAudits(database);
     const digest = createHash("sha256").update(readFileSync(database)).digest("hex");
     return requests.map((request) => ({

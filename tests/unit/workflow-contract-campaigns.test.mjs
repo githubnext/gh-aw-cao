@@ -116,6 +116,7 @@ test("operational workflows use the transitive CAO campaign bundle", () => {
       .map((workflowId) => `.github/workflows/${workflowId}.md`)
       .sort();
     const includedWorkflowPaths = manifest.includes
+      .filter((include) => typeof include === "string")
       .filter((include) => include.endsWith(".md"))
       .sort();
 
@@ -241,7 +242,12 @@ test("operational campaigns install declarations matching their workflow identit
     const declaration = JSON.parse(readFileSync(join(root, campaignName, "cao.json"), "utf8"));
     const manifest = parse(readFileSync(join(root, campaignName, "aw.yml"), "utf8"));
     assert.equal(declaration.campaign, campaignName);
-    assert.equal(manifest.resources, undefined, campaignName);
+    const resources = manifest.resources ?? [];
+    assert.deepEqual(
+      resources.filter((resource) => resource.source !== "operational-value.mjs" || resource.destination !== `${campaignName}/operational-value.mjs`),
+      [],
+      campaignName,
+    );
     assert.ok(existsSync(join(root, campaignName, "cao.json")), campaignName);
 
     const orchestrator = workflow(`${declaration.orchestrator}.md`);
