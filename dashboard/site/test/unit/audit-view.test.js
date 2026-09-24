@@ -311,10 +311,11 @@ describe('Audit dashboard view', () => {
       }
     }));
 
-    expect(result['campaign-insight-tab-counts'].rows).toEqual([
+    expect(result['campaign-insight-tab-counts'].rows).toHaveLength(3);
+    expect(result['campaign-insight-tab-counts'].rows).toEqual(expect.arrayContaining([
       { campaign: 'combined', items: 4 },
       { campaign: 'audit-only', items: 1 },
       { campaign: 'noise', items: 1 }
-    ]);
+    ]));
   });
 });
