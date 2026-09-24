@@ -8833,15 +8833,15 @@
           ],
           "values": [
             {
-              "field": "id",
-              "as": "observations",
-              "reducer": "count"
+              "field": "request-count",
+              "as": "requests",
+              "reducer": "sum"
             }
           ]
         },
         "order-by": [
           {
-            "field": "observations",
+            "field": "requests",
             "direction": "desc"
           },
           {
@@ -8853,15 +8853,16 @@
       {
         "name": "tool-entity-insights",
         "intent": "Summarize one tool entity for its dedicated Insights view.",
-        "from": "tools",
+        "from": "mcp-calls",
         "aggregate": {
           "by": [
-            "name",
-            "event-status"
+            "mcp-server",
+            "mcp-tool",
+            "mcp-status"
           ],
           "values": [
             {
-              "field": "id",
+              "field": "mcp-observation",
               "as": "observations",
               "reducer": "count"
             }
@@ -8873,7 +8874,7 @@
             "direction": "desc"
           },
           {
-            "field": "event-status",
+            "field": "mcp-status",
             "direction": "asc"
           }
         ]
@@ -9099,6 +9100,10 @@
                 {
                   "name": "tool",
                   "field": "mcp-tool"
+                },
+                {
+                  "name": "server",
+                  "field": "mcp-server"
                 }
               ]
             }
@@ -10604,6 +10609,53 @@
                 "type": "nominal",
                 "title": "Summary"
               }
+            }
+          },
+          {
+            "id": "campaign-audit-event-table",
+            "title": "Audit events",
+            "description": "Audit event summaries with links to dedicated entity insights and related runs.",
+            "data": {
+              "source": "audit-event-summary-buckets",
+              "route-field": "campaign",
+              "limit": 20
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "card-drill": {
+              "type": "query",
+              "page": "audit-insights",
+              "query": "audit-entity-insights",
+              "title-field": "event-summary",
+              "arguments": [
+                {
+                  "name": "audit",
+                  "field": "event-summary"
+                }
+              ]
+            },
+            "layout": "full-view",
+            "empty-message": "No high- or medium-severity audit events were observed for this campaign in the current run window.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "event-summary",
+                  "type": "nominal",
+                  "title": "Audit event"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "title": "Workflow",
+                  "format": "workflow-relative-path"
+                },
+                {
+                  "field": "events",
+                  "type": "quantitative",
+                  "title": "Events"
+                }
+              ]
             }
           }
         ]
@@ -13220,9 +13272,9 @@
                 "title": "Decision"
               },
               "y": {
-                "field": "observations",
+                "field": "requests",
                 "type": "quantitative",
-                "title": "Observations"
+                "title": "Requests"
               }
             }
           }
@@ -13367,12 +13419,16 @@
             "title": "Tool insights",
             "data": {
               "sources": [
-                "tools"
+                "mcp-calls"
               ],
               "arguments": [
                 {
                   "name": "tool",
-                  "field": "name"
+                  "field": "mcp-tool"
+                },
+                {
+                  "name": "server",
+                  "field": "mcp-server"
                 }
               ]
             },
@@ -13381,7 +13437,7 @@
             "layout": "full",
             "title-link": {
               "href-field": "run-link",
-              "identifier-field": "name"
+              "identifier-field": "mcp-tool"
             }
           },
           {
@@ -13392,7 +13448,11 @@
               "arguments": [
                 {
                   "name": "tool",
-                  "field": "name"
+                  "field": "mcp-tool"
+                },
+                {
+                  "name": "server",
+                  "field": "mcp-server"
                 }
               ]
             },
@@ -13401,7 +13461,7 @@
             "layout": "full",
             "encoding": {
               "x": {
-                "field": "event-status",
+                "field": "mcp-status",
                 "type": "nominal",
                 "title": "Status"
               },
@@ -13445,12 +13505,16 @@
             "title": "Tool runs",
             "data": {
               "sources": [
-                "tools"
+                "mcp-calls"
               ],
               "arguments": [
                 {
                   "name": "tool",
-                  "field": "name"
+                  "field": "mcp-tool"
+                },
+                {
+                  "name": "server",
+                  "field": "mcp-server"
                 }
               ]
             },
@@ -13459,7 +13523,7 @@
             "layout": "full",
             "title-link": {
               "href-field": "run-link",
-              "identifier-field": "name"
+              "identifier-field": "mcp-tool"
             }
           },
           {
@@ -13467,11 +13531,15 @@
             "title": "Related runs",
             "description": "Run records related to this tool.",
             "data": {
-              "source": "tools",
+              "source": "mcp-calls",
               "arguments": [
                 {
                   "name": "tool",
-                  "field": "name"
+                  "field": "mcp-tool"
+                },
+                {
+                  "name": "server",
+                  "field": "mcp-server"
                 }
               ],
               "order-by": [
@@ -13506,7 +13574,7 @@
                   "title": "Workflow"
                 },
                 {
-                  "field": "event-status",
+                  "field": "mcp-status",
                   "type": "nominal",
                   "title": "Status",
                   "display": "status"

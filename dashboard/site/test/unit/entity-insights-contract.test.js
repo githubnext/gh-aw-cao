@@ -6,7 +6,7 @@ const dashboard = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'ut
 describe('canonical entity insights', () => {
   for (const entity of [
     { id: 'domain', source: 'domains', identifier: 'domain' },
-    { id: 'tool', source: 'tools', identifier: 'name' },
+    { id: 'tool', source: 'mcp-calls', identifier: 'mcp-tool' },
     { id: 'audit', source: 'audits', identifier: 'event-summary' }
   ]) {
     it(`gives ${entity.id} entities an Insights chart, native link, and related Runs facet`, () => {
