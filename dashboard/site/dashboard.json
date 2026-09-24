@@ -10272,7 +10272,11 @@
             "title": "Campaign insights",
             "data": {
               "sources": [
-                "workflows"
+                "workflows",
+                "audit-events",
+                "campaign-problem-items",
+                "campaign-runs",
+                "campaign-worker-issues"
               ],
               "arguments": [
                 {
@@ -10430,7 +10434,10 @@
             "data": {
               "sources": [
                 "workflows",
-                "campaign-problem-items"
+                "audit-events",
+                "campaign-problem-items",
+                "campaign-runs",
+                "campaign-worker-issues"
               ],
               "arguments": [
                 {
@@ -10561,7 +10568,17 @@
             "title": "Campaign overview",
             "data": {
               "sources": [
-                "workflows"
+                "workflows",
+                "audit-events",
+                "campaign-problem-items",
+                "campaign-runs",
+                "campaign-worker-issues"
+              ],
+              "arguments": [
+                {
+                  "name": "campaign",
+                  "field": "campaign"
+                }
               ]
             },
             "mark": "element",
@@ -10690,7 +10707,16 @@
             "data": {
               "sources": [
                 "workflows",
+                "audit-events",
+                "campaign-problem-items",
+                "campaign-runs",
                 "campaign-worker-issues"
+              ],
+              "arguments": [
+                {
+                  "name": "campaign",
+                  "field": "campaign"
+                }
               ]
             },
             "mark": "element",
@@ -10906,7 +10932,17 @@
             "title": "Campaign workflow runs",
             "data": {
               "sources": [
-                "workflows"
+                "workflows",
+                "audit-events",
+                "campaign-problem-items",
+                "campaign-runs",
+                "campaign-worker-issues"
+              ],
+              "arguments": [
+                {
+                  "name": "campaign",
+                  "field": "campaign"
+                }
               ]
             },
             "mark": "element",

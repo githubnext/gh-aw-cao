@@ -7,6 +7,13 @@ import { createRoutePageShell } from './route-page-shell.js';
 import { normalizeCampaignRoute, campaignModeForRoute, campaignNameForRoute } from './campaign-route-composition.js';
 import { CAMPAIGN_ROUTE_TABS } from './route-body-specification.js';
 
+const CAMPAIGN_TAB_SOURCES = Object.freeze({
+  insights: 'audit-events',
+  problems: 'campaign-problem-items',
+  runs: 'campaign-runs',
+  issues: 'campaign-worker-issues'
+});
+
 /**
  * @typedef {{
  *   rootClassName: string,
@@ -33,8 +40,6 @@ import { CAMPAIGN_ROUTE_TABS } from './route-body-specification.js';
  */
 export function renderCampaignRouteShell(context, config) {
   const allWorkflows = rowsFor(context.sources, 'workflows');
-  const problemCount = rowsFor(context.sources, 'campaign-problem-items').length;
-  const allIssues = rowsFor(context.sources, 'campaign-worker-issues');
   return createRoutePageShell(context, {
     rootClassName: config.rootClassName,
     datasetKey: 'campaign',
@@ -46,7 +51,7 @@ export function renderCampaignRouteShell(context, config) {
     currentTab: config.currentTab,
     tabListClassName: 'campaign-tabs',
     tabListAriaLabel: (title) => `${title} views`,
-    tabs: ({ routeValue }) => campaignTabs(routeValue, problemCount, campaignIssueCount(routeValue, allIssues)),
+    tabs: ({ routeValue }) => campaignTabs(routeValue, campaignTabCounts(routeValue, context.sources)),
     pageLevelTabs: true,
     renderMatched: (routeValue) => {
       const campaignId = normalizeCampaignRoute(routeValue);
@@ -71,29 +76,29 @@ export function renderCampaignRouteShell(context, config) {
 
 /**
  * @param {string} campaignId
- * @param {Array<Record<string, unknown>>} issues
+ * @param {import('./ui-elements.js').ElementRenderContext['sources']} sources
  */
-function campaignIssueCount(campaignId, issues) {
-  return issues.filter((row) => String(row.campaign).toLowerCase() === campaignId.toLowerCase()).length;
+function campaignTabCounts(campaignId, sources) {
+  return Object.fromEntries(Object.entries(CAMPAIGN_TAB_SOURCES).map(([tabId, sourceName]) => [
+    tabId,
+    rowsFor(sources, sourceName)
+      .filter((row) => String(row.campaign).toLowerCase() === campaignId.toLowerCase())
+      .length
+  ]));
 }
 
 /**
  * @param {string} campaignId
- * @param {number} problemCount
- * @param {number} issueCount
+ * @param {Record<string, number>} counts
  */
-function campaignTabs(campaignId, problemCount, issueCount) {
+function campaignTabs(campaignId, counts) {
   const campaignQuery = `?campaign=${encodeURIComponent(campaignId)}`;
   return CAMPAIGN_ROUTE_TABS.map((tab) => ({
     id: tab.id,
     label: tab.label,
     icon: tab.icon,
     href: `#page-${tab.page}${campaignQuery}`,
-    count: tab.id === 'problems' && problemCount > 0
-      ? problemCount
-      : tab.id === 'issues' && issueCount > 0
-        ? issueCount
-        : undefined,
+    count: (counts[tab.id] ?? 0) > 0 ? counts[tab.id] : undefined,
     trailingIcon: 'chevron-right'
   }));
 }

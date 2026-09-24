@@ -142,6 +142,16 @@ describe('dashboard view query contracts', () => {
       const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === pageId);
       const firstView = viewsOf(page)[0];
       expect(firstView).toMatchObject({
+        data: {
+          sources: [
+            'workflows',
+            'audit-events',
+            'campaign-problem-items',
+            'campaign-runs',
+            'campaign-worker-issues'
+          ],
+          arguments: [{ name: 'campaign', field: 'campaign' }]
+        },
         mark: 'element',
         element: 'campaign-route',
         config: { body }

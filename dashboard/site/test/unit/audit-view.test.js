@@ -28,7 +28,13 @@ describe('Audit dashboard view', () => {
       'campaign-audit-events-table'
     ]);
     expect(insights.views[0].data).toMatchObject({
-      sources: ['workflows'],
+      sources: [
+        'workflows',
+        'audit-events',
+        'campaign-problem-items',
+        'campaign-runs',
+        'campaign-worker-issues'
+      ],
       arguments: [{ name: 'campaign', field: 'campaign' }]
     });
     expect(insights.views[1]).toMatchObject({

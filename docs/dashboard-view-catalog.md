@@ -107,6 +107,7 @@ Named elements own specialized DOM, accessibility, interaction, local state, and
 | `work-project-view` | Presents delegated work in board, task, and roadmap modes. |
 | `agent-marketplace-view` | Presents policy-scoped campaigns and agent capabilities. |
 | `insights-overview` | Composes the primary cross-domain Insights experience. |
+| `measure-history` | Presents reusable grouped temporal-measure history from declarative query results. |
 | `factory-header` | Presents factory status, retained-output context, work in motion, and weekly rhythm. |
 | `factory-floor` | Presents linked repository, run, dispatch, and value stations. |
 | `link-button-list` | Presents one source as an inset grouped list of Octicon navigation rows with disclosure chevrons. |

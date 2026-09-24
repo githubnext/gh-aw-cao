@@ -210,19 +210,43 @@ describe('campaign detail route', () => {
     expect(rendered.textContent).not.toContain('Other');
   });
 
-  it('shows the visible target problem count on the Problems tab', () => {
+  it('shows non-zero item counts uniformly across campaign data tabs', () => {
     const base = context();
     const rendered = renderCampaignRouteVariant({
       ...base,
-      sourceNames: ['workflows', 'campaign-problem-items'],
+      sourceNames: ['workflows', 'audit-events', 'campaign-problem-items', 'campaign-runs', 'campaign-worker-issues'],
       sources: {
         ...base.sources,
+        'audit-events': {
+          source: 'audit-events',
+          metadata,
+          rows: [
+            { campaign: 'ambient-context', event: '1' },
+            { campaign: 'other', event: '2' }
+          ]
+        },
         'campaign-problem-items': {
           source: 'campaign-problem-items',
           metadata,
           rows: [
             { campaign: 'ambient-context', 'target-repository': 'octo-org/api' },
             { campaign: 'ambient-context', 'target-repository': 'octo-org/web' }
+          ]
+        },
+        'campaign-runs': {
+          source: 'campaign-runs',
+          metadata,
+          rows: [
+            { campaign: 'ambient-context', run: '100' },
+            { campaign: 'ambient-context', run: '101' },
+            { campaign: 'ambient-context', run: '102' }
+          ]
+        },
+        'campaign-worker-issues': {
+          source: 'campaign-worker-issues',
+          metadata,
+          rows: [
+            { campaign: 'ambient-context', 'safe-output': 'issue-1' }
           ]
         }
       }
@@ -237,8 +261,16 @@ describe('campaign detail route', () => {
       detail: { parameter: 'campaign', value: 'ambient-context' }
     }));
 
-    expect(rendered.querySelector('.campaign-tabs a[href^="#page-campaign-problems"] .count-badge')?.textContent)
-      .toBe('2');
+    expect([...rendered.querySelectorAll('.campaign-tabs a')].map((link) => ({
+      label: link.querySelector('span')?.textContent,
+      count: link.querySelector('.count-badge')?.textContent
+    }))).toEqual([
+      { label: 'Insights', count: '1' },
+      { label: 'Problems', count: '2' },
+      { label: 'Dispatches', count: '3' },
+      { label: 'Issues', count: '1' },
+      { label: 'Info', count: undefined }
+    ]);
     expect(allocation).toEqual({
       title: 'Ambient Context',
       description: 'Current runtime failures and retained evidence for the Ambient Context campaign.',
