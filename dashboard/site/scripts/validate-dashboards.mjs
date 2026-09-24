@@ -39,14 +39,17 @@ for (const dashboardPath of dashboardPaths) {
   const result = validateDashboardDocument(source);
   const displayPath = relative(repositoryRoot, dashboardPath);
   let staticReferenceErrors = [];
+  let document;
   try {
-    const document = parse(source);
+    document = parse(source);
+  } catch {
+    // Document parsing errors are reported by the validator below.
+  }
+  if (document !== undefined) {
     staticReferenceErrors = findMissingStaticDashboardReferences(document, {
       linkedPageIds: await discoverStaticDashboardPageLinks(resolve(dashboardPath, '..')),
       registeredElementIds: registeredUiElementNames()
     });
-  } catch {
-    // Document parsing errors are reported by the validator below.
   }
   const hasDeadQueries = !result.ok && result.errors.some((error) => error.code === 'DLS-E015');
   if (renderQueryGraphs || hasDeadQueries) {
