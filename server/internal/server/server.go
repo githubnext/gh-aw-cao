@@ -147,27 +147,35 @@ func (a *App) Serve(ctx context.Context) error {
 
 func (a *App) Handler() http.Handler {
 	mux := http.NewServeMux()
-	if a.oauth != nil {
-		mux.HandleFunc("GET /auth/login", a.oauth.login)
-		mux.HandleFunc("GET /auth/callback", a.oauth.callback)
-		mux.HandleFunc("POST /auth/logout", a.oauth.logout)
+	routePatterns := map[string]struct{}{}
+	register := func(pattern string, handler http.HandlerFunc) {
+		mux.HandleFunc(pattern, handler)
+		routePatterns[pattern] = struct{}{}
 	}
-	mux.HandleFunc("GET /api/v1/health", a.health)
-	mux.HandleFunc("GET /api/v1/events", a.events)
-	mux.HandleFunc("POST /api/v1/query", a.query)
-	mux.HandleFunc("GET /api/v1/diagnostics", a.diagnostics)
-	mux.HandleFunc("POST /api/v1/refresh", a.refresh)
+	if a.oauth != nil {
+		register("GET /auth/login", a.oauth.login)
+		register("GET /auth/callback", a.oauth.callback)
+		register("POST /auth/logout", a.oauth.logout)
+	}
+	register("GET /api/v1/health", a.health)
+	register("GET /api/v1/events", a.events)
+	register("POST /api/v1/query", a.query)
+	register("GET /api/v1/diagnostics", a.diagnostics)
+	register("POST /api/v1/refresh", a.refresh)
 	mux.HandleFunc("/", a.static)
 	instrumented := otelhttp.NewHandler(withResponseTraceHeaders(mux), telemetry.ServiceName,
 		otelhttp.WithSpanNameFormatter(func(_ string, request *http.Request) string {
-			_, pattern := mux.Handler(request)
-			if pattern == "" {
-				pattern = request.URL.Path
-			}
-			if strings.Contains(pattern, " ") {
+			// Match against the fixed, small set of registered API/auth
+			// patterns directly instead of calling mux.Handler, which
+			// would re-run ServeMux's route resolution a second time per
+			// request just to name the span. Every other path (static
+			// dashboard assets) is bucketed under one low-cardinality
+			// span name.
+			pattern := request.Method + " " + request.URL.Path
+			if _, ok := routePatterns[pattern]; ok {
 				return pattern
 			}
-			return request.Method + " " + pattern
+			return request.Method + " /*"
 		}),
 	)
 	return securityHeaders(a.requireAccess(instrumented))
@@ -397,6 +405,7 @@ func (a *App) query(response http.ResponseWriter, request *http.Request) {
 	defer span.End()
 	request = request.WithContext(ctx)
 	fail := func(status int, message string) {
+		span.RecordError(errors.New(message))
 		span.SetStatus(codes.Error, message)
 		writeError(response, status, message)
 	}

@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -14,7 +13,10 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
-var setupTelemetryOnce sync.Once
+var (
+	setupTelemetryOnce sync.Once
+	setupTelemetryErr  error
+)
 
 type HostingMode string
 
@@ -87,20 +89,26 @@ func forwardedHeader(request *http.Request, name string) string {
 }
 
 func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboardQueriesPath string, logger *log.Logger) (http.Handler, error) {
-	var telemetryErr error
 	setupTelemetryOnce.Do(func() {
 		// The Function App process is reused across invocations, so the
 		// tracer provider is installed once for the process lifetime
-		// instead of per request/cold start.
+		// instead of per request/cold start. context.Background() is used
+		// (rather than the first invocation's request-scoped ctx) because
+		// the exporter it configures must outlive that single request. The
+		// outcome (including failure) is cached in setupTelemetryErr and
+		// logged here, once, because sync.Once never retries a failed
+		// first call; a telemetry failure is treated as non-fatal so a
+		// broken exporter configuration never prevents the dashboard from
+		// serving requests.
 		version := strings.TrimSpace(os.Getenv("CAO_BUILD_VERSION"))
 		if version == "" {
 			version = "unknown"
 		}
-		_, telemetryErr = telemetry.Setup(ctx, version)
+		_, setupTelemetryErr = telemetry.Setup(context.Background(), version)
+		if setupTelemetryErr != nil && logger != nil {
+			logger.Printf("telemetry configuration failed, continuing without exported traces: %v", setupTelemetryErr)
+		}
 	})
-	if telemetryErr != nil {
-		return nil, fmt.Errorf("configure telemetry: %w", telemetryErr)
-	}
 	redisURL := strings.TrimSpace(os.Getenv("CAO_REDIS_URL"))
 	if redisURL == "" {
 		return nil, errors.New("CAO_REDIS_URL is required")

@@ -3,7 +3,6 @@ package telemetry
 import (
 	"context"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"go.opentelemetry.io/otel"
@@ -44,6 +43,8 @@ func TestSetupDisabledSkipsExporter(t *testing.T) {
 }
 
 func TestSetupWithHTTPEndpointConfiguresProvider(t *testing.T) {
+	previousProvider := otel.GetTracerProvider()
+	t.Cleanup(func() { otel.SetTracerProvider(previousProvider) })
 	t.Setenv("OTEL_SDK_DISABLED", "")
 	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://127.0.0.1:4318")
 	shutdown, err := Setup(context.Background(), "test")
@@ -61,7 +62,6 @@ func TestSetupWithHTTPEndpointConfiguresProvider(t *testing.T) {
 	if provider == nil {
 		t.Fatal("expected a global tracer provider to be installed")
 	}
-	os.Unsetenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 }
 
 func TestSetResponseTraceHeadersOnlyWritesValidSpanContext(t *testing.T) {

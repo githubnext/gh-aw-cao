@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -19,12 +20,16 @@ import (
 )
 
 // version is the standardized service.version resource attribute reported by
-// this build's OpenTelemetry spans.
-const version = "dev"
+// this build's OpenTelemetry spans. Override it at build time with
+// -ldflags "-X main.version=...", or at runtime with CAO_BUILD_VERSION.
+var version = "dev"
 
 const defaultRedisURL = "redis://127.0.0.1:6379/0"
 
 func main() {
+	if override := strings.TrimSpace(os.Getenv("CAO_BUILD_VERSION")); override != "" {
+		version = override
+	}
 	if err := run(os.Args[1:]); err != nil {
 		log.Printf("error: %v", err)
 		os.Exit(1)

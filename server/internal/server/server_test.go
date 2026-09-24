@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"go.opentelemetry.io/otel"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
@@ -96,6 +99,8 @@ func TestAPINeverReturnsRedisCredentials(t *testing.T) {
 }
 
 func TestAPIResponsesCarryStandardizedTraceIdentifiers(t *testing.T) {
+	previousProvider := otel.GetTracerProvider()
+	t.Cleanup(func() { otel.SetTracerProvider(previousProvider) })
 	t.Setenv("OTEL_SDK_DISABLED", "")
 	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://127.0.0.1:4318")
 	shutdown, err := telemetry.Setup(t.Context(), "test")
@@ -145,6 +150,38 @@ func TestAPIResponsesCarryStandardizedTraceIdentifiers(t *testing.T) {
 	}
 	if len(spanID) != 16 {
 		t.Fatalf("expected a 16-character W3C span id, got %q", spanID)
+	}
+}
+
+func TestAzureFunctionsHandlerLogsTelemetryFailureOnceAndKeepsServing(t *testing.T) {
+	// NewAzureFunctionsHandlerFromEnv is the only caller of setupTelemetryOnce
+	// in the process, and this is its only test, so the shared sync.Once
+	// has not fired yet; sync.Once cannot be copied/reset, so no
+	// save/restore is attempted here.
+	previousErr := setupTelemetryErr
+	t.Cleanup(func() { setupTelemetryErr = previousErr })
+
+	// An OTLP endpoint plus a malformed OTEL_RESOURCE_ATTRIBUTES value
+	// forces telemetry.Setup to fail while building the OpenTelemetry
+	// resource, without needing a reachable collector.
+	t.Setenv("OTEL_SDK_DISABLED", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://127.0.0.1:4318")
+	t.Setenv("OTEL_RESOURCE_ATTRIBUTES", "not-a-valid-key-value-list")
+	t.Setenv("CAO_REDIS_URL", "")
+
+	var logOutput strings.Builder
+	logger := log.New(&logOutput, "", 0)
+
+	for i := 0; i < 2; i++ {
+		_, err := NewAzureFunctionsHandlerFromEnv(t.Context(), t.TempDir(), "", logger)
+		if err == nil || !strings.Contains(err.Error(), "CAO_REDIS_URL") {
+			t.Fatalf("call %d: expected the missing CAO_REDIS_URL error, got %v", i, err)
+		}
+	}
+
+	occurrences := strings.Count(logOutput.String(), "telemetry configuration failed")
+	if occurrences != 1 {
+		t.Fatalf("expected exactly one telemetry failure log line across repeated invocations, got %d: %q", occurrences, logOutput.String())
 	}
 }
 
