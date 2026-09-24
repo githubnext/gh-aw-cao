@@ -1361,8 +1361,21 @@ async function ingestNormalizedShardDirectories(indexedDB, directories, options 
   let committedRecords = 0;
   for (const [phase, directory] of directories) {
     const names = (await readdir(directory)).filter((name) => name.endsWith('.jsonl')).sort();
-    for (const name of names) {
+    debug('scanning normalized shard directory phase=%s directory=%s shards=%d', phase, directory, names.length);
+    let phaseCommittedRecords = 0;
+    const phaseStartedAt = Date.now();
+    for (const [index, name] of names.entries()) {
       const shardPath = path.join(directory, name);
+      const shardSize = (await stat(shardPath)).size;
+      const shardStartedAt = Date.now();
+      debug(
+        'ingesting normalized shard phase=%s shard=%s progress=%d/%d sizeBytes=%d',
+        phase,
+        name,
+        index + 1,
+        names.length,
+        shardSize
+      );
       const payloadIdentity = await hashFileContents(shardPath);
       const result = await ingestNormalizedJsonl(
         indexedDB,
@@ -1376,8 +1389,24 @@ async function ingestNormalizedShardDirectories(indexedDB, directories, options 
       );
       updated ||= result.updated;
       committedRecords += result.committedRecords ?? 0;
+      phaseCommittedRecords += result.committedRecords ?? 0;
+      debug(
+        'finished normalized shard phase=%s shard=%s skipped=%s committedRecords=%d durationMs=%d',
+        phase,
+        name,
+        Boolean(result.skipped),
+        result.committedRecords ?? 0,
+        Date.now() - shardStartedAt
+      );
       shards.push({ phase, shard: name, skipped: Boolean(result.skipped), committedRecords: result.committedRecords ?? 0 });
     }
+    debug(
+      'finished normalized shard phase=%s shards=%d committedRecords=%d durationMs=%d',
+      phase,
+      names.length,
+      phaseCommittedRecords,
+      Date.now() - phaseStartedAt
+    );
   }
   return { updated, committedRecords, shards };
 }
