@@ -142,7 +142,8 @@ describe('dashboard view query contracts', () => {
         layout: 'full-view'
       }]
     });
-    expect(viewsOf(page)[0]?.encoding?.columns.map(
+    const encoding = /** @type {{ columns?: Array<{ field: string }> }} */ (viewsOf(page)[0]?.encoding);
+    expect(encoding.columns?.map(
       (/** @type {{ field: string }} */ column) => column.field
     )).toEqual([
       'observed-at',
