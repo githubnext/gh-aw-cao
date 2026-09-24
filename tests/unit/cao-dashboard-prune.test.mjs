@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -500,6 +500,11 @@ test('cao prune-dashboard writes the optimized document and returns an analysis 
   const inputPath = path.join(directory, 'dashboard.json');
   const outputPath = path.join(directory, 'dashboard.pruned.json');
   try {
+    await mkdir(path.join(directory, 'src', 'components'), { recursive: true });
+    await writeFile(
+      path.join(directory, 'src', 'components', 'navigation.json'),
+      JSON.stringify({ tabs: [{ page: 'linked' }] })
+    );
     await writeFile(inputPath, JSON.stringify(dashboard({
       queries: [
         { name: 'used', from: 'runs' },
@@ -509,7 +514,11 @@ test('cao prune-dashboard writes the optimized document and returns an analysis 
           filter: { predicates: [{ field: 'status', equals: 'queued' }] }
         }
       ],
-      pages: [{ id: 'overview', kind: 'custom', views: [{ id: 'used', data: { source: 'used' } }] }],
+      pages: [
+        { id: 'overview', kind: 'custom', views: [{ id: 'used', data: { source: 'used' } }] },
+        { id: 'linked', kind: 'custom', views: [] },
+        { id: 'orphan', kind: 'custom', views: [] }
+      ],
       navigation: [{ pages: ['overview'] }]
     })));
 
@@ -518,6 +527,8 @@ test('cao prune-dashboard writes the optimized document and returns an analysis 
 
     assert.equal(report.command, 'prune-dashboard');
     assert.deepEqual(report.queries.removed, ['unused']);
+    assert.deepEqual(report.pages.removed, ['orphan']);
+    assert.deepEqual(output.dashboard.pages.map((page) => page.id), ['overview', 'linked']);
     assert.deepEqual(output.dashboard.queries.map((query) => query.name), ['used']);
   } finally {
     await rm(directory, { recursive: true, force: true });

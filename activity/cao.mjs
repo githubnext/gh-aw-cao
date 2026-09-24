@@ -2214,10 +2214,13 @@ async function discoverStaticDashboardPageLinks(dashboardDirectory) {
         pending.push(entryPath);
         continue;
       }
-      if (!entry.isFile() || !entry.name.endsWith('.js')) continue;
+      if (!entry.isFile() || (!entry.name.endsWith('.js') && !entry.name.endsWith('.json'))) continue;
       const source = await readFile(entryPath, 'utf8');
       for (const match of source.matchAll(/#page-([a-z0-9-]+)/gi)) links.add(match[1]);
       for (const match of source.matchAll(/\b\w+Tab\(\s*['"]([a-z0-9-]+)['"]/gi)) links.add(match[1]);
+      if (entry.name.endsWith('.json')) {
+        for (const match of source.matchAll(/"page"\s*:\s*"([a-z0-9-]+)"/gi)) links.add(match[1]);
+      }
     }
   }
   return links;
