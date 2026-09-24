@@ -45,6 +45,17 @@ async function fixture() {
         provider: 'github',
         url: 'https://github.com/githubnext/gh-aw-cao/issues/42'
       }
+    },
+    {
+      schema_version: 2,
+      kind: 'safe_output_item',
+      safe_output: {
+        run_id: 303,
+        timestamp: '2026-09-09T04:00:31Z',
+        type: 'create_issue',
+        provider: 'github',
+        url: 'https://github.com/githubnext/gh-aw-cao/issues/43'
+      }
     }
   ];
   const shardPath = path.join(shardDirectory, 'logs-fixture.jsonl');
@@ -64,13 +75,14 @@ const args = process.argv.slice(2);
 const queryArgument = args.find((argument) => argument.startsWith('query=')) || '';
 fs.appendFileSync(process.env.GRAPHQL_CALLS_PATH, JSON.stringify(args) + '\\n');
 if (queryArgument.includes('repository(')) {
+  const number = queryArgument.includes('issue(number: 43)') ? 43 : 42;
   process.stdout.write(JSON.stringify({ data: {
     repository: { i0: {
-      number: 42,
+      number,
       state: 'CLOSED',
       stateReason: 'COMPLETED',
       closedAt: '2026-09-20T12:00:00Z',
-      url: 'https://github.com/githubnext/gh-aw-cao/issues/42'
+      url: 'https://github.com/githubnext/gh-aw-cao/issues/' + number
     } },
     rateLimit: { cost: 1, remaining: 998, resetAt: '2026-09-20T13:00:00Z' }
   } }));
@@ -84,7 +96,7 @@ if (queryArgument.includes('repository(')) {
   return { root, shardDirectory, shardPath, databasePath, bin, callsPath };
 }
 
-test('issue-status batches GraphQL lookups and enriches compacted issue records', async () => {
+test('issue-status enriches issues through one-item GraphQL batches within a small budget', async () => {
   const item = await fixture();
   try {
     const env = {
@@ -99,27 +111,31 @@ test('issue-status batches GraphQL lookups and enriches compacted issue records'
       item.databasePath,
       '--input-dir',
       item.shardDirectory,
+      '--batch-size',
+      '1',
       '--graphql-cost-budget',
-      '5',
+      '3',
       '--graphql-min-remaining',
       '500'
     ], { env });
     const result = JSON.parse(stdout);
-    assert.equal(result.issues, 1);
-    assert.equal(result.queried, 1);
-    assert.equal(result.statuses, 1);
-    assert.equal(result.updatedRecords, 1);
-    assert.equal(result.rateLimit.cost, 2);
+    assert.equal(result.issues, 2);
+    assert.equal(result.queried, 2);
+    assert.equal(result.statuses, 2);
+    assert.equal(result.updatedRecords, 2);
+    assert.equal(result.rateLimit.cost, 3);
 
     const records = (await readFile(item.shardPath, 'utf8')).trim().split('\n').map(JSON.parse);
-    assert.deepEqual(records[1].safe_output.github_issue_status, {
-      state: 'CLOSED',
-      closed: true,
-      state_reason: 'COMPLETED',
-      closed_at: '2026-09-20T12:00:00Z',
-      observed_at: records[1].safe_output.github_issue_status.observed_at
-    });
-    assert.ok(Number.isFinite(Date.parse(records[1].safe_output.github_issue_status.observed_at)));
+    for (const record of records.slice(1)) {
+      assert.deepEqual(record.safe_output.github_issue_status, {
+        state: 'CLOSED',
+        closed: true,
+        state_reason: 'COMPLETED',
+        closed_at: '2026-09-20T12:00:00Z',
+        observed_at: record.safe_output.github_issue_status.observed_at
+      });
+      assert.ok(Number.isFinite(Date.parse(record.safe_output.github_issue_status.observed_at)));
+    }
 
     await execFileAsync(process.execPath, [
       cao,
@@ -142,17 +158,18 @@ test('issue-status batches GraphQL lookups and enriches compacted issue records'
       state: issue.state,
       stateReason: issue.stateReason,
       closedAt: issue.closedAt
-    })), [{
+    })), [42, 43].map(() => ({
       closed: true,
       state: 'CLOSED',
       stateReason: 'COMPLETED',
       closedAt: '2026-09-20T12:00:00Z'
-    }]);
+    })));
 
     const calls = (await readFile(item.callsPath, 'utf8')).trim().split('\n').map(JSON.parse);
-    assert.equal(calls.length, 2);
+    assert.equal(calls.length, 3);
     assert.ok(calls.every((arguments_) => arguments_.slice(0, 2).join(' ') === 'api graphql'));
     assert.match(calls[1].find((argument) => argument.startsWith('query=')), /issue\(number: 42\)/);
+    assert.match(calls[2].find((argument) => argument.startsWith('query=')), /issue\(number: 43\)/);
   } finally {
     await rm(item.root, { recursive: true, force: true });
   }

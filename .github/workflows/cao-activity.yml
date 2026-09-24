@@ -20,6 +20,7 @@ on:
 permissions:
   actions: read
   contents: read
+  issues: read
   pull-requests: read
   vulnerability-alerts: read
 
@@ -35,6 +36,7 @@ jobs:
     permissions:
       actions: read
       contents: read
+      issues: read
       pull-requests: read
       vulnerability-alerts: read
     steps:
@@ -127,6 +129,7 @@ jobs:
           github-api-url: ${{ github.api_url }}
           permission-actions: read
           permission-contents: read
+          permission-issues: read
           permission-pull-requests: read
           permission-vulnerability-alerts: read
 
