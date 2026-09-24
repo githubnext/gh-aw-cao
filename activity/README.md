@@ -108,7 +108,10 @@ package's rows in the `cao_problems` SQLite table. A failing script leaves its
 previous rows intact and does not prevent other packages from contributing.
 Scripts receive a private database snapshot and cannot mutate the canonical
 Activity projection directly. Rows from packages that no longer contribute a
-clustering script are removed during the next run.
+clustering script are removed during the next run. Each script runs in a
+separate process with bounded output and a two-minute timeout. Worker failures
+and timeouts are isolated per package; cancellation terminates the active worker
+and stops further package processing.
 
 Run the same discovery locally with:
 

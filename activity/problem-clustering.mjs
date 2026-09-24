@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { mkdtemp, readdir, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -11,6 +11,7 @@ const SEVERITIES = new Set(['critical', 'high', 'medium', 'low', 'info']);
 const SCRIPT_NAME = 'problem-clustering.mjs';
 const MAX_PROBLEMS_PER_PACKAGE = 1_000;
 const MAX_EVIDENCE_BYTES = 128 * 1_024;
+const MAX_WORKER_OUTPUT_BYTES = 16 * 1_024 * 1_024;
 const WORKER_TIMEOUT_MS = 2 * 60 * 1_000;
 const WORKER_ENVIRONMENT = [
   'CI',
@@ -85,20 +86,55 @@ function workerEnvironment(databasePath, timestamp) {
   };
 }
 
-function runWorker(entry, request, databasePath) {
-  const result = spawnSync(process.execPath, [entry.script], {
-    encoding: 'utf8',
-    input: request,
-    maxBuffer: 16 * 1024 * 1024,
-    timeout: WORKER_TIMEOUT_MS,
+function runWorker(entry, request, databasePath, { signal, timeoutMs }) {
+  signal?.throwIfAborted();
+  const timeout = AbortSignal.timeout(timeoutMs);
+  const workerSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
+  const child = spawn(process.execPath, [entry.script], {
+    stdio: ['pipe', 'pipe', 'pipe'],
     killSignal: 'SIGKILL',
+    signal: workerSignal,
     env: workerEnvironment(databasePath, JSON.parse(request).timestamp)
   });
-  if (result.error || result.status !== 0) {
-    const detail = String(result.stderr || '').trim() || result.error?.message || 'problem clustering failed';
-    throw new Error(`${entry.script} failed: ${detail}`);
-  }
-  return result.stdout;
+  return new Promise((resolve, reject) => {
+    const stdout = [];
+    const stderr = [];
+    let outputBytes = 0;
+    let outputError;
+    const collect = (chunks) => (chunk) => {
+      outputBytes += chunk.length;
+      if (outputBytes > MAX_WORKER_OUTPUT_BYTES) {
+        outputError = `output exceeded ${MAX_WORKER_OUTPUT_BYTES} bytes`;
+        child.kill('SIGKILL');
+        return;
+      }
+      chunks.push(chunk);
+    };
+    child.stdout.on('data', collect(stdout));
+    child.stderr.on('data', collect(stderr));
+    child.on('error', (error) => {
+      if (signal?.aborted) reject(signal.reason);
+      else if (timeout.aborted) reject(new Error(`${entry.script} timed out after ${timeoutMs} ms`));
+      else reject(new Error(`${entry.script} failed: ${error.message}`));
+    });
+    child.on('close', (code) => {
+      if (signal?.aborted) {
+        reject(signal.reason);
+        return;
+      }
+      if (timeout.aborted) {
+        reject(new Error(`${entry.script} timed out after ${timeoutMs} ms`));
+        return;
+      }
+      const detail = Buffer.concat(stderr).toString('utf8').trim();
+      if (outputError || code !== 0) {
+        reject(new Error(`${entry.script} failed: ${outputError || detail || 'problem clustering failed'}`));
+        return;
+      }
+      resolve(Buffer.concat(stdout).toString('utf8'));
+    });
+    child.stdin.end(request);
+  });
 }
 
 function parseOutput(content, entry, defaultTimestamp) {
@@ -220,8 +256,11 @@ function removeUninstalledProducerProblems(databasePath, producers) {
 export async function runProblemClustering({
   databasePath,
   root = '.',
-  timestamp = new Date().toISOString()
+  timestamp = new Date().toISOString(),
+  signal,
+  workerTimeoutMs = WORKER_TIMEOUT_MS
 }) {
+  signal?.throwIfAborted();
   const observedAt = canonicalTimestamp(timestamp, '--timestamp');
   const resolvedDatabase = path.resolve(databasePath);
   const scripts = await discoverProblemClusteringScripts(root);
@@ -243,8 +282,12 @@ export async function runProblemClustering({
       database: snapshot
     })}\n`;
     for (const entry of scripts) {
+      signal?.throwIfAborted();
       try {
-        const output = runWorker(entry, request, snapshot);
+        const output = await runWorker(entry, request, snapshot, {
+          signal,
+          timeoutMs: workerTimeoutMs
+        });
         const problems = parseOutput(output, entry, observedAt);
         replaceProblems(resolvedDatabase, entry.package, problems);
         values.push(...problems.map(({ evidence, ...problem }) => ({
@@ -252,6 +295,7 @@ export async function runProblemClustering({
           evidence: JSON.parse(evidence)
         })));
       } catch (error) {
+        if (signal?.aborted) throw signal.reason;
         const message = error instanceof Error ? error.message : String(error);
         warnings.push({ package: entry.package, message });
         console.warn(`Warning: ${message}`);

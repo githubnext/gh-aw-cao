@@ -2629,7 +2629,7 @@ export async function analyzeDashboardComplexityFile({
   };
 }
 
-export async function runCli(arguments_, input = process.stdin) {
+export async function runCli(arguments_, input = process.stdin, signal) {
   const [command, ...rawOptionArguments] = arguments_;
   if (!command || command === '--help' || command === 'help') return USAGE;
   if (command === 'init') {
@@ -2768,7 +2768,8 @@ export async function runCli(arguments_, input = process.stdin) {
     return runProblemClustering({
       databasePath,
       root: option(options, 'root', false) || '.',
-      timestamp: option(options, 'timestamp', false) || new Date().toISOString()
+      timestamp: option(options, 'timestamp', false) || new Date().toISOString(),
+      signal
     });
   }
   const indexedDB = await createDatabase(databasePath);
@@ -2898,9 +2899,22 @@ export async function runCli(arguments_, input = process.stdin) {
 }
 
 async function main() {
-  const output = await runCli(process.argv.slice(2));
-  process.stdout.write(`${typeof output === 'string' ? output : JSON.stringify(output, null, 2)}\n`);
-  if (typeof output === 'object' && output?.command === 'doctor' && !output.healthy) process.exitCode = 2;
+  const arguments_ = process.argv.slice(2);
+  const controller = new AbortController();
+  const handlers = new Map(['SIGINT', 'SIGTERM'].map((signal) => [
+    signal,
+    () => controller.abort(new Error(`Problem clustering cancelled by ${signal}`))
+  ]));
+  if (arguments_[0] === 'cluster-problems') {
+    for (const [signal, handler] of handlers) process.once(signal, handler);
+  }
+  try {
+    const output = await runCli(arguments_, process.stdin, controller.signal);
+    process.stdout.write(`${typeof output === 'string' ? output : JSON.stringify(output, null, 2)}\n`);
+    if (typeof output === 'object' && output?.command === 'doctor' && !output.healthy) process.exitCode = 2;
+  } finally {
+    for (const [signal, handler] of handlers) process.removeListener(signal, handler);
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {

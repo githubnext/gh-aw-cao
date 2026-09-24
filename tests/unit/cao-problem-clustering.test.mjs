@@ -135,3 +135,96 @@ test('invalid package output leaves existing rows intact', async () => {
     await rm(temporary, { recursive: true, force: true });
   }
 });
+
+test('timed-out workers retain their rows and do not block other packages', async () => {
+  const temporary = await mkdtemp(path.join(os.tmpdir(), 'cao-problem-clustering-timeout-'));
+  const databasePath = path.join(temporary, 'activity.sqlite');
+  const packageRoot = path.join(temporary, 'packages');
+  try {
+    await mkdir(path.join(packageRoot, 'hanging'), { recursive: true });
+    await mkdir(path.join(packageRoot, 'healthy'), { recursive: true });
+    const database = new DatabaseSync(databasePath);
+    database.exec(`
+      CREATE TABLE cao_problems (
+        producer TEXT NOT NULL, problem_id TEXT NOT NULL, observed_at TEXT NOT NULL,
+        severity TEXT NOT NULL, title TEXT NOT NULL, summary TEXT NOT NULL,
+        campaign TEXT NOT NULL, repository TEXT NOT NULL, workflow TEXT NOT NULL,
+        target_repository TEXT NOT NULL, evidence TEXT NOT NULL,
+        PRIMARY KEY (producer, problem_id)
+      ) STRICT;
+      INSERT INTO cao_problems VALUES (
+        'hanging', 'retained', '2026-09-24T23:05:09.441Z', 'low',
+        'Retained', '', 'hanging', '', '', '', '{}'
+      );
+    `);
+    database.close();
+    await writeFile(
+      path.join(packageRoot, 'hanging', 'problem-clustering.mjs'),
+      'setInterval(() => {}, 1_000);\n'
+    );
+    await writeFile(path.join(packageRoot, 'healthy', 'problem-clustering.mjs'), `
+      console.log(JSON.stringify({ id: 'fresh', title: 'Fresh problem' }));
+    `);
+
+    const result = await runProblemClustering({
+      databasePath,
+      root: packageRoot,
+      timestamp: '2026-09-24T23:05:09.441Z',
+      workerTimeoutMs: 50
+    });
+    assert.match(result.warnings[0].message, /timed out after 50 ms/);
+    const verify = new DatabaseSync(databasePath);
+    try {
+      assert.deepEqual(
+        verify.prepare('SELECT producer, problem_id FROM cao_problems ORDER BY producer').all()
+          .map((row) => ({ ...row })),
+        [
+          { producer: 'hanging', problem_id: 'retained' },
+          { producer: 'healthy', problem_id: 'fresh' }
+        ]
+      );
+    } finally {
+      verify.close();
+    }
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
+});
+
+test('cancellation terminates the active worker and stops package processing', async () => {
+  const temporary = await mkdtemp(path.join(os.tmpdir(), 'cao-problem-clustering-cancel-'));
+  const databasePath = path.join(temporary, 'activity.sqlite');
+  const packageRoot = path.join(temporary, 'packages');
+  const controller = new AbortController();
+  try {
+    await mkdir(path.join(packageRoot, 'a-hanging'), { recursive: true });
+    await mkdir(path.join(packageRoot, 'z-unreached'), { recursive: true });
+    new DatabaseSync(databasePath).close();
+    await writeFile(
+      path.join(packageRoot, 'a-hanging', 'problem-clustering.mjs'),
+      'setInterval(() => {}, 1_000);\n'
+    );
+    await writeFile(path.join(packageRoot, 'z-unreached', 'problem-clustering.mjs'), `
+      console.log(JSON.stringify({ id: 'unexpected', title: 'Unexpected problem' }));
+    `);
+    setTimeout(() => controller.abort(new Error('clustering cancelled')), 50).unref();
+
+    await assert.rejects(
+      runProblemClustering({
+        databasePath,
+        root: packageRoot,
+        timestamp: '2026-09-24T23:05:09.441Z',
+        signal: controller.signal
+      }),
+      /clustering cancelled/
+    );
+    const verify = new DatabaseSync(databasePath);
+    try {
+      assert.equal(verify.prepare('SELECT COUNT(*) AS count FROM cao_problems').get().count, 0);
+    } finally {
+      verify.close();
+    }
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
+});
