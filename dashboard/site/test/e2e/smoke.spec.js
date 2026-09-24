@@ -2443,7 +2443,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
     'Runs',
     'Dispatches',
     'AIC',
-    'Ops Value',
+    'Ops Grader',
     'Registration'
   ]);
   const awDoctorSummary = campaignRows.filter({ hasText: 'AW Doctor' });
