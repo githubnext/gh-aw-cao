@@ -23,8 +23,10 @@ const LINE_CHART_RIGHT = 100;
 const LINE_CHART_BOTTOM = 38;
 const LINE_CHART_HEIGHT = 34;
 const LINE_CHART_MIN_LEFT = 5;
+const LINE_CHART_MIN_PLOT_WIDTH = 25;
 const LINE_CHART_LABEL_GAP = 2;
-// Approximate the 2.6px SVG axis font in viewBox units before the labels are attached.
+// Approximate the 2.6px SVG axis font before attachment: digits 1.5,
+// punctuation 0.75, wide glyphs 2.1, and remaining glyphs 1.6 viewBox units.
 const LINE_CHART_LABEL_DIGIT_WIDTH = 1.5;
 const LINE_CHART_LABEL_DEFAULT_WIDTH = 1.6;
 const LINE_CHART_LABEL_NARROW_WIDTH = 0.75;
@@ -702,9 +704,12 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
     const dotPointRadius = dotChartPointRadius(points.length);
     const yTicks = [maximum, maximum / 2, 0];
     const yTickLabels = yTicks.map((value) => formatChartAxisTick(value, unit));
-    const lineChartLeft = Math.max(
-      LINE_CHART_MIN_LEFT,
-      Math.ceil(Math.max(...yTickLabels.map(estimateLineChartLabelWidth)) + LINE_CHART_LABEL_GAP)
+    const lineChartLeft = Math.min(
+      LINE_CHART_RIGHT - LINE_CHART_MIN_PLOT_WIDTH,
+      Math.max(
+        LINE_CHART_MIN_LEFT,
+        Math.ceil(Math.max(...yTickLabels.map(estimateLineChartLabelWidth)) + LINE_CHART_LABEL_GAP)
+      )
     );
     const plotWidth = LINE_CHART_RIGHT - lineChartLeft;
     for (const coordinates of areaCoordinates.values()) {

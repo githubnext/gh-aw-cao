@@ -626,11 +626,17 @@ describe('chart element helpers', () => {
       symbol: 'MW',
       significant: 2
     });
+    const longUnitChart = renderChartWidget('line', points, [], null, 'Total', {
+      name: 'Long unit',
+      symbol: 'W'.repeat(100),
+      significant: 2
+    });
 
     expect([...currencyChart.querySelectorAll('.line-chart-y-axis text')].map((tick) => tick.textContent))
       .toEqual(['$9,999.00', '$4,999.50', '$0.00']);
     expect(currencyChart.getAttribute('style')).toBe('--line-chart-left: 15%;');
     expect(unitChart.getAttribute('style')).toBe('--line-chart-left: 15%;');
+    expect(longUnitChart.getAttribute('style')).toBe('--line-chart-left: 75%;');
   });
 
   it('renders area marks and stacks color series over the shared ordered axis', () => {
