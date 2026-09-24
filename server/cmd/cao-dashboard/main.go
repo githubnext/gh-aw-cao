@@ -9,16 +9,30 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
+	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
+	debuglogger "github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/server"
+	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
+
+// version is the standardized service.version resource attribute reported by
+// this build's OpenTelemetry spans. Override it at build time with
+// -ldflags "-X main.version=...", or at runtime with CAO_BUILD_VERSION.
+var version = "dev"
 
 const defaultRedisURL = "redis://127.0.0.1:6379/0"
 
+var commandLog = debuglogger.New("cao:cli")
+
 func main() {
+	if override := strings.TrimSpace(os.Getenv("CAO_BUILD_VERSION")); override != "" {
+		version = override
+	}
 	if err := run(os.Args[1:]); err != nil {
 		log.Printf("error: %v", err)
 		os.Exit(1)
@@ -31,8 +45,10 @@ func run(arguments []string) error {
 	}
 	switch arguments[0] {
 	case "serve":
+		commandLog.Printf("running serve command")
 		return serve(arguments[1:])
 	case "ingest":
+		commandLog.Printf("running ingest command")
 		return ingestCommand(arguments[1:])
 	default:
 		return fmt.Errorf("unknown subcommand %q; expected serve or ingest", arguments[0])
@@ -58,6 +74,18 @@ func serve(arguments []string) error {
 	if err := flags.Parse(arguments); err != nil {
 		return err
 	}
+	commandLog.Printf("serve flags parsed tls=%t source_ingestion=%t", *cert != "", *source != "")
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	shutdownTelemetry, err := telemetry.Setup(ctx, version)
+	if err != nil {
+		return fmt.Errorf("configure telemetry: %w", err)
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		_ = shutdownTelemetry(shutdownCtx)
+	}()
 	client, err := redisx.New(*redisURL)
 	if err != nil {
 		return err
@@ -84,8 +112,6 @@ func serve(arguments []string) error {
 	if err != nil {
 		return err
 	}
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 	return app.Serve(ctx)
 }
 
@@ -108,6 +134,7 @@ func ingestCommand(arguments []string) error {
 	if *source == "" {
 		return errors.New("ingest requires --source DIRECTORY")
 	}
+	commandLog.Printf("ingest flags parsed")
 	client, err := redisx.New(*redisURL)
 	if err != nil {
 		return err
@@ -118,6 +145,15 @@ func ingestCommand(arguments []string) error {
 	}
 	store := redisx.NewStore(client, namespace)
 	ctx := context.Background()
+	shutdownTelemetry, err := telemetry.Setup(ctx, version)
+	if err != nil {
+		return fmt.Errorf("configure telemetry: %w", err)
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = shutdownTelemetry(shutdownCtx)
+	}()
 	if err := store.Ping(ctx); err != nil {
 		return errors.New("redis is unavailable")
 	}

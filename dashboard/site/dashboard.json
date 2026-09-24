@@ -274,6 +274,34 @@
         ]
       },
       {
+        "id": "firewall-workflow",
+        "icon": "workflow",
+        "title": {
+          "field": "workflow",
+          "title": "Workflow",
+          "format": "workflow-relative-path"
+        },
+        "subtitle": {
+          "field": "repository",
+          "title": "Repository"
+        },
+        "labels": [],
+        "details": [
+          {
+            "field": "accepted",
+            "title": "Allowed"
+          },
+          {
+            "field": "blocked",
+            "title": "Blocked"
+          },
+          {
+            "field": "runs",
+            "title": "Runs"
+          }
+        ]
+      },
+      {
         "id": "issue",
         "icon": "issue-opened",
         "title": {
@@ -510,6 +538,7 @@
           "field": "campaign-name",
           "title": "Package"
         },
+        "detail-labels": "visible",
         "details": [
           {
             "field": "campaign-version",
@@ -552,6 +581,7 @@
           "field": "repository",
           "title": "Repository"
         },
+        "detail-labels": "visible",
         "details": [
           {
             "field": "gh-aw-version",
@@ -705,6 +735,63 @@
               "type": "temporal",
               "title": "Observed",
               "format": "human-friendly-timestamp"
+            },
+            {
+              "field": "organization",
+              "type": "nominal",
+              "title": "Organization"
+            }
+          ]
+        }
+      },
+      {
+        "id": "firewall-domain-workflows",
+        "title": "Workflows",
+        "description": "Workflows that allowed or blocked requests to the selected firewall domain.",
+        "data": {
+          "source": "firewall-domain-workflows",
+          "arguments": [
+            {
+              "name": "domain",
+              "field": "domain"
+            }
+          ]
+        },
+        "mark": "list",
+        "list": {
+          "style": "entity-cards",
+          "card": "firewall-workflow",
+          "icon": "workflow"
+        },
+        "empty-message": "No workflows allowed or blocked requests to this domain.",
+        "layout": "full-view",
+        "encoding": {
+          "columns": [
+            {
+              "field": "workflow",
+              "type": "nominal",
+              "title": "Workflow",
+              "format": "workflow-relative-path"
+            },
+            {
+              "field": "repository",
+              "type": "nominal",
+              "title": "Repository"
+            },
+            {
+              "field": "runs",
+              "type": "quantitative",
+              "title": "Runs"
+            },
+            {
+              "field": "accepted",
+              "type": "quantitative",
+              "title": "Allowed"
+            },
+            {
+              "field": "blocked",
+              "type": "quantitative",
+              "title": "Blocked"
             },
             {
               "field": "organization",
@@ -3178,6 +3265,82 @@
         "limit": 10
       },
       {
+        "name": "firewall-domain-workflows",
+        "intent": "Show workflows that allowed or blocked requests to each observed firewall domain.",
+        "description": "Workflow-level accepted and blocked request totals by firewall domain.",
+        "from": "firewall-observations",
+        "filter": {
+          "predicates": [
+            {
+              "field": "decision",
+              "in": [
+                "allowed",
+                "denied"
+              ]
+            }
+          ]
+        },
+        "aggregate": {
+          "by": [
+            "domain",
+            "organization",
+            "repository",
+            "workflow"
+          ],
+          "values": [
+            {
+              "field": "run",
+              "as": "runs",
+              "reducer": "distinct-count"
+            },
+            {
+              "field": "request-count",
+              "as": "accepted",
+              "reducer": "sum",
+              "filter": {
+                "predicates": [
+                  {
+                    "field": "decision",
+                    "equals": "allowed"
+                  }
+                ]
+              }
+            },
+            {
+              "field": "request-count",
+              "as": "blocked",
+              "reducer": "sum",
+              "filter": {
+                "predicates": [
+                  {
+                    "field": "decision",
+                    "equals": "denied"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "blocked",
+            "direction": "desc"
+          },
+          {
+            "field": "accepted",
+            "direction": "desc"
+          },
+          {
+            "field": "repository",
+            "direction": "asc"
+          },
+          {
+            "field": "workflow",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
         "name": "runs-table",
         "intent": "Show observed workflow runs in a table with execution, repository, workflow, engine, model, and navigation details.",
         "description": "Observed workflow runs ordered from newest to oldest.",
@@ -3845,6 +4008,11 @@
               "field": "run",
               "as": "runs",
               "reducer": "count"
+            },
+            {
+              "field": "aic-total",
+              "as": "average-aic-per-run",
+              "reducer": "mean"
             }
           ]
         },
@@ -3854,6 +4022,9 @@
           },
           {
             "field": "runs"
+          },
+          {
+            "field": "average-aic-per-run"
           }
         ],
         "order-by": [
@@ -8579,6 +8750,18 @@
             "controls": "interactive",
             "lazy-list": true,
             "column-summaries": true,
+            "card-drill": {
+              "type": "query",
+              "page": "firewall-domain-workflows",
+              "query": "firewall-domain-workflows",
+              "title-field": "domain",
+              "arguments": [
+                {
+                  "name": "domain",
+                  "field": "domain"
+                }
+              ]
+            },
             "layout": "full-view",
             "empty-message": "No observed firewall domains are available for this selection.",
             "encoding": {
@@ -8606,6 +8789,20 @@
               ]
             }
           }
+        ]
+      },
+      {
+        "id": "firewall-domain-workflows",
+        "kind": "custom",
+        "title": "Workflows",
+        "description": "Workflows that allowed or blocked requests to the selected firewall domain.",
+        "icon": "workflow",
+        "route": {
+          "hash-query-parameter": "domain",
+          "navigation-page": "firewall"
+        },
+        "views": [
+          "firewall-domain-workflows"
         ]
       },
       {
@@ -12078,6 +12275,31 @@
             }
           },
           {
+            "id": "engines-models-cost",
+            "title": "Average AIC per run",
+            "description": "Average AI Credit cost per observed workflow run by agent and model combination.",
+            "data": {
+              "source": "engines-models-usage"
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "empty-message": "No AI Credit cost data is available for agent and model combinations.",
+            "layout": "full",
+            "encoding": {
+              "x": {
+                "field": "summary",
+                "type": "nominal",
+                "title": "Agent / model"
+              },
+              "y": {
+                "field": "average-aic-per-run",
+                "type": "quantitative",
+                "title": "Average AIC per run",
+                "unit": "aic-per-run"
+              }
+            }
+          },
+          {
             "id": "engines-models-usage",
             "title": "Engines and models",
             "description": "Observed workflow runs grouped by agent and model identifiers.",
@@ -12099,6 +12321,12 @@
                   "field": "runs",
                   "type": "quantitative",
                   "title": "Runs"
+                },
+                {
+                  "field": "average-aic-per-run",
+                  "type": "quantitative",
+                  "title": "Average AIC",
+                  "unit": "aic-per-run"
                 }
               ]
             },
@@ -12275,7 +12503,7 @@
           },
           {
             "id": "maintenance-repositories",
-            "disclosure": "supplemental",
+            "title": "Repositories",
             "description": "Installed and current gh-aw compiler versions observed for each repository.",
             "data": {
               "source": "maintenance-repositories"

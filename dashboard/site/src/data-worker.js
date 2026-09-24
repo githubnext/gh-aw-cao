@@ -808,7 +808,7 @@ export function processDataRequest(request, signal) {
   }
   if (request?.operation === 'canonicalize-dashboard-sources') {
     if (!request.sources || typeof request.sources !== 'object' || Array.isArray(request.sources)) {
-      throw new TypeError('Canonical source requests require a sources object.');
+      throw new TypeError('Dashboard ingestion requests require a sources object.');
     }
     const adapted = queryDashboardSourceObservations(/** @type {Record<string, unknown>} */ (request.sources));
     return normalize(adapted.observations);

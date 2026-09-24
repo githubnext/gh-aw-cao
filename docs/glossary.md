@@ -44,7 +44,7 @@ The declarative YAML vocabulary used to define dashboard queries, pages, views, 
 
 ## Declarative query
 
-A reusable derived logical source declared in `dashboard.queries` as a closed, structured projection over already-declared logical sources or earlier queries, using only named clauses (`from`, `joins`, `filter`, `compute`, `aggregate`, `select`, `order-by`, `limit`) rather than SQL text, scripts, callbacks, or templates. Dashboard views must derive their data through declarative queries executed by the canonical data model's query engine and Web Worker; JavaScript-based dashboard views are not permitted. See the Dashboard Language Specification, Section 5.5.
+A reusable result declared in `dashboard.queries` as a closed, structured projection over database tables or earlier queries, using only named clauses (`from`, `joins`, `filter`, `compute`, `aggregate`, `select`, `order-by`, `limit`) rather than SQL text, scripts, callbacks, or templates. Dashboard views must derive their data through declarative queries executed by the canonical data model's query engine and Web Worker; JavaScript-based dashboard views are not permitted. See the Dashboard Language Specification, Section 5.5.
 
 ## Dispatch
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { compileDashboardQueryTypes } from '../../src/query-type-checker.js';
 import { dashboardQueryOutputFields } from '../../src/data/queries/declarative.js';
-import { SOURCE_FIELDS } from '../../src/specification.js';
+import { TABLE_FIELDS } from '../../src/specification.js';
 
 /** @param {Record<string, unknown>} value */
 const query = (value) => ({ intent: 'Exercise static query reference checking.', ...value });
@@ -46,7 +46,7 @@ describe('dashboard query type checker', () => {
     expect(result.errors).toEqual([]);
     expect(result.queryFields.get('usage-by-workflow')).toEqual(['workflow', 'total-aic']);
     expect(result.queryFields.get('active-workflow-costs')).toEqual(['workflow-name', 'predicted-aic']);
-    expect([...(result.querySources.get('active-workflow-costs') ?? [])].sort()).toEqual(['usage', 'workflows']);
+    expect([...(result.queryTables.get('active-workflow-costs') ?? [])].sort()).toEqual(['usage', 'workflows']);
   });
 
   it('rejects unknown tables, forward references, self references, and dependency cycles', () => {
@@ -68,7 +68,7 @@ describe('dashboard query type checker', () => {
     ]));
   });
 
-  it('preserves permissive typing for canonical sources without a declared schema', () => {
+  it('preserves permissive typing for database tables without a declared schema', () => {
     const result = compileDashboardQueryTypes([
       query({
         name: 'overview-query',
@@ -84,7 +84,7 @@ describe('dashboard query type checker', () => {
 
     expect(result.errors).toEqual([]);
     expect(result.queryFields.get('overview-query')).toBeUndefined();
-    expect([...result.querySources.get('overview-consumer') ?? []]).toEqual(['overview-status']);
+    expect([...result.queryTables.get('overview-consumer') ?? []]).toEqual(['overview-status']);
   });
 
   it('rejects duplicate query symbols and canonical table shadowing', () => {
@@ -169,7 +169,7 @@ describe('dashboard query type checker', () => {
 
     expect(result.errors).toContainEqual(expect.objectContaining({
       code: 'DLS-E011',
-      message: expect.stringContaining('filter field "is-pull-request" is only available from some row input sources'),
+      message: expect.stringContaining('filter field "is-pull-request" is only available from some row input tables'),
       path: '$.dashboard.queries[1].filter.predicates[0].field'
     }));
   });
@@ -322,7 +322,7 @@ describe('dashboard query type checker', () => {
     const runtimeFields = new Map();
     for (const definition of definitions) {
       runtimeFields.set(definition.name, dashboardQueryOutputFields(definition, (source) => (
-        runtimeFields.get(source) ?? SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (source)]
+        runtimeFields.get(source) ?? TABLE_FIELDS[/** @type {keyof typeof TABLE_FIELDS} */ (source)]
       )));
     }
 
@@ -352,11 +352,11 @@ describe('dashboard query type checker', () => {
         path: '$.dashboard.queries[1].name'
       }),
       expect.objectContaining({
-        message: 'query source "missing-source" is not a canonical source or previously declared query.',
+        message: 'query input "missing-source" is not a database table or previously declared query.',
         path: '$.dashboard.queries[2].from'
       }),
       expect.objectContaining({
-        message: expect.stringMatching(/^field "missing-field" is not available from source "usage"; available fields: /),
+        message: expect.stringMatching(/^field "missing-field" is not available from input "usage"; available fields: /),
         path: '$.dashboard.queries[2].joins[0].on[0].right'
       })
     ]));

@@ -249,7 +249,12 @@ describe('Configuration dashboard view', () => {
         'gh-aw-current-version',
         'upgrade-state'
       ]);
+    expect(page.views.map((/** @type {{ title?: string }} */ view) => view.title))
+      .toEqual(['CAO packages', 'Repositories']);
+    expect(page.views.some((/** @type {{ disclosure?: string }} */ view) => view.disclosure !== undefined)).toBe(false);
     const templates = new Map(dashboard['card-templates'].map((/** @type {{ id: string }} */ template) => [template.id, template]));
+    expect(templates.get('maintenance-campaign')['detail-labels']).toBe('visible');
+    expect(templates.get('maintenance-repository')['detail-labels']).toBe('visible');
     expect(templates.get('maintenance-campaign').actions).toEqual([{
       action: 'update-campaign',
       context: ['campaign'],

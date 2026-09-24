@@ -241,10 +241,10 @@ describe('declarative dashboard queries', () => {
         'firewall-observations': {
           source: 'firewall-observations',
           rows: [
-            { domain: 'api.github.com', run: '1', decision: 'allowed', 'request-count': 2 },
-            { domain: 'api.github.com', run: '2', decision: 'denied', 'request-count': 5 },
-            { domain: 'api.github.com', run: '2', decision: 'denied', 'request-count': 3 },
-            { domain: 'uploads.github.com', run: '3', decision: 'allowed', 'request-count': 7 }
+            { domain: 'api.github.com', organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', decision: 'allowed', 'request-count': 2 },
+            { domain: 'api.github.com', organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', decision: 'denied', 'request-count': 5 },
+            { domain: 'api.github.com', organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', decision: 'denied', 'request-count': 3 },
+            { domain: 'uploads.github.com', organization: 'githubnext', repository: 'other', workflow: 'c.md', run: '3', decision: 'allowed', 'request-count': 7 }
           ],
           metadata: metadata('firewall-observations')
         },
@@ -263,6 +263,7 @@ describe('declarative dashboard queries', () => {
       [
         'overview-run-summary',
         'firewall-domain-totals',
+        'firewall-domain-workflows',
         'repository-workflow-totals',
         'repository-run-totals'
       ]
@@ -274,6 +275,26 @@ describe('declarative dashboard queries', () => {
     expect(result['firewall-domain-totals'].rows).toEqual([
       { domain: 'api.github.com', run: 2, accepted: 2, blocked: 8 },
       { domain: 'uploads.github.com', run: 1, accepted: 7, blocked: 0 }
+    ]);
+    expect(result['firewall-domain-workflows'].rows).toEqual([
+      {
+        domain: 'api.github.com',
+        organization: 'githubnext',
+        repository: 'gh-aw-cao',
+        workflow: 'a.md',
+        runs: 2,
+        accepted: 2,
+        blocked: 8
+      },
+      {
+        domain: 'uploads.github.com',
+        organization: 'githubnext',
+        repository: 'other',
+        workflow: 'c.md',
+        runs: 1,
+        accepted: 7,
+        blocked: 0
+      }
     ]);
     expect(result['repository-workflow-totals'].rows).toEqual([
       { organization: 'githubnext', repository: 'gh-aw-cao', workflows: 2, disabled: 2 },
@@ -847,6 +868,7 @@ describe('declarative dashboard queries', () => {
       source: 'runs',
       rows: usage.rows.map((row) => ({
         ...row,
+        'aic-total': row.aic,
         'run-attempt': 1,
         'repository-link': { href: 'repo' },
         'run-link': { href: `run-${row.run}` }
@@ -865,7 +887,8 @@ describe('declarative dashboard queries', () => {
       rows: [
         {
           summary: 'copilot / model-b',
-          runs: 2
+          runs: 2,
+          'average-aic-per-run': 5
         }
       ],
       metadata: { 'source-kind': 'derived', 'query-name': 'engines-models-usage' }
