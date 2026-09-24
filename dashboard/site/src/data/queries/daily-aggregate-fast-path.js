@@ -144,6 +144,40 @@ function isRunsDailyConclusionsShape(definition) {
 }
 
 /**
+ * @param {import('../analytics/daily-overview-aggregates.js').DailyOverviewAggregateRecord[]} records
+ * @param {{ countAs: string, startDay: string | null, endDay: string | null }} shape
+ */
+function summarizeDailyConclusions(records, shape) {
+  const filtered = records.filter((record) => (
+    (!shape.startDay || record.day >= shape.startDay)
+    && (!shape.endDay || record.day <= shape.endDay)
+  ));
+  const conclusions = [...new Set(filtered.flatMap((record) => Object.entries(record.runsByConclusion ?? {})
+    .filter(([, count]) => Number.isFinite(count) && count > 0)
+    .map(([conclusion]) => conclusion)))];
+  const firstRecord = filtered[0];
+  const lastRecord = filtered.at(-1);
+  if (!firstRecord || !lastRecord || conclusions.length === 0) return [];
+
+  const byDay = new Map(filtered.map((record) => [record.day, record.runsByConclusion ?? {}]));
+  const firstDay = shape.startDay ?? firstRecord.day;
+  const lastDay = shape.endDay ?? lastRecord.day;
+  const rows = [];
+  for (let timestamp = Date.parse(`${firstDay}T00:00:00Z`); timestamp <= Date.parse(`${lastDay}T00:00:00Z`); timestamp += 86_400_000) {
+    const day = new Date(timestamp).toISOString().slice(0, 10);
+    const counts = byDay.get(day) ?? {};
+    for (const conclusion of conclusions) {
+      rows.push({
+        day,
+        'run-conclusion': conclusion,
+        [shape.countAs]: counts[conclusion] ?? 0
+      });
+    }
+  }
+  return rows;
+}
+
+/**
  * Eligible query names mapped to their shape validator and daily-record
  * summarizer. A query is only ever fast-pathed if the live definition still
  * matches the validator; otherwise it is left for canonical execution.
@@ -169,18 +203,7 @@ const ELIGIBLE_QUERIES = /** @type {const} */ ({
      * @param {import('../analytics/daily-overview-aggregates.js').DailyOverviewAggregateRecord[]} records
      * @param {{ countAs: string, startDay: string | null, endDay: string | null }} shape
      */
-    summarize: (records, shape) => records
-      .filter((record) => (
-        (!shape.startDay || record.day >= shape.startDay)
-        && (!shape.endDay || record.day <= shape.endDay)
-      ))
-      .flatMap((record) => Object.entries(record.runsByConclusion ?? {})
-        .filter(([, count]) => Number.isFinite(count) && count > 0)
-        .map(([conclusion, count]) => ({
-          day: record.day,
-          'run-conclusion': conclusion,
-          [shape.countAs]: count
-        })))
+    summarize: summarizeDailyConclusions
   }
 });
 

@@ -147,7 +147,9 @@ describe('queryDailyOverviewAggregateSources', () => {
     expect(result[query.name].rows).toEqual([
       { day: '2026-09-10', 'run-conclusion': 'success', runs: 8 },
       { day: '2026-09-10', 'run-conclusion': 'failure', runs: 2 },
+      { day: '2026-09-10', 'run-conclusion': 'cancelled', runs: 0 },
       { day: '2026-09-11', 'run-conclusion': 'success', runs: 6 },
+      { day: '2026-09-11', 'run-conclusion': 'failure', runs: 0 },
       { day: '2026-09-11', 'run-conclusion': 'cancelled', runs: 4 }
     ]);
     expect(result[query.name].metadata).toMatchObject({
