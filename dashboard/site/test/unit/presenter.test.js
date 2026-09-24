@@ -2318,7 +2318,7 @@ describe('presenter built-in and custom pages', () => {
 
     const headings = [...rendered.querySelectorAll('[data-page-id="runs"] .page-section h3')].map((element) => element.textContent);
     expect(headings).toEqual(['Runs in the last week', 'Runs']);
-    expect(rendered.querySelectorAll('[data-page-id="runs"] [data-chart-widget="line"]')).toHaveLength(1);
+    expect(rendered.querySelectorAll('[data-page-id="runs"] [data-chart-widget="area"]')).toHaveLength(1);
     expect(rendered.querySelectorAll('[data-page-id="runs"] .custom-table')).toHaveLength(1);
     expect(rendered.querySelector('[data-page-id="runs"]')?.getAttribute('data-page-kind')).toBe('custom');
   });

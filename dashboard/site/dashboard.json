@@ -1567,7 +1567,7 @@
     "queries": [
       {
         "name": "runs-daily-conclusions",
-        "intent": "Aggregate workflow run conclusions by UTC day for the Runs line graph.",
+        "intent": "Aggregate workflow run conclusions by UTC day for the Runs stacked area graph.",
         "from": "runs",
         "compute": [
           {
@@ -9442,7 +9442,7 @@
               "route-field": "repository-coordinate"
             },
             "mark": "chart",
-            "chart": "line",
+            "chart": "area",
             "layout": "full",
             "empty-message": "No runs have been observed for this repository.",
             "encoding": {

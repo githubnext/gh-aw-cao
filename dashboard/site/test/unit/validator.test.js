@@ -695,7 +695,7 @@ describe('dashboard document validation', () => {
     )).toMatchObject({
       data: { source: 'runs-daily-conclusions', time: { range: '7d' } },
       mark: 'chart',
-      chart: 'line',
+      chart: 'area',
       encoding: {
         x: { field: 'day', type: 'temporal' },
         y: { field: 'runs', type: 'quantitative' },
