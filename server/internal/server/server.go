@@ -426,7 +426,7 @@ func (a *App) query(response http.ResponseWriter, request *http.Request) {
 			return
 		}
 	}
-	active, err := a.store.Active(request.Context())
+	active, err := a.store.Active(ctx)
 	if err != nil || active.Generation == "" {
 		fail(http.StatusServiceUnavailable, "dashboard data is unavailable")
 		return
@@ -466,7 +466,7 @@ func (a *App) query(response http.ResponseWriter, request *http.Request) {
 		}
 	}
 	started := time.Now()
-	loader := &generationLoader{ctx: request.Context(), store: a.store, generation: active.Generation}
+	loader := &generationLoader{ctx: ctx, store: a.store, generation: active.Generation}
 	engine := query.New(loader)
 	sources, metrics, err := engine.Execute(definitions, requested)
 	if err != nil {

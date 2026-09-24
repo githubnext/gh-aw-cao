@@ -88,27 +88,30 @@ func forwardedHeader(request *http.Request, name string) string {
 	return strings.TrimSpace(request.Header.Get(name))
 }
 
+// setupProcessTelemetry installs the OpenTelemetry tracer provider once for
+// the life of the process. It intentionally uses context.Background()
+// instead of a request-scoped context: the Azure Functions runtime reuses
+// the process across invocations, so the exporter this configures must
+// outlive the single invocation that happens to trigger sync.Once.Do. Any
+// setup failure is cached in setupTelemetryErr and logged here, once,
+// because sync.Once never retries a failed first call; the failure is
+// treated as non-fatal so a broken exporter configuration never prevents
+// the dashboard from serving requests.
+func setupProcessTelemetry(logger *log.Logger) {
+	version := strings.TrimSpace(os.Getenv("CAO_BUILD_VERSION"))
+	if version == "" {
+		version = "unknown"
+	}
+	_, setupTelemetryErr = telemetry.Setup(context.Background(), version)
+	if setupTelemetryErr != nil && logger != nil {
+		logger.Printf("telemetry configuration failed, continuing without exported traces: %v", setupTelemetryErr)
+	}
+}
+
 func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboardQueriesPath string, logger *log.Logger) (http.Handler, error) {
-	setupTelemetryOnce.Do(func() {
-		// The Function App process is reused across invocations, so the
-		// tracer provider is installed once for the process lifetime
-		// instead of per request/cold start. context.Background() is used
-		// (rather than the first invocation's request-scoped ctx) because
-		// the exporter it configures must outlive that single request. The
-		// outcome (including failure) is cached in setupTelemetryErr and
-		// logged here, once, because sync.Once never retries a failed
-		// first call; a telemetry failure is treated as non-fatal so a
-		// broken exporter configuration never prevents the dashboard from
-		// serving requests.
-		version := strings.TrimSpace(os.Getenv("CAO_BUILD_VERSION"))
-		if version == "" {
-			version = "unknown"
-		}
-		_, setupTelemetryErr = telemetry.Setup(context.Background(), version)
-		if setupTelemetryErr != nil && logger != nil {
-			logger.Printf("telemetry configuration failed, continuing without exported traces: %v", setupTelemetryErr)
-		}
-	})
+	//nolint:contextcheck // setupProcessTelemetry intentionally uses context.Background(): the exporter it
+	// configures must outlive the single request/invocation that happens to trigger sync.Once.Do.
+	setupTelemetryOnce.Do(func() { setupProcessTelemetry(logger) })
 	redisURL := strings.TrimSpace(os.Getenv("CAO_REDIS_URL"))
 	if redisURL == "" {
 		return nil, errors.New("CAO_REDIS_URL is required")
