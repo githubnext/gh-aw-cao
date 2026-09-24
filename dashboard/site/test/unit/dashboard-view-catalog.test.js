@@ -8,6 +8,12 @@ import {
   VIEW_ELEMENT_VALUES,
   VIEW_MARK_VALUES
 } from '../../src/specification.js';
+import {
+  deadViewNames,
+  elementRendererNames,
+  referencedElementNames,
+  renderDeadViews
+} from '../../scripts/list-dead-views.mjs';
 
 const catalog = readFileSync(
   fileURLToPath(new URL('../../../../docs/dashboard-view-catalog.md', import.meta.url)),
@@ -24,5 +30,28 @@ describe('dashboard view catalog', () => {
     for (const value of values) {
       expect(catalog).toContain(`| \`${value}\` |`);
     }
+  });
+
+  it('renders registered named views that no dashboard document references', () => {
+    const renderers = elementRendererNames(`
+      const ELEMENT_RENDERERS = new Map([
+        ['used-element', renderUsed],
+        ['dead-element', renderDead]
+      ]);
+    `);
+    const references = referencedElementNames({
+      dashboard: {
+        pages: [{ views: [{ mark: 'element', element: 'used-element' }] }]
+      }
+    });
+
+    const dead = deadViewNames(renderers, references);
+
+    expect(dead).toEqual(['dead-element']);
+    expect(renderDeadViews(dead)).toBe('Dead dashboard views (1):\n- dead-element');
+  });
+
+  it('renders an explicit empty report when every named view is referenced', () => {
+    expect(renderDeadViews([])).toBe('No dead dashboard views.');
   });
 });
