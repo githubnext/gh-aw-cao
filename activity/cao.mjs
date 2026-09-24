@@ -25,6 +25,7 @@ import { CANONICAL_SCHEMA_VERSION } from '../dashboard/site/src/data/model/schem
 import { executeDashboardQuery, queryInputNames } from '../dashboard/site/src/data/queries/declarative.js';
 import { createCanonicalQueries } from '../dashboard/site/src/data/queries/index.js';
 import { readCollection, readRecord, readTransactions } from '../dashboard/site/src/data/storage/indexeddb.js';
+import { mergeActivityStructuralRecord } from '../dashboard/site/src/data/storage/retention.js';
 import { doctorSqliteDatabase } from '../dashboard/site/src/data/storage/sqlite-doctor.js';
 import { installSqliteIndexedDB } from '../dashboard/site/src/data/storage/sqlite-indexeddb.js';
 import { discoverInventory } from './inventory.mjs';
@@ -60,6 +61,21 @@ const DEFAULT_ACTIVITY_STATS_ARTIFACT = 'cao-activity-index';
 const DEFAULT_ACTIVITY_STATS_LIMIT = 5;
 const DEFAULT_GH_LIMIT = 30;
 const DEFAULT_COMPACTED_JSONL_SHARD_BYTES = 4 * 1024 * 1024;
+// Per-shard normalization output is retained only as an incremental cache. It lives
+// in a subdirectory so it is never published, hashed into the manifest, or ingested.
+const PAYLOAD_CACHE_DIRECTORY = '.payloads';
+// Structural collections are owned by inventory discovery rather than by any single
+// run, so they are consolidated into one leading bucket that sorts before day buckets.
+const STRUCTURAL_CONSOLIDATION_COLLECTIONS = new Set(['campaigns', 'repositories', 'workflows']);
+const STRUCTURAL_CONSOLIDATION_BUCKET = '0000-00-00';
+const CONSOLIDATION_TIMESTAMP_FIELDS = [
+  'startedAt',
+  'observedAt',
+  'timestamp',
+  'completedAt',
+  'createdAt',
+  'updatedAt'
+];
 const GH_AW_INSTALLER_COMMAND = 'curl --fail --silent --show-error --location https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- "$1"';
 const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json';
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
@@ -1449,6 +1465,126 @@ function workflowHintsFromInventory(input) {
   ));
 }
 
+/**
+ * Assigns a record to a stable partition. Day buckets keep historical output
+ * byte-identical across runs so the browser's content-hash skip receipt still
+ * matches and the shard is never redownloaded.
+ *
+ * @param {string} collection
+ * @param {Record<string, unknown>} record
+ */
+function consolidationBucket(collection, record) {
+  if (STRUCTURAL_CONSOLIDATION_COLLECTIONS.has(collection)) return STRUCTURAL_CONSOLIDATION_BUCKET;
+  for (const field of CONSOLIDATION_TIMESTAMP_FIELDS) {
+    const value = record[field];
+    if (typeof value !== 'string') continue;
+    const parsed = Date.parse(value);
+    if (Number.isFinite(parsed)) return new Date(parsed).toISOString().slice(0, 10);
+  }
+  return STRUCTURAL_CONSOLIDATION_BUCKET;
+}
+
+/**
+ * Collapses every per-shard payload for one phase into deduplicated, day-bucketed
+ * shards. Published shards repeat a canonical record once per source shard that
+ * observed it; keying on (collection, id) keeps exactly one copy.
+ *
+ * @param {string} phase
+ * @param {string[]} cachePaths per-shard payloads in ingestion order
+ * @param {string} outputDirectory
+ * @param {number} maxBytes
+ */
+async function consolidatePhasePayloads(phase, cachePaths, outputDirectory, maxBytes) {
+  /** @type {Map<string, Map<string, Record<string, unknown>>>} */
+  const deduped = new Map(NORMALIZED_COLLECTIONS.map((collection) => [collection, new Map()]));
+  let sourceRecords = 0;
+  for (const cachePath of cachePaths) {
+    for await (const line of jsonlLines([cachePath])) {
+      const entry = JSON.parse(line);
+      if (entry?.kind !== 'record') continue;
+      const records = deduped.get(entry.collection);
+      if (!records) continue;
+      const record = entry.record;
+      const id = String(record.id);
+      sourceRecords += 1;
+      const existing = records.get(id);
+      // Mirrors canonical ingestion precedence: discovery owns repository and
+      // workflow inventory fields, every other collection is last-observation-wins.
+      if (existing && (entry.collection === 'repositories' || entry.collection === 'workflows')) {
+        records.set(id, mergeActivityStructuralRecord(entry.collection, existing, record));
+        continue;
+      }
+      records.set(id, record);
+    }
+  }
+  /** @type {Map<string, string[]>} */
+  const buckets = new Map();
+  let uniqueRecords = 0;
+  for (const collection of NORMALIZED_COLLECTIONS) {
+    const records = deduped.get(collection);
+    for (const record of records.values()) {
+      const bucket = consolidationBucket(collection, record);
+      const lines = buckets.get(bucket) ?? buckets.set(bucket, []).get(bucket);
+      lines.push(`${JSON.stringify({ kind: 'record', collection, record })}\n`);
+      uniqueRecords += 1;
+    }
+    records.clear();
+  }
+  debugHash(
+    'consolidating phase=%s sourceRecords=%d uniqueRecords=%d buckets=%d',
+    phase,
+    sourceRecords,
+    uniqueRecords,
+    buckets.size
+  );
+  /** @type {string[]} */
+  const written = [];
+  for (const bucket of [...buckets.keys()].sort()) {
+    const lines = buckets.get(bucket);
+    /** @type {string[][]} */
+    const parts = [];
+    let current = [];
+    let currentBytes = 0;
+    for (const line of lines) {
+      const size = Buffer.byteLength(line);
+      if (current.length > 0 && currentBytes + size > maxBytes) {
+        parts.push(current);
+        current = [];
+        currentBytes = 0;
+      }
+      current.push(line);
+      currentBytes += size;
+    }
+    if (current.length > 0) parts.push(current);
+    for (const [index, part] of parts.entries()) {
+      const header = `${JSON.stringify({
+        kind: 'metadata',
+        schemaVersion: CANONICAL_SCHEMA_VERSION,
+        ingestionVersion: NORMALIZED_JSONL_INGESTION_VERSION,
+        sourceRecords: part.length,
+        phase,
+        records: part.length
+      })}\n`;
+      const content = header + part.join('');
+      const digest = createHash('sha256').update(content).digest('hex');
+      const name = `${bucket}-${String(index).padStart(4, '0')}-${digest.slice(0, 16)}.jsonl`;
+      const outputPath = path.join(outputDirectory, name);
+      written.push(name);
+      try {
+        await stat(outputPath);
+        continue;
+      } catch (error) {
+        if (!(error && error.code === 'ENOENT')) throw error;
+      }
+      const temporaryPath = `${outputPath}.${process.pid}.tmp`;
+      await writeFile(temporaryPath, content, { flag: 'wx' });
+      await rename(temporaryPath, outputPath);
+    }
+    buckets.delete(bucket);
+  }
+  return written;
+}
+
 async function hashActivityPayloads({
   databasePath,
   shardDirectory,
@@ -1491,9 +1627,18 @@ async function hashActivityPayloads({
       runs: new Set(),
       records: new Set()
     };
+    const retainedCachePayloads = {
+      runs: new Set(),
+      records: new Set()
+    };
+    const cachePaths = { runs: [], records: [] };
+    const cacheDirectories = {
+      runs: runsDirectory ? path.join(runsDirectory, PAYLOAD_CACHE_DIRECTORY) : null,
+      records: recordsDirectory ? path.join(recordsDirectory, PAYLOAD_CACHE_DIRECTORY) : null
+    };
     if (normalizedDirectory) await mkdir(normalizedDirectory, { recursive: true });
-    if (runsDirectory) await mkdir(runsDirectory, { recursive: true });
-    if (recordsDirectory) await mkdir(recordsDirectory, { recursive: true });
+    if (runsDirectory) await mkdir(cacheDirectories.runs, { recursive: true });
+    if (recordsDirectory) await mkdir(cacheDirectories.records, { recursive: true });
     for (const name of shardNames) {
       const shardPath = path.join(shardDirectory, name);
       if ((await stat(shardPath)).size === 0) {
@@ -1508,8 +1653,8 @@ async function hashActivityPayloads({
       const phasedPayloadName = `${path.parse(name).name}-${payloadName}`;
       const outputPaths = [
         normalizedDirectory ? ['normalized', path.join(normalizedDirectory, payloadName)] : null,
-        runsDirectory ? ['runs', path.join(runsDirectory, phasedPayloadName)] : null,
-        recordsDirectory ? ['records', path.join(recordsDirectory, phasedPayloadName)] : null
+        runsDirectory ? ['runs', path.join(cacheDirectories.runs, phasedPayloadName)] : null,
+        recordsDirectory ? ['records', path.join(cacheDirectories.records, phasedPayloadName)] : null
       ].filter(Boolean);
       const missing = [];
       for (const output of outputPaths) {
@@ -1579,8 +1724,33 @@ async function hashActivityPayloads({
           debugHash('dropped empty %s shard %s', phase, outputPath);
           continue;
         }
-        retainedPayloads[phase].add(path.basename(outputPath));
-        hashes[`${path.basename(path.dirname(outputPath))}/${path.basename(outputPath)}`] = await hashFile(outputPath);
+        if (phase === 'normalized') {
+          retainedPayloads.normalized.add(path.basename(outputPath));
+          hashes[`${path.basename(path.dirname(outputPath))}/${path.basename(outputPath)}`] = await hashFile(outputPath);
+          continue;
+        }
+        retainedCachePayloads[phase].add(path.basename(outputPath));
+        cachePaths[phase].push(outputPath);
+      }
+    }
+    for (const [phase, directory] of [
+      ['runs', runsDirectory],
+      ['records', recordsDirectory]
+    ].filter(([, directory]) => Boolean(directory))) {
+      const names = await consolidatePhasePayloads(
+        phase,
+        cachePaths[phase],
+        directory,
+        DEFAULT_COMPACTED_JSONL_SHARD_BYTES
+      );
+      for (const name of names) {
+        retainedPayloads[phase].add(name);
+        hashes[`${path.basename(directory)}/${name}`] = await hashFile(path.join(directory, name));
+      }
+      for (const name of await readdir(cacheDirectories[phase])) {
+        if (name.endsWith('.jsonl') && !retainedCachePayloads[phase].has(name)) {
+          await rm(path.join(cacheDirectories[phase], name), { force: true });
+        }
       }
     }
     for (const [phase, directory] of [

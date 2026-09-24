@@ -263,6 +263,23 @@ but MUST NOT be copied into the dashboard artifact or listed in its deployed
 payload manifest. The browser MUST fail closed when compacted run-information
 shards are absent; it MUST NOT fall back to raw Activity JSONL.
 
+Published phase shards SHALL be consolidated across source shards before
+publication. A canonical record observed by more than one Activity source shard
+SHALL be published exactly once, keyed by `(collection, id)`, applying the same
+precedence as canonical ingestion: discovery owns repository and workflow
+inventory fields, and every other collection is last-observation-wins. Per-shard
+normalization output MAY be retained as an incremental cache, but that cache
+SHALL live outside the published phase directories and MUST NOT be copied into
+the dashboard artifact or listed in the deployed payload manifest.
+
+Consolidated shards SHALL be partitioned deterministically so that unchanged
+history remains byte-identical between publications. Structural collections
+SHALL occupy a single leading partition that sorts before time-based partitions,
+preserving run-information-before-run-record ingestion order. Because the
+browser's skip receipt is keyed on payload content hash rather than shard name,
+a partition whose records are unchanged MUST retain its content hash so the
+browser reuses its cached ingestion instead of redownloading the shard.
+
 The local SQLite projection and browser IndexedDB projection SHALL use the same
 adapters, identities, normalization, object-store definitions, and relationship
 validation. The local SQLite file is an implementation of the IndexedDB subset

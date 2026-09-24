@@ -295,13 +295,23 @@ jobs:
             const payloadManifest = path.join(process.env.REPORT_OUTPUT, 'payload-hashes.json')
             fs.writeFileSync(payloadManifest, `${JSON.stringify(payloadHashes, null, 2)}\n`)
             core.info(`Wrote payload-hashes.json (${formatFileSize(fs.statSync(payloadManifest).size)})`)
+            // Copy only manifest-listed shards so the incremental normalization
+            // cache under gh-aw-logs-*/.payloads/ is never published.
             for (const directory of ['gh-aw-logs-runs', 'gh-aw-logs-records']) {
-              fs.cpSync(
-                path.join(process.env.RUNNER_TEMP, 'cao-activity', directory),
-                path.join(process.env.REPORT_OUTPUT, directory),
-                { recursive: true },
-              )
+              fs.mkdirSync(path.join(process.env.REPORT_OUTPUT, directory), { recursive: true })
             }
+            let publishedShardBytes = 0
+            for (const name of Object.keys(payloadHashes)) {
+              if (!name.includes('/')) continue
+              const destination = path.join(process.env.REPORT_OUTPUT, name)
+              fs.copyFileSync(
+                path.join(process.env.RUNNER_TEMP, 'cao-activity', name),
+                destination,
+              )
+              publishedShardBytes += fs.statSync(destination).size
+            }
+            core.info(`Copied ${Object.keys(payloadHashes).length - 1} activity shards `
+              + `(${formatFileSize(publishedShardBytes)})`)
             core.info(`Dashboard artifact assembly completed (${collectedFiles.length + 1} collected data files)`)
 
       - name: Upload dashboard artifact
