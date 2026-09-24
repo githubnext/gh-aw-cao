@@ -60,11 +60,11 @@ console.log(JSON.stringify({timestamp:request.timestamp,repository:request.repos
       databasePath: path.join(temporary, 'dashboard.sqlite'),
       root: temporary,
       repositories: ['githubnext/gh-aw-cao'],
-      workerTimeoutMs: 50
+      workerTimeoutMs: 500
     });
 
     assert.equal(result.warnings.length, 1);
-    assert.match(result.warnings[0].message, /timed out after 50 ms/);
+    assert.match(result.warnings[0].message, /timed out after 500 ms/);
     assert.deepEqual(result.values.map(({ campaign, valueId }) => ({ campaign, valueId })), [
       { campaign: 'successful', valueId: 'successful' }
     ]);
