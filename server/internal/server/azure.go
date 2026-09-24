@@ -22,8 +22,9 @@ const (
 )
 
 type ProxyPolicy struct {
-	AllowedHosts []string
-	RequireHTTPS bool
+	AllowedHosts   []string
+	RequireHTTPS   bool
+	TrustForwarded bool
 }
 
 type AzureProxyPolicy = ProxyPolicy
@@ -36,6 +37,9 @@ func validateHostedMode(store *redisx.Store, config *Config) error {
 		(strings.TrimSpace(config.Listen) != "" || config.CertFile != "" || config.KeyFile != "") {
 		return errors.New("azure Functions mode must not configure a listener or TLS files")
 	}
+	if config.HostingMode == HostingModeAzureFunctions {
+		config.AzureProxy.TrustForwarded = true
+	}
 	if strings.TrimSpace(config.AccessToken) != "" {
 		return errors.New("hosted mode does not support local bearer capabilities")
 	}
@@ -44,6 +48,19 @@ func validateHostedMode(store *redisx.Store, config *Config) error {
 	}
 	if len(config.Proxy.AllowedHosts) == 0 && len(config.AzureProxy.AllowedHosts) == 0 {
 		return errors.New("hosted mode requires an explicit trusted proxy host policy")
+	}
+	policy := config.Proxy
+	if config.HostingMode == HostingModeAzureFunctions {
+		policy = config.AzureProxy
+	}
+	if !policy.RequireHTTPS {
+		return errors.New("hosted mode requires HTTPS")
+	}
+	if config.HostingMode == HostingModeHosted {
+		if err := validateHostedListen(config.Listen, config.CertFile, config.KeyFile); err != nil {
+			return err
+		}
+		config.Proxy.TrustForwarded = isLoopbackListen(config.Listen)
 	}
 	if config.GitHubOAuth == nil {
 		return errors.New("hosted mode requires GitHub OAuth configuration")
@@ -55,9 +72,14 @@ func validateHostedMode(store *redisx.Store, config *Config) error {
 }
 
 func validAzureProxyRequest(request *http.Request, policy AzureProxyPolicy) bool {
-	host := forwardedHeader(request, "X-Forwarded-Host")
-	if host == "" {
-		host = request.Host
+	host := request.Host
+	secure := request.TLS != nil
+	if policy.TrustForwarded {
+		if forwarded := forwardedHeader(request, "X-Forwarded-Host"); forwarded != "" {
+			host = forwarded
+		}
+		proto := strings.ToLower(strings.TrimSpace(strings.Split(forwardedHeader(request, "X-Forwarded-Proto"), ",")[0]))
+		secure = proto == "https"
 	}
 	host = strings.ToLower(strings.TrimSpace(strings.Split(host, ",")[0]))
 	if host == "" {
@@ -79,8 +101,7 @@ func validAzureProxyRequest(request *http.Request, policy AzureProxyPolicy) bool
 	if !policy.RequireHTTPS {
 		return true
 	}
-	proto := strings.ToLower(strings.TrimSpace(strings.Split(forwardedHeader(request, "X-Forwarded-Proto"), ",")[0]))
-	return proto == "https"
+	return secure
 }
 
 func forwardedHeader(request *http.Request, name string) string {
@@ -166,8 +187,9 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 		SiteDirectory:    siteDirectory,
 		DashboardQueries: definitions,
 		AzureProxy: AzureProxyPolicy{
-			AllowedHosts: splitCSV(os.Getenv("CAO_AZURE_ALLOWED_HOSTS")),
-			RequireHTTPS: strings.TrimSpace(os.Getenv("CAO_AZURE_REQUIRE_HTTPS")) != "false",
+			AllowedHosts:   splitCSV(os.Getenv("CAO_AZURE_ALLOWED_HOSTS")),
+			RequireHTTPS:   true,
+			TrustForwarded: true,
 		},
 		GitHubOAuth: &GitHubOAuthConfig{
 			ClientID:             os.Getenv("CAO_GITHUB_CLIENT_ID"),

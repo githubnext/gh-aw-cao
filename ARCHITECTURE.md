@@ -237,7 +237,12 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   request-independent rebuilds through Redis so multiple stateless replicas
   cannot replace the projection concurrently. Its client exposes the active
   GitHub login and supports explicit account switching through a fresh OAuth
-  account-selection flow without combining account authority.
+  account-selection flow without combining account authority. Hosted transport
+  is fail-closed: Redis always uses TLS, a public listener terminates TLS
+  directly, and forwarded host/protocol headers are trusted only across a
+  loopback-bound proxy boundary. Logout atomically removes active session
+  authority before remote token revocation; transient GitHub failures retain
+  encrypted credentials only in a durable Redis revocation queue.
 - Browsers and external clients never receive Redis endpoints or credentials.
   Redis generations are staged and validated before atomic activation; a failed
   rebuild leaves the previous generation active, and an empty Redis instance is

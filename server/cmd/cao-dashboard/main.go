@@ -60,7 +60,9 @@ func run(arguments []string) error {
 
 func serveHosted(arguments []string) error {
 	flags := flag.NewFlagSet("serve-hosted", flag.ContinueOnError)
-	listen := flags.String("listen", "0.0.0.0:8080", "HTTP listen address behind the trusted HTTPS proxy")
+	listen := flags.String("listen", "127.0.0.1:8080", "listen address; non-loopback listeners require TLS")
+	cert := flags.String("cert", "", "TLS certificate PEM file required for a non-loopback listener")
+	key := flags.String("key", "", "TLS private key PEM file required for a non-loopback listener")
 	siteDirectory := flags.String("site", "../dashboard/site/dist", "built dashboard site directory")
 	databaseQueries := flags.String("database-queries", "../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
 	dashboardQueries := flags.String("dashboard-queries", "../dashboard/site/dashboard.json", "default dashboard query document")
@@ -79,7 +81,7 @@ func serveHosted(arguments []string) error {
 		_ = shutdownTelemetry(shutdownCtx)
 	}()
 	app, err := server.NewHostedAppFromEnv(
-		ctx, *listen, *siteDirectory, *dashboardQueries, *databaseQueries,
+		ctx, *listen, *cert, *key, *siteDirectory, *dashboardQueries, *databaseQueries,
 		log.New(os.Stderr, "cao-dashboard: ", log.LstdFlags),
 	)
 	if err != nil {

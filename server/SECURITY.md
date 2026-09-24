@@ -43,9 +43,11 @@ only a complete staged generation is atomically activated. Redis remains
 disposable, and health distinguishes an available service from ready data.
 
 `CAO_REDIS_URL`, OAuth secrets, the webhook secret, and session secrets are
-process-only configuration. They are never returned by APIs or written to
-logs. Remote Redis uses `rediss://` with certificate and hostname verification;
-the core service imports no cloud identity or secret-management SDK.
+process-only configuration resolved by the deployment's secret manager. They
+are never accepted as hosted command-line flags, returned by APIs, or written
+to logs. Every hosted Redis connection uses `rediss://` with certificate and
+hostname verification; the core service imports no cloud identity or
+secret-management SDK.
 
 ## Dashboard access capability
 
@@ -96,6 +98,22 @@ telemetry. Restart the server to rotate an automatically generated token.
 The capability mechanism is local access control, not a replacement for
 identity-aware authentication in a remote service.
 
+## Hosted transport boundary
+
+Hosted mode has no developer override for transport protections:
+
+- it requires `rediss://` even when Redis is on loopback;
+- it requires HTTPS and rejects attempts to disable that policy;
+- it binds to loopback by default, allowing forwarded host/protocol headers
+  only across that local process or pod boundary; and
+- a non-loopback bind requires an operator-supplied TLS certificate and key,
+  ignores forwarded headers, and validates the direct TLS connection and
+  allow-listed `Host`.
+
+Plaintext loopback Redis, generated bearer capabilities, and optional local TLS
+belong only to the separate `serve` developer profile. They cannot be enabled
+in `serve-hosted`.
+
 ## Azure Functions profile
 
 > [!WARNING]
@@ -143,7 +161,11 @@ Users with multiple personal or managed-user GitHub identities can explicitly
 switch accounts from the dashboard. Switching is a CSRF-protected mutation that
 revokes and deletes the current server session before redirecting to GitHub's
 account chooser; CAO never combines authority or tokens from multiple accounts
-in one browser session.
+in one browser session. If GitHub revocation is unavailable, logout and account
+switching atomically remove the active session, clear its cookies, and retain
+the encrypted credentials only in a Redis-backed pending-revocation queue.
+Subsequent OAuth entry retries queued revocation without restoring session
+authority.
 
 Access tokens and refresh tokens remain server-side. They are encrypted with an
 AES-GCM key derived from `CAO_SESSION_SECRET` before being stored in Redis under
@@ -254,17 +276,18 @@ use:
 ### Azure secure-computing and compliance controls
 
 Key Vault is mandatory for every secret-bearing Azure setting. The deployment
-contract must keep the GitHub OAuth client secret, session secret, and Redis
-`rediss://` URL in Key Vault and wire the Function App through Key Vault
-references. Do not emit these values from Bicep, commit them in parameter
-files, copy them into app settings as literals, or log them during deployment.
+contract keeps the GitHub OAuth client secret, session secret, Redis
+`rediss://` URL, and Functions runtime storage connection in Key Vault and wires
+the Function App through versionless Key Vault references. Do not emit these
+values from Bicep, commit them in parameter files, copy them into app settings
+as literals, or log them during deployment.
 
 Use a system-assigned managed identity and Key Vault RBAC for secret reads.
 Review Key Vault access policies/role assignments, Azure activity logs, and
 Function App configuration changes as part of compliance evidence. Secret
 rotation should happen through GitHub OAuth settings, Azure Redis/storage key
-rotation, and new Key Vault secret versions, followed by a Function App restart
-to resolve current references.
+rotation, and new Key Vault secret versions. Versionless references allow the
+platform to resolve current versions without changing application settings.
 
 Keep the Azure secure-computing baseline enabled:
 

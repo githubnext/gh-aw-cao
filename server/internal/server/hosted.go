@@ -13,6 +13,8 @@ import (
 func NewHostedAppFromEnv(
 	ctx context.Context,
 	listen string,
+	certFile string,
+	keyFile string,
 	siteDirectory string,
 	dashboardQueriesPath string,
 	databaseQueriesPath string,
@@ -21,6 +23,9 @@ func NewHostedAppFromEnv(
 	redisURL := strings.TrimSpace(os.Getenv("CAO_REDIS_URL"))
 	if redisURL == "" {
 		return nil, errors.New("CAO_REDIS_URL is required")
+	}
+	if err := validateHostedRedisURL(redisURL); err != nil {
+		return nil, err
 	}
 	client, err := redisx.New(redisURL)
 	if err != nil {
@@ -60,6 +65,8 @@ func NewHostedAppFromEnv(
 	config := Config{
 		HostingMode:         HostingModeHosted,
 		Listen:              listen,
+		CertFile:            certFile,
+		KeyFile:             keyFile,
 		SiteDirectory:       siteDirectory,
 		DashboardQueries:    definitions,
 		DatabaseQueriesPath: databaseQueriesPath,
@@ -67,8 +74,9 @@ func NewHostedAppFromEnv(
 		WebhookSecret:       webhookSecret,
 		AdminUsers:          adminUsers,
 		Proxy: ProxyPolicy{
-			AllowedHosts: splitCSV(os.Getenv("CAO_ALLOWED_HOSTS")),
-			RequireHTTPS: strings.TrimSpace(os.Getenv("CAO_REQUIRE_HTTPS")) != "false",
+			AllowedHosts:   splitCSV(os.Getenv("CAO_ALLOWED_HOSTS")),
+			RequireHTTPS:   true,
+			TrustForwarded: isLoopbackListen(listen),
 		},
 		GitHubOAuth: &GitHubOAuthConfig{
 			ClientID:             os.Getenv("CAO_GITHUB_CLIENT_ID"),
@@ -81,4 +89,11 @@ func NewHostedAppFromEnv(
 		Logger: logger,
 	}
 	return New(store, config)
+}
+
+func validateHostedRedisURL(redisURL string) error {
+	if !strings.HasPrefix(strings.ToLower(strings.TrimSpace(redisURL)), "rediss://") {
+		return errors.New("hosted mode requires rediss:// Redis transport")
+	}
+	return nil
 }

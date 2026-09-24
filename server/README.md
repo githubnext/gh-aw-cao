@@ -75,22 +75,32 @@ flowchart LR
 
 ## Hosted service profile
 
-`serve-hosted` runs the same stateless Go service behind a trusted HTTPS proxy
-on a container, VM, Kubernetes workload, or comparable host. It is not coupled
-to a Redis provider or cloud SDK. Configuration is supplied through:
+`serve-hosted` runs the same stateless Go service on a container, VM,
+Kubernetes workload, or comparable host. It defaults to
+`127.0.0.1:8080`, where a same-host or same-pod HTTPS proxy may forward requests.
+A non-loopback listener is accepted only when `--cert` and `--key` configure
+TLS at the CAO service itself. It is not coupled to a Redis provider or cloud
+SDK. Configuration is supplied through:
 
 | Variable | Purpose |
 | --- | --- |
-| `CAO_REDIS_URL` | Required `redis://` loopback or TLS `rediss://` endpoint. Credentials remain server-side. |
+| `CAO_REDIS_URL` | Required TLS `rediss://` endpoint. Credentials remain server-side. Plaintext Redis is limited to local `serve` mode. |
 | `CAO_REDIS_NAMESPACE` | Optional deployment namespace; defaults to `hosted-dashboard`. |
 | `CAO_ALLOWED_HOSTS` | Required comma-separated trusted public host names. |
-| `CAO_REQUIRE_HTTPS` | Enforce forwarded HTTPS; defaults to `true`. |
 | `CAO_GITHUB_CLIENT_ID`, `CAO_GITHUB_CLIENT_SECRET`, `CAO_GITHUB_REDIRECT_URL` | GitHub OAuth application. |
 | `CAO_SESSION_SECRET` | Session encryption/signing secret of at least 32 characters. |
 | `CAO_GITHUB_ALLOWED_ORGS`, `CAO_GITHUB_ALLOWED_TEAMS` | Explicit authorization policy. |
 | `CAO_GITHUB_ADMIN_USERS` | Required comma-separated GitHub logins allowed to trigger rebuilds. |
 | `CAO_GITHUB_WEBHOOK_SECRET` | Required GitHub webhook signature secret of at least 32 characters. |
 | `CAO_SOURCE_DIRECTORY` | Required authoritative deployed gh-aw artifact directory used by rebuild/reconciliation. |
+
+Hosted HTTPS enforcement cannot be disabled. Forwarded host and protocol
+headers are trusted only when the service is bound to loopback; externally
+reachable listeners validate their direct TLS connection and `Host` header.
+Supply secrets through the deployment platform's secret manager (for example,
+Key Vault references, Kubernetes Secrets mounted into the process environment,
+or an equivalent managed facility), never command-line arguments or checked-in
+configuration.
 
 The hosted server exposes canonical repository/run APIs, verifies and
 deduplicates webhook deliveries, and coordinates projection updates with a
@@ -394,12 +404,13 @@ Request cancellation propagates through `request.Context()` to Redis queries.
 
 The Bicep deployment in `server/azure/main.bicep` provisions a Function App,
 Key Vault, Application Insights, storage, and Redis Enterprise with the
-RediSearch module. Secret app settings use Key Vault references. The template
-outputs only non-secret host names, redirect URI, Redis database name, and Key
-Vault URI. Redis access keys are an unavoidable path for Redis Enterprise
-client authentication today; store the `rediss://` URL in Key Vault, rotate the
-Redis key in Azure, update the Key Vault secret version, and restart the
-Function App so it resolves the new reference.
+RediSearch module. Every secret-bearing app setting—including Functions runtime
+storage—uses a versionless Key Vault reference so rotation does not require
+rewriting application configuration. The template outputs only non-secret host
+names, redirect URI, Redis database name, and Key Vault URI. Redis access keys
+are an unavoidable path for Redis Enterprise client authentication today;
+store the `rediss://` URL in Key Vault, rotate the Redis key in Azure, publish a
+new Key Vault secret version, and allow the platform to refresh the reference.
 
 ### Azure secure-computing baseline
 

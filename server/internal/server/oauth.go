@@ -118,6 +118,7 @@ func newGitHubOAuth(config GitHubOAuthConfig, store *redisx.Store) *githubOAuth 
 }
 
 func (oauth *githubOAuth) login(response http.ResponseWriter, request *http.Request) {
+	oauth.retryPendingRevocation(request.Context())
 	serverLog.Printf("oauth login started")
 	state, err := randomToken(32)
 	if err != nil {
@@ -212,12 +213,18 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 }
 
 func (oauth *githubOAuth) logout(response http.ResponseWriter, request *http.Request) {
-	oauth.clearRequestSession(response, request)
+	if err := oauth.clearRequestSession(response, request); err != nil {
+		writeError(response, http.StatusServiceUnavailable, "GitHub credential revocation is temporarily unavailable")
+		return
+	}
 	response.WriteHeader(http.StatusNoContent)
 }
 
 func (oauth *githubOAuth) switchAccount(response http.ResponseWriter, request *http.Request) {
-	oauth.clearRequestSession(response, request)
+	if err := oauth.clearRequestSession(response, request); err != nil {
+		writeError(response, http.StatusServiceUnavailable, "GitHub credential revocation is temporarily unavailable")
+		return
+	}
 	writeJSON(response, http.StatusOK, map[string]string{"loginUrl": "/auth/login?select_account=1"})
 }
 
@@ -230,15 +237,24 @@ func (oauth *githubOAuth) currentAccount(response http.ResponseWriter, request *
 	writeJSON(response, http.StatusOK, map[string]string{"login": session.Login})
 }
 
-func (oauth *githubOAuth) clearRequestSession(response http.ResponseWriter, request *http.Request) {
+func (oauth *githubOAuth) clearRequestSession(response http.ResponseWriter, request *http.Request) error {
 	session, ok := oauth.loadRequestSession(request)
 	if ok {
-		_ = oauth.revoke(request.Context(), session.AccessToken)
-		_ = oauth.revoke(request.Context(), session.RefreshToken)
-		_ = oauth.deleteSession(request.Context(), session.ID)
+		if err := oauth.stageRevocation(request.Context(), session); err != nil {
+			serverLog.Printf("oauth credential revocation staging failed")
+			return err
+		}
 	}
 	oauth.clearSessionCookies(response)
 	serverLog.Printf("oauth logout completed")
+	if ok {
+		if err := oauth.revokeCredentials(request.Context(), session); err != nil {
+			serverLog.Printf("oauth credential revocation queued")
+		} else {
+			_ = oauth.completeRevocation(request.Context(), session.ID)
+		}
+	}
+	return nil
 }
 
 func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Request) (oauthSession, bool) {
@@ -393,12 +409,77 @@ func (oauth *githubOAuth) revoke(ctx context.Context, token string) error {
 	}
 	body, _ := json.Marshal(map[string]string{"access_token": token})
 	endpoint := strings.ReplaceAll(oauth.config.RevokeURL, "{client_id}", url.PathEscape(oauth.config.ClientID))
-	return oauth.githubJSON(ctx, http.MethodDelete, endpoint, "", bytes.NewReader(body), nil, func(request *http.Request) {
+	return oauth.githubJSON(ctx, http.MethodDelete, endpoint, "", bytes.NewReader(body), nil, func(request *http.Request, _ *map[int]bool) {
 		request.SetBasicAuth(oauth.config.ClientID, oauth.config.ClientSecret)
-	})
+	}, acceptNotFound)
 }
 
-func (oauth *githubOAuth) githubJSON(ctx context.Context, method, endpoint, token string, body io.Reader, output any, configure ...func(*http.Request)) error {
+func (oauth *githubOAuth) revokeCredentials(ctx context.Context, session oauthSession) error {
+	return errors.Join(
+		oauth.revoke(ctx, session.AccessToken),
+		oauth.revoke(ctx, session.RefreshToken),
+	)
+}
+
+func (oauth *githubOAuth) stageRevocation(ctx context.Context, session oauthSession) error {
+	const script = `
+local value = redis.call("GET", KEYS[1])
+if not value then return 0 end
+redis.call("SET", KEYS[2], value, "EX", ARGV[1])
+redis.call("SADD", KEYS[3], KEYS[2])
+redis.call("DEL", KEYS[1])
+return 1`
+	_, err := oauth.configStore(
+		ctx, "EVAL", script, "3",
+		oauth.sessionKey(session.ID),
+		oauth.revocationKey(session.ID),
+		oauth.revocationIndexKey(),
+		fmt.Sprint(int(sessionTTL.Seconds())),
+	)
+	return err
+}
+
+func (oauth *githubOAuth) completeRevocation(ctx context.Context, sessionID string) error {
+	const script = `redis.call("DEL", KEYS[1]); return redis.call("SREM", KEYS[2], KEYS[1])`
+	_, err := oauth.configStore(
+		ctx, "EVAL", script, "2",
+		oauth.revocationKey(sessionID),
+		oauth.revocationIndexKey(),
+	)
+	return err
+}
+
+func (oauth *githubOAuth) retryPendingRevocation(ctx context.Context) {
+	value, err := oauth.configStore(ctx, "SRANDMEMBER", oauth.revocationIndexKey())
+	if err != nil || value == nil {
+		return
+	}
+	key := fmt.Sprint(value)
+	sealed, err := oauth.configStore(ctx, "GET", key)
+	if err != nil || sealed == nil {
+		_, _ = oauth.configStore(ctx, "SREM", oauth.revocationIndexKey(), key)
+		return
+	}
+	plain, err := oauth.open(fmt.Sprint(sealed))
+	if err != nil {
+		return
+	}
+	var session oauthSession
+	if json.Unmarshal(plain, &session) != nil {
+		return
+	}
+	if oauth.revokeCredentials(ctx, session) == nil {
+		_ = oauth.completeRevocation(ctx, session.ID)
+	}
+}
+
+type githubRequestOption func(*http.Request, *map[int]bool)
+
+func acceptNotFound(_ *http.Request, accepted *map[int]bool) {
+	(*accepted)[http.StatusNotFound] = true
+}
+
+func (oauth *githubOAuth) githubJSON(ctx context.Context, method, endpoint, token string, body io.Reader, output any, configure ...githubRequestOption) error {
 	request, err := http.NewRequestWithContext(ctx, method, endpoint, body)
 	if err != nil {
 		return err
@@ -410,8 +491,9 @@ func (oauth *githubOAuth) githubJSON(ctx context.Context, method, endpoint, toke
 	if body != nil {
 		request.Header.Set("Content-Type", "application/json")
 	}
+	accepted := map[int]bool{}
 	for _, apply := range configure {
-		apply(request)
+		apply(request, &accepted)
 	}
 	response, err := oauth.client.Do(request)
 	if err != nil {
@@ -421,7 +503,7 @@ func (oauth *githubOAuth) githubJSON(ctx context.Context, method, endpoint, toke
 		_, _ = io.Copy(io.Discard, response.Body)
 		_ = response.Body.Close()
 	}()
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
+	if (response.StatusCode < 200 || response.StatusCode >= 300) && !accepted[response.StatusCode] {
 		return fmt.Errorf("GitHub API returned %d", response.StatusCode)
 	}
 	if output == nil {
@@ -483,6 +565,15 @@ func (oauth *githubOAuth) configStore(ctx context.Context, args ...string) (any,
 func (oauth *githubOAuth) sessionKey(sessionID string) string {
 	sum := sha256.Sum256([]byte(sessionID))
 	return oauth.store.Key("session:" + base64.RawURLEncoding.EncodeToString(sum[:]))
+}
+
+func (oauth *githubOAuth) revocationKey(sessionID string) string {
+	sum := sha256.Sum256([]byte(sessionID))
+	return oauth.store.Key("oauth-revocation:" + base64.RawURLEncoding.EncodeToString(sum[:]))
+}
+
+func (oauth *githubOAuth) revocationIndexKey() string {
+	return oauth.store.Key("oauth-revocations")
 }
 
 func (oauth *githubOAuth) setSessionCookies(response http.ResponseWriter, session oauthSession) {

@@ -38,6 +38,64 @@ func TestValidateListenSafety(t *testing.T) {
 	}
 }
 
+func TestValidateHostedListenRequiresTLSOutsideLoopback(t *testing.T) {
+	if err := validateHostedListen("127.0.0.1:8080", "", ""); err != nil {
+		t.Fatalf("loopback hosted listener rejected: %v", err)
+	}
+	if err := validateHostedListen("0.0.0.0:8080", "", ""); err == nil {
+		t.Fatal("expected non-loopback hosted listener without TLS to be rejected")
+	}
+	if err := validateHostedListen("0.0.0.0:8443", "cert.pem", "key.pem"); err != nil {
+		t.Fatalf("TLS-protected hosted listener rejected: %v", err)
+	}
+}
+
+func TestHostedRedisRequiresTLS(t *testing.T) {
+	if err := validateHostedRedisURL("redis://127.0.0.1:6379/0"); err == nil {
+		t.Fatal("hosted mode accepted plaintext loopback Redis")
+	}
+	if err := validateHostedRedisURL("rediss://redis.example.com:6380/0"); err != nil {
+		t.Fatalf("hosted mode rejected TLS Redis: %v", err)
+	}
+}
+
+func TestHostedProxyHeadersAreTrustedOnlyOnLoopbackBoundary(t *testing.T) {
+	request := httptest.NewRequest(http.MethodGet, "https://internal.example.test/", nil)
+	request.Host = "internal.example.test"
+	request.Header.Set("X-Forwarded-Host", "dashboard.example.com")
+	request.Header.Set("X-Forwarded-Proto", "https")
+
+	direct := ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true}
+	if validAzureProxyRequest(request, direct) {
+		t.Fatal("direct hosted listener trusted caller-supplied forwarded headers")
+	}
+
+	loopbackProxy := direct
+	loopbackProxy.TrustForwarded = true
+	if !validAzureProxyRequest(request, loopbackProxy) {
+		t.Fatal("loopback proxy boundary rejected trusted forwarded headers")
+	}
+}
+
+func TestHostedModesCannotDisableHTTPS(t *testing.T) {
+	config := Config{
+		HostingMode: HostingModeHosted,
+		Listen:      "127.0.0.1:8080",
+		Proxy:       ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}},
+		GitHubOAuth: validOAuthConfig("https://github.test"),
+	}
+	if err := validateHostedMode(&redisx.Store{}, &config); err == nil {
+		t.Fatal("hosted mode accepted disabled HTTPS enforcement")
+	}
+
+	config.HostingMode = HostingModeAzureFunctions
+	config.Listen = ""
+	config.AzureProxy = AzureProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}}
+	if err := validateHostedMode(&redisx.Store{}, &config); err == nil {
+		t.Fatal("Azure Functions mode accepted disabled HTTPS enforcement")
+	}
+}
+
 func TestCapabilityURLUsesConfiguredTransport(t *testing.T) {
 	app := &App{config: Config{Listen: "127.0.0.1:8443"}, accessToken: testAccessToken}
 	if got := app.capabilityURL(); !strings.HasPrefix(got, "http://") {
@@ -408,6 +466,7 @@ func fakeRedis(t *testing.T) (string, func()) {
 	ctx, cancel := context.WithCancel(context.Background())
 	var mu sync.Mutex
 	values := map[string]string{}
+	sets := map[string]map[string]bool{}
 	go func() {
 		for {
 			connection, err := listener.Accept()
@@ -463,14 +522,50 @@ func fakeRedis(t *testing.T) (string, func()) {
 							_, _ = fmt.Fprint(connection, ":0\r\n")
 						}
 					case "EVAL":
-						if len(command) >= 5 && strings.Contains(command[1], `redis.call("DEL"`) {
-							mu.Lock()
+						mu.Lock()
+						switch {
+						case len(command) >= 7 && strings.Contains(command[1], `redis.call("SADD"`):
+							if value, ok := values[command[3]]; ok {
+								values[command[4]] = value
+								if sets[command[5]] == nil {
+									sets[command[5]] = map[string]bool{}
+								}
+								sets[command[5]][command[4]] = true
+								delete(values, command[3])
+							}
+						case len(command) >= 5 && strings.Contains(command[1], `redis.call("SREM"`):
+							delete(values, command[3])
+							delete(sets[command[4]], command[3])
+						case len(command) >= 5 && strings.Contains(command[1], `redis.call("DEL"`):
 							if values[command[3]] == command[4] {
 								delete(values, command[3])
 							}
-							mu.Unlock()
 						}
+						mu.Unlock()
 						_, _ = fmt.Fprint(connection, ":1\r\n")
+					case "SRANDMEMBER":
+						mu.Lock()
+						member := ""
+						for candidate := range sets[command[1]] {
+							member = candidate
+							break
+						}
+						mu.Unlock()
+						if member == "" {
+							_, _ = fmt.Fprint(connection, "$-1\r\n")
+						} else {
+							_, _ = fmt.Fprintf(connection, "$%d\r\n%s\r\n", len(member), member)
+						}
+					case "SREM":
+						mu.Lock()
+						removed := sets[command[1]][command[2]]
+						delete(sets[command[1]], command[2])
+						mu.Unlock()
+						if removed {
+							_, _ = fmt.Fprint(connection, ":1\r\n")
+						} else {
+							_, _ = fmt.Fprint(connection, ":0\r\n")
+						}
 					case "HGETALL":
 						_, _ = fmt.Fprint(connection, "*10\r\n$10\r\ngeneration\r\n$2\r\ng1\r\n$8\r\nrevision\r\n$1\r\n1\r\n$6\r\ncounts\r\n$2\r\n{}\r\n$11\r\nactivatedAt\r\n$20\r\n2026-01-01T00:00:00Z\r\n$11\r\nevaluatedAt\r\n$20\r\n2026-02-03T04:05:06Z\r\n")
 					case "HMGET":

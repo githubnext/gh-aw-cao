@@ -31,13 +31,16 @@ test('Azure dashboard Bicep keeps secret-bearing settings in Key Vault', () => {
   assert.match(bicep, /resource keyVault 'Microsoft\.KeyVault\/vaults@/);
   assert.match(bicep, /enableRbacAuthorization:\s*true/);
   assert.match(bicep, /enableSoftDelete:\s*true/);
+  assert.match(bicep, /enablePurgeProtection:\s*true/);
+  assert.match(bicep, /enabledForTemplateDeployment:\s*false/);
   assert.match(bicep, /identity:\s*{\s*type:\s*'SystemAssigned'/);
   assert.match(bicep, /Key Vault Secrets User/);
 
-  for (const setting of ['CAO_REDIS_URL', 'CAO_GITHUB_CLIENT_SECRET', 'CAO_SESSION_SECRET']) {
+  for (const setting of ['AzureWebJobsStorage', 'CAO_REDIS_URL', 'CAO_GITHUB_CLIENT_SECRET', 'CAO_SESSION_SECRET']) {
     const pattern = new RegExp(`name:\\s*'${setting}'[\\s\\S]*?value:\\s*'@Microsoft\\.KeyVault\\(SecretUri=`);
     assert.match(bicep, pattern, `${setting} must use a Key Vault reference`);
   }
+  assert.doesNotMatch(bicep, /secretUriWithVersion/, 'Key Vault references must follow the current secret version for rotation');
 
   assert.match(bicep, /httpsOnly:\s*true/);
   assert.match(bicep, /ftpsState:\s*'Disabled'/);

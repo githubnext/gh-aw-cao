@@ -233,6 +233,44 @@ func TestHostedOAuthExposesAndSwitchesCurrentAccount(t *testing.T) {
 	}
 }
 
+func TestHostedOAuthQueuesFailedCredentialRevocation(t *testing.T) {
+	github := fakeGitHub(t, fakeGitHubOptions{
+		membershipState:  "active",
+		accessExpiresIn:  3600,
+		rejectRevocation: true,
+	})
+	app := newAzureTestApp(t, github.URL)
+	sessionCookie, csrfCookie := callbackSession(t, app)
+
+	switched := httptest.NewRecorder()
+	request := azureRequest(t, http.MethodPost, "/auth/switch-account")
+	request.AddCookie(sessionCookie)
+	request.AddCookie(csrfCookie)
+	request.Header.Set("X-CSRF-Token", csrfCookie.Value)
+	app.Handler().ServeHTTP(switched, request)
+	if switched.Code != http.StatusOK {
+		t.Fatalf("failed account revocation returned %d: %s", switched.Code, switched.Body.String())
+	}
+	if firstCookie(t, switched.Result(), sessionCookieName).MaxAge >= 0 {
+		t.Fatal("failed account revocation did not clear the active session cookie")
+	}
+
+	current := httptest.NewRecorder()
+	request = azureRequest(t, http.MethodGet, "/api/auth/session")
+	request.AddCookie(sessionCookie)
+	app.Handler().ServeHTTP(current, request)
+	if current.Code != http.StatusUnauthorized {
+		t.Fatalf("failed account revocation retained an active server session: %d", current.Code)
+	}
+
+	github.rejectRevocation = false
+	login := httptest.NewRecorder()
+	app.Handler().ServeHTTP(login, azureRequest(t, http.MethodGet, "/auth/login"))
+	if !github.sawRevocation("access-old") || !github.sawRevocation("refresh-old") {
+		t.Fatalf("queued credentials were not revoked on retry: %#v", github.revoked)
+	}
+}
+
 func TestAzureProxyPolicyFailsClosed(t *testing.T) {
 	app := newAzureTestApp(t, fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600}).URL)
 	response := httptest.NewRecorder()
@@ -250,16 +288,19 @@ type fakeGitHubOptions struct {
 	refreshedMembershipState string
 	accessExpiresIn          int64
 	refreshSucceeds          bool
+	rejectRevocation         bool
 }
 
 type fakeGitHubServer struct {
 	*httptest.Server
-	revoked []string
+	revoked          []string
+	rejectRevocation bool
 }
 
 func fakeGitHub(t *testing.T, options fakeGitHubOptions) *fakeGitHubServer {
 	t.Helper()
 	server := &fakeGitHubServer{}
+	server.rejectRevocation = options.rejectRevocation
 	mux := http.NewServeMux()
 	mux.HandleFunc("/login/oauth/access_token", func(response http.ResponseWriter, request *http.Request) {
 		if err := request.ParseForm(); err != nil {
@@ -293,6 +334,10 @@ func fakeGitHub(t *testing.T, options fakeGitHubOptions) *fakeGitHubServer {
 		clientID, clientSecret, ok := request.BasicAuth()
 		if !ok || clientID != "client" || clientSecret != "secret" {
 			response.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		if server.rejectRevocation {
+			response.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
 		var payload map[string]string
