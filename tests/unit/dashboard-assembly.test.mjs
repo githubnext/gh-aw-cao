@@ -67,6 +67,59 @@ test("rejects conflicting fields and unsafe source paths", async () => {
     "second.json": { dashboard: { title: "Second" } },
   });
 
+  test("fails closed when an assembled source is missing or contains a prototype key", async () => {
+    const root = await fixture({
+      "dashboard.json": { "language-version": "0.1.0", dashboard: { id: "must-not-fallback" } },
+      "dashboard.sources.json": { version: 1, files: ["missing.json"] },
+    });
+
+    try {
+      await assert.rejects(
+        loadDashboardDocument(path.join(root, "dashboard.json")),
+        (error) => error?.code === "ENOENT",
+      );
+      await writeFile(
+        path.join(root, "unsafe.json"),
+        '{"dashboard":{"__proto__":{"polluted":true}}}\n',
+      );
+      await writeFile(
+        path.join(root, "dashboard.sources.json"),
+        JSON.stringify({ version: 1, files: ["unsafe.json"] }),
+      );
+      await assert.rejects(
+        assembleDashboardDocument(path.join(root, "dashboard.sources.json")),
+        /contains an unsupported key at \$\.dashboard\.__proto__/,
+      );
+      assert.equal(Object.prototype.polluted, undefined);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("rejects invalid and duplicate source declarations", async () => {
+    const root = await fixture({
+      "dashboard.sources.json": { version: 1, files: [] },
+      "fragment.json": {},
+    });
+
+    try {
+      await assert.rejects(
+        dashboardSourcePaths(path.join(root, "dashboard.sources.json")),
+        /must declare version 1 and a non-empty files array/,
+      );
+      await writeFile(
+        path.join(root, "dashboard.sources.json"),
+        JSON.stringify({ version: 1, files: ["fragment.json", "fragment.json"] }),
+      );
+      await assert.rejects(
+        dashboardSourcePaths(path.join(root, "dashboard.sources.json")),
+        /contains a duplicate dashboard source/,
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   try {
     await assert.rejects(
       assembleDashboardDocument(path.join(root, "dashboard.sources.json")),

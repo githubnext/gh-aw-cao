@@ -1,5 +1,5 @@
 import { readdir, readFile } from 'node:fs/promises';
-import { relative, resolve } from 'node:path';
+import { basename, relative, resolve } from 'node:path';
 import { parse } from 'yaml';
 import {
   assembleDashboardDocument,
@@ -14,6 +14,9 @@ const ignoredDirectories = new Set(['.cao', '.git', 'coverage', 'dist', 'node_mo
 async function findDashboardDocuments(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
   const documents = [];
+  const hasSourcesManifest = entries.some(
+    (entry) => entry.isFile() && entry.name === dashboardSourcesFileName,
+  );
 
   for (const entry of entries) {
     if (
@@ -23,7 +26,10 @@ async function findDashboardDocuments(directory) {
       && !entry.name.startsWith('.lazy-page-chunks-')
     ) {
       documents.push(...await findDashboardDocuments(resolve(directory, entry.name)));
-    } else if (entry.isFile() && (entry.name === 'dashboard.json' || entry.name === dashboardSourcesFileName)) {
+    } else if (
+      entry.isFile()
+      && (entry.name === dashboardSourcesFileName || (entry.name === 'dashboard.json' && !hasSourcesManifest))
+    ) {
       documents.push(resolve(directory, entry.name));
     }
   }
@@ -36,7 +42,7 @@ const renderQueryGraphs = process.argv.includes('--render-query-graphs');
 let invalidCount = 0;
 
 for (const dashboardPath of dashboardPaths) {
-  const source = dashboardPath.endsWith(`/${dashboardSourcesFileName}`)
+  const source = basename(dashboardPath) === dashboardSourcesFileName
     ? JSON.stringify(await assembleDashboardDocument(dashboardPath))
     : await readFile(dashboardPath, 'utf8');
   const result = validateDashboardDocument(source);
