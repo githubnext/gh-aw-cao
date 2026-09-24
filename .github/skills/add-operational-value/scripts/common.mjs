@@ -3,6 +3,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { accessSync, constants, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { pathToFileURL } from "node:url";
 import path from "node:path";
 
 export const scriptDir = path.dirname(fileURLToPath(import.meta.url));
@@ -42,8 +43,8 @@ export function runJson(command, args = [], options = {}) {
   return JSON.parse(run(command, args, options));
 }
 
-export function runValueFunction(file, args = [], input) {
-  return run(file, args, { input });
+export async function importValueModule(file) {
+  return import(pathToFileURL(path.resolve(file)).href);
 }
 
 export function readJson(file) {

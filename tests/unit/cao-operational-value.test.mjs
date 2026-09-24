@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { pathToFileURL } from 'node:url';
 
 const root = path.resolve(import.meta.dirname, '..', '..');
 const cao = path.join(root, 'activity', 'cao.mjs');
@@ -212,6 +213,104 @@ fi\n`);
       CAO_GITHUB_API_MIN_REMAINING: '2000'
     }, stdio: 'pipe' }
   ), /Dependabot alerts pagination exceeded 2 pages/);
+});
+
+test('Daily File Diet shares one value module between CAO collection and historical evaluation', async () => {
+  const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-daily-file-diet-value-'));
+  const packageDirectory = path.join(temporary, 'daily-file-diet');
+  const sourceDirectory = path.join(temporary, 'source');
+  const archive = path.join(temporary, 'repository.tar.gz');
+  const fakeGh = path.join(temporary, 'gh');
+  const output = path.join(temporary, 'values.jsonl');
+  const commit = '0123456789abcdef0123456789abcdef01234567';
+  mkdirSync(path.join(sourceDirectory, 'pkg'), { recursive: true });
+  writeFileSync(path.join(sourceDirectory, 'pkg', 'large.go'), 'line\n'.repeat(1200));
+  writeFileSync(path.join(sourceDirectory, 'pkg', 'healthy.go'), 'line\n'.repeat(800));
+  execFileSync('tar', ['-czf', archive, '-C', sourceDirectory, '.']);
+  cpSync(path.join(root, 'daily-file-diet'), packageDirectory, { recursive: true });
+  writeFileSync(fakeGh, `#!/usr/bin/env bash
+set -euo pipefail
+if [[ " $* " == *"tarball/"* ]]; then
+  cat ${JSON.stringify(archive)}
+elif [[ " $* " == *" --paginate --slurp "* ]]; then
+  printf '[[{"sha":"${commit}","commit":{"committer":{"date":"2026-09-24T18:00:00Z"}}}]]\\n'
+else
+  printf '[{"sha":"${commit}","commit":{"committer":{"date":"2026-09-24T18:00:00Z"}}}]\\n'
+fi
+`);
+  chmodSync(fakeGh, 0o755);
+
+  const result = JSON.parse(execFileSync(process.execPath, [
+    cao,
+    'operational-value',
+    '--database', path.join(temporary, 'dashboard.sqlite'),
+    '--root', temporary,
+    '--output', output,
+    '--timestamp', '2026-09-24T19:30:24Z',
+    '--repository', 'github/gh-aw',
+  ], {
+    encoding: 'utf8',
+    env: { ...process.env, PATH: `${temporary}:${process.env.PATH}` },
+  }));
+
+  assert.deepEqual(result.scripts, ['daily-file-diet']);
+  assert.deepEqual(
+    result.values.map(({ campaign, repository, valueId, value }) => ({
+      campaign, repository, valueId, value,
+    })),
+    [
+      {
+        campaign: 'daily-file-diet',
+        repository: 'github/gh-aw',
+        valueId: 'largest-file-health',
+        value: 0.8325,
+      },
+      {
+        campaign: 'daily-file-diet',
+        repository: 'github/gh-aw',
+        valueId: 'compliant-line-mass-share',
+        value: 0.4,
+      },
+    ],
+  );
+  const valueModule = await import(pathToFileURL(
+    path.join(root, 'daily-file-diet', 'operational-value', 'daily-file-diet.mjs')
+  ));
+  const evidence = {
+    eligibleFileCount: 2,
+    totalLines: 2000,
+    largestFileLines: 1200,
+    compliantLines: 800,
+  };
+  assert.deepEqual(
+    result.values.map(({ valueId, value }) => ({ valueId, value })),
+    valueModule.definition.metrics.map(({ id }) => ({
+      valueId: id,
+      value: valueModule.scoreMetric(id, evidence),
+    })),
+  );
+  const envelopes = readFileSync(output, 'utf8').trim().split('\n').map(JSON.parse);
+  assert.deepEqual(envelopes.map(({ operational_value: value }) => ({
+    campaign: value.campaign,
+    repository: value.repository,
+    valueId: value.value_id,
+    value: value.value,
+  })), result.values.map(({ campaign, repository, valueId, value }) => ({
+    campaign, repository, valueId, value,
+  })));
+
+  const unrelated = JSON.parse(execFileSync(process.execPath, [
+    cao,
+    'operational-value',
+    '--database', path.join(temporary, 'dashboard.sqlite'),
+    '--root', temporary,
+    '--timestamp', '2026-09-24T19:30:24Z',
+    '--repository', 'githubnext/gh-aw-cao',
+  ], {
+    encoding: 'utf8',
+    env: { ...process.env, PATH: `${temporary}:${process.env.PATH}` },
+  }));
+  assert.deepEqual(unrelated.values, []);
 });
 
 test('cao operational-value rejects non-numeric metrics and bounds retained output', () => {

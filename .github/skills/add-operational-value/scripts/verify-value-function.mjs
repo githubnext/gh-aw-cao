@@ -2,30 +2,30 @@
 
 import { existsSync } from "node:fs";
 import {
-  fail, isExecutable, isIsoUtc, isRepository, isSlug, requireCommand,
-  runValueFunction, shiftDays,
+  fail, importValueModule, isIsoUtc, isRepository, isSlug, run, shiftDays,
 } from "./common.mjs";
 
 const args = process.argv.slice(2);
 const runCollector = args[0] === "--collector";
 if (runCollector) args.shift();
-if (args.length !== 1) fail("usage: verify-value-function.mjs [--collector] <value-function.mjs>");
+let caoAdapter;
+if (args[0] === "--cao-adapter") {
+  args.shift();
+  caoAdapter = args.shift();
+}
+if (args.length !== 1) {
+  fail("usage: verify-value-function.mjs [--collector] [--cao-adapter PATH] <value-module.mjs>");
+}
 const valueFunction = args[0];
 if (!existsSync(valueFunction)) fail(`value function not found: ${valueFunction}`);
-if (!isExecutable(valueFunction)) fail(`value function is not executable: ${valueFunction}`);
-requireCommand("node");
-try {
-  new Function(`return import(${JSON.stringify(new URL(`file://${process.cwd()}/${valueFunction}`).href)})`);
-} catch {
-  fail("value function is not valid JavaScript");
-}
 
-let definition;
+let valueModule;
 try {
-  definition = JSON.parse(runValueFunction(valueFunction, ["--definition"]));
+  valueModule = await importValueModule(valueFunction);
 } catch (error) {
-  fail(`value-function definition is invalid: ${error.message}`);
+  fail(`value module could not be imported: ${error.message}`);
 }
+const { collectBatch, definition, scoreMetric } = valueModule;
 const isString = (value) => typeof value === "string" && value.length > 0;
 const isInteger = (value, minimum) => Number.isInteger(value) && value >= minimum;
 const isSha = (value) => typeof value === "string" && /^[0-9a-f]{40}$/.test(value);
@@ -43,6 +43,8 @@ const valid = definition.schemaVersion === 3
   && isIsoUtc(adoption.adoptedAt)
   && baselineValid
   && !Object.hasOwn(definition, "collector")
+  && typeof collectBatch === "function"
+  && typeof scoreMetric === "function"
   && isString(definition.evidence?.key)
   && Array.isArray(definition.evidence?.repositories)
   && definition.evidence.repositories.length > 0
@@ -79,8 +81,7 @@ const valid = definition.schemaVersion === 3
 if (!valid) fail("value-function definition is invalid");
 
 const score = (metricId, evidence) => {
-  const output = runValueFunction(valueFunction, ["--metric", metricId], `${JSON.stringify(evidence)}\n`).trim();
-  const result = JSON.parse(output);
+  const result = scoreMetric(metricId, evidence);
   if (result !== null && (typeof result !== "number" || result < 0 || result > 1)) {
     fail(`${metricId} returned an invalid score`);
   }
@@ -109,9 +110,9 @@ if (runCollector) {
   const windowStart = shiftDays(windowEnd, -definition.evidence.window.durationDays);
   let collections;
   try {
-    collections = JSON.parse(runValueFunction(valueFunction, ["--collect-batch"], `${JSON.stringify([
+    collections = await collectBatch([
       { windowStart, windowEnd, observedAt },
-    ])}\n`));
+    ]);
   } catch (error) {
     fail(`batch collector did not exit cleanly: ${error.message}`);
   }
@@ -128,6 +129,36 @@ if (runCollector) {
       fail(`${metric.id} has no valid score for collected baseline evidence`);
     }
   }
+}
+
+if (caoAdapter) {
+  if (!existsSync(caoAdapter)) fail(`CAO adapter not found: ${caoAdapter}`);
+  const timestamp = shiftDays(adoption.adoptedAt, definition.evidence.window.cadenceDays);
+  const request = {
+    schemaVersion: 1,
+    timestamp,
+    repositories: definition.evidence.repositories,
+    database: `${process.cwd()}/.cao/dashboard.sqlite`,
+  };
+  let records;
+  try {
+    const output = run(process.execPath, [caoAdapter], { input: `${JSON.stringify(request)}\n` });
+    records = output.split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line));
+  } catch (error) {
+    fail(`CAO adapter did not exit cleanly: ${error.message}`);
+  }
+  const expectedIds = new Set(metrics.map(({ id }) => id));
+  const validRecords = records.length === metrics.length
+    && records.every((record) => record.timestamp === timestamp
+      && definition.evidence.repositories.some(
+        (repository) => repository.toLowerCase() === String(record.repository).toLowerCase(),
+      )
+      && expectedIds.has(record.valueId)
+      && typeof record.value === "number"
+      && Number.isFinite(record.value)
+      && record.value >= 0
+      && record.value <= 1);
+  if (!validRecords) fail("CAO adapter returned invalid repository metric JSONL");
 }
 
 console.log(`verified ${valueFunction}`);

@@ -45,7 +45,13 @@ if (args[1]) {
 if (args[2]) {
   if (!existsSync(args[2])) fail(`definitions not found: ${args[2]}`);
   const definitions = readFileSync(args[2], "utf8");
-  if ((definitions.match(/^# /gm) ?? []).length !== 1) fail("definitions must contain exactly one H1");
+  const h1Count = (definitions.match(/^# /gm) ?? []).length;
+  const hasFrontmatterTitle = definitions.startsWith("---\n")
+    && /^title:\s*.+$/m.test(definitions)
+    && definitions.indexOf("\n---\n", 4) > 0;
+  if (!(h1Count === 1 || (h1Count === 0 && hasFrontmatterTitle))) {
+    fail("definitions must contain one H1 or one frontmatter title");
+  }
   for (const heading of ["How to read the chart", "What was measured", "Evidence rules", "Important limitation"]) {
     if (!definitions.includes(`## ${heading}`)) fail(`definitions are missing ${heading}`);
   }

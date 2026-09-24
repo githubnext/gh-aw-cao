@@ -41,7 +41,10 @@ const comparison = mode === "attainment-only"
 const limitation = mode === "attainment-only"
   ? "This report can show whether the intended outcome is attained after adoption. It cannot estimate change from pre-adoption conditions or attribute attainment to the workflow."
   : "A before/after pattern is an association, not proof of causation. Other repository changes may explain some or all of the movement.";
-writeFileSync(args[1], `# What ${artifact.workflowName} measures
+writeFileSync(args[1], `---
+title: What ${artifact.workflowName} measures
+description: Definitions, evidence rules, and interpretation for the ${artifact.workflowName} operational-value report.
+---
 
 This page explains the chart in plain language. It defines what was measured; it does not decide whether the workflow caused the observed changes.
 
@@ -65,7 +68,7 @@ ${metricSections}
 - **Maturation delay:** ${definition.evidence.window.maturationDays} days
 - **Filters:** ${definition.evidence.filters.map((item) => `\`${item}\``).join("; ")}
 
-${comparison} The structured evidence, exact snapshots, provenance, and normalized scores are in [${slug}-timeline.json](${slug}-timeline.json).
+${comparison} The structured evidence, exact snapshots, provenance, and normalized scores are recorded in the adjacent \`${slug}-timeline.json\` artifact.
 
 ## Important limitation
 

@@ -3,7 +3,7 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
-  fail, nowUtc, readJson, requireArgs, run, runValueFunction, scriptDir, sha256File, writeJson,
+  fail, importValueModule, nowUtc, readJson, requireArgs, run, scriptDir, sha256File, writeJson,
 } from "./common.mjs";
 
 const args = process.argv.slice(2);
@@ -12,7 +12,8 @@ const [valueFunction, observationsFile, output] = args;
 if (!existsSync(observationsFile)) fail(`observations not found: ${observationsFile}`);
 run(path.join(scriptDir, "verify-value-function.mjs"), [valueFunction]);
 const initialSha = sha256File(valueFunction);
-const definition = JSON.parse(runValueFunction(valueFunction, ["--definition"]));
+const valueModule = await importValueModule(valueFunction);
+const definition = valueModule.definition;
 const observations = readJson(observationsFile);
 const valid = typeof observations.repository === "string"
   && isFinite(Date.parse(observations.window?.startAt))
@@ -30,11 +31,7 @@ if (!valid) fail("observations do not satisfy the collection contract");
 const snapshots = observations.snapshots.map((snapshot, index) => {
   const metricValues = {};
   for (const metric of definition.metrics) {
-    const value = JSON.parse(runValueFunction(
-      valueFunction,
-      ["--metric", metric.id],
-      `${JSON.stringify(snapshot.evidence)}\n`,
-    ));
+    const value = valueModule.scoreMetric(metric.id, snapshot.evidence);
     if (value !== null && (typeof value !== "number" || value < 0 || value > 1)) {
       fail(`${metric.id} returned an invalid score for snapshot ${index}`);
     }

@@ -3,8 +3,6 @@ title: What Daily File Diet measures
 description: Definitions, evidence rules, and interpretation for the Daily File Diet operational-value report.
 ---
 
-# What Daily File Diet measures
-
 This page explains the chart in plain language. It defines what was measured; it does not decide whether the workflow caused the observed changes.
 
 ![Daily File Diet outcome measures before and after adoption](daily-file-diet-timeline.svg)
@@ -41,10 +39,10 @@ This page explains the chart in plain language. It defines what was measured; it
 - **Maturation delay:** 0 days
 - **Filters:** `Include pkg/**/*.go.`; `Exclude files whose names end in _test.go.`; `Use the last commit on main at or before windowEnd.`; `A file is compliant when its physical line count is at most 999.`
 
-The same definitions and formulas are applied before and after adoption. The structured evidence, exact snapshots, provenance, and normalized scores are available in the [timeline JSON](https://github.com/githubnext/gh-aw-cao/blob/main/docs/operational-value/reports/github-gh-aw/daily-file-diet-timeline.json).
+The same definitions and formulas are applied before and after adoption. The structured evidence, exact snapshots, provenance, and normalized scores are recorded in the adjacent `daily-file-diet-timeline.json` artifact.
 
 ## Important limitation
 
 A before/after pattern is an association, not proof of causation. Other repository changes may explain some or all of the movement.
 
-Value-function SHA-256: `211bc976ef53c94ce74bcf682a36566056b7f606414ba1aa96077a56f107ea10`
+Value-function SHA-256: `642d25d90ae1c223dcb6041ac404a387cef38cbd3eef9a88b80d021653189185`

@@ -7,6 +7,13 @@ Operational value is the degree to which a workflow's intended repository outcom
 
 It measures repository outcomes rather than workflow runs, generated output, or an agent's assessment. A person or another system achieving the same outcome must count as success under the same contract.
 
+CAO uses one shared campaign module for both collection paths:
+
+- Scheduled `cao operational-value` collection evaluates only the current repository observation and publishes compact numeric records to the canonical data model.
+- Explicit historical evaluation incrementally fills missing immutable observations and produces the evidence archive, timeline, chart, and definitions page.
+
+Both paths import the same frozen evidence contract, collector, and scoring functions. Routine collection does not rebuild repository history, and a metric cannot drift between the dashboard record and its historical report.
+
 ## Daily File Diet example
 
 The Daily File Diet workflow in `github/gh-aw` aims to keep non-test Go source files under `pkg/` within a 999-line threshold. Its frozen, baseline-comparable contract evaluates weekly immutable repository snapshots using:
