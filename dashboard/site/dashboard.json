@@ -10,7 +10,7 @@
         "id": "repository",
         "icon": "repo",
         "title": {
-          "field": "repository-coordinate",
+          "field": "repository",
           "title": "Repository"
         },
         "labels": [],
@@ -662,7 +662,7 @@
             "type": "query",
             "page": "repository-workflows",
             "query": "entity-workflows",
-            "title-field": "repository-coordinate",
+            "title-field": "repository",
             "arguments": [
               {
                 "name": "organization",
@@ -670,7 +670,7 @@
               },
               {
                 "name": "repository",
-                "field": "repository"
+                "field": "repository-name"
               }
             ]
           }
@@ -680,7 +680,7 @@
         "encoding": {
           "columns": [
             {
-              "field": "repository-coordinate",
+              "field": "repository",
               "type": "nominal",
               "title": "Repository"
             },
@@ -7704,6 +7704,13 @@
           }
         ],
         "select": [
+          {
+            "field": "organization"
+          },
+          {
+            "field": "repository",
+            "as": "repository-name"
+          },
           {
             "field": "repository-slug",
             "as": "repository"
