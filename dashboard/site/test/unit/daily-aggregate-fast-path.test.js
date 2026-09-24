@@ -119,7 +119,8 @@ describe('queryDailyOverviewAggregateSources', () => {
       generation: 'generation-a',
       dailyAggregates: [
         dailyAggregate('2026-09-10', { runsByConclusion: { success: 8, failure: 2 } }),
-        dailyAggregate('2026-09-11', { runsByConclusion: { success: 6, cancelled: 4 } })
+        dailyAggregate('2026-09-11', { runsByConclusion: { success: 6, cancelled: 4 } }),
+        dailyAggregate('2026-09-12', { runsByConclusion: { failure: 1 } })
       ]
     });
     const query = {
@@ -128,7 +129,7 @@ describe('queryDailyOverviewAggregateSources', () => {
       filter: {
         predicates: [
           { field: '@time', gte: '2026-09-10T12:00:00Z' },
-          { field: '@time', lt: '2026-09-11T12:00:00Z' }
+          { field: '@time', lt: '2026-09-12T00:00:00Z' }
         ]
       },
       compute: [{

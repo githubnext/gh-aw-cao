@@ -139,18 +139,19 @@ function isRunsDailyConclusionsShape(definition) {
   return {
     countAs: String(count.as),
     startDay: String(predicates.find((predicate) => typeof predicate.gte === 'string')?.gte ?? '').slice(0, 10) || null,
-    endDay: String(predicates.find((predicate) => typeof predicate.lt === 'string')?.lt ?? '').slice(0, 10) || null
+    endDay: String(predicates.find((predicate) => typeof predicate.lt === 'string')?.lt ?? '').slice(0, 10) || null,
+    endExclusive: /T00:00(?::00(?:\.000)?)?Z$/.test(String(predicates.find((predicate) => typeof predicate.lt === 'string')?.lt ?? ''))
   };
 }
 
 /**
  * @param {import('../analytics/daily-overview-aggregates.js').DailyOverviewAggregateRecord[]} records
- * @param {{ countAs: string, startDay: string | null, endDay: string | null }} shape
+ * @param {{ countAs: string, startDay: string | null, endDay: string | null, endExclusive: boolean }} shape
  */
 function summarizeDailyConclusions(records, shape) {
   const filtered = records.filter((record) => (
     (!shape.startDay || record.day >= shape.startDay)
-    && (!shape.endDay || record.day <= shape.endDay)
+    && (!shape.endDay || (shape.endExclusive ? record.day < shape.endDay : record.day <= shape.endDay))
   ));
   const conclusions = [...new Set(filtered.flatMap((record) => Object.entries(record.runsByConclusion ?? {})
     .filter(([, count]) => Number.isFinite(count) && count > 0)
@@ -163,7 +164,12 @@ function summarizeDailyConclusions(records, shape) {
   const firstDay = shape.startDay ?? firstRecord.day;
   const lastDay = shape.endDay ?? lastRecord.day;
   const rows = [];
-  for (let timestamp = Date.parse(`${firstDay}T00:00:00Z`); timestamp <= Date.parse(`${lastDay}T00:00:00Z`); timestamp += 86_400_000) {
+  const lastTimestamp = Date.parse(`${lastDay}T00:00:00Z`);
+  for (
+    let timestamp = Date.parse(`${firstDay}T00:00:00Z`);
+    shape.endExclusive ? timestamp < lastTimestamp : timestamp <= lastTimestamp;
+    timestamp += 86_400_000
+  ) {
     const day = new Date(timestamp).toISOString().slice(0, 10);
     const counts = byDay.get(day) ?? {};
     for (const conclusion of conclusions) {
@@ -201,7 +207,7 @@ const ELIGIBLE_QUERIES = /** @type {const} */ ({
     matchShape: isRunsDailyConclusionsShape,
     /**
      * @param {import('../analytics/daily-overview-aggregates.js').DailyOverviewAggregateRecord[]} records
-     * @param {{ countAs: string, startDay: string | null, endDay: string | null }} shape
+     * @param {{ countAs: string, startDay: string | null, endDay: string | null, endExclusive: boolean }} shape
      */
     summarize: summarizeDailyConclusions
   }
