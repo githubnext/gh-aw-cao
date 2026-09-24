@@ -264,6 +264,11 @@ func fakeGitHub(t *testing.T, options fakeGitHubOptions) *fakeGitHubServer {
 		_ = json.NewEncoder(response).Encode(map[string]string{"state": options.membershipState})
 	})
 	mux.HandleFunc("/applications/client/token", func(response http.ResponseWriter, request *http.Request) {
+		clientID, clientSecret, ok := request.BasicAuth()
+		if !ok || clientID != "client" || clientSecret != "secret" {
+			response.WriteHeader(http.StatusUnauthorized)
+			return
+		}
 		var payload map[string]string
 		_ = json.NewDecoder(request.Body).Decode(&payload)
 		server.revoked = append(server.revoked, payload["access_token"])

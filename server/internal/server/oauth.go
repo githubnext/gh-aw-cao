@@ -382,10 +382,12 @@ func (oauth *githubOAuth) revoke(ctx context.Context, token string) error {
 	}
 	body, _ := json.Marshal(map[string]string{"access_token": token})
 	endpoint := strings.ReplaceAll(oauth.config.RevokeURL, "{client_id}", url.PathEscape(oauth.config.ClientID))
-	return oauth.githubJSON(ctx, http.MethodDelete, endpoint, "", bytes.NewReader(body), nil)
+	return oauth.githubJSON(ctx, http.MethodDelete, endpoint, "", bytes.NewReader(body), nil, func(request *http.Request) {
+		request.SetBasicAuth(oauth.config.ClientID, oauth.config.ClientSecret)
+	})
 }
 
-func (oauth *githubOAuth) githubJSON(ctx context.Context, method, endpoint, token string, body io.Reader, output any) error {
+func (oauth *githubOAuth) githubJSON(ctx context.Context, method, endpoint, token string, body io.Reader, output any, configure ...func(*http.Request)) error {
 	request, err := http.NewRequestWithContext(ctx, method, endpoint, body)
 	if err != nil {
 		return err
@@ -396,6 +398,9 @@ func (oauth *githubOAuth) githubJSON(ctx context.Context, method, endpoint, toke
 	}
 	if body != nil {
 		request.Header.Set("Content-Type", "application/json")
+	}
+	for _, apply := range configure {
+		apply(request)
 	}
 	response, err := oauth.client.Do(request)
 	if err != nil {
