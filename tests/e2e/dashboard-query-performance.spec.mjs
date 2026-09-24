@@ -11,10 +11,13 @@ import {
 import {
   QUERY_CHUNK_SIZE,
   deployedProxyTarget,
+  parseQueryPerformanceShard,
+  partitionQueryDefinitions,
   queryPerformanceMarkdown,
 } from "./dashboard-query-performance-helpers.mjs";
 import { dashboardPageSourceNames } from "../../dashboard/site/src/dashboard-chunks.js";
 
+const shard = parseQueryPerformanceShard(process.env.DASHBOARD_QUERY_PERFORMANCE_SHARD);
 const outputDirectory = resolve("test-results/dashboard-query-performance");
 const siteRoot = resolve("dashboard/site");
 const contentTypes = new Map([
@@ -111,7 +114,7 @@ async function startDashboardServer() {
   };
 }
 
-test("benchmarks every dashboard query against settled deployed data", async ({ page }, testInfo) => {
+test(`benchmarks every dashboard query against settled deployed data (shard ${shard.index}/${shard.total})`, async ({ page }, testInfo) => {
   await mkdir(outputDirectory, { recursive: true });
   const proxy = await startDashboardServer();
   const dashboardUrl = process.env.DASHBOARD_QUERY_PERFORMANCE_URL || proxy.url;
@@ -212,11 +215,12 @@ test("benchmarks every dashboard query against settled deployed data", async ({ 
       };
     });
 
-    const results = await page.evaluate(async ({ context, chunkSize }) => {
+    const shardQueries = partitionQueryDefinitions(dashboardContext.queries, shard.index, shard.total);
+    const results = await page.evaluate(async ({ context, chunkSize, queries }) => {
       const { loadCanonicalDashboardPage } = await import("./src/data-processor.js");
       const rounded = (value) => Math.round(value * 100) / 100;
       const timings = [];
-      for (const definition of context.queries) {
+      for (const definition of queries) {
         const name = definition?.name;
         if (typeof name !== "string" || !name) continue;
         let chunkStartedAt = performance.now();
@@ -254,7 +258,7 @@ test("benchmarks every dashboard query against settled deployed data", async ({ 
         });
       }
       return timings;
-    }, { context: dashboardContext, chunkSize: QUERY_CHUNK_SIZE });
+    }, { context: dashboardContext, chunkSize: QUERY_CHUNK_SIZE, queries: shardQueries });
     const overviewRequest = await page.evaluate(async ({ context, sourceNames }) => {
       const { loadCanonicalDashboardPage } = await import("./src/data-processor.js");
       const startedAt = performance.now();
@@ -287,6 +291,7 @@ test("benchmarks every dashboard query against settled deployed data", async ({ 
       dashboardUrl: deployedDashboardUrl,
       methodology: "Fresh Chromium profile running the checkout's dashboard and query worker; proxy current deployed data; measure native IndexedDB count() across all canonical entity stores, initial Overview readiness, and the settled Overview request by worker phase; then measure a 25-row first chunk, one continuation chunk when present, and one unpaginated fill iteration.",
       chunkSize: QUERY_CHUNK_SIZE,
+      shard: { index: shard.index, total: shard.total },
       populateMs: Math.round(populateMs * 100) / 100,
       indexedDbCount,
       overview: {
@@ -314,7 +319,7 @@ test("benchmarks every dashboard query against settled deployed data", async ({ 
     });
 
     expect(results.map(({ query }) => query)).toEqual(
-      dashboardContext.queries.map(({ name }) => name),
+      shardQueries.map(({ name }) => name),
     );
     expect(browserErrors).toEqual([]);
     expect(failedRequests).toEqual([]);

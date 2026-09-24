@@ -5,7 +5,10 @@ import config from "../playwright/configs/dashboard-query-performance.config.mjs
 import {
   QUERY_CHUNK_SIZE,
   deployedProxyTarget,
+  mergeQueryPerformanceReports,
   overviewPhaseBreakdown,
+  parseQueryPerformanceShard,
+  partitionQueryDefinitions,
   queryPerformanceMarkdown,
   summarizeQueryTiming,
 } from "../e2e/dashboard-query-performance-helpers.mjs";
@@ -30,7 +33,11 @@ test("deployed integration isolates query benchmark reporting from test permissi
     workflow,
     /query-performance-comment:[\s\S]*pull-requests: write/,
   );
-  assert.match(workflow, /name: dashboard-query-performance/);
+  assert.match(workflow, /shard: \[1, 2, 3\]/);
+  assert.match(workflow, /DASHBOARD_QUERY_PERFORMANCE_SHARD: \$\{\{ matrix\.shard \}\}\/3/);
+  assert.match(workflow, /name: dashboard-query-performance-\$\{\{ matrix\.shard \}\}/);
+  assert.match(workflow, /pattern: dashboard-query-performance-\*/);
+  assert.match(workflow, /scripts\/merge-dashboard-query-performance\.mjs/);
   assert.match(workflow, /dashboard-query-performance-results/);
 });
 
@@ -128,5 +135,60 @@ test("overview phase breakdown attributes worker and messaging time", () => {
     { phase: "Canonical projection", durationMs: 30, percent: 30 },
     { phase: "IndexedDB reads", durationMs: 20, percent: 20 },
     { phase: "Worker messaging", durationMs: 10, percent: 10 },
+  ]);
+});
+
+test("query performance shard descriptor parses valid N/M pairs and falls back otherwise", () => {
+  assert.deepEqual(parseQueryPerformanceShard("2/3"), { index: 2, total: 3 });
+  assert.deepEqual(parseQueryPerformanceShard(undefined), { index: 1, total: 1 });
+  assert.deepEqual(parseQueryPerformanceShard("bogus"), { index: 1, total: 1 });
+  assert.deepEqual(parseQueryPerformanceShard("0/3"), { index: 1, total: 1 });
+  assert.deepEqual(parseQueryPerformanceShard("4/3"), { index: 1, total: 1 });
+});
+
+test("query definitions partition into near-even, deterministic, gapless shards", () => {
+  const queries = Array.from({ length: 8 }, (_, index) => ({ name: `q${index}` }));
+  const shards = [1, 2, 3].map((index) => partitionQueryDefinitions(queries, index, 3));
+  assert.deepEqual(shards.map((shard) => shard.length), [3, 3, 2]);
+  assert.deepEqual(shards.flat(), queries);
+  assert.deepEqual(partitionQueryDefinitions(queries, 1, 1), queries);
+});
+
+test("merging a single shard report returns it unchanged", () => {
+  const report = { queries: [{ query: "a" }] };
+  assert.equal(mergeQueryPerformanceReports([report]), report);
+});
+
+test("merging shard reports concatenates queries in shard order and recomputes the slowest overview sources", () => {
+  const merged = mergeQueryPerformanceReports([
+    {
+      shard: { index: 1, total: 2 },
+      overview: {
+        returnedRows: { "overview-a": 1, "overview-b": 2 },
+        slowestSources: [],
+      },
+      queries: [
+        { query: "overview-a", firstChunkMs: 5 },
+        { query: "other-1", firstChunkMs: 50 },
+      ],
+    },
+    {
+      shard: { index: 2, total: 2 },
+      overview: null,
+      queries: [
+        { query: "overview-b", firstChunkMs: 40 },
+        { query: "other-2", firstChunkMs: 1 },
+      ],
+    },
+  ]);
+  assert.deepEqual(merged.queries.map(({ query }) => query), [
+    "overview-a",
+    "other-1",
+    "overview-b",
+    "other-2",
+  ]);
+  assert.deepEqual(merged.overview.slowestSources.map(({ query }) => query), [
+    "overview-b",
+    "overview-a",
   ]);
 });
