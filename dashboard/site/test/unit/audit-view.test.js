@@ -24,8 +24,7 @@ describe('Audit dashboard view', () => {
     expect(insights.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual([
       'campaign-insights-navigation',
       'campaign-operational-grader-history',
-      'campaign-audit-event-summary-buckets',
-      'campaign-audit-events-table'
+      'campaign-audit-event-summary-buckets'
     ]);
     expect(insights.views[0].data).toMatchObject({
       sources: [
@@ -45,9 +44,10 @@ describe('Audit dashboard view', () => {
       element: 'measure-history'
     });
     expect(insights.views.slice(2).map((/** @type {{ data: Record<string, string> }} */ view) => view.data)).toEqual([
-      expect.objectContaining({ source: 'audit-event-summary-buckets', 'route-field': 'campaign' }),
-      expect.objectContaining({ source: 'audit-events', 'route-field': 'campaign' })
+      expect.objectContaining({ source: 'audit-event-summary-buckets', 'route-field': 'campaign' })
     ]);
+    expect(insights.views.filter((/** @type {{ mark: string }} */ view) => view.mark !== 'element')
+      .map((/** @type {{ mark: string }} */ view) => view.mark)).toEqual(['chart']);
     expect(insights.views[2]).toMatchObject({
       chart: 'horizontal-bar',
       data: { limit: 20 },
@@ -93,32 +93,6 @@ describe('Audit dashboard view', () => {
 
     expect(result['campaign-worker-issues'].rows).toEqual([
       expect.objectContaining({ campaign: 'ambient-context', 'safe-output': 'worker-issue' })
-    ]);
-  });
-
-  it('uses audit codes as event kinds with a legacy event-type fallback', () => {
-    const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
-      operation: 'execute-dashboard-queries',
-      queries: dashboard.queries,
-      sourceNames: ['audit-events'],
-      sources: {
-        audits: {
-          source: 'audits',
-          rows: [
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', run: '1', event: '1', code: 'high_token_usage', 'event-type': 'audit.finding', 'event-summary': 'High token usage' },
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', run: '1', event: '2', 'event-type': 'audit.recommendation', 'event-summary': 'Legacy recommendation' }
-          ],
-          metadata
-        },
-        tools: { source: 'tools', rows: [], metadata },
-        workflows: { source: 'workflows', rows: [], metadata },
-        runs: { source: 'runs', rows: [], metadata }
-      }
-    }));
-
-    expect(result['audit-events'].rows).toEqual([
-      expect.objectContaining({ 'audit-kind': 'high_token_usage' }),
-      expect.objectContaining({ 'audit-kind': 'audit.recommendation' })
     ]);
   });
 

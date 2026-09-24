@@ -19,6 +19,10 @@ const NON_SCALING_POINT_LENGTH = 0.001;
 const MAX_INTERACTIVE_LINE_POINTS = 500;
 const MAX_RENDERED_LINE_POINTS = 2_000;
 const MAX_TIMELINE_TICKS = 5;
+const LINE_CHART_LEFT = 16;
+const LINE_CHART_RIGHT = 100;
+const LINE_CHART_BOTTOM = 38;
+const LINE_CHART_HEIGHT = 34;
 const MAX_BAR_AXIS_TICKS = 5;
 const MAX_HORIZONTAL_BARS = 100;
 const BAR_CHART_LEFT = 12;
@@ -652,6 +656,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
     const timelineTicks = isScatterChart
       ? scatterChartTimeAxisTicks(parsedTimes, minimumTime, maximumTime)
       : lineChartTimelineTicks(xValues);
+    const plotWidth = LINE_CHART_RIGHT - LINE_CHART_LEFT;
     /** @type {Map<string, Array<{ x: number, lower: number, upper: number }>>} */
     const areaCoordinates = new Map();
     let maximum = 1;
@@ -669,7 +674,9 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
           cumulativeByX.set(xValue, upper);
           maximum = Math.max(maximum, upper);
           return {
-            x: xValues.length < 2 ? 50 : (xIndex / (xValues.length - 1)) * 100,
+            x: xValues.length < 2
+              ? LINE_CHART_LEFT + (plotWidth / 2)
+              : LINE_CHART_LEFT + ((xIndex / (xValues.length - 1)) * plotWidth),
             lower,
             upper
           };
@@ -691,20 +698,31 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
     for (const { value } of referenceLines) maximum = Math.max(maximum, value);
     const pointSize = lineChartPointSize(points.length);
     const dotPointRadius = dotChartPointRadius(points.length);
-    const gridLines = [4, 21, 38].map((y) => h('line', { className: 'line-chart-grid', x1: 0, y1: y, x2: 100, y2: y }));
+    const yTicks = [maximum, maximum / 2, 0];
+    const yTickLabels = yTicks.map((value) => formatChartAxisTick(value, unit));
+    const gridLines = yTicks.map((value) => {
+      const y = LINE_CHART_BOTTOM - ((value / maximum) * LINE_CHART_HEIGHT);
+      return h('line', {
+        className: 'line-chart-grid',
+        x1: LINE_CHART_LEFT,
+        y1: y,
+        x2: LINE_CHART_RIGHT,
+        y2: y
+      });
+    });
     const highlightedIndexes = [...new Set(points.flatMap((point) => {
       const index = point.highlighted ? xIndexes.get(point.x) : undefined;
       return index === undefined ? [] : [index];
     }))];
-    const xStep = xValues.length > 1 ? 100 / (xValues.length - 1) : 100;
+    const xStep = xValues.length > 1 ? plotWidth / (xValues.length - 1) : plotWidth;
     const windowBand = highlightedIndexes.length > 0
       ? {
-        start: Math.max(0, (Math.min(...highlightedIndexes) - 0.5) * xStep),
-        end: Math.min(100, (Math.max(...highlightedIndexes) + 0.5) * xStep)
+        start: Math.max(LINE_CHART_LEFT, LINE_CHART_LEFT + ((Math.min(...highlightedIndexes) - 0.5) * xStep)),
+        end: Math.min(LINE_CHART_RIGHT, LINE_CHART_LEFT + ((Math.max(...highlightedIndexes) + 0.5) * xStep))
       }
       : null;
     /** @param {number} value */
-    const scaledAreaY = (value) => Number((38 - (value / maximum) * 34).toFixed(4));
+    const scaledAreaY = (value) => Number((LINE_CHART_BOTTOM - (value / maximum) * LINE_CHART_HEIGHT).toFixed(4));
     return renderChartWidgetShell(
       chartType,
       { 'data-line-rendering': showInteractivePoints ? 'rich' : 'compact' },
@@ -724,17 +742,40 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
           x: windowBand.start,
           y: 0,
           width: Math.max(windowBand.end - windowBand.start, 1),
-          height: 38,
+          height: LINE_CHART_BOTTOM,
           'aria-hidden': 'true'
         }) : null,
-        ...gridLines,
-        h('line', { className: 'line-chart-axis', x1: 0, y1: 38, x2: 100, y2: 38 }),
+        h(
+          'g',
+          { className: 'line-chart-y-axis', 'data-chart-axis': 'y', 'aria-hidden': 'true' },
+          ...yTicks.flatMap((value, index) => {
+            const y = LINE_CHART_BOTTOM - ((value / maximum) * LINE_CHART_HEIGHT);
+            return [
+              gridLines[index],
+              h('text', { x: LINE_CHART_LEFT - 1.5, y: y + 1, 'text-anchor': 'end' }, yTickLabels[index])
+            ];
+          }),
+          h('line', {
+            className: 'line-chart-axis',
+            x1: LINE_CHART_LEFT,
+            y1: LINE_CHART_BOTTOM - LINE_CHART_HEIGHT,
+            x2: LINE_CHART_LEFT,
+            y2: LINE_CHART_BOTTOM
+          })
+        ),
+        h('line', {
+          className: 'line-chart-axis',
+          x1: LINE_CHART_LEFT,
+          y1: LINE_CHART_BOTTOM,
+          x2: LINE_CHART_RIGHT,
+          y2: LINE_CHART_BOTTOM
+        }),
         ...referenceLines.map(({ seriesName, value }) => h('line', {
           className: `dot-chart-reference ${seriesClassNames.get(seriesName) ?? 'chart-series-1'}`,
-          x1: 0,
-          y1: 38 - (Math.max(0, value) / maximum) * 34,
-          x2: 100,
-          y2: 38 - (Math.max(0, value) / maximum) * 34,
+          x1: LINE_CHART_LEFT,
+          y1: LINE_CHART_BOTTOM - (Math.max(0, value) / maximum) * LINE_CHART_HEIGHT,
+          x2: LINE_CHART_RIGHT,
+          y2: LINE_CHART_BOTTOM - (Math.max(0, value) / maximum) * LINE_CHART_HEIGHT,
           'data-chart-reference': seriesName,
           'data-chart-reference-value': String(value),
           'aria-hidden': 'true'
@@ -746,9 +787,11 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
             const xIndex = xIndexes.get(point.x) ?? 0;
             const pointTime = Date.parse(point.x);
             const x = isScatterChart && maximumTime > minimumTime && Number.isFinite(pointTime)
-              ? ((pointTime - minimumTime) / (maximumTime - minimumTime)) * 100
-              : xValues.length < 2 ? 50 : (xIndex / (xValues.length - 1)) * 100;
-            const y = 38 - (Math.max(0, toNumber(point.y)) / maximum) * 34;
+              ? LINE_CHART_LEFT + (((pointTime - minimumTime) / (maximumTime - minimumTime)) * plotWidth)
+              : xValues.length < 2
+                ? LINE_CHART_LEFT + (plotWidth / 2)
+                : LINE_CHART_LEFT + ((xIndex / (xValues.length - 1)) * plotWidth);
+            const y = LINE_CHART_BOTTOM - (Math.max(0, toNumber(point.y)) / maximum) * LINE_CHART_HEIGHT;
             return { point, x, y };
           });
           const renderedCoordinates = sampleLineCoordinates(coordinates, renderedPointLimit);
@@ -1438,6 +1481,20 @@ function sampledIndexes(valueCount, maximumCount) {
 function compactAxisLabel(value) {
   const formatted = formatTimelineTick(value);
   return formatted.length > 12 ? `${formatted.slice(0, 11)}…` : formatted;
+}
+
+/**
+ * @param {number} value
+ * @param {{ name: string, symbol: string, significant: number, format?: string } | null} unit
+ */
+function formatChartAxisTick(value, unit) {
+  if (Math.abs(value) < 10_000) return formatNumber(value, unit);
+  const compact = new Intl.NumberFormat('en', {
+    notation: 'compact',
+    maximumFractionDigits: 1
+  }).format(value);
+  if (unit?.format === 'usd') return compact.startsWith('-') ? `-$${compact.slice(1)}` : `$${compact}`;
+  return unit && unit.format !== 'number' ? `${compact} ${unit.symbol}` : compact;
 }
 
 /**

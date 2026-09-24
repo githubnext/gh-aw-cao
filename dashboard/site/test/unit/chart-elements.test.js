@@ -533,6 +533,8 @@ describe('chart element helpers', () => {
     expect(line.querySelector('.line-chart-series')?.getAttribute('style')).toContain('--chart-entry-index: 0');
     expect(line.querySelector('.line-chart-point')?.getAttribute('style')).toContain('--chart-point-size: 6px');
     expect(line.querySelector('.chart-point')?.getAttribute('style')).toContain('--chart-entry-index: 0');
+    expect([...line.querySelectorAll('.line-chart-y-axis text')].map((tick) => tick.textContent)).toEqual(['3', '1.50', '0']);
+    expect(line.querySelector('[data-chart-axis="y"]')).not.toBeNull();
     expect([...line.querySelectorAll('.timeline-chart-axis span')].map((tick) => tick.textContent)).toEqual([
       'Aug 29',
       'Aug 30'
@@ -586,6 +588,16 @@ describe('chart element helpers', () => {
     expect(fullPieSegments[1]?.getAttribute('d')).toBe('M 21 5.0845');
   });
 
+  it('compacts large temporal chart y-axis labels within the reserved gutter', () => {
+    const chart = renderChartWidget('line', [
+      { x: '2026-08-29', y: 1_000_000, color: null },
+      { x: '2026-08-30', y: 500_000, color: null }
+    ], [{ name: 'value', className: 'chart-series-1' }]);
+
+    expect([...chart.querySelectorAll('.line-chart-y-axis text')].map((tick) => tick.textContent))
+      .toEqual(['1M', '500K', '0']);
+  });
+
   it('renders area marks and stacks color series over the shared ordered axis', () => {
     const points = [
       { x: '2026-09-01', y: 2, color: 'review' },
@@ -604,9 +616,9 @@ describe('chart element helpers', () => {
     expect(chart.querySelectorAll('path.area-chart-area')).toHaveLength(2);
     expect(chart.querySelectorAll('.area-chart-point')).toHaveLength(4);
     expect(chart.querySelector('[data-chart-series="review"]')?.getAttribute('d'))
-      .toBe('M 0 24.4 L 100 10.8 L 100 38 L 0 38 Z');
+      .toBe('M 16 24.4 L 100 10.8 L 100 38 L 16 38 Z');
     expect(chart.querySelector('[data-chart-series="triage"]')?.getAttribute('d'))
-      .toBe('M 0 4 L 100 4 L 100 10.8 L 0 24.4 Z');
+      .toBe('M 16 4 L 100 4 L 100 10.8 L 16 24.4 Z');
     expect(chart.querySelector('.chart-point')?.getAttribute('aria-label')).toContain('2 AIC');
   });
 
@@ -642,7 +654,7 @@ describe('chart element helpers', () => {
       .sort((left, right) => left - right);
 
     expect(scatter.getAttribute('data-chart-widget')).toBe('scatter');
-    expect(xCoordinates).toEqual([0, 25, 100]);
+    expect(xCoordinates).toEqual([16, 37, 100]);
     expect([...scatter.querySelectorAll('.timeline-chart-axis span')].map((tick) => tick.getAttribute('title'))).toEqual([
       '2026-09-04T10:00:00.000Z',
       '2026-09-04T12:00:00.000Z',

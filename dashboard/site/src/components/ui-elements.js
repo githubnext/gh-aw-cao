@@ -11,6 +11,7 @@ import { renderLinkButtonList } from './link-button-list.js';
 import { renderMeasureHistory } from './measure-history.js';
 import { renderOutcomeDetail } from './outcome-detail.js';
 import { isOutcomeDetailSectionConfig, renderOutcomeDetailSection } from './outcome-detail-sections.js';
+import { renderProblemDetail } from './problem-detail.js';
 import { rowsFor as rowsForSource } from './source-rows.js';
 import { renderWorkflowRoutePage } from './workflow-route-page.js';
 
@@ -42,6 +43,7 @@ const ELEMENT_RENDERERS = new Map([
   ['workflow-route-page', renderWorkflowRoutePage],
   ['outcome-detail', renderOutcomeDetail],
   ['outcome-detail-section', renderOutcomeDetailSectionElement],
+  ['problem-detail', renderProblemDetail],
   ['configuration-policy', renderConfigurationView],
   ['measure-history', renderMeasureHistory],
   ['factory-header', renderFactoryHeaderElement],
@@ -66,6 +68,7 @@ const EMPTY_AWARE_ELEMENTS = new Set([
   'workflow-route-page',
   'outcome-detail',
   'outcome-detail-section',
+  'problem-detail',
   'configuration-policy',
   'measure-history',
   'factory-header',

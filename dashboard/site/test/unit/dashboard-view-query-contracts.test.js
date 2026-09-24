@@ -209,6 +209,7 @@ describe('dashboard view query contracts', () => {
       mark: 'element',
       element: 'measure-history'
     });
+
     expect(viewsOf(problems).find((view) => view.id === 'campaign-current-runtime-problems')).toMatchObject({
       data: { source: 'campaign-problem-items' },
       mark: 'list',
@@ -217,6 +218,26 @@ describe('dashboard view query contracts', () => {
     expect(viewsOf(runs).find((view) => view.id === 'campaign-run-status')).toMatchObject({
       data: { source: 'campaign-runs', 'route-field': 'campaign' },
       mark: 'chart'
+    });
+  });
+
+  it('renders one campaign problem as a dedicated full detail view', () => {
+    const detailPage = dashboard.pages.find(
+      (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-problem-detail'
+    );
+    const detailView = dashboard.views.find(
+      (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-problem-detail-view'
+    );
+
+    expect(detailPage).toMatchObject({
+      route: { 'hash-query-parameter': 'target-repository' },
+      views: ['campaign-problem-detail-view']
+    });
+    expect(detailView).toMatchObject({
+      data: { sources: ['campaign-problem-items'] },
+      mark: 'element',
+      element: 'problem-detail',
+      layout: 'full'
     });
   });
 

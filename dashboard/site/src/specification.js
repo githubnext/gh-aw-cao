@@ -87,6 +87,7 @@ export const VIEW_ELEMENT_VALUES = [
   'workflow-route-page',
   'outcome-detail',
   'outcome-detail-section',
+  'problem-detail',
   'configuration-policy',
   'measure-history',
   'factory-header',

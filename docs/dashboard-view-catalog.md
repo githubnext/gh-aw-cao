@@ -81,6 +81,7 @@ Named elements own specialized DOM, accessibility, interaction, local state, and
 | `workflow-route-page` | Composes a complete routed workflow page. |
 | `outcome-detail` | Presents one outcome and its linked evidence. |
 | `outcome-detail-section` | Presents a declared section within an outcome detail. |
+| `problem-detail` | Presents one campaign runtime problem with its failure evidence, scope, environment, and repair action. |
 | `configuration-policy` | Presents and edits checked-in CAO policy. |
 | `measure-history` | Presents reusable grouped temporal-measure history from declarative query results. |
 | `factory-header` | Presents factory status, retained-output context, work in motion, and weekly rhythm. |
