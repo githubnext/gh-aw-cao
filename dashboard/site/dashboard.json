@@ -1672,52 +1672,6 @@
     },
     "queries": [
       {
-        "name": "indexing-transactions",
-        "intent": "Show retained indexing transactions with explicit success or failure status.",
-        "from": "transactions",
-        "compute": [
-          {
-            "as": "error-text",
-            "function": "coalesce",
-            "args": [
-              {
-                "field": "error"
-              },
-              {
-                "value": "no-error"
-              }
-            ]
-          },
-          {
-            "as": "ingestion-succeeded",
-            "function": "equals-any",
-            "args": [
-              {
-                "field": "error-text"
-              },
-              {
-                "value": "no-error"
-              }
-            ]
-          },
-          {
-            "as": "activity-status",
-            "function": "if",
-            "args": [
-              {
-                "field": "ingestion-succeeded"
-              },
-              {
-                "value": "success"
-              },
-              {
-                "value": "failure"
-              }
-            ]
-          }
-        ]
-      },
-      {
         "name": "indexing-daily-ingestion",
         "intent": "Aggregate new workflow runs and records ingested from CAO Activity by UTC day.",
         "from": "transactions",
@@ -12718,7 +12672,7 @@
             "title": "Ingestion rate",
             "description": "Retained transactions show the workflow-run and record volume processed by each ingestion operation.",
             "data": {
-              "source": "indexing-transactions",
+              "source": "transactions",
               "order-by": [
                 {
                   "field": "createdAt",

@@ -450,6 +450,7 @@ test('Indexing shows CAO Activity status, size trend, and retained transactions'
         duplicateRawRunObservations: index,
         duplicateAgenticRunObservations: index,
         unenrichedRuns: index,
+        'activity-status': 'success',
         error: ''
       }));
       const metadata = {
@@ -463,11 +464,6 @@ test('Indexing shows CAO Activity status, size trend, and retained transactions'
       };
       const sources = {
         transactions: { source: 'transactions', rows, metadata },
-        'indexing-transactions': {
-          source: 'indexing-transactions',
-          rows: rows.map((row) => ({ ...row, 'activity-status': row.error ? 'failure' : 'success' })),
-          metadata
-        },
         'indexing-daily-ingestion': {
           source: 'indexing-daily-ingestion',
           rows: [{ day: '2026-09-12', records: 7950, 'workflow-runs': 6950 }],

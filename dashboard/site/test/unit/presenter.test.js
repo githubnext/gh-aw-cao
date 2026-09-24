@@ -816,6 +816,7 @@ describe('presenter built-in and custom pages', () => {
             duplicateRawRunObservations: 1,
             duplicateAgenticRunObservations: 2,
             unenrichedRuns: 3,
+            'activity-status': 'success',
             error: ''
           }],
           metadata
