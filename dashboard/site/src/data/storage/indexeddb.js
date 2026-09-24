@@ -300,9 +300,10 @@ export function openCanonicalDatabase(indexedDB) {
  *
  * @param {IDBFactory} indexedDB
  * @param {import('../model/schema.js').CanonicalBatch} batch
- * @param {{ batchSize?: number, validateRelationships?: boolean, onBatchCommitted?: (progress: { committedBatches: number, committedRecords: number }) => void | Promise<void> }} [options]
+ * @param {{ batchSize?: number, validateRelationships?: boolean, signal?: AbortSignal, onBatchCommitted?: (progress: { committedBatches: number, committedRecords: number }) => void | Promise<void> }} [options]
  */
 export async function upsertCanonicalBatch(indexedDB, batch, options = {}) {
+  options.signal?.throwIfAborted();
   if (options.validateRelationships !== false) {
     const errors = relationshipErrors(batch);
     if (errors.length > 0) {
@@ -321,8 +322,10 @@ export async function upsertCanonicalBatch(indexedDB, batch, options = {}) {
     let committedRecords = 0;
     let committedBatches = 0;
     for (const storeName of ENTITY_STORES) {
+      options.signal?.throwIfAborted();
       const records = batch[storeName];
       for (let offset = 0; offset < records.length; offset += batchSize) {
+        options.signal?.throwIfAborted();
         const boundedRecords = records.slice(offset, offset + batchSize);
         const transaction = readwriteTransaction(database, storeName);
         const done = transactionDone(transaction);

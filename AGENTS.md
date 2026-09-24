@@ -94,7 +94,7 @@ Run these commands from the `dashboard/site/` directory:
 - Guard data-worker heap regressions with `npm run test:memory:dashboard-overview` from the repository root. It ingests the deployed dataset, loads the Overview page, and asserts the worker's isolated heap against the budgets in `specs/dashboard-data.md` §72.8. Override budgets with `DASHBOARD_OVERVIEW_MAX_WORKER_HEAP_MB`, `..._MAX_RETAINED_WORKER_HEAP_MB`, and `..._MAX_INGESTION_WORKER_HEAP_MB`, and point it at other data with `DASHBOARD_DATA_URL`.
 - Dedicated workers expose neither `performance.memory` nor `performance.measureUserAgentSpecificMemory`, and Playwright's `newCDPSession(page)` targets the page. Worker heap must be read by launching Chromium with `--remote-debugging-port`, finding the `type: "worker"` target, and calling `Runtime.getHeapUsage`; `tests/e2e/dashboard-worker-memory.mjs` encapsulates this.
 - Attribute a heap regression with `npm run debug:dashboard-worker-memory`, which prints a heap timeline, the worker's own debug output, and every canonical collection read labelled `scoped` or `WHOLE-DATABASE`.
-- Ingestion, not query execution, dominates worker memory: `ingestCanonicalBatch` reads every entity store to merge each batch. That is the only expected whole-database read — a second one is a defect.
+- Canonical ingestion writes incrementally, applies retention with cursor scans, and reads only the retained `runs` collection to rebuild daily aggregates. A whole-database collection read is a defect.
 - Measure page budgets against a fully ingested database by adding `?debug-eager-ingest=1`, which ingests every shard up front, ignores `debug-shard-limit`, and suppresses run-phase-first publication.
 
 ### CI workflows
