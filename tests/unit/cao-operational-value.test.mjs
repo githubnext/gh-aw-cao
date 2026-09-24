@@ -48,7 +48,7 @@ for (const repository of request.repositories) {
   ]);
 });
 
-test('Dependabot operational value counts open labelled issues and excludes pull requests', () => {
+test('Dependabot operational value counts open vulnerability alerts', () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-dependabot-value-'));
   const fakeGh = path.join(temporary, 'gh');
   writeFileSync(fakeGh, `#!/usr/bin/env bash
@@ -56,7 +56,9 @@ set -euo pipefail
 if [[ " $* " == *" rate_limit "* ]]; then
   printf '5000\\n'
 else
-  printf '[[{"number":1},{"number":2,"pull_request":{}}]]\\n'
+  [[ " $* " == *" repos/githubnext/gh-aw-cao/dependabot/alerts "* ]]
+  [[ " $* " == *" state=open "* ]]
+  printf '[{"number":1},{"number":2}]\\n'
 fi\n`);
   chmodSync(fakeGh, 0o755);
   const request = JSON.stringify({
@@ -78,8 +80,8 @@ fi\n`);
   assert.deepEqual(result, {
     timestamp: '2026-09-24T10:00:00.000Z',
     repository: 'githubnext/gh-aw-cao',
-    valueId: 'dependabot-issues',
-    value: 1
+    valueId: 'dependabot-vulnerability-alerts',
+    value: 2
   });
 });
 

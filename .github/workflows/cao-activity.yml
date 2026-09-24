@@ -21,6 +21,7 @@ permissions:
   actions: read
   contents: read
   pull-requests: read
+  vulnerability-alerts: read
 
 concurrency:
   group: central-agentic-ops-activity
@@ -35,6 +36,7 @@ jobs:
       actions: read
       contents: read
       pull-requests: read
+      vulnerability-alerts: read
     steps:
       - name: Checkout trusted activity source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -126,6 +128,7 @@ jobs:
           permission-actions: read
           permission-contents: read
           permission-pull-requests: read
+          permission-vulnerability-alerts: read
 
       - name: Resolve gh-aw compiler version
         id: gh-aw-compiler

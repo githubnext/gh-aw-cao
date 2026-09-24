@@ -53,23 +53,22 @@ for (const repository of request.repositories) {
       }
     }
 
-    const issues = JSON.parse(ghApi([
+    const alerts = JSON.parse(ghApi([
       '--method', 'GET',
-      `repos/${repository}/issues`,
+      `repos/${repository}/dependabot/alerts`,
       '-f', 'state=open',
-      '-f', 'labels=dependabot',
       '-f', 'per_page=100',
       '-f', `page=${page}`
     ]));
-    if (!Array.isArray(issues)) fail('GitHub API returned an invalid issues page');
-    value += issues.filter((issue) => !issue.pull_request).length;
-    if (issues.length < 100) break;
+    if (!Array.isArray(alerts)) fail('GitHub API returned an invalid Dependabot alerts page');
+    value += alerts.length;
+    if (alerts.length < 100) break;
     page += 1;
   }
   console.log(JSON.stringify({
     timestamp: request.timestamp,
     repository,
-    valueId: 'dependabot-issues',
+    valueId: 'dependabot-vulnerability-alerts',
     value
   }));
 }
