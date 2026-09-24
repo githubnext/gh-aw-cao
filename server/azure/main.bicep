@@ -27,7 +27,7 @@ param redisEnterpriseName string
   'EnterpriseFlash_F700'
   'EnterpriseFlash_F1500'
 ])
-@description('Redis Enterprise SKU with module support. Basic/Standard/Premium Azure Cache for Redis are not valid for this dashboard because RediSearch is required.')
+@description('Redis Enterprise SKU with RediSearch module support. The Go server creates per-generation FT indexes and issues FT.SEARCH/FT.AGGREGATE queries, so Basic/Standard/Premium Azure Cache for Redis are not valid for this dashboard.')
 param redisSkuName string = 'Enterprise_E10'
 
 @minValue(2)
