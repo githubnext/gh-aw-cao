@@ -3980,6 +3980,44 @@ dashboard:
     expect(result.ok).toBe(true);
   });
 
+  it('DLS-UNIT-004 rejects an AIC cost unit without the canonical name', () => {
+    const result = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: invalid-aicc-unit
+  title: Invalid AIC cost unit
+  units:
+    aic:
+      name: AI Credits
+      symbol: AIC
+      significant: 1
+      format: aicc
+  pages:
+    - id: summary
+      kind: custom
+      views:
+        - id: total-aic
+          data:
+            source: usage
+          mark: metric
+          encoding:
+            value:
+              field: aic
+              type: quantitative
+              unit: aic
+`);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          code: 'DLS-E003',
+          path: '$.dashboard.units.aic',
+          message: 'AIC cost units must use name "AICc($)".'
+        })
+      ]));
+    }
+  });
+
   it('DLS-VIEW-008 accepts canonical formatting on compatible fields', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
