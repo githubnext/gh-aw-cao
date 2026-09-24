@@ -20,6 +20,7 @@ test("deployed integration isolates query benchmark reporting from test permissi
   const workflow = readFileSync(".github/workflows/dashboard-deployed-integration.yml", "utf8");
   assert.match(workflow, /pull_request:\n\s+paths:/);
   assert.match(workflow, /group: dashboard-deployed-integration-\$\{\{[\s\S]*github\.event\.pull_request\.number/);
+  assert.match(workflow, /cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/);
   assert.match(workflow, /tests\/e2e\/dashboard-deployed-refresh-helpers\.mjs/);
   assert.match(workflow, /tests\/e2e\/dashboard-view-assessment\.mjs/);
   assert.match(workflow, /run: npm run test:performance:dashboard-queries/);

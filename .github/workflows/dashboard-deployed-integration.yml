@@ -21,7 +21,7 @@ permissions:
 
 concurrency:
   group: dashboard-deployed-integration-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.event_name }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   integration:
