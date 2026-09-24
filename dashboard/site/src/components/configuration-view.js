@@ -426,10 +426,10 @@ function renderDebuggingSettings() {
 function renderLocalDataActions() {
   return h('div', { className: 'configuration-local-data-actions' },
     h('a', {
-      href: '#page-transactions',
+      href: '#page-indexing',
       className: 'configuration-transactions-button',
-      'aria-label': 'View retained transactions table'
-    }, 'View retained transactions'),
+      'aria-label': 'View indexing status and retained transactions'
+    }, 'View indexing'),
     renderResetDashboardControl()
   );
 }

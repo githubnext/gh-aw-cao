@@ -427,7 +427,7 @@ test('mobile shell keeps Overview navigation in the hamburger menu', async ({ pa
 
 
 
-test('Transactions is a responsive table of retained transaction data', async ({ page }) => {
+test('Indexing shows CAO Activity status, size trend, and retained transactions', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
@@ -484,19 +484,18 @@ test('Transactions is a responsive table of retained transaction data', async ({
     </script>
   `);
 
-  const dataNavigation = page.locator('.nav-section').filter({ hasText: 'Data' });
-  await expect(dataNavigation.getByRole('link', { name: 'Transactions' })).toHaveCount(0);
-  await page.getByRole('link', { name: 'Settings' }).click();
-  await page.getByRole('link', { name: 'View retained transactions table' }).click();
+  const maintenanceNavigation = page.locator('.nav-section').filter({ hasText: 'Maintenance' });
+  await maintenanceNavigation.getByRole('link', { name: 'Indexing' }).click();
 
   const root = page.locator('.dashboard-root');
-  const transactionsPage = page.locator('[data-page-id="transactions"]');
-  const view = transactionsPage.locator('[data-view-layout="full-view"]');
+  const transactionsPage = page.locator('[data-page-id="indexing"]');
+  const view = transactionsPage.locator('[data-view-id="transaction-entries"]');
   const scroll = view.locator('.table-scroll');
-  await expect(transactionsPage.locator('[data-view-id]')).toHaveCount(1);
+  await expect(transactionsPage.locator('[data-view-id]')).toHaveCount(3);
   await expect(transactionsPage.getByRole('heading', { name: 'Local database' })).toHaveCount(0);
-  await expect(root).toHaveClass(/dashboard-full-view/);
-  await expect(transactionsPage.locator('.line-chart-series')).toHaveCount(0);
+  await expect(transactionsPage.getByRole('heading', { name: 'CAO Activity action' })).toBeVisible();
+  await expect(transactionsPage.getByRole('cell', { name: 'success' })).toBeVisible();
+  await expect(transactionsPage.locator('.line-chart-series')).toHaveCount(2);
   await expect(view).toBeVisible();
   await expect(view.locator('[data-lazy-list]')).toHaveCount(1);
   await expect(view.getByRole('searchbox', { name: 'Filter Transactions' })).toBeVisible();
@@ -513,21 +512,16 @@ test('Transactions is a responsive table of retained transaction data', async ({
   ]));
   const scope = view.getByRole('link', { name: 'https://dashboard.example/.../logs-99.jsonl' }).first();
   await expect(scope).toHaveAttribute('href', 'https://dashboard.example/gh-aw-logs-shards/logs-99.jsonl');
-  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(900);
 
   await scroll.evaluate((element) => {
     element.scrollTop = 100;
     element.dispatchEvent(new Event('scroll'));
   });
-  await expect(root).toHaveClass(/dashboard-full-view-scrolled/);
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(root).not.toHaveClass(/dashboard-full-view-scrolled/);
   await expect(page.locator('.org-sidebar')).toBeVisible();
   await expect(transactionsPage.locator(':scope > .page-chrome > .filter-bar')).toBeHidden();
   await expect(view).toBeVisible();
-  await expect(root).toHaveClass(/dashboard-full-view/);
-  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
   await expect.poll(async () => scroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
   await expect.poll(async () => scroll.locator(':scope > .table-filter').evaluate(
     (element) => element.scrollWidth <= element.clientWidth
@@ -1399,8 +1393,8 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(resetDialog).toContainText('This action cannot be undone.');
   await resetDialog.getByRole('button', { name: 'Cancel' }).click();
   await expect(resetDialog).not.toBeVisible();
-  await page.getByRole('link', { name: 'View retained transactions table' }).click();
-  await expect(page).toHaveURL(/#page-transactions$/);
+  await page.getByRole('link', { name: 'View indexing status and retained transactions' }).click();
+  await expect(page).toHaveURL(/#page-indexing$/);
   await page.getByRole('link', { name: 'Settings' }).click();
   const description = page.locator('.overview-header .lede');
   expect(await description.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(true);
