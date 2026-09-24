@@ -442,8 +442,10 @@ test('campaign card actions wrap together on narrow screens', async ({ page }) =
 });
 
 test('mobile chart cards keep content close to the viewport edges', async ({ page }) => {
-  // Page inset (14px) plus the narrowed mobile card gutter (12px) must stay within this budget.
-  const maxContentInsetPx = 26;
+  const mobilePageInsetPx = 14;
+  const mobileCardGutterPx = 12;
+  // Chart content may only be inset by the page padding plus the narrowed mobile card gutter.
+  const maxContentInsetPx = mobilePageInsetPx + mobileCardGutterPx;
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(async (presenterModuleUrl) => {
     const { renderDashboard } = await import(presenterModuleUrl);
@@ -494,8 +496,8 @@ test('mobile chart cards keep content close to the viewport edges', async ({ pag
 
   const card = page.locator('.pie-chart-card');
   await expect(card).toBeVisible();
-  await expect(card).toHaveCSS('padding-left', '12px');
-  await expect(card).toHaveCSS('padding-right', '12px');
+  await expect(card).toHaveCSS('padding-left', `${mobileCardGutterPx}px`);
+  await expect(card).toHaveCSS('padding-right', `${mobileCardGutterPx}px`);
 
   const heading = card.getByRole('heading', { name: 'Cost per campaign' });
   const headingBox = await heading.boundingBox();
