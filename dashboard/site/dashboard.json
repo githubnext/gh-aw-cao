@@ -8853,9 +8853,10 @@
       {
         "name": "tool-entity-insights",
         "intent": "Summarize one tool entity for its dedicated Insights view.",
-        "from": "mcp-calls",
+        "from": "mcp-tool-calls",
         "aggregate": {
           "by": [
+            "mcp-tool-label",
             "mcp-server",
             "mcp-tool",
             "mcp-status"
@@ -9095,15 +9096,11 @@
               "type": "query",
               "page": "tool-insights",
               "query": "tool-entity-insights",
-              "title-field": "mcp-tool",
+              "title-field": "mcp-tool-label",
               "arguments": [
                 {
                   "name": "tool",
-                  "field": "mcp-tool"
-                },
-                {
-                  "name": "server",
-                  "field": "mcp-server"
+                  "field": "mcp-tool-label"
                 }
               ]
             }
@@ -13419,16 +13416,12 @@
             "title": "Tool insights",
             "data": {
               "sources": [
-                "mcp-calls"
+                "mcp-tool-calls"
               ],
               "arguments": [
                 {
                   "name": "tool",
-                  "field": "mcp-tool"
-                },
-                {
-                  "name": "server",
-                  "field": "mcp-server"
+                  "field": "mcp-tool-label"
                 }
               ]
             },
@@ -13437,7 +13430,7 @@
             "layout": "full",
             "title-link": {
               "href-field": "run-link",
-              "identifier-field": "mcp-tool"
+              "identifier-field": "mcp-tool-label"
             }
           },
           {
@@ -13448,11 +13441,7 @@
               "arguments": [
                 {
                   "name": "tool",
-                  "field": "mcp-tool"
-                },
-                {
-                  "name": "server",
-                  "field": "mcp-server"
+                  "field": "mcp-tool-label"
                 }
               ]
             },
@@ -13505,16 +13494,12 @@
             "title": "Tool runs",
             "data": {
               "sources": [
-                "mcp-calls"
+                "mcp-tool-calls"
               ],
               "arguments": [
                 {
                   "name": "tool",
-                  "field": "mcp-tool"
-                },
-                {
-                  "name": "server",
-                  "field": "mcp-server"
+                  "field": "mcp-tool-label"
                 }
               ]
             },
@@ -13523,7 +13508,7 @@
             "layout": "full",
             "title-link": {
               "href-field": "run-link",
-              "identifier-field": "mcp-tool"
+              "identifier-field": "mcp-tool-label"
             }
           },
           {
@@ -13531,15 +13516,11 @@
             "title": "Related runs",
             "description": "Run records related to this tool.",
             "data": {
-              "source": "mcp-calls",
+              "source": "mcp-tool-calls",
               "arguments": [
                 {
                   "name": "tool",
-                  "field": "mcp-tool"
-                },
-                {
-                  "name": "server",
-                  "field": "mcp-server"
+                  "field": "mcp-tool-label"
                 }
               ],
               "order-by": [
