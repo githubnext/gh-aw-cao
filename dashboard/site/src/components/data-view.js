@@ -947,7 +947,9 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
     ? view.encoding.href
     : null;
   const hrefField = typeof hrefDefinition?.field === 'string' ? hrefDefinition.field : null;
-  const drill = hrefField ? { type: 'external', field: hrefField } : null;
+  const drill = isPlainObject(view['card-drill'])
+    ? view['card-drill']
+    : hrefField ? { type: 'external', field: hrefField } : null;
   const pageSize = 25;
   const availableRows = [...rows];
   const initialRows = availableRows.slice(0, pageSize);

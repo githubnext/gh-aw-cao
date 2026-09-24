@@ -8530,23 +8530,21 @@
                 }
               ]
             },
-            "mark": "list",
-            "list": {
-              "style": "entity-cards",
-              "card": "firewall-domain",
-              "icon": "globe",
-              "drill": {
-                "type": "query",
-                "page": "firewall-domain-workflows",
-                "query": "firewall-domain-workflows",
-                "title-field": "domain",
-                "arguments": [
-                  {
-                    "name": "domain",
-                    "field": "domain"
-                  }
-                ]
-              }
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "column-summaries": true,
+            "card-drill": {
+              "type": "query",
+              "page": "firewall-domain-workflows",
+              "query": "firewall-domain-workflows",
+              "title-field": "domain",
+              "arguments": [
+                {
+                  "name": "domain",
+                  "field": "domain"
+                }
+              ]
             },
             "layout": "full-view",
             "empty-message": "No observed firewall domains are available for this selection.",

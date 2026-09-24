@@ -130,9 +130,9 @@ describe('entity card templates', () => {
     const domainList = firewall.views.find(
       (/** @type {Record<string, any>} */ view) => view.id === 'security-firewall-domains'
     );
-    expect(domainList.list).toMatchObject({
-      card: 'firewall-domain',
-      drill: {
+    expect(domainList).toMatchObject({
+      mark: 'table',
+      'card-drill': {
         type: 'query',
         page: 'firewall-domain-workflows',
         query: 'firewall-domain-workflows',
