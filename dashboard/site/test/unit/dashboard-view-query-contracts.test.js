@@ -83,16 +83,20 @@ describe('dashboard view query contracts', () => {
     )).toEqual([]);
   });
 
-  it('renders the Cost page as three declarative AIC pie charts in the Data section', () => {
+  it('renders the Cost page with concise titles and a workflow bar chart in the Data section', () => {
     const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'cost');
     const dataSection = dashboard.navigation.find(
       (/** @type {Record<string, unknown>} */ section) => section.label === 'Data'
     );
 
     expect(/** @type {Record<string, unknown> | undefined} */ (dataSection)?.pages).toContain('cost');
+    expect(page).toMatchObject({
+      icon: 'credit-card'
+    });
     expect(viewsOf(page)).toMatchObject([
       {
         id: 'cost-by-campaign',
+        title: 'Cost per campaign',
         data: { source: 'cost-by-campaign' },
         mark: 'chart',
         chart: 'pie',
@@ -103,6 +107,7 @@ describe('dashboard view query contracts', () => {
       },
       {
         id: 'cost-by-repository',
+        title: 'Cost per repository',
         data: { source: 'cost-by-repository' },
         mark: 'chart',
         chart: 'pie',
@@ -113,9 +118,10 @@ describe('dashboard view query contracts', () => {
       },
       {
         id: 'cost-by-workflow',
+        title: 'Cost per workflow',
         data: { source: 'cost-by-workflow' },
         mark: 'chart',
-        chart: 'pie',
+        chart: 'horizontal-bar',
         encoding: {
           x: { field: 'workflow-coordinate' },
           y: { field: 'aic', unit: 'aic' }

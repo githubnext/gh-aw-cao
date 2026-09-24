@@ -20,7 +20,7 @@ The orchestrator workflow is the rollout authority. worker workflows are enforce
 
 The execution boundary is the key architectural fact: orchestrators and workers run from the private central control repository. A worker checks out and analyzes one remote target at a time. Target repositories receive only declared safe outputs; they do not receive or run the control-plane workflow definitions.
 
-![The control plane contains rollout policy and operation campaigns. Central orchestrators and workers inspect remote targets, emit declared safe outputs across the repository boundary, and correlate results with the originating central run.](assets/central-execution-how-it-works.svg)
+![The control plane contains rollout policy and campaigns. Central orchestrators and workers inspect remote targets, emit declared safe outputs across the repository boundary, and correlate results with the originating central run.](assets/central-execution-how-it-works.svg)
 
 1. A schedule trigger or `workflow_dispatch` starts a campaign orchestrator workflow.
 2. Before activation, `.github/workflows/shared/control.md` loads the canonical `.github/workflows/shared` runtime from the workflow revision, then runs the `admit` command against policy from that revision.

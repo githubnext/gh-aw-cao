@@ -1,13 +1,13 @@
 ---
 title: Quickstart
-description: Create a private control plane, install one operation, and run it safely against one repository.
+description: Create a private control plane, install one campaign, and run it safely against one repository.
 ---
 
-Central Agentic Ops lets you run governed agentic operations across many repositories from one private GitHub repository, which we call the central control plane. Operation campaigns, credentials, rollout policy, and workflow runs stay in the control plane; target repositories do not receive copies of the workflows.
+Central Agentic Ops lets you run governed campaigns across many repositories from one private GitHub repository, which we call the central control plane. Campaigns, credentials, rollout policy, and workflow runs stay in the control plane; target repositories do not receive copies of the workflows.
 
-By the end of this guide, you will have created a control plane, installed the Dependabot operation, and completed one `review` run against a public target repository. You will verify that the operation selected the expected target, saved any proposal in the private control repository, and did not change the target.
+By the end of this guide, you will have created a control plane, installed the Dependabot campaign, and completed one `review` run against a public target repository. You will verify that the campaign selected the expected target, saved any proposal in the private control repository, and did not change the target.
 
-## Run a Reviewed Dependabot Operation
+## Run a Reviewed Dependabot Campaign
 
 Estimated time: 15 minutes
 
@@ -26,7 +26,7 @@ Before you begin, make sure you have:
 :::tip[Start with the setup skill]
 From an empty control repository, ask your coding agent to load and follow the
 [`setup-cao` skill](https://github.com/githubnext/gh-aw-cao/blob/main/.github/skills/setup-cao/SKILL.md).
-The skill gathers the control repository, operation, target, visibility, and authentication choices before it changes the repository, then proves the boundary with one review run. The manual steps below describe the same boundary for operators who need to inspect each action.
+The skill gathers the control repository, campaign, target, visibility, and authentication choices before it changes the repository, then proves the boundary with one review run. The manual steps below describe the same boundary for operators who need to inspect each action.
 :::
 
 Check your GitHub CLI authentication:
@@ -42,7 +42,7 @@ gh auth login --scopes repo,workflow
 ```
 
 :::note[Using a private or cross-organization target?]
-Complete [Configure Authentication](authentication.md) before running the operation. The credential must cover the target repository, and its owner must be allowlisted.
+Complete [Configure Authentication](authentication.md) before running the campaign. The credential must cover the target repository, and its owner must be allowlisted.
 :::
 
 ### Step 1 - Create the control repository
@@ -90,7 +90,7 @@ The root campaign installs:
 3. the `cao` CLI runtime under `activity/`; and
 4. CAO project skills under `.github/skills/` for Copilot discovery in the control repository.
 
-Use the `add-cao-campaign` skill to discover and compare catalog operations when you do not already know which campaign fits. After explicit selection, it installs through CAO so the campaign declaration is merged automatically. For example, install Dependabot with:
+Use the `add-cao-campaign` skill to discover and compare catalog campaigns when you do not already know which campaign fits. After explicit selection, it installs through CAO so the campaign declaration is merged automatically. For example, install Dependabot with:
 
 ```bash
 ./cao.sh add githubnext/gh-aw-cao/dependabot
@@ -130,7 +130,7 @@ Replace `acme` if your target has a different owner. Commit the workflow sources
 
 ```bash
 git add .github
-git commit -m "Install reviewed Dependabot operation"
+git commit -m "Install reviewed Dependabot campaign"
 git push --set-upstream origin HEAD
 ```
 
@@ -150,7 +150,7 @@ You can also open the control repository's **Actions** tab, select **Dependabot*
 
 The orchestrator should select only the named repository and dispatch at most one updater. In `review` mode, proposed safe outputs are saved in the private control repository without creating or changing issues, pull requests, branches, or files in the target.
 
-### Step 6 - Wait for the operation to complete
+### Step 6 - Wait for the campaign to complete
 
 List the latest Dependabot runs:
 
@@ -182,7 +182,7 @@ Having trouble? Check [Configure Authentication](authentication.md) for reposito
 
 ## What's Next?
 
-- Learn how to promote the operation from [review to live](rollout-and-routing.md).
+- Learn how to promote the campaign from [review to live](rollout-and-routing.md).
 - Read [How the Control Plane Works](architecture.md) before adding organizations or broader repository discovery.
 - Use the [Configuration Reference](configuration.md) to tune schedules, repository limits, and worker ceilings.
-- Review [Orchestrators and Workers](orchestrators-and-workers.md) before creating another operation.
+- Review [Orchestrators and Workers](orchestrators-and-workers.md) before creating another campaign.

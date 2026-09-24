@@ -1,9 +1,9 @@
 ---
-title: Author Your First Operation
-description: Turn one recurring repository outcome into a validated operation campaign and prove it safely on one repository.
+title: Author Your First Campaign
+description: Turn one recurring repository outcome into a validated campaign and prove it safely on one repository.
 ---
 
-An operation campaign captures one repeatable engineering outcome as code. It
+A campaign captures one repeatable engineering outcome as code. It
 contains one orchestrator that selects repositories and at least one worker that
 handles one selected repository.
 
@@ -39,7 +39,7 @@ prompt, replacing the bracketed values:
 ```text
 Read and follow .github/skills/create-cao-campaign/SKILL.md.
 
-Create an operation campaign for this outcome:
+Create a campaign for this outcome:
 [What should become measurably better in a repository?]
 
 Target repositories:
@@ -118,12 +118,12 @@ Do not promote the campaign to `live` during the authoring session.
 
 ## Share the Result
 
-A private operation can remain in its control repository. To propose an
-operation for the official catalog, open a pull request containing the campaign,
+A private campaign can remain in its control repository. To propose a
+campaign for the official catalog, open a pull request containing the campaign,
 workflow sources, generated locks, documentation, policy registration, and
 focused contract tests.
 
-The current Operations Catalog is curated; it is not yet a self-service
+The current Campaign Catalog is curated; it is not yet a self-service
 marketplace. Publication is a reviewed source change, and installation or catalog
 acceptance never grants rollout authority in another control repository.
 

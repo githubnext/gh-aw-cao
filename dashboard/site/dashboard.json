@@ -152,6 +152,30 @@
         ]
       },
       {
+        "id": "ingestion-transaction",
+        "icon": "database",
+        "title": {
+          "field": "kind",
+          "title": "Ingestion"
+        },
+        "details": [
+          {
+            "field": "created-at",
+            "title": "Committed at",
+            "format": "human-friendly-timestamp"
+          },
+          {
+            "field": "committed-records",
+            "title": "Committed records"
+          },
+          {
+            "field": "payload-hash",
+            "title": "Payload hash"
+          }
+        ],
+        "labels": []
+      },
+      {
         "id": "event",
         "icon": "pulse",
         "title": {
@@ -1609,7 +1633,11 @@
           "predicates": [
             {
               "field": "kind",
-              "equals": "ingest-jsonl"
+              "in": [
+                "ingest-jsonl",
+                "ingest-normalized-json",
+                "ingest-normalized-jsonl"
+              ]
             }
           ]
         },
@@ -1645,6 +1673,54 @@
           {
             "field": "day",
             "direction": "asc"
+          }
+        ]
+      },
+      {
+        "name": "indexing-database-table-counts",
+        "intent": "Count retained ingestion transactions by database table type.",
+        "from": "transactions",
+        "aggregate": {
+          "by": [
+            "kind"
+          ],
+          "values": [
+            {
+              "field": "id",
+              "as": "transactions",
+              "reducer": "count"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "transactions",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
+        "name": "indexing-transactions",
+        "intent": "Prepare retained ingestion transactions for card presentation.",
+        "from": "transactions",
+        "select": [
+          {
+            "field": "id"
+          },
+          {
+            "field": "kind"
+          },
+          {
+            "field": "createdAt",
+            "as": "created-at"
+          },
+          {
+            "field": "committedRecords",
+            "as": "committed-records"
+          },
+          {
+            "field": "payloadHash",
+            "as": "payload-hash"
           }
         ]
       },
@@ -12493,112 +12569,68 @@
             }
           },
           {
-            "id": "transaction-entries",
-            "title": "Ingestion rate",
-            "description": "Retained transactions show the workflow-run and record volume processed by each ingestion operation.",
+            "id": "indexing-database-table-counts",
+            "title": "Database table counts",
+            "description": "Retained ingestion transactions by type.",
             "data": {
-              "source": "transactions",
+              "source": "indexing-database-table-counts",
+              "limit": 100
+            },
+            "mark": "chart",
+            "chart": "horizontal-bar",
+            "layout": "full",
+            "empty-message": "No ingestion transactions have been retained.",
+            "encoding": {
+              "x": {
+                "field": "kind",
+                "type": "nominal",
+                "title": "Table"
+              },
+              "y": {
+                "field": "transactions",
+                "type": "quantitative",
+                "title": "Transactions"
+              }
+            }
+          },
+          {
+            "id": "transaction-entries",
+            "title": "Ingestion transactions",
+            "description": "Retained transactions show the time, committed record volume, and payload hash for each ingestion operation.",
+            "data": {
+              "source": "indexing-transactions",
               "order-by": [
                 {
-                  "field": "createdAt",
+                  "field": "created-at",
                   "direction": "desc"
                 }
               ]
             },
-            "mark": "table",
-            "controls": "interactive",
-            "lazy-list": true,
+            "mark": "list",
+            "list": {
+              "style": "entity-cards",
+              "card": "ingestion-transaction",
+              "icon": "database"
+            },
             "layout": "full",
             "empty-message": "No ingestion transactions have been retained.",
             "encoding": {
               "columns": [
                 {
-                  "field": "activity-status",
-                  "type": "nominal",
-                  "title": "CAO Activity status",
-                  "display": "status"
+                  "field": "created-at",
+                  "type": "temporal",
+                  "title": "Committed at",
+                  "format": "human-friendly-timestamp"
                 },
                 {
-                  "field": "id",
-                  "type": "nominal",
-                  "title": "Transaction"
-                },
-                {
-                  "field": "kind",
-                  "type": "nominal",
-                  "title": "Kind"
-                },
-                {
-                  "field": "payloadScope",
-                  "type": "nominal",
-                  "format": "shortened-url",
-                  "title": "Scope"
-                },
-                {
-                  "field": "payloadHash",
-                  "type": "nominal",
-                  "title": "Payload hash"
-                },
-                {
-                  "field": "payloadEtag",
-                  "type": "nominal",
-                  "title": "Payload ETag"
-                },
-                {
-                  "field": "records",
-                  "type": "quantitative",
-                  "title": "Records"
-                },
-                {
-                  "field": "committedRecords",
+                  "field": "committed-records",
                   "type": "quantitative",
                   "title": "Committed records"
                 },
                 {
-                  "field": "rawPayloadRecords",
-                  "type": "quantitative",
-                  "title": "Raw payload records"
-                },
-                {
-                  "field": "rawRuns",
-                  "type": "quantitative",
-                  "title": "Raw runs"
-                },
-                {
-                  "field": "agenticRunRecords",
-                  "type": "quantitative",
-                  "title": "Agentic run records"
-                },
-                {
-                  "field": "agenticRuns",
-                  "type": "quantitative",
-                  "title": "Agentic runs"
-                },
-                {
-                  "field": "duplicateRawRunObservations",
-                  "type": "quantitative",
-                  "title": "Duplicate raw runs"
-                },
-                {
-                  "field": "duplicateAgenticRunObservations",
-                  "type": "quantitative",
-                  "title": "Duplicate agentic runs"
-                },
-                {
-                  "field": "unenrichedRuns",
-                  "type": "quantitative",
-                  "title": "Unenriched runs"
-                },
-                {
-                  "field": "error",
+                  "field": "payload-hash",
                   "type": "nominal",
-                  "title": "Error"
-                },
-                {
-                  "field": "createdAt",
-                  "type": "temporal",
-                  "format": "human-friendly-timestamp",
-                  "title": "Created"
+                  "title": "Payload hash"
                 }
               ]
             }
@@ -13011,12 +13043,12 @@
         "kind": "custom",
         "title": "Cost",
         "navigation-label": "Cost",
-        "icon": "graph",
+        "icon": "credit-card",
         "description": "Observed AI Credit cost across campaigns, repositories, and workflows.",
         "views": [
           {
             "id": "cost-by-campaign",
-            "title": "AIC cost per campaign",
+            "title": "Cost per campaign",
             "description": "The share of observed AI Credit cost attributed to each centrally managed campaign.",
             "data": {
               "source": "cost-by-campaign"
@@ -13041,7 +13073,7 @@
           },
           {
             "id": "cost-by-repository",
-            "title": "AIC cost per repository",
+            "title": "Cost per repository",
             "description": "The share of observed AI Credit cost attributed to each repository.",
             "data": {
               "source": "cost-by-repository"
@@ -13066,13 +13098,20 @@
           },
           {
             "id": "cost-by-workflow",
-            "title": "AIC cost per workflow",
+            "title": "Cost per workflow",
             "description": "The share of observed AI Credit cost attributed to each workflow.",
             "data": {
-              "source": "cost-by-workflow"
+              "source": "cost-by-workflow",
+              "order-by": [
+                {
+                  "field": "aic",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 100
             },
             "mark": "chart",
-            "chart": "pie",
+            "chart": "horizontal-bar",
             "layout": "full",
             "empty-message": "No workflow AI Credit cost was observed.",
             "encoding": {

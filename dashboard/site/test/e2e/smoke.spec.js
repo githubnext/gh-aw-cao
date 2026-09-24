@@ -544,6 +544,13 @@ test('Indexing shows CAO Activity status, size trend, and retained transactions'
         freshness: 'fresh',
         availability: 'available'
       };
+      const transactionCards = rows.map((row) => ({
+        id: row.id,
+        kind: row.kind,
+        'created-at': row.createdAt,
+        'committed-records': row.committedRecords,
+        'payload-hash': row.payloadHash
+      }));
       const sources = {
         transactions: { source: 'transactions', rows, metadata },
         'indexing-daily-ingestion': {
@@ -551,6 +558,15 @@ test('Indexing shows CAO Activity status, size trend, and retained transactions'
           rows: [{ day: '2026-09-12', records: 7950, 'workflow-runs': 6950 }],
           metadata
         },
+        'indexing-database-table-counts': {
+          source: 'indexing-database-table-counts',
+          rows: [
+            { kind: 'ingest-jsonl', transactions: 50 },
+            { kind: 'ingest-dashboard-sources', transactions: 50 }
+          ],
+          metadata
+        },
+        'indexing-transactions': { source: 'indexing-transactions', rows: transactionCards, metadata },
         'configuration-policy': {
           source: 'configuration-policy',
           rows: [{ document: { version: 1 }, raw: '{"version":1}', diagnostics: [] }],
@@ -578,48 +594,20 @@ test('Indexing shows CAO Activity status, size trend, and retained transactions'
   const root = page.locator('.dashboard-root');
   const transactionsPage = page.locator('[data-page-id="indexing"]');
   const view = transactionsPage.locator('[data-view-id="transaction-entries"]');
-  const scroll = view.locator('.table-scroll');
-  await expect(transactionsPage.locator('[data-view-id]')).toHaveCount(3);
+  await expect(transactionsPage.locator('[data-view-id]')).toHaveCount(4);
   await expect(transactionsPage.getByRole('heading', { name: 'Local database' })).toHaveCount(0);
   await expect(transactionsPage.locator('[data-chart-widget="bar"]')).toHaveCount(2);
-  await transactionsPage.getByRole('button', { name: 'Table' }).click();
-  await expect(transactionsPage.getByRole('columnheader', { name: 'CAO Activity status' })).toBeVisible();
-  await expect(transactionsPage.getByRole('cell', { name: 'success' }).first()).toBeVisible();
+  await expect(transactionsPage.locator('[data-chart-widget="horizontal-bar"]')).toHaveCount(1);
+  await transactionsPage.getByRole('button', { name: 'Cards' }).click();
   await expect(view).toBeVisible();
-  await expect(view.locator('[data-lazy-list]')).toHaveCount(1);
-  await expect(view.getByRole('searchbox', { name: 'Filter Ingestion rate' })).toBeVisible();
-  await expect(view.getByRole('cell', { name: 'ingest-jsonl' }).first()).toBeVisible();
-  const headings = await view.locator('thead tr').first().getByRole('columnheader').allTextContents();
-  expect(headings.at(-1)?.trim()).toBe('Created');
-  expect(headings).toEqual(expect.arrayContaining([
-    'Committed records',
-    'Records',
-    'Raw payload records',
-    'Transaction',
-    'Payload hash',
-    'Payload ETag'
-  ]));
-  const scope = view.getByRole('link', { name: 'https://dashboard.example/.../logs-99.jsonl' }).first();
-  await expect(scope).toHaveAttribute('href', 'https://dashboard.example/gh-aw-logs-shards/logs-99.jsonl');
-
-  await scroll.evaluate((element) => {
-    element.scrollTop = 100;
-    element.dispatchEvent(new Event('scroll'));
-  });
+  await expect(view.locator('.entity-card-list-card')).toHaveCount(100);
+  await expect(view.getByText('Committed records').first()).toBeVisible();
+  await expect(view.getByText('Payload hash').first()).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator('.org-sidebar')).toBeVisible();
   await expect(transactionsPage.locator(':scope > .page-chrome > .filter-bar')).toBeHidden();
   await expect(view).toBeVisible();
-  await expect.poll(async () => scroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
-  await expect.poll(async () => scroll.locator(':scope > .table-filter').evaluate(
-    (element) => element.scrollWidth <= element.clientWidth
-  )).toBe(true);
-
-  await scroll.evaluate((element) => {
-    element.scrollTop = element.scrollHeight;
-    element.dispatchEvent(new Event('scroll'));
-  });
   await expect(root).not.toHaveClass(/dashboard-full-view-scrolled/);
   await expect(page.locator('.org-sidebar')).toBeVisible();
   await expect(page.locator('.top-nav')).toBeHidden();
