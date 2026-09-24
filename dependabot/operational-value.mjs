@@ -86,15 +86,17 @@ function canonicalEndpoint(endpoint, repository, fields = []) {
   const apiPath = GITHUB_API_URL.pathname.replace(/\/$/, '');
   const base = `${GITHUB_API_URL.origin}${apiPath || ''}/`;
   let url;
+  let pathname;
   try {
     url = new URL(endpoint, base);
+    pathname = decodeURIComponent(url.pathname);
   } catch {
     fail('GitHub API returned an invalid Dependabot alerts next link');
   }
   const expectedPath = `${apiPath}/repos/${repository}/dependabot/alerts`;
   if (
     url.origin !== GITHUB_API_URL.origin
-    || decodeURIComponent(url.pathname).toLowerCase() !== expectedPath.toLowerCase()
+    || pathname.toLowerCase() !== expectedPath.toLowerCase()
   ) {
     fail('GitHub API returned an unexpected Dependabot alerts next link');
   }
@@ -106,6 +108,7 @@ function canonicalEndpoint(endpoint, repository, fields = []) {
     const value = separator < 0 ? '' : field.slice(separator + 1);
     url.searchParams.set(name, value);
   }
+  url.searchParams.sort();
   return url.toString();
 }
 
