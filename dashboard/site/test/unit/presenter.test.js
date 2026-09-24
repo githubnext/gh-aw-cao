@@ -3190,6 +3190,51 @@ describe('presenter built-in and custom pages', () => {
     }
   });
 
+  it('animates query drills forward and browser back navigation backward', () => {
+    const directions = [];
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      value: vi.fn((callback) => {
+        directions.push(document.documentElement.dataset.navigationDirection);
+        callback();
+        return { finished: Promise.resolve() };
+      })
+    });
+    const root = document.createElement('div');
+    root.innerHTML = `
+      <a data-nav-page-id="first" href="#page-first">First</a>
+      <a data-card-drill="query" data-nav-page-id="second" href="#page-second?query=items&title=Item">Item</a>
+      <main class="dashboard-prototype">
+        <section class="dashboard-page" id="page-first" data-page-id="first"></section>
+        <section class="dashboard-page" id="page-second" data-page-id="second"></section>
+      </main>
+    `;
+    document.body.append(root);
+    try {
+      const disposeNavigation = enableDashboardPageNavigation(root, 'Dashboard', () => null, 'first');
+      /** @type {HTMLAnchorElement} */ (root.querySelector('[data-card-drill="query"]')).click();
+
+      window.history.replaceState(
+        { centralAgenticOpsNavigationIndex: 0 },
+        '',
+        '/#page-first'
+      );
+      window.dispatchEvent(new PopStateEvent('popstate', {
+        state: { centralAgenticOpsNavigationIndex: 0 }
+      }));
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+
+      expect(directions.at(0)).toBe('forward');
+      expect(directions.at(-1)).toBe('backward');
+      disposeNavigation();
+    } finally {
+      root.remove();
+      Reflect.deleteProperty(document, 'startViewTransition');
+      delete document.documentElement.dataset.navigationDirection;
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
   it('aborts the active page subscription when the dashboard is disposed', async () => {
     /** @type {AbortSignal | undefined} */
     let pageSignal;

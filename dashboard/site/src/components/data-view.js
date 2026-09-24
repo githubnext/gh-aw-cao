@@ -399,7 +399,12 @@ function renderEntityCardItems(rows, options) {
     const titleContent = target?.external
       ? renderExternalLink(target.link)
       : target
-        ? h('a', { href: target.link.href, 'data-card-drill': 'query' }, target.link.label)
+        ? h('a', {
+            href: target.link.href,
+            'data-card-drill': 'query',
+            'data-nav-page-id': target.pageId,
+            'data-route-title': target.routeTitle
+          }, target.link.label)
         : renderedTitle;
     if (target && titleContent instanceof HTMLAnchorElement) {
       titleContent.dataset.cardDrill = target.external ? 'external' : 'query';
@@ -561,7 +566,7 @@ function activateCardDrill(event) {
  * @param {Record<string, unknown>} row
  * @param {Record<string, unknown> | null} drill
  * @param {string} title
- * @returns {{ external: boolean, link: { href: string, label: string } } | null}
+ * @returns {{ external: true, link: { href: string, label: string } } | { external: false, pageId: string, routeTitle: string, link: { href: string, label: string } } | null}
  */
 function resolveEntityCardDrill(row, drill, title) {
   if (!drill || typeof drill.type !== 'string') return null;
@@ -590,6 +595,8 @@ function resolveEntityCardDrill(row, drill, title) {
   const suffix = parameters.size > 0 ? `?${parameters.toString()}` : '';
   return {
     external: false,
+    pageId: drill.page,
+    routeTitle: String(pageTitle),
     link: {
       href: `#page-${encodeURIComponent(drill.page)}${suffix}`,
       label: title
