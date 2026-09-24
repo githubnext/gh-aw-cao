@@ -3,6 +3,7 @@ import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
 import { queryDashboardSourceObservations } from './data/queries/ingestion.js';
 import {
+  finalizeNormalizedJsonlIngestion,
   ingestDashboardSources,
   ingestNormalizedJsonl,
   isNormalizedJsonCurrent,
@@ -645,7 +646,8 @@ export function processDataRequest(request, signal) {
                 signal,
                 payloadIdentity: shard.hash,
                 payloadScope: shardUrl.href,
-                expectedPhase
+                expectedPhase,
+                deferMaintenance: true
               };
               const ingestion = await ingestNormalizedJsonl(
                 indexedDB,
@@ -673,6 +675,15 @@ export function processDataRequest(request, signal) {
               completedShardCount += 1;
               progress.reportShardImportProgress(completedShardCount, shardCount);
             }
+          }
+          if (changed) {
+            progress.log('Applying retention limits.');
+            await finalizeNormalizedJsonlIngestion(indexedDB, {
+              storage: globalThis.navigator?.storage,
+              retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
+              onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE),
+              signal
+            });
           }
           if (inventoryResponse.ok) {
             progress.log('Normalizing inventory metadata.');
