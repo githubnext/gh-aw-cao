@@ -12279,10 +12279,11 @@
             "title": "Average AIC per run",
             "description": "Average AI Credit cost per observed workflow run by agent and model combination.",
             "data": {
-              "source": "engines-models-usage"
+              "source": "engines-models-usage",
+              "limit": 100
             },
             "mark": "chart",
-            "chart": "pie",
+            "chart": "horizontal-bar",
             "empty-message": "No AI Credit cost data is available for agent and model combinations.",
             "layout": "full",
             "encoding": {
