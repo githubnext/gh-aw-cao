@@ -889,6 +889,7 @@ dashboard:
       title: Campaign page
       route:
         hash-query-parameter: campaign
+        title-format: title-case
       views:
         - id: campaign-shell
           data:
@@ -899,6 +900,34 @@ dashboard:
             body: pull-requests
 `);
     expect(accepted.ok).toBe(true);
+
+    const invalidTitleFormat = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: campaign-route-title-format
+  title: Campaign route title format
+  pages:
+    - id: campaign-page
+      kind: custom
+      title: Campaign page
+      route:
+        hash-query-parameter: campaign
+        title-format: uppercase
+      views:
+        - id: campaign-shell
+          data:
+            sources: [workflows]
+          mark: element
+          element: campaign-route
+          config:
+            body: insights
+`);
+    expect(invalidTitleFormat.ok).toBe(false);
+    if (!invalidTitleFormat.ok) {
+      expect(invalidTitleFormat.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E005',
+        path: '$.dashboard.pages[0].route.title-format'
+      }));
+    }
 
     const invalidBody = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:

@@ -243,7 +243,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Custom page | `id`, `kind`, `title`, `navigation-label`, `description`, `icon`, `class-name`, `route`, `views`, `sections` |
 | Navigation section | `label`, `pages`, `experimental`, `placement` |
 | Page section | `id`, `title`, `description`, `layout`, `views`, `count-source`, `count-sources`, `count-field`, `count-label` |
-| Custom page `route` | `hash-query-parameter`, `navigation-page`, `title-format`, `tab`, `tabs` |
+| Custom page `route` | `hash-query-parameter`, `navigation-page`, `title-format`, `tabs-class-name`, `tab`, `tabs` |
 | View | `id`, `title`, `description`, `intent`, `locked`, `data`, `mark`, `element`, `config`, `callout`, `chart`, `metric`, `list`, `tree`, `layout`, `disclosure`, `controls`, `lazy-list`, `column-summaries`, `empty-message`, `title-link`, `encoding` |
 | View `data` | `source` or `sources`, `scope`, `time`, `filters`, `arguments`, `limit`, `order-by` |
 | View data argument | `name`, `field` |
@@ -871,6 +871,7 @@ For pages that opt in to `filter-bar: true`, the presenter renders a filter bar 
 - **DLS-PAGE-017:** The `issues` page **MUST** use the predefined built-in page configuration and the reusable `issue` entity-card definition, bind to a declared query with issue arguments, and drill to each issue's safe GitHub URL.
 - **DLS-PAGE-017:** A presenter **MUST** render one filter bar in the view chrome only when that page declares `filter-bar: true`, toggle its tuning controls from the horizon text, and apply valid filter edits automatically. A presenter **MUST** persist time-horizon and rollout-mode settings globally in local storage and activate all rollout modes by default. Available view-mode controls **MUST** remain in page chrome when the filter bar is omitted.
 - **DLS-PAGE-018:** A routed custom page **MAY** declare `route.title-format: title-case`. Before route-owned data resolves, a presenter **MUST** format the route value by capitalizing its hyphen- or underscore-separated words instead of exposing the raw route slug as page identity. A later route allocation **MUST** replace that provisional identity with the authoritative title.
+- **DLS-PAGE-019:** A routed custom page with declared tabs **MAY** declare a canonical `route.tabs-class-name`. A presenter **MUST** apply that class to both loading and hydrated tab sets so route chrome remains structurally and visually stable while data resolves.
 
 ---
 
@@ -1153,7 +1154,7 @@ In the table, “accept” means validation succeeds; “reject” means validat
 | DLS-AGG-001–011 | T-AGG-001 | 2 | Exercise allowed aggregates, compatibility, nulls, UTC buckets, ranking disclosure, and deterministic ties for entity-grain and group-grain outputs, including total-order rejection. |
 | DLS-DATA-001–008 | T-DATA-001 | 2 | Exercise required metadata, derivation traceability, and each distinct data state. |
 | DLS-LINK-001–007 | T-LINK-001 | 2 | Validate link shape, safety, provenance, available associations, absent associations, one-link-per-field cardinality, GitHub URL base resolution, and linked rendering of every GitHub-addressable entity. |
-| DLS-PAGE-001–017 | T-PAGE-001 | 3 | Evaluate each built-in fixture for required content, defaults, context, data states, page classes, and shared filter chrome. |
+| DLS-PAGE-001–019 | T-PAGE-001 | 3 | Evaluate each built-in fixture for required content, defaults, context, data states, page classes, and shared filter chrome. |
 | DLS-VIEW-001–006 | T-VIEW-001 | 3 | Validate custom structure and every allowed mark/channel combination. |
 | DLS-VIEW-007–015, DLS-VIEW-025, DLS-UNIT-001–004 | T-VIEW-002 | 3 | Validate fields, types, link-compatible `href`, units and compact duration formatting, time units, ordering, exclusions, operation order, exposed context, and link labels. |
 | DLS-VIEW-016–021 | T-VIEW-003 | 3 | Validate disclosure vocabulary, one-to-four essential views, initial collapsed state, accessible controls, source order, and unchanged semantic output. |

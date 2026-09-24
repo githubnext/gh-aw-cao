@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderCampaignRouteVariant, renderCampaignRouteView } from '../../src/components/campaign-route-view.js';
+import { configureSourceLoader, refreshSources, resetSourceStore } from '../../src/source-store.js';
 
 const metadata = {
   'source-id': 'fixture',
@@ -153,6 +154,8 @@ function context() {
   };
 }
 
+afterEach(() => resetSourceStore());
+
 describe('campaign detail route', () => {
   it('renders the shared navigation shell for the selected campaign Insights facet', () => {
     const rendered = renderCampaignRouteView({
@@ -257,18 +260,64 @@ describe('campaign detail route', () => {
     ]);
     expect(allocation).toEqual({
       title: 'Ambient Context',
-      description: 'Current runtime failures and retained evidence for the Ambient Context campaign.',
+      description: 'Operational activity for the Ambient Context campaign.',
       navigationPage: 'campaigns'
     });
+  });
+
+  it('refreshes plot badges when independently bound campaign sources change', async () => {
+    let insightItems = 0;
+    const base = context();
+    configureSourceLoader(async (name) => {
+      if (name === 'workflows') return base.sources.workflows;
+      if (name === 'campaign-insight-tab-counts') {
+        return {
+          source: name,
+          metadata,
+          rows: insightItems > 0 ? [{ campaign: 'ambient-context', items: insightItems }] : []
+        };
+      }
+      return { source: name, metadata, rows: [] };
+    });
+    const rendered = renderCampaignRouteView({
+      ...base,
+      pageId: 'campaign-insights',
+      sourceNames: [
+        'workflows',
+        'campaign-insight-tab-counts',
+        'campaign-problem-tab-counts',
+        'campaign-issue-tab-counts'
+      ],
+      elementConfig: { body: 'insights' }
+    });
+    document.body.append(rendered);
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'campaign', value: 'ambient-context' }
+    }));
+
+    await vi.waitFor(() => {
+      expect(rendered.querySelector('.campaign-tabs .count-badge')).toBeNull();
+    });
+    insightItems = 1;
+    refreshSources();
+    await vi.waitFor(() => {
+      expect(rendered.querySelector('.campaign-tabs .count-badge')?.textContent).toBe('1');
+    });
+    rendered.remove();
   });
 
   it('keeps campaign facets above the page filter bar for the route view lifetime', async () => {
     const page = document.createElement('section');
     page.className = 'dashboard-page';
+    const loadingTabs = document.createElement('div');
+    loadingTabs.className = 'route-tab-navigation';
+    loadingTabs.append(document.createElement('nav'));
+    loadingTabs.querySelector('nav')?.setAttribute('data-route-tabs', '');
+    loadingTabs.querySelector('nav')?.classList.add('campaign-tabs');
     const filterBar = document.createElement('div');
     filterBar.className = 'filter-bar';
     const rendered = renderCampaignRouteVariant(context(), 'overview');
-    page.append(filterBar, rendered);
+    page.append(loadingTabs, filterBar, rendered);
 
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
       detail: { parameter: 'campaign', value: 'ambient-context' }
@@ -276,6 +325,8 @@ describe('campaign detail route', () => {
 
     expect(page.children[0]).toBe(page.querySelector('.campaign-tabs'));
     expect(page.children[1]).toBe(filterBar);
+    expect(page.querySelector('.route-tab-navigation')).toBeNull();
+    expect(page.querySelectorAll('[data-route-tabs]')).toHaveLength(1);
 
     rendered.remove();
     await Promise.resolve();
@@ -330,7 +381,7 @@ describe('campaign detail route', () => {
       expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')).toBeNull();
       expect(detail).toEqual({
         title: 'Ambient Context',
-        description: 'Workflow runs for the Ambient Context campaign.',
+        description: 'Operational activity for the Ambient Context campaign.',
         navigationPage: 'campaigns'
       });
     });
@@ -373,7 +424,7 @@ describe('campaign detail route', () => {
 
     expect(detail).toEqual({
       title: 'Ambient Context',
-      description: 'Overview of the Ambient Context campaign.',
+      description: 'Operational activity for the Ambient Context campaign.',
       navigationPage: 'campaigns'
     });
   });
@@ -403,7 +454,7 @@ describe('campaign detail route', () => {
       }));
       expect(detail).toEqual({
         title: 'Ambient Context',
-        description: 'Durable reports produced by the Ambient Context campaign.',
+        description: 'Operational activity for the Ambient Context campaign.',
         navigationPage: 'campaigns'
       });
 
@@ -477,7 +528,7 @@ describe('campaign detail route', () => {
 
     expect(detail).toEqual({
       title: 'Dependabot',
-      description: 'Audit events observed for the Dependabot campaign.',
+      description: 'Operational activity for the Dependabot campaign.',
       navigationPage: 'campaigns'
     });
     expect(rendered.textContent).toContain('Loading campaign data...');

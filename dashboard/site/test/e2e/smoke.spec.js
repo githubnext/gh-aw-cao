@@ -2468,7 +2468,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
     window.location.hash = '#page-campaign-detail?campaign=ambient-context';
   });
   await expect(page.locator('[data-breadcrumb-page]')).toHaveText('Ambient Context');
-  await expect(page.locator('[data-page-mode]')).toHaveText('Review');
+  await expect(page.locator('[data-page-mode]')).toBeHidden();
   await expect(page.locator('[data-nav-page-id="campaigns"]')).toHaveAttribute('aria-current', 'page');
   const campaignNavigation = page.getByRole('navigation', { name: 'Ambient Context views' });
   await expect(campaignNavigation.getByRole('link')).toHaveCount(3);
@@ -2559,7 +2559,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await expect(campaignInsights.getByRole('navigation', { name: 'Ambient Context views' })).toHaveCSS('display', 'grid');
   const mobileBack = page.getByRole('button', { name: 'Go back' });
   await expect(mobileBack).toBeVisible();
-  await expect(page.locator('.overview-header')).toContainText('Audit events observed for the Ambient Context campaign.');
+  await expect(page.locator('.overview-header')).toContainText('Operational activity for the Ambient Context campaign.');
   await expect(campaignInsights.locator('.measure-history [data-chart-widget="line"]')).toHaveCount(3);
   await expect(campaignInsights.locator('.measure-history .chart-point')).toHaveCount(6);
   await expect(campaignInsights.locator('.measure-history')).toContainText('Repository readiness');

@@ -1218,7 +1218,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .campaign-summary .table-region { margin-bottom: 0; }
 .campaign-summary-table { min-width: 920px; }
 .campaign-summary-table tbody th { font-weight: 600; white-space: nowrap; }
-.campaign-tabs { max-width: 100%; min-height: 48px; display: flex; gap: 8px; margin-bottom: 20px; padding-top: 8px; overflow-x: auto; border-bottom: 1px solid var(--border); }
+.campaign-tabs { max-width: 100%; min-height: 48px; display: flex; gap: 8px; margin-bottom: 20px; padding-top: 8px; overflow: visible; border-bottom: 1px solid var(--border); }
 .campaign-tabs a { min-height: 40px; display: inline-flex; align-items: center; gap: 8px; position: relative; padding: 0 8px; border-radius: 6px 6px 0 0; color: var(--fg); font-size: .875rem; text-decoration: none; white-space: nowrap; }
 .campaign-tabs a > .octicon { color: var(--muted); }
 .campaign-tabs a:hover { background: var(--neutral-muted); }

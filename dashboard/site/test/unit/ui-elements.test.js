@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { enableLazyViews } from '../../src/components/lazy-view.js';
-import { renderUiElement } from '../../src/components/ui-elements.js';
+import { elementLoadsSourcesAsync, renderUiElement } from '../../src/components/ui-elements.js';
 
 const metadata = {
   'source-id': 'signal-fixture',
@@ -39,6 +39,10 @@ function declarativeWorkRow(row) {
 }
 
 describe('UI elements', () => {
+  it('keeps campaign route identity in the active page subscription', () => {
+    expect(elementLoadsSourcesAsync('campaign-route')).toBe(false);
+  });
+
   it('composes operational value, outcomes, cost, runtime, security, and experiments in Insights', () => {
     /** @param {Array<Record<string, unknown>>} rows */
     const source = (rows) => ({ source: 'fixture', rows, metadata });

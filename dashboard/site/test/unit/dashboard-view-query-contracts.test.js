@@ -160,6 +160,27 @@ describe('dashboard view query contracts', () => {
     expect(dashboard.pages.some((/** @type {Record<string, unknown>} */ page) => page.id === 'campaign-dispatches')).toBe(false);
   });
 
+  it('uses one declarative route template and Insights destination for every campaign entry path', () => {
+    const campaignPages = dashboard.pages.filter((/** @type {Record<string, unknown>} */ page) => (
+      /** @type {Record<string, unknown> | undefined} */ (page.route)?.['hash-query-parameter'] === 'campaign'
+    ));
+    const expectedTabs = [
+      { id: 'insights', label: 'Insights', icon: 'graph', page: 'campaign-insights' },
+      { id: 'problems', label: 'Problems', icon: 'alert', page: 'campaign-problems' },
+      { id: 'issues', label: 'Issues', icon: 'issue-opened', page: 'campaign-issues' }
+    ];
+
+    for (const page of campaignPages) {
+      expect(page.route).toMatchObject({
+        'title-format': 'title-case',
+        'tabs-class-name': 'campaign-tabs',
+        tabs: expectedTabs
+      });
+    }
+    expect(JSON.stringify(dashboard.queries)).not.toContain('#page-campaign-detail?campaign=');
+    expect(JSON.stringify(dashboard.queries)).toContain('#page-campaign-insights?campaign=');
+  });
+
   it('renders campaign issues with the reusable issue card template', () => {
     const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-issues');
     const issueView = viewsOf(page).find((view) => view.id === 'campaign-issue-table');

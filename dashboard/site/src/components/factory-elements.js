@@ -7,7 +7,8 @@ import { publishSource, requestSource, sourceState } from '../source-store.js';
 import { dashboardViewAliasName } from '../data/queries/view-payload-compiler.js';
 
 /** @typedef {Record<string, unknown>} Row */
-/** @typedef {{ rows: () => Row[], pending: () => boolean, unavailable: () => boolean }} SourceBinding */
+/** @typedef {{ rows: () => Row[], source: () => LogicalSourceInput | undefined, pending: () => boolean, unavailable: () => boolean }} SourceBinding */
+/** @typedef {import('../presenter.js').LogicalSourceInput} LogicalSourceInput */
 /** @typedef {Record<string, SourceBinding>} SourceBindings */
 /**
  * Resolves the actual source name bound to each canonical metric role,
@@ -32,9 +33,10 @@ export function resolveFactorySourceNames(defaults, config) {
  * @param {Record<string, import('../presenter.js').LogicalSourceInput>} sources
  * @param {string[]} names
  * @param {{ pageId?: string, viewId?: string, viewIndex?: number, sourceNames?: string[], queryContext?: import('./ui-elements.js').ElementRenderContext['queryContext'] }} [request]
+ * @param {{ refreshViewSources?: boolean }} [options]
  * @returns {SourceBindings}
  */
-export function bindFactorySources(sources, names, request) {
+export function bindFactorySources(sources, names, request, options) {
   batch(() => {
     for (const [sourceIndex, name] of names.entries()) {
       const source = sources[name];
@@ -44,7 +46,14 @@ export function bindFactorySources(sources, names, request) {
         ? dashboardViewAliasName(request.pageId, { id: request.viewId }, request.viewIndex ?? 0, name, effectiveSourceIndex)
         : name;
       if (source && Array.isArray(source.rows)) publishSource(name, source, bindingKey);
-      else requestSource(name, { ...request, sourceIndex: effectiveSourceIndex, bindingKey });
+      if (!source || options?.refreshViewSources === true) {
+        requestSource(name, {
+          ...request,
+          sourceIndex: effectiveSourceIndex,
+          bindingKey,
+          refreshViewSource: options?.refreshViewSources === true
+        });
+      }
     }
   });
   return Object.fromEntries(names.map((name) => {
@@ -56,6 +65,7 @@ export function bindFactorySources(sources, names, request) {
     const entryState = sourceState(bindingKey);
     return [name, {
       rows: () => entryState.get().source?.rows ?? [],
+      source: () => entryState.get().source ?? undefined,
       pending: () => entryState.get().status === 'loading',
       unavailable: () => {
         const entry = entryState.get();
