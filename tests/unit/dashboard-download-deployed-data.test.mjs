@@ -340,6 +340,55 @@ test("downloads the deployed compacted activity shards and SQLite file without r
     }
   });
 
+  test("retries transient deployed shard HTTP failures", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "deployed-dashboard-http-retry-"));
+    const output = path.join(root, "activity");
+    const runsContent = '{"kind":"metadata","phase":"runs","records":0}\n';
+    const databaseContent = Buffer.from("published sqlite bytes");
+    const inventoryContent = JSON.stringify({ campaigns: { rows: [] } });
+    const manifest = JSON.stringify({
+      "gh-aw-logs.sqlite": createHash("sha256").update(databaseContent).digest("hex"),
+      "gh-aw-logs-runs/fixture.jsonl": createHash("sha256").update(runsContent).digest("hex"),
+    });
+    let shardRequests = 0;
+    const server = createServer((request, response) => {
+      if (request.url?.includes("/gh-aw-logs-runs/")) {
+        shardRequests += 1;
+        if (shardRequests === 1) {
+          response.writeHead(503);
+          response.end();
+          return;
+        }
+      }
+      response.writeHead(200, { "content-type": "application/x-ndjson" });
+      response.end(request.url?.endsWith(".sqlite")
+        ? databaseContent
+        : request.url?.endsWith("inventory-sources.json") ? inventoryContent
+        : request.url?.endsWith("payload-hashes.json") ? manifest : runsContent);
+    });
+    await new Promise((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(0, "127.0.0.1", resolve);
+    });
+
+    try {
+      const address = server.address();
+      assert.ok(address && typeof address === "object");
+      await executeFile(cao, [
+        "download",
+        "--url",
+        `http://127.0.0.1:${address.port}/cao/payload-hashes.json`,
+        "--output",
+        output,
+      ]);
+      assert.equal(shardRequests, 2);
+      assert.equal(await readFile(path.join(output, "gh-aw-logs-runs", "fixture.jsonl"), "utf8"), runsContent);
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   test("uses default .cao input and database when omitted", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "cao-cli-default-input-database-"));
     const fixture = path.resolve("dashboard/site/test/fixtures/gh-aw-logs/cached-v2.jsonl");

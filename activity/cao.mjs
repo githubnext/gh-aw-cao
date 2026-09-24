@@ -9,6 +9,7 @@ import { createInterface } from 'node:readline';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import { setTimeout as delay } from 'node:timers/promises';
 import { pathToFileURL } from 'node:url';
 import { createDebug } from './debug.mjs';
 import { adaptCachedGhAwJsonlStream, createCachedJsonlPayloadHasher } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
@@ -1303,6 +1304,8 @@ export async function downloadDeployedDashboardData({
   const inventoryPath = path.join(outputDirectory, 'inventory-sources.json');
   const isChecksumMismatch = (error) => error instanceof Error
     && /^Activity (?:SQLite|shard) checksum mismatch: /.test(error.message);
+  const isTransientDownloadFailure = (error) => error instanceof Error
+    && /: HTTP (?:408|425|429|5\d\d)$/.test(error.message);
 
   const downloadAttempt = async () => {
     const temporaryDirectory = await mkdtemp(path.join(outputDirectory, '.deployed-dashboard-'));
@@ -1389,7 +1392,8 @@ export async function downloadDeployedDashboardData({
       return await downloadAttempt();
     } catch (error) {
       lastError = error;
-      if (!isChecksumMismatch(error) || attempt === 3) throw error;
+      if ((!isChecksumMismatch(error) && !isTransientDownloadFailure(error)) || attempt === 3) throw error;
+      if (isTransientDownloadFailure(error)) await delay(attempt * 1_000);
     }
   }
   throw lastError;
