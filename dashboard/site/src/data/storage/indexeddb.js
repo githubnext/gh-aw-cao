@@ -366,12 +366,16 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
     const targetBytes = Math.floor(Math.max(0, options.maxDatabaseBytes) * 0.75);
     let estimatedBytes = 0;
     let deletedRecords = 0;
+    let retainedRecords = 0;
     /** @type {{ id: string, timestamp: number, bytes: number }[]} */
     const runs = [];
     /** @type {string[]} */
     const expiredRunIds = [];
     /** @type {Map<string, number>} */
     const linkedBytesByRun = new Map();
+    /** @type {Map<string, number>} */
+    const linkedRecordsByRun = new Map();
+    const retainedRunIds = new Set();
     const campaignIds = new Set();
     const repositoryIds = new Set();
     /** @type {Map<string, string>} */
@@ -439,7 +443,9 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
           }
           const bytes = estimatedRecordBytes(record);
           estimatedBytes += bytes;
+          retainedRecords += 1;
           if (storeName === 'runs') {
+            retainedRunIds.add(id);
             runs.push({
               id: String(record.id),
               timestamp: timestamp ?? Number.NEGATIVE_INFINITY,
@@ -448,6 +454,7 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
           } else if (RUN_LINKED_STORES.includes(/** @type {typeof RUN_LINKED_STORES[number]} */ (storeName))) {
             const runId = String(record.runId);
             linkedBytesByRun.set(runId, (linkedBytesByRun.get(runId) ?? 0) + bytes);
+            linkedRecordsByRun.set(runId, (linkedRecordsByRun.get(runId) ?? 0) + 1);
           }
         };
         if (typeof store.openCursor !== 'function') {
@@ -495,6 +502,7 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
             if (/** @type {Set<string>} */ (retainedIds).has(String(id))) return;
             remove();
             deletedRecords += 1;
+            retainedRecords -= 1;
           };
           if (typeof store.openCursor !== 'function') {
             for (const record of await requestResult(store.getAll())) {
@@ -521,6 +529,7 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
 
       for (const runId of expiredRunIds) {
         estimatedBytes -= linkedBytesByRun.get(runId) ?? 0;
+        retainedRecords -= linkedRecordsByRun.get(runId) ?? 0;
       }
       const usageTarget = Number.isFinite(options.usageBytes)
         && Number(options.usageBytes) > options.maxDatabaseBytes
@@ -534,7 +543,11 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
           if (estimatedBytes <= effectiveTarget) break;
           evictedRunIds.push(run.id);
           estimatedBytes -= run.bytes + (linkedBytesByRun.get(run.id) ?? 0);
+          retainedRecords -= 1 + (linkedRecordsByRun.get(run.id) ?? 0);
         }
+      }
+      for (const runId of expiredRunIds) {
+        if (retainedRunIds.has(runId)) retainedRecords -= 1;
       }
 
       for (let offset = 0; offset < evictedRunIds.length; offset += DEFAULT_WRITE_BATCH_SIZE) {
@@ -589,7 +602,7 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
         }
         await done;
       }
-      return { deletedRecords, estimatedBytes };
+      return { deletedRecords, estimatedBytes, retainedRecords };
     } finally {
       database.close();
     }

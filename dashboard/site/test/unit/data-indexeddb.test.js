@@ -100,7 +100,7 @@ describe('canonical IndexedDB', () => {
       { id: 'audit:current-run', runId: 'run:current', observedAt: '2026-09-09T00:00:00Z' }
     ]);
 
-    await maintainCanonicalDatabase(indexedDB, {
+    const maintenance = await maintainCanonicalDatabase(indexedDB, {
       now: Date.parse('2026-09-10T00:00:00Z'),
       retentionWindowMs: 30 * 24 * 60 * 60 * 1000,
       maxDatabaseBytes: Number.MAX_SAFE_INTEGER
@@ -112,6 +112,7 @@ describe('canonical IndexedDB', () => {
     expect(await readCollection(indexedDB, 'audits')).toEqual([
       expect.objectContaining({ id: 'audit:current-run' })
     ]);
+    expect(maintenance.retainedRecords).toBe(3);
 
     await maintainCanonicalDatabase(indexedDB, {
       now: Date.parse('2026-09-10T00:00:00Z'),

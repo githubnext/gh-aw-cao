@@ -543,8 +543,8 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
   await publishDailyOverviewAggregatesForBatch(indexedDB, runsOnlyBatch);
   return {
     updated: true,
-    committedBatches: writeMetrics.committedBatches,
-    committedRecords: Object.values(batch).reduce((total, records) => total + records.length, 0),
+    committedBatches: 0,
+    committedRecords: maintenance.retainedRecords,
     idb: writeMetrics
   };
 }
