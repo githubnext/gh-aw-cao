@@ -113,7 +113,7 @@ describe('queryDailyOverviewAggregateSources', () => {
     expect(result).toEqual({});
   });
 
-  it('returns weighted daily conclusion rows for an aliased Runs swimlane query', async () => {
+  it('returns daily conclusion rows for an aliased Runs line graph query', async () => {
     const indexedDB = new IDBFactory();
     await publishDailyOverviewAggregates(indexedDB, {
       generation: 'generation-a',

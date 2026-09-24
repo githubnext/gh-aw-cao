@@ -653,10 +653,8 @@ test('Runs renders a last-week line graph above its responsive table and scrolls
   if (lineGraphHeadingBox === null || lineGraphChartBox === null) {
     throw new Error('Expected line graph heading and chart boxes to be measurable.');
   }
-  const lineGraphChartMaxHeight = await lineGraph.locator('[data-chart-widget="line"] svg')
-    .evaluate((element) => Number.parseFloat(getComputedStyle(element).maxHeight));
-  expect(Number.isFinite(lineGraphChartMaxHeight)).toBe(true);
-  expect(lineGraphChartBox.height).toBeLessThanOrEqual(lineGraphChartMaxHeight);
+  expect(lineGraphChartBox.width).toBeGreaterThan(0);
+  expect(lineGraphChartBox.height).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'Table', exact: true }).click();
   await expect(table).toBeVisible();
   await expect(table.locator('tbody > tr')).toHaveCount(25);

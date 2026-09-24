@@ -9990,7 +9990,7 @@
               }
             },
             "mark": "chart",
-            "chart": "line",
+            "chart": "swimlane",
             "layout": "full",
             "encoding": {
               "x": {
@@ -11572,7 +11572,7 @@
                 }
               },
               "mark": "chart",
-              "chart": "swimlane",
+              "chart": "line",
               "layout": "horizontal",
               "encoding": {
                 "x": {
