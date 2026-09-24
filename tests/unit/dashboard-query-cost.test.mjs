@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { parse } from "yaml";
 import { estimateRetainedBytes, selectCostlyQueries } from "../helpers/dashboard-query-cost.mjs";
 
 const dashboardDocument = JSON.parse(
@@ -50,4 +51,21 @@ test("deployed integration runs the headless query cost benchmark", async () => 
     manifest.scripts["test:performance:dashboard-query-cost"],
     "node --expose-gc --test tests/performance/dashboard-query-cost.test.mjs",
   );
+});
+
+test("deployed integration reports the query cost report in a pull request comment", async () => {
+  const workflow = parse(await readFile(".github/workflows/dashboard-deployed-integration.yml", "utf8"));
+  const job = workflow.jobs["query-cost-comment"];
+  assert.ok(job, "expected a query-cost-comment job");
+  assert.deepEqual(job.needs, "query-cost");
+  assert.match(job.if, /github\.event_name == 'pull_request'/);
+  assert.match(job.if, /github\.event\.pull_request\.head\.repo\.full_name == github\.repository/);
+  assert.deepEqual(job.permissions, { actions: "read", "pull-requests": "write" });
+  const download = job.steps.find((step) => step.uses?.startsWith("actions/download-artifact@"));
+  assert.equal(download.with.name, "dashboard-query-cost");
+  const comment = job.steps.find((step) => step.uses?.startsWith("actions/github-script@"));
+  assert.match(comment.with.script, /<!-- dashboard-query-cost-results -->/);
+  assert.match(comment.with.script, /summary\.md/);
+  assert.match(comment.with.script, /issues\.createComment/);
+  assert.match(comment.with.script, /issues\.updateComment/);
 });
