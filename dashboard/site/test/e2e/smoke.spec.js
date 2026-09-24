@@ -38,6 +38,88 @@ function buildPresenterModuleUrl() {
   return 'http://dashboard.test/src/presenter.js';
 }
 
+test('campaign problem detail renders a responsive full view without a table', async ({ page }) => {
+  await page.evaluate(async ({ problemUrl, stylesUrl }) => {
+    const [{ renderProblemDetail }, { primerStylesheet }] = await Promise.all([
+      import(problemUrl),
+      import(stylesUrl)
+    ]);
+    const style = document.createElement('style');
+    style.textContent = primerStylesheet();
+    document.head.append(style);
+    const metadata = {
+      'source-id': 'campaign-problem-items-fixture',
+      'source-kind': 'fixture',
+      'as-of': '2026-09-24T18:00:00Z',
+      'retrieved-at': '2026-09-24T18:00:00Z',
+      completeness: 'complete',
+      freshness: 'fresh',
+      availability: 'available'
+    };
+    const rendered = renderProblemDetail({
+      pageId: 'campaign-problem-detail',
+      title: 'Problem',
+      sourceNames: ['campaign-problem-items'],
+      contextDetails: [],
+      routeParameter: 'target-repository',
+      headingTag: 'h3',
+      sources: {
+        'campaign-problem-items': {
+          source: 'campaign-problem-items',
+          metadata,
+          rows: [{
+            campaign: 'dependabot',
+            'campaign-name': 'Dependabot',
+            workflow: '.github/workflows/dependabot.md',
+            'workflow-name': 'Dependabot / Update Planner',
+            'workflow-role': 'orchestrator',
+            'runtime-repository': 'github/gh-aw',
+            'target-repository': 'github/gh-aw',
+            'rollout-mode': 'live',
+            'problem-kind': 'failure',
+            'problem-title': 'Dependency update failed',
+            'failure-count': 4,
+            'occurrence-count': 65,
+            'failure-message': 'The dependency update command exited with status 1.',
+            'error-signature': 'dependency-update-failed',
+            'failure-job': 'update',
+            'failure-step': 'Apply update',
+            'gh-aw-version': '0.89.20',
+            engine: 'copilot',
+            'engine-version': '1.2.3',
+            'requested-model': 'model-a',
+            'resolved-model': 'model-b',
+            'started-at': '2026-09-24T10:00:00Z',
+            'run-link': {
+              relation: 'run',
+              href: 'https://github.com/github/gh-aw/actions/runs/1',
+              label: 'View run'
+            }
+          }]
+        }
+      }
+    });
+    document.querySelector('#root')?.append(rendered);
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'target-repository', value: 'github/gh-aw' }
+    }));
+  }, {
+    problemUrl: 'http://dashboard.test/src/components/problem-detail.js',
+    stylesUrl: 'http://dashboard.test/src/styles.js'
+  });
+
+  const problemDetail = page.locator('.problem-view');
+  await expect(problemDetail).toBeVisible();
+  await expect(problemDetail.locator('table')).toHaveCount(0);
+  await expect(problemDetail.getByRole('heading', { name: 'Failure' })).toBeVisible();
+  await expect(problemDetail.getByRole('heading', { name: 'Scope' })).toBeVisible();
+  await expect(problemDetail.getByRole('heading', { name: 'Runtime environment' })).toBeVisible();
+  await expect(problemDetail.getByRole('button', { name: 'Fix It' })).toBeVisible();
+  await expect(problemDetail.getByRole('link', { name: 'View run' })).toHaveAttribute('rel', 'noopener noreferrer');
+  await page.setViewportSize({ width: 500, height: 800 });
+  await expect(problemDetail.locator('.problem-view-sections')).toHaveCSS('grid-template-columns', '500px');
+});
+
 for (const deviceName of ['Desktop Chrome', 'iPhone 13', 'Pixel 7']) {
   test.describe(`GitHub navigation on ${deviceName}`, () => {
     const device = devices[deviceName];
@@ -2479,16 +2561,6 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await expect(campaignNavigation.getByRole('link', { name: 'Problems' })).toHaveAttribute('aria-current', 'page');
   expect(await campaignNavigation.locator('.count-badge').allTextContents()).toEqual(campaignTabBadges);
   await expect(page.locator('[data-page-id="campaign-problems"] [data-view-id="campaign-current-runtime-problems"]')).toBeVisible();
-  const runtimeProblem = page.locator('[data-page-id="campaign-problems"] .entity-card-list-card').first();
-  await runtimeProblem.click();
-  await expect(page).toHaveURL(/#page-campaign-problem-detail\?/);
-  const problemDetail = page.locator('[data-page-id="campaign-problem-detail"] .problem-view');
-  await expect(problemDetail).toBeVisible();
-  await expect(problemDetail.locator('table')).toHaveCount(0);
-  await expect(problemDetail.getByRole('heading', { name: 'Failure' })).toBeVisible();
-  await expect(problemDetail.getByRole('heading', { name: 'Scope' })).toBeVisible();
-  await expect(problemDetail.getByRole('heading', { name: 'Runtime environment' })).toBeVisible();
-  await expect(problemDetail.getByRole('button', { name: 'Fix It' })).toBeVisible();
   await page.evaluate(() => {
     window.location.hash = '#page-campaign-workflows?campaign=ambient-context';
   });

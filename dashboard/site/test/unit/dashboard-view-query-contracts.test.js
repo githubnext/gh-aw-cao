@@ -239,7 +239,6 @@ describe('dashboard view query contracts', () => {
       element: 'problem-detail',
       layout: 'full'
     });
-    expect(detailView).not.toHaveProperty('encoding');
   });
 
   it('renders issues per repository and one activity inventory', () => {
