@@ -12728,6 +12728,124 @@
         "description": "Compare observed agent and model combinations from workflow runs."
       },
       {
+        "id": "operational-value",
+        "kind": "built-in",
+        "page": "operational-value",
+        "title": "Operational Value",
+        "description": "Computed package-defined operational value for each repository.",
+        "icon": "graph",
+        "definition": {
+          "data-state": {
+            "availability": true
+          },
+          "views": [
+            {
+              "id": "operational-value-history",
+              "title": "Operational value over time",
+              "description": "Each line tracks one package-defined value ID across retained repository observations.",
+              "data": {
+                "source": "operational-values"
+              },
+              "mark": "chart",
+              "chart": "line",
+              "layout": "full",
+              "empty-message": "No operational-value observations are available.",
+              "encoding": {
+                "x": {
+                  "field": "observed-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "time-unit": "day",
+                  "title": "Observed"
+                },
+                "y": {
+                  "field": "operational-value",
+                  "type": "quantitative",
+                  "aggregate": "mean",
+                  "title": "Operational value"
+                },
+                "color": {
+                  "field": "operational-value-definition",
+                  "type": "nominal",
+                  "title": "Value ID"
+                }
+              }
+            },
+            {
+              "id": "operational-value-observations",
+              "description": "Time-ordered computed values with their repository and campaign context.",
+              "disclosure": "supplemental",
+              "data": {
+                "source": "operational-values",
+                "order-by": [
+                  {
+                    "field": "observed-at",
+                    "direction": "desc"
+                  }
+                ],
+                "limit": 100
+              },
+              "mark": "table",
+              "controls": "interactive",
+              "layout": "full-view",
+              "empty-message": "No operational-value observations are available.",
+              "encoding": {
+                "columns": [
+                  {
+                    "field": "observed-at",
+                    "type": "temporal",
+                    "title": "Observed",
+                    "format": "human-friendly-timestamp"
+                  },
+                  {
+                    "field": "operational-value-definition",
+                    "type": "nominal",
+                    "title": "Value ID"
+                  },
+                  {
+                    "field": "operational-value",
+                    "type": "quantitative",
+                    "title": "Value"
+                  },
+                  {
+                    "field": "repository",
+                    "type": "nominal",
+                    "title": "Repository",
+                    "display": "repository-link"
+                  },
+                  {
+                    "field": "campaign",
+                    "type": "nominal",
+                    "title": "Campaign"
+                  }
+                ]
+              },
+              "lazy-list": true
+            }
+          ],
+          "sections": [
+            {
+              "id": "insights",
+              "title": "Insights",
+              "description": "Trends in computed operational value by value ID.",
+              "layout": "full",
+              "views": [
+                "operational-value-history"
+              ]
+            },
+            {
+              "id": "observations",
+              "title": "Observations",
+              "description": "The retained evidence behind the operational-value trends.",
+              "layout": "full",
+              "views": [
+                "operational-value-observations"
+              ]
+            }
+          ]
+        }
+      },
+      {
         "id": "findings",
         "kind": "built-in",
         "page": "findings",
@@ -13992,6 +14110,7 @@
           "workflows",
           "runs",
           "issues",
+          "operational-value",
           "cost",
           "engines-models",
           "firewall",

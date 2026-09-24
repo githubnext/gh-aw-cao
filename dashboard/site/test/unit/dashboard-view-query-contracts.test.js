@@ -130,6 +130,45 @@ describe('dashboard view query contracts', () => {
     ]);
   });
 
+  it('renders operational value with an Insights-first value-ID timeline in the Data section', () => {
+    const page = dashboard.pages.find(
+      (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'operational-value'
+    );
+    const dataSection = dashboard.navigation.find(
+      (/** @type {Record<string, unknown>} */ section) => section.label === 'Data'
+    );
+
+    expect(/** @type {Record<string, unknown> | undefined} */ (dataSection)?.pages)
+      .toContain('operational-value');
+    expect(page).toMatchObject({
+      kind: 'built-in',
+      page: 'operational-value',
+      definition: {
+        sections: [
+          {
+            id: 'insights',
+            views: ['operational-value-history']
+          },
+          {
+            id: 'observations',
+            views: ['operational-value-observations']
+          }
+        ]
+      }
+    });
+    expect(viewsOf(page)[0]).toMatchObject({
+      id: 'operational-value-history',
+      data: { source: 'operational-values' },
+      mark: 'chart',
+      chart: 'line',
+      encoding: {
+        x: { field: 'observed-at', type: 'temporal' },
+        y: { field: 'operational-value', type: 'quantitative' },
+        color: { field: 'operational-value-definition', type: 'nominal' }
+      }
+    });
+  });
+
   it('keeps assessment-sensitive high-cardinality views declaratively bounded', () => {
     const pagesById = new Map(dashboard.pages.map((/** @type {Record<string, unknown>} */ page) => [page.id, page]));
     const boundedViews = [
