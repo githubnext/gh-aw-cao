@@ -5,7 +5,7 @@ import path from "node:path";
 import { fail, isRepository, repoRoot, requireArgs, requireCommand, run, scriptDir } from "./common.mjs";
 
 const args = process.argv.slice(2);
-requireArgs(args, 1, 2, "list-repository-workflows.mjs OWNER/REPO [WORKFLOW-NAME]");
+requireArgs(args, 1, 4, "list-repository-workflows.mjs OWNER/REPO [WORKFLOW-NAME] [--campaign CAMPAIGN-SLUG]");
 if (!isRepository(args[0])) fail("repository must use OWNER/REPO format");
 requireCommand("gh");
 

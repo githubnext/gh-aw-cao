@@ -228,6 +228,23 @@ test('Daily File Diet shares one value module between CAO collection and histori
   writeFileSync(path.join(sourceDirectory, 'pkg', 'healthy.go'), 'line\n'.repeat(800));
   execFileSync('tar', ['-czf', archive, '-C', sourceDirectory, '.']);
   cpSync(path.join(root, 'daily-file-diet'), packageDirectory, { recursive: true });
+  writeFileSync(path.join(packageDirectory, 'operational-value', 'other-workflow.mjs'), `
+export const definition = {
+  slug: "other-workflow",
+  evidence: {
+    repositories: ["github/gh-aw"],
+    window: {durationDays: 1, maturationDays: 0}
+  },
+  metrics: [{id: "largest-file-health"}]
+};
+export async function collectBatch(windows) {
+  return windows.map(() => ({evidence: {value: 0.25}}));
+}
+export function scoreMetric(id, evidence) {
+  if (id !== "largest-file-health") throw new Error("unknown metric");
+  return evidence.value;
+}
+`);
   writeFileSync(fakeGh, `#!/usr/bin/env bash
 set -euo pipefail
 if [[ " $* " == *"tarball/"* ]]; then
@@ -262,14 +279,20 @@ fi
       {
         campaign: 'daily-file-diet',
         repository: 'github/gh-aw',
-        valueId: 'largest-file-health',
+        valueId: 'daily-file-diet.largest-file-health',
         value: 0.8325,
       },
       {
         campaign: 'daily-file-diet',
         repository: 'github/gh-aw',
-        valueId: 'compliant-line-mass-share',
+        valueId: 'daily-file-diet.compliant-line-mass-share',
         value: 0.4,
+      },
+      {
+        campaign: 'daily-file-diet',
+        repository: 'github/gh-aw',
+        valueId: 'other-workflow.largest-file-health',
+        value: 0.25,
       },
     ],
   );
@@ -283,9 +306,11 @@ fi
     compliantLines: 800,
   };
   assert.deepEqual(
-    result.values.map(({ valueId, value }) => ({ valueId, value })),
+    result.values
+      .filter(({ valueId }) => valueId.startsWith('daily-file-diet.'))
+      .map(({ valueId, value }) => ({ valueId, value })),
     valueModule.definition.metrics.map(({ id }) => ({
-      valueId: id,
+      valueId: `daily-file-diet.${id}`,
       value: valueModule.scoreMetric(id, evidence),
     })),
   );

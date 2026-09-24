@@ -142,13 +142,21 @@ if (caoAdapter) {
   };
   let records;
   try {
-    const output = run(process.execPath, [caoAdapter], { input: `${JSON.stringify(request)}\n` });
+    const output = run(process.execPath, [caoAdapter], {
+      input: `${JSON.stringify(request)}\n`,
+      env: { ...process.env, CAO_OPERATIONAL_VALUE_MODULE: definition.slug },
+    });
     records = output.split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line));
   } catch (error) {
     fail(`CAO adapter did not exit cleanly: ${error.message}`);
   }
-  const expectedIds = new Set(metrics.map(({ id }) => id));
-  const validRecords = records.length === metrics.length
+  const expectedIds = new Set(metrics.map(({ id }) => `${definition.slug}.${id}`));
+  const recordKeys = records.map(
+    ({ repository, valueId }) => `${String(repository).toLowerCase()}\0${valueId}`,
+  );
+  const validRecords = records.length > 0
+    && records.length <= definition.evidence.repositories.length * metrics.length
+    && new Set(recordKeys).size === recordKeys.length
     && records.every((record) => record.timestamp === timestamp
       && definition.evidence.repositories.some(
         (repository) => repository.toLowerCase() === String(record.repository).toLowerCase(),
