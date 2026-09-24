@@ -39,6 +39,30 @@ describe('dashboard document validation', () => {
     expect(accepted.ok).toBe(true);
   });
 
+  it('validates bottom navigation placement vocabulary and labels', () => {
+    const invalidPlacement = JSON.parse(authoritativeDashboardSource);
+    invalidPlacement.dashboard.navigation = [{ label: 'Manage', placement: 'top', pages: ['overview'] }];
+    expect(validateDashboardDocument(JSON.stringify(invalidPlacement))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([expect.objectContaining({
+        code: 'DLS-E005',
+        message: 'navigation section placement must be "bottom" when present; found "top".',
+        path: '$.dashboard.navigation[0].placement'
+      })])
+    });
+
+    const unlabeledBottom = JSON.parse(authoritativeDashboardSource);
+    unlabeledBottom.dashboard.navigation = [{ placement: 'bottom', pages: ['overview'] }];
+    expect(validateDashboardDocument(JSON.stringify(unlabeledBottom))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([expect.objectContaining({
+        code: 'DLS-E003',
+        message: 'navigation section placement requires a non-empty label.',
+        path: '$.dashboard.navigation[0].label'
+      })])
+    });
+  });
+
   it('rejects queries outside the view-to-query dependency graph', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     document.dashboard.queries.push({
