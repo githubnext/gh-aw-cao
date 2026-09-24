@@ -749,8 +749,8 @@ describe('presenter built-in and custom pages', () => {
         'engines-models-usage': {
           source: 'engines-models-usage',
           rows: [
-            { summary: 'copilot / gpt-5.6-sol', runs: 2 },
-            { summary: 'pi / claude-sonnet-5', runs: 1 }
+            { summary: 'copilot / gpt-5.6-sol', runs: 2, 'average-aic-per-run': 5 },
+            { summary: 'pi / claude-sonnet-5', runs: 1, 'average-aic-per-run': 8 }
           ],
           metadata
         },
@@ -761,8 +761,8 @@ describe('presenter built-in and custom pages', () => {
     const page = await activatePage(rendered, 'engines-models');
     expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
-    expect(page?.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
-    expect(page?.querySelector('[data-view-id="engines-models-distribution"] + [data-view-id="engines-models-usage"]')).not.toBeNull();
+    expect(page?.querySelectorAll('[data-chart-widget="pie"]')).toHaveLength(2);
+    expect(page?.querySelector('[data-view-id="engines-models-distribution"] + [data-view-id="engines-models-cost"] + [data-view-id="engines-models-usage"]')).not.toBeNull();
     expect(page?.getAttribute('data-page-title')).toBe('Models & Agents');
     expect(page?.textContent).toContain('copilot');
     expect(page?.textContent).toContain('gpt-5.6-sol');

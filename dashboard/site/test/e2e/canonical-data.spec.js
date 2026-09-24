@@ -775,7 +775,8 @@ test('data worker returns the Models & agents run distribution on initial and na
       source: 'engines-models-usage',
       rows: [{
         summary: 'copilot / model-b',
-        runs: 1
+        runs: 1,
+        'average-aic-per-run': 17
       }],
       metadata: { 'source-kind': 'derived', 'query-name': 'engines-models-usage' }
     });

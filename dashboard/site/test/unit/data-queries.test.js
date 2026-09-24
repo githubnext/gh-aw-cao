@@ -847,6 +847,7 @@ describe('declarative dashboard queries', () => {
       source: 'runs',
       rows: usage.rows.map((row) => ({
         ...row,
+        'aic-total': row.aic,
         'run-attempt': 1,
         'repository-link': { href: 'repo' },
         'run-link': { href: `run-${row.run}` }
@@ -865,7 +866,8 @@ describe('declarative dashboard queries', () => {
       rows: [
         {
           summary: 'copilot / model-b',
-          runs: 2
+          runs: 2,
+          'average-aic-per-run': 5
         }
       ],
       metadata: { 'source-kind': 'derived', 'query-name': 'engines-models-usage' }

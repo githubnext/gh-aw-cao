@@ -3659,6 +3659,11 @@
               "field": "run",
               "as": "runs",
               "reducer": "count"
+            },
+            {
+              "field": "aic-total",
+              "as": "average-aic-per-run",
+              "reducer": "mean"
             }
           ]
         },
@@ -3668,6 +3673,9 @@
           },
           {
             "field": "runs"
+          },
+          {
+            "field": "average-aic-per-run"
           }
         ],
         "order-by": [
@@ -11794,6 +11802,31 @@
             }
           },
           {
+            "id": "engines-models-cost",
+            "title": "Average AIC per run",
+            "description": "Average AI Credit cost per observed workflow run by agent and model combination.",
+            "data": {
+              "source": "engines-models-usage"
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "empty-message": "No AI Credit cost data is available for agent and model combinations.",
+            "layout": "full",
+            "encoding": {
+              "x": {
+                "field": "summary",
+                "type": "nominal",
+                "title": "Agent / model"
+              },
+              "y": {
+                "field": "average-aic-per-run",
+                "type": "quantitative",
+                "title": "Average AIC per run",
+                "unit": "aic-per-run"
+              }
+            }
+          },
+          {
             "id": "engines-models-usage",
             "title": "Engines and models",
             "description": "Observed workflow runs grouped by agent and model identifiers.",
@@ -11815,6 +11848,12 @@
                   "field": "runs",
                   "type": "quantitative",
                   "title": "Runs"
+                },
+                {
+                  "field": "average-aic-per-run",
+                  "type": "quantitative",
+                  "title": "Average AIC",
+                  "unit": "aic-per-run"
                 }
               ]
             },
