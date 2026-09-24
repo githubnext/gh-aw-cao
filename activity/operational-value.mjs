@@ -53,44 +53,44 @@ function githubApiRemaining(env) {
   if (result.error || result.status !== 0) {
     throw new Error(`Unable to read GitHub API rate limit: ${commandFailureMessage(result, 'gh api rate_limit failed')}`);
   }
-
-  function operationalValueWorkerEnvironment(databasePath, observedAt, rateLimitReserve) {
-    const env = Object.fromEntries(WORKER_ENVIRONMENT.flatMap((name) => (
-      process.env[name] === undefined ? [] : [[name, process.env[name]]]
-    )));
-    const token = process.env.CAO_OPERATIONAL_VALUE_GH_TOKEN || process.env.GH_TOKEN;
-    if (token) env.GH_TOKEN = token;
-    env.CAO_DATABASE = path.resolve(databasePath);
-    env.CAO_OPERATIONAL_VALUE_TIMESTAMP = observedAt;
-    if (rateLimitReserve !== undefined) {
-      env.CAO_GITHUB_API_MIN_REMAINING = String(rateLimitReserve);
-    }
-    return { env, token };
-  }
-
-  function redactToken(message, token) {
-    return token ? String(message).replaceAll(token, '***') : String(message);
-  }
-
-  function runOperationalValueWorker(entry, request, env) {
-    const result = spawnSync(process.execPath, [entry.script], {
-      encoding: 'utf8',
-      input: request,
-      maxBuffer: 16 * 1024 * 1024,
-      timeout: WORKER_TIMEOUT_MS,
-      killSignal: 'SIGKILL',
-      env
-    });
-    if (result.error || result.status !== 0) {
-      throw new Error(`${entry.script} failed: ${commandFailureMessage(result, 'operational-value.mjs failed')}`);
-    }
-    return result.stdout;
-  }
   const remaining = Number(String(result.stdout).trim());
   if (!Number.isSafeInteger(remaining) || remaining < 0) {
     throw new Error('GitHub API returned an invalid core rate limit');
   }
   return remaining;
+}
+
+function operationalValueWorkerEnvironment(databasePath, observedAt, rateLimitReserve) {
+  const env = Object.fromEntries(WORKER_ENVIRONMENT.flatMap((name) => (
+    process.env[name] === undefined ? [] : [[name, process.env[name]]]
+  )));
+  const token = process.env.CAO_OPERATIONAL_VALUE_GH_TOKEN || process.env.GH_TOKEN;
+  if (token) env.GH_TOKEN = token;
+  env.CAO_DATABASE = path.resolve(databasePath);
+  env.CAO_OPERATIONAL_VALUE_TIMESTAMP = observedAt;
+  if (rateLimitReserve !== undefined) {
+    env.CAO_GITHUB_API_MIN_REMAINING = String(rateLimitReserve);
+  }
+  return { env, token };
+}
+
+function redactToken(message, token) {
+  return token ? String(message).replaceAll(token, '***') : String(message);
+}
+
+function runOperationalValueWorker(entry, request, env) {
+  const result = spawnSync(process.execPath, [entry.script], {
+    encoding: 'utf8',
+    input: request,
+    maxBuffer: 16 * 1024 * 1024,
+    timeout: WORKER_TIMEOUT_MS,
+    killSignal: 'SIGKILL',
+    env
+  });
+  if (result.error || result.status !== 0) {
+    throw new Error(`${entry.script} failed: ${commandFailureMessage(result, 'operational-value.mjs failed')}`);
+  }
+  return result.stdout;
 }
 
 export function operationalValueReserve(value, UsageError = Error) {

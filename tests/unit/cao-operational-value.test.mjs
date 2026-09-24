@@ -259,7 +259,7 @@ fi\n`);
   ), /Dependabot alerts pagination exceeded 2 pages/);
 });
 
-test('cao operational-value rejects non-numeric metrics and bounds retained output', () => {
+test('cao operational-value warns on non-numeric metrics and bounds retained output', () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-retention-'));
   const packageDirectory = path.join(temporary, 'example');
   const output = path.join(temporary, 'values.jsonl');
