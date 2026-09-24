@@ -110,7 +110,6 @@ Named elements own specialized DOM, accessibility, interaction, local state, and
 | `factory-header` | Presents factory status, retained-output context, work in motion, and weekly rhythm. |
 | `factory-floor` | Presents linked repository, run, dispatch, and value stations. |
 | `link-button-list` | Presents one source as an inset grouped list of Octicon navigation rows with disclosure chevrons. |
-| `campaign-problem-list` | Presents current runtime problems for a campaign, grouped by workflow, with retained failure evidence and a "Fix with Copilot" repair prompt. |
 | `outcomes-overview` | Compatibility alias that composes the factory header and floor for existing version 0.1.0 documents. |
 
 ## Testing standard

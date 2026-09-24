@@ -83,7 +83,10 @@ export function createRoutePageShell(context, options) {
       const pageElement = root.closest('.dashboard-page');
       const page = pageElement instanceof HTMLElement ? pageElement : null;
       if (tabs && page) {
-        page.insertBefore(tabs, page.querySelector(':scope > .page-chrome, :scope > .filter-bar'));
+        page.insertBefore(
+          tabs,
+          page.querySelector(':scope > .page-chrome, :scope > .filter-bar, :scope > .page-layout-grid, :scope > .custom-view-grid')
+        );
         promotedTabs = tabs;
         if (observedPage !== page) {
           pageObserver?.disconnect();

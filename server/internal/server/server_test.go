@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -13,9 +14,12 @@ import (
 	"sync"
 	"testing"
 
+	"go.opentelemetry.io/otel"
+
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
 const testAccessToken = "0123456789abcdef0123456789abcdef"
@@ -91,6 +95,93 @@ func TestAPINeverReturnsRedisCredentials(t *testing.T) {
 		if strings.Contains(body, forbidden) {
 			t.Fatalf("API response leaked %q: %s", forbidden, body)
 		}
+	}
+}
+
+func TestAPIResponsesCarryStandardizedTraceIdentifiers(t *testing.T) {
+	previousProvider := otel.GetTracerProvider()
+	t.Cleanup(func() { otel.SetTracerProvider(previousProvider) })
+	t.Setenv("OTEL_SDK_DISABLED", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://127.0.0.1:4318")
+	shutdown, err := telemetry.Setup(t.Context(), "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 0)
+		defer cancel()
+		_ = shutdown(ctx)
+	})
+	address, closeServer := fakeRedis(t)
+	defer closeServer()
+	client, err := redisx.New("redis://" + address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	site, err := os.MkdirTemp(".", ".test-site-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.RemoveAll(site); err != nil {
+			t.Errorf("remove test site: %v", err)
+		}
+	})
+	if err := os.WriteFile(site+"/index.html", []byte("<html><head></head><body></body></html>"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	app, err := New(redisx.NewStore(client, "test"), Config{
+		Listen: "127.0.0.1:8443", SiteDirectory: site, AccessToken: testAccessToken,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "https://localhost/api/v1/health", nil)
+	authorize(request)
+	response := httptest.NewRecorder()
+	app.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("health returned %d: %s", response.Code, response.Body.String())
+	}
+	traceID := response.Header().Get("X-Trace-Id")
+	spanID := response.Header().Get("X-Span-Id")
+	if len(traceID) != 32 {
+		t.Fatalf("expected a 32-character W3C trace id, got %q", traceID)
+	}
+	if len(spanID) != 16 {
+		t.Fatalf("expected a 16-character W3C span id, got %q", spanID)
+	}
+}
+
+func TestAzureFunctionsHandlerLogsTelemetryFailureOnceAndKeepsServing(t *testing.T) {
+	// NewAzureFunctionsHandlerFromEnv is the only caller of azureProcessTelemetry
+	// in the process, and this is its only test, so the shared sync.Once
+	// has not fired yet; sync.Once cannot be copied/reset, so no
+	// save/restore is attempted here.
+	previousErr := azureProcessTelemetry.err
+	t.Cleanup(func() { azureProcessTelemetry.err = previousErr })
+
+	// An OTLP endpoint plus a malformed OTEL_RESOURCE_ATTRIBUTES value
+	// forces telemetry.Setup to fail while building the OpenTelemetry
+	// resource, without needing a reachable collector.
+	t.Setenv("OTEL_SDK_DISABLED", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://127.0.0.1:4318")
+	t.Setenv("OTEL_RESOURCE_ATTRIBUTES", "not-a-valid-key-value-list")
+	t.Setenv("CAO_REDIS_URL", "")
+
+	var logOutput strings.Builder
+	logger := log.New(&logOutput, "", 0)
+
+	for i := 0; i < 2; i++ {
+		_, err := NewAzureFunctionsHandlerFromEnv(t.Context(), t.TempDir(), "", logger)
+		if err == nil || !strings.Contains(err.Error(), "CAO_REDIS_URL") {
+			t.Fatalf("call %d: expected the missing CAO_REDIS_URL error, got %v", i, err)
+		}
+	}
+
+	occurrences := strings.Count(logOutput.String(), "telemetry configuration failed")
+	if occurrences != 1 {
+		t.Fatalf("expected exactly one telemetry failure log line across repeated invocations, got %d: %q", occurrences, logOutput.String())
 	}
 }
 

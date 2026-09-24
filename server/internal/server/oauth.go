@@ -118,6 +118,7 @@ func newGitHubOAuth(config GitHubOAuthConfig, store *redisx.Store) *githubOAuth 
 }
 
 func (oauth *githubOAuth) login(response http.ResponseWriter, request *http.Request) {
+	serverLog.Printf("oauth login started")
 	state, err := randomToken(32)
 	if err != nil {
 		writeError(response, http.StatusInternalServerError, "failed to initialize login")
@@ -144,6 +145,7 @@ func (oauth *githubOAuth) login(response http.ResponseWriter, request *http.Requ
 
 func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.Request) {
 	if !oauth.validState(request) {
+		serverLog.Printf("oauth callback rejected invalid state")
 		writeError(response, http.StatusBadRequest, "invalid OAuth state")
 		return
 	}
@@ -160,11 +162,13 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 		"redirect_uri":  {oauth.config.RedirectURL},
 	})
 	if err != nil {
+		serverLog.Printf("oauth exchange failed")
 		writeError(response, http.StatusUnauthorized, "GitHub OAuth exchange failed")
 		return
 	}
 	login, err := oauth.authorizedLogin(request.Context(), tokens.AccessToken)
 	if err != nil {
+		serverLog.Printf("oauth authorization failed")
 		writeError(response, http.StatusForbidden, "GitHub authorization failed")
 		return
 	}
@@ -195,10 +199,12 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 		session.RefreshExpires = now.Add(sessionTTL)
 	}
 	if err := oauth.saveSession(request.Context(), session); err != nil {
+		serverLog.Printf("oauth session save failed")
 		writeError(response, http.StatusServiceUnavailable, "failed to create session")
 		return
 	}
 	oauth.setSessionCookies(response, session)
+	serverLog.Printf("oauth callback completed")
 	http.Redirect(response, request, "/", http.StatusFound)
 }
 
@@ -210,6 +216,7 @@ func (oauth *githubOAuth) logout(response http.ResponseWriter, request *http.Req
 		_ = oauth.deleteSession(request.Context(), session.ID)
 	}
 	oauth.clearSessionCookies(response)
+	serverLog.Printf("oauth logout completed")
 	response.WriteHeader(http.StatusNoContent)
 }
 
@@ -233,6 +240,7 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 		"refresh_token": {session.RefreshToken},
 	})
 	if err != nil {
+		serverLog.Printf("oauth token refresh failed")
 		_ = oauth.deleteSession(request.Context(), session.ID)
 		oauth.clearSessionCookies(response)
 		return oauthSession{}, false
@@ -250,8 +258,10 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 		session.AccessExpires = now.Add(time.Hour)
 	}
 	if err := oauth.saveSession(request.Context(), session); err != nil {
+		serverLog.Printf("oauth refreshed session save failed")
 		return oauthSession{}, false
 	}
+	serverLog.Printf("oauth session refreshed")
 	return session, true
 }
 

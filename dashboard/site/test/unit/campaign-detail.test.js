@@ -266,6 +266,27 @@ describe('campaign detail route', () => {
     expect(page.querySelector('.campaign-tabs')).toBeNull();
   });
 
+  it('places campaign facets above already-rendered page content when no page chrome is present', () => {
+    const page = document.createElement('section');
+    page.className = 'dashboard-page';
+    const rendered = renderCampaignRouteVariant(context(), 'problems');
+    const contentGrid = document.createElement('div');
+    contentGrid.className = 'custom-view-grid';
+    contentGrid.append(rendered);
+    const otherViewContent = document.createElement('p');
+    otherViewContent.className = 'campaign-problem-cards';
+    otherViewContent.textContent = 'problems content';
+    contentGrid.append(otherViewContent);
+    page.append(contentGrid);
+
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'campaign', value: 'ambient-context' }
+    }));
+
+    expect(page.children[0]).toBe(page.querySelector('.campaign-tabs'));
+    expect(page.children[1]).toBe(contentGrid);
+  });
+
   it('keeps non-facet workflow composition available without adding a selected tab', () => {
     const rendered = renderCampaignRouteVariant(context(), 'workflows');
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {

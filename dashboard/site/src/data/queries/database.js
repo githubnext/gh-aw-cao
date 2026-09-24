@@ -13,7 +13,7 @@ import {
   executeDashboardQueries,
   resolveDashboardQuerySources
 } from './declarative.js';
-import { SOURCE_FIELDS } from '../../specification.js';
+import { TABLE_FIELDS } from '../../specification.js';
 
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 const databaseQueryIndex = dashboardQueryIndex(databaseQueries);
@@ -410,8 +410,8 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
         source: name,
         rows: [],
         metadata: {
-          ...queryMetadata(sources, name, name, Object.hasOwn(SOURCE_FIELDS, name)),
-          availability: Object.hasOwn(SOURCE_FIELDS, name) ? 'empty' : 'unavailable'
+          ...queryMetadata(sources, name, name, Object.hasOwn(TABLE_FIELDS, name)),
+          availability: Object.hasOwn(TABLE_FIELDS, name) ? 'empty' : 'unavailable'
         }
       };
       continue;

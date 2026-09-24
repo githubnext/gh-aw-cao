@@ -11,7 +11,7 @@ Create one dashboard that helps an operator make a bounded decision from the can
 
 1. Define one bounded workflow task and a concise, outcome-oriented intent.
 2. Derive activation, required-effect, no-op, success, and uncertainty conditions.
-3. Select only measures and dimensions declared by the canonical source contract. Preserve upstream metric IDs, native numeric values, units, directions, ordering, and nulls without inventing definitions, scales, baselines, maturity, or causality.
+3. Select only measures and dimensions declared by the database table contract. Preserve upstream metric IDs, native numeric values, units, directions, ordering, and nulls without inventing definitions, scales, baselines, maturity, or causality.
 4. Define a compact dashboard intent with no more than four essential views per page. Every page must begin with a pie, line, histogram, or swimlane chart that serves as a visual executive summary of the most important signal, so an operator can understand it at a glance on a phone without scrolling. Prefer an operational summary, actionable findings, outcomes, and relevant declared trends.
    - Choose a pie chart for a current distribution, a line chart for a quantitative temporal trend, or a swimlane chart for categorical observations over time. Put supporting metrics, tables, and detail views after this chart.
    - Avoid nested chart boxes. Do not add a section solely to frame a chart; use sections only when their heading or grouping adds operator context.

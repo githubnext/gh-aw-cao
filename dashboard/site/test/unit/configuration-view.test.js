@@ -231,8 +231,8 @@ describe('Configuration dashboard view', () => {
     expect(page.views.map((/** @type {{ mark: string }} */ view) => view.mark)).toEqual(['list', 'list']);
     expect(page.views.map((/** @type {{ list: { style: string, card: string } }} */ view) => view.list))
       .toEqual([
-        { style: 'entity-cards', card: 'maintenance-campaign', icon: 'workflow' },
-        { style: 'entity-cards', card: 'maintenance-repository', icon: 'repo' }
+        { style: 'entity-cards', card: 'maintenance-campaign', icon: 'workflow', action: 'update-repository' },
+        { style: 'entity-cards', card: 'maintenance-repository', icon: 'repo', action: 'upgrade-repository' }
       ]);
     expect(page.views[0].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field))
       .toEqual([
@@ -249,7 +249,12 @@ describe('Configuration dashboard view', () => {
         'gh-aw-current-version',
         'upgrade-state'
       ]);
+    expect(page.views.map((/** @type {{ title?: string }} */ view) => view.title))
+      .toEqual(['CAO packages', 'Repositories']);
+    expect(page.views.some((/** @type {{ disclosure?: string }} */ view) => view.disclosure !== undefined)).toBe(false);
     const templates = new Map(dashboard['card-templates'].map((/** @type {{ id: string }} */ template) => [template.id, template]));
+    expect(templates.get('maintenance-campaign')['detail-labels']).toBe('visible');
+    expect(templates.get('maintenance-repository')['detail-labels']).toBe('visible');
     expect(templates.get('maintenance-campaign').actions).toEqual([{
       action: 'update-campaign',
       context: ['campaign'],
@@ -259,6 +264,9 @@ describe('Configuration dashboard view', () => {
       action: 'upgrade-target-repository',
       context: ['repository']
     }]);
+    expect(dashboard['cli-actions']
+      .find((/** @type {{ id: string }} */ action) => action.id === 'update-campaign')
+      .command).toBe('./cao.sh update {{campaign}}');
     expect(manageNavigation.placement).toBe('bottom');
     expect(manageNavigation.pages).toContain('maintenance');
   });

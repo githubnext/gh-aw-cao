@@ -28,7 +28,6 @@ import { renderFactoryHeaderElement } from './factory-header.js';
 import { renderLocalDatabaseView } from './local-database-view.js';
 import { renderPanel } from './panel.js';
 import { renderLinkButtonList } from './link-button-list.js';
-import { renderCampaignProblemList } from './campaign-problem-list.js';
 /**
  * @typedef {{
  *   pageId: string,
@@ -82,7 +81,6 @@ const ELEMENT_RENDERERS = new Map([
   ['factory-header', renderFactoryHeaderElement],
   ['factory-floor', renderFactoryFloorElement],
   ['link-button-list', renderLinkButtonList],
-  ['campaign-problem-list', renderCampaignProblemList],
   ['outcomes-overview', renderLegacyFactoryOverview],
   ['local-database', renderLocalDatabaseView]
 ]);
@@ -99,7 +97,7 @@ export function elementLoadsSourcesAsync(name) {
   return ASYNC_SOURCE_ELEMENTS.has(name);
 }
 
-const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'needs-attention-list', 'campaign-insights', 'campaign-detail', 'campaign-dispatches', 'campaign-reports', 'campaign-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'campaign-activity-shell', 'work-project-view', 'insights-overview', 'factory-header', 'factory-floor', 'link-button-list', 'campaign-problem-list', 'outcomes-overview', 'local-database']);
+const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'needs-attention-list', 'campaign-insights', 'campaign-detail', 'campaign-dispatches', 'campaign-reports', 'campaign-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'campaign-activity-shell', 'work-project-view', 'insights-overview', 'factory-header', 'factory-floor', 'link-button-list', 'outcomes-overview', 'local-database']);
 const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy']);
 
 /**

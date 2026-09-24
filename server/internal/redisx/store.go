@@ -101,6 +101,7 @@ func (s *Store) Active(ctx context.Context) (model.ActiveGeneration, error) {
 }
 
 func (s *Store) Activate(ctx context.Context, generation, dataRevision string, evaluatedAt time.Time, counts map[string]int) (int64, error) {
+	redisLog.Printf("activating generation sources=%d", len(counts))
 	data, _ := json.Marshal(counts)
 	activated := time.Now().UTC().Format(time.RFC3339Nano)
 	script := `local revision = redis.call("INCR", KEYS[3]); redis.call("HSET", KEYS[1], "generation", ARGV[1], "revision", revision, "dataRevision", ARGV[2], "evaluatedAt", ARGV[3], "counts", ARGV[4], "activatedAt", ARGV[5]); redis.call("SET", KEYS[2], ARGV[1]); return revision`
@@ -119,6 +120,7 @@ func (s *Store) Activate(ctx context.Context, generation, dataRevision string, e
 }
 
 func (s *Store) PutSource(ctx context.Context, generation string, source model.Source) (map[string]string, error) {
+	redisLog.Printf("staging source rows=%d", len(source.Rows))
 	aliases, types := sourceSchema(source.Rows)
 	prefix := s.rowPrefix(generation, source.Source)
 	index := s.indexName(generation, source.Source)
@@ -228,6 +230,7 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 		return model.Source{}, model.Metrics{}, err
 	}
 	plan := PlanQuery(s.indexName(generation, name), name, definition, aliases, types)
+	redisLog.Printf("planned source pushed_down=%d fallback=%d", len(plan.PushedDown), len(plan.Fallback))
 	metrics := model.Metrics{PushedDown: plan.PushedDown, FallbackOperations: plan.Fallback, RedisCommands: 1}
 	if len(plan.PushedDown) > 0 {
 		value, searchErr := s.Client.Do(ctx, plan.Command...)
@@ -250,6 +253,7 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 					}
 				}
 				metrics.RedisRows = len(rows)
+				redisLog.Printf("loaded source rows=%d mode=search", len(rows))
 				return model.Source{Source: name, Rows: rows, Metadata: metadata}, metrics, nil
 			}
 		}
@@ -295,6 +299,7 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 		}
 	}
 	metrics.RedisRows = len(rows)
+	redisLog.Printf("loaded source rows=%d mode=fallback", len(rows))
 	return model.Source{Source: name, Rows: rows, Metadata: metadata}, metrics, nil
 }
 

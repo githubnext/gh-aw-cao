@@ -165,6 +165,7 @@ export function dashboardPageSourceNames(document, pageId, viewMode) {
 /** @param {unknown} view @param {'chart'|'table'|'card'} mode */
 function viewMatchesMode(view, mode) {
   if (!isPlainObject(view)) return mode === 'chart';
+  if (view.mark === 'element') return true;
   if (mode === 'table') return view.mark === 'table';
   if (mode === 'card') return view.mark === 'table' || view.mark === 'list';
   return view.mark !== 'table' && view.mark !== 'list';

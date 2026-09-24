@@ -13,7 +13,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var redisLog = logger.New("cao:redis")
 
 type Client struct {
 	address   string
@@ -85,6 +89,9 @@ func isLoopbackHost(hostname string) bool {
 func (c *Client) Do(ctx context.Context, args ...string) (any, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if len(args) > 0 {
+		redisLog.Printf("executing command=%s arguments=%d", args[0], len(args)-1)
+	}
 	return c.do(ctx, args...)
 }
 
@@ -108,6 +115,7 @@ func (c *Client) do(ctx context.Context, args ...string) (any, error) {
 func (c *Client) DoMany(ctx context.Context, commands [][]string) ([]any, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	redisLog.Printf("executing command batch size=%d", len(commands))
 	connection, reader, writer, err := c.connect(ctx)
 	if err != nil {
 		return nil, err
@@ -134,6 +142,7 @@ func (c *Client) DoMany(ctx context.Context, commands [][]string) ([]any, error)
 }
 
 func (c *Client) connect(ctx context.Context) (net.Conn, *bufio.Reader, *bufio.Writer, error) {
+	redisLog.Printf("opening connection tls=%t", c.tlsConfig != nil)
 	dialer := net.Dialer{Timeout: c.timeout}
 	var connection net.Conn
 	var err error
@@ -147,6 +156,7 @@ func (c *Client) connect(ctx context.Context) (net.Conn, *bufio.Reader, *bufio.W
 		connection, err = dialer.DialContext(ctx, "tcp", c.address)
 	}
 	if err != nil {
+		redisLog.Printf("connection failed")
 		return nil, nil, nil, fmt.Errorf("connect to Redis: %w", err)
 	}
 	deadline := time.Now().Add(c.timeout)

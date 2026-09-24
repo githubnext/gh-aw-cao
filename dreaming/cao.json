@@ -1,0 +1,7 @@
+{
+  "campaign": "dreaming",
+  "orchestrator": "dreaming",
+  "workers": {
+    "agents-md-curator": "dreaming-agents-md-curator"
+  }
+}

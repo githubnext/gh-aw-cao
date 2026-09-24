@@ -25,6 +25,7 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
     "cao-evolution-compiler-security-operational-value.sh",
     "cao-evolution-failures-investigator-operational-value.sh",
     "dependabot-update-planner-operational-value.sh",
+    "dreaming-agents-md-curator-operational-value.sh",
     "eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
     "eu-cra-compliance-campaign-maintainer-operational-value.sh",
     "eu-cra-compliance-conformity-release-evidence-operational-value.sh",
@@ -43,6 +44,7 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
     "software-development-practices-nist-ssdf-operational-value.sh",
   ]);
   const oneShotGraders = new Set([
+    "dreaming-agents-md-curator-operational-value.sh",
     "optimization-token-auditor-operational-value.sh",
     "optimization-token-optimizer-operational-value.sh",
     "repo-assist-issue-fix-operational-value.sh",
@@ -105,7 +107,9 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
   for (const name of oneShotGraders) {
     const packagePath = name.startsWith("repo-assist-")
       ? join(root, "repo-assist")
-      : join(root, "optimization");
+      : name.startsWith("dreaming-")
+        ? join(root, "dreaming")
+        : join(root, "optimization");
     assert.equal(
       readFileSync(join(packagePath, ".github", "graders", name), "utf8"),
       readFileSync(join(gradersDirectory, name), "utf8"),

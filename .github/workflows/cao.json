@@ -77,6 +77,17 @@
           }
         }
       },
+      "dreaming": {
+        "icon": "beaker",
+        "mode": "review",
+        "max-repositories": 1,
+        "workers": {
+          "agents-md-curator": {
+            "workflow": "dreaming-agents-md-curator",
+            "max-mode": "review"
+          }
+        }
+      },
       "eu-cra-compliance": {
         "icon": "shield",
         "workers": {

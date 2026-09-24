@@ -125,6 +125,40 @@ describe('entity card templates', () => {
     });
   });
 
+  it('drills from firewall domains to their allowed and blocked workflows', () => {
+    const firewall = pages.firewall;
+    const domainList = firewall.views.find(
+      (/** @type {Record<string, any>} */ view) => view.id === 'security-firewall-domains'
+    );
+    expect(domainList).toMatchObject({
+      mark: 'table',
+      'card-drill': {
+        type: 'query',
+        page: 'firewall-domain-workflows',
+        query: 'firewall-domain-workflows',
+        'title-field': 'domain',
+        arguments: [{ name: 'domain', field: 'domain' }]
+      }
+    });
+    expect(views['firewall-domain-workflows']).toMatchObject({
+      data: {
+        source: 'firewall-domain-workflows',
+        arguments: [{ name: 'domain', field: 'domain' }]
+      },
+      list: { card: 'firewall-workflow' }
+    });
+    expect(templates['firewall-workflow']).toMatchObject({
+      title: { field: 'workflow', format: 'workflow-relative-path' },
+      subtitle: { field: 'repository' },
+      details: [
+        { field: 'accepted', title: 'Allowed' },
+        { field: 'blocked', title: 'Blocked' },
+        { field: 'runs', title: 'Runs' }
+      ]
+    });
+    expect(pages['firewall-domain-workflows'].views).toEqual(['firewall-domain-workflows']);
+  });
+
   it('retains the reusable operation card template', () => {
     expect(templates.operation).toMatchObject({
       icon: 'workflow',

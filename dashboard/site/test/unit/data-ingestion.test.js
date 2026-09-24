@@ -80,7 +80,7 @@ beforeEach(async () => {
   });
 });
 
-describe('canonical source ingestion and queries', () => {
+describe('database table ingestion and queries', () => {
   it('streams normalized JSONL across chunk boundaries and skips published repeats', async () => {
     await ingestDashboardSources(indexedDB, sources);
     const inventoryRepository = (await readCanonicalBatch(indexedDB)).repositories[0];

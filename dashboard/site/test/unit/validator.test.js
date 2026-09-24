@@ -458,6 +458,13 @@ describe('dashboard document validation', () => {
       controls: 'interactive',
       'lazy-list': true,
       'column-summaries': true,
+      'card-drill': {
+        type: 'query',
+        page: 'firewall-domain-workflows',
+        query: 'firewall-domain-workflows',
+        'title-field': 'domain',
+        arguments: [{ name: 'domain', field: 'domain' }]
+      },
       layout: 'full-view',
       data: {
         source: 'firewall-domain-totals',
@@ -2843,7 +2850,7 @@ dashboard:
     expect(result.ok).toBe(true);
   });
 
-  it('DLS-SEM-017 accepts every canonical Section 5.1 source name', () => {
+  it('DLS-SEM-017 accepts every Section 5.1 database table name', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
   id: source-catalog

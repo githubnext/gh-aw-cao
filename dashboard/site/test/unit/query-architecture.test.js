@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { SOURCE_FIELDS } from '../../src/specification.js';
+import { TABLE_FIELDS } from '../../src/specification.js';
 
 /** @param {string} path */
 const read = (path) => readFileSync(resolve(path), 'utf8');
@@ -86,10 +86,10 @@ describe('dashboard query architecture', () => {
       'safe-output-performance'
     ]));
     for (const query of /** @type {Array<{
-      name: keyof typeof SOURCE_FIELDS,
+      name: keyof typeof TABLE_FIELDS,
       select: Array<{ field: string, as?: string }>
     }>} */ (databaseQueries)) {
-      const expectedFields = SOURCE_FIELDS[query.name];
+      const expectedFields = TABLE_FIELDS[query.name];
       if (!expectedFields) continue;
       const selectedFields = new Set(query.select.map((field) => field.as ?? field.field));
       expect(expectedFields.filter((field) => !selectedFields.has(field)), query.name).toEqual([]);
