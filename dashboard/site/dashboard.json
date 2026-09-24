@@ -12426,15 +12426,13 @@
     "navigation": [
       {
         "pages": [
-          "overview",
-          "configuration"
+          "overview"
         ]
       },
       {
         "label": "Data",
         "pages": [
           "campaigns",
-          "maintenance",
           "repositories",
           "workflows",
           "runs",
@@ -12442,6 +12440,14 @@
           "engines-models",
           "firewall",
           "mcps"
+        ]
+      },
+      {
+        "label": "Manage",
+        "placement": "bottom",
+        "pages": [
+          "maintenance",
+          "configuration"
         ]
       }
     ]

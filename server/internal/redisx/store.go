@@ -57,6 +57,17 @@ func (s *Store) Ping(ctx context.Context) error {
 	return nil
 }
 
+func (s *Store) CheckRediSearch(ctx context.Context) error {
+	if _, err := s.Client.Do(ctx, "FT._LIST"); err != nil {
+		return fmt.Errorf("redis RediSearch module is unavailable: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) Key(suffix string) string {
+	return s.namespace + ":" + suffix
+}
+
 func (s *Store) Active(ctx context.Context) (model.ActiveGeneration, error) {
 	value, err := s.Client.Do(ctx, "HGETALL", s.activeKey())
 	if err != nil {

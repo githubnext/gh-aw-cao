@@ -74,7 +74,7 @@ import {
  */
 
 /**
- * @typedef {{ label?: string, pages?: string[], experimental?: boolean }} PresentableNavigationSection
+ * @typedef {{ label?: string, pages?: string[], experimental?: boolean, placement?: 'bottom' }} PresentableNavigationSection
  */
 
 /**

@@ -276,6 +276,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .nav-section-label { min-width: 0; overflow: hidden; font-size: .6875rem; font-weight: 700; letter-spacing: .08em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
 .nav-section-items { display: flex; flex-direction: column; gap: 2px; }
 .nav-section:not([open]) > .nav-section-items { display: none; }
+.primary-nav > .nav-section-bottom { margin-top: auto; padding-top: 8px; border-top: 1px solid var(--border-muted); }
 .primary-nav a, .nav-parent { min-height: 32px; display: flex; align-items: center; gap: 10px; position: relative; padding: 6px 8px; border-radius: 6px; color: var(--fg); font-weight: 500; text-decoration: none; transition: background-color 120ms ease, color 120ms ease; }
 .primary-nav :is(a, .nav-parent) > .octicon { color: var(--muted); }
 .primary-nav a:hover { background: var(--neutral-muted); }

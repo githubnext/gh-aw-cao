@@ -736,12 +736,56 @@ export function ingestNormalizedJson(indexedDB, input, options) {
 }
 
 /**
+ * Applies retention and size limits for a normalized JSONL ingestion using the
+ * caller's configured windows and storage estimate.
+ *
+ * @param {IDBFactory} indexedDB
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number }} options
+ */
+async function maintainNormalizedJsonlDatabase(indexedDB, options) {
+  const maxDatabaseBytes = Number.isFinite(options.maxDatabaseBytes)
+    ? Math.max(0, Number(options.maxDatabaseBytes))
+    : MAX_DASHBOARD_DATABASE_BYTES;
+  const usageBytes = options.storage
+    ? await inspectDatabaseUsage(options.storage).catch(() => null)
+    : null;
+  return maintainCanonicalDatabase(indexedDB, {
+    now: options.now,
+    retentionWindowMs: options.retentionWindowMs,
+    retentionWindowMsByStore: options.retentionWindowMsByStore,
+    maxDatabaseBytes,
+    usageBytes
+  });
+}
+
+/**
+ * Runs the retention and size maintenance pass that `ingestNormalizedJsonl`
+ * skips when called with `deferMaintenance`.
+ *
+ * Maintenance cursor-scans every canonical store and re-estimates the size of
+ * each retained record, so its cost scales with the whole database rather than
+ * with the shard just written. Callers that ingest a batch of shards must defer
+ * it and invoke this once afterwards; running it per shard makes a multi-shard
+ * import quadratic in the number of shards.
+ *
+ * @param {IDBFactory} indexedDB
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, onLockWait?: () => void, signal?: AbortSignal }} options
+ */
+export function finalizeNormalizedJsonlIngestion(indexedDB, options = {}) {
+  return serializeIngestion(
+    indexedDB,
+    () => maintainNormalizedJsonlDatabase(indexedDB, options),
+    { onLockWait: options.onLockWait, signal: options.signal }
+  );
+}
+
+/**
  * Streams build-time normalized activity JSONL into canonical storage without
  * retaining the full transport shard in memory.
  *
  * @param {IDBFactory} indexedDB
  * @param {AsyncIterable<string | Uint8Array>} chunks
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, onLockWait?: () => void, payloadIdentity: string, payloadScope: string, expectedPhase?: 'runs' | 'records', signal?: AbortSignal }} options
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, deferMaintenance?: boolean, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, onLockWait?: () => void, payloadIdentity: string, payloadScope: string, expectedPhase?: 'runs' | 'records', signal?: AbortSignal }} options
  */
 export function ingestNormalizedJsonl(indexedDB, chunks, options) {
   return serializeIngestion(indexedDB, async () => {
@@ -870,19 +914,9 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
         );
       }
       options.signal?.throwIfAborted();
-      const maxDatabaseBytes = Number.isFinite(options.maxDatabaseBytes)
-        ? Math.max(0, Number(options.maxDatabaseBytes))
-        : MAX_DASHBOARD_DATABASE_BYTES;
-      const usageBytes = options.storage
-        ? await inspectDatabaseUsage(options.storage).catch(() => null)
-        : null;
-      const retained = await maintainCanonicalDatabase(indexedDB, {
-        now: options.now,
-        retentionWindowMs: options.retentionWindowMs,
-        retentionWindowMsByStore: options.retentionWindowMsByStore,
-        maxDatabaseBytes,
-        usageBytes
-      });
+      const retained = options.deferMaintenance
+        ? null
+        : await maintainNormalizedJsonlDatabase(indexedDB, options);
       const result = { updated: true, committedBatches, committedRecords };
       await recordTransaction(indexedDB, {
         id: normalizedShardTransactionId(options.payloadIdentity, NORMALIZED_JSONL_INGESTION_VERSION),
@@ -893,7 +927,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
         ingestionVersion: NORMALIZED_JSONL_INGESTION_VERSION,
         records: Number(metadata.sourceRecords ?? 0),
         committedRecords,
-        storage: retained
+        ...(retained === null ? { maintenanceDeferred: true } : { storage: retained })
       });
       return { ...result, records: Number(metadata.sourceRecords ?? 0) };
     } catch (error) {

@@ -11,7 +11,7 @@ const VIEW_MODE_ICONS = { chart: 'graph', table: 'table', card: 'stack' };
 /**
  * @param {Array<Record<string, unknown>>} pages
  * @param {string} title
- * @param {Array<{ label?: string, pages?: string[], experimental?: boolean }> | undefined} navigation
+ * @param {Array<{ label?: string, pages?: string[], experimental?: boolean, placement?: string }> | undefined} navigation
  */
 export function renderDashboardNavigation(pages, title, navigation) {
   const pagesById = new Map(pages.map((page) => [page.id, page]));
@@ -20,20 +20,23 @@ export function renderDashboardNavigation(pages, title, navigation) {
       .map((section) => ({
         label: section?.label,
         experimental: section?.experimental === true,
+        placement: section?.placement === 'bottom' ? 'bottom' : 'top',
         pages: (Array.isArray(section?.pages) ? section.pages : [])
           .map((pageId) => pagesById.get(pageId))
           .filter((page) => page !== undefined)
       }))
       .filter((section) => section.pages.length > 0)
-    : [{ label: undefined, experimental: false, pages }];
+    : [{ label: undefined, experimental: false, placement: 'top', pages }];
   const experimentalPages = configuredSections
     .filter((section) => section.experimental)
     .flatMap((section) => section.pages);
+  const standardSections = configuredSections.filter((section) => !section.experimental);
   const navigationSections = [
-    ...configuredSections.filter((section) => !section.experimental),
+    ...standardSections.filter((section) => section.placement !== 'bottom'),
     ...(experimentalPages.length > 0
-      ? [{ label: 'Experimental', experimental: true, pages: experimentalPages }]
-      : [])
+      ? [{ label: 'Experimental', experimental: true, placement: 'top', pages: experimentalPages }]
+      : []),
+    ...standardSections.filter((section) => section.placement === 'bottom')
   ];
   const firstPageId = navigationSections.find((section) => !section.experimental)?.pages[0]?.id ?? pages[0]?.id;
   const mainSectionIndex = Math.max(
@@ -117,8 +120,8 @@ export function renderDashboardNavigation(pages, title, navigation) {
           ? [h(
               'details',
               {
-                className: 'nav-section',
-                open: sectionIndex === mainSectionIndex || ['investigate', 'insights'].includes(section.label?.toLowerCase() ?? '')
+                className: `nav-section${section.placement === 'bottom' ? ' nav-section-bottom' : ''}`,
+                open: section.placement === 'bottom' || sectionIndex === mainSectionIndex || ['investigate', 'insights'].includes(section.label?.toLowerCase() ?? '')
               },
               h(
                 'summary',

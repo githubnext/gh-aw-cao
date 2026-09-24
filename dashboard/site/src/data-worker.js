@@ -3,6 +3,7 @@ import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
 import { queryDashboardSourceObservations } from './data/queries/ingestion.js';
 import {
+  finalizeNormalizedJsonlIngestion,
   ingestDashboardSources,
   ingestNormalizedJsonl,
   isNormalizedJsonCurrent,
@@ -415,10 +416,7 @@ function dashboardContext(value) {
 /** @param {unknown} hashes @param {'runs' | 'records'} phase */
 function publishedPhaseShards(hashes, phase) {
   if (!hashes || typeof hashes !== 'object' || Array.isArray(hashes)) return [];
-  const pattern = new RegExp(
-    `^gh-aw-logs-${phase}/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\\.jsonl$`,
-    'i'
-  );
+  const pattern = new RegExp(`^gh-aw-logs-${phase}/[^/]+\\.jsonl$`, 'i');
   return Object.entries(/** @type {Record<string, unknown>} */ (hashes))
     .filter(([name, hash]) => pattern.test(name)
       && typeof hash === 'string'
@@ -645,7 +643,8 @@ export function processDataRequest(request, signal) {
                 signal,
                 payloadIdentity: shard.hash,
                 payloadScope: shardUrl.href,
-                expectedPhase
+                expectedPhase,
+                deferMaintenance: true
               };
               const ingestion = await ingestNormalizedJsonl(
                 indexedDB,
@@ -673,6 +672,15 @@ export function processDataRequest(request, signal) {
               completedShardCount += 1;
               progress.reportShardImportProgress(completedShardCount, shardCount);
             }
+          }
+          if (changed) {
+            progress.log('Applying retention limits.');
+            await finalizeNormalizedJsonlIngestion(indexedDB, {
+              storage: globalThis.navigator?.storage,
+              retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
+              onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE),
+              signal
+            });
           }
           if (inventoryResponse.ok) {
             progress.log('Normalizing inventory metadata.');

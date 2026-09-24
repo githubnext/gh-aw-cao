@@ -11,10 +11,14 @@ The browser never connects to Redis and never receives the Redis URL or
 credentials. It communicates only with the same-origin HTTP(S) API.
 
 > [!IMPORTANT]
-> This server uses a local bearer capability, not user identity or GitHub
-> authentication, and intentionally rejects non-loopback listen addresses. It
-> is for local development and integration testing. Remote hosting, GitHub
-> authentication, live GitHub queries, and webhook ingestion are future work.
+> The default `serve` command remains local-only: it uses a local bearer
+> capability and intentionally rejects non-loopback listen addresses. Remote
+> hosting is supported only through the explicit Azure Functions profile, which
+> replaces the local capability with GitHub OAuth, refresh-token-backed
+> server-side sessions, explicit GitHub organization/team authorization, and an
+> Azure trusted-proxy policy. PATs are not supported. The Azure Functions
+> profile is experimental: deploy it only after security review, staging
+> validation, and rollback planning for your Azure tenant.
 
 ## Architecture
 
@@ -45,8 +49,76 @@ flowchart LR
 | Query engine | `internal/query/` | Validates Dashboard Language definitions and executes joins, filters, computed fields, aggregates, temporal series, selection, ordering, and limits under resource budgets. |
 | Redis projection | `internal/redisx/` | Stores source rows and metadata, creates RediSearch indexes, plans compatible pushdown, loads bounded fallbacks, and atomically publishes the active generation. |
 | HTTP(S)/API server | `internal/server/` | Enforces loopback binding, optionally terminates operator-configured TLS, serves static dashboard assets, handles API requests, and publishes revision events. |
+| Azure Functions profile | `internal/server/azure.go` | Builds the same HTTP handler without starting a listener, validates Azure app settings, requires `rediss://` Redis, checks RediSearch availability, and trusts forwarded host/protocol headers only for configured Azure hosts. |
+| GitHub OAuth sessions | `internal/server/oauth.go` | Implements the GitHub OAuth authorization-code flow, active organization/team authorization, refresh-token rotation, server-side encrypted sessions in Redis, logout revocation, and CSRF protection for mutating requests. |
 | Shared API model | `internal/model/` | Defines logical sources, active-generation metadata, diagnostics, and query metrics. |
 | Local Redis | `docker-compose.yml` | Runs Redis Stack with RediSearch on `127.0.0.1:6379`. |
+
+### Hosted Azure architecture
+
+> [!WARNING]
+> The hosted Azure architecture is an experimental production-readiness profile,
+> not a turnkey production certification. Treat the Bicep, OAuth policy, Redis
+> topology, and Key Vault access model as a reviewed baseline that must be
+> validated against your organization's Azure, GitHub, compliance, monitoring,
+> incident-response, and data-retention requirements before live use.
+
+The Azure Functions profile keeps the dashboard browser isolated from Redis,
+GitHub tokens, refresh tokens, Redis access keys, and Key Vault secret values.
+The Function App is the only public application boundary and the only component
+that talks to GitHub APIs, Key Vault references, and Redis Enterprise.
+
+```mermaid
+flowchart LR
+  Browser["Authorized user's browser"]
+  Edge["Azure HTTPS edge / App Service front end<br/>sets forwarded host + proto"]
+  Function["Function App<br/>Go dashboard HTTP handler<br/>GitHub OAuth sessions + CSRF"]
+  GitHubOAuth["GitHub OAuth + API<br/>login, refresh, org/team membership"]
+  KeyVault["Azure Key Vault<br/>OAuth secret, session secret, Redis URL"]
+  Redis["Azure Redis Enterprise<br/>TLS + RediSearch<br/>derived dashboard projection"]
+  Storage["Functions storage account<br/>runtime state only"]
+  Insights["Application Insights<br/>non-secret operational telemetry"]
+  Operators["Control-plane operators<br/>deploy Bicep + rotate secrets"]
+
+  Browser -->|"HTTPS static assets + API + best-effort SSE"| Edge
+  Edge -->|"trusted forwarded host/proto only when allow-listed"| Function
+  Function -->|"OAuth code, refresh, membership checks"| GitHubOAuth
+  Function -->|"Key Vault references resolved by managed identity"| KeyVault
+  Function -->|"rediss:// FT.SEARCH / FT.AGGREGATE"| Redis
+  Function -->|"runtime binding state"| Storage
+  Function -->|"no tokens, no Redis URL, no source records"| Insights
+  Operators -->|"reviewed Bicep + secret rotation"| KeyVault
+  Operators -->|"deploy package + app settings"| Function
+
+  classDef boundary fill:#eef6ff,stroke:#0969da,stroke-width:2px;
+  class Function,KeyVault,Redis boundary;
+```
+
+Primary actors and responsibilities:
+
+- **Dashboard user**: authenticates through GitHub OAuth, must satisfy the
+  configured organization/team authorization policy, and receives only
+  same-origin dashboard HTML/API responses.
+- **Azure platform**: terminates HTTPS, invokes the custom Functions handler,
+  resolves Key Vault references through managed identity, and may cold-start,
+  scale in, or terminate long-lived SSE requests.
+- **GitHub OAuth/API**: issues expiring access/refresh tokens and confirms
+  organization/team membership; GitHub tokens never leave the server.
+- **Redis Enterprise**: stores disposable, namespaced dashboard projections and
+  RediSearch indexes; it is not an authority or source of truth.
+- **Control-plane operator**: reviews Bicep/app settings, keeps Key Vault
+  mandatory, rotates credentials, and validates compliance evidence.
+
+Trust boundaries:
+
+- Browser ↔ Function App: authenticated same-origin HTTPS with `Secure`,
+  `HttpOnly`, `SameSite=Lax` session cookies and CSRF headers for mutation.
+- Function App ↔ GitHub: server-side OAuth/token refresh/membership calls; no
+  PATs and no GitHub tokens forwarded to the browser.
+- Function App ↔ Key Vault: managed identity and RBAC only; no secret values in
+  Bicep outputs, logs, checked-in parameters, or browser-readable state.
+- Function App ↔ Redis Enterprise: TLS-only `rediss://` and a deployment
+  namespace for disposable derived data.
 
 ## Data ingestion
 
@@ -191,12 +263,77 @@ caches.
 - Missing Redis, data, manifests, shards, projections, or diagnostics fail
   closed.
 
-These controls do not make the current server suitable for remote or
-multi-user deployment. The capability authorizes its holder to read the full
-active dashboard generation; it provides no user identity or per-source
-authorization. A future remote profile requires identity-aware authentication,
-authorization, trusted-proxy policy, credential rotation, tenant isolation,
-rate limiting, audit logging, and an explicit deployment threat model.
+The local capability profile is not suitable for remote or multi-user
+deployment. The capability authorizes its holder to read the full active
+dashboard generation; it provides no user identity or per-source authorization.
+
+The Azure Functions profile is the experimental remote profile. It is
+enabled only by constructing the app with `HostingModeAzureFunctions` or by
+calling `NewAzureFunctionsHandlerFromEnv`; `serve` does not enable it. Azure
+mode fails closed unless all of the following are configured:
+
+- `CAO_REDIS_URL` with a `rediss://` URL;
+- a Redis namespace (`CAO_REDIS_NAMESPACE`, default `azure-dashboard`);
+- `CAO_AZURE_ALLOWED_HOSTS` and HTTPS forwarded-protocol enforcement;
+- GitHub OAuth App client ID/secret and redirect URL;
+- at least 32 characters of `CAO_SESSION_SECRET`;
+- at least one explicit `CAO_GITHUB_ALLOWED_ORGS` or
+  `CAO_GITHUB_ALLOWED_TEAMS` value.
+
+Azure mode does not accept the local bearer capability and does not support
+PATs. Login alone does not grant access: after exchanging the OAuth code, the
+server calls GitHub with the minimum `read:org` scope needed for organization
+or team membership checks. Access and refresh tokens remain server-side,
+encrypted before storage in Redis, and are never written to browser-readable
+storage, URLs, API payloads, or Bicep outputs. Session cookies are `Secure`,
+`HttpOnly`, and `SameSite=Lax`; mutating API requests must include the
+session-bound CSRF token.
+
+`GET /api/v1/events` is available through Azure Functions only while the
+platform keeps the invocation alive. Clients must treat SSE as best-effort and
+fall back to `/api/v1/refresh` because Functions instances may cold-start,
+scale in, or terminate long-running requests. Cold starts rebuild the Go app
+from app settings and check Redis plus RediSearch before serving requests.
+Request cancellation propagates through `request.Context()` to Redis queries.
+
+The Bicep deployment in `server/azure/main.bicep` provisions a Function App,
+Key Vault, Application Insights, storage, and Redis Enterprise with the
+RediSearch module. Secret app settings use Key Vault references. The template
+outputs only non-secret host names, redirect URI, Redis database name, and Key
+Vault URI. Redis access keys are an unavoidable path for Redis Enterprise
+client authentication today; store the `rediss://` URL in Key Vault, rotate the
+Redis key in Azure, update the Key Vault secret version, and restart the
+Function App so it resolves the new reference.
+
+### Azure secure-computing baseline
+
+Treat the Bicep file as the minimum secure baseline for remote dashboard
+hosting:
+
+- Do not use PATs. Azure mode supports only the GitHub OAuth
+  authorization-code flow and configured organization/team authorization.
+- Keep Key Vault mandatory for every secret-bearing value, including the GitHub
+  OAuth client secret, `CAO_SESSION_SECRET`, and `CAO_REDIS_URL`. Do not replace
+  Key Vault references with literal app settings, deployment outputs, or
+  checked-in parameter files.
+- Use the Function App's system-assigned managed identity with Key Vault RBAC
+  to read secrets. Do not copy Key Vault secret values into logs, telemetry,
+  tickets, dashboard documents, or browser-readable configuration.
+- Keep HTTPS-only Functions, TLS-only Redis, disabled FTPS, disabled Redis
+  public network access, storage HTTPS enforcement, Key Vault soft delete, and
+  non-secret Bicep outputs enabled for compliance review.
+- Treat the Redis projection as disposable derived state. Compliance evidence
+  comes from the checked-in Bicep, GitHub OAuth authorization policy, Key Vault
+  access controls, Azure activity logs, Application Insights without secrets,
+  and the CAO source artifacts that feed Redis.
+- Rotate OAuth, session, storage, and Redis credentials through Key Vault and
+  Azure platform controls; then restart the Function App so current secret
+  versions are resolved.
+
+Do not remove the experimental designation until the hosted profile has passed
+a deployment-specific security review, compliance review, load/cost validation,
+incident-response exercise, backup/rollback exercise, and Azure network-access
+review for the target tenant.
 
 See [`SECURITY.md`](SECURITY.md) for the complete protection model, operational
 guidance, limitations, and private vulnerability-reporting process.

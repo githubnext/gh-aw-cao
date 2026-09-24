@@ -1545,6 +1545,23 @@ function validateNavigation(navigation, navigationNode, pageIds, errors) {
         `${sectionPath}.experimental`
       ));
     }
+    if (section.placement !== undefined && section.placement !== 'bottom') {
+      const found = typeof section.placement === 'string'
+        ? `"${section.placement}"`
+        : JSON.stringify(section.placement);
+      errors.push(createError(
+        ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+        `navigation section placement must be "bottom" when present; found ${found}.`,
+        `${sectionPath}.placement`
+      ));
+    }
+    if (section.placement === 'bottom' && typeof section.label !== 'string') {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'navigation section placement requires a non-empty label.',
+        `${sectionPath}.label`
+      ));
+    }
 
     if (!Array.isArray(section.pages) || section.pages.length === 0) {
       errors.push(createError(

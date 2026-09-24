@@ -33,6 +33,9 @@ type Config struct {
 	CertFile            string
 	KeyFile             string
 	AccessToken         string
+	HostingMode         HostingMode
+	AzureProxy          AzureProxyPolicy
+	GitHubOAuth         *GitHubOAuthConfig
 	DatabaseQueriesPath string
 	DashboardQueries    []query.Definition
 	SourceDirectory     string
@@ -43,11 +46,24 @@ type App struct {
 	store       *redisx.Store
 	config      Config
 	accessToken string
+	oauth       *githubOAuth
 	hub         *eventHub
 }
 
 func New(store *redisx.Store, config Config) (*App, error) {
-	if err := ValidateListen(config.Listen, config.CertFile, config.KeyFile); err != nil {
+	mode := config.HostingMode
+	if mode == "" {
+		mode = HostingModeLocal
+		config.HostingMode = mode
+	}
+	if mode == HostingModeLocal {
+		if err := ValidateListen(config.Listen, config.CertFile, config.KeyFile); err != nil {
+			return nil, err
+		}
+	} else if mode != HostingModeAzureFunctions {
+		return nil, fmt.Errorf("unsupported hosting mode %q", mode)
+	}
+	if err := validateAzureMode(store, &config); err != nil {
 		return nil, err
 	}
 	info, err := os.Stat(config.SiteDirectory)
@@ -57,17 +73,23 @@ func New(store *redisx.Store, config Config) (*App, error) {
 	if config.Logger == nil {
 		config.Logger = log.Default()
 	}
-	accessToken := strings.TrimSpace(config.AccessToken)
-	if accessToken == "" {
-		generated, err := generateAccessToken()
-		if err != nil {
-			return nil, fmt.Errorf("generate dashboard access token: %w", err)
+	var oauth *githubOAuth
+	var accessToken string
+	if mode == HostingModeAzureFunctions {
+		oauth = newGitHubOAuth(*config.GitHubOAuth, store)
+	} else {
+		accessToken = strings.TrimSpace(config.AccessToken)
+		if accessToken == "" {
+			generated, err := generateAccessToken()
+			if err != nil {
+				return nil, fmt.Errorf("generate dashboard access token: %w", err)
+			}
+			accessToken = generated
+		} else if len(accessToken) < 32 {
+			return nil, errors.New("dashboard access token must contain at least 32 characters")
 		}
-		accessToken = generated
-	} else if len(accessToken) < 32 {
-		return nil, errors.New("dashboard access token must contain at least 32 characters")
 	}
-	return &App{store: store, config: config, accessToken: accessToken, hub: newEventHub()}, nil
+	return &App{store: store, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub()}, nil
 }
 
 func (a *App) Serve(ctx context.Context) error {
@@ -119,6 +141,11 @@ func (a *App) Serve(ctx context.Context) error {
 
 func (a *App) Handler() http.Handler {
 	mux := http.NewServeMux()
+	if a.oauth != nil {
+		mux.HandleFunc("GET /auth/login", a.oauth.login)
+		mux.HandleFunc("GET /auth/callback", a.oauth.callback)
+		mux.HandleFunc("POST /auth/logout", a.oauth.logout)
+	}
 	mux.HandleFunc("GET /api/v1/health", a.health)
 	mux.HandleFunc("GET /api/v1/events", a.events)
 	mux.HandleFunc("POST /api/v1/query", a.query)
@@ -146,7 +173,11 @@ func (a *App) capabilityURL() string {
 
 func (a *App) requireAccess(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		if !validRequestHost(request.Host) {
+		if a.oauth != nil {
+			a.requireGitHubAccess(next).ServeHTTP(response, request)
+			return
+		}
+		if !validLocalRequestHost(request.Host) {
 			http.Error(response, "invalid request host", http.StatusMisdirectedRequest)
 			return
 		}
@@ -171,7 +202,7 @@ func (a *App) requireAccess(next http.Handler) http.Handler {
 	})
 }
 
-func validRequestHost(value string) bool {
+func validLocalRequestHost(value string) bool {
 	host := value
 	if parsedHost, _, err := net.SplitHostPort(value); err == nil {
 		host = parsedHost
@@ -186,6 +217,37 @@ func (a *App) authorized(request *http.Request) bool {
 	authorization := request.Header.Get("Authorization")
 	return strings.HasPrefix(authorization, prefix) &&
 		constantTimeTokenEqual(strings.TrimPrefix(authorization, prefix), a.accessToken)
+}
+
+func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if !validAzureProxyRequest(request, a.config.AzureProxy) {
+			http.Error(response, "invalid forwarded request host", http.StatusMisdirectedRequest)
+			return
+		}
+		if request.URL.Path == "/api/v1/health" ||
+			strings.HasPrefix(request.URL.Path, "/auth/login") ||
+			strings.HasPrefix(request.URL.Path, "/auth/callback") {
+			next.ServeHTTP(response, request)
+			return
+		}
+		session, ok := a.oauth.session(response, request)
+		if !ok {
+			if strings.HasPrefix(request.URL.Path, "/api/") || request.URL.Path == "/auth/logout" {
+				writeError(response, http.StatusUnauthorized, "GitHub authentication is required")
+				return
+			}
+			http.Redirect(response, request, "/auth/login", http.StatusFound)
+			return
+		}
+		if request.Method != http.MethodGet && request.Method != http.MethodHead && request.Method != http.MethodOptions {
+			if !constantTimeTokenEqual(request.Header.Get("X-CSRF-Token"), session.CSRFToken) {
+				writeError(response, http.StatusForbidden, "CSRF token is required")
+				return
+			}
+		}
+		next.ServeHTTP(response, request)
+	})
 }
 
 func constantTimeTokenEqual(candidate, expected string) bool {
@@ -220,7 +282,7 @@ func (a *App) health(response http.ResponseWriter, request *http.Request) {
 		"redis": map[string]any{"connected": redisHealthy},
 		"data":  map[string]any{"available": active.Generation != ""},
 	}
-	if a.authorized(request) {
+	if a.authorized(request) || (a.oauth != nil && a.oauth.requestHasSession(request)) {
 		rowCount := 0
 		for _, count := range active.Counts {
 			rowCount += count
@@ -524,7 +586,7 @@ func (a *App) static(response http.ResponseWriter, request *http.Request) {
 
 func (a *App) serveIndex(response http.ResponseWriter, accessToken string) {
 	path := filepath.Join(a.config.SiteDirectory, "index.html")
-	// #nosec G304 -- path is constrained to the configured site directory.
+	// #nosec G304,G703 -- path is constrained to the configured site directory.
 	content, err := os.ReadFile(path)
 	if err != nil {
 		http.Error(response, "not found", http.StatusNotFound)
@@ -532,7 +594,9 @@ func (a *App) serveIndex(response http.ResponseWriter, accessToken string) {
 	}
 	html := string(content)
 	injections := `<meta name="dashboard-data-backend" content="redis-http">`
-	if accessToken != "" {
+	if a.oauth != nil {
+		injections += `<script>const m=document.cookie.match(/(?:^|;\s*)cao_csrf=([^;]+)/);if(m){const c=decodeURIComponent(m[1]);const f=window.fetch.bind(window);window.fetch=(i,n={})=>{const u=typeof i==="string"?i:i.url;if(u&&new URL(u,location.href).origin===location.origin){const h=new Headers(n.headers||{});if(!h.has("X-CSRF-Token"))h.set("X-CSRF-Token",c);n={...n,headers:h};}return f(i,n);};}</script>`
+	} else if accessToken != "" {
 		token, _ := json.Marshal(accessToken)
 		injections += fmt.Sprintf(
 			`<script>localStorage.setItem("cao-dashboard-access-token",%s);const u=new URL(location.href);u.searchParams.delete("access_token");history.replaceState(null,"",u.pathname+u.search+u.hash);</script>`,

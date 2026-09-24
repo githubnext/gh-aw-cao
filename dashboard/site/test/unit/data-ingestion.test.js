@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  finalizeNormalizedJsonlIngestion,
   ingestCachedGhAwJsonl,
   ingestDashboardSources,
   ingestGhAwLogs,
@@ -140,8 +141,55 @@ describe('canonical source ingestion and queries', () => {
     ]));
   });
 
-  it('streams normalized JSONL through multiple bounded writes', async () => {
-    const records = Array.from({ length: 251 }, (_, index) => ({
+  it('defers canonical maintenance for batched shard imports until it is finalized', async () => {
+    const shard = (/** @type {{ id: string, observedAt: string }[]} */ runs) => {
+      const lines = [
+        {
+          kind: 'metadata',
+          schemaVersion: CANONICAL_SCHEMA_VERSION,
+          ingestionVersion: 3,
+          sourceRecords: runs.length,
+          phase: 'runs',
+          records: runs.length
+        },
+        ...runs.map((record) => ({ kind: 'record', collection: 'runs', record }))
+      ].map((line) => JSON.stringify(line)).join('\n') + '\n';
+      return async function* () { yield lines; };
+    };
+    const maintenance = {
+      now: Date.parse('2026-09-10T00:00:00Z'),
+      retentionWindowMs: 30 * 24 * 60 * 60 * 1000,
+      maxDatabaseBytes: Number.MAX_SAFE_INTEGER
+    };
+    const shards = [
+      { identity: '1'.repeat(64), runs: [{ id: 'run:expired', observedAt: '2026-01-01T00:00:00Z' }] },
+      { identity: '2'.repeat(64), runs: [{ id: 'run:current', observedAt: '2026-09-09T00:00:00Z' }] }
+    ];
+
+    for (const { identity, runs } of shards) {
+      await ingestNormalizedJsonl(indexedDB, shard(runs)(), {
+        ...maintenance,
+        deferMaintenance: true,
+        payloadIdentity: identity,
+        payloadScope: `https://example.test/gh-aw-logs-runs/${identity}.jsonl`,
+        expectedPhase: /** @type {const} */ ('runs')
+      });
+    }
+
+    // Retention must not run per shard: it rescans every canonical store, so
+    // paying it once per shard makes a multi-shard import quadratic.
+    expect((await readCanonicalBatch(indexedDB)).runs.map(({ id }) => id).sort())
+      .toEqual(['run:current', 'run:expired']);
+    expect(await readTransactions(indexedDB)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: 'ingest-normalized-jsonl', maintenanceDeferred: true })
+    ]));
+
+    await finalizeNormalizedJsonlIngestion(indexedDB, maintenance);
+
+    expect((await readCanonicalBatch(indexedDB)).runs.map(({ id }) => id)).toEqual(['run:current']);
+  });
+
+  it('streams normalized JSONL through multiple bounded writes', async () => {    const records = Array.from({ length: 251 }, (_, index) => ({
       kind: 'record',
       collection: 'repositories',
       record: {

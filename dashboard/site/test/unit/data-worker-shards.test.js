@@ -42,6 +42,25 @@ describe('published activity shards', () => {
     })).toHaveLength(1);
   });
 
+  it('recognizes currently compacted phase shard names', () => {
+    const hashes = {
+      'gh-aw-logs-runs/2026-08-19-0000-d87bcbb6fd3ba859.jsonl': 'd'.repeat(64),
+      'gh-aw-logs-records/2026-09-11-0002-494f59593ace108c.jsonl': 'e'.repeat(64)
+    };
+
+    expect(publishedRunInformationShards(hashes)).toEqual([{
+      name: 'gh-aw-logs-runs/2026-08-19-0000-d87bcbb6fd3ba859.jsonl',
+      hash: 'd'.repeat(64),
+      phase: 'runs'
+    }]);
+    expect(publishedRunRecordShards(hashes)).toEqual([{
+      name: 'gh-aw-logs-records/2026-09-11-0002-494f59593ace108c.jsonl',
+      hash: 'e'.repeat(64),
+      phase: 'records'
+    }]);
+    expect(publishedPhasedActivityShards(hashes)).toHaveLength(2);
+  });
+
   it('rejects phased manifests without run information', () => {
     const name = `gh-aw-logs-1000-a-${'a'.repeat(64)}-${'b'.repeat(16)}.jsonl`;
     expect(publishedPhasedActivityShards({

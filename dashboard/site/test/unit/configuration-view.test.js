@@ -208,14 +208,15 @@ describe('Configuration dashboard view', () => {
     rendered.remove();
   });
 
-  it('exposes Control in the clean navigation without a chart', () => {
+  it('exposes Settings in the bottom management navigation without a chart', () => {
     const dashboard = JSON.parse(readFileSync(resolve('dashboard.json'), 'utf8')).dashboard;
     const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'configuration');
-    const cleanNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => !candidate.label);
+    const manageNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => candidate.label === 'Manage');
 
     expect(page.title).toBe('Settings');
     expect(page.icon).toBe('gear');
-    expect(cleanNavigation.pages.at(-1)).toBe('configuration');
+    expect(manageNavigation.placement).toBe('bottom');
+    expect(manageNavigation.pages.at(-1)).toBe('configuration');
     expect(page.views.every((/** @type {{ mark: string }} */ view) => view.mark !== 'chart')).toBe(true);
     expect(page.views).toHaveLength(1);
     expect(page.views[0].id).toBe('configuration-policy');
@@ -228,7 +229,7 @@ describe('Configuration dashboard view', () => {
   it('separates CAO package and compiler maintenance inventory', () => {
     const dashboard = JSON.parse(readFileSync(resolve('dashboard.json'), 'utf8')).dashboard;
     const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'maintenance');
-    const dataNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => candidate.label === 'Data');
+    const manageNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => candidate.label === 'Manage');
 
     expect(page.title).toBe('Maintenance');
     expect(page['filter-bar']).toBeUndefined();
@@ -265,7 +266,8 @@ describe('Configuration dashboard view', () => {
       action: 'upgrade-target-repository',
       context: ['repository']
     }]);
-    expect(dataNavigation.pages).toContain('maintenance');
+    expect(manageNavigation.placement).toBe('bottom');
+    expect(manageNavigation.pages).toContain('maintenance');
   });
 
   it('wires the Settings view to a supported UI element', () => {

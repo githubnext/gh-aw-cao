@@ -193,11 +193,12 @@ test("downloads the deployed compacted activity shards and SQLite file without r
   const output = path.join(root, "activity");
   const runsContent = '{"kind":"metadata","phase":"runs","records":0}\n';
   const recordsContent = '{"kind":"metadata","phase":"records","records":0}\n';
+  const databaseContent = Buffer.from("published sqlite bytes");
   const manifest = JSON.stringify({
+    "gh-aw-logs.sqlite": createHash("sha256").update(databaseContent).digest("hex"),
     "gh-aw-logs-runs/fixture.jsonl": createHash("sha256").update(runsContent).digest("hex"),
     "gh-aw-logs-records/fixture.jsonl": createHash("sha256").update(recordsContent).digest("hex"),
   });
-  const databaseContent = Buffer.from("published sqlite bytes");
   const inventoryContent = JSON.stringify({ campaigns: { rows: [] } });
   const requests = [];
   const server = createServer((request, response) => {
@@ -213,10 +214,11 @@ test("downloads the deployed compacted activity shards and SQLite file without r
   test("uses .cao as the default download location", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "deployed-dashboard-default-output-"));
     const logsContent = '{"schema_version":2,"kind":"run","run":{"run_id":404}}\n';
+    const databaseContent = Buffer.from("default sqlite bytes");
     const manifest = JSON.stringify({
+      "gh-aw-logs.sqlite": createHash("sha256").update(databaseContent).digest("hex"),
       "gh-aw-logs-shards/fixture.jsonl": createHash("sha256").update(logsContent).digest("hex"),
     });
-    const databaseContent = Buffer.from("default sqlite bytes");
     const inventoryContent = JSON.stringify({ campaigns: { rows: [] } });
     const server = createServer((request, response) => {
       response.writeHead(200, { "content-type": "application/x-ndjson" });
@@ -241,6 +243,47 @@ test("downloads the deployed compacted activity shards and SQLite file without r
       assert.equal(await readFile(path.join(root, ".cao", "gh-aw-logs-shards", "fixture.jsonl"), "utf8"), logsContent);
       assert.deepEqual(await readFile(path.join(root, ".cao", "gh-aw-logs.sqlite")), databaseContent);
       assert.equal(await readFile(path.join(root, ".cao", "inventory-sources.json"), "utf8"), inventoryContent);
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("rejects deployed SQLite files that do not match the manifest checksum", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "deployed-dashboard-sqlite-checksum-"));
+    const output = path.join(root, "activity");
+    const runsContent = '{"kind":"metadata","phase":"runs","records":0}\n';
+    const databaseContent = Buffer.from("published sqlite bytes");
+    const inventoryContent = JSON.stringify({ campaigns: { rows: [] } });
+    const manifest = JSON.stringify({
+      "gh-aw-logs.sqlite": createHash("sha256").update("different sqlite bytes").digest("hex"),
+      "gh-aw-logs-runs/fixture.jsonl": createHash("sha256").update(runsContent).digest("hex"),
+    });
+    const server = createServer((request, response) => {
+      response.writeHead(200, { "content-type": "application/x-ndjson" });
+      response.end(request.url?.endsWith(".sqlite")
+        ? databaseContent
+        : request.url?.endsWith("inventory-sources.json") ? inventoryContent
+        : request.url?.endsWith("payload-hashes.json") ? manifest : runsContent);
+    });
+    await new Promise((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(0, "127.0.0.1", resolve);
+    });
+
+    try {
+      const address = server.address();
+      assert.ok(address && typeof address === "object");
+      await assert.rejects(
+        executeFile(cao, [
+          "download",
+          "--url",
+          `http://127.0.0.1:${address.port}/cao/payload-hashes.json`,
+          "--output",
+          output,
+        ]),
+        /Activity SQLite checksum mismatch: gh-aw-logs\.sqlite/,
+      );
     } finally {
       await new Promise((resolve) => server.close(resolve));
       await rm(root, { recursive: true, force: true });

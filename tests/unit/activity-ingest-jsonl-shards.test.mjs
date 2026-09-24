@@ -19,6 +19,27 @@ async function readNormalizedJsonl(filePath) {
   return { ...metadata, batch };
 }
 
+// Published phase directories hold consolidated shards alongside the
+// `.payloads` incremental normalization cache, which is never published.
+async function readShardNames(directory) {
+  return (await readdir(directory)).filter((name) => name.endsWith('.jsonl')).sort();
+}
+
+// Consolidation spreads one phase across day-bucketed shards, so assertions
+// about phase content read the union rather than a single file.
+async function readPhasePayload(directory) {
+  const names = await readShardNames(directory);
+  const payloads = await Promise.all(names.map((name) => readNormalizedJsonl(path.join(directory, name))));
+  const batch = Object.fromEntries(
+    ['campaigns', 'repositories', 'workflows', 'runs', 'domains', 'tools', 'audits', 'issues']
+      .map((collection) => [collection, []])
+  );
+  for (const payload of payloads) {
+    for (const [collection, records] of Object.entries(payload.batch)) batch[collection].push(...records);
+  }
+  return { names, payloads, batch, phase: payloads[0]?.phase };
+}
+
 async function fixture() {
   const root = await mkdtemp(path.join(os.tmpdir(), 'activity-ingest-jsonl-shards-'));
   const shardDirectory = path.join(root, 'gh-aw-logs-shards');
@@ -253,22 +274,28 @@ test('ingest-jsonl injects every run shard before record shards', async () => {
   ]);
   const result = JSON.parse(stdout).result;
 
-  assert.deepEqual(result.shards.map((shard) => shard.phase), ['runs', 'records']);
+  assert.deepEqual(
+    [...new Set(result.shards.map((shard) => shard.phase))],
+    ['runs', 'records'],
+  );
   const transactions = await queryTransactions(databasePath);
-  const runShard = (await readdir(runsDirectory))[0];
-  const recordShard = (await readdir(recordsDirectory))[0];
+  const runShards = await readShardNames(runsDirectory);
+  const recordShards = await readShardNames(recordsDirectory);
   assert.deepEqual(
     transactions.map((transaction) => transaction.payloadScope).sort(),
     [
-      `gh-aw-records:${recordShard}`,
-      `gh-aw-runs:${runShard}`,
+      ...recordShards.map((name) => `gh-aw-records:${name}`),
+      ...runShards.map((name) => `gh-aw-runs:${name}`),
     ].sort(),
   );
 
-  const renamedRunShard = `renamed-${runShard}`;
-  const renamedRecordShard = `renamed-${recordShard}`;
-  await rename(path.join(runsDirectory, runShard), path.join(runsDirectory, renamedRunShard));
-  await rename(path.join(recordsDirectory, recordShard), path.join(recordsDirectory, renamedRecordShard));
+  // Skip receipts key on payload content, so renaming a shard must not re-ingest it.
+  for (const name of runShards) {
+    await rename(path.join(runsDirectory, name), path.join(runsDirectory, `renamed-${name}`));
+  }
+  for (const name of recordShards) {
+    await rename(path.join(recordsDirectory, name), path.join(recordsDirectory, `renamed-${name}`));
+  }
   const repeated = JSON.parse((await execFileAsync(process.execPath, [
     path.resolve('activity/cao.mjs'),
     'ingest-jsonl',
@@ -279,21 +306,19 @@ test('ingest-jsonl injects every run shard before record shards', async () => {
     '--records-dir',
     recordsDirectory,
   ])).stdout).result;
+  const shardCount = runShards.length + recordShards.length;
   assert.equal(repeated.updated, false);
-  assert.deepEqual(repeated.shards.map(({ skipped }) => skipped), [true, true]);
-  assert.equal((await queryTransactions(databasePath)).length, 2);
+  assert.deepEqual(repeated.shards.map(({ skipped }) => skipped), new Array(shardCount).fill(true));
+  assert.equal((await queryTransactions(databasePath)).length, shardCount);
 });
 
-test('hash-payloads keeps phased shard hashes stable when source shard names change', async () => {
+test('hash-payloads deduplicates records observed by more than one source shard', async () => {
   const { root, shardDirectory } = await fixture();
   const sourceName = (await readdir(shardDirectory))[0];
   const sourcePath = path.join(shardDirectory, sourceName);
-  const duplicateName = 'gh-aw-logs-2000000000-bbbb.jsonl';
-  await cp(sourcePath, path.join(shardDirectory, duplicateName));
   const runsDirectory = path.join(root, 'gh-aw-logs-runs');
   const recordsDirectory = path.join(root, 'gh-aw-logs-records');
-
-  const hashes = JSON.parse((await execFileAsync(process.execPath, [
+  const hashPayloads = async () => JSON.parse((await execFileAsync(process.execPath, [
     path.resolve('activity/cao.mjs'),
     'hash-payloads',
     '--shard-dir',
@@ -303,20 +328,20 @@ test('hash-payloads keeps phased shard hashes stable when source shard names cha
     '--records-dir',
     recordsDirectory,
   ])).stdout);
-  const runHashes = Object.entries(hashes)
-    .filter(([name]) => name.startsWith('gh-aw-logs-runs/'))
-    .map(([, hash]) => hash);
-  const recordHashes = Object.entries(hashes)
-    .filter(([name]) => name.startsWith('gh-aw-logs-records/'))
-    .map(([, hash]) => hash);
+  const phaseHashes = (hashes) => Object.fromEntries(Object.entries(hashes)
+    .filter(([name]) => name.startsWith('gh-aw-logs-runs/') || name.startsWith('gh-aw-logs-records/')));
 
-  assert.equal(runHashes.length, 2);
-  assert.equal(new Set(runHashes).size, 1);
-  assert.equal(recordHashes.length, 2);
-  assert.equal(new Set(recordHashes).size, 1);
+  const before = phaseHashes(await hashPayloads());
+  // A second source shard repeating the same runs must not publish a second copy,
+  // and must leave every published shard byte-identical so the browser skips it.
+  await cp(sourcePath, path.join(shardDirectory, 'gh-aw-logs-2000000000-bbbb.jsonl'));
+  const after = phaseHashes(await hashPayloads());
+
+  assert.deepEqual(after, before);
+  assert.ok(Object.keys(before).length > 0);
 });
 
-test('phased shard names preserve source order for non-empty phase pairs', async () => {
+test('hash-payloads publishes consolidated shards in deterministic ingestion order', async () => {
   const { root, shardDirectory } = await fixture();
   const sourcePath = path.join(shardDirectory, 'gh-aw-logs-1000000000-aaaa.jsonl');
   const source = await readFile(sourcePath, 'utf8');
@@ -338,15 +363,18 @@ test('phased shard names preserve source order for non-empty phase pairs', async
     recordsDirectory,
   ]);
 
-  const runs = (await readdir(runsDirectory)).sort();
-  const records = (await readdir(recordsDirectory)).sort();
   const hashes = JSON.parse(stdout);
-  assert.equal(runs.length, 2);
-  assert.deepEqual(runs, records);
-  assert.match(runs[0], /^gh-aw-logs-1000000000-aaaa-/);
-  assert.match(runs[1], /^gh-aw-logs-2000000000-bbbb-/);
-  assert.ok(hashes[`gh-aw-logs-runs/${runs[0]}`]);
-  assert.ok(hashes[`gh-aw-logs-records/${records[1]}`]);
+  const runs = await readPhasePayload(runsDirectory);
+  const records = await readPhasePayload(recordsDirectory);
+  // Structural records are owned by discovery and must sort ahead of day buckets.
+  assert.match(runs.names[0], /^0000-00-00-/);
+  assert.deepEqual(runs.names, [...runs.names].sort());
+  assert.deepEqual(records.names, [...records.names].sort());
+  for (const name of runs.names) assert.ok(hashes[`gh-aw-logs-runs/${name}`]);
+  for (const name of records.names) assert.ok(hashes[`gh-aw-logs-records/${name}`]);
+  // The later source shard observed the run last, so its status wins.
+  assert.deepEqual([...new Set(runs.batch.runs.map((run) => run.status))], ['completed']);
+  assert.equal(runs.batch.runs.length, new Set(runs.batch.runs.map((run) => run.id)).size);
 });
 
 test('hash-payloads excludes info-level audits from record shards', async () => {
@@ -372,7 +400,7 @@ test('hash-payloads excludes info-level audits from record shards', async () => 
     recordsDirectory,
   ]);
 
-  const [recordShard] = await readdir(recordsDirectory);
+  const [recordShard] = await readShardNames(recordsDirectory);
   const payload = await readNormalizedJsonl(path.join(recordsDirectory, recordShard));
   const findings = payload.batch.audits.filter((audit) => audit.type === 'audit.finding');
   assert.deepEqual(findings.map((audit) => audit.summary), ['Actionable finding']);
@@ -403,8 +431,8 @@ test('hash-payloads drops empty phased shards from files and hashes', async () =
   ]);
 
   const hashes = JSON.parse(stdout);
-  assert.deepEqual(await readdir(runsDirectory), []);
-  assert.deepEqual(await readdir(recordsDirectory), []);
+  assert.deepEqual(await readShardNames(runsDirectory), []);
+  assert.deepEqual(await readShardNames(recordsDirectory), []);
   assert.equal(Object.keys(hashes).filter((name) => name.startsWith('gh-aw-logs-runs/')).length, 0);
   assert.equal(Object.keys(hashes).filter((name) => name.startsWith('gh-aw-logs-records/')).length, 0);
   assert.equal(Object.hasOwn(hashes, 'gh-aw-logs-shards/empty.jsonl'), false);
@@ -432,22 +460,20 @@ test('hash-payloads upgrades the legacy cached layout to phased shards', async (
     recordsDirectory,
   ]);
 
-  const runs = await readdir(runsDirectory);
-  const records = await readdir(recordsDirectory);
+  const runs = await readPhasePayload(runsDirectory);
+  const records = await readPhasePayload(recordsDirectory);
   const normalized = await readdir(legacyNormalizedDirectory);
-  assert.equal(runs.length, 1);
-  assert.deepEqual(runs, records);
+  assert.ok(runs.names.length > 0);
+  assert.ok(records.names.length > 0);
   assert.equal(normalized.length, 1);
-  assert.ok([...runs, ...records, ...normalized].every((name) => name.endsWith('.jsonl')));
+  assert.ok([...runs.names, ...records.names, ...normalized].every((name) => name.endsWith('.jsonl')));
   assert.ok(normalized.every((name) => !name.endsWith('.json')));
-  const runPayload = await readNormalizedJsonl(path.join(runsDirectory, runs[0]));
-  const recordPayload = await readNormalizedJsonl(path.join(recordsDirectory, records[0]));
   const normalizedPayload = await readNormalizedJsonl(path.join(legacyNormalizedDirectory, normalized[0]));
-  assert.equal(runPayload.phase, 'runs');
-  assert.equal(recordPayload.phase, 'records');
-  assert.ok(runPayload.batch.runs.length > 0);
-  assert.ok(['domains', 'tools', 'audits', 'issues'].some((name) => recordPayload.batch[name].length > 0));
-  for (const payload of [normalizedPayload, runPayload, recordPayload]) {
+  assert.ok(runs.payloads.every((payload) => payload.phase === 'runs'));
+  assert.ok(records.payloads.every((payload) => payload.phase === 'records'));
+  assert.ok(runs.batch.runs.length > 0);
+  assert.ok(['domains', 'tools', 'audits', 'issues'].some((name) => records.batch[name].length > 0));
+  for (const payload of [normalizedPayload, ...runs.payloads, ...records.payloads]) {
     assert.equal(Object.hasOwn(payload.batch, 'jobs'), false);
     assert.equal(Object.hasOwn(payload.batch, 'sessions'), false);
   }
