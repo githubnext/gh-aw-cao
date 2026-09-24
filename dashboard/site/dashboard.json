@@ -8238,9 +8238,89 @@
         ]
       },
       {
+        "name": "campaign-repository-coverage",
+        "intent": "Count distinct registered target repositories reached by successful worker dispatches for each campaign.",
+        "description": "Campaign repository coverage derived from successful worker dispatch runs in the selected horizon.",
+        "from": "runs",
+        "joins": [
+          {
+            "source": "workflows",
+            "type": "inner",
+            "on": [
+              {
+                "left": "organization",
+                "right": "organization"
+              },
+              {
+                "left": "repository",
+                "right": "repository"
+              },
+              {
+                "left": "workflow",
+                "right": "workflow"
+              }
+            ],
+            "fields": [
+              {
+                "field": "campaign",
+                "as": "campaign"
+              },
+              {
+                "field": "workflow-role",
+                "as": "workflow-role"
+              }
+            ]
+          },
+          {
+            "source": "repositories",
+            "type": "inner",
+            "on": [
+              {
+                "left": "target-repository",
+                "right": "repository-coordinate"
+              }
+            ],
+            "fields": [
+              {
+                "field": "repository-coordinate",
+                "as": "registered-target-repository"
+              }
+            ]
+          }
+        ],
+        "filter": {
+          "predicates": [
+            {
+              "field": "event",
+              "equals": "workflow_dispatch"
+            },
+            {
+              "field": "run-conclusion",
+              "equals": "success"
+            },
+            {
+              "field": "workflow-role",
+              "equals": "worker"
+            }
+          ]
+        },
+        "aggregate": {
+          "by": [
+            "campaign"
+          ],
+          "values": [
+            {
+              "field": "target-repository",
+              "as": "covered-repositories",
+              "reducer": "distinct-count"
+            }
+          ]
+        }
+      },
+      {
         "name": "campaign-inventory",
         "intent": "List centrally managed campaigns with their observed workflow and execution totals.",
-        "description": "Canonical campaign inventory enriched with observed workflow, rollout, run, and AI Credit totals.",
+        "description": "Canonical campaign inventory enriched with observed workflow, rollout, run, repository coverage, and AI Credit totals.",
         "from": "campaigns",
         "joins": [
           {
@@ -8308,6 +8388,22 @@
               {
                 "field": "value-created",
                 "as": "value-created"
+              }
+            ]
+          },
+          {
+            "source": "campaign-repository-coverage",
+            "type": "left",
+            "on": [
+              {
+                "left": "campaign",
+                "right": "campaign"
+              }
+            ],
+            "fields": [
+              {
+                "field": "covered-repositories",
+                "as": "observed-covered-repositories"
               }
             ]
           }
@@ -8379,6 +8475,18 @@
             "args": [
               {
                 "field": "observed-dispatches"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "covered-repositories",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "observed-covered-repositories"
               },
               {
                 "value": 0
@@ -8479,6 +8587,9 @@
           },
           {
             "field": "dispatches"
+          },
+          {
+            "field": "covered-repositories"
           },
           {
             "field": "aic"
@@ -10168,6 +10279,45 @@
                   "aggregate": "sum",
                   "as": "total-dispatches",
                   "title": "Dispatches"
+                },
+                "href": {
+                  "field": "campaign-dashboard-link",
+                  "type": "nominal"
+                }
+              }
+            },
+            {
+              "id": "campaigns-repository-coverage",
+              "title": "Repository coverage by campaign",
+              "description": "Distinct registered repositories reached by successful worker dispatches in the selected horizon.",
+              "data": {
+                "source": "campaign-inventory",
+                "order-by": [
+                  {
+                    "field": "covered-repositories",
+                    "direction": "desc"
+                  },
+                  {
+                    "field": "campaign-name",
+                    "direction": "asc"
+                  }
+                ],
+                "limit": 100
+              },
+              "mark": "chart",
+              "chart": "horizontal-bar",
+              "layout": "full",
+              "empty-message": "No campaign repository coverage was observed in the selected horizon.",
+              "encoding": {
+                "x": {
+                  "field": "campaign-name",
+                  "type": "nominal",
+                  "title": "Campaign"
+                },
+                "y": {
+                  "field": "covered-repositories",
+                  "type": "quantitative",
+                  "title": "Covered repositories"
                 },
                 "href": {
                   "field": "campaign-dashboard-link",

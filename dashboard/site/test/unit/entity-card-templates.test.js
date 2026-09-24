@@ -60,6 +60,21 @@ describe('entity card templates', () => {
       data: { source: 'campaign-inventory' },
       mark: 'table'
     });
+    expect(pages.campaigns.definition.views.find(
+      (/** @type {Record<string, any>} */ view) => view.id === 'campaigns-repository-coverage'
+    )).toMatchObject({
+      title: 'Repository coverage by campaign',
+      data: {
+        source: 'campaign-inventory',
+        limit: 100
+      },
+      mark: 'chart',
+      chart: 'horizontal-bar',
+      encoding: {
+        x: { field: 'campaign-name', type: 'nominal' },
+        y: { field: 'covered-repositories', type: 'quantitative' }
+      }
+    });
   });
 
   it('presents runs like a GitHub Actions run row', () => {
