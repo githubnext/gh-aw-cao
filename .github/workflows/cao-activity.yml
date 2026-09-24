@@ -236,15 +236,17 @@ jobs:
       - name: Compute repository operational value
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
-          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
+          CAO_OPERATIONAL_VALUE_GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
         run: |
-          node activity/cao.mjs operational-value \
-            --database "$ACTIVITY_DATABASE" \
-            --root . \
-            --output "$REPORT_GH_AW_LOGS_SHARDS/operational-values.jsonl" \
-            --retention-days 30 \
-            --max-github-api-rate-limit -2000
+          if ! node activity/cao.mjs operational-value \
+              --database "$ACTIVITY_DATABASE" \
+              --root . \
+              --output "$REPORT_GH_AW_LOGS_SHARDS/operational-values.jsonl" \
+              --retention-days 30 \
+              --max-github-api-rate-limit -2000; then
+            echo "::warning::Operational value collection failed; continuing activity indexing."
+          fi
 
       - name: Generate operational value shards
         env:

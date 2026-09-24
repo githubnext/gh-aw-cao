@@ -83,6 +83,47 @@ describe('dashboard view query contracts', () => {
     )).toEqual([]);
   });
 
+  it('renders the Cost page as three declarative AIC pie charts in the Data section', () => {
+    const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'cost');
+    const dataSection = dashboard.navigation.find(
+      (/** @type {Record<string, unknown>} */ section) => section.label === 'Data'
+    );
+
+    expect(/** @type {Record<string, unknown> | undefined} */ (dataSection)?.pages).toContain('cost');
+    expect(viewsOf(page)).toMatchObject([
+      {
+        id: 'cost-by-campaign',
+        data: { source: 'cost-by-campaign' },
+        mark: 'chart',
+        chart: 'pie',
+        encoding: {
+          x: { field: 'campaign-name' },
+          y: { field: 'aic', unit: 'aic' }
+        }
+      },
+      {
+        id: 'cost-by-repository',
+        data: { source: 'cost-by-repository' },
+        mark: 'chart',
+        chart: 'pie',
+        encoding: {
+          x: { field: 'repository-coordinate' },
+          y: { field: 'aic', unit: 'aic' }
+        }
+      },
+      {
+        id: 'cost-by-workflow',
+        data: { source: 'cost-by-workflow' },
+        mark: 'chart',
+        chart: 'pie',
+        encoding: {
+          x: { field: 'workflow-coordinate' },
+          y: { field: 'aic', unit: 'aic' }
+        }
+      }
+    ]);
+  });
+
   it('keeps assessment-sensitive high-cardinality views declaratively bounded', () => {
     const pagesById = new Map(dashboard.pages.map((/** @type {Record<string, unknown>} */ page) => [page.id, page]));
     const boundedViews = [
