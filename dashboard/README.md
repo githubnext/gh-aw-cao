@@ -91,6 +91,28 @@ serve, and verification commands.
 
 The preview composes `dashboard/site/dashboard.json` with every installed `<campaign>/dashboard.json` document. It watches those files, serves a split core `dashboard.json` plus per-page `dashboard-pages/*.json` chunks, and sends the updated core document over a capability-protected WebSocket after a valid update. The browser re-renders that shell without reloading the page while continuing to use the downloaded report data. Invalid dashboard JSON is reported in the terminal while the last valid preview remains available.
 
+The built-in dashboard may instead be assembled from ordered JSON fragments by
+adding `dashboard/site/dashboard.sources.json`:
+
+```json
+{
+  "version": 1,
+  "files": [
+    "dashboard/metadata.json",
+    "dashboard/queries.json",
+    "dashboard/pages.json",
+    "dashboard/navigation.json"
+  ]
+}
+```
+
+Each file contains a partial dashboard document. Objects are merged recursively,
+arrays are appended in manifest order, and duplicate scalar fields fail the
+assembly. Paths must be unique relative JSON paths that remain inside the
+manifest directory. The site build and dashboard validation commands prefer the
+manifest when it is present. To assemble a document directly, run
+`node dashboard/report/assemble-dashboard.mjs DASHBOARD_SOURCES OUTPUT_DASHBOARD`.
+
 ### Canvas CLI actions
 
 Dashboard documents may declare canvas-only CLI actions. They are hidden from

@@ -1,6 +1,10 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { relative, resolve } from 'node:path';
 import { parse } from 'yaml';
+import {
+  assembleDashboardDocument,
+  dashboardSourcesFileName,
+} from '../../report/assemble-dashboard.mjs';
 import { renderDashboardQueryUsageGraph } from '../src/query-usage.js';
 import { validateDashboardDocument } from '../src/validator.js';
 
@@ -19,7 +23,7 @@ async function findDashboardDocuments(directory) {
       && !entry.name.startsWith('.lazy-page-chunks-')
     ) {
       documents.push(...await findDashboardDocuments(resolve(directory, entry.name)));
-    } else if (entry.isFile() && entry.name === 'dashboard.json') {
+    } else if (entry.isFile() && (entry.name === 'dashboard.json' || entry.name === dashboardSourcesFileName)) {
       documents.push(resolve(directory, entry.name));
     }
   }
@@ -32,7 +36,9 @@ const renderQueryGraphs = process.argv.includes('--render-query-graphs');
 let invalidCount = 0;
 
 for (const dashboardPath of dashboardPaths) {
-  const source = await readFile(dashboardPath, 'utf8');
+  const source = dashboardPath.endsWith(`/${dashboardSourcesFileName}`)
+    ? JSON.stringify(await assembleDashboardDocument(dashboardPath))
+    : await readFile(dashboardPath, 'utf8');
   const result = validateDashboardDocument(source);
   const displayPath = relative(repositoryRoot, dashboardPath);
   const hasDeadQueries = !result.ok && result.errors.some((error) => error.code === 'DLS-E015');

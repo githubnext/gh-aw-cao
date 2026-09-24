@@ -3,6 +3,7 @@ import { access, cp, mkdir, readFile, readdir, realpath, rm, writeFile } from "n
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
+import { loadDashboardDocument } from "../../report/assemble-dashboard.mjs";
 import { bundleDashboardFiles } from "../../report/bundle-dashboards.mjs";
 import { configureSite } from "../../report/configure-site.mjs";
 import { buildDashboardPageChunkPath, splitDashboardDocument } from "../src/dashboard-chunks.js";
@@ -35,7 +36,6 @@ export async function buildDashboardSite({
     cp(new URL("icon-maskable-512.png", siteRoot), join(destinationPath, "icon-maskable-512.png")),
     cp(new URL("manifest.webmanifest", siteRoot), join(destinationPath, "manifest.webmanifest")),
     cp(new URL("service-worker.js", siteRoot), join(destinationPath, "service-worker.js")),
-    cp(new URL("dashboard.json", siteRoot), join(destinationPath, "dashboard.json")),
     cp(new URL("src/smells.svg", siteRoot), join(destinationPath, "smells.svg")),
     cp(new URL("src", siteRoot), join(destinationPath, "src"), { recursive: true }),
   ]);
@@ -47,6 +47,10 @@ export async function buildDashboardSite({
   const campaignDashboards = await findCampaignDashboards(repositoryPath, controlSettings);
 
   const dashboardPath = join(destinationPath, "dashboard.json");
+  await writeFile(
+    dashboardPath,
+    `${JSON.stringify(await loadDashboardDocument(fileURLToPath(new URL("dashboard.json", siteRoot))), null, 2)}\n`,
+  );
   await bundleDashboardFiles(dashboardPath, campaignDashboards);
   const dashboard = filterExperimentalDashboardViews(
     JSON.parse(await readFile(dashboardPath, "utf8")),
