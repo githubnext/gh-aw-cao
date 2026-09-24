@@ -1404,9 +1404,6 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(resetDialog).toContainText('This action cannot be undone.');
   await resetDialog.getByRole('button', { name: 'Cancel' }).click();
   await expect(resetDialog).not.toBeVisible();
-  await page.getByRole('link', { name: 'View indexing status and retained transactions' }).click();
-  await expect(page).toHaveURL(/#page-indexing$/);
-  await page.getByRole('link', { name: 'Settings' }).click();
   const description = page.locator('.overview-header .lede');
   expect(await description.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(true);
   await expect(page.getByText('Dashboard Next', { exact: true })).toHaveCount(0);

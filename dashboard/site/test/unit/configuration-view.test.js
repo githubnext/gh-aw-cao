@@ -91,7 +91,7 @@ describe('Configuration dashboard view', () => {
     expect(rendered.querySelector('[data-theme-value]')).toBeNull();
     expect(rendered.querySelector('.configuration-database-counts')).toBeNull();
     expect(rendered.querySelector('.reset-dashboard-trigger')).not.toBeNull();
-    expect(rendered.querySelector('.configuration-transactions-button')?.getAttribute('href')).toBe('#page-indexing');
+    expect(rendered.querySelector('a[href="#page-indexing"]')).toBeNull();
     const debugSettings = rendered.querySelector('.configuration-debug-settings');
     expect(debugSettings).toBe(rendered.lastElementChild);
     const debugLink = debugSettings?.querySelector('a');
