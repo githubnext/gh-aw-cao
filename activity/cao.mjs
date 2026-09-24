@@ -1285,13 +1285,15 @@ function isTransientTransportError(error) {
     || (error?.cause && isTransientTransportError(error.cause));
 }
 
-async function downloadFile(url, destination, { allowEmpty = false } = {}) {
+async function downloadFile(url, destination, { allowEmpty = false, signal } = {}) {
   let response;
   try {
     response = await fetch(url, {
       headers: { accept: 'application/x-ndjson, application/json, text/plain' },
       redirect: 'follow',
-      signal: AbortSignal.timeout(120_000)
+      signal: signal
+        ? AbortSignal.any([signal, AbortSignal.timeout(120_000)])
+        : AbortSignal.timeout(120_000)
     });
   } catch (error) {
     throw new TransientDownloadError(`Unable to download ${url}: transport failure`, { cause: error });
@@ -1344,12 +1346,18 @@ export async function downloadDeployedDashboardData({
     const temporaryPayloads = path.join(temporaryDirectory, 'payloads');
     const temporaryDatabase = path.join(temporaryDirectory, 'gh-aw-logs.sqlite');
     const temporaryInventory = path.join(temporaryDirectory, 'inventory-sources.json');
+    const abortController = new AbortController();
     try {
-      await Promise.all([
-        downloadFile(manifestUrl, temporaryManifest),
-        downloadFile(databaseUrl, temporaryDatabase),
-        downloadFile(inventoryUrl, temporaryInventory)
-      ]);
+      const downloads = [
+        downloadFile(manifestUrl, temporaryManifest, { signal: abortController.signal }),
+        downloadFile(databaseUrl, temporaryDatabase, { signal: abortController.signal }),
+        downloadFile(inventoryUrl, temporaryInventory, { signal: abortController.signal })
+      ];
+      await Promise.all(downloads).catch(async (error) => {
+        abortController.abort();
+        await Promise.allSettled(downloads);
+        throw error;
+      });
       const inventorySources = JSON.parse(await readFile(temporaryInventory, 'utf8'));
       if (!isMapping(inventorySources)) {
         throw new Error('Deployed inventory sources must contain a JSON object.');
@@ -1413,6 +1421,7 @@ export async function downloadDeployedDashboardData({
         inventory: inventoryPath
       };
     } finally {
+      abortController.abort();
       await rm(temporaryDirectory, { recursive: true, force: true });
     }
   };
