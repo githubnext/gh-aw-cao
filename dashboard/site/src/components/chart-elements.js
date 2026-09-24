@@ -24,6 +24,7 @@ const LINE_CHART_BOTTOM = 38;
 const LINE_CHART_HEIGHT = 34;
 const LINE_CHART_MIN_LEFT = 5;
 const LINE_CHART_LABEL_GAP = 2;
+// At the 2.6px axis font size, numeric labels average about 1.6 viewBox units per glyph.
 const LINE_CHART_LABEL_CHARACTER_WIDTH = 1.6;
 const MAX_BAR_AXIS_TICKS = 5;
 const MAX_HORIZONTAL_BARS = 100;
@@ -733,7 +734,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
       chartType,
       {
         'data-line-rendering': showInteractivePoints ? 'rich' : 'compact',
-        style: `--line-chart-left: ${lineChartLeft}%`
+        style: `--line-chart-left: ${lineChartLeft}%;`
       },
       h(
         'svg',
