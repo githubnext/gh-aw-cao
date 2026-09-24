@@ -17,37 +17,45 @@ type HostingMode string
 
 const (
 	HostingModeLocal          HostingMode = "local"
+	HostingModeHosted         HostingMode = "hosted"
 	HostingModeAzureFunctions HostingMode = "azure-functions"
 )
 
-type AzureProxyPolicy struct {
+type ProxyPolicy struct {
 	AllowedHosts []string
 	RequireHTTPS bool
 }
 
-func validateAzureMode(store *redisx.Store, config *Config) error {
-	if config.HostingMode != HostingModeAzureFunctions {
+type AzureProxyPolicy = ProxyPolicy
+
+func validateHostedMode(store *redisx.Store, config *Config) error {
+	if config.HostingMode != HostingModeAzureFunctions && config.HostingMode != HostingModeHosted {
 		return nil
 	}
-	if strings.TrimSpace(config.Listen) != "" || config.CertFile != "" || config.KeyFile != "" {
+	if config.HostingMode == HostingModeAzureFunctions &&
+		(strings.TrimSpace(config.Listen) != "" || config.CertFile != "" || config.KeyFile != "") {
 		return errors.New("azure Functions mode must not configure a listener or TLS files")
 	}
 	if strings.TrimSpace(config.AccessToken) != "" {
-		return errors.New("azure Functions mode does not support local bearer capabilities")
+		return errors.New("hosted mode does not support local bearer capabilities")
 	}
 	if store == nil {
-		return errors.New("azure Functions mode requires Redis")
+		return errors.New("hosted mode requires Redis")
 	}
-	if len(config.AzureProxy.AllowedHosts) == 0 {
-		return errors.New("azure Functions mode requires an explicit trusted proxy host policy")
+	if len(config.Proxy.AllowedHosts) == 0 && len(config.AzureProxy.AllowedHosts) == 0 {
+		return errors.New("hosted mode requires an explicit trusted proxy host policy")
 	}
 	if config.GitHubOAuth == nil {
-		return errors.New("azure Functions mode requires GitHub OAuth configuration")
+		return errors.New("hosted mode requires GitHub OAuth configuration")
 	}
 	if err := config.GitHubOAuth.validate(); err != nil {
 		return err
 	}
 	return nil
+}
+
+func validateAzureMode(store *redisx.Store, config *Config) error {
+	return validateHostedMode(store, config)
 }
 
 func validAzureProxyRequest(request *http.Request, policy AzureProxyPolicy) bool {

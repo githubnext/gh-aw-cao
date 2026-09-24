@@ -42,6 +42,7 @@ type Result struct {
 
 type Options struct {
 	DatabaseQueriesPath string
+	Force               bool
 }
 
 type Manifest map[string]string
@@ -151,7 +152,7 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 	if err != nil {
 		return Result{}, fmt.Errorf("read active Redis generation: %w", err)
 	}
-	if active.Generation != "" && active.DataRevision == dataRevision {
+	if !options.Force && active.Generation != "" && active.DataRevision == dataRevision {
 		ingestLog.Printf("reusing active generation revision=%d sources=%d", active.Revision, len(active.Counts))
 		evaluatedAt := active.EvaluatedAt
 		if evaluatedAt.IsZero() {
