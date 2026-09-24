@@ -25,7 +25,8 @@ describe('Audit dashboard view', () => {
       'campaign-insights-navigation',
       'campaign-operational-value-history',
       'campaign-operational-grader-history',
-      'campaign-audit-event-summary-buckets'
+      'campaign-audit-event-summary-buckets',
+      'campaign-audit-event-table'
     ]);
     expect(insights.views[0].data).toMatchObject({
       sources: [
@@ -54,48 +55,26 @@ describe('Audit dashboard view', () => {
       element: 'measure-history'
     });
     expect(insights.views.slice(3).map((/** @type {{ data: Record<string, string> }} */ view) => view.data)).toEqual([
+      expect.objectContaining({ source: 'audit-event-summary-buckets', 'route-field': 'campaign' }),
       expect.objectContaining({ source: 'audit-event-summary-buckets', 'route-field': 'campaign' })
     ]);
     expect(insights.views.filter((/** @type {{ mark: string }} */ view) => view.mark !== 'element')
-      .map((/** @type {{ mark: string }} */ view) => view.mark)).toEqual(['chart']);
+      .map((/** @type {{ mark: string }} */ view) => view.mark)).toEqual(['chart', 'list']);
     expect(insights.views[3]).toMatchObject({
+      title: 'Severity audit events',
       chart: 'horizontal-bar',
-      data: { limit: 20 },
+      data: {
+        limit: 20,
+        'order-by': [
+          { field: 'event-status', direction: 'asc' },
+          { field: 'events', direction: 'desc' }
+        ]
+      },
       encoding: {
         x: { field: 'workflow', format: 'workflow-relative-path' },
         y: { field: 'events' },
-        color: { field: 'event-summary' }
+        color: { field: 'event-status', title: 'Severity' }
       }
-    });
-
-    it('projects repository operational value with its maturity state', () => {
-      const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
-        operation: 'execute-dashboard-queries',
-        queries: dashboard.queries,
-        sourceNames: ['campaign-operational-value-primary-series'],
-        sources: {
-          'operational-values': {
-            source: 'operational-values',
-            rows: [{
-              campaign: 'optimization',
-              repository: 'gh-aw',
-              'operational-value': 0,
-              'operational-value-definition': 'optimization-token-optimizer.verified-opportunity-share',
-              'operational-value-role': 'primary',
-              'maturity-status': 'interim',
-              'observed-at': '2026-09-24T20:56:21Z'
-            }],
-            metadata
-          }
-        }
-      }));
-
-      expect(result['campaign-operational-value-primary-series'].rows).toEqual([expect.objectContaining({
-        campaign: 'optimization',
-        'maturity-status': 'interim',
-        'metric-kind': 'primary',
-        points: [expect.objectContaining({ x: '2026-09-24T20:56:21Z', y: 0, color: 'gh-aw' })]
-      })]);
     });
     expect(issues.views
       .filter((/** @type {{ data?: { source?: string } }} */ view) => view.data?.source === 'campaign-worker-issues')
@@ -103,6 +82,36 @@ describe('Audit dashboard view', () => {
       'campaign',
       'campaign'
     ]);
+  });
+
+  it('projects repository operational value with its maturity state', () => {
+    const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries',
+      queries: dashboard.queries,
+      sourceNames: ['campaign-operational-value-primary-series'],
+      sources: {
+        'operational-values': {
+          source: 'operational-values',
+          rows: [{
+            campaign: 'optimization',
+            repository: 'gh-aw',
+            'operational-value': 0,
+            'operational-value-definition': 'optimization-token-optimizer.verified-opportunity-share',
+            'operational-value-role': 'primary',
+            'maturity-status': 'interim',
+            'observed-at': '2026-09-24T20:56:21Z'
+          }],
+          metadata
+        }
+      }
+    }));
+
+    expect(result['campaign-operational-value-primary-series'].rows).toEqual([expect.objectContaining({
+      campaign: 'optimization',
+      'maturity-status': 'interim',
+      'metric-kind': 'primary',
+      points: [expect.objectContaining({ x: '2026-09-24T20:56:21Z', y: 0, color: 'gh-aw' })]
+    })]);
   });
 
   it('projects only issue outcomes produced by campaign workers', () => {
@@ -250,20 +259,30 @@ describe('Audit dashboard view', () => {
     expect(result['audit-event-summary-buckets'].rows).toEqual([
       {
         campaign: 'audit-campaign',
+        'event-status': 'high',
         workflow: '.github/workflows/audit.md',
         'event-summary': 'Repeated finding',
-        events: 2
-      },
-      {
-        campaign: 'audit-campaign',
-        workflow: '.github/workflows/audit.md',
-        'event-summary': 'Skill activation',
         events: 1
       },
       {
         campaign: 'review-campaign',
+        'event-status': 'high',
         workflow: '.github/workflows/review.md',
         'event-summary': 'Repeated finding',
+        events: 1
+      },
+      {
+        campaign: 'audit-campaign',
+        'event-status': 'medium',
+        workflow: '.github/workflows/audit.md',
+        'event-summary': 'Repeated finding',
+        events: 1
+      },
+      {
+        campaign: 'audit-campaign',
+        'event-status': 'medium',
+        workflow: '.github/workflows/audit.md',
+        'event-summary': 'Skill activation',
         events: 1
       }
     ]);
@@ -321,13 +340,26 @@ describe('Audit dashboard view', () => {
             ]
           }],
           metadata
+        },
+        'operational-values': {
+          source: 'operational-values',
+          rows: [{
+            campaign: 'combined',
+            repository: 'gh-aw-cao',
+            'operational-value': 0.5,
+            'operational-value-definition': 'combined.value',
+            'operational-value-role': 'primary',
+            'maturity-status': 'mature',
+            'observed-at': '2026-09-16T10:00:00Z'
+          }],
+          metadata
         }
       }
     }));
 
     expect(result['campaign-insight-tab-counts'].rows).toHaveLength(3);
     expect(result['campaign-insight-tab-counts'].rows).toEqual(expect.arrayContaining([
-      { campaign: 'combined', items: 4 },
+      { campaign: 'combined', items: 5 },
       { campaign: 'audit-only', items: 1 },
       { campaign: 'noise', items: 1 }
     ]));

@@ -648,6 +648,7 @@ function validateCardTemplates(templates, templatesNode, errors) {
     validateCardTemplateStatus(template.status, getValueNodeByKey(templateNode, 'status'), `${path}.status`, errors);
     validateCardTemplateTiming(template.timing, getValueNodeByKey(templateNode, 'timing'), `${path}.timing`, errors);
     validateCardTemplateActions(template.actions, getValueNodeByKey(templateNode, 'actions'), `${path}.actions`, errors);
+    validateListDrill(template.drill, getValueNodeByKey(templateNode, 'drill'), path, 'entity-cards', errors);
     for (const key of ['labels', 'details']) {
       const fields = template[key];
       if (!Array.isArray(fields) || (key === 'details' && fields.length === 0)) {
@@ -1146,6 +1147,28 @@ function validateDashboard(dashboard, dashboardNode, errors) {
     }
     validatePage(resolveReusablePageViews(page), getSequenceItemNode(getValueNodeByKey(dashboardNode, 'pages'), index), `$.dashboard.pages[${index}]`, pageIds, errors);
   });
+  (Array.isArray(dashboard['card-templates']) ? dashboard['card-templates'] : []).forEach((template, index) => {
+    if (!isPlainObject(template) || !isPlainObject(template.drill)) return;
+    const fields = [
+      template.title,
+      template.subtitle,
+      template.status,
+      ...(Array.isArray(template.labels) ? template.labels : []),
+      ...(Array.isArray(template.details) ? template.details : []),
+      ...(Array.isArray(template.timing) ? template.timing : [])
+    ].flatMap((field) => (
+      isPlainObject(field) && typeof field.field === 'string' ? [field.field] : []
+    ));
+    validateQueryDrillReferences(
+      template.drill,
+      `$.dashboard.card-templates[${index}].drill`,
+      dashboard,
+      pageIds,
+      declaredQueries,
+      fields,
+      errors
+    );
+  });
   dashboard.pages.forEach((page, index) => {
     page = resolveReusablePageViews(page);
     if (!isPlainObject(page)) return;
@@ -1216,78 +1239,11 @@ function validateDashboard(dashboard, dashboardNode, errors) {
           ? `${viewPath}.card-drill`
           : `${viewPath}.list.drill`;
         if (drill?.type === 'query') {
-          if (typeof drill.page === 'string' && IDENTIFIER_PATTERN.test(drill.page) && !pageIds.has(drill.page)) {
-            errors.push(createError(
-              ERROR_CODES.missingOrInvalidRequiredField,
-              'query drill page must reference a declared dashboard page id.',
-              `${drillPath}.page`
-            ));
-          }
-          if (typeof drill.query === 'string' && IDENTIFIER_PATTERN.test(drill.query) && !declaredQueries.has(drill.query)) {
-            errors.push(createError(
-              ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-              'query drill query must reference a declared dashboard query.',
-              `${drillPath}.query`
-            ));
-          }
           const sourceName = isPlainObject(view.data) && typeof view.data.source === 'string'
             ? view.data.source
             : null;
           const fields = sourceName ? sourceFieldNames(sourceName) : null;
-          for (const [field, fieldPath] of [
-            [drill['title-field'], `${drillPath}.title-field`],
-            ...(Array.isArray(drill.arguments)
-              ? drill.arguments.map((argument, argumentIndex) => [
-                  isPlainObject(argument) ? argument.field : undefined,
-                  `${drillPath}.arguments[${argumentIndex}].field`
-                ])
-              : [])
-          ]) {
-            if (fields && typeof field === 'string' && !fields.includes(field)) {
-              errors.push(createError(
-                ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-                'query drill field must be declared by the current view data source.',
-                String(fieldPath)
-              ));
-            }
-          }
-          const targetPage = resolveReusablePageViews(/** @type {unknown[]} */ (dashboard.pages)
-            .find((candidate) => isPlainObject(candidate) && candidate.id === drill.page));
-          const targetViews = isPlainObject(targetPage)
-            ? targetPage.kind === 'built-in' && isPlainObject(targetPage.definition)
-              ? targetPage.definition.views
-              : targetPage.views
-            : undefined;
-          const argumentNames = new Set(Array.isArray(drill.arguments)
-            ? drill.arguments.flatMap((argument) => (
-                isPlainObject(argument) && typeof argument.name === 'string' ? [argument.name] : []
-              ))
-            : []);
-          const destinationBindsQuery = Array.isArray(targetViews) && targetViews.some((targetView) => {
-            if (!isPlainObject(targetView) || !isPlainObject(targetView.data)) return false;
-            const bindsQuery = targetView.data.source === drill.query
-              || (Array.isArray(targetView.data.sources) && targetView.data.sources.includes(drill.query));
-            if (!bindsQuery) return false;
-            const boundNames = new Set(Array.isArray(targetView.data.arguments)
-              ? targetView.data.arguments.flatMap((argument) => (
-                  isPlainObject(argument) && typeof argument.name === 'string' ? [argument.name] : []
-                ))
-              : []);
-            return [...argumentNames].every((name) => boundNames.has(name));
-          });
-          if (
-            typeof drill.page === 'string'
-            && pageIds.has(drill.page)
-            && typeof drill.query === 'string'
-            && declaredQueries.has(drill.query)
-            && !destinationBindsQuery
-          ) {
-            errors.push(createError(
-              ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-              'query drill destination must bind the declared query and every drill argument.',
-              drillPath
-            ));
-          }
+          validateQueryDrillReferences(drill, drillPath, dashboard, pageIds, declaredQueries, fields, errors);
         }
       });
     }
@@ -3206,6 +3162,87 @@ function validateListDrill(drill, drillNode, listPath, style, errors) {
       errors.push(createError(ERROR_CODES.unknownOrDuplicateKey, 'query drill argument names must be unique.', `${argumentPath}.name`));
     }
     names.add(argument.name);
+  }
+}
+
+/**
+ * @param {Record<string, any>} drill
+ * @param {string} drillPath
+ * @param {Record<string, any>} dashboard
+ * @param {Set<string>} pageIds
+ * @param {Map<string, string[] | undefined>} declaredQueries
+ * @param {string[] | null | undefined} fields
+ * @param {ValidationError[]} errors
+ */
+function validateQueryDrillReferences(drill, drillPath, dashboard, pageIds, declaredQueries, fields, errors) {
+  if (drill.type !== 'query') return;
+  if (typeof drill.page === 'string' && IDENTIFIER_PATTERN.test(drill.page) && !pageIds.has(drill.page)) {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      'query drill page must reference a declared dashboard page id.',
+      `${drillPath}.page`
+    ));
+  }
+  if (typeof drill.query === 'string' && IDENTIFIER_PATTERN.test(drill.query) && !declaredQueries.has(drill.query)) {
+    errors.push(createError(
+      ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+      'query drill query must reference a declared dashboard query.',
+      `${drillPath}.query`
+    ));
+  }
+  for (const [field, fieldPath] of [
+    [drill['title-field'], `${drillPath}.title-field`],
+    ...(Array.isArray(drill.arguments)
+      ? drill.arguments.map((argument, argumentIndex) => [
+          isPlainObject(argument) ? argument.field : undefined,
+          `${drillPath}.arguments[${argumentIndex}].field`
+        ])
+      : [])
+  ]) {
+    if (fields && typeof field === 'string' && !fields.includes(field)) {
+      errors.push(createError(
+        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        'query drill field must be declared by the current card or view data source.',
+        String(fieldPath)
+      ));
+    }
+  }
+  const targetPage = resolveReusablePageViews(/** @type {unknown[]} */ (dashboard.pages)
+    .find((candidate) => isPlainObject(candidate) && candidate.id === drill.page));
+  const targetViews = isPlainObject(targetPage)
+    ? targetPage.kind === 'built-in' && isPlainObject(targetPage.definition)
+      ? targetPage.definition.views
+      : targetPage.views
+    : undefined;
+  const argumentNames = new Set(Array.isArray(drill.arguments)
+    ? drill.arguments.flatMap((argument) => (
+        isPlainObject(argument) && typeof argument.name === 'string' ? [argument.name] : []
+      ))
+    : []);
+  const destinationBindsQuery = Array.isArray(targetViews) && targetViews.some((targetView) => {
+    if (!isPlainObject(targetView) || !isPlainObject(targetView.data)) return false;
+    const bindsQuery = targetView.data.source === drill.query
+      || (Array.isArray(targetView.data.sources) && targetView.data.sources.includes(drill.query));
+    if (!bindsQuery) return false;
+    const boundNames = new Set(Array.isArray(targetView.data.arguments)
+      ? targetView.data.arguments.flatMap((argument) => (
+          isPlainObject(argument) && typeof argument.name === 'string' ? [argument.name] : []
+        ))
+      : []);
+    return [...argumentNames].every((name) => boundNames.has(name));
+  });
+  if (
+    typeof drill.page === 'string'
+    && pageIds.has(drill.page)
+    && typeof drill.query === 'string'
+    && declaredQueries.has(drill.query)
+    && !destinationBindsQuery
+  ) {
+    errors.push(createError(
+      ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+      'query drill destination must bind the declared query and every drill argument.',
+      drillPath
+    ));
   }
 }
 

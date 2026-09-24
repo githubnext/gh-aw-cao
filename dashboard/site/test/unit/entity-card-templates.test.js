@@ -130,6 +130,13 @@ describe('entity card templates', () => {
     expect(templates['firewall-domain']).toEqual({
       id: 'firewall-domain',
       icon: 'globe',
+      drill: {
+        type: 'query',
+        page: 'domain-insights',
+        query: 'domain-entity-insights',
+        'title-field': 'domain',
+        arguments: [{ name: 'domain', field: 'domain' }]
+      },
       title: { field: 'domain', title: 'Domain' },
       labels: [],
       details: [
@@ -145,16 +152,8 @@ describe('entity card templates', () => {
     const domainList = firewall.views.find(
       (/** @type {Record<string, any>} */ view) => view.id === 'security-firewall-domains'
     );
-    expect(domainList).toMatchObject({
-      mark: 'table',
-      'card-drill': {
-        type: 'query',
-        page: 'firewall-domain-workflows',
-        query: 'firewall-domain-workflows',
-        'title-field': 'domain',
-        arguments: [{ name: 'domain', field: 'domain' }]
-      }
-    });
+    expect(domainList).toMatchObject({ mark: 'table' });
+    expect(domainList['card-drill']).toBeUndefined();
     expect(views['firewall-domain-workflows']).toMatchObject({
       data: {
         source: 'firewall-domain-workflows',

@@ -425,11 +425,6 @@ function renderDebuggingSettings() {
 
 function renderLocalDataActions() {
   return h('div', { className: 'configuration-local-data-actions' },
-    h('a', {
-      href: '#page-transactions',
-      className: 'configuration-transactions-button',
-      'aria-label': 'View retained transactions table'
-    }, 'View retained transactions'),
     renderResetDashboardControl()
   );
 }

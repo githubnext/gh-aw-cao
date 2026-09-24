@@ -681,7 +681,7 @@ describe('presenter built-in and custom pages', () => {
     expect([...firewallCard?.querySelectorAll('.entity-card-list-metric') ?? []].map((metric) => metric.textContent))
       .toEqual(['0Allowed', '3177281Blocked', '1Runs']);
     expect(firewallCard?.querySelector('[data-card-drill="query"]')?.getAttribute('href'))
-      .toBe('#page-firewall-domain-workflows?query=firewall-domain-workflows&title=blocked.example&domain=blocked.example');
+      .toBe('#page-domain-insights?query=domain-entity-insights&title=blocked.example&domain=blocked.example');
     expect(text).not.toContain('firewall failure');
     rendered.remove();
   });
@@ -785,7 +785,7 @@ describe('presenter built-in and custom pages', () => {
   });
 
 
-  it('renders transaction entries as one full-view interactive lazy table', async () => {
+  it('renders indexing status, size trend, and transaction ingestion rate', async () => {
     const metadata = {
       'source-id': 'transactions-fixture',
       'source-kind': 'fixture',
@@ -816,6 +816,7 @@ describe('presenter built-in and custom pages', () => {
             duplicateRawRunObservations: 1,
             duplicateAgenticRunObservations: 2,
             unenrichedRuns: 3,
+            'activity-status': 'success',
             error: ''
           }],
           metadata
@@ -825,12 +826,12 @@ describe('presenter built-in and custom pages', () => {
 
     document.body.append(rendered);
     try {
-      window.location.hash = '#page-transactions';
-      await vi.waitFor(() => expect(rendered.querySelector('[data-page-id="transactions"]')?.hasAttribute('data-page-pending')).toBe(false));
-      const page = rendered.querySelector('[data-page-id="transactions"]');
-      expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
-      expect(page?.querySelectorAll('[data-view-id]')).toHaveLength(1);
-      expect(page?.querySelector('.line-chart-series')).toBeNull();
+      window.location.hash = '#page-indexing';
+      await vi.waitFor(() => expect(rendered.querySelector('[data-page-id="indexing"]')?.hasAttribute('data-page-pending')).toBe(false));
+      const page = rendered.querySelector('[data-page-id="indexing"]');
+      expect(page?.querySelectorAll('[data-view-id]')).toHaveLength(3);
+      expect(page?.querySelectorAll('[data-chart-widget="bar"]')).toHaveLength(2);
+      expect(page?.textContent).toContain('success');
       expect(page?.textContent).not.toContain('Local database');
       expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
       expect(page?.querySelector('input[type="search"]')).not.toBeNull();
@@ -2318,7 +2319,7 @@ describe('presenter built-in and custom pages', () => {
 
     const headings = [...rendered.querySelectorAll('[data-page-id="runs"] .page-section h3')].map((element) => element.textContent);
     expect(headings).toEqual(['Runs in the last week', 'Runs']);
-    expect(rendered.querySelectorAll('[data-page-id="runs"] [data-chart-widget="line"]')).toHaveLength(1);
+    expect(rendered.querySelectorAll('[data-page-id="runs"] [data-chart-widget="area"]')).toHaveLength(1);
     expect(rendered.querySelectorAll('[data-page-id="runs"] .custom-table')).toHaveLength(1);
     expect(rendered.querySelector('[data-page-id="runs"]')?.getAttribute('data-page-kind')).toBe('custom');
   });

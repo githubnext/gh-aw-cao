@@ -39,6 +39,42 @@ describe('dashboard document validation', () => {
     expect(accepted.ok).toBe(true);
   });
 
+  it('validates card template drill references and destination bindings', () => {
+    const invalidPage = JSON.parse(authoritativeDashboardSource);
+    const domainTemplate = invalidPage.dashboard['card-templates']
+      .find((/** @type {{ id?: string }} */ template) => template.id === 'firewall-domain');
+    domainTemplate.drill.page = 'missing-page';
+    expect(validateDashboardDocument(JSON.stringify(invalidPage))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([expect.objectContaining({
+        message: 'query drill page must reference a declared dashboard page id.',
+        path: expect.stringMatching(/card-templates\[\d+\]\.drill\.page$/)
+      })])
+    });
+
+    const invalidQuery = JSON.parse(authoritativeDashboardSource);
+    invalidQuery.dashboard['card-templates']
+      .find((/** @type {{ id?: string }} */ template) => template.id === 'firewall-domain').drill.query = 'missing-query';
+    expect(validateDashboardDocument(JSON.stringify(invalidQuery))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([expect.objectContaining({
+        message: 'query drill query must reference a declared dashboard query.',
+        path: expect.stringMatching(/card-templates\[\d+\]\.drill\.query$/)
+      })])
+    });
+
+    const invalidBinding = JSON.parse(authoritativeDashboardSource);
+    invalidBinding.dashboard['card-templates']
+      .find((/** @type {{ id?: string }} */ template) => template.id === 'firewall-domain').drill.arguments[0].name = 'missing';
+    expect(validateDashboardDocument(JSON.stringify(invalidBinding))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([expect.objectContaining({
+        message: 'query drill destination must bind the declared query and every drill argument.',
+        path: expect.stringMatching(/card-templates\[\d+\]\.drill$/)
+      })])
+    });
+  });
+
   it('validates bottom navigation placement vocabulary and labels', () => {
     const invalidPlacement = JSON.parse(authoritativeDashboardSource);
     invalidPlacement.dashboard.navigation = [{ label: 'Manage', placement: 'top', pages: ['overview'] }];
@@ -458,13 +494,7 @@ describe('dashboard document validation', () => {
       controls: 'interactive',
       'lazy-list': true,
       'column-summaries': true,
-      'card-drill': {
-        type: 'query',
-        page: 'firewall-domain-workflows',
-        query: 'firewall-domain-workflows',
-        'title-field': 'domain',
-        arguments: [{ name: 'domain', field: 'domain' }]
-      },
+
       layout: 'full-view',
       data: {
         source: 'firewall-domain-totals',
@@ -526,7 +556,7 @@ describe('dashboard document validation', () => {
     });
     expect(mcps.views).toHaveLength(2);
     expect(mcps.views[1].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toEqual([
-      'mcp-tool',
+      'mcp-tool-label',
       'mcp-server',
       'calls',
       'workflows'
@@ -695,7 +725,7 @@ describe('dashboard document validation', () => {
     )).toMatchObject({
       data: { source: 'runs-daily-conclusions', time: { range: '7d' } },
       mark: 'chart',
-      chart: 'line',
+      chart: 'area',
       encoding: {
         x: { field: 'day', type: 'temporal' },
         y: { field: 'runs', type: 'quantitative' },
@@ -905,7 +935,7 @@ dashboard:
           mark: element
           element: campaign-route
           config:
-            body: pull-requests
+            body: repositories
 `);
     expect(accepted.ok).toBe(true);
 

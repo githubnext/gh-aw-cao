@@ -653,7 +653,14 @@ describe('data view renderer', () => {
           'icon-field': 'operation-icon',
           title: { field: 'operation-name' },
           labels: [],
-          details: []
+          details: [],
+          drill: {
+            type: 'query',
+            page: 'operation-insights',
+            query: 'operation-insights',
+            'title-field': 'operation-name',
+            arguments: [{ name: 'operation', field: 'operation-name' }]
+          }
         }
       },
       metadata,
@@ -669,6 +676,45 @@ describe('data view renderer', () => {
     expect(rendered?.querySelector('.issue-list-card-icon .octicon-gear')).not.toBeNull();
     expect(rendered?.querySelector('[data-card-drill]')?.getAttribute('href'))
       .toBe('#page-campaign-insights?campaign=doctor');
+  });
+
+  it('uses the known entity type drill when the view does not define one', () => {
+    const rendered = renderDataView('list', {
+      pageId: 'audits',
+      title: 'Audit events',
+      sourceName: 'audit-events',
+      view: {
+        mark: 'list',
+        list: { style: 'entity-cards', card: 'audit', icon: 'checklist' },
+        encoding: { columns: [{ field: 'event-summary' }] }
+      },
+      rows: [{ 'event-summary': 'Policy mismatch' }],
+      cardTemplates: {
+        audit: {
+          icon: 'checklist',
+          title: { field: 'event-summary' },
+          labels: [],
+          details: [],
+          drill: {
+            type: 'query',
+            page: 'audit-insights',
+            query: 'audit-entity-insights',
+            'title-field': 'event-summary',
+            arguments: [{ name: 'audit', field: 'event-summary' }]
+          }
+        }
+      },
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    expect(rendered?.querySelector('[data-card-drill]')?.getAttribute('href'))
+      .toBe('#page-audit-insights?query=audit-entity-insights&title=Policy+mismatch&audit=Policy+mismatch');
   });
 
   it('renders grouped entity-card lists with a trailing disclosure chevron', () => {
@@ -1103,7 +1149,7 @@ describe('data view renderer', () => {
         layout: 'full-view',
         encoding: {
           columns: [
-            { field: 'mcp-tool', type: 'nominal', title: 'MCP tool' },
+            { field: 'mcp-tool-label', type: 'nominal', title: 'MCP tool' },
             { field: 'mcp-server', type: 'nominal', title: 'MCP server' },
             { field: 'calls', type: 'quantitative', title: 'Calls' },
             { field: 'workflows', type: 'quantitative', title: 'Workflows' }
@@ -1111,11 +1157,24 @@ describe('data view renderer', () => {
         }
       },
       sourceName: 'mcp-tool-totals',
-      rows: [{ 'mcp-tool': 'issue_read', 'mcp-server': 'github', calls: 4778, workflows: 12 }],
+      rows: [{
+        'mcp-tool-label': 'github/issue_read',
+        'mcp-tool': 'issue_read',
+        'mcp-server': 'github',
+        calls: 4778,
+        workflows: 12
+      }],
       cardTemplates: {
         'mcp-tool': {
           icon: 'mcp',
-          title: { field: 'mcp-tool', title: 'MCP tool' },
+          drill: {
+            type: 'query',
+            page: 'tool-insights',
+            query: 'tool-entity-insights',
+            'title-field': 'mcp-tool-label',
+            arguments: [{ name: 'tool', field: 'mcp-tool-label' }]
+          },
+          title: { field: 'mcp-tool-label', title: 'MCP tool' },
           subtitle: { field: 'mcp-server', title: 'MCP server' },
           labels: [],
           details: [
@@ -1134,9 +1193,11 @@ describe('data view renderer', () => {
     });
 
     const card = rendered?.querySelector('[data-mobile-card-list] .entity-card-list-card');
-    expect(card?.querySelector('.entity-card-list-title')?.textContent).toBe('issue_read');
+    expect(card?.querySelector('.entity-card-list-title')?.textContent).toBe('github/issue_read');
     expect(card?.querySelector('.entity-card-list-subtitle')?.textContent).toBe('github');
     expect(card?.querySelector('.entity-card-list-subtitle')?.getAttribute('aria-label')).toBe('MCP server: github');
+    expect(card?.querySelector('[data-card-drill]')?.getAttribute('href'))
+      .toBe('#page-tool-insights?query=tool-entity-insights&title=github%2Fissue_read&tool=github%2Fissue_read');
     const metrics = [...card?.querySelectorAll('.entity-card-list-metric') ?? []]
       .map((metric) => metric.textContent);
     expect(metrics).toEqual(['4778Calls', '12Workflows']);

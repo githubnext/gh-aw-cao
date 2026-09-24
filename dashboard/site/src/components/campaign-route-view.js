@@ -15,7 +15,7 @@ export function renderCampaignRouteView(context) {
 
 /**
  * @param {import('./ui-elements.js').ElementRenderContext} context
- * @param {'overview'|'workflows'|'runs'|'issues'|'pull-requests'|'repositories'|'insights'|'problems'|'reports'|'dispatches'} variant
+ * @param {'overview'|'workflows'|'runs'|'issues'|'repositories'|'insights'|'problems'|'reports'|'dispatches'} variant
  * @returns {HTMLElement}
  */
 export function renderCampaignRouteVariant(context, variant) {

@@ -7,7 +7,7 @@ import { publishSource, requestSource, sourceState } from '../source-store.js';
 import { dashboardViewAliasName } from '../data/queries/view-payload-compiler.js';
 
 /** @typedef {Record<string, unknown>} Row */
-/** @typedef {{ rows: () => Row[], source: () => LogicalSourceInput | undefined, pending: () => boolean, unavailable: () => boolean }} SourceBinding */
+/** @typedef {{ rows: () => Row[], source: () => LogicalSourceInput | undefined, pending: () => boolean, empty: () => boolean, unavailable: () => boolean }} SourceBinding */
 /** @typedef {import('../presenter.js').LogicalSourceInput} LogicalSourceInput */
 /** @typedef {Record<string, SourceBinding>} SourceBindings */
 /**
@@ -67,6 +67,7 @@ export function bindFactorySources(sources, names, request, options) {
       rows: () => entryState.get().source?.rows ?? [],
       source: () => entryState.get().source ?? undefined,
       pending: () => entryState.get().status === 'loading',
+      empty: () => entryState.get().source?.metadata?.availability === 'empty',
       unavailable: () => {
         const entry = entryState.get();
         return entry.status === 'failed' || entry.source?.metadata?.availability === 'unavailable';

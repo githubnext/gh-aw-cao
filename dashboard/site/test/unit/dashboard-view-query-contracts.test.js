@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { processDataRequest } from '../../src/data-worker.js';
 import { dashboardQueryDefects } from '../../src/data/queries/declarative.js';
+import { CAMPAIGN_ROUTE_BODY_VALUES } from '../../src/components/route-body-specification.js';
 import { TABLE_FIELDS } from '../../src/specification.js';
 
 const document = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8'));
@@ -179,6 +180,8 @@ describe('dashboard view query contracts', () => {
     }
     expect(JSON.stringify(dashboard.queries)).not.toContain('#page-campaign-detail?campaign=');
     expect(JSON.stringify(dashboard.queries)).toContain('#page-campaign-insights?campaign=');
+    expect(dashboard.pages.some((/** @type {Record<string, unknown>} */ page) => page.id === 'campaign-pull-requests')).toBe(false);
+    expect(CAMPAIGN_ROUTE_BODY_VALUES).not.toContain('pull-requests');
   });
 
   it('renders campaign issues with the reusable issue card template', () => {
