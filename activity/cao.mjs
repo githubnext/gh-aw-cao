@@ -2174,12 +2174,17 @@ function issueStatusTargets(issues) {
       owner,
       name,
       repository: `${owner}/${name}`,
-      number
+      number,
+      statusObservedAt: issue.statusObservedAt
     });
   }
-  return [...targets.values()].sort((left, right) => (
-    left.repository.localeCompare(right.repository) || left.number - right.number
-  ));
+  return [...targets.values()].sort((left, right) => {
+    const leftObserved = Date.parse(String(left.statusObservedAt ?? ''));
+    const rightObserved = Date.parse(String(right.statusObservedAt ?? ''));
+    const freshness = (Number.isFinite(leftObserved) ? leftObserved : Number.NEGATIVE_INFINITY)
+      - (Number.isFinite(rightObserved) ? rightObserved : Number.NEGATIVE_INFINITY);
+    return freshness || left.repository.localeCompare(right.repository) || left.number - right.number;
+  });
 }
 
 function issueStatusQuery(batch) {
