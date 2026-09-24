@@ -1,5 +1,63 @@
 export const QUERY_CHUNK_SIZE = 25;
 
+/**
+ * Parses a Playwright-style `N/M` shard descriptor (1-based index, total count).
+ * Returns `{ index: 1, total: 1 }` for a missing or malformed descriptor so
+ * callers can treat "no sharding" as shard 1 of 1.
+ */
+export function parseQueryPerformanceShard(descriptor) {
+  const match = typeof descriptor === "string" ? descriptor.match(/^(\d+)\/(\d+)$/) : null;
+  if (!match) return { index: 1, total: 1 };
+  const total = Number(match[2]);
+  const index = Number(match[1]);
+  if (!Number.isInteger(total) || total < 1 || !Number.isInteger(index) || index < 1 || index > total) {
+    return { index: 1, total: 1 };
+  }
+  return { index, total };
+}
+
+/**
+ * Contiguously partitions `queries` into `total` groups and returns the
+ * group for the 1-based `index`, distributing any remainder across the
+ * earliest shards so every shard gets a near-even, deterministic slice.
+ */
+export function partitionQueryDefinitions(queries, index, total) {
+  if (total <= 1) return queries;
+  const count = queries.length;
+  const baseSize = Math.floor(count / total);
+  const remainder = count % total;
+  const shardSize = (shard) => baseSize + (shard <= remainder ? 1 : 0);
+  let start = 0;
+  for (let shard = 1; shard < index; shard += 1) start += shardSize(shard);
+  return queries.slice(start, start + shardSize(index));
+}
+
+/**
+ * Merges the per-shard reports produced by sharded query-performance runs
+ * back into a single report shaped like the unsharded output. The
+ * population/overview/IndexedDB measurements are taken from the first shard
+ * that reports them; per-query timings are concatenated in shard order.
+ */
+export function mergeQueryPerformanceReports(reports) {
+  if (reports.length === 1) return reports[0];
+  const base = reports.find((report) => report.overview) ?? reports[0];
+  const queries = reports.flatMap((report) => report.queries);
+  const overview = base.overview
+    ? {
+      ...base.overview,
+      slowestSources: queries
+        .filter(({ query }) => query in base.overview.returnedRows)
+        .sort((left, right) => right.firstChunkMs - left.firstChunkMs)
+        .slice(0, 5),
+    }
+    : base.overview;
+  return {
+    ...base,
+    overview,
+    queries,
+  };
+}
+
 export function deployedProxyTarget(pathname, baseUrl) {
   const base = new URL(baseUrl);
   const target = new URL(base);
