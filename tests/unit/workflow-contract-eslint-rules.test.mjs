@@ -168,6 +168,20 @@ test("ESLint Factory workflows keep GitHub evidence acquisition bounded", () => 
   }
 
   const miner = workflow("eslint-rules-miner.md");
+  const minerFrontmatter = miner.split("\n---\n")[0];
+  assert.match(minerFrontmatter, /tools:\n\s+github: false/);
+  assert.match(
+    miner,
+    /All GitHub evidence must come only from these pre-fetched snapshot files:/,
+  );
+  for (const file of [
+    "merged-pull-requests.json",
+    "commits.json",
+    "pull-request-files.jsonl",
+    "review-comments.jsonl",
+  ]) {
+    assert.match(miner, new RegExp(`/tmp/gh-aw/eslint-rules/evidence/${file.replace(".", "\\.")}`));
+  }
   assert.match(miner, /uses: shared\/activity-cache\.md/);
   assert.match(miner, /WINDOW_DAYS: "14"/);
   assert.match(miner, /MAX_PULL_REQUESTS: "25"/);
