@@ -33,6 +33,7 @@ export function pruneDashboardDocument(document, options = {}) {
   const queries = Array.isArray(dashboard.queries) ? dashboard.queries : [];
   const similarQueries = analyzeDashboardQueries(queries);
   const pages = Array.isArray(dashboard.pages) ? dashboard.pages : [];
+  const customElements = referencedCustomElementIds(pages);
   const livePageIds = findLivePageIds(dashboard, options.linkedPageIds);
   const removedPages = pages
     .filter((page) => isRecord(page) && typeof page.id === 'string' && !livePageIds.has(page.id))
@@ -41,6 +42,7 @@ export function pruneDashboardDocument(document, options = {}) {
     !isRecord(page) || typeof page.id !== 'string' || livePageIds.has(page.id)
   ));
   dashboard.pages = retainedPages;
+  const retainedCustomElements = referencedCustomElementIds(retainedPages);
   const reusableViews = Array.isArray(dashboard.views) ? dashboard.views : [];
   const referencedViewIds = referencedReusableViewIds(retainedPages);
   const removedViews = reusableViews
@@ -88,6 +90,12 @@ export function pruneDashboardDocument(document, options = {}) {
         after: retainedViews.length,
         removed: removedViews
       },
+      elements: {
+        before: customElements.size,
+        after: retainedCustomElements.size,
+        retained: [...retainedCustomElements].toSorted(),
+        removed: [...customElements].filter((name) => !retainedCustomElements.has(name)).toSorted()
+      },
       pages: {
         before: pages.length,
         after: retainedPages.length,
@@ -95,6 +103,22 @@ export function pruneDashboardDocument(document, options = {}) {
       }
     }
   };
+}
+
+/** @param {unknown[]} pages */
+function referencedCustomElementIds(pages) {
+  const elements = new Set();
+  const visit = (value) => {
+    if (Array.isArray(value)) {
+      for (const item of value) visit(item);
+      return;
+    }
+    if (!isRecord(value)) return;
+    if (value.mark === 'element' && typeof value.element === 'string') elements.add(value.element);
+    for (const child of Object.values(value)) visit(child);
+  };
+  visit(pages);
+  return elements;
 }
 
 /** @param {Record<string, any>} dashboard @param {Iterable<string> | undefined} externalLinkedPageIds */

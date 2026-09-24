@@ -82,38 +82,15 @@ export const VIEW_TITLE_LINK_KEYS = ['href-field', 'identifier-field'];
 export const CALLOUT_KEYS = ['label', 'icon'];
 export const VIEW_MARK_VALUES = ['metric', 'table', 'list', 'chart', 'element', 'callout'];
 export const VIEW_ELEMENT_VALUES = [
-  'domain-attention',
-  'campaign-status-grid',
-  'summary-grid',
-  'readiness-verdict',
-  'context-summary',
-  'anomaly-readiness',
-  'signal-list',
-  'needs-attention-list',
-  'campaign-activity',
-  'campaign-activity-shell',
-  'campaign-utilization',
-  'campaign-run-trend',
-  'campaign-summary-table',
-  'campaign-insights',
-  'campaign-detail',
-  'campaign-dispatches',
-  'campaign-reports',
   'campaign-route',
-  'workflow-route',
   'workflow-route-page',
   'outcome-detail',
   'outcome-detail-section',
   'configuration-policy',
-  'configuration-actions',
-  'local-database',
-  'work-project-view',
-  'insights-overview',
   'factory-header',
   'factory-floor',
   'link-button-list',
-  'campaign-problem-list',
-  'outcomes-overview'
+  'campaign-problem-list'
 ];
 export const VIEW_CHART_VALUES = ['area', 'bar', 'dot', 'heatmap', 'histogram', 'horizontal-bar', 'line', 'pie', 'scatter', 'swimlane'];
 export const VIEW_METRIC_KEYS = ['style', 'icon', 'tone', 'navigation-page', 'animate'];

@@ -469,7 +469,10 @@ test('prunes pages, reusable views, and queries unreachable from navigation or l
       {
         id: 'orphan',
         kind: 'custom',
-        views: ['orphan-view']
+        views: [
+          'orphan-view',
+          { id: 'orphan-element', mark: 'element', element: 'dead-element' }
+        ]
       },
       {
         id: 'evals',
@@ -493,6 +496,12 @@ test('prunes pages, reusable views, and queries unreachable from navigation or l
   assert.deepEqual(report.pages.removed, ['orphan', 'evals']);
   assert.deepEqual(report.views.removed, ['orphan-view', 'eval-view']);
   assert.deepEqual(report.queries.removed, ['orphan-query', 'eval-query']);
+  assert.deepEqual(report.elements, {
+    before: 1,
+    after: 0,
+    retained: [],
+    removed: ['dead-element']
+  });
 });
 
 test('cao prune-dashboard writes the optimized document and returns an analysis report', async () => {
