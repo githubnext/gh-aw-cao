@@ -182,6 +182,38 @@ fi\n`);
   ), /GitHub API returned an unexpected Dependabot alerts next link/);
 });
 
+test('Dependabot operational value rejects excessive pagination', () => {
+  const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-dependabot-value-pages-'));
+  const fakeGh = path.join(temporary, 'gh');
+  writeFileSync(fakeGh, `#!/usr/bin/env bash
+set -euo pipefail
+if [[ " $* " == *" rate_limit "* ]]; then
+  printf '5000\\n'
+else
+  cursor="$(sed -n 's/.*after=\\([0-9][0-9]*\\).*/\\1/p' <<< "$*")"
+  if [[ -z "$cursor" ]]; then cursor=0; fi
+  next=$((cursor + 1))
+  printf 'HTTP/2 200\\nlink: <https://api.github.com/repos/githubnext/gh-aw-cao/dependabot/alerts?state=open&per_page=100&after=%s>; rel="next"\\n\\n[]\\n' "$next"
+fi\n`);
+  chmodSync(fakeGh, 0o755);
+  const request = JSON.stringify({
+    schemaVersion: 1,
+    timestamp: '2026-09-24T10:00:00.000Z',
+    repositories: ['githubnext/gh-aw-cao']
+  });
+
+  assert.throws(() => execFileSync(
+    process.execPath,
+    [path.join(root, 'dependabot', 'operational-value.mjs')],
+    { encoding: 'utf8', input: request, env: {
+      ...process.env,
+      PATH: `${temporary}:${process.env.PATH}`,
+      CAO_DEPENDABOT_ALERTS_MAX_PAGES: '2',
+      CAO_GITHUB_API_MIN_REMAINING: '2000'
+    }, stdio: 'pipe' }
+  ), /Dependabot alerts pagination exceeded 2 pages/);
+});
+
 test('cao operational-value rejects non-numeric metrics and bounds retained output', () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-retention-'));
   const packageDirectory = path.join(temporary, 'example');

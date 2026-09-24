@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
 const REPOSITORY_COORDINATE = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
-const MAX_ALERT_PAGES = 1000;
+const MAX_ALERT_PAGES = Number(process.env.CAO_DEPENDABOT_ALERTS_MAX_PAGES ?? 1000);
 const GITHUB_API_URL = new URL(process.env.GITHUB_API_URL ?? 'https://api.github.com');
 
 function fail(message) {
@@ -28,6 +28,9 @@ const minimumRemaining = Number(process.env.CAO_GITHUB_API_MIN_REMAINING ?? 0);
 if (!Number.isSafeInteger(minimumRemaining) || minimumRemaining < 0) {
   fail('CAO_GITHUB_API_MIN_REMAINING must be a non-negative integer');
 }
+if (!Number.isSafeInteger(MAX_ALERT_PAGES) || MAX_ALERT_PAGES < 1) {
+  fail('CAO_DEPENDABOT_ALERTS_MAX_PAGES must be a positive integer');
+}
 
 function ghApi(arguments_) {
   const result = spawnSync('gh', ['api', ...arguments_], {
@@ -47,6 +50,7 @@ function parseResponse(output) {
   let headers = '';
   const headerStart = /HTTP\/\S+/iy;
   while (true) {
+    // gh api --include can emit interim header blocks; the final block describes the body.
     headerStart.lastIndex = offset;
     if (!headerStart.test(normalized)) break;
     const separator = normalized.indexOf('\n\n', offset);
@@ -72,15 +76,15 @@ function parseResponse(output) {
   return { body, next };
 }
 
-function validateNextEndpoint(next, repository) {
-  if (!next) return undefined;
+function canonicalEndpoint(endpoint, repository, fields = []) {
+  const apiPath = GITHUB_API_URL.pathname.replace(/\/$/, '');
+  const base = `${GITHUB_API_URL.origin}${apiPath || ''}/`;
   let url;
   try {
-    url = new URL(next);
+    url = new URL(endpoint, base);
   } catch {
     fail('GitHub API returned an invalid Dependabot alerts next link');
   }
-  const apiPath = GITHUB_API_URL.pathname.replace(/\/$/, '');
   const expectedPath = `${apiPath}/repos/${repository}/dependabot/alerts`;
   if (
     url.origin !== GITHUB_API_URL.origin
@@ -88,7 +92,25 @@ function validateNextEndpoint(next, repository) {
   ) {
     fail('GitHub API returned an unexpected Dependabot alerts next link');
   }
+  for (let index = 0; index < fields.length; index += 2) {
+    if (fields[index] !== '-f') continue;
+    const [name, value = ''] = String(fields[index + 1]).split('=', 2);
+    url.searchParams.set(name, value);
+  }
+  return url.toString();
+}
+
+function validateNextEndpoint(next, repository) {
+  if (!next) return undefined;
+  canonicalEndpoint(next, repository);
   return next;
+}
+
+function repeatedEndpoint(endpoint, repository, fields, visited) {
+  const canonical = canonicalEndpoint(endpoint, repository, fields);
+  if (visited.has(canonical)) return true;
+  visited.add(canonical);
+  return false;
 }
 
 for (const repository of request.repositories) {
@@ -100,10 +122,9 @@ for (const repository of request.repositories) {
     if (visited.size >= MAX_ALERT_PAGES) {
       fail(`Dependabot alerts pagination exceeded ${MAX_ALERT_PAGES} pages for ${repository}`);
     }
-    if (visited.has(endpoint)) {
+    if (repeatedEndpoint(endpoint, repository, fields, visited)) {
       fail(`Dependabot alerts pagination repeated a page for ${repository}`);
     }
-    visited.add(endpoint);
     if (minimumRemaining > 0) {
       const remaining = Number(ghApi(['rate_limit', '--jq', '.resources.core.remaining']).trim());
       if (!Number.isSafeInteger(remaining) || remaining < 0) {
