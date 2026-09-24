@@ -30,10 +30,11 @@ trailing wildcard shard prefix instead of a single growing file. The wildcard sh
 directory itself is part of the shared activity cache, so `gh aw logs`
 recognizes previously discovered runs across job runs without re-seeding a
 snapshot. After a successful collection, `cao compact-jsonl` consolidates that
-repository's retained files into bounded shards without removing or reordering
-records. The bounded files limit peak browser parsing memory while preserving
-observation precedence and dependent-record association. Failed collections
-leave the prior files untouched. Shards containing only
+repository's retained files into bounded shards, retaining only runs whose
+workflow path ends in `.lock.yml` and their associated records. This excludes
+non-agentic Actions workflows while preserving observation precedence and
+dependent-record association. The bounded files limit peak browser parsing
+memory. Failed collections leave the prior files untouched. Shards containing only
 out-of-range dated records are pruned by `gh aw logs --cache-before`. The
 ingestion step passes the shard directory to `cao ingest-jsonl --input-dir`,
 which tracks each compacted shard by content hash.

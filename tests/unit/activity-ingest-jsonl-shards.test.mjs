@@ -171,10 +171,10 @@ test('compact-jsonl consolidates exact-prefix shards without reordering observat
   const unrelatedPath = path.join(root, 'github-gh-aw-logs-1000-cccc.jsonl');
   const overlappingPrefix = `${prefix}123-logs-`;
   const overlappingPrefixPath = path.join(root, `${overlappingPrefix}1000-dddd.jsonl`);
-  const first = '{"schema_version":2,"kind":"run","run":{"run_id":1,"repository":"githubnext/gh-aw-cao"}}';
-  const second = '{"schema_version":2,"kind":"run","run":{"run_id":2,"repository":"githubnext/gh-aw-cao"}}';
-  const third = '{"schema_version":2,"kind":"run","run":{"run_id":3,"repository":"githubnext/gh-aw-cao-logs-123"}}';
-  const unrelated = '{"schema_version":2,"kind":"run","run":{"run_id":4,"repository":"github/gh-aw"}}';
+  const first = '{"schema_version":2,"kind":"run","run":{"run_id":1,"repository":"githubnext/gh-aw-cao","workflow_path":".github/workflows/first.lock.yml"}}';
+  const second = '{"schema_version":2,"kind":"run","run":{"run_id":2,"repository":"githubnext/gh-aw-cao","workflow_path":".github/workflows/second.lock.yml"}}';
+  const third = '{"schema_version":2,"kind":"run","run":{"run_id":3,"repository":"githubnext/gh-aw-cao-logs-123","workflow_path":".github/workflows/third.lock.yml"}}';
+  const unrelated = '{"schema_version":2,"kind":"run","run":{"run_id":4,"repository":"github/gh-aw","workflow_path":".github/workflows/fourth.lock.yml"}}';
   await writeFile(firstPath, `${first}\n${second}\n`);
   await writeFile(secondPath, `${first}\n${third}\n`);
   await writeFile(unrelatedPath, `${unrelated}\n`);
@@ -216,7 +216,11 @@ test('compact-jsonl bounds retained shards without reordering observations', asy
     JSON.stringify({
       schema_version: 2,
       kind: 'run',
-      run: { run_id: index + 1, repository: 'githubnext/gh-aw-cao' },
+      run: {
+        run_id: index + 1,
+        repository: 'githubnext/gh-aw-cao',
+        workflow_path: `.github/workflows/workflow-${index + 1}.lock.yml`,
+      },
     })
   );
   await writeFile(path.join(root, `${prefix}1000-aaaa.jsonl`), `${records.slice(0, 3).join('\n')}\n`);
@@ -245,6 +249,76 @@ test('compact-jsonl bounds retained shards without reordering observations', asy
   for (const name of outputs) {
     assert.ok((await stat(path.join(root, name))).size <= maxBytes);
   }
+});
+
+test('compact-jsonl retains only agentic workflow runs and their associated records', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'activity-compact-jsonl-agentic-'));
+  const prefix = 'githubnext-gh-aw-cao-logs-';
+  const records = [
+    {
+      schema_version: 2,
+      kind: 'workflow_runs',
+      request: { repository: 'githubnext/gh-aw-cao' },
+      payload: [
+        { databaseId: 1, workflowName: 'Agentic' },
+        { databaseId: 2, workflowName: 'CI' },
+      ],
+    },
+    {
+      schema_version: 2,
+      kind: 'run',
+      run: {
+        run_id: 1,
+        repository: 'githubnext/gh-aw-cao',
+        workflow_path: '.github/workflows/agentic.lock.yml',
+      },
+    },
+    {
+      schema_version: 2,
+      kind: 'safe_output_item',
+      safe_output: { run_id: 1, type: 'create_issue' },
+    },
+    {
+      schema_version: 2,
+      kind: 'run',
+      run: {
+        run_id: 2,
+        repository: 'githubnext/gh-aw-cao',
+        workflow_path: '.github/workflows/ci.yml',
+      },
+    },
+    {
+      schema_version: 2,
+      kind: 'safe_output_item',
+      safe_output: { run_id: 2, type: 'create_issue' },
+    },
+  ];
+  await writeFile(
+    path.join(root, `${prefix}1000-aaaa.jsonl`),
+    `${records.map((record) => JSON.stringify(record)).join('\n')}\n`,
+  );
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    path.resolve('activity/cao.mjs'),
+    'compact-jsonl',
+    '--input-dir',
+    root,
+    '--group',
+    `githubnext/gh-aw-cao=${prefix}`,
+  ]);
+  const [group] = JSON.parse(stdout).groups;
+  const retained = (await readFile(group.output, 'utf8')).trim().split('\n').map(JSON.parse);
+
+  assert.equal(group.sourceRecords, 5);
+  assert.equal(group.retainedRecords, 3);
+  assert.deepEqual(retained.map((record) => record.kind), [
+    'workflow_runs',
+    'run',
+    'safe_output_item',
+  ]);
+  assert.deepEqual(retained[0].payload.map((run) => run.databaseId), [1]);
+  assert.equal(retained[1].run.workflow_path, '.github/workflows/agentic.lock.yml');
+  assert.equal(retained[2].safe_output.run_id, 1);
 });
 
 test('ingest-jsonl injects every run shard before record shards', async () => {

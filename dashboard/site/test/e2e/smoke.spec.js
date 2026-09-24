@@ -542,7 +542,7 @@ test('Transactions is a responsive table of retained transaction data', async ({
   await expect(page.locator('.top-nav')).toBeHidden();
 });
 
-test('Runs renders a last-week swimlane above its responsive table and scrolls like Cost', async ({ page }) => {
+test('Runs renders a last-week line graph above its responsive table and scrolls like Cost', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
@@ -633,7 +633,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
   const view = runsPage.locator('[data-view-layout="full-view"]');
   const table = view.locator('[data-lazy-list]');
   const scroll = view.locator('.table-scroll');
-  const swimlane = runsPage.locator('[data-view-id="runs-last-week"]');
+  const lineGraph = runsPage.locator('[data-view-id="runs-last-week"]');
   const columnHeaders = view.locator('thead > tr:first-child > th');
   const facetControl = columnHeaders.locator('.filter-select-control').first();
   const expectAlignedColumnHeaders = async () => {
@@ -644,21 +644,17 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
   await expect(page.locator('[data-nav-page-id="runs"]')).toHaveAttribute('aria-current', 'page');
   await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view/);
   await expect(view).toHaveCount(1);
-  await expect(swimlane.locator('[data-chart-widget="swimlane"]')).toBeVisible();
-  await expect(swimlane.locator('.swimlane-summary')).toContainText('100 runs');
-  const swimlaneHeadingBox = await swimlane.getByRole('heading', { name: 'Runs in the last week' }).boundingBox();
-  const swimlaneSummaryBox = await swimlane.locator('.swimlane-summary').boundingBox();
-  const swimlaneChartBox = await swimlane.locator('[data-chart-widget="swimlane"] svg').boundingBox();
-  const swimlaneLabelBox = await swimlane.locator('.swimlane-label').first().boundingBox();
-  if (swimlaneHeadingBox === null || swimlaneSummaryBox === null || swimlaneChartBox === null || swimlaneLabelBox === null) {
-    throw new Error('Expected swimlane heading, summary, and chart boxes to be measurable.');
+  await expect(lineGraph.locator('[data-chart-widget="line"]')).toBeVisible();
+  await expect(lineGraph.locator('.line-chart-series')).toHaveCount(2);
+  await expect(lineGraph.locator('.chart-legend-line')).toContainText('failure');
+  await expect(lineGraph.locator('.chart-legend-line')).toContainText('success');
+  const lineGraphHeadingBox = await lineGraph.getByRole('heading', { name: 'Runs in the last week' }).boundingBox();
+  const lineGraphChartBox = await lineGraph.locator('[data-chart-widget="line"] svg').boundingBox();
+  if (lineGraphHeadingBox === null || lineGraphChartBox === null) {
+    throw new Error('Expected line graph heading and chart boxes to be measurable.');
   }
-  const swimlaneChartMaxHeight = await swimlane.locator('[data-chart-widget="swimlane"] svg')
-    .evaluate((element) => Number.parseFloat(getComputedStyle(element).maxHeight));
-  expect(Number.isFinite(swimlaneChartMaxHeight)).toBe(true);
-  expect(swimlaneSummaryBox.x).toBeGreaterThan(swimlaneHeadingBox.x);
-  expect(swimlaneLabelBox.x).toBeGreaterThan(swimlaneHeadingBox.x);
-  expect(swimlaneChartBox.height).toBeLessThanOrEqual(swimlaneChartMaxHeight);
+  expect(lineGraphChartBox.width).toBeGreaterThan(0);
+  expect(lineGraphChartBox.height).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'Table', exact: true }).click();
   await expect(table).toBeVisible();
   await expect(table.locator('tbody > tr')).toHaveCount(25);
@@ -694,17 +690,17 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
   expect(scrolledSummaryBox.y - (facetControlBox.y + facetControlBox.height)).toBeGreaterThanOrEqual(4);
   await page.getByRole('button', { name: 'Cards' }).click();
   await page.getByRole('button', { name: 'Chart' }).click();
-  await expect(swimlane).toBeVisible();
+  await expect(lineGraph).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   const mobileViewModeToggle = page.locator('.mobile-view-mode-toggle');
   await expect(runsPage.locator(':scope > .page-chrome > .filter-bar')).toBeHidden();
-  await expect(swimlane).toBeVisible();
+  await expect(lineGraph).toBeVisible();
   await expect(table).toBeHidden();
   await expect(mobileViewModeToggle).toHaveAttribute('aria-label', 'Switch to Cards view');
   await mobileViewModeToggle.click();
   await mobileViewModeToggle.click();
-  await expect(swimlane).toBeHidden();
+  await expect(lineGraph).toBeHidden();
   await expect(table).toBeVisible();
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
   await expectAlignedColumnHeaders();
@@ -4210,6 +4206,30 @@ test('phone Workflows page cycles through chart, table, and card-list views', as
         }
       },
       sources: {
+        'workflow-aic-per-run': {
+          source: 'workflow-aic-per-run',
+          rows: [{
+            'campaign-name': 'Maintenance',
+            repository: 'githubnext/gh-aw-cao',
+            workflow: '.github/workflows/aw-maintenance.md',
+            'workflow-name': 'AW Maintenance',
+            'workflow-label': 'githubnext/gh-aw-cao:.github/workflows/aw-maintenance.md',
+            'workflow-role': 'orchestrator',
+            'rollout-mode': 'review',
+            'workflow-active': 'active',
+            aic: 12,
+            runs: 4,
+            'aic-per-run': 3,
+            ingestion: '100%',
+            'workflow-link': { relation: 'workflow', href: '#page-workflow-runtime', label: 'View AW Maintenance' },
+            'repository-link': { relation: 'repository', href: '#page-repository-detail', label: 'View githubnext/gh-aw-cao' }
+          }],
+          metadata: {
+            availability: 'available',
+            completeness: 'complete',
+            freshness: 'fresh'
+          }
+        },
         'workflow-inventory': {
           source: 'workflow-inventory',
           rows: [{
@@ -4223,6 +4243,7 @@ test('phone Workflows page cycles through chart, table, and card-list views', as
             'workflow-active': 'active',
             aic: 12,
             runs: 4,
+            'aic-per-run': 3,
             ingestion: '100%',
             'workflow-link': { relation: 'workflow', href: '#page-workflow-runtime', label: 'View AW Maintenance' },
             'repository-link': { relation: 'repository', href: '#page-repository-detail', label: 'View githubnext/gh-aw-cao' }
@@ -4237,7 +4258,7 @@ test('phone Workflows page cycles through chart, table, and card-list views', as
     }));
   }, { presenterModuleUrl: buildPresenterModuleUrl(), workflowsPage });
 
-  const chart = page.locator('[data-view-id="workflows-by-runs"]');
+  const chart = page.locator('[data-view-id="workflows-by-aic-per-run"]');
   const table = page.locator('[data-view-id="workflows-inventory"]');
   const viewModeToggle = page.locator('.mobile-view-mode-toggle');
   await expect(chart).toBeVisible();

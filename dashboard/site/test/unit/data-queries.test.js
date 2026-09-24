@@ -945,7 +945,13 @@ describe('declarative dashboard queries', () => {
   it('computes Repositories, Workflows, and Campaigns view payloads from dashboard queries', () => {
     const repositories = {
       source: 'repositories',
-      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', 'repository-link': { href: 'repo' } }],
+      rows: [{
+        id: 'repository:githubnext/gh-aw-cao',
+        organization: 'githubnext',
+        repository: 'gh-aw-cao',
+        'repository-coordinate': 'githubnext/gh-aw-cao',
+        'repository-link': { href: 'repo' }
+      }],
       metadata: metadata('repositories')
     };
     const queryWorkflows = {
@@ -984,7 +990,7 @@ describe('declarative dashboard queries', () => {
       rows: [
         { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1, event: 'workflow_dispatch', 'run-conclusion': 'failure', 'aic-total': 4, 'started-at': '2026-09-01T01:00:00Z' },
         { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1, event: 'schedule', 'run-conclusion': 'success', 'aic-total': 6, 'started-at': '2026-09-02T01:00:00Z' },
-        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'c.md', run: '3', 'run-attempt': 1, event: 'schedule', 'run-conclusion': 'success', 'aic-total': 0, 'started-at': '2026-09-03T01:00:00Z' }
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'c.md', run: '3', 'run-attempt': 1, event: 'workflow_dispatch', 'run-conclusion': 'success', 'aic-total': 0, 'target-repository': 'githubnext/gh-aw-cao', 'started-at': '2026-09-03T01:00:00Z' }
       ],
       metadata: metadata('runs')
     };
@@ -1011,7 +1017,7 @@ describe('declarative dashboard queries', () => {
     const derived = executeDashboardQueries(
       dashboardQueries,
       { ...emptyRunRecordSources, campaigns, repositories, workflows: queryWorkflows, runs, audits: events, outcomes, 'operational-values': operationalValues, usage },
-      ['entity-workflows', 'repository-activity', 'workflow-inventory', 'campaign-operational-value-totals', 'campaign-inventory']
+      ['entity-workflows', 'repository-activity', 'workflow-inventory', 'campaign-operational-value-totals', 'campaign-repository-coverage', 'campaign-inventory']
     );
 
     expect(derived['entity-workflows'].rows).toEqual([
@@ -1039,6 +1045,10 @@ describe('declarative dashboard queries', () => {
       campaign: 'aw-doctor',
       'value-created': 1
     }]);
+    expect(derived['campaign-repository-coverage'].rows).toEqual([{
+      campaign: 'aw-doctor',
+      'covered-repositories': 1
+    }]);
     expect(derived['campaign-inventory'].rows).toEqual([{
       campaign: 'aw-doctor',
       'campaign-name': 'AW Doctor',
@@ -1051,7 +1061,8 @@ describe('declarative dashboard queries', () => {
       modes: 'review',
       registration: 'false, true',
       runs: 3,
-      dispatches: 1,
+      dispatches: 2,
+      'covered-repositories': 1,
       aic: 10,
       'value-created': 1
     }]);

@@ -1659,7 +1659,7 @@
     "queries": [
       {
         "name": "runs-daily-conclusions",
-        "intent": "Aggregate workflow run conclusions by UTC day for the Runs swimlane.",
+        "intent": "Aggregate workflow run conclusions by UTC day for the Runs line graph.",
         "from": "runs",
         "compute": [
           {
@@ -4364,6 +4364,18 @@
             ]
           },
           {
+            "as": "has-observed-runs",
+            "function": "greater-than",
+            "args": [
+              {
+                "field": "total-runs"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
             "as": "total-failed-runs",
             "function": "coalesce",
             "args": [
@@ -4668,6 +4680,9 @@
             "field": "aic-per-run"
           },
           {
+            "field": "has-observed-runs"
+          },
+          {
             "field": "ingestion"
           },
           {
@@ -4693,6 +4708,20 @@
             "direction": "asc"
           }
         ]
+      },
+      {
+        "name": "workflow-aic-per-run",
+        "intent": "List declared workflows with observed runs and their average AI Credit cost per run.",
+        "description": "Workflow AI Credit averages limited to workflows with at least one observed run.",
+        "from": "workflow-inventory",
+        "filter": {
+          "predicates": [
+            {
+              "field": "has-observed-runs",
+              "equals": true
+            }
+          ]
+        }
       },
       {
         "name": "campaign-workflows",
@@ -8367,9 +8396,89 @@
         ]
       },
       {
+        "name": "campaign-repository-coverage",
+        "intent": "Count distinct registered target repositories reached by successful worker dispatches for each campaign.",
+        "description": "Campaign repository coverage derived from successful worker dispatch runs in the selected horizon.",
+        "from": "runs",
+        "joins": [
+          {
+            "source": "workflows",
+            "type": "inner",
+            "on": [
+              {
+                "left": "organization",
+                "right": "organization"
+              },
+              {
+                "left": "repository",
+                "right": "repository"
+              },
+              {
+                "left": "workflow",
+                "right": "workflow"
+              }
+            ],
+            "fields": [
+              {
+                "field": "campaign",
+                "as": "campaign"
+              },
+              {
+                "field": "workflow-role",
+                "as": "workflow-role"
+              }
+            ]
+          },
+          {
+            "source": "repositories",
+            "type": "inner",
+            "on": [
+              {
+                "left": "target-repository",
+                "right": "repository-coordinate"
+              }
+            ],
+            "fields": [
+              {
+                "field": "repository-coordinate",
+                "as": "registered-target-repository"
+              }
+            ]
+          }
+        ],
+        "filter": {
+          "predicates": [
+            {
+              "field": "event",
+              "equals": "workflow_dispatch"
+            },
+            {
+              "field": "run-conclusion",
+              "equals": "success"
+            },
+            {
+              "field": "workflow-role",
+              "equals": "worker"
+            }
+          ]
+        },
+        "aggregate": {
+          "by": [
+            "campaign"
+          ],
+          "values": [
+            {
+              "field": "target-repository",
+              "as": "covered-repositories",
+              "reducer": "distinct-count"
+            }
+          ]
+        }
+      },
+      {
         "name": "campaign-inventory",
         "intent": "List centrally managed campaigns with their observed workflow and execution totals.",
-        "description": "Canonical campaign inventory enriched with observed workflow, rollout, run, and AI Credit totals.",
+        "description": "Canonical campaign inventory enriched with observed workflow, rollout, run, repository coverage, and AI Credit totals.",
         "from": "campaigns",
         "joins": [
           {
@@ -8437,6 +8546,22 @@
               {
                 "field": "value-created",
                 "as": "value-created"
+              }
+            ]
+          },
+          {
+            "source": "campaign-repository-coverage",
+            "type": "left",
+            "on": [
+              {
+                "left": "campaign",
+                "right": "campaign"
+              }
+            ],
+            "fields": [
+              {
+                "field": "covered-repositories",
+                "as": "observed-covered-repositories"
               }
             ]
           }
@@ -8508,6 +8633,18 @@
             "args": [
               {
                 "field": "observed-dispatches"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "covered-repositories",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "observed-covered-repositories"
               },
               {
                 "value": 0
@@ -8608,6 +8745,9 @@
           },
           {
             "field": "dispatches"
+          },
+          {
+            "field": "covered-repositories"
           },
           {
             "field": "aic"
@@ -10305,6 +10445,41 @@
               }
             },
             {
+              "id": "campaigns-repository-coverage",
+              "title": "Repository coverage by campaign",
+              "description": "Distinct registered repositories reached by successful worker dispatches in the selected horizon.",
+              "data": {
+                "source": "campaign-inventory",
+                "order-by": [
+                  {
+                    "field": "covered-repositories",
+                    "direction": "desc"
+                  },
+                  {
+                    "field": "campaign-name",
+                    "direction": "asc"
+                  }
+                ],
+                "limit": 100
+              },
+              "mark": "chart",
+              "chart": "horizontal-bar",
+              "layout": "full",
+              "empty-message": "No campaign repository coverage was observed in the selected horizon.",
+              "encoding": {
+                "x": {
+                  "field": "campaign-name",
+                  "type": "nominal",
+                  "title": "Campaign"
+                },
+                "y": {
+                  "field": "covered-repositories",
+                  "type": "quantitative",
+                  "title": "Covered repositories"
+                }
+              }
+            },
+            {
               "id": "campaigns-inventory",
               "title": "Campaigns",
               "description": "Centrally managed campaign inventory and observed execution totals.",
@@ -11550,23 +11725,23 @@
           },
           "views": [
             {
-              "id": "workflows-by-runs",
-              "title": "Workflows by runs",
-              "description": "Declared workflows ranked by the number of observed runs.",
+              "id": "workflows-by-aic-per-run",
+              "title": "Average AIC per run by workflow",
+              "description": "Declared workflows ranked by average AI Credit cost per observed run.",
               "data": {
-                "source": "workflow-inventory",
+                "source": "workflow-aic-per-run",
                 "order-by": [
                   {
-                    "field": "runs",
+                    "field": "aic-per-run",
                     "direction": "desc"
                   }
                 ],
                 "limit": 10
               },
               "mark": "chart",
-              "chart": "pie",
-              "layout": "horizontal",
-              "empty-message": "No workflow runs observed.",
+              "chart": "horizontal-bar",
+              "layout": "full",
+              "empty-message": "No workflow AI Credit cost data is available.",
               "encoding": {
                 "x": {
                   "field": "workflow-label",
@@ -11575,9 +11750,10 @@
                   "title": "Workflow"
                 },
                 "y": {
-                  "field": "runs",
+                  "field": "aic-per-run",
                   "type": "quantitative",
-                  "title": "Runs"
+                  "title": "Average AIC per run",
+                  "unit": "aic-per-run"
                 },
                 "href": {
                   "field": "workflow-link",
@@ -11701,7 +11877,7 @@
                 }
               },
               "mark": "chart",
-              "chart": "swimlane",
+              "chart": "line",
               "layout": "horizontal",
               "encoding": {
                 "x": {
@@ -11711,17 +11887,13 @@
                   "title": "Started"
                 },
                 "y": {
-                  "field": "run-conclusion",
-                  "type": "ordinal",
-                  "title": "Conclusion"
+                  "field": "runs",
+                  "type": "quantitative",
+                  "title": "Runs"
                 },
                 "color": {
                   "field": "run-conclusion",
                   "type": "nominal"
-                },
-                "weight": {
-                  "field": "runs",
-                  "type": "quantitative"
                 }
               }
             },

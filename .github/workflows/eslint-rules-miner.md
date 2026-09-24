@@ -97,9 +97,7 @@ concurrency:
 tracker-id: eslint-rules-miner
 
 tools:
-  github:
-    mode: remote
-    toolsets: [repos, pull_requests]
+  github: false
   bash:
     - "*"
   repo-memory:
@@ -200,7 +198,7 @@ Every ESLint Factory workflow shares one repo-memory branch, `memory/eslint-rule
 
 ## Mining
 
-Work only from the pre-fetched bounded snapshots and the checked-out tree. If you need one more detail, use a single bounded read-only call with explicit `--per-page` and `--page`; never use `gh api --paginate` and never widen the fourteen-day window.
+Work only from the pre-fetched bounded snapshots and the checked-out tree. All GitHub evidence must come only from these pre-fetched snapshot files: `/tmp/gh-aw/eslint-rules/evidence/merged-pull-requests.json`, `/tmp/gh-aw/eslint-rules/evidence/commits.json`, `/tmp/gh-aw/eslint-rules/evidence/pull-request-files.jsonl`, and `/tmp/gh-aw/eslint-rules/evidence/review-comments.jsonl`. Do not make live GitHub API calls or widen the fourteen-day window.
 
 Rank evidence in this order:
 

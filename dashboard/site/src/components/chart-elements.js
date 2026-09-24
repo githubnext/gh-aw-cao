@@ -641,7 +641,10 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
             'li',
             { className: 'horizontal-bar-chart-row' },
             h('span', { className: 'horizontal-bar-chart-label', title: point.x },
-              h('bdi', { className: 'horizontal-bar-chart-label-text', dir: 'ltr' }, displayLabel)
+              renderSafeLink(
+                h('bdi', { className: 'horizontal-bar-chart-label-text', dir: 'ltr' }, displayLabel),
+                point.link ?? null
+              )
             ),
             h(
               'span',
