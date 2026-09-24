@@ -523,26 +523,51 @@ func fakeRedis(t *testing.T) (string, func()) {
 						}
 					case "EVAL":
 						mu.Lock()
+						result := 1
+						bulkResult := ""
 						switch {
-						case len(command) >= 7 && strings.Contains(command[1], `redis.call("SADD"`):
-							if value, ok := values[command[3]]; ok {
-								values[command[4]] = value
-								if sets[command[5]] == nil {
-									sets[command[5]] = map[string]bool{}
-								}
-								sets[command[5]][command[4]] = true
-								delete(values, command[3])
+						case len(command) >= 6 && strings.Contains(command[1], `redis.call("SADD"`) && strings.Contains(command[1], `redis.call("DEL"`):
+							bulkResult = values[command[3]]
+							if bulkResult == "" {
+								result = 0
+								break
 							}
-						case len(command) >= 5 && strings.Contains(command[1], `redis.call("SREM"`):
+							values[command[4]] = bulkResult
+							if sets[command[5]] == nil {
+								sets[command[5]] = map[string]bool{}
+							}
+							sets[command[5]][command[4]] = true
 							delete(values, command[3])
-							delete(sets[command[4]], command[3])
+						case len(command) >= 6 && strings.Contains(command[1], `redis.call("SADD"`):
+							values[command[3]] = command[5]
+							if sets[command[4]] == nil {
+								sets[command[4]] = map[string]bool{}
+							}
+							sets[command[4]][command[3]] = true
+						case len(command) >= 6 && strings.Contains(command[1], `redis.call("SREM"`):
+							if values[command[3]] == command[5] {
+								delete(values, command[3])
+								delete(sets[command[4]], command[3])
+							} else {
+								result = 0
+							}
+						case len(command) >= 7 && strings.Contains(command[1], `ARGV[1]`):
+							if values[command[3]] == command[4] {
+								values[command[3]] = command[5]
+							} else {
+								result = 0
+							}
 						case len(command) >= 5 && strings.Contains(command[1], `redis.call("DEL"`):
 							if values[command[3]] == command[4] {
 								delete(values, command[3])
 							}
 						}
 						mu.Unlock()
-						_, _ = fmt.Fprint(connection, ":1\r\n")
+						if bulkResult != "" {
+							_, _ = fmt.Fprintf(connection, "$%d\r\n%s\r\n", len(bulkResult), bulkResult)
+						} else {
+							_, _ = fmt.Fprintf(connection, ":%d\r\n", result)
+						}
 					case "SRANDMEMBER":
 						mu.Lock()
 						member := ""

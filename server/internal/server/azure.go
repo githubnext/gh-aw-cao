@@ -192,18 +192,20 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 			TrustForwarded: true,
 		},
 		GitHubOAuth: &GitHubOAuthConfig{
-			ClientID:             os.Getenv("CAO_GITHUB_CLIENT_ID"),
-			ClientSecret:         os.Getenv("CAO_GITHUB_CLIENT_SECRET"),
-			RedirectURL:          os.Getenv("CAO_GITHUB_REDIRECT_URL"),
-			SessionSecret:        os.Getenv("CAO_SESSION_SECRET"),
-			AllowedOrganizations: splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_ORGS")),
-			AllowedTeams:         splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_TEAMS")),
+			ClientID:              os.Getenv("CAO_GITHUB_CLIENT_ID"),
+			ClientSecret:          os.Getenv("CAO_GITHUB_CLIENT_SECRET"),
+			RedirectURL:           os.Getenv("CAO_GITHUB_REDIRECT_URL"),
+			SessionSecret:         os.Getenv("CAO_SESSION_SECRET"),
+			PreviousSessionSecret: os.Getenv("CAO_SESSION_SECRET_PREVIOUS"),
+			AllowedOrganizations:  splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_ORGS")),
+			AllowedTeams:          splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_TEAMS")),
 		},
 		Logger: logger,
 	})
 	if err != nil {
 		return nil, err
 	}
+	go app.oauth.runRevocationWorker(context.Background())
 	return app.AzureFunctionsHandler(), nil
 }
 

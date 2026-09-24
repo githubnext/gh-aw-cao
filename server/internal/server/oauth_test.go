@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
@@ -193,6 +194,120 @@ func TestAzureOAuthRefreshRotationLogoutAndRefreshFailure(t *testing.T) {
 	}
 	if !removedGitHub.sawRevocation("access-new") {
 		t.Fatalf("removed member's refreshed token was not revoked: %#v", removedGitHub.revoked)
+	}
+}
+
+func TestLogoutStagesCredentialsWithoutRefreshing(t *testing.T) {
+	github := fakeGitHub(t, fakeGitHubOptions{
+		membershipState: "active",
+		accessExpiresIn: -60,
+		refreshSucceeds: false,
+	})
+	app := newAzureTestApp(t, github.URL)
+	sessionCookie, csrfCookie := callbackSession(t, app)
+
+	logout := httptest.NewRecorder()
+	request := azureRequest(t, http.MethodPost, "/auth/logout")
+	request.AddCookie(sessionCookie)
+	request.AddCookie(csrfCookie)
+	request.Header.Set("X-CSRF-Token", csrfCookie.Value)
+	app.Handler().ServeHTTP(logout, request)
+	if logout.Code != http.StatusNoContent {
+		t.Fatalf("logout returned %d: %s", logout.Code, logout.Body.String())
+	}
+	if !github.sawRevocation("access-old") || !github.sawRevocation("refresh-old") {
+		t.Fatalf("logout did not revoke unrefreshed credentials: %#v", github.revoked)
+	}
+}
+
+func TestSessionEncryptionSupportsControlledKeyRotation(t *testing.T) {
+	oldSecret := "old-session-secret-0123456789abcdef"
+	newSecret := "new-session-secret-0123456789abcdef"
+	oldOAuth := newGitHubOAuth(GitHubOAuthConfig{SessionSecret: oldSecret}, nil)
+	sealed, err := oldOAuth.seal([]byte("encrypted session"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rotated := newGitHubOAuth(GitHubOAuthConfig{
+		SessionSecret:         newSecret,
+		PreviousSessionSecret: oldSecret,
+	}, nil)
+	plain, err := rotated.open(sealed)
+	if err != nil || string(plain) != "encrypted session" {
+		t.Fatalf("rotated key ring could not decrypt prior session: %q, %v", plain, err)
+	}
+	legacy := strings.SplitN(sealed, ".", 2)[1]
+	plain, err = rotated.open(legacy)
+	if err != nil || string(plain) != "encrypted session" {
+		t.Fatalf("rotated key ring could not decrypt legacy session: %q, %v", plain, err)
+	}
+
+	withoutPrevious := newGitHubOAuth(GitHubOAuthConfig{SessionSecret: newSecret}, nil)
+	if _, err := withoutPrevious.open(sealed); err == nil {
+		t.Fatal("session encrypted with an unavailable key was accepted")
+	}
+}
+
+func TestRefreshedSessionCannotResurrectAfterRevocationStaging(t *testing.T) {
+	address, closeServer := fakeRedis(t)
+	t.Cleanup(closeServer)
+	client, err := redisx.New("redis://" + address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oauth := newGitHubOAuth(GitHubOAuthConfig{
+		SessionSecret: "session-secret-0123456789abcdef",
+	}, redisx.NewStore(client, "oauth-cas-test"))
+	session := oauthSession{
+		ID: "session-id", Login: "octocat", AccessToken: "old",
+		AccessExpires: time.Now().Add(time.Hour), RefreshExpires: time.Now().Add(24 * time.Hour),
+	}
+	if err := oauth.saveSession(t.Context(), session); err != nil {
+		t.Fatal(err)
+	}
+	_, expected, err := oauth.loadSessionRecord(t.Context(), session.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	refreshed := session
+	refreshed.AccessToken = "refreshed"
+	saved, err := oauth.saveSessionIfUnchanged(t.Context(), refreshed, expected)
+	if err != nil || !saved {
+		t.Fatalf("could not simulate concurrent refresh: saved=%t err=%v", saved, err)
+	}
+	staged, sealed, err := oauth.stageRevocation(t.Context(), session.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if staged.AccessToken != "refreshed" {
+		t.Fatalf("logout queued stale credentials: %#v", staged)
+	}
+	session.AccessToken = "late-refresh"
+	saved, err = oauth.saveSessionIfUnchanged(t.Context(), session, expected)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if saved {
+		t.Fatal("refresh restored a session after revocation staging")
+	}
+	if _, err := oauth.loadSession(t.Context(), session.ID); err == nil {
+		t.Fatal("revoked session remained active")
+	}
+
+	replacement := staged
+	replacement.AccessToken = "newer-queued-token"
+	data, _ := json.Marshal(replacement)
+	replacementSealed, _ := oauth.seal(data)
+	if _, err := oauth.configStore(t.Context(), "SET", oauth.revocationKey(session.ID), replacementSealed); err != nil {
+		t.Fatal(err)
+	}
+	if err := oauth.completeRevocation(t.Context(), session.ID, sealed); err != nil {
+		t.Fatal(err)
+	}
+	value, err := oauth.configStore(t.Context(), "GET", oauth.revocationKey(session.ID))
+	if err != nil || value == nil {
+		t.Fatal("stale completion deleted a newer queued credential record")
 	}
 }
 

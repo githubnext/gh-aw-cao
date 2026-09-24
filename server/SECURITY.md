@@ -167,6 +167,17 @@ the encrypted credentials only in a Redis-backed pending-revocation queue.
 Subsequent OAuth entry retries queued revocation without restoring session
 authority.
 
+Encrypted session and pending-revocation records carry a non-secret key
+identifier. During controlled rotation, configure the old key through
+`CAO_SESSION_SECRET_PREVIOUS` while `CAO_SESSION_SECRET` contains the new key;
+remove the previous key only after active sessions and queued revocations using
+it have drained or their credentials have expired. The revocation worker runs
+at startup and every minute, retries bounded batches, and retains encrypted
+queue records through the latest known access/refresh credential expiry.
+Refresh persistence uses an atomic compare-and-swap against the encrypted
+session record, so concurrent logout cannot be overwritten by a late token
+refresh; superseded credentials are revoked or queued separately.
+
 Access tokens and refresh tokens remain server-side. They are encrypted with an
 AES-GCM key derived from `CAO_SESSION_SECRET` before being stored in Redis under
 the deployment namespace. Browser cookies contain only an opaque session ID and
@@ -302,6 +313,11 @@ Keep the Azure secure-computing baseline enabled:
 - Application Insights/telemetry with structured operational metadata only,
   never GitHub tokens, Redis URLs, session secrets, cookies, authorization
   headers, source records, or prompt contents.
+
+The Azure Elastic Premium baseline keeps one always-on instance for the
+process-lifetime revocation worker. Redis remains the durable queue across
+process replacement; each startup resumes bounded retry batches before the
+minute interval begins.
 
 ## Redis transport and isolation
 

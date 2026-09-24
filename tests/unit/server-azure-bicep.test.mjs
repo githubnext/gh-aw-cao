@@ -33,6 +33,8 @@ test('Azure dashboard Bicep keeps secret-bearing settings in Key Vault', () => {
   assert.match(bicep, /enableSoftDelete:\s*true/);
   assert.match(bicep, /enablePurgeProtection:\s*true/);
   assert.match(bicep, /enabledForTemplateDeployment:\s*false/);
+  assert.match(bicep, /param previousSessionSecret string = ''/);
+  assert.match(bicep, /name:\s*'cao-session-secret-previous'/);
   assert.match(bicep, /identity:\s*{\s*type:\s*'SystemAssigned'/);
   assert.match(bicep, /Key Vault Secrets User/);
 
@@ -43,6 +45,8 @@ test('Azure dashboard Bicep keeps secret-bearing settings in Key Vault', () => {
   assert.doesNotMatch(bicep, /secretUriWithVersion/, 'Key Vault references must follow the current secret version for rotation');
 
   assert.match(bicep, /httpsOnly:\s*true/);
+  assert.match(bicep, /alwaysOn:\s*true/);
+  assert.match(bicep, /minimumElasticInstanceCount:\s*1/);
   assert.match(bicep, /ftpsState:\s*'Disabled'/);
   assert.match(bicep, /allowBlobPublicAccess:\s*false/);
   assert.match(bicep, /supportsHttpsTrafficOnly:\s*true/);

@@ -88,7 +88,8 @@ SDK. Configuration is supplied through:
 | `CAO_REDIS_NAMESPACE` | Optional deployment namespace; defaults to `hosted-dashboard`. |
 | `CAO_ALLOWED_HOSTS` | Required comma-separated trusted public host names. |
 | `CAO_GITHUB_CLIENT_ID`, `CAO_GITHUB_CLIENT_SECRET`, `CAO_GITHUB_REDIRECT_URL` | GitHub OAuth application. |
-| `CAO_SESSION_SECRET` | Session encryption/signing secret of at least 32 characters. |
+| `CAO_SESSION_SECRET` | Current session encryption/signing secret of at least 32 characters. |
+| `CAO_SESSION_SECRET_PREVIOUS` | Optional previous session secret retained only during controlled rotation. |
 | `CAO_GITHUB_ALLOWED_ORGS`, `CAO_GITHUB_ALLOWED_TEAMS` | Explicit authorization policy. |
 | `CAO_GITHUB_ADMIN_USERS` | Required comma-separated GitHub logins allowed to trigger rebuilds. |
 | `CAO_GITHUB_WEBHOOK_SECRET` | Required GitHub webhook signature secret of at least 32 characters. |
@@ -405,9 +406,14 @@ Request cancellation propagates through `request.Context()` to Redis queries.
 The Bicep deployment in `server/azure/main.bicep` provisions a Function App,
 Key Vault, Application Insights, storage, and Redis Enterprise with the
 RediSearch module. Every secret-bearing app setting—including Functions runtime
-storage—uses a versionless Key Vault reference so rotation does not require
-rewriting application configuration. The template outputs only non-secret host
-names, redirect URI, Redis database name, and Key Vault URI. Redis access keys
+storage—uses a versionless Key Vault reference so ordinary credential rotation
+does not require rewriting application configuration. Session-key rotation uses
+the optional secure `previousSessionSecret` deployment parameter: deploy the old
+key as previous and the new key as current, wait for active sessions and queued
+revocations to drain, then remove the previous key. Encrypted records carry a
+key identifier, and the server can read both keys during that window. The
+template outputs only non-secret host names, redirect URI, Redis database name,
+and Key Vault URI. Redis access keys
 are an unavoidable path for Redis Enterprise client authentication today;
 store the `rediss://` URL in Key Vault, rotate the Redis key in Azure, publish a
 new Key Vault secret version, and allow the platform to refresh the reference.

@@ -128,6 +128,9 @@ func (a *App) Serve(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("initial ingestion failed: %w", err)
 		}
+		if a.oauth != nil {
+			go a.oauth.runRevocationWorker(ctx)
+		}
 		a.hub.Broadcast(result.Revision)
 		a.config.Logger.Printf("activated local dashboard revision %d", result.Revision)
 	}
@@ -316,7 +319,13 @@ func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 			next.ServeHTTP(response, request)
 			return
 		}
-		session, ok := a.oauth.session(response, request)
+		var session oauthSession
+		var ok bool
+		if request.URL.Path == "/auth/logout" || request.URL.Path == "/auth/switch-account" {
+			session, ok = a.oauth.loadRequestSession(request)
+		} else {
+			session, ok = a.oauth.session(response, request)
+		}
 		if !ok {
 			if strings.HasPrefix(request.URL.Path, "/api/") || request.URL.Path == "/auth/logout" {
 				writeError(response, http.StatusUnauthorized, "GitHub authentication is required")

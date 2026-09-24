@@ -242,7 +242,11 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   directly, and forwarded host/protocol headers are trusted only across a
   loopback-bound proxy boundary. Logout atomically removes active session
   authority before remote token revocation; transient GitHub failures retain
-  encrypted credentials only in a durable Redis revocation queue.
+  encrypted credentials only in a durable Redis revocation queue drained by a
+  bounded maintenance worker. Encrypted records identify their key so controlled
+  rotation can retain the previous key until sessions and revocations drain.
+  Refreshed sessions use an atomic compare-and-swap so logout cannot be undone
+  by a concurrent OAuth refresh.
 - Browsers and external clients never receive Redis endpoints or credentials.
   Redis generations are staged and validated before atomic activation; a failed
   rebuild leaves the previous generation active, and an empty Redis instance is

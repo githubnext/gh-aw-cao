@@ -60,6 +60,10 @@ param githubClientSecret string
 param sessionSecret string
 
 @secure()
+@description('Optional previous session secret retained during controlled key rotation until active sessions and pending revocations are drained.')
+param previousSessionSecret string = ''
+
+@secure()
 @description('TLS Redis URL, for example rediss://:<access-key>@cache.region.redisenterprise.cache.azure.net:10000/0. Store a rotated value here rather than outputting Redis keys.')
 param redisConnectionString string
 
@@ -121,6 +125,15 @@ resource sessionSecretValue 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   properties: {
     value: sessionSecret
     contentType: 'CAO dashboard session encryption secret'
+  }
+}
+
+resource previousSessionSecretValue 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (!empty(previousSessionSecret)) {
+  parent: keyVault
+  name: 'cao-session-secret-previous'
+  properties: {
+    value: previousSessionSecret
+    contentType: 'Previous CAO dashboard session encryption secret retained during rotation'
   }
 }
 
@@ -210,10 +223,11 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
     clientAffinityEnabled: false
     siteConfig: {
       alwaysOn: true
+      minimumElasticInstanceCount: 1
       ftpsState: 'Disabled'
       minTlsVersion: '1.2'
       http20Enabled: true
-      appSettings: [
+      appSettings: concat([
         {
           name: 'FUNCTIONS_EXTENSION_VERSION'
           value: '~4'
@@ -274,7 +288,12 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
           name: 'CAO_SESSION_SECRET'
           value: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/cao-session-secret)'
         }
-      ]
+      ], empty(previousSessionSecret) ? [] : [
+        {
+          name: 'CAO_SESSION_SECRET_PREVIOUS'
+          value: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/cao-session-secret-previous)'
+        }
+      ])
     }
   }
   dependsOn: [
@@ -282,6 +301,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
     githubClientSecretValue
     redisConnectionStringValue
     sessionSecretValue
+    previousSessionSecretValue
   ]
 }
 
