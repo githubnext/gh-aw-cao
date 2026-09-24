@@ -2621,7 +2621,7 @@ export async function analyzeDashboardComplexityFile({
   };
 }
 
-export async function runCli(arguments_, input = process.stdin) {
+export async function runCli(arguments_, input = process.stdin, { signal } = {}) {
   const [command, ...rawOptionArguments] = arguments_;
   if (!command || command === '--help' || command === 'help') return USAGE;
   if (command === 'init') {
@@ -2823,7 +2823,8 @@ export async function runCli(arguments_, input = process.stdin) {
       timestamp: option(options, 'timestamp', false) || new Date().toISOString(),
       repositories: repositoryOptions,
       rateLimitReserve: operationalValueReserve(option(options, 'max-github-api-rate-limit', false), UsageError),
-      retentionWindow: retentionWindowMs(options)
+      retentionWindow: retentionWindowMs(options),
+      signal
     });
   }
 
@@ -2882,9 +2883,30 @@ export async function runCli(arguments_, input = process.stdin) {
 }
 
 async function main() {
-  const output = await runCli(process.argv.slice(2));
-  process.stdout.write(`${typeof output === 'string' ? output : JSON.stringify(output, null, 2)}\n`);
-  if (typeof output === 'object' && output?.command === 'doctor' && !output.healthy) process.exitCode = 2;
+  const arguments_ = process.argv.slice(2);
+  const controller = new AbortController();
+  let terminationSignal;
+  const terminate = (signal) => {
+    terminationSignal = signal;
+    controller.abort(new Error(`Received ${signal}`));
+  };
+  const onSigint = () => terminate('SIGINT');
+  const onSigterm = () => terminate('SIGTERM');
+  if (arguments_[0] === 'operational-value') {
+    process.once('SIGINT', onSigint);
+    process.once('SIGTERM', onSigterm);
+  }
+  try {
+    const output = await runCli(arguments_, process.stdin, { signal: controller.signal });
+    process.stdout.write(`${typeof output === 'string' ? output : JSON.stringify(output, null, 2)}\n`);
+    if (typeof output === 'object' && output?.command === 'doctor' && !output.healthy) process.exitCode = 2;
+  } catch (error) {
+    if (!controller.signal.aborted || error !== controller.signal.reason) throw error;
+    process.exitCode = terminationSignal === 'SIGINT' ? 130 : 143;
+  } finally {
+    process.removeListener('SIGINT', onSigint);
+    process.removeListener('SIGTERM', onSigterm);
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {

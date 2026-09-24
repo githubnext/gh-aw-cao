@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -68,6 +68,47 @@ console.log(JSON.stringify({timestamp:request.timestamp,repository:request.repos
     assert.deepEqual(result.values.map(({ campaign, valueId }) => ({ campaign, valueId })), [
       { campaign: 'successful', valueId: 'successful' }
     ]);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('cao operational-value terminates worker process trees on SIGTERM', async () => {
+  const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-value-sigterm-'));
+  const packageDirectory = path.join(temporary, 'example');
+  const orphanMarker = path.join(temporary, 'orphan');
+  const readyMarker = path.join(temporary, 'ready');
+  mkdirSync(packageDirectory);
+  writeFileSync(path.join(packageDirectory, 'operational-value.mjs'), `
+import { spawn } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
+spawn(process.execPath, ['-e', ${JSON.stringify(
+  `setTimeout(() => require('node:fs').writeFileSync(${JSON.stringify(orphanMarker)}, 'alive'), 300); setInterval(() => {}, 1_000);`
+)}]);
+writeFileSync(${JSON.stringify(readyMarker)}, 'ready');
+setInterval(() => {}, 1_000);\n`);
+
+  try {
+    const execution = spawn(process.execPath, [
+      cao,
+      'operational-value',
+      '--database', path.join(temporary, 'dashboard.sqlite'),
+      '--root', temporary,
+      '--repository', 'githubnext/gh-aw-cao'
+    ], { stdio: 'ignore' });
+    for (let attempt = 0; attempt < 40 && !existsSync(readyMarker); attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    assert.equal(existsSync(readyMarker), true);
+    execution.kill('SIGTERM');
+    const [status, signal] = await new Promise((resolve) => {
+      execution.once('close', (code, closedBySignal) => resolve([code, closedBySignal]));
+    });
+    await new Promise((resolve) => setTimeout(resolve, 350));
+
+    assert.equal(status, 143);
+    assert.equal(signal, null);
+    assert.equal(existsSync(orphanMarker), false);
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }

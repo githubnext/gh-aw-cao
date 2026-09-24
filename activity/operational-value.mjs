@@ -294,6 +294,7 @@ export async function runOperationalValue({
       warn(null, error);
     }
   }
+  signal?.throwIfAborted();
   const output = outputPath ? path.resolve(outputPath) : undefined;
   if (output) {
     await mkdir(path.dirname(output), { recursive: true });
@@ -329,6 +330,7 @@ export async function runOperationalValue({
       await rm(temporary, { force: true });
     }
   }
+  signal?.throwIfAborted();
   return {
     command: 'operational-value',
     timestamp: observedAt,
