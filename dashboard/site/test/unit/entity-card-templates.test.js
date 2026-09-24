@@ -149,8 +149,8 @@ describe('entity card templates', () => {
       mark: 'table',
       'card-drill': {
         type: 'query',
-        page: 'firewall-domain-workflows',
-        query: 'firewall-domain-workflows',
+        page: 'domain-insights',
+        query: 'domain-entity-insights',
         'title-field': 'domain',
         arguments: [{ name: 'domain', field: 'domain' }]
       }

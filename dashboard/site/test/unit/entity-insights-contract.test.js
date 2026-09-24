@@ -10,15 +10,15 @@ describe('canonical entity insights', () => {
     { id: 'audit', source: 'audits', identifier: 'event-summary' }
   ]) {
     it(`gives ${entity.id} entities an Insights chart, native link, and related Runs facet`, () => {
-      const insights = dashboard.pages.find((page) => page.id === `${entity.id}-insights`);
-      const runs = dashboard.pages.find((page) => page.id === `${entity.id}-runs`);
-      const chrome = insights?.views.find((view) => view.element === 'entity-route');
+      const insights = dashboard.pages.find((/** @type {Record<string, any>} */ page) => page.id === `${entity.id}-insights`);
+      const runs = dashboard.pages.find((/** @type {Record<string, any>} */ page) => page.id === `${entity.id}-runs`);
+      const chrome = insights?.views.find((/** @type {Record<string, any>} */ view) => view.element === 'entity-route');
 
       expect(insights?.route.tabs).toEqual(expect.arrayContaining([
         expect.objectContaining({ id: 'insights', page: `${entity.id}-insights` }),
         expect.objectContaining({ id: 'runs', page: `${entity.id}-runs` })
       ]));
-      expect(insights?.views.filter((view) => view.mark === 'chart')).toHaveLength(1);
+      expect(insights?.views.filter((/** @type {Record<string, any>} */ view) => view.mark === 'chart')).toHaveLength(1);
       expect(chrome?.data.sources).toEqual([entity.source]);
       expect(chrome?.['title-link']).toEqual({
         'href-field': 'run-link',

@@ -681,7 +681,7 @@ describe('presenter built-in and custom pages', () => {
     expect([...firewallCard?.querySelectorAll('.entity-card-list-metric') ?? []].map((metric) => metric.textContent))
       .toEqual(['0Allowed', '3177281Blocked', '1Runs']);
     expect(firewallCard?.querySelector('[data-card-drill="query"]')?.getAttribute('href'))
-      .toBe('#page-firewall-domain-workflows?query=firewall-domain-workflows&title=blocked.example&domain=blocked.example');
+      .toBe('#page-domain-insights?query=domain-entity-insights&title=blocked.example&domain=blocked.example');
     expect(text).not.toContain('firewall failure');
     rendered.remove();
   });

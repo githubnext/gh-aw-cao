@@ -17,7 +17,7 @@ function context() {
     title: 'Domain',
     sourceNames: ['domains'],
     contextDetails: [],
-    routeParameter: 'api.github.com',
+    routeParameter: 'domain',
     titleLink: {
       'href-field': 'run-link',
       'identifier-field': 'domain'
@@ -51,15 +51,14 @@ describe('entity route', () => {
 
     expect(rendered.dataset.entity).toBe('api.github.com');
     expect(rendered.textContent).toBe('Insights for api.github.com');
-    expect(allocation).toHaveBeenCalledWith(expect.objectContaining({
-      detail: {
-        title: 'api.github.com',
-        titleLink: {
-          href: 'https://github.com/octo/repo/actions/runs/1',
-          label: 'api.github.com'
-        }
+    expect(allocation).toHaveBeenCalledOnce();
+    expect(allocation.mock.calls[0][0].detail).toEqual({
+      title: 'api.github.com',
+      titleLink: {
+        href: 'https://github.com/octo/repo/actions/runs/1',
+        label: '#api.github.com'
       }
-    }));
+    });
   });
 
   it('renders an explicit empty state for an unknown entity', () => {

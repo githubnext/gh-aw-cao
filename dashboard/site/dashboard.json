@@ -7944,7 +7944,7 @@
           ],
           "values": [
             {
-              "field": "campaign",
+            "field": "campaign",
               "as": "items",
               "reducer": "count"
             }
@@ -10525,24 +10525,9 @@
           "tabs-class-name": "campaign-tabs",
           "tab": "insights",
           "tabs": [
-            {
-              "id": "insights",
-              "label": "Insights",
-              "icon": "graph",
-              "page": "campaign-insights"
-            },
-            {
-              "id": "problems",
-              "label": "Problems",
-              "icon": "alert",
-              "page": "campaign-problems"
-            },
-            {
-              "id": "issues",
-              "label": "Issues",
-              "icon": "issue-opened",
-              "page": "campaign-issues"
-            }
+            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
+            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
+            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
           ]
         },
         "views": [
@@ -10636,24 +10621,9 @@
           "tabs-class-name": "campaign-tabs",
           "tab": "problems",
           "tabs": [
-            {
-              "id": "insights",
-              "label": "Insights",
-              "icon": "graph",
-              "page": "campaign-insights"
-            },
-            {
-              "id": "problems",
-              "label": "Problems",
-              "icon": "alert",
-              "page": "campaign-problems"
-            },
-            {
-              "id": "issues",
-              "label": "Issues",
-              "icon": "issue-opened",
-              "page": "campaign-issues"
-            }
+            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
+            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
+            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
           ]
         },
         "views": [
@@ -10792,24 +10762,9 @@
           "title-format": "title-case",
           "tabs-class-name": "campaign-tabs",
           "tabs": [
-            {
-              "id": "insights",
-              "label": "Insights",
-              "icon": "graph",
-              "page": "campaign-insights"
-            },
-            {
-              "id": "problems",
-              "label": "Problems",
-              "icon": "alert",
-              "page": "campaign-problems"
-            },
-            {
-              "id": "issues",
-              "label": "Issues",
-              "icon": "issue-opened",
-              "page": "campaign-issues"
-            }
+            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
+            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
+            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
           ]
         },
         "views": [
@@ -10851,24 +10806,9 @@
           "title-format": "title-case",
           "tabs-class-name": "campaign-tabs",
           "tabs": [
-            {
-              "id": "insights",
-              "label": "Insights",
-              "icon": "graph",
-              "page": "campaign-insights"
-            },
-            {
-              "id": "problems",
-              "label": "Problems",
-              "icon": "alert",
-              "page": "campaign-problems"
-            },
-            {
-              "id": "issues",
-              "label": "Issues",
-              "icon": "issue-opened",
-              "page": "campaign-issues"
-            }
+            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
+            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
+            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
           ]
         },
         "views": [
@@ -10974,24 +10914,9 @@
           "tabs-class-name": "campaign-tabs",
           "tab": "issues",
           "tabs": [
-            {
-              "id": "insights",
-              "label": "Insights",
-              "icon": "graph",
-              "page": "campaign-insights"
-            },
-            {
-              "id": "problems",
-              "label": "Problems",
-              "icon": "alert",
-              "page": "campaign-problems"
-            },
-            {
-              "id": "issues",
-              "label": "Issues",
-              "icon": "issue-opened",
-              "page": "campaign-issues"
-            }
+            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
+            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
+            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
           ]
         },
         "views": [
@@ -11113,24 +11038,9 @@
           "title-format": "title-case",
           "tabs-class-name": "campaign-tabs",
           "tabs": [
-            {
-              "id": "insights",
-              "label": "Insights",
-              "icon": "graph",
-              "page": "campaign-insights"
-            },
-            {
-              "id": "problems",
-              "label": "Problems",
-              "icon": "alert",
-              "page": "campaign-problems"
-            },
-            {
-              "id": "issues",
-              "label": "Issues",
-              "icon": "issue-opened",
-              "page": "campaign-issues"
-            }
+            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
+            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
+            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
           ]
         },
         "views": [
@@ -11243,24 +11153,9 @@
           "title-format": "title-case",
           "tabs-class-name": "campaign-tabs",
           "tabs": [
-            {
-              "id": "insights",
-              "label": "Insights",
-              "icon": "graph",
-              "page": "campaign-insights"
-            },
-            {
-              "id": "problems",
-              "label": "Problems",
-              "icon": "alert",
-              "page": "campaign-problems"
-            },
-            {
-              "id": "issues",
-              "label": "Issues",
-              "icon": "issue-opened",
-              "page": "campaign-issues"
-            }
+            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
+            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
+            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
           ]
         },
         "views": [
@@ -11512,24 +11407,9 @@
           "title-format": "title-case",
           "tabs-class-name": "campaign-tabs",
           "tabs": [
-            {
-              "id": "insights",
-              "label": "Insights",
-              "icon": "graph",
-              "page": "campaign-insights"
-            },
-            {
-              "id": "problems",
-              "label": "Problems",
-              "icon": "alert",
-              "page": "campaign-problems"
-            },
-            {
-              "id": "issues",
-              "label": "Issues",
-              "icon": "issue-opened",
-              "page": "campaign-issues"
-            }
+            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
+            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
+            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
           ]
         },
         "views": [
@@ -11644,24 +11524,9 @@
           "title-format": "title-case",
           "tabs-class-name": "campaign-tabs",
           "tabs": [
-            {
-              "id": "insights",
-              "label": "Insights",
-              "icon": "graph",
-              "page": "campaign-insights"
-            },
-            {
-              "id": "problems",
-              "label": "Problems",
-              "icon": "alert",
-              "page": "campaign-problems"
-            },
-            {
-              "id": "issues",
-              "label": "Issues",
-              "icon": "issue-opened",
-              "page": "campaign-issues"
-            }
+            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
+            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
+            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
           ]
         },
         "views": [
@@ -13463,7 +13328,8 @@
                 {
                   "field": "observed-at",
                   "type": "temporal",
-                  "title": "Observed"
+                  "title": "Observed",
+                  "format": "human-friendly-timestamp"
                 }
               ]
             }
@@ -13648,7 +13514,8 @@
                 {
                   "field": "observed-at",
                   "type": "temporal",
-                  "title": "Observed"
+                  "title": "Observed",
+                  "format": "human-friendly-timestamp"
                 }
               ]
             }
@@ -13833,7 +13700,8 @@
                 {
                   "field": "observed-at",
                   "type": "temporal",
-                  "title": "Observed"
+                  "title": "Observed",
+                  "format": "human-friendly-timestamp"
                 }
               ]
             }
