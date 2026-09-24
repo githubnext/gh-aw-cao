@@ -10,7 +10,7 @@ const dashboard = {
   dashboard: {
     pages: [
       { id: "experiments", views: [{ mark: "table" }] },
-      { id: "cost", views: [{ element: "campaign-problem-list" }] },
+      { id: "cost", views: [{ element: "link-button-list" }] },
     ],
   },
 };
@@ -18,7 +18,7 @@ const dashboard = {
 test("selects the page that uses a changed component", () => {
   assert.deepEqual(selectAffectedPageIds({
     dashboard,
-    changedFiles: ["dashboard/site/src/components/campaign-problem-list.js"],
+    changedFiles: ["dashboard/site/src/components/link-button-list.js"],
     baseRef: "unused",
   }), ["cost"]);
 });
@@ -99,7 +99,7 @@ test("never selects ignored dashboard pages", () => {
   const dashboardWithIgnoredPages = {
     dashboard: {
       pages: [
-        { id: "operations", views: [{ element: "campaign-problem-list" }] },
+        { id: "operations", views: [{ element: "link-button-list" }] },
         { id: "readiness", views: [{ mark: "table" }] },
         { id: "cost", views: [{ mark: "table" }] },
       ],
@@ -112,7 +112,7 @@ test("never selects ignored dashboard pages", () => {
   }), ["cost"]);
   assert.deepEqual(selectAffectedPageIds({
     dashboard: dashboardWithIgnoredPages,
-    changedFiles: ["dashboard/site/src/components/campaign-problem-list.js"],
+    changedFiles: ["dashboard/site/src/components/link-button-list.js"],
     baseRef: "unused",
   }), []);
 });

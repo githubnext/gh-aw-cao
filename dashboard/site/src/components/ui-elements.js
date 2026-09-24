@@ -10,7 +10,6 @@ import { renderWorkflowRoutePage } from './workflow-route-page.js';
 import { renderFactoryFloorElement } from './factory-floor.js';
 import { renderFactoryHeaderElement } from './factory-header.js';
 import { renderLinkButtonList } from './link-button-list.js';
-import { renderCampaignProblemList } from './campaign-problem-list.js';
 import { renderPanel } from './panel.js';
 import { rowsFor } from './source-rows.js';
 
@@ -46,7 +45,6 @@ const ELEMENT_RENDERERS = new Map([
   ['factory-header', renderFactoryHeaderElement],
   ['factory-floor', renderFactoryFloorElement],
   ['link-button-list', renderLinkButtonList],
-  ['campaign-problem-list', renderCampaignProblemList],
   ['outcomes-overview', renderLegacyFactoryOverview]
 ]);
 
@@ -60,7 +58,6 @@ const EMPTY_AWARE_ELEMENTS = new Set([
   'factory-header',
   'factory-floor',
   'link-button-list',
-  'campaign-problem-list',
   'outcomes-overview'
 ]);
 const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy']);

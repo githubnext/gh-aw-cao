@@ -349,10 +349,14 @@ describe('dashboard document validation', () => {
     expect(firewall.sections).toBeUndefined();
     expect(firewall.views).toHaveLength(2);
     expect(document.dashboard.queries).toContainEqual(expect.objectContaining({
+      name: 'firewall-domain-base',
+      from: 'firewall-observations',
+      filter: { predicates: [{ field: 'decision', in: ['allowed', 'denied'] }] }
+    }));
+    expect(document.dashboard.queries).toContainEqual(expect.objectContaining({
       name: 'firewall-domain-totals',
       intent: 'Show each observed firewall domain with the number of runs and total accepted and blocked requests.',
-      from: 'firewall-observations',
-      filter: { predicates: [{ field: 'decision', in: ['allowed', 'denied'] }] },
+      from: 'firewall-domain-base',
       aggregate: {
         by: ['domain'],
         values: [
@@ -404,6 +408,13 @@ describe('dashboard document validation', () => {
       controls: 'interactive',
       'lazy-list': true,
       'column-summaries': true,
+      'card-drill': {
+        type: 'query',
+        page: 'firewall-domain-workflows',
+        query: 'firewall-domain-workflows',
+        'title-field': 'domain',
+        arguments: [{ name: 'domain', field: 'domain' }]
+      },
       layout: 'full-view',
       data: {
         source: 'firewall-domain-totals',
@@ -953,7 +964,7 @@ dashboard:
           data:
             sources: [work-items]
           mark: element
-          element: campaign-problem-list
+          element: configuration-policy
           config:
             labels:
               repositories:
@@ -1296,7 +1307,7 @@ dashboard:
 
     const supplementalElement = accepted.replace(
       '        - id: supporting-table\n          disclosure: supplemental\n          disclosure-label: Supporting table\n          data: { source: runs }\n          mark: table\n          encoding:\n            columns: [{ field: run, type: nominal }]\n',
-      '        - id: supporting-table\n          disclosure: supplemental\n          disclosure-label: Supporting table\n          data: { sources: [runs] }\n          mark: element\n          element: campaign-problem-list\n'
+      '        - id: supporting-table\n          disclosure: supplemental\n          disclosure-label: Supporting table\n          data: { sources: [runs] }\n          mark: element\n          element: outcomes-overview\n'
     );
     expect(validateDashboardDocument(supplementalElement).ok).toBe(true);
 
@@ -3478,7 +3489,7 @@ dashboard:
           data:
             sources: [workflows]
           mark: element
-          element: campaign-problem-list
+          element: outcomes-overview
         - id: runs
           data:
             source: runs
@@ -3506,7 +3517,7 @@ dashboard:
           data:
             sources: [workflows]
           mark: element
-          element: campaign-problem-list
+          element: outcomes-overview
 `;
     expect(validateDashboardDocument(elementDocument).ok).toBe(true);
 
@@ -3529,7 +3540,7 @@ dashboard:
         `          data:
             sources: [workflows]
           mark: element
-          element: campaign-problem-list`,
+          element: outcomes-overview`,
         `          data:
             source: runs
           mark: table
@@ -3561,7 +3572,7 @@ dashboard:
           data:
             sources: [workflows]
           mark: element
-          element: campaign-problem-list
+          element: outcomes-overview
 `;
     expect(validateDashboardDocument(lockedDocument).ok).toBe(true);
     expect(validateDashboardDocument(lockedDocument.replace('locked: true', 'locked: false')).ok).toBe(true);

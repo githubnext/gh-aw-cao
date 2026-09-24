@@ -27,11 +27,14 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
+
+var serverLog = logger.New("cao:server")
 
 type Config struct {
 	Listen              string
@@ -57,6 +60,7 @@ type App struct {
 }
 
 func New(store *redisx.Store, config Config) (*App, error) {
+	serverLog.Printf("initializing hosting_mode=%s", config.HostingMode)
 	mode := config.HostingMode
 	if mode == "" {
 		mode = HostingModeLocal
@@ -95,10 +99,12 @@ func New(store *redisx.Store, config Config) (*App, error) {
 			return nil, errors.New("dashboard access token must contain at least 32 characters")
 		}
 	}
+	serverLog.Printf("initialized hosting_mode=%s oauth=%t source_ingestion=%t", mode, oauth != nil, config.SourceDirectory != "")
 	return &App{store: store, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub()}, nil
 }
 
 func (a *App) Serve(ctx context.Context) error {
+	serverLog.Printf("starting server tls=%t initial_ingestion=%t", a.config.CertFile != "", a.config.SourceDirectory != "")
 	if a.config.SourceDirectory != "" {
 		result, err := ingest.Run(ctx, a.store, a.config.SourceDirectory, ingest.Options{DatabaseQueriesPath: a.config.DatabaseQueriesPath})
 		if err != nil {
@@ -112,6 +118,7 @@ func (a *App) Serve(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	serverLog.Printf("listener ready")
 	servingListener := listener
 	if a.config.CertFile != "" {
 		certificate, certificateErr := tls.LoadX509KeyPair(a.config.CertFile, a.config.KeyFile)
@@ -315,6 +322,7 @@ func (a *App) health(response http.ResponseWriter, request *http.Request) {
 	if !redisHealthy || activeErr != nil {
 		status = http.StatusServiceUnavailable
 	}
+	serverLog.Printf("health status=%d redis=%t data=%t", status, redisHealthy, active.Generation != "")
 	payload := map[string]any{
 		"redis": map[string]any{"connected": redisHealthy},
 		"data":  map[string]any{"available": active.Generation != ""},
@@ -346,6 +354,7 @@ func (a *App) events(response http.ResponseWriter, request *http.Request) {
 	flusher.Flush()
 	lastRevision := active.Revision
 	channel := a.hub.Subscribe()
+	serverLog.Printf("event stream subscribed")
 	defer a.hub.Unsubscribe(channel)
 	heartbeat := time.NewTicker(20 * time.Second)
 	defer heartbeat.Stop()
@@ -370,6 +379,7 @@ func (a *App) events(response http.ResponseWriter, request *http.Request) {
 			_, _ = io.WriteString(response, ": keepalive\n\n")
 			flusher.Flush()
 		case <-request.Context().Done():
+			serverLog.Printf("event stream closed")
 			return
 		}
 	}
@@ -420,6 +430,10 @@ func (a *App) query(response http.ResponseWriter, request *http.Request) {
 		fail(http.StatusBadRequest, "query request exceeds source limits")
 		return
 	}
+	serverLog.Printf(
+		"query received sources=%d aliases=%d definitions=%d compiled=%d paginated=%d",
+		len(input.SourceNames), len(input.Aliases), len(input.Queries), len(input.CompiledQueries), len(input.Pagination),
+	)
 	for _, name := range append(append([]string{}, input.SourceNames...), input.Aliases...) {
 		if strings.TrimSpace(name) == "" {
 			fail(http.StatusBadRequest, "source names must be non-empty")
@@ -470,6 +484,7 @@ func (a *App) query(response http.ResponseWriter, request *http.Request) {
 	engine := query.New(loader)
 	sources, metrics, err := engine.Execute(definitions, requested)
 	if err != nil {
+		serverLog.Printf("query failed")
 		fail(http.StatusBadRequest, err.Error())
 		return
 	}
@@ -486,6 +501,7 @@ func (a *App) query(response http.ResponseWriter, request *http.Request) {
 		sources[name] = paginated
 	}
 	metrics.DurationMS = time.Since(started).Milliseconds()
+	serverLog.Printf("query completed sources=%d duration_ms=%d redis_commands=%d redis_rows=%d", len(sources), metrics.DurationMS, metrics.RedisCommands, metrics.RedisRows)
 	span.SetAttributes(
 		attribute.Int64("cao_dashboard.query.duration_ms", metrics.DurationMS),
 		attribute.Int("cao_dashboard.query.pushed_down_count", len(metrics.PushedDown)),
@@ -567,6 +583,7 @@ func (a *App) diagnostics(response http.ResponseWriter, request *http.Request) {
 		writeError(response, http.StatusServiceUnavailable, "dashboard diagnostics are unavailable")
 		return
 	}
+	serverLog.Printf("diagnostics served")
 	writeJSON(response, http.StatusOK, diagnostics)
 }
 
@@ -576,6 +593,7 @@ func (a *App) refresh(response http.ResponseWriter, request *http.Request) {
 		writeError(response, http.StatusServiceUnavailable, "dashboard data is unavailable")
 		return
 	}
+	serverLog.Printf("refresh checked revision=%d", active.Revision)
 	writeJSON(response, http.StatusOK, map[string]any{
 		"revision":    active.Revision,
 		"evaluatedAt": evaluationTime(active),

@@ -92,8 +92,8 @@ describe('dashboard view query contracts', () => {
     expect(queryNames.has('failed-runs')).toBe(false);
   });
 
-  it('retains the campaign run page linked from campaign navigation', () => {
-    expect(dashboard.pages.some((/** @type {{ id: string }} */ page) => page.id === 'campaign-runs')).toBe(true);
+  it('retains the campaign dispatch page linked from campaign navigation', () => {
+    expect(dashboard.pages.some((/** @type {{ id: string }} */ page) => page.id === 'campaign-dispatches')).toBe(true);
   });
 
   it('renders issues per repository and one activity inventory', () => {

@@ -10,6 +10,9 @@ const templates = Object.fromEntries(dashboard['card-templates'].map(
 const pages = Object.fromEntries(dashboard.pages.map(
   (/** @type {Record<string, any>} */ page) => [page.id, page]
 ));
+const views = Object.fromEntries((dashboard.views ?? []).map(
+  (/** @type {Record<string, any>} */ view) => [view.id, view]
+));
 
 describe('entity card templates', () => {
   it('declares cards for every navigable canonical entity', () => {
@@ -117,6 +120,40 @@ describe('entity card templates', () => {
     });
   });
 
+  it('drills from firewall domains to their allowed and blocked workflows', () => {
+    const firewall = pages.firewall;
+    const domainList = firewall.views.find(
+      (/** @type {Record<string, any>} */ view) => view.id === 'security-firewall-domains'
+    );
+    expect(domainList).toMatchObject({
+      mark: 'table',
+      'card-drill': {
+        type: 'query',
+        page: 'firewall-domain-workflows',
+        query: 'firewall-domain-workflows',
+        'title-field': 'domain',
+        arguments: [{ name: 'domain', field: 'domain' }]
+      }
+    });
+    expect(views['firewall-domain-workflows']).toMatchObject({
+      data: {
+        source: 'firewall-domain-workflows',
+        arguments: [{ name: 'domain', field: 'domain' }]
+      },
+      list: { card: 'firewall-workflow' }
+    });
+    expect(templates['firewall-workflow']).toMatchObject({
+      title: { field: 'workflow', format: 'workflow-relative-path' },
+      subtitle: { field: 'repository' },
+      details: [
+        { field: 'accepted', title: 'Allowed' },
+        { field: 'blocked', title: 'Blocked' },
+        { field: 'runs', title: 'Runs' }
+      ]
+    });
+    expect(pages['firewall-domain-workflows'].views).toEqual(['firewall-domain-workflows']);
+  });
+
   it('retains the reusable operation card template', () => {
     expect(templates.operation).toMatchObject({
       icon: 'workflow',
@@ -126,8 +163,11 @@ describe('entity card templates', () => {
     });
   });
 
-  it('removes unreachable reusable entity drill views', () => {
-    expect(dashboard.views).toBeUndefined();
+  it('retains only reachable reusable drill views', () => {
+    expect(Object.keys(views)).toEqual([
+      'firewall-domain-workflows',
+      'campaign-problem-detail-view'
+    ]);
     expect(pages['repository-workflows']).toBeUndefined();
     expect(pages['workflow-run-cards']).toBeUndefined();
     expect(pages['run-events']).toBeUndefined();

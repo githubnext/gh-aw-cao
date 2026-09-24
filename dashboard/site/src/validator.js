@@ -5,6 +5,7 @@ import {
   BUILT_IN_PAGE_KEYS,
   BUILT_IN_PAGE_VALUES,
   CARD_TEMPLATE_ACTION_KEYS,
+  CARD_DETAIL_LABEL_VALUES,
   CARD_STATUS_KEYS,
   CARD_TEMPLATE_KEYS,
   CARD_TIMING_FIELD_KEYS,
@@ -642,6 +643,9 @@ function validateCardTemplates(templates, templatesNode, errors) {
     if (template.subtitle !== undefined) {
       validateCardTemplateField(template.subtitle, getValueNodeByKey(templateNode, 'subtitle'), `${path}.subtitle`, errors);
     }
+    if (template['detail-labels'] !== undefined && !CARD_DETAIL_LABEL_VALUES.includes(String(template['detail-labels']))) {
+      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'card template detail-labels must be hidden or visible.', `${path}.detail-labels`));
+    }
     validateCardTemplateStatus(template.status, getValueNodeByKey(templateNode, 'status'), `${path}.status`, errors);
     validateCardTemplateTiming(template.timing, getValueNodeByKey(templateNode, 'timing'), `${path}.timing`, errors);
     validateCardTemplateActions(template.actions, getValueNodeByKey(templateNode, 'actions'), `${path}.actions`, errors);
@@ -1204,22 +1208,27 @@ function validateDashboard(dashboard, dashboardNode, errors) {
             `${viewPath}.list.view-all.page`
           ));
         }
-        const drill = isPlainObject(view) && isPlainObject(view.list) && isPlainObject(view.list.drill)
-          ? view.list.drill
+        const drill = isPlainObject(view) && isPlainObject(view['card-drill'])
+          ? view['card-drill']
+          : isPlainObject(view) && isPlainObject(view.list) && isPlainObject(view.list.drill)
+            ? view.list.drill
           : null;
+        const drillPath = isPlainObject(view) && isPlainObject(view['card-drill'])
+          ? `${viewPath}.card-drill`
+          : `${viewPath}.list.drill`;
         if (drill?.type === 'query') {
           if (typeof drill.page === 'string' && IDENTIFIER_PATTERN.test(drill.page) && !pageIds.has(drill.page)) {
             errors.push(createError(
               ERROR_CODES.missingOrInvalidRequiredField,
               'query drill page must reference a declared dashboard page id.',
-              `${viewPath}.list.drill.page`
+              `${drillPath}.page`
             ));
           }
           if (typeof drill.query === 'string' && IDENTIFIER_PATTERN.test(drill.query) && !declaredQueries.has(drill.query)) {
             errors.push(createError(
               ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
               'query drill query must reference a declared dashboard query.',
-              `${viewPath}.list.drill.query`
+              `${drillPath}.query`
             ));
           }
           const sourceName = isPlainObject(view.data) && typeof view.data.source === 'string'
@@ -1227,11 +1236,11 @@ function validateDashboard(dashboard, dashboardNode, errors) {
             : null;
           const fields = sourceName ? sourceFieldNames(sourceName) : null;
           for (const [field, fieldPath] of [
-            [drill['title-field'], `${viewPath}.list.drill.title-field`],
+            [drill['title-field'], `${drillPath}.title-field`],
             ...(Array.isArray(drill.arguments)
               ? drill.arguments.map((argument, argumentIndex) => [
                   isPlainObject(argument) ? argument.field : undefined,
-                  `${viewPath}.list.drill.arguments[${argumentIndex}].field`
+                  `${drillPath}.arguments[${argumentIndex}].field`
                 ])
               : [])
           ]) {
@@ -1274,7 +1283,7 @@ function validateDashboard(dashboard, dashboardNode, errors) {
             errors.push(createError(
               ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
               'query drill destination must bind the declared query and every drill argument.',
-              `${viewPath}.list.drill`
+              drillPath
             ));
           }
         }
@@ -2876,6 +2885,18 @@ function validateView(view, viewNode, path, viewIds, errors) {
 
   } else if (view.mark === 'list') {
     errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'list views must declare a list widget mapping.', `${path}.list`));
+  }
+
+  if (view['card-drill'] !== undefined) {
+    const drillPath = `${path}.card-drill`;
+    validateListDrill(view['card-drill'], getValueNodeByKey(viewNode, 'card-drill'), path, 'entity-cards', errors);
+    if (view.mark !== 'table' || view['lazy-list'] !== true) {
+      errors.push(createError(
+        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        'card-drill is allowed only on lazy table views.',
+        drillPath
+      ));
+    }
   }
 
   if (view.chart !== undefined) {

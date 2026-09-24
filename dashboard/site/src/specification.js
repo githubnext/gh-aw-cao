@@ -19,7 +19,8 @@ export const IDENTIFIER_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
 export const ROOT_KEYS = ['language-version', 'dashboard'];
 export const DASHBOARD_KEYS = ['id', 'title', 'description', 'defaults', 'units', 'queries', 'card-templates', 'views', 'pages', 'github-url-base', 'repository', 'navigation', 'horizon', 'callouts', 'cli-actions'];
-export const CARD_TEMPLATE_KEYS = ['id', 'icon', 'icon-field', 'status', 'title', 'subtitle', 'labels', 'details', 'timing', 'actions'];
+export const CARD_TEMPLATE_KEYS = ['id', 'icon', 'icon-field', 'status', 'title', 'subtitle', 'labels', 'details', 'detail-labels', 'timing', 'actions'];
+export const CARD_DETAIL_LABEL_VALUES = ['hidden', 'visible'];
 export const CARD_TEMPLATE_ACTION_KEYS = ['action', 'context', 'when'];
 export const CARD_STATUS_KEYS = ['field', 'fallback-field', 'title'];
 export const DASHBOARD_HORIZON_KEYS = ['label', 'tooltip'];
@@ -67,7 +68,7 @@ export const PAGE_ROUTE_KEYS = ['hash-query-parameter', 'navigation-page', 'tab'
 export const PAGE_ROUTE_TAB_KEYS = ['id', 'label', 'icon', 'page'];
 export const MAX_PAGE_ROUTE_TABS = 8;
 
-export const VIEW_KEYS = ['id', 'title', 'description', 'intent', 'locked', 'data', 'mark', 'element', 'config', 'callout', 'chart', 'metric', 'list', 'tree', 'layout', 'disclosure', 'disclosure-label', 'controls', 'lazy-list', 'column-summaries', 'empty-message', 'title-link', 'encoding'];
+export const VIEW_KEYS = ['id', 'title', 'description', 'intent', 'locked', 'data', 'mark', 'element', 'config', 'callout', 'chart', 'metric', 'list', 'card-drill', 'tree', 'layout', 'disclosure', 'disclosure-label', 'controls', 'lazy-list', 'column-summaries', 'empty-message', 'title-link', 'encoding'];
 export const VIEW_DATA_KEYS = ['source', 'sources', 'scope', 'time', 'filters', 'arguments', 'route-field', 'limit', 'order-by', 'source-metadata'];
 export const VIEW_DATA_ARGUMENT_KEYS = ['name', 'field'];
 export const VIEW_ELEMENT_CONFIG_KEYS = ['body', 'sections', 'stations', 'labels', 'animate', 'sources', 'view-all-page', 'view-all-label', 'label-field', 'link-field', 'icon-field', 'fallback-icon', 'indicator-field', 'indicator-label-field', 'empty-message'];
@@ -90,7 +91,6 @@ export const VIEW_ELEMENT_VALUES = [
   'factory-header',
   'factory-floor',
   'link-button-list',
-  'campaign-problem-list',
   'outcomes-overview'
 ];
 export const VIEW_CHART_VALUES = ['area', 'bar', 'dot', 'heatmap', 'histogram', 'horizontal-bar', 'line', 'pie', 'scatter', 'swimlane'];

@@ -555,6 +555,76 @@ describe('data view renderer', () => {
     expect(actionsIndex).toBeGreaterThan(timingIndex);
   });
 
+  it('presents entity-card detail titles when the template declares visible detail labels', () => {
+    const rendered = renderDataView('list', {
+      pageId: 'maintenance',
+      title: 'Repositories',
+      sourceName: 'maintenance-repositories',
+      view: {
+        mark: 'list',
+        list: { style: 'entity-cards', card: 'maintenance-repository', icon: 'repo' },
+        encoding: { columns: [{ field: 'repository' }] }
+      },
+      rows: [{ repository: 'github/gh-aw', 'gh-aw-version': 'v0.89.4', 'gh-aw-current-version': 'v0.89.21' }],
+      cardTemplates: {
+        'maintenance-repository': {
+          icon: 'repo',
+          title: { field: 'repository' },
+          'detail-labels': 'visible',
+          labels: [],
+          details: [
+            { field: 'gh-aw-version', title: 'Installed' },
+            { field: 'gh-aw-current-version', title: 'Latest' }
+          ]
+        }
+      },
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const meta = rendered?.querySelector('.issue-list-card-meta');
+    expect(meta?.classList.contains('issue-list-card-meta-labelled')).toBe(true);
+    expect([...(meta?.querySelectorAll('dt') ?? [])].map((term) => term.textContent))
+      .toEqual(['Installed', 'Latest']);
+  });
+
+  it('hides entity-card detail titles by default', () => {
+    const rendered = renderDataView('list', {
+      pageId: 'maintenance',
+      title: 'Repositories',
+      sourceName: 'maintenance-repositories',
+      view: {
+        mark: 'list',
+        list: { style: 'entity-cards', card: 'maintenance-repository', icon: 'repo' },
+        encoding: { columns: [{ field: 'repository' }] }
+      },
+      rows: [{ repository: 'github/gh-aw', 'gh-aw-version': 'v0.89.4' }],
+      cardTemplates: {
+        'maintenance-repository': {
+          icon: 'repo',
+          title: { field: 'repository' },
+          labels: [],
+          details: [{ field: 'gh-aw-version', title: 'Installed' }]
+        }
+      },
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    expect(rendered?.querySelector('.issue-list-card-meta')?.classList.contains('issue-list-card-meta-labelled'))
+      .toBe(false);
+  });
+
   it('renders entity-card grids with row-selected icons', () => {
     const rendered = renderDataView('list', {
       pageId: 'agents',

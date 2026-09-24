@@ -347,6 +347,12 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .issue-list-card-meta dd { margin: 0; }
 .issue-list-card-meta dd:not(:last-child)::after { margin-left: 6px; color: var(--muted); content: "·"; }
 .issue-list-card-meta a { color: inherit; }
+.issue-list-card-meta-labelled { gap: 2px 12px; }
+.issue-list-card-meta-labelled > div { display: inline-flex; align-items: baseline; gap: 4px; }
+.issue-list-card-meta-labelled dt { position: static; width: auto; height: auto; overflow: visible; clip: auto; color: var(--muted); }
+.issue-list-card-meta-labelled dt::after { content: ":"; }
+.issue-list-card-meta-labelled dd { color: var(--fg); }
+.issue-list-card-meta-labelled dd:not(:last-child)::after { content: none; }
 .issue-list-labels { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; margin: 2px 0 0; padding: 0; list-style: none; }
 .issue-list-labels li { max-width: 220px; padding: 0 9px; overflow: hidden; border: 1px solid var(--accent-muted); border-radius: 999px; background: var(--accent-muted); color: var(--accent); font-size: .6875rem; font-weight: 600; line-height: 18px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 .cli-action-dialog { width: min(720px, calc(100vw - 32px)); max-width: none; max-height: calc(100vh - 32px); height: fit-content; margin: auto; padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); box-shadow: 0 16px 48px color-mix(in srgb, var(--canvas-inset) 70%, transparent); color: var(--fg); text-align: left; white-space: normal; }
@@ -898,27 +904,6 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .table-intent-copy-button:disabled { cursor: progress; opacity: .65; }
 .table-intent-copy-button[data-copy-state="success"] { border-color: var(--success); }
 .table-intent-copy-button[data-copy-state="error"] { border-color: var(--danger); }
-.campaign-problem-list{padding:0;overflow:hidden;border:1px solid var(--border);border-radius:6px;background:var(--canvas)}
-.campaign-problem-list>:is(h3,h4){margin:0;padding:10px 14px 8px;border-bottom:1px solid var(--border);background:var(--canvas-subtle);text-transform:uppercase;font-size:.75rem;letter-spacing:.04em}
-.campaign-problem-list>.view-description{margin:0;padding:8px 14px;border-bottom:1px solid var(--border-muted);color:var(--muted);font-size:.75rem}
-.campaign-problem-group{border-bottom:1px solid var(--border-muted)}
-.campaign-problem-group-header{display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--canvas-subtle)}
-.campaign-problem-group-name{margin:0;font-size:inherit;font-weight:600}
-.campaign-problem-group-path{min-width:0;overflow:hidden;color:var(--muted);font-size:.75rem;text-overflow:ellipsis;white-space:nowrap}
-.campaign-problem-items{margin:0;padding:0;list-style:none}
-.campaign-problem-item{min-height:42px;display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;gap:8px;padding:6px 12px 6px 40px;border-top:1px solid var(--border-muted)}
-.campaign-problem-severity{width:16px;height:16px;display:grid;place-items:center;color:var(--danger)}
-.campaign-problem-copy{min-width:0}
-.campaign-problem-message,.campaign-problem-target{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.campaign-problem-target{color:var(--fg);font-size:.75rem}
-.campaign-problem-metadata{margin:0;color:var(--muted);font-size:.75rem}
-.campaign-problem-age{color:var(--muted);font-size:.75rem;font-weight:400}
-.campaign-problem-item .table-intent-button{min-height:28px;padding:3px 8px}
-.campaign-problem-list-empty{margin:0;padding:18px 14px;color:var(--muted)}
-@media (max-width: 700px) {
-  .campaign-problem-item{grid-template-columns:20px minmax(0,1fr) auto;grid-template-rows:auto auto;padding-left:12px}
-  .campaign-problem-item .table-intent-control{grid-column:2;grid-row:2;justify-self:start}
-}
 h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 0 0 20px; overflow: visible; }
 .metrics div, .data-state-summary > div { min-width: 0; min-height: 90px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 0; background: var(--canvas-subtle); }

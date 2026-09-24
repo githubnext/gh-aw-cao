@@ -402,7 +402,7 @@ describe('dashboard DOM provenance', () => {
                   id: 'summary',
                   title: 'Summary',
                   mark: 'element',
-                  element: 'campaign-problem-list',
+                  element: 'outcomes-overview',
                   data: { source: 'summary' }
                 },
                 {
@@ -450,7 +450,7 @@ describe('dashboard DOM provenance', () => {
       expect(page?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0]');
       expect(section?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].sections[0]');
       expect(summary?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
-      expect(summary?.firstElementChild?.getAttribute('data-js-view')).toBe('campaign-problem-list');
+      expect(summary?.firstElementChild?.getAttribute('data-js-view')).toBe('outcomes-overview');
       expect(metric?.querySelector('.metric-value')?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[1]');
       await vi.waitFor(() => {
         expect([...rendered.querySelectorAll('*')].every((element) => element.hasAttribute('data-json-path'))).toBe(true);
@@ -460,7 +460,7 @@ describe('dashboard DOM provenance', () => {
       summary?.append(dynamicChild);
       await vi.waitFor(() => {
         expect(dynamicChild.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
-        expect(dynamicChild.getAttribute('data-js-view')).toBe('campaign-problem-list');
+        expect(dynamicChild.getAttribute('data-js-view')).toBe('outcomes-overview');
       });
 
       const replacementSection = rendered.ownerDocument.createElement('section');
@@ -474,7 +474,7 @@ describe('dashboard DOM provenance', () => {
       await vi.waitFor(() => {
         expect(replacementSection.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].sections[0]');
         expect(replacementView.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
-        expect(replacementView.firstElementChild?.getAttribute('data-js-view')).toBe('campaign-problem-list');
+        expect(replacementView.firstElementChild?.getAttribute('data-js-view')).toBe('outcomes-overview');
       });
     } finally {
       window.history.pushState(null, '', '/');
@@ -635,7 +635,7 @@ describe('presenter built-in and custom pages', () => {
     expect(view?.textContent).not.toContain('Invalid custom view definition.');
   });
 
-  it('renders the most-blocked domains pie chart and aggregated domain table', async () => {
+  it('renders the most-blocked domains pie chart and drills domain cards to workflows', async () => {
     const metadata = /** @type {const} */ ({
       'source-id': 'firewall-fixture',
       'source-kind': 'fixture',
@@ -665,7 +665,6 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('[data-chart-category="blocked.example"]')).not.toBeNull();
     expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] .chart-legend-pie strong')?.textContent).toBe('3,177,281');
     expect(page?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
-    expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     const text = page?.textContent ?? '';
     expect(text).toContain('api.github.com');
     expect(text).toContain('new.example');
@@ -677,6 +676,8 @@ describe('presenter built-in and custom pages', () => {
     expect(firewallCard?.querySelector('.entity-card-list-title')?.textContent).toBe('blocked.example');
     expect([...firewallCard?.querySelectorAll('.entity-card-list-metric') ?? []].map((metric) => metric.textContent))
       .toEqual(['0Allowed', '3177281Blocked', '1Runs']);
+    expect(firewallCard?.querySelector('[data-card-drill="query"]')?.getAttribute('href'))
+      .toBe('#page-firewall-domain-workflows?query=firewall-domain-workflows&title=blocked.example&domain=blocked.example');
     expect(text).not.toContain('firewall failure');
     rendered.remove();
   });
@@ -717,7 +718,7 @@ describe('presenter built-in and custom pages', () => {
     const page = await activatePage(rendered, 'firewall');
     const view = page?.querySelector('[data-view-id="security-firewall-domains"]');
     expect(view?.getAttribute('data-view-layout')).toBe('full-view');
-    expect(view?.querySelector('.table-region')?.textContent).toContain(
+    expect(view?.textContent).toContain(
       'No observed firewall domains are available for this selection.'
     );
     rendered.remove();
@@ -749,8 +750,8 @@ describe('presenter built-in and custom pages', () => {
         'engines-models-usage': {
           source: 'engines-models-usage',
           rows: [
-            { summary: 'copilot / gpt-5.6-sol', runs: 2 },
-            { summary: 'pi / claude-sonnet-5', runs: 1 }
+            { summary: 'copilot / gpt-5.6-sol', runs: 2, 'average-aic-per-run': 5 },
+            { summary: 'pi / claude-sonnet-5', runs: 1, 'average-aic-per-run': 8 }
           ],
           metadata
         },
@@ -761,8 +762,9 @@ describe('presenter built-in and custom pages', () => {
     const page = await activatePage(rendered, 'engines-models');
     expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
-    expect(page?.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
-    expect(page?.querySelector('[data-view-id="engines-models-distribution"] + [data-view-id="engines-models-usage"]')).not.toBeNull();
+    expect(page?.querySelectorAll('[data-chart-widget="pie"]')).toHaveLength(1);
+    expect(page?.querySelectorAll('[data-chart-widget="horizontal-bar"]')).toHaveLength(1);
+    expect(page?.querySelector('[data-view-id="engines-models-distribution"] + [data-view-id="engines-models-cost"] + [data-view-id="engines-models-usage"]')).not.toBeNull();
     expect(page?.getAttribute('data-page-title')).toBe('Models & Agents');
     expect(page?.textContent).toContain('copilot');
     expect(page?.textContent).toContain('gpt-5.6-sol');

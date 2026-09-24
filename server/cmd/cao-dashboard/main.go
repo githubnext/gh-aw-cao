@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
+	debuglogger "github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/server"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
@@ -25,6 +26,8 @@ import (
 var version = "dev"
 
 const defaultRedisURL = "redis://127.0.0.1:6379/0"
+
+var commandLog = debuglogger.New("cao:cli")
 
 func main() {
 	if override := strings.TrimSpace(os.Getenv("CAO_BUILD_VERSION")); override != "" {
@@ -42,8 +45,10 @@ func run(arguments []string) error {
 	}
 	switch arguments[0] {
 	case "serve":
+		commandLog.Printf("running serve command")
 		return serve(arguments[1:])
 	case "ingest":
+		commandLog.Printf("running ingest command")
 		return ingestCommand(arguments[1:])
 	default:
 		return fmt.Errorf("unknown subcommand %q; expected serve or ingest", arguments[0])
@@ -69,6 +74,7 @@ func serve(arguments []string) error {
 	if err := flags.Parse(arguments); err != nil {
 		return err
 	}
+	commandLog.Printf("serve flags parsed tls=%t source_ingestion=%t", *cert != "", *source != "")
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	shutdownTelemetry, err := telemetry.Setup(ctx, version)
@@ -128,6 +134,7 @@ func ingestCommand(arguments []string) error {
 	if *source == "" {
 		return errors.New("ingest requires --source DIRECTORY")
 	}
+	commandLog.Printf("ingest flags parsed")
 	client, err := redisx.New(*redisURL)
 	if err != nil {
 		return err

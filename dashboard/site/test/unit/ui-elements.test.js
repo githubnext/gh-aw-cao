@@ -24,6 +24,7 @@ describe('UI elements', () => {
       'campaign-detail',
       'campaign-dispatches',
       'campaign-insights',
+      'campaign-problem-list',
       'campaign-reports',
       'campaign-run-trend',
       'campaign-status-grid',
@@ -55,7 +56,6 @@ describe('UI elements', () => {
   });
 
   it('retains the referenced custom element renderers', () => {
-    expect(renderUiElement('campaign-problem-list', context)).not.toBeNull();
     expect(elementHandlesEmptyRows('campaign-route')).toBe(true);
     expect(elementHandlesEmptyRows('workflow-route-page')).toBe(true);
     expect(elementHandlesEmptyRows('configuration-policy')).toBe(true);

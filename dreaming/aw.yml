@@ -1,0 +1,8 @@
+name: Dreaming
+description: Evidence-bounded curation of AGENTS.md and other ambient agentic context, and future skill extraction and refinement.
+min-version: v0.89.20
+experimental: true
+includes:
+  - ../aw.yml
+  - .github/workflows/dreaming-agents-md-curator.md
+  - .github/workflows/dreaming.md
