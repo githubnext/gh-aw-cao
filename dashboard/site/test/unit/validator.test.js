@@ -88,7 +88,7 @@ describe('dashboard document validation', () => {
       title: 'Failed runs',
       description: 'One or more runs need attention.',
       'visible-when': {
-        source: 'failed-runs',
+        source: 'runs-table',
         field: 'run-conclusion',
         equals: 'failure'
       }
@@ -303,73 +303,19 @@ describe('dashboard document validation', () => {
     };
     documents.forEach((document) => visit(document.dashboard.pages));
 
-    expect(temporalFields.length).toBeGreaterThan(20);
+    expect(temporalFields.length).toBeGreaterThan(5);
     expect(temporalFields.every((field) => field.format === 'human-friendly-timestamp')).toBe(true);
   });
 
-  it('defines Overview child pages with exact attention filters and GitHub evidence links', () => {
+  it('does not retain unreachable Overview child pages', () => {
     const document = JSON.parse(authoritativeDashboardSource);
-    const pages = Object.fromEntries(document.dashboard.pages.map(
-      (/** @type {{ id: string }} */ page) => [page.id, page]
-    ));
-
-    for (const pageId of [
+    const pageIds = new Set(document.dashboard.pages.map((/** @type {{ id: string }} */ page) => page.id));
+    expect([...pageIds]).not.toEqual(expect.arrayContaining([
       'overview-failed-runs',
       'overview-blocked-work',
       'overview-awaiting-review',
       'overview-security-findings'
-    ]) {
-      expect(pages[pageId].route).toEqual({ 'navigation-page': 'overview' });
-      expect(pages[pageId].views).toHaveLength(1);
-      expect(pages[pageId].views[0].mark).toBe('table');
-      expect(pages[pageId].views[0].layout).toBe('full-view');
-      expect(pages[pageId].views[0]['column-summaries']).toBe(true);
-    }
-
-    expect(pages['overview-failed-runs'].views[0]).toMatchObject({
-      data: { source: 'failed-runs', filters: { 'run-conclusion': ['failure', 'startup-failure', 'stale', 'timed-out'] } },
-      encoding: {
-        columns: [
-          { field: 'started-at', type: 'temporal', title: 'Date' },
-          { field: 'repository', type: 'nominal', title: 'Repository' },
-          { field: 'failure-detail', type: 'nominal', title: 'Error', display: 'run-link' }
-        ]
-      }
-    });
-    expect(pages['overview-failed-runs'].views[0].encoding.href).toBeUndefined();
-    expect(pages['overview-blocked-work'].views[0]).toMatchObject({
-      data: { source: 'work-items', filters: { 'lifecycle-state': 'blocked' } },
-      encoding: {
-        columns: [
-          { field: 'waiting-since', type: 'temporal', title: 'Date' },
-          { field: 'repository', type: 'nominal', title: 'Repository' },
-          { field: 'reason', type: 'nominal', title: 'Blocked by', display: 'run-link' }
-        ]
-      }
-    });
-    expect(pages['overview-blocked-work'].views[0].encoding.href).toBeUndefined();
-    expect(pages['overview-awaiting-review'].views[0]).toMatchObject({
-      data: { source: 'work-items', filters: { 'lifecycle-state': 'review' } },
-      encoding: {
-        columns: [
-          { field: 'waiting-since', type: 'temporal', title: 'Date' },
-          { field: 'repository', type: 'nominal', title: 'Repository' },
-          { field: 'objective', type: 'nominal', title: 'Work', display: 'evidence-link' }
-        ]
-      }
-    });
-    expect(pages['overview-awaiting-review'].views[0].encoding.href).toBeUndefined();
-    expect(pages['overview-security-findings'].views[0]).toMatchObject({
-      data: { source: 'security-findings' },
-      encoding: {
-        columns: [
-          { field: 'observed-at', type: 'temporal', title: 'Date' },
-          { field: 'repository', type: 'nominal', title: 'Repository' },
-          { field: 'smell-name', type: 'nominal', title: 'Finding', display: 'run-link' }
-        ]
-      }
-    });
-    expect(pages['overview-security-findings'].views[0].encoding.href).toBeUndefined();
+    ]));
   });
 
 

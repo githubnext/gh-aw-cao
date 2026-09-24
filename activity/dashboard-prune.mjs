@@ -21,8 +21,9 @@ const FIELD_REFERENCE_KEYS = new Set(['field', 'left', 'right', 'as']);
  * queries, rewrites their references, and removes queries no retained content uses.
  *
  * @param {unknown} document
+ * @param {{ linkedPageIds?: Iterable<string> }} [options]
  */
-export function pruneDashboardDocument(document) {
+export function pruneDashboardDocument(document, options = {}) {
   if (!isRecord(document) || !isRecord(document.dashboard)) {
     throw new Error('Dashboard document must contain a dashboard object');
   }
@@ -32,7 +33,7 @@ export function pruneDashboardDocument(document) {
   const queries = Array.isArray(dashboard.queries) ? dashboard.queries : [];
   const similarQueries = analyzeDashboardQueries(queries);
   const pages = Array.isArray(dashboard.pages) ? dashboard.pages : [];
-  const livePageIds = findLivePageIds(dashboard);
+  const livePageIds = findLivePageIds(dashboard, options.linkedPageIds);
   const removedPages = pages
     .filter((page) => isRecord(page) && typeof page.id === 'string' && !livePageIds.has(page.id))
     .map((page) => page.id);
@@ -96,8 +97,8 @@ export function pruneDashboardDocument(document) {
   };
 }
 
-/** @param {Record<string, any>} dashboard */
-function findLivePageIds(dashboard) {
+/** @param {Record<string, any>} dashboard @param {Iterable<string> | undefined} externalLinkedPageIds */
+function findLivePageIds(dashboard, externalLinkedPageIds) {
   const pages = Array.isArray(dashboard.pages) ? dashboard.pages : [];
   const pageById = new Map(pages.flatMap((page) => (
     isRecord(page) && typeof page.id === 'string' ? [[page.id, page]] : []
@@ -127,6 +128,7 @@ function findLivePageIds(dashboard) {
       addPage(callout['navigation-page']);
     }
   }
+  for (const id of externalLinkedPageIds ?? []) addPage(id);
 
   while (pending.length > 0) {
     const page = pageById.get(pending.pop());

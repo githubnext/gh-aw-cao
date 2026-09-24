@@ -7,9 +7,6 @@ const dashboard = document.dashboard;
 const templates = Object.fromEntries(dashboard['card-templates'].map(
   (/** @type {Record<string, any>} */ template) => [template.id, template]
 ));
-const views = Object.fromEntries(dashboard.views.map(
-  (/** @type {Record<string, any>} */ view) => [view.id, view]
-));
 const pages = Object.fromEntries(dashboard.pages.map(
   (/** @type {Record<string, any>} */ page) => [page.id, page]
 ));
@@ -77,9 +74,9 @@ describe('entity card templates', () => {
         { field: 'duration', icon: 'stopwatch' }
       ]
     });
-    const runQuery = dashboard.queries.find((/** @type {Record<string, any>} */ query) => query.name === 'entity-runs');
+    const runQuery = dashboard.queries.find((/** @type {Record<string, any>} */ query) => query.name === 'runs-table');
     const selected = runQuery.select.map((/** @type {Record<string, any>} */ field) => field.field);
-    expect(selected).toEqual(expect.arrayContaining(['workflow', 'target-repository', 'run-title', 'run-status', 'run-conclusion', 'branch', 'event', 'duration', 'started-at']));
+    expect(selected).toEqual(expect.arrayContaining(['run', 'run-status', 'run-conclusion', 'repository-coordinate', 'rollout-mode', 'run-link']));
   });
 
   it('presents workflow inventory cards with identity and run outcome totals', () => {
@@ -104,11 +101,6 @@ describe('entity card templates', () => {
     );
     const columns = inventoryView.encoding.columns.map((/** @type {Record<string, any>} */ field) => field.field);
     expect(columns).toEqual(expect.arrayContaining(['workflow-name', 'workflow', 'runs', 'successful-runs', 'failed-runs', 'aic-per-run']));
-    const entityQuery = dashboard.queries.find(
-      (/** @type {Record<string, any>} */ query) => query.name === 'entity-workflows'
-    );
-    const entityFields = entityQuery.select.map((/** @type {Record<string, any>} */ field) => field.as ?? field.field);
-    expect(entityFields).toEqual(expect.arrayContaining(['runs', 'successful-runs', 'failed-runs', 'aic-per-run']));
   });
 
   it('declares a firewall domain card with allowed and blocked metrics', () => {
@@ -134,44 +126,14 @@ describe('entity card templates', () => {
     });
   });
 
-  it('drills from repositories through workflows and runs to events', () => {
-    expect(views['entity-repositories'].list).toMatchObject({
-      card: 'repository',
-      drill: {
-        type: 'query',
-        page: 'repository-workflows',
-        query: 'entity-workflows',
-        arguments: [
-          { name: 'organization', field: 'organization' },
-          { name: 'repository', field: 'repository' }
-        ]
-      }
-    });
-    expect(views['repository-workflows'].data.arguments).toEqual([
-      { name: 'organization', field: 'organization' },
-      { name: 'repository', field: 'repository' }
-    ]);
-    expect(views['repository-workflows'].list.drill).toMatchObject({
-      page: 'workflow-run-cards',
-      query: 'entity-runs'
-    });
-    expect(views['workflow-runs-cards'].list.drill).toMatchObject({
-      page: 'run-events',
-      query: 'entity-events'
-    });
-    expect(pages['run-events'].views).toEqual(['run-events']);
+  it('removes unreachable reusable entity drill views', () => {
+    expect(dashboard.views).toBeUndefined();
+    expect(pages['repository-workflows']).toBeUndefined();
+    expect(pages['workflow-run-cards']).toBeUndefined();
+    expect(pages['run-events']).toBeUndefined();
   });
 
-  it('specializes GitHub entity events', () => {
-    expect(views['run-events']).toMatchObject({
-      data: {
-        source: 'entity-events',
-        arguments: expect.arrayContaining([{ name: 'run', field: 'run' }])
-      },
-      list: {
-        card: 'event',
-        drill: { type: 'external', field: 'event-url' }
-      }
-    });
+  it('removes unreachable entity event queries', () => {
+    expect(dashboard.queries.some((/** @type {{ name: string }} */ query) => query.name === 'entity-events')).toBe(false);
   });
 });

@@ -2183,7 +2183,9 @@ export async function pruneDashboardFile({ inputPath, outputPath } = {}) {
     }
     throw error;
   }
-  const result = pruneDashboardDocument(document);
+  const result = pruneDashboardDocument(document, {
+    linkedPageIds: await discoverStaticDashboardPageLinks(path.dirname(path.resolve(inputPath)))
+  });
   if (outputPath) await writeJsonAtomically(outputPath, result.document);
   return {
     command: 'prune-dashboard',
@@ -2191,6 +2193,34 @@ export async function pruneDashboardFile({ inputPath, outputPath } = {}) {
     ...(outputPath ? { output: outputPath } : {}),
     ...result.report
   };
+}
+
+async function discoverStaticDashboardPageLinks(dashboardDirectory) {
+  const sourceDirectory = path.join(dashboardDirectory, 'src');
+  const links = new Set();
+  const pending = [sourceDirectory];
+  while (pending.length > 0) {
+    const directory = pending.pop();
+    let entries;
+    try {
+      entries = await readdir(directory, { withFileTypes: true });
+    } catch (error) {
+      if (error?.code === 'ENOENT') continue;
+      throw error;
+    }
+    for (const entry of entries) {
+      const entryPath = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        pending.push(entryPath);
+        continue;
+      }
+      if (!entry.isFile() || !entry.name.endsWith('.js')) continue;
+      const source = await readFile(entryPath, 'utf8');
+      for (const match of source.matchAll(/#page-([a-z0-9-]+)/gi)) links.add(match[1]);
+      for (const match of source.matchAll(/\b\w+Tab\(\s*['"]([a-z0-9-]+)['"]/gi)) links.add(match[1]);
+    }
+  }
+  return links;
 }
 
 export async function analyzeDashboardComplexityFile({

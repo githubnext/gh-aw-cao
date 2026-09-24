@@ -1762,7 +1762,7 @@ describe('presenter built-in and custom pages', () => {
 
 
   it('keeps logical parent navigation available when a secondary page is loaded directly', () => {
-    window.history.replaceState(null, '', '/#page-overview-failed-runs');
+    window.history.replaceState(null, '', '/#page-repository-insights?repository=githubnext%2Fgh-aw-cao');
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {}
@@ -1770,11 +1770,11 @@ describe('presenter built-in and custom pages', () => {
     const back = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('.mobile-history-back'));
 
     expect(back?.hidden).toBe(false);
-    expect(back?.getAttribute('aria-label')).toBe('Back to Overview');
+    expect(back?.getAttribute('aria-label')).toBe('Back to Repositories');
     back?.click();
 
-    expect(window.location.hash).toBe('#page-overview');
-    expect(rendered.querySelector('[data-page-id="overview"]')?.hasAttribute('hidden')).toBe(false);
+    expect(window.location.hash).toBe('#page-repositories');
+    expect(rendered.querySelector('[data-page-id="repositories"]')?.hasAttribute('hidden')).toBe(false);
     window.history.replaceState(null, '', '/');
   });
 
@@ -2320,18 +2320,24 @@ describe('presenter built-in and custom pages', () => {
         pages: [
           {
             id: 'evals',
-            kind: /** @type {'built-in'} */ ('built-in'),
-            page: 'evals',
+            kind: /** @type {'custom'} */ ('custom'),
             title: 'Evals',
-            definition: {
-              'data-state': {
-                availability: true
+            views: [
+              {
+                id: 'evals-source',
+                title: 'Evals Source',
+                data: { source: 'evals' },
+                mark: 'table',
+                encoding: { columns: [{ field: 'eval' }, { field: 'eval-name' }, { field: 'eval-question' }] }
               },
-              views: [
-                { id: 'evals-source', data: { source: 'evals' } },
-                { id: 'eval-observations-source', data: { source: 'eval-observations' } }
-              ]
-            }
+              {
+                id: 'eval-observations-source',
+                title: 'Evals Observations Source',
+                data: { source: 'eval-observations' },
+                mark: 'table',
+                encoding: { columns: [{ field: 'eval' }, { field: 'eval-result' }, { field: 'resolved-model' }] }
+              }
+            ]
           }
         ]
       }
@@ -2377,7 +2383,7 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const evalsPage = rendered.querySelector('[data-page-name="evals"]');
-    expect(evalsPage?.textContent).toContain('Evals Evals Source');
+    expect(evalsPage?.textContent).toContain('Evals Source');
     expect(evalsPage?.textContent).toContain('Evals Observations Source');
     expect(/** @type {HTMLElement | null} */ (rendered.querySelector('.data-state-summary'))?.hidden).toBe(true);
     expect(evalsPage?.querySelectorAll('.custom-table')[0]?.querySelectorAll('tbody tr')).toHaveLength(2);
@@ -2408,17 +2414,21 @@ describe('presenter built-in and custom pages', () => {
         pages: [
           {
             id: 'findings',
-            kind: /** @type {'built-in'} */ ('built-in'),
-            page: 'findings',
+            kind: /** @type {'custom'} */ ('custom'),
             title: 'Findings',
-            definition: {
-              'data-state': {
-                availability: true
-              },
-              views: [
-                { id: 'findings-source', data: { source: 'findings' } }
-              ]
-            }
+            views: [{
+              id: 'findings-source',
+              data: { source: 'findings' },
+              mark: 'table',
+              encoding: {
+                columns: [
+                  { field: 'finding-summary' },
+                  { field: 'finding-severity' },
+                  { field: 'issue-link', type: 'nominal' }
+                ],
+                href: { field: 'issue-link', type: 'nominal' }
+              }
+            }]
           }
         ]
       }

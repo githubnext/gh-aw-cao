@@ -475,14 +475,19 @@ test('prunes pages, reusable views, and queries unreachable from navigation or l
         id: 'evals',
         kind: 'custom',
         views: ['eval-view']
+      },
+      {
+        id: 'external-link',
+        kind: 'custom',
+        views: []
       }
     ],
     navigation: [{ pages: ['overview'] }]
   });
 
-  const { document, report } = pruneDashboardDocument(input);
+  const { document, report } = pruneDashboardDocument(input, { linkedPageIds: ['external-link'] });
 
-  assert.deepEqual(document.dashboard.pages.map((page) => page.id), ['overview', 'detail']);
+  assert.deepEqual(document.dashboard.pages.map((page) => page.id), ['overview', 'detail', 'external-link']);
   assert.deepEqual(document.dashboard.views.map((view) => view.id), ['detail-view']);
   assert.deepEqual(document.dashboard.queries.map((query) => query.name), ['overview-query', 'detail-query']);
   assert.deepEqual(report.pages.removed, ['orphan', 'evals']);

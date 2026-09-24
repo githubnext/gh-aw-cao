@@ -19,7 +19,6 @@ const metadata = {
 describe('Audit dashboard view', () => {
   it('reuses campaign-filtered Audit views for the campaign Insights facet', () => {
     const insights = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'campaign-insights');
-    const issues = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'campaign-issues');
 
     expect(insights.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual([
       'campaign-insights-navigation',
@@ -43,15 +42,9 @@ describe('Audit dashboard view', () => {
         color: { field: 'event-summary' }
       }
     });
-    expect(issues.views
-      .filter((/** @type {{ data?: { source?: string } }} */ view) => view.data?.source === 'campaign-worker-issues')
-      .map((/** @type {{ data: Record<string, string> }} */ view) => view.data['route-field'])).toEqual([
-      'campaign',
-      'campaign'
-    ]);
   });
 
-  it('projects only issue outcomes produced by campaign workers', () => {
+  it('does not retain the unused campaign worker issue projection', () => {
     const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
       queries: dashboard.queries,
@@ -77,9 +70,7 @@ describe('Audit dashboard view', () => {
       }
     }));
 
-    expect(result['campaign-worker-issues'].rows).toEqual([
-      expect.objectContaining({ campaign: 'ambient-context', 'safe-output': 'worker-issue' })
-    ]);
+    expect(result['campaign-worker-issues']).toBeUndefined();
   });
 
   it('uses audit codes as event kinds with a legacy event-type fallback', () => {

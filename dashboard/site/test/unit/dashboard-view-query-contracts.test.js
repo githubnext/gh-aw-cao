@@ -82,51 +82,18 @@ describe('dashboard view query contracts', () => {
     )).toEqual([]);
   });
 
-  it('keeps assessment-sensitive high-cardinality views declaratively bounded', () => {
-    const pagesById = new Map(dashboard.pages.map((/** @type {Record<string, unknown>} */ page) => [page.id, page]));
-    const boundedViews = [
-      ['graders', 'graders-graders-source', 100],
-      ['graders', 'graders-observations-source', 100],
-      ['usage', 'usage-usage-source', 100],
-      ['findings', 'findings-source', 100]
-    ];
-
-    for (const [pageId, viewId, limit] of boundedViews) {
-      const view = viewsOf(pagesById.get(pageId)).find((candidate) => candidate.id === viewId);
-      const data = /** @type {Record<string, unknown> | undefined} */ (view?.data);
-
-      expect(data?.limit, `${pageId}/${viewId} should bound rendered source rows`).toBe(limit);
-      expect(data?.['order-by'], `${pageId}/${viewId} should choose deterministic retained rows`).toEqual(expect.any(Array));
-    }
+  it('does not retain unreachable assessment inventory pages', () => {
+    const pageIds = new Set(dashboard.pages.map((/** @type {{ id: string }} */ page) => page.id));
+    expect([...pageIds]).not.toEqual(expect.arrayContaining(['graders', 'usage', 'findings']));
   });
 
-  it('renders the failed-runs ledger as a bounded lazy table', () => {
-    const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) =>
-      candidate.id === 'overview-failed-runs'
-    );
-
-    expect(viewsOf(page)).toMatchObject([{
-      id: 'overview-failed-runs-ledger',
-      data: {
-        source: 'failed-runs',
-        'order-by': [{ field: 'started-at', direction: 'desc' }]
-      },
-      mark: 'table',
-      controls: 'interactive',
-      'lazy-list': true,
-      layout: 'full-view'
-    }]);
+  it('does not retain the unreachable failed-runs ledger', () => {
+    expect(dashboard.pages.some((/** @type {{ id: string }} */ page) => page.id === 'overview-failed-runs')).toBe(false);
+    expect(queryNames.has('failed-runs')).toBe(false);
   });
 
-  it('keeps campaign run navigation first and failure views scoped to dispatches', () => {
-    const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-runs');
-    const views = viewsOf(page);
-
-    expect(views[0]?.id).toBe('campaign-run-navigation');
-    for (const viewId of ['campaign-failure-reason-distribution', 'campaign-failed-dispatch-table']) {
-      const view = views.find((candidate) => candidate.id === viewId);
-      expect(/** @type {Record<string, unknown> | undefined} */ (view?.data)?.source).toBe('dispatches');
-    }
+  it('retains the campaign run page linked from campaign navigation', () => {
+    expect(dashboard.pages.some((/** @type {{ id: string }} */ page) => page.id === 'campaign-runs')).toBe(true);
   });
 
   it('renders issues per repository and one activity inventory', () => {
