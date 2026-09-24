@@ -20,6 +20,10 @@ export default [
       'no-eval': 'error',
       'no-implied-eval': 'error',
       'no-new-func': 'error',
+      'no-restricted-syntax': ['error', {
+        selector: 'MemberExpression[property.name="length"][object.type="CallExpression"][object.callee.type="MemberExpression"][object.callee.property.name="rows"]',
+        message: 'Use source availability metadata for existence checks or a declarative count query instead of materializing rows.'
+      }],
       'no-unused-vars': ['error', { 'argsIgnorePattern': '^_' }]
     }
   },

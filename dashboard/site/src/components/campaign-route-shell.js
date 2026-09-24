@@ -57,7 +57,7 @@ export function renderCampaignRouteShell(context, config) {
     isUnavailable: () => {
       if (bindings.workflows.unavailable()) return true;
       return !bindings.workflows.pending()
-        && bindings.workflows.rows().length === 0
+        && bindings.workflows.empty()
         && bindings.workflows.source()?.metadata?.completeness === 'complete';
     },
     hasSelection: (routeValue) => normalizeCampaignRoute(routeValue).length > 0,
@@ -108,7 +108,7 @@ export function renderCampaignRouteShell(context, config) {
             })
           };
         }
-        if (bindings.workflows.rows().length === 0) {
+        if (bindings.workflows.empty()) {
           const campaignName = campaignNameForRoute(campaignId, workflows);
           return {
             allocation: {
@@ -136,6 +136,7 @@ export function renderCampaignRouteShell(context, config) {
     for (const binding of Object.values(bindings)) {
       binding.rows();
       binding.pending();
+      binding.empty();
       binding.unavailable();
     }
     const routeValue = root.dataset.campaign ?? '';
