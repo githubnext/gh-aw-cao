@@ -139,7 +139,8 @@ Package-level `problem-clustering.mjs` programs read a private Activity SQLite
 snapshot and emit bounded problem records through `cao cluster-problems`.
 Activity validates their output and atomically replaces only the contributing
 package's rows in the disposable `cao_problems` SQLite projection; a failed
-package computation retains its prior rows and cannot mutate canonical evidence.
+package computation retains its prior rows and cannot mutate canonical evidence,
+while removing a package removes its rows on the next clustering run.
 The browser materializes bounded runtime and failure-scope results by
 generation, computes detailed audit causes only for selected or prioritized
 partitions, and discards every result safely because canonical evidence remains

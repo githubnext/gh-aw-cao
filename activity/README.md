@@ -107,7 +107,8 @@ Activity validates and bounds the output, then atomically replaces only that
 package's rows in the `cao_problems` SQLite table. A failing script leaves its
 previous rows intact and does not prevent other packages from contributing.
 Scripts receive a private database snapshot and cannot mutate the canonical
-Activity projection directly.
+Activity projection directly. Rows from packages that no longer contribute a
+clustering script are removed during the next run.
 
 Run the same discovery locally with:
 

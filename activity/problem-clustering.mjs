@@ -201,6 +201,22 @@ function replaceProblems(databasePath, producer, problems) {
   }
 }
 
+function removeUninstalledProducerProblems(databasePath, producers) {
+  const database = new DatabaseSync(databasePath);
+  try {
+    database.exec('PRAGMA busy_timeout = 5000');
+    database.exec(PROBLEMS_SCHEMA);
+    if (producers.length === 0) {
+      database.exec('DELETE FROM cao_problems');
+      return;
+    }
+    const placeholders = producers.map(() => '?').join(', ');
+    database.prepare(`DELETE FROM cao_problems WHERE producer NOT IN (${placeholders})`).run(...producers);
+  } finally {
+    database.close();
+  }
+}
+
 export async function runProblemClustering({
   databasePath,
   root = '.',
@@ -209,6 +225,7 @@ export async function runProblemClustering({
   const observedAt = canonicalTimestamp(timestamp, '--timestamp');
   const resolvedDatabase = path.resolve(databasePath);
   const scripts = await discoverProblemClusteringScripts(root);
+  removeUninstalledProducerProblems(resolvedDatabase, scripts.map((entry) => entry.package));
   const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'cao-problem-clustering-'));
   const snapshot = path.join(temporaryDirectory, 'activity.sqlite');
   const values = [];

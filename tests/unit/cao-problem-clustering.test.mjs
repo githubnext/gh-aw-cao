@@ -55,6 +55,12 @@ test('package clustering scripts replace only their validated problem rows', asy
           campaign, repository, workflow, target_repository, evidence
         ) VALUES ('failing', 'retained', ?, 'low', 'Retained', '', 'failing', '', '', '', '{}')
       `).run(timestamp);
+      database.prepare(`
+        INSERT INTO cao_problems (
+          producer, problem_id, observed_at, severity, title, summary,
+          campaign, repository, workflow, target_repository, evidence
+        ) VALUES ('removed-package', 'stale', ?, 'low', 'Stale', '', 'removed-package', '', '', '', '{}')
+      `).run(timestamp);
     } finally {
       database.close();
     }
