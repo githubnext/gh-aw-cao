@@ -5,6 +5,7 @@ import {
   BUILT_IN_PAGE_KEYS,
   BUILT_IN_PAGE_VALUES,
   CARD_TEMPLATE_ACTION_KEYS,
+  CARD_DETAIL_LABEL_VALUES,
   CARD_STATUS_KEYS,
   CARD_TEMPLATE_KEYS,
   CARD_TIMING_FIELD_KEYS,
@@ -641,6 +642,9 @@ function validateCardTemplates(templates, templatesNode, errors) {
     validateCardTemplateField(template.title, getValueNodeByKey(templateNode, 'title'), `${path}.title`, errors);
     if (template.subtitle !== undefined) {
       validateCardTemplateField(template.subtitle, getValueNodeByKey(templateNode, 'subtitle'), `${path}.subtitle`, errors);
+    }
+    if (template['detail-labels'] !== undefined && !CARD_DETAIL_LABEL_VALUES.includes(String(template['detail-labels']))) {
+      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'card template detail labels must be hidden or visible.', `${path}.detail-labels`));
     }
     validateCardTemplateStatus(template.status, getValueNodeByKey(templateNode, 'status'), `${path}.status`, errors);
     validateCardTemplateTiming(template.timing, getValueNodeByKey(templateNode, 'timing'), `${path}.timing`, errors);

@@ -461,6 +461,7 @@
           "field": "campaign-name",
           "title": "Package"
         },
+        "detail-labels": "visible",
         "details": [
           {
             "field": "campaign-version",
@@ -503,6 +504,7 @@
           "field": "repository",
           "title": "Repository"
         },
+        "detail-labels": "visible",
         "details": [
           {
             "field": "gh-aw-version",
@@ -11991,7 +11993,7 @@
           },
           {
             "id": "maintenance-repositories",
-            "disclosure": "supplemental",
+            "title": "Repositories",
             "description": "Installed and current gh-aw compiler versions observed for each repository.",
             "data": {
               "source": "maintenance-repositories"
