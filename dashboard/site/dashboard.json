@@ -12499,7 +12499,8 @@
             "list": {
               "style": "entity-cards",
               "card": "maintenance-campaign",
-              "icon": "workflow"
+              "icon": "workflow",
+              "action": "update-repository"
             }
           },
           {
@@ -12540,7 +12541,8 @@
             "list": {
               "style": "entity-cards",
               "card": "maintenance-repository",
-              "icon": "repo"
+              "icon": "repo",
+              "action": "upgrade-repository"
             }
           }
         ]
