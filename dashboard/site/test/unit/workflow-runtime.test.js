@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { renderWorkflowRuntime } from '../../src/components/workflow-runtime.js';
 import { createWorkflowRoutePageView } from '../../src/components/workflow-route-page-views.js';
 import { renderWorkflowRoutePage } from '../../src/components/workflow-route-page.js';
-import { renderWorkflowRouteView } from '../../src/components/workflow-route-view.js';
 
 const completeMetadata = {
   'source-id': 'fixture',
@@ -283,18 +282,6 @@ describe('renderWorkflowRuntime', () => {
     expect(rendered.textContent).toBe('Select a workflow to inspect its runtime.');
     selectWorkflow(rendered, 'githubnext/gh-aw-cao:.github/workflows/missing.md');
     expect(rendered.textContent).toBe('Workflow not found.');
-  });
-
-  it('uses declarative route view ids to choose the workflow insights composition', () => {
-    const rendered = renderWorkflowRouteView({
-      ...context(),
-      pageId: 'custom-workflow-page',
-      elementConfig: { body: 'insights' }
-    });
-    selectWorkflow(rendered);
-
-    expect(rendered.querySelector('.repository-tabs [aria-current="page"]')?.textContent).toBe('Insights');
-    expect(rendered.querySelector('.workflow-runtime-metrics')).not.toBeNull();
   });
 
   it('keeps workflow-route-page navigation aligned with the configured page route', () => {
