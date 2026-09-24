@@ -68,7 +68,7 @@ else
     echo "unexpected gh api arguments: $*" >&2
     exit 1
   fi
-  printf 'HTTP/2 200\\nlink: <https://api.github.com/repos/githubnext/gh-aw-cao/dependabot/alerts?state=open&per_page=100&after=cursor>; rel="next"\\n\\n[\\n{"number":1},\\n\\n{"number":2}\\n]\\n'
+  printf 'HTTP/2 200\\nlink: <https://api.github.com/repos/githubnext/gh-aw-cao/dependabot/alerts?state=open&per_page=100&after=cursor>; rel="next"; type="application/json"\\n\\n[\\n{"number":1},\\n\\n{"number":2}\\n]\\n'
 fi\n`);
   chmodSync(fakeGh, 0o755);
   const request = JSON.stringify({
@@ -106,7 +106,7 @@ set -euo pipefail
 if [[ " $* " == *" rate_limit "* ]]; then
   printf '5000\\n'
 else
-  printf 'HTTP/2 200\\nlink: <https://api.github.com/repos/githubnext/gh-aw-cao/dependabot/alerts?state=open&per_page=100&after=same>; rel="next"\\n\\n[]\\n'
+  printf 'HTTP/2 200\\nlink: <https://api.github.com/repos/githubnext/gh-aw-cao/dependabot/alerts?state=open&per_page=100&after=same>; rel="next"; type="application/json"\\n\\n[]\\n'
 fi\n`);
   chmodSync(fakeGh, 0o755);
   const request = JSON.stringify({
