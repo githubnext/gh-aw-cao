@@ -1551,13 +1551,13 @@
     "units": {
       "aic": {
         "name": "AICc($)",
-        "symbol": "AICc",
+        "symbol": "cAIC",
         "significant": 2,
         "format": "aicc"
       },
       "aic-per-run": {
         "name": "AICc($)",
-        "symbol": "AICc/run",
+        "symbol": "cAIC/run",
         "significant": 2,
         "format": "aicc"
       },

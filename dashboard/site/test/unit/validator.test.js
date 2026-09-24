@@ -3953,7 +3953,7 @@ dashboard:
   units:
     aic:
       name: AICc($)
-      symbol: AICc
+      symbol: cAIC
       significant: 2
       format: aicc
     human-duration:
