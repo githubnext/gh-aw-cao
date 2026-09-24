@@ -29,6 +29,9 @@ they do not include access tokens, OAuth credentials, Redis credentials,
 query payloads, or source records. Authentication paths emit fixed
 `oauth branch=<operation>.<outcome>` identifiers for every decision and outcome;
 the identifiers never contain user, request, session, or credential values.
+In the hosted dashboard, add `?debug=auth` to enable matching client-side
+authentication branch events through `dashboard/site/src/debug.js`; these
+events likewise contain fixed identifiers only.
 
 > [!IMPORTANT]
 > The default `serve` command remains local-only: it uses a local bearer
