@@ -161,22 +161,37 @@ test('full-view content keeps a responsive horizontal inset', async ({ page }) =
     </div>
   `);
 
-  const horizontalInsets = () => page.locator('main.dashboard-prototype').evaluate((main) => {
+  const contentLayout = () => page.locator('main.dashboard-prototype').evaluate((main) => {
     const content = main.querySelector('[data-page-content]');
     if (!(content instanceof HTMLElement)) throw new Error('Expected page content.');
     const mainBounds = main.getBoundingClientRect();
     const contentBounds = content.getBoundingClientRect();
     return {
       left: contentBounds.left - mainBounds.left,
-      right: mainBounds.right - contentBounds.right
+      right: mainBounds.right - contentBounds.right,
+      top: contentBounds.top - mainBounds.top,
+      bottom: mainBounds.bottom - contentBounds.bottom,
+      scrollbarGutter: getComputedStyle(main).scrollbarGutter
     };
   });
 
   await page.setViewportSize({ width: 1200, height: 800 });
-  await expect.poll(horizontalInsets).toEqual({ left: 24, right: 24 });
+  await expect.poll(contentLayout).toEqual({
+    left: 24,
+    right: 24,
+    top: 0,
+    bottom: 0,
+    scrollbarGutter: 'auto'
+  });
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect.poll(horizontalInsets).toEqual({ left: 14, right: 14 });
+  await expect.poll(contentLayout).toEqual({
+    left: 14,
+    right: 14,
+    top: 0,
+    bottom: 0,
+    scrollbarGutter: 'auto'
+  });
 });
 
 const horizontalBarFixtureLabel = '.github/workflows/extremely-long-dependabot-update-planner.md';
