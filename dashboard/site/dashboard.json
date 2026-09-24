@@ -7885,10 +7885,16 @@
         "intent": "Retain every operational-value extract and diagnostic for campaign-scoped temporal analysis.",
         "description": "Operational-value observations attributed to centrally managed campaigns by repository and workflow identity.",
         "from": "operational-values",
+        "order-by": [
+          {
+            "field": "observed-at",
+            "direction": "asc"
+          }
+        ],
         "joins": [
           {
             "source": "workflows",
-            "type": "inner",
+            "type": "left",
             "on": [
               {
                 "left": "organization",
@@ -7906,19 +7912,142 @@
             "fields": [
               {
                 "field": "campaign",
-                "as": "campaign"
+                "as": "_workflow-campaign"
               },
               {
                 "field": "campaign-name",
-                "as": "campaign-name"
+                "as": "_workflow-campaign-name"
               }
             ]
           }
         ],
-        "order-by": [
+        "compute": [
           {
-            "field": "observed-at",
-            "direction": "asc"
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "campaign"
+              },
+              {
+                "field": "_workflow-campaign"
+              }
+            ],
+            "as": "_campaign"
+          },
+          {
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "campaign-name"
+              },
+              {
+                "field": "_workflow-campaign-name"
+              }
+            ],
+            "as": "_campaign-name"
+          }
+        ],
+        "select": [
+          {
+            "field": "organization"
+          },
+          {
+            "field": "repository"
+          },
+          {
+            "field": "repository-name"
+          },
+          {
+            "field": "_campaign",
+            "as": "campaign"
+          },
+          {
+            "field": "_campaign-name",
+            "as": "campaign-name"
+          },
+          {
+            "field": "campaign-icon"
+          },
+          {
+            "field": "workflow"
+          },
+          {
+            "field": "run"
+          },
+          {
+            "field": "run-attempt"
+          },
+          {
+            "field": "observation-id"
+          },
+          {
+            "field": "experiment"
+          },
+          {
+            "field": "operational-case"
+          },
+          {
+            "field": "evaluator-digest"
+          },
+          {
+            "field": "rollout-mode"
+          },
+          {
+            "field": "operational-value"
+          },
+          {
+            "field": "operational-value-definition"
+          },
+          {
+            "field": "operational-value-unit"
+          },
+          {
+            "field": "operational-value-direction"
+          },
+          {
+            "field": "requested-evidence-at"
+          },
+          {
+            "field": "evidence-cutoff"
+          },
+          {
+            "field": "maturity-at"
+          },
+          {
+            "field": "maturity-status"
+          },
+          {
+            "field": "baseline-value"
+          },
+          {
+            "field": "delta-from-baseline"
+          },
+          {
+            "field": "accepted-evidence-provenance"
+          },
+          {
+            "field": "diagnostics"
+          },
+          {
+            "field": "diagnostic-definitions"
+          },
+          {
+            "field": "observed-at"
+          },
+          {
+            "field": "evidence-link"
+          },
+          {
+            "field": "organization-link"
+          },
+          {
+            "field": "repository-link"
+          },
+          {
+            "field": "workflow-link"
+          },
+          {
+            "field": "run-link"
           }
         ]
       },

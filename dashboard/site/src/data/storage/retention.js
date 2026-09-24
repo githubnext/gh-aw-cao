@@ -29,7 +29,8 @@ const STORES = /** @type {const} */ ([
   'domains',
   'tools',
   'audits',
-  'issues'
+  'issues',
+  'operationalValues'
 ]);
 const RUN_LINKED_STORES = /** @type {const} */ (['domains', 'tools', 'audits', 'issues']);
 const WORKFLOW_INVENTORY_FIELDS = /** @type {const} */ ([
@@ -254,6 +255,9 @@ function pruneOrphans(merged) {
       if (!runs.has(String(record.runId))) merged[storeName].delete(id);
     }
   }
+  for (const [id, record] of merged.operationalValues) {
+    if (!repositories.has(String(record.repositoryId))) merged.operationalValues.delete(id);
+  }
 }
 
 /**
@@ -273,7 +277,8 @@ function collectUnreferencedParents(merged, incoming) {
   }
   const referencedRepositories = new Set([
     ...[...merged.workflows.values()].map((workflow) => String(workflow.repositoryId)),
-    ...[...merged.runs.values()].map((run) => String(run.repositoryId))
+    ...[...merged.runs.values()].map((run) => String(run.repositoryId)),
+    ...[...merged.operationalValues.values()].map((value) => String(value.repositoryId))
   ]);
   for (const [id] of merged.repositories) {
     if (!incomingRepositories.has(id) && !referencedRepositories.has(id)) merged.repositories.delete(id);

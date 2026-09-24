@@ -1076,6 +1076,12 @@ function createCachedGhAwJsonlAccumulator(options) {
       `gh-aw JSONL line ${line}.operational_value.timestamp`
     );
     const valueId = requiredString(value.value_id, `gh-aw JSONL line ${line}.operational_value.value_id`);
+    const campaign = typeof value.campaign === 'string' && value.campaign.trim()
+      ? value.campaign.trim()
+      : undefined;
+    const campaignId = typeof value.campaign_id === 'string' && value.campaign_id.trim()
+      ? value.campaign_id.trim()
+      : campaign ? sourceId('campaign', 'inventory', campaign) : undefined;
     const metric = finiteNumber(value.value);
     if (metric === null) {
       throw new TypeError(`gh-aw JSONL line ${line}.operational_value.value must be a finite number`);
@@ -1102,6 +1108,8 @@ function createCachedGhAwJsonlAccumulator(options) {
       data: {
         repositoryId,
         repository: coordinates.fullName,
+        campaignId,
+        campaign,
         valueId,
         value: metric,
         timestamp: observedAt

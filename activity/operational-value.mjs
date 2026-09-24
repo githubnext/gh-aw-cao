@@ -153,7 +153,8 @@ export async function runOperationalValue({
     if (result.error || result.status !== 0) {
       throw new Error(`${entry.script} failed: ${commandFailureMessage(result, 'operational-value.mjs failed')}`);
     }
-    values.push(...parseOperationalValueOutput(result.stdout, entry.script, uniqueRepositories));
+    values.push(...parseOperationalValueOutput(result.stdout, entry.script, uniqueRepositories)
+      .map((record) => ({ ...record, campaign: entry.package })));
   }
   if (rateLimitReserve !== undefined && githubApiRemaining() < rateLimitReserve) {
     throw new Error(`Operational value crossed the reserved GitHub API floor of ${rateLimitReserve} requests`);
@@ -167,6 +168,8 @@ export async function runOperationalValue({
       operational_value: {
         timestamp: record.timestamp,
         repository: record.repository,
+        campaign: record.campaign,
+        campaign_id: `campaign:${record.campaign}`,
         value_id: record.valueId,
         value: record.value
       }

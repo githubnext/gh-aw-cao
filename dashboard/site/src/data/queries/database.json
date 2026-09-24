@@ -251,6 +251,71 @@
     ]
   },
   {
+    "name": "operational-values",
+    "stores": ["repositories", "campaigns", "operationalValues"],
+    "from": "$operationalValues",
+    "joins": [
+      {
+        "source": "$repositories",
+        "type": "left",
+        "on": [{ "left": "repositoryId", "right": "id" }],
+        "fields": [
+          { "field": "owner", "as": "organization" },
+          { "field": "name", "as": "repository" },
+          { "field": "name", "as": "repository-name" },
+          { "field": "organizationLink", "as": "organization-link" },
+          { "field": "repositoryLink", "as": "repository-link" }
+        ]
+      },
+      {
+        "source": "$campaigns",
+        "type": "left",
+        "on": [{ "left": "campaign", "right": "slug" }],
+        "fields": [
+          { "field": "name", "as": "campaign-name" },
+          { "field": "icon", "as": "campaign-icon" },
+          { "field": "campaignLink", "as": "campaign-link" }
+        ]
+      }
+    ],
+    "select": [
+      { "field": "organization" },
+      { "field": "repository" },
+      { "field": "repository-name" },
+      { "field": "campaign" },
+      { "field": "campaign-name" },
+      { "field": "campaign-icon" },
+      { "field": "workflow" },
+      { "field": "run" },
+      { "field": "run-attempt" },
+      { "field": "observation-id" },
+      { "field": "experiment" },
+      { "field": "operational-case" },
+      { "field": "evaluator-digest" },
+      { "field": "rollout-mode" },
+      { "field": "value", "as": "operational-value" },
+      { "field": "valueId", "as": "operational-value-definition" },
+      { "field": "operational-value-unit" },
+      { "field": "operational-value-direction" },
+      { "field": "requested-evidence-at" },
+      { "field": "evidence-cutoff" },
+      { "field": "maturity-at" },
+      { "field": "maturity-status" },
+      { "field": "baseline-value" },
+      { "field": "delta-from-baseline" },
+      { "field": "accepted-evidence-provenance" },
+      { "field": "diagnostics" },
+      { "field": "diagnostic-definitions" },
+      { "field": "timestamp", "as": "observed-at" },
+      { "field": "evidence-link" },
+      { "field": "organization-link" },
+      { "field": "repository-link" },
+      { "field": "campaign-link" },
+      { "field": "workflow-link" },
+      { "field": "run-link" }
+    ]
+  },
+  {
     "name": "run-records",
     "stores": ["runs"],
     "stores-by-source": {

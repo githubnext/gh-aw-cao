@@ -354,7 +354,7 @@ func projectSources(canonical map[string][]model.Row, inventory map[string]model
 		result, _, _, err := query.ExecuteDefinition(definition, available, query.MaxOperations)
 		return result, err
 	}
-	for _, name := range []string{"campaigns", "repositories", "workflows", "runs"} {
+	for _, name := range []string{"campaigns", "repositories", "workflows", "runs", "operational-values"} {
 		definition, ok := index[name]
 		if !ok {
 			continue
@@ -622,9 +622,9 @@ func relationshipErrors(canonical map[string][]model.Row) []string {
 		for _, row := range canonical[collection] {
 			require(row, "runId", "runs", "run")
 		}
-		for _, row := range canonical["operationalValues"] {
-			require(row, "repositoryId", "repositories", "repository")
-		}
+	}
+	for _, row := range canonical["operationalValues"] {
+		require(row, "repositoryId", "repositories", "repository")
 	}
 	sort.Strings(result)
 	return result
