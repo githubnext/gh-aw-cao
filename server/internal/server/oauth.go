@@ -659,7 +659,7 @@ func (oauth *githubOAuth) queueRevocation(ctx context.Context, session oauthSess
 		return err
 	}
 	session.ID = retryID
-	data, err := json.Marshal(session)
+	data, err := json.Marshal(session) // #nosec G117 -- token fields are sealed with AES-GCM before entering the revocation queue.
 	if err != nil {
 		return err
 	}
@@ -780,7 +780,7 @@ func acceptNotFound(_ *http.Request, accepted *map[int]bool) {
 }
 
 func (oauth *githubOAuth) githubJSON(ctx context.Context, method, endpoint, token string, body io.Reader, output any, configure ...githubRequestOption) error {
-	request, err := http.NewRequestWithContext(ctx, method, endpoint, body)
+	request, err := http.NewRequestWithContext(ctx, method, endpoint, body) // #nosec G704 -- endpoints come only from validated server-side OAuth configuration.
 	if err != nil {
 		return err
 	}
@@ -795,7 +795,7 @@ func (oauth *githubOAuth) githubJSON(ctx context.Context, method, endpoint, toke
 	for _, apply := range configure {
 		apply(request, &accepted)
 	}
-	response, err := oauth.client.Do(request)
+	response, err := oauth.client.Do(request) // #nosec G704 -- the request endpoint is fixed server-side OAuth configuration, never user input.
 	if err != nil {
 		return err
 	}
@@ -857,7 +857,7 @@ func (oauth *githubOAuth) saveSession(ctx context.Context, session oauthSession)
 }
 
 func (oauth *githubOAuth) saveSessionIfUnchanged(ctx context.Context, session oauthSession, expected string) (bool, error) {
-	data, err := json.Marshal(session)
+	data, err := json.Marshal(session) // #nosec G117 -- token fields are sealed with AES-GCM before Redis persistence.
 	if err != nil {
 		return false, err
 	}

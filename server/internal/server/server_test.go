@@ -60,7 +60,7 @@ func TestHostedRedisRequiresTLS(t *testing.T) {
 }
 
 func TestHostedProxyHeadersAreTrustedOnlyOnLoopbackBoundary(t *testing.T) {
-	request := httptest.NewRequest(http.MethodGet, "https://internal.example.test/", nil)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "https://internal.example.test/", nil)
 	request.Host = "internal.example.test"
 	request.Header.Set("X-Forwarded-Host", "dashboard.example.com")
 	request.Header.Set("X-Forwarded-Proto", "https")

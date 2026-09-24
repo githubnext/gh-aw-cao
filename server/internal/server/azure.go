@@ -205,7 +205,7 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 	if err != nil {
 		return nil, err
 	}
-	go app.oauth.runRevocationWorker(context.Background())
+	go app.oauth.runRevocationWorker(context.WithoutCancel(ctx))
 	return app.AzureFunctionsHandler(), nil
 }
 

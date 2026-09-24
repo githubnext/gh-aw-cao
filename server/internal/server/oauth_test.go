@@ -302,7 +302,7 @@ func TestRefreshedSessionCannotResurrectAfterRevocationStaging(t *testing.T) {
 
 	replacement := staged
 	replacement.AccessToken = "newer-queued-token"
-	data, _ := json.Marshal(replacement)
+	data, _ := json.Marshal(replacement) // #nosec G117 -- test fixture is immediately encrypted to exercise queued credential replacement.
 	replacementSealed, _ := oauth.seal(data)
 	if _, err := oauth.configStore(t.Context(), "SET", oauth.revocationKey(session.ID), replacementSealed); err != nil {
 		t.Fatal(err)
