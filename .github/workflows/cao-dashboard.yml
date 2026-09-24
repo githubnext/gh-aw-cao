@@ -301,6 +301,7 @@ jobs:
               fs.mkdirSync(path.join(process.env.REPORT_OUTPUT, directory), { recursive: true })
             }
             let publishedShardBytes = 0
+            let publishedShardCount = 0
             for (const name of Object.keys(payloadHashes)) {
               if (!name.includes('/')) continue
               const destination = path.join(process.env.REPORT_OUTPUT, name)
@@ -309,8 +310,9 @@ jobs:
                 destination,
               )
               publishedShardBytes += fs.statSync(destination).size
+              publishedShardCount += 1
             }
-            core.info(`Copied ${Object.keys(payloadHashes).length - 1} activity shards `
+            core.info(`Copied ${publishedShardCount} activity shards `
               + `(${formatFileSize(publishedShardBytes)})`)
             core.info(`Dashboard artifact assembly completed (${collectedFiles.length + 1} collected data files)`)
 
