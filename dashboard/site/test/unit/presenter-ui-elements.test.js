@@ -74,6 +74,20 @@ describe('dashboard sidebar', () => {
     expect(bottomSection?.hasAttribute('open')).toBe(true);
   });
 
+  it('places the hosted user control at the bottom of the sidebar', () => {
+    const accountControl = document.createElement('details');
+    accountControl.className = 'account-menu';
+    const sidebar = renderDashboardNavigation(
+      [{ id: 'overview', title: 'Overview' }],
+      'Example',
+      undefined,
+      accountControl
+    );
+
+    expect(sidebar.lastElementChild?.classList.contains('sidebar-account')).toBe(true);
+    expect(sidebar.querySelector('.sidebar-account > .account-menu')).toBe(accountControl);
+  });
+
   it('cycles the active page view from the mobile header control', () => {
     const sidebar = renderDashboardNavigation([{ id: 'runs', title: 'Runs' }], 'Example', undefined);
     const page = document.createElement('section');

@@ -176,7 +176,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .skip-link { position: fixed; z-index: 10; top: -80px; left: 12px; padding: 7px 12px; border: 1px solid var(--focus); border-radius: 6px; background: var(--canvas); color: var(--accent); font-weight: 600; text-decoration: none; transition: top 120ms ease, color 120ms ease; }
 .skip-link:focus { top: 8px; }
 .app-shell { height: 100vh; min-height: 0; display: grid; grid-template-columns: 200px minmax(0, 1fr); overflow: hidden; transition: grid-template-columns 120ms ease; }
-.org-sidebar { min-width: 0; height: 100vh; display: flex; flex-direction: column; gap: 8px; overflow: hidden; padding: 24px 16px 16px; border-right: 1px solid var(--border); background: var(--canvas-subtle); }
+.org-sidebar { min-width: 0; height: 100vh; display: flex; flex-direction: column; gap: 8px; overflow: visible; padding: 24px 16px 16px; border-right: 1px solid var(--border); background: var(--canvas-subtle); }
 .sidebar-header { min-width: 0; display: flex; align-items: center; gap: 8px; margin: 0 0 10px 8px; }
 .sidebar-brand { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; overflow: hidden; color: var(--fg); font-size: 1rem; font-weight: 600; text-decoration: none; white-space: nowrap; }
 .sidebar-brand-mark { width: 24px; height: 24px; flex: 0 0 24px; overflow: visible; }
@@ -265,6 +265,9 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .sidebar-collapsed .primary-nav a { justify-content: center; gap: 0; padding-inline: 6px; }
 .sidebar-collapsed .primary-nav a[aria-current="page"]::before { left: -8px; }
 .primary-nav { min-height: 0; display: flex; flex: 1; flex-direction: column; gap: 2px; overflow-y: auto; scrollbar-width: thin; }
+.sidebar-account { display: flex; flex: 0 0 auto; padding: 8px 4px 0; border-top: 1px solid var(--border-muted); }
+.sidebar-account:has(.account-menu[hidden]) { display: none; }
+.sidebar-collapsed .sidebar-account { justify-content: center; padding-inline: 0; }
 [data-experimental-navigation][hidden] { display: none !important; }
 .nav-section { display: flex; flex-direction: column; }
 .nav-section-toggle { min-height: 28px; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; padding: 4px 8px; border-radius: 6px; color: var(--muted); cursor: pointer; list-style: none; }
@@ -447,7 +450,8 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .account-menu-avatar-image { width: 100%; height: 100%; display: block; border-radius: inherit; object-fit: cover; }
 .account-menu-icon { width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); }
 .account-menu-icon:hover, .account-menu[open] .account-menu-icon { background: var(--neutral-muted); color: var(--fg); box-shadow: none; }
-.account-menu-popover { width: 260px; display: grid; gap: 8px; position: absolute; z-index: 50; top: calc(100% + 8px); right: 0; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent); }
+.account-menu-popover { width: 260px; display: grid; gap: 8px; position: absolute; z-index: 50; bottom: 0; left: calc(100% + 8px); padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent); }
+.account-menu-heading { color: var(--muted); font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
 .account-menu-action { width: 100%; min-height: 34px; display: flex; align-items: center; gap: 9px; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--fg); font: inherit; font-size: .8125rem; font-weight: 500; text-align: left; text-decoration: none; cursor: pointer; }
 .account-menu-action:hover { background: var(--neutral-muted); }
 .account-menu-action .octicon { width: 15px; height: 15px; color: var(--muted); }
@@ -2186,6 +2190,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .mobile-nav-menu-actions :is(.horizon-toggle, .theme-control > summary, .repository-link, .account-menu-avatar) .action-label { position: static; width: auto; height: auto; overflow: visible; margin: 0; padding: 0; clip: auto; color: var(--fg); font-size: .8125rem; font-weight: 500; white-space: normal; }
   .mobile-nav-menu-actions .theme-control-popover { width: 100%; position: static; margin-top: 4px; box-shadow: none; }
   .mobile-nav-menu-actions .account-menu-popover { width: 100%; position: static; margin-top: 4px; box-shadow: none; }
+  .sidebar-account { display: none; }
   .sidebar-toggle { display: none; }
   .sidebar-collapsed .org-sidebar { padding: 14px 12px 10px; }
   .sidebar-collapsed .sidebar-brand > span, .sidebar-collapsed .nav-label { display: initial; }

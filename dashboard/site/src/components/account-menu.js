@@ -34,19 +34,35 @@ async function switchAccount(button) {
     if (typeof result.loginUrl !== 'string' || !result.loginUrl.startsWith('/auth/login?')) {
       throw new Error('GitHub account selection URL is unavailable');
     }
-    window.location.assign(result.loginUrl);
+    return result.loginUrl;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+/** @param {HTMLButtonElement} button */
+async function logout(button) {
+  button.disabled = true;
+  try {
+    const response = await fetch('/auth/logout', {
+      method: 'POST',
+      headers: { Accept: 'application/json' }
+    });
+    if (!response.ok) throw new Error('Unable to log out');
   } finally {
     button.disabled = false;
   }
 }
 
 /**
- * Renders the hosted dashboard's active GitHub identity and explicit account
- * chooser. Static and local-capability deployments do not render this control.
+ * Renders the hosted dashboard's active GitHub identity and user actions.
+ * Static and local-capability deployments do not render this control.
+ * @param {{ navigate?: (url: string) => void }} [options]
  * @returns {HTMLElement | null}
  */
-export function renderAccountMenu() {
+export function renderAccountMenu(options = {}) {
   if (!usesGitHubAuthentication()) return null;
+  const navigate = options.navigate ?? ((url) => window.location.assign(url));
 
   const loginLabel = h('strong', null, 'GitHub account');
   const switchButton = /** @type {HTMLButtonElement} */ (h(
@@ -55,6 +71,12 @@ export function renderAccountMenu() {
     octicon('people'),
     'Use another GitHub account'
   ));
+  const logoutButton = /** @type {HTMLButtonElement} */ (h(
+    'button',
+    { className: 'account-menu-action', type: 'button', 'data-logout': '' },
+    octicon('sign-out'),
+    'Log out'
+  ));
   const menu = /** @type {HTMLDetailsElement} */ (h(
     'details',
     { className: 'account-menu', hidden: true },
@@ -62,22 +84,33 @@ export function renderAccountMenu() {
       'summary',
       {
         className: 'account-menu-avatar',
-        'aria-label': 'GitHub account',
-        title: 'GitHub account'
+        'aria-label': 'Open user view',
+        title: 'User'
       },
       octicon('person'),
       h('span', { className: 'sr-only action-label' }, 'GitHub account')
     ),
     h(
       'div',
-      { className: 'account-menu-popover' },
+      { className: 'account-menu-popover', role: 'dialog', 'aria-label': 'User' },
+      h('span', { className: 'account-menu-heading' }, 'Account'),
       loginLabel,
-      switchButton
+      switchButton,
+      logoutButton
     )
   ));
 
   switchButton.addEventListener('click', () => {
-    void switchAccount(switchButton).catch((error) => {
+    void switchAccount(switchButton).then((result) => {
+      navigate(result);
+    }).catch((error) => {
+      menu.dataset.error = String(error?.message ?? error);
+    });
+  });
+  logoutButton.addEventListener('click', () => {
+    void logout(logoutButton).then(() => {
+      navigate('/auth/logged-out');
+    }).catch((error) => {
       menu.dataset.error = String(error?.message ?? error);
     });
   });

@@ -113,10 +113,19 @@ administrators may call `POST /api/admin/rebuild`; it always forces a new staged
 generation, validates it, then atomically activates it. A failed rebuild leaves
 the previous generation active.
 
-The dashboard account menu shows the active GitHub login. “Use another GitHub
-account” clears and revokes the current CAO session, then starts a fresh OAuth
-flow with GitHub's account chooser. Only the newly selected account is retained
-in the browser session; tokens for every account remain server-side.
+The hosted dashboard shows a user icon at the lower left of the navigation.
+It appears only after the server confirms an authenticated GitHub session and
+opens a user view with account switching and logout. Logout remains on a
+non-cacheable signed-out page until the user explicitly starts another login.
+“Use another GitHub account” clears and revokes the current CAO session, then
+starts a fresh OAuth flow with GitHub's account chooser. Only the newly selected
+account is retained in the browser session; tokens for every account remain
+server-side.
+
+`internal/server/auth_model_test.go` defines the browser authentication state
+model and generates every valid login, switch-account, and logout path through
+three transitions. Each generated path drives the real HTTP handlers and checks
+the canonical session endpoint after every transition.
 
 The Redis command client reuses a bounded connection pool, applies operation
 deadlines, and retries read-only commands once when a pooled connection has

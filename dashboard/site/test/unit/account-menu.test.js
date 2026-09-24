@@ -15,17 +15,23 @@ describe('hosted GitHub account menu', () => {
 
   it('shows the current login and requests explicit account switching', async () => {
     document.head.innerHTML = '<meta name="cao-auth-mode" content="github">';
+    const navigate = vi.fn();
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ login: 'octocat-enterprise' }), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ loginUrl: 'invalid-for-test' }), { status: 200 }));
+      .mockResolvedValueOnce(new Response(JSON.stringify({ loginUrl: '/auth/login?select_account=1' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
     vi.stubGlobal('fetch', fetchMock);
 
-    const menu = renderAccountMenu();
+    const menu = renderAccountMenu({ navigate });
     expect(menu).toBeInstanceOf(HTMLDetailsElement);
     if (!(menu instanceof HTMLDetailsElement)) throw new Error('account menu was not rendered');
     document.body.append(menu);
     await vi.waitFor(() => expect(menu.hidden).toBe(false));
+    expect(menu.querySelector('summary')?.getAttribute('aria-label')).toBe('Open user view');
+    expect(menu.querySelector('[role="dialog"]')?.getAttribute('aria-label')).toBe('User');
+    expect(menu.textContent).toContain('Account');
     expect(menu.textContent).toContain('@octocat-enterprise');
+    expect(menu.textContent).toContain('Log out');
 
     const switchButton = menu.querySelector('[data-switch-account]');
     expect(switchButton).toBeInstanceOf(HTMLButtonElement);
@@ -36,5 +42,30 @@ describe('hosted GitHub account menu', () => {
       method: 'POST',
       headers: { Accept: 'application/json' }
     });
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/auth/login?select_account=1'));
+
+    const logoutButton = menu.querySelector('[data-logout]');
+    expect(logoutButton).toBeInstanceOf(HTMLButtonElement);
+    if (!(logoutButton instanceof HTMLButtonElement)) throw new Error('logout button was not rendered');
+    logoutButton.click();
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    expect(fetchMock).toHaveBeenLastCalledWith('/auth/logout', {
+      method: 'POST',
+      headers: { Accept: 'application/json' }
+    });
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/auth/logged-out'));
+  });
+
+  it('stays hidden when hosted metadata exists without a logged-in session', async () => {
+    document.head.innerHTML = '<meta name="cao-auth-mode" content="github">';
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 401 })));
+
+    const menu = renderAccountMenu();
+    expect(menu).toBeInstanceOf(HTMLDetailsElement);
+    if (!(menu instanceof HTMLDetailsElement)) throw new Error('account menu was not rendered');
+    document.body.append(menu);
+    await vi.waitFor(() => expect(menu.dataset.error).toBeTruthy());
+
+    expect(menu.hidden).toBe(true);
   });
 });

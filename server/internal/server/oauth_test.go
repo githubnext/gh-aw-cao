@@ -348,6 +348,26 @@ func TestHostedOAuthExposesAndSwitchesCurrentAccount(t *testing.T) {
 	}
 }
 
+func TestHostedOAuthLoggedOutPageRequiresExplicitLogin(t *testing.T) {
+	app := newAzureTestApp(t, fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600}).URL)
+	response := httptest.NewRecorder()
+
+	app.Handler().ServeHTTP(response, azureRequest(t, http.MethodGet, "/auth/logged-out"))
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("logged-out page returned %d: %s", response.Code, response.Body.String())
+	}
+	if response.Header().Get("Cache-Control") != "no-store" {
+		t.Fatal("logged-out page may be cached")
+	}
+	if !strings.Contains(response.Body.String(), `href="/auth/login"`) {
+		t.Fatal("logged-out page does not offer explicit GitHub sign-in")
+	}
+	if response.Header().Get("Location") != "" {
+		t.Fatal("logged-out page unexpectedly restarted OAuth")
+	}
+}
+
 func TestHostedOAuthQueuesFailedCredentialRevocation(t *testing.T) {
 	github := fakeGitHub(t, fakeGitHubOptions{
 		membershipState:  "active",

@@ -1,6 +1,5 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
-import { renderAccountMenu } from './account-menu.js';
 
 /**
  * @param {{ title: string, description?: string, overviewPageHref: string, dashboardHorizon: HTMLElement, dashboardAppearance: HTMLElement, githubUrlBase: string, dashboardRepository: string | null }} options
@@ -35,7 +34,6 @@ export function renderDashboardHeader(options) {
         { className: 'report-actions' },
         options.dashboardHorizon,
         options.dashboardAppearance,
-        renderAccountMenu(),
         options.dashboardRepository
           ? h(
               'a',

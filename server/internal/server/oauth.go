@@ -157,6 +157,16 @@ func (oauth *githubOAuth) login(response http.ResponseWriter, request *http.Requ
 	http.Redirect(response, request, target.String(), http.StatusFound)
 }
 
+func (oauth *githubOAuth) loggedOut(response http.ResponseWriter, _ *http.Request) {
+	response.Header().Set("Cache-Control", "no-store")
+	response.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = io.WriteString(response, `<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Signed out · CAO</title></head>
+<body><main><h1>You are signed out</h1><p><a href="/auth/login">Sign in with GitHub</a></p></main></body>
+</html>`)
+}
+
 func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.Request) {
 	if !oauth.validState(request) {
 		serverLog.Printf("oauth callback rejected invalid state")
