@@ -10522,9 +10522,9 @@
                 "title": "Events"
               },
               "color": {
-                "field": "event-summary",
+                "field": "event-status",
                 "type": "nominal",
-                "title": "Summary"
+                "title": "Severity"
               }
             }
           }

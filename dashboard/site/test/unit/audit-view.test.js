@@ -61,7 +61,7 @@ describe('Audit dashboard view', () => {
       encoding: {
         x: { field: 'workflow', format: 'workflow-relative-path' },
         y: { field: 'events' },
-        color: { field: 'event-summary' }
+        color: { field: 'event-status', title: 'Severity' }
       }
     });
     expect(issues.views
@@ -223,6 +223,13 @@ describe('Audit dashboard view', () => {
         events: 1
       },
       {
+        campaign: 'review-campaign',
+        'event-status': 'high',
+        workflow: '.github/workflows/review.md',
+        'event-summary': 'Repeated finding',
+        events: 1
+      },
+      {
         campaign: 'audit-campaign',
         'event-status': 'medium',
         workflow: '.github/workflows/audit.md',
@@ -234,13 +241,6 @@ describe('Audit dashboard view', () => {
         'event-status': 'medium',
         workflow: '.github/workflows/audit.md',
         'event-summary': 'Skill activation',
-        events: 1
-      },
-      {
-        campaign: 'review-campaign',
-        'event-status': 'high',
-        workflow: '.github/workflows/review.md',
-        'event-summary': 'Repeated finding',
         events: 1
       }
     ]);
