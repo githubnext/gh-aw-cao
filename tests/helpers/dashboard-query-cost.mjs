@@ -460,7 +460,7 @@ export function dashboardQueryCostMarkdown(report) {
       ? []
       : [
         "",
-        `Empty canonical sources: ${emptySources.map((name) => markdownCode(name)).join(", ")}.`,
+        `Empty database tables: ${emptySources.map((name) => markdownCode(name)).join(", ")}.`,
       ]),
     "",
     "### Computational cost",

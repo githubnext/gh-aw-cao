@@ -7,7 +7,7 @@ import { renderDashboard as renderDashboardView, disposeDashboard, enableDashboa
 import { processDataRequest } from '../../src/data-worker.js';
 import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
 import { deriveDataHealthSources } from '../../src/data-health.js';
-import { SOURCE_FIELDS } from '../../src/specification.js';
+import { TABLE_FIELDS } from '../../src/specification.js';
 import { composeDashboardDocuments } from '../../../report/compose-dashboard-documents.mjs';
 import { campaignDashboardSources } from '../campaign-dashboard-documents.js';
 import { applyDashboardQueries } from '../workflow-inventory-query.js';
@@ -31,7 +31,7 @@ function renderDashboard(input) {
     Object.assign(sources, deriveDataHealthSources(sources));
     sources['source-metadata'] = {
       source: 'source-metadata',
-      rows: Object.keys(SOURCE_FIELDS).map((source) => {
+      rows: Object.keys(TABLE_FIELDS).map((source) => {
         const value = sources[source];
         const rows = Array.isArray(value?.rows) ? value.rows : [];
         return {

@@ -2,13 +2,13 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { processDataRequest } from '../../src/data-worker.js';
 import { dashboardQueryDefects } from '../../src/data/queries/declarative.js';
-import { SOURCE_FIELDS } from '../../src/specification.js';
+import { TABLE_FIELDS } from '../../src/specification.js';
 
 const document = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8'));
 const dashboard = document.dashboard;
 const queries = dashboard.queries;
 const queryNames = new Set(queries.map((/** @type {{ name: string }} */ query) => query.name));
-const canonicalNames = new Set(Object.keys(SOURCE_FIELDS));
+const tableNames = new Set(Object.keys(TABLE_FIELDS));
 
 /** @type {import('../../src/presenter.js').SourceMetadata} */
 const metadata = {
@@ -21,7 +21,7 @@ const metadata = {
   availability: 'empty'
 };
 
-const canonicalSources = Object.fromEntries([...canonicalNames].map((name) => [name, {
+const databaseTables = Object.fromEntries([...tableNames].map((name) => [name, {
   source: name,
   rows: [],
   metadata
@@ -277,7 +277,7 @@ describe('dashboard view query contracts', () => {
   it('resolves every authored view source through canonical data or Dashboard Language', () => {
     const unresolved = dashboard.pages.flatMap((/** @type {Record<string, unknown>} */ page) => viewsOf(page).flatMap((view) => (
       sourceNamesOf(view)
-        .filter((name) => !canonicalNames.has(name) && !queryNames.has(name))
+        .filter((name) => !tableNames.has(name) && !queryNames.has(name))
         .map((name) => `${page.id}/${view.id}: ${name}`)
     )));
 
@@ -311,7 +311,7 @@ describe('dashboard view query contracts', () => {
     const results = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
       queries,
-      sources: canonicalSources,
+      sources: databaseTables,
       sourceNames: requested
     }));
 

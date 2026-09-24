@@ -71,7 +71,7 @@ it('forwards query context and reloads a source when that context changes', asyn
   ]);
 });
 
-it('keeps separate view bindings for the same canonical source', async () => {
+it('keeps separate view bindings for the same database table', async () => {
   configureSourceLoader((name, options) => Promise.resolve({
     source: name,
     rows: [{ view: options?.viewId }],

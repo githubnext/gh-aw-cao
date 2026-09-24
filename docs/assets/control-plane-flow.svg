@@ -37,7 +37,7 @@
   <rect x="8" y="8" width="944" height="454" rx="8" fill="#0d1117" stroke="#30363d" stroke-width="2"/>
   <rect x="8" y="8" width="944" height="454" rx="8" fill="url(#grid)"/>
 
-  <text x="56" y="50" fill="#8b949e" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="700">CANONICAL SOURCE</text>
+  <text x="56" y="50" fill="#8b949e" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="700">DATABASE TABLE</text>
   <text x="356" y="50" fill="#8b949e" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="700">SCOPED CONTROL</text>
   <text x="756" y="50" fill="#8b949e" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="700">ENROLLED TARGETS</text>
 

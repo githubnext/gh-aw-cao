@@ -94,8 +94,8 @@ import {
   SITE_CALLOUT_KEYS,
   SITE_CALLOUT_VISIBILITY_KEYS,
   SOURCE_ENTITY_IDENTIFIER_FIELDS,
-  SOURCE_FIELDS,
-  SOURCE_VALUES,
+  TABLE_FIELDS,
+  TABLE_VALUES,
   TABLE_ACTION_KEYS,
   TABLE_ACTION_PRESENTATION_VALUES,
   TABLE_ACTION_WHEN_KEYS,
@@ -275,7 +275,7 @@ let declaredCardTemplates = new Set();
 let declaredViews = new Map();
 
 /** @type {Map<string, Set<string>>} */
-let declaredQuerySources = new Map();
+let declaredQueryTables = new Map();
 /** @type {Map<string, Record<string, unknown>>} */
 let declaredCliActions = new Map();
 
@@ -325,7 +325,7 @@ export function validateDashboardDocument(source) {
   } finally {
     declaredQueries = new Map();
     declaredCardTemplates = new Set();
-    declaredQuerySources = new Map();
+    declaredQueryTables = new Map();
     declaredCliActions = new Map();
   }
 
@@ -859,7 +859,7 @@ function validateDashboard(dashboard, dashboardNode, errors) {
     }
   }
   declaredQueries = queryTypes.queryFields;
-  declaredQuerySources = queryTypes.querySources;
+  declaredQueryTables = queryTypes.queryTables;
   for (const query of findDeadDashboardQueries(dashboard)) {
     errors.push(createError(
       ERROR_CODES.unusedQuery,
@@ -1359,7 +1359,7 @@ function validateDashboard(dashboard, dashboardNode, errors) {
     validateStringField(visibility.field, `${path}.field`, true, errors);
     if (
       typeof visibility.source === 'string'
-      && (SOURCE_VALUES.includes(visibility.source) || declaredQueries.has(visibility.source))
+      && (TABLE_VALUES.includes(visibility.source) || declaredQueries.has(visibility.source))
       && typeof visibility.field === 'string'
       && !sourceFieldNames(visibility.source)?.includes(visibility.field)
     ) {
@@ -1842,7 +1842,7 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
       }
       const seenSources = new Set();
       for (const sourceName of data.sources) {
-        if (typeof sourceName !== 'string' || (!SOURCE_VALUES.includes(sourceName) && !declaredQueries.has(sourceName))) {
+        if (typeof sourceName !== 'string' || (!TABLE_VALUES.includes(sourceName) && !declaredQueries.has(sourceName))) {
           errors.push(createError(
             ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
             'source must use one canonical Section 5.1 source name or one declared query name.',
@@ -1858,7 +1858,7 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
           ));
         }
         seenSources.add(sourceName);
-        const coverageSources = new Set([sourceName, ...(declaredQuerySources.get(sourceName) ?? [])]);
+        const coverageSources = new Set([sourceName, ...(declaredQueryTables.get(sourceName) ?? [])]);
         for (const coverageSource of coverageSources) {
           sourceFieldCoverage.set(coverageSource, new Set(getBuiltInRequiredFields(pageName, coverageSource)));
         }
@@ -1876,7 +1876,7 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
     }
     validateViewDataArguments(data.arguments, undefined, `${viewPath}.data.arguments`, data.source, errors);
 
-    const coverageSources = new Set([data.source, ...(declaredQuerySources.get(data.source) ?? [])]);
+    const coverageSources = new Set([data.source, ...(declaredQueryTables.get(data.source) ?? [])]);
     for (const coverageSource of coverageSources) {
       if (!sourceFieldCoverage.has(coverageSource)) {
         sourceFieldCoverage.set(coverageSource, new Set());
@@ -3020,7 +3020,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
     } else {
       validateSource(view.data.source, `${path}.data.source`, errors);
       if (typeof view.data.source === 'string'
-          && (SOURCE_VALUES.includes(view.data.source) || declaredQueries.has(view.data.source))) {
+          && (TABLE_VALUES.includes(view.data.source) || declaredQueries.has(view.data.source))) {
         sourceName = view.data.source;
       }
       if (view.data.sources !== undefined) {
@@ -3567,10 +3567,10 @@ function validateQueries(queries, queriesNode, errors) {
       validateTime(getValueNodeByKey(queryNode, 'time'), query.time, `${path}.time`, errors);
     }
     const name = typeof query.name === 'string' ? query.name : null;
-    if (name && (SOURCE_VALUES.includes(name) || declared.has(name))) {
+    if (name && (TABLE_VALUES.includes(name) || declared.has(name))) {
       errors.push(createError(
         ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-        'query name must be unique and must not shadow a canonical source name.',
+        'query name must be unique and must not shadow a database table name.',
         `${path}.name`
       ));
     }
@@ -3582,13 +3582,13 @@ function validateQueries(queries, queriesNode, errors) {
         ...(Array.isArray(query.union) ? query.union : []),
         ...(Array.isArray(query.joins) ? query.joins.map((join) => join?.source) : [])
       ];
-      const sources = new Set();
+      const tables = new Set();
       for (const input of inputs) {
         if (typeof input !== 'string') continue;
-        if (SOURCE_VALUES.includes(input)) sources.add(input);
-        for (const source of declaredQuerySources.get(input) ?? []) sources.add(source);
+        if (TABLE_VALUES.includes(input)) tables.add(input);
+        for (const table of declaredQueryTables.get(input) ?? []) tables.add(table);
       }
-      declaredQuerySources.set(name, sources);
+      declaredQueryTables.set(name, tables);
     }
   }
   return declared;
@@ -3607,15 +3607,15 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
   const inputFields = (source, sourcePath) => {
     validateStringField(source, sourcePath, true, errors);
     if (typeof source !== 'string') return undefined;
-    if (!SOURCE_VALUES.includes(source) && !declared.has(source)) {
+    if (!TABLE_VALUES.includes(source) && !declared.has(source)) {
       errors.push(createError(
         ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-        'query sources must name one canonical source or one previously declared query.',
+        'query inputs must name one database table or one previously declared query.',
         sourcePath
       ));
       return undefined;
     }
-    return SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (source)] ?? declared.get(source);
+    return TABLE_FIELDS[/** @type {keyof typeof TABLE_FIELDS} */ (source)] ?? declared.get(source);
   };
 
   const fromFields = inputFields(query.from, `${path}.from`);
@@ -4298,24 +4298,24 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
  */
 function validateSource(source, path, errors) {
   validateStringField(source, path, true, errors);
-  if (typeof source === 'string' && !SOURCE_VALUES.includes(source) && !declaredQueries.has(source)) {
+  if (typeof source === 'string' && !TABLE_VALUES.includes(source) && !declaredQueries.has(source)) {
     errors.push(createError(
       ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-      'source must use one canonical Section 5.1 source name or one declared query name.',
+      'source must name one Section 5.1 database table or one declared query.',
       path
     ));
   }
 }
 
 /**
- * Resolves the declared field schema of a canonical source or of a derived
+ * Resolves the declared field schema of a database table or of a derived
  * query. Returns `undefined` when the schema cannot be derived statically, in
  * which case field references are not checked.
  * @param {string} sourceName
  * @returns {string[] | undefined}
  */
 function sourceFieldNames(sourceName) {
-  return SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (sourceName)]
+  return TABLE_FIELDS[/** @type {keyof typeof TABLE_FIELDS} */ (sourceName)]
     ?? declaredQueries.get(sourceName)
     ?? undefined;
 }
@@ -4329,7 +4329,7 @@ function validateSourceSequence(sources, path, errors) {
   if (!Array.isArray(sources) || sources.length === 0) {
     errors.push(createError(
       ERROR_CODES.missingOrInvalidRequiredField,
-      'sources must be a non-empty sequence of canonical source names.',
+      'sources must be a non-empty sequence of database table or query names.',
       path
     ));
     return;

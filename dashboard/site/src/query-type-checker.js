@@ -6,8 +6,8 @@ import {
   NON_ADDITIVE_MEASURE_FIELDS,
   NUMERIC_COMPUTE_FUNCTIONS,
   QUERY_NUMERIC_REDUCER_VALUES,
-  SOURCE_FIELDS,
-  SOURCE_VALUES,
+  TABLE_FIELDS,
+  TABLE_VALUES,
   TEMPORAL_FIELD_NAMES,
   TEXT_COMPUTE_FUNCTIONS
 } from './specification.js';
@@ -15,7 +15,7 @@ import {
 /**
  * @typedef {'scalar'|'text'|'boolean'|'numeric'|'temporal'|'link'|'unknown'} FieldType
  * @typedef {{ code: string, message: string, path: string }} ValidationError
- * @typedef {{ fields: Map<string, FieldType> | undefined, sources: Set<string>, rowSources: Set<string> }} QueryType
+ * @typedef {{ fields: Map<string, FieldType> | undefined, tables: Set<string>, rowTables: Set<string> }} QueryType
  */
 
 /**
@@ -30,7 +30,7 @@ import {
  * @returns {{
  *   errors: ValidationError[],
  *   queryFields: Map<string, string[] | undefined>,
- *   querySources: Map<string, Set<string>>
+ *   queryTables: Map<string, Set<string>>
  * }}
  */
 export function compileDashboardQueryTypes(definitions) {
@@ -42,11 +42,11 @@ export function compileDashboardQueryTypes(definitions) {
   // Declaration pass.
   for (const [index, value] of queries.entries()) {
     if (!isRecord(value) || typeof value.name !== 'string') continue;
-    if (SOURCE_VALUES.includes(value.name) || symbols.has(value.name)) {
+    if (TABLE_VALUES.includes(value.name) || symbols.has(value.name)) {
       errors.push(error(
         ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-        SOURCE_VALUES.includes(value.name)
-          ? `query name "${value.name}" conflicts with a canonical source name.`
+        TABLE_VALUES.includes(value.name)
+          ? `query name "${value.name}" conflicts with a database table name.`
           : `query name "${value.name}" is declared more than once.`,
         `$.dashboard.queries[${index}].name`
       ));
@@ -62,12 +62,12 @@ export function compileDashboardQueryTypes(definitions) {
     const refs = queryInputs(symbol.query, symbol.index);
     dependencies.set(name, refs);
     for (const reference of refs) {
-      if (SOURCE_VALUES.includes(reference.name)) continue;
+      if (TABLE_VALUES.includes(reference.name)) continue;
       const target = symbols.get(reference.name);
       if (!target) {
         errors.push(error(
           ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-          `query source "${reference.name}" is not a canonical source or previously declared query.`,
+          `query input "${reference.name}" is not a database table or previously declared query.`,
           reference.path
         ));
       } else if (target.index >= symbol.index) {
@@ -138,9 +138,9 @@ export function compileDashboardQueryTypes(definitions) {
       const fields = compiled.get(name)?.fields;
       return [name, fields ? [...fields.keys()] : undefined];
     })),
-    querySources: new Map([...symbols.keys()].map((name) => [
+    queryTables: new Map([...symbols.keys()].map((name) => [
       name,
-      new Set(compiled.get(name)?.sources ?? [])
+      new Set(compiled.get(name)?.tables ?? [])
     ])),
     errors
   };
@@ -156,15 +156,15 @@ export function compileDashboardQueryTypes(definitions) {
  */
 function compileQuery(query, index, symbols, compiled, errors) {
   const path = `$.dashboard.queries[${index}]`;
-  const input = resolveSource(query.from, symbols, compiled);
+  const input = resolveInput(query.from, symbols, compiled);
   /** @type {Map<string, FieldType> | undefined} */
   let fields = input?.fields ? new Map(input.fields) : undefined;
-  const sources = new Set(input?.sources ?? []);
-  const rowSources = new Set(input?.rowSources ?? []);
-  for (const sourceName of Array.isArray(query.union) ? query.union : []) {
-    const unionInput = resolveSource(sourceName, symbols, compiled);
-    for (const source of unionInput?.sources ?? []) sources.add(source);
-    for (const source of unionInput?.rowSources ?? []) rowSources.add(source);
+  const tables = new Set(input?.tables ?? []);
+  const rowTables = new Set(input?.rowTables ?? []);
+  for (const inputName of Array.isArray(query.union) ? query.union : []) {
+    const unionInput = resolveInput(inputName, symbols, compiled);
+    for (const table of unionInput?.tables ?? []) tables.add(table);
+    for (const table of unionInput?.rowTables ?? []) rowTables.add(table);
     if (fields && unionInput?.fields) {
       for (const [field, type] of unionInput.fields) {
         if (!fields.has(field)) fields.set(field, type);
@@ -173,7 +173,7 @@ function compileQuery(query, index, symbols, compiled, errors) {
       fields = undefined;
     }
   }
-  const rowInputSources = new Set(rowSources);
+  const rowInputTables = new Set(rowTables);
 
   /** @param {unknown} field @param {string} fieldPath @param {'read'|'scalar'|'numeric'|'aggregate-numeric'} [usage] */
   const requireField = (field, fieldPath, usage = 'read') => {
@@ -195,7 +195,7 @@ function compileQuery(query, index, symbols, compiled, errors) {
     if (fields.has(name)) {
       errors.push(error(
         ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-        'query output names must be unique across joined sources and computed fields.',
+        'query output names must be unique across joined inputs and computed fields.',
         fieldPath
       ));
       return;
@@ -207,19 +207,19 @@ function compileQuery(query, index, symbols, compiled, errors) {
     for (const [joinIndex, value] of query.joins.entries()) {
       if (!isRecord(value)) continue;
       const joinPath = `${path}.joins[${joinIndex}]`;
-      const joined = resolveSource(value.source, symbols, compiled);
-      for (const source of joined?.sources ?? []) sources.add(source);
+      const joined = resolveInput(value.source, symbols, compiled);
+      for (const table of joined?.tables ?? []) tables.add(table);
       if (Array.isArray(value.on)) {
         for (const [pairIndex, pair] of value.on.entries()) {
           if (!isRecord(pair)) continue;
           requireField(pair.left, `${joinPath}.on[${pairIndex}].left`, 'scalar');
-          requireSourceField(
+          requireInputField(
             joined?.fields,
             pair.right,
             `${joinPath}.on[${pairIndex}].right`,
             'scalar',
             errors,
-            typeof value.source === 'string' ? `source "${value.source}"` : 'the joined source'
+            typeof value.source === 'string' ? `input "${value.source}"` : 'the joined input'
           );
         }
       }
@@ -227,13 +227,13 @@ function compileQuery(query, index, symbols, compiled, errors) {
         for (const [fieldIndex, selected] of value.fields.entries()) {
           if (!isRecord(selected)) continue;
           const fieldPath = `${joinPath}.fields[${fieldIndex}]`;
-          const type = requireSourceField(
+          const type = requireInputField(
             joined?.fields,
             selected.field,
             `${fieldPath}.field`,
             'read',
             errors,
-            typeof value.source === 'string' ? `source "${value.source}"` : 'the joined source'
+            typeof value.source === 'string' ? `input "${value.source}"` : 'the joined input'
           );
           declareField(selected.as, type, `${fieldPath}.as`);
         }
@@ -246,7 +246,7 @@ function compileQuery(query, index, symbols, compiled, errors) {
       if (!isRecord(predicate)) return;
       const fieldPath = `${path}.filter.predicates[${predicateIndex}].field`;
       requireField(predicate.field, fieldPath, 'scalar');
-      validateBranchSpecificFilter(predicate.field, rowInputSources, fieldPath, errors);
+      validateBranchSpecificFilter(predicate.field, rowInputTables, fieldPath, errors);
     });
   }
 
@@ -362,27 +362,27 @@ function compileQuery(query, index, symbols, compiled, errors) {
     });
   }
 
-  return { fields, sources, rowSources };
+  return { fields, tables, rowTables };
 }
 
 /**
- * @param {unknown} source
+ * @param {unknown} input
  * @param {Map<string, { query: Record<string, unknown>, index: number }>} symbols
  * @param {Map<string, QueryType | undefined>} compiled
  * @returns {QueryType | undefined}
  */
-function resolveSource(source, symbols, compiled) {
-  if (typeof source !== 'string') return undefined;
-  if (SOURCE_VALUES.includes(source)) {
-    const names = SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (source)];
+function resolveInput(input, symbols, compiled) {
+  if (typeof input !== 'string') return undefined;
+  if (TABLE_VALUES.includes(input)) {
+    const names = TABLE_FIELDS[/** @type {keyof typeof TABLE_FIELDS} */ (input)];
     return {
       fields: names ? new Map(names.map((name) => [name, intrinsicType(name)])) : undefined,
-      sources: new Set([source]),
-      rowSources: new Set([source])
+      tables: new Set([input]),
+      rowTables: new Set([input])
     };
   }
-  if (!symbols.has(source)) return undefined;
-  return compiled.get(source);
+  if (!symbols.has(input)) return undefined;
+  return compiled.get(input);
 }
 
 /**
@@ -391,16 +391,16 @@ function resolveSource(source, symbols, compiled) {
  * @param {string} path
  * @param {'read'|'scalar'|'numeric'|'aggregate-numeric'} usage
  * @param {ValidationError[]} errors
- * @param {string} [sourceLabel]
+ * @param {string} [inputLabel]
  * @returns {FieldType}
  */
-function requireSourceField(fields, field, path, usage, errors, sourceLabel = 'the referenced source') {
+function requireInputField(fields, field, path, usage, errors, inputLabel = 'the referenced input') {
   if (typeof field !== 'string') return 'unknown';
   const type = fields?.get(field);
   if (fields && type === undefined) {
     errors.push(error(
       ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-      unavailableFieldMessage(field, fields, sourceLabel),
+      unavailableFieldMessage(field, fields, inputLabel),
       path
     ));
     return 'unknown';
@@ -421,7 +421,7 @@ function validateUsage(field, type, usage, path, errors) {
   if (INFERRED_FIELD_NAMES.includes(field)) {
     errors.push(error(
       ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
-      `query fields must exist in the canonical schema; "${field}" is derived after query execution.`,
+      `query fields must exist in a database table or earlier query; "${field}" is derived after query execution.`,
       path
     ));
   } else if (usage !== 'read' && type === 'link') {
@@ -443,33 +443,33 @@ function validateUsage(field, type, usage, path, errors) {
 }
 
 /**
- * A required filter over a multi-source row projection must be satisfiable from
+ * A required filter over a multi-table row projection must be satisfiable from
  * every branch. Otherwise one unavailable branch can make the whole projection
  * unavailable even though that branch could never match the predicate.
  *
  * @param {unknown} field
- * @param {Set<string>} rowInputSources
+ * @param {Set<string>} rowInputTables
  * @param {string} path
  * @param {ValidationError[]} errors
  */
-function validateBranchSpecificFilter(field, rowInputSources, path, errors) {
-  if (typeof field !== 'string' || rowInputSources.size <= 1) return;
+function validateBranchSpecificFilter(field, rowInputTables, path, errors) {
+  if (typeof field !== 'string' || rowInputTables.size <= 1) return;
   let present = 0;
   let known = 0;
-  for (const source of rowInputSources) {
-    const fields = SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (source)];
+  for (const table of rowInputTables) {
+    const fields = TABLE_FIELDS[/** @type {keyof typeof TABLE_FIELDS} */ (table)];
     if (!Array.isArray(fields)) continue;
     known += 1;
     if (fields.includes(field)) present += 1;
   }
   if (known <= 1 || present === 0 || present === known) return;
-  const missing = [...rowInputSources].filter((source) => {
-    const fields = SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (source)];
+  const missing = [...rowInputTables].filter((table) => {
+    const fields = TABLE_FIELDS[/** @type {keyof typeof TABLE_FIELDS} */ (table)];
     return Array.isArray(fields) && !fields.includes(field);
   }).sort();
   errors.push(error(
     ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
-    `filter field "${field}" is only available from some row input sources; query that source directly before filtering. Missing from: ${missing.join(', ')}.`,
+    `filter field "${field}" is only available from some row input tables; query that table directly before filtering. Missing from: ${missing.join(', ')}.`,
     path
   ));
 }
@@ -550,13 +550,13 @@ function argumentType(argument, fields) {
 /**
  * @param {string} field
  * @param {Map<string, FieldType>} fields
- * @param {string} sourceLabel
+ * @param {string} inputLabel
  */
-function unavailableFieldMessage(field, fields, sourceLabel) {
+function unavailableFieldMessage(field, fields, inputLabel) {
   const available = [...fields.keys()].sort();
   const displayed = available.slice(0, 8);
   const suffix = available.length > displayed.length ? `, and ${available.length - displayed.length} more` : '';
-  return `field "${field}" is not available from ${sourceLabel}; available fields: ${displayed.join(', ') || '(none)'}${suffix}.`;
+  return `field "${field}" is not available from ${inputLabel}; available fields: ${displayed.join(', ') || '(none)'}${suffix}.`;
 }
 
 /** @param {string} field @returns {FieldType} */
@@ -571,8 +571,8 @@ function intrinsicType(field) {
 function queryInputs(query, index) {
   const inputs = [{ name: query.from, path: `$.dashboard.queries[${index}].from` }];
   if (Array.isArray(query.union)) {
-    query.union.forEach((source, sourceIndex) => {
-      inputs.push({ name: source, path: `$.dashboard.queries[${index}].union[${sourceIndex}]` });
+    query.union.forEach((input, inputIndex) => {
+      inputs.push({ name: input, path: `$.dashboard.queries[${index}].union[${inputIndex}]` });
     });
   }
   if (Array.isArray(query.joins)) {

@@ -30,7 +30,7 @@ function ghAwLogInput() {
   };
 }
 
-function canonicalSources(generation = 'browser-generation', run = '12345') {
+function databaseTables(generation = 'browser-generation', run = '12345') {
   return {
     campaigns: {
       rows: [{
@@ -230,7 +230,7 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
 }
 
 function canonicalWarningSources() {
-  const sources = canonicalSources();
+  const sources = databaseTables();
   for (const sourceName of [
     'usage',
     'outcomes',
@@ -298,11 +298,11 @@ test.beforeEach(async ({ context, page }) => {
       return;
     }
     if (pathname === '/sources.json') {
-      await route.fulfill({ contentType: 'application/json', body: JSON.stringify(canonicalSources()) });
+      await route.fulfill({ contentType: 'application/json', body: JSON.stringify(databaseTables()) });
       return;
     }
     if (pathname === '/inventory-sources.json') {
-      const sources = canonicalSources();
+      const sources = databaseTables();
       sources.campaigns.rows.push({
         campaign: 'repo-assist',
         'campaign-name': 'Repo Assist',
@@ -413,7 +413,7 @@ test.beforeEach(async ({ context, page }) => {
 
 test('native IndexedDB directly upserts and retains canonical data across reload', async ({ page }) => {
   test.slow();
-  const sources = canonicalSources();
+  const sources = databaseTables();
 
   const first = await page.evaluate(async (sourceDocument) => {
     const coordinatorUrl = `${location.origin}/src/data/ingest/coordinator.js`;
@@ -576,7 +576,7 @@ test('data worker avoids unavailable legacy boundaries on initial and navigated 
     for (const source of Object.values(payload)) {
       expect(source.metadata.availability).not.toBe('unavailable');
     }
-    // `outcomes` is derived from the `issues` canonical source, so deleting the
+    // `outcomes` is derived from the `issues` database table, so deleting the
     // published `outcomes` boundary still yields the issue row pushed above.
     expect(payload.outcomes.rows).toHaveLength(1);
     expect(payload.outcomes.rows[0]).toMatchObject({
@@ -1119,8 +1119,8 @@ test('deletion rebuilds derived state and fresh data is directly upserted', asyn
       runs: await storage.readCollection(indexedDB, 'runs')
     };
   }, {
-    firstSources: canonicalSources('generation-a', '101'),
-    replacementSources: canonicalSources('generation-b', '202'),
+    firstSources: databaseTables('generation-a', '101'),
+    replacementSources: databaseTables('generation-b', '202'),
     name: databaseName
   });
 
@@ -1138,7 +1138,7 @@ test('deletion rebuilds derived state and fresh data is directly upserted', asyn
 });
 
 test('invalid direct upserts are rejected before changing stored data', async ({ page }) => {
-  const activeSources = canonicalSources('generation-a', '101');
+  const activeSources = databaseTables('generation-a', '101');
   const result = await page.evaluate(async (active) => {
     const coordinatorUrl = `${location.origin}/src/data/ingest/coordinator.js`;
     const normalizeUrl = `${location.origin}/src/data/normalize/index.js`;
