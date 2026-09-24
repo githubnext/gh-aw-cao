@@ -95,7 +95,7 @@ function isFailedRunCountShape(definition) {
 }
 
 /**
- * Recognizes the daily conclusion query used by the Runs swimlane. Request
+ * Recognizes the daily conclusion query used by the Runs line graph. Request
  * scoped `@time` predicates are allowed because the materialized records use
  * the same UTC day computed by the query.
  *

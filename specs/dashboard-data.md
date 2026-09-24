@@ -3269,7 +3269,7 @@ fast path:
 * **Additive** — safe to sum per-day scalar values across the requested
   window. Initial eligible metrics: `runs`, `successful-runs`,
   `failed-runs`, `dispatches`, `failed-dispatches`, and per-conclusion run
-  counts used by the Runs swimlane (all derived from the
+  counts used by the Runs line graph (all derived from the
   `runs` canonical collection, bucketed by the UTC day of
   `startedAt`, falling back to `createdAt`).
 * **Snapshot/global** — not a time-window aggregate. Examples:

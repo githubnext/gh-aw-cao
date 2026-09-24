@@ -695,11 +695,11 @@ describe('dashboard document validation', () => {
     )).toMatchObject({
       data: { source: 'runs-daily-conclusions', time: { range: '7d' } },
       mark: 'chart',
-      chart: 'swimlane',
+      chart: 'line',
       encoding: {
         x: { field: 'day', type: 'temporal' },
-        y: { field: 'run-conclusion', type: 'ordinal' },
-        weight: { field: 'runs', type: 'quantitative' }
+        y: { field: 'runs', type: 'quantitative' },
+        color: { field: 'run-conclusion', type: 'nominal' }
       }
     });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);

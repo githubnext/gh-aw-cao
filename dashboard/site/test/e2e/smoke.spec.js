@@ -542,7 +542,7 @@ test('Transactions is a responsive table of retained transaction data', async ({
   await expect(page.locator('.top-nav')).toBeHidden();
 });
 
-test('Runs renders a last-week swimlane above its responsive table and scrolls like Cost', async ({ page }) => {
+test('Runs renders a last-week line graph above its responsive table and scrolls like Cost', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
@@ -633,7 +633,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
   const view = runsPage.locator('[data-view-layout="full-view"]');
   const table = view.locator('[data-lazy-list]');
   const scroll = view.locator('.table-scroll');
-  const swimlane = runsPage.locator('[data-view-id="runs-last-week"]');
+  const lineGraph = runsPage.locator('[data-view-id="runs-last-week"]');
   const columnHeaders = view.locator('thead > tr:first-child > th');
   const facetControl = columnHeaders.locator('.filter-select-control').first();
   const expectAlignedColumnHeaders = async () => {
@@ -644,21 +644,19 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
   await expect(page.locator('[data-nav-page-id="runs"]')).toHaveAttribute('aria-current', 'page');
   await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view/);
   await expect(view).toHaveCount(1);
-  await expect(swimlane.locator('[data-chart-widget="swimlane"]')).toBeVisible();
-  await expect(swimlane.locator('.swimlane-summary')).toContainText('100 runs');
-  const swimlaneHeadingBox = await swimlane.getByRole('heading', { name: 'Runs in the last week' }).boundingBox();
-  const swimlaneSummaryBox = await swimlane.locator('.swimlane-summary').boundingBox();
-  const swimlaneChartBox = await swimlane.locator('[data-chart-widget="swimlane"] svg').boundingBox();
-  const swimlaneLabelBox = await swimlane.locator('.swimlane-label').first().boundingBox();
-  if (swimlaneHeadingBox === null || swimlaneSummaryBox === null || swimlaneChartBox === null || swimlaneLabelBox === null) {
-    throw new Error('Expected swimlane heading, summary, and chart boxes to be measurable.');
+  await expect(lineGraph.locator('[data-chart-widget="line"]')).toBeVisible();
+  await expect(lineGraph.locator('.line-chart-series')).toHaveCount(2);
+  await expect(lineGraph.locator('.chart-legend-line')).toContainText('failure');
+  await expect(lineGraph.locator('.chart-legend-line')).toContainText('success');
+  const lineGraphHeadingBox = await lineGraph.getByRole('heading', { name: 'Runs in the last week' }).boundingBox();
+  const lineGraphChartBox = await lineGraph.locator('[data-chart-widget="line"] svg').boundingBox();
+  if (lineGraphHeadingBox === null || lineGraphChartBox === null) {
+    throw new Error('Expected line graph heading and chart boxes to be measurable.');
   }
-  const swimlaneChartMaxHeight = await swimlane.locator('[data-chart-widget="swimlane"] svg')
+  const lineGraphChartMaxHeight = await lineGraph.locator('[data-chart-widget="line"] svg')
     .evaluate((element) => Number.parseFloat(getComputedStyle(element).maxHeight));
-  expect(Number.isFinite(swimlaneChartMaxHeight)).toBe(true);
-  expect(swimlaneSummaryBox.x).toBeGreaterThan(swimlaneHeadingBox.x);
-  expect(swimlaneLabelBox.x).toBeGreaterThan(swimlaneHeadingBox.x);
-  expect(swimlaneChartBox.height).toBeLessThanOrEqual(swimlaneChartMaxHeight);
+  expect(Number.isFinite(lineGraphChartMaxHeight)).toBe(true);
+  expect(lineGraphChartBox.height).toBeLessThanOrEqual(lineGraphChartMaxHeight);
   await page.getByRole('button', { name: 'Table', exact: true }).click();
   await expect(table).toBeVisible();
   await expect(table.locator('tbody > tr')).toHaveCount(25);
@@ -694,17 +692,17 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
   expect(scrolledSummaryBox.y - (facetControlBox.y + facetControlBox.height)).toBeGreaterThanOrEqual(4);
   await page.getByRole('button', { name: 'Cards' }).click();
   await page.getByRole('button', { name: 'Chart' }).click();
-  await expect(swimlane).toBeVisible();
+  await expect(lineGraph).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   const mobileViewModeToggle = page.locator('.mobile-view-mode-toggle');
   await expect(runsPage.locator(':scope > .page-chrome > .filter-bar')).toBeHidden();
-  await expect(swimlane).toBeVisible();
+  await expect(lineGraph).toBeVisible();
   await expect(table).toBeHidden();
   await expect(mobileViewModeToggle).toHaveAttribute('aria-label', 'Switch to Cards view');
   await mobileViewModeToggle.click();
   await mobileViewModeToggle.click();
-  await expect(swimlane).toBeHidden();
+  await expect(lineGraph).toBeHidden();
   await expect(table).toBeVisible();
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
   await expectAlignedColumnHeaders();
