@@ -52,6 +52,7 @@ const maximumDurationMs = budget("DASHBOARD_QUERY_COST_MAX_DURATION_MS", 5_000);
 const maximumOperations = budget("DASHBOARD_QUERY_COST_MAX_OPERATIONS", 50_000_000);
 const maximumResultBytes = budget("DASHBOARD_QUERY_COST_MAX_RESULT_MB", 48) * 1024 * 1024;
 const maximumRetainedBytes = budget("DASHBOARD_QUERY_COST_MAX_RETAINED_MB", 96) * 1024 * 1024;
+const minimumRecords = budget("DASHBOARD_QUERY_COST_MIN_RECORDS", 1, { integer: true });
 const snapshotAvailable = existsSync(databasePath);
 
 /** @type {Awaited<ReturnType<typeof benchmarkDashboardQueryCost>> | undefined} */
@@ -93,6 +94,20 @@ test("static query cost evaluator selects the queries to investigate", () => {
     assert.ok(candidate["static-total-row-read-units"] > 0, `${candidate.name} has no static cost`);
   }
 });
+
+test(
+  "deployed snapshot projects records to measure",
+  { skip: snapshotAvailable ? false : "deployed SQLite snapshot is unavailable" },
+  () => {
+    assert.ok(report, "benchmark report is available");
+    // Fail closed: an empty projection produces an all-zero report that looks
+    // healthy but measures nothing, so the snapshot is treated as unusable.
+    assert.ok(
+      report.database["records-read"] >= minimumRecords,
+      `Canonical projection read ${report.database["records-read"]} records from ${report.database.path} (minimum ${minimumRecords}). Empty sources: ${report.database["empty-sources"].join(", ") || "none"}.`,
+    );
+  },
+);
 
 test(
   "deployed queries stay within the computational and space budget",

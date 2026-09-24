@@ -79,7 +79,28 @@ test("benchmark measures computational and space cost per query", async (t) => {
   assert.match(markdown, /## Dashboard query cost \(deployed SQLite snapshot\)/);
   assert.match(markdown, /### Computational cost/);
   assert.match(markdown, /### Space cost/);
+  assert.match(markdown, /Canonical projection by source/);
+  assert.doesNotMatch(markdown, /canonical projection returned no records/);
   for (const measurement of report.measurements) {
     assert.ok(markdown.includes(`\`${measurement.query}\``), `${measurement.query} is missing`);
   }
+});
+
+test("benchmark reports an empty snapshot instead of an all-zero measurement", async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), "cao-query-cost-empty-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const report = await benchmarkDashboardQueryCost({
+    databasePath: path.join(root, "empty.sqlite"),
+    document: dashboardDocument,
+    limit: 3,
+  });
+  assert.equal(report.database["records-read"], 0);
+  assert.deepEqual(
+    report.database["empty-sources"].toSorted(),
+    Object.keys(report.database["source-records"]).toSorted(),
+  );
+  assert.match(
+    dashboardQueryCostMarkdown(report),
+    /canonical projection returned no records/,
+  );
 });

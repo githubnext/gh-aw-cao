@@ -220,9 +220,13 @@ export async function benchmarkDashboardQueryCost({ databasePath, document, limi
         ...candidate,
         ...measureDashboardQueryCost(index.get(candidate.name), sources, defects.get(candidate.name)),
       }));
-    const databaseRecords = Object.entries(databaseSources)
-      .filter(([name]) => !index.has(name))
-      .reduce((total, [, source]) => total + (Array.isArray(source?.rows) ? source.rows.length : 0), 0);
+    const projected = Object.entries(databaseSources).filter(([name]) => !index.has(name));
+    const sourceRecords = Object.fromEntries(projected.map(([name, source]) => [
+      name,
+      Array.isArray(source?.rows) ? source.rows.length : 0,
+    ]));
+    const databaseRecords = Object.values(sourceRecords)
+      .reduce((total, count) => total + count, 0);
     return {
       dashboard: typeof dashboard?.id === "string" ? dashboard.id : "dashboard",
       queries: definitions.length,
@@ -231,7 +235,11 @@ export async function benchmarkDashboardQueryCost({ databasePath, document, limi
         path: path.resolve(databasePath),
         "duration-ms": Number(databaseMs.toFixed(3)),
         "records-read": databaseRecords,
-        sources: Object.keys(databaseSources).filter((name) => !index.has(name)).length,
+        sources: projected.length,
+        "source-records": sourceRecords,
+        "empty-sources": Object.entries(sourceRecords)
+          .filter(([, count]) => count === 0)
+          .map(([name]) => name),
       },
       "static-model": analysis.summary.model,
       "static-materialize-all-row-read-units": analysis.summary["materialize-all-row-read-units"],
@@ -289,12 +297,39 @@ export function dashboardQueryCostMarkdown(report) {
   const byMemory = report["most-costly-by-memory"].map((query) => index.get(query));
   const failures = report.measurements.filter((measurement) =>
     !["available", "empty"].includes(measurement.status));
+  const sourceRecords = Object.entries(report.database["source-records"] ?? {})
+    .toSorted(([left, leftCount], [right, rightCount]) => rightCount - leftCount || left.localeCompare(right));
+  const emptySources = report.database["empty-sources"] ?? [];
   return [
     "## Dashboard query cost (deployed SQLite snapshot)",
     "",
     `Measured the **${report.candidates} most expensive of ${report.queries} queries** chosen by the static query cost evaluator (${report["static-model"]}, ${formatCount(report["static-materialize-all-row-read-units"])} normalized row-read units to materialize all queries).`,
     "",
     `Canonical projection read **${formatCount(report.database["records-read"])} records** across **${report.database.sources} sources** in **${report.database["duration-ms"].toFixed(2)} ms**.`,
+    ...(report.database["records-read"] > 0
+      ? []
+      : [
+        "",
+        "> The canonical projection returned no records, so every measurement below is meaningless. The snapshot is empty, stale, or was written with an incompatible canonical schema version.",
+      ]),
+    ...(sourceRecords.length === 0
+      ? []
+      : [
+        "",
+        "<details><summary><b>Canonical projection by source</b></summary>",
+        "",
+        "| Source | Records |",
+        "| --- | ---: |",
+        ...sourceRecords.map(([name, count]) => `| ${markdownCode(name)} | ${formatCount(count)} |`),
+        "",
+        "</details>",
+      ]),
+    ...(emptySources.length === 0 || report.database["records-read"] === 0
+      ? []
+      : [
+        "",
+        `Empty canonical sources: ${emptySources.map((name) => markdownCode(name)).join(", ")}.`,
+      ]),
     "",
     "### Computational cost",
     "",
