@@ -1,7 +1,7 @@
 ---
 title: Central Agentic Ops Dashboard Data Architecture Specification
 description: Canonical data model, ingestion, IndexedDB persistence, consistency, recovery, and scale requirements for the gh-aw-cao dashboard.
-version: 1.8.0
+version: 1.8.1
 status: Working Draft
 editors:
   - GitHub Next
@@ -9,11 +9,11 @@ editors:
 
 # Central Agentic Ops Dashboard Data Architecture Specification
 
-**Version:** 1.8.0
+**Version:** 1.8.1
 **Status:** Working Draft
 **Repository:** `githubnext/gh-aw-cao`
 **Target implementation:** Dashboard data subsystem
-**Date:** 2026-09-23
+**Date:** 2026-09-24
 
 | Browser storage | IndexedDB keeps all available run summaries and expires detailed run-linked records after 30 days. |
 | --- | --- |
@@ -304,8 +304,8 @@ The implementation profile defined by this specification is:
 
 | Layer | Version | Physical structure |
 | --- | ---: | --- |
-| Canonical model | 14 | Campaign, Repository, Workflow, Run, Domain, Tool, Audit, Issue, and Operational Value records |
-| Browser IndexedDB | 22 | Nine canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
+| Canonical model | 15 | Campaign, Repository, Workflow, Run, Domain, Tool, Audit, Issue, and Operational Value records |
+| Browser IndexedDB | 23 | Nine canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
 | Local SQLite projection | IndexedDB 22 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records`, containing the same logical stores and JSON records as IndexedDB |
 | Local Redis server projection | Canonical model 14 | Immutable active generation of logical-source hashes plus RediSearch indexes, queried only through the loopback Go HTTP(S) server |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
@@ -946,6 +946,10 @@ erDiagram
     string runId FK "required owning run"
     boolean isPullRequest
     string safeOutputType
+    boolean closed
+    string stateReason
+    string closedAt
+    string statusObservedAt
   }
 ```
 
@@ -1738,7 +1742,7 @@ The canonical browser database SHALL use:
 
 ```js
 const DATABASE_NAME = "gh-aw-cao-dashboard-data";
-const DATABASE_VERSION = 22;
+const DATABASE_VERSION = 23;
 ```
 
 The name MAY be scoped by deployment path to prevent unrelated dashboard
@@ -1750,7 +1754,7 @@ rows.
 
 # 27. Object Stores
 
-IndexedDB version 22 SHALL define:
+IndexedDB version 23 SHALL define:
 
 ```text
 campaigns
@@ -1805,7 +1809,7 @@ conclusion
 
 The generation-ordered runtime-computation indexes described by Section 73 are
 reserved for the physical version that implements the computation projection.
-They are not part of IndexedDB version 22. That implementation MUST increment
+They are not part of IndexedDB version 23. That implementation MUST increment
 the physical version and update Section 5.1 before relying on those indexes.
 
 ### run-linked tables

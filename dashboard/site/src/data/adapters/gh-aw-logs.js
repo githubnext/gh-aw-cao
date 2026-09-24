@@ -401,7 +401,12 @@ function specializedFields(type, fields, kind) {
       repositoryFullName: `${owner}/${repository}`,
       number,
       isPullRequest: fields.githubEntityType === 'pull_request',
-      url
+      url,
+      state: optionalString(fields.issueState),
+      closed: typeof fields.issueClosed === 'boolean' ? fields.issueClosed : undefined,
+      stateReason: fields.issueStateReason === null ? null : optionalString(fields.issueStateReason),
+      closedAt: fields.issueClosedAt === null ? null : optionalString(fields.issueClosedAt),
+      statusObservedAt: optionalString(fields.issueStatusObservedAt)
     };
   }
   if (kind === 'tool') {
@@ -1796,6 +1801,11 @@ function createCachedGhAwJsonlAccumulator(options) {
         && !Array.isArray(safeOutput.value)
         ? /** @type {Record<string, unknown>} */ (safeOutput.value)
         : {};
+      const issueStatus = record.github_issue_status
+        && typeof record.github_issue_status === 'object'
+        && !Array.isArray(record.github_issue_status)
+        ? /** @type {Record<string, unknown>} */ (record.github_issue_status)
+        : {};
       emitEvent(
         'safe_output.created',
         timestamp(record.timestamp) ?? completedAt ?? enriched.observedAt,
@@ -1813,6 +1823,13 @@ function createCachedGhAwJsonlAccumulator(options) {
           correlationId: optionalString(record.url ?? record.temporaryId),
           safeOutputType: optionalString(record.type),
           githubEntityType: safeOutputGithubEntityType(record),
+          issueState: optionalString(issueStatus.state),
+          issueClosed: typeof issueStatus.closed === 'boolean' ? issueStatus.closed : undefined,
+          issueStateReason: issueStatus.state_reason === null
+            ? null
+            : optionalString(issueStatus.state_reason),
+          issueClosedAt: issueStatus.closed_at === null ? null : optionalString(issueStatus.closed_at),
+          issueStatusObservedAt: optionalString(issueStatus.observed_at),
           payloadRef: `gh-aw-logs-shards#L${safeOutput.line}`
         }
       );

@@ -267,6 +267,10 @@ item's `type` as `safeOutputType` and SHALL preserve or derive
 `githubEntityType` from explicit target kind, canonical github.com URL shape,
 or the safe-output action. Non-GitHub provider items and items without
 conclusive GitHub entity evidence SHALL leave `githubEntityType` absent.
+When the collector enriches a GitHub issue safe-output item with a
+`github_issue_status` object, the Issue record SHALL preserve its `state`,
+`closed`, `state_reason`, `closed_at`, and status `observed_at` values as
+`state`, `closed`, `stateReason`, `closedAt`, and `statusObservedAt`.
 An item with a resolvable canonical issue or pull-request URL SHALL become an
 Issue record carrying its owner, repository, number, URL, and `isPullRequest`;
 every other safe-output item SHALL remain an Audit record.
@@ -307,7 +311,9 @@ They MAY additionally populate the specialized fields declared for their record
 type in `specs/dashboard-data.md` Section 12: `domain`, `decision`, and
 `requestCount` for a Domain; `toolType`, `isSkill`, and `name` for a Tool; and
 `owner`, `repository`, `repositoryFullName`, `number`, `url`, and
-`isPullRequest` for an Issue.
+`isPullRequest` for an Issue. An Issue MAY additionally populate `state`,
+`closed`, `stateReason`, `closedAt`, and `statusObservedAt` from bounded
+GraphQL enrichment.
 
 The Activity collector MAY append a schema-v2
 `token_efficiency_observation` envelope only from the validated
