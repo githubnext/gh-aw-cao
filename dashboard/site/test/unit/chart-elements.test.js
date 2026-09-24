@@ -228,7 +228,7 @@ describe('chart element helpers', () => {
 
   it('renders bounded horizontal bars with labels on the left and shared bar colors', () => {
     const points = [
-      { x: 'Alpha repository', y: 40, color: 'success' },
+      { x: 'Alpha repository', y: 40, color: 'success', link: { href: '#page-alpha', label: 'View Alpha repository' } },
       { x: 'Beta repository', y: 20, color: 'failure' }
     ];
     const chart = renderChartWidget('horizontal-bar', points, listChartSeries(points));
@@ -238,6 +238,7 @@ describe('chart element helpers', () => {
     expect(chart.querySelector('.horizontal-bar-chart-list')?.getAttribute('aria-label')).toBe('Horizontal bar chart with 2 bars');
     expect([...chart.querySelectorAll('.horizontal-bar-chart-label')].map((label) => label.textContent))
       .toEqual(['Alpha repository', 'Beta repository']);
+    expect(chart.querySelector('.horizontal-bar-chart-label a')?.getAttribute('href')).toBe('#page-alpha');
     expect(chart.querySelectorAll('.bar-chart-bar')).toHaveLength(2);
     expect(chart.querySelector('.horizontal-bar-chart-bar')?.getAttribute('style')).toContain('--horizontal-bar-size: 100%');
     expect([...chart.querySelectorAll('.horizontal-bar-chart-value')].map((value) => value.textContent))

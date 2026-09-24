@@ -964,10 +964,13 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('.view-metadata-summary')).toBeNull();
     expect(rendered.querySelector('.horizon-summary [aria-label="Data status"]')).toBeNull();
     expect(rendered.querySelector('.filter-tuning-controls .horizon-details [aria-label="Data status"]')).toBeNull();
-    expect(page?.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
-    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('dependabot.yml (githubnext/gh-aw-cao)');
-    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('ci.yml (github/target-service)');
-    expect([...(page?.querySelectorAll('[data-view-id="workflows-by-runs"] .chart-legend-pie strong') ?? [])].map((value) => value.textContent)).toEqual(['2', '1']);
+    expect(page?.querySelector('[data-chart-widget="horizontal-bar"]')).not.toBeNull();
+    expect([...(page?.querySelectorAll('[data-view-id="workflows-by-aic-per-run"] .horizontal-bar-chart-label') ?? [])].map((value) => value.textContent))
+      .toEqual(['dependabot.yml (githubnext/gh-aw-cao)', 'ci.yml (github/target-service)']);
+    expect([...(page?.querySelectorAll('[data-view-id="workflows-by-aic-per-run"] .horizontal-bar-chart-value') ?? [])].map((value) => value.textContent))
+      .toEqual(['15', '5']);
+    expect(page?.querySelector('[data-view-id="workflows-by-aic-per-run"] .horizontal-bar-chart-label a')?.getAttribute('href'))
+      .toContain('#page-workflow-runtime?workflow=');
     expect(page?.querySelector('[data-view-id="workflows-inventory"][data-view-layout="full-view"]')).not.toBeNull();
     const rocket = rendered.querySelector('[data-nav-page-id="workflows"] .octicon-rocket');
     expect(rocket?.classList.contains('octicon-rocket')).toBe(true);
@@ -2307,7 +2310,7 @@ describe('presenter built-in and custom pages', () => {
 
     const headings = [...rendered.querySelectorAll('[data-page-id="runs"] .page-section h3')].map((element) => element.textContent);
     expect(headings).toEqual(['Runs in the last week', 'Runs']);
-    expect(rendered.querySelectorAll('[data-page-id="runs"] [data-chart-widget="swimlane"]')).toHaveLength(1);
+    expect(rendered.querySelectorAll('[data-page-id="runs"] [data-chart-widget="line"]')).toHaveLength(1);
     expect(rendered.querySelectorAll('[data-page-id="runs"] .custom-table')).toHaveLength(1);
     expect(rendered.querySelector('[data-page-id="runs"]')?.getAttribute('data-page-kind')).toBe('custom');
   });

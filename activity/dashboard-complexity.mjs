@@ -1,9 +1,16 @@
+import { DatabaseSync } from 'node:sqlite';
+import databaseQueries from '../dashboard/site/src/data/queries/database.json' with { type: 'json' };
+import { canonicalDatabaseName } from '../dashboard/site/src/data/storage/indexeddb.js';
+
+const DATABASE_SOURCE_TABLES = databaseSourceTables(databaseQueries);
+
 /**
  * Analyze the static row-read complexity of every Dashboard Language query.
  *
  * @param {unknown} document
+ * @param {{ tableCounts?: Record<string, number> }} [options]
  */
-export function analyzeDashboardComplexity(document) {
+export function analyzeDashboardComplexity(document, { tableCounts } = {}) {
   if (!isRecord(document) || !isRecord(document.dashboard)) {
     throw new Error('Dashboard document must contain a dashboard object');
   }
@@ -11,7 +18,8 @@ export function analyzeDashboardComplexity(document) {
     .filter((query) => isRecord(query) && typeof query.name === 'string');
   const consumers = dashboardQueryConsumers(document.dashboard, definitions);
   const estimates = queryComplexityEstimates(
-    new Map(definitions.map((query) => [query.name, query]))
+    new Map(definitions.map((query) => [query.name, query])),
+    normalizedTableWeights(tableCounts)
   );
   const ranking = estimates.summary['computation-pressure'].map((query) => ({
     ...query,
@@ -54,14 +62,26 @@ export function formatDashboardComplexityMarkdown(analysis, { limit, queryId } =
   ].join(' | '));
   const sources = sourceCoefficients.length === 0
     ? 'none'
-    : sourceCoefficients.map(([source, coefficient]) => `${markdownCode(source)} ${coefficient}`).join(', ');
+    : sourceCoefficients.map(([source, coefficient]) => (
+        `${markdownCode(source)} ${formatCoefficient(coefficient)}`
+      )).join(', ');
+  const tableCounts = Object.entries(analysis.summary['database-table-row-counts'] ?? {})
+    .toSorted(([left], [right]) => left.localeCompare(right));
   return [
     '### Dashboard query complexity',
     '',
     `Estimated **${analysis.summary['materialize-all-row-read-units']} normalized row-read units** to materialize all ${analysis.queries} queries once with shared dependencies reused.`,
     ...(queryId === undefined ? [] : ['', `Selected query: ${markdownCode(queryId)}.`]),
     '',
-    `Source coefficients: ${sources}.`,
+    `Database table coefficients: ${sources}.`,
+    ...(tableCounts.length === 0
+      ? []
+      : [
+          '',
+          `Deployed table rows: ${tableCounts.map(([table, count]) => (
+            `${markdownCode(table)} ${Number(count).toLocaleString('en-US')}`
+          )).join(', ')}.`
+        ]),
     '',
     '| Rank | Query | Used by | Total | Direct | Dependencies | Complexity |',
     '| ---: | --- | --- | ---: | ---: | ---: | --- |',
@@ -146,20 +166,27 @@ function viewQueryNames(view) {
 
 /**
  * Static upper-bound row-read model matching the declarative executor:
- * - every external source starts with one normalized row;
+ * - every database table is weighted by its deployed row count relative to the
+ *   largest table, or one when deployed counts are unavailable;
  * - filters, joins, aggregates, and limits do not reduce the upper-bound row count;
  * - joins cannot expand the left side because duplicate right keys fail closed;
  * - dependencies are materialized once and reused within one execution batch.
  *
  * @param {Map<string, Record<string, any>>} index
+ * @param {{ weights: Map<string, number>, counts: Record<string, number> | undefined }} tableWeights
  */
-function queryComplexityEstimates(index) {
+function queryComplexityEstimates(index, tableWeights) {
   const direct = new Map();
   const visiting = new Set();
 
   /** @param {string} source */
   const sourceOutput = (source) => {
-    if (!index.has(source)) return new Map([[source, 1]]);
+    if (!index.has(source)) {
+      const table = DATABASE_SOURCE_TABLES.get(source);
+      return table === undefined
+        ? new Map()
+        : new Map([[table, tableWeights.weights.get(table) ?? 1]]);
+    }
     return estimate(source).output;
   };
   /** @param {string} name */
@@ -211,14 +238,18 @@ function queryComplexityEstimates(index) {
       total = addCoefficients(total, direct.get(dependency)?.reads ?? new Map());
     }
     const own = direct.get(name) ?? emptyComplexityEstimate();
+    const directRowReads = normalizedCoefficient(coefficientTotal(own.reads));
+    const totalRowReads = normalizedCoefficient(coefficientTotal(total));
     queries.set(name, {
-      model: 'normalized-upper-bound',
-      assumptions: 'Each external source has one row; selectivity is 1; query dependencies materialize once per batch.',
+      model: tableWeights.counts ? 'deployment-weighted-upper-bound' : 'normalized-upper-bound',
+      assumptions: tableWeights.counts
+        ? 'Database tables are weighted by deployed row counts normalized to the largest table; selectivity is 1; query dependencies materialize once per batch.'
+        : 'Each database table has weight 1; selectivity is 1; query dependencies materialize once per batch.',
       class: own.class,
-      'direct-row-read-units': coefficientTotal(own.reads),
-      'dependency-row-read-units': coefficientTotal(total) - coefficientTotal(own.reads),
-      'total-row-read-units': coefficientTotal(total),
-      'output-row-units': coefficientTotal(own.output),
+      'direct-row-read-units': directRowReads,
+      'dependency-row-read-units': normalizedCoefficient(totalRowReads - directRowReads),
+      'total-row-read-units': totalRowReads,
+      'output-row-units': normalizedCoefficient(coefficientTotal(own.output)),
       'source-coefficients': coefficientsObject(total),
       'direct-source-coefficients': coefficientsObject(own.reads),
       'stage-row-reads': own['stage-reads']
@@ -253,12 +284,17 @@ function queryComplexityEstimates(index) {
     queries,
     ranks,
     summary: {
-      model: 'normalized-upper-bound',
-      assumptions: 'Each external source has one row; selectivity is 1; all queries materialize once with shared dependencies reused.',
-      'materialize-all-row-read-units': coefficientTotal(graphReads),
+      model: tableWeights.counts ? 'deployment-weighted-upper-bound' : 'normalized-upper-bound',
+      assumptions: tableWeights.counts
+        ? 'Database tables are weighted by deployed row counts normalized to the largest table; selectivity is 1; all queries materialize once with shared dependencies reused.'
+        : 'Each database table has weight 1; selectivity is 1; all queries materialize once with shared dependencies reused.',
+      'materialize-all-row-read-units': normalizedCoefficient(coefficientTotal(graphReads)),
       'source-coefficients': coefficientsObject(graphReads),
+      ...(tableWeights.counts ? { 'database-table-row-counts': tableWeights.counts } : {}),
       'stage-row-read-units': Object.fromEntries(
-        Object.entries(stageTotals).toSorted(([left], [right]) => left.localeCompare(right))
+        Object.entries(stageTotals)
+          .map(([stage, total]) => [stage, normalizedCoefficient(total)])
+          .toSorted(([left], [right]) => left.localeCompare(right))
       ),
       'computation-pressure-definition': 'Dependency-amortized normalized row-read units; each unique transitive dependency materializes once.',
       'computation-pressure': pressure
@@ -358,7 +394,82 @@ function coefficientTotal(coefficients) {
 
 /** @param {Map<string, number>} coefficients */
 function coefficientsObject(coefficients) {
-  return Object.fromEntries([...coefficients].toSorted(([left], [right]) => left.localeCompare(right)));
+  return Object.fromEntries([...coefficients]
+    .map(([source, coefficient]) => [source, normalizedCoefficient(coefficient)])
+    .toSorted(([left], [right]) => left.localeCompare(right)));
+}
+
+/** @param {Record<string, any>[]} definitions */
+function databaseSourceTables(definitions) {
+  const sources = new Map();
+  for (const definition of definitions) {
+    if (!isRecord(definition) || typeof definition.name !== 'string') continue;
+    const stores = Array.isArray(definition.stores)
+      ? definition.stores.filter((table) => typeof table === 'string')
+      : [];
+    const directTable = typeof definition.from === 'string' && definition.from.startsWith('$')
+      ? definition.from.slice(1)
+      : stores.find((table) => !['repositories', 'workflows', 'runs'].includes(table));
+    if (directTable && stores.includes(directTable)) sources.set(definition.name, directTable);
+    if (!isRecord(definition['stores-by-source'])) continue;
+    for (const [source, tables] of Object.entries(definition['stores-by-source'])) {
+      if (Array.isArray(tables) && tables.length > 0) {
+        const table = tables.findLast((candidate) => typeof candidate === 'string');
+        if (table) sources.set(source, table);
+      }
+    }
+  }
+  return sources;
+}
+
+/** @param {Record<string, number> | undefined} counts */
+function normalizedTableWeights(counts) {
+  if (counts === undefined) return { weights: new Map(), counts: undefined };
+  const entries = Object.entries(counts);
+  if (entries.some(([, count]) => !Number.isFinite(Number(count)) || Number(count) < 0)) {
+    throw new TypeError('Database table row counts must be non-negative finite numbers');
+  }
+  const maximum = Math.max(1, ...entries.map(([, count]) => Number(count)));
+  return {
+    weights: new Map(entries.map(([table, count]) => [table, Number(count) / maximum])),
+    counts: Object.fromEntries(entries.toSorted(([left], [right]) => left.localeCompare(right)))
+  };
+}
+
+/** @param {string} databasePath */
+export function readDashboardTableCounts(databasePath) {
+  const connection = new DatabaseSync(databasePath, { readOnly: true });
+  try {
+    const rows = connection.prepare(`
+      SELECT stores.name, COUNT(records.record_key) AS records
+      FROM __idb_stores AS stores
+      LEFT JOIN __idb_records AS records
+        ON records.database_name = stores.database_name
+       AND records.store_name = stores.name
+      WHERE stores.database_name = ?
+      GROUP BY stores.name
+      ORDER BY stores.name
+    `).all(canonicalDatabaseName());
+    if (rows.length === 0) {
+      throw new Error(`Dashboard database contains no canonical tables: ${databasePath}`);
+    }
+    return Object.fromEntries(rows.map((row) => [
+      String(row.name),
+      Number(row.records)
+    ]));
+  } finally {
+    connection.close();
+  }
+}
+
+/** @param {number} value */
+function normalizedCoefficient(value) {
+  return Number(Number(value).toFixed(6));
+}
+
+/** @param {number} value */
+function formatCoefficient(value) {
+  return normalizedCoefficient(value).toLocaleString('en-US', { maximumFractionDigits: 6 });
 }
 
 /** @param {string} value */

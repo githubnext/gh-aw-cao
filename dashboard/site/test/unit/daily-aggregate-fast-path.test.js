@@ -113,13 +113,14 @@ describe('queryDailyOverviewAggregateSources', () => {
     expect(result).toEqual({});
   });
 
-  it('returns weighted daily conclusion rows for an aliased Runs swimlane query', async () => {
+  it('returns daily conclusion rows for an aliased Runs line graph query', async () => {
     const indexedDB = new IDBFactory();
     await publishDailyOverviewAggregates(indexedDB, {
       generation: 'generation-a',
       dailyAggregates: [
         dailyAggregate('2026-09-10', { runsByConclusion: { success: 8, failure: 2 } }),
-        dailyAggregate('2026-09-11', { runsByConclusion: { success: 6, cancelled: 4 } })
+        dailyAggregate('2026-09-11', { runsByConclusion: { success: 6, cancelled: 4 } }),
+        dailyAggregate('2026-09-12', { runsByConclusion: { failure: 1 } })
       ]
     });
     const query = {
@@ -128,7 +129,7 @@ describe('queryDailyOverviewAggregateSources', () => {
       filter: {
         predicates: [
           { field: '@time', gte: '2026-09-10T12:00:00Z' },
-          { field: '@time', lt: '2026-09-11T12:00:00Z' }
+          { field: '@time', lt: '2026-09-12T00:00:00Z' }
         ]
       },
       compute: [{
@@ -147,7 +148,9 @@ describe('queryDailyOverviewAggregateSources', () => {
     expect(result[query.name].rows).toEqual([
       { day: '2026-09-10', 'run-conclusion': 'success', runs: 8 },
       { day: '2026-09-10', 'run-conclusion': 'failure', runs: 2 },
+      { day: '2026-09-10', 'run-conclusion': 'cancelled', runs: 0 },
       { day: '2026-09-11', 'run-conclusion': 'success', runs: 6 },
+      { day: '2026-09-11', 'run-conclusion': 'failure', runs: 0 },
       { day: '2026-09-11', 'run-conclusion': 'cancelled', runs: 4 }
     ]);
     expect(result[query.name].metadata).toMatchObject({

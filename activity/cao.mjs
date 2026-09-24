@@ -33,7 +33,8 @@ import { discoverInventoryDashboardSources } from './inventory-sources.mjs';
 import { hasComputation, queryComputation } from './computations/index.mjs';
 import {
   analyzeDashboardComplexity,
-  formatDashboardComplexityMarkdown
+  formatDashboardComplexityMarkdown,
+  readDashboardTableCounts
 } from './dashboard-complexity.mjs';
 import { pruneDashboardDocument } from './dashboard-prune.mjs';
 
@@ -93,7 +94,7 @@ const USAGE = `Usage:
   cao enable CAMPAIGN...
   cao disable CAMPAIGN...
   cao discover-workflows --control-settings FILE --inventory FILE --output FILE --repo OWNER/REPO [--root DIRECTORY]
-  cao dashboard-complexity [QUERY_ID] --input FILE [--format json|markdown] [--limit COUNT]
+  cao dashboard-complexity [QUERY_ID] --input FILE [--database FILE] [--format json|markdown] [--limit COUNT]
   cao prune-dashboard --input FILE [--output FILE]
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY|--runs-dir DIRECTORY --records-dir DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
@@ -2254,7 +2255,8 @@ export async function analyzeDashboardComplexityFile({
   inputPath,
   queryId,
   format = 'json',
-  limit
+  limit,
+  databasePath
 } = {}) {
   let document;
   try {
@@ -2271,7 +2273,10 @@ export async function analyzeDashboardComplexityFile({
   if (limit !== undefined && (!Number.isInteger(limit) || limit < 1)) {
     throw new UsageError('--limit must be a positive integer');
   }
-  const analysis = analyzeDashboardComplexity(document);
+  const tableCounts = databasePath === undefined
+    ? undefined
+    : readDashboardTableCounts(path.resolve(databasePath));
+  const analysis = analyzeDashboardComplexity(document, { tableCounts });
   const selected = queryId === undefined
     ? undefined
     : analysis.inventory.find((query) => query.name === queryId);
@@ -2340,11 +2345,12 @@ export async function runCli(arguments_, input = process.stdin) {
     });
   }
   if (command === 'dashboard-complexity') {
-    rejectUnknownOptions(options, ['input', 'format', 'limit']);
+    rejectUnknownOptions(options, ['input', 'database', 'format', 'limit']);
     const limit = option(options, 'limit', false);
     return analyzeDashboardComplexityFile({
       inputPath: option(options, 'input'),
       queryId: dashboardQueryId,
+      databasePath: option(options, 'database', false),
       format: option(options, 'format', false) || 'json',
       limit: limit === undefined ? undefined : Number(limit)
     });

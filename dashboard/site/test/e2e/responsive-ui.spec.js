@@ -140,6 +140,61 @@ test('notifications move in at the lower right and center on mobile', async ({ p
   expect(Math.abs((bounds?.x ?? 0) + (bounds?.width ?? 0) / 2 - 195)).toBeLessThan(1);
 });
 
+test('full-view content keeps a responsive horizontal inset', async ({ page }) => {
+  const styles = await page.evaluate(async (stylesUrl) => {
+    const { getPrimerStyles } = await import(stylesUrl);
+    return getPrimerStyles();
+  }, 'http://dashboard.test/src/styles.js');
+  await page.setContent(`
+    <style>${styles}</style>
+    <div class="dashboard-root dashboard-full-view">
+      <div class="app-shell">
+        <aside class="org-sidebar"></aside>
+        <div class="app-main">
+          <div class="top-nav"><div class="shell">Campaigns</div></div>
+          <div class="site-callouts"><div data-callout>Refresh warning</div></div>
+          <main class="dashboard-prototype">
+            <div class="report-body" data-page-content>Campaigns content</div>
+          </main>
+        </div>
+      </div>
+    </div>
+  `);
+
+  const contentLayout = () => page.locator('main.dashboard-prototype').evaluate((main) => {
+    const content = main.querySelector('[data-page-content]');
+    if (!(content instanceof HTMLElement)) throw new Error('Expected page content.');
+    const mainBounds = main.getBoundingClientRect();
+    const contentBounds = content.getBoundingClientRect();
+    return {
+      left: contentBounds.left - mainBounds.left,
+      right: mainBounds.right - contentBounds.right,
+      top: contentBounds.top - mainBounds.top,
+      bottom: mainBounds.bottom - contentBounds.bottom,
+      scrollbarGutter: getComputedStyle(main).scrollbarGutter
+    };
+  });
+
+  // The full-view modifier replaces the default stable gutter while preserving full-height content.
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await expect.poll(contentLayout).toEqual({
+    left: 24,
+    right: 24,
+    top: 0,
+    bottom: 0,
+    scrollbarGutter: 'auto'
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(contentLayout).toEqual({
+    left: 14,
+    right: 14,
+    top: 0,
+    bottom: 0,
+    scrollbarGutter: 'auto'
+  });
+});
+
 const horizontalBarFixtureLabel = '.github/workflows/extremely-long-dependabot-update-planner.md';
 const horizontalBarFixtureSuffix = 'planner.md';
 
