@@ -356,7 +356,7 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
 
   const menu = page.locator(".mobile-nav-menu");
   await expect(menu).toBeVisible();
-  await menu.locator("summary").click();
+  await menu.locator(":scope > summary").click();
   await expect(menu).toHaveAttribute("open", "");
 
   const domTree = await page.evaluate(() => {
