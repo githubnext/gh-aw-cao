@@ -575,7 +575,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .dashboard-full-view .overview-header .lede,
 .dashboard-full-view .report-footer,
 .dashboard-full-view .custom-view[data-view-layout="full-view"] > :is(h3, h4, .view-description-tooltip) { display: none; }
-.dashboard-full-view main.dashboard-prototype { overflow: hidden; padding: 0; scrollbar-gutter: auto; }
+.dashboard-full-view main.dashboard-prototype { overflow: hidden; padding: 0 24px; scrollbar-gutter: auto; }
 .dashboard-full-view :is(.report-body, .dashboard-pages, .dashboard-page:not([hidden]), .custom-view-grid) { height: 100%; min-height: 0; }
 .dashboard-full-view .dashboard-page[data-view-mode]:not([hidden]) { display: grid; grid-template-rows: auto minmax(0, 1fr); }
 .dashboard-full-view .dashboard-pages,
@@ -2239,6 +2239,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .app-main { height: auto; overflow: visible; }
   .dashboard-full-view .app-main { height: 100%; min-height: 0; overflow: hidden; }
   main.dashboard-prototype { overflow: visible; overflow-x: clip; padding: var(--dashboard-mobile-page-padding-top) var(--dashboard-mobile-page-padding-inline) var(--dashboard-mobile-page-padding-bottom); }
+  .dashboard-full-view main.dashboard-prototype { padding: 0 var(--dashboard-mobile-page-padding-inline); }
   /* Paired with the mobile main padding above: cancel top/inline overview inset, but do not negate bottom padding. */
   .dashboard-overview-page { margin: calc(-1 * var(--dashboard-mobile-page-padding-top)) calc(-1 * var(--dashboard-mobile-page-padding-inline)) 0; }
   .dashboard-full-view .custom-view[data-view-layout="full-view"] > .view-state-card { margin-inline: 14px; }
