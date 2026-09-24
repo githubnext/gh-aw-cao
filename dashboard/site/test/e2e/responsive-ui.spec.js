@@ -440,3 +440,68 @@ test('campaign card actions wrap together on narrow screens', async ({ page }) =
   const actionGap = 6;
   expect(actionsBox.height).toBeLessThanOrEqual(controlBox.height * maxWrappedRows + actionGap);
 });
+
+test('mobile chart cards keep content close to the viewport edges', async ({ page }) => {
+  // Page inset (14px) plus the narrowed mobile card gutter (12px) must stay within this budget.
+  const maxContentInsetPx = 26;
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(async (presenterModuleUrl) => {
+    const { renderDashboard } = await import(presenterModuleUrl);
+    document.querySelector('#root')?.append(renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'mobile-chart-dashboard',
+          title: 'gh-aw-cao',
+          pages: [{
+            id: 'cost',
+            kind: 'custom',
+            title: 'Cost',
+            views: [{
+              id: 'cost-per-campaign',
+              title: 'Cost per campaign',
+              data: { source: 'usage' },
+              mark: 'chart',
+              chart: 'pie',
+              encoding: {
+                x: { field: 'campaign', type: 'nominal', title: 'Campaign' },
+                y: { field: 'aic', type: 'quantitative', aggregate: 'sum', title: 'AIC cost' }
+              }
+            }]
+          }]
+        }
+      },
+      sources: {
+        usage: {
+          source: 'usage',
+          rows: [
+            { campaign: 'eu-cra', aic: 19_255 },
+            { campaign: 'cao-evolution', aic: 7657 }
+          ],
+          metadata: {
+            'source-id': 'mobile-chart-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-01T03:00:00Z',
+            'retrieved-at': '2026-09-01T03:01:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'available'
+          }
+        }
+      }
+    }));
+  }, 'http://dashboard.test/src/presenter.js');
+
+  const card = page.locator('.pie-chart-card');
+  await expect(card).toBeVisible();
+  await expect(card).toHaveCSS('padding-left', '12px');
+  await expect(card).toHaveCSS('padding-right', '12px');
+
+  const heading = card.getByRole('heading', { name: 'Cost per campaign' });
+  const headingBox = await heading.boundingBox();
+  expect(headingBox).not.toBeNull();
+  if (headingBox === null) throw new Error('Expected a visible chart heading.');
+  const viewportWidth = page.viewportSize()?.width ?? 0;
+  expect(headingBox.x).toBeLessThanOrEqual(maxContentInsetPx);
+  expect(viewportWidth - (headingBox.x + headingBox.width)).toBeLessThanOrEqual(maxContentInsetPx);
+});

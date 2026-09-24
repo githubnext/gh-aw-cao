@@ -2031,7 +2031,9 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .problem-view-highlights > div:nth-child(2) { border-right: 0; }
   .problem-view-highlights > div:nth-child(-n+2) { border-bottom: 1px solid var(--border); }
   .problem-view-sections { grid-template-columns: 1fr; }
-  .pie-chart-card, .chart-horizontal-card { grid-template-columns: 1fr; }
+  /* Desktop card gutters stack on top of the page inset; narrow them so mobile content keeps the viewport width. */
+  .layout-section { padding: 12px; }
+  .pie-chart-card, .chart-horizontal-card { grid-template-columns: 1fr; padding: 16px 12px; }
   .pie-chart-layout { grid-column: 1; grid-row: auto; }
   .pie-chart-layout .chart-widget, .pie-chart-table-toggle { grid-column: 1; grid-row: 1; }
   .pie-chart-table-toggle { width: 100%; height: 100%; display: block; z-index: 1; padding: 0; border: 0; background: transparent; cursor: pointer; }
