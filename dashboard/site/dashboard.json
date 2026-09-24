@@ -9442,7 +9442,7 @@
               "route-field": "repository-coordinate"
             },
             "mark": "chart",
-            "chart": "area",
+            "chart": "line",
             "layout": "full",
             "empty-message": "No runs have been observed for this repository.",
             "encoding": {
@@ -11687,7 +11687,7 @@
                 }
               },
               "mark": "chart",
-              "chart": "line",
+              "chart": "area",
               "layout": "horizontal",
               "encoding": {
                 "x": {

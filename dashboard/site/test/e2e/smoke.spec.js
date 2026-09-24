@@ -624,7 +624,7 @@ test('Transactions is a responsive table of retained transaction data', async ({
   await expect(page.locator('.top-nav')).toBeHidden();
 });
 
-test('Runs renders a last-week line graph above its responsive table and scrolls like Cost', async ({ page }) => {
+test('Runs renders a last-week stacked area graph above its responsive table and scrolls like Cost', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
