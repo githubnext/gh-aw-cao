@@ -9,8 +9,11 @@ import {
   APP_PROFILES,
   buildGitHubAppManifest,
   deriveAppName,
+  deriveInstallationTargets,
   installationIncludesRepository,
+  installationIncludesTarget,
   installationInstruction,
+  installationTargetInstruction,
   isManifestCode,
   setRepositoryCredentials,
   validateAppName,
@@ -55,6 +58,38 @@ test("GitHub App manifests are private and disable webhooks and OAuth", () => {
   });
   assert.deepEqual(manifest.default_events, []);
   assert.deepEqual(manifest.default_permissions, { contents: "read" });
+});
+
+test("GitHub App manifests can allow reviewed cross-organization installations", () => {
+  const manifest = buildGitHubAppManifest({
+    name: "octo-control-read",
+    homepageUrl: "https://github.com/octo/control",
+    redirectUrl: "http://127.0.0.1:1234/callback",
+    description: "Read App",
+    permissions: { contents: "read" },
+    public: true,
+  });
+
+  assert.equal(manifest.public, true);
+});
+
+test("App setup derives selected-repository installations from CAO policy", () => {
+  const targets = deriveInstallationTargets({
+    "control-plane": {
+      scope: {
+        "allowed-repositories": [
+          "other-org/service-b",
+          "octo/service-a",
+          "other-org/service-a",
+        ],
+      },
+    },
+  }, "octo/control");
+
+  assert.deepEqual(targets, [
+    { owner: "octo", repositories: ["control", "service-a"] },
+    { owner: "other-org", repositories: ["service-a", "service-b"] },
+  ]);
 });
 
 test("repository credentials keep the private key out of command arguments", () => {
@@ -147,5 +182,26 @@ test("App setup verifies the control repository is selected", () => {
   assert.equal(
     installationIncludesRepository(installation, "octo/control", () => ["octo/other"]),
     false,
+  );
+});
+
+test("App setup verifies every selected repository for an account installation", () => {
+  const installation = { id: "123", repositorySelection: "selected" };
+  const target = { owner: "other-org", repositories: ["service-a", "service-b"] };
+  assert.equal(
+    installationIncludesTarget(installation, target, () => [
+      "other-org/service-a",
+      "other-org/service-b",
+      "other-org/unrelated",
+    ]),
+    true,
+  );
+  assert.equal(
+    installationIncludesTarget(installation, target, () => ["other-org/service-a"]),
+    false,
+  );
+  assert.equal(
+    installationTargetInstruction(target),
+    'Choose "other-org", choose "Only select repositories", select other-org/service-a, other-org/service-b, and save.',
   );
 });

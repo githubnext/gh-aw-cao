@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 
 import { randomBytes } from "node:crypto";
-import { realpathSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { createServer } from "node:http";
 import { spawnSync } from "node:child_process";
 import process from "node:process";
 import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
+
+import { parsePolicy } from "./policy.mjs";
 
 const MANIFEST_TIMEOUT_MS = 10 * 60 * 1000;
 const INSTALL_POLL_MS = 5 * 1000;
@@ -51,6 +53,7 @@ export function parseArgs(argv) {
     repo: "",
     readAppName: "",
     writeAppName: "",
+    policy: ".github/workflows/cao.json",
     dryRun: false,
     force: false,
     openBrowser: true,
@@ -64,6 +67,8 @@ export function parseArgs(argv) {
       options.readAppName = requireArgument(argv, ++index, argument);
     } else if (argument === "--write-app-name") {
       options.writeAppName = requireArgument(argv, ++index, argument);
+    } else if (argument === "--policy") {
+      options.policy = requireArgument(argv, ++index, argument);
     } else if (argument === "--dry-run") {
       options.dryRun = true;
     } else if (argument === "--force") {
@@ -104,18 +109,54 @@ export function validateAppName(name, flag) {
   }
 }
 
-export function buildGitHubAppManifest({ name, homepageUrl, redirectUrl, description, permissions }) {
+export function buildGitHubAppManifest({ name, homepageUrl, redirectUrl, description, permissions, public: publicApp = false }) {
   return {
     name,
     url: homepageUrl,
     hook_attributes: { url: homepageUrl, active: false },
     redirect_url: redirectUrl,
-    public: false,
+    public: publicApp,
     request_oauth_on_install: false,
     description,
     default_permissions: permissions,
     default_events: [],
   };
+}
+
+export function deriveInstallationTargets(document, controlRepository) {
+  const [controlOwner] = splitRepo(controlRepository);
+  const repositoriesByOwner = new Map();
+  const add = (repository) => {
+    const [owner, name] = splitRepo(repository);
+    const normalizedOwner = owner.toLowerCase();
+    if (!repositoriesByOwner.has(normalizedOwner)) {
+      repositoriesByOwner.set(normalizedOwner, { owner, repositories: new Map() });
+    }
+    repositoriesByOwner.get(normalizedOwner).repositories.set(name.toLowerCase(), name);
+  };
+
+  add(controlRepository);
+  for (const repository of document["control-plane"]?.scope?.["allowed-repositories"] ?? []) {
+    add(repository);
+  }
+
+  return [...repositoriesByOwner.values()]
+    .map(({ owner, repositories }) => ({
+      owner,
+      repositories: [...repositories.values()].sort((left, right) => left.localeCompare(right)),
+    }))
+    .sort((left, right) => (
+      Number(right.owner.toLowerCase() === controlOwner.toLowerCase())
+      - Number(left.owner.toLowerCase() === controlOwner.toLowerCase())
+      || left.owner.localeCompare(right.owner)
+    ));
+}
+
+function loadControlPolicy(path) {
+  if (!existsSync(path)) {
+    throw new Error(`CAO policy not found at ${path}; run from the control repository or pass --policy`);
+  }
+  return parsePolicy(readFileSync(path, "utf8"));
 }
 
 export function isManifestCode(code) {
@@ -184,7 +225,7 @@ function verifyTarget(repo) {
   if (canonicalRepo.toLowerCase() !== repo.toLowerCase()) {
     throw new Error(`repository resolved to unexpected slug: ${canonicalRepo}`);
   }
-  runGh(["api", `/orgs/${owner}`, "--jq", ".login"]);
+  runGh(["api", `/users/${owner}`, "--jq", ".login"]);
   return {
     owner,
     homepageUrl: `https://github.com/${canonicalRepo}`,
@@ -254,7 +295,7 @@ function existingGitHubApp(name, clientId) {
   };
 }
 
-async function createGitHubApp({ owner, name, homepageUrl, description, permissions, openBrowser }) {
+async function createGitHubApp({ owner, name, homepageUrl, description, permissions, public: publicApp, openBrowser }) {
   const state = randomBytes(16).toString("hex");
   let page = "";
   let complete;
@@ -312,7 +353,14 @@ async function createGitHubApp({ owner, name, homepageUrl, description, permissi
   });
   const address = server.address();
   const redirectUrl = `http://127.0.0.1:${address.port}/callback`;
-  const manifest = buildGitHubAppManifest({ name, homepageUrl, redirectUrl, description, permissions });
+  const manifest = buildGitHubAppManifest({
+    name,
+    homepageUrl,
+    redirectUrl,
+    description,
+    permissions,
+    public: publicApp,
+  });
   const registrationUrl = `https://github.com/organizations/${owner}/settings/apps/new?state=${state}`;
   page = registrationPage(registrationUrl, manifest);
   const localUrl = `http://127.0.0.1:${address.port}/register`;
@@ -336,9 +384,10 @@ async function createGitHubApp({ owner, name, homepageUrl, description, permissi
 }
 
 function printManifestReview(owner, manifest) {
-  console.error(`\nCreate private GitHub App for ${owner}:`);
+  console.error(`\nCreate ${manifest.public ? "cross-account" : "private"} GitHub App for ${owner}:`);
   console.error(`- name: ${manifest.name}`);
   console.error(`- homepage: ${manifest.url}`);
+  console.error(`- installable by other accounts: ${manifest.public ? "yes" : "no"}`);
   console.error("- permissions:");
   for (const [permission, level] of Object.entries(manifest.default_permissions).sort()) {
     console.error(`  - ${permission}: ${level}`);
@@ -346,22 +395,22 @@ function printManifestReview(owner, manifest) {
   console.error("- webhook events: none");
 }
 
-function listOrganizationInstallations(owner) {
+function listAccountInstallations(owner) {
   const output = runGh([
     "api",
-    `/orgs/${owner}/installations?per_page=100`,
+    "/user/installations?per_page=100",
     "--paginate",
     "--jq",
-    ".installations[] | [(.id|tostring), (.client_id // \"\"), (.app_id|tostring), .app_slug, .repository_selection] | @tsv",
+    ".installations[] | [(.id|tostring), (.client_id // \"\"), (.app_id|tostring), .app_slug, .repository_selection, .account.login] | @tsv",
   ]);
   return output.split("\n").filter(Boolean).map((line) => {
-    const [id, clientId, appId, slug, repositorySelection] = line.split("\t");
-    return { id, clientId, appId, slug, repositorySelection };
-  });
+    const [id, clientId, appId, slug, repositorySelection, account] = line.split("\t");
+    return { id, clientId, appId, slug, repositorySelection, account };
+  }).filter((installation) => installation.account.toLowerCase() === owner.toLowerCase());
 }
 
 function matchingInstallation(app, owner) {
-  return listOrganizationInstallations(owner).find((installation) => (
+  return listAccountInstallations(owner).find((installation) => (
     installation.clientId === app.clientId
       || installation.slug === app.slug
       || (installation.appId && installation.appId === app.id)
@@ -392,19 +441,29 @@ export function installationInstruction(repo) {
   return `Choose "Only select repositories", select only ${repo}, and save.`;
 }
 
+export function installationTargetInstruction(target) {
+  const repositories = target.repositories.map((repository) => `${target.owner}/${repository}`).join(", ");
+  return `Choose "${target.owner}", choose "Only select repositories", select ${repositories}, and save.`;
+}
+
 export function installationIncludesRepository(installation, repo, listRepositories = listInstallationRepositories) {
   const [owner] = splitRepo(repo);
   validateInstallationScope(installation, owner);
   return listRepositories(installation.id).some((name) => name.toLowerCase() === repo.toLowerCase());
 }
 
-function hasSelectedInstallation(app, repo) {
-  const [owner] = splitRepo(repo);
-  const installation = matchingInstallation(app, owner);
+export function installationIncludesTarget(installation, target, listRepositories = listInstallationRepositories) {
+  validateInstallationScope(installation, target.owner);
+  const selected = new Set(listRepositories(installation.id).map((repository) => repository.toLowerCase()));
+  return target.repositories.every((repository) => selected.has(`${target.owner}/${repository}`.toLowerCase()));
+}
+
+function selectedInstallation(app, target) {
+  const installation = matchingInstallation(app, target.owner);
   if (!installation) {
-    return false;
+    return undefined;
   }
-  return installationIncludesRepository(installation, repo);
+  return installationIncludesTarget(installation, target) ? installation : undefined;
 }
 
 function openInstallation(app, openBrowser) {
@@ -413,15 +472,16 @@ function openInstallation(app, openBrowser) {
   }
 }
 
-async function waitForInstallation(app, repo) {
-  console.error(`Install ${app.name || app.slug} in the browser. ${installationInstruction(repo)}`);
+async function waitForInstallation(app, target) {
+  console.error(`Install ${app.name || app.slug} in the browser. ${installationTargetInstruction(target)}`);
   const deadline = Date.now() + MANIFEST_TIMEOUT_MS;
   let lastError;
   while (Date.now() < deadline) {
     try {
-      if (hasSelectedInstallation(app, repo)) {
-        console.error(`Selected-repository GitHub App installation detected for ${repo}.`);
-        return;
+      const installation = selectedInstallation(app, target);
+      if (installation) {
+        console.error(`Selected-repository GitHub App installation ${installation.id} detected for ${target.owner}.`);
+        return installation;
       }
       lastError = undefined;
     } catch (error) {
@@ -433,7 +493,24 @@ async function waitForInstallation(app, repo) {
     await delay(INSTALL_POLL_MS);
   }
   const suffix = lastError ? `: ${lastError.message}` : "";
-  throw new Error(`timed out waiting for GitHub App installation on ${repo}${suffix}`);
+  throw new Error(`timed out waiting for GitHub App installation on ${target.owner}${suffix}`);
+}
+
+async function ensureInstallations(app, targets, openBrowser, firstInstallationAlreadyOpen = false) {
+  const installations = [];
+  for (const [index, target] of targets.entries()) {
+    const existing = selectedInstallation(app, target);
+    if (existing) {
+      console.error(`Selected-repository GitHub App installation ${existing.id} already covers ${target.owner}; skipping.`);
+      installations.push(existing);
+      continue;
+    }
+    if (!(firstInstallationAlreadyOpen && index === 0)) {
+      openInstallation(app, openBrowser);
+    }
+    installations.push(await waitForInstallation(app, target));
+  }
+  return installations;
 }
 
 function printHelp() {
@@ -445,6 +522,7 @@ Options:
   --repo OWNER/REPO       Control repository (defaults to the current repository)
   --read-app-name NAME    Globally unique read App name
   --write-app-name NAME   Globally unique write App name
+  --policy PATH           CAO policy (default: .github/workflows/cao.json)
   --dry-run               Print manifests without changing GitHub
   --force                 Create replacements even when both credential pairs exist
   --no-open               Print browser URLs instead of opening them
@@ -460,6 +538,9 @@ async function main() {
   const repo = options.repo || runGh(["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"]);
   splitRepo(repo);
   const [owner] = splitRepo(repo);
+  const policy = loadControlPolicy(options.policy);
+  const installationTargets = deriveInstallationTargets(policy, repo);
+  const crossOrganization = installationTargets.some((target) => target.owner.toLowerCase() !== owner.toLowerCase());
   const homepageUrl = `https://github.com/${repo}`;
   const appNames = {
     read: options.readAppName || deriveAppName(repo, "read"),
@@ -482,9 +563,10 @@ async function main() {
         redirectUrl: "http://127.0.0.1:0/callback",
         description: `Central Agentic Ops ${profile.label} App for ${repo}`,
         permissions: profile.permissions,
+        public: crossOrganization,
       }),
     }));
-    console.log(JSON.stringify({ repo, apps }, null, 2));
+    console.log(JSON.stringify({ repo, installationTargets, apps }, null, 2));
     return;
   }
 
@@ -495,13 +577,10 @@ async function main() {
     const complete = state.variables.has(profile.variable) && state.secrets.has(profile.secret);
     if (complete && !options.force) {
       const app = existingGitHubApp(appNames[profile.role], repositoryVariableValue(repo, profile.variable));
-      if (hasSelectedInstallation(app, repo)) {
-        console.error(`${profile.label} App credentials and selected-repository installation already exist; skipping.`);
-        continue;
+      if (crossOrganization) {
+        console.error(`${profile.label} App must allow installation outside ${owner}; update its visibility if an external installation cannot be opened.`);
       }
-      console.error(`${profile.label} App credentials exist, but installation on ${repo} is incomplete; reopening it.`);
-      openInstallation(app, options.openBrowser);
-      await waitForInstallation(app, repo);
+      await ensureInstallations(app, installationTargets, options.openBrowser);
       continue;
     }
     if (state.variables.has(profile.variable) !== state.secrets.has(profile.secret)) {
@@ -513,12 +592,13 @@ async function main() {
       homepageUrl: target.homepageUrl,
       description: `Central Agentic Ops ${profile.label} App for ${repo}`,
       permissions: profile.permissions,
+      public: crossOrganization,
       openBrowser: options.openBrowser,
     });
     setRepositoryCredentials(profile, app, repo);
     console.error(`Set repository variable ${profile.variable}.`);
     console.error(`Set repository secret ${profile.secret}.`);
-    await waitForInstallation(app, repo);
+    await ensureInstallations(app, installationTargets, options.openBrowser, true);
   }
 
   const finalState = repositoryState(repo);
