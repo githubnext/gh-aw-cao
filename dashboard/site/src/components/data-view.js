@@ -35,6 +35,7 @@ const MAX_INCREMENTAL_SWIMLANE_RENDERS = 10;
 const REPOSITORY_LINK_DISPLAY = 'repository-link';
 const WORKFLOW_LINK_DISPLAY = 'workflow-link';
 const debugChart = createDebug('render:chart');
+const debugContinuation = createDebug('data:continuation');
 const GITHUB_ENTITY_DISPLAY_FIELDS = {
   [REPOSITORY_LINK_DISPLAY]: 'repository',
   [WORKFLOW_LINK_DISPLAY]: 'workflow'
@@ -1089,20 +1090,40 @@ function replayableContinuation(continuation) {
     while (cachedRowCount > CONTINUATION_CACHE_ROW_THRESHOLD && pages.size > 1) {
       const oldestToken = pages.keys().next().value;
       if (oldestToken === undefined) break;
+      const forgottenRows = rowCounts.get(oldestToken) ?? 0;
       pages.delete(oldestToken);
-      cachedRowCount -= rowCounts.get(oldestToken) ?? 0;
+      cachedRowCount -= forgottenRows;
       rowCounts.delete(oldestToken);
+      debugContinuation('forgot cached continuation page', {
+        token: oldestToken,
+        forgottenRows,
+        cachedRowCount,
+        cachedPages: pages.size,
+        threshold: CONTINUATION_CACHE_ROW_THRESHOLD
+      });
     }
   };
   return {
     ...continuation,
     load(token) {
       const existing = pages.get(token);
-      if (existing) return existing;
+      if (existing) {
+        debugContinuation('replayed cached continuation page', { token, cachedPages: pages.size, cachedRowCount });
+        return existing;
+      }
       const loaded = continuation.load(token).then((page) => {
         const rowCount = Array.isArray(page.rows) ? page.rows.length : 0;
         rowCounts.set(token, rowCount);
         cachedRowCount += rowCount;
+        if (cachedRowCount > CONTINUATION_CACHE_ROW_THRESHOLD) {
+          debugContinuation('cached continuation rows exceeded memory threshold', {
+            token,
+            rowCount,
+            cachedRowCount,
+            cachedPages: pages.size,
+            threshold: CONTINUATION_CACHE_ROW_THRESHOLD
+          });
+        }
         forgetOldestPagesAboveThreshold();
         return page;
       }).catch((error) => {

@@ -2393,3 +2393,157 @@ describe('data view renderer', () => {
     expect(emptyCell?.querySelector('button')).toBeNull();
   });
 });
+
+describe('data view continuation debug logging', () => {
+  afterEach(async () => {
+    window.localStorage.clear();
+    window.history.replaceState({}, '', '/');
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
+
+  /** @param {string} search */
+  async function importDataViewWithDebug(search) {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) =>
+          actual.createDebug(category, { search: () => search, output })
+      };
+    });
+    vi.resetModules();
+    const { renderDataView: renderDataViewWithDebug } = await import('../../src/components/data-view.js');
+    return { renderDataViewWithDebug, output };
+  }
+
+  it('stays silent when the continuation category is not enabled', async () => {
+    const { renderDataViewWithDebug, output } = await importDataViewWithDebug('?debug=render:chart');
+    const load = vi.fn(async () => ({
+      rows: [{ event: 'older' }],
+      continuationToken: undefined
+    }));
+    const rendered = renderDataViewWithDebug('table', {
+      pageId: 'events',
+      title: 'Events',
+      view: {
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        encoding: { columns: [{ field: 'event', type: 'nominal' }] }
+      },
+      sourceName: 'events',
+      rows: Array.from({ length: 25 }, (_, index) => ({ event: `event-${index + 1}` })),
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String,
+      continuation: { token: 'page-2', totalRows: 26, load }
+    });
+    const tableMore = /** @type {HTMLButtonElement} */ (rendered?.querySelector('[data-table-more]'));
+    tableMore.click();
+    await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+
+    expect(output.debug).not.toHaveBeenCalled();
+  });
+
+  it('logs a cache replay when a second consumer reads an already loaded page', async () => {
+    const { renderDataViewWithDebug, output } = await importDataViewWithDebug('?debug=data:continuation');
+    const intersect = stubIntersectionObserver();
+    const load = vi.fn(async () => ({
+      rows: [{ event: 'event-26' }],
+      continuationToken: undefined
+    }));
+    const rendered = renderDataViewWithDebug('table', {
+      pageId: 'events',
+      title: 'Events',
+      view: {
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        layout: 'full-view',
+        encoding: { columns: [{ field: 'event', type: 'nominal' }] }
+      },
+      sourceName: 'events',
+      rows: Array.from({ length: 25 }, (_, index) => ({ event: `event-${index + 1}` })),
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String,
+      continuation: { token: 'page-2', totalRows: 26, load }
+    });
+
+    const tableMoreButton = /** @type {HTMLButtonElement} */ (rendered?.querySelector('[data-table-more]'));
+    tableMoreButton.click();
+    await vi.waitFor(() => expect(rendered?.querySelectorAll('tbody tr')).toHaveLength(26));
+    const cardBoundary = /** @type {HTMLElement} */ (rendered?.querySelector('[data-card-list-boundary]'));
+    intersect(cardBoundary);
+    await vi.waitFor(() => expect(rendered?.querySelectorAll('[data-mobile-card-list] .entity-card-list-card')).toHaveLength(26));
+
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(output.debug).toHaveBeenCalledWith('[cao:data:continuation]', 'replayed cached continuation page', expect.objectContaining({
+      token: 'page-2'
+    }));
+  });
+
+  it('logs eviction once cached rows exceed the memory threshold', async () => {
+    const { renderDataViewWithDebug, output } = await importDataViewWithDebug('?debug=data:continuation');
+    const pageCount = 3;
+    const rowsPerPage = 1025;
+    const load = vi.fn(async (/** @type {string} */ token) => {
+      const index = Number(token.split('-')[1]);
+      return {
+        rows: Array.from({ length: rowsPerPage }, (_, offset) => ({ event: `event-${index}-${offset}` })),
+        continuationToken: index < pageCount ? `page-${index + 1}` : undefined
+      };
+    });
+    const rendered = renderDataViewWithDebug('table', {
+      pageId: 'events',
+      title: 'Events',
+      view: {
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        layout: 'full-view',
+        encoding: { columns: [{ field: 'event', type: 'nominal' }] }
+      },
+      sourceName: 'events',
+      rows: Array.from({ length: 25 }, (_, index) => ({ event: `event-${index + 1}` })),
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String,
+      continuation: { token: 'page-2', totalRows: 25 + rowsPerPage * (pageCount - 1), load }
+    });
+
+    const tableMore = /** @type {HTMLButtonElement} */ (rendered?.querySelector('[data-table-more]'));
+    tableMore.click();
+    await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(tableMore.disabled).toBe(false));
+    tableMore.click();
+    await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+
+    expect(output.debug).toHaveBeenCalledWith(
+      '[cao:data:continuation]',
+      'cached continuation rows exceeded memory threshold',
+      expect.objectContaining({ token: 'page-3', threshold: 2048 })
+    );
+    expect(output.debug).toHaveBeenCalledWith(
+      '[cao:data:continuation]',
+      'forgot cached continuation page',
+      expect.objectContaining({ token: 'page-2', forgottenRows: rowsPerPage })
+    );
+  });
+});
