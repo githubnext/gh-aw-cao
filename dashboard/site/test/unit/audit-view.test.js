@@ -23,6 +23,7 @@ describe('Audit dashboard view', () => {
 
     expect(insights.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual([
       'campaign-insights-navigation',
+      'campaign-operational-value-history',
       'campaign-operational-grader-history',
       'campaign-audit-event-summary-buckets'
     ]);
@@ -37,18 +38,27 @@ describe('Audit dashboard view', () => {
     });
     expect(insights.views[1]).toMatchObject({
       data: {
+        sources: ['campaign-operational-value-primary-series'],
+        arguments: [{ name: 'campaign', field: 'campaign' }]
+      },
+      mark: 'element',
+      element: 'measure-history',
+      config: { 'measure-source': 'operational-value' }
+    });
+    expect(insights.views[2]).toMatchObject({
+      data: {
         sources: ['campaign-operational-grader-series'],
         arguments: [{ name: 'campaign', field: 'campaign' }]
       },
       mark: 'element',
       element: 'measure-history'
     });
-    expect(insights.views.slice(2).map((/** @type {{ data: Record<string, string> }} */ view) => view.data)).toEqual([
+    expect(insights.views.slice(3).map((/** @type {{ data: Record<string, string> }} */ view) => view.data)).toEqual([
       expect.objectContaining({ source: 'audit-event-summary-buckets', 'route-field': 'campaign' })
     ]);
     expect(insights.views.filter((/** @type {{ mark: string }} */ view) => view.mark !== 'element')
       .map((/** @type {{ mark: string }} */ view) => view.mark)).toEqual(['chart']);
-    expect(insights.views[2]).toMatchObject({
+    expect(insights.views[3]).toMatchObject({
       chart: 'horizontal-bar',
       data: { limit: 20 },
       encoding: {
@@ -56,6 +66,36 @@ describe('Audit dashboard view', () => {
         y: { field: 'events' },
         color: { field: 'event-summary' }
       }
+    });
+
+    it('projects repository operational value with its maturity state', () => {
+      const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+        operation: 'execute-dashboard-queries',
+        queries: dashboard.queries,
+        sourceNames: ['campaign-operational-value-primary-series'],
+        sources: {
+          'operational-values': {
+            source: 'operational-values',
+            rows: [{
+              campaign: 'optimization',
+              repository: 'gh-aw',
+              'operational-value': 0,
+              'operational-value-definition': 'optimization-token-optimizer.verified-opportunity-share',
+              'operational-value-role': 'primary',
+              'maturity-status': 'interim',
+              'observed-at': '2026-09-24T20:56:21Z'
+            }],
+            metadata
+          }
+        }
+      }));
+
+      expect(result['campaign-operational-value-primary-series'].rows).toEqual([expect.objectContaining({
+        campaign: 'optimization',
+        'maturity-status': 'interim',
+        'metric-kind': 'primary',
+        points: [expect.objectContaining({ x: '2026-09-24T20:56:21Z', y: 0, color: 'gh-aw' })]
+      })]);
     });
     expect(issues.views
       .filter((/** @type {{ data?: { source?: string } }} */ view) => view.data?.source === 'campaign-worker-issues')

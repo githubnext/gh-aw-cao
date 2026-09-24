@@ -41,7 +41,7 @@ export const definition = {
       "Treat an opportunity as attained only when net AI Credit per accepted outcome decreases, completed-run failure rate does not increase, outcome quality does not decrease, and the recommendation is applied.",
       "Mature each opportunity for fourteen days after assignment before scoring it.",
     ],
-    collection: "Read canonical token-efficiency opportunity, intervention, and comparison audits from the CAO Activity database once, derive every requested repository cohort locally, and retain a SHA-256 digest of the database as provenance. A matured complete non-improvement or authoritative non-applied disposition is zero; inaccessible, incomplete, incomparable, or unmatured required evidence is missing rather than zero.",
+    collection: "Read canonical token-efficiency opportunity, intervention, and comparison audits from the CAO Activity database once, derive every requested repository cohort locally, and retain a SHA-256 digest of the database as provenance. Before the first cohort matures, and whenever a matured cohort still has unresolved outcome evidence, emit a clearly marked interim lower bound for dashboard visibility. A matured complete non-improvement or authoritative non-applied disposition is zero; inaccessible or incomparable source evidence remains missing.",
     window: { durationDays: 14, cadenceDays: 14, maturationDays: 14 },
   },
   model: {
@@ -138,22 +138,21 @@ function validCount(value) {
 
 export function scoreMetric(metricId, evidence) {
   const eligible = evidence?.eligibleOpportunityCount;
-  if (!validCount(eligible) || eligible === 0) return null;
+  if (!validCount(eligible)) return null;
+  if (eligible === 0) return evidence?.maturityStatus === "interim" ? 0 : null;
 
   if (metricId === "verified-opportunity-share") {
     if (!validCount(evidence.verifiedOpportunityCount)
         || evidence.verifiedOpportunityCount > eligible
         || !validCount(evidence.outcomeUnknownCount)
-        || evidence.outcomeUnknownCount > eligible
-        || evidence.outcomeUnknownCount > 0) return null;
+        || evidence.outcomeUnknownCount > eligible) return null;
     return round(evidence.verifiedOpportunityCount / eligible);
   }
   if (metricId === "recommendation-acceptance-share") {
     if (!validCount(evidence.acceptedRecommendationCount)
         || evidence.acceptedRecommendationCount > eligible
         || !validCount(evidence.dispositionUnknownCount)
-        || evidence.dispositionUnknownCount > eligible
-        || evidence.dispositionUnknownCount > 0) return null;
+        || evidence.dispositionUnknownCount > eligible) return null;
     return round(evidence.acceptedRecommendationCount / eligible);
   }
   if (metricId === "guarded-net-gain-magnitude") {
@@ -162,8 +161,7 @@ export function scoreMetric(metricId, evidence) {
         || evidence.guardedNetGainRatioSum < 0
         || evidence.guardedNetGainRatioSum > eligible
         || !validCount(evidence.outcomeUnknownCount)
-        || evidence.outcomeUnknownCount > eligible
-        || evidence.outcomeUnknownCount > 0) return null;
+        || evidence.outcomeUnknownCount > eligible) return null;
     return round(evidence.guardedNetGainRatioSum / eligible);
   }
   fail(`unknown metric: ${metricId}`);
@@ -192,6 +190,20 @@ function completeComparison(record, intervention) {
 }
 
 export function buildEvidence(records, request) {
+  const firstMatureAt = Date.parse(definition.adoption.adoptedAt)
+    + (definition.evidence.window.durationDays + definition.evidence.window.maturationDays) * DAY_MS;
+  if (Date.parse(request.observedAt) < firstMatureAt) {
+    return {
+      maturityStatus: "interim",
+      dubious: true,
+      eligibleOpportunityCount: 0,
+      verifiedOpportunityCount: 0,
+      acceptedRecommendationCount: 0,
+      outcomeUnknownCount: 0,
+      dispositionUnknownCount: 0,
+      guardedNetGainRatioSum: 0,
+    };
+  }
   const repository = request.repository?.toLowerCase();
   const supportedRepositories = new Set(
     definition.evidence.repositories.map((value) => value.toLowerCase()),
@@ -262,6 +274,8 @@ export function buildEvidence(records, request) {
   }
 
   return {
+    maturityStatus: outcomeUnknownCount > 0 || dispositionUnknownCount > 0 ? "interim" : "matured",
+    dubious: outcomeUnknownCount > 0 || dispositionUnknownCount > 0,
     eligibleOpportunityCount: opportunities.length,
     verifiedOpportunityCount,
     acceptedRecommendationCount,

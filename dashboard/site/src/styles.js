@@ -1491,6 +1491,9 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .insights-measure-rows { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; padding-top: 4px; }
 .insights-measure-row { padding-bottom: 24px; border-bottom: 1px solid var(--border); }
 .insights-measure-row:last-child { padding-bottom: 0; border-bottom: 0; }
+.insights-measure-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.insights-measure-heading h3 { margin: 0; }
+.insights-dubious-flag { display: inline-flex; align-items: center; gap: 8px; color: var(--attention); font-size: .75rem; font-weight: 600; text-transform: uppercase; }
 .insights-measure-plot { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 4px 8px; }
 .insights-measure-canvas { min-width: 0; }
 .insights-measure-row .chart-widget { min-height: 240px; padding: 0; }

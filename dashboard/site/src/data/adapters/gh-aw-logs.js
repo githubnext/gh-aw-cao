@@ -1117,6 +1117,10 @@ function createCachedGhAwJsonlAccumulator(options) {
         campaign,
         valueId,
         value: metric,
+        'operational-value-role': optionalString(value.metric_role) ?? 'primary',
+        'operational-value-name': optionalString(value.metric_name) ?? valueId,
+        'operational-value-direction': optionalString(value.metric_direction) ?? 'increase',
+        'maturity-status': optionalString(value.maturity_status) ?? 'matured',
         timestamp: observedAt
       }
     });

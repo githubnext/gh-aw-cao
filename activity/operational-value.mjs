@@ -68,6 +68,10 @@ function parseOperationalValueOutput(content, source, repositories) {
     const repository = String(record.repository ?? '');
     const valueId = String(record.valueId ?? '');
     const value = record.value;
+    const metricRole = record.metricRole ?? 'primary';
+    const metricName = record.metricName ?? valueId;
+    const metricDirection = record.metricDirection ?? 'increase';
+    const maturityStatus = record.maturityStatus ?? 'matured';
     if (!REPOSITORY_COORDINATE.test(repository) || !allowedRepositories.has(repository.toLowerCase())) {
       throw new Error(`${source}:${index + 1}.repository must identify a requested repository`);
     }
@@ -77,7 +81,28 @@ function parseOperationalValueOutput(content, source, repositories) {
     if (typeof value !== 'number' || !Number.isFinite(value)) {
       throw new Error(`${source}:${index + 1}.value must be a finite number`);
     }
-    return [{ timestamp, repository, valueId, value }];
+    if (!['primary', 'diagnostic'].includes(metricRole)) {
+      throw new Error(`${source}:${index + 1}.metricRole must be primary or diagnostic`);
+    }
+    if (typeof metricName !== 'string' || !metricName.trim()) {
+      throw new Error(`${source}:${index + 1}.metricName must be a non-empty string`);
+    }
+    if (!['increase', 'decrease', 'maintain', 'target'].includes(metricDirection)) {
+      throw new Error(`${source}:${index + 1}.metricDirection is invalid`);
+    }
+    if (!['matured', 'interim', 'unavailable'].includes(maturityStatus)) {
+      throw new Error(`${source}:${index + 1}.maturityStatus is invalid`);
+    }
+    return [{
+      timestamp,
+      repository,
+      valueId,
+      value,
+      ...(Object.hasOwn(record, 'metricRole') ? { metricRole } : {}),
+      ...(Object.hasOwn(record, 'metricName') ? { metricName: metricName.trim() } : {}),
+      ...(Object.hasOwn(record, 'metricDirection') ? { metricDirection } : {}),
+      ...(Object.hasOwn(record, 'maturityStatus') ? { maturityStatus } : {})
+    }];
   });
 }
 
@@ -171,7 +196,11 @@ export async function runOperationalValue({
         campaign: record.campaign,
         campaign_id: `campaign:${record.campaign}`,
         value_id: record.valueId,
-        value: record.value
+        value: record.value,
+        metric_role: record.metricRole ?? 'primary',
+        metric_name: record.metricName ?? record.valueId,
+        metric_direction: record.metricDirection ?? 'increase',
+        maturity_status: record.maturityStatus ?? 'matured'
       }
     }));
     const retained = retentionWindow === undefined

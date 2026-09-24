@@ -10,7 +10,7 @@ const request = {
   repository: "github/gh-aw",
   windowStart: "2026-09-01T00:00:00Z",
   windowEnd: "2026-09-15T00:00:00Z",
-  observedAt: "2026-09-29T00:00:00Z",
+  observedAt: "2026-10-20T00:00:00Z",
 };
 
 test("token optimizer value scores only verified guarded gains", () => {
@@ -46,6 +46,8 @@ test("token optimizer value scores only verified guarded gains", () => {
   ];
   const evidence = buildEvidence(records, request);
   assert.deepEqual(evidence, {
+    maturityStatus: "matured",
+    dubious: false,
     eligibleOpportunityCount: 1,
     verifiedOpportunityCount: 1,
     acceptedRecommendationCount: 1,
@@ -78,8 +80,10 @@ test("token optimizer value keeps inaccessible outcomes missing", () => {
     },
   ], request);
   assert.equal(evidence.outcomeUnknownCount, 1);
-  assert.equal(scoreMetric("verified-opportunity-share", evidence), null);
-  assert.equal(scoreMetric("guarded-net-gain-magnitude", evidence), null);
+  assert.equal(evidence.maturityStatus, "interim");
+  assert.equal(evidence.dubious, true);
+  assert.equal(scoreMetric("verified-opportunity-share", evidence), 0);
+  assert.equal(scoreMetric("guarded-net-gain-magnitude", evidence), 0);
   assert.equal(scoreMetric("recommendation-acceptance-share", evidence), 1);
 });
 
@@ -94,7 +98,7 @@ test("token optimizer value excludes future and unauthorized evidence", () => {
     },
     {
       type: "token_efficiency.intervention",
-      timestamp: "2026-10-01T00:00:00Z",
+      timestamp: "2026-11-01T00:00:00Z",
       targetRepo: "github/gh-aw",
       opportunityId: "allowed",
       interventionId: "future",
@@ -113,6 +117,25 @@ test("token optimizer value excludes future and unauthorized evidence", () => {
   assert.equal(evidence.eligibleOpportunityCount, 1);
   assert.equal(evidence.verifiedOpportunityCount, 0);
   assert.equal(evidence.outcomeUnknownCount, 1);
+  assert.equal(evidence.maturityStatus, "interim");
+});
+
+test("token optimizer publishes a dubious zero before the first cohort matures", () => {
+  const evidence = buildEvidence([], {
+    ...request,
+    observedAt: "2026-09-24T20:56:21Z",
+  });
+  assert.deepEqual(evidence, {
+    maturityStatus: "interim",
+    dubious: true,
+    eligibleOpportunityCount: 0,
+    verifiedOpportunityCount: 0,
+    acceptedRecommendationCount: 0,
+    outcomeUnknownCount: 0,
+    dispositionUnknownCount: 0,
+    guardedNetGainRatioSum: 0,
+  });
+  for (const metric of definition.metrics) assert.equal(scoreMetric(metric.id, evidence), 0);
 });
 
 test("token optimizer definition validation examples preserve metric ordering", () => {
