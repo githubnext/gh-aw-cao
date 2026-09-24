@@ -10,7 +10,7 @@ const FAILURE_CONCLUSIONS = new Set(['failure', 'timed-out', 'startup-failure', 
 
 /** @param {import('./ui-elements.js').ElementRenderContext} context */
 export function renderInsightsOverview(context) {
-  const values = rowsFor(context.sources, 'operational-values');
+  const values = rowsFor(context.sources, 'operational-graders');
   const outcomes = rowsFor(context.sources, 'outcomes');
   const usage = rowsFor(context.sources, 'usage');
   const runs = rowsFor(context.sources, 'runs');
@@ -18,10 +18,10 @@ export function renderInsightsOverview(context) {
   const experiments = rowsFor(context.sources, 'experiments');
 
   const valuePoints = values.flatMap((row, index) => {
-    const value = nativeMetricValue(row['operational-value']);
+    const value = nativeMetricValue(row['operational-grader']);
     const observed = String(row['observed-at'] || '');
     return value !== null && Number.isFinite(Date.parse(observed))
-      ? [{ x: observed, y: value, color: String(row['operational-value-definition'] || 'Attainment'), key: `value-${index}`, source: row }]
+      ? [{ x: observed, y: value, color: String(row['operational-grader-definition'] || 'Attainment'), key: `value-${index}`, source: row }]
       : [];
   });
   const valueSeries = listChartSeries(valuePoints);
@@ -61,7 +61,7 @@ export function renderInsightsOverview(context) {
       h('div', { className: 'insights-section-heading' },
         h('div', null,
           h('span', { className: 'insights-eyebrow' }, 'Value created'),
-          h('h2', { id: 'insights-value-title' }, 'Operational value metrics'),
+          h('h2', { id: 'insights-value-title' }, 'Operational grader metrics'),
           h('p', null, 'Native gh-aw metrics and accepted repository outcomes, without inferring unsupported ROI.')),
         h('dl', { className: 'insights-lead-metrics' },
           renderDlRow('mean primary value', meanValue === null ? '' : formatNumber(meanValue)),
@@ -157,7 +157,7 @@ function renderValueSeriesSelector(points, series, chartHost) {
       h('div', { className: 'insights-series-actions' },
         h('button', { type: 'button', onClick: () => setAll(true) }, 'All'),
         h('button', { type: 'button', onClick: () => setAll(false) }, 'None')),
-      h('fieldset', null, h('legend', null, 'Operational value series'), ...options)));
+      h('fieldset', null, h('legend', null, 'Operational grader series'), ...options)));
 }
 
 /** @param {string} title @param {string} description @param {...(Node | string | null)} children */

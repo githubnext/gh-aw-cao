@@ -544,7 +544,7 @@ following source contract:
 | Recommendation disposition | Safe-output lifecycle, explicit supersession relation, implementation Run or pull request, and authoritative GitHub disposition; one optimizer recommendation | Preserve `applied`, `superseded`, `outdated`, `duplicate`, `unapplied`, `failed-start`, or `rejected`. A generated issue, assignment attempt, or open state alone does not establish acceptance or implementation. |
 | Optimization overhead | Invocation or non-overlapping Run-aggregate AIC for auditor, optimizer, verifier, and replacement recommendations attributable to one frozen opportunity and intervention lineage | Deduplicate by Run attempt, preserve cost grain, and exclude unrelated repositories, workflows, opportunities, and portfolio dispatches. |
 | Outcome quality | Frozen grader or eval observation with evaluator digest; one outcome or stable opportunity | Compare only observations produced by the same definition and evaluator digest. Missing quality evidence is unknown. |
-| Operational value | Current gh-aw grader result; one ordered metric array per Run | Preserve metric IDs, order, native finite values or `null`, unit, and direction without normalization, clamping, replay, inferred maturity, or local baselines. |
+| Operational grader | Current gh-aw `operational-value` grader result; one ordered metric array per Run | Preserve metric IDs, order, native finite values or `null`, unit, and direction without normalization, clamping, replay, inferred maturity, or local baselines. This run-scoped evidence is distinct from package-defined, repository-scoped Operational Value records. |
 | Workflow declaration | Workflow inventory at the exact reviewed source revision | Supply configured tools, model, trigger, budget, and campaign classification. Static declarations MUST NOT prove runtime use. |
 
 Source provenance for every observation SHALL include collection scope, source
@@ -1065,7 +1065,7 @@ Example:
   firewallBlockedCalls: 2,
   mcpToolCalls: 2,
   mcpResponseBytes: 192,
-  operationalValue: 0.8,
+  operationalGrader: 0.8,
   highPriorityAuditItems: 1,
   mediumPriorityAuditItems: 2,
 
@@ -1091,7 +1091,7 @@ canonical Run.
 
 **RUN-004** — A completed Run SHOULD retain immutable `agentId`, `modelId`,
 `agenticDurationSeconds`, `firewallAllowedCalls`, `firewallBlockedCalls`,
-`mcpToolCalls`, `mcpResponseBytes`, `operationalValue`,
+`mcpToolCalls`, `mcpResponseBytes`, `operationalGrader`,
 `highPriorityAuditItems`, and `mediumPriorityAuditItems` values when the
 corresponding source evidence is available at import time.
 

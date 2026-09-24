@@ -124,7 +124,7 @@ create the base Run using its own GitHub and workflow fields.
 | `firewall_analysis.requests_by_domain.*.blocked` or audit equivalent | `firewallBlockedCalls` |
 | `mcp_tool_usage.tool_calls` or audit equivalent | `mcpToolCalls` |
 | `mcp_tool_usage.tool_calls[].output_size` or audit equivalent | `mcpResponseBytes` |
-| the single `graders.results[]` entry identified by `operational-value` | `operationalValue` |
+| the single `graders.results[]` entry identified by `operational-value` | `operationalGrader` |
 | high-severity or high-priority audit findings, insights, and recommendations | `highPriorityAuditItems` |
 | medium-severity or medium-priority audit findings, insights, and recommendations | `mediumPriorityAuditItems` |
 | `gh_aw_version`, `ghAwVersion`, `cli_version`, `version`, or `aw_info.cli_version` | `ghAwVersion` |

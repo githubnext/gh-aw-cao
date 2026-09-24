@@ -1,5 +1,5 @@
 /**
- * Native operational-value collector records explicitly set `resultAvailable`
+ * Native upstream `operational-value` grader records explicitly set `resultAvailable`
  * and retain the normalized metrics array; records missing that array are
  * malformed and should be retried instead of treated as complete cache hits.
  * Legacy cache records from the replay-era collector did not have that field,

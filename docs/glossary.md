@@ -76,7 +76,11 @@ A later repository-state observation of what happened to a safe output, such as 
 
 ## Operational value
 
-Evidence-backed attainment for a specific operation and value contract. Operational value is not inferred from run volume, safe-output count, or activity alone.
+A package-defined, timestamped numeric metric for one repository and campaign. An installed campaign computes these records through its `operational-value.mjs`; operational value is not inferred from run volume, safe-output count, grader output, or activity alone.
+
+## Operational grader
+
+The run-scoped result produced by gh-aw's upstream `operational-value` grader protocol. The protocol identifier remains `operational-value` for compatibility, but CAO refers to the resulting grader evidence as an operational grader so it is not confused with package-defined repository operational value.
 
 ## Campaign
 

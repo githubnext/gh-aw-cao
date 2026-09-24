@@ -72,7 +72,7 @@ architecture:
     canonical_evidence: source-neutral records with stable identities, relationships, quality, and provenance
     bounded_computation_results: partitioned, versioned measures and actionable insights with bounded evidence references
     computation_authority: authority inferred from a derived computation result
-    outcome_inference_from_runtime: treating runtime success as verification, accepted outcome, or operational value
+    outcome_inference_from_runtime: treating runtime success as verification, accepted outcome, an operational-grader result, or operational value
     generation_scoped_computation_results: disposable bounded measure results keyed to one canonical generation, measure version, partition, and input fingerprint
 
 components:
@@ -237,7 +237,7 @@ invariants:
   - "Remote Redis dashboard exposure, authentication, GitHub live querying, and webhooks are outside the local profile."
   - "Computations MUST consume canonical evidence, preserve evidence quality and provenance, and emit bounded, versioned results."
   - "Computation results MUST NOT grant authority or turn runtime success into verification, accepted outcomes, or operational value."
-  - "Successful-Run value computations MUST report produced outputs, native operational-value measurements, and efficiency as separate axes; output creation MUST NOT imply acceptance or value, and no composite score may be invented."
+  - "Successful-Run value computations MUST report produced outputs, native operational-grader measurements, and efficiency as separate axes; operational value is reserved for package-defined repository campaign metrics, output creation MUST NOT imply acceptance or value, and no composite score may be invented."
   - "Overview counters MUST use IndexedDB-native counts or generation-safe precomputed daily values; Run-table scans, clustering, and audit diagnosis execute only in drill-down or compatible bounded materializations."
   - "Materialized computation results MUST remain generation-scoped disposable state; runtime facts and failure scopes are precomputed, while detailed audit causes and actions are cached only for selected or prioritized partitions."
   - "Runtime computation partitions MUST be target-aware for workers: form Campaign, Workflow, and target Repository evaluation partitions before evaluating success boundaries so one target's success cannot mask another target's failures."

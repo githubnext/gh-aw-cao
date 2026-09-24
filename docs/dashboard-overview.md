@@ -24,12 +24,12 @@ operational signals, not stages in a conversion funnel.
 
 | Dashboard area | What it tells you | Where it leads |
 | --- | --- | --- |
-| **Status header** | Whether runs are queued or in progress and the current evidence-based status. | Runs, outputs, or Operational value when the status is unexpected. |
+| **Status header** | Whether runs are queued or in progress and the current evidence-based status. | Runs, outputs, or operational graders when the status is unexpected. |
 | **Factory rhythm** | Successful runs for each weekday in the current week, with previous-week context for weekdays not yet reached. | Runs when the cadence changes unexpectedly. |
 | **Repositories registered** | Distinct repositories represented in the retained control-plane scope. | Repositories for the complete inventory. |
 | **Successful runs** | Runs that completed successfully, with failed runs shown separately. | Runs with the success or failure filter applied. |
 | **Dispatches** | Retained `workflow_dispatch` runs, with failed dispatches shown separately. | Dispatches for campaign-worker activity. |
-| **Value gains** | Grader observations available as operational-value evidence. | Operational value for the underlying graders, value contracts, and evidence. |
+| **Value gains** | Operational-grader observations available for workflow runs. | Operational graders, their contracts, and evidence. |
 
 The selected dashboard time range applies before Overview calculates these
 values. The start time is inclusive and the end time is exclusive. Factory
@@ -67,7 +67,7 @@ defines the snapshot and its requirements.
 | `repositories` | Counts canonical repository identities in the observed control-plane scope. |
 | `workflows` | Identifies declared workers and enriches run context. |
 | `outcomes` | Counts retained issue and pull request outputs and repositories with accepted delivery evidence. |
-| `grader-observations` | Counts evidence associated with operational value. |
+| `grader-observations` | Counts run-scoped operational-grader evidence. |
 
 If one of these sources is unavailable, Overview reports the missing evidence
 instead of reconstructing it from unrelated totals.
@@ -76,6 +76,6 @@ instead of reconstructing it from unrelated totals.
 
 Start with Runs when the status heading reports strain, a failure count is
 nonzero, or Factory rhythm changes unexpectedly. Use Repositories to reconcile
-scope, Dispatches to inspect worker handoffs, and Operational value to interpret
-grader evidence. Always check the selected time range and evidence freshness
+scope, Dispatches to inspect worker handoffs, and Operational graders to interpret
+run-scoped grader evidence. Always check the selected time range and evidence freshness
 before drawing a conclusion.

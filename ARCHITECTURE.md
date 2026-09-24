@@ -122,7 +122,7 @@ The `cao computation runtime-health` command executes the first production
 measure through declarative canonical queries. Future CLI measures extend the
 same `computation` namespace.
 Successful-Run value computations keep produced safe outputs, native
-operational-value measurements, and efficiency evidence separate; they do not
+operational-grader measurements, and efficiency evidence separate; they do not
 turn runtime success or output creation into accepted value.
 Package-level `operational-value.mjs` programs compute repository-scoped metric
 records through `cao operational-value`. Activity appends those timestamped

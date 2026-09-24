@@ -25,7 +25,7 @@ incrementally refreshed and independently explained.
 
 This specification defines five independently versioned measures. **Runtime
 health** establishes current runtime facts. **How well does it run?** reports
-successful Run production, native operational-value measurements, and resource
+successful Run production, native operational-grader measurements, and resource
 cost without inventing a composite score. **Where does it fail?** correlates
 current errors across campaigns and targets. **What is the likely cause?**
 enriches that scope with bounded audit evidence. **What should the user do?**
@@ -832,7 +832,7 @@ Campaign answer MUST be `unknown`, not `yes`.
 | --- | --- |
 | Measure ID | `how-well-does-it-run` |
 | Measure version | `1.0.0` |
-| Operator question | What did successful Runs produce, what operational value was measured, and what resources did they consume? |
+| Operator question | What did successful Runs produce, what did their operational graders measure, and what resources did they consume? |
 | Primary partition | Campaign, Workflow, and target Repository for workers; Campaign and Workflow for orchestrators |
 | Required entities | Campaign, Workflow, successful Run |
 | Optional entities | Issue, Audit, Tool, Domain |
@@ -900,7 +900,9 @@ delivery, usefulness, implementation, or operational value.
 
 #### 5.11.4 Operational-value evidence
 
-The engine MUST use only producer-supplied operational-value grader results.
+The engine MUST use only producer-supplied operational-grader results from the
+upstream `operational-value` protocol. It MUST NOT treat those run-scoped
+results as package-defined repository operational value.
 It MUST preserve the native metric value, metric order, unit, direction,
 grader identity, evaluator identity when present, and status. It MUST NOT
 normalize, clamp, replay, combine, or infer missing values.
@@ -909,10 +911,10 @@ normalize, clamp, replay, combine, or infer missing values.
 
 | State | Rule |
 | --- | --- |
-| `measured` | At least one operational-value grader result has `status=pass` and a finite native value. |
-| `evaluation-error` | No finite passed value exists and at least one operational-value grader errored. |
+| `measured` | At least one operational-grader result has `status=pass` and a finite native value. |
+| `evaluation-error` | No finite passed value exists and at least one operational grader errored. |
 | `unavailable` | No finite passed value or error exists and at least one grader reports unavailable evidence. |
-| `not-configured` | No operational-value grader result is observed. |
+| `not-configured` | No operational-grader result is observed. |
 
 A passed grader means that value was measured; it does not mean that the value
 was positive or sufficient. A native zero MUST remain measured zero. Consumers
@@ -1636,7 +1638,7 @@ referenced failures. The action retains links to all three upstream results.
   resource efficiency without a composite score.
 - Required stable safe-output deduplication and prohibited treating creation as
   acceptance or value.
-- Preserved native operational-value units, directions, zero values, and grader
+- Preserved native operational-grader units, directions, zero values, and grader
   error or unavailable states.
 
 ### Version 0.7.0 (Working Draft)

@@ -271,7 +271,7 @@ function runAggregates(run) {
   const graders = run.graders && typeof run.graders === 'object' && !Array.isArray(run.graders)
     ? /** @type {Record<string, unknown>} */ (run.graders)
     : {};
-  const operationalValueResults = (Array.isArray(graders.results) ? graders.results : [])
+  const operationalGraderResults = (Array.isArray(graders.results) ? graders.results : [])
     .filter((value) => value && typeof value === 'object' && !Array.isArray(value))
     .map((value) => /** @type {Record<string, unknown>} */ (value))
     .filter((value) => value.id === 'operational-value' || value.source === 'operational-value')
@@ -301,7 +301,7 @@ function runAggregates(run) {
     firewallBlockedCalls: hasFirewallAggregate ? firewallBlockedCalls : null,
     mcpToolCalls: hasMcpAggregate ? toolCalls.length : null,
     mcpResponseBytes: hasMcpAggregate ? mcpResponseBytes : null,
-    operationalValue: operationalValueResults.length === 1 ? operationalValueResults[0] : null,
+    operationalGrader: operationalGraderResults.length === 1 ? operationalGraderResults[0] : null,
     highPriorityAuditItems: hasPriorityAggregate ? priorityCount('high') : null,
     mediumPriorityAuditItems: hasPriorityAggregate ? priorityCount('medium') : null
   };
