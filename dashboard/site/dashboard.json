@@ -9095,7 +9095,7 @@
             "encoding": {
               "columns": [
                 {
-                  "field": "mcp-tool",
+                  "field": "mcp-tool-label",
                   "type": "nominal",
                   "title": "MCP tool"
                 },

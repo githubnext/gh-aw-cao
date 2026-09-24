@@ -1149,7 +1149,7 @@ describe('data view renderer', () => {
         layout: 'full-view',
         encoding: {
           columns: [
-            { field: 'mcp-tool', type: 'nominal', title: 'MCP tool' },
+            { field: 'mcp-tool-label', type: 'nominal', title: 'MCP tool' },
             { field: 'mcp-server', type: 'nominal', title: 'MCP server' },
             { field: 'calls', type: 'quantitative', title: 'Calls' },
             { field: 'workflows', type: 'quantitative', title: 'Workflows' }
@@ -1157,11 +1157,24 @@ describe('data view renderer', () => {
         }
       },
       sourceName: 'mcp-tool-totals',
-      rows: [{ 'mcp-tool': 'issue_read', 'mcp-server': 'github', calls: 4778, workflows: 12 }],
+      rows: [{
+        'mcp-tool-label': 'github/issue_read',
+        'mcp-tool': 'issue_read',
+        'mcp-server': 'github',
+        calls: 4778,
+        workflows: 12
+      }],
       cardTemplates: {
         'mcp-tool': {
           icon: 'mcp',
-          title: { field: 'mcp-tool', title: 'MCP tool' },
+          drill: {
+            type: 'query',
+            page: 'tool-insights',
+            query: 'tool-entity-insights',
+            'title-field': 'mcp-tool-label',
+            arguments: [{ name: 'tool', field: 'mcp-tool-label' }]
+          },
+          title: { field: 'mcp-tool-label', title: 'MCP tool' },
           subtitle: { field: 'mcp-server', title: 'MCP server' },
           labels: [],
           details: [
@@ -1180,9 +1193,11 @@ describe('data view renderer', () => {
     });
 
     const card = rendered?.querySelector('[data-mobile-card-list] .entity-card-list-card');
-    expect(card?.querySelector('.entity-card-list-title')?.textContent).toBe('issue_read');
+    expect(card?.querySelector('.entity-card-list-title')?.textContent).toBe('github/issue_read');
     expect(card?.querySelector('.entity-card-list-subtitle')?.textContent).toBe('github');
     expect(card?.querySelector('.entity-card-list-subtitle')?.getAttribute('aria-label')).toBe('MCP server: github');
+    expect(card?.querySelector('[data-card-drill]')?.getAttribute('href'))
+      .toBe('#page-tool-insights?query=tool-entity-insights&title=github%2Fissue_read&tool=github%2Fissue_read');
     const metrics = [...card?.querySelectorAll('.entity-card-list-metric') ?? []]
       .map((metric) => metric.textContent);
     expect(metrics).toEqual(['4778Calls', '12Workflows']);
