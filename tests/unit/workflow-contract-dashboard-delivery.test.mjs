@@ -121,6 +121,7 @@ test("dashboard CI runs the campaign quality gates", () => {
   assert.match(queryComplexityComment.block, /name: dashboard-query-complexity/);
   assert.match(queryComplexityComment.block, /<!-- dashboard-query-complexity -->/);
   assert.match(queryComplexityComment.block, /maximumReportLength = 60000/);
+  assert.match(queryComplexityComment.block, /<details><summary><b>Query complexity report<\/b><\/summary>/);
   assert.match(queryComplexityComment.block, /issues\.updateComment/);
   assert.match(queryComplexityComment.block, /issues\.createComment/);
   assert.deepEqual(lighthousePerformance.needs, []);
@@ -221,6 +222,7 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(dashboardWorkflow, /Resolve fallback activity run[\s\S]*?if: steps\.activity-cache\.outputs\.cache-matched-key == ''[\s\S]*?listWorkflowRuns\(\{[\s\S]*?workflow_id: 'cao-activity\.yml'[\s\S]*?branch: context\.payload\.repository\.default_branch[\s\S]*?status: 'success'[\s\S]*?per_page: 1[\s\S]*?core\.setOutput\('run-id', String\(run\.id\)\)/);
   assert.match(dashboardWorkflow, /Download fallback activity data[\s\S]*?if: steps\.activity-cache\.outputs\.cache-matched-key == ''[\s\S]*?actions\/download-artifact@[0-9a-f]{40}[\s\S]*?name: cao-activity-index[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity[\s\S]*?repository: \$\{\{ github\.repository \}\}[\s\S]*?github-token: \$\{\{ github\.token \}\}[\s\S]*?run-id: \$\{\{ steps\.activity-artifact-run\.outputs\.run-id \}\}/);
   assert.match(dashboardWorkflow, /Upgrade fallback activity data[\s\S]*?actions\/github-script@[0-9a-f]{40}[\s\S]*?'hash-payloads'[\s\S]*?'--normalized-dir'[\s\S]*?'ingest-jsonl'[\s\S]*?'--runs-dir'[\s\S]*?'--records-dir'[\s\S]*?'hash-payloads'[\s\S]*?'--output', process\.env\.REPORT_PAYLOAD_HASHES/);
+  assert.match(dashboardWorkflow, /Upgrade fallback activity data[\s\S]*?NODE_DEBUG: cao:hash-payloads,cao:ingest[\s\S]*?'--retention-days', '30'[\s\S]*?'--run-retention-days', '30'/);
   assert.doesNotMatch(dashboardWorkflow, /Upgrade fallback activity data\n\s+if:/);
   assert.doesNotMatch(activityWorkflow, /workflow_call:/);
   assert.match(activityWorkflow, /workflow_dispatch:[\s\S]*?request-id:/);
@@ -472,6 +474,8 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(workflow, /mobile-analysis-comment:[\s\S]*?permissions:[\s\S]*?pull-requests: write/);
   assert.match(workflow, /github\.event_name == 'pull_request'[\s\S]*?Comment with mobile analysis[\s\S]*?mobile-dashboard-analysis/);
   assert.match(workflow, /\| Visible target size \| Visible reflow \| Zoom \| Visible accessible names \|/);
+  assert.match(workflow, /### Mobile dashboard analysis/);
+  assert.match(workflow, /<details><summary><b>Mobile analysis measurements<\/b><\/summary>[\s\S]*?\| Visible target size \|[\s\S]*?<\/details>/);
   assert.match(workflow, /no visible targets/);
   assert.match(workflow, /existsSync\('mobile-analysis'\)/);
   assert.match(workflow, /width min.*height min/);

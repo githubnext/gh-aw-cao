@@ -116,5 +116,6 @@ Treat these commands as the full validator contract for this repository:
 - For failures, include only actionable details from logs.
 - Use `create-pull-request-review-comment` for compiler warnings/errors from the `compile` output when a concrete file and line are available.
 - Do not create duplicate review comments for the same finding.
+- In every inline comment and overall review body, use `###` for every heading; never use `#`, `##`, or `####` and deeper headings. Put every Markdown table inside a clearly named `<details>` element.
 - Do not approve the pull request.
 - Do not use emoji in error text.

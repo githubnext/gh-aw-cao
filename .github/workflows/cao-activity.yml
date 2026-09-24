@@ -218,10 +218,12 @@ jobs:
             --database "$ACTIVITY_DATABASE" \
             --runs-dir "$REPORT_GH_AW_LOGS_RUNS" \
             --records-dir "$REPORT_GH_AW_LOGS_RECORDS" \
-            --run-retention-days all
+            --retention-days 30 \
+            --run-retention-days 30
           node activity/cao.mjs doctor \
             --database "$ACTIVITY_DATABASE" \
-            --run-ttl-days all
+            --ttl-days 30 \
+            --run-ttl-days 30
 
       - name: Hash activity payloads
         env:

@@ -96,7 +96,7 @@ test('formats a bounded markdown complexity ranking', () => {
     limit: 2
   });
 
-  assert.match(markdown, /^## Dashboard query complexity/m);
+  assert.match(markdown, /^### Dashboard query complexity/m);
   assert.match(markdown, /\| Rank \| Query \| Used by \| Total \|/);
   assert.match(markdown, /\| 1 \| `joined` \| `view:joined-view` \| 7 \| 4 \| 3 \| linear \|/);
   assert.match(markdown, /\| 2 \| `summary` \| `page:overview\/view:summary-card` \| 5 \| 2 \| 3 \| linear \|/);

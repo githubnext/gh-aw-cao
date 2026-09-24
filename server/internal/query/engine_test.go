@@ -78,6 +78,26 @@ func TestEmptyAggregateBehavior(t *testing.T) {
 	}
 }
 
+func TestAggregateOmitsMissingGroupFields(t *testing.T) {
+	definition := Definition{
+		Name: "grouped",
+		From: "runs",
+		Aggregate: &Aggregate{
+			By:     []string{"target"},
+			Values: []AggregateValue{{Field: "id", As: "runs", Reducer: "count"}},
+		},
+	}
+	result, _, _, err := ExecuteDefinition(definition, map[string]model.Source{
+		"runs": {Rows: []model.Row{{"id": "1"}}},
+	}, MaxOperations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, present := result.Rows[0]["target"]; present {
+		t.Fatalf("missing group field was materialized: %#v", result.Rows[0])
+	}
+}
+
 func TestJoinRejectsDuplicateRightKeys(t *testing.T) {
 	definition := Definition{
 		Name: "joined", From: "runs",
@@ -148,6 +168,33 @@ func TestTemporalSeries(t *testing.T) {
 	}
 	if len(result.Rows) != 1 || result.Rows[0]["metric-key"] != "usage:tokens" || result.Rows[0]["value"] != float64(12) {
 		t.Fatalf("unexpected temporal projection: %#v", result.Rows)
+	}
+}
+
+func TestLeftJoinPreservesMissingFieldsAsNull(t *testing.T) {
+	definition := Definition{
+		Name: "joined",
+		From: "runs",
+		Joins: []Join{{
+			Source: "records",
+			Type:   "left",
+			On:     []JoinKey{{Left: "id", Right: "run"}},
+			Fields: []SelectedField{{Field: "events", As: "imported-events"}},
+		}},
+	}
+	result, _, _, err := ExecuteDefinition(definition, map[string]model.Source{
+		"runs":    {Rows: []model.Row{{"id": "1"}}},
+		"records": {Rows: []model.Row{}},
+	}, MaxOperations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Rows) != 1 {
+		t.Fatalf("got %d rows, want 1", len(result.Rows))
+	}
+	value, present := result.Rows[0]["imported-events"]
+	if !present || value != nil {
+		t.Fatalf("missing selected field was not preserved as null: %#v", result.Rows[0])
 	}
 }
 

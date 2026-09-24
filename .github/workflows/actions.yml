@@ -206,7 +206,7 @@ jobs:
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
             const body = [
               marker,
-              '## Mobile dashboard analysis',
+              '### Mobile dashboard analysis',
               '',
               `Analyzed ${analyses.length} device/browser profile${analyses.length === 1 ? '' : 's'}.`,
               '',

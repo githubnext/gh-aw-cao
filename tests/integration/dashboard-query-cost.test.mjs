@@ -81,7 +81,7 @@ test("benchmark measures computational and space cost per query", async (t) => {
   );
 
   const markdown = dashboardQueryCostMarkdown(report);
-  assert.match(markdown, /## Dashboard query cost \(deployed SQLite snapshot\)/);
+  assert.match(markdown, /### Dashboard query cost \(deployed SQLite snapshot\)/);
   assert.match(markdown, /### Computational cost/);
   assert.match(markdown, /### Space cost/);
   assert.match(markdown, /Canonical projection by source/);

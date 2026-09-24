@@ -66,6 +66,8 @@ test("deployed integration reports the query cost report in a pull request comme
   const comment = job.steps.find((step) => step.uses?.startsWith("actions/github-script@"));
   assert.match(comment.with.script, /<!-- dashboard-query-cost-results -->/);
   assert.match(comment.with.script, /summary\.md/);
+  assert.match(comment.with.script, /<details><summary><b>Dashboard query cost report<\/b><\/summary>/);
+  assert.match(comment.with.script, /summary,[\s\S]*?<\/details>/);
   assert.match(comment.with.script, /issues\.createComment/);
   assert.match(comment.with.script, /issues\.updateComment/);
 });

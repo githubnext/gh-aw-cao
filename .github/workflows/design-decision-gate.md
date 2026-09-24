@@ -103,6 +103,7 @@ Ensure that significant changes have an explicit Architecture Decision Record (A
 10. Stop immediately after the safe output. Never modify files outside `adr/`.
 
 All evidence and conclusions must remain scoped to this repository and pull request.
+In every comment body, use `###` for every heading; never use `#`, `##`, or `####` and deeper headings. Put every Markdown table inside a clearly named `<details>` element.
 
 ## agent: `adr-writer`
 ---
