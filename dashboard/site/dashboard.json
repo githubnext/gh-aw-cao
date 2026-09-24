@@ -10318,10 +10318,6 @@
                   "field": "covered-repositories",
                   "type": "quantitative",
                   "title": "Covered repositories"
-                },
-                "href": {
-                  "field": "campaign-dashboard-link",
-                  "type": "nominal"
                 }
               }
             },
