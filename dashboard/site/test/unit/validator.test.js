@@ -978,7 +978,7 @@ dashboard:
     }
   });
 
-  it('accepts work-project-view config and rejects unsupported values', () => {
+  it('rejects the removed work-project-view element', () => {
     const accepted = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
   id: work-view-config
@@ -996,7 +996,7 @@ dashboard:
           config:
             sections: [board, tasks]
 `);
-    expect(accepted.ok).toBe(true);
+    expect(accepted.ok).toBe(false);
 
     const invalidBody = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
@@ -1181,7 +1181,7 @@ dashboard:
     }
   });
 
-  it('keeps the version 0.1.0 outcomes overview element valid as a compatibility alias', () => {
+  it('rejects the removed outcomes overview compatibility alias', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
   id: legacy-overview
@@ -1205,7 +1205,7 @@ dashboard:
                 plural: Repositories
 `);
 
-    expect(result.ok).toBe(true);
+    expect(result.ok).toBe(false);
   });
 
 
@@ -1430,7 +1430,7 @@ dashboard:
 
     const supplementalElement = accepted.replace(
       '        - id: supporting-table\n          disclosure: supplemental\n          disclosure-label: Supporting table\n          data: { source: runs }\n          mark: table\n          encoding:\n            columns: [{ field: run, type: nominal }]\n',
-      '        - id: supporting-table\n          disclosure: supplemental\n          disclosure-label: Supporting table\n          data: { sources: [runs] }\n          mark: element\n          element: summary-grid\n'
+      '        - id: supporting-table\n          disclosure: supplemental\n          disclosure-label: Supporting table\n          data: { sources: [runs] }\n          mark: element\n          element: campaign-problem-list\n'
     );
     expect(validateDashboardDocument(supplementalElement).ok).toBe(true);
 
@@ -3612,7 +3612,7 @@ dashboard:
           data:
             sources: [workflows]
           mark: element
-          element: summary-grid
+          element: campaign-problem-list
         - id: runs
           data:
             source: runs
@@ -3640,7 +3640,7 @@ dashboard:
           data:
             sources: [workflows]
           mark: element
-          element: summary-grid
+          element: campaign-problem-list
 `;
     expect(validateDashboardDocument(elementDocument).ok).toBe(true);
 
@@ -3663,7 +3663,7 @@ dashboard:
         `          data:
             sources: [workflows]
           mark: element
-          element: summary-grid`,
+          element: campaign-problem-list`,
         `          data:
             source: runs
           mark: table
@@ -3695,7 +3695,7 @@ dashboard:
           data:
             sources: [workflows]
           mark: element
-          element: summary-grid
+          element: campaign-problem-list
 `;
     expect(validateDashboardDocument(lockedDocument).ok).toBe(true);
     expect(validateDashboardDocument(lockedDocument.replace('locked: true', 'locked: false')).ok).toBe(true);

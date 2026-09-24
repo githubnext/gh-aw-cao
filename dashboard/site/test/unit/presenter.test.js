@@ -402,7 +402,7 @@ describe('dashboard DOM provenance', () => {
                   id: 'summary',
                   title: 'Summary',
                   mark: 'element',
-                  element: 'summary-grid',
+                  element: 'campaign-problem-list',
                   data: { source: 'summary' }
                 },
                 {
@@ -450,7 +450,7 @@ describe('dashboard DOM provenance', () => {
       expect(page?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0]');
       expect(section?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].sections[0]');
       expect(summary?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
-      expect(summary?.querySelector('dt')?.getAttribute('data-js-view')).toBe('summary-grid');
+      expect(summary?.querySelector('.campaign-problem-message')?.getAttribute('data-js-view')).toBe('campaign-problem-list');
       expect(metric?.querySelector('.metric-value')?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[1]');
       await vi.waitFor(() => {
         expect([...rendered.querySelectorAll('*')].every((element) => element.hasAttribute('data-json-path'))).toBe(true);
@@ -460,7 +460,7 @@ describe('dashboard DOM provenance', () => {
       summary?.append(dynamicChild);
       await vi.waitFor(() => {
         expect(dynamicChild.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
-        expect(dynamicChild.getAttribute('data-js-view')).toBe('summary-grid');
+        expect(dynamicChild.getAttribute('data-js-view')).toBe('campaign-problem-list');
       });
 
       const replacementSection = rendered.ownerDocument.createElement('section');
@@ -474,7 +474,7 @@ describe('dashboard DOM provenance', () => {
       await vi.waitFor(() => {
         expect(replacementSection.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].sections[0]');
         expect(replacementView.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
-        expect(replacementView.querySelector('dt')?.getAttribute('data-js-view')).toBe('summary-grid');
+        expect(replacementView.querySelector('dt')?.getAttribute('data-js-view')).toBe('campaign-problem-list');
       });
     } finally {
       window.history.pushState(null, '', '/');

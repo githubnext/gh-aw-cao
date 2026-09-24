@@ -8,6 +8,10 @@ import {
   VIEW_ELEMENT_VALUES,
   VIEW_MARK_VALUES
 } from '../../src/specification.js';
+import {
+  elementRendererNames,
+  referencedElementNames
+} from '../../scripts/lint-element-renderers.mjs';
 
 const catalog = readFileSync(
   fileURLToPath(new URL('../../../../docs/dashboard-view-catalog.md', import.meta.url)),
@@ -24,5 +28,19 @@ describe('dashboard view catalog', () => {
     for (const value of values) {
       expect(catalog).toContain(`| \`${value}\` |`);
     }
+  });
+
+  it('identifies registered renderers and element view references for dead-renderer linting', () => {
+    expect(elementRendererNames(`
+      const ELEMENT_RENDERERS = new Map([
+        ['used-element', renderUsed],
+        ['dead-element', renderDead]
+      ]);
+    `)).toEqual(['used-element', 'dead-element']);
+    expect([...referencedElementNames({
+      dashboard: {
+        pages: [{ views: [{ mark: 'element', element: 'used-element' }] }]
+      }
+    })]).toEqual(['used-element']);
   });
 });
