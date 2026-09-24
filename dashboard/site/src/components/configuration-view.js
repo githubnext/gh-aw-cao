@@ -4,7 +4,6 @@ import { capturedConsoleLogText } from '../console-log-capture.js';
 import { createDebug, fullDebugUrl } from '../debug.js';
 import { copyTextToClipboard, createCopyControl, renderCheckbox } from './ui-primitives.js';
 import { isPlainObject, renderLazyDisclosure, renderSectionHeading } from './ui-primitives.js';
-import { renderThemeSettings } from './theme-settings.js';
 import { renderSettingsCliActions } from './cli-actions.js';
 import { renderResetDashboardControl } from './reset-dashboard-control.js';
 import {
@@ -449,7 +448,6 @@ export function renderConfigurationView(context) {
       headingTag: 'h2'
     }),
     renderLocalDataActions(),
-    renderThemeSettings(),
     renderSettingsCliActions(),
     renderAutomaticDataUpdatesSetting(),
     isPlainObject(policyDocument)

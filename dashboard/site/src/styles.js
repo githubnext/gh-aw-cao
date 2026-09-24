@@ -410,6 +410,24 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .refresh-button { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 3px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font: inherit; font-size: .75rem; font-weight: 500; text-decoration: none; cursor: pointer; transition: background-color 120ms ease; }
 .refresh-button:hover { background: var(--neutral-muted); }
 .refresh-button .octicon { width: 14px; height: 14px; }
+.theme-control { position: relative; flex: 0 0 auto; }
+.theme-control > summary { width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border-radius: 6px; color: var(--muted); cursor: pointer; list-style: none; transition: background-color 120ms ease, color 120ms ease; }
+.theme-control > summary::-webkit-details-marker { display: none; }
+.theme-control > summary:hover, .theme-control[open] > summary { background: var(--neutral-muted); color: var(--fg); }
+.theme-control > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.theme-control > summary .octicon { width: 16px; height: 16px; }
+.theme-control-popover { width: 250px; display: grid; gap: 10px; position: absolute; z-index: 50; top: calc(100% + 8px); right: 0; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent); }
+.theme-control-heading { display: grid; gap: 2px; }
+.theme-control-heading strong { font-size: .8125rem; }
+.theme-control-heading span { color: var(--muted); font-size: .75rem; }
+.theme-control-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.theme-control-options button { min-width: 0; min-height: 34px; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 5px 8px; border: 1px solid var(--border); background: var(--canvas); color: var(--fg); font: inherit; font-size: .75rem; cursor: pointer; }
+.theme-control-options button:first-child { border-radius: 6px 0 0 6px; }
+.theme-control-options button + button { margin-left: -1px; }
+.theme-control-options button:last-child { border-radius: 0 6px 6px 0; }
+.theme-control-options button[aria-pressed="true"] { position: relative; z-index: 1; border-color: var(--accent); background: var(--accent-muted); color: var(--accent); }
+.theme-control-options button:focus-visible { position: relative; z-index: 2; outline: 2px solid var(--focus); outline-offset: 1px; }
+.theme-control-options .octicon { width: 14px; height: 14px; }
 .repository-link { width: 28px; height: 28px; display: grid; flex: 0 0 28px; place-items: center; border-radius: 6px; color: var(--muted); text-decoration: none; transition: background-color 120ms ease, color 120ms ease; }
 .repository-link:hover { background: var(--neutral-muted); color: var(--fg); }
 .repository-link .octicon { width: 18px; height: 18px; }
@@ -1315,13 +1333,6 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .configuration-browser-settings-heading h3 { margin: 0; font-size: .875rem; }
 .configuration-browser-settings-heading p, .configuration-browser-setting-status { margin: 2px 0 0; color: var(--muted); font-size: .75rem; }
 .configuration-browser-setting-status { padding: 0 12px 10px; }
-.configuration-appearance-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 12px; }
-.configuration-appearance-options button { min-width: 0; min-height: 36px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--border); background: var(--canvas); color: var(--fg); font: inherit; font-size: .8125rem; cursor: pointer; }
-.configuration-appearance-options button:first-child { border-radius: 6px 0 0 6px; }
-.configuration-appearance-options button + button { margin-left: -1px; }
-.configuration-appearance-options button:last-child { border-radius: 0 6px 6px 0; }
-.configuration-appearance-options button[aria-pressed="true"] { position: relative; z-index: 1; border-color: var(--accent); background: var(--accent-muted); color: var(--accent); }
-.configuration-appearance-options .octicon { width: 14px; height: 14px; }
 .configuration-database-counts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; padding: 12px; }
 .configuration-database-body { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
 .configuration-database-body .configuration-local-data-actions { padding-left: 0; }
@@ -2181,12 +2192,14 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .mobile-nav-menu-actions .horizon-summary { width: 100%; position: static; }
   .mobile-nav-menu-actions .horizon-tooltip { top: calc(100% + 4px); right: 0; left: auto; }
   .mobile-nav-menu-actions .account-menu { width: 100%; }
-  .mobile-nav-menu-actions :is(.horizon-toggle, .repository-link, .account-menu-avatar) { width: 100%; height: auto; min-height: 32px; display: flex; flex: none; align-items: center; justify-content: flex-start; place-items: unset; gap: 10px; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--fg); font-weight: 500; text-align: left; }
-  .mobile-nav-menu-actions :is(.horizon-toggle, .repository-link, .account-menu-avatar):hover { background: var(--neutral-muted); }
-  .mobile-nav-menu-actions :is(.horizon-toggle, .repository-link, .account-menu-avatar) > .octicon { width: 16px; height: 16px; color: var(--muted); }
+  .mobile-nav-menu-actions .theme-control { width: 100%; }
+  .mobile-nav-menu-actions :is(.horizon-toggle, .theme-control > summary, .repository-link, .account-menu-avatar) { width: 100%; height: auto; min-height: 32px; display: flex; flex: none; align-items: center; justify-content: flex-start; place-items: unset; gap: 10px; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--fg); font-weight: 500; text-align: left; }
+  .mobile-nav-menu-actions :is(.horizon-toggle, .theme-control > summary, .repository-link, .account-menu-avatar):hover { background: var(--neutral-muted); }
+  .mobile-nav-menu-actions :is(.horizon-toggle, .theme-control > summary, .repository-link, .account-menu-avatar) > .octicon { width: 16px; height: 16px; color: var(--muted); }
   .mobile-nav-menu-actions .account-menu-avatar { border-radius: 6px; box-shadow: none; }
   .mobile-nav-menu-actions .account-menu-avatar-image { width: 20px; height: 20px; border-radius: 50%; }
-  .mobile-nav-menu-actions :is(.horizon-toggle, .repository-link, .account-menu-avatar) .action-label { position: static; width: auto; height: auto; overflow: visible; margin: 0; padding: 0; clip: auto; color: var(--fg); font-size: .8125rem; font-weight: 500; white-space: normal; }
+  .mobile-nav-menu-actions :is(.horizon-toggle, .theme-control > summary, .repository-link, .account-menu-avatar) .action-label { position: static; width: auto; height: auto; overflow: visible; margin: 0; padding: 0; clip: auto; color: var(--fg); font-size: .8125rem; font-weight: 500; white-space: normal; }
+  .mobile-nav-menu-actions .theme-control-popover { width: 100%; position: static; margin-top: 4px; box-shadow: none; }
   .mobile-nav-menu-actions .account-menu-popover { width: 100%; position: static; margin-top: 4px; box-shadow: none; }
   .sidebar-toggle { display: none; }
   .sidebar-collapsed .org-sidebar { padding: 14px 12px 10px; }

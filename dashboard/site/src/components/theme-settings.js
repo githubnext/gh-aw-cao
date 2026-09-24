@@ -1,6 +1,7 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { scopedStorageKey } from '../storage-scope.js';
+import { enableDetailsMenuDismissal } from './ui-primitives.js';
 
 const THEME_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.theme');
 
@@ -28,7 +29,14 @@ export function restoreDashboardTheme(root) {
   applyTheme(root, savedTheme());
 }
 
-export function renderThemeSettings() {
+/** @param {HTMLElement} root @param {HTMLElement} control */
+export function enableThemeControl(root, control) {
+  if (control instanceof HTMLDetailsElement) {
+    enableDetailsMenuDismissal(root, control, '[data-theme-value]');
+  }
+}
+
+export function renderThemeControl() {
   /** @type {DashboardTheme} */
   let theme = savedTheme();
   /** @type {HTMLButtonElement[]} */
@@ -59,13 +67,17 @@ export function renderThemeSettings() {
       onClick: () => setTheme(value)
     }, octicon(icon), h('span', null, label))));
   }
-  return h('section', { className: 'configuration-browser-settings', 'aria-labelledby': 'configuration-appearance-heading' },
-    h('div', { className: 'configuration-browser-settings-heading' },
-      h('div', null,
-        h('h3', { id: 'configuration-appearance-heading' }, 'Appearance'),
-        h('p', null, 'Choose how this dashboard looks in this browser.')
-      )
+  return h('details', { className: 'theme-control' },
+    h('summary', { 'aria-label': 'Appearance', title: 'Appearance' },
+      octicon('sun'),
+      h('span', { className: 'sr-only action-label' }, 'Appearance')
     ),
-    h('div', { className: 'configuration-appearance-options' }, buttons)
+    h('div', { className: 'theme-control-popover', 'aria-labelledby': 'dashboard-appearance-heading' },
+      h('div', { className: 'theme-control-heading' },
+        h('strong', { id: 'dashboard-appearance-heading' }, 'Appearance'),
+        h('span', null, 'Choose how this dashboard looks.')
+      ),
+      h('div', { className: 'theme-control-options' }, buttons)
+    )
   );
 }

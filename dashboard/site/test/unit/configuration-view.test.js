@@ -87,15 +87,8 @@ describe('Configuration dashboard view', () => {
     const rendered = renderConfigurationView(context({ document: { version: 1 }, raw: '', diagnostics: [] }));
 
     if (!rendered) throw new Error('configuration view did not render');
-    const root = document.createElement('div');
-    root.className = 'dashboard-root';
-    root.append(rendered);
 
-    expect(rendered.querySelector('#configuration-appearance-heading')?.textContent).toBe('Appearance');
-    expect([...rendered.querySelectorAll('[data-theme-value]')].map((node) => node.textContent)).toEqual(['System', 'Light', 'Dark']);
-    /** @type {HTMLButtonElement} */ (rendered.querySelector('[data-theme-value="dark"]')).click();
-    expect(root.dataset.theme).toBe('dark');
-    expect(localStorage.getItem('central-agentic-ops.dashboard.theme')).toBe('dark');
+    expect(rendered.querySelector('[data-theme-value]')).toBeNull();
     expect(rendered.querySelector('.configuration-database-counts')).toBeNull();
     expect(rendered.querySelector('.reset-dashboard-trigger')).not.toBeNull();
     expect(rendered.querySelector('.configuration-transactions-button')?.getAttribute('href')).toBe('#page-transactions');

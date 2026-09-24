@@ -2,7 +2,7 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 
 /**
- * @param {{ title: string, description?: string, overviewPageHref: string, dashboardHorizon: HTMLElement, githubUrlBase: string, dashboardRepository: string | null }} options
+ * @param {{ title: string, description?: string, overviewPageHref: string, dashboardHorizon: HTMLElement, dashboardAppearance: HTMLElement, githubUrlBase: string, dashboardRepository: string | null }} options
  */
 export function renderDashboardHeader(options) {
   return h(
@@ -33,6 +33,7 @@ export function renderDashboardHeader(options) {
         'div',
         { className: 'report-actions' },
         options.dashboardHorizon,
+        options.dashboardAppearance,
         options.dashboardRepository
           ? h(
               'a',

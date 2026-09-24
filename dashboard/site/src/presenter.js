@@ -15,7 +15,7 @@ import { renderDataView, supportsIncrementalChartContinuation } from './componen
 import { enableHorizonOutsideClickDismissal, renderFilterBar, renderViewModeControl, setTimeWindowFilter, setTimeWindowRange } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
 import { renderDashboardHorizon } from './components/dashboard-horizon.js';
-import { restoreDashboardTheme } from './components/theme-settings.js';
+import { enableThemeControl, renderThemeControl, restoreDashboardTheme } from './components/theme-settings.js';
 import { disconnectLazyViews, enableLazyViews, renderLazyView } from './components/lazy-view.js';
 import { enableFullViewScrollForwarding, syncFullViewMode as syncFullViewModeForPage } from './components/full-view-scroll.js';
 import { DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from './debug-events.js';
@@ -196,6 +196,7 @@ export function renderDashboard(input) {
     initialValue: resolveDashboardHorizonViewModel(rawSources, dashboardDefaults, horizonRange, evaluatedAt),
     formatDate: formatReportDate
   });
+  const dashboardAppearance = renderThemeControl();
 
   const styleEl = h('style', null, getPrimerStyles());
   const skipLink = h('a', { href: '#main-content', className: 'skip-link' }, 'Skip to main content');
@@ -211,6 +212,7 @@ export function renderDashboard(input) {
       description: initialPage?.description,
       overviewPageHref: overviewPage ? `#page-${encodeURIComponent(overviewPage.id)}` : initialPageHref,
       dashboardHorizon: dashboardHorizon.element,
+      dashboardAppearance,
       githubUrlBase,
       dashboardRepository
     }),
@@ -231,6 +233,7 @@ export function renderDashboard(input) {
   });
   enableDashboardNavigation(root);
   restoreDashboardTheme(root);
+  enableThemeControl(root, dashboardAppearance);
   enableHorizonOutsideClickDismissal(root);
   root.addEventListener('dashboard-time-window-change', (event) => {
     if (!(event instanceof CustomEvent)) return;
