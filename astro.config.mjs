@@ -105,8 +105,8 @@ export default defineConfig({
           label: "Get started",
           items: [
             { label: "Quickstart", link: "/getting-started/" },
-            { label: "Author your first operation", link: "/author-your-first-operation/" },
-            { label: "Operations Catalog", link: "/catalog/" },
+            { label: "Author your first campaign", link: "/author-your-first-operation/" },
+            { label: "Campaign Catalog", link: "/catalog/" },
             { label: "Configure authentication", link: "/authentication/" },
           ],
         },
@@ -115,7 +115,7 @@ export default defineConfig({
           items: [
             { label: "Control plane status", link: "/cao/" },
             { label: "Admission gates", link: "/admission/" },
-            { label: "Roll out an operation", link: "/rollout-and-routing/" },
+            { label: "Roll out a campaign", link: "/rollout-and-routing/" },
             { label: "Monitor and recover", link: "/operations/" },
             { label: "Emergency stop", link: "/operations/#emergency-stop" },
           ],

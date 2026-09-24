@@ -3,7 +3,7 @@ title: Status header
 description: Understand the operating status and work-in-motion label at the top of Overview.
 ---
 
-The status header gives you the overall shape of the operation right now.
+The status header gives you the overall shape of the campaign right now.
 
 ## What it shows
 

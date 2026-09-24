@@ -35,7 +35,7 @@ This minimal policy enables the installed Dependabot campaign and its workers in
 }
 ```
 
-Commit the file before running an installed operation. A missing or invalid document fails closed. An undeclared campaign skips activation before repository discovery or agent execution. See [Admission Gates](admission.md) for the exact pre-activation checks and the checks deferred to authorized-run precompute.
+Commit the file before running an installed campaign. A missing or invalid document fails closed. An undeclared campaign skips activation before repository discovery or agent execution. See [Admission Gates](admission.md) for the exact pre-activation checks and the checks deferred to authorized-run precompute.
 
 Control repositories must declare `gh-aw-version` at the document root. Factory infrastructure reads this exact release when installing the CLI, and fleet maintenance can compare it with the expected release to identify repositories that need an upgrade. The field remains optional for target-authority-only documents.
 
@@ -120,7 +120,7 @@ The root campaign manifest remains free of interactive setup so `gh aw add` work
 
 ## Manual Inputs
 
-Operation orchestrators expose these `workflow_dispatch` inputs:
+Campaign orchestrators expose these `workflow_dispatch` inputs:
 
 | Input | Effect |
 | --- | --- |
@@ -136,7 +136,7 @@ Manual inputs affect only one run. They do not update `.github/workflows/cao.jso
 
 Ops Publish reads `control-plane.publishing` and `control-plane.scope` from the same JSON policy. `publishing.enabled` defaults to `false`; when enabled, `publishing.reviewers` must be non-empty. `publishing.control-repositories` defaults to the repository containing the add-on.
 
-PAT fallback uses the separate `CENTRAL_AGENTIC_OPS_PUBLISH_CONTROL_TOKEN` and `CENTRAL_AGENTIC_OPS_PUBLISH_TARGET_TOKEN` secrets. These credentials are not policy and never override owner, repository, reviewer, or target-authority checks. See [Ops Publish](operations.md#publishing-reviewed-operation-issues).
+PAT fallback uses the separate `CENTRAL_AGENTIC_OPS_PUBLISH_CONTROL_TOKEN` and `CENTRAL_AGENTIC_OPS_PUBLISH_TARGET_TOKEN` secrets. These credentials are not policy and never override owner, repository, reviewer, or target-authority checks. See [Ops Publish](operations.md#publishing-reviewed-campaign-issues).
 
 ## Markdown Steering
 

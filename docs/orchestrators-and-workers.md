@@ -1,9 +1,9 @@
 ---
 title: Orchestrators and Workers
-description: Design and govern operation orchestrators and their bounded worker workflows.
+description: Design and govern campaign orchestrators and their bounded worker workflows.
 ---
 
-Use this page when reviewing an operation or deciding where new behavior belongs. Orchestrators select and dispatch work; workers perform one bounded repository task and can only narrow the policy they receive.
+Use this page when reviewing a campaign or deciding where new behavior belongs. Orchestrators select and dispatch work; workers perform one bounded repository task and can only narrow the policy they receive.
 
 ```text
 orchestrator                              worker
@@ -20,9 +20,9 @@ If behavior chooses *which repositories run*, it belongs in the orchestrator. If
 
 ## Orchestrator Authority
 
-The operation orchestrator is the policy authority for a run. It:
+The campaign orchestrator is the policy authority for a run. It:
 
-- imports the operation's configured mode and review repository;
+- imports the campaign's configured mode and review repository;
 - discovers and ranks candidate repositories;
 - enforces `max_repos` and its declared dispatch maximum;
 - resolves configured worker availability;
@@ -75,13 +75,13 @@ A successful dispatch or generated suggestion is activity, not proof of a reposi
 A bundled worker is grader-enabled only when a clean `gh aw add` consumer receives both its Markdown workflow and referenced `.github/workflows/graders/*.sh` evaluator. Keeping the evaluator beside the workflow under `graders/` lets the compiler and campaign installer resolve the same workflow-relative path.
 :::
 
-Apply the current upstream gh-aw operational-value designer and verifier independently to every worker in an operation. These tools author operational graders; do not create placeholder evaluators or treat their run-scoped results as package-defined repository operational value.
+Apply the current upstream gh-aw operational-value designer and verifier independently to every worker in a campaign. These tools author operational graders; do not create placeholder evaluators or treat their run-scoped results as package-defined repository operational value.
 
 ## Current Worker Eligibility
 
 Shared precomputation reads each orchestrator's `safe-outputs.dispatch-workflow.workflows` list and matches it against workflows installed in the control-plane repository. A worker is eligible only when it exists and is not disabled. Missing and disabled workers are skipped with explicit reasons.
 
-This provides an immediate worker kill switch: disable the generated worker workflow in GitHub Actions. Operation mode and review routing remain operation-level controls.
+This provides an immediate worker kill switch: disable the generated worker workflow in GitHub Actions. Campaign mode and review routing remain campaign-level controls.
 
 ## Worker Ceilings
 
@@ -105,7 +105,7 @@ Without `max-mode`, the worker inherits the resolved campaign or exact-target mo
 For example:
 
 ```text
-operation mode    = live
+campaign mode     = live
 worker max_mode   = review
 effective mode    = review
 ```
@@ -134,12 +134,12 @@ Example: Optimization can be live while `optimization-ai-credit-optimizer` remai
 ```
 
 :::caution[Ceilings only narrow]
-Omitting a worker ceiling does not promote the operation; the worker follows the campaign or exact-target decision. Adding or lowering a ceiling takes effect as an additional guard beneath scheduled and manual mode requests.
+Omitting a worker ceiling does not promote the campaign; the worker follows the campaign or exact-target decision. Adding or lowering a ceiling takes effect as an additional guard beneath scheduled and manual mode requests.
 :::
 
 ## When to Split Control
 
-Keep control at the operation level when workers share ownership, permissions, output destination, and promotion evidence. Add a worker ceiling when any of these differ significantly:
+Keep control at the campaign level when workers share ownership, permissions, output destination, and promotion evidence. Add a worker ceiling when any of these differ significantly:
 
 - the worker can modify source or workflow files while peers only create issues;
 - the worker has broader network or repository permissions;
@@ -147,6 +147,6 @@ Keep control at the operation level when workers share ownership, permissions, o
 - the worker has a history of noisy or high-volume outputs;
 - a separate team approves its production use.
 
-Create a separate operation, rather than many worker flags, when workers need different authentication, review repositories, schedules, target populations, or operational ownership.
+Create a separate campaign, rather than many worker flags, when workers need different authentication, review repositories, schedules, target populations, or operational ownership.
 
-Workers independently reject disabled runs, malformed control envelopes, and modes above their configured ceiling before agent execution. Promote a worker by changing its `MAX_MODE` variable only after its operation has passed the corresponding rollout gate.
+Workers independently reject disabled runs, malformed control envelopes, and modes above their configured ceiling before agent execution. Promote a worker by changing its `MAX_MODE` variable only after its campaign has passed the corresponding rollout gate.
