@@ -454,10 +454,18 @@ describe('dashboard document validation', () => {
     });
     expect(domains).toMatchObject({
       id: 'security-firewall-domains',
-      mark: 'table',
-      controls: 'interactive',
-      'lazy-list': true,
-      'column-summaries': true,
+      mark: 'list',
+      list: {
+        style: 'entity-cards',
+        card: 'firewall-domain',
+        drill: {
+          type: 'query',
+          page: 'firewall-domain-workflows',
+          query: 'firewall-domain-workflows',
+          'title-field': 'domain',
+          arguments: [{ name: 'domain', field: 'domain' }]
+        }
+      },
       layout: 'full-view',
       data: {
         source: 'firewall-domain-totals',

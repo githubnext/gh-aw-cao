@@ -635,7 +635,7 @@ describe('presenter built-in and custom pages', () => {
     expect(view?.textContent).not.toContain('Invalid custom view definition.');
   });
 
-  it('renders the most-blocked domains pie chart and aggregated domain table', async () => {
+  it('renders the most-blocked domains pie chart and drills domain cards to workflows', async () => {
     const metadata = /** @type {const} */ ({
       'source-id': 'firewall-fixture',
       'source-kind': 'fixture',
@@ -665,7 +665,6 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('[data-chart-category="blocked.example"]')).not.toBeNull();
     expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] .chart-legend-pie strong')?.textContent).toBe('3,177,281');
     expect(page?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
-    expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     const text = page?.textContent ?? '';
     expect(text).toContain('api.github.com');
     expect(text).toContain('new.example');
@@ -675,8 +674,10 @@ describe('presenter built-in and custom pages', () => {
     expect(text).toContain('Blocked');
     const firewallCard = page?.querySelector('[data-view-id="security-firewall-domains"] .entity-card-list-card');
     expect(firewallCard?.querySelector('.entity-card-list-title')?.textContent).toBe('blocked.example');
-    expect([...firewallCard?.querySelectorAll('.entity-card-list-metric') ?? []].map((metric) => metric.textContent))
-      .toEqual(['0Allowed', '3177281Blocked', '1Runs']);
+    expect(firewallCard?.querySelector('.issue-list-card-meta')?.textContent)
+      .toContain('Allowed0Blocked3177281Runs1');
+    expect(firewallCard?.querySelector('[data-card-drill="query"]')?.getAttribute('href'))
+      .toBe('#page-firewall-domain-workflows?query=firewall-domain-workflows&title=blocked.example&domain=blocked.example');
     expect(text).not.toContain('firewall failure');
     rendered.remove();
   });
@@ -717,7 +718,7 @@ describe('presenter built-in and custom pages', () => {
     const page = await activatePage(rendered, 'firewall');
     const view = page?.querySelector('[data-view-id="security-firewall-domains"]');
     expect(view?.getAttribute('data-view-layout')).toBe('full-view');
-    expect(view?.querySelector('.table-region')?.textContent).toContain(
+    expect(view?.textContent).toContain(
       'No observed firewall domains are available for this selection.'
     );
     rendered.remove();
