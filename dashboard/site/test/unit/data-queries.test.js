@@ -282,7 +282,7 @@ describe('declarative dashboard queries', () => {
         organization: 'githubnext',
         repository: 'gh-aw-cao',
         workflow: 'a.md',
-        run: 2,
+        runs: 2,
         accepted: 2,
         blocked: 8
       },
@@ -291,7 +291,7 @@ describe('declarative dashboard queries', () => {
         organization: 'githubnext',
         repository: 'other',
         workflow: 'c.md',
-        run: 1,
+        runs: 1,
         accepted: 7,
         blocked: 0
       }

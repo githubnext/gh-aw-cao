@@ -153,7 +153,7 @@ describe('entity card templates', () => {
       details: [
         { field: 'accepted', title: 'Allowed' },
         { field: 'blocked', title: 'Blocked' },
-        { field: 'run', title: 'Runs' }
+        { field: 'runs', title: 'Runs' }
       ]
     });
     expect(pages['firewall-domain-workflows'].views).toEqual(['firewall-domain-workflows']);

@@ -296,7 +296,7 @@
             "title": "Blocked"
           },
           {
-            "field": "run",
+            "field": "runs",
             "title": "Runs"
           }
         ]
@@ -728,7 +728,7 @@
               "title": "Repository"
             },
             {
-              "field": "run",
+              "field": "runs",
               "type": "quantitative",
               "title": "Runs"
             },
@@ -3102,7 +3102,7 @@
           "values": [
             {
               "field": "run",
-              "as": "run",
+              "as": "runs",
               "reducer": "distinct-count"
             },
             {
@@ -8580,7 +8580,7 @@
       {
         "id": "firewall-domain-workflows",
         "kind": "custom",
-        "title": "Domain workflows",
+        "title": "Workflows",
         "description": "Workflows that allowed or blocked requests to the selected firewall domain.",
         "icon": "workflow",
         "route": {
