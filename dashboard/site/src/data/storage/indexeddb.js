@@ -845,7 +845,7 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
   const recordsToWrite = Object.fromEntries(ENTITY_STORES.map((storeName) => {
     const previous = new Map((options.previousBatch?.[storeName] ?? [])
       .map((record) => [String(record.id), record]));
-    return [storeName, batch[storeName].filter((record) => {
+    return [storeName, (batch[storeName] ?? []).filter((record) => {
       const retained = previous.get(String(record.id));
       return retained !== record
         && (!retained || JSON.stringify(retained) !== JSON.stringify(record));
@@ -854,8 +854,8 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
   const previousBatch = options.previousBatch;
   const recordsToDelete = previousBatch
     ? Object.fromEntries(ENTITY_STORES.map((storeName) => {
-        const retained = new Set(batch[storeName].map((record) => String(record.id)));
-        return [storeName, previousBatch[storeName]
+        const retained = new Set((batch[storeName] ?? []).map((record) => String(record.id)));
+        return [storeName, (previousBatch[storeName] ?? [])
           .map((record) => record.id)
           .filter((id) => !retained.has(String(id)))];
       }))
@@ -884,7 +884,7 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
   const database = await openCanonicalDatabase(indexedDB);
   try {
     for (const storeName of ENTITY_STORES) {
-      const records = batch[storeName];
+      const records = batch[storeName] ?? [];
       const retained = new Set(records.map((record) => String(record.id)));
       // Evict first so reclaimed space is available to the writes that follow.
       const removal = readwriteTransaction(database, storeName);

@@ -147,6 +147,7 @@ const sources = {  campaigns: {
   },
   domains: { rows: /** @type {Record<string, unknown>[]} */ ([]), metadata },
   issues: { rows: /** @type {Record<string, unknown>[]} */ ([]), metadata },
+  operationalValues: { rows: /** @type {Record<string, unknown>[]} */ ([]), metadata },
   usage: {
     rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run: '42', aic: 17 }],
     metadata

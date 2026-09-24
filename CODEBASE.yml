@@ -130,6 +130,9 @@ components:
   computations:
     path: specs/computations.md
     responsibility: define deterministic partitioned measures that transform canonical evidence into bounded actionable insights
+  package_operational_value:
+    path: <operation>/operational-value.sh
+    responsibility: compute timestamped repository-scoped metrics for installed packages through the cao operational-value command
   computation_reference_runtime:
     path: research/computations/
     responsibility: experimentally evaluate proposed versioned measures over selected and ordered partitions without implying dashboard production integration
@@ -174,6 +177,9 @@ dependencies:
   - computation_projection -> dashboard_language_queries
   - dashboard_language_queries -> dashboard_ui
   - computations -> cao_cli
+  - package_operational_value -> cao_cli
+  - package_operational_value -> activity_jsonl_shards
+  - activity_jsonl_shards -> indexeddb_projection
 
 boundaries:
   - subject: policy_resolution
