@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 886" role="img" aria-labelledby="title description">
   <title id="title">Central control plane pipeline</title>
-  <desc id="description">A central control plane dispatches Supply chain, Compliance, Security, and Governance operation campaigns downward through every organization to every repo, then correlates the outcomes into an operational report excerpt.</desc>
+  <desc id="description">A central control plane dispatches Supply chain, Compliance, Security, and Governance campaigns downward through every organization to every repo, then correlates the outcomes into a campaign report excerpt.</desc>
   <defs>
     <style>
       :root { --surface:#161b22; --foreground:#f0f6fc; --muted:#8b949e; --border:#30363d; --connector:#484f58; --success:#3fb950; --danger:#f85149; --attention:#d29922; --accent:#a371f7; --info:#58a6ff; --shadow:#010409; }
