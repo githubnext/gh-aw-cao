@@ -251,7 +251,8 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(activityWorkflow, /run-name: CAO Activity \/ \$\{\{ inputs\.request-id \|\| github\.run_id \}\}/);
   assert.match(activityWorkflow, /Resolve activity cache key[\s\S]*?cao-activity-v5-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
   assert.match(activityIndexJob, /permissions:\n\s+actions: read\n\s+contents: read/);
-  assert.match(activityIndexJob, /pull-requests: read\n\s+vulnerability-alerts: read/);
+  assert.match(activityIndexJob, /pull-requests: read\n\s+security-events: read\n\s+vulnerability-alerts: read/);
+  assert.match(activityIndexJob, /permission-security-events: read/);
   assert.match(activityIndexJob, /permission-vulnerability-alerts: read/);
   assert.doesNotMatch(activityIndexJob, /actions\/cache\/save@/);
   assert.match(activityIndexJob, /Upload activity snapshot[\s\S]*?retention-days: 1/);
