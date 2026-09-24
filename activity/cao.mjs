@@ -1232,6 +1232,14 @@ export async function downloadDeployedDashboardData({
     }
     const hashes = JSON.parse(await readFile(temporaryManifest, 'utf8'));
     const validDigest = (digest) => /^[a-f0-9]{64}$/i.test(String(digest));
+    const expectedDatabaseDigest = hashes['gh-aw-logs.sqlite'];
+    if (!validDigest(expectedDatabaseDigest)) {
+      throw new Error('Activity snapshot manifest contains no valid SQLite checksum.');
+    }
+    const databaseDigest = await hashFileContents(temporaryDatabase);
+    if (databaseDigest !== expectedDatabaseDigest.toLowerCase()) {
+      throw new Error('Activity SQLite checksum mismatch: gh-aw-logs.sqlite');
+    }
     const runEntries = Object.entries(hashes)
       .filter(([name, digest]) => /^gh-aw-logs-runs\/[^/]+\.jsonl$/.test(name)
         && validDigest(digest))

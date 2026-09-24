@@ -168,6 +168,7 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
+            const crypto = require('crypto')
             const fs = require('fs')
             const path = require('path')
             const formatFileSize = (bytes) => {
@@ -289,6 +290,10 @@ jobs:
               name === 'gh-aw-logs.sqlite'
               || /^gh-aw-logs-(?:runs|records)\/[^/]+\.jsonl$/.test(name),
             ))
+            payloadHashes['gh-aw-logs.sqlite'] = crypto
+              .createHash('sha256')
+              .update(fs.readFileSync(path.join(process.env.REPORT_OUTPUT, 'gh-aw-logs.sqlite')))
+              .digest('hex')
             if (!Object.keys(payloadHashes).some((name) => name.startsWith('gh-aw-logs-runs/'))) {
               throw new Error('Dashboard payload contains no compacted run-information shards')
             }
