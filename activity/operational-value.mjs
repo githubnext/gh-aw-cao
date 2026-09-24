@@ -87,7 +87,19 @@ function redactToken(message, token) {
 function terminateProcessTree(child) {
   if (!child.pid) return;
   if (process.platform === 'win32') {
-    spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true });
+    const script = [
+      '$processes = Get-CimInstance Win32_Process',
+      '$children = @{}',
+      'foreach ($process in $processes) { $children[$process.ParentProcessId] += @($process.ProcessId) }',
+      'function Stop-Tree([int]$id) {',
+      '  foreach ($descendant in @($children[$id])) { Stop-Tree $descendant }',
+      '  Stop-Process -Id $id -Force -ErrorAction SilentlyContinue',
+      '}',
+      `Stop-Tree ${child.pid}`
+    ].join('; ');
+    spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+      windowsHide: true
+    });
     return;
   }
   try {
@@ -158,6 +170,7 @@ function runChildProcess(command, args, {
     child.once('error', (cause) => {
       error = cause;
     });
+    child.once('exit', () => terminateProcessTree(child));
     child.once('close', (status) => {
       workerSignal.removeEventListener('abort', abortWorker);
       terminateProcessTree(child);
