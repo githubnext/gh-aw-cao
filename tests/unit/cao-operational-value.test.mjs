@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -13,8 +13,14 @@ const cao = path.join(root, 'activity', 'cao.mjs');
 test('operational-value worker execution is cancellable', async () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-value-abort-'));
   const packageDirectory = path.join(temporary, 'example');
+  const orphanMarker = path.join(temporary, 'orphan');
   mkdirSync(packageDirectory);
-  writeFileSync(path.join(packageDirectory, 'operational-value.mjs'), 'setInterval(() => {}, 1_000);\n');
+  writeFileSync(path.join(packageDirectory, 'operational-value.mjs'), `
+import { spawn } from 'node:child_process';
+spawn(process.execPath, ['-e', ${JSON.stringify(
+  `setTimeout(() => require('node:fs').writeFileSync(${JSON.stringify(orphanMarker)}, 'alive'), 150); setInterval(() => {}, 1_000);`
+)}]);
+setInterval(() => {}, 1_000);\n`);
   const controller = new AbortController();
   const reason = new Error('operational value cancelled');
   const cancellation = setTimeout(() => controller.abort(reason), 50);
@@ -27,6 +33,8 @@ test('operational-value worker execution is cancellable', async () => {
       repositories: ['githubnext/gh-aw-cao'],
       signal: controller.signal
     }), reason);
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    assert.equal(existsSync(orphanMarker), false);
   } finally {
     clearTimeout(cancellation);
     rmSync(temporary, { recursive: true, force: true });

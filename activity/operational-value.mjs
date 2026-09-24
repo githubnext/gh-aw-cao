@@ -78,6 +78,39 @@ function redactToken(message, token) {
   return token ? String(message).replaceAll(token, '***') : String(message);
 }
 
+function terminateProcessTree(child) {
+  if (!child.pid) return;
+  if (process.platform === 'win32') {
+    spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true });
+    return;
+  }
+  const processes = spawnSync('ps', ['-eo', 'pid=,ppid='], { encoding: 'utf8' });
+  const children = new Map();
+  for (const line of String(processes.stdout ?? '').split(/\r?\n/)) {
+    const [pid, parent] = line.trim().split(/\s+/).map(Number);
+    if (!Number.isSafeInteger(pid) || !Number.isSafeInteger(parent)) continue;
+    const siblings = children.get(parent) ?? [];
+    siblings.push(pid);
+    children.set(parent, siblings);
+  }
+  const tree = [];
+  const visit = (pid) => {
+    tree.push(pid);
+    for (const descendant of children.get(pid) ?? []) visit(descendant);
+  };
+  visit(child.pid);
+  for (const pid of tree) {
+    try {
+      process.kill(pid, 'SIGSTOP');
+    } catch {}
+  }
+  for (const pid of tree.reverse()) {
+    try {
+      process.kill(pid, 'SIGKILL');
+    } catch {}
+  }
+}
+
 function runOperationalValueWorker(entry, request, env, { signal, timeoutMs = WORKER_TIMEOUT_MS } = {}) {
   const timeoutSignal = AbortSignal.timeout(timeoutMs);
   const workerSignal = signal
@@ -88,9 +121,9 @@ function runOperationalValueWorker(entry, request, env, { signal, timeoutMs = WO
       encoding: 'utf8',
       maxBuffer: 16 * 1024 * 1024,
       killSignal: 'SIGKILL',
-      signal: workerSignal,
       env
     }, (error, stdout, stderr) => {
+      workerSignal.removeEventListener('abort', abortWorker);
       if (error) {
         const message = timeoutSignal.aborted && !signal?.aborted
           ? `timed out after ${timeoutMs} ms`
@@ -100,7 +133,10 @@ function runOperationalValueWorker(entry, request, env, { signal, timeoutMs = WO
       }
       resolve(stdout);
     });
-    child.stdin.end(request);
+    const abortWorker = () => terminateProcessTree(child);
+    workerSignal.addEventListener('abort', abortWorker, { once: true });
+    if (workerSignal.aborted) abortWorker();
+    child.stdin.end(request, () => {});
   });
 }
 
