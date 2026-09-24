@@ -51,14 +51,24 @@ for (const repository of request.repositories) {
 test('Dependabot operational value counts open vulnerability alerts', () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-dependabot-value-'));
   const fakeGh = path.join(temporary, 'gh');
+  const calls = path.join(temporary, 'calls.log');
   writeFileSync(fakeGh, `#!/usr/bin/env bash
 set -euo pipefail
+printf '%s\\n' "$*" >> ${JSON.stringify(calls)}
+if [[ " $* " =~ (^|[[:space:]?&])page= ]]; then
+  echo 'page parameter is not supported' >&2
+  exit 1
+fi
 if [[ " $* " == *" rate_limit "* ]]; then
   printf '5000\\n'
+elif [[ " $* " == *"after=cursor"* ]]; then
+  printf 'HTTP/2 200\\n\\n[{"number":3}]\\n'
 else
-  [[ " $* " == *" repos/githubnext/gh-aw-cao/dependabot/alerts "* ]]
-  [[ " $* " == *" state=open "* ]]
-  printf '[{"number":1},{"number":2}]\\n'
+  if [[ " $* " != *" repos/githubnext/gh-aw-cao/dependabot/alerts "* ]] || [[ " $* " != *" state=open "* ]] || [[ " $* " != *" per_page=100 "* ]]; then
+    echo "unexpected gh api arguments: $*" >&2
+    exit 1
+  fi
+  printf 'HTTP/2 200\\nlink: <https://api.github.com/repos/githubnext/gh-aw-cao/dependabot/alerts?state=open&per_page=100&after=cursor>; rel="next"\\n\\n[{"number":1},{"number":2}]\\n'
 fi\n`);
   chmodSync(fakeGh, 0o755);
   const request = JSON.stringify({
@@ -81,8 +91,11 @@ fi\n`);
     timestamp: '2026-09-24T10:00:00.000Z',
     repository: 'githubnext/gh-aw-cao',
     valueId: 'dependabot-vulnerability-alerts',
-    value: 2
+    value: 3
   });
+  const ghCalls = readFileSync(calls, 'utf8');
+  assert.doesNotMatch(ghCalls, /(^|[\s?&])page=/);
+  assert.match(ghCalls, /after=cursor/);
 });
 
 test('cao operational-value rejects non-numeric metrics and bounds retained output', () => {

@@ -39,10 +39,27 @@ function ghApi(arguments_) {
   return result.stdout;
 }
 
+function parseResponse(output) {
+  const normalized = String(output).replace(/\r\n/g, '\n');
+  const separator = normalized.lastIndexOf('\n\n');
+  if (separator < 0) fail('GitHub API returned a response without headers');
+  const headers = normalized.slice(0, separator);
+  const body = normalized.slice(separator + 2);
+  const link = headers.split('\n')
+    .find((line) => /^link:/i.test(line))
+    ?.replace(/^link:\s*/i, '');
+  const next = link?.split(',')
+    .map((entry) => entry.trim())
+    .find((entry) => /;\s*rel="?next"?$/i.test(entry))
+    ?.match(/^<([^>]+)>/)?.[1];
+  return { body, next };
+}
+
 for (const repository of request.repositories) {
-  let page = 1;
+  let endpoint = `repos/${repository}/dependabot/alerts`;
+  let fields = ['-f', 'state=open', '-f', 'per_page=100'];
   let value = 0;
-  while (true) {
+  while (endpoint) {
     if (minimumRemaining > 0) {
       const remaining = Number(ghApi(['rate_limit', '--jq', '.resources.core.remaining']).trim());
       if (!Number.isSafeInteger(remaining) || remaining < 0) {
@@ -53,17 +70,17 @@ for (const repository of request.repositories) {
       }
     }
 
-    const alerts = JSON.parse(ghApi([
+    const response = parseResponse(ghApi([
       '--method', 'GET',
-      `repos/${repository}/dependabot/alerts`,
-      '-f', 'state=open',
-      '-f', 'per_page=100',
-      '-f', `page=${page}`
+      '--include',
+      endpoint,
+      ...fields
     ]));
+    fields = [];
+    endpoint = response.next;
+    const alerts = JSON.parse(response.body);
     if (!Array.isArray(alerts)) fail('GitHub API returned an invalid Dependabot alerts page');
     value += alerts.length;
-    if (alerts.length < 100) break;
-    page += 1;
   }
   console.log(JSON.stringify({
     timestamp: request.timestamp,
