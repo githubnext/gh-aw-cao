@@ -64,7 +64,7 @@ The omitted fields default to an enabled campaign and worker and 100 percent rol
 - CAO policy decides whether and where the campaign may run; workflow capabilities do not grant rollout authority.
 - Orchestrators only rank and dispatch. Workers cannot discover repositories, dispatch more work, or widen mode.
 - GitHub reads use scoped tools. Repository mutations use declared safe outputs only.
-- Both workers are review-capped: `max-mode` limits them to `review` regardless of the campaign's resolved mode.
+- All three workers are review-capped: `max-mode` limits them to `review` regardless of the campaign's resolved mode.
 - Stable titles and deduplication prevent equivalent audits and optimization recommendations from being recreated.
 
 ## Operational Value
@@ -73,6 +73,7 @@ Each worker registers a deterministic one-shot operational-value evaluator:
 
 | Worker | Primary metric | Attained evidence |
 | --- | --- | --- |
+| AGENTS.md Curator | `agents-md-optimization-request-conformance` | One target-bound AGENTS.md update issue includes evidence-complete, ready-to-run prompt content. |
 | Token Auditor | `actionable-token-audit` | One target-bound audit request includes its required cost, activity, reliability, and action fields. |
 | Token Optimizer | `actionable-optimization-recommendation` | One target- and workflow-bound recommendation includes a measured baseline, proposed change, safeguards, validation, and agent prompt. |
 
