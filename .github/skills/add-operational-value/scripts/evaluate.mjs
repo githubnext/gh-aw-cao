@@ -5,18 +5,19 @@ import {
 } from "node:fs";
 import path from "node:path";
 import {
-  fail, isIsoUtc, nowUtc, readJson, repoRoot, run, runJson, runValueFunction,
+  deepEqual, fail, importValueModule, isIsoUtc, nowUtc, readJson, repoRoot, run, runJson,
   scriptDir, sha256File, shiftDays, writeJson,
 } from "./common.mjs";
 
 function usage() {
-  return "usage: evaluate.mjs [--end ISO-8601] [--output-dir DIR] [--function PATH] [--no-runs] [--refresh] OWNER/REPO WORKFLOW-NAME-OR-PATH";
+  return "usage: evaluate.mjs [--end ISO-8601] [--output-dir DIR] [--function PATH] [--campaign SLUG] [--no-runs] [--refresh] OWNER/REPO WORKFLOW-NAME-OR-PATH";
 }
 
 const args = process.argv.slice(2);
 let endAt = nowUtc();
-let outputRoot = "reports";
+let outputRoot = "docs/operational-value/reports";
 let valueFunction;
+let campaign;
 let collectRuns = true;
 let refresh = false;
 while (args[0]?.startsWith("-")) {
@@ -24,6 +25,7 @@ while (args[0]?.startsWith("-")) {
   if (option === "--end") endAt = args.shift() ?? fail("--end requires an ISO-8601 timestamp");
   else if (option === "--output-dir") outputRoot = args.shift() ?? fail("--output-dir requires a directory");
   else if (option === "--function") valueFunction = args.shift() ?? fail("--function requires a path");
+  else if (option === "--campaign") campaign = args.shift() ?? fail("--campaign requires a slug");
   else if (option === "--no-runs") collectRuns = false;
   else if (option === "--refresh") refresh = true;
   else if (["-h", "--help"].includes(option)) {
@@ -34,20 +36,25 @@ while (args[0]?.startsWith("-")) {
 if (args.length !== 2) fail(usage());
 const [repository, workflowInput] = args;
 const workflowSlug = path.basename(workflowInput, ".md");
+if (campaign && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(campaign)) fail("--campaign requires a valid campaign slug");
 process.chdir(repoRoot);
-const canonicalFunction = run(path.join(scriptDir, "value-function-path.mjs"), [repository, workflowSlug]).trim();
+const canonicalFunction = run(
+  path.join(scriptDir, "value-function-path.mjs"),
+  [repository, workflowSlug, ...(campaign ? [campaign] : [])],
+).trim();
 valueFunction ??= canonicalFunction;
 if (!existsSync(valueFunction)) fail(`value function not found: ${valueFunction}`);
 if (!isIsoUtc(endAt)) fail("--end must use UTC ISO-8601 format: YYYY-MM-DDTHH:MM:SSZ");
 
-const repositoryKey = path.basename(path.dirname(canonicalFunction));
+const repositoryKey = repository.toLowerCase().replace("/", "-");
 const reportDir = path.join(outputRoot, repositoryKey);
 const finalTimeline = path.join(reportDir, `${workflowSlug}-timeline.json`);
 const finalSvg = path.join(reportDir, `${workflowSlug}-timeline.svg`);
 const finalDefinitions = path.join(reportDir, `${workflowSlug}-definitions.md`);
 const evidenceArchive = path.join(reportDir, `${workflowSlug}-evidence-archive.json`);
 run(path.join(scriptDir, "verify-value-function.mjs"), [valueFunction]);
-const definition = JSON.parse(runValueFunction(valueFunction, ["--definition"]));
+const valueModule = await importValueModule(valueFunction);
+const definition = valueModule.definition;
 if (definition.repository.toLowerCase() !== repository.toLowerCase() || definition.slug !== workflowSlug) {
   fail(`value function does not match ${repository} ${workflowSlug}`);
 }
@@ -72,9 +79,12 @@ let priorSnapshots = [];
 if (!refresh && existsSync(finalTimeline)) {
   try {
     const timeline = readJson(finalTimeline);
-    if (timeline.valueFunction?.sha256 === initialSha
+    const sameContract = deepEqual(timeline.valueFunction?.definition, definition);
+    if ((timeline.valueFunction?.sha256 === initialSha || sameContract)
         && timeline.repository.toLowerCase() === repository.toLowerCase()
-        && timeline.workflowSlug === workflowSlug) priorSnapshots = timeline.snapshots ?? [];
+        && timeline.workflowSlug === workflowSlug) {
+      priorSnapshots = timeline.snapshots ?? [];
+    }
   } catch {
     // An invalid report is not a cache hit.
   }
@@ -111,7 +121,7 @@ const missing = windows.filter((window) => !cache.has(keyFor(window)));
 if (missing.length > 0) {
   let collected;
   try {
-    collected = JSON.parse(runValueFunction(valueFunction, ["--collect-batch"], `${JSON.stringify(missing)}\n`));
+    collected = await valueModule.collectBatch(missing);
   } catch (error) {
     fail(`collector failed: ${error.message}`);
   }
@@ -195,14 +205,25 @@ try {
   const previous = archive.functions?.[initialSha]?.snapshots ?? [];
   const combined = [...previous, ...builtTimeline.snapshots.filter((snapshot) => snapshot.metrics[primary] !== null)];
   const unique = new Map(combined.map((snapshot) => [keyFor(snapshot), snapshot]));
+  const currentSnapshots = [...unique.values()];
+  const currentByKey = new Map(currentSnapshots.map((snapshot) => [keyFor(snapshot), snapshot]));
+  const retainedFunctions = Object.fromEntries(
+    Object.entries(archive.functions ?? {}).filter(([sha, entry]) => (
+      sha === initialSha
+      || !entry.snapshots.every((snapshot) => {
+        const current = currentByKey.get(keyFor(snapshot));
+        return current && deepEqual(current, snapshot);
+      })
+    )),
+  );
   archive = {
     ...archive,
     schemaVersion: 1,
     repository,
     workflowSlug,
     functions: {
-      ...(archive.functions ?? {}),
-      [initialSha]: { valueFunctionSha256: initialSha, snapshots: [...unique.values()] },
+      ...retainedFunctions,
+      [initialSha]: { valueFunctionSha256: initialSha, snapshots: currentSnapshots },
     },
   };
   const archiveOutput = path.join(work, `${workflowSlug}-evidence-archive.json`);

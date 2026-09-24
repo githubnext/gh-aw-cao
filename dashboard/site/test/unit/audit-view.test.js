@@ -49,12 +49,19 @@ describe('Audit dashboard view', () => {
     expect(insights.views.filter((/** @type {{ mark: string }} */ view) => view.mark !== 'element')
       .map((/** @type {{ mark: string }} */ view) => view.mark)).toEqual(['chart']);
     expect(insights.views[2]).toMatchObject({
+      title: 'Severity audit events',
       chart: 'horizontal-bar',
-      data: { limit: 20 },
+      data: {
+        limit: 20,
+        'order-by': [
+          { field: 'event-status', direction: 'asc' },
+          { field: 'events', direction: 'desc' }
+        ]
+      },
       encoding: {
         x: { field: 'workflow', format: 'workflow-relative-path' },
         y: { field: 'events' },
-        color: { field: 'event-summary' }
+        color: { field: 'event-status', title: 'Severity' }
       }
     });
     expect(issues.views
@@ -210,20 +217,30 @@ describe('Audit dashboard view', () => {
     expect(result['audit-event-summary-buckets'].rows).toEqual([
       {
         campaign: 'audit-campaign',
+        'event-status': 'high',
         workflow: '.github/workflows/audit.md',
         'event-summary': 'Repeated finding',
-        events: 2
-      },
-      {
-        campaign: 'audit-campaign',
-        workflow: '.github/workflows/audit.md',
-        'event-summary': 'Skill activation',
         events: 1
       },
       {
         campaign: 'review-campaign',
+        'event-status': 'high',
         workflow: '.github/workflows/review.md',
         'event-summary': 'Repeated finding',
+        events: 1
+      },
+      {
+        campaign: 'audit-campaign',
+        'event-status': 'medium',
+        workflow: '.github/workflows/audit.md',
+        'event-summary': 'Repeated finding',
+        events: 1
+      },
+      {
+        campaign: 'audit-campaign',
+        'event-status': 'medium',
+        workflow: '.github/workflows/audit.md',
+        'event-summary': 'Skill activation',
         events: 1
       }
     ]);

@@ -536,6 +536,62 @@ describe('campaign detail route', () => {
     expect(rendered.querySelector('[aria-busy="true"]')?.getAttribute('role')).toBe('status');
   });
 
+  it('distinguishes first load, database loading, and an empty ingested database', async () => {
+    const firstLoadContext = context();
+    const firstLoad = renderCampaignRouteVariant({
+      ...firstLoadContext,
+      sources: {
+        ...firstLoadContext.sources,
+        workflows: {
+          source: 'workflows',
+          metadata: { ...metadata, availability: 'empty', completeness: 'unknown' },
+          rows: []
+        }
+      }
+    }, 'overview');
+    firstLoad.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'campaign', value: 'dependabot' }
+    }));
+    expect(firstLoad.textContent).toContain('Campaign data will appear after the first data load completes.');
+    expect(firstLoad.textContent).not.toContain('unavailable');
+
+    resetSourceStore();
+    /** @type {(source: import('../../src/presenter.js').LogicalSourceInput) => void} */
+    let resolveWorkflows = () => {};
+    configureSourceLoader((name) => name === 'workflows'
+      ? new Promise((resolve) => { resolveWorkflows = resolve; })
+      : Promise.resolve({ source: name, metadata, rows: [] }));
+    const loading = renderCampaignRouteVariant({
+      ...context(),
+      sources: {}
+    }, 'overview');
+    loading.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'campaign', value: 'dependabot' }
+    }));
+    expect(loading.textContent).toContain('Loading campaign data...');
+    expect(loading.querySelector('[aria-busy="true"]')?.getAttribute('role')).toBe('status');
+    resolveWorkflows({
+      source: 'workflows',
+      metadata: { ...metadata, availability: 'empty', completeness: 'unknown' },
+      rows: []
+    });
+    await vi.waitFor(() => expect(loading.textContent).toContain('Campaign data will appear after the first data load completes.'));
+
+    resetSourceStore();
+    const emptyIngestedContext = context();
+    const emptyIngested = renderCampaignRouteVariant({
+      ...emptyIngestedContext,
+      sources: {
+        ...emptyIngestedContext.sources,
+        workflows: { source: 'workflows', metadata: { ...metadata, availability: 'empty' }, rows: [] }
+      }
+    }, 'overview');
+    emptyIngested.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'campaign', value: 'dependabot' }
+    }));
+    expect(emptyIngested.textContent).toContain('Campaign data is unavailable.');
+  });
+
   it('renders the same unavailable state for workflow and report navigation', () => {
     const unavailableContext = context();
 

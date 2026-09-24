@@ -1602,12 +1602,12 @@
   "caveat": "The evidence is observational and does not establish that workflow adoption caused an outcome change.",
   "schemaVersion": 2,
   "definitionSchemaVersion": 3,
-  "generatedAt": "2026-09-24T19:48:41Z",
+  "generatedAt": "2026-09-24T20:28:13Z",
   "workflowSlug": "daily-file-diet",
   "sourcePath": ".github/workflows/daily-file-diet.md",
   "valueFunction": {
-    "path": "functions/github-gh-aw/daily-file-diet.mjs",
-    "sha256": "211bc976ef53c94ce74bcf682a36566056b7f606414ba1aa96077a56f107ea10",
+    "path": "daily-file-diet/operational-value/daily-file-diet.mjs",
+    "sha256": "642d25d90ae1c223dcb6041ac404a387cef38cbd3eef9a88b80d021653189185",
     "definition": {
       "schemaVersion": 3,
       "slug": "daily-file-diet",

@@ -624,7 +624,7 @@ test('Transactions is a responsive table of retained transaction data', async ({
   await expect(page.locator('.top-nav')).toBeHidden();
 });
 
-test('Runs renders a last-week line graph above its responsive table and scrolls like Cost', async ({ page }) => {
+test('Runs renders a last-week stacked area graph above its responsive table and scrolls like Cost', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
@@ -715,7 +715,7 @@ test('Runs renders a last-week line graph above its responsive table and scrolls
   const view = runsPage.locator('[data-view-layout="full-view"]');
   const table = view.locator('[data-lazy-list]');
   const scroll = view.locator('.table-scroll');
-  const lineGraph = runsPage.locator('[data-view-id="runs-last-week"]');
+  const areaGraph = runsPage.locator('[data-view-id="runs-last-week"]');
   const columnHeaders = view.locator('thead > tr:first-child > th');
   const facetControl = columnHeaders.locator('.filter-select-control').first();
   const expectAlignedColumnHeaders = async () => {
@@ -726,18 +726,18 @@ test('Runs renders a last-week line graph above its responsive table and scrolls
   await expect(page.locator('[data-nav-page-id="runs"]')).toHaveAttribute('aria-current', 'page');
   await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view/);
   await expect(view).toHaveCount(1);
-  await expect(lineGraph.locator('[data-chart-widget="line"]')).toBeVisible();
-  await expect(lineGraph.locator('.line-chart-series')).toHaveCount(2);
-  await expect(lineGraph.locator('.chart-legend-line')).toContainText('failure');
-  await expect(lineGraph.locator('.chart-legend-line')).toContainText('success');
-  await expect(lineGraph.locator('.line-chart-y-axis text')).toHaveText(['50', '25', '0']);
-  const lineGraphHeadingBox = await lineGraph.getByRole('heading', { name: 'Runs in the last week' }).boundingBox();
-  const lineGraphChartBox = await lineGraph.locator('[data-chart-widget="line"] svg').boundingBox();
-  if (lineGraphHeadingBox === null || lineGraphChartBox === null) {
-    throw new Error('Expected line graph heading and chart boxes to be measurable.');
+  await expect(areaGraph.locator('[data-chart-widget="area"]')).toBeVisible();
+  await expect(areaGraph.locator('.area-chart-area')).toHaveCount(2);
+  await expect(areaGraph.locator('.chart-legend-area')).toContainText('failure');
+  await expect(areaGraph.locator('.chart-legend-area')).toContainText('success');
+  await expect(areaGraph.locator('.line-chart-y-axis text')).toHaveText(['100', '50', '0']);
+  const areaGraphHeadingBox = await areaGraph.getByRole('heading', { name: 'Runs in the last week' }).boundingBox();
+  const areaGraphChartBox = await areaGraph.locator('[data-chart-widget="area"] svg').boundingBox();
+  if (areaGraphHeadingBox === null || areaGraphChartBox === null) {
+    throw new Error('Expected area graph heading and chart boxes to be measurable.');
   }
-  expect(lineGraphChartBox.width).toBeGreaterThan(0);
-  expect(lineGraphChartBox.height).toBeGreaterThan(0);
+  expect(areaGraphChartBox.width).toBeGreaterThan(0);
+  expect(areaGraphChartBox.height).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'Table', exact: true }).click();
   await expect(table).toBeVisible();
   await expect(table.locator('tbody > tr')).toHaveCount(25);
@@ -773,17 +773,17 @@ test('Runs renders a last-week line graph above its responsive table and scrolls
   expect(scrolledSummaryBox.y - (facetControlBox.y + facetControlBox.height)).toBeGreaterThanOrEqual(4);
   await page.getByRole('button', { name: 'Cards' }).click();
   await page.getByRole('button', { name: 'Chart' }).click();
-  await expect(lineGraph).toBeVisible();
+  await expect(areaGraph).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   const mobileViewModeToggle = page.locator('.mobile-view-mode-toggle');
   await expect(runsPage.locator(':scope > .page-chrome > .filter-bar')).toBeHidden();
-  await expect(lineGraph).toBeVisible();
+  await expect(areaGraph).toBeVisible();
   await expect(table).toBeHidden();
   await expect(mobileViewModeToggle).toHaveAttribute('aria-label', 'Switch to Cards view');
   await mobileViewModeToggle.click();
   await mobileViewModeToggle.click();
-  await expect(lineGraph).toBeHidden();
+  await expect(areaGraph).toBeHidden();
   await expect(table).toBeVisible();
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
   await expectAlignedColumnHeaders();
