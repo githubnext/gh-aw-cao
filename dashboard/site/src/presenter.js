@@ -22,7 +22,7 @@ import { DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from './debug-events.
 import { dashboardViewAliasName } from './data/queries/view-payload-compiler.js';
 import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
 import { sourceContinuation } from './data/continuation.js';
-import { renderDashboardNavigation, enableDashboardNavigation, syncMobileViewModeToggle } from './components/dashboard-navigation.js';
+import { renderDashboardNavigation, enableDashboardNavigation, syncDashboardNavigationIndicators, syncMobileViewModeToggle } from './components/dashboard-navigation.js';
 import { renderDashboardHeader } from './components/dashboard-header.js';
 import { renderAccountMenu } from './components/account-menu.js';
 import { renderDashboardFooter } from './components/dashboard-footer.js';
@@ -63,11 +63,11 @@ import {
  */
 
 /**
- * @typedef {{ id: string, kind: 'built-in', page: string, title?: string, ['navigation-label']?: string, description?: string, icon?: string, ['class-name']?: string, ['filter-bar']?: boolean, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], definition?: { views?: Array<unknown>, sections?: PresentablePageSection[], ['data-state']?: Record<string, boolean> } }} PresentableBuiltInPage
+ * @typedef {{ id: string, kind: 'built-in', page: string, title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, ['filter-bar']?: boolean, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], definition?: { views?: Array<unknown>, sections?: PresentablePageSection[], ['data-state']?: Record<string, boolean> } }} PresentableBuiltInPage
  */
 
 /**
- * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, description?: string, icon?: string, ['class-name']?: string, ['filter-bar']?: boolean, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string, ['title-format']?: 'title-case' }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
+ * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, ['filter-bar']?: boolean, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string, ['title-format']?: 'title-case' }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
  */
 
 /**
@@ -240,6 +240,8 @@ export function renderDashboard(input) {
     root.dataset.domProvenanceError = String(error?.message ?? error);
   });
   enableDashboardNavigation(root);
+  syncDashboardNavigationIndicators(root, pages, sources);
+  enableNavigationIndicatorUpdates(root, pages, input.loadPageSources, dashboardOwner.signal);
   restoreDashboardTheme(root);
   enableThemeControl(root, dashboardAppearance);
   enableHorizonOutsideClickDismissal(root);
@@ -277,6 +279,32 @@ export function renderDashboard(input) {
               horizonRange,
               evaluatedAt
             ));
+          }
+
+          /**
+           * @param {HTMLElement} root
+           * @param {Array<PresentableBuiltInPage | PresentableCustomPage>} pages
+           * @param {PageSourceLoader | undefined} loadPageSources
+           * @param {AbortSignal} signal
+           */
+          function enableNavigationIndicatorUpdates(root, pages, loadPageSources, signal) {
+            if (!loadPageSources) return;
+            for (const page of pages.filter(hasNavigationIndicator)) {
+              void loadPageSources(page.id, {
+                signal,
+                onUpdate: (sources) => syncDashboardNavigationIndicators(root, pages, sources)
+              })
+                .then((sources) => syncDashboardNavigationIndicators(root, pages, sources))
+                .catch((error) => {
+                  if (signal.aborted || error?.name === 'AbortError') return;
+                  console.error(`Unable to update dashboard navigation indicators: ${error instanceof Error ? error.message : String(error)}`);
+                });
+            }
+          }
+
+          /** @param {PresentableBuiltInPage | PresentableCustomPage} page */
+          function hasNavigationIndicator(page) {
+            return isPlainObject(page['navigation-indicator']);
           }
         };
         /** @param {Record<string, LogicalSourceInput>} pageSources */

@@ -139,6 +139,28 @@ export function renderDashboardNavigation(pages, title, navigation, accountContr
   );
 }
 
+/**
+ * @param {HTMLElement} root
+ * @param {Array<Record<string, unknown>>} pages
+ * @param {Record<string, { rows?: Array<Record<string, unknown>> } | undefined>} sources
+ */
+export function syncDashboardNavigationIndicators(root, pages, sources) {
+  for (const page of pages) {
+    const title = pageTitle(page);
+    const indicator = navigationIndicator(page);
+    const active = indicatorMatches(indicator, sources);
+    const label = active && indicator?.label ? `${title}, ${indicator.label}` : title;
+    for (const link of root.querySelectorAll(`[data-nav-page-id="${cssEscape(String(page.id))}"], [data-mobile-nav-page-id="${cssEscape(String(page.id))}"]`)) {
+      if (!(link instanceof HTMLAnchorElement)) continue;
+      link.classList.toggle('nav-item-indicated', active);
+      link.setAttribute('aria-label', label);
+      link.title = label;
+      const dot = link.querySelector('[data-nav-indicator]');
+      if (dot instanceof HTMLElement) dot.hidden = !active;
+    }
+  }
+}
+
 /** @param {HTMLElement} root */
 export function enableDashboardNavigation(root) {
   enableSidebarToggle(root);
@@ -209,6 +231,7 @@ function pageIcon(page) {
 /** @param {Record<string, unknown>} page @param {boolean} isActive @param {boolean} mobileOverflow @param {boolean} narrowMobileOverflow */
 function renderNavItem(page, isActive, mobileOverflow, narrowMobileOverflow) {
   const title = pageTitle(page);
+  const hasIndicator = navigationIndicator(page) !== null;
   return h(
     'a',
     {
@@ -220,23 +243,62 @@ function renderNavItem(page, isActive, mobileOverflow, narrowMobileOverflow) {
       'data-nav-page-id': page.id
     },
     octicon(pageIcon(page)),
-    h('span', { className: 'nav-label' }, title)
+    h('span', { className: 'nav-label' }, title),
+    hasIndicator ? h('span', { className: 'nav-indicator', hidden: true, 'aria-hidden': 'true', 'data-nav-indicator': '' }) : null
   );
 }
 
 /** @param {Record<string, unknown>} page @param {boolean} isActive */
 function renderMobileNavItem(page, isActive) {
+  const title = pageTitle(page);
+  const hasIndicator = navigationIndicator(page) !== null;
   return h(
     'a',
     {
       href: `#page-${page.id}`,
       className: `mobile-nav-item${isActive ? ' active' : ''}`,
       'aria-current': isActive ? 'page' : undefined,
+      'aria-label': title,
+      title,
       'data-mobile-nav-page-id': page.id
     },
     octicon(pageIcon(page)),
-    h('span', { className: 'mobile-nav-label' }, pageTitle(page))
+    h('span', { className: 'mobile-nav-label' }, title),
+    hasIndicator ? h('span', { className: 'nav-indicator', hidden: true, 'aria-hidden': 'true', 'data-nav-indicator': '' }) : null
   );
+}
+
+/** @param {Record<string, unknown>} page */
+function navigationIndicator(page) {
+  const indicator = page['navigation-indicator'];
+  if (!isPlainObject(indicator)) return null;
+  const tests = Array.isArray(indicator.any)
+    ? indicator.any.filter(isPlainObject)
+    : [indicator].filter(isPlainObject);
+  if (tests.length === 0) return null;
+  return {
+    label: typeof indicator.label === 'string' && indicator.label.length > 0 ? indicator.label : 'attention required',
+    tests
+  };
+}
+
+/** @param {{ tests: Array<Record<string, unknown>> } | null} indicator @param {Record<string, { rows?: Array<Record<string, unknown>> } | undefined>} sources */
+function indicatorMatches(indicator, sources) {
+  return indicator?.tests.some((test) => {
+    if (typeof test.source !== 'string' || typeof test.field !== 'string') return false;
+    const rows = sources[test.source]?.rows;
+    return Array.isArray(rows) && rows.some((row) => row[test.field] === test.equals);
+  }) === true;
+}
+
+/** @param {unknown} value */
+function isPlainObject(value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** @param {string} value */
+function cssEscape(value) {
+  return globalThis.CSS?.escape ? globalThis.CSS.escape(value) : value.replaceAll('"', '\\"').replaceAll('\\', '\\\\');
 }
 
 /** @param {HTMLElement} root */

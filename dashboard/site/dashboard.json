@@ -13135,6 +13135,21 @@
         "kind": "custom",
         "title": "Maintenance",
         "navigation-label": "Maintenance",
+        "navigation-indicator": {
+          "label": "updates available",
+          "any": [
+            {
+              "source": "campaigns",
+              "field": "campaign-update-state",
+              "equals": "update-available"
+            },
+            {
+              "source": "maintenance-repositories",
+              "field": "upgrade-state",
+              "equals": "update-available"
+            }
+          ]
+        },
         "icon": "tools",
         "class-name": "maintenance-page",
         "description": "Review CAO campaign packages and gh-aw compiler versions. Vendored agents and skills require separate provenance-backed inventory.",

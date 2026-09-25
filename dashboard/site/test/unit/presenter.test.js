@@ -136,6 +136,48 @@ describe('dashboard DOM provenance', () => {
     disposeDashboard(rendered);
   });
 
+  it('subscribes navigation indicators to their page sources', async () => {
+    const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ (/** @type {unknown} */ ({
+      languageVersion: '0.1.0',
+      dashboard: {
+        title: 'Indicator dashboard',
+        pages: [
+          { id: 'overview', kind: 'custom', title: 'Overview', views: [] },
+          {
+            id: 'maintenance',
+            kind: 'custom',
+            title: 'Maintenance',
+            views: [],
+            'navigation-indicator': {
+              label: 'updates available',
+              any: [{ source: 'campaigns', field: 'campaign-update-state', equals: 'update-available' }]
+            }
+          }
+        ],
+        navigation: [
+          { pages: ['overview'] },
+          { label: 'Maintenance', placement: 'bottom', pages: ['maintenance'] }
+        ]
+      }
+    }));
+    const loadPageSources = vi.fn((pageId) => Promise.resolve(pageId === 'maintenance'
+      ? { campaigns: { rows: [{ 'campaign-update-state': 'update-available' }] } }
+      : {}
+    ));
+
+    const rendered = renderDashboardView({ document, sources: {}, loadPageSources });
+
+    await vi.waitFor(() => {
+      expect(rendered.querySelector('[data-nav-page-id="maintenance"]')?.getAttribute('aria-label'))
+        .toBe('Maintenance, updates available');
+    });
+    expect(loadPageSources).toHaveBeenCalledWith('maintenance', expect.objectContaining({
+      signal: expect.any(AbortSignal),
+      onUpdate: expect.any(Function)
+    }));
+    disposeDashboard(rendered);
+  });
+
   it('loads a page chunk before mounting its independently bound elements', async () => {
     const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ (/** @type {unknown} */ ({
       languageVersion: '0.1.0',
