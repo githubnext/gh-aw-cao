@@ -9201,6 +9201,64 @@
         }
       },
       {
+        "name": "campaign-readme-orchestrators",
+        "intent": "Resolve one repository link for each campaign README from its declared orchestrator workflow.",
+        "from": "workflows",
+        "filter": {
+          "predicates": [
+            {
+              "field": "workflow-role",
+              "equals": "orchestrator"
+            }
+          ]
+        },
+        "select": [
+          {
+            "field": "campaign"
+          },
+          {
+            "field": "repository-link"
+          }
+        ]
+      },
+      {
+        "name": "campaign-readme-details",
+        "intent": "Present retained campaign README content with its repository-relative link context.",
+        "from": "campaigns",
+        "joins": [
+          {
+            "source": "campaign-readme-orchestrators",
+            "type": "left",
+            "on": [
+              {
+                "left": "campaign",
+                "right": "campaign"
+              }
+            ],
+            "fields": [
+              {
+                "field": "repository-link",
+                "as": "repository-link"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "campaign"
+          },
+          {
+            "field": "campaign-readme"
+          },
+          {
+            "field": "campaign-readme-path"
+          },
+          {
+            "field": "repository-link"
+          }
+        ]
+      },
+      {
         "name": "overview-campaign-links",
         "intent": "Provide one navigation row per registered campaign that opens its dedicated campaign view.",
         "description": "Registered campaigns with a resolved dashboard link to their dedicated campaign view.",
@@ -12220,7 +12278,7 @@
             "title": "README",
             "data": {
               "sources": [
-                "workflows"
+                "campaign-readme-details"
               ],
               "arguments": [
                 {

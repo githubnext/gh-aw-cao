@@ -312,6 +312,37 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
   });
 
+  it('validates generic markdown element configuration', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const campaign = document.dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'campaign-detail');
+    const markdown = campaign.views.find((/** @type {{ element?: string }} */ view) => view.element === 'markdown');
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+
+    const config = markdown.config;
+    delete markdown.config;
+    expect(validateDashboardDocument(JSON.stringify(document)).errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: expect.stringContaining('.config'), message: 'markdown requires config.' })
+    ]));
+
+    markdown.config = { ...config };
+    delete markdown.config['content-field'];
+    expect(validateDashboardDocument(JSON.stringify(document)).errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: expect.stringContaining('.config.content-field'),
+        message: 'markdown requires config.content-field.'
+      })
+    ]));
+
+    const navigation = campaign.views.find((/** @type {{ element?: string }} */ view) => view.element === 'campaign-route');
+    navigation.config['content-field'] = 'campaign-readme';
+    expect(validateDashboardDocument(JSON.stringify(document)).errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: expect.stringContaining('.config.content-field'),
+        message: 'config.content-field is supported only for the markdown element.'
+      })
+    ]));
+  });
+
   it('accepts supported dashboard CLI actions', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     document.dashboard['cli-actions'].push({
