@@ -22,7 +22,7 @@ test("workflow sources use the GitHub Actions server URL instead of github.com",
   for (const [path, source] of sources) {
     assert.doesNotMatch(
       source,
-      /https:\/\/github\.com(?:\/|$)/,
+      /https:\/\/github\.com(?![\w.-])/,
       `${path} hard-codes github.com; use github.server_url or GITHUB_SERVER_URL for GitHub Actions URLs`,
     );
   }

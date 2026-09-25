@@ -186,7 +186,9 @@ steps:
             failureJob: run.failureJob || null,
             failureStep: run.failureStep || null,
             failureMessage: run.failureMessage || null,
-            url: run.runId ? `${process.env.GITHUB_SERVER_URL}/${workflow.repository}/actions/runs/${run.runId}` : workflow.htmlUrl,
+            url: run.runId && process.env.GITHUB_SERVER_URL
+              ? `${process.env.GITHUB_SERVER_URL}/${workflow.repository}/actions/runs/${run.runId}`
+              : workflow.htmlUrl,
           });
         }
       }
