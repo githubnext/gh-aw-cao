@@ -133,6 +133,23 @@ test("docs diagram generator creates one validated theme-aware SVG pair", () => 
   assert.match(source, /Call `noop`/);
 });
 
+test("docs maintainer uses daily merged-change and ADR evidence", () => {
+  const source = workflow("docs-maintainer.md");
+
+  assert.match(source, /schedule: daily/);
+  assert.match(source, /most recent completed successful `docs-maintainer` workflow run/);
+  assert.match(source, /at most 30 pull requests merged into the default branch/);
+  assert.match(source, /inspect its changed-file list and bounded diff/);
+  assert.match(source, /never treat a pull request description as proof of behavior/);
+  assert.match(source, /ADR files under `adr\/` added or changed/);
+  assert.match(source, /allowed-files:\n\s+- "docs\/\*\.md"\n\s+- "docs\/\*\*\/\*\.md"/);
+  assert.match(source, /draft: true/);
+  assert.match(source, /npm run docs:build/);
+  assert.match(source, /Call `create_pull_request` exactly once/);
+  assert.match(source, /Call `noop` exactly once/);
+  assert.doesNotMatch(source, /^\s+(contents|actions|pull-requests): write$/m);
+});
+
 test("SelfCare docs build-time investigator rotates evidenced recommendations", () => {
   const source = workflow("self-care-docs-build-time-investigator.md");
 
