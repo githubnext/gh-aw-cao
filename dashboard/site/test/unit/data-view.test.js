@@ -1460,7 +1460,7 @@ describe('data view renderer', () => {
     expect(bar?.querySelector('.table-region')).toBeNull();
   });
 
-  it('links known pie entities and formats workflow coordinates while preserving explicit hrefs', () => {
+  it('links declared pie entities and formats workflow coordinates', () => {
     const context = /** @type {Parameters<typeof renderDataView>[1]} */ ({
       pageId: 'cost',
       title: 'Cost per workflow',
@@ -1468,7 +1468,7 @@ describe('data view renderer', () => {
         mark: 'chart',
         chart: 'pie',
         encoding: {
-          x: { field: 'workflow-coordinate', type: 'nominal' },
+          x: { field: 'workflow-coordinate', type: 'nominal', format: 'workflow-identity-label' },
           y: { field: 'aic', type: 'quantitative' }
         }
       },
@@ -1485,7 +1485,16 @@ describe('data view renderer', () => {
     const workflow = 'githubnext/gh-aw-cao:.github/workflows/optimization-agents-and-curator.md';
     const inferred = renderDataView('chart', {
       ...context,
-      buildChartPoints: () => [{ key: workflow, x: workflow, y: 3, color: null, link: null }]
+      buildChartPoints: () => [{
+        key: workflow,
+        x: workflow,
+        y: 3,
+        color: null,
+        link: {
+          href: '#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Foptimization-agents-and-curator.md',
+          label: `View ${workflow} workflow dashboard`
+        }
+      }]
     });
 
     const inferredLink = inferred?.querySelector('.chart-legend-pie a');
@@ -1493,17 +1502,28 @@ describe('data view renderer', () => {
     expect(inferredLink?.getAttribute('aria-label')).toBe(`View ${workflow} workflow dashboard`);
     expect(inferredLink?.textContent).toBe('optimization-agents-and-curator.md (githubnext/gh-aw-cao)');
 
-    const overridden = renderDataView('chart', {
+    const repository = renderDataView('chart', {
       ...context,
+      view: {
+        ...context.view,
+        encoding: {
+          ...context.view.encoding,
+          x: { field: 'repository-coordinate', type: 'nominal' }
+        }
+      },
       buildChartPoints: () => [{
-        key: workflow,
-        x: workflow,
+        key: 'githubnext/gh-aw-cao',
+        x: 'githubnext/gh-aw-cao',
         y: 3,
         color: null,
-        link: { href: '#page-custom-workflow', label: 'View custom workflow dashboard' }
+        link: {
+          href: '#page-repository-detail?repository=githubnext%2Fgh-aw-cao',
+          label: 'View githubnext/gh-aw-cao repository dashboard'
+        }
       }]
     });
-    expect(overridden?.querySelector('.chart-legend-pie a')?.getAttribute('href')).toBe('#page-custom-workflow');
+    expect(repository?.querySelector('.chart-legend-pie a')?.getAttribute('href'))
+      .toBe('#page-repository-detail?repository=githubnext%2Fgh-aw-cao');
 
     const campaign = renderDataView('chart', {
       ...context,
@@ -1519,12 +1539,9 @@ describe('data view renderer', () => {
         x: 'Dev Practices',
         y: 3,
         color: null,
-        link: null,
-        source: {
-          'campaign-dashboard-link': {
-            'dashboard-href': '#page-campaign-insights?campaign=dev-practices',
-            'dashboard-label': 'View Dev Practices campaign dashboard'
-          }
+        link: {
+          href: '#page-campaign-insights?campaign=dev-practices',
+          label: 'View Dev Practices campaign dashboard'
         }
       }]
     });
