@@ -47,6 +47,9 @@ type Result struct {
 type Options struct {
 	DatabaseQueriesPath string
 	Force               bool
+	// RetainGenerations bounds how many superseded generations are kept for
+	// rollback. Zero selects redisx.DefaultGenerationRetention.
+	RetainGenerations int
 }
 
 type Manifest map[string]string
@@ -207,7 +210,7 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 		source.Metadata["source-revision"] = dataRevision
 		source.Metadata["availability"] = availability(source.Rows)
 		source.Metadata["row-count"] = len(source.Rows)
-		if _, err := store.PutSource(ctx, generation, source); err != nil {
+		if err := store.PutSource(ctx, generation, source); err != nil {
 			return Result{}, fmt.Errorf("stage generation %s: %w", generation, err)
 		}
 		ingestLog.Printf("staged source rows=%d", len(source.Rows))
@@ -222,6 +225,16 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 		return Result{}, err
 	}
 	ingestLog.Printf("activated generation revision=%d sources=%d", revision, len(counts))
+	// Every projection writes a complete new generation, so reclaiming
+	// superseded ones is part of activation. Redis is configured NoEviction:
+	// without this a frequently projecting deployment exhausts memory and
+	// every subsequent write fails. A reclamation failure must not invalidate
+	// the generation that was just activated.
+	if err := store.TrackGeneration(ctx, generation); err != nil {
+		ingestLog.Printf("generation tracking failed; reclamation may lag")
+	} else if _, err := store.PruneGenerations(ctx, options.RetainGenerations); err != nil {
+		ingestLog.Printf("generation reclamation failed")
+	}
 	return Result{
 		Generation: generation, Revision: revision, DataRevision: dataRevision,
 		EvaluatedAt: evaluatedAt.Format(time.RFC3339Nano), Counts: counts,

@@ -32,7 +32,7 @@ If authoritative control policy resolution fails, the build remains fail-closed 
 The root Central Agentic Ops campaign installs Activity, Dashboard, the trusted
 materializer, and the local runtime verification action together. Install a
 reviewed release tag or full commit SHA through the CAO installer so the
-canonical runtime files are materialized after gh-aw records the exact package
+canonical runtime files are materialized after gh-aw records the exact campaign
 revision:
 
 ```bash
@@ -42,14 +42,14 @@ curl --fail --silent --show-error --location \
 ```
 
 Direct `gh aw add` of the component `activity/` or `dashboard/` manifests is not
-a complete installation: gh-aw packages cannot run the required post-install
-materialization step, and those manifests intentionally contain no duplicate
+a complete installation: gh-aw cannot run the required post-install materialization step
+for component manifests, and those manifests intentionally contain no duplicate
 runtime resources. The root installation adds the deterministic dashboard
 automation without an additional enable variable. The standalone publisher
 remains manual-only and cannot enable Pages for the repository.
 
 To refresh or restore campaign-owned files, rerun the installer with the same
-reviewed package revision:
+reviewed campaign revision:
 
 ```bash
 curl --fail --silent --show-error --location \
@@ -57,7 +57,7 @@ curl --fail --silent --show-error --location \
   bash -s -- githubnext/gh-aw-cao@<catalog-release>
 ```
 
-Use `./cao.sh update` to move installed CAO packages to a newer reviewed
+Use `./cao.sh update` to move installed campaigns to a newer reviewed
 release. It runs gh-aw updates and rematerializes canonical runtime files from
 the immutable resolved commit recorded by gh-aw.
 
@@ -77,8 +77,8 @@ Open only the unguessable URL printed by the server. The server uses only Node.j
 
 `server/` contains a separate Go implementation for testing the
 dashboard with server-owned storage and query execution. It ingests the compacted
-data files from a deployed dashboard artifact into dockerized Redis Stack,
-executes Dashboard Language queries on the server with RediSearch pushdown, and
+data files from a deployed dashboard artifact into dockerized Redis,
+executes Dashboard Language queries on the server with the Go query engine, and
 serves the built dashboard over loopback HTTP by default or explicitly
 configured HTTPS. The browser receives only
 bounded query results; the Redis URL and credentials remain in the Go process.

@@ -17,7 +17,7 @@ import { renderCloseButton, isPlainObject, isSafeHttpsUrl, createCopyControl, cr
 import { clearTimeWindowFilter, isTimeWindowFilterActive } from './filter-bar.js';
 import { processScatterPoints } from '../data-processor.js';
 import { MAX_RENDERED_SCATTER_POINTS } from '../scatter-clustering.js';
-import { renderDeclaredCliAction, renderRowCliAction } from './cli-actions.js';
+import { createPromptCliActionControl, renderDeclaredCliAction, renderRowCliAction } from './cli-actions.js';
 import { effect, onCleanup, state } from '../reactive.js';
 import { createDebug } from '../debug.js';
 
@@ -94,8 +94,8 @@ function resolveGithubEntityLink(row, field, fallbackLabel) {
  *   rowLimit?: number,
  *   units?: Record<string, { name: string, symbol: string, significant: number }>,
  *   prepareTableRows: (rows: Array<Record<string, unknown>>, columns: TableField[], data: unknown) => Array<Record<string, unknown>>,
- *   buildChartPoints: (pageId: string, title: string, rows: Array<Record<string, unknown>>, x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, hrefField: string | null, weight?: Record<string, any> | null) => ChartPoint[],
- *   prepareChartPoints: (points: ChartPoint[], x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, data: unknown) => ChartPoint[],
+ *   buildChartPoints: (pageId: string, title: string, rows: Array<Record<string, unknown>>, x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, hrefField: string | null, weight?: Record<string, any> | null, section?: Record<string, any> | null) => ChartPoint[],
+ *   prepareChartPoints: (points: ChartPoint[], x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, data: unknown, section?: Record<string, any> | null) => ChartPoint[],
  *   toText: (value: unknown) => string,
  *   cardTemplates?: Record<string, { icon: string, 'icon-field'?: string, status?: { field: string, 'fallback-field'?: string, title?: string }, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], 'detail-labels'?: string, metrics?: TableField[], timing?: Array<TableField & { icon: string }>, actions?: Array<{ action: string, context: string[], when?: { field: string, equals: unknown } }>, drill?: Record<string, unknown> }>,
  *   continuation?: { token: string, totalRows: number, load: (token: string) => Promise<{ rows: Array<Record<string, unknown>>, continuationToken?: string }> }
@@ -1221,6 +1221,9 @@ function renderChartView(context) {
     .filter((definition) => isPlainObject(definition) && typeof definition.field === 'string');
   const y = yDefinitions[0] ?? null;
   const color = isPlainObject(encoding?.color) && typeof encoding.color.field === 'string' ? encoding.color : null;
+  const chartSection = isPlainObject(encoding?.section) && typeof encoding.section.field === 'string'
+    ? encoding.section
+    : null;
   const weight = isPlainObject(encoding?.weight) && typeof encoding.weight.field === 'string' ? encoding.weight : null;
   const reference = isPlainObject(encoding?.reference) && typeof encoding.reference.field === 'string' ? encoding.reference : null;
   const href = isPlainObject(encoding?.href) && typeof encoding.href.field === 'string' ? encoding.href : null;
@@ -1240,15 +1243,14 @@ function renderChartView(context) {
       })));
       return prepareChartPoints(points, x, y, null, view.data);
     }
-    return prepareChartPoints(
-      weight
+    const chartPoints = chartSection
+      ? buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null, weight, chartSection)
+      : weight
         ? buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null, weight)
-        : buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null),
-      x,
-      value,
-      series,
-      view.data
-    );
+        : buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null);
+    return chartSection
+      ? prepareChartPoints(chartPoints, x, value, series, view.data, chartSection)
+      : prepareChartPoints(chartPoints, x, value, series, view.data);
   };
   const points = pointsForRows(rows);
   const description = typeof view.description === 'string' && view.description.length > 0
@@ -1523,7 +1525,7 @@ function actionMatches(action, row) {
 }
 
 /**
- * @param {{ intent?: string, presentation: string, icon: string, label: string, context: string[] }} action
+ * @param {{ intent?: string, action?: string, presentation: string, icon: string, label: string, context: string[] }} action
  * @param {Record<string, unknown>} row
  */
 export function renderIntentAction(action, row) {
@@ -1539,7 +1541,7 @@ export function renderIntentAction(action, row) {
     ariaLabel: `${action.label} prompt preview`,
     onFallbackClose: () => triggerButton?.focus()
   });
-  const { button: copyButton, status, reset: resetCopyControl } = createCopyControl({
+  const copyControl = createCopyControl({
     getContent: () => content,
     label: 'Copy prompt',
     buttonClassName: 'table-intent-copy-button',
@@ -1548,6 +1550,10 @@ export function renderIntentAction(action, row) {
     failureText: 'Could not copy prompt.',
     trackState: true
   });
+  const promptCliAction = typeof action.action === 'string'
+    ? createPromptCliActionControl(action.action, () => content)
+    : null;
+  const activeControl = promptCliAction ?? copyControl;
   dialog.append(
     h(
       'header',
@@ -1560,11 +1566,12 @@ export function renderIntentAction(action, row) {
       })
     ),
     h('pre', { className: 'table-intent-preview' }, content),
+    ...(promptCliAction ? [promptCliAction.output] : []),
     h(
       'footer',
       { className: 'table-intent-dialog-footer' },
-      status,
-      copyButton
+      activeControl.status,
+      activeControl.button
     )
   );
   triggerButton = /** @type {HTMLButtonElement} */ (h(
@@ -1576,7 +1583,7 @@ export function renderIntentAction(action, row) {
       'aria-label': action.label,
       'data-intent-presentation': action.presentation,
       onClick: () => {
-        resetCopyControl();
+        activeControl.reset();
         openPreview();
       }
     },

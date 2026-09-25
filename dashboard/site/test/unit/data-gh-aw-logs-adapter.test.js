@@ -98,7 +98,14 @@ describe('gh-aw logs adapter', () => {
           created_at: '2026-09-09T03:59:00Z',
           started_at: '2026-09-09T04:00:00Z',
           updated_at: '2026-09-09T04:01:00Z',
-          token_usage_summary: { total_aic: 2.5 },
+          token_usage_summary: {
+            total_aic: 2.5,
+            total_input_tokens: 100,
+            total_output_tokens: 20,
+            total_cache_read_tokens: 10,
+            total_cache_write_tokens: 5,
+            by_model: { 'gpt-5.4': { reasoning_tokens: 15 } }
+          },
           tool_calls: [{ tool: 'report_incomplete', server: 'safeoutputs', status: 'incomplete' }],
           job_details: [{
             id: 404,
@@ -144,7 +151,14 @@ describe('gh-aw logs adapter', () => {
           created_at: '2026-09-09T03:59:00Z',
           started_at: '2026-09-09T04:00:00Z',
           updated_at: '2026-09-09T04:01:00Z',
-          token_usage_summary: { total_aic: 2.5 },
+          token_usage_summary: {
+            total_aic: 2.5,
+            total_input_tokens: 100,
+            total_output_tokens: 20,
+            total_cache_read_tokens: 10,
+            total_cache_write_tokens: 5,
+            by_model: { 'gpt-5.4': { reasoning_tokens: 15 } }
+          },
           job_details: [{
             id: 404,
             name: 'agent',
@@ -284,6 +298,11 @@ describe('gh-aw logs adapter', () => {
         terminalOutcome: 'report_incomplete',
         terminalOutcomeDetail: 'The agent reported that required evidence or access was unavailable.',
         aicTotal: 2.5,
+        inputTokens: 100,
+        outputTokens: 20,
+        cacheReadTokens: 10,
+        cacheWriteTokens: 5,
+        reasoningTokens: 15,
         agentId: 'copilot',
         agentVersion: '1.0.83',
         modelId: 'gpt-5.4',

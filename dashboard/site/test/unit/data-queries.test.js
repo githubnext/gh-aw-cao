@@ -871,6 +871,18 @@ describe('declarative dashboard queries', () => {
       rows: usage.rows.map((row) => ({
         ...row,
         'aic-total': row.aic,
+        ...(row.run === '1'
+          ? {
+              'input-tokens': 10,
+              'output-tokens': 20,
+              'cache-write-tokens': 5
+            }
+          : {
+              'input-tokens': 30,
+              'cache-read-tokens': 40,
+              'cache-write-tokens': 10,
+              'reasoning-tokens': 50
+            }),
         'run-attempt': 1,
         'repository-link': { href: 'repo' },
         'run-link': { href: `run-${row.run}` }
@@ -890,7 +902,24 @@ describe('declarative dashboard queries', () => {
         {
           summary: 'copilot / model-b',
           runs: 2,
-          'average-aic-per-run': 5
+          'minimum-aic-per-run': 4,
+          'average-aic-per-run': 5,
+          'maximum-aic-per-run': 6,
+          'minimum-input-tokens-per-run': 10,
+          'average-input-tokens-per-run': 20,
+          'maximum-input-tokens-per-run': 30,
+          'minimum-output-tokens-per-run': 20,
+          'average-output-tokens-per-run': 20,
+          'maximum-output-tokens-per-run': 20,
+          'minimum-cache-read-tokens-per-run': 40,
+          'average-cache-read-tokens-per-run': 40,
+          'maximum-cache-read-tokens-per-run': 40,
+          'minimum-cache-write-tokens-per-run': 5,
+          'average-cache-write-tokens-per-run': 7.5,
+          'maximum-cache-write-tokens-per-run': 10,
+          'minimum-reasoning-tokens-per-run': 50,
+          'average-reasoning-tokens-per-run': 50,
+          'maximum-reasoning-tokens-per-run': 50
         }
       ],
       metadata: { 'source-kind': 'derived', 'query-name': 'engines-models-usage' }
@@ -1010,16 +1039,10 @@ describe('declarative dashboard queries', () => {
       rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', 'safe-output': 'report-1' }],
       metadata: metadata('outcomes')
     };
-    const operationalGraders = {
-      source: 'operational-graders',
-      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', 'operational-grader': 1 }],
-      metadata: metadata('operational-graders')
-    };
-
     const derived = executeDashboardQueries(
       dashboardQueries,
-      { ...emptyRunRecordSources, campaigns, repositories, workflows: queryWorkflows, runs, audits: events, outcomes, 'operational-graders': operationalGraders, usage },
-      ['entity-workflows', 'repository-activity', 'workflow-inventory', 'campaign-operational-grader-totals', 'campaign-repository-coverage', 'campaign-inventory']
+      { ...emptyRunRecordSources, campaigns, repositories, workflows: queryWorkflows, runs, audits: events, outcomes, usage },
+      ['entity-workflows', 'repository-activity', 'workflow-inventory', 'campaign-repository-coverage', 'campaign-inventory']
     );
 
     expect(derived['entity-workflows'].rows).toEqual([
@@ -1031,7 +1054,6 @@ describe('declarative dashboard queries', () => {
       repository: 'githubnext/gh-aw-cao',
       workflows: 3,
       reports: 1,
-      'evaluated-workflows': 1,
       runs: 3,
       ingestion: '66.7%',
       'failure-summary': '33.3% · 1 failed',
@@ -1043,10 +1065,6 @@ describe('declarative dashboard queries', () => {
       expect.objectContaining({ workflow: 'b.md', runs: 0, 'successful-runs': 0, 'failed-runs': 0, 'aic-per-run': null, ingestion: null }),
       expect.objectContaining({ workflow: 'c.md', runs: 1, 'successful-runs': 1, 'failed-runs': 0, 'aic-per-run': 0, ingestion: '100%' })
     ]);
-    expect(derived['campaign-operational-grader-totals'].rows).toEqual([{
-      campaign: 'aw-doctor',
-      'grader-result': 1
-    }]);
     expect(derived['campaign-repository-coverage'].rows).toEqual([{
       campaign: 'aw-doctor',
       'covered-repositories': 1
@@ -1066,7 +1084,6 @@ describe('declarative dashboard queries', () => {
       dispatches: 2,
       'covered-repositories': 1,
       aic: 10,
-      'grader-result': 1
     }]);
   });
 
@@ -1128,7 +1145,6 @@ describe('declarative dashboard queries', () => {
     expect(derived['repository-activity'].rows).toEqual([expect.objectContaining({
       repository: 'githubnext/gh-aw-cao',
       reports: null,
-      'evaluated-workflows': null,
       runs: 1,
       aic: 4
     })]);

@@ -56,6 +56,44 @@ describe('dashboard document validation', () => {
     });
   });
 
+  it('DLS-VIEW-005 limits categorical section encodings to horizontal bar charts', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const costPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'cost');
+    const workflowCost = costPage.views.find(
+      (/** @type {{ id: string }} */ view) => view.id === 'cost-by-workflow'
+    );
+
+    expect(workflowCost.encoding.section).toMatchObject({
+      field: 'repository-coordinate',
+      type: 'nominal'
+    });
+
+    workflowCost.chart = 'bar';
+    const wrongChart = validateDashboardDocument(JSON.stringify(document));
+    expect(wrongChart.ok).toBe(false);
+    if (!wrongChart.ok) {
+      expect(wrongChart.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          code: 'DLS-E010',
+          path: '$.dashboard.pages[36].views[2].encoding.section'
+        })
+      ]));
+    }
+
+    workflowCost.chart = 'horizontal-bar';
+    workflowCost.encoding.section.type = 'quantitative';
+    const wrongType = validateDashboardDocument(JSON.stringify(document));
+    expect(wrongType.ok).toBe(false);
+    if (!wrongType.ok) {
+      expect(wrongType.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          code: 'DLS-E010',
+          path: '$.dashboard.pages[36].views[2].encoding.section.type'
+        })
+      ]));
+    }
+  });
+
   it('validates page forms and typed query parameter references', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     document.dashboard.queries.push({
@@ -329,6 +367,37 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
   });
 
+  it('validates generic markdown element configuration', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const campaign = document.dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'campaign-detail');
+    const markdown = campaign.views.find((/** @type {{ element?: string }} */ view) => view.element === 'markdown');
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+
+    const config = markdown.config;
+    delete markdown.config;
+    expect(validateDashboardDocument(JSON.stringify(document)).errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: expect.stringContaining('.config'), message: 'markdown requires config.' })
+    ]));
+
+    markdown.config = { ...config };
+    delete markdown.config['content-field'];
+    expect(validateDashboardDocument(JSON.stringify(document)).errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: expect.stringContaining('.config.content-field'),
+        message: 'markdown requires config.content-field.'
+      })
+    ]));
+
+    const navigation = campaign.views.find((/** @type {{ element?: string }} */ view) => view.element === 'campaign-route');
+    navigation.config['content-field'] = 'campaign-readme';
+    expect(validateDashboardDocument(JSON.stringify(document)).errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: expect.stringContaining('.config.content-field'),
+        message: 'config.content-field is supported only for the markdown element.'
+      })
+    ]));
+  });
+
   it('accepts supported dashboard CLI actions', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     document.dashboard['cli-actions'].push({
@@ -393,7 +462,7 @@ describe('dashboard document validation', () => {
     expect(rejected.ok).toBe(false);
     expect(rejected.errors).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        message: 'CLI action command must start with "./cao.sh", "gh aw", or "gh workflow run".'
+        message: 'CLI action command must start with "./cao.sh", "gh aw", "gh workflow run", or be "gh agent-task create --from-file -".'
       })
     ]));
 
@@ -402,7 +471,7 @@ describe('dashboard document validation', () => {
       ok: false,
       errors: expect.arrayContaining([
         expect.objectContaining({
-          message: 'CLI action command must start with "./cao.sh", "gh aw", or "gh workflow run".'
+          message: 'CLI action command must start with "./cao.sh", "gh aw", "gh workflow run", or be "gh agent-task create --from-file -".'
         })
       ])
     });
@@ -717,6 +786,7 @@ describe('dashboard document validation', () => {
       'ended-at'
     ]);
     expect(detailsView.encoding.actions).toEqual([{
+      action: 'create-agent-task',
       intent: 'Investigate this failed workflow run.',
       presentation: 'copy-prompt',
       icon: 'search',
@@ -739,6 +809,10 @@ describe('dashboard document validation', () => {
     detailsView.encoding.actions[0].presentation = 'copy-command';
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
     detailsView.encoding.actions[0].presentation = 'copy-prompt';
+
+    detailsView.encoding.actions[0].action = 'update-campaign';
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+    detailsView.encoding.actions[0].action = 'create-agent-task';
 
     detailsView.encoding.actions[0].context.push('not-a-run-field');
     const invalidContext = validateDashboardDocument(JSON.stringify(document));

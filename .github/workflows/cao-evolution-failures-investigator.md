@@ -100,10 +100,6 @@ tools:
   bash:
     - "*"
 
-graders:
-  operational-value:
-    run: ./graders/cao-evolution-failures-investigator-operational-value.sh
-
 safe-outputs:
   create-issue:
     expires: 14d

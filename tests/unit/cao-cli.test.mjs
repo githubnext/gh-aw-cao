@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import test from "node:test";
+import { commandHandlers } from "../../activity/commands/index.mjs";
 
 const executeFile = promisify(execFile);
 const campaignJsonUrl = new URL("../../package.json", import.meta.url);
@@ -11,6 +12,15 @@ const campaignJson = JSON.parse(
   await readFile(campaignJsonUrl, "utf8"),
 );
 const cao = fileURLToPath(new URL(campaignJson.bin.cao, campaignJsonUrl));
+
+test("keeps every CAO command in its own command module", async () => {
+  const commandsUrl = new URL("../../activity/commands/", import.meta.url);
+  const moduleNames = (await readdir(commandsUrl))
+    .filter((file) => file !== "index.mjs")
+    .map((file) => file.replace(/\.mjs$/, ""))
+    .sort();
+  assert.deepEqual(moduleNames, [...commandHandlers.keys()].sort());
+});
 
 test("reports a missing cao add campaign without a stack trace", async () => {
   let error;

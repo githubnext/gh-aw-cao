@@ -127,7 +127,8 @@ describe('dashboard view query contracts', () => {
         mark: 'chart',
         chart: 'horizontal-bar',
         encoding: {
-          x: { field: 'workflow-coordinate' },
+          x: { field: 'workflow' },
+          section: { field: 'repository-coordinate' },
           y: { field: 'aic', unit: 'aic' }
         }
       }
@@ -307,15 +308,6 @@ describe('dashboard view query contracts', () => {
     });
 
     expect(viewsOf(insights)[1]).toMatchObject({
-      data: {
-        sources: ['campaign-operational-grader-series'],
-        arguments: [{ name: 'campaign', field: 'campaign' }]
-      },
-      mark: 'element',
-      element: 'measure-history'
-    });
-
-    expect(viewsOf(insights)[2]).toMatchObject({
       id: 'campaign-performance-baseline',
       data: {
         source: 'campaign-performance-baseline',

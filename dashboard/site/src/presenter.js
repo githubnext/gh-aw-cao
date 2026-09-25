@@ -7,7 +7,7 @@ import { getPrimerStyles } from './styles.js';
 import { octicon } from './octicons.js';
 import { renderDataStateMetrics } from './components/data-state.js';
 import { titleCase } from './components/count-formatters.js';
-import { formatMediumUtcDateTime, renderEmptyMessage, renderSkeletonBars } from './components/ui-primitives.js';
+import { formatMediumUtcDateTime, renderDashboardViewSkeleton, renderEmptyMessage } from './components/ui-primitives.js';
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection, renderViewDisclosure } from './components/view-chrome.js';
 import { externalAnchorAttrs, findLink } from './components/link-content.js';
 import { elementHandlesEmptyRows, elementHandlesUnavailableSource, elementLoadsSourcesAsync, renderUiElement } from './components/ui-elements.js';
@@ -95,7 +95,7 @@ import {
  */
 
 /**
- * @typedef {((pageId: string, options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>>) & { prepare?: (pageId: string) => Promise<void>, loadSources?: (sourceNames: string[], options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>> }} PageSourceLoader
+ * @typedef {((pageId: string, options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>>) & { prepare?: (pageId: string) => Promise<void>, subscribeBackgroundSources?: (sourceNames: string[], options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>> }} PageSourceLoader
  */
 
 /**
@@ -245,7 +245,6 @@ export function renderDashboard(input) {
   });
   enableDashboardNavigation(root);
   syncDashboardNavigationIndicators(root, pages, sources);
-  enableNavigationIndicatorUpdates(root, pages, input.loadPageSources, dashboardOwner.signal);
   restoreDashboardTheme(root);
   enableThemeControl(root, dashboardAppearance);
   enableHorizonOutsideClickDismissal(root);
@@ -338,6 +337,7 @@ export function renderDashboard(input) {
       isPlainObject(query) && typeof query.name === 'string' ? [query.name] : []
     )))
   );
+  enableNavigationIndicatorUpdates(root, pages, input.loadPageSources, dashboardOwner.signal);
   dashboardDisposals.set(root, () => {
     dashboardOwner.abort();
     disposeNavigation();
@@ -354,28 +354,20 @@ export function renderDashboard(input) {
  */
 function enableNavigationIndicatorUpdates(root, pages, loadPageSources, signal) {
   const sourceNames = navigationIndicatorSourceNames(pages);
-  if (!loadPageSources?.loadSources || sourceNames.length === 0) return;
-  const view = root.ownerDocument.defaultView;
-  const clear = view?.clearTimeout.bind(view) ?? clearTimeout;
-  const abort = () => clear(timeout);
-  const start = () => {
-    signal.removeEventListener('abort', abort);
-    if (signal.aborted) return;
-    // The loader resolves the first snapshot; later snapshots arrive through onUpdate.
-    void loadPageSources.loadSources?.(sourceNames, {
-      signal,
-      onUpdate: (sources) => syncDashboardNavigationIndicators(root, pages, sources)
-    })
-      .then((sources) => syncDashboardNavigationIndicators(root, pages, sources))
-      .catch((error) => {
-        if (signal.aborted || error?.name === 'AbortError') return;
-        debugNavigation('indicator update failed', {
-          error: error instanceof Error ? error.message : String(error)
-        });
+  if (!loadPageSources?.subscribeBackgroundSources || sourceNames.length === 0) return;
+  if (signal.aborted) return;
+  // The loader resolves the first snapshot; later snapshots arrive through onUpdate.
+  void loadPageSources.subscribeBackgroundSources(sourceNames, {
+    signal,
+    onUpdate: (sources) => syncDashboardNavigationIndicators(root, pages, sources)
+  })
+    .then((sources) => syncDashboardNavigationIndicators(root, pages, sources))
+    .catch((error) => {
+      if (signal.aborted || error?.name === 'AbortError') return;
+      debugNavigation('indicator update failed', {
+        error: error instanceof Error ? error.message : String(error)
       });
-  };
-  const timeout = view?.setTimeout(start, 0) ?? setTimeout(start, 0);
-  signal.addEventListener('abort', abort, { once: true });
+    });
 }
 
 /**
@@ -732,7 +724,7 @@ function renderPageLoadingSkeleton(page) {
  * @returns {HTMLElement}
  */
 function renderPageSkeleton() {
-  return renderSkeletonBars('dashboard-view-skeleton');
+  return renderDashboardViewSkeleton();
 }
 
 /**
@@ -824,7 +816,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       if (isPlainObject(view) && view['lazy-list'] === true) {
         rendered.setAttribute('data-view-lazy-list', '');
       }
-      if (!isNavigationCompositeView) rendered.dataset.viewModeContent = viewModeForView(view);
+      if (!isNavigationCompositeView && disclosure === 'essential') rendered.dataset.viewModeContent = viewModeForView(view);
       return rendered;
     };
     const rendered = isRouteView
@@ -846,7 +838,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
     if (isPlainObject(view) && view['lazy-list'] === true) {
       rendered.setAttribute('data-view-lazy-list', '');
     }
-    if (!isNavigationCompositeView) rendered.dataset.viewModeContent = viewModeForView(view);
+    if (!isNavigationCompositeView && disclosure === 'essential') rendered.dataset.viewModeContent = viewModeForView(view);
     if (disclosure === 'essential') {
       return rendered;
     }
@@ -968,12 +960,17 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
 /**
  * A `mark: element` view is navigation/composite chrome (for example the `campaign-route`
  * summary), not a chart/table/card representation of page content, so it must not create a
- * phantom "chart" mode or gate data loading for the page's actual content views.
+ * phantom "chart" mode or gate data loading for the page's actual content views. A
+ * `disclosure: supplemental` view is an independently-collapsible detail panel toggled by its
+ * own `<details>` summary, not part of the page's primary chart/table/card content, so it must
+ * not gate which modes are offered either.
  * @param {Array<unknown>} views
  * @returns {Array<unknown>}
  */
 function contentViewsForModeSelection(views) {
-  return views.filter((view) => !(isPlainObject(view) && view.mark === 'element'));
+  return views.filter((view) => (
+    !(isPlainObject(view) && (view.mark === 'element' || view.disclosure === 'supplemental'))
+  ));
 }
 
 /** @param {Array<unknown>} views @returns {Array<'chart'|'table'|'card'>} */

@@ -31,19 +31,8 @@ func NewHostedAppFromEnv(
 	if err != nil {
 		return nil, err
 	}
-	namespaceValue := strings.TrimSpace(os.Getenv("CAO_REDIS_NAMESPACE"))
-	if namespaceValue == "" {
-		namespaceValue = "hosted-dashboard"
-	}
-	namespace, err := redisx.NormalizeNamespace(namespaceValue)
+	store, err := storeFromClient(ctx, client)
 	if err != nil {
-		return nil, err
-	}
-	store := redisx.NewStore(client, namespace)
-	if err := store.Ping(ctx); err != nil {
-		return nil, errors.New("redis is unavailable")
-	}
-	if err := store.CheckRediSearch(ctx); err != nil {
 		return nil, err
 	}
 	definitions, err := ParseDashboardQueries(dashboardQueriesPath)
@@ -51,7 +40,11 @@ func NewHostedAppFromEnv(
 		return nil, err
 	}
 	sourceDirectory := strings.TrimSpace(os.Getenv("CAO_SOURCE_DIRECTORY"))
-	if sourceDirectory == "" {
+	collector, err := CollectorConfigFromEnv()
+	if err != nil {
+		return nil, err
+	}
+	if collector == nil && sourceDirectory == "" {
 		return nil, errors.New("CAO_SOURCE_DIRECTORY is required")
 	}
 	webhookSecret := os.Getenv("CAO_GITHUB_WEBHOOK_SECRET")
@@ -71,6 +64,7 @@ func NewHostedAppFromEnv(
 		DashboardQueries:    definitions,
 		DatabaseQueriesPath: databaseQueriesPath,
 		SourceDirectory:     sourceDirectory,
+		Collector:           collector,
 		WebhookSecret:       webhookSecret,
 		AdminUsers:          adminUsers,
 		Proxy: ProxyPolicy{
@@ -97,4 +91,38 @@ func validateHostedRedisURL(redisURL string) error {
 		return errors.New("hosted mode requires rediss:// Redis transport")
 	}
 	return nil
+}
+
+// StoreFromEnv opens the hosted Redis store described by the environment. The
+// collection roles reuse it so there is one definition of the hosted Redis
+// contract.
+func StoreFromEnv(ctx context.Context) (*redisx.Store, error) {
+	redisURL := strings.TrimSpace(os.Getenv("CAO_REDIS_URL"))
+	if redisURL == "" {
+		return nil, errors.New("CAO_REDIS_URL is required")
+	}
+	if err := validateHostedRedisURL(redisURL); err != nil {
+		return nil, err
+	}
+	client, err := redisx.New(redisURL)
+	if err != nil {
+		return nil, err
+	}
+	return storeFromClient(ctx, client)
+}
+
+func storeFromClient(ctx context.Context, client *redisx.Client) (*redisx.Store, error) {
+	namespaceValue := strings.TrimSpace(os.Getenv("CAO_REDIS_NAMESPACE"))
+	if namespaceValue == "" {
+		namespaceValue = "hosted-dashboard"
+	}
+	namespace, err := redisx.NormalizeNamespace(namespaceValue)
+	if err != nil {
+		return nil, err
+	}
+	store := redisx.NewStore(client, namespace)
+	if err := store.Ping(ctx); err != nil {
+		return nil, errors.New("redis is unavailable")
+	}
+	return store, nil
 }

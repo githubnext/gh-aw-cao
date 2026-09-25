@@ -86,7 +86,12 @@ export function renderDashboardNavigation(pages, title, navigation, accountContr
       h(
         'details',
         { className: 'mobile-nav-menu' },
-        h('summary', { role: 'button', 'aria-label': 'Select view', title: 'Select view' }, octicon('three-bars')),
+        h(
+          'summary',
+          { role: 'button', 'aria-label': 'Select view', title: 'Select view' },
+          octicon('three-bars'),
+          h('span', { className: 'nav-indicator mobile-nav-menu-indicator', hidden: true, 'aria-hidden': 'true', 'data-mobile-nav-menu-indicator': '' })
+        ),
         h(
           'div',
           { className: 'mobile-nav-menu-list' },
@@ -148,11 +153,13 @@ export function renderDashboardNavigation(pages, title, navigation, accountContr
  * @param {Record<string, { rows?: Array<Record<string, unknown>> } | undefined>} sources
  */
 export function syncDashboardNavigationIndicators(root, pages, sources) {
+  const activeMobileIndicatorLabels = [];
   for (const page of pages) {
     const indicator = navigationIndicator(page);
     if (!indicator) continue;
     const title = pageTitle(page);
     const active = indicatorMatches(indicator, sources);
+    if (active) activeMobileIndicatorLabels.push(indicator.label);
     const label = active ? `${title}, ${indicator.label}` : title;
     const pageId = selectorIdentifier(String(page.id));
     const links = root.querySelectorAll(`[data-nav-page-id="${pageId}"], [data-mobile-nav-page-id="${pageId}"]`);
@@ -164,6 +171,7 @@ export function syncDashboardNavigationIndicators(root, pages, sources) {
       if (dot instanceof HTMLElement) dot.hidden = !active;
     }
   }
+  syncMobileNavigationMenuIndicator(root, activeMobileIndicatorLabels);
 }
 
 /** @param {HTMLElement} root */
@@ -280,6 +288,24 @@ function indicatorMatches(indicator, sources) {
     const rows = sources[sourceName]?.rows;
     return Array.isArray(rows) && rows.length > 0;
   });
+}
+
+/**
+ * @param {HTMLElement} root
+ * @param {string[]} indicatorLabels
+ */
+function syncMobileNavigationMenuIndicator(root, indicatorLabels) {
+  const summary = root.querySelector('.mobile-nav-menu > summary');
+  const dot = summary?.querySelector('[data-mobile-nav-menu-indicator]');
+  if (!(summary instanceof HTMLElement) || !(dot instanceof HTMLElement)) return;
+  const uniqueLabels = [...new Set(indicatorLabels)];
+  const active = uniqueLabels.length > 0;
+  const label = uniqueLabels.length > 1
+    ? `Select view, ${uniqueLabels[0]} and ${uniqueLabels.length - 1} more`
+    : active ? `Select view, ${uniqueLabels[0]}` : 'Select view';
+  summary.setAttribute('aria-label', label);
+  summary.title = label;
+  dot.hidden = !active;
 }
 
 /** @param {string} value */

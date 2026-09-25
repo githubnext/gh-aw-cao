@@ -571,15 +571,24 @@ function securityTelemetryComplete(telemetry) {
 function tokenUsage(run) {
   const summary = run?.token_usage_summary;
   return summary && typeof summary === "object" ? {
-    inputTokens: Number(summary.total_input_tokens) || 0,
-    outputTokens: Number(summary.total_output_tokens) || 0,
-    cacheReadTokens: Number(summary.total_cache_read_tokens) || 0,
-    cacheWriteTokens: Number(summary.total_cache_write_tokens) || 0,
+    inputTokens: finiteTokenCount(summary.total_input_tokens),
+    outputTokens: finiteTokenCount(summary.total_output_tokens),
+    cacheReadTokens: finiteTokenCount(summary.total_cache_read_tokens),
+    cacheWriteTokens: finiteTokenCount(summary.total_cache_write_tokens),
     reasoningTokens: Object.values(summary.by_model || {}).reduce(
-      (total, model) => total + (Number(model?.reasoning_tokens) || 0),
-      0,
+      (total, model) => {
+        const count = finiteTokenCount(model?.reasoning_tokens);
+        return count === null ? total : (total ?? 0) + count;
+      },
+      null,
     ),
   } : null;
+}
+
+function finiteTokenCount(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const count = Number(value);
+  return Number.isFinite(count) ? count : null;
 }
 
 function primaryModelId(run) {

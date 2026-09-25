@@ -50,6 +50,7 @@ type Config struct {
 	DashboardQueries    []query.Definition
 	SourceDirectory     string
 	Reconciler          Reconciler
+	Collector           *CollectorConfig
 	WebhookSecret       string
 	AdminUsers          []string
 	Logger              *log.Logger
@@ -107,6 +108,16 @@ func New(store *redisx.Store, config Config) (*App, error) {
 		}
 	}
 	reconciler := config.Reconciler
+	if err := validateProfileExclusivity(config); err != nil {
+		return nil, err
+	}
+	if config.Collector != nil {
+		collector, err := NewCollector(store, *config.Collector, config.DatabaseQueriesPath)
+		if err != nil {
+			return nil, fmt.Errorf("configure collection: %w", err)
+		}
+		reconciler = collector
+	}
 	if reconciler == nil && config.SourceDirectory != "" {
 		reconciler = DirectoryReconciler{
 			Store: store, SourceDirectory: config.SourceDirectory,
@@ -135,6 +146,15 @@ func (a *App) Serve(ctx context.Context) error {
 		a.config.Logger.Printf("activated local dashboard revision %d", result.Revision)
 	}
 	var listenConfig net.ListenConfig
+	if collector := a.Collector(); collector != nil {
+		if a.oauth != nil {
+			go a.oauth.runRevocationWorker(ctx)
+		}
+		if err := collector.Start(ctx, a.hub.Broadcast); err != nil {
+			return fmt.Errorf("start collection: %w", err)
+		}
+		serverLog.Printf("collection profile started workers=%d", a.config.Collector.Workers)
+	}
 	listener, err := listenConfig.Listen(ctx, "tcp", a.config.Listen)
 	if err != nil {
 		return err
@@ -209,6 +229,7 @@ func (a *App) Handler() http.Handler {
 	register("POST /api/github/webhook", a.githubWebhook)
 	register("POST /api/admin/rebuild", a.rebuild)
 	register("GET /api/admin/rebuild/status", a.rebuildStatus)
+	register("GET /api/admin/collection/status", a.collectionStatus)
 	mux.HandleFunc("/", a.static)
 	instrumented := otelhttp.NewHandler(withResponseTraceHeaders(mux), telemetry.ServiceName,
 		otelhttp.WithSpanNameFormatter(func(_ string, request *http.Request) string {

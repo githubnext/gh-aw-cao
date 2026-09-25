@@ -136,6 +136,51 @@ describe("dashboard data startup", () => {
     ]);
   });
 
+  it("releases background queries only after UI-bound startup work is registered", async () => {
+    /** @type {() => void} */
+    let settle = () => {};
+    const settled = new Promise((resolve) => {
+      settle = () => resolve(undefined);
+    });
+    dataProcessor.subscribeCanonicalDashboardView.mockImplementation(
+      (id, _sources, _context, listener) => {
+        calls.push(`subscribe:${id}`);
+        listener({});
+        return () => {};
+      },
+    );
+    const startup = startDashboardData(options({
+      settleUi: () => settled,
+      render: /** @type {Parameters<typeof startDashboardData>[0]['render']} */ ((
+        _sources,
+        state,
+        loadPageSources,
+      ) => {
+        calls.push(`render:${state}`);
+        if (state !== "cached") return;
+        void loadPageSources("overview", {
+          signal: new AbortController().signal,
+          onUpdate: () => {},
+        });
+        void loadPageSources.subscribeBackgroundSources?.(["maintenance-campaign-updates"], {
+          signal: new AbortController().signal,
+          onUpdate: () => {},
+        });
+      }),
+    }));
+
+    await vi.waitFor(() => expect(calls).toContain("subscribe:page:overview"));
+    expect(calls).not.toContain("subscribe:sources:maintenance-campaign-updates");
+    expect(calls).not.toContain("refresh");
+
+    settle();
+    await startup;
+
+    expect(calls.indexOf("subscribe:page:overview"))
+      .toBeLessThan(calls.indexOf("subscribe:sources:maintenance-campaign-updates"));
+    expect(calls.indexOf("subscribe:page:overview")).toBeLessThan(calls.indexOf("refresh"));
+  });
+
   it("starts ingestion after settling when an empty cache emits no page snapshot", async () => {
     dataProcessor.subscribeCanonicalDashboardView.mockImplementation(() => () => {});
 

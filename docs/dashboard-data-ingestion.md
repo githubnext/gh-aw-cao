@@ -74,8 +74,8 @@ The activity shard manifest is the dashboard's published operational input. The 
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
-The canonical model is version 16. The browser database is
-`gh-aw-cao-dashboard-data`, IndexedDB version 24. Its canonical stores are
+The canonical model is version 17. The browser database is
+`gh-aw-cao-dashboard-data`, IndexedDB version 25. Its canonical stores are
 `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `audits`,
 and `issues`, and `operationalValues`; all use `id` as the key. The `transactions` store records
 ingestion outcomes and is indexed by `createdAt`. The disposable

@@ -996,11 +996,25 @@ function validateDashboard(dashboard, dashboardNode, errors) {
           commandTokens?.[0] === 'gh'
           && commandTokens[1] === 'workflow'
           && commandTokens[2] === 'run';
-        if (!isCaoCommand && !isGhAwCommand && !isWorkflowDispatchCommand) {
+        const isAgentTaskCreateCommand =
+          commandTokens?.length === 5
+          && commandTokens[0] === 'gh'
+          && commandTokens[1] === 'agent-task'
+          && commandTokens[2] === 'create'
+          && commandTokens[3] === '--from-file'
+          && commandTokens[4] === '-';
+        if (!isCaoCommand && !isGhAwCommand && !isWorkflowDispatchCommand && !isAgentTaskCreateCommand) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
-            'CLI action command must start with "./cao.sh", "gh aw", or "gh workflow run".',
+            'CLI action command must start with "./cao.sh", "gh aw", "gh workflow run", or be "gh agent-task create --from-file -".',
             `${path}.command`
+          ));
+        }
+        if (isAgentTaskCreateCommand && action.placement !== 'row') {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'Agent-task CLI actions must use row placement.',
+            `${path}.placement`
           ));
         }
         if (
@@ -2793,7 +2807,10 @@ function validateView(view, viewNode, path, viewIds, errors) {
       for (const key of linkButtonConfigKeys) {
         if (view.config[key] === undefined) continue;
         validateStringField(view.config[key], `${path}.config.${key}`, true, errors);
-        if (view.element !== 'link-button-list' && !(key === 'empty-message' && view.element === 'measure-history')) {
+        if (
+          view.element !== 'link-button-list'
+          && !(key === 'empty-message' && (view.element === 'measure-history' || view.element === 'markdown'))
+        ) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
             `config.${key} is supported only for the link-button-list element.`,
@@ -2817,6 +2834,24 @@ function validateView(view, viewNode, path, viewIds, errors) {
           ));
         }
       }
+      for (const key of ['content-field', 'path-field', 'base-link-field']) {
+        if (view.config[key] === undefined) continue;
+        validateStringField(view.config[key], `${path}.config.${key}`, true, errors);
+        if (view.element !== 'markdown') {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            `config.${key} is supported only for the markdown element.`,
+            `${path}.config.${key}`
+          ));
+        }
+      }
+      if (view.element === 'markdown' && view.config['content-field'] === undefined) {
+        errors.push(createError(
+          ERROR_CODES.missingOrInvalidRequiredField,
+          'markdown requires config.content-field.',
+          `${path}.config.content-field`
+        ));
+      }
       if (view.element === 'link-button-list') {
         for (const key of ['label-field', 'link-field', 'fallback-icon']) {
           if (view.config[key] === undefined) {
@@ -2829,10 +2864,10 @@ function validateView(view, viewNode, path, viewIds, errors) {
         }
       }
     }
-  } else if (view.element === 'link-button-list') {
+  } else if (view.element === 'link-button-list' || view.element === 'markdown') {
     errors.push(createError(
       ERROR_CODES.missingOrInvalidRequiredField,
-      'link-button-list requires config.',
+      `${view.element} requires config.`,
       `${path}.config`
     ));
   }
@@ -3385,14 +3420,28 @@ function validateTableActions(encoding, encodingNode, mark, sourceName, path, er
         errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'cli-action must reference a declared dashboard CLI action.', `${actionPath}.action`));
       } else if (declaredAction?.placement !== 'row') {
         errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'cli-action must reference a row-placed dashboard CLI action.', `${actionPath}.action`));
+      } else if (declaredAction.command === 'gh agent-task create --from-file -') {
+        errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'agent-task actions must use copy-prompt presentation.', `${actionPath}.action`));
       }
       if (action.intent !== undefined) {
         errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'cli-action table actions must not declare intent.', `${actionPath}.intent`));
       }
     } else {
       validateStringField(action.intent, `${actionPath}.intent`, true, errors);
-      if (action.action !== undefined) {
-        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'copy-prompt table actions must not declare action.', `${actionPath}.action`));
+      if (action.presentation === 'copy-prompt' && action.action !== undefined) {
+        validateRequiredIdentifier(action.action, `${actionPath}.action`, 'Prompt CLI action reference', errors);
+        const declaredAction = typeof action.action === 'string'
+          ? declaredCliActions.get(action.action)
+          : undefined;
+        if (typeof action.action === 'string' && !declaredAction) {
+          errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'copy-prompt must reference a declared dashboard CLI action.', `${actionPath}.action`));
+        } else if (declaredAction?.placement !== 'row') {
+          errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'copy-prompt must reference a row-placed dashboard CLI action.', `${actionPath}.action`));
+        } else if (declaredAction.command !== 'gh agent-task create --from-file -') {
+          errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'copy-prompt CLI action must use "gh agent-task create --from-file -".', `${actionPath}.action`));
+        }
+      } else if (action.action !== undefined) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'external-link table actions must not declare action.', `${actionPath}.action`));
       }
     }
     if (action.presentation === 'external-link' && (
@@ -5152,7 +5201,7 @@ function validateEncoding(encodingNode, encoding, mark, chart, sourceName, data,
   }
   const displayForbiddenChannels = ['list', 'table'].includes(markValue ?? '')
     ? ['href']
-    : ['value', 'x', 'y', 'color', 'weight', 'reference', 'href'];
+    : ['value', 'x', 'y', 'color', 'section', 'weight', 'reference', 'href'];
   for (const channel of displayForbiddenChannels) {
     if (isPlainObject(encoding[channel]) && encoding[channel].display !== undefined) {
       errors.push(createError(
@@ -5164,7 +5213,7 @@ function validateEncoding(encodingNode, encoding, mark, chart, sourceName, data,
   }
   const filterForbiddenChannels = ['list', 'table'].includes(markValue ?? '')
     ? ['href']
-    : ['value', 'x', 'y', 'color', 'weight', 'reference', 'href'];
+    : ['value', 'x', 'y', 'color', 'section', 'weight', 'reference', 'href'];
   for (const channel of filterForbiddenChannels) {
     if (isPlainObject(encoding[channel]) && encoding[channel].filter !== undefined) {
       errors.push(createError(
@@ -5278,6 +5327,25 @@ function validateChartWidget(encoding, chart, viewPath, errors) {
         ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
         'horizontal-bar chart x encoding must be nominal or ordinal.',
         `${viewPath}.encoding.x.type`
+      ));
+    }
+  }
+  if (encoding.section !== undefined) {
+    if (chart !== 'horizontal-bar') {
+      errors.push(createError(
+        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        'section encoding is supported only by horizontal-bar charts.',
+        `${viewPath}.encoding.section`
+      ));
+    } else if (
+      isPlainObject(encoding.section)
+      && encoding.section.type !== undefined
+      && !['nominal', 'ordinal'].includes(String(encoding.section.type))
+    ) {
+      errors.push(createError(
+        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        'horizontal-bar chart section encoding must be nominal or ordinal when explicitly typed.',
+        `${viewPath}.encoding.section.type`
       ));
     }
   }
@@ -5505,6 +5573,10 @@ function validateChartEncoding(encodingNode, encoding, chart, sourceName, path, 
 
   if (encoding.color !== undefined) {
     validateFieldDefinition(getValueNodeByKey(encodingNode, 'color'), encoding.color, sourceName, `${path}.color`, aggregateOutputIds, errors);
+  }
+
+  if (encoding.section !== undefined) {
+    validateFieldDefinition(getValueNodeByKey(encodingNode, 'section'), encoding.section, sourceName, `${path}.section`, aggregateOutputIds, errors);
   }
 
   if (encoding.weight !== undefined) {
@@ -5878,6 +5950,7 @@ function validateOrderByReferences(data, encoding, aggregateOutputIds, sourceNam
       encoding.x,
       ...(Array.isArray(encoding.y) ? encoding.y : [encoding.y]),
       encoding.color,
+      encoding.section,
       ...(Array.isArray(encoding.columns) ? encoding.columns : []),
     ];
     for (const definition of definitions) {

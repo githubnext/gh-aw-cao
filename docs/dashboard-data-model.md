@@ -43,7 +43,7 @@ the exact identities and parent relationships.
 | **Tool** | Namespaced deterministic source ID | Run | Records MCP, Bash, and skill calls. |
 | **Audit** | Namespaced deterministic source ID | Run | Records lifecycle, policy, grader, agent, and other execution observations. |
 | **Issue** | `github:issue:<owner>/<repository>:<number>` | Run | Records issue and pull-request safe outputs. |
-| **Operational Value** | Deterministic repository, value ID, and timestamp identity | Repository | Records a package-defined numeric repository metric. |
+| **Operational Value** | Deterministic repository, value ID, and timestamp identity | Repository | Records a campaign-defined numeric repository metric. |
 
 Names, paths, timestamps, and ingestion order are not canonical identities. Stable upstream IDs take precedence; deterministic source coordinates are used only when an upstream system provides no stable ID.
 
@@ -53,7 +53,7 @@ The current dashboard publication does not include immutable GitHub repository o
 
 The top-level Maintenance page combines two distinct inventory concerns:
 
-- **CAO packages** use Campaign records and compare `campaign-version` with
+- **Agentic campaigns** use Campaign records and compare `campaign-version` with
   `campaign-current-version`. These are installed campaign revisions resolved
   from the control repository's catalog sources.
 - **Agentic Workflow compilers** use workflow inventory and compare
@@ -89,8 +89,8 @@ The activity shard manifest is the dashboard's published operational input. Norm
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
-The canonical model is version 16. The browser database is
-`gh-aw-cao-dashboard-data`, IndexedDB version 24. Its canonical stores are
+The canonical model is version 17. The browser database is
+`gh-aw-cao-dashboard-data`, IndexedDB version 25. Its canonical stores are
 `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `audits`,
 `issues`, and `operationalValues`; all use `id` as the key. The `transactions` store records
 ingestion outcomes and is indexed by `createdAt`. Two additional disposable

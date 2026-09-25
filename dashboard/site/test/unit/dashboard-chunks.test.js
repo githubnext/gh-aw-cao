@@ -184,7 +184,7 @@ describe('splitDashboardDocument / resolveDashboardDocument round-trip', () => {
     expect(factoryChunk?.queries.map((query) => query.name).toSorted()).toEqual(['callout-source', 'factory-summary']);
   });
 
-  it('bundles navigation-indicator sources into every page chunk even when no view uses them', () => {
+  it('makes navigation-indicator query definitions available from every page chunk', () => {
     const document = sampleDocument();
     document.dashboard.queries?.push({ name: 'indicator-source', source: 'indicator' });
     document.dashboard.pages.push({
@@ -200,6 +200,21 @@ describe('splitDashboardDocument / resolveDashboardDocument round-trip', () => {
       const chunk = pageChunks.get(pageId);
       expect(chunk?.queries.map((query) => query.name)).toContain('indicator-source');
     }
+  });
+
+  it('keeps navigation-indicator sources out of UI-bound page requests', () => {
+    const document = sampleDocument();
+    document.dashboard.queries?.push({ name: 'indicator-source', source: 'indicator' });
+    document.dashboard.pages.push({
+      id: 'maintenance-page',
+      kind: 'custom',
+      title: 'Maintenance',
+      views: [],
+      'navigation-indicator': { label: 'updates available', any: ['indicator-source'] },
+    });
+
+    expect(dashboardPageSourceNames(document, 'alpha-page')).toEqual(['alpha-source', 'callout-source']);
+    expect(dashboardPageSourceNames(document, 'maintenance-page')).toEqual(['callout-source']);
   });
 
   it('reconstructs a fully-loaded document equivalent to the original once every chunk is resolved', () => {

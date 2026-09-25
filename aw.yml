@@ -5,6 +5,8 @@ experimental: true
 includes:
   - activity/aw.yml
   - dashboard/aw.yml
+skills:
+  - skills/debug-cao
 resources:
   - source: .github/workflows/shared/control.mjs
     destination: .github/workflows/shared/control.mjs

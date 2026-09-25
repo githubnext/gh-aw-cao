@@ -169,7 +169,10 @@ describe('dashboard DOM provenance', () => {
       freshness: 'fresh',
       availability: 'available'
     });
+    /** @type {string[]} */
+    const subscriptionOrder = [];
     const loadSources = vi.fn((sourceNames) => {
+      subscriptionOrder.push('background');
       expect(sourceNames).toEqual(['maintenance-campaign-updates']);
       return Promise.resolve(/** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ ({
         'maintenance-campaign-updates': {
@@ -180,16 +183,17 @@ describe('dashboard DOM provenance', () => {
       }));
     });
     const loadPageSources = /** @type {import('../../src/presenter.js').PageSourceLoader} */ (vi.fn((pageId) => {
+      subscriptionOrder.push(`page:${pageId}`);
       const result = pageId === 'maintenance'
         ? { campaigns: { source: 'campaigns', rows: [{ 'campaign-update-state': 'update-available' }], metadata } }
         : {};
       return Promise.resolve(/** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (result));
     }));
-    loadPageSources.loadSources = loadSources;
+    loadPageSources.subscribeBackgroundSources = loadSources;
 
     const rendered = renderDashboardView({ document, sources: {}, loadPageSources });
 
-    expect(loadSources).not.toHaveBeenCalled();
+    expect(subscriptionOrder.slice(0, 2)).toEqual(['page:overview', 'background']);
     expect(rendered.querySelector('[data-nav-page-id="maintenance"]')?.getAttribute('aria-label'))
       .toBe('Updates');
     await vi.waitFor(() => {
@@ -228,7 +232,7 @@ describe('dashboard DOM provenance', () => {
         }
       }));
       const loadPageSources = /** @type {import('../../src/presenter.js').PageSourceLoader} */ (vi.fn(() => Promise.resolve({})));
-      loadPageSources.loadSources = vi.fn(() => Promise.reject(new Error('unavailable')));
+      loadPageSources.subscribeBackgroundSources = vi.fn(() => Promise.reject(new Error('unavailable')));
 
       const rendered = renderDashboard({ document, sources: {}, loadPageSources });
 
@@ -509,7 +513,8 @@ describe('dashboard DOM provenance', () => {
                   id: 'summary',
                   title: 'Summary',
                   mark: 'element',
-                  element: 'measure-history',
+                  element: 'link-button-list',
+                  config: { 'label-field': 'metric-name', 'link-field': 'metric-link' },
                   data: { source: 'summary' }
                 },
                 {
@@ -535,6 +540,7 @@ describe('dashboard DOM provenance', () => {
             rows: [{
               'metric-kind': 'primary',
               'metric-name': 'runs',
+              'metric-link': { href: '#page-trace', label: 'View runs' },
               points: [{ x: '2026-09-07T18:00:00Z', y: 2, color: 'Runs', key: 'runs-1' }]
             }],
             metadata: {
@@ -561,7 +567,7 @@ describe('dashboard DOM provenance', () => {
       expect(page?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0]');
       expect(section?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].sections[0]');
       expect(summary?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
-      expect(summary?.querySelector('h2')?.getAttribute('data-js-view')).toBe('measure-history');
+      expect(summary?.querySelector('h2')?.getAttribute('data-js-view')).toBe('link-button-list');
       expect(metric?.querySelector('.metric-value')?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[1]');
       await vi.waitFor(() => {
         expect([...rendered.querySelectorAll('*')].every((element) => element.hasAttribute('data-json-path'))).toBe(true);
@@ -571,7 +577,7 @@ describe('dashboard DOM provenance', () => {
       summary?.append(dynamicChild);
       await vi.waitFor(() => {
         expect(dynamicChild.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
-        expect(dynamicChild.getAttribute('data-js-view')).toBe('measure-history');
+        expect(dynamicChild.getAttribute('data-js-view')).toBe('link-button-list');
       });
 
       const replacementSection = rendered.ownerDocument.createElement('section');
@@ -585,7 +591,7 @@ describe('dashboard DOM provenance', () => {
       await vi.waitFor(() => {
         expect(replacementSection.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].sections[0]');
         expect(replacementView.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
-        expect(replacementView.querySelector('dt')?.getAttribute('data-js-view')).toBe('measure-history');
+        expect(replacementView.querySelector('dt')?.getAttribute('data-js-view')).toBe('link-button-list');
       });
     } finally {
       window.history.pushState(null, '', '/');
@@ -912,8 +918,29 @@ describe('presenter built-in and custom pages', () => {
         'engines-models-usage': {
           source: 'engines-models-usage',
           rows: [
-            { summary: 'copilot / gpt-5.6-sol', runs: 2, 'average-aic-per-run': 5 },
-            { summary: 'pi / claude-sonnet-5', runs: 1, 'average-aic-per-run': 8 }
+            {
+              summary: 'copilot / gpt-5.6-sol',
+              runs: 2,
+              'minimum-aic-per-run': 4,
+              'average-aic-per-run': 5,
+              'maximum-aic-per-run': 6,
+              'minimum-input-tokens-per-run': 100,
+              'average-input-tokens-per-run': 150,
+              'maximum-input-tokens-per-run': 200,
+              'minimum-output-tokens-per-run': 30,
+              'average-output-tokens-per-run': 45,
+              'maximum-output-tokens-per-run': 60
+            },
+            {
+              summary: 'pi / claude-sonnet-5',
+              runs: 1,
+              'minimum-aic-per-run': 8,
+              'average-aic-per-run': 8,
+              'maximum-aic-per-run': 8,
+              'minimum-input-tokens-per-run': 300,
+              'average-input-tokens-per-run': 300,
+              'maximum-input-tokens-per-run': 300
+            }
           ],
           metadata
         },
@@ -926,7 +953,9 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     expect(page?.querySelectorAll('[data-chart-widget="pie"]')).toHaveLength(1);
     expect(page?.querySelectorAll('[data-chart-widget="horizontal-bar"]')).toHaveLength(1);
-    expect(page?.querySelector('[data-view-id="engines-models-distribution"] + [data-view-id="engines-models-cost"] + [data-view-id="engines-models-usage"]')).not.toBeNull();
+    expect(page?.querySelector('[data-view-id="engines-models-distribution"] + [data-view-id="engines-models-cost"]')).not.toBeNull();
+    expect(page?.querySelector('[data-view-id="engines-models-aic-insights"]')).not.toBeNull();
+    expect(page?.querySelector('[data-view-id="engines-models-token-insights"]')).not.toBeNull();
     expect([...(page?.querySelectorAll('[data-view-id="engines-models-cost"] .horizontal-bar-chart-label') ?? [])].map((value) => value.textContent))
       .toEqual(['pi / claude-sonnet-5', 'copilot / gpt-5.6-sol']);
     expect([...(page?.querySelectorAll('[data-view-id="engines-models-cost"] .horizontal-bar-chart-value') ?? [])].map((value) => value.textContent))
@@ -935,11 +964,21 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.textContent).toContain('copilot');
     expect(page?.textContent).toContain('gpt-5.6-sol');
     expect(page?.textContent).toContain('claude-sonnet-5');
+    expect(page?.textContent).toContain('Telemetry is partial');
     expect(page?.textContent).not.toContain('Requested model');
     expect(page?.querySelector('.view-mode-control')).not.toBeNull();
     expect(page?.textContent).not.toContain('Agent event');
     expect(page?.textContent).not.toContain('Summary');
-    expect(page?.querySelectorAll('tbody tr')).toHaveLength(2);
+    expect(page?.querySelectorAll('tbody tr')).toHaveLength(4);
+    // Regression: the "AIC per observed run" supplemental disclosure must stay visible
+    // when the page defaults to chart mode. A `disclosure: supplemental` table is an
+    // independently-collapsible detail panel, not the page's primary mode-switchable
+    // content, so it must not carry `data-view-mode-content` (which the chart/table/card
+    // view-mode CSS uses to hide non-matching content) or it renders empty once expanded.
+    expect(page?.getAttribute('data-view-mode')).toBe('chart');
+    const aicInsights = page?.querySelector('[data-view-id="engines-models-aic-insights"]');
+    expect(aicInsights?.hasAttribute('data-view-mode-content')).toBe(false);
+    expect(aicInsights?.querySelector('table')).not.toBeNull();
   });
 
 
@@ -1028,7 +1067,7 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const page = await activatePage(rendered, 'engines-models');
-    expect(page?.textContent).toContain('No engine or model usage metadata is available.');
+    expect(page?.textContent).toContain('No agent or model usage metadata is available.');
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     rendered.remove();
   });

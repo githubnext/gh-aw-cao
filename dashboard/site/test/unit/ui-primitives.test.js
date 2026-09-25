@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCheckbox, renderCloseButton, renderDigest, renderDisclosureSummaryLabel, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderFilterSelectControl, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderLoadingPlaceholderBlocks, renderSearchInput, renderSectionHeading, renderSkeletonBars, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
+import { coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCheckbox, renderCloseButton, renderDashboardViewSkeleton, renderDigest, renderDisclosureSummaryLabel, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderFilterSelectControl, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderLoadingPlaceholderBlocks, renderSearchInput, renderSectionHeading, renderSkeletonBars, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
 import { h } from '../../src/dom.js';
 import { effect, state } from '../../src/reactive.js';
 
@@ -190,6 +190,45 @@ describe('ui primitives', () => {
     expect(rendered.className).toBe('dashboard-lazy-view-skeleton');
     expect(rendered.getAttribute('aria-hidden')).toBe('true');
     expect(rendered.querySelectorAll('span')).toHaveLength(3);
+  });
+
+  it('renders a randomized "UI layout" page skeleton with staggered entrance blocks', () => {
+    const rendered = renderDashboardViewSkeleton();
+    expect(rendered.tagName).toBe('DIV');
+    expect(rendered.className).toBe('dashboard-view-skeleton');
+    expect(rendered.getAttribute('aria-hidden')).toBe('true');
+    const blocks = [...rendered.querySelectorAll('span.dashboard-view-skeleton-block')]
+      .filter((block) => block instanceof HTMLElement);
+    expect(blocks.length).toBeGreaterThan(0);
+    expect(blocks).toHaveLength(rendered.children.length);
+    for (const [index, block] of blocks.entries()) {
+      expect(block.style.getPropertyValue('--dashboard-view-skeleton-span')).not.toBe('');
+      expect(block.style.getPropertyValue('--dashboard-view-skeleton-height')).toMatch(/^\d+px$/);
+      expect(block.style.getPropertyValue('--dashboard-view-skeleton-delay')).toBe(`${index * 60}ms`);
+    }
+  });
+
+  it('picks a different deterministic layout pattern and block height per Math.random draw', () => {
+    const randomSpy = vi.spyOn(Math, 'random');
+
+    randomSpy.mockReturnValueOnce(0).mockReturnValue(0);
+    const first = renderDashboardViewSkeleton();
+    const firstSpans = [...first.querySelectorAll('span.dashboard-view-skeleton-block')]
+      .filter((block) => block instanceof HTMLElement)
+      .map((block) => block.style.getPropertyValue('--dashboard-view-skeleton-span'));
+    expect(firstSpans).toEqual(['12', '6', '6', '4', '4', '4']);
+    expect(/** @type {HTMLElement} */ (first.firstElementChild).style.getPropertyValue('--dashboard-view-skeleton-height')).toBe('48px');
+
+    randomSpy.mockReset();
+    randomSpy.mockReturnValueOnce(0.99).mockReturnValue(1);
+    const second = renderDashboardViewSkeleton();
+    const secondSpans = [...second.querySelectorAll('span.dashboard-view-skeleton-block')]
+      .filter((block) => block instanceof HTMLElement)
+      .map((block) => block.style.getPropertyValue('--dashboard-view-skeleton-span'));
+    expect(secondSpans).toEqual(['7', '5', '4', '4', '4', '12']);
+    expect(/** @type {HTMLElement} */ (second.firstElementChild).style.getPropertyValue('--dashboard-view-skeleton-height')).toBe('112px');
+
+    randomSpy.mockRestore();
   });
 
   it('renders the shared loading placeholder blocks used by the dashboard shell and page skeletons', () => {

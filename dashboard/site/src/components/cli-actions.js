@@ -25,11 +25,13 @@ export function setDeclaredCliActions(actions, options = {}) {
  * @param {Record<string, boolean>} argumentsValue
  * @param {Record<string, string>} templateValues
  * @param {(event: { stream: 'stdout'|'stderr', data: string }) => void} onOutput
+ * @param {string | undefined} [input]
  */
-async function executeAction(id, argumentsValue, templateValues, onOutput) {
+async function executeAction(id, argumentsValue, templateValues, onOutput, input) {
   /** @type {Record<string, unknown>} */
   const payload = { id, arguments: argumentsValue };
   if (Object.keys(templateValues).length > 0) payload.values = templateValues;
+  if (input !== undefined) payload.input = input;
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -39,6 +41,7 @@ async function executeAction(id, argumentsValue, templateValues, onOutput) {
     const result = await response.json().catch(() => null);
     throw new Error(result?.error || `Action failed with HTTP ${response.status}.`);
   }
+
   if (!response.body) throw new Error('Action output stream is unavailable.');
 
   const reader = response.body.getReader();
@@ -77,6 +80,54 @@ function resultText(result) {
   if (result.stdout) sections.push(result.stdout.trimEnd());
   if (result.stderr) sections.push(result.stderr.trimEnd());
   return sections.filter(Boolean).join('\n') || 'Command completed without output.';
+}
+
+/**
+ * Create the canvas-only control that starts an agent task from a generated prompt.
+ * @param {string} actionId
+ * @param {() => string} getPrompt
+ */
+export function createPromptCliActionControl(actionId, getPrompt) {
+  const action = declaredCliActions.find((candidate) => candidate.id === actionId);
+  if (!declaredCliActionsCanExecute || !action) return null;
+  const status = /** @type {HTMLOutputElement} */ (h('output', {
+    className: 'table-intent-copy-status',
+    'aria-live': 'polite'
+  }));
+  const output = h('pre', { className: 'cli-action-output', hidden: true });
+  const button = /** @type {HTMLButtonElement} */ (h('button', {
+    type: 'button',
+    className: 'table-intent-copy-button',
+    onClick: async () => {
+      button.disabled = true;
+      status.textContent = 'Starting agent task…';
+      output.textContent = '';
+      output.hidden = false;
+      try {
+        const result = await executeAction(action.id, {}, {}, ({ data }) => {
+          output.textContent += data;
+          output.scrollTop = output.scrollHeight;
+        }, getPrompt());
+        status.textContent = result.ok ? 'Agent task started.' : (result.error || 'Could not start agent task.');
+        if (!output.textContent) output.textContent = resultText(result);
+      } catch (error) {
+        status.textContent = error instanceof Error ? error.message : 'Could not start agent task.';
+      } finally {
+        button.disabled = false;
+      }
+    }
+  }, 'Start agent task'));
+  return {
+    button,
+    status,
+    output,
+    reset() {
+      status.textContent = '';
+      output.textContent = '';
+      output.hidden = true;
+      button.disabled = false;
+    }
+  };
 }
 
 /**

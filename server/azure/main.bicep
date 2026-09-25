@@ -19,24 +19,23 @@ param storageAccountName string
 @description('Key Vault name used for GitHub OAuth, session, and Redis connection secrets.')
 param keyVaultName string
 
-@description('Redis Enterprise cache name. The default database enables RediSearch.')
+@description('Azure Managed Redis cache name.')
 param redisEnterpriseName string
 
 @allowed([
-  'Enterprise_E10'
-  'Enterprise_E20'
-  'Enterprise_E50'
-  'Enterprise_E100'
-  'EnterpriseFlash_F300'
-  'EnterpriseFlash_F700'
-  'EnterpriseFlash_F1500'
+  'Balanced_B0'
+  'Balanced_B1'
+  'Balanced_B3'
+  'Balanced_B5'
+  'Balanced_B10'
+  'MemoryOptimized_M10'
 ])
-@description('Redis Enterprise SKU with RediSearch module support. The Go server creates per-generation FT indexes and issues FT.SEARCH/FT.AGGREGATE queries, so Basic/Standard/Premium Azure Cache for Redis are not valid for this dashboard.')
-param redisSkuName string = 'Enterprise_E10'
+@description('Redis SKU. The server uses only core key-value commands (HSET/HGET/SMEMBERS/EVAL) and no Redis modules, so the smallest SKU that holds the retained generations is sufficient. Size this from retained dashboard data volume, not from feature requirements.')
+param redisSkuName string = 'Balanced_B0'
 
-@minValue(2)
-@description('Redis Enterprise capacity. Production deployments should size this from retained dashboard data volume.')
-param redisCapacity int = 2
+@minValue(1)
+@description('Redis capacity. The module-free default uses the smallest capacity; increase only when retained generations need more memory or throughput.')
+param redisCapacity int = 1
 
 @description('Public host names that Azure Front Door/App Service is allowed to forward to the Go dashboard handler.')
 param allowedHosts array
@@ -69,6 +68,52 @@ param redisConnectionString string
 
 @description('Optional Log Analytics workspace resource ID for Application Insights. Leave empty to create classic component-only telemetry.')
 param logAnalyticsWorkspaceResourceId string = ''
+
+// Optional server collection profile.
+//
+// Leaving collectorImage empty deploys the default profile unchanged: the
+// dashboard serves snapshots published by the Activity workflow and the server
+// collects nothing. Supplying an image selects the alternative profile, in
+// which this deployment collects evidence itself. The two profiles are
+// alternatives, never layers.
+
+@description('Optional container image running the collection role. Empty deploys no collection.')
+param collectorImage string = ''
+
+@description('GitHub App identifier whose installations define ingestion scope. Required with collectorImage.')
+param collectorGithubAppId string = ''
+
+@secure()
+@description('GitHub App private key in PEM form. Required with collectorImage.')
+param collectorPrivateKey string = ''
+
+@secure()
+@description('Shared secret verifying GitHub webhook deliveries. Required with collectorImage.')
+param githubWebhookSecret string = ''
+
+@secure()
+@description('Redis access key used only by the collection autoscaler to read stream backlog. Required with collectorImage.')
+param collectorRedisPassword string = ''
+
+@description('GitHub logins permitted to run administrative operations.')
+param githubAdminUsers array = []
+
+@description('Control repository used for logical source discovery, in OWNER/REPOSITORY form.')
+param collectorControlRepository string = ''
+
+@description('Maximum number of collection workers.')
+param collectorMaximumWorkers int = 20
+
+@description('Evidence lake file share tier. Premium is provisioned SSD; Standard is IOPS-throttled by share size.')
+@allowed([
+  'Premium_LRS'
+  'Premium_ZRS'
+  'Standard_LRS'
+  'Standard_ZRS'
+])
+param collectorLakeStorageSku string = 'Premium_LRS'
+
+var collectionEnabled = !empty(collectorImage)
 
 var tags = {
   workload: 'gh-aw-cao-dashboard'
@@ -142,7 +187,34 @@ resource redisConnectionStringValue 'Microsoft.KeyVault/vaults/secrets@2023-07-0
   name: 'cao-redis-url'
   properties: {
     value: redisConnectionString
-    contentType: 'CAO dashboard Redis Enterprise rediss URL'
+    contentType: 'CAO dashboard Redis rediss URL'
+  }
+}
+
+resource collectorPrivateKeyValue 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (collectionEnabled) {
+  parent: keyVault
+  name: 'cao-collect-private-key'
+  properties: {
+    value: collectorPrivateKey
+    contentType: 'GitHub App private key for the collection profile'
+  }
+}
+
+resource collectorRedisPasswordValue 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (collectionEnabled) {
+  parent: keyVault
+  name: 'cao-redis-password'
+  properties: {
+    value: collectorRedisPassword
+    contentType: 'Redis access key for the collection autoscaler'
+  }
+}
+
+resource githubWebhookSecretValue 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (collectionEnabled) {
+  parent: keyVault
+  name: 'cao-github-webhook-secret'
+  properties: {
+    value: githubWebhookSecret
+    contentType: 'GitHub webhook shared secret'
   }
 }
 
@@ -176,11 +248,6 @@ resource redisDatabase 'Microsoft.Cache/redisEnterprise/databases@2024-11-01' = 
     clientProtocol: 'Encrypted'
     clusteringPolicy: 'EnterpriseCluster'
     evictionPolicy: 'NoEviction'
-    modules: [
-      {
-        name: 'RediSearch'
-      }
-    ]
   }
 }
 
@@ -293,6 +360,34 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
           name: 'CAO_SESSION_SECRET_PREVIOUS'
           value: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/cao-session-secret-previous)'
         }
+      ], !collectionEnabled ? [] : [
+        // With collection configured the Function App admits webhook
+        // deliveries into the collection queue. It performs no collection of
+        // its own, so its per-request work stays constant.
+        {
+          name: 'CAO_GITHUB_WEBHOOK_SECRET'
+          value: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/cao-github-webhook-secret)'
+        }
+        {
+          name: 'CAO_GITHUB_ADMIN_USERS'
+          value: join(githubAdminUsers, ',')
+        }
+        {
+          name: 'CAO_COLLECT_APP_ID'
+          value: collectorGithubAppId
+        }
+        {
+          // The Function App verifies deliveries and enqueues work. It never
+          // calls GitHub and never projects, so it is given no App private key
+          // and no evidence lake: the internet-facing front end holds no
+          // credential it cannot use.
+          name: 'CAO_COLLECT_ADMIT_ONLY'
+          value: 'true'
+        }
+        {
+          name: 'CAO_COLLECT_CONTROL_REPOSITORY'
+          value: collectorControlRepository
+        }
       ])
     }
   }
@@ -315,6 +410,32 @@ resource keyVaultSecretsUser 'Microsoft.Authorization/roleAssignments@2022-04-01
   }
 }
 
+module collection 'collector.bicep' = if (collectionEnabled) {
+  name: 'collection-workers'
+  params: {
+    location: location
+    tags: tags
+    namePrefix: functionAppName
+    collectorImage: collectorImage
+    keyVaultUri: keyVault.properties.vaultUri
+    keyVaultName: keyVault.name
+    redisHost: redisEnterprise.properties.hostName
+    redisNamespace: 'azure-dashboard'
+    controlRepository: collectorControlRepository
+    githubAppId: collectorGithubAppId
+    maximumWorkers: collectorMaximumWorkers
+    lakeStorageSku: collectorLakeStorageSku
+    applicationInsightsConnectionString: insights.properties.ConnectionString
+    logAnalyticsWorkspaceResourceId: logAnalyticsWorkspaceResourceId
+  }
+  dependsOn: [
+    collectorPrivateKeyValue
+    collectorRedisPasswordValue
+    redisConnectionStringValue
+  ]
+}
+
+output collectionEnabled bool = collectionEnabled
 output functionHostName string = functionApp.properties.defaultHostName
 output githubOAuthRedirectUri string = githubRedirectUri
 output redisEnterpriseHostName string = redisEnterprise.properties.hostName

@@ -1,0 +1,1055 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.47.16.16243",
+      "templateHash": "16663024274036363741"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region for all dashboard resources."
+      }
+    },
+    "functionAppName": {
+      "type": "string",
+      "metadata": {
+        "description": "Globally unique Function App name for the experimental Azure Functions dashboard profile."
+      }
+    },
+    "hostingPlanName": {
+      "type": "string",
+      "defaultValue": "[format('{0}-plan', parameters('functionAppName'))]",
+      "metadata": {
+        "description": "Azure App Service plan name for the Function App."
+      }
+    },
+    "storageAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Globally unique storage account name for Azure Functions runtime state."
+      }
+    },
+    "keyVaultName": {
+      "type": "string",
+      "metadata": {
+        "description": "Key Vault name used for GitHub OAuth, session, and Redis connection secrets."
+      }
+    },
+    "redisEnterpriseName": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure Managed Redis cache name."
+      }
+    },
+    "redisSkuName": {
+      "type": "string",
+      "defaultValue": "Balanced_B0",
+      "allowedValues": [
+        "Balanced_B0",
+        "Balanced_B1",
+        "Balanced_B3",
+        "Balanced_B5",
+        "Balanced_B10",
+        "MemoryOptimized_M10"
+      ],
+      "metadata": {
+        "description": "Redis SKU. The server uses only core key-value commands (HSET/HGET/SMEMBERS/EVAL) and no Redis modules, so the smallest SKU that holds the retained generations is sufficient. Size this from retained dashboard data volume, not from feature requirements."
+      }
+    },
+    "redisCapacity": {
+      "type": "int",
+      "defaultValue": 1,
+      "minValue": 1,
+      "metadata": {
+        "description": "Redis capacity. The module-free default uses the smallest capacity; increase only when retained generations need more memory or throughput."
+      }
+    },
+    "allowedHosts": {
+      "type": "array",
+      "metadata": {
+        "description": "Public host names that Azure Front Door/App Service is allowed to forward to the Go dashboard handler."
+      }
+    },
+    "githubAllowedOrganizations": {
+      "type": "array",
+      "metadata": {
+        "description": "GitHub organizations whose active members are authorized."
+      }
+    },
+    "githubAllowedTeams": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "GitHub teams whose active members are authorized, expressed as org/team-slug."
+      }
+    },
+    "githubClientId": {
+      "type": "string",
+      "metadata": {
+        "description": "GitHub OAuth App client ID. Do not use a PAT; the server only supports the OAuth authorization-code flow."
+      }
+    },
+    "githubClientSecret": {
+      "type": "securestring",
+      "metadata": {
+        "description": "GitHub OAuth App client secret. It is written only to Key Vault and consumed by the Function App through a Key Vault reference."
+      }
+    },
+    "sessionSecret": {
+      "type": "securestring",
+      "minLength": 32,
+      "metadata": {
+        "description": "At least 32 characters of random session secret material used to encrypt server-side OAuth sessions."
+      }
+    },
+    "previousSessionSecret": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional previous session secret retained during controlled key rotation until active sessions and pending revocations are drained."
+      }
+    },
+    "redisConnectionString": {
+      "type": "securestring",
+      "metadata": {
+        "description": "TLS Redis URL, for example rediss://:<access-key>@cache.region.redisenterprise.cache.azure.net:10000/0. Store a rotated value here rather than outputting Redis keys."
+      }
+    },
+    "logAnalyticsWorkspaceResourceId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional Log Analytics workspace resource ID for Application Insights. Leave empty to create classic component-only telemetry."
+      }
+    },
+    "collectorImage": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional container image running the collection role. Empty deploys no collection."
+      }
+    },
+    "collectorGithubAppId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "GitHub App identifier whose installations define ingestion scope. Required with collectorImage."
+      }
+    },
+    "collectorPrivateKey": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "GitHub App private key in PEM form. Required with collectorImage."
+      }
+    },
+    "githubWebhookSecret": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Shared secret verifying GitHub webhook deliveries. Required with collectorImage."
+      }
+    },
+    "collectorRedisPassword": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Redis access key used only by the collection autoscaler to read stream backlog. Required with collectorImage."
+      }
+    },
+    "githubAdminUsers": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "GitHub logins permitted to run administrative operations."
+      }
+    },
+    "collectorControlRepository": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Control repository used for logical source discovery, in OWNER/REPOSITORY form."
+      }
+    },
+    "collectorMaximumWorkers": {
+      "type": "int",
+      "defaultValue": 20,
+      "metadata": {
+        "description": "Maximum number of collection workers."
+      }
+    },
+    "collectorLakeStorageSku": {
+      "type": "string",
+      "defaultValue": "Premium_LRS",
+      "allowedValues": [
+        "Premium_LRS",
+        "Premium_ZRS",
+        "Standard_LRS",
+        "Standard_ZRS"
+      ],
+      "metadata": {
+        "description": "Evidence lake file share tier. Premium is provisioned SSD; Standard is IOPS-throttled by share size."
+      }
+    }
+  },
+  "variables": {
+    "collectionEnabled": "[not(empty(parameters('collectorImage')))]",
+    "tags": {
+      "workload": "gh-aw-cao-dashboard",
+      "hostingMode": "azure-functions"
+    },
+    "githubRedirectUri": "[format('https://{0}.azurewebsites.net/auth/callback', parameters('functionAppName'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2023-05-01",
+      "name": "[parameters('storageAccountName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "allowBlobPublicAccess": false,
+        "minimumTlsVersion": "TLS1_2",
+        "supportsHttpsTrafficOnly": true
+      }
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "2023-07-01",
+      "name": "[parameters('keyVaultName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]",
+      "properties": {
+        "tenantId": "[subscription().tenantId]",
+        "sku": {
+          "family": "A",
+          "name": "standard"
+        },
+        "enableRbacAuthorization": true,
+        "enabledForTemplateDeployment": false,
+        "enableSoftDelete": true,
+        "enablePurgeProtection": true,
+        "softDeleteRetentionInDays": 90,
+        "publicNetworkAccess": "Enabled"
+      }
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), 'github-oauth-client-secret')]",
+      "properties": {
+        "value": "[parameters('githubClientSecret')]",
+        "contentType": "GitHub OAuth client secret for CAO dashboard Azure Functions mode"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), 'cao-session-secret')]",
+      "properties": {
+        "value": "[parameters('sessionSecret')]",
+        "contentType": "CAO dashboard session encryption secret"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+      ]
+    },
+    {
+      "condition": "[not(empty(parameters('previousSessionSecret')))]",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), 'cao-session-secret-previous')]",
+      "properties": {
+        "value": "[parameters('previousSessionSecret')]",
+        "contentType": "Previous CAO dashboard session encryption secret retained during rotation"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), 'cao-redis-url')]",
+      "properties": {
+        "value": "[parameters('redisConnectionString')]",
+        "contentType": "CAO dashboard Redis rediss URL"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+      ]
+    },
+    {
+      "condition": "[variables('collectionEnabled')]",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), 'cao-collect-private-key')]",
+      "properties": {
+        "value": "[parameters('collectorPrivateKey')]",
+        "contentType": "GitHub App private key for the collection profile"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+      ]
+    },
+    {
+      "condition": "[variables('collectionEnabled')]",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), 'cao-redis-password')]",
+      "properties": {
+        "value": "[parameters('collectorRedisPassword')]",
+        "contentType": "Redis access key for the collection autoscaler"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+      ]
+    },
+    {
+      "condition": "[variables('collectionEnabled')]",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), 'cao-github-webhook-secret')]",
+      "properties": {
+        "value": "[parameters('githubWebhookSecret')]",
+        "contentType": "GitHub webhook shared secret"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), 'azure-webjobs-storage')]",
+      "properties": {
+        "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', parameters('storageAccountName'), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-05-01').keys[0].value)]",
+        "contentType": "Azure Functions runtime storage connection"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Cache/redisEnterprise",
+      "apiVersion": "2024-11-01",
+      "name": "[parameters('redisEnterpriseName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]",
+      "sku": {
+        "name": "[parameters('redisSkuName')]",
+        "capacity": "[parameters('redisCapacity')]"
+      },
+      "properties": {
+        "minimumTlsVersion": "1.2",
+        "publicNetworkAccess": "Disabled"
+      }
+    },
+    {
+      "type": "Microsoft.Cache/redisEnterprise/databases",
+      "apiVersion": "2024-11-01",
+      "name": "[format('{0}/{1}', parameters('redisEnterpriseName'), 'default')]",
+      "properties": {
+        "clientProtocol": "Encrypted",
+        "clusteringPolicy": "EnterpriseCluster",
+        "evictionPolicy": "NoEviction"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Cache/redisEnterprise', parameters('redisEnterpriseName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2023-12-01",
+      "name": "[parameters('hostingPlanName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]",
+      "kind": "elastic",
+      "sku": {
+        "name": "EP1",
+        "tier": "ElasticPremium"
+      },
+      "properties": {
+        "reserved": true
+      }
+    },
+    {
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02",
+      "name": "[format('{0}-ai', parameters('functionAppName'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web",
+        "WorkspaceResourceId": "[if(empty(parameters('logAnalyticsWorkspaceResourceId')), null(), parameters('logAnalyticsWorkspaceResourceId'))]"
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2023-12-01",
+      "name": "[parameters('functionAppName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]",
+      "kind": "functionapp,linux",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('hostingPlanName'))]",
+        "httpsOnly": true,
+        "clientAffinityEnabled": false,
+        "siteConfig": {
+          "alwaysOn": true,
+          "minimumElasticInstanceCount": 1,
+          "ftpsState": "Disabled",
+          "minTlsVersion": "1.2",
+          "http20Enabled": true,
+          "appSettings": "[concat(createArray(createObject('name', 'FUNCTIONS_EXTENSION_VERSION', 'value', '~4'), createObject('name', 'FUNCTIONS_WORKER_RUNTIME', 'value', 'custom'), createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', reference(resourceId('Microsoft.Insights/components', format('{0}-ai', parameters('functionAppName'))), '2020-02-02').ConnectionString), createObject('name', 'AzureWebJobsStorage', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/azure-webjobs-storage)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)), createObject('name', 'CAO_DASHBOARD_HOSTING', 'value', 'azure-functions'), createObject('name', 'CAO_AZURE_ALLOWED_HOSTS', 'value', join(parameters('allowedHosts'), ',')), createObject('name', 'CAO_AZURE_REQUIRE_HTTPS', 'value', 'true'), createObject('name', 'CAO_REDIS_NAMESPACE', 'value', 'azure-dashboard'), createObject('name', 'CAO_REDIS_URL', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/cao-redis-url)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)), createObject('name', 'CAO_GITHUB_CLIENT_ID', 'value', parameters('githubClientId')), createObject('name', 'CAO_GITHUB_CLIENT_SECRET', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/github-oauth-client-secret)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)), createObject('name', 'CAO_GITHUB_REDIRECT_URL', 'value', variables('githubRedirectUri')), createObject('name', 'CAO_GITHUB_ALLOWED_ORGS', 'value', join(parameters('githubAllowedOrganizations'), ',')), createObject('name', 'CAO_GITHUB_ALLOWED_TEAMS', 'value', join(parameters('githubAllowedTeams'), ',')), createObject('name', 'CAO_SESSION_SECRET', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/cao-session-secret)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri))), if(empty(parameters('previousSessionSecret')), createArray(), createArray(createObject('name', 'CAO_SESSION_SECRET_PREVIOUS', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/cao-session-secret-previous)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)))), if(not(variables('collectionEnabled')), createArray(), createArray(createObject('name', 'CAO_GITHUB_WEBHOOK_SECRET', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/cao-github-webhook-secret)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)), createObject('name', 'CAO_GITHUB_ADMIN_USERS', 'value', join(parameters('githubAdminUsers'), ',')), createObject('name', 'CAO_COLLECT_APP_ID', 'value', parameters('collectorGithubAppId')), createObject('name', 'CAO_COLLECT_ADMIT_ONLY', 'value', 'true'), createObject('name', 'CAO_COLLECT_CONTROL_REPOSITORY', 'value', parameters('collectorControlRepository')))))]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'azure-webjobs-storage')]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'github-oauth-client-secret')]",
+        "[resourceId('Microsoft.Insights/components', format('{0}-ai', parameters('functionAppName')))]",
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+        "[resourceId('Microsoft.Web/serverfarms', parameters('hostingPlanName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'cao-session-secret-previous')]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'cao-redis-url')]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'cao-session-secret')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), parameters('functionAppName'), 'Key Vault Secrets User')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6c')]",
+        "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-12-01', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+      ]
+    },
+    {
+      "condition": "[variables('collectionEnabled')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "collection-workers",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "namePrefix": {
+            "value": "[parameters('functionAppName')]"
+          },
+          "collectorImage": {
+            "value": "[parameters('collectorImage')]"
+          },
+          "keyVaultUri": {
+            "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri]"
+          },
+          "keyVaultName": {
+            "value": "[parameters('keyVaultName')]"
+          },
+          "redisHost": {
+            "value": "[reference(resourceId('Microsoft.Cache/redisEnterprise', parameters('redisEnterpriseName')), '2024-11-01').hostName]"
+          },
+          "redisNamespace": {
+            "value": "azure-dashboard"
+          },
+          "controlRepository": {
+            "value": "[parameters('collectorControlRepository')]"
+          },
+          "githubAppId": {
+            "value": "[parameters('collectorGithubAppId')]"
+          },
+          "maximumWorkers": {
+            "value": "[parameters('collectorMaximumWorkers')]"
+          },
+          "lakeStorageSku": {
+            "value": "[parameters('collectorLakeStorageSku')]"
+          },
+          "applicationInsightsConnectionString": {
+            "value": "[reference(resourceId('Microsoft.Insights/components', format('{0}-ai', parameters('functionAppName'))), '2020-02-02').ConnectionString]"
+          },
+          "logAnalyticsWorkspaceResourceId": {
+            "value": "[parameters('logAnalyticsWorkspaceResourceId')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.47.16.16243",
+              "templateHash": "947882728126865901"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for the collection workers."
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Resource tags."
+              }
+            },
+            "namePrefix": {
+              "type": "string",
+              "minLength": 3,
+              "metadata": {
+                "description": "Name prefix for the collection resources."
+              }
+            },
+            "collectorImage": {
+              "type": "string",
+              "metadata": {
+                "description": "Container image running the collection role."
+              }
+            },
+            "keyVaultUri": {
+              "type": "string",
+              "metadata": {
+                "description": "Key Vault URI holding the collection secrets."
+              }
+            },
+            "keyVaultName": {
+              "type": "string",
+              "metadata": {
+                "description": "Key Vault resource name, used to grant the workers secret access."
+              }
+            },
+            "lakeQuotaGigabytes": {
+              "type": "int",
+              "defaultValue": 1024,
+              "minValue": 100,
+              "metadata": {
+                "description": "Size of the evidence lake file share, in gibibytes."
+              }
+            },
+            "redisHost": {
+              "type": "string",
+              "metadata": {
+                "description": "Redis host the KEDA scaler polls for stream backlog."
+              }
+            },
+            "redisPort": {
+              "type": "int",
+              "defaultValue": 10000,
+              "metadata": {
+                "description": "Redis port the KEDA scaler polls."
+              }
+            },
+            "redisNamespace": {
+              "type": "string",
+              "metadata": {
+                "description": "Redis key namespace shared with the server."
+              }
+            },
+            "controlRepository": {
+              "type": "string",
+              "metadata": {
+                "description": "Control repository used for logical source discovery."
+              }
+            },
+            "githubAppId": {
+              "type": "string",
+              "metadata": {
+                "description": "GitHub App identifier whose installations define ingestion scope."
+              }
+            },
+            "minimumWorkers": {
+              "type": "int",
+              "defaultValue": 0,
+              "minValue": 0,
+              "metadata": {
+                "description": "Minimum number of collection workers. Zero scales to nothing when idle."
+              }
+            },
+            "maximumWorkers": {
+              "type": "int",
+              "defaultValue": 20,
+              "minValue": 1,
+              "metadata": {
+                "description": "Maximum number of collection workers."
+              }
+            },
+            "backlogPerWorker": {
+              "type": "int",
+              "defaultValue": 25,
+              "minValue": 1,
+              "metadata": {
+                "description": "Stream backlog per worker before another worker is added."
+              }
+            },
+            "applicationInsightsConnectionString": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Application Insights connection string. Collection is unobservable without it."
+              }
+            },
+            "logAnalyticsWorkspaceResourceId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Log Analytics workspace resource ID receiving container console and system logs."
+              }
+            },
+            "lakeStorageSku": {
+              "type": "string",
+              "defaultValue": "Premium_LRS",
+              "allowedValues": [
+                "Premium_LRS",
+                "Premium_ZRS",
+                "Standard_LRS",
+                "Standard_ZRS"
+              ],
+              "metadata": {
+                "description": "Evidence lake file share tier. Premium is provisioned SSD; Standard is IOPS-throttled by share size."
+              }
+            },
+            "queueMaxLength": {
+              "type": "int",
+              "defaultValue": 200000,
+              "minValue": 1000,
+              "metadata": {
+                "description": "Bound on the collection task and dead-letter streams."
+              }
+            }
+          },
+          "variables": {
+            "lakePremium": "[startsWith(parameters('lakeStorageSku'), 'Premium')]",
+            "lakeStorageAccountName": "[format('{0}lake{1}', toLower(take(replace(parameters('namePrefix'), '-', ''), 7)), uniqueString(resourceGroup().id, parameters('namePrefix')))]",
+            "streamKey": "[format('{0}:collect:tasks', parameters('redisNamespace'))]",
+            "consumerGroup": "collectors",
+            "collectionEnvironment": [
+              {
+                "name": "CAO_REDIS_URL",
+                "secretRef": "cao-redis-url"
+              },
+              {
+                "name": "CAO_REDIS_NAMESPACE",
+                "value": "[parameters('redisNamespace')]"
+              },
+              {
+                "name": "CAO_COLLECT_APP_ID",
+                "value": "[parameters('githubAppId')]"
+              },
+              {
+                "name": "CAO_COLLECT_PRIVATE_KEY",
+                "secretRef": "cao-collect-private-key"
+              },
+              {
+                "name": "CAO_COLLECT_LAKE_DIRECTORY",
+                "value": "/evidence"
+              },
+              {
+                "name": "CAO_COLLECT_CATALOG_ROOT",
+                "value": "/app"
+              },
+              {
+                "name": "CAO_COLLECT_CONTROL_REPOSITORY",
+                "value": "[parameters('controlRepository')]"
+              },
+              {
+                "name": "CAO_COLLECT_QUEUE_MAX_LENGTH",
+                "value": "[string(parameters('queueMaxLength'))]"
+              },
+              {
+                "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+                "secretRef": "application-insights-connection-string"
+              },
+              {
+                "name": "OTEL_SERVICE_NAME",
+                "value": "[format('{0}-collector', parameters('namePrefix'))]"
+              },
+              {
+                "name": "DEBUG",
+                "value": "cao:collect:*"
+              }
+            ],
+            "collectionSecrets": [
+              {
+                "name": "cao-redis-url",
+                "keyVaultUrl": "[format('{0}secrets/cao-redis-url', parameters('keyVaultUri'))]",
+                "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-collector-identity', parameters('namePrefix')))]"
+              },
+              {
+                "name": "cao-collect-private-key",
+                "keyVaultUrl": "[format('{0}secrets/cao-collect-private-key', parameters('keyVaultUri'))]",
+                "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-collector-identity', parameters('namePrefix')))]"
+              },
+              {
+                "name": "cao-redis-password",
+                "keyVaultUrl": "[format('{0}secrets/cao-redis-password', parameters('keyVaultUri'))]",
+                "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-collector-identity', parameters('namePrefix')))]"
+              },
+              {
+                "name": "application-insights-connection-string",
+                "value": "[parameters('applicationInsightsConnectionString')]"
+              }
+            ]
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2023-01-31",
+              "name": "[format('{0}-collector-identity', parameters('namePrefix'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]"
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+              "name": "[guid(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-collector-identity', parameters('namePrefix'))), 'Key Vault Secrets User')]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-collector-identity', parameters('namePrefix'))), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-collector-identity', parameters('namePrefix')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.App/managedEnvironments",
+              "apiVersion": "2024-03-01",
+              "name": "[format('{0}-collectors', parameters('namePrefix'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "appLogsConfiguration": "[if(empty(parameters('logAnalyticsWorkspaceResourceId')), createObject(), createObject('destination', 'azure-monitor'))]",
+                "zoneRedundant": false
+              }
+            },
+            {
+              "condition": "[not(empty(parameters('logAnalyticsWorkspaceResourceId')))]",
+              "type": "Microsoft.Insights/diagnosticSettings",
+              "apiVersion": "2021-05-01-preview",
+              "scope": "[resourceId('Microsoft.App/managedEnvironments', format('{0}-collectors', parameters('namePrefix')))]",
+              "name": "collection-logs",
+              "properties": {
+                "workspaceId": "[parameters('logAnalyticsWorkspaceResourceId')]",
+                "logs": [
+                  {
+                    "categoryGroup": "allLogs",
+                    "enabled": true
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.App/managedEnvironments', format('{0}-collectors', parameters('namePrefix')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2023-05-01",
+              "name": "[variables('lakeStorageAccountName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "kind": "[if(variables('lakePremium'), 'FileStorage', 'StorageV2')]",
+              "sku": {
+                "name": "[parameters('lakeStorageSku')]"
+              },
+              "properties": {
+                "accessTier": "[if(variables('lakePremium'), 'Premium', 'Hot')]",
+                "minimumTlsVersion": "TLS1_2",
+                "supportsHttpsTrafficOnly": true,
+                "allowBlobPublicAccess": false,
+                "allowCrossTenantReplication": false,
+                "publicNetworkAccess": "Enabled",
+                "networkAcls": {
+                  "bypass": "AzureServices",
+                  "defaultAction": "Allow"
+                },
+                "encryption": {
+                  "requireInfrastructureEncryption": true,
+                  "keySource": "Microsoft.Storage",
+                  "services": {
+                    "file": {
+                      "enabled": true,
+                      "keyType": "Account"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/fileServices",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}', variables('lakeStorageAccountName'), 'default')]",
+              "properties": {
+                "shareDeleteRetentionPolicy": {
+                  "enabled": true,
+                  "days": 30
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('lakeStorageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/fileServices/shares",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}/{2}', variables('lakeStorageAccountName'), 'default', 'evidence-lake')]",
+              "properties": {
+                "shareQuota": "[if(variables('lakePremium'), max(parameters('lakeQuotaGigabytes'), 100), parameters('lakeQuotaGigabytes'))]",
+                "enabledProtocols": "SMB"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/fileServices', variables('lakeStorageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.App/managedEnvironments/storages",
+              "apiVersion": "2024-03-01",
+              "name": "[format('{0}/{1}', format('{0}-collectors', parameters('namePrefix')), 'evidence-lake')]",
+              "properties": {
+                "azureFile": {
+                  "accountName": "[variables('lakeStorageAccountName')]",
+                  "shareName": "evidence-lake",
+                  "accessMode": "ReadWrite",
+                  "accountKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('lakeStorageAccountName')), '2023-05-01').keys[0].value]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.App/managedEnvironments', format('{0}-collectors', parameters('namePrefix')))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('lakeStorageAccountName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts/fileServices/shares', variables('lakeStorageAccountName'), 'default', 'evidence-lake')]"
+              ]
+            },
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2024-03-01",
+              "name": "[format('{0}-collector', parameters('namePrefix'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-collector-identity', parameters('namePrefix'))))]": {}
+                }
+              },
+              "properties": {
+                "environmentId": "[resourceId('Microsoft.App/managedEnvironments', format('{0}-collectors', parameters('namePrefix')))]",
+                "configuration": {
+                  "activeRevisionsMode": "Single",
+                  "secrets": "[variables('collectionSecrets')]"
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "collector",
+                      "image": "[parameters('collectorImage')]",
+                      "command": [
+                        "/app/cao-dashboard"
+                      ],
+                      "args": [
+                        "collect"
+                      ],
+                      "env": "[variables('collectionEnvironment')]",
+                      "resources": {
+                        "cpu": "[json('1.0')]",
+                        "memory": "2Gi"
+                      },
+                      "volumeMounts": [
+                        {
+                          "volumeName": "evidence",
+                          "mountPath": "/evidence"
+                        }
+                      ]
+                    }
+                  ],
+                  "volumes": [
+                    {
+                      "name": "evidence",
+                      "storageType": "AzureFile",
+                      "storageName": "evidence-lake"
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": "[parameters('minimumWorkers')]",
+                    "maxReplicas": "[parameters('maximumWorkers')]",
+                    "rules": [
+                      {
+                        "name": "collection-backlog",
+                        "custom": {
+                          "type": "redis-streams",
+                          "metadata": {
+                            "address": "[format('{0}:{1}', parameters('redisHost'), parameters('redisPort'))]",
+                            "stream": "[variables('streamKey')]",
+                            "consumerGroup": "[variables('consumerGroup')]",
+                            "pendingEntriesCount": "[string(parameters('backlogPerWorker'))]",
+                            "enableTLS": "true"
+                          },
+                          "auth": [
+                            {
+                              "secretRef": "cao-redis-password",
+                              "triggerParameter": "password"
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-collector-identity', parameters('namePrefix')))]",
+                "[resourceId('Microsoft.App/managedEnvironments', format('{0}-collectors', parameters('namePrefix')))]",
+                "[resourceId('Microsoft.App/managedEnvironments/storages', format('{0}-collectors', parameters('namePrefix')), 'evidence-lake')]"
+              ]
+            },
+            {
+              "type": "Microsoft.App/jobs",
+              "apiVersion": "2024-03-01",
+              "name": "[format('{0}-backfill', parameters('namePrefix'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-collector-identity', parameters('namePrefix'))))]": {}
+                }
+              },
+              "properties": {
+                "environmentId": "[resourceId('Microsoft.App/managedEnvironments', format('{0}-collectors', parameters('namePrefix')))]",
+                "configuration": {
+                  "triggerType": "Manual",
+                  "replicaTimeout": 7200,
+                  "replicaRetryLimit": 1,
+                  "manualTriggerConfig": {
+                    "parallelism": 1,
+                    "replicaCompletionCount": 1
+                  },
+                  "secrets": "[variables('collectionSecrets')]"
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "backfill",
+                      "image": "[parameters('collectorImage')]",
+                      "command": [
+                        "/app/cao-dashboard"
+                      ],
+                      "args": [
+                        "backfill"
+                      ],
+                      "env": "[variables('collectionEnvironment')]",
+                      "resources": {
+                        "cpu": "[json('1.0')]",
+                        "memory": "2Gi"
+                      },
+                      "volumeMounts": [
+                        {
+                          "volumeName": "evidence",
+                          "mountPath": "/evidence"
+                        }
+                      ]
+                    }
+                  ],
+                  "volumes": [
+                    {
+                      "name": "evidence",
+                      "storageType": "AzureFile",
+                      "storageName": "evidence-lake"
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-collector-identity', parameters('namePrefix')))]",
+                "[resourceId('Microsoft.App/managedEnvironments', format('{0}-collectors', parameters('namePrefix')))]",
+                "[resourceId('Microsoft.App/managedEnvironments/storages', format('{0}-collectors', parameters('namePrefix')), 'evidence-lake')]"
+              ]
+            }
+          ],
+          "outputs": {
+            "collectorIdentityPrincipalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-collector-identity', parameters('namePrefix'))), '2023-01-31').principalId]"
+            },
+            "collectorAppName": {
+              "type": "string",
+              "value": "[format('{0}-collector', parameters('namePrefix'))]"
+            },
+            "backfillJobName": {
+              "type": "string",
+              "value": "[format('{0}-backfill', parameters('namePrefix'))]"
+            },
+            "taskStreamKey": {
+              "type": "string",
+              "value": "[variables('streamKey')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'cao-collect-private-key')]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'cao-redis-password')]",
+        "[resourceId('Microsoft.Insights/components', format('{0}-ai', parameters('functionAppName')))]",
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'cao-redis-url')]",
+        "[resourceId('Microsoft.Cache/redisEnterprise', parameters('redisEnterpriseName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "collectionEnabled": {
+      "type": "bool",
+      "value": "[variables('collectionEnabled')]"
+    },
+    "functionHostName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-12-01').defaultHostName]"
+    },
+    "githubOAuthRedirectUri": {
+      "type": "string",
+      "value": "[variables('githubRedirectUri')]"
+    },
+    "redisEnterpriseHostName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Cache/redisEnterprise', parameters('redisEnterpriseName')), '2024-11-01').hostName]"
+    },
+    "redisDatabaseName": {
+      "type": "string",
+      "value": "default"
+    },
+    "keyVaultUri": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri]"
+    }
+  }
+}

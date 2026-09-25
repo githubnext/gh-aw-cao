@@ -96,10 +96,6 @@ concurrency:
 
 tracker-id: software-development-practices-nist-ssdf
 
-graders:
-  operational-value:
-    run: ./graders/software-development-practices-nist-ssdf-operational-value.sh
-
 tools:
   cli-proxy: true
   github:

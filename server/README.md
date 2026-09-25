@@ -3,9 +3,9 @@
 The `server/` module is an optional backend for running the Central Agentic Ops
 dashboard with server-owned persistence and query execution. It ingests the
 same compacted data published with the deployed dashboard, materializes
-generation-scoped logical sources in Redis Stack, executes Dashboard Language
-queries in Go with RediSearch pushdown, and serves the built dashboard either
-over loopback HTTP or through an authenticated host-neutral service profile.
+generation-scoped logical sources in Redis, executes Dashboard Language queries
+in Go, and serves the built dashboard either over loopback HTTP or through an
+authenticated host-neutral service profile.
 
 The browser never connects to Redis and never receives the Redis URL or
 credentials. It communicates only with the same-origin HTTP(S) API.
@@ -49,15 +49,15 @@ events likewise contain fixed identifiers only.
 flowchart LR
   Artifact["Deployed dashboard artifact<br/>inventory + run JSONL + record JSONL"]
   Ingest["Go ingester<br/>verify, parse, project"]
-  Redis["Redis Stack<br/>generation rows + RediSearch indexes"]
-  API["Go HTTP(S) server<br/>query planner + bounded fallback"]
+  Redis["Redis<br/>generation row sets"]
+  API["Go HTTP(S) server<br/>bounded query engine"]
   Browser["Dashboard browser app<br/>render bounded view payloads"]
 
   Artifact --> Ingest
   Ingest -->|"stage complete generation"| Redis
   Redis -->|"atomic activation"| API
   Browser -->|"POST /api/v1/query"| API
-  API -->|"FT.SEARCH / FT.AGGREGATE"| Redis
+  API -->|"HGET/SMEMBERS/EVAL"| Redis
   Redis --> API
   API -->|"LogicalSourceInput JSON"| Browser
   API -->|"SSE revision events"| Browser
@@ -70,13 +70,13 @@ flowchart LR
 | CLI | `cmd/cao-dashboard/` | Implements the `ingest` and `serve` commands and keeps Redis configuration in the server process. |
 | Artifact ingestion | `internal/ingest/` | Validates deployed manifests and hashes, loads run shards before record shards, projects canonical records into logical dashboard sources, and activates complete generations. |
 | Query engine | `internal/query/` | Validates Dashboard Language definitions and executes joins, filters, computed fields, aggregates, temporal series, selection, ordering, and limits under resource budgets. |
-| Redis projection | `internal/redisx/` | Stores source rows and metadata, creates RediSearch indexes, plans compatible pushdown, loads bounded fallbacks, and atomically publishes the active generation. |
+| Redis projection | `internal/redisx/` | Stores source rows and metadata with core Redis commands and atomically publishes the active generation. |
 | HTTP(S)/API server | `internal/server/` | Enforces loopback binding, optionally terminates operator-configured TLS, serves static dashboard assets, handles API requests, and publishes revision events. |
-| Azure Functions profile | `internal/server/azure.go` | Builds the same HTTP handler without starting a listener, validates Azure app settings, requires `rediss://` Redis, checks RediSearch availability, and trusts forwarded host/protocol headers only for configured Azure hosts. |
+| Azure Functions profile | `internal/server/azure.go` | Builds the same HTTP handler without starting a listener, validates Azure app settings, requires `rediss://` Redis, and trusts forwarded host/protocol headers only for configured Azure hosts. |
 | GitHub OAuth sessions | `internal/server/oauth.go` | Implements the GitHub OAuth authorization-code flow, active organization/team authorization, refresh-token rotation, server-side encrypted sessions in Redis, logout revocation, and CSRF protection for mutating requests. |
 | Shared API model | `internal/model/` | Defines logical sources, active-generation metadata, diagnostics, and query metrics. |
 | Telemetry | `internal/telemetry/` | Configures the OpenTelemetry TracerProvider from standard `OTEL_*` environment variables, exposes the server's tracer, and writes W3C trace/span id response headers. |
-| Local Redis | `docker-compose.yml` | Runs Redis Stack with RediSearch on `127.0.0.1:6379`. |
+| Local Redis | `docker-compose.yml` | Runs plain Redis on `127.0.0.1:6379`. |
 
 ## Hosted service profile
 
@@ -148,7 +148,7 @@ gone stale. Write commands are not replayed automatically.
 The Azure Functions profile keeps the dashboard browser isolated from Redis,
 GitHub tokens, refresh tokens, Redis access keys, and Key Vault secret values.
 The Function App is the only public application boundary and the only component
-that talks to GitHub APIs, Key Vault references, and Redis Enterprise.
+that talks to GitHub APIs, Key Vault references, and Azure Managed Redis.
 
 ```mermaid
 flowchart LR
@@ -157,7 +157,7 @@ flowchart LR
   Function["Function App<br/>Go dashboard HTTP handler<br/>GitHub OAuth sessions + CSRF"]
   GitHubOAuth["GitHub OAuth + API<br/>login, refresh, org/team membership"]
   KeyVault["Azure Key Vault<br/>OAuth secret, session secret, Redis URL"]
-  Redis["Azure Redis Enterprise<br/>TLS + RediSearch<br/>derived dashboard projection"]
+  Redis["Azure Managed Redis<br/>TLS<br/>derived dashboard projection"]
   Storage["Functions storage account<br/>runtime state only"]
   Insights["Application Insights<br/>non-secret operational telemetry"]
   Operators["Control-plane operators<br/>deploy Bicep + rotate secrets"]
@@ -166,7 +166,7 @@ flowchart LR
   Edge -->|"trusted forwarded host/proto only when allow-listed"| Function
   Function -->|"OAuth code, refresh, membership checks"| GitHubOAuth
   Function -->|"Key Vault references resolved by managed identity"| KeyVault
-  Function -->|"rediss:// FT.SEARCH / FT.AGGREGATE"| Redis
+  Function -->|"rediss:// core Redis commands"| Redis
   Function -->|"runtime binding state"| Storage
   Function -->|"no tokens, no Redis URL, no source records"| Insights
   Operators -->|"reviewed Bicep + secret rotation"| KeyVault
@@ -186,8 +186,8 @@ Primary actors and responsibilities:
   scale in, or terminate long-lived SSE requests.
 - **GitHub OAuth/API**: issues expiring access/refresh tokens and confirms
   organization/team membership; GitHub tokens never leave the server.
-- **Redis Enterprise**: stores disposable, namespaced dashboard projections and
-  RediSearch indexes; it is not an authority or source of truth.
+- **Redis**: stores disposable, namespaced dashboard projections; it is not an
+  authority or source of truth.
 - **Control-plane operator**: reviews Bicep/app settings, keeps Key Vault
   mandatory, rotates credentials, and validates compliance evidence.
 
@@ -199,7 +199,7 @@ Trust boundaries:
   PATs and no GitHub tokens forwarded to the browser.
 - Function App ↔ Key Vault: managed identity and RBAC only; no secret values in
   Bicep outputs, logs, checked-in parameters, or browser-readable state.
-- Function App ↔ Redis Enterprise: TLS-only `rediss://` and a deployment
+- Function App ↔ Redis: TLS-only `rediss://` and a deployment
   namespace for disposable derived data.
 
 ## Data ingestion
@@ -227,8 +227,8 @@ The ingestion sequence is:
 5. Project canonical Campaign, Repository, Workflow, Run, Domain, Tool, Audit,
    and Issue records through
    `dashboard/site/src/data/queries/database.json`.
-6. Stage every logical source, its metadata, diagnostics, row set, and
-   RediSearch index under a new immutable generation.
+6. Stage every logical source, its metadata, diagnostics, and row set under a
+   new immutable generation.
 7. Atomically update the namespaced active pointer and increment the namespaced
    active revision only after the generation is complete.
 
@@ -239,6 +239,235 @@ The active generation also records an authoritative `evaluatedAt` timestamp
 derived from the latest canonical row or source metadata timestamp. Relative
 dashboard time windows use this value rather than browser wall-clock time.
 
+### Ingestion profiles
+
+Evidence reaches the server through exactly one of two profiles. They are
+alternatives, not layers, because a canonical database has one writer.
+
+| | Published snapshots (default) | Server collection (optional) |
+|---|---|---|
+| Evidence acquired by | `cao-activity.yml` in GitHub Actions | the server's collection workers |
+| Server configuration | `CAO_SOURCE_DIRECTORY` | `CAO_COLLECT_APP_ID` and the other `CAO_COLLECT_*` settings |
+| GitHub credentials | held by the workflow | a GitHub App held by the deployment |
+| Event source | workflow schedule | webhook deliveries |
+| Deployment | Function App only | Function App plus Container Apps workers |
+
+The default profile is unchanged: with only `CAO_SOURCE_DIRECTORY` configured
+the server behaves exactly as before and performs no GitHub collection.
+
+Configuring both is rejected at startup rather than resolved silently, so a
+deployment can never have two writers for one database.
+
+To switch a deployment to the collection profile, unset `CAO_SOURCE_DIRECTORY`,
+set the `CAO_COLLECT_*` settings, and deploy `collectorImage`. To switch back,
+reverse both. Switching does not lose data: the canonical database is rebuilt
+from whichever evidence the selected profile retains.
+
+### Collection profile
+
+Collection separates three concerns that fail differently:
+
+1. **Admission.** The existing `POST /api/github/webhook` endpoint verifies the
+   signature, deduplicates the delivery, and appends one task to a Redis
+   stream. Admission is constant-time and takes no projection lease, so a
+   delivery burst cannot block the endpoint.
+2. **Collection.** Workers lease tasks and run the same
+   `gh aw logs --audit` and `activity/cao.mjs` commands the Activity workflow
+   runs, writing into the evidence lake. One repository is collected at a time,
+   and GitHub budget is reserved per installation before each collection.
+3. **Projection.** Collected evidence is projected by the existing
+   `internal/ingest` package. Projection is coalesced behind a dirty flag and a
+   minimum interval, so projection cost follows the collection rate rather than
+   the event rate.
+
+The evidence lake is laid out byte-compatibly with a snapshot published by the
+Activity workflow:
+
+```text
+gh-aw-logs-shards/     collected, not yet compacted
+gh-aw-logs-runs/*.jsonl
+gh-aw-logs-records/*.jsonl
+payload-hashes.json
+inventory-sources.json
+```
+
+That is what makes the profiles interchangeable, and it is why cold start needs
+no GitHub access: a retained lake is replayed directly.
+
+Enrollment is derived from GitHub App installations. A delivery for a
+repository outside the enrollment set is acknowledged and dropped rather than
+collected, so credential reach never widens ingestion scope.
+
+Rate limits are governed per installation. Each collection reserves budget
+before it starts and passes the reserve to the collection subprocess, so the
+subprocess stops before exhausting the installation. An installation that
+receives a rate-limit response is parked with jitter; other installations keep
+running.
+
+Failed collections are retried with backoff and moved to a dead-letter stream
+after the attempt limit, where they remain visible in collection status rather
+than disappearing.
+
+### Collection roles
+
+The same binary runs every role:
+
+| Command | Role |
+|---|---|
+| `cao-dashboard serve-hosted` | serve the dashboard and admit webhook deliveries |
+| `cao-dashboard collect` | lease tasks, collect repositories, and project |
+| `cao-dashboard backfill` | cold start: replay the lake, enumerate installations, seed tasks |
+| `cao-dashboard backfill -replay-only` | repopulate the database from retained evidence with no GitHub requests |
+| `cao-dashboard doctor` | run a read-only, systematic check-up of Redis, canonical data, queries, and collection |
+
+`GET /api/admin/collection/status` reports enrollment coverage, queue backlog,
+in-flight tasks, dead letters, cold-start phase, and per-installation rate-limit
+headroom. In the default profile it reports `{"configured": false}` rather than
+failing.
+
+### Diagnose a deployment
+
+`cao-dashboard doctor` runs a read-only check-up of the current server
+configuration. It does not contact GitHub, write to Redis, repair data, or
+report secret values. Every check has a stable identifier such as
+`redis.memory` or `data.generations`, a severity, observed facts, and an
+operator remedy. The default text report is intended to be readable by both a
+person and an agent:
+
+```bash
+go -C server run ./cmd/cao-dashboard doctor \
+  --redis-url "$CAO_REDIS_URL" \
+  --redis-namespace production-dashboard
+```
+
+The standard check-up covers:
+
+- build and runtime identity, external collection tooling, and profile
+  exclusivity;
+- Redis connectivity, latency, TLS posture, server state, clients,
+  persistence, memory headroom, `noeviction`, and namespace contents;
+- active-generation age, schema compatibility, source counts, referential
+  integrity, duplicate identifiers, and generation reclamation;
+- the canonical Dashboard Language query document;
+- collection configuration without reading secrets, enrollment coverage,
+  queue backlog, pending work, dead letters, cold-start state, rate-limit
+  headroom, evidence-lake replayability, and projection activity.
+
+Add `--deep` to read every active source through the production Redis loading
+path and confirm that rows decode, recorded counts match, and no source is
+approaching the 200,000-row fail-closed limit. This can read the whole active
+generation, so it is deliberately opt-in.
+
+```bash
+go -C server run ./cmd/cao-dashboard doctor \
+  --redis-url "$CAO_REDIS_URL" \
+  --redis-namespace production-dashboard \
+  --deep
+```
+
+Use `--format json` for a versioned agent/automation contract. JSON and text
+contain the same observations and stable check identifiers. The command exits
+non-zero when any check fails; `--strict` also makes warnings non-zero, which
+is useful as a deployment gate. Each check is bounded independently by
+`--timeout` (10 seconds by default), so one unavailable diagnostic surface
+cannot hang the whole report.
+
+The report prints only a redacted Redis endpoint. It reports whether a webhook
+secret or App private key is configured, never its value, and it only `stat`s a
+private-key file rather than reading it.
+
+### Collection settings
+
+| Setting | Meaning |
+|---|---|
+| `CAO_COLLECT_APP_ID` | GitHub App identifier; unset selects the default profile |
+| `CAO_COLLECT_PRIVATE_KEY` / `CAO_COLLECT_PRIVATE_KEY_FILE` | App private key in PEM form |
+| `CAO_COLLECT_LAKE_DIRECTORY` | evidence lake directory, shared by workers |
+| `CAO_COLLECT_CATALOG_ROOT` | directory containing `activity/cao.mjs` |
+| `CAO_COLLECT_CONTROL_REPOSITORY` | control repository used for inventory discovery |
+| `CAO_COLLECT_WORKERS` | in-process workers; zero when workers scale separately |
+| `CAO_COLLECT_RATE_LIMIT_FLOOR` | requests reserved per installation |
+| `CAO_COLLECT_PROJECTION_INTERVAL` | minimum interval between projections (default 5 minutes) |
+| `CAO_COLLECT_RETAIN_GENERATIONS` | superseded canonical generations kept for rollback (default 3) |
+| `CAO_COLLECT_INVENTORY_LIMIT` | optional cap on enrolled repositories; exceeding it fails the projection |
+| `CAO_COLLECT_RECOVER_DELIVERIES` | replay failed webhook deliveries to close gaps |
+| `CAO_COLLECT_QUEUE_MAX_LENGTH` | bound on the task and dead-letter streams (default 200 000) |
+| `CAO_COLLECT_ADMIT_ONLY` | admit deliveries without collecting; requires no private key |
+
+### Admission-only front ends
+
+A process that only receives webhooks does not need collection credentials.
+Setting `CAO_COLLECT_ADMIT_ONLY` verifies deliveries and enqueues work while
+refusing an App private key, workers, and delivery replay, so the
+internet-facing front end holds no credential it cannot use. The Azure Function
+App is deployed this way; the collection workers hold the key.
+
+Withdrawing scope still takes effect: an admission-only process queues erasure
+for a worker that has the evidence lake, and administrative rebuild fails
+closed with an instruction to run the `collect` or `backfill` role.
+
+### Retention and erasure
+
+The evidence lake is retained collected evidence, not a cache: cold start
+replays it without contacting GitHub. Retention therefore has to be governed
+deliberately.
+
+Leaving ingestion scope erases evidence. When an installation is deleted or
+suspended, or repositories are removed from it, the server deletes that
+repository's shards from the lake and requests a projection, so the canonical
+database stops reporting it. Uninstalling the GitHub App is the supported way
+to withdraw consent, and it takes effect without operator action.
+
+`specs/server-ingestion.md` is the normative contract, and
+`adr/server-webhook-driven-ingestion.md` records why the design is shaped this
+way.
+
+### Cost and sizing
+
+Steady-state cost is dominated by projection rather than by collection, because
+a projection's cost scales with retained evidence while a collection's cost
+scales with what changed. Three properties keep that affordable.
+
+Projection is *skipped* when nothing changed. A collection re-enumerates a
+repository's window and usually downloads nothing new, so the lake's
+content-addressed data revision is normally unchanged and the projector reuses
+the active generation instead of rewriting it. Only an explicit operator
+rebuild bypasses this.
+
+Superseded generations are *reclaimed*. Each projection that does run writes a
+complete copy of the canonical dataset plus its search indexes, and Redis is
+configured `NoEviction`. Reclamation is part of activation: a bounded number of
+generations is retained for rollback, and a generation is only dropped once a
+grace period has passed so in-flight reads finish. Tune with
+`CAO_COLLECT_RETAIN_GENERATIONS`; raise it to widen the rollback window at the
+cost of Redis memory. Redis capacity should be sized for the retained
+generation count, not for one copy of the dataset.
+
+The evidence lake is *many small per-repository shards*, so it is bound by file
+metadata operations rather than throughput. The lake share therefore defaults
+to a premium (provisioned SSD) file share; a Standard share's IOPS scale only
+with provisioned size and become the projection bottleneck well before capacity
+does. Set `collectorLakeStorageSku` to a `Standard_*` value only for small
+deployments where cost matters more than projection latency.
+
+Known limits, in the order they will be felt at scale:
+
+- Every projection rehashes the whole lake twice before it can decide whether
+  anything changed: once in `activity/cao.mjs hash-payloads` and once in the
+  Go manifest validation. That is the structural ceiling on projection
+  frequency, and it is why `CAO_COLLECT_PROJECTION_INTERVAL` defaults to five
+  minutes rather than to seconds.
+- Redis is still an always-on cost, but it is now sized for retained key-value
+  data only. No Redis module is required, so the default Azure SKU is the
+  smallest `Balanced_B0` tier and operators can scale by retained-generation
+  memory rather than by RediSearch availability.
+- The Elastic Premium Function plan is always-on. It is sized for webhook
+  admission, which is constant-time, so the smallest plan that meets the
+  tenant's network requirements is the right one.
+- Collection workers do scale to zero: `minimumWorkers` defaults to zero and
+  KEDA scales on stream backlog, so an idle deployment pays for storage, Redis,
+  and the Function plan only.
+
 ## Redis model
 
 Redis is a disposable query projection, not an authoritative data source.
@@ -248,15 +477,14 @@ Redis is a disposable query projection, not an authoritative data source.
 | `<namespace>:active` | Active generation, monotonically increasing revision, artifact revision, evaluation time, activation time, and source counts. |
 | `<namespace>:active-generation` | Active generation pointer updated during atomic activation. |
 | `<namespace>:revision-sequence` | Revision counter used by atomic activation. |
-| `<namespace>:g:<generation>` | Source metadata, field aliases and types, and canonical diagnostics for one generation. |
+| `<namespace>:g:<generation>` | Source metadata and canonical diagnostics for one generation. |
 | `<namespace>:g:<generation>:source:<hash>:rows` | Set of row keys for one logical source. |
-| `<namespace>:g:<generation>:source:<hash>:row:<id>` | Hash containing the complete JSON row plus scalar indexed fields. |
-| `<namespace>:idx:<hash>` | RediSearch index scoped to one source in one generation. |
+| `<namespace>:g:<generation>:source:<hash>:row:<id>` | Hash containing the complete JSON row. |
 
-Source names, field names, and row identities are converted to deterministic
-hashes before becoming Redis key or index fragments. Complete row JSON remains
-available for bounded fallback execution. Every key and RediSearch index is
-scoped by `--redis-namespace`. The default is a stable
+Source names and row identities are converted to deterministic hashes before
+becoming Redis key fragments. Complete row JSON remains available for bounded
+query-engine execution. Every key is scoped by `--redis-namespace`. The default
+is a stable
 `cao:checkout-<path-hash>` value derived from the absolute checkout/worktree
 path, so separate checkouts using Redis database 0 do not collide. Explicit
 values are normalized to a lowercase `cao:` namespace and reject Redis glob
@@ -414,13 +642,13 @@ session-bound CSRF token.
 platform keeps the invocation alive. Clients must treat SSE as best-effort and
 fall back to `/api/v1/refresh` because Functions instances may cold-start,
 scale in, or terminate long-running requests. Cold starts rebuild the Go app
-from app settings and check Redis plus RediSearch before serving requests.
+from app settings and check Redis before serving requests.
 Request cancellation propagates through `request.Context()` to Redis queries.
 
 The Bicep deployment in `server/azure/main.bicep` provisions a Function App,
-Key Vault, Application Insights, storage, and Redis Enterprise with the
-RediSearch module. Every secret-bearing app setting—including Functions runtime
-storage—uses a versionless Key Vault reference so ordinary credential rotation
+Key Vault, Application Insights, storage, and module-free Azure Managed Redis.
+Every secret-bearing app setting—including Functions runtime storage—uses a
+versionless Key Vault reference so ordinary credential rotation
 does not require rewriting application configuration. Session-key rotation uses
 the optional secure `previousSessionSecret` deployment parameter: deploy the old
 key as previous and the new key as current, wait for active sessions and queued
@@ -428,7 +656,7 @@ revocations to drain, then remove the previous key. Encrypted records carry a
 key identifier, and the server can read both keys during that window. The
 template outputs only non-secret host names, redirect URI, Redis database name,
 and Key Vault URI. Redis access keys
-are an unavoidable path for Redis Enterprise client authentication today;
+are an unavoidable path for Azure Managed Redis client authentication today;
 store the `rediss://` URL in Key Vault, rotate the Redis key in Azure, publish a
 new Key Vault secret version, and allow the platform to refresh the reference.
 
@@ -476,7 +704,7 @@ npm run dashboard:server:setup:macos
 ```
 
 The command installs Homebrew Go, Node.js 24, the Docker CLI, Docker Compose,
-Colima, and the dashboard npm dependencies. Redis Stack with RediSearch runs only through
+Colima, and the dashboard npm dependencies. Plain Redis runs only through
 `server/docker-compose.yml`; the setup does not install or start a native Redis
 service.
 
@@ -576,6 +804,6 @@ dashboard CI:
 
 - **Go format, lint, and tests** runs Go 1.27.1, golangci-lint v2.13.2, and the
   server unit suite.
-- **Redis dashboard integration** starts Redis Stack, runs the Redis integration
+- **Redis dashboard integration** starts Redis, runs the Redis integration
   tests, builds the dashboard and server, ingests the deployed shard subset,
   launches the localhost HTTP server, and executes the Playwright view assertions.

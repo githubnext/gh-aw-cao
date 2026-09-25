@@ -269,9 +269,12 @@ test("root campaign provides default control-repository agent context", () => {
   const rootManifest = parse(rootManifestSource);
   const agents = readFileSync(join(root, "AGENTS.md"), "utf8");
   const setupSkill = readFileSync(join(root, ".github", "skills", "setup-cao", "SKILL.md"), "utf8");
+  const debugSkill = readFileSync(join(root, "skills", "debug-cao", "SKILL.md"), "utf8");
 
   assert.doesNotMatch(rootManifestSource, /source: AGENTS\.md|default-AGENTS\.md/);
   assert.equal(rootManifest.resources.some(({ destination }) => destination.startsWith(".github/skills/")), false);
+  assert.deepEqual(rootManifest.skills, ["skills/debug-cao"]);
+  assert.match(debugSkill, /^---\r?\nname: debug-cao\r?\n/);
   for (const skill of ["setup-cao", "add-cao-campaign", "create-cao-campaign", "analyze-cao", "cao-cli"]) {
     const portableSkill = join(root, "skills", skill);
     if (lstatSync(portableSkill).isSymbolicLink()) {
@@ -573,4 +576,18 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /source-managed control topology for any repository that maintains the workflows it will execute in-tree/);
   assert.match(setupSkill, /Never infer control-plane operation from workflow sources, catalog files, or the repository name alone/);
   assert.match(setupSkill, /also a catalog[\s\S]*supported dogfood repository/);
+});
+
+test("README routes CAO failures to the debug skill", () => {
+  const readme = readFileSync(join(root, "README.md"), "utf8");
+  const skill = readFileSync(join(root, "skills", "debug-cao", "SKILL.md"), "utf8");
+
+  assert.ok(readme.split("\n").slice(0, 20).some((line) =>
+    line.includes("skills/debug-cao/SKILL.md")
+  ));
+  assert.match(skill, /^---\r?\nname: debug-cao\r?\n/);
+  assert.match(skill, /resolvedCommit/);
+  assert.match(skill, /GITHUB_WORKFLOW_SHA/);
+  assert.match(skill, /Redaction statement/);
+  assert.match(skill, /first broken boundary/);
 });
