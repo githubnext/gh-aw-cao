@@ -291,6 +291,12 @@ describe('DLS-CONF-004 scaffold gates', () => {
     expect(styles).toContain('.filter-bar-expanded :is(.horizon-summary:hover, .horizon-summary:focus-within) .horizon-tooltip { visibility: hidden; opacity: 0; }');
   });
 
+  it('spaces the filter count badge from the eye icon and control boundary', () => {
+    const styles = readFileSync(resolve('src/styles.js'), 'utf8');
+
+    expect(styles).toContain('.filter-control > .count-badge { margin: 0 9px 0 3px; }');
+  });
+
   it('systematically ellipsizes output evidence at every viewport size', () => {
     const styles = readFileSync(resolve('src/styles.js'), 'utf8');
 
