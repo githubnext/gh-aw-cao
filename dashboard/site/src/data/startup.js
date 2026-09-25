@@ -227,7 +227,11 @@ export async function startDashboardData(options) {
     const subscriptionId = `sources:${subscriptionSourceNames.toSorted().join(",")}`;
     return new Promise((resolve, reject) => {
       let receivedInitialSnapshot = false;
-      const abort = () => reject(new DOMException("Dashboard source load was cancelled.", "AbortError"));
+      const cleanup = () => pageOptions.signal.removeEventListener("abort", abort);
+      const abort = () => {
+        cleanup();
+        reject(new DOMException("Dashboard source load was cancelled.", "AbortError"));
+      };
       pageOptions.signal.addEventListener("abort", abort, { once: true });
       subscribeCanonicalDashboardView(
         subscriptionId,
@@ -236,7 +240,7 @@ export async function startDashboardData(options) {
         (sources) => {
           if (!receivedInitialSnapshot) {
             receivedInitialSnapshot = true;
-            pageOptions.signal.removeEventListener("abort", abort);
+            cleanup();
             resolve(sources);
             return;
           }
@@ -247,8 +251,8 @@ export async function startDashboardData(options) {
           signal: pageOptions.signal,
           queryContext: pageOptions.queryContext,
           onError: (error) => {
+            cleanup();
             if (!receivedInitialSnapshot) {
-              pageOptions.signal.removeEventListener("abort", abort);
               reject(error);
             } else {
               console.error(`Unable to update dashboard sources: ${error.message}`);

@@ -154,7 +154,6 @@ export function syncDashboardNavigationIndicators(root, pages, sources) {
     const label = active ? `${title}, ${indicator.label}` : title;
     for (const link of root.querySelectorAll(`[data-nav-page-id="${cssEscape(String(page.id))}"], [data-mobile-nav-page-id="${cssEscape(String(page.id))}"]`)) {
       if (!(link instanceof HTMLAnchorElement)) continue;
-      link.classList.toggle('nav-item-indicated', active);
       link.setAttribute('aria-label', label);
       link.title = label;
       const dot = link.querySelector('[data-nav-indicator]');

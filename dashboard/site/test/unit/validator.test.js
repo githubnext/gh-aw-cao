@@ -52,7 +52,6 @@ describe('dashboard document validation', () => {
       })])
     });
 
-
     const invalidQuery = JSON.parse(authoritativeDashboardSource);
     invalidQuery.dashboard['card-templates']
       .find((/** @type {{ id?: string }} */ template) => template.id === 'firewall-domain').drill.query = 'missing-query';

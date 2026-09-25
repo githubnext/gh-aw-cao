@@ -1,4 +1,12 @@
-/** @param {Record<string, unknown>} page */
+/**
+ * Resolves the declarative navigation indicator for one page.
+ * The returned tests are source predicates; a presenter should subscribe to
+ * those bounded sources and a navigation component should show the indicator
+ * when any test's row field equals its declared scalar value.
+ *
+ * @param {Record<string, unknown>} page
+ * @returns {{ label: string, tests: Array<Record<string, unknown>> } | null}
+ */
 export function navigationIndicator(page) {
   if (!isPlainObject(page['navigation-indicator'])) return null;
   const indicator = /** @type {Record<string, unknown>} */ (page['navigation-indicator']);
@@ -13,12 +21,19 @@ export function navigationIndicator(page) {
   };
 }
 
-/** @param {Array<Record<string, unknown>>} pages */
+/**
+ * Returns the unique bounded sources needed to evaluate page navigation
+ * indicators.
+ * @param {Array<Record<string, unknown>>} pages
+ */
 export function navigationIndicatorSourceNames(pages) {
   return [...new Set(pages.flatMap(navigationIndicatorSourceNamesForPage))];
 }
 
-/** @param {Record<string, unknown>} page */
+/**
+ * Returns the bounded sources referenced by one page's navigation indicator.
+ * @param {Record<string, unknown>} page
+ */
 export function navigationIndicatorSourceNamesForPage(page) {
   const indicator = navigationIndicator(page);
   if (!indicator) return [];

@@ -118,6 +118,15 @@ describe('dashboard sidebar', () => {
 
     expect(maintenanceLink?.querySelector('[data-nav-indicator]')?.hasAttribute('hidden')).toBe(true);
     expect(maintenanceLink?.getAttribute('aria-label')).toBe('Maintenance');
+
+    syncDashboardNavigationIndicators(sidebar, pages, {
+      'maintenance-repositories': {
+        rows: [{ 'upgrade-state': 'update-available' }]
+      }
+    });
+
+    expect(maintenanceLink?.querySelector('[data-nav-indicator]')?.hasAttribute('hidden')).toBe(false);
+    expect(maintenanceLink?.getAttribute('aria-label')).toBe('Maintenance, updates available');
   });
 
   it('places the hosted user control at the bottom of the sidebar', () => {
