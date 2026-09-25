@@ -19,7 +19,7 @@ test("install.sh installs gh-aw, adds the core campaign, and is idempotent", asy
 set -euo pipefail
 if [[ "\${1:-} \${2:-}" == "aw version" ]]; then
   [[ -f "$FAKE_GH_AW_INSTALLED" ]] || exit 1
-  echo "gh aw version $(cat "$FAKE_GH_AW_INSTALLED")"
+  echo "gh aw version $(cat "$FAKE_GH_AW_INSTALLED")" >&2
   exit 0
 fi
 if [[ "\${1:-} \${2:-} \${3:-}" == "aw upgrade --pre-releases" ]]; then
@@ -94,6 +94,11 @@ printf '%s\\n' '#!/usr/bin/env bash' 'printf "v0.89.20\\n" > "$FAKE_GH_AW_INSTAL
     await executeFile("bash", [installScript], { cwd: root, env });
     assert.equal(await readFile(log, "utf8"), "add\ninit\nadd-force\n");
 
+    await writeFile(ghAwInstalled, "v0.89.21-rc.1\n");
+    await executeFile("bash", [installScript], { cwd: root, env });
+    assert.equal(await readFile(ghAwInstalled, "utf8"), "v0.89.21-rc.1\n");
+    assert.equal(await readFile(log, "utf8"), "add\ninit\nadd-force\n");
+
     if (process.platform !== "win32") {
       await writeFile(ghAwInstalled, "v0.88.0\n");
       const declined = await executeFile("bash", [installScript, "githubnext/gh-aw-cao@v1.2.3"], { cwd: root, env });
@@ -120,7 +125,7 @@ test("install.sh offers a manifest-required upgrade, retries on approval, and st
   await writeFile(path.join(bin, "gh"), `#!/usr/bin/env bash
 set -euo pipefail
 if [[ "\${1:-} \${2:-}" == "aw version" ]]; then
-  echo "gh aw version $(cat "$FAKE_GH_AW_INSTALLED")"
+  echo "gh aw version $(cat "$FAKE_GH_AW_INSTALLED")" >&2
 elif [[ "\${1:-} \${2:-} \${3:-}" == "aw upgrade --pre-releases" ]]; then
   echo "upgrade --pre-releases" >> "$FAKE_COMMAND_LOG"
   echo v0.89.21 > "$FAKE_GH_AW_INSTALLED"

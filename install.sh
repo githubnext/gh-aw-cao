@@ -42,7 +42,7 @@ upgrade_gh_aw() {
   return 1
 }
 
-current_gh_aw="$(gh aw version 2>/dev/null | awk '{print $NF}' || true)"
+current_gh_aw="$(gh aw version 2>&1 | awk '{print $NF}' || true)"
 if [[ -z "$current_gh_aw" ]]; then
   curl --fail --silent --show-error --location \
     https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh |
