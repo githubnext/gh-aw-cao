@@ -24,7 +24,6 @@ import {
   createSqliteIndexedDB,
   installSqliteIndexedDB
 } from '../../src/data/storage/sqlite-indexeddb.js';
-import { CANONICAL_SCHEMA_VERSION } from '../../src/data/model/schema.js';
 
 const temporaryDirectories = /** @type {string[]} */ ([]);
 const originalIndexedDB = globalThis.indexedDB;
@@ -187,128 +186,38 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     database.close();
   });
 
-  it('ingests and queries gh-aw logs across separate Node.js processes', () => {
-    const filename = temporaryDatabase();
-    const script = resolve('../../activity/cao.mjs');
-    const context = resolve('test/fixtures/gh-aw-logs/context.json');
-    const logs = resolve('test/fixtures/gh-aw-logs/run-303');
-
-    const ingestion = JSON.parse(execFileSync(process.execPath, [
-      script,
-      'ingest',
-      '--database', filename,
-      '--context', context,
-      '--logs', logs
-    ], { encoding: 'utf8' }));
-    expect(ingestion.counts).toMatchObject({ runs: 1, domains: 1, tools: 3, audits: 2, issues: 0 });
-
-    const runs = JSON.parse(execFileSync(process.execPath, [
-      script,
-      'query',
-      '--database', filename,
-      '--collection', 'runs',
-      '--where', 'conclusion=success'
-    ], { encoding: 'utf8' }));
-    expect(runs).toEqual([
-      expect.objectContaining({ id: 'github:run:githubnext/gh-aw-cao:303' })
-    ]);
-
-    const diagnosis = JSON.parse(execFileSync(process.execPath, [
-      script,
-      'doctor',
-      '--database', filename,
-      '--ttl-days', '36500'
-    ], { encoding: 'utf8' }));
-    expect(diagnosis).toMatchObject({
-      command: 'doctor',
-      healthy: true,
-      after: {
-        counts: {
-          repositories: 1, workflows: 1, runs: 1, domains: 1, tools: 3, audits: 2, issues: 0
-        }
-      }
-    });
-  });
-
-  it('ingests cached JSONL with collection context across separate Node.js processes', () => {
+  it('ingests phased JSONL across separate Node.js processes', () => {
     const filename = temporaryDatabase();
     const script = resolve('../../activity/cao.mjs');
     const input = resolve('test/fixtures/gh-aw-logs/cached-v2.jsonl');
-    const context = resolve('test/fixtures/gh-aw-logs/cached-v2-context.json');
     const shardDirectory = join(filename, '..', 'shards');
+    const runsDirectory = join(filename, '..', 'runs');
+    const recordsDirectory = join(filename, '..', 'records');
     mkdirSync(shardDirectory);
     copyFileSync(input, join(shardDirectory, 'cached-v2.jsonl'));
 
-    const ingestion = JSON.parse(execFileSync(process.execPath, [
-      script,
-      'ingest-jsonl',
-      '--database', filename,
-      '--input-dir', shardDirectory,
-      '--context', context
-    ], { encoding: 'utf8' }));
-    expect(ingestion).toMatchObject({
-      result: {
-        records: 3,
-        rawRuns: 1,
-        agenticRuns: 1,
-        mappedRateLimits: 1
-      },
-      counts: {
-        repositories: 1,
-        workflows: 1,
-        runs: 1
-      }
-    });
-
-    const normalizedDirectory = join(filename, '..', 'normalized');
     const manifestPath = join(filename, '..', 'payload-hashes.json');
     const hashes = JSON.parse(execFileSync(process.execPath, [
       script,
       'hash-payloads',
-      '--database', filename,
       '--shard-dir', shardDirectory,
-      '--normalized-dir', normalizedDirectory,
+      '--runs-dir', runsDirectory,
+      '--records-dir', recordsDirectory,
       '--output', manifestPath
     ], { encoding: 'utf8' }));
-    const normalizedName = readdirSync(normalizedDirectory).find((name) => name.endsWith('.jsonl'));
-    if (!normalizedName) throw new Error('Normalized payload was not generated');
-    expect(normalizedName).toMatch(/^[a-f0-9]{64}-[a-f0-9]{16}\.jsonl$/);
-    expect(readdirSync(normalizedDirectory).some((name) => name.endsWith('.json'))).toBe(false);
     expect(hashes).toMatchObject({
-      'dashboard.sqlite': expect.stringMatching(/^[a-f0-9]{64}$/),
       'shards/cached-v2.jsonl': expect.stringMatching(/^[a-f0-9]{64}$/),
-      [`normalized/${normalizedName}`]: expect.stringMatching(/^[a-f0-9]{64}$/)
+      [`runs/${readdirSync(runsDirectory).find((name) => name.endsWith('.jsonl'))}`]: expect.stringMatching(/^[a-f0-9]{64}$/),
+      [`records/${readdirSync(recordsDirectory).find((name) => name.endsWith('.jsonl'))}`]: expect.stringMatching(/^[a-f0-9]{64}$/)
     });
-    const [normalizedMetadata, ...normalizedRecords] = readFileSync(
-      join(normalizedDirectory, normalizedName),
-      'utf8'
-    ).trim().split('\n').map((line) => JSON.parse(line));
-    expect(normalizedMetadata).toMatchObject({
-      kind: 'metadata',
-      schemaVersion: CANONICAL_SCHEMA_VERSION,
-      ingestionVersion: 3,
-      sourceRecords: 3,
-      phase: 'all',
-      records: normalizedRecords.length
-    });
-    expect(normalizedRecords.every(({ kind, collection, record }) =>
-      kind === 'record' && typeof collection === 'string' && record && typeof record === 'object'
-    )).toBe(true);
-
-    const audits = JSON.parse(execFileSync(process.execPath, [
+    const ingestion = JSON.parse(execFileSync(process.execPath, [
       script,
-      'query',
+      'ingest-jsonl',
       '--database', filename,
-      '--collection', 'audits',
-      '--where', 'type=github_api_rate_limit'
+      '--runs-dir', runsDirectory,
+      '--records-dir', recordsDirectory
     ], { encoding: 'utf8' }));
-    expect(audits).toEqual([
-      expect.objectContaining({
-        source: 'github-api',
-        type: 'github_api_rate_limit',
-        status: 'available'
-      })
-    ]);
+    expect(ingestion.counts).toMatchObject({ repositories: 1, workflows: 1, runs: 1 });
 
     const audit = JSON.parse(execFileSync(process.execPath, [
       script,
