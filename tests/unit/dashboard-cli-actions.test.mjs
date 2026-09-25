@@ -58,10 +58,7 @@ test("CLI actions accept only stdin-backed agent task creation", () => {
     parseDashboardCommand("gh agent-task create --from-file -"),
     ["gh", "agent-task", "create", "--from-file", "-"],
   );
-  assert.deepEqual(
-    parseDashboardCommand("gh agent-task create -F -"),
-    ["gh", "agent-task", "create", "-F", "-"],
-  );
+  assert.throws(() => parseDashboardCommand("gh agent-task create -F -"));
   assert.throws(() => parseDashboardCommand("gh agent-task create fix-this"));
   assert.throws(() => parseDashboardCommand("gh agent-task create --from-file /tmp/prompt"));
 });
@@ -224,28 +221,6 @@ test("CLI actions stream command output when an output handler is provided", asy
         email: "1+octocat@users.noreply.github.com",
       });
 
-      test("agent-task actions pass the reviewed prompt through standard input", async () => {
-        const prompt = "Investigate this failure.\n\nUntrusted context: {}";
-        let streamed;
-        await executeDashboardCommand({
-          command: "gh agent-task create --from-file -",
-          input: prompt,
-          workingDirectory: "/workspace",
-          githubToken: "token-value",
-          execute: async () => {
-            throw new Error("buffered execution should not run");
-          },
-          onOutput: () => {},
-          streamCommand: async (options) => {
-            streamed = options;
-            return { ok: true, exitCode: 0, stdout: "", stderr: "" };
-          },
-        });
-
-        assert.equal(streamed.input, prompt);
-        assert.deepEqual(streamed.args, ["agent-task", "create", "--from-file", "-"]);
-      });
-
       onOutput({ stream: "stdout", data: "updating\n" });
       onOutput({ stream: "stderr", data: "warning\n" });
       return { ok: true, exitCode: 0, stdout: "", stderr: "" };
@@ -257,6 +232,28 @@ test("CLI actions stream command output when an output handler is provided", asy
     { stream: "stdout", data: "updating\n" },
     { stream: "stderr", data: "warning\n" },
   ]);
+});
+
+test("agent-task actions pass the reviewed prompt through standard input", async () => {
+  const prompt = "Investigate this failure.\n\nUntrusted context: {}";
+  let streamed;
+  await executeDashboardCommand({
+    command: "gh agent-task create --from-file -",
+    input: prompt,
+    workingDirectory: "/workspace",
+    githubToken: "token-value",
+    execute: async () => {
+      throw new Error("buffered execution should not run");
+    },
+    onOutput: () => {},
+    streamCommand: async (options) => {
+      streamed = options;
+      return { ok: true, exitCode: 0, stdout: "", stderr: "" };
+    },
+  });
+
+  assert.equal(streamed.input, prompt);
+  assert.deepEqual(streamed.args, ["agent-task", "create", "--from-file", "-"]);
 });
 
 test("dashboard actions dispatch workflows without installing gh-aw", async () => {

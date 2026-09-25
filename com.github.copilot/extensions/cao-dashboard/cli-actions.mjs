@@ -62,7 +62,7 @@ const allowedCommandPrefixes = [
     minimumArguments: 2,
     validateArguments: (args) =>
       args.length === 2
-      && (args[0] === "--from-file" || args[0] === "-F")
+      && args[0] === "--from-file"
       && args[1] === "-",
     usage: "gh agent-task create --from-file -",
   },
@@ -384,7 +384,12 @@ export function runDashboardCommandStreaming({
       windowsHide: true,
       stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
     });
-    if (input !== undefined) child.stdin.end(input);
+    if (input !== undefined) {
+      child.stdin.on("error", () => {
+        // The child can close stdin before consuming the prompt.
+      });
+      child.stdin.end(input);
+    }
     let settled = false;
     let timedOut = false;
     const timer = setTimeout(() => {

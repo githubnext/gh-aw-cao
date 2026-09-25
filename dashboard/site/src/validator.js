@@ -1000,13 +1000,20 @@ function validateDashboard(dashboard, dashboardNode, errors) {
           && commandTokens[0] === 'gh'
           && commandTokens[1] === 'agent-task'
           && commandTokens[2] === 'create'
-          && ['--from-file', '-F'].includes(commandTokens[3])
+          && commandTokens[3] === '--from-file'
           && commandTokens[4] === '-';
         if (!isCaoCommand && !isGhAwCommand && !isWorkflowDispatchCommand && !isAgentTaskCreateCommand) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
             'CLI action command must start with "./cao.sh", "gh aw", "gh workflow run", or be "gh agent-task create --from-file -".',
             `${path}.command`
+          ));
+        }
+        if (isAgentTaskCreateCommand && action.placement !== 'row') {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'Agent-task CLI actions must use row placement.',
+            `${path}.placement`
           ));
         }
         if (
@@ -3405,6 +3412,8 @@ function validateTableActions(encoding, encodingNode, mark, sourceName, path, er
         errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'cli-action must reference a declared dashboard CLI action.', `${actionPath}.action`));
       } else if (declaredAction?.placement !== 'row') {
         errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'cli-action must reference a row-placed dashboard CLI action.', `${actionPath}.action`));
+      } else if (declaredAction.command === 'gh agent-task create --from-file -') {
+        errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'agent-task actions must use copy-prompt presentation.', `${actionPath}.action`));
       }
       if (action.intent !== undefined) {
         errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'cli-action table actions must not declare intent.', `${actionPath}.intent`));
