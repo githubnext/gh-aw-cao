@@ -47,31 +47,31 @@ const DETAIL_GROUPS = [
   {
     title: 'Failure',
     fields: [
-      ['Status detail', 'status-detail'],
-      ['Failure message', 'failure-message'],
-      ['Error signature', 'error-signature'],
-      ['Job', 'failure-job'],
-      ['Step', 'failure-step']
+      { label: 'Status detail', field: 'status-detail' },
+      { label: 'Failure message', field: 'failure-message' },
+      { label: 'Error signature', field: 'error-signature' },
+      { label: 'Job', field: 'failure-job' },
+      { label: 'Step', field: 'failure-step' }
     ]
   },
   {
     title: 'Scope',
     fields: [
-      ['Campaign', 'campaign-name', 'campaign'],
-      ['Workflow', 'workflow-name', 'workflow', 'workflow-link'],
-      ['Workflow role', 'workflow-role'],
-      ['Runtime repository', 'runtime-repository', undefined, 'repository-link'],
-      ['Target repository', 'target-repository', undefined, 'target-repository-link']
+      { label: 'Campaign', field: 'campaign-name', fallback: 'campaign' },
+      { label: 'Workflow', field: 'workflow-name', fallback: 'workflow', linkField: 'workflow-link' },
+      { label: 'Workflow role', field: 'workflow-role' },
+      { label: 'Runtime repository', field: 'runtime-repository', linkField: 'repository-link' },
+      { label: 'Target repository', field: 'target-repository', linkField: 'target-repository-link' }
     ]
   },
   {
     title: 'Runtime environment',
     fields: [
-      ['gh-aw version', 'gh-aw-version'],
-      ['Engine', 'engine'],
-      ['Engine version', 'engine-version'],
-      ['Requested model', 'requested-model'],
-      ['Resolved model', 'resolved-model']
+      { label: 'gh-aw version', field: 'gh-aw-version' },
+      { label: 'Engine', field: 'engine' },
+      { label: 'Engine version', field: 'engine-version' },
+      { label: 'Requested model', field: 'requested-model' },
+      { label: 'Resolved model', field: 'resolved-model' }
     ]
   }
 ];
@@ -148,7 +148,7 @@ function renderHighlight(label, value) {
 }
 
 /**
- * @param {{ title: string, fields: (string | undefined)[][] }} group
+ * @param {{ title: string, fields: { label: string, field: string, fallback?: string, linkField?: string }[] }} group
  * @param {Record<string, unknown>} problem
  */
 function renderDetailGroup(group, problem) {
@@ -159,8 +159,8 @@ function renderDetailGroup(group, problem) {
     h(
       'dl',
       null,
-      ...group.fields.map(([label, field, fallback, linkField]) => {
-        const value = text(problem[field ?? '']) || (fallback ? text(problem[fallback]) : '') || 'Unavailable';
+      ...group.fields.map(({ label, field, fallback, linkField }) => {
+        const value = text(problem[field]) || (fallback ? text(problem[fallback]) : '') || 'Unavailable';
         const link = linkField ? findLink(problem, linkField) : null;
         return h('div', null, h('dt', null, label), h('dd', null, renderExternalLinkOrFallback(link, value, value)));
       })

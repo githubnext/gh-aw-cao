@@ -68,7 +68,7 @@ function problem() {
     },
     'workflow-link': {
       relation: 'workflow',
-      href: 'https://github.com/github/gh-aw/blob/main/.github/workflows/dependabot.md',
+      href: 'https://github.com/github/gh-aw/actions/workflows/.github/workflows/dependabot.lock.yml',
       label: 'Dependabot / Update Planner'
     },
     'target-repository-link': {
@@ -96,7 +96,7 @@ describe('problem detail', () => {
     expect(rendered.querySelector('.problem-view-sections')?.textContent).toContain('Resolved modelmodel-b');
     expect(rendered.querySelector('a[href*="/actions/runs/1"]')?.textContent).toBe('View run');
     expect(rendered.querySelector('a[href="https://github.com/github/gh-aw"]')?.textContent).toBe('github/gh-aw');
-    expect(rendered.querySelector('a[href*="/blob/main/.github/workflows/dependabot.md"]')?.textContent).toBe('Dependabot / Update Planner');
+    expect(rendered.querySelector('a[href*="/actions/workflows/.github/workflows/dependabot.lock.yml"]')?.textContent).toBe('Dependabot / Update Planner');
     expect(rendered.querySelector('a[href="#page-repository-detail?repository=github%2Fgh-aw"]')?.textContent).toBe('github/gh-aw');
     expect(rendered.querySelector('.problem-view-log')?.textContent).toContain('##[error]dependency update failed');
     expect(rendered.getElementsByTagName('button')[0]?.textContent).toBe('Fix It');

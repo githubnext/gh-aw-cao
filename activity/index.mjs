@@ -23,6 +23,7 @@ const EMPTY_RUN_HEALTH = {
 };
 // Keep browser-published failed-step diagnostics bounded per retained run.
 const MAX_FAILURE_LOG_CHARACTERS = 65_536;
+const FAILURE_LOG_TRUNCATION_MARKER = "[… earlier failed-step output truncated …]\n";
 const FAILED_CONCLUSIONS = new Set(["failure", "timed_out", "startup_failure"]);
 const USAGE_FIELDS = {
   runId: ["database_id", "run_id", "id"],
@@ -94,7 +95,12 @@ function runRecord(run, repository) {
 function failureLog(value) {
   if (typeof value !== "string") return {};
   const log = value.replace(/\r\n?/g, "\n").trim();
-  return log ? { failureLog: log.slice(0, MAX_FAILURE_LOG_CHARACTERS) } : {};
+  if (!log) return {};
+  return {
+    failureLog: log.length > MAX_FAILURE_LOG_CHARACTERS
+      ? `${FAILURE_LOG_TRUNCATION_MARKER}${log.slice(-MAX_FAILURE_LOG_CHARACTERS)}`
+      : log,
+  };
 }
 
 function summarizeRuns(records) {

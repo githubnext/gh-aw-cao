@@ -819,7 +819,7 @@ function runRows(deployed, usage) {
         ...(workflow.path ? {
           "workflow-link": link(
             "workflow",
-            `https://github.com/${workflow.repository}/blob/main/${workflow.path.replace(/\.lock\.yml$/, ".md")}`,
+            `https://github.com/${workflow.repository}/actions/workflows/${workflow.path}`,
             workflow.name || workflow.path,
           ),
         } : {}),
