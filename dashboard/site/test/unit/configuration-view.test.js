@@ -358,7 +358,7 @@ describe('Configuration dashboard view', () => {
     if (!rendered) throw new Error('configuration view did not render');
 
     const maintenanceGroup = [...rendered.querySelectorAll('details')]
-      .find((group) => group.querySelector(':scope > summary span')?.textContent === 'Updates');
+      .find((group) => group.querySelector(':scope > summary span')?.textContent === 'Maintenance');
     if (!(maintenanceGroup instanceof HTMLDetailsElement)) throw new Error('maintenance group did not render');
     expect(maintenanceGroup.open).toBe(false);
     expect(rendered.textContent).not.toContain('Targets');
