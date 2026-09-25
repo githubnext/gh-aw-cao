@@ -492,6 +492,16 @@ test("Agent customizations preserve deterministic core campaign boundaries", () 
   assert.doesNotMatch(repositoryInstructions, /operational-value-designer\/SKILL\.md/);
 });
 
+test("campaign creation guidance defines optional package problem clustering", () => {
+  const campaignSkill = readFileSync(join(root, ".github", "skills", "create-cao-campaign", "SKILL.md"), "utf8");
+
+  assert.match(campaignSkill, /<campaign-slug>\/problem-clustering\.mjs/);
+  assert.match(campaignSkill, /Emit a JSONL sequence: zero or more newline-delimited JSON objects/);
+  assert.match(campaignSkill, /an actionable `fixPrompt` that an agent can follow/);
+  assert.match(campaignSkill, /do not add campaign-specific clustering steps to the Activity workflow/);
+  assert.match(campaignSkill, /fault-isolated, timed, cancelable subprocess/);
+});
+
 test("README routes zero-to-CAO requests to the setup skill", () => {
   const readme = readFileSync(join(root, "README.md"), "utf8");
   const setupSkillPath = join(root, ".github", "skills", "setup-cao", "SKILL.md");

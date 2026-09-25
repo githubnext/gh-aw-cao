@@ -135,6 +135,15 @@ Package-level `operational-value.mjs` programs compute repository-scoped metric
 records through `cao operational-value`. Activity appends those timestamped
 records to authoritative JSONL before the canonical Operational Value collection
 is rebuilt in SQLite, IndexedDB, and the local Redis projection.
+Package-level `problem-clustering.mjs` programs read a private Activity SQLite
+snapshot and emit bounded problem records with actionable fix prompts through
+`cao cluster-problems`.
+Activity validates their output and atomically replaces only the contributing
+package's rows in the disposable `cao_problems` SQLite projection; a failed
+package computation retains its prior rows and cannot mutate canonical evidence,
+while removing a package removes its rows on the next clustering run. Package
+computations run as bounded, timed, cancelable subprocesses so one worker fault
+does not block other contributors.
 The browser materializes bounded runtime and failure-scope results by
 generation, computes detailed audit causes only for selected or prioritized
 partitions, and discards every result safely because canonical evidence remains
@@ -147,6 +156,7 @@ reconstructable.
 | `aw.yml` | Root catalog manifest and default CAO installation bundle. |
 | `<operation>/aw.yml` | Campaign boundary and installation manifest for an operation. User-facing operations include `cao-evolution/`, `dependabot/`, `eu-cra-compliance/`, `optimization/`, `repo-assist/`, `self-care/`, `software-development-practices/`, and `uk-ai-advisory/`. |
 | `<operation>/operational-value.mjs` | Optional deterministic repository-scoped operational-value computation installed with its package. |
+| `<operation>/problem-clustering.mjs` | Optional bounded problem computation installed with its package. |
 | `activity/` | Deterministic Activity collection, JSONL ingestion, SQLite projection, and the `cao` CLI. |
 | `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and static browser application. |
 | `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Redis projection, and server-side Dashboard Language query engine. |

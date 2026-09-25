@@ -2278,6 +2278,55 @@ describe('data view renderer', () => {
     expect(links?.[2]?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/self-care.md');
   });
 
+  it('renders URL and link fields as safe external links when no explicit renderer applies', () => {
+    const rendered = renderDataView('table', {
+      pageId: 'raw-evidence',
+      title: 'Raw evidence',
+      view: {
+        mark: 'table',
+        'column-summaries': false,
+        encoding: {
+          columns: [
+            { field: 'entity-url', type: 'nominal', title: 'Entity URL' },
+            { field: 'run-href', type: 'nominal', title: 'Run link', as: 'run-link-value' },
+            { field: 'unsafe-link', type: 'nominal', title: 'Unsafe link' },
+            { field: 'curl-command', type: 'nominal', title: 'cURL command' },
+            { field: 'status-url', type: 'nominal', title: 'Status URL', display: 'status' }
+          ]
+        }
+      },
+      sourceName: 'raw-evidence',
+      rows: [{
+        'entity-url': 'https://github.com/githubnext/gh-aw-cao/issues/13772',
+        'run-link-value': 'https://github.com/githubnext/gh-aw-cao/actions/runs/36048728401',
+        'unsafe-link': 'http://example.test/not-linked',
+        'curl-command': 'https://example.test/from-curl',
+        'status-url': 'success'
+      }],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const links = rendered?.querySelectorAll('tbody a');
+    expect(links).toHaveLength(2);
+    expect(links?.[0]?.textContent).toContain('https://github.com/githubnext/gh-aw-cao/issues/13772');
+    expect(links?.[0]?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/issues/13772');
+    expect(links?.[0]?.getAttribute('target')).toBe('_blank');
+    expect(links?.[0]?.getAttribute('rel')).toBe('noopener noreferrer');
+    expect(links?.[1]?.textContent).toContain('https://github.com/githubnext/gh-aw-cao/actions/runs/36048728401');
+    expect(links?.[1]?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/36048728401');
+    expect(rendered?.querySelector('[data-field="unsafe-link"]')?.textContent).toBe('http://example.test/not-linked');
+    expect(rendered?.querySelector('[data-field="curl-command"] a')).toBeNull();
+    expect(rendered?.querySelector('[data-field="curl-command"]')?.textContent).toBe('https://example.test/from-curl');
+    expect(rendered?.querySelector('[data-field="status-url"] a')).toBeNull();
+    expect(rendered?.querySelector('[data-field="status-url"] .status')?.textContent).toBe('success');
+  });
+
   it.each([
     {
       title: 'Blocked work',

@@ -701,7 +701,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .chart-series-12 { stroke: var(--violet); }
 .line-chart-axis { stroke: var(--border); stroke-width: 1; }
 .line-chart-grid { stroke: var(--border-muted); stroke-width: .5; stroke-dasharray: 2 2; }
-.line-chart-y-axis text { fill: var(--muted); font-size: 2.6px; font-variant-numeric: tabular-nums; }
+.line-chart-y-axis text { fill: var(--muted); font-size: 1.8px; font-variant-numeric: tabular-nums; }
 .histogram-chart-grid { stroke: var(--border-muted); stroke-width: .5; stroke-dasharray: 1.5 2; }
 .line-chart-series { stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; }
 .area-chart-area { stroke-width: 1; fill-opacity: .52; vector-effect: non-scaling-stroke; }
@@ -720,6 +720,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .chart-window-key span::before { border-color: var(--muted); opacity: .55; }
 .chart-point { cursor: crosshair; }
 .pie-chart-segment { animation: pie-chart-entry 420ms ease-out both; animation-delay: calc(var(--chart-entry-index, 0) * 45ms); }
+.area-chart-area { transform-box: fill-box; transform-origin: center bottom; animation: area-chart-entry 520ms ease-out both; animation-delay: calc(var(--chart-entry-index, 0) * 70ms); }
 .line-chart-series { animation: line-chart-entry 600ms ease-out both; animation-delay: calc(var(--chart-entry-index, 0) * 70ms); }
 .line-chart-series.line-chart-context { animation-name: line-chart-context-entry; }
 .line-chart-point, .dot-chart-point, .scatter-chart-point { transform-box: fill-box; transform-origin: center; animation: line-chart-point-entry 280ms ease-out both; animation-delay: calc(180ms + var(--chart-entry-index, 0) * 35ms); }
@@ -827,6 +828,9 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .chart-legend i.chart-series-semantic-neutral { border-color: var(--muted); color: var(--muted); }
 @keyframes pie-chart-entry {
   from { opacity: 0; }
+}
+@keyframes area-chart-entry {
+  from { opacity: 0; transform: translateY(3px); }
 }
 @keyframes line-chart-entry {
   from { opacity: 0; }

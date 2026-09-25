@@ -34,6 +34,7 @@ Add `copilot-requests: write` directly to every Copilot-backed orchestrator and 
 6. Compile and validate all new source workflows and verify every registered operational grader with the upstream skill's verifier. Repair failures before finishing.
 7. Before finalizing the campaign, compare the intended campaign state with the current `.github/workflows/cao.json` and the dashboard's live control-plane view. Confirm what is actually running, in which mode, and on which repositories. If the configuration drifts from reality, raise the mismatch to the user on the dashboard before proceeding.
 8. When an adopted worker already has an operational grader, preserve it under `.github/workflows/graders/` and keep its workflow-relative `graders.operational-value` registration. Update its evaluator only when the workflow's intent or acceptance criteria change, and update the workflow and evaluator together using the upstream operational-value designer.
+9. Decide whether the campaign needs to contribute domain-specific operational problems to the shared Activity database. Most campaigns do not. When it does, add `<campaign-slug>/problem-clustering.mjs` and follow the Package Problem Clustering contract below; do not add campaign-specific clustering steps to the Activity workflow.
 
 ## Deterministic Add-on Exception
 
@@ -63,6 +64,34 @@ Keep these fields in `aw.yml` alongside `name`, `description`, and `min-version`
 CAO controls whether and where the campaign may run; gh-aw controls how its workflows execute. CAO policy may deny or narrow a run, but it must not define or expand engines, models, per-run turns or AI Credit limits, tools, network access, permissions, generated jobs, authentication, or safe-output primitives. Keep those execution mechanics in each gh-aw source workflow, and never treat a declared gh-aw capability as rollout or target authority.
 
 The orchestrator is the rollout decision point and each worker is an independent enforcement point. Campaign mode is the default for unmatched repositories; an exact entry under the campaign's `targets` map may assign a different mode within global scope. Workers inherit the resolved mode unless an explicit `max-mode` narrows it. Keep credentials out of dispatch inputs, require each worker to re-resolve its exact target policy before model execution, and preserve the least-permissive intersection of the parent envelope, current CAO policy, any explicit worker mode ceiling, credential reach, compiled gh-aw capabilities, and live target authority.
+
+### Package Problem Clustering
+
+Add `<campaign-slug>/problem-clustering.mjs` only when the campaign has a
+deterministic, bounded problem definition that cannot be represented by the
+built-in runtime computations. The script is package data computation, not an
+orchestrator or worker, and does not replace the required campaign workflow
+family.
+
+The script receives one JSON request on standard input with `schemaVersion`,
+`timestamp`, and the path of an isolated Activity SQLite snapshot in `database`.
+The same snapshot path is available as `CAO_DATABASE`. Read it without acquiring
+new evidence or mutating authoritative inputs.
+
+Emit a JSONL sequence: zero or more newline-delimited JSON objects, one problem
+per line. Every problem requires stable lowercase `id`, non-empty `title`, and
+an actionable `fixPrompt` that an agent can follow to resolve the problem.
+It may include `observedAt`, `severity`, `summary`, `campaign`,
+`repository`, `workflow`, `targetRepository`, and object-valued `evidence`.
+`severity` defaults to `medium` and accepts `critical`, `high`, `medium`, `low`,
+or `info`. Use stable IDs for the same unresolved problem across runs. Do not
+emit a JSON array, wrapper object, prose, Markdown, or logs on standard output;
+diagnostics belong on standard error.
+
+Keep the script dependency-free, deterministic, and bounded. Activity runs each
+contributor in a fault-isolated, timed, cancelable subprocess, validates the
+JSONL sequence, and atomically replaces only that package's problem rows after
+successful completion. A script failure or timeout retains its prior rows.
 
 ### Markdown Steering
 
@@ -211,5 +240,6 @@ Before finishing:
 15. Confirm every worker that creates an issue, pull request, comment, or review applies the complete report contract to its output body: the visible report is delightful, precise, terse, and compact enough for a single screen; it starts directly with a concise executive-summary paragraph and no heading before it; one clear `**Action:**` follows it; critical information stays visible; non-essential background and supporting detail use `<details><summary><b>...</b></summary>...</details>` sections; every table is inside `<details>`; headings use only `###`; and callouts use `> [!NOTE]`, `> [!WARNING]`, or `> [!CAUTION]` instead of emoji severity markers.
 16. For workflows that consume recent run history, confirm they prefer a valid activity cache, preserve a bounded API fallback for cache misses or incomplete coverage, and do not publish or mutate the shared cache themselves.
 17. Confirm orchestrator concurrency is campaign-singleton, dispatch tuples are unique per run, worker concurrency is repository-scoped, and output-specific idempotency prevents retries or later runs from creating equivalent repository items. Confirm expiration is used only for cleanup and grouping is not treated as duplicate prevention.
+18. When the campaign contributes `problem-clustering.mjs`, run it against a representative Activity SQLite fixture and verify zero-, one-, and multiple-record JSONL sequences, stable IDs, required actionable fix prompts, bounded evidence, deterministic ordering, an empty result, malformed output, failure, and timeout behavior. Confirm the campaign manifest installs the script at `<campaign-slug>/problem-clustering.mjs`.
 
 Report the created campaign, worker responsibilities, shared imports, checked-in policy fields, per-worker operational-grader metric or not-measurable conclusion, and validation results.

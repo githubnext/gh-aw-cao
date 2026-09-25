@@ -105,8 +105,15 @@ import {
 const DEFAULT_GITHUB_URL_BASE = 'https://github.com';
 const TABLE_ROW_LIMIT = Symbol('table-row-limit');
 const NAVIGATION_INDEX_STATE_KEY = 'centralAgenticOpsNavigationIndex';
+const SCROLL_TOP_STATE_KEY = 'centralAgenticOpsScrollTop';
+const SCROLL_PAGE_ID_STATE_KEY = 'centralAgenticOpsScrollPageId';
 /** @type {WeakMap<HTMLElement, () => void>} */
 const dashboardDisposals = new WeakMap();
+
+/** @param {unknown} value */
+function normalizeScrollTop(value) {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
+}
 /**
  * @param {PresentableBuiltInPage | PresentableCustomPage} page
  * @param {Array<Record<string, unknown>>} [reusableViews]
@@ -1041,10 +1048,18 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   let activationRevision = 0;
   let pageOwner = new AbortController();
   const navigationOwner = new AbortController();
+  /** @type {number | undefined} */
+  let pendingScrollTop;
+  /** @type {string | undefined} */
+  let pendingScrollPageId;
+  /** @type {number | null} */
+  let scrollPersistenceFrame = null;
+  let cancelPendingScrollPersistence = () => {};
   const disposeNavigation = () => {
     activationRevision += 1;
     navigationOwner.abort();
     pageOwner.abort();
+    cancelPendingScrollPersistence();
   };
   /** @type {Map<string, NonNullable<PageSourceLoadOptions['queryContext']>>} */
   const pageQueryContext = new Map();
@@ -1059,6 +1074,44 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   const pageDescription = root.querySelector('.overview-header [data-page-description]');
   const pageMode = root.querySelector('[data-page-mode]');
   const pageScroller = root.querySelector('main.dashboard-prototype');
+  const scrollTop = () => pageScroller instanceof HTMLElement
+    ? pageScroller.scrollTop
+    : root.ownerDocument.scrollingElement?.scrollTop ?? root.ownerDocument.documentElement.scrollTop;
+  /** @param {string} pageId */
+  const savedScrollTop = (pageId) => {
+    const state = root.ownerDocument.defaultView?.history.state;
+    return state?.[SCROLL_PAGE_ID_STATE_KEY] === pageId
+      ? normalizeScrollTop(state[SCROLL_TOP_STATE_KEY])
+      : undefined;
+  };
+  cancelPendingScrollPersistence = () => {
+    const view = root.ownerDocument.defaultView;
+    if (scrollPersistenceFrame !== null) view?.cancelAnimationFrame?.(scrollPersistenceFrame);
+    scrollPersistenceFrame = null;
+  };
+  const commitScrollTop = () => {
+    cancelPendingScrollPersistence();
+    const view = root.ownerDocument.defaultView;
+    if (!view) return;
+    const state = view.history.state && typeof view.history.state === 'object' ? view.history.state : {};
+    view.history.replaceState({
+      ...state,
+      [SCROLL_PAGE_ID_STATE_KEY]: activePageId,
+      [SCROLL_TOP_STATE_KEY]: scrollTop()
+    }, '', view.location.href);
+  };
+  const persistScrollTop = () => {
+    const view = root.ownerDocument.defaultView;
+    if (!view || scrollPersistenceFrame !== null) return;
+    if (typeof view.requestAnimationFrame !== 'function') return commitScrollTop();
+    scrollPersistenceFrame = view.requestAnimationFrame(() => {
+      scrollPersistenceFrame = null;
+      if (!navigationOwner.signal.aborted) commitScrollTop();
+    });
+  };
+  if (pageScroller instanceof HTMLElement) {
+    pageScroller.addEventListener('scroll', persistScrollTop, { passive: true, signal: navigationOwner.signal });
+  }
   /** @param {HTMLElement | undefined} page */
   const syncFullViewMode = (page) => {
     syncFullViewModeForPage(root, page);
@@ -1193,6 +1246,11 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   ) => {
      if (navigationOwner.signal.aborted) return;
      const revision = ++activationRevision;
+    const requestedScrollTop = pendingScrollPageId === pageId
+      ? pendingScrollTop
+      : savedScrollTop(pageId);
+    pendingScrollTop = undefined;
+    pendingScrollPageId = undefined;
     pageOwner.abort();
     pageOwner = new AbortController();
     let pagePopulated = false;
@@ -1204,12 +1262,13 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       const section = sectionId ? root.ownerDocument.getElementById(sectionId) : null;
       if (section && page?.contains(section)) {
         section.scrollIntoView?.();
-      } else if (pageState.has(pageId)) {
-        const scrollTop = pageState.get(pageId)?.scrollTop ?? 0;
+      } else {
+        const savedTop = requestedScrollTop ?? pageState.get(pageId)?.scrollTop ?? savedScrollTop(pageId);
+        if (savedTop === undefined) return;
         const scrollingElement = pageScroller instanceof HTMLElement
           ? pageScroller
           : root.ownerDocument.scrollingElement ?? root.ownerDocument.documentElement;
-        scrollingElement.scrollTop = scrollTop;
+        scrollingElement.scrollTop = savedTop;
       }
     };
     let populationDeferred = false;
@@ -1221,9 +1280,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
         retainedRouteTabs = cloneRouteTabsForPage(activePage, pageId, parameters);
         pageState.set(activePageId, {
           details: [...activePage.querySelectorAll('details')].map((details) => details.open),
-          scrollTop: pageScroller instanceof HTMLElement
-            ? pageScroller.scrollTop
-            : root.ownerDocument.scrollingElement?.scrollTop ?? root.ownerDocument.documentElement.scrollTop
+          scrollTop: scrollTop()
         });
         disconnectLazyViews(activePage);
         activePage.replaceChildren();
@@ -1264,8 +1321,16 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
           if (routeInitialized) {
             dispatchPageRoute(renderedPage, renderedPage.dataset.routeParameter ?? '', renderedPage.dataset.routeValue);
           }
-          if (deferPopulation) {
+          const shouldRestoreScroll = deferPopulation
+            || requestedScrollTop !== undefined
+            || savedScrollTop(pageId) !== undefined;
+          if (shouldRestoreScroll) {
             restoreScroll(renderedPage);
+            if (requestedScrollTop !== undefined || savedScrollTop(pageId) !== undefined) {
+              root.ownerDocument.defaultView?.requestAnimationFrame(() => {
+                if (revision === activationRevision && activePageId === pageId) restoreScroll(renderedPage);
+              });
+            }
           }
         };
         const rendered = renderPageById?.(pageId, {
@@ -1436,6 +1501,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       defaultView?.history.back();
       return;
     }
+    commitScrollTop();
     navigationIndex += 1;
     defaultView?.history.pushState(
       { [NAVIGATION_INDEX_STATE_KEY]: navigationIndex },
@@ -1455,12 +1521,15 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const link = event.target.closest('[data-nav-page-id], [data-mobile-nav-page-id]');
     if (!(link instanceof HTMLAnchorElement)) return;
     event.preventDefault();
+    // Current route tabs already show the active view; sidebar links remain navigable.
+    if (link.getAttribute('aria-current') === 'page' && link.closest('[data-route-tabs]')) return;
     pendingNavigationDirection = undefined;
     pendingNavigationHash = undefined;
     const pageId = getNavigationPageId(link);
     if (!pageId || !availableIds.has(pageId)) return;
     const provisionalTitle = link.dataset.routeTitle ?? '';
     const provisionalDescription = link.dataset.routeDescription ?? '';
+    commitScrollTop();
     navigationIndex += 1;
     defaultView?.history.pushState({ [NAVIGATION_INDEX_STATE_KEY]: navigationIndex }, '', link.href);
     syncHistoryBack();
@@ -1505,6 +1574,10 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
         ? 'forward'
         : undefined;
     pendingNavigationHash = defaultView?.location.hash;
+    pendingScrollTop = normalizeScrollTop(event.state?.[SCROLL_TOP_STATE_KEY]);
+    pendingScrollPageId = typeof event.state?.[SCROLL_PAGE_ID_STATE_KEY] === 'string'
+      ? event.state[SCROLL_PAGE_ID_STATE_KEY]
+      : undefined;
     navigationIndex = nextNavigationIndex;
     syncHistoryBack();
   };
@@ -1523,11 +1596,18 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     pendingNavigationDirection = undefined;
     pendingNavigationHash = undefined;
     primePageChrome(route?.pageId ?? initialPageId);
+    const historyScrollTop = pendingScrollPageId === route?.pageId ? pendingScrollTop : undefined;
     updateWithViewTransition(root.ownerDocument, () => activate(
       route?.pageId ?? initialPageId,
       route?.parameters,
       true
     ), navigationDirection);
+    if (historyScrollTop !== undefined && !route?.parameters.has('section')) {
+      const scrollingElement = pageScroller instanceof HTMLElement
+        ? pageScroller
+        : root.ownerDocument.scrollingElement ?? root.ownerDocument.documentElement;
+      scrollingElement.scrollTop = historyScrollTop;
+    }
     if (pageTitle instanceof HTMLElement) pageTitle.focus();
   };
   browserNavigation?.addEventListener('currententrychange', syncHistoryBack, { signal: navigationOwner.signal });

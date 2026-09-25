@@ -3190,6 +3190,34 @@ describe('presenter built-in and custom pages', () => {
     }
   });
 
+  it('does not navigate when the current route tab is clicked', () => {
+    const root = document.createElement('div');
+    root.innerHTML = `
+      <main class="dashboard-prototype">
+        <section class="dashboard-page" id="page-first" data-page-id="first">
+          <nav data-route-tabs aria-label="Ambient Context views">
+            <a data-nav-page-id="first" href="#page-first?campaign=ambient-context" aria-current="page">Overview</a>
+          </nav>
+        </section>
+      </main>
+    `;
+    document.body.append(root);
+    const renderPage = vi.fn(() => null);
+    try {
+      const disposeNavigation = enableDashboardPageNavigation(root, 'Dashboard', renderPage, 'first');
+      const currentTab = /** @type {HTMLAnchorElement} */ (root.querySelector('[aria-current="page"]'));
+      const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+      currentTab.dispatchEvent(click);
+
+      expect(click.defaultPrevented).toBe(true);
+      expect(renderPage).not.toHaveBeenCalled();
+      disposeNavigation();
+    } finally {
+      root.remove();
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
   it('animates query drills forward and browser back navigation backward', () => {
     /** @type {Array<string | undefined>} */
     const directions = [];
@@ -3232,6 +3260,68 @@ describe('presenter built-in and custom pages', () => {
       root.remove();
       Reflect.deleteProperty(document, 'startViewTransition');
       delete document.documentElement.dataset.navigationDirection;
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
+  it('persists page scroll positions for reload and browser history restoration', async () => {
+    const createRoot = () => {
+      const root = document.createElement('div');
+      root.innerHTML = `
+        <a data-nav-page-id="first" href="#page-first">First</a>
+        <a data-nav-page-id="second" href="#page-second">Second</a>
+        <main class="dashboard-prototype">
+          <section class="dashboard-page" id="page-first" data-page-id="first"></section>
+          <section class="dashboard-page" id="page-second" data-page-id="second"></section>
+        </main>
+      `;
+      document.body.append(root);
+      return root;
+    };
+    const firstRoot = createRoot();
+    try {
+      const disposeFirstNavigation = enableDashboardPageNavigation(firstRoot, 'Dashboard', () => null, 'first');
+      const firstScroller = /** @type {HTMLElement} */ (firstRoot.querySelector('main.dashboard-prototype'));
+      firstScroller.scrollTop = 240;
+      firstScroller.dispatchEvent(new Event('scroll'));
+      await vi.waitFor(() => {
+        expect(window.history.state?.centralAgenticOpsScrollTop).toBe(240);
+      });
+      disposeFirstNavigation();
+      firstRoot.remove();
+
+      const reloadedRoot = createRoot();
+      const disposeReloadedNavigation = enableDashboardPageNavigation(reloadedRoot, 'Dashboard', () => null, 'first');
+      const reloadedScroller = /** @type {HTMLElement} */ (reloadedRoot.querySelector('main.dashboard-prototype'));
+      expect(reloadedScroller.scrollTop).toBe(240);
+
+      /** @type {HTMLAnchorElement} */ (reloadedRoot.querySelector('[data-nav-page-id="second"]')).click();
+      await vi.waitFor(() => {
+        expect(reloadedRoot.querySelector('[data-page-id="second"]')?.hasAttribute('hidden')).toBe(false);
+      });
+      reloadedScroller.scrollTop = 80;
+      reloadedScroller.dispatchEvent(new Event('scroll'));
+      window.history.replaceState(
+        {
+          centralAgenticOpsNavigationIndex: 0,
+          centralAgenticOpsScrollPageId: 'first',
+          centralAgenticOpsScrollTop: 240
+        },
+        '',
+        '/#page-first'
+      );
+      window.dispatchEvent(new PopStateEvent('popstate', {
+        state: {
+          centralAgenticOpsNavigationIndex: 0,
+          centralAgenticOpsScrollPageId: 'first',
+          centralAgenticOpsScrollTop: 240
+        }
+      }));
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      expect(reloadedScroller.scrollTop).toBe(240);
+      disposeReloadedNavigation();
+      reloadedRoot.remove();
+    } finally {
       window.history.replaceState(null, '', '/');
     }
   });

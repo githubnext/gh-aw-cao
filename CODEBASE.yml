@@ -145,6 +145,9 @@ components:
   package_operational_value:
     path: <operation>/operational-value.mjs
     responsibility: compute timestamped repository-scoped metrics for installed packages through the cao operational-value command
+  package_problem_clustering:
+    path: <operation>/problem-clustering.mjs
+    responsibility: compute bounded package problem rows from a private Activity SQLite snapshot through the cao cluster-problems command
   computation_reference_runtime:
     path: research/computations/
     responsibility: experimentally evaluate proposed versioned measures over selected and ordered partitions without implying dashboard production integration
@@ -195,6 +198,8 @@ dependencies:
   - computations -> cao_cli
   - package_operational_value -> cao_cli
   - package_operational_value -> activity_jsonl_shards
+  - sqlite_projection -> package_problem_clustering
+  - package_problem_clustering -> cao_cli
   - activity_jsonl_shards -> indexeddb_projection
 
 boundaries:
@@ -267,6 +272,7 @@ invariants:
   - "Runtime computations MUST evaluate Campaign orchestrators before enumerating worker-target partitions; a failing, unknown, or unobserved orchestrator gates worker evaluation without converting skipped workers into healthy, failed, or not-observed results."
   - "The cao computation namespace exposes production measures; runtime-health selection, joins, and ordering execute through Dashboard Language queries before versioned measure evaluation."
   - "Failure of a downstream computation MUST NOT invalidate a compatible upstream result."
+  - "Package problem clustering MUST use bounded, timed, cancelable subprocesses over a private Activity snapshot; require each emitted problem to include an actionable fix prompt; atomically replace only the producer's cao_problems rows; retain prior rows when that producer fails; and remove rows for uninstalled producers."
   - "Dashboard UI effects and components MUST NOT query source data or reconstruct business relationships."
   - "ADRs are durable decision history; current requirements and conformance rules live in specs/ or specification-style documentation."
   - "Generated workflow lock files MUST NOT be edited directly."

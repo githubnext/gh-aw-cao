@@ -34,6 +34,7 @@ import {
   REPOSITORY_COORDINATE,
   runOperationalValue
 } from './operational-value.mjs';
+import { runProblemClustering } from './problem-clustering.mjs';
 import { discoverInventory } from './inventory.mjs';
 import { discoverInventoryDashboardSources } from './inventory-sources.mjs';
 import { hasComputation, queryComputation } from './computations/index.mjs';
@@ -91,7 +92,7 @@ const GH_AW_INSTALLER_COMMAND = 'curl --fail --silent --show-error --location ht
 const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json';
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
-const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'issue-status', 'query', 'computation', 'operational-value', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
+const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'issue-status', 'query', 'computation', 'operational-value', 'cluster-problems', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
 
 // Intentional CLI misuse that should print usage without an internal stack trace.
 class UsageError extends Error {}
@@ -114,6 +115,7 @@ const USAGE = `Usage:
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao computation runtime-health [--database FILE] [--inventory FILE] [--campaign SLUG] [--diagnose]
   cao operational-value [--database FILE] [--root DIRECTORY] [--output FILE] [--timestamp TIME] [--repository OWNER/REPO] [--retention-days DAYS|all] [--max-github-api-rate-limit LIMIT]
+  cao cluster-problems [--database FILE] [--root DIRECTORY] [--timestamp TIME]
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
   cao download [--url URL] [--output DIRECTORY]
   cao hash-payloads [--database FILE] [--shard-dir SHARD_DIRECTORY] [--normalized-dir DIRECTORY] [--runs-dir DIRECTORY] [--records-dir DIRECTORY] [--inventory FILE] [--output FILE]
@@ -132,6 +134,7 @@ Query local CAO data as JSON. Download the deployed snapshot before querying:
   cao computation runtime-health --campaign dependabot
   cao computation runtime-health --campaign dependabot --diagnose
   cao operational-value --output .cao/gh-aw-logs-shards/operational-values.jsonl --max-github-api-rate-limit -2000
+  cao cluster-problems
   cao gh runs -R githubnext/gh-aw-cao -w cao-activity --status failure --since 2026-09-01 --until 2026-09-15
   cao gh issues -R githubnext/gh-aw-cao --since 2026-09-01
   cao gh prs -R githubnext/gh-aw-cao -w cao-activity -L 10
@@ -175,6 +178,12 @@ Operational value scripts:
   cao operational-value discovers <package>/operational-value.mjs below --root.
   Each script receives one JSON request on stdin and emits JSONL records with
   timestamp, repository, valueId, and a finite numeric value.
+
+Problem clustering scripts:
+  cao cluster-problems discovers <package>/problem-clustering.mjs below --root.
+  Each script receives one JSON request on stdin and emits bounded JSONL problem
+  records with actionable fixPrompt fields. Successful output replaces that
+  package's rows in cao_problems.
 
 `;
 
@@ -2755,6 +2764,15 @@ export async function runCli(arguments_, input = process.stdin, { signal } = {})
       runTtlDays: runTtlDays(options)
     });
   }
+  if (command === 'cluster-problems') {
+    rejectUnknownOptions(options, ['database', 'root', 'timestamp']);
+    return runProblemClustering({
+      databasePath,
+      root: option(options, 'root', false) || '.',
+      timestamp: option(options, 'timestamp', false) || new Date().toISOString(),
+      signal
+    });
+  }
   const indexedDB = await createDatabase(databasePath);
 
   if (command === 'issue-status') {
@@ -2892,7 +2910,7 @@ async function main() {
   };
   const onSigint = () => terminate('SIGINT');
   const onSigterm = () => terminate('SIGTERM');
-  if (arguments_[0] === 'operational-value') {
+  if (arguments_[0] === 'operational-value' || arguments_[0] === 'cluster-problems') {
     process.once('SIGINT', onSigint);
     process.once('SIGTERM', onSigterm);
   }
