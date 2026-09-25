@@ -152,6 +152,40 @@ test("SelfCare dashboard debug logging worker preserves the logging privacy boun
   assert.match(compiled, /cache-memory/);
 });
 
+test("SelfCare server debug logging worker preserves the logging privacy boundary", () => {
+  const source = workflow("self-care-server-debug-logging.md");
+  const compiled = workflow("self-care-server-debug-logging.lock.yml");
+
+  assert.match(source, /^name: "SelfCare \/ Server Debug Logging"$/m);
+  assert.match(source, /campaign: self-care\n\s+role: worker\n\s+worker: server-debug-logging/);
+  assert.match(source, /safe_output_mode` is `live`/);
+  assert.match(source, /all-you-can-eat feature grower/);
+  assert.match(source, /skip-if-match: 'is:pr is:open "gh-aw-workflow-id: self-care-server-debug-logging" in:body'/);
+  assert.match(source, /cache-memory:\n\s+retention-days: 90/);
+  assert.match(source, /server-debug-logging-rotation\.json/);
+  assert.match(source, /sort their repository-relative paths ascending/);
+  assert.match(source, /Begin immediately after `lastPath`, wrapping to the first path/);
+  assert.match(source, /github\.com\/githubnext\/gh-aw-cao\/server\/internal\/logger/);
+  assert.match(source, /logger\.NewSlogLoggerWithHandler/);
+  assert.match(source, /production `\.go` files under `server\/`/);
+  assert.match(source, /Never log secrets, tokens, credentials, request or response bodies, headers, cookies/);
+  assert.match(source, /OAuth or session material, raw records, repository or user content/);
+  assert.match(source, /full URLs, stack traces, or unconstrained errors or error messages/);
+  assert.match(source, /disabled unless `DEBUG` selects the namespace/);
+  assert.match(source, /Guard any nontrivial metadata preparation with `Enabled\(\)`/);
+  assert.match(source, /Add or extend focused Go tests when instrumentation occurs/);
+  assert.match(source, /allowed-files:\n\s+- "server\/\*\*\/\*\.go"/);
+  assert.match(source, /gofmt/);
+  assert.match(source, /go vet \.\/\.\.\./);
+  assert.match(source, /go test \.\/\.\.\./);
+  assert.match(source, /Start directly with one terse executive-summary paragraph/);
+  assert.match(source, /### Control Plane/);
+  assert.match(source, /Call `noop` exactly once/);
+  assert.match(source, /draft: true/);
+  assert.match(compiled, /self-care-server-debug-logging/);
+  assert.match(compiled, /cache-memory/);
+});
+
 test("SelfCare dashboard reviewer checks deployments through stakeholder personas", () => {
   const source = workflow("self-care-dashboard-review.md");
   const compiled = workflow("self-care-dashboard-review.lock.yml");

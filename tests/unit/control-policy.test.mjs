@@ -357,6 +357,14 @@ test("control policy registers the dashboard debug logging worker", () => {
   );
 });
 
+test("control policy registers the server debug logging worker", () => {
+  const policy = JSON.parse(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"));
+  assert.equal(
+    policy["control-plane"].campaigns["self-care"].workers["server-debug-logging"].workflow,
+    "self-care-server-debug-logging",
+  );
+});
+
 test("control policy disables campaigns by absence and requires declared workers", () => {
   const absentCampaign = effective(minimalPolicy, { campaignName: "optimization" });
   const declaredWorker = effective(minimalPolicy, {

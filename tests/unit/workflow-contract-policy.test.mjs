@@ -254,7 +254,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "eu-cra-compliance.md": { credits: 200, timeout: 15, dispatchMax: 48, workers: 6 },
     "eu-cra-compliance-campaign-maintainer.md": { credits: 200, timeout: 20 },
     "optimization.md": { credits: 250, timeout: 15, dispatchMax: 12, workers: 2 },
-    "self-care.md": { credits: 200, timeout: 15, dispatchMax: 15, workers: 15 },
+    "self-care.md": { credits: 200, timeout: 15, dispatchMax: 16, workers: 16 },
     "cao-evolution-failures-investigator.md": { credits: 500, timeout: 30 },
     "cao-evolution-compiler-security.md": { credits: 500, timeout: 45 },
     "dependabot-update-planner.md": { credits: 600, timeout: 60 },
@@ -284,6 +284,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "self-care-pages-health.md": { credits: 400, timeout: 120 },
     "self-care-primer-brand-checker.md": { credits: 400, timeout: 25 },
     "self-care-reactive-ui-expert.md": { credits: 500, timeout: 45 },
+    "self-care-server-debug-logging.md": { credits: 350, timeout: 40 },
   };
 
   for (const [name, limits] of Object.entries(expected)) {
