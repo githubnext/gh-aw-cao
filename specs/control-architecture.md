@@ -236,7 +236,6 @@ The optional `web.favicon` value MUST be an absolute HTTPS URL without credentia
 | `max-repositories` | Integer from 1 through 1000 | Rollout ceiling |
 | `rollout-percent` | Integer from 1 through 100 | Rollout ceiling |
 
-
 An absent campaign is disabled. A campaign's `workers` map declares its worker identities and exact workflow slugs; undeclared workers are disabled. Every worker requires `workflow`, defaults to enabled, may set `enabled: false`, and may set `max-mode` only to narrow the resolved campaign or exact-target mode. Campaign, worker, and workflow identifiers use lowercase kebab-case, and workflow identities must be unique within a campaign.
 
 ### 5.4 Precedence and Narrowing

@@ -94,8 +94,6 @@ For example, this policy keeps Dependabot in review across its scope while promo
 
 Shared control applies schema defaults, then `control-plane.defaults`, campaign values, the exact target mode, and any explicit worker ceiling, in that order. A dispatch request may narrow the result. Workers independently resolve their exact target from the policy revision at `github.workflow_sha`; an envelope that requests a wider mode fails before agent execution. Campaign repository and percentage caps still apply across all candidates regardless of target mode.
 
-### Monthly Campaign Budgets
-
 
 ## Live Authority
 

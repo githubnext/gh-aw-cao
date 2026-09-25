@@ -269,7 +269,6 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.doesNotMatch(activityNotifyFailureJob, /cancelled/);
   assert.match(dashboardWorkflow, /key: cao-activity-v5-lookup-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
   assert.doesNotMatch(activityWorkflow, /legacy activity cache|cao-activity-v3-/);
-  assert.equal((activityWorkflow.match(/cao-activity-v3-/g) || []).length, 0);
   assert.doesNotMatch(dashboardWorkflow, /(?:key|restore-keys): cao-activity-(?!v5-)/);
   assert.match(dashboardWorkflow, /Restore collected activity data[\s\S]*?Resolve fallback activity run[\s\S]*?Download fallback activity data[\s\S]*?Generate activity data[\s\S]*?Validate restored activity data[\s\S]*?Assemble Dashboard Language site/);
   assert.match(dashboardWorkflow, /Validate restored activity data[\s\S]*?ACTIVITY_DATABASE: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite[\s\S]*?REPORT_GH_AW_LOGS_SHARDS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-shards[\s\S]*?REPORT_PAYLOAD_HASHES: \$\{\{ runner\.temp \}\}\/cao-activity\/payload-hashes\.json[\s\S]*?REPORT_CONTROL_SETTINGS: \$\{\{ runner\.temp \}\}\/cao-activity\/control-settings\.json[\s\S]*?REPORT_INVENTORY_SOURCES: \$\{\{ runner\.temp \}\}\/cao-activity\/inventory-sources\.json[\s\S]*?const activityFiles = \[[\s\S]*?process\.env\.ACTIVITY_DATABASE[\s\S]*?process\.env\.REPORT_PAYLOAD_HASHES[\s\S]*?process\.env\.REPORT_CONTROL_SETTINGS[\s\S]*?process\.env\.REPORT_INVENTORY_SOURCES[\s\S]*?process\.env\.REPORT_GH_AW_LOGS_SHARDS/);
