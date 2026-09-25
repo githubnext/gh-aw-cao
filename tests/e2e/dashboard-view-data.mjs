@@ -7,7 +7,12 @@ import {
   legacyPhaseJsonToJsonl,
 } from "./dashboard-deployed-refresh-helpers.mjs";
 
-export async function downloadDeployedDashboardData(destination, sourceUrl, fetcher = fetch) {
+export async function downloadDeployedDashboardData(
+  destination,
+  sourceUrl,
+  fetcher = fetch,
+  maximumShardCount = Number.POSITIVE_INFINITY,
+) {
   const inventoryUrl = new URL("inventory-sources.json", sourceUrl);
   const [manifestResponse, inventoryResponse] = await Promise.all([
     fetcher(sourceUrl),
@@ -25,7 +30,7 @@ export async function downloadDeployedDashboardData(destination, sourceUrl, fetc
   if (!inventoryResponse.body) throw new Error("Deployed dashboard inventory response has no body.");
   await mkdir(destination, { recursive: true });
   await pipeline(inventoryResponse.body, createWriteStream(join(destination, "inventory-sources.json")));
-  for (const { name, sourceName } of deployedActivityShardEntries(manifest)) {
+  for (const { name, sourceName } of deployedActivityShardEntries(manifest).slice(0, maximumShardCount)) {
     const response = await fetcher(new URL(sourceName, sourceUrl));
     if (!response.ok || !response.body) throw new Error(`Unable to download deployed dashboard shard: ${sourceName}.`);
     await mkdir(dirname(join(destination, name)), { recursive: true });
