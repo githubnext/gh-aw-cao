@@ -328,8 +328,12 @@ process.exit(1);
       closedAt: '2026-09-20T12:00:00Z'
     }]);
     const calls = (await readFile(item.callsPath, 'utf8')).trim().split('\n').map(JSON.parse);
-    assert.ok(calls.some((arguments_) => arguments_.slice(0, 2).join(' ') === 'api graphql'
-      && arguments_.some((argument) => argument.includes('issue(number: 42)'))));
+    const graphqlCalls = calls.filter((arguments_) => arguments_.slice(0, 2).join(' ') === 'api graphql');
+    assert.equal(graphqlCalls.length, 2);
+    const issueQuery = graphqlCalls.find((arguments_) => arguments_.some((argument) => argument.includes('issue(number: 42)')));
+    assert.ok(issueQuery);
+    assert.ok(issueQuery.includes('owner=githubnext'));
+    assert.ok(issueQuery.includes('name=gh-aw-cao'));
   } finally {
     await rm(item.root, { recursive: true, force: true });
   }
