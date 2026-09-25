@@ -45,7 +45,8 @@ test("deployed integration isolates query benchmark reporting from test permissi
 
 test("deployed integration pull request trigger only watches query benchmark inputs", () => {
   const workflow = parse(readFileSync(".github/workflows/dashboard-deployed-integration.yml", "utf8"));
-  const workflowTriggers = workflow.on ?? workflow[true];
+  const workflowTriggers = workflow[true] ?? workflow.on;
+  assert.ok(workflowTriggers, "expected workflow trigger block");
   const paths = workflowTriggers.pull_request.paths;
   for (const path of [
     "dashboard/site/dashboard.json",
