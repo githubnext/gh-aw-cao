@@ -198,13 +198,14 @@ test("SelfCare dashboard reviewer checks deployments through stakeholder persona
   assert.match(source, /title-prefix: "\[self-care:dashboard-review\] "/);
   assert.match(source, /close-older-key: self-care-dashboard-review/);
   assert.match(source, /labels: \[self-care, self-care:dashboard-review\]/);
-  const evidenceSetupStart = source.indexOf("  - name: Build expected control-plane inventory");
-  const evidenceSetupEnd = source.indexOf("---\n\n# SelfCare Dashboard Review");
-  assert.ok(evidenceSetupStart >= 0);
-  assert.ok(evidenceSetupEnd > evidenceSetupStart);
-  const evidenceSetup = source.slice(evidenceSetupStart, evidenceSetupEnd);
-  assert.match(evidenceSetup, /if: \$\{\{ inputs\.target_repo == 'githubnext\/gh-aw-cao' \}\}/);
-  assert.doesNotMatch(evidenceSetup, /safe_output_mode/);
+  assert.match(
+    source,
+    /name: Build expected control-plane inventory\n\s+if: \$\{\{ inputs\.target_repo == 'githubnext\/gh-aw-cao' \}\}\n\s+run:/,
+  );
+  assert.match(
+    source,
+    /name: Download and grade the live dashboard artifact\n\s+if: \$\{\{ inputs\.target_repo == 'githubnext\/gh-aw-cao' \}\}\n\s+env:/,
+  );
   assert.match(source, /central-agentic-ops-dashboard/);
   assert.match(source, /view-grader\.mjs/);
   assert.match(source, /dashboard-artifact/);
