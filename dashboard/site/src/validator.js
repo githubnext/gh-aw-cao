@@ -3551,14 +3551,21 @@ function validateProgressiveDisclosure(views, path, errors) {
 function validateGraphicalLayout(views, viewsPath, errors, pageId) {
   if (pageId !== undefined && GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS.has(pageId)) return;
   const validViews = views.filter(isPlainObject);
-  const defaultOpenTables = validViews.filter((view) => (
-    view.locked !== true && view.mark === 'table' && view.disclosure !== 'supplemental'
-  ));
+  const unlockedTables = validViews.filter((view) => view.locked !== true && view.mark === 'table');
+  const defaultOpenTables = unlockedTables.filter((view) => view.disclosure !== 'supplemental');
   for (const table of defaultOpenTables.slice(1)) {
     const index = views.indexOf(table);
     errors.push(createError(
       ERROR_CODES.invalidProgressiveDisclosureConfiguration,
       'Only one table may be open by default on a page. Mark additional tables as "supplemental".',
+      `${viewsPath}[${index}].disclosure`
+    ));
+  }
+  if (unlockedTables.length === 1 && defaultOpenTables.length === 0) {
+    const index = views.indexOf(unlockedTables[0]);
+    errors.push(createError(
+      ERROR_CODES.invalidProgressiveDisclosureConfiguration,
+      '"supplemental" disclosure is reserved for additional tables beyond a page\u2019s first; a page\u2019s only table must not hide its content behind disclosure.',
       `${viewsPath}[${index}].disclosure`
     ));
   }
