@@ -118,14 +118,14 @@ Prefer the restored Activity database at `$RUNNER_TEMP/cao-activity/gh-aw-logs.s
 
 ### Collection completeness
 
-Do not infer the absence of activity from an empty Activity query. Independently discover the target's Actions workflow runs for the exact 7-day window with one bounded, paginated, read-only Actions query (equivalent to `gh api --paginate --slurp repos/$TARGET_REPO/actions/runs?created=WINDOW_START_DATE..WINDOW_END_DATE&per_page=100`), then retain only completed agentic-workflow runs whose workflow path is a compiled `.lock.yml` workflow. Keep the discovered run IDs and attempts separate from the Activity database results.
+Do not infer the absence of activity from an empty Activity query. First, validate that the restored Activity database has complete run-summary coverage for `TARGET_REPO` and the exact 7-day window, then query it with `activity/cao.mjs gh runs --database "$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite" --repo "$TARGET_REPO" --status completed --since WINDOW_START --until WINDOW_END --limit 100`. If that cache coverage is complete, use those results and do not call the Actions API. Only when the cache is missing, stale, invalid, or lacks required window coverage, independently discover the target's Actions workflow runs with one bounded, paginated, read-only Actions query (equivalent to `gh api --paginate --slurp repos/$TARGET_REPO/actions/runs?created=WINDOW_START_DATE..WINDOW_END_DATE&per_page=100`). In either path, retain only completed agentic-workflow runs whose workflow path is a compiled `.lock.yml` workflow. Keep the discovered run IDs and attempts separate from the Activity usage-artifact results.
 
 Classify the collection before reporting:
 
-- `no-completed-runs`: Actions discovery completed and found no completed agentic-workflow runs in the window. This is the only empty-activity state that permits a healthy no-op or zero measured spend.
+- `no-completed-runs`: complete cached run coverage or fallback Actions discovery found no completed agentic-workflow runs in the window. This is the only empty-activity state that permits a healthy no-op or zero measured spend.
 - `complete`: every discovered completed agentic-workflow run has a matching, usable gh-aw usage artifact in the Activity database for the same run and attempt. Report measured AI Credit only from those artifacts.
 - `incomplete-cost-evidence`: one or more discovered completed agentic-workflow runs has no matching usable gh-aw usage artifact, or the Activity database is missing required window coverage. Treat affected cost and token metrics as unavailable; never substitute zero, omit the gap, or count the target as healthy.
-- `discovery-unavailable`: the bounded Actions discovery or the required Activity database validation failed. This is also incomplete evidence, not no activity.
+- `discovery-unavailable`: required Activity database validation failed and the bounded fallback Actions discovery could not complete. This is also incomplete evidence, not no activity.
 
 For `incomplete-cost-evidence` and `discovery-unavailable`, preserve any usable activity and reliability evidence, but report coverage as `covered completed runs / discovered completed runs`, use `unavailable` or `N/A` for unsupported totals, and do not create comparison or trend points from the incomplete window. If the available evidence cannot support a bounded maintainer decision, call `noop` with an explicit collection-gap reason; never use a healthy or no-activity no-op for an evidence gap.
 
@@ -147,7 +147,7 @@ Provide only that unprefixed subject to the safe-output tool. The configured `ti
 
 Search every open issue in `SAFE_OUTPUT_REPO` with both Optimization labels or the configured title prefix. If the canonical issue exists, refresh its body with `update_issue`; otherwise create it. Never create an equivalent issue under a different title.
 
-Call `noop` only when Actions discovery is complete and the window has no completed agentic-workflow runs. When completed runs are discovered but cost coverage is incomplete, publish an audit only if the report clearly marks affected metrics as unavailable and the available activity evidence still supports a bounded maintainer decision; otherwise call `noop` with an explicit incomplete-evidence explanation. Incomplete coverage must never be reported as zero spend or silently treated as a healthy no-op.
+Call `noop` only when complete cached run coverage or fallback Actions discovery confirms that the window has no completed agentic-workflow runs. When completed runs are discovered but cost coverage is incomplete, publish an audit only if the report clearly marks affected metrics as unavailable and the available activity evidence still supports a bounded maintainer decision; otherwise call `noop` with an explicit incomplete-evidence explanation. Incomplete coverage must never be reported as zero spend or silently treated as a healthy no-op.
 
 ## Report
 
