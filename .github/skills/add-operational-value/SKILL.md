@@ -90,6 +90,8 @@ Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-op
 - Design ex ante: use only outcome facts known by the baseline commit. Use the adoption commit only for the workflow and contemporaneous repository context.
 - Use files, history, pull requests, issues, and other relevant data from the repository or repositories where the outcome occurs. For mutable records, reconstruct state at the baseline cutoff; do not use current fields or later events.
 - Document the observation window before scoring. Every collected window must use the same duration, filters, opportunity denominator, maturation period, evidence shape, and formulas. Baseline-comparable designs apply this contract on both sides of adoption; attainment-only designs begin at adoption.
+- Attainment-only collection may publish observations from adoption onward before a full window has matured. Mark every such observation `maturityStatus: "interim"` and `dubious: true`, and describe its score as provisional rather than accepted attainment. Do not suppress an otherwise valid early observation solely because its window or outcomes are still maturing.
+- Early observations must use the frozen formula and the evidence available at their observation time. Distinguish provisional zero from missing evidence, preserve unresolved counts, and never relabel an interim score as matured or use it to claim improvement.
 - Use the least dense evidence sampling that directly measures the outcome. For repository-state outcomes, prefer one immutable cutoff snapshot per observation window; use daily or per-event assessments only when the accepted-outcome matching rule requires them.
 - Prefer `gh api` queries with immutable refs. Use archive streams only when repository-wide file inspection is necessary.
 - Temporary checkouts and extracted evidence must remain under the workspace and be removed by the command that creates them.
@@ -116,6 +118,7 @@ Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-op
 - `evidence` includes non-empty `key`, `repositories`, `opportunity`, `filters`, `collection`, and `window` fields. `window` defines positive `durationDays` and `cadenceDays` plus non-negative `maturationDays`.
 - Each metric records `id`, `name`, `role`, normalized `formula`, native `direction`, and presentation. Use `identity` for increase goals and `complement` for decrease goals; name complemented measures honestly. Exactly one metric is primary.
 - It exports `scoreMetric(id, evidence)`, which returns a deterministic number in `0..1`, or `null` for missing or wholly malformed evidence. Clamp and round only at the output boundary.
+- A metric may return a provisional number for valid interim evidence. The evidence must carry `maturityStatus: "interim"` and `dubious: true`; adapters and reports must preserve that status wherever the number is shown.
 - Include `targetAttained`, `targetMissed`, `missing`, and `malformed` validation examples for every metric. `targetAttained` must score higher than `targetMissed`.
 - The collector acceptance gate must validate evidence and provenance. Temporary evidence must be removed in `finally` cleanup.
 
@@ -124,7 +127,7 @@ Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-op
 - The package-level adapter reads one `{schemaVersion: 1, timestamp, repositories, database}` request from stdin and discovers every slug-named `.mjs` module directly under its `operational-value/` directory.
 - For each module, it derives one current observation window per supported repository from the frozen duration and maturation period. Routine CAO collection must never rebuild historical windows.
 - It calls each module's `collectBatch` once for all supported repositories and calls `scoreMetric` for every metric using the returned evidence.
-- It emits one JSONL record per non-null metric with exactly `timestamp`, `repository`, namespaced `valueId` (`WORKFLOW-SLUG.METRIC-ID`), and finite numeric `value`.
+- It emits one JSONL record per non-null metric with required `timestamp`, `repository`, namespaced `valueId` (`WORKFLOW-SLUG.METRIC-ID`), and finite numeric `value`, plus the metric and maturity metadata needed by consumers.
+- It may emit provisional pre-maturity values, but must include their interim maturity status so consumers can mark them dubious.
 - It emits no record for unsupported repositories and fails closed on malformed requests, inaccessible evidence, or invalid collection results.
 - Historical evaluation and CAO collection must import the same shared module so evidence and scoring cannot drift.
-  
