@@ -225,6 +225,36 @@ test('full-view content keeps a responsive horizontal inset', async ({ page }) =
   });
 });
 
+test('full-view chart, card, and table content share the page inset', async ({ page }) => {
+  const styles = await page.evaluate(async (stylesUrl) => {
+    const { getPrimerStyles } = await import(stylesUrl);
+    return getPrimerStyles();
+  }, 'http://dashboard.test/src/styles.js');
+  await page.setContent(`
+    <style>${styles}</style>
+    <div class="dashboard-root dashboard-full-view">
+      <div class="app-shell">
+        <aside class="org-sidebar"></aside>
+        <div class="app-main">
+          <main class="dashboard-prototype">
+            <div class="custom-view-grid">
+              <section class="custom-view chart-view-swimlane"><div data-view-content>Chart</div></section>
+              <section class="custom-view"><div data-view-content>Cards</div></section>
+              <section class="custom-view" data-view-layout="full-view"><div class="table-region"><div data-view-content>Table</div></div></section>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+  `);
+
+  const contentInsets = await page.locator('[data-view-content]').evaluateAll((elements) => (
+    elements.map((element) => element.getBoundingClientRect().x)
+  ));
+
+  expect(contentInsets).toEqual([248, 248, 248]);
+});
+
 const horizontalBarFixtureLabel = '.github/workflows/extremely-long-dependabot-update-planner.md';
 const horizontalBarFixtureSuffix = 'planner.md';
 
