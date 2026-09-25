@@ -126,6 +126,10 @@ elif [[ "\${1:-} \${2:-} \${3:-}" == "extension upgrade gh-aw" ]]; then
   echo v0.89.21 > "$FAKE_GH_AW_INSTALLED"
 elif [[ "\${1:-} \${2:-}" == "aw add" ]]; then
   echo add >> "$FAKE_COMMAND_LOG"
+  if [[ -n "\${FAKE_ADD_ERROR:-}" ]]; then
+    echo "unrelated installation failure" >&2
+    exit 1
+  fi
   if [[ "$(cat "$FAKE_GH_AW_INSTALLED")" == v0.89.20 ]]; then
     echo '✗ invalid Agentic Workflow manifest "aw.yml": min-version "v0.89.21" requires gh-aw v0.89.21 or newer (current: v0.89.20).' >&2
     exit 1
@@ -144,9 +148,13 @@ fi
     FAKE_GH_AW_INSTALLED: installed,
   };
   try {
+    await assert.rejects(
+      executeFile("bash", [installScript], { cwd: root, env: { ...env, FAKE_ADD_ERROR: "1" } }),
+      /unrelated installation failure/,
+    );
     const declined = await executeFile("bash", [installScript], { cwd: root, env });
     assert.match(declined.stdout, /gh extension upgrade gh-aw.*rerun the CAO installer/);
-    assert.equal(await readFile(log, "utf8"), "add\n");
+    assert.equal(await readFile(log, "utf8"), "add\nadd\n");
     assert.equal(await readFile(installed, "utf8"), "v0.89.20\n");
 
     // script supplies a controlling terminal even when the installer is piped into bash.
@@ -154,13 +162,13 @@ fi
       `printf 'n\\n' | script -q -e -c 'cat "${installScript}" | bash' /dev/null`,
     ], { cwd: root, env, timeout: 10_000 });
     assert.match(no.stdout, /gh extension upgrade gh-aw.*rerun the CAO installer/);
-    assert.equal(await readFile(log, "utf8"), "add\nadd\n");
+    assert.equal(await readFile(log, "utf8"), "add\nadd\nadd\n");
 
     const { stdout } = await executeFile("bash", ["-c",
       `printf 'y\\n' | script -q -e -c 'cat "${installScript}" | bash' /dev/null`,
     ], { cwd: root, env, timeout: 10_000 });
     assert.match(stdout, /Upgrade it now with gh extension upgrade gh-aw/);
-    assert.equal(await readFile(log, "utf8"), "add\nadd\nadd\nupgrade\nadd\n");
+    assert.equal(await readFile(log, "utf8"), "add\nadd\nadd\nadd\nupgrade\nadd\n");
     assert.equal(await readFile(installed, "utf8"), "v0.89.21\n");
   } finally {
     await rm(root, { recursive: true, force: true });
