@@ -13240,9 +13240,6 @@
                 "type": "quantitative",
                 "title": "AIC cost",
                 "unit": "aic"
-              },
-              "href": {
-                "field": "campaign-dashboard-link"
               }
             }
           },

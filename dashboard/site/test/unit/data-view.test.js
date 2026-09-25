@@ -1504,6 +1504,32 @@ describe('data view renderer', () => {
       }]
     });
     expect(overridden?.querySelector('.chart-legend-pie a')?.getAttribute('href')).toBe('#page-custom-workflow');
+
+    const campaign = renderDataView('chart', {
+      ...context,
+      view: {
+        ...context.view,
+        encoding: {
+          ...context.view.encoding,
+          x: { field: 'campaign-name', type: 'nominal' }
+        }
+      },
+      buildChartPoints: () => [{
+        key: 'dev-practices',
+        x: 'Dev Practices',
+        y: 3,
+        color: null,
+        link: null,
+        source: {
+          'campaign-dashboard-link': {
+            'dashboard-href': '#page-campaign-insights?campaign=dev-practices',
+            'dashboard-label': 'View Dev Practices campaign dashboard'
+          }
+        }
+      }]
+    });
+    expect(campaign?.querySelector('.chart-legend-pie a')?.getAttribute('href'))
+      .toBe('#page-campaign-insights?campaign=dev-practices');
   });
 
   it('renders swimlane continuation pages incrementally without blocking the initial view', async () => {

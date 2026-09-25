@@ -40,6 +40,7 @@ const GITHUB_ENTITY_DISPLAY_FIELDS = {
   [REPOSITORY_LINK_DISPLAY]: 'repository',
   [WORKFLOW_LINK_DISPLAY]: 'workflow'
 };
+/** @type {Record<string, string>} */
 const PIE_ENTITY_FORMATS = {
   'workflow-coordinate': 'workflow-identity-label'
 };
@@ -1505,7 +1506,7 @@ function chartCategoryLinks(points) {
 /**
  * Preserves an explicit href encoding, then supplies internal entity routes for
  * the standard repository and workflow category fields.
- * @param {Array<{ x: string, link: { href: string, label: string } | null }>} points
+ * @param {Array<{ x: string, link: { href: string, label: string } | null, source?: Record<string, unknown> }>} points
  * @param {Record<string, unknown> | null} x
  * @returns {Map<string, { href: string, label: string }>}
  */
@@ -1514,7 +1515,7 @@ function pieCategoryLinks(points, x) {
   const field = typeof x?.field === 'string' ? x.field : '';
   for (const point of points) {
     if (links.has(point.x)) continue;
-    const link = inferredPieEntityLink(field, point.x);
+    const link = inferredPieEntityLink(field, point.x, point.source);
     if (link) links.set(point.x, link);
   }
   return links;
@@ -1534,9 +1535,11 @@ function pieCategoryLabelFormatter(x) {
 /**
  * @param {string} field
  * @param {string} label
+ * @param {Record<string, unknown> | undefined} source
  * @returns {{ href: string, label: string } | null}
  */
-function inferredPieEntityLink(field, label) {
+function inferredPieEntityLink(field, label, source) {
+  if (field === 'campaign-name') return findLink(source ?? {}, 'campaign-dashboard-link');
   if (field === 'repository-coordinate' && /^[^/:]+\/[^/:]+$/.test(label)) {
     return {
       href: `#page-repository-detail?repository=${encodeURIComponent(label)}`,
