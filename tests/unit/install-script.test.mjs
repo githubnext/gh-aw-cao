@@ -9,6 +9,14 @@ import test from "node:test";
 const executeFile = promisify(execFile);
 const installScript = path.resolve("install.sh");
 
+function interactiveInstallCommand(answer) {
+  const input = `{ printf '${answer}\\n'; sleep 0.2; }`;
+  if (process.platform === "darwin") {
+    return `${input} | script -q /dev/null bash -c 'cat "${installScript}" | bash'`;
+  }
+  return `${input} | script -q -e -c 'cat "${installScript}" | bash' /dev/null`;
+}
+
 test("install.sh installs gh-aw, adds the core campaign, and is idempotent", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-install-"));
   const bin = path.join(root, "bin");
@@ -19,7 +27,7 @@ test("install.sh installs gh-aw, adds the core campaign, and is idempotent", asy
 set -euo pipefail
 if [[ "\${1:-} \${2:-}" == "aw version" ]]; then
   [[ -f "$FAKE_GH_AW_INSTALLED" ]] || exit 1
-  echo "gh aw version $(cat "$FAKE_GH_AW_INSTALLED")"
+  echo "gh aw version $(cat "$FAKE_GH_AW_INSTALLED")" >&2
   exit 0
 fi
 if [[ "\${1:-} \${2:-}" == "aw add" && "\${3:-}" == githubnext/gh-aw-cao* ]]; then
@@ -55,7 +63,7 @@ exit 2
 `);
   const fakeCurl = `#!/usr/bin/env bash
 echo "curl" >> "$FAKE_COMMAND_LOG"
-printf '%s\\n' '#!/usr/bin/env bash' 'printf "%s\\n" "$1" > "$FAKE_GH_AW_INSTALLED"'
+printf '%s\\n' '#!/usr/bin/env bash' 'printf "install:%s\\n" "$*" >> "$FAKE_COMMAND_LOG"' 'printf "%s\\n" "$1" > "$FAKE_GH_AW_INSTALLED"'
 `;
   await writeFile(path.join(bin, "curl"), fakeCurl);
   await writeFile(path.join(bin, "curl.exe"), fakeCurl);
@@ -92,12 +100,12 @@ printf '%s\\n' '#!/usr/bin/env bash' 'printf "%s\\n" "$1" > "$FAKE_GH_AW_INSTALL
     if (process.platform !== "win32") {
       await writeFile(ghAwInstalled, "v0.88.0\n");
       const declined = await executeFile("bash", [installScript, "githubnext/gh-aw-cao@v1.2.3"], { cwd: root, env });
-      assert.match(declined.stdout, /install-gh-aw\.sh.*v0\.89\.21.*rerun the CAO installer/);
+      assert.match(declined.stdout, /install-gh-aw\.sh.*v0\.89\.21.*--gh-install.*rerun the CAO installer/);
       assert.equal(await readFile(log, "utf8"), "add\ninit\nadd-force\n");
 
       await rm(ghAwInstalled);
       await executeFile("bash", [installScript], { cwd: root, env });
-      assert.equal(await readFile(log, "utf8"), "add\ninit\nadd-force\ncurl\n");
+      assert.equal(await readFile(log, "utf8"), "add\ninit\nadd-force\ncurl\ninstall:v0.89.21 --gh-install\n");
     }
     assert.doesNotMatch(await readFile(installScript, "utf8"), /sort -V/);
   } finally {
@@ -116,7 +124,7 @@ test("install.sh offers a manifest-required upgrade before adding the campaign",
   await writeFile(path.join(bin, "gh"), `#!/usr/bin/env bash
 set -euo pipefail
 if [[ "\${1:-} \${2:-}" == "aw version" ]]; then
-  echo "gh aw version $(cat "$FAKE_GH_AW_INSTALLED")"
+  echo "gh aw version $(cat "$FAKE_GH_AW_INSTALLED")" >&2
 elif [[ "\${1:-} \${2:-}" == "aw add" ]]; then
   echo add >> "$FAKE_COMMAND_LOG"
   if [[ -n "\${FAKE_ADD_ERROR:-}" ]]; then
@@ -131,7 +139,7 @@ fi
 `);
   await writeFile(path.join(bin, "curl"), `#!/usr/bin/env bash
 echo curl >> "$FAKE_COMMAND_LOG"
-printf '%s\\n' '#!/usr/bin/env bash' 'printf "%s\\n" "$1" > "$FAKE_GH_AW_INSTALLED"'
+printf '%s\\n' '#!/usr/bin/env bash' 'printf "install:%s\\n" "$*" >> "$FAKE_COMMAND_LOG"' 'printf "%s\\n" "$1" > "$FAKE_GH_AW_INSTALLED"'
 `);
   await chmod(path.join(bin, "gh"), 0o755);
   await chmod(path.join(bin, "curl"), 0o755);
@@ -148,22 +156,26 @@ printf '%s\\n' '#!/usr/bin/env bash' 'printf "%s\\n" "$1" > "$FAKE_GH_AW_INSTALL
     );
     await writeFile(installed, "v0.89.21\n");
     const declined = await executeFile("bash", [installScript], { cwd: root, env });
-    assert.match(declined.stdout, /install-gh-aw\.sh.*v0\.89\.22.*rerun the CAO installer/);
+    assert.match(declined.stdout, /install-gh-aw\.sh.*v0\.89\.22.*--gh-install.*rerun the CAO installer/);
     assert.equal(await readFile(log, "utf8"), "add\n");
     assert.equal(await readFile(installed, "utf8"), "v0.89.21\n");
 
     // script supplies a controlling terminal even when the installer is piped into bash.
-    const no = await executeFile("bash", ["-c",
-      `printf 'n\\n' | script -q -e -c 'cat "${installScript}" | bash' /dev/null`,
-    ], { cwd: root, env, timeout: 10_000 });
-    assert.match(no.stdout, /install-gh-aw\.sh.*v0\.89\.22.*rerun the CAO installer/);
+    const no = await executeFile("bash", ["-c", interactiveInstallCommand("n")], {
+      cwd: root,
+      env,
+      timeout: 10_000,
+    });
+    assert.match(no.stdout, /install-gh-aw\.sh.*v0\.89\.22.*--gh-install.*rerun the CAO installer/);
     assert.equal(await readFile(log, "utf8"), "add\n");
 
-    const { stdout } = await executeFile("bash", ["-c",
-      `printf 'y\\n' | script -q -e -c 'cat "${installScript}" | bash' /dev/null`,
-    ], { cwd: root, env, timeout: 10_000 });
-    assert.match(stdout, /Upgrade it now with curl .*install-gh-aw\.sh.*v0\.89\.22/);
-    assert.equal(await readFile(log, "utf8"), "add\ncurl\nadd\n");
+    const { stdout } = await executeFile("bash", ["-c", interactiveInstallCommand("y")], {
+      cwd: root,
+      env,
+      timeout: 10_000,
+    });
+    assert.match(stdout, /Upgrade it now with curl .*install-gh-aw\.sh.*v0\.89\.22.*--gh-install/);
+    assert.equal(await readFile(log, "utf8"), "add\ncurl\ninstall:v0.89.22 --gh-install\nadd\n");
     assert.equal(await readFile(installed, "utf8"), "v0.89.22\n");
   } finally {
     await rm(root, { recursive: true, force: true });

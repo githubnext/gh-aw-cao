@@ -39,11 +39,11 @@ process.exit(1);
 install_gh_aw() {
   curl --fail --silent --show-error --location \
     https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh |
-    bash -s -- "$required_gh_aw"
+    bash -s -- "$required_gh_aw" --gh-install
 }
 
 get_gh_aw_version() {
-  gh aw version 2>/dev/null |
+  gh aw version 2>&1 |
     awk 'match($0, /v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?/) {
       print substr($0, RSTART, RLENGTH)
       exit
@@ -62,7 +62,7 @@ verify_gh_aw_version() {
 
 upgrade_gh_aw() {
   local answer
-  local upgrade_command="curl -sL https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- $required_gh_aw"
+  local upgrade_command="curl -sL https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- $required_gh_aw --gh-install"
   if [[ -r /dev/tty ]]; then
     printf 'The installed gh-aw is too old for this CAO campaign. Upgrade it now with %s? [y/N] ' "$upgrade_command" > /dev/tty
     if IFS= read -r answer < /dev/tty && [[ "$answer" =~ ^[Yy]$ ]]; then
