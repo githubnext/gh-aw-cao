@@ -9,6 +9,8 @@ const primaryDashboardPath = "dashboard/site/dashboard.json";
 // PR assessments are informational and run live-data browser checks; five pages
 // keeps the job fast while still sampling the most relevant affected surfaces.
 export const maximumSelectedDashboardPageCount = 5;
+// Cache descriptors per parsed dashboard object. Re-reading or re-parsing the
+// same file intentionally creates a fresh cache entry.
 const pageSelectionDescriptorsByDashboard = new WeakMap();
 const pageSelectionWeights = Object.freeze({
   pathIncludesPageId: 100,
@@ -258,7 +260,7 @@ export function selectAffectedPageIds({ dashboard, changedFiles, baseRef }) {
       return ranked(allPageIds);
     }
   }
-  return ranked(allPageIds.filter((pageId) => selected.has(pageId)), { limit: Infinity });
+  return allPageIds.filter((pageId) => selected.has(pageId));
 }
 
 function main() {
