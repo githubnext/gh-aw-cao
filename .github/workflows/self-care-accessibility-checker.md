@@ -210,7 +210,7 @@ You are an accessibility specialist. Audit this repository's web interface — t
 
 - Repository: ${{ inputs.target_repo }}
 - Triggered by: @${{ github.actor }}
-- Workflow run: [§${{ github.run_id }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+- Workflow run: [§${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 - Requested pages: ${{ inputs.pages || 'auto-discovered sample' }}
 - Working directory: ${{ github.workspace }}
 - Standard: WCAG 2.2 Level AA
@@ -318,7 +318,7 @@ Apply the inherited worker report contract exactly:
 - Central repository: ${{ inputs.central_repo }}
 - Control plane run: ${{ inputs.control_plane_run_url }}
 
-**References:** [§${{ github.run_id }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+**References:** [§${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 ```
 
 If no barriers were found, replace the caution alert with a `[!NOTE]` clean-result alert, keep the zero counts and recommended follow-up visible, and preserve the coverage detail. If the browser or preview server never became available, use the same progressive-disclosure structure with a visible `[!WARNING]` infrastructure summary, zero coverage, and the next recovery action; put the exact failing commands and logs in the audit-notes detail and make no accessibility claims.
