@@ -301,25 +301,6 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
           ],
           metadata
         },
-        'operational-graders': {
-          source: 'operational-graders',
-          rows: [
-            {
-              organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/ambient-context-worker.md', run: '3',
-              'observed-at': '2026-09-13T14:00:00Z', 'operational-grader': 0.5, 'operational-grader-definition': 'repository-readiness',
-              diagnostics: { quality: 0.6, efficiency: 0.8 },
-              'diagnostic-definitions': [{ id: 'quality', name: 'Quality' }, { id: 'efficiency', name: 'Efficiency' }]
-            },
-            {
-              organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/ambient-context-worker.md', run: '4',
-              'observed-at': '2026-09-14T14:00:00Z', 'operational-grader': 0.75, 'operational-grader-definition': 'repository-readiness',
-              diagnostics: { quality: 0.85, efficiency: 0.7 },
-              'diagnostic-definitions': [{ id: 'quality', name: 'Quality' }, { id: 'efficiency', name: 'Efficiency' }]
-            },
-            { workflow: '.github/workflows/aw-doctor.md', run: '1', 'operational-grader': 0.25 }
-          ],
-          metadata
-        },
         'operational-values': {
           source: 'operational-values',
           rows: [
@@ -369,13 +350,11 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
     'Runs',
     'Dispatches',
     'AIC',
-    'Ops Grader',
     'Registration'
   ]);
   const awDoctorSummary = campaignRows.filter({ hasText: 'AW Doctor' });
   await expect(awDoctorSummary).toContainText('AW Doctor');
   await expect(awDoctorSummary).toContainText('23.9');
-  await expect(awDoctorSummary.locator('[data-field="grader-result"]')).toHaveText('0.25');
   await expect(awDoctorSummary.getByRole('button', { name: 'Update campaign' })).toHaveCount(0);
   await expect(awDoctorSummary.getByRole('link', { name: 'View AW Doctor campaign dashboard' })).toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
   await expect(awDoctorSummary.locator('[data-field="modes"] .mode-badge')).toHaveText('review');
@@ -397,7 +376,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await expect(campaignNavigation).toHaveCSS('display', 'flex');
   await expect(campaignNavigation).toHaveCSS('border-bottom-style', 'solid');
   await expect(campaignNavigation.locator('[aria-current="page"]')).toHaveCount(0);
-  await expect(campaignNavigation.locator('.count-badge')).toHaveText(['4', '1']);
+  await expect(campaignNavigation.locator('.count-badge')).toHaveText(['1', '1']);
   const campaignTabBadges = await campaignNavigation.locator('.count-badge').allTextContents();
   await expect(page.getByRole('heading', { name: 'Orchestrator and workers', level: 3 })).toHaveCount(0);
   await campaignNavigation.getByRole('link', { name: 'Problems' }).click();
@@ -488,28 +467,11 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   const mobileBack = page.getByRole('button', { name: 'Go back' });
   await expect(mobileBack).toBeVisible();
   await expect(page.locator('.overview-header')).toContainText('Operational activity for the Ambient Context campaign.');
-  await expect(campaignInsights.locator('.measure-history [data-chart-widget="line"]')).toHaveCount(3);
-  await expect(campaignInsights.locator('.measure-history .temporal-metric-plot')).toHaveCount(1);
-  await expect(campaignInsights.locator('.measure-history .chart-point')).toHaveCount(6);
   const operationalValueHistory = campaignInsights.getByRole('region', { name: 'Repository operational value' });
-  const graderHistory = campaignInsights.getByRole('region', { name: 'Operational grader history' });
   await expect(operationalValueHistory).toContainText('Goal measure');
   await expect(operationalValueHistory).toContainText('Workflow runs');
   await expect(operationalValueHistory.locator('.temporal-plot-axis-title')).toHaveCount(1);
   await expect(operationalValueHistory.locator('.temporal-plot-runs-track')).toHaveCount(1);
-  await expect(graderHistory).toContainText('Repository readiness');
-  await expect(graderHistory).toContainText('Quality');
-  await expect(graderHistory).toContainText('Efficiency');
-  await expect(campaignInsights.locator('.insights-measure-rows > .insights-measure-row')).toHaveCount(3);
-  await expect(graderHistory.locator('.insights-measure-row').first().locator('.insights-axis-x')).toHaveText('Observation time (UTC)');
-  const measureReadout = graderHistory.locator('.insights-measure-row').first().locator('.insights-point-readout');
-  await expect(measureReadout).toHaveText('Select a point to inspect that observation.');
-  const measurePoint = graderHistory.locator('.insights-measure-row').first().locator('.chart-point[data-chart-point-key]').first();
-  await measurePoint.dispatchEvent('click');
-  await expect(measureReadout).not.toHaveText('Select a point to inspect that observation.');
-  await expect(campaignInsights.locator('.insights-measure-row .chart-point[aria-pressed="true"]')).toHaveCount(1);
-  await measurePoint.dispatchEvent('keydown', { key: 'Enter', bubbles: true });
-  await expect(measureReadout).toHaveText('Select a point to inspect that observation.');
   await mobileBack.click();
   await expect(page).toHaveURL(/#page-campaign-detail\?campaign=ambient-context$/);
   await expect(page.locator('[data-page-id="campaign-detail"]')).toBeVisible();
@@ -1026,8 +988,7 @@ test('repository page template follows its JSON-declared hash query route in bro
         },
         runs: { source: 'runs', metadata, rows: [] },
         outcomes: { source: 'outcomes', metadata, rows: [] },
-        audits: { source: 'audits', metadata, rows: [] },
-        'operational-graders': { source: 'operational-graders', metadata, rows: [] }
+        audits: { source: 'audits', metadata, rows: [] }
       };
       const loadPageSources = (pageId, options) => prepareDashboardViewSources(
         dashboardDocument,
@@ -1511,7 +1472,7 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
             views: [{
               id: 'workflow-runtime-route',
               title: 'Workflow runtime',
-              data: { sources: ['workflows', 'runs', 'usage', 'operational-graders'] },
+              data: { sources: ['workflows', 'runs', 'usage'] },
               mark: 'element',
               element: 'workflow-route-page',
               config: { body: 'insights' }
@@ -1567,11 +1528,6 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
             aic: 962.7
           }]
         },
-        'operational-graders': {
-          source: 'operational-graders',
-          metadata,
-          rows: []
-        }
       };
       const routeParameters = {
         workflow: 'githubnext/gh-aw-cao:.github/workflows/multi-device-docs-tester.md'
@@ -1603,7 +1559,6 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
   );
   await expect(page.locator('.workflow-runtime-metrics')).toContainText('1');
   await expect(page.locator('.workflow-runtime-metrics')).toContainText('962.7');
-  await expect(page.getByRole('heading', { name: 'No workflow observations yet' })).toBeVisible();
 });
 
 test('outcome page template follows its JSON-declared hash query route in browser', async ({ page }) => {
