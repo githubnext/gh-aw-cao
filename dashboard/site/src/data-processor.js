@@ -32,7 +32,7 @@ const pending = new Map();
  *   context: { githubUrlBase?: string, dashboardRepository?: string | null, pages: unknown[], queries?: unknown[] },
  *   pageId?: string,
  *   routeParameters?: Record<string, string>,
- *   queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' },
+ *   queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card', formValues?: Record<string, string|number|boolean> },
  *   pagination?: Record<string, { limit: number, continuationToken?: string }>,
  *   listeners: Set<SubscriptionListener>,
  *   registeredWorker: Worker | null,
@@ -533,7 +533,17 @@ function sameQueryContext(left, right) {
     && sameOrder
     && left?.timeWindow?.start === right?.timeWindow?.start
     && left?.timeWindow?.end === right?.timeWindow?.end
-    && left?.viewMode === right?.viewMode;
+    && left?.viewMode === right?.viewMode
+    && sameScalarMap(left?.formValues, right?.formValues);
+}
+
+/** @param {Record<string, string|number|boolean> | undefined} left @param {Record<string, string|number|boolean> | undefined} right */
+function sameScalarMap(left, right) {
+  if (left === right) return true;
+  const leftEntries = Object.entries(left ?? {});
+  const rightEntries = Object.entries(right ?? {});
+  return leftEntries.length === rightEntries.length
+    && leftEntries.every(([key, value]) => right?.[key] === value);
 }
 
 /** @param {ViewSubscription['context']} left @param {ViewSubscription['context']} right */

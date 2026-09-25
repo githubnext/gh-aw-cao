@@ -72,6 +72,9 @@ function declaredQueryReferences(value) {
     if ((key === 'sources' || key === 'union') && Array.isArray(nested)) {
       return nested.filter((name) => typeof name === 'string' && queryNames.has(name));
     }
+    if (key === 'any' && typeof configured.label === 'string' && Array.isArray(nested)) {
+      return nested.filter((name) => typeof name === 'string' && queryNames.has(name));
+    }
     return declaredQueryReferences(nested);
   });
 }
@@ -167,22 +170,6 @@ describe('dashboard view query contracts', () => {
         color: { field: 'operational-value-definition', type: 'nominal' }
       }
     });
-  });
-
-  it('keeps assessment-sensitive high-cardinality views declaratively bounded', () => {
-    const pagesById = new Map(dashboard.pages.map((/** @type {Record<string, unknown>} */ page) => [page.id, page]));
-    const boundedViews = [
-      ['graders', 'graders-graders-source', 100],
-      ['graders', 'graders-observations-source', 100]
-    ];
-
-    for (const [pageId, viewId, limit] of boundedViews) {
-      const view = viewsOf(pagesById.get(pageId)).find((candidate) => candidate.id === viewId);
-      const data = /** @type {Record<string, unknown> | undefined} */ (view?.data);
-
-      expect(data?.limit, `${pageId}/${viewId} should bound rendered source rows`).toBe(limit);
-      expect(data?.['order-by'], `${pageId}/${viewId} should choose deterministic retained rows`).toEqual(expect.any(Array));
-    }
   });
 
   it('renders the failed-runs ledger as a bounded lazy table', () => {

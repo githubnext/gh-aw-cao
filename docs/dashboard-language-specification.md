@@ -226,14 +226,15 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Tooltip | `label`, `description`, `icon` |
 | `defaults` | `scope`, `time`, `filters` |
 | Unit definition | `name`, `symbol`, `significant`, `format` |
-| Query definition | `name`, `intent`, `description`, `from`, `union`, `time`, `joins`, `filter`, `compute`, `temporal-series`, `aggregate`, `predict`, `select`, `order-by`, `limit` |
+| Query definition | `name`, `intent`, `description`, `parameters`, `from`, `union`, `time`, `joins`, `filter`, `compute`, `temporal-series`, `aggregate`, `predict`, `select`, `order-by`, `limit` |
+| Query parameter | `name`, `type` |
 | Query `joins` entry | `source`, `type`, `on`, `fields` |
 | Query join key | `left`, `right` |
 | Query join field | `field`, `as` |
 | Query `filter` | `predicates` |
 | Query predicate | `field`, `equals`, `in`, `includes` |
 | Query computed field | `as`, `function`, `args` |
-| Query computed argument | exactly one of `field`, `value`, or `context`; `context` is `time-end` |
+| Query computed argument | exactly one of `field`, `value`, `context`, or `parameter`; `context` is `time-end` |
 | Query `aggregate` | `by`, `values` |
 | Query aggregate value | `field`, `as`, `reducer` |
 | Query `predict` entry | `field`, `on`, `method`, `order`, `groupby`, `as` |
@@ -241,8 +242,12 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Query `temporal-series.measures[]` | `field`, `key`, `kind` |
 | Query `temporal-series.maps[]` | `field`, `definitions`, `group`, `kind` |
 | Query `select` entry | `field`, `as` |
-| Built-in page | `id`, `kind`, `page`, `title`, `navigation-label`, `navigation-indicator`, `description`, `icon`, `class-name`, `definition` |
-| Custom page | `id`, `kind`, `title`, `navigation-label`, `navigation-indicator`, `description`, `icon`, `class-name`, `route`, `views`, `sections` |
+| Built-in page | `id`, `kind`, `page`, `title`, `navigation-label`, `navigation-indicator`, `description`, `icon`, `class-name`, `form`, `definition` |
+| Custom page | `id`, `kind`, `title`, `navigation-label`, `navigation-indicator`, `description`, `icon`, `class-name`, `form`, `route`, `views`, `sections` |
+| Page `form` | `title`, `description`, `update`, `fields` |
+| Form `update` | `strategy`, `delay-ms` |
+| Form field | `id`, `label`, `description`, `control`, `default`, `min`, `max`, `step`, `options` |
+| Radio option | `value`, `label` |
 | Navigation section | `label`, `pages`, `experimental`, `placement` |
 | Page section | `id`, `title`, `description`, `layout`, `views`, `count-source`, `count-sources`, `count-field`, `count-label` |
 | Custom page `route` | `hash-query-parameter`, `navigation-page`, `title-format`, `tabs-class-name`, `tab`, `tabs` |
@@ -399,6 +404,11 @@ A campaign groups one orchestrator and one or more workers that execute centrall
 `dashboard.queries`, when present, declares reusable query results. A query is a closed, structured projection over Section 5.1 database tables or earlier queries; it contains no SQL text, scripts, callbacks, templates, or general-purpose expressions.
 
 Each query retains a non-empty `intent` containing the original natural-language specification that led to the query. This authoring metadata gives future dashboard modifications the requested outcome behind the current clauses; it does not affect execution or presentation.
+
+A query may declare typed scalar `parameters`. Parameter references are inert,
+tagged values resolved from the active page form before the query graph enters
+the data worker. Parameters change scalar operands only; they cannot select a
+source, field, join, reducer, limit, or other query structure.
 
 ```yaml
 queries:
@@ -559,7 +569,7 @@ The transform preserves source-row order and measure declaration or map-property
 
 #### 5.5.4 Normative Query Requirements
 
-- **DLS-QUERY-001:** `queries`, when present, **MUST** be a non-empty sequence of mappings. Each query **MUST** declare a `name` matching the canonical identifier pattern in **DLS-DOC-005**, a non-empty `intent` containing its original natural-language specification, and one `from` input; **MAY** declare `description`, `union`, `time`, `joins`, `filter`, `compute`, `temporal-series`, `aggregate`, `predict`, `select`, `order-by`, and `limit`; and **MUST NOT** declare any other key. A presenter and query execution layer **MUST** treat `intent` as inert authoring metadata.
+- **DLS-QUERY-001:** `queries`, when present, **MUST** be a non-empty sequence of mappings. Each query **MUST** declare a `name` matching the canonical identifier pattern in **DLS-DOC-005**, a non-empty `intent` containing its original natural-language specification, and one `from` input; **MAY** declare `description`, `parameters`, `union`, `time`, `joins`, `filter`, `compute`, `temporal-series`, `aggregate`, `predict`, `select`, `order-by`, and `limit`; and **MUST NOT** declare any other key. A presenter and query execution layer **MUST** treat `intent` as inert authoring metadata.
 - **DLS-QUERY-002:** A query `name` **MUST** be unique among queries and **MUST NOT** shadow a Section 5.1 table name. A declared query name **MAY** be used wherever a view selects data.
 - **DLS-QUERY-003:** `from`, every `union[]`, and every `joins[].source` **MUST** name one Section 5.1 database table or one query declared earlier in the sequence. Forward references, self references, and cycles **MUST** be rejected. `union`, when present, **MUST** be a non-empty sequence; its rows are appended in declaration order, fields from every unioned table or query are available to later clauses, and a field absent from one row has a null value for query operations.
 - **DLS-QUERY-004:** Clause execution order **MUST** be `from`, then `union` in declaration order, then `joins` in declaration order, then `filter`, `compute` in declaration order, `temporal-series`, `aggregate`, `predict` in declaration order, `select`, `order-by`, and finally `limit`.
@@ -585,6 +595,105 @@ The transform preserves source-row order and measure declaration or map-property
 - **DLS-QUERY-024:** An aggregate-local `filter` **MUST** contain only `predicates`, with one to eight entries. Each predicate **MUST** contain only `field` and exactly one of `equals` or `in`; `equals` **MUST** be a finite number, text, or boolean, and `in` **MUST** contain one to 32 such literals. The referenced field **MUST** exist immediately before aggregation and **MUST** be scalar. Structured links, aggregate outputs, and fields produced by later clauses **MUST** be rejected with `DLS-E011` or `DLS-E010` as applicable.
 - **DLS-QUERY-025:** A query **MUST NOT** declare more than 64 aggregate values. Aggregate-local predicate evaluation **MUST** count against the operation budget in **DLS-QUERY-018**. It **MUST NOT** expand rows, alter group formation, access external state, execute code, or introduce sequence semantics.
 - **DLS-QUERY-026:** `temporal-series` **MUST** declare valid scalar `time` and `series` fields and at least one bounded `measures` or `maps` entry. It **MUST** emit only finite numeric values with valid timestamps, preserve deterministic order, remain within **DLS-QUERY-013** limits, execute in the data Web Worker, and expose the statically known tidy output fields defined in Section 5.5.3.
+- **DLS-QUERY-027:** `parameters`, when present, **MUST** be a non-empty sequence of mappings containing exactly a unique canonical `name` and a `type` of `number`, `string`, or `boolean`. A parameter reference **MUST** contain exactly `parameter` naming one parameter declared by the same query. Version 0.1.0 permits parameter references as query predicate `equals`, `gte`, or `lt` operands and as computed-field arguments. A parameter **MUST NOT** alter query topology or output schema.
+- **DLS-QUERY-028:** Before query execution, the presenter **MUST** resolve every parameter reference to one finite number, string, or Boolean value supplied by the active page form. A computed-field parameter reference resolves as a literal computed argument. A missing, structured, non-finite, undeclared, or type-incompatible value **MUST** fail the page projection closed and **MUST NOT** execute a broader query with the predicate or computation removed.
+
+### 5.6 Parameterized Page Forms
+
+A built-in or custom page may declare one `form` that supplies typed scalar
+values to parameterized queries selected by that page. Form state belongs to
+the current rendered page instance. Version 0.1.0 does not serialize it into
+the URL or persistent browser storage.
+
+```json
+{
+  "dashboard": {
+    "queries": [
+      {
+        "name": "simulated-usage",
+        "intent": "Estimate observed AIC under an operator-selected multiplier.",
+        "parameters": [
+          { "name": "multiplier", "type": "number" },
+          { "name": "include-live", "type": "boolean" },
+          { "name": "profile", "type": "string" }
+        ],
+        "from": "usage",
+        "compute": [
+          {
+            "as": "selected-aic",
+            "function": "if",
+            "args": [
+              { "parameter": "include-live" },
+              { "field": "aic" },
+              { "value": 0 }
+            ]
+          },
+          {
+            "as": "simulated-aic",
+            "function": "product",
+            "args": [
+              { "field": "selected-aic" },
+              { "parameter": "multiplier" }
+            ]
+          },
+          {
+            "as": "profile-label",
+            "function": "coalesce",
+            "args": [
+              { "parameter": "profile" },
+              { "value": "balanced" }
+            ]
+          }
+        ]
+      }
+    ],
+    "pages": [
+      {
+        "id": "simulator",
+        "kind": "custom",
+        "title": "Performance simulator",
+        "form": {
+          "title": "Scenario",
+          "update": { "strategy": "debounce", "delay-ms": 250 },
+          "fields": [
+            { "id": "multiplier", "label": "AIC multiplier", "control": "slider", "default": 1, "min": 0, "max": 4, "step": 0.25 },
+            { "id": "include-live", "label": "Include live runs", "control": "checkbox", "default": true },
+            {
+              "id": "profile",
+              "label": "Profile",
+              "control": "radio",
+              "default": "balanced",
+              "options": [
+                { "value": "balanced", "label": "Balanced" },
+                { "value": "fast", "label": "Fast" }
+              ]
+            }
+          ]
+        },
+        "views": [
+          {
+            "id": "simulated-aic",
+            "data": { "source": "simulated-usage" },
+            "mark": "chart",
+            "chart": "line",
+            "encoding": {
+              "x": { "field": "observed-at", "type": "temporal", "time-unit": "day" },
+              "y": { "field": "simulated-aic", "type": "quantitative" }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+- **DLS-FORM-001:** `form` **MUST** contain a non-empty `fields` sequence and **MAY** contain non-empty `title` and `description` strings and one `update` mapping. Field IDs **MUST** be unique canonical identifiers and **MUST** name a parameter declared by a dashboard query.
+- **DLS-FORM-002:** A form field **MUST** declare a non-empty `label`, one `control` of `slider`, `checkbox`, or `radio`, and a typed `default`. `slider` **MUST** declare finite numeric `min`, `max`, and positive `step`, with `min < max` and `default` inside the inclusive range. `checkbox` **MUST** have a Boolean default. `radio` **MUST** declare 2 to 12 uniquely valued, consistently typed scalar options and a default matching one option.
+- **DLS-FORM-003:** Form fields **MUST** render in declaration order in an automatic responsive layout. Authors **MUST NOT** declare coordinates, columns, or breakpoints. Every control **MUST** expose its label, description when present, current value or checked state, keyboard operation, and native accessibility semantics.
+- **DLS-FORM-004:** `update.strategy` **MUST** be `debounce` or `throttle`; `delay-ms` **MUST** be an integer from 50 through 2000. The defaults are `debounce` and 250 milliseconds. Rapid updates **MUST** coalesce at the declared cadence, preserve the latest complete form state, cancel superseded requests or subscriptions, and prevent stale results from replacing newer results.
+- **DLS-FORM-005:** Form interaction code **MUST NOT** query data, filter rows, compute business state, or reconstruct relationships. It may own typed form state and DOM synchronization only. Query substitution and execution **MUST** remain inside the canonical page projection and data-worker boundary.
+- **DLS-FORM-006:** Form values **MUST** remain in memory for the active dashboard document and **MUST** reset to authored defaults when that document or page state is recreated. Version 0.1.0 presenters **MUST NOT** persist form values in URLs or browser storage.
 
 ---
 
@@ -848,7 +957,7 @@ The optional page `icon` is the canonical name of an Octicon supported by the pr
 
 The optional page `navigation-label` provides a concise sidebar label when the page title is more descriptive. A dashboard `navigation` section may reference a focused subset of declared pages; omitted pages remain available as deep-link destinations.
 
-A page may declare `navigation-indicator` with a non-empty `label` and an `any` sequence of source predicates. Each predicate names a bounded source, scalar `field`, and scalar `equals` value. Presenters subscribe only to those declared indicator sources, set the navigation item's accessible label to include the indicator label when any predicate matches, and render a status dot as a supporting visual cue. Indicator sources should be declarative query outputs that already encode the business condition.
+A page may declare `navigation-indicator` with a non-empty `label` and an `any` sequence of bounded source names. Presenters subscribe only to those declared indicator sources, set the navigation item's accessible label to include the indicator label when any source returns a row, and render a status dot as a supporting visual cue. Indicator sources **MUST** be declarative query outputs that already encode the business condition.
 
 A navigation section may set `experimental: true`. Presenters combine pages from all experimental sections into one visible **Experimental** navigation section that is collapsed by default. Activating a direct deep link to an experimental page expands that section. This metadata changes navigation presentation only and does not grant authorization or access to data.
 
@@ -1326,6 +1435,7 @@ dashboard:
 
 ### Version 0.1.0 (Working Draft)
 
+- Added page-level parameterized forms with automatic layout, sliders, Boolean checkboxes, radio groups, typed query parameters, and bounded debounce/throttle update policies.
 - Initial Dashboard Language specification.
 - Defined intrinsic entities, observations, dimensions, measures, and relationships.
 - Defined built-in pages and constrained custom views.

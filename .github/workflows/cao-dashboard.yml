@@ -407,7 +407,7 @@ jobs:
 
   notify-failure:
     needs: [build, cache, deploy]
-    if: ${{ always() && (needs.build.result == 'failure' || needs.build.result == 'cancelled' || needs.cache.result == 'failure' || needs.cache.result == 'cancelled' || needs.deploy.result == 'failure' || needs.deploy.result == 'cancelled') }}
+    if: ${{ always() && (needs.build.result == 'failure' || needs.cache.result == 'failure' || needs.deploy.result == 'failure') }}
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -433,7 +433,7 @@ jobs:
                 result: '${{ needs.deploy.result }}',
                 message: 'The dashboard deploy job failed while publishing the dashboard to GitHub Pages.',
               },
-            ].filter(({ result }) => result === 'failure' || result === 'cancelled')
+            ].filter(({ result }) => result === 'failure')
             if (failures.length === 0) {
               core.info('No failed CAO Dashboard jobs to report')
               return

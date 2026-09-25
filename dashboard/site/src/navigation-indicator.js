@@ -1,23 +1,22 @@
 /**
  * Resolves the declarative navigation indicator for one page.
- * The returned predicates are source predicates; a presenter should subscribe to
- * those bounded sources and a navigation component should show the indicator
- * when any predicate's row field equals its declared scalar value.
+ * The returned source names refer to declarative query outputs that already
+ * encode the indicator condition.
  *
  * @param {Record<string, unknown>} page
- * @returns {{ label: string, predicates: Array<Record<string, unknown>> } | null}
+ * @returns {{ label: string, sources: string[] } | null}
  */
 export function navigationIndicator(page) {
   if (!isPlainObject(page['navigation-indicator'])) return null;
   const indicator = /** @type {Record<string, unknown>} */ (page['navigation-indicator']);
   if (typeof indicator.label !== 'string' || indicator.label.length === 0) return null;
-  const tests = Array.isArray(indicator.any)
-    ? indicator.any.filter(isPlainObject)
+  const sources = Array.isArray(indicator.any)
+    ? indicator.any.filter((source) => typeof source === 'string' && source.length > 0)
     : [];
-  if (tests.length === 0) return null;
+  if (sources.length === 0) return null;
   return {
     label: indicator.label,
-    predicates: tests
+    sources
   };
 }
 
@@ -37,9 +36,7 @@ export function navigationIndicatorSourceNames(pages) {
 export function navigationIndicatorSourceNamesForPage(page) {
   const indicator = navigationIndicator(page);
   if (!indicator) return [];
-  return indicator.predicates.flatMap((test) => (
-    typeof test.source === 'string' ? [test.source] : []
-  ));
+  return indicator.sources;
 }
 
 /** @param {unknown} value @returns {value is Record<string, unknown>} */

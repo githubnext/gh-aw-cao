@@ -60,17 +60,34 @@ describe("remote dashboard data backend", () => {
       }), { status: 200, headers: { "Content-Type": "application/json" } }));
     vi.stubGlobal("fetch", fetchMock);
 
-    const result = await queryRemoteDashboard(["runs"], {
-      pages: [{ id: "runs", views: [] }],
-      queries: [],
+    const result = await queryRemoteDashboard(["simulated-usage"], {
+      pages: [{
+        id: "runs",
+        form: {
+          fields: [{ id: "multiplier", default: 2 }],
+        },
+        views: [{ id: "simulation", data: { source: "simulated-usage" } }],
+      }],
+      queries: [{
+        name: "simulated-usage",
+        parameters: [{ name: "multiplier", type: "number" }],
+        from: "usage",
+        compute: [{
+          as: "simulated-aic",
+          function: "product",
+          args: [{ field: "aic" }, { parameter: "multiplier" }],
+        }],
+      }],
       views: [],
-    }, undefined, { pageId: "runs" });
+    }, undefined, { pageId: "runs", queryContext: { formValues: { multiplier: 3 } } });
 
     expect(result.revision).toBe(4);
     const [, init] = fetchMock.mock.calls.at(-1) ?? [];
     expect(init).toBeDefined();
     const request = JSON.parse(String(init?.body));
-    expect(request.sourceNames).toEqual(["runs"]);
+    expect(request.sourceNames).toEqual(["simulated-usage"]);
+    expect(request.queries[0].compute[0].args[1]).toEqual({ value: 3 });
+    expect(request.compiledQueries.at(-1).compute[0].args[1]).toEqual({ value: 3 });
     expect(JSON.stringify(request)).not.toMatch(/redis|credential|password/i);
     expect(init?.headers).toMatchObject({ Authorization: "Bearer test-access-token" });
   });

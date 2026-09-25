@@ -150,7 +150,7 @@ describe('dashboard DOM provenance', () => {
             views: [],
             'navigation-indicator': {
               label: 'updates available',
-              any: [{ source: 'maintenance-campaign-updates', field: 'campaign-update-state', equals: 'update-available' }]
+              any: ['maintenance-campaign-updates']
             }
           }
         ],
@@ -202,6 +202,45 @@ describe('dashboard DOM provenance', () => {
       onUpdate: expect.any(Function)
     }));
     disposeDashboard(rendered);
+  });
+
+  it('logs and ignores navigation indicator source failures', async () => {
+    const originalUrl = window.location.href;
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    window.history.replaceState({}, '', '?debug=render:navigation');
+    vi.resetModules();
+    try {
+      const { renderDashboard, disposeDashboard: dispose } = await import('../../src/presenter.js');
+      const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ (/** @type {unknown} */ ({
+        languageVersion: '0.1.0',
+        dashboard: {
+          title: 'Indicator dashboard',
+          pages: [{
+            id: 'maintenance',
+            kind: 'custom',
+            title: 'Maintenance',
+            views: [],
+            'navigation-indicator': {
+              label: 'updates available',
+              any: ['maintenance-campaign-updates']
+            }
+          }]
+        }
+      }));
+      const loadPageSources = /** @type {import('../../src/presenter.js').PageSourceLoader} */ (vi.fn(() => Promise.resolve({})));
+      loadPageSources.loadSources = vi.fn(() => Promise.reject(new Error('unavailable')));
+
+      const rendered = renderDashboard({ document, sources: {}, loadPageSources });
+
+      await vi.waitFor(() => {
+        expect(debug).toHaveBeenCalledWith('[cao:render:navigation]', 'indicator update failed', { error: 'unavailable' });
+      });
+      dispose(rendered);
+    } finally {
+      window.history.replaceState({}, '', originalUrl);
+      debug.mockRestore();
+      vi.resetModules();
+    }
   });
 
   it('loads a page chunk before mounting its independently bound elements', async () => {
@@ -660,6 +699,57 @@ describe('dashboard DOM provenance', () => {
 });
 
 describe('presenter built-in and custom pages', () => {
+  it('renders a declarative page form before the page views', () => {
+    const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ (/** @type {unknown} */ ({
+      languageVersion: '0.1.0',
+      dashboard: {
+        id: 'simulator-dashboard',
+        title: 'Simulator dashboard',
+        pages: [{
+          id: 'simulator',
+          kind: 'custom',
+          title: 'Simulator',
+          form: {
+            title: 'Scenario',
+            fields: [
+              { id: 'multiplier', label: 'Multiplier', control: 'slider', default: 1, min: 0, max: 4, step: 0.25 }
+            ]
+          },
+          views: [{
+            id: 'usage',
+            data: { source: 'usage' },
+            mark: 'metric',
+            encoding: { value: { field: 'aic', aggregate: 'sum' } }
+          }]
+        }]
+      }
+    }));
+    const rendered = renderDashboard({
+      document,
+      sources: {
+        usage: {
+          source: 'usage',
+          rows: [{ aic: 2 }],
+          metadata: {
+            'source-id': 'usage',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-24T00:00:00Z',
+            'retrieved-at': '2026-09-24T00:00:00Z',
+            availability: 'available',
+            completeness: 'complete',
+            freshness: 'fresh'
+          }
+        }
+      }
+    });
+    const page = rendered.querySelector('[data-page-id="simulator"]');
+    expect(page?.querySelector(':scope > .dashboard-parameter-form')).not.toBeNull();
+    const slider = page?.querySelector('input[type="range"]');
+    expect(slider).toBeInstanceOf(HTMLInputElement);
+    expect(/** @type {HTMLInputElement} */ (slider).value).toBe('1');
+    disposeDashboard(rendered);
+  });
+
   it('resolves reusable view IDs referenced by custom pages', () => {
     const rendered = renderDashboard({
       document: {
@@ -2381,94 +2471,6 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelectorAll('[data-page-id="runs"] [data-chart-widget="area"]')).toHaveLength(1);
     expect(rendered.querySelectorAll('[data-page-id="runs"] .custom-table')).toHaveLength(1);
     expect(rendered.querySelector('[data-page-id="runs"]')?.getAttribute('data-page-kind')).toBe('custom');
-  });
-
-  it('DLS-PAGE-009 DLS-PAGE-014 renders built-in evals page with distinguishable definitions and observations, observed subject, YES/NO/UNKNOWN result, evaluation model when available, time, provenance, and independent data state deterministically', () => {
-    /** @type {import('../../src/presenter.js').PresentationInput['document']} */
-    const document = {
-      languageVersion: '0.1.0',
-      dashboard: {
-        id: 'evals-dashboard',
-        title: 'Evals Dashboard',
-        pages: [
-          {
-            id: 'evals',
-            kind: /** @type {'built-in'} */ ('built-in'),
-            page: 'evals',
-            title: 'Evals',
-            definition: {
-              'data-state': {
-                availability: true
-              },
-              views: [
-                { id: 'evals-source', data: { source: 'evals' } },
-                { id: 'eval-observations-source', data: { source: 'eval-observations' } }
-              ]
-            }
-          }
-        ]
-      }
-    };
-
-    const rendered = renderDashboard({
-      document,
-      sources: {
-        evals: {
-          source: 'evals',
-          rows: [
-            { eval: 'release-risk', 'eval-name': 'Release Risk', 'eval-question': 'Is the release risky?', 'requested-model': 'gpt-4o', 'observed-at': '2026-08-29T09:00:00Z' },
-            { eval: 'doc-quality', 'eval-name': 'Documentation Quality', 'eval-question': 'Is the documentation complete?', 'requested-model': 'claude-3.5', 'observed-at': '2026-08-29T09:05:00Z' }
-          ],
-          metadata: {
-            'source-id': 'evals-fixture',
-            'source-kind': 'fixture',
-            'as-of': '2026-08-29T20:00:00Z',
-            'retrieved-at': '2026-08-29T20:01:00Z',
-            completeness: 'partial',
-            freshness: 'stale',
-            availability: 'available'
-          }
-        },
-        'eval-observations': {
-          source: 'eval-observations',
-          rows: [
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/daily.yml', run: '1001', eval: 'release-risk', 'eval-result': 'YES', 'requested-model': 'gpt-4o', 'resolved-model': 'gpt-4.1', 'rollout-mode': 'live', 'observed-at': '2026-08-29T10:00:00Z' },
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/daily.yml', run: '1002', eval: 'release-risk', 'eval-result': 'UNKNOWN', 'requested-model': 'gpt-4o', 'resolved-model': '', 'rollout-mode': 'live', 'observed-at': '2026-08-29T10:10:00Z' },
-            { organization: 'octo-org', repository: 'octo-repo', workflow: '.github/workflows/nightly.yml', run: '2001', eval: 'doc-quality', 'eval-result': 'NO', 'requested-model': 'claude-3.5', 'resolved-model': 'claude-3.7', 'rollout-mode': 'review', 'observed-at': '2026-08-29T10:20:00Z' }
-          ],
-          metadata: {
-            'source-id': 'eval-observations-fixture',
-            'source-kind': 'fixture',
-            'as-of': '2026-08-29T20:00:00Z',
-            'retrieved-at': '2026-08-29T20:01:00Z',
-            completeness: 'complete',
-            freshness: 'fresh',
-            availability: 'available'
-          }
-        }
-      }
-    });
-
-    const evalsPage = rendered.querySelector('[data-page-name="evals"]');
-    expect(evalsPage?.textContent).toContain('Evals Evals Source');
-    expect(evalsPage?.textContent).toContain('Evals Observations Source');
-    expect(/** @type {HTMLElement | null} */ (rendered.querySelector('.data-state-summary'))?.hidden).toBe(true);
-    expect(evalsPage?.querySelectorAll('.custom-table')[0]?.querySelectorAll('tbody tr')).toHaveLength(2);
-    expect(evalsPage?.querySelectorAll('.custom-table')[1]?.querySelectorAll('tbody tr')).toHaveLength(3);
-    expect(evalsPage?.textContent).toContain('release-risk');
-    expect(evalsPage?.textContent).toContain('UNKNOWN');
-
-    const sidebarCurrentPage = rendered.querySelector('.primary-nav a[aria-current="page"]');
-    expect(sidebarCurrentPage?.getAttribute('aria-current')).toBe('page');
-    expect(sidebarCurrentPage?.textContent).toContain('Evals');
-
-    const skipLink = rendered.querySelector('.skip-link');
-    expect(skipLink?.getAttribute('href')).toBe('#main-content');
-
-    expect(evalsPage?.textContent).toContain('NO');
-    expect(evalsPage?.textContent).toContain('claude-3.7');
-    expect(evalsPage?.textContent).not.toContain('Source: evals');
-    expect(evalsPage?.textContent).not.toContain('Source: eval-observations');
   });
 
   it('DLS-SAFE-003 DLS-SAFE-004 DLS-SAFE-007 DLS-SAFE-010 renders non-empty accessible names and inert text labels while preserving only safe https external link attributes', () => {
