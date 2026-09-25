@@ -34,6 +34,7 @@ import { formatPercent } from './view-formatters.js';
 export const COMPUTE_FUNCTION_ARITY = {
   coalesce: [2, 8],
   concat: [2, 8],
+  literal: [1, 1],
   lower: [1, 1],
   upper: [1, 1],
   'title-case': [1, 1],
@@ -61,7 +62,7 @@ export const COMPUTE_FUNCTION_ARITY = {
 
 /** Computed-field functions whose result is always text or null. */
 export const TEXT_COMPUTE_FUNCTIONS = [
-  'concat', 'lower', 'upper', 'title-case', 'trim', 'replace-suffix', 'url-encode', 'date-day', 'calendar-week-point', 'format-count', 'format-percent', 'failure-streak-point', 'link-href'
+  'concat', 'literal', 'lower', 'upper', 'title-case', 'trim', 'replace-suffix', 'url-encode', 'date-day', 'calendar-week-point', 'format-count', 'format-percent', 'failure-streak-point', 'link-href'
 ];
 
 /** Computed-field functions whose result is always a finite number or null. */
@@ -290,6 +291,7 @@ export function computeValue(row, definition) {
       values.find((value) => value !== null && value !== '' && typeof value !== 'object') ?? null
     );
   }
+  if (definition.function === 'literal') return scalarValue(values[0]);
   if (definition.function === 'concat') return values.map(textValue).join('');
   if (definition.function === 'lower') return textValue(values[0]).toLocaleLowerCase('en');
   if (definition.function === 'upper') return textValue(values[0]).toLocaleUpperCase('en');

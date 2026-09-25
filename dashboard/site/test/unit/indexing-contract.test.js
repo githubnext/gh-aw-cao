@@ -73,6 +73,8 @@ describe('indexing dashboard', () => {
       { table: 'repositories', records: 1 },
       { table: 'tool events', records: 1 }
     ]);
+    expect(results['indexing-database-table-counts'].rows.map((row) => row.table))
+      .not.toEqual(expect.arrayContaining(['network domains', 'operational values']));
   });
 
   it('uses a sorted horizontal count chart and focused transaction cards without a table facet', () => {

@@ -1667,13 +1667,10 @@
         "compute": [
           {
             "as": "table",
-            "function": "concat",
+            "function": "literal",
             "args": [
               {
                 "value": "campaigns"
-              },
-              {
-                "value": ""
               }
             ]
           }
@@ -1698,13 +1695,10 @@
         "compute": [
           {
             "as": "table",
-            "function": "concat",
+            "function": "literal",
             "args": [
               {
                 "value": "repositories"
-              },
-              {
-                "value": ""
               }
             ]
           }
@@ -1729,13 +1723,10 @@
         "compute": [
           {
             "as": "table",
-            "function": "concat",
+            "function": "literal",
             "args": [
               {
                 "value": "workflows"
-              },
-              {
-                "value": ""
               }
             ]
           }
@@ -1760,13 +1751,10 @@
         "compute": [
           {
             "as": "table",
-            "function": "concat",
+            "function": "literal",
             "args": [
               {
                 "value": "workflow runs"
-              },
-              {
-                "value": ""
               }
             ]
           }
@@ -1791,13 +1779,10 @@
         "compute": [
           {
             "as": "table",
-            "function": "concat",
+            "function": "literal",
             "args": [
               {
                 "value": "network domains"
-              },
-              {
-                "value": ""
               }
             ]
           }
@@ -1822,13 +1807,10 @@
         "compute": [
           {
             "as": "table",
-            "function": "concat",
+            "function": "literal",
             "args": [
               {
                 "value": "tool events"
-              },
-              {
-                "value": ""
               }
             ]
           }
@@ -1853,13 +1835,10 @@
         "compute": [
           {
             "as": "table",
-            "function": "concat",
+            "function": "literal",
             "args": [
               {
                 "value": "audit events"
-              },
-              {
-                "value": ""
               }
             ]
           }
@@ -1884,13 +1863,10 @@
         "compute": [
           {
             "as": "table",
-            "function": "concat",
+            "function": "literal",
             "args": [
               {
                 "value": "issue events"
-              },
-              {
-                "value": ""
               }
             ]
           }
@@ -1915,13 +1891,10 @@
         "compute": [
           {
             "as": "table",
-            "function": "concat",
+            "function": "literal",
             "args": [
               {
                 "value": "operational values"
-              },
-              {
-                "value": ""
               }
             ]
           }
@@ -1946,13 +1919,10 @@
         "compute": [
           {
             "as": "table",
-            "function": "concat",
+            "function": "literal",
             "args": [
               {
                 "value": "ingestion transactions"
-              },
-              {
-                "value": ""
               }
             ]
           }

@@ -2078,6 +2078,7 @@ describe('computed field vocabulary', () => {
     expect(compute('trim', [{ value: '  spaced  ' }])).toBe('spaced');
     expect(compute('url-encode', [{ value: 'a/b' }])).toBe('a%2Fb');
     expect(compute('concat', [{ field: 'missing' }, { value: 'tail' }])).toBe('tail');
+    expect(compute('literal', [{ value: 'fixed label' }])).toBe('fixed label');
     expect(compute('format-count', [{ value: 1234 }])).toBe('1,234');
     expect(compute('format-percent', [{ value: 0.5 }])).toBe('50%');
   });
