@@ -975,7 +975,7 @@ test('Runs renders the worker-projected table for an active time window', async 
   const rows = view.locator('.custom-table tbody tr');
   // The shared time-window select lives once in the top-nav filter bar
   // (relocated there for the active page), not nested inside the page section.
-  const horizonFilter = page.getByLabel('Dashboard filters');
+  const horizonFilter = page.locator('.filter-bar[aria-label="Dashboard filters"]');
   const select = horizonFilter.locator('[aria-label="Time window"]');
 
   await expect(select).toHaveValue('custom');
