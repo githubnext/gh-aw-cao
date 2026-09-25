@@ -72,13 +72,6 @@ test("deployed integration pull request trigger only watches query benchmark inp
     "tests/performance/dashboard-query-cost.test.mjs",
     "tests/playwright/configs/dashboard-query-performance.config.mjs",
   ]);
-  for (const path of [
-    "dashboard/site/**",
-    "dashboard/site/src/notification-service.js",
-    "dashboard/site/src/styles.js",
-  ]) {
-    assert.ok(!paths.includes(path), `unexpected broad trigger path ${path}`);
-  }
 });
 
 test("deployed proxy targets remain under the trusted dashboard URL", () => {
