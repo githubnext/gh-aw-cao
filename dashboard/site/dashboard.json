@@ -1615,7 +1615,12 @@
       {
         "name": "indexing-daily-records",
         "intent": "Count retained CAO Activity records by their observed UTC day.",
-        "from": "event-base",
+        "from": "audits",
+        "union": [
+          "domains",
+          "tools",
+          "issues"
+        ],
         "compute": [
           {
             "as": "day",
