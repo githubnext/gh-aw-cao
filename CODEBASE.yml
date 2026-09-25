@@ -13,7 +13,7 @@ project:
     - JSONL
     - SQLite
     - IndexedDB
-    - Redis Stack
+    - Redis
     - Go
     - Dashboard Language
     - Astro/Starlight
@@ -120,7 +120,7 @@ components:
     responsibility: rebuildable per-browser data projection
   redis_projection:
     path: server/
-    responsibility: disposable generation-scoped dashboard projection with RediSearch indexes
+    responsibility: disposable generation-scoped dashboard projection using core Redis row sets
   dashboard_https_server:
     path: server/
     responsibility: ingest deployed dashboard artifacts, execute Dashboard Language queries server-side, and serve bounded canonical results locally or through an authenticated host-neutral profile
@@ -133,9 +133,18 @@ components:
   dashboard_webhook_reconciliation:
     path: server/internal/server/operations.go
     responsibility: verify and deduplicate GitHub deliveries and reconcile the disposable projection from authoritative inputs
+  dashboard_server_collection:
+    path: server/internal/collect/
+    responsibility: optional alternative ingestion profile that collects evidence into a snapshot-compatible evidence lake from GitHub App installations and projects it through the existing ingestion pipeline
+  dashboard_collection_credentials:
+    path: server/internal/githubapp/
+    responsibility: mint short-lived installation tokens and govern per-installation GitHub rate-limit budget
   dashboard_rebuild_control:
     path: server/internal/server/operations.go
     responsibility: coordinate multi-replica rebuilds, stage and validate a fresh generation, atomically activate it, and report operational status
+  dashboard_server_diagnostics:
+    path: server/internal/doctor/
+    responsibility: run a read-only systematic check-up of runtime configuration, Redis safety and capacity, canonical integrity, query definitions, generation reclamation, and optional collection health, rendered as human-readable text or versioned structured JSON
   dashboard_language_queries:
     path: dashboard/site/src/data/
     responsibility: declarative query definitions executed by the browser data worker
@@ -260,6 +269,10 @@ invariants:
   - "Hosted session encryption MUST identify the active key and support one explicitly configured previous key during controlled rotation; the previous key MUST remain available until sessions and revocation records using it drain."
   - "OAuth refresh MUST atomically compare-and-swap the encrypted session record; a refresh superseded by logout or another refresh MUST revoke or durably queue its newly issued credentials and MUST NOT restore session authority."
   - "GitHub webhook deliveries MUST be signature-verified and deduplicated before reconciliation; webhook payloads are invalidation signals rather than projection authority."
+  - "Published-snapshot ingestion and server collection are mutually exclusive profiles; configuring both MUST fail at startup, and the published-snapshot profile MUST remain the default with unchanged behavior when collection is unconfigured."
+  - "Server collection MUST write evidence in the published snapshot layout and project it through the same ingestion pipeline, so a retained evidence lake repopulates a database on cold start without GitHub requests."
+  - "Server collection scope MUST derive from GitHub App installations; a delivery for an unenrolled repository MUST be dropped rather than collected, and GitHub budget MUST be reserved per installation before each collection."
+  - "Server diagnostics MUST be read-only, use stable check identifiers, produce equivalent human-readable and versioned structured reports, redact secrets, bound each dependency check, and require explicit deep mode before reading every active source."
   - "Redis rebuilds MUST use a distributed lock, stage and validate a fresh immutable generation, and atomically activate it without modifying the active generation in place."
   - "An empty Redis instance is healthy but not ready and MUST report that a rebuild is required."
   - "Browsers and external clients MUST NOT receive Redis endpoints, credentials, keys, or Redis-specific representations."

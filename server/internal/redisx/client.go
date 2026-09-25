@@ -282,7 +282,7 @@ func (c *Client) connect(ctx context.Context) (*redisConnection, error) {
 
 func retryableCommand(command string) bool {
 	switch strings.ToUpper(command) {
-	case "PING", "GET", "HGET", "HGETALL", "HMGET", "SMEMBERS", "FT._LIST", "FT.SEARCH", "FT.AGGREGATE":
+	case "PING", "GET", "HGET", "HGETALL", "HMGET", "SMEMBERS":
 		return true
 	default:
 		return false

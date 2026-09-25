@@ -488,8 +488,6 @@ func fakeRedis(t *testing.T) (string, func()) {
 						_, _ = fmt.Fprint(connection, "+OK\r\n")
 					case "PING":
 						_, _ = fmt.Fprint(connection, "+PONG\r\n")
-					case "FT._LIST":
-						_, _ = fmt.Fprint(connection, "*0\r\n")
 					case "SET":
 						mu.Lock()
 						_, exists := values[command[1]]
@@ -593,8 +591,9 @@ func fakeRedis(t *testing.T) (string, func()) {
 						}
 					case "HGETALL":
 						_, _ = fmt.Fprint(connection, "*10\r\n$10\r\ngeneration\r\n$2\r\ng1\r\n$8\r\nrevision\r\n$1\r\n1\r\n$6\r\ncounts\r\n$2\r\n{}\r\n$11\r\nactivatedAt\r\n$20\r\n2026-01-01T00:00:00Z\r\n$11\r\nevaluatedAt\r\n$20\r\n2026-02-03T04:05:06Z\r\n")
-					case "HMGET":
-						_, _ = fmt.Fprint(connection, "*3\r\n$28\r\n{\"availability\":\"available\"}\r\n$2\r\n{}\r\n$2\r\n{}\r\n")
+					case "HGET":
+						// Source metadata; rows come from SMEMBERS.
+						_, _ = fmt.Fprint(connection, "$28\r\n{\"availability\":\"available\"}\r\n")
 					case "SMEMBERS":
 						_, _ = fmt.Fprint(connection, "*0\r\n")
 					default:
