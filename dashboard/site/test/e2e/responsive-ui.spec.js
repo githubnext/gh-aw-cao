@@ -231,6 +231,7 @@ const horizontalBarFixtureSuffix = 'planner.md';
 /** @param {import('@playwright/test').Page} page */
 async function renderHorizontalBarFixture(page, {
   labels = [horizontalBarFixtureLabel],
+  sections = [],
   stageWidth = 220
 } = {}) {
   await page.setContent(`
@@ -241,9 +242,10 @@ async function renderHorizontalBarFixture(page, {
       import { renderChartWidget } from 'http://dashboard.test/src/components/chart-elements.js';
       document.querySelector('#dashboard-styles').textContent = getPrimerStyles();
       const labels = ${JSON.stringify(labels)};
+      const sections = ${JSON.stringify(sections)};
       document.querySelector('.chart-stage').append(renderChartWidget(
         'horizontal-bar',
-        labels.map((label, index) => ({ x: label, y: 27 - index })),
+        labels.map((label, index) => ({ x: label, y: 27 - index, section: sections[index] })),
         [{ name: 'value', className: 'chart-series-1' }]
       ));
     </script>
@@ -335,6 +337,22 @@ test('mobile horizontal bar labels preserve readable suffixes', async ({ page })
     .toBeGreaterThan(labelRendering.overflowAmount / firstCharClipOverflowDivisor);
   expect(labelRendering.suffixLeft).toBeGreaterThanOrEqual(labelRendering.labelLeft);
   expect(labelRendering.suffixRight).toBeLessThanOrEqual(labelRendering.labelRight);
+});
+
+test('mobile horizontal bar sections keep repository context outside concise workflow labels', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await renderHorizontalBarFixture(page, {
+    labels: ['dependabot-update-planner.md', 'dependabot-update-worker.md', 'deploy.md'],
+    sections: ['githubnext/gh-aw-cao', 'githubnext/gh-aw-cao', 'octo/app']
+  });
+
+  await expect(page.locator('.horizontal-bar-chart-section-title'))
+    .toHaveText(['githubnext/gh-aw-cao', 'octo/app']);
+  await expect(page.locator('.horizontal-bar-chart-label-text'))
+    .toHaveText(['dependabot-update-planner.md', 'dependabot-update-worker.md', 'deploy.md']);
+  await expect.poll(() => page.locator('.horizontal-bar-chart-label-text').evaluateAll((elements) => (
+    elements.every((element) => element.scrollWidth <= element.clientWidth)
+  ))).toBe(true);
 });
 
 test('desktop horizontal bar labels keep standard end truncation', async ({ page }) => {

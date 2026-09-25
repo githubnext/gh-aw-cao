@@ -5870,6 +5870,7 @@ function validateOrderByReferences(data, encoding, aggregateOutputIds, sourceNam
       encoding.x,
       ...(Array.isArray(encoding.y) ? encoding.y : [encoding.y]),
       encoding.color,
+      encoding.section,
       ...(Array.isArray(encoding.columns) ? encoding.columns : []),
     ];
     for (const definition of definitions) {

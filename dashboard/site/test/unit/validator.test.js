@@ -39,6 +39,44 @@ describe('dashboard document validation', () => {
     expect(accepted.ok).toBe(true);
   });
 
+  it('DLS-VIEW-005 limits categorical section encodings to horizontal bar charts', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const costPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'cost');
+    const workflowCost = costPage.views.find(
+      (/** @type {{ id: string }} */ view) => view.id === 'cost-by-workflow'
+    );
+
+    expect(workflowCost.encoding.section).toMatchObject({
+      field: 'repository-coordinate',
+      type: 'nominal'
+    });
+
+    workflowCost.chart = 'bar';
+    const wrongChart = validateDashboardDocument(JSON.stringify(document));
+    expect(wrongChart.ok).toBe(false);
+    if (!wrongChart.ok) {
+      expect(wrongChart.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          code: 'DLS-E010',
+          path: '$.dashboard.pages[36].views[2].encoding.section'
+        })
+      ]));
+    }
+
+    workflowCost.chart = 'horizontal-bar';
+    workflowCost.encoding.section.type = 'quantitative';
+    const wrongType = validateDashboardDocument(JSON.stringify(document));
+    expect(wrongType.ok).toBe(false);
+    if (!wrongType.ok) {
+      expect(wrongType.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          code: 'DLS-E010',
+          path: '$.dashboard.pages[36].views[2].encoding.section.type'
+        })
+      ]));
+    }
+  });
+
   it('validates page forms and typed query parameter references', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     document.dashboard.queries.push({

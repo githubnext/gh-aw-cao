@@ -10339,15 +10339,10 @@
             "empty-message": "No workflow steering warnings were observed in the selected horizon.",
             "encoding": {
               "x": {
-                "field": "workflow",
+                "field": "workflow-coordinate",
                 "type": "nominal",
                 "title": "Workflow",
                 "format": "workflow-identity-label"
-              },
-              "section": {
-                "field": "repository-coordinate",
-                "type": "nominal",
-                "title": "Repository"
               },
               "y": {
                 "field": "events",
@@ -14111,10 +14106,15 @@
             "empty-message": "No workflow AI Credit cost was observed.",
             "encoding": {
               "x": {
-                "field": "workflow-coordinate",
+                "field": "workflow",
                 "type": "nominal",
                 "title": "Workflow",
-                "format": "workflow-identity-label"
+                "format": "workflow-relative-path"
+              },
+              "section": {
+                "field": "repository-coordinate",
+                "type": "nominal",
+                "title": "Repository"
               },
               "y": {
                 "field": "aic",

@@ -1241,7 +1241,7 @@ function renderChartView(context) {
         key: `${point.key}-${definition.field}`,
         color: fieldTitle(definition)
       })));
-      return prepareChartPoints(points, x, y, null, view.data);
+      return prepareChartPoints(points, x, y, null, view.data, chartSection);
     }
     return prepareChartPoints(
       weight
@@ -1250,7 +1250,8 @@ function renderChartView(context) {
       x,
       value,
       series,
-      view.data
+      view.data,
+      chartSection
     );
   };
   const points = pointsForRows(rows);

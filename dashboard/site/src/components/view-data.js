@@ -163,13 +163,14 @@ export function buildChartPoints(pageId, title, rows, x, y, color, hrefField, we
 }
 
 /**
- * @param {Array<{ key: string, x: string, y: number, category?: string, color: string | null, highlighted?: boolean | null, link: { href: string, label: string } | null, source?: Record<string, unknown> }>} points
+ * @param {ChartPoint[]} points
  * @param {Record<string, any> | null} x
  * @param {Record<string, any> | null} y
  * @param {Record<string, any> | null} color
  * @param {unknown} dataConfig
+ * @param {Record<string, any> | null} [section]
  */
-export function prepareChartPoints(points, x, y, color, dataConfig) {
+export function prepareChartPoints(points, x, y, color, dataConfig, section = null) {
   const prepared = [...points];
   const orderBy = /** @type {TableField[]} */ (isPlainObject(dataConfig) && Array.isArray(dataConfig['order-by'])
     ? dataConfig['order-by'].filter((item) => isPlainObject(item) && typeof item.field === 'string')
@@ -177,20 +178,23 @@ export function prepareChartPoints(points, x, y, color, dataConfig) {
   prepared.sort((left, right) => {
     for (const item of orderBy) {
       const comparison = compareValues(
-        chartPointOutputValue(left, item.field, x, y, color),
-        chartPointOutputValue(right, item.field, x, y, color)
+        chartPointOutputValue(left, item.field, x, y, color, section),
+        chartPointOutputValue(right, item.field, x, y, color, section)
       );
       if (comparison !== 0) return item.direction === 'desc' ? -comparison : comparison;
     }
     const xComparison = compareValues(
-      chartPointOutputValue(left, x?.field, x, y, color),
-      chartPointOutputValue(right, x?.field, x, y, color)
+      chartPointOutputValue(left, x?.field, x, y, color, section),
+      chartPointOutputValue(right, x?.field, x, y, color, section)
     );
     return xComparison !== 0
       ? xComparison
       : compareValues(
-          chartPointOutputValue(left, color?.field, x, y, color),
-          chartPointOutputValue(right, color?.field, x, y, color)
+          chartPointOutputValue(left, color?.field, x, y, color, section),
+          chartPointOutputValue(right, color?.field, x, y, color, section)
+        ) || compareValues(
+          chartPointOutputValue(left, section?.field, x, y, color, section),
+          chartPointOutputValue(right, section?.field, x, y, color, section)
         );
   });
   const limit = isPlainObject(dataConfig) && Number.isInteger(dataConfig.limit) && dataConfig.limit > 0
@@ -199,8 +203,8 @@ export function prepareChartPoints(points, x, y, color, dataConfig) {
   return limit === null ? prepared : prepared.slice(0, limit);
 }
 
-/** @param {ChartPoint} point @param {string | undefined} field @param {Record<string, any> | null} x @param {Record<string, any> | null} y @param {Record<string, any> | null} color */
-function chartPointOutputValue(point, field, x, y, color) {
+/** @param {ChartPoint} point @param {string | undefined} field @param {Record<string, any> | null} x @param {Record<string, any> | null} y @param {Record<string, any> | null} color @param {Record<string, any> | null} section */
+function chartPointOutputValue(point, field, x, y, color, section) {
   if (typeof field !== 'string') return null;
   if (field === x?.field || field === x?.as) return point.source?.[x.field] ?? point.x;
   const yOutput = typeof y?.as === 'string'
@@ -208,6 +212,7 @@ function chartPointOutputValue(point, field, x, y, color) {
     : typeof y?.aggregate === 'string' ? `${y.aggregate}-${y.field}` : y?.field;
   if (field === y?.field || field === yOutput) return point.y;
   if (field === color?.field || field === color?.as) return point.source?.[color.field] ?? point.color;
+  if (field === section?.field || field === section?.as) return point.source?.[section.field] ?? point.section;
   return null;
 }
 
