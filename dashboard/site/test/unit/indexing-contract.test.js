@@ -47,14 +47,14 @@ describe('indexing dashboard', () => {
           ],
           metadata
         },
-        campaigns: { source: 'campaigns', rows: [{ id: 'campaign:one' }], metadata },
-        repositories: { source: 'repositories', rows: [{ id: 'repository:one' }], metadata },
-        workflows: { source: 'workflows', rows: [{ id: 'workflow:one' }, { id: 'workflow:two' }], metadata },
-        runs: { source: 'runs', rows: [{ id: 'run:one' }, { id: 'run:two' }, { id: 'run:three' }], metadata },
+        campaigns: { source: 'campaigns', rows: [{ campaign: 'one' }], metadata },
+        repositories: { source: 'repositories', rows: [{ repository: 'one' }], metadata },
+        workflows: { source: 'workflows', rows: [{ workflow: 'one' }, { workflow: 'two' }], metadata },
+        runs: { source: 'runs', rows: [{ run: 'one' }, { run: 'two' }, { run: 'three' }], metadata },
         domains: { source: 'domains', rows: [], metadata },
-        tools: { source: 'tools', rows: [{ id: 'tool:one' }], metadata },
-        audits: { source: 'audits', rows: [{ id: 'audit:one' }, { id: 'audit:two' }], metadata },
-        issues: { source: 'issues', rows: [{ id: 'issue:one' }], metadata },
+        tools: { source: 'tools', rows: [{ event: 'tool:one' }], metadata },
+        audits: { source: 'audits', rows: [{ event: 'audit:one' }, { event: 'audit:two' }], metadata },
+        issues: { source: 'issues', rows: [{ event: 'issue:one' }], metadata },
         'operational-values': { source: 'operational-values', rows: [], metadata }
       },
       ['indexing-daily-ingestion', 'indexing-database-table-counts']

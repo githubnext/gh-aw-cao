@@ -1681,7 +1681,7 @@
           ],
           "values": [
             {
-              "field": "id",
+              "field": "campaign",
               "as": "records",
               "reducer": "count"
             }
@@ -1709,7 +1709,7 @@
           ],
           "values": [
             {
-              "field": "id",
+              "field": "repository",
               "as": "records",
               "reducer": "count"
             }
@@ -1737,7 +1737,7 @@
           ],
           "values": [
             {
-              "field": "id",
+              "field": "workflow",
               "as": "records",
               "reducer": "count"
             }
@@ -1765,7 +1765,7 @@
           ],
           "values": [
             {
-              "field": "id",
+              "field": "run",
               "as": "records",
               "reducer": "count"
             }
@@ -1793,7 +1793,7 @@
           ],
           "values": [
             {
-              "field": "id",
+              "field": "event",
               "as": "records",
               "reducer": "count"
             }
@@ -1821,7 +1821,7 @@
           ],
           "values": [
             {
-              "field": "id",
+              "field": "event",
               "as": "records",
               "reducer": "count"
             }
@@ -1849,7 +1849,7 @@
           ],
           "values": [
             {
-              "field": "id",
+              "field": "event",
               "as": "records",
               "reducer": "count"
             }
@@ -1877,7 +1877,7 @@
           ],
           "values": [
             {
-              "field": "id",
+              "field": "event",
               "as": "records",
               "reducer": "count"
             }
@@ -1905,7 +1905,7 @@
           ],
           "values": [
             {
-              "field": "id",
+              "field": "operational-value",
               "as": "records",
               "reducer": "count"
             }

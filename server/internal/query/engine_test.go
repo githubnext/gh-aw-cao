@@ -193,6 +193,30 @@ func TestLeftJoinDoesNotMatchBlankKeys(t *testing.T) {
 	}
 }
 
+func TestUnavailableUnionFailsClosed(t *testing.T) {
+	definition := Definition{
+		Name:  "combined",
+		From:  "available",
+		Union: []string{"unavailable"},
+	}
+	result, _, _, err := ExecuteDefinition(definition, map[string]model.Source{
+		"available": {
+			Rows:     []model.Row{{"id": "1"}},
+			Metadata: model.Metadata{"availability": "available"},
+		},
+		"unavailable": {
+			Rows:     []model.Row{},
+			Metadata: model.Metadata{"availability": "unavailable"},
+		},
+	}, MaxOperations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Rows) != 0 || result.Metadata["availability"] != "unavailable" {
+		t.Fatalf("unavailable union input did not fail closed: %#v", result)
+	}
+}
+
 func TestPredictionFailsClosed(t *testing.T) {
 	definitionsJSON := `[{"name":"forecast","from":"runs","predict":[{"field":"y","on":"x","as":"p"}]}]`
 	var definitions []Definition
