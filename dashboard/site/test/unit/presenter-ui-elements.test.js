@@ -210,7 +210,7 @@ describe('dashboard sidebar', () => {
       }
     });
 
-    expect(mobileMenuSummary?.getAttribute('aria-label')).toBe('Select view, updates available');
+    expect(mobileMenuSummary?.getAttribute('aria-label')).toBe('Select view, updates available and 1 more');
   });
 
   it('places the hosted user control at the bottom of the sidebar', () => {

@@ -300,7 +300,9 @@ function syncMobileNavigationMenuIndicator(root, indicatorLabels) {
   if (!(summary instanceof HTMLElement) || !(dot instanceof HTMLElement)) return;
   const uniqueLabels = [...new Set(indicatorLabels)];
   const active = uniqueLabels.length > 0;
-  const label = active ? `Select view, ${uniqueLabels[0]}` : 'Select view';
+  const label = uniqueLabels.length > 1
+    ? `Select view, ${uniqueLabels[0]} and ${uniqueLabels.length - 1} more`
+    : active ? `Select view, ${uniqueLabels[0]}` : 'Select view';
   summary.setAttribute('aria-label', label);
   summary.title = label;
   dot.hidden = !active;
