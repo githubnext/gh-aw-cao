@@ -14,7 +14,7 @@ afterEach(() => {
   setDeclaredCliActions([]);
 });
 
-describe('campaign readme status pane', () => {
+describe('campaign readme settings pane', () => {
   it('shows the campaign as enabled and offers pause and preview actions when live and active', () => {
     setDeclaredCliActions(CAMPAIGN_CLI_ACTIONS);
     const rendered = renderCampaignReadme({
@@ -26,6 +26,8 @@ describe('campaign readme status pane', () => {
       ]
     });
     const status = rendered.querySelector('.campaign-status');
+    expect(status?.querySelector('h2')?.textContent).toBe('Settings');
+    expect(status?.querySelector('h2 .octicon-gear')).not.toBeNull();
     expect(status?.querySelector('.campaign-status-state')?.textContent).toBe('Enabled');
     expect(status?.querySelector('.campaign-status-state')?.className).toContain('campaign-status-state-enabled');
     const actionLabels = [...status?.querySelectorAll('.campaign-status-actions .cli-action-trigger strong') ?? []]

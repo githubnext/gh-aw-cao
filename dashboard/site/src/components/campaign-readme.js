@@ -42,7 +42,7 @@ export function renderCampaignReadme({ campaignId, campaignName, workflows }) {
         ])),
       h('aside', { className: 'campaign-readme-about', 'aria-label': `${campaignName} campaign information` },
         h('section', { className: 'campaign-status' },
-          h('h2', null, 'Status'),
+          h('h2', null, octicon('gear'), 'Settings'),
           h('dl', null,
             renderDlRow('State', h('span', { className: `campaign-status-state campaign-status-state-${enabled ? 'enabled' : 'disabled'}` }, enabled ? 'Enabled' : 'Paused'))),
           statusActions.length > 0 ? h('div', { className: 'campaign-status-actions' }, ...statusActions) : null),
