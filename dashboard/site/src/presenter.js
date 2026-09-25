@@ -7,7 +7,7 @@ import { getPrimerStyles } from './styles.js';
 import { octicon } from './octicons.js';
 import { renderDataStateMetrics } from './components/data-state.js';
 import { titleCase } from './components/count-formatters.js';
-import { formatMediumUtcDateTime, renderEmptyMessage, renderSkeletonBars } from './components/ui-primitives.js';
+import { formatMediumUtcDateTime, renderDashboardViewSkeleton, renderEmptyMessage } from './components/ui-primitives.js';
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection, renderViewDisclosure } from './components/view-chrome.js';
 import { externalAnchorAttrs, findLink } from './components/link-content.js';
 import { elementHandlesEmptyRows, elementHandlesUnavailableSource, elementLoadsSourcesAsync, renderUiElement } from './components/ui-elements.js';
@@ -731,7 +731,7 @@ function renderPageLoadingSkeleton(page) {
  * @returns {HTMLElement}
  */
 function renderPageSkeleton() {
-  return renderSkeletonBars('dashboard-view-skeleton');
+  return renderDashboardViewSkeleton();
 }
 
 /**

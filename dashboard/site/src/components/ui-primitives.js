@@ -274,6 +274,51 @@ export function renderSkeletonBars(className) {
 }
 
 /**
+ * Column-span patterns (out of a 12-column grid) used to draw a fresh "UI
+ * layout" pattern for {@link renderDashboardViewSkeleton} on every render, so
+ * a full-page loading skeleton resembles a plausible arrangement of cards
+ * and panels rather than a handful of uniform bars sitting in an otherwise
+ * empty box.
+ * @type {number[][]}
+ */
+const DASHBOARD_VIEW_SKELETON_LAYOUTS = [
+  [12, 6, 6, 4, 4, 4],
+  [8, 4, 4, 4, 4, 12],
+  [6, 6, 12, 3, 3, 3, 3],
+  [4, 4, 4, 6, 6, 12],
+  [12, 3, 3, 3, 3, 6, 6],
+  [7, 5, 4, 4, 4, 12]
+];
+
+/**
+ * Renders a randomized "UI layout" `aria-hidden` loading skeleton for a full
+ * dashboard page view. Unlike {@link renderSkeletonBars}, which draws a
+ * handful of uniform-width bars for compact inline placeholders, this picks
+ * one of several 12-column layout patterns at random on every render and
+ * gives each block a slightly different height, so the placeholder reads as
+ * cards and panels rather than a few thin lines sitting in an otherwise
+ * empty bordered box. Blocks fade and rise into place with a short
+ * staggered entrance animation; both the entrance and the shimmer are pure
+ * CSS and are disabled under `prefers-reduced-motion` (see `styles.js`).
+ * @returns {HTMLElement}
+ */
+export function renderDashboardViewSkeleton() {
+  const layout = DASHBOARD_VIEW_SKELETON_LAYOUTS[Math.floor(Math.random() * DASHBOARD_VIEW_SKELETON_LAYOUTS.length)];
+  const blocks = layout.map((span, index) => {
+    const height = 48 + Math.round(Math.random() * 64);
+    return h('span', {
+      className: 'dashboard-view-skeleton-block',
+      style: `--dashboard-view-skeleton-span: ${span}; --dashboard-view-skeleton-height: ${height}px; --dashboard-view-skeleton-delay: ${index * 60}ms`
+    });
+  });
+  return h(
+    'div',
+    { className: 'dashboard-view-skeleton', 'aria-hidden': 'true' },
+    ...blocks
+  );
+}
+
+/**
  * Renders the shared "three cards and a panel" `aria-hidden` loading
  * placeholder blocks used while the dashboard shell or a page view awaits
  * its content. Shared by the top-level dashboard loading skeleton in

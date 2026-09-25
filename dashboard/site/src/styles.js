@@ -1911,17 +1911,22 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
 .source-refresh-dismiss:hover { background: var(--neutral-muted); color: var(--fg); }
 .source-loading-warning { color: var(--attention); }
 .dashboard-lazy-view { min-height: var(--dashboard-lazy-view-min-height); display: grid; align-content: stretch; }
-.dashboard-lazy-view-skeleton, .dashboard-view-skeleton { min-height: inherit; display: grid; align-content: start; gap: 12px; padding: 16px; border: 1px solid var(--border-muted); border-radius: 6px; background: var(--canvas); }
-.dashboard-lazy-view-skeleton > span, .dashboard-view-skeleton > span { height: 16px; border-radius: 4px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite; }
-.dashboard-view-skeleton { min-height: 280px; }
+.dashboard-lazy-view-skeleton { min-height: inherit; display: grid; align-content: start; gap: 12px; padding: 16px; border: 1px solid var(--border-muted); border-radius: 6px; background: var(--canvas); }
+.dashboard-lazy-view-skeleton > span { height: 16px; border-radius: 4px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite; }
 .dashboard-lazy-view-skeleton > span:first-child { width: 38%; height: 20px; }
 .dashboard-lazy-view-skeleton > span:last-child { width: 72%; }
+.dashboard-view-skeleton { min-height: 280px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); align-content: start; gap: 14px; padding: 20px; border: 1px solid var(--border); border-radius: 12px; background: var(--canvas); }
+.dashboard-view-skeleton-block { grid-column: span var(--dashboard-view-skeleton-span, 12); height: var(--dashboard-view-skeleton-height, 64px); border-radius: 8px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; opacity: 0; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite, dashboard-skeleton-enter .5s ease-out forwards; animation-delay: 0s, var(--dashboard-view-skeleton-delay, 0ms); }
 .skeleton-card { min-height: 104px; }
 .skeleton-panel { min-height: 280px; grid-column: 1 / -1; }
 .sr-only { width: 1px; height: 1px; position: absolute; overflow: hidden; margin: -1px; padding: 0; clip: rect(0 0 0 0); white-space: nowrap; }
 @keyframes dashboard-skeleton-pulse {
   from { background-position: 200% 0; }
   to { background-position: -200% 0; }
+}
+@keyframes dashboard-skeleton-enter {
+  from { opacity: 0; transform: translateY(8px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 @media (min-width: 701px) and (max-width: 900px) {
   .pie-chart-card, .chart-horizontal-card { grid-template-columns: 1fr; }
@@ -2097,6 +2102,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .managed-campaign-card dl { gap: 8px; }
   .overview-observability > .section-heading { align-items: flex-start; flex-direction: column; }
   .dashboard-view-skeleton { grid-template-columns: 1fr; }
+  .dashboard-view-skeleton-block { grid-column: 1 / -1; }
   .skeleton-panel { grid-column: auto; }
   .workflow-attention > .section-heading { align-items: flex-start; flex-direction: column; }
   .workflow-attention-list a, .workflow-attention-static { grid-template-columns: 20px minmax(0, 1fr); }
@@ -2324,7 +2330,8 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   html { scroll-behavior: auto; }
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
   ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
-  .dashboard-lazy-view-skeleton > span, .dashboard-view-skeleton > span, .dashboard-horizon-skeleton > span, .table-summary-skeleton span, .home-catchup-mobile-card, .factory-heading-pending, .factory-rhythm-pending .factory-rhythm-bars { animation: none; }
+  .dashboard-lazy-view-skeleton > span, .dashboard-view-skeleton-block, .dashboard-horizon-skeleton > span, .table-summary-skeleton span, .home-catchup-mobile-card, .factory-heading-pending, .factory-rhythm-pending .factory-rhythm-bars { animation: none; }
+  .dashboard-view-skeleton-block { opacity: 1; }
 }
 @media (prefers-contrast: more) {
   :root {
