@@ -277,6 +277,13 @@ test("canvas dashboard executes only declared CLI actions through the provided e
         default: true,
       }],
     },
+    {
+      id: "create-agent-task",
+      label: "Start agent task",
+      icon: "copilot",
+      command: "gh agent-task create --from-file -",
+      placement: "row",
+    },
   ]));
 
   const preview = await startDashboardServer({
@@ -379,6 +386,35 @@ test("canvas dashboard executes only declared CLI actions through the provided e
       command: "gh aw upgrade --repo octo/example --create-pull-request",
     });
 
+    const prompt = "Investigate this failure.\n\nUntrusted context: {}";
+    const agentTask = await fetch(new URL("__cli_action", previewUrl), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: origin },
+      body: JSON.stringify({
+        id: "create-agent-task",
+        arguments: {},
+        input: prompt,
+      }),
+    });
+    assert.equal(agentTask.status, 200);
+    await agentTask.text();
+    assert.deepEqual(calls.at(-1), {
+      id: "create-agent-task",
+      command: "gh agent-task create --from-file -",
+      input: prompt,
+    });
+
+    const rejectedInput = await fetch(new URL("__cli_action", previewUrl), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: origin },
+      body: JSON.stringify({
+        id: "compile-workflows",
+        arguments: {},
+        input: prompt,
+      }),
+    });
+    assert.equal(rejectedInput.status, 400);
+
     const unsafeTemplate = await fetch(new URL("__cli_action", previewUrl), {
       method: "POST",
       headers: { "Content-Type": "application/json", Origin: origin },
@@ -388,7 +424,7 @@ test("canvas dashboard executes only declared CLI actions through the provided e
       }),
     });
     assert.equal(unsafeTemplate.status, 400);
-    assert.equal(calls.length, 4);
+    assert.equal(calls.length, 5);
 
     const undeclared = await fetch(new URL("__cli_action", previewUrl), {
       method: "POST",
@@ -396,7 +432,7 @@ test("canvas dashboard executes only declared CLI actions through the provided e
       body: JSON.stringify({ id: "not-declared" }),
     });
     assert.equal(undeclared.status, 404);
-    assert.equal(calls.length, 4);
+    assert.equal(calls.length, 5);
 
     const invalidArgument = await fetch(new URL("__cli_action", previewUrl), {
       method: "POST",
@@ -407,7 +443,7 @@ test("canvas dashboard executes only declared CLI actions through the provided e
       }),
     });
     assert.equal(invalidArgument.status, 400);
-    assert.equal(calls.length, 4);
+    assert.equal(calls.length, 5);
   } finally {
     await preview.close();
     await rm(root, { recursive: true, force: true });

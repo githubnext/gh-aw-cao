@@ -590,7 +590,7 @@ function readWebsocketFrames(buffer) {
  *   ghExecutable?: string,
  *   downloadData?: (destination: string, repository?: string, ghExecutable?: string) => Promise<void>,
  *   canvas?: boolean,
- *   executeCliAction?: (action: { id: string, command: string, onOutput: (event: { stream: 'stdout'|'stderr', data: string }) => void }) => Promise<unknown>,
+ *   executeCliAction?: (action: { id: string, command: string, input?: string, onOutput: (event: { stream: 'stdout'|'stderr', data: string }) => void }) => Promise<unknown>,
  *   traceFile?: string,
  *   traceOutput?: (message: string) => void,
  *   requestOutput?: (message: string) => void,
@@ -880,12 +880,14 @@ export async function startDashboardServer({
           return;
         }
         if (!payload || typeof payload !== "object" || Array.isArray(payload)
-            || Object.keys(payload).some((key) => !["id", "arguments", "values"].includes(key))
+            || Object.keys(payload).some((key) => !["id", "arguments", "values", "input"].includes(key))
             || typeof payload.id !== "string" || !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(payload.id)
             || (payload.arguments !== undefined
               && (!payload.arguments || typeof payload.arguments !== "object" || Array.isArray(payload.arguments)))
             || (payload.values !== undefined
-              && (!payload.values || typeof payload.values !== "object" || Array.isArray(payload.values)))) {
+              && (!payload.values || typeof payload.values !== "object" || Array.isArray(payload.values)))
+            || (payload.input !== undefined
+              && (typeof payload.input !== "string" || payload.input.length === 0 || payload.input.length > 100_000))) {
           sendJson(response, 400, { error: "Invalid CLI action identifier." });
           return;
         }
@@ -927,6 +929,11 @@ export async function startDashboardServer({
             ))
             .map((argument) => argument.flag),
         ].join(" ");
+        const acceptsPromptInput = command === "gh agent-task create --from-file -";
+        if ((payload.input !== undefined) !== acceptsPromptInput) {
+          sendJson(response, 400, { error: "CLI action input is not valid for this command." });
+          return;
+        }
         response.writeHead(200, {
           "Cache-Control": "no-store",
           "Content-Type": "application/x-ndjson; charset=utf-8",
@@ -940,6 +947,7 @@ export async function startDashboardServer({
           const result = await executeCliAction({
             id: action.id,
             command,
+            ...(payload.input === undefined ? {} : { input: payload.input }),
             onOutput: ({ stream, data }) => emit({ type: "output", stream, data }),
           });
           emit({ type: "complete", result });

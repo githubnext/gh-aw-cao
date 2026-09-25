@@ -143,9 +143,10 @@ await joinSession({
             workingDirectory:
               context.session?.workingDirectory ?? process.cwd(),
             repository: input.repository,
-            executeCliAction: ({ command, onOutput }) =>
+            executeCliAction: ({ command, input: commandInput, onOutput }) =>
               executeDashboardCommand({
                 command,
+                input: commandInput,
                 workingDirectory:
                   context.session?.workingDirectory ?? dashboardWorkingDirectory,
                 githubToken: process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN,

@@ -1541,6 +1541,14 @@
         "icon": "pause",
         "command": "./cao.sh disable {{campaign}}",
         "placement": "row"
+      },
+      {
+        "id": "create-agent-task",
+        "label": "Start agent task",
+        "description": "Start a GitHub Copilot coding agent task from the reviewed prompt.",
+        "icon": "copilot",
+        "command": "gh agent-task create --from-file -",
+        "placement": "row"
       }
     ],
     "horizon": {
@@ -11351,6 +11359,7 @@
               ],
               "actions": [
                 {
+                  "action": "create-agent-task",
                   "intent": "Investigate this failed workflow run.",
                   "presentation": "copy-prompt",
                   "icon": "search",
@@ -12647,6 +12656,7 @@
                   ]
                 },
                 {
+                  "action": "create-agent-task",
                   "intent": "Debug this failed workflow dispatch. Explain the retained failure reason, verify it against the linked GitHub Actions run, and propose the safest next action.",
                   "presentation": "copy-prompt",
                   "icon": "search",
