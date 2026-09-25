@@ -1,7 +1,17 @@
 import { h } from '../dom.js';
+import { octicon } from '../octicons.js';
 import { findLink } from './link-content.js';
 import { rowsFor as rowsForSource } from './source-rows.js';
 import { renderEmptyMessage } from './ui-primitives.js';
+
+/** @type {Record<string, { label: string, icon: string }>} */
+const GFM_ALERTS = {
+  note: { label: 'Note', icon: 'info' },
+  tip: { label: 'Tip', icon: 'light-bulb' },
+  important: { label: 'Important', icon: 'report' },
+  warning: { label: 'Warning', icon: 'alert' },
+  caution: { label: 'Caution', icon: 'stop' }
+};
 
 /**
  * Renders Markdown retained in the first declared source without attaching the
@@ -85,7 +95,16 @@ function renderMarkdownBlocks(markdown, source, links) {
     if (/^\s*>/.test(line)) {
       const quote = [];
       while (index < lines.length && /^\s*>/.test(lines[index])) quote.push(lines[index++].replace(/^\s*>\s?/, ''));
-      nodes.push(h('blockquote', null, h('p', null, ...renderInline(quote.join(' '), source, links))));
+      const alertType = quote[0]?.match(/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$/i)?.[1].toLowerCase();
+      const alert = alertType ? GFM_ALERTS[alertType] : undefined;
+      nodes.push(alert
+        ? h(
+            'blockquote',
+            { className: `markdown-alert markdown-alert-${alertType}` },
+            h('p', { className: 'markdown-alert-title' }, octicon(alert.icon), alert.label),
+            ...renderMarkdownBlocks(quote.slice(1).join('\n'), source, links)
+          )
+        : h('blockquote', null, h('p', null, ...renderInline(quote.join(' '), source, links))));
       continue;
     }
     const paragraph = [line.trim()];

@@ -1842,6 +1842,15 @@ tbody tr:hover { background: var(--canvas-subtle); }
 .markdown-body p, .markdown-body ul, .markdown-body ol, .markdown-body blockquote, .markdown-body pre, .markdown-body table { margin-block: 0 16px; }
 .markdown-body li + li { margin-top: 4px; }
 .markdown-body blockquote { margin-inline: 0; padding: 0 16px; border-left: 4px solid var(--border); color: var(--muted); }
+.markdown-body .markdown-alert { color: var(--fg); }
+.markdown-body .markdown-alert-note, .markdown-body .markdown-alert-important { border-left-color: var(--accent); }
+.markdown-body .markdown-alert-tip { border-left-color: var(--success); }
+.markdown-body .markdown-alert-warning { border-left-color: var(--attention); }
+.markdown-body .markdown-alert-caution { border-left-color: var(--danger); }
+.markdown-body .markdown-alert-title { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--accent); font-weight: 600; }
+.markdown-body .markdown-alert-tip .markdown-alert-title { color: var(--success); }
+.markdown-body .markdown-alert-warning .markdown-alert-title { color: var(--attention); }
+.markdown-body .markdown-alert-caution .markdown-alert-title { color: var(--danger); }
 .markdown-body pre { max-width: 100%; overflow: auto; padding: 14px 16px; border-radius: 6px; background: var(--canvas-inset); }
 .markdown-body pre code { padding: 0; background: transparent; }
 .markdown-body img { max-width: 100%; height: auto; }

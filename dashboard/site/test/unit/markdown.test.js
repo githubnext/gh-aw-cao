@@ -64,4 +64,47 @@ describe('generic markdown element', () => {
     const empty = renderMarkdownElement(context([], { 'empty-message': 'README unavailable.' }));
     expect(empty.textContent).toBe('README unavailable.');
   });
+
+  it('renders every GFM alert type with its title, icon, and block content', () => {
+    const rendered = renderMarkdownElement(context([{
+      readme: [
+        '> [!NOTE]',
+        '> A **note**.',
+        '',
+        '> [!TIP]',
+        '> A tip.',
+        '',
+        '> [!IMPORTANT]',
+        '> Important context.',
+        '',
+        '> [!WARNING]',
+        '> First paragraph.',
+        '>',
+        '> Second paragraph.',
+        '',
+        '> [!CAUTION]',
+        '> Take care.'
+      ].join('\n')
+    }]));
+
+    const alerts = [...rendered.querySelectorAll('.markdown-alert')];
+    expect(alerts.map((alert) => alert.className)).toEqual([
+      'markdown-alert markdown-alert-note',
+      'markdown-alert markdown-alert-tip',
+      'markdown-alert markdown-alert-important',
+      'markdown-alert markdown-alert-warning',
+      'markdown-alert markdown-alert-caution'
+    ]);
+    expect(alerts.map((alert) => alert.querySelector('.markdown-alert-title')?.textContent)).toEqual([
+      'Note',
+      'Tip',
+      'Important',
+      'Warning',
+      'Caution'
+    ]);
+    expect(alerts.map((alert) => alert.querySelector('.markdown-alert-title .octicon')?.getAttribute('aria-hidden')))
+      .toEqual(['true', 'true', 'true', 'true', 'true']);
+    expect(alerts[0].querySelector('strong')?.textContent).toBe('note');
+    expect(alerts[3].querySelectorAll(':scope > p')).toHaveLength(3);
+  });
 });
