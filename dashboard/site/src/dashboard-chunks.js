@@ -1,5 +1,6 @@
 import { resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { elementLoadsSourcesAsync } from './components/ui-elements.js';
+import { navigationIndicatorSourceNamesForPage } from './navigation-indicator.js';
 
 /**
  * @typedef {{ id?: string, kind?: string, title?: string, description?: string, icon?: string, ['navigation-label']?: string, ['class-name']?: string, route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string }, views?: unknown[], sections?: unknown[], definition?: { views?: unknown[], sections?: unknown[] }, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], ['independent-source-bindings']?: boolean } & Record<string, unknown>} DashboardPage
@@ -157,6 +158,14 @@ export function dashboardPageSourceNames(document, pageId, viewMode) {
     const visibility = isPlainObject(callout?.['visible-when']) ? callout['visible-when'] : null;
     if (typeof visibility?.source === 'string') {
       names.add(visibility.source);
+    }
+  }
+  // Navigation indicators are rendered in the sidebar on every page, so their
+  // declared sources must be available regardless of which page's chunk
+  // happens to load first (mirrors the callout handling above).
+  for (const candidatePage of document.dashboard.pages ?? []) {
+    for (const sourceName of navigationIndicatorSourceNamesForPage(candidatePage)) {
+      names.add(sourceName);
     }
   }
   return [...names];
