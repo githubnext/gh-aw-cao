@@ -124,11 +124,12 @@ export function renderCampaignRouteShell(context, config) {
         return null;
       }
       const campaignName = campaignNameForRoute(campaignId, workflows);
+      const titleLink = campaignTitleLink(campaignName, workflows);
       return {
         allocation: {
           title: campaignName,
           description: config.description.replace('{campaignName}', campaignName),
-          ...campaignTitleLink(campaignName, workflows),
+          ...(titleLink ? { titleLink } : {}),
           navigationPage: 'campaigns'
         },
         content: config.bodyRenderer?.({ context, campaignId, campaignName, workflows }) ?? null
@@ -158,7 +159,7 @@ export function renderCampaignRouteShell(context, config) {
 /**
  * @param {string} campaignName
  * @param {Array<Record<string, unknown>>} workflows
- * @returns {{ titleLink: { href: string, label: string }} | {}}
+ * @returns {{ href: string, label: string } | null}
  */
 function campaignTitleLink(campaignName, workflows) {
   for (const workflow of workflows) {
@@ -168,17 +169,19 @@ function campaignTitleLink(campaignName, workflows) {
     const href = campaignFolderHref(repositoryHref, text(workflow['campaign-readme-path']));
     if (href) {
       return {
-        titleLink: {
-          href,
-          label: `Open ${campaignName} campaign source on GitHub`
-        }
+        href,
+        label: `Open ${campaignName} campaign source on GitHub`
       };
     }
   }
-  return {};
+  return null;
 }
 
 /**
+ * Resolves the source folder that contains a campaign aw.yml by assuming it
+ * lives beside the campaign README path supplied by inventory. Returns an
+ * empty string when the repository URL is not an owner/repo root or the README
+ * path does not identify a campaign folder.
  * @param {string} repositoryHref
  * @param {string} readmePath
  * @returns {string}
@@ -186,7 +189,9 @@ function campaignTitleLink(campaignName, workflows) {
 function campaignFolderHref(repositoryHref, readmePath) {
   try {
     const url = new URL(repositoryHref);
-    if (url.protocol !== 'https:' || url.pathname.split('/').filter(Boolean).length < 2) return '';
+    if (url.protocol !== 'https:') return '';
+    const repositorySegments = url.pathname.split('/').filter(Boolean);
+    if (repositorySegments.length !== 2) return '';
     const directory = readmePath.includes('/') ? readmePath.slice(0, readmePath.lastIndexOf('/')) : '';
     if (!directory) return '';
     const encodedDirectory = directory.split('/').map(encodeURIComponent).join('/');
