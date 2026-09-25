@@ -94,10 +94,6 @@ concurrency:
 
 tracker-id: software-development-practices-github-well-architected
 
-graders:
-  operational-value:
-    run: ./graders/software-development-practices-github-well-architected-operational-value.sh
-
 tools:
   cli-proxy: true
   github:

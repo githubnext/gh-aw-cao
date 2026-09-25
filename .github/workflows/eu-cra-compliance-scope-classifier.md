@@ -103,10 +103,6 @@ tools:
     toolsets: [repos, issues, pull_requests, actions]
   web-fetch:
 
-graders:
-  operational-value:
-    run: ./graders/eu-cra-compliance-scope-classifier-operational-value.sh
-
 safe-outputs:
   create-issue:
     expires: 30d
