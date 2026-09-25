@@ -4,7 +4,7 @@
 
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
-import { formatAggregateValue, formatRelativeTime } from '../view-formatters.js';
+import { formatAggregateValue, formatRelativeTime, formatString } from '../view-formatters.js';
 import { formatCount, titleCase } from './count-formatters.js';
 import { renderCellDisplay } from './cell-display.js';
 import { resolveCardStatus } from './card-status.js';
@@ -39,6 +39,9 @@ const debugContinuation = createDebug('data:continuation');
 const GITHUB_ENTITY_DISPLAY_FIELDS = {
   [REPOSITORY_LINK_DISPLAY]: 'repository',
   [WORKFLOW_LINK_DISPLAY]: 'workflow'
+};
+const PIE_ENTITY_FORMATS = {
+  'workflow-coordinate': 'workflow-identity-label'
 };
 /**
  * @param {Record<string, unknown>} row
@@ -1278,8 +1281,9 @@ function renderChartView(context) {
           ? [renderPieChartLayout(chartWidget, renderPieLegend(
               pieSummary.entries,
               pieSummary.total,
-              chartCategoryLinks(renderedPoints),
-              y ? fieldUnit(y, context.units ?? {}) : null
+              pieCategoryLinks(renderedPoints, x),
+              y ? fieldUnit(y, context.units ?? {}) : null,
+              pieCategoryLabelFormatter(x)
             ))]
           : [chartWidget]),
         ...(chartLegend && chartType === 'scatter' ? [chartLegend] : [])
@@ -1493,8 +1497,59 @@ function chartCategoryLinks(points) {
     } else {
       links.set(point.x, point.link);
     }
+
   }
   return links;
+}
+
+/**
+ * Preserves an explicit href encoding, then supplies internal entity routes for
+ * the standard repository and workflow category fields.
+ * @param {Array<{ x: string, link: { href: string, label: string } | null }>} points
+ * @param {Record<string, unknown> | null} x
+ * @returns {Map<string, { href: string, label: string }>}
+ */
+function pieCategoryLinks(points, x) {
+  const links = chartCategoryLinks(points);
+  const field = typeof x?.field === 'string' ? x.field : '';
+  for (const point of points) {
+    if (links.has(point.x)) continue;
+    const link = inferredPieEntityLink(field, point.x);
+    if (link) links.set(point.x, link);
+  }
+  return links;
+}
+
+/**
+ * @param {Record<string, unknown> | null} x
+ * @returns {(label: string) => string}
+ */
+function pieCategoryLabelFormatter(x) {
+  const format = typeof x?.format === 'string'
+    ? x.format
+    : typeof x?.field === 'string' ? PIE_ENTITY_FORMATS[x.field] : undefined;
+  return (label) => formatString(label, format, label);
+}
+
+/**
+ * @param {string} field
+ * @param {string} label
+ * @returns {{ href: string, label: string } | null}
+ */
+function inferredPieEntityLink(field, label) {
+  if (field === 'repository-coordinate' && /^[^/:]+\/[^/:]+$/.test(label)) {
+    return {
+      href: `#page-repository-detail?repository=${encodeURIComponent(label)}`,
+      label: `View ${label} repository dashboard`
+    };
+  }
+  if (field === 'workflow-coordinate' && /^[^/:]+\/[^/:]+:\.github\/workflows\/.+/.test(label)) {
+    return {
+      href: `#page-workflow-runtime?workflow=${encodeURIComponent(label)}`,
+      label: `View ${label} workflow dashboard`
+    };
+  }
+  return null;
 }
 
 /**

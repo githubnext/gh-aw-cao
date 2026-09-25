@@ -260,9 +260,10 @@ function pieChartSegmentPath(startFraction, endFraction, separated = false) {
  * @param {number} total
  * @param {Map<string, { href: string, label: string }>} [links]
  * @param {{ name: string, symbol: string, significant: number } | null} [unit]
+ * @param {(label: string) => string} [formatLabel]
  * @returns {HTMLElement}
  */
-export function renderPieLegend(entries, total, links = new Map(), unit = null) {
+export function renderPieLegend(entries, total, links = new Map(), unit = null, formatLabel = (label) => label) {
   const rankedEntries = entries
     .map((entry, index) => ({ entry, index }))
     .sort((left, right) => right.entry[1] - left.entry[1] || left.index - right.index);
@@ -273,7 +274,7 @@ export function renderPieLegend(entries, total, links = new Map(), unit = null) 
     ({ entry: [label, value] }) => {
       const link = links.get(label) ?? null;
       return [
-        h('span', null, renderSafeLink(label, link)),
+        h('span', null, renderSafeLink(formatLabel(label), link)),
         h('strong', null, formatPieValue(value, unit)),
         h('small', null, total > 0 ? formatCoveragePercent(value / total) : '0%')
       ];

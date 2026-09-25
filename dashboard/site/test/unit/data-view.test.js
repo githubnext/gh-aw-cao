@@ -1460,6 +1460,52 @@ describe('data view renderer', () => {
     expect(bar?.querySelector('.table-region')).toBeNull();
   });
 
+  it('links known pie entities and formats workflow coordinates while preserving explicit hrefs', () => {
+    const context = /** @type {Parameters<typeof renderDataView>[1]} */ ({
+      pageId: 'cost',
+      title: 'Cost per workflow',
+      view: {
+        mark: 'chart',
+        chart: 'pie',
+        encoding: {
+          x: { field: 'workflow-coordinate', type: 'nominal' },
+          y: { field: 'aic', type: 'quantitative' }
+        }
+      },
+      sourceName: 'cost-by-workflow',
+      rows: [],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: () => [],
+      buildChartPoints: () => [],
+      prepareChartPoints: (points) => points,
+      toText: String
+    });
+    const workflow = 'githubnext/gh-aw-cao:.github/workflows/optimization-agents-and-curator.md';
+    const inferred = renderDataView('chart', {
+      ...context,
+      buildChartPoints: () => [{ key: workflow, x: workflow, y: 3, color: null, link: null }]
+    });
+
+    const inferredLink = inferred?.querySelector('.chart-legend-pie a');
+    expect(inferredLink?.getAttribute('href')).toBe(`#page-workflow-runtime?workflow=${encodeURIComponent(workflow)}`);
+    expect(inferredLink?.getAttribute('aria-label')).toBe(`View ${workflow} workflow dashboard`);
+    expect(inferredLink?.textContent).toBe('optimization-agents-and-curator.md (githubnext/gh-aw-cao)');
+
+    const overridden = renderDataView('chart', {
+      ...context,
+      buildChartPoints: () => [{
+        key: workflow,
+        x: workflow,
+        y: 3,
+        color: null,
+        link: { href: '#page-custom-workflow', label: 'View custom workflow dashboard' }
+      }]
+    });
+    expect(overridden?.querySelector('.chart-legend-pie a')?.getAttribute('href')).toBe('#page-custom-workflow');
+  });
+
   it('renders swimlane continuation pages incrementally without blocking the initial view', async () => {
     /** @type {(value: { rows: Array<Record<string, unknown>>, continuationToken?: string }) => void} */
     let resolveFirstPage = () => {};

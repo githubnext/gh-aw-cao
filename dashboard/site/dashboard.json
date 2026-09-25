@@ -8830,6 +8830,9 @@
             "field": "campaign-name"
           },
           {
+            "field": "campaign-dashboard-link"
+          },
+          {
             "field": "aic"
           }
         ],
@@ -13237,6 +13240,9 @@
                 "type": "quantitative",
                 "title": "AIC cost",
                 "unit": "aic"
+              },
+              "href": {
+                "field": "campaign-dashboard-link"
               }
             }
           },
