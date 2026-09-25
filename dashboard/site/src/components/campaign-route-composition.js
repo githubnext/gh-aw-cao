@@ -10,7 +10,6 @@ import {
   CAMPAIGN_ROUTE_DEFAULT_BODY,
   CAMPAIGN_ROUTE_VARIANT_VALUES
 } from './route-body-specification.js';
-import { renderCampaignReadme } from './campaign-readme.js';
 import { renderMeasureHistory } from './measure-history.js';
 
 const CAMPAIGN_OPERATIONAL_VALUE_SOURCES = [
@@ -52,7 +51,7 @@ const CAMPAIGN_ROUTE_COMPOSITIONS = {
     selectMessage: 'Select a campaign to view its overview.',
     description: 'Operational activity for the {campaignName} campaign.',
     currentTab: 'overview',
-    bodyRenderer: ({ campaignId, campaignName, workflows }) => renderCampaignReadme({ campaignId, campaignName, workflows })
+    bodyRenderer: undefined
   },
   workflows: {
     rootClassName: 'campaign-workflows',

@@ -585,6 +585,7 @@ The Agents page answers who or what is assigned, what it is doing, whether it ca
 - **CAOD-AGENT-022:** A presenter **MUST NOT** infer that runtime duration or activity is anomalous without a representative baseline and disclosed method.
 - **CAOD-AGENT-023:** The Agents inventory **MUST** distinguish campaign identities from standalone workflows and provide a route from each campaign to its retained campaign detail.
 - **CAOD-AGENT-024:** Campaign detail **SHOULD** render the campaign README when retained by the authoritative inventory. Missing README content **MUST** produce an explicit unavailable state and **MUST NOT** be replaced with generated campaign claims.
+- **CAOD-AGENT-025:** Campaign README presentation **SHOULD** use the generic declarative Markdown element and standard data views rather than campaign-specific presentation code.
 
 ### 11.2 Coordination
 

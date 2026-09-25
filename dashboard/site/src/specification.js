@@ -83,7 +83,7 @@ export const MAX_PAGE_ROUTE_TABS = 8;
 export const VIEW_KEYS = ['id', 'title', 'description', 'intent', 'locked', 'data', 'mark', 'element', 'config', 'callout', 'chart', 'metric', 'list', 'card-drill', 'tree', 'layout', 'disclosure', 'disclosure-label', 'controls', 'lazy-list', 'column-summaries', 'empty-message', 'title-link', 'encoding'];
 export const VIEW_DATA_KEYS = ['source', 'sources', 'scope', 'time', 'filters', 'arguments', 'route-field', 'limit', 'order-by', 'source-metadata'];
 export const VIEW_DATA_ARGUMENT_KEYS = ['name', 'field'];
-export const VIEW_ELEMENT_CONFIG_KEYS = ['body', 'sections', 'stations', 'labels', 'animate', 'sources', 'view-all-page', 'view-all-label', 'label-field', 'link-field', 'icon-field', 'fallback-icon', 'indicator-field', 'indicator-label-field', 'empty-message', 'measure-source'];
+export const VIEW_ELEMENT_CONFIG_KEYS = ['body', 'sections', 'stations', 'labels', 'animate', 'sources', 'view-all-page', 'view-all-label', 'label-field', 'link-field', 'icon-field', 'fallback-icon', 'indicator-field', 'indicator-label-field', 'empty-message', 'measure-source', 'content-field', 'path-field', 'base-link-field'];
 export const FACTORY_HEADER_SOURCE_ROLES = ['presentation', 'rhythm'];
 export const FACTORY_FLOOR_SOURCE_ROLES = ['campaigns', 'repositories'];
 export const VIEW_ELEMENT_ANIMATION_VALUES = ['number'];
@@ -104,7 +104,8 @@ export const VIEW_ELEMENT_VALUES = [
   'measure-history',
   'factory-header',
   'factory-floor',
-  'link-button-list'
+  'link-button-list',
+  'markdown'
 ];
 export const VIEW_CHART_VALUES = ['area', 'bar', 'dot', 'heatmap', 'histogram', 'horizontal-bar', 'line', 'pie', 'scatter', 'swimlane'];
 export const VIEW_METRIC_KEYS = ['style', 'icon', 'tone', 'navigation-page', 'animate'];

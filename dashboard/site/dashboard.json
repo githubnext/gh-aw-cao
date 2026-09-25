@@ -12214,6 +12214,125 @@
             "config": {
               "body": "overview"
             }
+          },
+          {
+            "id": "campaign-readme",
+            "title": "README",
+            "data": {
+              "sources": [
+                "workflows"
+              ],
+              "arguments": [
+                {
+                  "name": "campaign",
+                  "field": "campaign"
+                }
+              ]
+            },
+            "mark": "element",
+            "element": "markdown",
+            "config": {
+              "content-field": "campaign-readme",
+              "path-field": "campaign-readme-path",
+              "base-link-field": "repository-link",
+              "empty-message": "Campaign README content is unavailable in this inventory."
+            },
+            "layout": "full"
+          },
+          {
+            "id": "campaign-settings",
+            "title": "Settings",
+            "data": {
+              "source": "campaigns",
+              "arguments": [
+                {
+                  "name": "campaign",
+                  "field": "campaign"
+                }
+              ]
+            },
+            "mark": "table",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "campaign-description",
+                  "type": "nominal",
+                  "title": "Description"
+                },
+                {
+                  "field": "campaign-enabled",
+                  "type": "nominal",
+                  "title": "State",
+                  "display": "active-state"
+                },
+                {
+                  "field": "campaign-mode",
+                  "type": "nominal",
+                  "title": "Rollout",
+                  "display": "mode"
+                },
+                {
+                  "field": "campaign-worker-count",
+                  "type": "quantitative",
+                  "title": "Workers"
+                }
+              ],
+              "actions": [
+                {
+                  "action": "set-campaign-preview",
+                  "presentation": "cli-action",
+                  "icon": "eye",
+                  "label": "Switch to preview",
+                  "context": [
+                    "campaign"
+                  ],
+                  "when": {
+                    "field": "campaign-mode",
+                    "equals": "live"
+                  }
+                },
+                {
+                  "action": "set-campaign-live",
+                  "presentation": "cli-action",
+                  "icon": "play",
+                  "label": "Switch to live",
+                  "context": [
+                    "campaign"
+                  ],
+                  "when": {
+                    "field": "campaign-mode",
+                    "equals": "review"
+                  }
+                },
+                {
+                  "action": "disable-campaign",
+                  "presentation": "cli-action",
+                  "icon": "pause",
+                  "label": "Pause campaign",
+                  "context": [
+                    "campaign"
+                  ],
+                  "when": {
+                    "field": "campaign-enabled",
+                    "equals": true
+                  }
+                },
+                {
+                  "action": "enable-campaign",
+                  "presentation": "cli-action",
+                  "icon": "play",
+                  "label": "Enable campaign",
+                  "context": [
+                    "campaign"
+                  ],
+                  "when": {
+                    "field": "campaign-enabled",
+                    "equals": false
+                  }
+                }
+              ]
+            },
+            "layout": "full"
           }
         ]
       },

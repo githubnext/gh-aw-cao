@@ -214,21 +214,7 @@ describe('campaign detail route', () => {
       'campaign-problems',
       'campaign-issues'
     ]);
-    expect(rendered.querySelector('.campaign-readme h1')?.textContent).toBe('Ambient Context');
-    expect(rendered.querySelector('.campaign-readme h2')?.textContent).toBe('Capabilities');
-    expect(rendered.querySelectorAll('.campaign-readme li')).toHaveLength(2);
-    expect(rendered.querySelector('.campaign-readme-about')?.textContent).toContain('Keeps repository guidance current.');
-    expect(rendered.querySelector('.campaign-marketplace-detail')?.getAttribute('data-campaign')).toBe('ambient-context');
-    expect(rendered.querySelector('.campaign-marketplace-title')?.textContent).toBe('Ambient ContextCampaign');
-    expect(rendered.querySelector('.campaign-rollout')?.textContent).toBe('review');
-    expect(rendered.querySelector('.campaign-marketplace-actions a')?.getAttribute('href')).toBe('https://ghe.example/githubnext/gh-aw-cao/blob/HEAD/ambient-context/README.md');
-    expect([...rendered.querySelectorAll('.campaign-readme a')].find((link) => link.textContent === 'guide')?.getAttribute('href')).toBe('https://ghe.example/githubnext/gh-aw-cao/blob/HEAD/ambient-context/docs/guide.md');
-    const resources = /** @type {HTMLDetailsElement} */ (rendered.querySelector('.campaign-readme-resources'));
-    expect(resources.open).toBe(false);
-    expect(resources.querySelector('summary')?.textContent).toBe('ResourcesShow details');
-    resources.open = true;
-    expect(resources.textContent).toContain('Source repository');
-    expect([...resources.querySelectorAll('a')].at(-1)?.getAttribute('href')).toBe('https://ghe.example/githubnext/gh-aw-cao');
+    expect(rendered.querySelector('.campaign-readme')).toBeNull();
     expect(rendered.textContent).not.toContain('Other');
   });
 

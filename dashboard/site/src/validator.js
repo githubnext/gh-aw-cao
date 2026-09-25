@@ -2809,6 +2809,24 @@ function validateView(view, viewNode, path, viewIds, errors) {
           ));
         }
       }
+      for (const key of ['content-field', 'path-field', 'base-link-field']) {
+        if (view.config[key] === undefined) continue;
+        validateStringField(view.config[key], `${path}.config.${key}`, true, errors);
+        if (view.element !== 'markdown') {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            `config.${key} is supported only for the markdown element.`,
+            `${path}.config.${key}`
+          ));
+        }
+      }
+      if (view.element === 'markdown' && view.config['content-field'] === undefined) {
+        errors.push(createError(
+          ERROR_CODES.missingOrInvalidRequiredField,
+          'markdown requires config.content-field.',
+          `${path}.config.content-field`
+        ));
+      }
       if (view.element === 'link-button-list') {
         for (const key of ['label-field', 'link-field', 'fallback-icon']) {
           if (view.config[key] === undefined) {
@@ -2821,10 +2839,10 @@ function validateView(view, viewNode, path, viewIds, errors) {
         }
       }
     }
-  } else if (view.element === 'link-button-list') {
+  } else if (view.element === 'link-button-list' || view.element === 'markdown') {
     errors.push(createError(
       ERROR_CODES.missingOrInvalidRequiredField,
-      'link-button-list requires config.',
+      `${view.element} requires config.`,
       `${path}.config`
     ));
   }
