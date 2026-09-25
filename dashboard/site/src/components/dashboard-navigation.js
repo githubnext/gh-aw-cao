@@ -147,11 +147,11 @@ export function renderDashboardNavigation(pages, title, navigation, accountContr
  */
 export function syncDashboardNavigationIndicators(root, pages, sources) {
   for (const page of pages) {
-    const title = pageTitle(page);
     const indicator = navigationIndicator(page);
     if (!indicator) continue;
+    const title = pageTitle(page);
     const active = indicatorMatches(indicator, sources);
-    const label = active && indicator?.label ? `${title}, ${indicator.label}` : title;
+    const label = active ? `${title}, ${indicator.label}` : title;
     for (const link of root.querySelectorAll(`[data-nav-page-id="${cssEscape(String(page.id))}"], [data-mobile-nav-page-id="${cssEscape(String(page.id))}"]`)) {
       if (!(link instanceof HTMLAnchorElement)) continue;
       link.classList.toggle('nav-item-indicated', active);

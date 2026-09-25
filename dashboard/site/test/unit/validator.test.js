@@ -52,6 +52,7 @@ describe('dashboard document validation', () => {
       })])
     });
 
+
     const invalidQuery = JSON.parse(authoritativeDashboardSource);
     invalidQuery.dashboard['card-templates']
       .find((/** @type {{ id?: string }} */ template) => template.id === 'firewall-domain').drill.query = 'missing-query';
@@ -72,6 +73,29 @@ describe('dashboard document validation', () => {
         message: 'query drill destination must bind the declared query and every drill argument.',
         path: expect.stringMatching(/card-templates\[\d+\]\.drill$/)
       })])
+    });
+  });
+
+  it('validates page navigation indicator shape', () => {
+    const invalidPage = JSON.parse(authoritativeDashboardSource);
+    invalidPage.dashboard.pages
+      .find((/** @type {{ id?: string }} */ page) => page.id === 'maintenance')['navigation-indicator'] = {
+        label: '',
+        any: [{ source: 'maintenance-campaign-updates', field: 'campaign-update-state' }]
+      };
+
+    expect(validateDashboardDocument(JSON.stringify(invalidPage))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({
+          message: 'label must be a non-empty string.',
+          path: expect.stringMatching(/navigation-indicator\.label$/)
+        }),
+        expect.objectContaining({
+          message: 'navigation-indicator predicate equals must be a scalar.',
+          path: expect.stringMatching(/navigation-indicator\.any\[0\]\.equals$/)
+        })
+      ])
     });
   });
 

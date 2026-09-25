@@ -37,6 +37,7 @@ import { navigationIndicatorSourceNames } from './navigation-indicator.js';
 export { enableDashboardKeyboardNavigation, updateWithViewTransition };
 
 const debugPerformance = createDebug('render:performance');
+const debugNavigation = createDebug('render:navigation');
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 import {
   dashboardPageLazySourceNames as collectDashboardPageLazySourceNames,
@@ -359,7 +360,9 @@ function enableNavigationIndicatorUpdates(root, pages, loadPageSources, signal) 
     .then((sources) => syncDashboardNavigationIndicators(root, pages, sources))
     .catch((error) => {
       if (signal.aborted || error?.name === 'AbortError') return;
-      console.error(`Unable to update dashboard navigation indicators: ${error instanceof Error ? error.message : String(error)}`);
+      debugNavigation('indicator update failed', {
+        error: error instanceof Error ? error.message : String(error)
+      });
     });
 }
 
