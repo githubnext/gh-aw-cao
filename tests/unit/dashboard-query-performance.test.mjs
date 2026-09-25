@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
+import { parse } from "yaml";
 import config from "../playwright/configs/dashboard-query-performance.config.mjs";
 import {
   QUERY_CHUNK_SIZE,
@@ -14,6 +17,9 @@ import {
   summarizeQueryTiming,
 } from "../e2e/dashboard-query-performance-helpers.mjs";
 
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const deployedIntegrationWorkflowPath = resolve(root, ".github/workflows/dashboard-deployed-integration.yml");
+
 test("dashboard query benchmark runs serially with enough time for deployed data", () => {
   assert.equal(config.workers, 1);
   assert.equal(config.timeout, 1_800_000);
@@ -21,7 +27,7 @@ test("dashboard query benchmark runs serially with enough time for deployed data
 });
 
 test("deployed integration isolates query benchmark reporting from test permissions", () => {
-  const workflow = readFileSync(".github/workflows/dashboard-deployed-integration.yml", "utf8");
+  const workflow = readFileSync(deployedIntegrationWorkflowPath, "utf8");
   assert.match(workflow, /pull_request:\n\s+paths:/);
   assert.match(workflow, /group: dashboard-deployed-integration-\$\{\{[\s\S]*github\.event\.pull_request\.number/);
   assert.match(workflow, /tests\/e2e\/dashboard-deployed-refresh-helpers\.mjs/);
@@ -40,6 +46,58 @@ test("deployed integration isolates query benchmark reporting from test permissi
   assert.match(workflow, /pattern: dashboard-query-performance-\*/);
   assert.match(workflow, /scripts\/merge-dashboard-query-performance\.mjs/);
   assert.match(workflow, /dashboard-query-performance-results/);
+});
+
+test("deployed integration pull request trigger only watches query benchmark inputs", () => {
+  const workflow = parse(readFileSync(deployedIntegrationWorkflowPath, "utf8"));
+  // The boolean-key lookup is a defensive fallback for YAML 1.1 core-schema behavior.
+  const workflowTriggers = workflow.on ?? workflow[true];
+  assert.ok(workflowTriggers, "expected workflow trigger block");
+  const paths = workflowTriggers.pull_request.paths;
+  assert.ok(Array.isArray(paths), "expected pull_request.paths trigger list");
+  for (const path of [
+    "dashboard/site/dashboard.json",
+    "dashboard/site/dashboard-pages/**",
+    "dashboard/site/src/data/**",
+    "dashboard/site/src/data-*.js",
+    "dashboard/site/src/dashboard-chunks.js",
+    "dashboard/site/src/dashboard-app.js",
+    "dashboard/site/src/debug.js",
+    "dashboard/site/src/remote-data-backend.js",
+    "dashboard/site/src/source-*.js",
+    "package.json",
+    "package-lock.json",
+    "scripts/merge-dashboard-query-performance.mjs",
+    "tests/e2e/dashboard-deployed-refresh-helpers.mjs",
+    "tests/e2e/dashboard-query-performance-helpers.mjs",
+    "tests/e2e/dashboard-query-performance.spec.mjs",
+    "tests/e2e/dashboard-view-assessment.mjs",
+    "tests/helpers/dashboard-query-cost.mjs",
+    "tests/performance/dashboard-query-cost.test.mjs",
+    "tests/playwright/configs/dashboard-query-performance.config.mjs",
+  ]) {
+    assert.ok(paths.includes(path), `expected trigger path ${path}`);
+  }
+  for (const path of [
+    "dashboard/site/**",
+    "dashboard/site/src/notification-service.js",
+    "dashboard/site/src/styles.js",
+  ]) {
+    assert.ok(!paths.includes(path), `unexpected broad trigger path ${path}`);
+  }
+  const allowedDashboardSiteWildcards = new Set([
+    "dashboard/site/dashboard-pages/**",
+    "dashboard/site/src/data/**",
+  ]);
+  assert.deepEqual(
+    paths.filter((path) =>
+      path.startsWith("dashboard/site/")
+      && path.endsWith("/**")
+      && !allowedDashboardSiteWildcards.has(path)
+    ),
+    [],
+    "unexpected broad dashboard site wildcard trigger paths",
+  );
 });
 
 test("deployed proxy targets remain under the trusted dashboard URL", () => {
