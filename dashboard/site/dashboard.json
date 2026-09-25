@@ -11992,7 +11992,6 @@
         "page": "runs",
         "title": "Runs",
         "icon": "play",
-        "filter-bar": true,
         "definition": {
           "data-state": {
             "availability": true
