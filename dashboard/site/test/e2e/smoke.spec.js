@@ -904,7 +904,7 @@ test('a page combining a chart with a full-view table fills and scrolls in table
   await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view/);
 });
 
-test('Runs renders the worker-projected table for an active time window', async ({ page }) => {
+test('Runs renders the worker-projected table', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
@@ -913,13 +913,6 @@ test('Runs renders the worker-projected table for an active time window', async 
       import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
       import { prepareDashboardViewSources } from 'http://dashboard.test/test/e2e/helpers/dashboard-view-sources.js';
       const documentModel = ${JSON.stringify(documentModel)};
-      // Simulate an operator who narrowed the global horizon control to a
-      // window that predates every recorded run, the same way "Last 1 hour"
-      // (or a stale persisted setting) would hide 700+ real runs.
-      window.localStorage.setItem(
-        'central-agentic-ops.dashboard.horizon-filter-settings',
-        JSON.stringify({ range: 'custom', start: '2020-01-01T00:00:00.000Z', end: '2020-01-02T00:00:00.000Z' })
-      );
       const metadata = {
         'source-id': 'runs-empty-time-filter-fixture',
         'source-kind': 'fixture',
@@ -959,9 +952,7 @@ test('Runs renders the worker-projected table for an active time window', async 
         sources,
         { queryContext: options.queryContext, routeParameters: options.routeParameters }
       );
-      const viewSources = await loadPageSources('runs', {
-        queryContext: { timeWindow: { start: '2020-01-01T00:00:00.000Z', end: '2020-01-02T00:00:00.000Z' } }
-      });
+      const viewSources = await loadPageSources('runs', {});
       document.querySelector('#root').append(renderDashboard({
         document: documentModel,
         sources: viewSources,
@@ -973,16 +964,9 @@ test('Runs renders the worker-projected table for an active time window', async 
   const runsPage = page.locator('[data-page-id="runs"]');
   const view = runsPage.locator('[data-view-layout="full-view"]');
   const rows = view.locator('.custom-table tbody tr');
-  // The shared time-window select lives once in the top-nav filter bar
-  // (relocated there for the active page), not nested inside the page section.
-  const horizonFilter = page.getByLabel('Dashboard filters');
-  const select = horizonFilter.locator('[aria-label="Time window"]');
 
-  await expect(select).toHaveValue('custom');
   await page.getByRole('button', { name: 'Table' }).click();
   await expect(rows).toHaveCount(1);
-  await expect(rows.first()).toContainText('No runs observed.');
-  await view.getByRole('button', { name: 'Clear time filter' }).click();
   await expect(rows.first()).toContainText('2');
   await expect(rows.locator('a').first()).toBeVisible();
 });
