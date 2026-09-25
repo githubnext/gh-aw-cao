@@ -265,6 +265,8 @@
     "mcpProtocolVersion": { "field": "mcp-protocol-version" }, "mcpTool": { "field": "mcp-tool" }, "responseBytes": { "field": "response-bytes" },
     "safeOutputType": { "field": "safe-output-type" }, "githubEntityType": { "field": "github-entity-type" },
     "isPullRequest": { "field": "is-pull-request", "equals": true }, "toolType": { "field": "tool-type" }, "isSkill": { "field": "is-skill", "equals": true },
+    "state": { "field": "issue-state" }, "closed": { "field": "issue-closed" }, "stateReason": { "field": "issue-state-reason" },
+    "closedAt": { "field": "issue-closed-at" }, "statusObservedAt": { "field": "issue-status-observed-at" },
     "name": { "field": "name" }, "domain": { "field": "domain" }, "decision": { "field": "decision" }, "targetRepo": { "field": "target-repo" },
     "targetOrganization": { "field": "target-organization" }, "targetRepository": { "field": "target-repository" },
     "targetWorkflowPath": { "field": "target-workflow-path" }, "optimizerRunAttempt": { "field": "optimizer-run-attempt" },
