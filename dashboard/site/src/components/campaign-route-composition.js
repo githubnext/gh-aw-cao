@@ -14,7 +14,10 @@ import { renderMeasureHistory } from './measure-history.js';
 
 const CAMPAIGN_OPERATIONAL_VALUE_SOURCES = [
   'campaign-operational-value-primary-series',
-  'campaign-runs'
+  'campaign-operational-value-rollup-series',
+  'campaign-operational-value-run-days',
+  'campaign-operational-value-repository-run-days',
+  'campaign-operational-value-evidence-state'
 ];
 
 /**

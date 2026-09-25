@@ -24,6 +24,7 @@ import {
   QUERY_TEMPORAL_SERIES_KEYS,
   QUERY_TEMPORAL_SERIES_MAP_KEYS,
   QUERY_TEMPORAL_SERIES_MEASURE_KEYS,
+  QUERY_TEMPORAL_SERIES_TREND_KEYS,
   QUERY_FILTER_KEYS,
   QUERY_JOIN_FIELD_KEYS,
   QUERY_JOIN_KEYS,
@@ -1656,6 +1657,13 @@ function validatePage(page, pageNode, path, pageIds, errors) {
       ERROR_CODES.missingOrInvalidRequiredField,
       'filter-bar must be a Boolean when present.',
       `${path}.filter-bar`
+    ));
+  }
+  if (page['view-mode-control'] !== undefined && typeof page['view-mode-control'] !== 'boolean') {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      'view-mode-control must be a Boolean when present.',
+      `${path}.view-mode-control`
     ));
   }
   validatePageForm(page.form, getValueNodeByKey(pageNode, 'form'), `${path}.form`, errors);
@@ -4353,6 +4361,18 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
           requireField(field, `${seriesPath}.carry[${index}]`);
         });
       }
+      const trend = definition.trend;
+      if (trend !== undefined) {
+        const trendPath = `${seriesPath}.trend`;
+        const trendNode = getValueNodeByKey(seriesNode, 'trend');
+        if (!isPlainObject(trend)) {
+          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'temporal-series trend must be a mapping.', trendPath));
+        } else {
+          validateObjectKeys(trendNode, QUERY_TEMPORAL_SERIES_TREND_KEYS, trendPath, errors);
+          validateStringField(trend.direction, `${trendPath}.direction`, true, errors);
+          requireField(trend.direction, `${trendPath}.direction`);
+        }
+      }
       const measures = definition.measures;
       const maps = definition.maps;
       if ((!Array.isArray(measures) || measures.length === 0) && (!Array.isArray(maps) || maps.length === 0)) {
@@ -4362,7 +4382,18 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
       validateTemporalSeriesEntries(maps, getValueNodeByKey(seriesNode, 'maps'), `${seriesPath}.maps`, QUERY_TEMPORAL_SERIES_MAP_KEYS, ['field', 'definitions', 'group'], requireField, errors);
       fields = fields
         ? definition.shape === 'groups'
-          ? [...(Array.isArray(carry) ? carry.filter((field) => typeof field === 'string') : []), 'metric', 'metric-key', 'metric-name', 'metric-kind', 'metric-group', 'points']
+          ? [
+              ...(Array.isArray(carry) ? carry.filter((field) => typeof field === 'string') : []),
+              'metric',
+              'metric-key',
+              'metric-name',
+              'metric-kind',
+              'metric-group',
+              'points',
+              ...(isPlainObject(trend)
+                ? ['trend-start-value', 'trend-end-value', 'trend-delta', 'trend-relative-percent', 'trend-observed-direction', 'trend-assessment', 'trend-observation-count']
+                : [])
+            ]
           : [...(Array.isArray(carry) ? carry.filter((field) => typeof field === 'string') : []), 'time', 'series', 'metric', 'metric-key', 'metric-name', 'metric-kind', 'metric-group', 'value']
         : undefined;
     }

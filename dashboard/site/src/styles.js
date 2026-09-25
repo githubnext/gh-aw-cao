@@ -741,23 +741,43 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .line-chart-window-band { fill: var(--accent); opacity: .055; }
 .line-chart-temporal-marker line { stroke: var(--purple); stroke-width: 1.5; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
 .line-chart-temporal-marker text { fill: var(--purple); font-size: 1.8px; font-weight: 600; }
-.insights-temporal-plot-panel { overflow-x: auto; }
-.temporal-metric-plot { min-width: 720px; }
-.temporal-metric-plot svg { display: block; width: 100%; height: auto; overflow: visible; }
-.temporal-plot-title { fill: var(--fg); font-size: 30px; font-weight: 700; }
-.temporal-plot-section { fill: var(--muted); font-size: 20px; font-weight: 600; }
-.temporal-plot-axis, .temporal-plot-legend-label, .temporal-plot-adoption-key text { fill: var(--muted); font-size: 17px; }
-.temporal-plot-axis-title { fill: var(--fg); }
-.temporal-plot-baseline, .temporal-plot-runs-track { fill: var(--canvas-subtle); }
+.insights-temporal-plot-panel, .operational-value-native-plots { min-width: 0; width: 100%; }
+.insights-temporal-plot-panel { overflow: hidden; }
+.operational-value-native-plots { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 12px; }
+.temporal-metric-plot { min-width: 0; width: 100%; overflow: hidden; padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); }
+.temporal-plot-heading { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 12px; margin-bottom: 4px; }
+.temporal-plot-heading-copy { min-width: 0; }
+.temporal-plot-heading h3 { margin: 0; overflow-wrap: anywhere; color: var(--fg); font-size: .875rem; line-height: 1.25; text-wrap: balance; }
+.temporal-plot-heading p { margin: 5px 0 0; overflow-wrap: anywhere; color: var(--muted); font-size: .75rem; line-height: 1.4; }
+.temporal-plot-summary { min-width: 0; display: grid; justify-items: end; gap: 6px; }
+.temporal-plot-current { display: flex; align-items: baseline; justify-content: flex-end; gap: 5px; margin: 0; color: var(--muted); font-size: .6875rem; font-variant-numeric: tabular-nums; }
+.temporal-plot-current strong { color: var(--fg); font-size: 1.375rem; line-height: 1; }
+.temporal-plot-trend { min-width: 0; max-width: 100%; display: inline-flex; align-items: center; gap: 5px; margin: 0; color: var(--muted); font-size: .6875rem; font-variant-numeric: tabular-nums; line-height: 1.25; }
+.temporal-plot-trend strong { color: var(--fg); }
+.temporal-plot-trend-arrow { display: inline-block; flex: none; font-size: .875rem; font-weight: 800; }
+.temporal-plot-trend-improving, .temporal-plot-trend-improving strong,
+.temporal-plot-trend-improving .temporal-plot-trend-arrow { color: var(--success); }
+.temporal-plot-trend-worsening, .temporal-plot-trend-worsening strong,
+.temporal-plot-trend-worsening .temporal-plot-trend-arrow { color: var(--danger); }
+.temporal-plot-trend-stable .temporal-plot-trend-arrow,
+.temporal-plot-trend-neutral .temporal-plot-trend-arrow { color: var(--muted); }
+.temporal-plot-trend-interim, .temporal-plot-trend-interim strong,
+.temporal-plot-trend-interim .temporal-plot-trend-arrow { color: var(--attention); }
+.temporal-metric-plot svg { min-width: 0; max-width: 100%; display: block; width: 100%; height: auto; overflow: hidden; }
+.temporal-plot-axis { fill: var(--muted); font-size: 19px; }
+.temporal-plot-baseline { fill: var(--canvas-subtle); }
 .temporal-plot-grid { stroke: var(--border); stroke-width: 1; }
-.temporal-plot-adoption, .temporal-plot-adoption-key line { stroke: var(--purple); stroke-width: 3; stroke-dasharray: 5 6; }
+.temporal-plot-adoption { stroke: var(--purple); stroke-width: 3; stroke-dasharray: 5 6; }
 .temporal-plot-metric { stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .temporal-plot-point { stroke: var(--canvas); stroke-width: 2; vector-effect: non-scaling-stroke; }
-.temporal-plot-legend-line { stroke-width: 4; }
-.temporal-plot-run { stroke-width: 3; }
-.temporal-plot-run-success { stroke: var(--success); fill: var(--success); }
-.temporal-plot-run-failure { stroke: var(--danger); fill: var(--danger); }
-.temporal-plot-run-other { stroke: var(--muted); fill: var(--muted); }
+.temporal-plot-run-outcome-track { stroke: var(--border); stroke-width: 7; stroke-linecap: round; opacity: .7; vector-effect: non-scaling-stroke; }
+.temporal-plot-run-outcome-success, .temporal-plot-run-outcome-failure { stroke-width: 5; stroke-linecap: butt; vector-effect: non-scaling-stroke; }
+.temporal-plot-run-outcome-success { stroke: var(--success); }
+.temporal-plot-run-outcome-failure { stroke: var(--danger); }
+.temporal-plot-run-outcome-legend { font-size: 17px; font-weight: 600; }
+.temporal-plot-run-outcome-legend-label { fill: var(--muted); }
+.temporal-plot-run-outcome-legend-success { fill: var(--success); }
+.temporal-plot-run-outcome-legend-failure { fill: var(--danger); }
 .temporal-metric-plot .chart-series-1 { fill: var(--accent); stroke: var(--accent); }
 .temporal-metric-plot .chart-series-2 { fill: var(--success); stroke: var(--success); }
 .temporal-metric-plot .chart-series-3 { fill: var(--attention); stroke: var(--attention); }
@@ -770,6 +790,9 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .temporal-metric-plot .chart-series-10 { fill: var(--violet); stroke: var(--violet); }
 .temporal-metric-plot .chart-series-11 { fill: var(--muted); stroke: var(--muted); }
 .temporal-metric-plot .chart-series-12 { fill: var(--fg); stroke: var(--fg); }
+.temporal-metric-plot .temporal-plot-metric { fill: none; }
+.temporal-metric-plot.temporal-metric-plot-provisional .temporal-plot-metric { stroke: var(--attention); stroke-dasharray: 8 6; }
+.temporal-metric-plot.temporal-metric-plot-provisional .temporal-plot-point { fill: var(--attention-muted); stroke: var(--attention); stroke-width: 3; }
 .line-chart-context { opacity: .3; stroke-width: 1.1; }
 .chart-point-context { opacity: .35; }
 .line-chart-current { opacity: 1; stroke-width: 2; }
@@ -1491,6 +1514,10 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .insights-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; min-width: 0; }
 .insights-section-heading h2, .insights-plot-panel :is(h2, h3) { margin: 2px 0 4px; font-size: .9375rem; }
 .insights-section-heading p, .insights-plot-panel header p { max-width: 680px; margin: 0; color: var(--muted); font-size: .75rem; line-height: 1.45; }
+.operational-value-scope-control { min-width: min(320px, 100%); display: grid; gap: 6px; color: var(--muted); font-size: .6875rem; font-weight: 600; }
+.operational-value-scope-select { min-height: 32px; width: 100%; padding: 5px 28px 5px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--fg); font: inherit; font-size: .75rem; }
+.operational-value-scope-select:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.operational-value-scope-status { margin: 12px 0 0; color: var(--muted); font-size: .75rem; }
 .insights-eyebrow { color: var(--accent); font-size: .6875rem; font-weight: 700; text-transform: uppercase; }
 .insights-lead-metrics, .insights-inline-metrics { display: flex; gap: 26px; margin: 0; }
 .insights-lead-metrics > div, .insights-inline-metrics > div { display: grid; gap: 2px; }
@@ -1517,6 +1544,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .insights-series-menu label span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .insights-plot-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 32px; padding-top: 4px; }
 .insights-plot-panel { min-width: 0; display: grid; align-content: start; gap: 12px; }
+.insights-plot-panel[hidden] { display: none; }
 .insights-plot-panel .chart-widget { min-height: 210px; padding: 0; }
 .insights-plot-panel .pie-chart-widget { min-height: 190px; }
 .insights-plot-panel .pie-chart-widget svg { max-height: 180px; }
@@ -2146,6 +2174,9 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .insights-value-lead > .chart-legend { display: none; }
   .insights-plot-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
   .insights-measure-rows { gap: 24px; }
+  .temporal-metric-plot { padding: 12px 8px; }
+  .temporal-plot-heading { grid-template-columns: minmax(0, 1fr); padding: 0 4px; }
+  .temporal-plot-summary { display: flex; align-items: baseline; justify-content: space-between; }
   .insights-measure-plot { grid-template-columns: minmax(0, 1fr); }
   .insights-axis-y { writing-mode: horizontal-tb; transform: none; justify-self: start; }
   .insights-axis-x { grid-column: 1; }

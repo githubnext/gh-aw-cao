@@ -1022,6 +1022,22 @@ describe('presenter built-in and custom pages', () => {
           source: 'indexing-database-table-counts',
           rows: [{ table: 'ingestion transactions', records: 1 }],
           metadata
+        },
+        'indexing-daily-records': {
+          source: 'indexing-daily-records',
+          rows: [
+            { day: '2026-09-01', records: 8 },
+            { day: '2026-09-02', records: 10 }
+          ],
+          metadata
+        },
+        'indexing-daily-workflow-runs': {
+          source: 'indexing-daily-workflow-runs',
+          rows: [
+            { day: '2026-09-01', 'workflow-runs': 6 },
+            { day: '2026-09-02', 'workflow-runs': 8 }
+          ],
+          metadata
         }
       }
     });
@@ -1828,6 +1844,65 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('.mobile-view-mode-toggle')).not.toBeNull();
     /** @type {HTMLButtonElement} */ (modeButtons[1]).click();
     expect(contexts.at(-1)).toMatchObject({ pageId: 'runs', queryContext: { viewMode: 'card' } });
+  });
+
+  it('keeps the default presentation without view-mode controls when disabled', async () => {
+    const rendered = renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'fixed-view-mode-dashboard',
+          title: 'Fixed View Mode',
+          pages: [{
+            id: 'runs',
+            kind: /** @type {'custom'} */ ('custom'),
+            title: 'Runs',
+            'view-mode-control': false,
+            views: [
+              {
+                id: 'runs-chart',
+                title: 'Run trend',
+                data: { source: 'runs' },
+                mark: 'chart',
+                chart: 'line',
+                encoding: {
+                  x: { field: 'started-at', type: 'temporal' },
+                  y: { field: 'run-count', type: 'quantitative' }
+                }
+              },
+              {
+                id: 'runs-table',
+                title: 'Runs',
+                data: { source: 'runs' },
+                mark: 'table',
+                encoding: { columns: [{ field: 'run' }] }
+              }
+            ]
+          }]
+        }
+      },
+      sources: {
+        runs: {
+          source: 'runs',
+          rows: [{ run: '1', 'run-count': 1, 'started-at': '2026-09-16T10:00:00Z' }],
+          metadata: {
+            'source-id': 'runs-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-16T10:00:00Z',
+            'retrieved-at': '2026-09-16T10:00:00Z',
+            availability: 'available',
+            completeness: 'complete',
+            freshness: 'fresh'
+          }
+        }
+      }
+    });
+
+    const page = await activatePage(rendered, 'runs');
+    expect(page?.getAttribute('data-view-mode')).toBe('chart');
+    expect(page?.querySelector('.view-mode-control')).toBeNull();
+    expect(page?.querySelector('[data-view-id="runs-chart"]')?.getAttribute('data-view-mode-content')).toBe('chart');
+    expect(page?.querySelector('[data-view-id="runs-table"]')?.getAttribute('data-view-mode-content')).toBe('table');
   });
 
   it('omits page chrome when a page has only one card view mode', async () => {

@@ -448,7 +448,7 @@ function renderInteractiveChartMark({ className, entryIndex, label, shape, toolt
 export function renderChartWidget(chartType, points, series, pieSummary = null, totalLabel = 'Total', unit = null, timeRange = null, referenceField = null, formatCategory = (label) => label, temporalMarker = null) {
   const pieData = chartType === 'pie' ? pieSummary ?? pieChartEntries(points) : null;
   const entryCount = pieData ? pieData.entries.length : points.length;
-  const minimumEntries = ['heatmap', 'horizontal-bar', 'pie', 'scatter'].includes(chartType) ? 1 : 2;
+  const minimumEntries = ['bar', 'heatmap', 'horizontal-bar', 'pie', 'scatter'].includes(chartType) ? 1 : 2;
   if (entryCount < minimumEntries && chartType !== 'swimlane') {
     return renderChartWidgetEmptyState(
       chartType,

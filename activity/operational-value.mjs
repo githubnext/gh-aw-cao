@@ -234,12 +234,17 @@ function parseOperationalValueOutput(content, source, repositories) {
     const value = record.value;
     const metricRole = record.metricRole ?? 'primary';
     const metricName = record.metricName ?? valueId;
+    const metricUnit = record.metricUnit;
     const metricDirection = record.metricDirection ?? 'increase';
     const maturityStatus = record.maturityStatus ?? 'matured';
     const adoptionAt = record.adoptionAt;
     const evaluationMode = record.evaluationMode;
     const workflowSlug = record.workflowSlug;
     const workflowName = record.workflowName;
+    const hasRollupNumerator = Object.hasOwn(record, 'rollupNumerator');
+    const hasRollupDenominator = Object.hasOwn(record, 'rollupDenominator');
+    const rollupNumerator = record.rollupNumerator;
+    const rollupDenominator = record.rollupDenominator;
     if (!REPOSITORY_COORDINATE.test(repository) || !allowedRepositories.has(repository.toLowerCase())) {
       throw new Error(`${source}:${index + 1}.repository must identify a requested repository`);
     }
@@ -254,6 +259,9 @@ function parseOperationalValueOutput(content, source, repositories) {
     }
     if (typeof metricName !== 'string' || !metricName.trim()) {
       throw new Error(`${source}:${index + 1}.metricName must be a non-empty string`);
+    }
+    if (metricUnit !== undefined && (typeof metricUnit !== 'string' || !metricUnit.trim())) {
+      throw new Error(`${source}:${index + 1}.metricUnit must be a non-empty string`);
     }
     if (!['increase', 'decrease', 'maintain', 'target'].includes(metricDirection)) {
       throw new Error(`${source}:${index + 1}.metricDirection is invalid`);
@@ -272,6 +280,19 @@ function parseOperationalValueOutput(content, source, repositories) {
         throw new Error(`${source}:${index + 1}.${field} must be a non-empty string`);
       }
     }
+    if (
+      hasRollupNumerator !== hasRollupDenominator
+      || (hasRollupNumerator && (
+        typeof rollupNumerator !== 'number'
+        || !Number.isFinite(rollupNumerator)
+        || rollupNumerator < 0
+        || typeof rollupDenominator !== 'number'
+        || !Number.isFinite(rollupDenominator)
+        || rollupDenominator <= 0
+      ))
+    ) {
+      throw new Error(`${source}:${index + 1} must emit a valid rollup numerator and denominator together`);
+    }
     return [{
       timestamp,
       repository,
@@ -279,12 +300,14 @@ function parseOperationalValueOutput(content, source, repositories) {
       value,
       ...(Object.hasOwn(record, 'metricRole') ? { metricRole } : {}),
       ...(Object.hasOwn(record, 'metricName') ? { metricName: metricName.trim() } : {}),
+      ...(Object.hasOwn(record, 'metricUnit') ? { metricUnit: metricUnit.trim() } : {}),
       ...(Object.hasOwn(record, 'metricDirection') ? { metricDirection } : {}),
       ...(Object.hasOwn(record, 'maturityStatus') ? { maturityStatus } : {}),
       ...(Object.hasOwn(record, 'adoptionAt') ? { adoptionAt: canonicalTimestamp(adoptionAt, `${source}:${index + 1}.adoptionAt`) } : {}),
       ...(Object.hasOwn(record, 'evaluationMode') ? { evaluationMode } : {}),
       ...(Object.hasOwn(record, 'workflowSlug') ? { workflowSlug: workflowSlug.trim() } : {}),
-      ...(Object.hasOwn(record, 'workflowName') ? { workflowName: workflowName.trim() } : {})
+      ...(Object.hasOwn(record, 'workflowName') ? { workflowName: workflowName.trim() } : {}),
+      ...(hasRollupNumerator ? { rollupNumerator, rollupDenominator } : {})
     }];
   });
 }
@@ -395,12 +418,15 @@ export async function runOperationalValue({
         value: record.value,
         metric_role: record.metricRole ?? 'primary',
         metric_name: record.metricName ?? record.valueId,
+        metric_unit: record.metricUnit,
         metric_direction: record.metricDirection ?? 'increase',
         maturity_status: record.maturityStatus ?? 'matured',
         adoption_at: record.adoptionAt,
         evaluation_mode: record.evaluationMode,
         workflow_slug: record.workflowSlug,
-        workflow_name: record.workflowName
+        workflow_name: record.workflowName,
+        rollup_numerator: record.rollupNumerator,
+        rollup_denominator: record.rollupDenominator
       }
     }));
     const retained = retentionWindow === undefined

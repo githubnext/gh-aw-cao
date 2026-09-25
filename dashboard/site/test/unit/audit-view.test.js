@@ -21,6 +21,7 @@ describe('Audit dashboard view', () => {
 
     expect(insights.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual([
       'campaign-insights-navigation',
+      'campaign-performance-baseline',
       'campaign-audit-event-summary-buckets',
       'campaign-audit-event-table'
     ]);
@@ -31,17 +32,21 @@ describe('Audit dashboard view', () => {
         'campaign-problem-tab-counts',
         'campaign-issue-tab-counts',
         'campaign-operational-value-primary-series',
-        'campaign-runs'
+        'campaign-operational-value-rollup-series',
+        'campaign-operational-value-run-days',
+        'campaign-operational-value-repository-run-days',
+        'campaign-operational-value-evidence-state'
       ],
       arguments: [{ name: 'campaign', field: 'campaign' }]
     });
-    expect(insights.views.slice(1).map((/** @type {{ data: Record<string, string> }} */ view) => view.data)).toEqual([
+    expect(insights.views.slice(2).map((/** @type {{ data: Record<string, string> }} */ view) => view.data)).toEqual([
       expect.objectContaining({ source: 'audit-event-summary-buckets', 'route-field': 'campaign' }),
       expect.objectContaining({ source: 'audit-event-summary-buckets', 'route-field': 'campaign' })
     ]);
     expect(insights.views.filter((/** @type {{ mark: string }} */ view) => view.mark !== 'element')
-      .map((/** @type {{ mark: string }} */ view) => view.mark)).toEqual(['chart', 'list']);
-    expect(insights.views[1]).toMatchObject({
+      .map((/** @type {{ mark: string }} */ view) => view.mark))
+      .toEqual(['table', 'chart', 'list']);
+    expect(insights.views[2]).toMatchObject({
       title: 'Severity audit events',
       chart: 'horizontal-bar',
       data: {
@@ -65,7 +70,7 @@ describe('Audit dashboard view', () => {
     ]);
   });
 
-  it('projects repository operational value with its maturity state', () => {
+  it('projects repository operational value into metric series', () => {
     const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
       queries: dashboard.queries,
@@ -102,7 +107,6 @@ describe('Audit dashboard view', () => {
     expect(result['campaign-operational-value-primary-series'].rows).toEqual([
       expect.objectContaining({
         campaign: 'optimization',
-        'maturity-status': 'interim',
         'operational-value-role': 'primary',
         'adoption-at': '2026-09-15T23:30:36Z',
         points: [expect.objectContaining({ x: '2026-09-24T20:56:21Z', y: 0.5, color: 'gh-aw' })]
@@ -110,6 +114,106 @@ describe('Audit dashboard view', () => {
       expect.objectContaining({
         'operational-value-role': 'diagnostic',
         points: [expect.objectContaining({ y: 1 })]
+      })
+    ]);
+  });
+
+  it('derives a weighted campaign operational-value rollup from additive evidence', () => {
+    const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries',
+      queries: dashboard.queries,
+      sourceNames: ['campaign-operational-value-rollup-series'],
+      sources: {
+        'operational-values': {
+          source: 'operational-values',
+          rows: [{
+            campaign: 'optimization',
+            repository: 'gh-aw',
+            'operational-value': 0.5,
+            'operational-value-definition': 'optimization-token-optimizer.verified-efficiency-improvement-share',
+            'operational-value-role': 'primary',
+            'operational-value-name': 'Verified efficiency improvement share',
+            'operational-value-direction': 'increase',
+            'rollup-numerator': 1,
+            'rollup-denominator': 2,
+            'maturity-status': 'matured',
+            'observed-at': '2026-09-24T20:56:21Z'
+          }, {
+            campaign: 'optimization',
+            repository: 'gh-aw-cao',
+            'operational-value': 1,
+            'operational-value-definition': 'optimization-token-optimizer.verified-efficiency-improvement-share',
+            'operational-value-role': 'primary',
+            'operational-value-name': 'Verified efficiency improvement share',
+            'operational-value-direction': 'increase',
+            'rollup-numerator': 1,
+            'rollup-denominator': 1,
+            'maturity-status': 'matured',
+            'observed-at': '2026-09-24T20:56:21Z'
+          }],
+          metadata
+        }
+      }
+    }));
+
+    expect(result['campaign-operational-value-rollup-series'].rows).toEqual([
+      expect.objectContaining({
+        campaign: 'optimization',
+        points: [expect.objectContaining({ y: 2 / 3, color: 'Campaign rollup' })]
+      })
+    ]);
+  });
+
+  it('classifies interim observations independently of their native value', () => {
+    const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries',
+      queries: dashboard.queries,
+      sourceNames: ['campaign-operational-value-evidence-state'],
+      sources: {
+        'operational-values': {
+          source: 'operational-values',
+          rows: [{
+            campaign: 'optimization',
+            'operational-value': 0,
+            'maturity-status': 'interim',
+            'observed-at': '2026-09-23T00:00:00Z'
+          }, {
+            campaign: 'optimization',
+            'operational-value': 0,
+            'maturity-status': 'interim',
+            'observed-at': '2026-09-24T00:00:00Z'
+          }, {
+            campaign: 'ambient-context',
+            'operational-value': 0,
+            'maturity-status': 'matured',
+            'observed-at': '2026-09-24T00:00:00Z'
+          }, {
+            campaign: 'campaign-scout',
+            'operational-value': 0.25,
+            'maturity-status': 'interim',
+            'observed-at': '2026-09-24T00:00:00Z'
+          }],
+          metadata
+        }
+      }
+    }));
+
+    expect(result['campaign-operational-value-evidence-state'].rows).toEqual([
+      expect.objectContaining({
+        campaign: 'optimization',
+        'observation-count': 2,
+        'matured-observation-count': 0,
+        'evidence-state': 'interim-evidence'
+      }),
+      expect.objectContaining({
+        campaign: 'ambient-context',
+        'matured-observation-count': 1,
+        'evidence-state': 'observed-value'
+      }),
+      expect.objectContaining({
+        campaign: 'campaign-scout',
+        'matured-observation-count': 0,
+        'evidence-state': 'interim-evidence'
       })
     ]);
   });

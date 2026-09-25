@@ -314,6 +314,8 @@
       { "field": "evaluation-mode" },
       { "field": "workflow-slug" },
       { "field": "workflow-name" },
+      { "field": "rollup-numerator" },
+      { "field": "rollup-denominator" },
       { "field": "baseline-value" },
       { "field": "delta-from-baseline" },
       { "field": "accepted-evidence-provenance" },

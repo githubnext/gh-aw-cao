@@ -43,9 +43,10 @@ export const QUERY_FILTER_KEYS = ['predicates'];
 export const QUERY_PREDICATE_KEYS = ['field', 'equals', 'in', 'includes', 'gte', 'lt', 'optional'];
 export const QUERY_COMPUTE_KEYS = ['as', 'function', 'args'];
 export const QUERY_COMPUTE_ARGUMENT_KEYS = ['field', 'value', 'context', 'parameter'];
-export const QUERY_TEMPORAL_SERIES_KEYS = ['time', 'series', 'shape', 'carry', 'measures', 'maps'];
+export const QUERY_TEMPORAL_SERIES_KEYS = ['time', 'series', 'shape', 'carry', 'measures', 'maps', 'trend'];
 export const QUERY_TEMPORAL_SERIES_MEASURE_KEYS = ['field', 'key', 'kind'];
 export const QUERY_TEMPORAL_SERIES_MAP_KEYS = ['field', 'definitions', 'group', 'kind'];
+export const QUERY_TEMPORAL_SERIES_TREND_KEYS = ['direction'];
 export const QUERY_AGGREGATE_KEYS = ['by', 'values'];
 export const QUERY_AGGREGATE_VALUE_KEYS = ['field', 'as', 'reducer', 'filter'];
 export const QUERY_AGGREGATE_FILTER_PREDICATE_KEYS = ['field', 'equals', 'in'];
@@ -65,8 +66,8 @@ export const UNIT_DEFINITION_KEYS = ['name', 'symbol', 'significant', 'format'];
 export const UNIT_FORMAT_VALUES = ['aicc', 'duration', 'number', 'usd'];
 export const NAVIGATION_SECTION_KEYS = ['label', 'pages', 'experimental', 'placement'];
 export const NAVIGATION_INDICATOR_KEYS = ['label', 'any'];
-export const BUILT_IN_PAGE_KEYS = ['id', 'kind', 'page', 'title', 'navigation-label', 'navigation-indicator', 'description', 'icon', 'class-name', 'experimental', 'filter-bar', 'form', 'definition'];
-export const CUSTOM_PAGE_KEYS = ['id', 'kind', 'title', 'navigation-label', 'navigation-indicator', 'description', 'icon', 'class-name', 'experimental', 'filter-bar', 'form', 'route', 'views', 'sections'];
+export const BUILT_IN_PAGE_KEYS = ['id', 'kind', 'page', 'title', 'navigation-label', 'navigation-indicator', 'description', 'icon', 'class-name', 'experimental', 'filter-bar', 'view-mode-control', 'form', 'definition'];
+export const CUSTOM_PAGE_KEYS = ['id', 'kind', 'title', 'navigation-label', 'navigation-indicator', 'description', 'icon', 'class-name', 'experimental', 'filter-bar', 'view-mode-control', 'form', 'route', 'views', 'sections'];
 export const PAGE_FORM_KEYS = ['title', 'description', 'update', 'fields'];
 export const PAGE_FORM_UPDATE_KEYS = ['strategy', 'delay-ms'];
 export const PAGE_FORM_UPDATE_STRATEGY_VALUES = ['debounce', 'throttle'];
@@ -479,7 +480,7 @@ export const TABLE_FIELDS = {
   outcomes: ['organization', 'repository', 'campaign', 'runtime-repository', 'workflow', 'workflow-name', 'run', 'run-conclusion', 'safe-output', 'safe-output-kind', 'outcome-number', 'outcome-title', 'outcome-summary', 'outcome-body-html', 'outcome-category', 'outcome-status', 'outcome-state', 'issue-state', 'issue-closed', 'issue-state-reason', 'issue-status', 'issue-closing-status', 'issue-status-detail', 'issue-closed-at', 'issue-status-observed-at', 'outcome-warning', 'evidence-strength', 'rollout-mode', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'published-at', 'observed-at', 'issue-link', 'pull-request-link', 'run-link', 'external-link', 'organization-link', 'repository-link', 'workflow-link'],
   'safe-output-performance': ['organization', 'repository', 'workflow', 'run', 'run-conclusion', 'rollout-mode', 'safe-output-kind', 'safe-output-label', 'safe-output-status', 'safe-output-count', 'observed-at', 'run-link'],
   findings: ['organization', 'repository', 'workflow', 'run', 'safe-output', 'code', 'finding-kind', 'finding-severity', 'finding-status', 'finding-summary', 'observed-at', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'issue-link', 'pull-request-link', 'run-link', 'external-link', 'organization-link', 'repository-link', 'workflow-link'],
-  'operational-values': ['id', 'organization', 'repository', 'repository-name', 'campaign', 'campaign-name', 'campaign-icon', 'operational-value', 'operational-value-definition', 'operational-value-role', 'operational-value-name', 'operational-value-direction', 'maturity-status', 'adoption-at', 'evaluation-mode', 'workflow-slug', 'workflow-name', 'observed-at', 'organization-link', 'repository-link', 'campaign-link'],
+  'operational-values': ['id', 'organization', 'repository', 'repository-name', 'campaign', 'campaign-name', 'campaign-icon', 'operational-value', 'operational-value-definition', 'operational-value-role', 'operational-value-name', 'operational-value-unit', 'operational-value-direction', 'rollup-numerator', 'rollup-denominator', 'maturity-status', 'adoption-at', 'evaluation-mode', 'workflow-slug', 'workflow-name', 'observed-at', 'organization-link', 'repository-link', 'campaign-link'],
   'operational-graders': ['organization', 'repository', 'repository-name', 'campaign', 'campaign-name', 'campaign-icon', 'workflow', 'run', 'run-attempt', 'observation-id', 'experiment', 'operational-case', 'evaluator-digest', 'rollout-mode', 'operational-grader', 'operational-grader-definition', 'operational-grader-unit', 'operational-grader-direction', 'requested-evidence-at', 'evidence-cutoff', 'maturity-at', 'maturity-status', 'baseline-value', 'delta-from-baseline', 'accepted-evidence-provenance', 'diagnostics', 'diagnostic-definitions', 'observed-at', 'evidence-link', 'organization-link', 'repository-link', 'campaign-link', 'workflow-link', 'run-link'],
   'github-api-rate-limits': ['observation-id', 'operation-execution-id', 'observed-at', 'phase', 'operation', 'outcome', 'credential', 'credential-type', 'resource', 'bucket', 'maximum-lane', 'history-series', 'has-history', 'limit', 'used', 'remaining', 'remaining-percent', 'reset-at', 'minutes-to-reset', 'consumed-since-previous', 'burn-rate-per-minute', 'projected-remaining-at-reset', 'projected-exhaustion-at', 'runway-ratio', 'risk-status', 'risk-order', 'is-unhealthy', 'is-current', 'attribution-status', 'operation-consumed', 'run-link'],
   'github-api-collector-health': ['observed-at', 'operation-execution-id', 'phase', 'operation', 'outcome', 'credential', 'cache-hydrated', 'cache-bytes', 'cache-entries', 'cache-folders', 'rate-limit-error'],

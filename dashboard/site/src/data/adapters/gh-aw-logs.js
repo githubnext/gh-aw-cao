@@ -1105,6 +1105,21 @@ function createCachedGhAwJsonlAccumulator(options) {
     if (metric === null) {
       throw new TypeError(`gh-aw JSONL line ${line}.operational_value.value must be a finite number`);
     }
+    const hasRollupNumerator = Object.hasOwn(value, 'rollup_numerator');
+    const hasRollupDenominator = Object.hasOwn(value, 'rollup_denominator');
+    const rollupNumerator = finiteNumber(value.rollup_numerator);
+    const rollupDenominator = finiteNumber(value.rollup_denominator);
+    if (
+      hasRollupNumerator !== hasRollupDenominator
+      || (hasRollupNumerator && (
+        rollupNumerator === null
+        || rollupDenominator === null
+        || rollupNumerator < 0
+        || rollupDenominator <= 0
+      ))
+    ) {
+      throw new TypeError(`gh-aw JSONL line ${line}.operational_value must contain a valid rollup numerator and denominator together`);
+    }
     const repositoryId = repositoryCoordinateId(coordinates.owner, coordinates.name);
     repositories.set(repositoryId, {
       kind: 'repository',
@@ -1133,12 +1148,17 @@ function createCachedGhAwJsonlAccumulator(options) {
         value: metric,
         'operational-value-role': optionalString(value.metric_role) ?? 'primary',
         'operational-value-name': optionalString(value.metric_name) ?? valueId,
+        'operational-value-unit': optionalString(value.metric_unit),
         'operational-value-direction': optionalString(value.metric_direction) ?? 'increase',
         'maturity-status': optionalString(value.maturity_status) ?? 'matured',
         'adoption-at': optionalString(value.adoption_at),
         'evaluation-mode': optionalString(value.evaluation_mode),
         'workflow-slug': optionalString(value.workflow_slug),
         'workflow-name': optionalString(value.workflow_name),
+        ...(hasRollupNumerator ? {
+          'rollup-numerator': rollupNumerator,
+          'rollup-denominator': rollupDenominator
+        } : {}),
         timestamp: observedAt
       }
     });

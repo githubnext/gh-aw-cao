@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { processDataRequest } from '../../src/data-worker.js';
-import { dashboardQueryDefects } from '../../src/data/queries/declarative.js';
+import { dashboardQueryDefects, executeDashboardQueries } from '../../src/data/queries/declarative.js';
+import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
 import { CAMPAIGN_ROUTE_BODY_VALUES } from '../../src/components/route-body-specification.js';
 import { TABLE_FIELDS } from '../../src/specification.js';
 
@@ -220,7 +221,13 @@ describe('dashboard view query contracts', () => {
         'campaign-problem-tab-counts',
         'campaign-issue-tab-counts',
         ...(pageId === 'campaign-insights'
-          ? ['campaign-operational-value-primary-series', 'campaign-runs']
+          ? [
+              'campaign-operational-value-primary-series',
+              'campaign-operational-value-rollup-series',
+              'campaign-operational-value-run-days',
+              'campaign-operational-value-repository-run-days',
+              'campaign-operational-value-evidence-state'
+            ]
           : [])
       ];
       expect(firstView).toMatchObject({
@@ -288,13 +295,35 @@ describe('dashboard view query contracts', () => {
           'campaign-problem-tab-counts',
           'campaign-issue-tab-counts',
           'campaign-operational-value-primary-series',
-          'campaign-runs'
+          'campaign-operational-value-rollup-series',
+          'campaign-operational-value-run-days',
+          'campaign-operational-value-repository-run-days',
+          'campaign-operational-value-evidence-state'
         ],
         arguments: [{ name: 'campaign', field: 'campaign' }]
       },
       mark: 'element',
       element: 'campaign-route',
       config: { body: 'insights' }
+    });
+
+    expect(viewsOf(insights)[1]).toMatchObject({
+      id: 'campaign-performance-baseline',
+      data: {
+        source: 'campaign-performance-baseline',
+        'route-field': 'campaign'
+      },
+      mark: 'table',
+      encoding: {
+        columns: [
+          { field: 'concluded-runs', title: 'Concluded runs' },
+          { field: 'success-rate-display', title: 'Run success' },
+          { field: 'reliability-signal', title: 'Reliability signal' },
+          { field: 'produced-outputs', title: 'Produced outputs' },
+          { field: 'production-signal', title: 'Production signal' },
+          { field: 'aic-per-successful-run', title: 'Average AIC / successful run', unit: 'aic-per-run' }
+        ]
+      }
     });
 
     expect(viewsOf(problems).find((view) => view.id === 'campaign-current-runtime-problems')).toMatchObject({
@@ -306,6 +335,132 @@ describe('dashboard view query contracts', () => {
       data: { source: 'campaign-runs', 'route-field': 'campaign' },
       mark: 'chart'
     });
+  });
+
+  it('builds a route-scoped selected-horizon campaign baseline with deterministic signals', () => {
+    const page = dashboard.pages.find(
+      (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-insights'
+    );
+    const payload = compileDashboardViewPayloadQueries(page, 'campaign-insights', {
+      viewId: 'campaign-performance-baseline',
+      routeParameters: { campaign: 'optimization' },
+      queryContext: {
+        timeWindow: {
+          start: '2026-08-31T00:00:00Z',
+          end: '2026-09-30T00:00:00Z'
+        }
+      },
+      queries
+    });
+    const result = executeDashboardQueries(payload.queries, {
+      runs: {
+        source: 'runs',
+        metadata,
+        rows: [
+          {
+            organization: 'githubnext',
+            repository: 'gh-aw-cao',
+            workflow: 'optimization-worker.md',
+            run: '100',
+            'run-attempt': 1,
+            'run-status': 'completed',
+            'run-conclusion': 'success',
+            'started-at': '2026-09-10T00:00:00Z',
+            'safe-items-count': 2,
+            'aic-total': 4
+          },
+          {
+            organization: 'githubnext',
+            repository: 'gh-aw-cao',
+            workflow: 'optimization-worker.md',
+            run: '101',
+            'run-attempt': 1,
+            'run-status': 'completed',
+            'run-conclusion': 'success',
+            'started-at': '2026-09-20T00:00:00Z',
+            'safe-items-count': 0,
+            'aic-total': 6
+          },
+          {
+            organization: 'githubnext',
+            repository: 'gh-aw-cao',
+            workflow: 'optimization-worker.md',
+            run: '102',
+            'run-attempt': 1,
+            'run-status': 'completed',
+            'run-conclusion': 'failure',
+            'started-at': '2026-09-25T00:00:00Z',
+            'aic-total': 9
+          },
+          {
+            organization: 'githubnext',
+            repository: 'gh-aw-cao',
+            workflow: 'optimization-worker.md',
+            run: 'old',
+            'run-attempt': 1,
+            'run-status': 'completed',
+            'run-conclusion': 'failure',
+            'started-at': '2026-08-20T00:00:00Z',
+            'aic-total': 20
+          },
+          {
+            organization: 'githubnext',
+            repository: 'gh-aw-cao',
+            workflow: 'other-worker.md',
+            run: 'other',
+            'run-attempt': 1,
+            'run-status': 'completed',
+            'run-conclusion': 'failure',
+            'started-at': '2026-09-25T00:00:00Z',
+            'aic-total': 8
+          }
+        ]
+      },
+      workflows: {
+        source: 'workflows',
+        metadata,
+        rows: [
+          {
+            organization: 'githubnext',
+            repository: 'gh-aw-cao',
+            workflow: 'optimization-worker.md',
+            campaign: 'optimization',
+            'campaign-name': 'Optimization',
+            'workflow-name': 'Optimization worker',
+            'workflow-role': 'worker'
+          },
+          {
+            organization: 'githubnext',
+            repository: 'gh-aw-cao',
+            workflow: 'other-worker.md',
+            campaign: 'other',
+            'campaign-name': 'Other',
+            'workflow-name': 'Other worker',
+            'workflow-role': 'worker'
+          }
+        ]
+      },
+      audits: {
+        source: 'audits',
+        metadata,
+        rows: []
+      }
+    }, payload.aliases);
+    const baselineAlias = payload.aliases.find((alias) => alias.includes('campaign-performance-baseline'));
+
+    expect(baselineAlias).toBeDefined();
+    expect(result[baselineAlias ?? ''].rows).toEqual([{
+      campaign: 'optimization',
+      'concluded-runs': 3,
+      'successful-runs': 2,
+      'success-rate': 2 / 3,
+      'success-rate-display': '66.7%',
+      'success-rate-percent': (2 / 3) * 100,
+      'reliability-signal': 'Unsuccessful runs observed',
+      'produced-outputs': 2,
+      'production-signal': 'Outputs produced; acceptance unverified',
+      'aic-per-successful-run': 5
+    }]);
   });
 
   it('renders one campaign problem as a dedicated full detail view', () => {

@@ -242,8 +242,8 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Query `temporal-series.measures[]` | `field`, `key`, `kind` |
 | Query `temporal-series.maps[]` | `field`, `definitions`, `group`, `kind` |
 | Query `select` entry | `field`, `as` |
-| Built-in page | `id`, `kind`, `page`, `title`, `navigation-label`, `navigation-indicator`, `description`, `icon`, `class-name`, `experimental`, `form`, `definition` |
-| Custom page | `id`, `kind`, `title`, `navigation-label`, `navigation-indicator`, `description`, `icon`, `class-name`, `experimental`, `form`, `route`, `views`, `sections` |
+| Built-in page | `id`, `kind`, `page`, `title`, `navigation-label`, `navigation-indicator`, `description`, `icon`, `class-name`, `experimental`, `filter-bar`, `view-mode-control`, `form`, `definition` |
+| Custom page | `id`, `kind`, `title`, `navigation-label`, `navigation-indicator`, `description`, `icon`, `class-name`, `experimental`, `filter-bar`, `view-mode-control`, `form`, `route`, `views`, `sections` |
 | Page `form` | `title`, `description`, `update`, `fields` |
 | Form `update` | `strategy`, `delay-ms` |
 | Form field | `id`, `label`, `description`, `control`, `default`, `min`, `max`, `step`, `options` |
@@ -565,6 +565,8 @@ The built-in methods require no registry or external configuration. Future langu
 #### 5.5.3 Temporal-Series Vocabulary
 
 `temporal-series` reshapes wide observations into tidy rows suitable for charts, statistics, and browser-side modeling. `time` names the timestamp field, `series` names the series dimension, and `carry` retains up to 16 scalar dimensions. Each `measures` entry reads one scalar numeric `field`; optional `key` names the field containing its metric identity. Each `maps` entry expands numeric properties from one mapping field; optional `definitions` names an array of `{ id, name }` definitions and optional `group` names its parent metric. The default `shape: tidy` emits the carried fields plus `time`, `series`, `metric`, `metric-key`, `metric-name`, `metric-kind`, `metric-group`, and `value`. `shape: groups` emits one row per carried-field and metric tuple with those metric fields and a chart-ready `points` sequence. Invalid timestamps, null values, and non-finite values produce no point.
+
+A grouped temporal series may declare `trend.direction` as the name of a carried field whose value is `increase`, `decrease`, `maintain`, or `target`. The worker orders each group's valid points by timestamp and appends the first value, last value, native delta, relative percentage when the first value is nonzero, observed direction, direction-aware assessment, and observation count. Fewer than two valid observations produce `trend-assessment: insufficient`. The assessment is deterministic selected-horizon change, not statistical significance or a causal claim.
 
 The transform preserves source-row order and measure declaration or map-property order. It emits no more than 64 mapped metrics per input observation and no more than 100000 rows. It executes in the data Web Worker through the same serializable tidy pipeline as filtering, aggregation, and prediction.
 
@@ -964,7 +966,7 @@ A page may declare `navigation-indicator` with a non-empty `label` and an `any` 
 
 A navigation section may set `experimental: true`. Presenters combine pages from all experimental sections into one visible **Experimental** navigation section that is collapsed by default. Activating a direct deep link to an experimental page expands that section. This metadata changes navigation presentation only and does not grant authorization or access to data.
 
-The optional page `class-name` is a canonical identifier that a renderer adds to the page container. It lets a document opt into page-specific presentation without requiring the renderer to infer styling from a page ID or built-in page name. The optional Boolean page `filter-bar` defaults to `false`; `true` adds the shared filter bar while retaining view-mode controls in the page chrome.
+The optional page `class-name` is a canonical identifier that a renderer adds to the page container. It lets a document opt into page-specific presentation without requiring the renderer to infer styling from a page ID or built-in page name. The optional Boolean page `filter-bar` defaults to `false`; `true` adds the shared filter bar while retaining view-mode controls in the page chrome. The optional Boolean `view-mode-control` defaults to `true`; `false` fixes the page to its default presentation and omits desktop and mobile presentation-mode controls.
 
 For pages that opt in to `filter-bar: true`, the presenter renders a filter bar in the view chrome. Activating the horizon control toggles its free-form filters, time-horizon controls, and rollout-mode controls. The presenter applies edits automatically to matching source fields, treating values for one field as alternatives and filters for different fields as conjunctive. Time-horizon and rollout-mode selections are global client-side settings persisted in local storage. All rollout modes are active by default.
 
@@ -988,9 +990,10 @@ For pages that opt in to `filter-bar: true`, the presenter renders a filter bar 
 - **DLS-PAGE-016:** `experimental`, when present on a page, **MUST** be Boolean and defaults to `false`. A presenter **MUST** render an **Experimental** label in every navigation item for that page and beside the active page title.
 - **DLS-PAGE-016:** When `class-name` is present, it **MUST** be a canonical identifier and a renderer **MUST** add it to the page container without deriving additional CSS class names from `id` or `page`.
 - **DLS-PAGE-017:** The `issues` page **MUST** use the predefined built-in page configuration and the reusable `issue` entity-card definition, bind to a declared query with issue arguments, and drill to each issue's safe GitHub URL.
-- **DLS-PAGE-017:** A presenter **MUST** render one filter bar in the view chrome only when that page declares `filter-bar: true`, toggle its tuning controls from the horizon text, and apply valid filter edits automatically. A presenter **MUST** persist time-horizon and rollout-mode settings globally in local storage and activate all rollout modes by default. Available view-mode controls **MUST** remain in page chrome when the filter bar is omitted.
+- **DLS-PAGE-017:** A presenter **MUST** render one filter bar in the view chrome only when that page declares `filter-bar: true`, toggle its tuning controls from the horizon text, and apply valid filter edits automatically. A presenter **MUST** persist time-horizon and rollout-mode settings globally in local storage and activate all rollout modes by default. Unless the page declares `view-mode-control: false`, available view-mode controls **MUST** remain in page chrome when the filter bar is omitted.
 - **DLS-PAGE-018:** A routed custom page **MAY** declare `route.title-format: title-case`. Before route-owned data resolves, a presenter **MUST** format the route value by capitalizing its hyphen- or underscore-separated words instead of exposing the raw route slug as page identity. A later route allocation **MUST** replace that provisional identity with the authoritative title.
 - **DLS-PAGE-019:** A routed custom page with declared tabs **MAY** declare a canonical `route.tabs-class-name`. A presenter **MUST** apply that class to both loading and hydrated tab sets so route chrome remains structurally and visually stable while data resolves.
+- **DLS-PAGE-020:** `view-mode-control`, when present, **MUST** be Boolean. When `false`, a presenter **MUST** use the page's default presentation and **MUST NOT** expose desktop or mobile controls for switching among chart, card, and table presentations.
 
 ---
 
@@ -1275,7 +1278,7 @@ In the table, “accept” means validation succeeds; “reject” means validat
 | DLS-AGG-001–011 | T-AGG-001 | 2 | Exercise allowed aggregates, compatibility, nulls, UTC buckets, ranking disclosure, and deterministic ties for entity-grain and group-grain outputs, including total-order rejection. |
 | DLS-DATA-001–008 | T-DATA-001 | 2 | Exercise required metadata, derivation traceability, and each distinct data state. |
 | DLS-LINK-001–007 | T-LINK-001 | 2 | Validate link shape, safety, provenance, available associations, absent associations, one-link-per-field cardinality, GitHub URL base resolution, and linked rendering of every GitHub-addressable entity. |
-| DLS-PAGE-001–019 | T-PAGE-001 | 3 | Evaluate each built-in fixture for required content, defaults, context, data states, page classes, and shared filter chrome. |
+| DLS-PAGE-001–020 | T-PAGE-001 | 3 | Evaluate each built-in fixture for required content, defaults, context, data states, page classes, and shared filter chrome. |
 | DLS-VIEW-001–006 | T-VIEW-001 | 3 | Validate custom structure and every allowed mark/channel combination. |
 | DLS-VIEW-007–015, DLS-VIEW-025, DLS-UNIT-001–004 | T-VIEW-002 | 3 | Validate fields, types, link-compatible `href`, units and compact duration formatting, time units, ordering, exclusions, operation order, exposed context, and link labels. |
 | DLS-VIEW-016–021 | T-VIEW-003 | 3 | Validate disclosure vocabulary, one-to-four essential views, initial collapsed state, accessible controls, source order, and unchanged semantic output. |

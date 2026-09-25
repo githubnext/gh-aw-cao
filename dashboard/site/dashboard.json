@@ -1613,8 +1613,54 @@
     },
     "queries": [
       {
-        "name": "indexing-daily-ingestion",
-        "intent": "Aggregate new workflow runs and records ingested from CAO Activity by UTC day.",
+        "name": "indexing-daily-records",
+        "intent": "Aggregate records committed from CAO Activity by ingestion UTC day.",
+        "from": "transactions",
+        "filter": {
+          "predicates": [
+            {
+              "field": "kind",
+              "in": [
+                "ingest-jsonl",
+                "ingest-normalized-json",
+                "ingest-normalized-jsonl"
+              ]
+            }
+          ]
+        },
+        "compute": [
+          {
+            "as": "day",
+            "function": "date-day",
+            "args": [
+              {
+                "field": "createdAt"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "day"
+          ],
+          "values": [
+            {
+              "field": "committedRecords",
+              "as": "records",
+              "reducer": "sum"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "day",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
+        "name": "indexing-daily-workflow-runs",
+        "intent": "Aggregate workflow runs ingested from CAO Activity by UTC day.",
         "from": "transactions",
         "filter": {
           "predicates": [
@@ -1647,11 +1693,6 @@
             {
               "field": "rawRuns",
               "as": "workflow-runs",
-              "reducer": "sum"
-            },
-            {
-              "field": "records",
-              "as": "records",
               "reducer": "sum"
             }
           ]
@@ -6772,6 +6813,9 @@
             "field": "run"
           },
           {
+            "field": "run-attempt"
+          },
+          {
             "field": "run-title"
           },
           {
@@ -6836,6 +6880,12 @@
             "field": "resolved-model"
           },
           {
+            "field": "aic-total"
+          },
+          {
+            "field": "safe-items-count"
+          },
+          {
             "field": "resource-reset-at",
             "as": "status-detail-at"
           },
@@ -6868,6 +6918,471 @@
           {
             "field": "started-at",
             "direction": "desc"
+          }
+        ]
+      },
+      {
+        "name": "campaign-operational-value-repository-run-day-totals",
+        "intent": "Summarize concluded campaign run outcomes by repository and UTC day as aligned context for operational-value history.",
+        "description": "Daily repository success, failure, and other concluded-run counts for visual association only; these observations do not establish causation.",
+        "from": "campaign-runs",
+        "filter": {
+          "predicates": [
+            {
+              "field": "run-status",
+              "equals": "completed"
+            }
+          ]
+        },
+        "compute": [
+          {
+            "as": "run-day",
+            "function": "date-day",
+            "args": [
+              {
+                "field": "started-at"
+              }
+            ]
+          },
+          {
+            "as": "run-attempt-identity",
+            "function": "concat",
+            "args": [
+              {
+                "field": "run"
+              },
+              {
+                "value": ":"
+              },
+              {
+                "field": "run-attempt"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "campaign",
+            "repository",
+            "run-day"
+          ],
+          "values": [
+            {
+              "field": "run-attempt-identity",
+              "as": "concluded-runs",
+              "reducer": "distinct-count"
+            },
+            {
+              "field": "run-attempt-identity",
+              "as": "successful-runs",
+              "reducer": "distinct-count",
+              "filter": {
+                "predicates": [
+                  {
+                    "field": "status",
+                    "equals": "success"
+                  }
+                ]
+              }
+            },
+            {
+              "field": "run-attempt-identity",
+              "as": "failed-runs",
+              "reducer": "distinct-count",
+              "filter": {
+                "predicates": [
+                  {
+                    "field": "status",
+                    "in": [
+                      "failure",
+                      "startup-failure",
+                      "timed_out",
+                      "cancelled",
+                      "stale"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "campaign-operational-value-repository-run-days",
+        "intent": "Provide daily repository run outcomes as nearby context for operational-value observations.",
+        "description": "Repository success and failure counts for temporal proximity only, without converting run outcomes into operational value or implying causation.",
+        "from": "campaign-operational-value-repository-run-day-totals",
+        "compute": [
+          {
+            "as": "success-rate-ratio",
+            "function": "quotient",
+            "args": [
+              {
+                "field": "successful-runs"
+              },
+              {
+                "field": "concluded-runs"
+              }
+            ]
+          },
+          {
+            "as": "success-rate-percent",
+            "function": "product",
+            "args": [
+              {
+                "field": "success-rate-ratio"
+              },
+              {
+                "value": 100
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "campaign-operational-value-run-day-totals",
+        "intent": "Summarize concluded campaign run outcomes by UTC day as aligned context for weighted campaign operational-value history.",
+        "description": "Daily campaign-wide success context aggregated from repository run-day counts without implying a causal relationship.",
+        "from": "campaign-operational-value-repository-run-days",
+        "aggregate": {
+          "by": [
+            "campaign",
+            "run-day"
+          ],
+          "values": [
+            {
+              "field": "concluded-runs",
+              "as": "concluded-runs",
+              "reducer": "sum"
+            },
+            {
+              "field": "successful-runs",
+              "as": "successful-runs",
+              "reducer": "sum"
+            },
+            {
+              "field": "failed-runs",
+              "as": "failed-runs",
+              "reducer": "sum"
+            }
+          ]
+        }
+      },
+      {
+        "name": "campaign-operational-value-run-days",
+        "intent": "Provide daily campaign-wide run outcomes as nearby context for weighted operational-value observations.",
+        "description": "Campaign success and failure counts for temporal proximity only, without implying a causal relationship.",
+        "from": "campaign-operational-value-run-day-totals",
+        "compute": [
+          {
+            "as": "success-rate-ratio",
+            "function": "quotient",
+            "args": [
+              {
+                "field": "successful-runs"
+              },
+              {
+                "field": "concluded-runs"
+              }
+            ]
+          },
+          {
+            "as": "success-rate-percent",
+            "function": "product",
+            "args": [
+              {
+                "field": "success-rate-ratio"
+              },
+              {
+                "value": 100
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "campaign-performance-baseline-totals",
+        "intent": "Establish a selected-horizon campaign baseline from concluded run attempts while keeping reliability, unverified production, and efficiency as separate facts.",
+        "description": "Canonical campaign run attempts aggregated into bounded selected-horizon baseline totals without treating runtime success or produced outputs as operational value.",
+        "from": "campaign-runs",
+        "compute": [
+          {
+            "as": "run-attempt-identity",
+            "function": "concat",
+            "args": [
+              {
+                "field": "run"
+              },
+              {
+                "value": ":"
+              },
+              {
+                "field": "run-attempt"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "campaign"
+          ],
+          "values": [
+            {
+              "field": "run-attempt-identity",
+              "as": "concluded-runs",
+              "reducer": "count",
+              "filter": {
+                "predicates": [
+                  {
+                    "field": "status",
+                    "in": [
+                      "success",
+                      "failure",
+                      "cancelled",
+                      "timed-out",
+                      "action-required",
+                      "neutral",
+                      "skipped",
+                      "stale",
+                      "startup-failure"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "field": "run-attempt-identity",
+              "as": "successful-runs",
+              "reducer": "count",
+              "filter": {
+                "predicates": [
+                  {
+                    "field": "status",
+                    "equals": "success"
+                  }
+                ]
+              }
+            },
+            {
+              "field": "safe-items-count",
+              "as": "runs-with-output-evidence",
+              "reducer": "count",
+              "filter": {
+                "predicates": [
+                  {
+                    "field": "status",
+                    "equals": "success"
+                  }
+                ]
+              }
+            },
+            {
+              "field": "safe-items-count",
+              "as": "produced-outputs",
+              "reducer": "sum",
+              "filter": {
+                "predicates": [
+                  {
+                    "field": "status",
+                    "equals": "success"
+                  }
+                ]
+              }
+            },
+            {
+              "field": "aic-total",
+              "as": "aic-per-successful-run",
+              "reducer": "mean",
+              "filter": {
+                "predicates": [
+                  {
+                    "field": "status",
+                    "equals": "success"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "campaign-performance-baseline",
+        "intent": "Turn each campaign's selected-horizon baseline totals into deterministic reliability and production signals with an explicit successful-run efficiency fact.",
+        "description": "A bounded, explainable baseline that distinguishes runtime reliability, unverified output production, and AI Credit efficiency.",
+        "from": "campaign-performance-baseline-totals",
+        "compute": [
+          {
+            "as": "success-rate",
+            "function": "quotient",
+            "args": [
+              {
+                "field": "successful-runs"
+              },
+              {
+                "field": "concluded-runs"
+              }
+            ]
+          },
+          {
+            "as": "success-rate-display",
+            "function": "format-percent",
+            "args": [
+              {
+                "field": "success-rate"
+              }
+            ]
+          },
+          {
+            "as": "success-rate-percent",
+            "function": "product",
+            "args": [
+              {
+                "field": "success-rate"
+              },
+              {
+                "value": 100
+              }
+            ]
+          },
+          {
+            "as": "has-concluded-runs",
+            "function": "greater-than",
+            "args": [
+              {
+                "field": "concluded-runs"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "has-unsuccessful-runs",
+            "function": "greater-than",
+            "args": [
+              {
+                "field": "concluded-runs"
+              },
+              {
+                "field": "successful-runs"
+              }
+            ]
+          },
+          {
+            "as": "observed-reliability-signal",
+            "function": "if",
+            "args": [
+              {
+                "field": "has-unsuccessful-runs"
+              },
+              {
+                "value": "Unsuccessful runs observed"
+              },
+              {
+                "value": "No unsuccessful runs observed"
+              }
+            ]
+          },
+          {
+            "as": "reliability-signal",
+            "function": "if",
+            "args": [
+              {
+                "field": "has-concluded-runs"
+              },
+              {
+                "field": "observed-reliability-signal"
+              },
+              {
+                "value": "No concluded runs observed"
+              }
+            ]
+          },
+          {
+            "as": "has-output-evidence",
+            "function": "greater-than",
+            "args": [
+              {
+                "field": "runs-with-output-evidence"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "has-produced-outputs",
+            "function": "greater-than",
+            "args": [
+              {
+                "field": "produced-outputs"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "observed-production-signal",
+            "function": "if",
+            "args": [
+              {
+                "field": "has-produced-outputs"
+              },
+              {
+                "value": "Outputs produced; acceptance unverified"
+              },
+              {
+                "value": "No outputs observed"
+              }
+            ]
+          },
+          {
+            "as": "production-signal",
+            "function": "if",
+            "args": [
+              {
+                "field": "has-output-evidence"
+              },
+              {
+                "field": "observed-production-signal"
+              },
+              {
+                "value": "Output evidence unavailable"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "campaign"
+          },
+          {
+            "field": "concluded-runs"
+          },
+          {
+            "field": "successful-runs"
+          },
+          {
+            "field": "success-rate"
+          },
+          {
+            "field": "success-rate-display"
+          },
+          {
+            "field": "success-rate-percent"
+          },
+          {
+            "field": "reliability-signal"
+          },
+          {
+            "field": "produced-outputs"
+          },
+          {
+            "field": "production-signal"
+          },
+          {
+            "field": "aic-per-successful-run"
           }
         ]
       },
@@ -8862,9 +9377,11 @@
           "shape": "groups",
           "carry": [
             "campaign",
-            "maturity-status",
+            "repository",
             "operational-value-role",
             "operational-value-name",
+            "operational-value-unit",
+            "operational-value-direction",
             "adoption-at",
             "evaluation-mode",
             "workflow-slug",
@@ -8876,8 +9393,208 @@
               "key": "operational-value-definition",
               "kind": "primary"
             }
+          ],
+          "trend": {
+            "direction": "operational-value-direction"
+          }
+        }
+      },
+      {
+        "name": "campaign-operational-value-rollup-input",
+        "intent": "Identify repository operational-value observations that publish additive native evidence for a weighted campaign rollup.",
+        "description": "Repository observations with explicit native-unit numerators and eligible denominators.",
+        "from": "operational-values",
+        "compute": [
+          {
+            "as": "has-rollup-evidence",
+            "function": "greater-than",
+            "args": [
+              {
+                "field": "rollup-denominator"
+              },
+              {
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "campaign-operational-value-rollup-totals",
+        "intent": "Sum native-unit numerators and eligible denominators across target repositories without averaging repository ratios.",
+        "description": "Additive campaign operational-value evidence grouped by metric and observation time.",
+        "from": "campaign-operational-value-rollup-input",
+        "filter": {
+          "predicates": [
+            {
+              "field": "has-rollup-evidence",
+              "equals": true
+            }
+          ]
+        },
+        "aggregate": {
+          "by": [
+            "campaign",
+            "observed-at",
+            "operational-value-definition",
+            "operational-value-role",
+            "operational-value-name",
+            "operational-value-unit",
+            "operational-value-direction",
+            "maturity-status",
+            "adoption-at",
+            "evaluation-mode",
+            "workflow-slug",
+            "workflow-name"
+          ],
+          "values": [
+            {
+              "field": "rollup-numerator",
+              "as": "campaign-rollup-numerator",
+              "reducer": "sum"
+            },
+            {
+              "field": "rollup-denominator",
+              "as": "campaign-rollup-denominator",
+              "reducer": "sum"
+            },
+            {
+              "field": "repository",
+              "as": "contributing-repositories",
+              "reducer": "distinct-count"
+            }
           ]
         }
+      },
+      {
+        "name": "campaign-operational-value-rollup-values",
+        "intent": "Calculate the weighted campaign operational-value ratio from summed additive evidence.",
+        "description": "Campaign-wide values whose weighting matches the combined eligible-opportunity population.",
+        "from": "campaign-operational-value-rollup-totals",
+        "compute": [
+          {
+            "as": "operational-value",
+            "function": "quotient",
+            "args": [
+              {
+                "field": "campaign-rollup-numerator"
+              },
+              {
+                "field": "campaign-rollup-denominator"
+              }
+            ]
+          },
+          {
+            "as": "repository-scope",
+            "function": "concat",
+            "args": [
+              {
+                "value": "Campaign"
+              },
+              {
+                "value": " rollup"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "campaign-operational-value-rollup-series",
+        "intent": "Project weighted campaign operational value into temporal series for the default campaign insight.",
+        "description": "Weighted campaign rollup history with contributing repository counts and maturity metadata.",
+        "from": "campaign-operational-value-rollup-values",
+        "temporal-series": {
+          "time": "observed-at",
+          "series": "repository-scope",
+          "shape": "groups",
+          "carry": [
+            "campaign",
+            "operational-value-role",
+            "operational-value-name",
+            "operational-value-unit",
+            "operational-value-direction",
+            "adoption-at",
+            "evaluation-mode",
+            "workflow-slug",
+            "workflow-name"
+          ],
+          "measures": [
+            {
+              "field": "operational-value",
+              "key": "operational-value-definition",
+              "kind": "primary"
+            }
+          ],
+          "trend": {
+            "direction": "operational-value-direction"
+          }
+        }
+      },
+      {
+        "name": "campaign-operational-value-evidence-state-totals",
+        "intent": "Summarize whether selected-horizon repository operational-value observations include matured evidence or only interim evidence.",
+        "description": "Campaign-level maturity counts used to distinguish interim from matured operational-value evidence.",
+        "from": "operational-values",
+        "aggregate": {
+          "by": [
+            "campaign"
+          ],
+          "values": [
+            {
+              "field": "observed-at",
+              "as": "observation-count",
+              "reducer": "count"
+            },
+            {
+              "field": "operational-value",
+              "as": "matured-observation-count",
+              "reducer": "count",
+              "filter": {
+                "predicates": [
+                  {
+                    "field": "maturity-status",
+                    "equals": "matured"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "campaign-operational-value-evidence-state",
+        "intent": "Classify selected-horizon repository operational-value evidence by maturity without changing native values.",
+        "description": "Campaign-level evidence state consumed by the repository operational-value history presenter.",
+        "from": "campaign-operational-value-evidence-state-totals",
+        "compute": [
+          {
+            "as": "has-matured-observations",
+            "function": "greater-than",
+            "args": [
+              {
+                "field": "matured-observation-count"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "evidence-state",
+            "function": "if",
+            "args": [
+              {
+                "field": "has-matured-observations"
+              },
+              {
+                "value": "observed-value"
+              },
+              {
+                "value": "interim-evidence"
+              }
+            ]
+          }
+        ]
       },
       {
         "name": "campaign-operational-value-plot-inventory",
@@ -11722,6 +12439,7 @@
         "description": "Operational activity for this campaign.",
         "icon": "graph",
         "class-name": "campaign-insights-page",
+        "view-mode-control": false,
         "route": {
           "hash-query-parameter": "campaign",
           "title-format": "title-case",
@@ -11759,7 +12477,10 @@
                 "campaign-problem-tab-counts",
                 "campaign-issue-tab-counts",
                 "campaign-operational-value-primary-series",
-                "campaign-runs"
+                "campaign-operational-value-rollup-series",
+                "campaign-operational-value-run-days",
+                "campaign-operational-value-repository-run-days",
+                "campaign-operational-value-evidence-state"
               ],
               "arguments": [
                 {
@@ -11773,6 +12494,53 @@
             "layout": "full",
             "config": {
               "body": "insights"
+            }
+          },
+          {
+            "id": "campaign-performance-baseline",
+            "title": "Baseline interpretation",
+            "description": "Deterministic reliability, unverified production, and successful-run efficiency facts. Produced outputs are not accepted outcomes or operational value.",
+            "data": {
+              "source": "campaign-performance-baseline",
+              "route-field": "campaign"
+            },
+            "mark": "table",
+            "layout": "full",
+            "empty-message": "No campaign run attempts were observed during the selected horizon.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "concluded-runs",
+                  "type": "quantitative",
+                  "title": "Concluded runs"
+                },
+                {
+                  "field": "success-rate-display",
+                  "type": "nominal",
+                  "title": "Run success"
+                },
+                {
+                  "field": "reliability-signal",
+                  "type": "nominal",
+                  "title": "Reliability signal"
+                },
+                {
+                  "field": "produced-outputs",
+                  "type": "quantitative",
+                  "title": "Produced outputs"
+                },
+                {
+                  "field": "production-signal",
+                  "type": "nominal",
+                  "title": "Production signal"
+                },
+                {
+                  "field": "aic-per-successful-run",
+                  "type": "quantitative",
+                  "title": "Average AIC / successful run",
+                  "unit": "aic-per-run"
+                }
+              ]
             }
           },
           {
@@ -13475,7 +14243,7 @@
             "title": "Indexed data over time",
             "description": "New workflow runs and records retained from CAO Activity each day.",
             "data": {
-              "source": "indexing-daily-ingestion"
+              "source": "indexing-daily-records"
             },
             "mark": "chart",
             "chart": "bar",
@@ -13499,7 +14267,7 @@
             "title": "Workflow runs indexed",
             "description": "New workflow runs retained from CAO Activity each day.",
             "data": {
-              "source": "indexing-daily-ingestion"
+              "source": "indexing-daily-workflow-runs"
             },
             "mark": "chart",
             "chart": "bar",

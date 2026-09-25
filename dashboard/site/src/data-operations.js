@@ -22,7 +22,7 @@ import { formatPercent } from './view-formatters.js';
  * @typedef {{ field: string, on: string|string[], method?: PredictionMethod, order?: number, groupby?: string[], as: string }} PredictedField
  * @typedef {{ op: 'predict', values: PredictedField[] }} PredictOperator
  * @typedef {{ op: 'select', fields: Array<{ field: string, as?: string }> }} SelectOperator
- * @typedef {{ time: string, series: string, shape?: 'tidy'|'groups', carry?: string[], measures?: Array<{ field: string, key?: string, kind: string }>, maps?: Array<{ field: string, definitions?: string, group?: string, kind: string }> }} TemporalSeriesDefinition
+ * @typedef {{ time: string, series: string, shape?: 'tidy'|'groups', carry?: string[], measures?: Array<{ field: string, key?: string, kind: string }>, maps?: Array<{ field: string, definitions?: string, group?: string, kind: string }>, trend?: { direction: string } }} TemporalSeriesDefinition
  * @typedef {{ op: 'temporal-series' } & TemporalSeriesDefinition} TemporalSeriesOperator
  * @typedef {FilterOperator|SummarizeOperator|ArrangeOperator|SliceOperator|ComputeOperator|PredictOperator|SelectOperator|TemporalSeriesOperator} DataOperator
  */

@@ -9,6 +9,32 @@ import { pathToFileURL } from "node:url";
 const root = path.resolve(import.meta.dirname, "../..");
 const scripts = path.join(root, ".github/skills/add-operational-value/scripts");
 
+test("skill uses query-first evidence without limiting history to source retention", () => {
+  const skill = readFileSync(
+    path.join(root, ".github/skills/add-operational-value/SKILL.md"),
+    "utf8",
+  );
+  assert.match(skill, /Use a declarative query over canonical CAO data/);
+  assert.match(skill, /temporary checkout of the target repository at the immutable cutoff/);
+  assert.match(skill, /Query retention is a source limitation, not the operational-value history window/);
+  assert.match(skill, /contemporaneous accepted snapshot was preserved/);
+});
+
+test("skill tests whether each measured phenomenon existed before adoption", () => {
+  const skill = readFileSync(
+    path.join(root, ".github/skills/add-operational-value/SKILL.md"),
+    "utf8",
+  );
+  assert.match(skill, /Do not confuse workflow adoption with creation of the measured phenomenon/);
+  assert.match(skill, /antecedent-existence test/);
+  assert.match(skill, /pre-existing-and-reconstructable/);
+  assert.match(skill, /pre-existing-but-not-reconstructable/);
+  assert.match(skill, /created-at-adoption/);
+  assert.match(skill, /same native formula, unit, population, grain, filters, and window/);
+  assert.match(skill, /“the workflow did not exist yet” is not sufficient/);
+  assert.match(skill, /Attainment-only is a fallback after an explicit failed reconstruction/);
+});
+
 test("campaign workflow listing returns only direct manifest worker workflows", () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), "operational-value-campaign-list-"));
   mkdirSync(path.join(temporary, ".github/workflows"), { recursive: true });
@@ -131,7 +157,8 @@ for (const repository of request.repositories) {
     "daily-file-diet.largest-file-health",
     "daily-file-diet.compliant-line-mass-share"
   ]) {
-    console.log(JSON.stringify({repository, valueId, value: 0.5, timestamp: request.timestamp}));
+    const metricUnit = valueId.endsWith("largest-file-health") ? "score" : "share";
+    console.log(JSON.stringify({repository, valueId, value: 0.5, metricUnit, timestamp: request.timestamp}));
   }
 }
 `);
@@ -159,18 +186,21 @@ import * as original from ${JSON.stringify(pathToFileURL(source).href)};
 export const definition = {
   ...original.definition,
   slug: "maturation-test",
-  sourcePath: ".github/workflows/maturation-test.md"
+  sourcePath: ".github/workflows/maturation-test.md",
+  evaluation: { mode: "attainment-only" }
 };
 export const collectBatch = (requests) => requests.map(() => ({
   evidence: {
     maturityStatus: "interim",
     dubious: true,
-    eligibleOpportunityCount: 0,
-    verifiedOpportunityCount: 0,
-    acceptedRecommendationCount: 0,
-    outcomeUnknownCount: 0,
-    dispositionUnknownCount: 0,
-    guardedNetGainRatioSum: 0
+    eligibleWorkflowCount: 1,
+    successfulRunCount: 1,
+    successfulRunAicTotal: 0,
+    concludedRunCount: 1,
+    failedRunCount: 0,
+    cancelledRunCount: 0,
+    failedRunPercentagePointTotal: 0,
+    cancelledRunPercentagePointTotal: 0
   },
   provenance: [{ repository: definition.repository, kind: "test-fixture", ref: definition.adoption.commit }]
 }));
@@ -203,5 +233,5 @@ export const scoreMetric = original.scoreMetric;
   );
   assert.equal(timeline.snapshots[0].evidence.maturityStatus, "interim");
   assert.equal(timeline.snapshots[0].evidence.dubious, true);
-  assert.equal(timeline.snapshots[0].metrics["verified-opportunity-share"], 0);
+  assert.equal(timeline.snapshots[0].metrics["aic-per-successful-run"], 0);
 });

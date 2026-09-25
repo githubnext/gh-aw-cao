@@ -160,7 +160,7 @@ test('cao operational-value runs package scripts and ingests emitted JSONL', () 
 const request = JSON.parse(readFileSync(0, 'utf8'));
 for (const repository of request.repositories) {
   const isolated = process.env.GH_TOKEN === "read-only-token" && process.env.UNRELATED_SECRET === undefined;
-  console.log(JSON.stringify({timestamp:request.timestamp,repository,valueId:"example-count",value:isolated ? 2 : 0,metricRole:"diagnostic",metricName:"Example count",metricDirection:"decrease",maturityStatus:"interim",adoptionAt:"2026-09-15T23:30:36Z",evaluationMode:"attainment-only",workflowSlug:"example-worker",workflowName:"Example Worker"}));
+  console.log(JSON.stringify({timestamp:request.timestamp,repository,valueId:"example-count",value:isolated ? 2 : 0,metricRole:"diagnostic",metricName:"Example count",metricUnit:"percent",metricDirection:"decrease",maturityStatus:"interim",adoptionAt:"2026-09-15T23:30:36Z",evaluationMode:"attainment-only",workflowSlug:"example-worker",workflowName:"Example Worker",rollupNumerator:100,rollupDenominator:2}));
 }\n`);
   chmodSync(script, 0o755);
 
@@ -196,16 +196,19 @@ for (const repository of request.repositories) {
     stored.map((record) => ({
       role: record['operational-value-role'],
       name: record['operational-value-name'],
+      unit: record['operational-value-unit'],
       direction: record['operational-value-direction'],
       maturity: record['maturity-status'],
       adoptionAt: record['adoption-at'],
       evaluationMode: record['evaluation-mode'],
       workflowSlug: record['workflow-slug'],
       workflowName: record['workflow-name'],
+      rollupNumerator: record['rollup-numerator'],
+      rollupDenominator: record['rollup-denominator'],
     })),
     [
-      { role: 'diagnostic', name: 'Example count', direction: 'decrease', maturity: 'interim', adoptionAt: '2026-09-15T23:30:36.000Z', evaluationMode: 'attainment-only', workflowSlug: 'example-worker', workflowName: 'Example Worker' },
-      { role: 'diagnostic', name: 'Example count', direction: 'decrease', maturity: 'interim', adoptionAt: '2026-09-15T23:30:36.000Z', evaluationMode: 'attainment-only', workflowSlug: 'example-worker', workflowName: 'Example Worker' },
+      { role: 'diagnostic', name: 'Example count', unit: 'percent', direction: 'decrease', maturity: 'interim', adoptionAt: '2026-09-15T23:30:36.000Z', evaluationMode: 'attainment-only', workflowSlug: 'example-worker', workflowName: 'Example Worker', rollupNumerator: 100, rollupDenominator: 2 },
+      { role: 'diagnostic', name: 'Example count', unit: 'percent', direction: 'decrease', maturity: 'interim', adoptionAt: '2026-09-15T23:30:36.000Z', evaluationMode: 'attainment-only', workflowSlug: 'example-worker', workflowName: 'Example Worker', rollupNumerator: 100, rollupDenominator: 2 },
     ],
   );
 });

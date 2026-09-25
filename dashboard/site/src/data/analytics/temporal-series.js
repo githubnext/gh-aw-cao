@@ -15,7 +15,8 @@ const MAX_OUTPUT_ROWS = 100_000;
  *   shape?: 'tidy'|'groups',
  *   carry?: string[],
  *   measures?: Array<{ field: string, key?: string, kind: string }>,
- *   maps?: Array<{ field: string, definitions?: string, group?: string, kind: string }>
+ *   maps?: Array<{ field: string, definitions?: string, group?: string, kind: string }>,
+ *   trend?: { direction: string }
  * }} TemporalSeriesDefinition
  */
 
@@ -74,16 +75,17 @@ export function projectTemporalSeries(rows, definition) {
     }
   }
   return definition.shape === 'groups'
-    ? groupTemporalSeries(projected, definition.carry ?? [])
+    ? groupTemporalSeries(projected, definition.carry ?? [], definition.trend?.direction)
     : projected;
 }
 
 /**
  * @param {Row[]} rows
  * @param {string[]} carry
+ * @param {string | undefined} trendDirectionField
  * @returns {Row[]}
  */
-function groupTemporalSeries(rows, carry) {
+function groupTemporalSeries(rows, carry, trendDirectionField) {
   /** @type {Map<string, Row>} */
   const groups = new Map();
   for (const [index, row] of rows.entries()) {
@@ -108,7 +110,57 @@ function groupTemporalSeries(rows, carry) {
     });
     groups.set(groupKey, group);
   }
-  return [...groups.values()];
+  return [...groups.values()].map((group) => trendDirectionField
+    ? appendTrend(group, scalarText(group[trendDirectionField]))
+    : group);
+}
+
+/**
+ * @param {Row} group
+ * @param {string} preferredDirection
+ * @returns {Row}
+ */
+function appendTrend(group, preferredDirection) {
+  const points = (Array.isArray(group.points) ? group.points : [])
+    .filter((point) => point && typeof point === 'object')
+    .toSorted((left, right) => Date.parse(String(left.x)) - Date.parse(String(right.x)));
+  if (points.length < 2) {
+    return {
+      ...group,
+      'trend-observation-count': points.length,
+      'trend-assessment': 'insufficient'
+    };
+  }
+  const startValue = finiteNumber(points[0]?.y);
+  const endValue = finiteNumber(points.at(-1)?.y);
+  if (startValue === null || endValue === null) {
+    return {
+      ...group,
+      'trend-observation-count': points.length,
+      'trend-assessment': 'insufficient'
+    };
+  }
+  const delta = endValue - startValue;
+  const observedDirection = delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat';
+  const assessment = observedDirection === 'flat'
+    ? 'stable'
+    : (preferredDirection === 'increase' && observedDirection === 'up')
+        || (preferredDirection === 'decrease' && observedDirection === 'down')
+      ? 'improving'
+      : (preferredDirection === 'increase' && observedDirection === 'down')
+          || (preferredDirection === 'decrease' && observedDirection === 'up')
+        ? 'worsening'
+        : 'neutral';
+  return {
+    ...group,
+    'trend-start-value': startValue,
+    'trend-end-value': endValue,
+    'trend-delta': delta,
+    'trend-relative-percent': startValue === 0 ? null : (delta / Math.abs(startValue)) * 100,
+    'trend-observed-direction': observedDirection,
+    'trend-assessment': assessment,
+    'trend-observation-count': points.length
+  };
 }
 
 /** @param {Row[]} rows @param {Row} row */

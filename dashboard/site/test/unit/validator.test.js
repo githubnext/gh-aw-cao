@@ -39,6 +39,23 @@ describe('dashboard document validation', () => {
     expect(accepted.ok).toBe(true);
   });
 
+  it('validates the optional page view-mode control', () => {
+    const accepted = JSON.parse(authoritativeDashboardSource);
+    const campaignInsights = accepted.dashboard.pages.find(
+      (/** @type {{ id?: string }} */ page) => page.id === 'campaign-insights'
+    );
+    campaignInsights['view-mode-control'] = false;
+    expect(validateDashboardDocument(JSON.stringify(accepted)).ok).toBe(true);
+
+    campaignInsights['view-mode-control'] = 'hidden';
+    expect(validateDashboardDocument(JSON.stringify(accepted))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([expect.objectContaining({
+        message: 'view-mode-control must be a Boolean when present.'
+      })])
+    });
+  });
+
   it('marks Steering, Indexing, and Issues as experimental', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentalPageIds = document.dashboard.pages

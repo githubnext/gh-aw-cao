@@ -366,12 +366,13 @@ function queryStructuralDefect(definition) {
         || typeof series.series !== 'string'
       || (series.shape !== undefined && !['tidy', 'groups'].includes(series.shape))
         || (series.carry !== undefined && (!Array.isArray(series.carry) || series.carry.length > 16 || series.carry.some((field) => typeof field !== 'string')))
+        || (series.trend !== undefined && (!isPlainObject(series.trend) || typeof series.trend.direction !== 'string'))
         || (!Array.isArray(measures) || measures.length > 64)
         || (!Array.isArray(maps) || maps.length > 64)
         || measures.length + maps.length === 0
         || measures.some((measure) => !isPlainObject(measure) || typeof measure.field !== 'string' || typeof measure.kind !== 'string')
         || maps.some((map) => !isPlainObject(map) || typeof map.field !== 'string' || typeof map.kind !== 'string')) {
-      return 'temporal-series requires time, series, and between 1 and 64 bounded measure or map definitions';
+      return 'temporal-series requires time, series, optional valid trend direction, and between 1 and 64 bounded measure or map definitions';
     }
   }
   if (definition.aggregate) {
@@ -527,7 +528,18 @@ export function dashboardQueryOutputFields(definition, fieldsOf) {
   for (const computed of definition.compute ?? []) fields.push(computed.as);
   if (definition['temporal-series']) {
     fields = definition['temporal-series'].shape === 'groups'
-      ? [...(definition['temporal-series'].carry ?? []), 'metric', 'metric-key', 'metric-name', 'metric-kind', 'metric-group', 'points']
+      ? [
+          ...(definition['temporal-series'].carry ?? []),
+          'metric',
+          'metric-key',
+          'metric-name',
+          'metric-kind',
+          'metric-group',
+          'points',
+          ...(definition['temporal-series'].trend
+            ? ['trend-start-value', 'trend-end-value', 'trend-delta', 'trend-relative-percent', 'trend-observed-direction', 'trend-assessment', 'trend-observation-count']
+            : [])
+        ]
       : [...(definition['temporal-series'].carry ?? []), 'time', 'series', 'metric', 'metric-key', 'metric-name', 'metric-kind', 'metric-group', 'value'];
   }
   if (definition.aggregate) {
