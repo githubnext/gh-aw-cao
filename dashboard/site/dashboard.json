@@ -10156,6 +10156,7 @@
         "title": "Steering",
         "navigation-label": "Steering",
         "icon": "stopwatch",
+        "experimental": true,
         "class-name": "steering-page",
         "description": "Gateway steering warnings injected when agentic runs approach their AI Credit budget, their time limit, or another declared limit.",
         "views": [
@@ -13256,6 +13257,7 @@
         "page": "issues",
         "title": "Issues",
         "icon": "issue-opened",
+        "experimental": true,
         "description": "Retained GitHub issues created by agentic workflow safe outputs.",
         "definition": {
           "data-state": {
@@ -13440,6 +13442,7 @@
         "title": "Indexing",
         "navigation-label": "Indexing",
         "icon": "database",
+        "experimental": true,
         "description": "Monitor CAO Activity ingestion and inspect retained dashboard transactions.",
         "views": [
           {

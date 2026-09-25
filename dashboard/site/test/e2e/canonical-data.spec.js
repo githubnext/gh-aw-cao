@@ -753,7 +753,9 @@ test('data worker executes declarative queries and returns only the derived proj
 test('data worker returns the Models & agents run distribution on initial and navigated requests', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;
+    const compilerUrl = `${location.origin}/src/data/queries/view-payload-compiler.js`;
     const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
+    const { dashboardViewAliasName } = await import(compilerUrl);
     const dashboard = await fetch(`${location.origin}/dashboard.json`).then((response) => response.json());
     const context = {
       githubUrlBase: 'https://github.com',
@@ -766,7 +768,21 @@ test('data worker returns the Models & agents run distribution on initial and na
       context
     );
     const navigated = await loadCanonicalDashboardPage(['engines-models-usage'], context);
-    return { initial, navigated };
+    const pageDefinition = context.pages.find((/** @type {any} */ candidate) => candidate.id === 'engines-models');
+    const supplementalView = pageDefinition.views.find((/** @type {any} */ view) => view.id === 'engines-models-aic-insights');
+    const supplementalAlias = dashboardViewAliasName(
+      pageDefinition.id,
+      supplementalView,
+      pageDefinition.views.indexOf(supplementalView),
+      'engines-models-usage'
+    );
+    const chartMode = await loadCanonicalDashboardPage(
+      ['engines-models-usage'],
+      context,
+      undefined,
+      { pageId: pageDefinition.id, queryContext: { viewMode: 'chart' } }
+    );
+    return { initial, navigated, supplemental: chartMode[supplementalAlias] };
   });
 
   for (const payload of [result.initial, result.navigated]) {
@@ -781,6 +797,14 @@ test('data worker returns the Models & agents run distribution on initial and na
       metadata: { 'source-kind': 'derived', 'query-name': 'engines-models-usage' }
     });
   }
+  expect(result.supplemental).toMatchObject({
+    rows: [{
+      summary: 'copilot / model-b',
+      runs: 1,
+      'average-aic-per-run': 17
+    }],
+    metadata: { 'source-kind': 'derived' }
+  });
 });
 
 test('data worker returns MCP tool totals without safe outputs calls on initial and navigated requests', async ({ page }) => {

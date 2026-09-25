@@ -147,6 +147,7 @@ const selfCareExpectedFiles = [
   ".github/workflows/self-care-pages-health.md",
   ".github/workflows/self-care-primer-brand-checker.md",
   ".github/workflows/self-care-reactive-ui-expert.md",
+  ".github/workflows/self-care-server-go-logging.md",
   ".github/workflows/self-care.md",
   ".github/workflows/shared/activity-cache.md",
   ".github/workflows/shared/control.md",
