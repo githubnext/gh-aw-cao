@@ -84,7 +84,7 @@ describe('dashboard document validation', () => {
       expect(wrongChart.errors).toEqual(expect.arrayContaining([
         expect.objectContaining({
           code: 'DLS-E010',
-          path: '$.dashboard.pages[36].views[2].encoding.section'
+          path: '$.dashboard.pages[37].views[2].encoding.section'
         })
       ]));
     }
@@ -97,7 +97,7 @@ describe('dashboard document validation', () => {
       expect(wrongType.errors).toEqual(expect.arrayContaining([
         expect.objectContaining({
           code: 'DLS-E010',
-          path: '$.dashboard.pages[36].views[2].encoding.section.type'
+          path: '$.dashboard.pages[37].views[2].encoding.section.type'
         })
       ]));
     }

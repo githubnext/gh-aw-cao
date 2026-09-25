@@ -160,6 +160,7 @@ async function loadCampaignMemory(campaignId, signal) {
   const campaign = campaigns.find((entry) => entry?.campaign === campaignId);
   if (!campaign) return null;
   if (campaign.branch !== `memory/${campaignId}`
+      || typeof campaign.commit !== 'string'
       || !/^[0-9a-f]{40,64}$/i.test(campaign.commit)
       || !Array.isArray(campaign.files)) {
     throw new Error('Campaign repository-memory entry is invalid.');
