@@ -270,8 +270,8 @@ function renderMobileNavItem(page, isActive) {
 
 /** @param {Record<string, unknown>} page */
 function navigationIndicator(page) {
-  const indicator = page['navigation-indicator'];
-  if (!isPlainObject(indicator)) return null;
+  if (!isPlainObject(page['navigation-indicator'])) return null;
+  const indicator = /** @type {Record<string, unknown>} */ (page['navigation-indicator']);
   const tests = Array.isArray(indicator.any)
     ? indicator.any.filter(isPlainObject)
     : [indicator].filter(isPlainObject);
@@ -286,8 +286,10 @@ function navigationIndicator(page) {
 function indicatorMatches(indicator, sources) {
   return indicator?.tests.some((test) => {
     if (typeof test.source !== 'string' || typeof test.field !== 'string') return false;
-    const rows = sources[test.source]?.rows;
-    return Array.isArray(rows) && rows.some((row) => row[test.field] === test.equals);
+    const sourceName = test.source;
+    const fieldName = test.field;
+    const rows = sources[sourceName]?.rows;
+    return Array.isArray(rows) && rows.some((row) => row[fieldName] === test.equals);
   }) === true;
 }
 

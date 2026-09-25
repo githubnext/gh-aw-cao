@@ -281,31 +281,6 @@ export function renderDashboard(input) {
             ));
           }
 
-          /**
-           * @param {HTMLElement} root
-           * @param {Array<PresentableBuiltInPage | PresentableCustomPage>} pages
-           * @param {PageSourceLoader | undefined} loadPageSources
-           * @param {AbortSignal} signal
-           */
-          function enableNavigationIndicatorUpdates(root, pages, loadPageSources, signal) {
-            if (!loadPageSources) return;
-            for (const page of pages.filter(hasNavigationIndicator)) {
-              void loadPageSources(page.id, {
-                signal,
-                onUpdate: (sources) => syncDashboardNavigationIndicators(root, pages, sources)
-              })
-                .then((sources) => syncDashboardNavigationIndicators(root, pages, sources))
-                .catch((error) => {
-                  if (signal.aborted || error?.name === 'AbortError') return;
-                  console.error(`Unable to update dashboard navigation indicators: ${error instanceof Error ? error.message : String(error)}`);
-                });
-            }
-          }
-
-          /** @param {PresentableBuiltInPage | PresentableCustomPage} page */
-          function hasNavigationIndicator(page) {
-            return isPlainObject(page['navigation-indicator']);
-          }
         };
         /** @param {Record<string, LogicalSourceInput>} pageSources */
         const render = (pageSources) => {
@@ -366,6 +341,32 @@ export function renderDashboard(input) {
     dashboardHorizon.dispose();
   });
   return root;
+}
+
+/**
+ * @param {HTMLElement} root
+ * @param {Array<PresentableBuiltInPage | PresentableCustomPage>} pages
+ * @param {PageSourceLoader | undefined} loadPageSources
+ * @param {AbortSignal} signal
+ */
+function enableNavigationIndicatorUpdates(root, pages, loadPageSources, signal) {
+  if (!loadPageSources) return;
+  for (const page of pages.filter(hasNavigationIndicator)) {
+    void loadPageSources(page.id, {
+      signal,
+      onUpdate: (sources) => syncDashboardNavigationIndicators(root, pages, sources)
+    })
+      .then((sources) => syncDashboardNavigationIndicators(root, pages, sources))
+      .catch((error) => {
+        if (signal.aborted || error?.name === 'AbortError') return;
+        console.error(`Unable to update dashboard navigation indicators: ${error instanceof Error ? error.message : String(error)}`);
+      });
+  }
+}
+
+/** @param {PresentableBuiltInPage | PresentableCustomPage} page */
+function hasNavigationIndicator(page) {
+  return isPlainObject(page['navigation-indicator']);
 }
 
 /**
