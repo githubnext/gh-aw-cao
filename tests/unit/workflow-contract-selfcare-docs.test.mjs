@@ -67,6 +67,25 @@ test("SelfCare data acquisition audit refreshes its specification", () => {
   assert.match(compiled, /specs\/data-acquisition-audit-history\.md/);
 });
 
+test("SelfCare release blogger turns the day's release into one blog post", () => {
+  const source = workflow("self-care-release-blogger.md");
+  const compiled = workflow("self-care-release-blogger.lock.yml");
+
+  assert.match(source, /^name: "SelfCare \/ Release Blogger"$/m);
+  assert.match(source, /campaign: self-care\n\s+role: worker\n\s+worker: release-blogger/);
+  assert.match(source, /safe_output_mode` is `live`/);
+  assert.match(source, /skip-if-match: 'is:pr is:open "gh-aw-workflow-id: self-care-release-blogger" in:body'/);
+  assert.match(source, /draft: true/);
+  assert.match(source, /max-patch-files: 1/);
+  assert.match(source, /allowed-files:\n\s+- "docs\/content\/docs\/blog\/\*\.md"/);
+  assert.match(source, /including pre-releases\. Ignore drafts/);
+  assert.match(source, /preceding 24 hours/);
+  assert.match(source, /npm run docs:build/);
+  assert.match(source, /GitHub Blog voice/);
+  assert.doesNotMatch(source, /^\s+(contents|issues|pull-requests): write$/m);
+  assert.match(compiled, /docs\/content\/docs\/blog\/\*\.md/);
+});
+
 test("SelfCare runs every 20 minutes", () => {
   const source = workflow("self-care.md");
   const compiled = workflow("self-care.lock.yml");
@@ -74,7 +93,7 @@ test("SelfCare runs every 20 minutes", () => {
   assert.match(source, /schedule: every 20 minutes/);
   assert.match(source, /engine: copilot/);
   assert.doesNotMatch(source, /model: copilot\/gpt-5\.4/);
-  assert.match(source, /self-care-dashboard-data-schema`, `self-care-docs-maintainer`, and `self-care-glossary`.*preceding 24 hours/);
+  assert.match(source, /self-care-dashboard-data-schema`, `self-care-docs-maintainer`, `self-care-glossary`, and `self-care-release-blogger`.*preceding 24 hours/);
   assert.match(source, /ten most recent runs of each workflow/);
   assert.match(source, /self-care-pages-health.*no run of that workflow is queued, in progress, or started during the preceding six hours/);
   assert.match(source, /at most the 20 most recent Pages Health workflow runs/);

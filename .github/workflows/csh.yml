@@ -1,0 +1,39 @@
+name: Shell Script CI
+
+on:
+  pull_request:
+    paths:
+      - "**/*.sh"
+      - .github/workflows/csh.yml
+  push:
+    branches: [main]
+    paths:
+      - "**/*.sh"
+      - .github/workflows/csh.yml
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run shellcheck on all shell scripts
+        shell: bash
+        run: |
+          shellcheck --version
+          mapfile -d '' files < <(git ls-files -z -- '*.sh')
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No shell scripts found."
+            exit 0
+          fi
+          shellcheck --external-sources --severity=warning --format=gcc "${files[@]}" |
+            sed -E 's/^([^:]+):([0-9]+):([0-9]+): (warning|error): (.*)$/::\4 file=\1,line=\2,col=\3::\5/'
+          exit "${PIPESTATUS[0]}"
