@@ -1,6 +1,9 @@
 import { button, h, injectStyleOnce, span } from './dom.js';
 import { octicon } from './octicons.js';
 import { notificationStylesheet } from './styles.js';
+import { createDebug } from './debug.js';
+
+const debug = createDebug('notification-service');
 
 const DEFAULT_DURATION = 5000;
 const EXIT_DURATION = 180;
@@ -49,9 +52,11 @@ export function createNotificationService(document) {
     const rendered = renderNotification(notification, container, () => {
       notifications.delete(rendered);
       if (!container.childElementCount) container.hidden = true;
+      debug({ event: 'dismissed', tone: notification.tone, activeCount: notifications.size });
     });
     notifications.add(rendered);
     container.hidden = false;
+    debug({ event: 'published', tone: notification.tone, duration: notification.duration, activeCount: notifications.size });
     return rendered.handle;
   };
 
@@ -63,10 +68,12 @@ export function createNotificationService(document) {
     dispose() {
       if (disposed) return;
       disposed = true;
+      const activeCount = notifications.size;
       for (const notification of notifications) notification.remove();
       notifications.clear();
       container.remove();
       if (services.get(document)?.publish === publish) services.delete(document);
+      debug({ event: 'disposed', activeCount });
     }
   });
 }

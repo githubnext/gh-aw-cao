@@ -240,4 +240,78 @@ describe('dashboard notification service', () => {
       notification: { message: 'Rows processed.', tone: 'success', duration: 1200 }
     });
   });
+
+  it('is disabled by default (no debug output) when the debug query is absent', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '', output })
+      };
+    });
+    vi.resetModules();
+    const { createNotificationService: createServiceWithoutDebug } = await import('../../src/notification-service.js');
+
+    const service = createServiceWithoutDebug(document);
+    const handle = service.publish({ message: 'Silent', duration: 0 });
+    handle.dismiss();
+    vi.runAllTimers();
+    service.dispose();
+
+    expect(output.debug).not.toHaveBeenCalled();
+
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
+
+  it('logs only scalar metadata under its predictable category when enabled', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) =>
+          actual.createDebug(category, { search: () => '?debug=notification-service', output })
+      };
+    });
+    vi.resetModules();
+    const { createNotificationService: createServiceWithDebug } = await import('../../src/notification-service.js');
+
+    const service = createServiceWithDebug(document);
+    const handle = service.publish({ message: 'Storing data...', tone: 'info', duration: 0 });
+    expect(output.debug).toHaveBeenCalledWith('[cao:notification-service]', {
+      event: 'published',
+      tone: 'info',
+      duration: 0,
+      activeCount: 1
+    });
+
+    handle.dismiss();
+    vi.runAllTimers();
+    expect(output.debug).toHaveBeenCalledWith('[cao:notification-service]', {
+      event: 'dismissed',
+      tone: 'info',
+      activeCount: 0
+    });
+
+    service.publish({ message: 'Pending', duration: 0 });
+    service.dispose();
+    expect(output.debug).toHaveBeenCalledWith('[cao:notification-service]', {
+      event: 'disposed',
+      activeCount: 1
+    });
+
+    for (const call of output.debug.mock.calls) {
+      const metadata = call[1];
+      expect(Object.values(metadata).every((value) => typeof value !== 'object')).toBe(true);
+    }
+
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
 });
