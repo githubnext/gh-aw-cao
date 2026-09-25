@@ -376,7 +376,7 @@ jobs:
 
   notify-failure:
     needs: [index, cache]
-    if: ${{ always() && (needs.index.result == 'failure' || needs.index.result == 'cancelled' || needs.cache.result == 'failure' || needs.cache.result == 'cancelled') }}
+    if: ${{ always() && (needs.index.result == 'failure' || needs.cache.result == 'failure') }}
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -397,7 +397,7 @@ jobs:
                 result: '${{ needs.cache.result }}',
                 message: 'The activity cache publication job failed while saving the validated activity snapshot.',
               },
-            ].filter(({ result }) => result === 'failure' || result === 'cancelled')
+            ].filter(({ result }) => result === 'failure')
             if (failures.length === 0) {
               core.info('No failed CAO Activity jobs to report')
               return

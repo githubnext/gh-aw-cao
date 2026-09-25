@@ -132,7 +132,75 @@ describe('dashboard DOM provenance', () => {
     expect(rendered.querySelector('[data-page-id="overview"]')).toBe(overviewBefore);
     expect(rendered.querySelector('.factory-floor')).not.toBeNull();
     expect(rendered.querySelector('[data-view-id="overview-campaigns"]')).not.toBeNull();
-    expect(loadPageSources).not.toHaveBeenCalled();
+    expect(loadPageSources).not.toHaveBeenCalledWith('maintenance', expect.anything());
+    disposeDashboard(rendered);
+  });
+
+  it('subscribes navigation indicators to their page sources', async () => {
+    const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ (/** @type {unknown} */ ({
+      languageVersion: '0.1.0',
+      dashboard: {
+        title: 'Indicator dashboard',
+        pages: [
+          { id: 'overview', kind: 'custom', title: 'Overview', views: [] },
+          {
+            id: 'maintenance',
+            kind: 'custom',
+            title: 'Maintenance',
+            views: [],
+            'navigation-indicator': {
+              label: 'updates available',
+              any: [{ source: 'maintenance-campaign-updates', field: 'campaign-update-state', equals: 'update-available' }]
+            }
+          }
+        ],
+        navigation: [
+          { pages: ['overview'] },
+          { label: 'Maintenance', placement: 'bottom', pages: ['maintenance'] }
+        ]
+      }
+    }));
+    const metadata = /** @type {const} */ ({
+      'source-id': 'campaigns',
+      'source-kind': 'fixture',
+      'as-of': '',
+      'retrieved-at': '',
+      completeness: 'complete',
+      freshness: 'fresh',
+      availability: 'available'
+    });
+    const loadSources = vi.fn((sourceNames) => {
+      expect(sourceNames).toEqual(['maintenance-campaign-updates']);
+      return Promise.resolve(/** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ ({
+        'maintenance-campaign-updates': {
+          source: 'maintenance-campaign-updates',
+          rows: [{ 'campaign-update-state': 'update-available' }],
+          metadata
+        }
+      }));
+    });
+    const loadPageSources = /** @type {import('../../src/presenter.js').PageSourceLoader} */ (vi.fn((pageId) => {
+      const result = pageId === 'maintenance'
+        ? { campaigns: { source: 'campaigns', rows: [{ 'campaign-update-state': 'update-available' }], metadata } }
+        : {};
+      return Promise.resolve(/** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (result));
+    }));
+    loadPageSources.loadSources = loadSources;
+
+    const rendered = renderDashboardView({ document, sources: {}, loadPageSources });
+
+    expect(loadSources).not.toHaveBeenCalled();
+    expect(rendered.querySelector('[data-nav-page-id="maintenance"]')?.getAttribute('aria-label'))
+      .toBe('Maintenance');
+    await vi.waitFor(() => {
+      expect(rendered.querySelector('[data-nav-page-id="maintenance"]')?.getAttribute('aria-label'))
+        .toBe('Maintenance, updates available');
+    });
+    expect(loadPageSources).not.toHaveBeenCalledWith('maintenance', expect.anything());
+    expect(loadSources).toHaveBeenCalledWith(['maintenance-campaign-updates'], expect.objectContaining({
+      signal: expect.any(AbortSignal),
+      onUpdate: expect.any(Function)
+    }));
     disposeDashboard(rendered);
   });
 

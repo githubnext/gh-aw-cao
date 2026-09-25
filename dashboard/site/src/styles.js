@@ -285,6 +285,9 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .primary-nav a:hover { background: var(--neutral-muted); }
 .primary-nav a[aria-current="page"] { background: var(--neutral-muted); font-weight: 600; }
 .primary-nav a[aria-current="page"]::before { content: ""; width: 3px; position: absolute; top: 5px; bottom: 5px; left: -16px; border-radius: 0 4px 4px 0; background: var(--accent); }
+.nav-indicator { width: 8px; height: 8px; flex: 0 0 8px; margin-left: auto; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 2px var(--canvas-subtle); }
+.nav-indicator[hidden] { display: none; }
+.sidebar-collapsed .nav-indicator { position: absolute; top: 6px; right: 7px; margin-left: 0; }
 .mobile-nav-menu { display: none; }
 .app-main { min-width: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 .app-main > .top-nav { position: relative; z-index: 20; border-bottom: 1px solid var(--border); }

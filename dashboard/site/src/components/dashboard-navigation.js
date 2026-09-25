@@ -1,4 +1,5 @@
 import { h } from '../dom.js';
+import { navigationIndicator } from '../navigation-indicator.js';
 import { agenticWorkflowMark, octicon } from '../octicons.js';
 import { scopedStorageKey } from '../storage-scope.js';
 import { titleCase } from './count-formatters.js';
@@ -139,6 +140,30 @@ export function renderDashboardNavigation(pages, title, navigation, accountContr
   );
 }
 
+/**
+ * @param {HTMLElement} root
+ * @param {Array<Record<string, unknown>>} pages
+ * @param {Record<string, { rows?: Array<Record<string, unknown>> } | undefined>} sources
+ */
+export function syncDashboardNavigationIndicators(root, pages, sources) {
+  for (const page of pages) {
+    const indicator = navigationIndicator(page);
+    if (!indicator) continue;
+    const title = pageTitle(page);
+    const active = indicatorMatches(indicator, sources);
+    const label = active ? `${title}, ${indicator.label}` : title;
+    const pageId = selectorIdentifier(String(page.id));
+    const links = root.querySelectorAll(`[data-nav-page-id="${pageId}"], [data-mobile-nav-page-id="${pageId}"]`);
+    for (const link of links) {
+      if (!(link instanceof HTMLAnchorElement)) continue;
+      link.setAttribute('aria-label', label);
+      link.title = label;
+      const dot = link.querySelector('[data-nav-indicator]');
+      if (dot instanceof HTMLElement) dot.hidden = !active;
+    }
+  }
+}
+
 /** @param {HTMLElement} root */
 export function enableDashboardNavigation(root) {
   enableSidebarToggle(root);
@@ -209,6 +234,7 @@ function pageIcon(page) {
 /** @param {Record<string, unknown>} page @param {boolean} isActive @param {boolean} mobileOverflow @param {boolean} narrowMobileOverflow */
 function renderNavItem(page, isActive, mobileOverflow, narrowMobileOverflow) {
   const title = pageTitle(page);
+  const hasIndicator = navigationIndicator(page) !== null;
   return h(
     'a',
     {
@@ -220,24 +246,47 @@ function renderNavItem(page, isActive, mobileOverflow, narrowMobileOverflow) {
       'data-nav-page-id': page.id
     },
     octicon(pageIcon(page)),
-    h('span', { className: 'nav-label' }, title)
+    h('span', { className: 'nav-label' }, title),
+    hasIndicator ? h('span', { className: 'nav-indicator', hidden: true, 'aria-hidden': 'true', 'data-nav-indicator': '' }) : null
   );
 }
 
 /** @param {Record<string, unknown>} page @param {boolean} isActive */
 function renderMobileNavItem(page, isActive) {
+  const title = pageTitle(page);
+  const hasIndicator = navigationIndicator(page) !== null;
   return h(
     'a',
     {
       href: `#page-${page.id}`,
       className: `mobile-nav-item${isActive ? ' active' : ''}`,
       'aria-current': isActive ? 'page' : undefined,
+      'aria-label': title,
+      title,
       'data-mobile-nav-page-id': page.id
     },
     octicon(pageIcon(page)),
-    h('span', { className: 'mobile-nav-label' }, pageTitle(page))
+    h('span', { className: 'mobile-nav-label' }, title),
+    hasIndicator ? h('span', { className: 'nav-indicator', hidden: true, 'aria-hidden': 'true', 'data-nav-indicator': '' }) : null
   );
 }
+
+/** @param {{ predicates: Array<Record<string, unknown>> }} indicator @param {Record<string, { rows?: Array<Record<string, unknown>> } | undefined>} sources */
+function indicatorMatches(indicator, sources) {
+  return indicator.predicates.some((test) => {
+    if (typeof test.source !== 'string' || typeof test.field !== 'string') return false;
+    const sourceName = test.source;
+    const fieldName = test.field;
+    const rows = sources[sourceName]?.rows;
+    return Array.isArray(rows) && rows.some((row) => row[fieldName] === test.equals);
+  });
+}
+
+/** @param {string} value */
+function selectorIdentifier(value) {
+  return globalThis.CSS?.escape ? globalThis.CSS.escape(value) : value.replace(/[^a-zA-Z0-9_-]/g, '\\$&');
+}
+
 
 /** @param {HTMLElement} root */
 function enableSidebarToggle(root) {

@@ -91,7 +91,7 @@ export function createBatchedSourceLoader(dashboardContext) {
 /** @typedef {Record<string, import('../presenter.js').LogicalSourceInput>} DashboardSources */
 /** @typedef {{ filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc' | 'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' }} DashboardQueryContext */
 /** @typedef {{ signal: AbortSignal, onUpdate: (sources: DashboardSources) => void, routeParameters?: Record<string, string>, queryContext?: DashboardQueryContext }} PageLoadOptions */
-/** @typedef {((pageId: string, options: PageLoadOptions) => Promise<DashboardSources>) & { prepare?: (pageId: string) => Promise<void> }} PageSourceLoader */
+/** @typedef {((pageId: string, options: PageLoadOptions) => Promise<DashboardSources>) & { prepare?: (pageId: string) => Promise<void>, loadSources?: (sourceNames: string[], options: PageLoadOptions) => Promise<DashboardSources> }} PageSourceLoader */
 
 /**
  * Gives a cached render two animation frames to commit before network activity starts.
@@ -177,46 +177,79 @@ export async function startDashboardData(options) {
       );
     },
   );
+  /**
+   * Subscribes to a bounded source set. The returned promise resolves with the
+   * first snapshot; later snapshots are delivered through `pageOptions.onUpdate`.
+   * @param {{ subscriptionId: string, sourceNames: string[], pageOptions: PageLoadOptions & { pageId?: string }, pagination?: Record<string, { limit: number, continuationToken?: string }>, transform?: (sources: DashboardSources) => DashboardSources, errorLabel: string }} options
+   */
+  const subscribeSources = (options) => {
+    const pageOptions = options.pageOptions;
+    const transform = options.transform ?? ((sources) => sources);
+    if (pageOptions.signal.aborted) {
+      throw new DOMException("Dashboard source load was cancelled.", "AbortError");
+    }
+    return new Promise((resolve, reject) => {
+      let receivedInitialSnapshot = false;
+      const cleanup = () => pageOptions.signal.removeEventListener("abort", abort);
+      const abort = () => {
+        cleanup();
+        reject(new DOMException("Dashboard source load was cancelled.", "AbortError"));
+      };
+      pageOptions.signal.addEventListener("abort", abort, { once: true });
+      subscribeCanonicalDashboardView(
+        options.subscriptionId,
+        options.sourceNames,
+        dashboardContext,
+        (sources) => {
+          const transformedSources = transform(sources);
+          if (!receivedInitialSnapshot) {
+            receivedInitialSnapshot = true;
+            cleanup();
+            resolve(transformedSources);
+            return;
+          }
+          pageOptions.onUpdate(transformedSources);
+        },
+        options.pagination ?? {},
+        {
+          signal: pageOptions.signal,
+          pageId: pageOptions.pageId,
+          routeParameters: pageOptions.routeParameters,
+          queryContext: pageOptions.queryContext,
+          onError: (error) => {
+            cleanup();
+            if (!receivedInitialSnapshot) {
+              reject(error);
+            } else {
+              console.error(`${options.errorLabel}: ${error.message}`);
+            }
+          },
+        },
+      );
+    });
+  };
   /** @type {PageSourceLoader} */
   const loadPageSources = async (pageId, pageOptions) => {
     await preparePage?.(pageId);
     const sourceNames = pageSourceNames(pageId, pageOptions.queryContext?.viewMode);
     const paginatedSources = pagePaginatedSourceBindings(pageId);
     const pagination = continuationRequests(Object.keys(paginatedSources));
-    return new Promise((resolve, reject) => {
-      let receivedInitialSnapshot = false;
-      const abort = () => reject(new DOMException("Dashboard page load was cancelled.", "AbortError"));
-      pageOptions.signal.addEventListener("abort", abort, { once: true });
-      subscribeCanonicalDashboardView(
-        `page:${pageId}`,
-        sourceNames,
-        dashboardContext,
-        (sources) => {
-          const boundSources = bindContinuations(pageId, sources, paginatedSources, pageOptions);
-          if (!receivedInitialSnapshot) {
-            receivedInitialSnapshot = true;
-            pageOptions.signal.removeEventListener("abort", abort);
-            resolve(boundSources);
-            return;
-          }
-          pageOptions.onUpdate(boundSources);
-        },
-        pagination,
-        {
-          signal: pageOptions.signal,
-          pageId,
-          routeParameters: pageOptions.routeParameters,
-          queryContext: pageOptions.queryContext,
-          onError: (error) => {
-            if (!receivedInitialSnapshot) {
-              pageOptions.signal.removeEventListener("abort", abort);
-              reject(error);
-            } else {
-              console.error(`Unable to update dashboard page ${pageId}: ${error.message}`);
-            }
-          },
-        },
-      );
+    return subscribeSources({
+      subscriptionId: `page:${pageId}`,
+      sourceNames,
+      pageOptions: { ...pageOptions, pageId },
+      pagination,
+      transform: (sources) => bindContinuations(pageId, sources, paginatedSources, pageOptions),
+      errorLabel: `Unable to update dashboard page ${pageId}`
+    });
+  };
+  loadPageSources.loadSources = async (sourceNames, pageOptions) => {
+    const subscriptionSourceNames = [...new Set(sourceNames)].toSorted();
+    return subscribeSources({
+      subscriptionId: `sources:${subscriptionSourceNames.join(",")}`,
+      sourceNames: subscriptionSourceNames,
+      pageOptions,
+      errorLabel: "Unable to update dashboard sources"
     });
   };
   loadPageSources.prepare = async (pageId) => {
