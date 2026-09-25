@@ -1193,6 +1193,14 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .campaign-rollout { text-transform: capitalize; }
 .campaign-rollout-live { color: var(--success); }
 .campaign-rollout-review { color: var(--attention); }
+.campaign-status { margin-bottom: 22px; padding-bottom: 22px; border-bottom: 1px solid var(--border-muted); }
+.campaign-status-state-enabled { color: var(--success); }
+.campaign-status-state-disabled { color: var(--muted); }
+.campaign-status-actions { display: grid; gap: 8px; margin-top: 14px; }
+.campaign-status-actions .declared-cli-action { display: block; }
+.campaign-status-actions .cli-action-trigger { width: 100%; min-height: 32px; align-items: center; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); }
+.campaign-status-actions .cli-action-trigger:hover { background: var(--neutral-muted); }
+.campaign-status-actions .cli-action-trigger-copy small { display: none; }
 .campaign-readme-resources > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 0 10px; font-size: 1rem; font-weight: 600; cursor: pointer; list-style: none; }
 .campaign-readme-resources > summary::-webkit-details-marker { display: none; }
 .campaign-readme-resources-hint { color: var(--muted); font-size: .6875rem; font-weight: 400; }

@@ -2,6 +2,7 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { externalAnchorAttrs, findLink } from './link-content.js';
 import { renderDisclosureSummaryLabel, renderDlRow } from './ui-primitives.js';
+import { renderDeclaredCliAction } from './cli-actions.js';
 
 /** @param {{ campaignId: string, campaignName: string, workflows: Array<Record<string, unknown>> }} args */
 export function renderCampaignReadme({ campaignId, campaignName, workflows }) {
@@ -11,6 +12,15 @@ export function renderCampaignReadme({ campaignId, campaignName, workflows }) {
   const repositoryUrl = ownerUrl(primary);
   const readmeUrl = repositoryFileUrl(primary, value(primary['campaign-readme-path']));
   const mode = value(primary['rollout-mode']);
+  const enabled = workflows.length > 0 && workflows.every((workflow) => value(workflow['workflow-active']) !== 'false');
+  const statusActions = [
+    mode === 'live'
+      ? renderDeclaredCliAction('set-campaign-preview', { campaign: campaignId })
+      : renderDeclaredCliAction('set-campaign-live', { campaign: campaignId }),
+    enabled
+      ? renderDeclaredCliAction('disable-campaign', { campaign: campaignId })
+      : renderDeclaredCliAction('enable-campaign', { campaign: campaignId })
+  ].filter(Boolean);
   return h(
     'section',
     { className: 'campaign-marketplace-detail', 'data-campaign': campaignId },
@@ -31,6 +41,11 @@ export function renderCampaignReadme({ campaignId, campaignName, workflows }) {
           h('p', { className: 'value-details-unavailable' }, 'Campaign README content is unavailable in this inventory.')
         ])),
       h('aside', { className: 'campaign-readme-about', 'aria-label': `${campaignName} campaign information` },
+        h('section', { className: 'campaign-status' },
+          h('h2', null, 'Status'),
+          h('dl', null,
+            renderDlRow('State', h('span', { className: `campaign-status-state campaign-status-state-${enabled ? 'enabled' : 'disabled'}` }, enabled ? 'Enabled' : 'Paused'))),
+          statusActions.length > 0 ? h('div', { className: 'campaign-status-actions' }, ...statusActions) : null),
         h('section', null,
           h('h2', null, 'About'),
           h('p', null, description),
