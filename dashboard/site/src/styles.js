@@ -505,8 +505,8 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .dashboard-parameter-form { display: grid; gap: 12px; margin: 0 0 16px; padding: 16px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); }
 .dashboard-parameter-form-header { display: grid; gap: 4px; }
 .dashboard-parameter-form-header :is(h2, p) { margin: 0; }
-.dashboard-parameter-form-header h2 { font-size: 16px; }
-.dashboard-parameter-form-header p, .dashboard-parameter-description { color: var(--fg-muted); font-size: 12px; }
+.dashboard-parameter-form-header h2 { font-size: 1rem; }
+.dashboard-parameter-form-header p, .dashboard-parameter-description { color: var(--muted); font-size: .75rem; }
 .dashboard-parameter-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px 16px; align-items: start; }
 .dashboard-parameter-field { min-width: 0; display: grid; gap: 6px; }
 .dashboard-parameter-label { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; }
@@ -1457,12 +1457,12 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .factory-intro .factory-rhythm { grid-template-columns: minmax(0, 1fr); align-self: stretch; gap: 16px; padding: 0; border: 0; background: transparent; }
 .factory-rhythm-heading { display: grid; gap: 5px; }
 .factory-rhythm-heading > span { color: var(--muted); font-size: .6875rem; font-weight: 700; text-transform: uppercase; }
-.factory-rhythm-legend { display: flex; flex-wrap: wrap; gap: 5px 12px; margin: 0; padding: 0; list-style: none; color: var(--fg-muted); font-size: .6875rem; }
+.factory-rhythm-legend { display: flex; flex-wrap: wrap; gap: 5px 12px; margin: 0; padding: 0; list-style: none; color: var(--muted); font-size: .6875rem; }
 .factory-rhythm-legend li { display: inline-flex; align-items: center; gap: 5px; }
 .factory-rhythm-legend i { width: 9px; height: 9px; display: inline-block; border-radius: 2px; }
 .factory-rhythm-legend-current { background: color-mix(in srgb, var(--success) 72%, var(--accent)); }
 .factory-rhythm-legend-previous { border: 1px solid var(--border); background: var(--canvas-subtle); }
-.factory-rhythm-summary { margin: 0; color: var(--fg-muted); font-size: .75rem; }
+.factory-rhythm-summary { margin: 0; color: var(--muted); font-size: .75rem; }
 .factory-rhythm-heading strong { font-size: .875rem; }
 .factory-rhythm-bars { height: 74px; position: relative; display: grid; grid-template-columns: repeat(7, minmax(18px, 1fr)); align-items: end; gap: 9px; }
 .overview-campaigns-view-all { display: inline-flex; justify-self: start; margin-top: 12px; color: var(--accent); font-size: .8125rem; font-weight: 600; text-decoration: none; }
