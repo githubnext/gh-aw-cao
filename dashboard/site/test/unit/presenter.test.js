@@ -912,8 +912,29 @@ describe('presenter built-in and custom pages', () => {
         'engines-models-usage': {
           source: 'engines-models-usage',
           rows: [
-            { summary: 'copilot / gpt-5.6-sol', runs: 2, 'average-aic-per-run': 5 },
-            { summary: 'pi / claude-sonnet-5', runs: 1, 'average-aic-per-run': 8 }
+            {
+              summary: 'copilot / gpt-5.6-sol',
+              runs: 2,
+              'minimum-aic-per-run': 4,
+              'average-aic-per-run': 5,
+              'maximum-aic-per-run': 6,
+              'minimum-input-tokens-per-run': 100,
+              'average-input-tokens-per-run': 150,
+              'maximum-input-tokens-per-run': 200,
+              'minimum-output-tokens-per-run': 30,
+              'average-output-tokens-per-run': 45,
+              'maximum-output-tokens-per-run': 60
+            },
+            {
+              summary: 'pi / claude-sonnet-5',
+              runs: 1,
+              'minimum-aic-per-run': 8,
+              'average-aic-per-run': 8,
+              'maximum-aic-per-run': 8,
+              'minimum-input-tokens-per-run': 300,
+              'average-input-tokens-per-run': 300,
+              'maximum-input-tokens-per-run': 300
+            }
           ],
           metadata
         },
@@ -926,7 +947,9 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     expect(page?.querySelectorAll('[data-chart-widget="pie"]')).toHaveLength(1);
     expect(page?.querySelectorAll('[data-chart-widget="horizontal-bar"]')).toHaveLength(1);
-    expect(page?.querySelector('[data-view-id="engines-models-distribution"] + [data-view-id="engines-models-cost"] + [data-view-id="engines-models-usage"]')).not.toBeNull();
+    expect(page?.querySelector('[data-view-id="engines-models-distribution"] + [data-view-id="engines-models-cost"]')).not.toBeNull();
+    expect(page?.querySelector('[data-view-id="engines-models-aic-insights"]')).not.toBeNull();
+    expect(page?.querySelector('[data-view-id="engines-models-token-insights"]')).not.toBeNull();
     expect([...(page?.querySelectorAll('[data-view-id="engines-models-cost"] .horizontal-bar-chart-label') ?? [])].map((value) => value.textContent))
       .toEqual(['pi / claude-sonnet-5', 'copilot / gpt-5.6-sol']);
     expect([...(page?.querySelectorAll('[data-view-id="engines-models-cost"] .horizontal-bar-chart-value') ?? [])].map((value) => value.textContent))
@@ -935,11 +958,12 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.textContent).toContain('copilot');
     expect(page?.textContent).toContain('gpt-5.6-sol');
     expect(page?.textContent).toContain('claude-sonnet-5');
+    expect(page?.textContent).toContain('Telemetry is partial');
     expect(page?.textContent).not.toContain('Requested model');
     expect(page?.querySelector('.view-mode-control')).not.toBeNull();
     expect(page?.textContent).not.toContain('Agent event');
     expect(page?.textContent).not.toContain('Summary');
-    expect(page?.querySelectorAll('tbody tr')).toHaveLength(2);
+    expect(page?.querySelectorAll('tbody tr')).toHaveLength(4);
   });
 
 
@@ -1028,7 +1052,7 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const page = await activatePage(rendered, 'engines-models');
-    expect(page?.textContent).toContain('No engine or model usage metadata is available.');
+    expect(page?.textContent).toContain('No agent or model usage metadata is available.');
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     rendered.remove();
   });

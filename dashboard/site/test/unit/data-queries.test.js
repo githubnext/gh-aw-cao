@@ -871,6 +871,18 @@ describe('declarative dashboard queries', () => {
       rows: usage.rows.map((row) => ({
         ...row,
         'aic-total': row.aic,
+        ...(row.run === '1'
+          ? {
+              'input-tokens': 10,
+              'output-tokens': 20,
+              'cache-write-tokens': 5
+            }
+          : {
+              'input-tokens': 30,
+              'cache-read-tokens': 40,
+              'cache-write-tokens': 10,
+              'reasoning-tokens': 50
+            }),
         'run-attempt': 1,
         'repository-link': { href: 'repo' },
         'run-link': { href: `run-${row.run}` }
@@ -890,7 +902,24 @@ describe('declarative dashboard queries', () => {
         {
           summary: 'copilot / model-b',
           runs: 2,
-          'average-aic-per-run': 5
+          'minimum-aic-per-run': 4,
+          'average-aic-per-run': 5,
+          'maximum-aic-per-run': 6,
+          'minimum-input-tokens-per-run': 10,
+          'average-input-tokens-per-run': 20,
+          'maximum-input-tokens-per-run': 30,
+          'minimum-output-tokens-per-run': 20,
+          'average-output-tokens-per-run': 20,
+          'maximum-output-tokens-per-run': 20,
+          'minimum-cache-read-tokens-per-run': 40,
+          'average-cache-read-tokens-per-run': 40,
+          'maximum-cache-read-tokens-per-run': 40,
+          'minimum-cache-write-tokens-per-run': 5,
+          'average-cache-write-tokens-per-run': 7.5,
+          'maximum-cache-write-tokens-per-run': 10,
+          'minimum-reasoning-tokens-per-run': 50,
+          'average-reasoning-tokens-per-run': 50,
+          'maximum-reasoning-tokens-per-run': 50
         }
       ],
       metadata: { 'source-kind': 'derived', 'query-name': 'engines-models-usage' }

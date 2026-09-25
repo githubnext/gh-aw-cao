@@ -4658,8 +4658,8 @@
       },
       {
         "name": "engines-models-usage",
-        "intent": "Summarize workflow runs by their agent and model identifiers.",
-        "description": "Observed workflow runs grouped by agent ID and model ID.",
+        "intent": "Summarize run-level AIC and token usage by agent and model identifiers without treating unavailable telemetry as zero.",
+        "description": "Observed workflow runs grouped by agent ID and model ID. Each AIC and token statistic uses only runs that reported that metric.",
         "from": "runs",
         "compute": [
           {
@@ -4690,8 +4690,93 @@
             },
             {
               "field": "aic-total",
+              "as": "minimum-aic-per-run",
+              "reducer": "min"
+            },
+            {
+              "field": "aic-total",
               "as": "average-aic-per-run",
               "reducer": "mean"
+            },
+            {
+              "field": "aic-total",
+              "as": "maximum-aic-per-run",
+              "reducer": "max"
+            },
+            {
+              "field": "input-tokens",
+              "as": "minimum-input-tokens-per-run",
+              "reducer": "min"
+            },
+            {
+              "field": "input-tokens",
+              "as": "average-input-tokens-per-run",
+              "reducer": "mean"
+            },
+            {
+              "field": "input-tokens",
+              "as": "maximum-input-tokens-per-run",
+              "reducer": "max"
+            },
+            {
+              "field": "output-tokens",
+              "as": "minimum-output-tokens-per-run",
+              "reducer": "min"
+            },
+            {
+              "field": "output-tokens",
+              "as": "average-output-tokens-per-run",
+              "reducer": "mean"
+            },
+            {
+              "field": "output-tokens",
+              "as": "maximum-output-tokens-per-run",
+              "reducer": "max"
+            },
+            {
+              "field": "cache-read-tokens",
+              "as": "minimum-cache-read-tokens-per-run",
+              "reducer": "min"
+            },
+            {
+              "field": "cache-read-tokens",
+              "as": "average-cache-read-tokens-per-run",
+              "reducer": "mean"
+            },
+            {
+              "field": "cache-read-tokens",
+              "as": "maximum-cache-read-tokens-per-run",
+              "reducer": "max"
+            },
+            {
+              "field": "cache-write-tokens",
+              "as": "minimum-cache-write-tokens-per-run",
+              "reducer": "min"
+            },
+            {
+              "field": "cache-write-tokens",
+              "as": "average-cache-write-tokens-per-run",
+              "reducer": "mean"
+            },
+            {
+              "field": "cache-write-tokens",
+              "as": "maximum-cache-write-tokens-per-run",
+              "reducer": "max"
+            },
+            {
+              "field": "reasoning-tokens",
+              "as": "minimum-reasoning-tokens-per-run",
+              "reducer": "min"
+            },
+            {
+              "field": "reasoning-tokens",
+              "as": "average-reasoning-tokens-per-run",
+              "reducer": "mean"
+            },
+            {
+              "field": "reasoning-tokens",
+              "as": "maximum-reasoning-tokens-per-run",
+              "reducer": "max"
             }
           ]
         },
@@ -4704,6 +4789,57 @@
           },
           {
             "field": "average-aic-per-run"
+          },
+          {
+            "field": "minimum-aic-per-run"
+          },
+          {
+            "field": "maximum-aic-per-run"
+          },
+          {
+            "field": "minimum-input-tokens-per-run"
+          },
+          {
+            "field": "average-input-tokens-per-run"
+          },
+          {
+            "field": "maximum-input-tokens-per-run"
+          },
+          {
+            "field": "minimum-output-tokens-per-run"
+          },
+          {
+            "field": "average-output-tokens-per-run"
+          },
+          {
+            "field": "maximum-output-tokens-per-run"
+          },
+          {
+            "field": "minimum-cache-read-tokens-per-run"
+          },
+          {
+            "field": "average-cache-read-tokens-per-run"
+          },
+          {
+            "field": "maximum-cache-read-tokens-per-run"
+          },
+          {
+            "field": "minimum-cache-write-tokens-per-run"
+          },
+          {
+            "field": "average-cache-write-tokens-per-run"
+          },
+          {
+            "field": "maximum-cache-write-tokens-per-run"
+          },
+          {
+            "field": "minimum-reasoning-tokens-per-run"
+          },
+          {
+            "field": "average-reasoning-tokens-per-run"
+          },
+          {
+            "field": "maximum-reasoning-tokens-per-run"
           }
         ],
         "order-by": [
@@ -13647,15 +13783,59 @@
             }
           },
           {
-            "id": "engines-models-usage",
-            "title": "Engines and models",
-            "description": "Observed workflow runs grouped by agent and model identifiers.",
+            "id": "engines-models-aic-insights",
+            "disclosure-label": "AIC per observed run",
+            "description": "Minimum, average, and maximum AIC for each agent and model combination. Blank values mean no run reported AIC.",
+            "data": {
+              "source": "engines-models-usage"
+            },
+            "mark": "table",
+            "disclosure": "supplemental",
+            "empty-message": "No AI Credit usage data is available for agent and model combinations.",
+            "layout": "full",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "summary",
+                  "type": "nominal",
+                  "title": "Agent / model"
+                },
+                {
+                  "field": "runs",
+                  "type": "quantitative",
+                  "title": "Observed runs"
+                },
+                {
+                  "field": "minimum-aic-per-run",
+                  "type": "quantitative",
+                  "title": "Minimum AIC",
+                  "unit": "aic-per-run"
+                },
+                {
+                  "field": "average-aic-per-run",
+                  "type": "quantitative",
+                  "title": "Average AIC",
+                  "unit": "aic-per-run"
+                },
+                {
+                  "field": "maximum-aic-per-run",
+                  "type": "quantitative",
+                  "title": "Maximum AIC",
+                  "unit": "aic-per-run"
+                }
+              ]
+            }
+          },
+          {
+            "id": "engines-models-token-insights",
+            "title": "Token statistics per observed run",
+            "description": "Minimum, average, and maximum token counts for each agent and model combination. Telemetry is partial: blank values mean no run reported that token class.",
             "data": {
               "source": "engines-models-usage"
             },
             "mark": "table",
             "controls": "interactive",
-            "empty-message": "No engine or model usage metadata is available.",
+            "empty-message": "No agent or model usage metadata is available.",
             "layout": "full-view",
             "encoding": {
               "columns": [
@@ -13667,13 +13847,82 @@
                 {
                   "field": "runs",
                   "type": "quantitative",
-                  "title": "Runs"
+                  "title": "Observed runs"
                 },
                 {
-                  "field": "average-aic-per-run",
+                  "field": "minimum-input-tokens-per-run",
                   "type": "quantitative",
-                  "title": "Average AIC",
-                  "unit": "aic-per-run"
+                  "title": "Input minimum"
+                },
+                {
+                  "field": "average-input-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Input average"
+                },
+                {
+                  "field": "maximum-input-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Input maximum"
+                },
+                {
+                  "field": "minimum-output-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Output minimum"
+                },
+                {
+                  "field": "average-output-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Output average"
+                },
+                {
+                  "field": "maximum-output-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Output maximum"
+                },
+                {
+                  "field": "minimum-cache-read-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Cache read minimum"
+                },
+                {
+                  "field": "average-cache-read-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Cache read average"
+                },
+                {
+                  "field": "maximum-cache-read-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Cache read maximum"
+                },
+                {
+                  "field": "minimum-cache-write-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Cache write minimum"
+                },
+                {
+                  "field": "average-cache-write-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Cache write average"
+                },
+                {
+                  "field": "maximum-cache-write-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Cache write maximum"
+                },
+                {
+                  "field": "minimum-reasoning-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Reasoning minimum"
+                },
+                {
+                  "field": "average-reasoning-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Reasoning average"
+                },
+                {
+                  "field": "maximum-reasoning-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Reasoning maximum"
                 }
               ]
             },
