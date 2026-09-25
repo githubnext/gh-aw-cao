@@ -64,11 +64,11 @@ describe('indexing dashboard', () => {
       { day: '2026-09-24', records: 20, 'workflow-runs': 5 }
     ]);
     expect(results['indexing-database-table-counts'].rows).toEqual([
+      { table: 'ingestion transactions', records: 3 },
       { table: 'workflow runs', records: 3 },
       { table: 'audit events', records: 2 },
       { table: 'workflows', records: 2 },
       { table: 'campaigns', records: 1 },
-      { table: 'ingestion transactions', records: 3 },
       { table: 'issue events', records: 1 },
       { table: 'repositories', records: 1 },
       { table: 'tool events', records: 1 }
