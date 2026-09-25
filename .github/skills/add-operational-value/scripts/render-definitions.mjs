@@ -45,11 +45,9 @@ title: What ${artifact.workflowName} measures
 description: Definitions, evidence rules, and interpretation for the ${artifact.workflowName} operational-value report.
 ---
 
-This page explains the chart in plain language. It defines what was measured; it does not decide whether the workflow caused the observed changes.
+This page explains the operational-value timeline in plain language. It defines what was measured; it does not decide whether the workflow caused the observed changes.
 
-![${artifact.workflowName} outcome measures ${mode === "attainment-only" ? "after adoption" : "before and after adoption"}](${slug}-timeline.svg)
-
-## How to read the chart
+## How to read the timeline
 
 ${chartGuidance}
 - Each dot is one immutable observation. Missing evidence is omitted, never treated as zero.
