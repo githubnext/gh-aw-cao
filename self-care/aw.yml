@@ -5,6 +5,8 @@ private: true
 experimental: true
 includes:
   - ../aw.yml
+  - operational-value.mjs
+  - operational-value/self-care-dashboard-data-schema.mjs
   - .github/workflows/self-care-data-acquisition-audit.md
   - .github/workflows/self-care-dashboard-performance.md
   - .github/workflows/self-care-dashboard-debug-logging.md
