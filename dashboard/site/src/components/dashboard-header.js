@@ -2,7 +2,7 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 
 /**
- * @param {{ title: string, description?: string, overviewPageHref: string, dashboardHorizon: HTMLElement, dashboardAppearance: HTMLElement, githubUrlBase: string, dashboardRepository: string | null }} options
+ * @param {{ title: string, description?: string, experimental?: boolean, overviewPageHref: string, dashboardHorizon: HTMLElement, dashboardAppearance: HTMLElement, githubUrlBase: string, dashboardRepository: string | null }} options
  */
 export function renderDashboardHeader(options) {
   return h(
@@ -24,6 +24,7 @@ export function renderDashboardHeader(options) {
           'div',
           { className: 'title-area' },
           h('h1', { id: 'page-title', tabIndex: -1, 'data-breadcrumb-page': '' }, options.title),
+          h('span', { className: 'experimental-page-label', 'data-page-experimental': '', hidden: options.experimental !== true }, 'Experimental'),
           h('a', { className: 'title-link', 'data-page-title-link': '', hidden: true }),
           h('span', { className: 'mode-indicator', 'data-page-mode': '', hidden: true })
         ),
