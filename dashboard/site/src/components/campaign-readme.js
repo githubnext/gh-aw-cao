@@ -12,7 +12,7 @@ export function renderCampaignReadme({ campaignId, campaignName, workflows }) {
   const repositoryUrl = ownerUrl(primary);
   const readmeUrl = repositoryFileUrl(primary, value(primary['campaign-readme-path']));
   const mode = value(primary['rollout-mode']);
-  const enabled = workflows.length > 0 && workflows.every((workflow) => value(workflow['workflow-active']) !== 'false');
+  const enabled = workflows.length > 0 && workflows.every((workflow) => isWorkflowActive(workflow['workflow-active']));
   const statusActions = [
     mode === 'live'
       ? renderDeclaredCliAction('set-campaign-preview', { campaign: campaignId })
@@ -203,4 +203,13 @@ function owner(source) {
 /** @param {unknown} input */
 function value(input) {
   return typeof input === 'string' ? input.trim() : '';
+}
+
+/**
+ * Workflows default to active; only an explicit false-like value marks them inactive.
+ * @param {unknown} input
+ */
+function isWorkflowActive(input) {
+  if (typeof input === 'boolean') return input;
+  return value(input).toLowerCase() !== 'false';
 }
