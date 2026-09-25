@@ -1226,7 +1226,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       if (section && page?.contains(section)) {
         section.scrollIntoView?.();
       } else {
-        const savedTop = requestedScrollTop ?? savedScrollTop() ?? pageState.get(pageId)?.scrollTop;
+        const savedTop = requestedScrollTop ?? pageState.get(pageId)?.scrollTop ?? savedScrollTop();
         if (savedTop === undefined) return;
         const scrollingElement = pageScroller instanceof HTMLElement
           ? pageScroller
