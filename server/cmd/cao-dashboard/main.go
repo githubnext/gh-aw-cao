@@ -43,6 +43,32 @@ const (
 	redisEndpointSourceDefault redisEndpointSource = "default"
 )
 
+// consumerNameSource identifies which input determined the resolved
+// collection worker consumer name. It is useful for diagnosing
+// misconfiguration without logging the name itself.
+type consumerNameSource string
+
+const (
+	consumerNameSourceFlag     consumerNameSource = "flag"
+	consumerNameSourceHostname consumerNameSource = "hostname"
+)
+
+// resolveConsumerName applies the standard priority for a collection worker's
+// consumer name: an explicit flag value, then the machine hostname obtained
+// from hostnameFunc. It returns the resolved name and which input supplied
+// it, so callers can log the source without exposing the name. An error is
+// returned only when the flag is empty and hostnameFunc fails.
+func resolveConsumerName(flagValue string, hostnameFunc func() (string, error)) (string, consumerNameSource, error) {
+	if name := strings.TrimSpace(flagValue); name != "" {
+		return name, consumerNameSourceFlag, nil
+	}
+	hostname, err := hostnameFunc()
+	if err != nil {
+		return "", "", fmt.Errorf("resolve consumer name: %w", err)
+	}
+	return hostname, consumerNameSourceHostname, nil
+}
+
 // resolveRedisEndpoint applies the standard priority for a server-side Redis
 // URL: an explicit flag value, then an environment override, then
 // defaultValue. It returns both the resolved endpoint and which input
@@ -329,16 +355,13 @@ func collectCommand(arguments []string) error {
 	if err != nil {
 		return err
 	}
-	name := strings.TrimSpace(*consumer)
-	if name == "" {
-		hostname, err := os.Hostname()
-		if err != nil {
-			return fmt.Errorf("resolve consumer name: %w", err)
-		}
-		name = hostname
+	name, nameSource, err := resolveConsumerName(*consumer, os.Hostname)
+	if err != nil {
+		return err
 	}
 	worker := collector.Worker(name)
 	worker.Project = *project
+	commandLog.Printf("collect resolved consumer name source=%s", nameSource)
 	log.Printf("collection worker %s started", name)
 	if err := worker.Run(ctx); err != nil && ctx.Err() == nil {
 		return err
