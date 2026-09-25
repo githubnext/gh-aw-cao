@@ -146,10 +146,10 @@ test('Indexing shows CAO Activity status, size trend, and retained transactions'
     </script>
   `);
 
-  const maintenanceNavigation = page.locator('.nav-section').filter({
+  const updatesNavigation = page.locator('.nav-section').filter({
     has: page.locator('summary', { hasText: /^Updates$/ })
   });
-  await maintenanceNavigation.getByRole('link', { name: 'Indexing' }).click();
+  await updatesNavigation.getByRole('link', { name: 'Indexing' }).click();
 
   const root = page.locator('.dashboard-root');
   const transactionsPage = page.locator('[data-page-id="indexing"]');
@@ -976,20 +976,20 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
 
   const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
   const data = page.locator('.nav-section').filter({ hasText: 'Data' });
-  const maintenance = page.locator('.nav-section').filter({
+  const updatesSection = page.locator('.nav-section').filter({
     has: page.locator('summary', { hasText: /^Updates$/ })
   });
   await expect(cleanNavigation).toHaveText(['Overview']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
   await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Operational Value', 'Cost', 'Models & Agents', 'Steering', 'Firewall', 'MCPs']);
-  await expect(maintenance.locator('summary')).toHaveText('Updates');
-  await expect(maintenance.getByRole('link')).toHaveText(['Updates', 'Indexing', 'Settings']);
-  await expect(maintenance).toHaveClass(/nav-section-bottom/);
+  await expect(updatesSection.locator('summary')).toHaveText('Updates');
+  await expect(updatesSection.getByRole('link')).toHaveText(['Updates', 'Indexing', 'Settings']);
+  await expect(updatesSection).toHaveClass(/nav-section-bottom/);
   await expect.poll(async () => {
     const [navBox, manageBox] = await Promise.all([
       page.locator('.primary-nav').boundingBox(),
-      maintenance.boundingBox()
+      updatesSection.boundingBox()
     ]);
     return navBox !== null && manageBox !== null
       ? Math.round(navBox.y + navBox.height - (manageBox.y + manageBox.height))
