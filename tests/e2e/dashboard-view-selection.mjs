@@ -6,6 +6,31 @@ import { withoutIgnoredDashboardPageIds } from "./dashboard-view-assessment.mjs"
 
 const repositoryRoot = resolve(import.meta.dirname, "../..");
 const primaryDashboardPath = "dashboard/site/dashboard.json";
+export const maximumSelectedDashboardPageIds = 5;
+
+const selectionStopWords = new Set([
+  "component",
+  "components",
+  "dashboard",
+  "data",
+  "e2e",
+  "json",
+  "site",
+  "src",
+  "test",
+  "tests",
+  "unit",
+  "view",
+  "views",
+]);
+
+function identifierTerms(value) {
+  return String(value ?? "")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((term) => term.length >= 3 && !selectionStopWords.has(term));
+}
 
 function dashboardPaths() {
   return [
@@ -64,6 +89,52 @@ export function sharedDashboardConfigurationChanged(current, previous) {
   return JSON.stringify(shared(current)) !== JSON.stringify(shared(previous));
 }
 
+function pageSelectionScore(page, changedFiles) {
+  const pageId = String(page.id ?? "");
+  const pageIdLower = pageId.toLowerCase();
+  const pageTerms = new Set(identifierTerms(pageId));
+  const titleText = `${page.title ?? ""} ${page.page ?? ""}`.toLowerCase();
+  const pageText = JSON.stringify(page).toLowerCase();
+  let score = 0;
+
+  for (const path of changedFiles) {
+    const normalizedPath = path.toLowerCase();
+    if (pageIdLower && normalizedPath.includes(pageIdLower)) score += 100;
+    for (const term of identifierTerms(path)) {
+      if (pageTerms.has(term)) {
+        score += 30;
+      } else if (titleText.includes(term)) {
+        score += 15;
+      } else if (pageText.includes(term)) {
+        score += 3;
+      }
+    }
+  }
+  return score;
+}
+
+export function rankDashboardPageIds({
+  dashboard,
+  pageIds,
+  changedFiles,
+  limit = maximumSelectedDashboardPageIds,
+}) {
+  const pages = dashboard.dashboard.pages;
+  const pagesById = new Map(pages.map((page, index) => [page.id, { page, index }]));
+  return [...new Set(pageIds)]
+    .filter((pageId) => withoutIgnoredDashboardPageIds([pageId]).length > 0)
+    .map((pageId) => pagesById.get(pageId))
+    .filter(Boolean)
+    .map(({ page, index }) => ({
+      pageId: page.id,
+      index,
+      score: pageSelectionScore(page, changedFiles),
+    }))
+    .toSorted((left, right) => right.score - left.score || left.index - right.index)
+    .slice(0, limit)
+    .map((entry) => entry.pageId);
+}
+
 function pagesUsingElement(dashboard, element) {
   return dashboard.dashboard.pages
     .filter((page) => JSON.stringify(page).includes(`"element":"${element}"`))
@@ -102,12 +173,13 @@ export function selectAffectedPageIds({ dashboard, changedFiles, baseRef }) {
     dashboard.dashboard.pages.map((page) => page.id),
   );
   const selected = new Set();
+  const ranked = (pageIds) => rankDashboardPageIds({ dashboard, pageIds, changedFiles });
 
   for (const path of changedFiles) {
     if (path.endsWith("/dashboard.json") || path === primaryDashboardPath) {
       const current = readDashboard(path);
       const previous = readDashboard(path, baseRef);
-      if (sharedDashboardConfigurationChanged(current, previous)) return allPageIds;
+      if (sharedDashboardConfigurationChanged(current, previous)) return ranked(allPageIds);
       for (const pageId of changedDashboardPageIds(current, previous)) selected.add(pageId);
       continue;
     }
@@ -137,10 +209,10 @@ export function selectAffectedPageIds({ dashboard, changedFiles, baseRef }) {
       || path.startsWith("dashboard/site/src/")
       || path.startsWith("dashboard/report/")
     ) {
-      return allPageIds;
+      return ranked(allPageIds);
     }
   }
-  return allPageIds.filter((pageId) => selected.has(pageId));
+  return ranked(allPageIds.filter((pageId) => selected.has(pageId)));
 }
 
 function main() {
