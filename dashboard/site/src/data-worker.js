@@ -552,8 +552,7 @@ export function processDataRequest(request, signal) {
             if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
             const shardUrl = new URL(`./${shard.name}`, payloadHashesUrl);
             const current = await isNormalizedJsonlCurrent(indexedDB, {
-              payloadIdentity: shard.hash,
-              payloadScope: shardUrl.href
+              payloadIdentity: shard.hash
             });
             shardStates.push({ index, shard, shardUrl, current, sizeBytes: undefined });
           }

@@ -8,12 +8,12 @@ import {
 import { adaptSqlExport } from '../adapters/sql-export.js';
 import { buildDailyOverviewAggregates } from '../analytics/daily-overview-aggregates.js';
 import { CANONICAL_SCHEMA_VERSION } from '../model/schema.js';
+import { normalize } from '../normalize/index.js';
 import {
   publishDailyOverviewAggregates,
   pruneStaleDailyOverviewAggregates,
   ENTITY_STORES,
   maintainCanonicalDatabase,
-  readCanonicalBatch,
   readCollection,
   readRecord,
   readTransaction,

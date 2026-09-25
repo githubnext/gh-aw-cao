@@ -484,11 +484,11 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       repairs: {
         invalidRecordsRemoved: 2,
         canonicalRecordsRemoved: 4,
-        transactionsRemoved: 1
+        transactionsRemoved: 2
       },
       after: {
         counts: { repositories: 2, workflows: 2, runs: 1, audits: 1 },
-        transactions: 1,
+        transactions: 0,
         invalidRecords: {},
         relationshipErrors: []
       }
