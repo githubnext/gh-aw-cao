@@ -105,6 +105,7 @@ import {
 const DEFAULT_GITHUB_URL_BASE = 'https://github.com';
 const TABLE_ROW_LIMIT = Symbol('table-row-limit');
 const NAVIGATION_INDEX_STATE_KEY = 'centralAgenticOpsNavigationIndex';
+const SCROLL_TOP_STATE_KEY = 'centralAgenticOpsScrollTop';
 /** @type {WeakMap<HTMLElement, () => void>} */
 const dashboardDisposals = new WeakMap();
 /**
@@ -1059,6 +1060,22 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   const pageDescription = root.querySelector('.overview-header [data-page-description]');
   const pageMode = root.querySelector('[data-page-mode]');
   const pageScroller = root.querySelector('main.dashboard-prototype');
+  const scrollTop = () => pageScroller instanceof HTMLElement
+    ? pageScroller.scrollTop
+    : root.ownerDocument.scrollingElement?.scrollTop ?? root.ownerDocument.documentElement.scrollTop;
+  const savedScrollTop = () => {
+    const value = root.ownerDocument.defaultView?.history.state?.[SCROLL_TOP_STATE_KEY];
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
+  };
+  const persistScrollTop = () => {
+    const view = root.ownerDocument.defaultView;
+    if (!view) return;
+    const state = view.history.state && typeof view.history.state === 'object' ? view.history.state : {};
+    view.history.replaceState({ ...state, [SCROLL_TOP_STATE_KEY]: scrollTop() }, '', view.location.href);
+  };
+  if (pageScroller instanceof HTMLElement) {
+    pageScroller.addEventListener('scroll', persistScrollTop, { passive: true, signal: navigationOwner.signal });
+  }
   /** @param {HTMLElement | undefined} page */
   const syncFullViewMode = (page) => {
     syncFullViewModeForPage(root, page);
@@ -1204,12 +1221,13 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       const section = sectionId ? root.ownerDocument.getElementById(sectionId) : null;
       if (section && page?.contains(section)) {
         section.scrollIntoView?.();
-      } else if (pageState.has(pageId)) {
-        const scrollTop = pageState.get(pageId)?.scrollTop ?? 0;
+      } else {
+        const savedTop = savedScrollTop() ?? pageState.get(pageId)?.scrollTop;
+        if (savedTop === undefined) return;
         const scrollingElement = pageScroller instanceof HTMLElement
           ? pageScroller
           : root.ownerDocument.scrollingElement ?? root.ownerDocument.documentElement;
-        scrollingElement.scrollTop = scrollTop;
+        scrollingElement.scrollTop = savedTop;
       }
     };
     let populationDeferred = false;
@@ -1221,10 +1239,9 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
         retainedRouteTabs = cloneRouteTabsForPage(activePage, pageId, parameters);
         pageState.set(activePageId, {
           details: [...activePage.querySelectorAll('details')].map((details) => details.open),
-          scrollTop: pageScroller instanceof HTMLElement
-            ? pageScroller.scrollTop
-            : root.ownerDocument.scrollingElement?.scrollTop ?? root.ownerDocument.documentElement.scrollTop
+          scrollTop: scrollTop()
         });
+        persistScrollTop();
         disconnectLazyViews(activePage);
         activePage.replaceChildren();
         activePage.removeAttribute('aria-busy');
@@ -1266,6 +1283,12 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
           }
           if (deferPopulation) {
             restoreScroll(renderedPage);
+          }
+          if (savedScrollTop() !== undefined) {
+            restoreScroll(renderedPage);
+            root.ownerDocument.defaultView?.requestAnimationFrame(() => {
+              if (revision === activationRevision && activePageId === pageId) restoreScroll(renderedPage);
+            });
           }
         };
         const rendered = renderPageById?.(pageId, {

@@ -3236,6 +3236,55 @@ describe('presenter built-in and custom pages', () => {
     }
   });
 
+  it('persists page scroll positions for reload and browser history restoration', () => {
+    const createRoot = () => {
+      const root = document.createElement('div');
+      root.innerHTML = `
+        <a data-nav-page-id="first" href="#page-first">First</a>
+        <a data-nav-page-id="second" href="#page-second">Second</a>
+        <main class="dashboard-prototype">
+          <section class="dashboard-page" id="page-first" data-page-id="first"></section>
+          <section class="dashboard-page" id="page-second" data-page-id="second"></section>
+        </main>
+      `;
+      document.body.append(root);
+      return root;
+    };
+    const firstRoot = createRoot();
+    try {
+      const disposeFirstNavigation = enableDashboardPageNavigation(firstRoot, 'Dashboard', () => null, 'first');
+      const firstScroller = /** @type {HTMLElement} */ (firstRoot.querySelector('main.dashboard-prototype'));
+      firstScroller.scrollTop = 240;
+      firstScroller.dispatchEvent(new Event('scroll'));
+      expect(window.history.state?.centralAgenticOpsScrollTop).toBe(240);
+      disposeFirstNavigation();
+      firstRoot.remove();
+
+      const reloadedRoot = createRoot();
+      const disposeReloadedNavigation = enableDashboardPageNavigation(reloadedRoot, 'Dashboard', () => null, 'first');
+      const reloadedScroller = /** @type {HTMLElement} */ (reloadedRoot.querySelector('main.dashboard-prototype'));
+      expect(reloadedScroller.scrollTop).toBe(240);
+
+      /** @type {HTMLAnchorElement} */ (reloadedRoot.querySelector('[data-nav-page-id="second"]')).click();
+      reloadedScroller.scrollTop = 80;
+      reloadedScroller.dispatchEvent(new Event('scroll'));
+      window.history.replaceState(
+        { centralAgenticOpsNavigationIndex: 0, centralAgenticOpsScrollTop: 240 },
+        '',
+        '/#page-first'
+      );
+      window.dispatchEvent(new PopStateEvent('popstate', {
+        state: { centralAgenticOpsNavigationIndex: 0, centralAgenticOpsScrollTop: 240 }
+      }));
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      expect(reloadedScroller.scrollTop).toBe(240);
+      disposeReloadedNavigation();
+      reloadedRoot.remove();
+    } finally {
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
   it('aborts the active page subscription when the dashboard is disposed', async () => {
     /** @type {AbortSignal | undefined} */
     let pageSignal;
