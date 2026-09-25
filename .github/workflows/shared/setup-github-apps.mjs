@@ -542,7 +542,6 @@ async function main() {
     return;
   }
   const repo = options.repo || runGh(["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"]);
-  splitRepo(repo);
   const [controlOwner] = splitRepo(repo);
   const policy = loadControlPolicy(options.policy);
   const installationTargets = deriveInstallationTargets(policy, repo);
