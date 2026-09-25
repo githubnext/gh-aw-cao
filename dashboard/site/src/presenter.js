@@ -355,6 +355,8 @@ function enableNavigationIndicatorUpdates(root, pages, loadPageSources, signal) 
   const sourceNames = navigationIndicatorSourceNames(pages);
   if (!loadPageSources?.loadSources || sourceNames.length === 0) return;
   const view = root.ownerDocument.defaultView;
+  const clear = view?.clearTimeout.bind(view) ?? clearTimeout;
+  const abort = () => clear(timeout);
   const start = () => {
     signal.removeEventListener('abort', abort);
     if (signal.aborted) return;
@@ -372,8 +374,6 @@ function enableNavigationIndicatorUpdates(root, pages, loadPageSources, signal) 
       });
   };
   const timeout = view?.setTimeout(start, 0) ?? setTimeout(start, 0);
-  const clear = view?.clearTimeout.bind(view) ?? clearTimeout;
-  const abort = () => clear(timeout);
   signal.addEventListener('abort', abort, { once: true });
 }
 
