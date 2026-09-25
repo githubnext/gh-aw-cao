@@ -251,7 +251,7 @@ function pageNavigationAccessibleLabel(page, indicatorLabel = '') {
 /** @param {Record<string, unknown>} page */
 function renderExperimentalPageLabel(page) {
   return page.experimental === true
-    ? h('span', { className: 'experimental-page-label', 'aria-hidden': 'true' }, 'Experimental')
+    ? h('span', { className: 'experimental-page-label', 'aria-hidden': 'true', title: 'Experimental' }, octicon('beaker'))
     : null;
 }
 
