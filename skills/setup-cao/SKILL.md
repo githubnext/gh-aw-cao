@@ -140,7 +140,7 @@ Do not leave angle-bracket placeholders in authored files or pass placeholders t
     ./cao.sh add githubnext/gh-aw-cao/<campaign-slug>
     ```
 
-    Parse and review the installer-created policy before editing it; do not replace or broaden it without the user's approval. After campaign installation, edit only `control-plane.scope` to add `target-owner` and `target-owner/target-repository`. Do not put `control-owner` or `control-repository` into this policy unless the selected target is the control repository. Keep the omitted defaults: `review`, one repository, and 100 percent rollout. Do not enable the user's other selected catalog operations yet; onboard each through the installed CAO CLI in a separate reviewed change after the first proof.
+    Parse and review the installer-created policy before editing it; do not replace or broaden it without the user's approval. The installer scopes a new policy to the control repository only: `allowed-owners` is `control-owner` and `allowed-repositories` is `control-owner/control-repository`. After campaign installation, edit only `control-plane.scope`: keep that self entry when the user selected self-review, or replace it with `target-owner` and `target-owner/target-repository` for an alternate target. Preserve the rest of the policy. Keep the omitted defaults: `review`, one repository, and 100 percent rollout. Do not enable the user's other selected catalog operations yet; onboard each through the installed CAO CLI in a separate reviewed change after the first proof.
 
     Parse the file and reject unresolved placeholders before continuing:
 

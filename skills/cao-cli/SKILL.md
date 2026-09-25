@@ -44,7 +44,9 @@ Create a minimal review-safe control-plane policy:
 ./cao.sh init
 ```
 
-The command refuses to replace an existing `.github/workflows/cao.json`. Install an
+The command refuses to replace an existing `.github/workflows/cao.json`. The new policy's
+scope allows only the repository `gh repo view` reports for the current checkout; `init`
+fails without writing a policy when that repository cannot be determined. Install an
 operational campaign and merge its declared orchestrator and workers into that policy with:
 
 ```bash
