@@ -45,20 +45,33 @@ test("deployed integration isolates query benchmark reporting from test permissi
 
 test("deployed integration pull request trigger only watches query benchmark inputs", () => {
   const workflow = parse(readFileSync(".github/workflows/dashboard-deployed-integration.yml", "utf8"));
-  // YAML 1.1 parsers may coerce the bare `on:` key to boolean true.
+  // The boolean-key lookup is a defensive fallback for YAML 1.1 core-schema behavior.
   const workflowTriggers = workflow[true] ?? workflow.on;
   assert.ok(workflowTriggers, "expected workflow trigger block");
   const paths = workflowTriggers.pull_request.paths;
   assert.ok(Array.isArray(paths), "expected pull_request.paths trigger list");
-  for (const path of [
+  assert.deepEqual(paths, [
+    ".github/workflows/dashboard-deployed-integration.yml",
     "dashboard/site/dashboard.json",
+    "dashboard/site/dashboard-pages/**",
     "dashboard/site/src/data/**",
     "dashboard/site/src/data-*.js",
     "dashboard/site/src/dashboard-chunks.js",
+    "dashboard/site/src/dashboard-app.js",
+    "dashboard/site/src/debug.js",
+    "dashboard/site/src/remote-data-backend.js",
+    "dashboard/site/src/source-*.js",
+    "package.json",
+    "package-lock.json",
+    "scripts/merge-dashboard-query-performance.mjs",
+    "tests/e2e/dashboard-deployed-refresh-helpers.mjs",
+    "tests/e2e/dashboard-query-performance-helpers.mjs",
     "tests/e2e/dashboard-query-performance.spec.mjs",
-  ]) {
-    assert.ok(paths.includes(path), `expected trigger path ${path}`);
-  }
+    "tests/e2e/dashboard-view-assessment.mjs",
+    "tests/helpers/dashboard-query-cost.mjs",
+    "tests/performance/dashboard-query-cost.test.mjs",
+    "tests/playwright/configs/dashboard-query-performance.config.mjs",
+  ]);
   for (const path of [
     "dashboard/site/**",
     "dashboard/site/src/notification-service.js",
