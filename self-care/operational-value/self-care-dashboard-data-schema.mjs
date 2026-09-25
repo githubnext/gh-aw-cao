@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 
 const REPOSITORY = "githubnext/gh-aw-cao";
 const DATA_URL = "https://githubnext.github.io/gh-aw-cao/cao/sources";
@@ -278,6 +279,7 @@ export async function collectBatch(requests) {
       if (snapshot.error) throw snapshot.error;
       const entries = snapshot.entries;
       const generated = renderDocument(entries);
+      const snapshotHash = createHash("sha256").update(generated).digest("hex");
       const actualSections = sectionMap(specification);
       const matchingCount = entries.filter(([file, , schema]) => actualSections.get(file) === escapeHtml(schema)).length;
       const interim = Date.parse(request.observedAt) < Date.parse(definition.adoption.adoptedAt) + DAY_MS;
@@ -294,12 +296,13 @@ export async function collectBatch(requests) {
           opportunityCount: entries.length,
           matchingCount,
           documentMatch: specification === generated,
+          snapshotHash,
           maturityStatus: interim ? "interim" : "matured",
           dubious: interim,
         },
         provenance: [
           { repository: REPOSITORY, kind: "commit", ref: commit },
-          { repository: REPOSITORY, kind: "deployed-snapshot", ref: `${DATA_URL}/manifest.json` },
+          { repository: REPOSITORY, kind: "deployed-snapshot", ref: `sha256:${snapshotHash}` },
         ],
       };
     } catch (error) {
