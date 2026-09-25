@@ -32,6 +32,31 @@ var commandLog = debuglogger.New("cao:cli")
 
 var errDoctorFoundProblems = errors.New("doctor found problems")
 
+// redisEndpointSource identifies which input determined a resolved Redis
+// endpoint. It is useful for diagnosing misconfiguration without logging the
+// endpoint URL itself.
+type redisEndpointSource string
+
+const (
+	redisEndpointSourceFlag    redisEndpointSource = "flag"
+	redisEndpointSourceEnv     redisEndpointSource = "env"
+	redisEndpointSourceDefault redisEndpointSource = "default"
+)
+
+// resolveRedisEndpoint applies the standard priority for a server-side Redis
+// URL: an explicit flag value, then an environment override, then
+// defaultValue. It returns both the resolved endpoint and which input
+// supplied it, so callers can log the source without exposing the URL.
+func resolveRedisEndpoint(flagValue, envValue, defaultValue string) (string, redisEndpointSource) {
+	if endpoint := strings.TrimSpace(flagValue); endpoint != "" {
+		return endpoint, redisEndpointSourceFlag
+	}
+	if endpoint := strings.TrimSpace(envValue); endpoint != "" {
+		return endpoint, redisEndpointSourceEnv
+	}
+	return defaultValue, redisEndpointSourceDefault
+}
+
 func main() {
 	if override := strings.TrimSpace(os.Getenv("CAO_BUILD_VERSION")); override != "" {
 		version = override
@@ -101,13 +126,8 @@ func doctorCommand(arguments []string) error {
 	if err := flags.Parse(arguments); err != nil {
 		return err
 	}
-	endpoint := strings.TrimSpace(*redisURL)
-	if endpoint == "" {
-		endpoint = strings.TrimSpace(os.Getenv("CAO_REDIS_URL"))
-	}
-	if endpoint == "" {
-		endpoint = defaultRedisURL
-	}
+	endpoint, endpointSource := resolveRedisEndpoint(*redisURL, os.Getenv("CAO_REDIS_URL"), defaultRedisURL)
+	commandLog.Printf("doctor resolved redis endpoint source=%s", endpointSource)
 	namespace, err := redisx.NormalizeNamespace(*redisNamespace)
 	if err != nil {
 		return err
