@@ -146,6 +146,7 @@ describe('DLS-CONF-004 scaffold gates', () => {
     const styles = readFileSync(resolve('src/styles.js'), 'utf8');
 
     expect(styles).toContain('.document-list-header .cli-action-trigger { min-height: 32px; align-items: center; padding: 6px 10px; border: 1px solid var(--accent); background: var(--accent); color: var(--canvas); }');
+    expect(styles).toContain('.document-list-header .cli-action-trigger:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 88%, var(--fg)); color: var(--canvas); }');
     expect(styles).toContain('.document-list-header .cli-action-trigger > .octicon { color: inherit; }');
   });
 
