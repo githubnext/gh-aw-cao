@@ -106,6 +106,9 @@ for (const moduleFile of moduleFiles) {
         metricDirection: metric.direction,
         maturityStatus: collections[index].evidence?.maturityStatus ?? "matured",
         adoptionAt: definition.adoption.adoptedAt,
+        evaluationMode: definition.evaluation?.mode ?? "baseline-comparable",
+        workflowSlug: definition.slug,
+        workflowName: definition.workflowName,
       }));
     }
   }

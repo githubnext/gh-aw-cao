@@ -237,6 +237,9 @@ function parseOperationalValueOutput(content, source, repositories) {
     const metricDirection = record.metricDirection ?? 'increase';
     const maturityStatus = record.maturityStatus ?? 'matured';
     const adoptionAt = record.adoptionAt;
+    const evaluationMode = record.evaluationMode;
+    const workflowSlug = record.workflowSlug;
+    const workflowName = record.workflowName;
     if (!REPOSITORY_COORDINATE.test(repository) || !allowedRepositories.has(repository.toLowerCase())) {
       throw new Error(`${source}:${index + 1}.repository must identify a requested repository`);
     }
@@ -261,6 +264,14 @@ function parseOperationalValueOutput(content, source, repositories) {
     if (adoptionAt !== undefined && !Number.isFinite(Date.parse(adoptionAt))) {
       throw new Error(`${source}:${index + 1}.adoptionAt must be an ISO-8601 timestamp`);
     }
+    if (evaluationMode !== undefined && !['baseline-comparable', 'attainment-only'].includes(evaluationMode)) {
+      throw new Error(`${source}:${index + 1}.evaluationMode is invalid`);
+    }
+    for (const [field, candidate] of [['workflowSlug', workflowSlug], ['workflowName', workflowName]]) {
+      if (candidate !== undefined && (typeof candidate !== 'string' || !candidate.trim())) {
+        throw new Error(`${source}:${index + 1}.${field} must be a non-empty string`);
+      }
+    }
     return [{
       timestamp,
       repository,
@@ -270,7 +281,10 @@ function parseOperationalValueOutput(content, source, repositories) {
       ...(Object.hasOwn(record, 'metricName') ? { metricName: metricName.trim() } : {}),
       ...(Object.hasOwn(record, 'metricDirection') ? { metricDirection } : {}),
       ...(Object.hasOwn(record, 'maturityStatus') ? { maturityStatus } : {}),
-      ...(Object.hasOwn(record, 'adoptionAt') ? { adoptionAt: canonicalTimestamp(adoptionAt, `${source}:${index + 1}.adoptionAt`) } : {})
+      ...(Object.hasOwn(record, 'adoptionAt') ? { adoptionAt: canonicalTimestamp(adoptionAt, `${source}:${index + 1}.adoptionAt`) } : {}),
+      ...(Object.hasOwn(record, 'evaluationMode') ? { evaluationMode } : {}),
+      ...(Object.hasOwn(record, 'workflowSlug') ? { workflowSlug: workflowSlug.trim() } : {}),
+      ...(Object.hasOwn(record, 'workflowName') ? { workflowName: workflowName.trim() } : {})
     }];
   });
 }
@@ -383,7 +397,10 @@ export async function runOperationalValue({
         metric_name: record.metricName ?? record.valueId,
         metric_direction: record.metricDirection ?? 'increase',
         maturity_status: record.maturityStatus ?? 'matured',
-        adoption_at: record.adoptionAt
+        adoption_at: record.adoptionAt,
+        evaluation_mode: record.evaluationMode,
+        workflow_slug: record.workflowSlug,
+        workflow_name: record.workflowName
       }
     }));
     const retained = retentionWindow === undefined

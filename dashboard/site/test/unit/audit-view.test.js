@@ -39,7 +39,7 @@ describe('Audit dashboard view', () => {
     });
     expect(insights.views[1]).toMatchObject({
       data: {
-        sources: ['campaign-operational-value-primary-series'],
+        sources: ['campaign-operational-value-primary-series', 'campaign-runs'],
         arguments: [{ name: 'campaign', field: 'campaign' }]
       },
       mark: 'element',

@@ -1122,6 +1122,9 @@ function createCachedGhAwJsonlAccumulator(options) {
         'operational-value-direction': optionalString(value.metric_direction) ?? 'increase',
         'maturity-status': optionalString(value.maturity_status) ?? 'matured',
         'adoption-at': optionalString(value.adoption_at),
+        'evaluation-mode': optionalString(value.evaluation_mode),
+        'workflow-slug': optionalString(value.workflow_slug),
+        'workflow-name': optionalString(value.workflow_name),
         timestamp: observedAt
       }
     });

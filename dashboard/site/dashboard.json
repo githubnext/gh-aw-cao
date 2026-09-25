@@ -8233,7 +8233,10 @@
             "maturity-status",
             "operational-value-role",
             "operational-value-name",
-            "adoption-at"
+            "adoption-at",
+            "evaluation-mode",
+            "workflow-slug",
+            "workflow-name"
           ],
           "measures": [
             {
@@ -11019,7 +11022,8 @@
             "description": "Repository-level operational value over time. Interim points are visible but explicitly marked dubious until their evidence matures.",
             "data": {
               "sources": [
-                "campaign-operational-value-primary-series"
+                "campaign-operational-value-primary-series",
+                "campaign-runs"
               ],
               "arguments": [
                 {

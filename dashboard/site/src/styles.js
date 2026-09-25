@@ -730,6 +730,35 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .line-chart-window-band { fill: var(--accent); opacity: .055; }
 .line-chart-temporal-marker line { stroke: var(--purple); stroke-width: 1.5; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
 .line-chart-temporal-marker text { fill: var(--purple); font-size: 1.8px; font-weight: 600; }
+.insights-temporal-plot-panel { overflow-x: auto; }
+.temporal-metric-plot { min-width: 720px; }
+.temporal-metric-plot svg { display: block; width: 100%; height: auto; overflow: visible; }
+.temporal-plot-title { fill: var(--fg); font-size: 30px; font-weight: 700; }
+.temporal-plot-section { fill: var(--muted); font-size: 20px; font-weight: 600; }
+.temporal-plot-axis, .temporal-plot-legend-label, .temporal-plot-adoption-key text { fill: var(--muted); font-size: 17px; }
+.temporal-plot-axis-title { fill: var(--fg); }
+.temporal-plot-baseline, .temporal-plot-runs-track { fill: var(--canvas-subtle); }
+.temporal-plot-grid { stroke: var(--border); stroke-width: 1; }
+.temporal-plot-adoption, .temporal-plot-adoption-key line { stroke: var(--purple); stroke-width: 3; stroke-dasharray: 5 6; }
+.temporal-plot-metric { stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.temporal-plot-point { stroke: var(--canvas); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.temporal-plot-legend-line { stroke-width: 4; }
+.temporal-plot-run { stroke-width: 3; }
+.temporal-plot-run-success { stroke: var(--success); fill: var(--success); }
+.temporal-plot-run-failure { stroke: var(--danger); fill: var(--danger); }
+.temporal-plot-run-other { stroke: var(--muted); fill: var(--muted); }
+.temporal-metric-plot .chart-series-1 { fill: var(--accent); stroke: var(--accent); }
+.temporal-metric-plot .chart-series-2 { fill: var(--success); stroke: var(--success); }
+.temporal-metric-plot .chart-series-3 { fill: var(--attention); stroke: var(--attention); }
+.temporal-metric-plot .chart-series-4 { fill: var(--danger); stroke: var(--danger); }
+.temporal-metric-plot .chart-series-5 { fill: var(--cyan); stroke: var(--cyan); }
+.temporal-metric-plot .chart-series-6 { fill: var(--pink); stroke: var(--pink); }
+.temporal-metric-plot .chart-series-7 { fill: var(--coral); stroke: var(--coral); }
+.temporal-metric-plot .chart-series-8 { fill: var(--yellow); stroke: var(--yellow); }
+.temporal-metric-plot .chart-series-9 { fill: var(--lime); stroke: var(--lime); }
+.temporal-metric-plot .chart-series-10 { fill: var(--violet); stroke: var(--violet); }
+.temporal-metric-plot .chart-series-11 { fill: var(--muted); stroke: var(--muted); }
+.temporal-metric-plot .chart-series-12 { fill: var(--fg); stroke: var(--fg); }
 .line-chart-context { opacity: .3; stroke-width: 1.1; }
 .chart-point-context { opacity: .35; }
 .line-chart-current { opacity: 1; stroke-width: 2; }
