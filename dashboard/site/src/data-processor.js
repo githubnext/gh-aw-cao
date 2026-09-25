@@ -5,7 +5,7 @@ import { queryDashboardSourceObservations } from './data/queries/ingestion.js';
 import { normalize } from './data/normalize/index.js';
 import { batch } from './reactive.js';
 import { publishNotification } from './notification-service.js';
-import { withDebugParameter } from './debug.js';
+import { createDebug, withDebugParameter } from './debug.js';
 import {
   queryRemoteDashboard,
   queryRemoteDiagnostics,
@@ -16,6 +16,8 @@ import {
 
 /** Milliseconds a cooperative cancellation is given before the worker is terminated. */
 const CANCELLATION_GRACE_MS = 250;
+
+const debugDataProcessor = createDebug('data-processor');
 
 /** @type {Worker | null} */
 let worker = null;
@@ -163,6 +165,7 @@ export function cancelDataProcessing(reason = 'Data processing was cancelled.') 
   const cancellation = new Error(reason);
   cancellation.name = 'DataProcessingCancelledError';
   if (processor) scheduleForcedCancellation(processor, ids, cancellation);
+  debugDataProcessor({ event: 'cancel-requested', cancelledCount: ids.length });
   return ids.length;
 }
 
@@ -668,6 +671,7 @@ function getWorker() {
   if (typeof Worker === 'undefined' || import.meta.url.startsWith('data:')) return null;
   worker = new Worker(withDebugParameter(new URL('./data-worker.js', import.meta.url)), { type: 'module' });
   const processor = worker;
+  debugDataProcessor({ event: 'worker-created' });
   worker.addEventListener('message', (event) => {
     if (event.data?.type === 'loading-progress') {
       const state = event.data.state;
@@ -742,6 +746,7 @@ function getWorker() {
   worker.addEventListener('error', (event) => {
     const failedWorker = processor;
     const error = new Error(event.message || 'Data worker failed.');
+    debugDataProcessor({ event: 'worker-failed', pendingCount: pending.size });
     rejectWorkerRequests(failedWorker, error);
     terminateWorkerSubscriptions(failedWorker, error);
     resetWorker(failedWorker);
