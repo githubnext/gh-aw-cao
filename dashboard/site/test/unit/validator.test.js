@@ -208,20 +208,20 @@ describe('dashboard document validation', () => {
         })
       ])
     });
+  });
 
-    it('accepts Boolean experimental page metadata and rejects other values', () => {
-      const experimentalPage = JSON.parse(validDocument);
-      experimentalPage.dashboard.pages[0].experimental = true;
-      expect(validateDashboardDocument(JSON.stringify(experimentalPage)).ok).toBe(true);
+  it('accepts Boolean experimental page metadata and rejects other values', () => {
+    const experimentalPage = JSON.parse(authoritativeDashboardSource);
+    experimentalPage.dashboard.pages[0].experimental = true;
+    expect(validateDashboardDocument(JSON.stringify(experimentalPage)).ok).toBe(true);
 
-      experimentalPage.dashboard.pages[0].experimental = 'true';
-      expect(validateDashboardDocument(JSON.stringify(experimentalPage))).toMatchObject({
-        ok: false,
-        errors: expect.arrayContaining([expect.objectContaining({
-          message: 'experimental must be a Boolean when present.',
-          path: '$.dashboard.pages[0].experimental'
-        })])
-      });
+    experimentalPage.dashboard.pages[0].experimental = 'true';
+    expect(validateDashboardDocument(JSON.stringify(experimentalPage))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([expect.objectContaining({
+        message: 'experimental must be a Boolean when present.',
+        path: '$.dashboard.pages[0].experimental'
+      })])
     });
   });
 

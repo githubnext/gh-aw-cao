@@ -157,7 +157,6 @@ export function syncDashboardNavigationIndicators(root, pages, sources) {
   for (const page of pages) {
     const indicator = navigationIndicator(page);
     if (!indicator) continue;
-    const title = pageTitle(page);
     const active = indicatorMatches(indicator, sources);
     if (active) activeMobileIndicatorLabels.push(indicator.label);
     const label = pageNavigationAccessibleLabel(page, active ? indicator.label : '');
