@@ -404,3 +404,78 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+  notify-failure:
+    needs: [build, cache, deploy]
+    if: ${{ always() && (needs.build.result == 'failure' || needs.build.result == 'cancelled' || needs.cache.result == 'failure' || needs.cache.result == 'cancelled' || needs.deploy.result == 'failure' || needs.deploy.result == 'cancelled') }}
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Notify current repository about CAO Dashboard failure
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const title = 'CAO Dashboard workflow failure'
+            const failures = [
+              {
+                code: 'CAO_DASHBOARD_BUILD_FAILED',
+                result: '${{ needs.build.result }}',
+                message: 'The dashboard build job failed while restoring activity data or assembling the dashboard artifact.',
+              },
+              {
+                code: 'CAO_DASHBOARD_CACHE_FAILED',
+                result: '${{ needs.cache.result }}',
+                message: 'The dashboard cache job failed while saving the dashboard artifact for reuse.',
+              },
+              {
+                code: 'CAO_DASHBOARD_DEPLOY_FAILED',
+                result: '${{ needs.deploy.result }}',
+                message: 'The dashboard deploy job failed while publishing the dashboard to GitHub Pages.',
+              },
+            ].filter(({ result }) => result === 'failure' || result === 'cancelled')
+            if (failures.length === 0) {
+              core.info('No failed CAO Dashboard jobs to report')
+              return
+            }
+            const serverUrl = process.env.GITHUB_SERVER_URL || 'https://github.com'
+            const runUrl = `${serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            const rows = failures
+              .map(({ code, message, result }) => `| \`${code}\` | ${message} | ${result} |`)
+              .join('\n')
+            const body = [
+              'The CAO Dashboard workflow failed in this repository.',
+              '',
+              `Run: ${runUrl}`,
+              '',
+              '## Failure codes',
+              '',
+              '| Code | Message | Job result |',
+              '| --- | --- | --- |',
+              rows,
+              '',
+              '## Suggested next step',
+              '',
+              'Assign this issue to an agent and ask it to fix the workflow failure using the failure code(s) above.',
+            ].join('\n')
+            const openIssues = await github.paginate(github.rest.issues.listForRepo, {
+              ...context.repo,
+              state: 'open',
+              per_page: 100,
+            })
+            const existingIssue = openIssues.find((issue) => !issue.pull_request && issue.title === title)
+            if (existingIssue) {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: existingIssue.number,
+                body,
+              })
+              core.info(`Commented on existing issue #${existingIssue.number}`)
+              return
+            }
+            const { data: issue } = await github.rest.issues.create({
+              ...context.repo,
+              title,
+              body,
+            })
+            core.info(`Created issue #${issue.number}`)

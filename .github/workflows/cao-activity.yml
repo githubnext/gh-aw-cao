@@ -373,3 +373,73 @@ jobs:
             ${{ runner.temp }}/cao-activity/inventory-sources.json
             ${{ runner.temp }}/cao-activity/drain3_weights.json
           key: ${{ needs.index.outputs.cache-key }}
+
+  notify-failure:
+    needs: [index, cache]
+    if: ${{ always() && (needs.index.result == 'failure' || needs.index.result == 'cancelled' || needs.cache.result == 'failure' || needs.cache.result == 'cancelled') }}
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Notify current repository about CAO Activity failure
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const title = 'CAO Activity workflow failure'
+            const failures = [
+              {
+                code: 'CAO_ACTIVITY_INDEX_FAILED',
+                result: '${{ needs.index.result }}',
+                message: 'The activity indexing job failed while collecting or validating CAO activity data.',
+              },
+              {
+                code: 'CAO_ACTIVITY_CACHE_FAILED',
+                result: '${{ needs.cache.result }}',
+                message: 'The activity cache publication job failed while saving the validated activity snapshot.',
+              },
+            ].filter(({ result }) => result === 'failure' || result === 'cancelled')
+            if (failures.length === 0) {
+              core.info('No failed CAO Activity jobs to report')
+              return
+            }
+            const serverUrl = process.env.GITHUB_SERVER_URL || 'https://github.com'
+            const runUrl = `${serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            const rows = failures
+              .map(({ code, message, result }) => `| \`${code}\` | ${message} | ${result} |`)
+              .join('\n')
+            const body = [
+              'The CAO Activity workflow failed in this repository.',
+              '',
+              `Run: ${runUrl}`,
+              '',
+              '## Failure codes',
+              '',
+              '| Code | Message | Job result |',
+              '| --- | --- | --- |',
+              rows,
+              '',
+              '## Suggested next step',
+              '',
+              'Assign this issue to an agent and ask it to fix the workflow failure using the failure code(s) above.',
+            ].join('\n')
+            const openIssues = await github.paginate(github.rest.issues.listForRepo, {
+              ...context.repo,
+              state: 'open',
+              per_page: 100,
+            })
+            const existingIssue = openIssues.find((issue) => !issue.pull_request && issue.title === title)
+            if (existingIssue) {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: existingIssue.number,
+                body,
+              })
+              core.info(`Commented on existing issue #${existingIssue.number}`)
+              return
+            }
+            const { data: issue } = await github.rest.issues.create({
+              ...context.repo,
+              title,
+              body,
+            })
+            core.info(`Created issue #${issue.number}`)
