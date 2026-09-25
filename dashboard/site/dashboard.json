@@ -8134,20 +8134,11 @@
             ]
           },
           {
-            "as": "_target-repository",
-            "function": "lower",
-            "args": [
-              {
-                "field": "target-repository"
-              }
-            ]
-          },
-          {
             "as": "_target-repository-encoded",
             "function": "url-encode",
             "args": [
               {
-                "field": "_target-repository"
+                "field": "target-repository"
               }
             ]
           },

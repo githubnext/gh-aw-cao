@@ -816,11 +816,13 @@ function runRows(deployed, usage) {
         data: dataByRun.get(key.toLowerCase()) ?? null,
         "logs-payload": usageRun.logsPayload ?? null,
         "repository-link": link("repository", `https://github.com/${workflow.repository}`, workflow.repository),
-        "workflow-link": link(
-          "workflow",
-          `https://github.com/${workflow.repository}/blob/${process.env.GITHUB_SHA || "main"}/${workflow.path?.replace(/\.lock\.yml$/, ".md") || ""}`,
-          workflow.name || workflow.path || "View workflow",
-        ),
+        ...(workflow.path ? {
+          "workflow-link": link(
+            "workflow",
+            `https://github.com/${workflow.repository}/blob/${process.env.GITHUB_SHA || "main"}/${workflow.path.replace(/\.lock\.yml$/, ".md")}`,
+            workflow.name || workflow.path,
+          ),
+        } : {}),
         "run-link": link("run", `https://github.com/${workflow.repository}/actions/runs/${run.runId}`, `View run ${run.runId}`),
       });
     }

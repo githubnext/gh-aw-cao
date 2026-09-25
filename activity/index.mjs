@@ -21,6 +21,8 @@ const EMPTY_RUN_HEALTH = {
   runIds: [],
   runRecords: [],
 };
+// Keep browser-published failed-step diagnostics bounded per retained run.
+const MAX_FAILURE_LOG_BYTES = 65_536;
 const FAILED_CONCLUSIONS = new Set(["failure", "timed_out", "startup_failure"]);
 const USAGE_FIELDS = {
   runId: ["database_id", "run_id", "id"],
@@ -92,7 +94,7 @@ function runRecord(run, repository) {
 function failureLog(value) {
   if (typeof value !== "string") return {};
   const log = value.replace(/\r\n?/g, "\n").trim();
-  return log ? { failureLog: log.slice(0, 65_536) } : {};
+  return log ? { failureLog: log.slice(0, MAX_FAILURE_LOG_BYTES) } : {};
 }
 
 function summarizeRuns(records) {
