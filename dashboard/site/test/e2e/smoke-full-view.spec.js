@@ -193,10 +193,12 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   await expect(mobileViewModeToggle).toBeVisible();
   await expect(mobileViewModeToggle).toHaveAttribute('aria-label', 'Switch to Cards view');
   await mobileViewModeToggle.click();
+  await expect(page.locator('.dashboard-page:not([hidden])')).toHaveAttribute('data-view-mode', 'card');
   await expect(view.locator('[data-mobile-card-list]')).toBeVisible();
   await expect(table).toBeHidden();
   await expect(mobileViewModeToggle).toHaveAttribute('aria-label', 'Switch to Table view');
   await mobileViewModeToggle.click();
+  await expect(page.locator('.dashboard-page:not([hidden])')).toHaveAttribute('data-view-mode', 'table');
   await expect(table).toBeVisible();
   await expect(view.locator('[data-mobile-card-list]')).toBeHidden();
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);

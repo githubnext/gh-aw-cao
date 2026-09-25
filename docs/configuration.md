@@ -37,7 +37,7 @@ This minimal policy enables the installed Dependabot campaign and its workers in
 
 Commit the file before running an installed campaign. A missing or invalid document fails closed. An undeclared campaign skips activation before repository discovery or agent execution. See [Admission Gates](admission.md) for the exact pre-activation checks and the checks deferred to authorized-run precompute.
 
-Control repositories must declare `gh-aw-version` at the document root. Factory infrastructure reads this exact release when installing the CLI, and fleet maintenance can compare it with the expected release to identify repositories that need an upgrade. The field remains optional for target-authority-only documents.
+Control repositories must declare `gh-aw-version` at the document root. Campaign infrastructure reads this exact release when installing the CLI, and fleet maintenance can compare it with the expected release to identify repositories that need an upgrade. The field remains optional for target-authority-only documents.
 
 The schema defaults are:
 

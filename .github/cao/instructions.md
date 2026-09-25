@@ -4,7 +4,7 @@
 
 Treat top-level Central Agentic Ops campaigns as operational campaigns by default. They contain an orchestrator and at least one independently dispatchable worker, use `shared/control.md`, and follow `skills/create-cao-campaign/SKILL.md`.
 
-The `dashboard/` campaign is the deterministic exception. It contains conventional GitHub Actions workflows, data producers, and the Dashboard Language renderer under `dashboard/site/`, not an orchestrator or workers. Install it from root `aw.yml`; `dashboard/aw.yml` remains a component manifest included by the root package and is not a standalone installation entry point because gh-aw cannot run the required materialization hook. Never fold it into an operational campaign.
+The `dashboard/` campaign is the deterministic exception. It contains conventional GitHub Actions workflows, data producers, and the Dashboard Language renderer under `dashboard/site/`, not an orchestrator or workers. Install it from root `aw.yml`; `dashboard/aw.yml` remains a component manifest included by the root campaign and is not a standalone installation entry point because gh-aw cannot run the required materialization hook for component manifests. Never fold it into an operational campaign.
 
 ## CAO and gh-aw authority
 
