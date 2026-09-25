@@ -334,7 +334,7 @@ func (d Doctor) trackedGenerations(ctx context.Context) ([]string, error) {
 	}
 	entries, err := redisx.Strings(value)
 	if err != nil {
-		return nil, nil
+		return nil, fmt.Errorf("decode generation registry: %w", err)
 	}
 	names := make([]string, 0, len(entries))
 	for _, entry := range entries {
