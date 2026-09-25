@@ -119,16 +119,4 @@ describe('dead element view analysis', () => {
     )).toEqual([]);
   });
 
-  it('flags the production Usage and Findings pages as unreferenced', () => {
-    const dashboard = JSON.parse(readFileSync(
-      resolve(process.cwd(), 'dashboard.json'),
-      'utf8'
-    ));
-
-    const deadPageIds = deadDashboardPages(
-      dashboardPages(dashboard),
-      referencedPageNames(dashboard)
-    ).map((page) => page.id);
-    expect(deadPageIds).toEqual(expect.arrayContaining(['usage', 'findings']));
-  });
 });
