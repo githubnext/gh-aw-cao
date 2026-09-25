@@ -1463,6 +1463,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       defaultView?.history.back();
       return;
     }
+    persistScrollTop();
     navigationIndex += 1;
     defaultView?.history.pushState(
       { [NAVIGATION_INDEX_STATE_KEY]: navigationIndex },
@@ -1488,6 +1489,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     if (!pageId || !availableIds.has(pageId)) return;
     const provisionalTitle = link.dataset.routeTitle ?? '';
     const provisionalDescription = link.dataset.routeDescription ?? '';
+    persistScrollTop();
     navigationIndex += 1;
     defaultView?.history.pushState({ [NAVIGATION_INDEX_STATE_KEY]: navigationIndex }, '', link.href);
     syncHistoryBack();
@@ -1554,11 +1556,18 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     pendingNavigationDirection = undefined;
     pendingNavigationHash = undefined;
     primePageChrome(route?.pageId ?? initialPageId);
+    const historyScrollTop = pendingScrollTop;
     updateWithViewTransition(root.ownerDocument, () => activate(
       route?.pageId ?? initialPageId,
       route?.parameters,
       true
     ), navigationDirection);
+    if (historyScrollTop !== undefined && !route?.parameters.has('section')) {
+      const scrollingElement = pageScroller instanceof HTMLElement
+        ? pageScroller
+        : root.ownerDocument.scrollingElement ?? root.ownerDocument.documentElement;
+      scrollingElement.scrollTop = historyScrollTop;
+    }
     if (pageTitle instanceof HTMLElement) pageTitle.focus();
   };
   browserNavigation?.addEventListener('currententrychange', syncHistoryBack, { signal: navigationOwner.signal });

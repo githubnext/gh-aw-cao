@@ -3236,7 +3236,7 @@ describe('presenter built-in and custom pages', () => {
     }
   });
 
-  it('persists page scroll positions for reload and browser history restoration', () => {
+  it('persists page scroll positions for reload and browser history restoration', async () => {
     const createRoot = () => {
       const root = document.createElement('div');
       root.innerHTML = `
@@ -3266,6 +3266,9 @@ describe('presenter built-in and custom pages', () => {
       expect(reloadedScroller.scrollTop).toBe(240);
 
       /** @type {HTMLAnchorElement} */ (reloadedRoot.querySelector('[data-nav-page-id="second"]')).click();
+      await vi.waitFor(() => {
+        expect(reloadedRoot.querySelector('[data-page-id="second"]')?.hasAttribute('hidden')).toBe(false);
+      });
       reloadedScroller.scrollTop = 80;
       reloadedScroller.dispatchEvent(new Event('scroll'));
       window.history.replaceState(
