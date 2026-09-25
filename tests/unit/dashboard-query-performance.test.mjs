@@ -51,7 +51,7 @@ test("deployed integration isolates query benchmark reporting from test permissi
 test("deployed integration pull request trigger only watches query benchmark inputs", () => {
   const workflow = parse(readFileSync(deployedIntegrationWorkflowPath, "utf8"));
   // The boolean-key lookup is a defensive fallback for YAML 1.1 core-schema behavior.
-  const workflowTriggers = workflow[true] ?? workflow.on;
+  const workflowTriggers = workflow.on ?? workflow[true];
   assert.ok(workflowTriggers, "expected workflow trigger block");
   const paths = workflowTriggers.pull_request.paths;
   assert.ok(Array.isArray(paths), "expected pull_request.paths trigger list");
