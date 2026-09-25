@@ -132,7 +132,75 @@ describe('dashboard DOM provenance', () => {
     expect(rendered.querySelector('[data-page-id="overview"]')).toBe(overviewBefore);
     expect(rendered.querySelector('.factory-floor')).not.toBeNull();
     expect(rendered.querySelector('[data-view-id="overview-campaigns"]')).not.toBeNull();
-    expect(loadPageSources).not.toHaveBeenCalled();
+    expect(loadPageSources).not.toHaveBeenCalledWith('maintenance', expect.anything());
+    disposeDashboard(rendered);
+  });
+
+  it('subscribes navigation indicators to their page sources', async () => {
+    const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ (/** @type {unknown} */ ({
+      languageVersion: '0.1.0',
+      dashboard: {
+        title: 'Indicator dashboard',
+        pages: [
+          { id: 'overview', kind: 'custom', title: 'Overview', views: [] },
+          {
+            id: 'maintenance',
+            kind: 'custom',
+            title: 'Maintenance',
+            views: [],
+            'navigation-indicator': {
+              label: 'updates available',
+              any: [{ source: 'maintenance-campaign-updates', field: 'campaign-update-state', equals: 'update-available' }]
+            }
+          }
+        ],
+        navigation: [
+          { pages: ['overview'] },
+          { label: 'Maintenance', placement: 'bottom', pages: ['maintenance'] }
+        ]
+      }
+    }));
+    const metadata = /** @type {const} */ ({
+      'source-id': 'campaigns',
+      'source-kind': 'fixture',
+      'as-of': '',
+      'retrieved-at': '',
+      completeness: 'complete',
+      freshness: 'fresh',
+      availability: 'available'
+    });
+    const loadSources = vi.fn((sourceNames) => {
+      expect(sourceNames).toEqual(['maintenance-campaign-updates']);
+      return Promise.resolve(/** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ ({
+        'maintenance-campaign-updates': {
+          source: 'maintenance-campaign-updates',
+          rows: [{ 'campaign-update-state': 'update-available' }],
+          metadata
+        }
+      }));
+    });
+    const loadPageSources = /** @type {import('../../src/presenter.js').PageSourceLoader} */ (vi.fn((pageId) => {
+      const result = pageId === 'maintenance'
+        ? { campaigns: { source: 'campaigns', rows: [{ 'campaign-update-state': 'update-available' }], metadata } }
+        : {};
+      return Promise.resolve(/** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (result));
+    }));
+    loadPageSources.loadSources = loadSources;
+
+    const rendered = renderDashboardView({ document, sources: {}, loadPageSources });
+
+    expect(loadSources).not.toHaveBeenCalled();
+    expect(rendered.querySelector('[data-nav-page-id="maintenance"]')?.getAttribute('aria-label'))
+      .toBe('Maintenance');
+    await vi.waitFor(() => {
+      expect(rendered.querySelector('[data-nav-page-id="maintenance"]')?.getAttribute('aria-label'))
+        .toBe('Maintenance, updates available');
+    });
+    expect(loadPageSources).not.toHaveBeenCalledWith('maintenance', expect.anything());
+    expect(loadSources).toHaveBeenCalledWith(['maintenance-campaign-updates'], expect.objectContaining({
+      signal: expect.any(AbortSignal),
+      onUpdate: expect.any(Function)
+    }));
     disposeDashboard(rendered);
   });
 
@@ -2463,18 +2531,21 @@ describe('presenter built-in and custom pages', () => {
         title: 'Security Dashboard',
         pages: [
           {
-            id: 'findings',
-            kind: /** @type {'built-in'} */ ('built-in'),
-            page: 'findings',
+            id: 'finding-review',
+            kind: /** @type {'custom'} */ ('custom'),
             title: 'Findings',
-            definition: {
-              'data-state': {
-                availability: true
-              },
-              views: [
-                { id: 'findings-source', data: { source: 'findings' } }
-              ]
-            }
+            views: [{
+              id: 'finding-review-table',
+              data: { source: 'findings' },
+              mark: 'table',
+              encoding: {
+                columns: [
+                  { field: 'finding-summary', type: 'nominal' },
+                  { field: 'issue-link', type: 'nominal' }
+                ],
+                href: { field: 'issue-link', type: 'nominal' }
+              }
+            }]
           }
         ]
       }
@@ -2517,13 +2588,13 @@ describe('presenter built-in and custom pages', () => {
 
     expect(rendered.querySelector('#page-title')?.textContent).toBe('Findings');
     expect(rendered.querySelector('.sidebar-brand > span')?.textContent).toBe('github');
-    expect(rendered.querySelector('[data-page-id="findings"] .custom-table thead')?.textContent).toContain('Issue Link');
+    expect(rendered.querySelector('[data-page-id="finding-review"] .custom-table thead')?.textContent).toContain('Issue Link');
 
-    const summaryCell = rendered.querySelector('[data-page-id="findings"] .custom-table tbody td');
+    const summaryCell = rendered.querySelector('[data-page-id="finding-review"] .custom-table tbody td');
     expect(summaryCell?.textContent).toContain('<img src=x onerror=alert(1)>');
     expect(summaryCell?.querySelector('img')).toBeNull();
 
-    const issueLink = rendered.querySelector('[data-page-id="findings"] .custom-table tbody a');
+    const issueLink = rendered.querySelector('[data-page-id="finding-review"] .custom-table tbody a');
     expect(issueLink?.getAttribute('href')).toBe('https://example.com/issues/1');
     expect(issueLink?.getAttribute('aria-label')).toBe('Issue 1 label');
     expect(issueLink?.getAttribute('target')).toBe('_blank');

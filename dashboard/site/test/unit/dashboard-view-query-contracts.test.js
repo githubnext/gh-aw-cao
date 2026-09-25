@@ -173,9 +173,7 @@ describe('dashboard view query contracts', () => {
     const pagesById = new Map(dashboard.pages.map((/** @type {Record<string, unknown>} */ page) => [page.id, page]));
     const boundedViews = [
       ['graders', 'graders-graders-source', 100],
-      ['graders', 'graders-observations-source', 100],
-      ['usage', 'usage-usage-source', 100],
-      ['findings', 'findings-source', 100]
+      ['graders', 'graders-observations-source', 100]
     ];
 
     for (const [pageId, viewId, limit] of boundedViews) {

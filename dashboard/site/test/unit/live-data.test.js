@@ -43,7 +43,7 @@ describe("live Dashboard Language sources", () => {
     expect(startup).not.toContain("runWithLoadingProgress");
     expect(startup).toContain("subscribeCanonicalDashboardView(");
     expect(startup).toContain("signal: pageOptions.signal");
-    expect(startup).toContain("pageOptions.onUpdate(boundSources)");
+    expect(startup).toContain("pageOptions.onUpdate(transformedSources)");
     expect(preview).toContain("dashboardPagePaginatedSourceBindings, dashboardPageSourceNames");
     expect(startup).not.toContain("drainSourceContinuation");
     expect(startup).not.toContain("drainChartSources");
