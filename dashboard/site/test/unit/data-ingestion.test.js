@@ -172,6 +172,12 @@ describe('database table ingestion and queries', () => {
       payloadScope: 'https://example.test/gh-aw-logs-runs/shard.jsonl',
       expectedPhase: 'runs'
     })).resolves.toMatchObject({ updated: true });
+    expect(await readTransactions(indexedDB)).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: `ingest-normalized-jsonl:sha256:${payloadIdentity}:v3`,
+        kind: 'ingest-normalized-jsonl'
+      })
+    ]));
   });
 
   it('rejects obsolete normalized JSONL schemas', async () => {
