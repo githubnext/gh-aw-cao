@@ -98,6 +98,21 @@ func (e Enrollment) AddRepositories(ctx context.Context, installationID int64, r
 		return err
 	}
 	for _, repository := range normalized {
+		// A repository that moved between installations must not stay in the
+		// previous installation's set: a later removal or deletion event for
+		// that installation would otherwise erase evidence the current
+		// installation still covers.
+		previous, err := e.Store.HashGet(ctx, repositoryInstallations, repository)
+		if err != nil {
+			return err
+		}
+		if previous != "" && previous != strconv.FormatInt(installationID, 10) {
+			if identifier, parseErr := strconv.ParseInt(previous, 10, 64); parseErr == nil && identifier > 0 {
+				if err := e.Store.SetRemove(ctx, installationRepositoriesKey(identifier), repository); err != nil {
+					return err
+				}
+			}
+		}
 		if err := e.Store.HashSet(ctx, repositoryInstallations, repository,
 			strconv.FormatInt(installationID, 10)); err != nil {
 			return err
@@ -109,6 +124,11 @@ func (e Enrollment) AddRepositories(ctx context.Context, installationID int64, r
 // RemoveRepositories drops repositories from enrollment and reports the
 // normalized names it removed, so the caller can erase their retained
 // evidence.
+//
+// Removal is scoped to the installation that currently covers a repository. A
+// stale event from an installation that no longer covers it clears only that
+// installation's own membership, so a repository transferred to another
+// installation keeps its enrollment and its evidence.
 func (e Enrollment) RemoveRepositories(
 	ctx context.Context, installationID int64, repositories []string) ([]string, error) {
 	removed := make([]string, 0, len(repositories))
@@ -117,13 +137,20 @@ func (e Enrollment) RemoveRepositories(
 		if err != nil {
 			return removed, err
 		}
-		if err := e.Store.SetRemove(ctx, repositoriesKey, name); err != nil {
-			return removed, err
-		}
 		if installationID > 0 {
 			if err := e.Store.SetRemove(ctx, installationRepositoriesKey(installationID), name); err != nil {
 				return removed, err
 			}
+		}
+		owner, err := e.Store.HashGet(ctx, repositoryInstallations, name)
+		if err != nil {
+			return removed, err
+		}
+		if owner != "" && installationID > 0 && owner != strconv.FormatInt(installationID, 10) {
+			continue
+		}
+		if err := e.Store.SetRemove(ctx, repositoriesKey, name); err != nil {
+			return removed, err
 		}
 		if err := e.Store.HashDelete(ctx, repositoryInstallations, name); err != nil {
 			return removed, err

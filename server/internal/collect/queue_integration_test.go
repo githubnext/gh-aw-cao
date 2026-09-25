@@ -338,3 +338,42 @@ func TestAdmitterQueuesErasureWithoutALake(t *testing.T) {
 		t.Fatalf("queued erasure for %q", leases[0].Task.Repository)
 	}
 }
+
+func TestTransferredRepositoryIgnoresStaleInstallationRemoval(t *testing.T) {
+	store, ctx := integrationStore(t)
+	enrollment := Enrollment{Store: store}
+	if err := enrollment.AddRepositories(ctx, 11, []string{"octo/api"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := enrollment.AddRepositories(ctx, 12, []string{"octo/api"}); err != nil {
+		t.Fatal(err)
+	}
+	removed, err := enrollment.RemoveInstallation(ctx, 11)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(removed) != 0 {
+		t.Fatalf("removed = %v, want no evidence erasure for the stale installation", removed)
+	}
+	enrolled, err := enrollment.Enrolled(ctx, "octo/api")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !enrolled {
+		t.Fatal("expected the repository to stay enrolled under its current installation")
+	}
+	installation, err := enrollment.InstallationFor(ctx, "octo/api")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if installation != 12 {
+		t.Fatalf("installation = %d, want 12", installation)
+	}
+	removed, err = enrollment.RemoveRepositories(ctx, 12, []string{"octo/api"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(removed) != 1 || removed[0] != "octo/api" {
+		t.Fatalf("removed = %v, want the repository erased by its current installation", removed)
+	}
+}

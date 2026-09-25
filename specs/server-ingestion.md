@@ -246,6 +246,11 @@ governed property and not an accident of disk usage.
 - Erasure MUST be driven by the same webhook admission path as enrollment, so
   withdrawing consent takes effect without operator action. A process without an
   evidence lake MUST queue erasure rather than skip it.
+- Removal MUST be scoped to the installation that currently covers a repository.
+  A repository transferred between installations MUST keep its enrollment and
+  its evidence when a later removal or deletion event arrives for the
+  installation that no longer covers it; that event MUST clear only its own
+  installation membership.
 - An erasure failure MUST fail the delivery rather than report it complete, so
   the delivery is retried instead of silently retaining evidence.
 - The task and dead-letter queues MUST be bounded. Acknowledged entries persist
