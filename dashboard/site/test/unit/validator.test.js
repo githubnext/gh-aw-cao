@@ -75,6 +75,29 @@ describe('dashboard document validation', () => {
     });
   });
 
+  it('validates page navigation indicator shape', () => {
+    const invalidPage = JSON.parse(authoritativeDashboardSource);
+    invalidPage.dashboard.pages
+      .find((/** @type {{ id?: string }} */ page) => page.id === 'maintenance')['navigation-indicator'] = {
+        label: '',
+        any: [{ source: 'maintenance-campaign-updates', field: 'campaign-update-state' }]
+      };
+
+    expect(validateDashboardDocument(JSON.stringify(invalidPage))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({
+          message: 'label must be a non-empty string.',
+          path: expect.stringMatching(/navigation-indicator\.label$/)
+        }),
+        expect.objectContaining({
+          message: 'navigation-indicator predicate equals is required.',
+          path: expect.stringMatching(/navigation-indicator\.any\[0\]\.equals$/)
+        })
+      ])
+    });
+  });
+
   it('validates bottom navigation placement vocabulary and labels', () => {
     const invalidPlacement = JSON.parse(authoritativeDashboardSource);
     invalidPlacement.dashboard.navigation = [{ label: 'Manage', placement: 'top', pages: ['overview'] }];

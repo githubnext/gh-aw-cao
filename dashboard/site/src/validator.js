@@ -75,6 +75,8 @@ import {
   MAX_CLI_ACTIONS,
   MAX_CLI_ACTION_ARGUMENTS,
   MAX_CLI_ACTION_COMMAND_LENGTH,
+  NAVIGATION_INDICATOR_KEYS,
+  NAVIGATION_INDICATOR_PREDICATE_KEYS,
   NAVIGATION_SECTION_KEYS,
   NON_ADDITIVE_MEASURE_FIELDS,
   ORDER_BY_KEYS,
@@ -1606,6 +1608,12 @@ function validatePage(page, pageNode, path, pageIds, errors) {
 
   validateOptionalStringField(page.title, `${path}.title`, errors);
   validateOptionalStringField(page['navigation-label'], `${path}.navigation-label`, errors);
+  validateNavigationIndicator(
+    page['navigation-indicator'],
+    getValueNodeByKey(pageNode, 'navigation-indicator'),
+    `${path}.navigation-indicator`,
+    errors
+  );
   validateOptionalStringField(page.description, `${path}.description`, errors);
   if (page['class-name'] !== undefined) {
     validateRequiredIdentifier(page['class-name'], `${path}.class-name`, 'page class name', errors);
@@ -1642,6 +1650,41 @@ function validatePage(page, pageNode, path, pageIds, errors) {
   validateObjectKeys(pageNode, [...BUILT_IN_PAGE_KEYS, ...CUSTOM_PAGE_KEYS], path, errors);
 }
 
+/**
+ * @param {unknown} indicator
+ * @param {unknown} indicatorNode
+ * @param {string} path
+ * @param {ValidationError[]} errors
+ */
+function validateNavigationIndicator(indicator, indicatorNode, path, errors) {
+  if (indicator === undefined) return;
+  if (!isPlainObject(indicator)) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'navigation-indicator must be a mapping.', path));
+    return;
+  }
+  validateObjectKeys(indicatorNode, NAVIGATION_INDICATOR_KEYS, path, errors);
+  validateStringField(indicator.label, `${path}.label`, true, errors);
+  if (!Array.isArray(indicator.any) || indicator.any.length === 0) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'navigation-indicator any must be a non-empty sequence.', `${path}.any`));
+    return;
+  }
+  indicator.any.forEach((predicate, index) => {
+    const predicatePath = `${path}.any[${index}]`;
+    const predicateNode = getSequenceItemNode(getValueNodeByKey(indicatorNode, 'any'), index);
+    if (!isPlainObject(predicate)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'navigation-indicator predicate must be a mapping.', predicatePath));
+      return;
+    }
+    validateObjectKeys(predicateNode, NAVIGATION_INDICATOR_PREDICATE_KEYS, predicatePath, errors);
+    validateStringField(predicate.source, `${predicatePath}.source`, true, errors);
+    validateStringField(predicate.field, `${predicatePath}.field`, true, errors);
+    if (!Object.hasOwn(predicate, 'equals')) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'navigation-indicator predicate equals is required.', `${predicatePath}.equals`));
+    } else if (!['string', 'number', 'boolean'].includes(typeof predicate.equals)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'navigation-indicator predicate equals must be a scalar.', `${predicatePath}.equals`));
+    }
+  });
+}
 
 /**
  * @param {Record<string, unknown>} page
