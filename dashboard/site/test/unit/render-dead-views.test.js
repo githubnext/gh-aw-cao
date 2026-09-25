@@ -81,6 +81,8 @@ describe('dead element view analysis', () => {
         pages: [
           { id: 'overview', kind: 'custom', views: [] },
           { id: 'run-detail', kind: 'custom', route: { 'hash-query-parameter': 'run' }, views: [] },
+          { id: 'attention-detail', kind: 'custom', route: { 'navigation-page': 'overview' }, views: [] },
+          { id: 'unlinked-static-route', kind: 'custom', route: { tabs: [] }, views: [] },
           {
             id: 'usage',
             kind: 'built-in',
@@ -96,9 +98,9 @@ describe('dead element view analysis', () => {
     };
 
     const deadPages = deadDashboardPages(dashboardPages(document), referencedPageNames(document));
-    expect(deadPages.map((page) => page.id)).toEqual(['usage', 'findings']);
-    expect(pageViewNames(deadPages[0])).toEqual(['usage-by-model', 'usage-usage-source']);
-    expect(pageViewNames(deadPages[1])).toEqual(['findings-by-severity', 'findings-source']);
+    expect(deadPages.map((page) => page.id)).toEqual(['unlinked-static-route', 'usage', 'findings']);
+    expect(pageViewNames(deadPages[1])).toEqual(['usage-by-model', 'usage-usage-source']);
+    expect(pageViewNames(deadPages[2])).toEqual(['findings-by-severity', 'findings-source']);
   });
 
   it('keeps the production element registry reachable from the dashboard document', () => {

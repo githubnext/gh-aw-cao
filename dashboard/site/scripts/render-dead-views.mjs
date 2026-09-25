@@ -113,10 +113,21 @@ export function deadDashboardPages(pages, references) {
   return pages.filter((page) => (
     typeof page.id === 'string'
     && !referenced.has(page.id)
-    // Routed pages are commonly reached through data-provided #page-* links
+    // Dynamic route pages are commonly reached through data-provided #page-* links
     // that this static dashboard document pass cannot resolve.
-    && !page.route
+    && !isDynamicallyRoutedPage(page)
   ));
+}
+
+/** @param {Record<string, unknown>} page */
+function isDynamicallyRoutedPage(page) {
+  if (!page.route || typeof page.route !== 'object') return false;
+  const route = /** @type {Record<string, unknown>} */ (page.route);
+  return (
+    typeof route['hash-query-parameter'] === 'string' && route['hash-query-parameter'].length > 0
+  ) || (
+    typeof route['navigation-page'] === 'string' && route['navigation-page'].length > 0
+  );
 }
 
 /** @param {Record<string, unknown>} page */
