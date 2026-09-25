@@ -662,6 +662,8 @@ test('DLS-SAFE-004 DLS-SAFE-007 DLS-SAFE-008 DLS-SAFE-010 custom findings table 
   await expect(page.getByRole('link', { name: 'Skip to main content' })).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Findings', exact: true, level: 1 })).toBeVisible();
+  await page.getByRole('button', { name: 'Table' }).click();
+  await expect(page.locator('[data-view-id="finding-review-table"] .custom-table')).toBeVisible();
   await expect(page.locator('.data-state-summary')).toBeHidden();
   await expect(page.getByRole('columnheader', { name: 'Issue Link' })).toBeVisible();
   await expect(page.locator('[data-page-id="finding-review"] .custom-table tbody td').first()).toContainText('<img src=x onerror=alert(1)>');
