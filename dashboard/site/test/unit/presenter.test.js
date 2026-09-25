@@ -3263,6 +3263,23 @@ describe('presenter built-in and custom pages', () => {
     rendered.ownerDocument.defaultView?.history.replaceState(null, '', '/');
   });
 
+  it('hides the experimental badge before any navigation occurs', () => {
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {}
+    });
+    rendered.ownerDocument.body.append(rendered);
+
+    try {
+      const experimentalBadge = /** @type {HTMLElement} */ (rendered.querySelector('.title-area [data-page-experimental]'));
+      expect(rendered.querySelector('#page-title')?.textContent).toBe('Overview');
+      expect(experimentalBadge.hidden).toBe(true);
+    } finally {
+      disposeDashboard(rendered);
+      rendered.remove();
+    }
+  });
+
   it('does not show the experimental badge when Overview is active', async () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,

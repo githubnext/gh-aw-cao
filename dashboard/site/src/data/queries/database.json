@@ -225,6 +225,7 @@
       { "field": "failureJob", "as": "failure-job" },
       { "field": "failureMessage", "as": "failure-message" },
       { "field": "failureStep", "as": "failure-step" },
+      { "field": "failureLog", "as": "failure-log" },
       { "field": "failureDetail", "as": "failure-detail" },
       { "field": "resource" },
       { "field": "resourceResetAt", "as": "resource-reset-at" },

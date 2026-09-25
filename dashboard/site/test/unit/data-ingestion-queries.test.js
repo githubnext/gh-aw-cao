@@ -83,6 +83,7 @@ describe('dashboard source ingestion queries', () => {
           'requested-model': 'model-a',
           'resolved-model': 'model-b',
           'failure-message': 'Dependency update failed',
+          'failure-log': '2026-09-09T04:48:00Z ##[error]dependency update failed',
           'failure-detail': 'Dependency update failed',
           'started-at': '2026-09-09T04:45:00Z',
           'ended-at': '2026-09-09T04:50:00Z'
@@ -163,6 +164,7 @@ describe('dashboard source ingestion queries', () => {
       requestedModel: 'model-a',
       resolvedModel: 'model-b',
       failureMessage: 'Dependency update failed',
+      failureLog: '2026-09-09T04:48:00Z ##[error]dependency update failed',
       failureDetail: 'Dependency update failed'
     });
     expect(batch.domains).toEqual([]);

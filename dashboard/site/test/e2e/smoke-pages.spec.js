@@ -975,9 +975,9 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(cleanNavigation).toHaveText(['Overview']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
-  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Repositories', 'Workflows', 'Runs', 'IssuesExperimental', 'Operational Value', 'Cost', 'Models & Agents', 'Firewall', 'MCPs', 'SteeringExperimental']);
+  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Operational Value', 'Cost', 'Models & Agents', 'Firewall', 'MCPs', 'Steering']);
   await expect(updatesSection.locator('summary')).toHaveText('Updates');
-  await expect(updatesSection.getByRole('link')).toHaveText(['Updates', 'IndexingExperimental', 'Settings']);
+  await expect(updatesSection.getByRole('link')).toHaveText(['Updates', 'Indexing', 'Settings']);
   await expect(updatesSection).toHaveClass(/nav-section-bottom/);
   await expect.poll(async () => {
     const [navBox, manageBox] = await Promise.all([

@@ -794,6 +794,7 @@ function runRows(deployed, usage) {
         ...(run.failureJob ? { "failure-job": run.failureJob } : {}),
         ...(run.failureMessage ? { "failure-message": run.failureMessage } : {}),
         ...(run.failureStep ? { "failure-step": run.failureStep } : {}),
+        ...(run.failureLog ? { "failure-log": run.failureLog } : {}),
         "failure-detail": firstText(run.failureMessage, run.failureStep) || `Run ${run.runId}`,
         ...(run.resource ? { resource: run.resource } : {}),
         ...(run.resourceResetAt ? { "resource-reset-at": run.resourceResetAt } : {}),
@@ -815,6 +816,14 @@ function runRows(deployed, usage) {
         "resolved-model": firstText(run.resolvedModel, run.resolved_model, run.model, usageRun.resolvedModel, usageRun.resolved_model, usageRun.model) || "unknown",
         data: dataByRun.get(key.toLowerCase()) ?? null,
         "logs-payload": usageRun.logsPayload ?? null,
+        "repository-link": link("repository", `${githubServerUrl}/${workflow.repository}`, workflow.repository),
+        ...(workflow.path ? {
+          "workflow-link": link(
+            "workflow",
+            `${githubServerUrl}/${workflow.repository}/actions/workflows/${workflow.path.split("/").at(-1)}`,
+            workflow.name || workflow.path,
+          ),
+        } : {}),
         "run-link": link("run", `${githubServerUrl}/${workflow.repository}/actions/runs/${run.runId}`, `View run ${run.runId}`),
       });
     }

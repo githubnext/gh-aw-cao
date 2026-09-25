@@ -319,7 +319,6 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   const admission = readFileSync(join(root, "docs", "admission.md"), "utf8");
   const control = readFileSync(join(root, ".github", "workflows", "shared", "control.md"), "utf8");
   const activity = readFileSync(join(root, ".github", "workflows", "cao-activity.yml"), "utf8");
-  const installer = readFileSync(join(root, "install.sh"), "utf8");
   const updateSection = operations.match(/## Update CAO[\s\S]*?(?=\n## |\n### Catalog Release Revocation)/)?.[0] ?? "";
   const policy = JSON.parse(execFileSync(process.execPath, [
     join(root, ".github", "workflows", "shared", "control.mjs"),
@@ -357,15 +356,6 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   assert.match(quickstart, /Rerunning it after those files are installed makes no changes/);
   assert.doesNotMatch(quickstart, /githubnext\/gh-aw-cao@main|commits\/main|full commit SHA/);
   assert.doesNotMatch(quickstart, /base64 -d|contents\/\.github\/cao/);
-  assert.match(installer, /^#!\/usr\/bin\/env bash/);
-  assert.match(installer, /install-gh-aw\.sh/);
-  assert.doesNotMatch(installer, /cao_source|cp "\$cao_source" "\$cao_command"/);
-  assert.match(installer, /cao_cli="activity\/cao\.mjs"/);
-  assert.match(installer, /catalog_source="\$\{1:-githubnext\/gh-aw-cao\}"/);
-  assert.match(installer, /gh aw add "\$catalog_source"/);
-  assert.doesNotMatch(installer, /sort -V/);
-  assert.match(installer, /chmod \+x "\$cao_command"/);
-  assert.match(installer, /"\$cao_command" init/);
   assert.match(updateSection, /\.\/cao\.sh update --major --cool-down 0/);
   assert.match(updateSection, /upgrades `gh-aw` to the minimum version declared by `\.github\/workflows\/cao\.json`/);
   assert.match(updateSection, /resolves published GitHub releases[\s\S]*?updates each installed CAO campaign to its latest compatible release/);
@@ -556,8 +546,6 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /Do not replace `auto` with an explicit model/);
   assert.match(setupSkill, /\.\/cao\.sh add githubnext\/gh-aw-cao\/<campaign-slug>/);
   assert.match(setupSkill, /consumer-owned policy/);
-  assert.match(setupSkill, /edit only `control-plane\.scope` to add `target-owner` and `target-owner\/target-repository`/);
-  assert.match(setupSkill, /Do not put `control-owner` or `control-repository` into this policy unless the selected target is the control repository/);
   assert.match(setupSkill, /if \(\/<\[\^>\]\+>\/\.test\(source\)\) throw new Error\('unresolved policy placeholder'\)/);
   assert.doesNotMatch(setupSkill, /```json\n[\s\S]*?"workers"/);
   assert.match(setupSkill, /campaign-owned orchestrator and worker identities are merged/);

@@ -49,6 +49,7 @@ function problem() {
     'error-signature': 'dependency-update-failed',
     'failure-job': 'update',
     'failure-step': 'Apply update',
+    'failure-log': '2026-09-24T10:01:00Z ##[error]dependency update failed',
     'gh-aw-version': '0.89.20',
     engine: 'copilot',
     'engine-version': '1.2.3',
@@ -59,6 +60,20 @@ function problem() {
       relation: 'run',
       href: 'https://github.com/github/gh-aw/actions/runs/1',
       label: 'View run'
+    },
+    'repository-link': {
+      relation: 'repository',
+      href: 'https://github.com/github/gh-aw',
+      label: 'github/gh-aw'
+    },
+    'workflow-link': {
+      relation: 'workflow',
+      href: 'https://github.com/github/gh-aw/actions/workflows/dependabot.lock.yml',
+      label: 'Dependabot / Update Planner'
+    },
+    'target-repository-link': {
+      'dashboard-href': '#page-repository-detail?repository=github%2Fgh-aw',
+      'dashboard-label': 'github/gh-aw'
     }
   };
 }
@@ -80,6 +95,10 @@ describe('problem detail', () => {
     expect(rendered.querySelector('.problem-view-sections')?.textContent).toContain('Error signaturedependency-update-failed');
     expect(rendered.querySelector('.problem-view-sections')?.textContent).toContain('Resolved modelmodel-b');
     expect(rendered.querySelector('a[href*="/actions/runs/1"]')?.textContent).toBe('View run');
+    expect(rendered.querySelector('a[href="https://github.com/github/gh-aw"]')?.textContent).toBe('github/gh-aw');
+    expect(rendered.querySelector('a[href*="/actions/workflows/dependabot.lock.yml"]')?.textContent).toBe('Dependabot / Update Planner');
+    expect(rendered.querySelector('a[href="#page-repository-detail?repository=github%2Fgh-aw"]')?.textContent).toBe('github/gh-aw');
+    expect(rendered.querySelector('.problem-view-log')?.textContent).toContain('##[error]dependency update failed');
     expect(rendered.getElementsByTagName('button')[0]?.textContent).toBe('Fix It');
     expect(allocation).toHaveBeenCalledWith(expect.objectContaining({
       detail: {

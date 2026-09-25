@@ -226,7 +226,7 @@
         "classification": { "field": "classification" }, "duration": { "field": "duration" }, "actionMinutes": { "field": "action-minutes" },
         "githubApiCalls": { "field": "github-api-calls" }, "safeItemsCount": { "field": "safe-items-count" }, "errorCount": { "field": "error-count" },
         "admissionStatus": { "field": "admission-status" }, "admissionReason": { "field": "admission-reason" },
-        "failureJob": { "field": "failure-job" }, "failureMessage": { "field": "failure-message" }, "failureStep": { "field": "failure-step" },
+        "failureJob": { "field": "failure-job" }, "failureMessage": { "field": "failure-message" }, "failureStep": { "field": "failure-step" }, "failureLog": { "field": "failure-log" },
         "failureDetail": { "field": "_failure-detail" }, "resource": { "field": "resource" }, "resourceResetAt": { "field": "resource-reset-at" },
         "resourceWaitHours": { "field": "resource-wait-hours" }, "runLink": { "field": "run-link", "default": null },
         "organizationLink": { "field": "organization-link", "default": null }, "repositoryLink": { "field": "repository-link", "default": null },
