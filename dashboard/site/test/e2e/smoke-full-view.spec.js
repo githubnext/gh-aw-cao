@@ -188,7 +188,8 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
   await expect(page.locator('.org-sidebar')).toBeVisible();
   await expect(view).toBeHidden();
-  await page.getByRole('button', { name: 'Table' }).click();
+  await page.getByRole('button', { name: 'Switch to Cards view' }).click();
+  await page.getByRole('button', { name: 'Switch to Table view' }).click();
   await expect(view).toBeVisible();
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
   const mobileViewportHeight = await page.evaluate(() => innerHeight);

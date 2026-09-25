@@ -453,14 +453,14 @@ test('phone full-view lazy tables switch between table and card-list modes', asy
   await expect(cards).toBeHidden();
   await expect(root).toHaveClass(/dashboard-full-view/);
 
-  await page.getByRole('button', { name: 'Cards', exact: true }).click();
+  await page.getByRole('button', { name: 'Switch to Cards view' }).click();
   await expect(table).toBeHidden();
   await expect(cards).toBeVisible();
   await expect(cards.locator('.entity-card-list-card')).toContainText('githubnext/gh-aw-cao');
   await expect(root).toHaveClass(/dashboard-full-view/);
   await expect(page.getByRole('heading', { name: 'Repositories', level: 3 })).toBeHidden();
 
-  await page.getByRole('button', { name: 'Table', exact: true }).click();
+  await page.getByRole('button', { name: 'Switch to Table view' }).click();
   await expect(table).toBeVisible();
   await expect(cards).toBeHidden();
   await expect(root).toHaveClass(/dashboard-full-view/);
