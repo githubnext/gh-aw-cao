@@ -69,6 +69,7 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   assert.match(notifyFailureJob, /permissions:\n\s+issues: write/);
   assert.match(notifyFailureJob, /CAO_ACTIVITY_INDEX_FAILED[\s\S]*?CAO_ACTIVITY_CACHE_FAILED/);
   assert.match(notifyFailureJob, /Assign this issue to an agent/);
+  assert.match(notifyFailureJob, /GITHUB_WORKFLOW_SHA[\s\S]*?debug-cao/);
   assert.match(
     cacheJob,
     /Verify activity snapshot[\s\S]*?for file in gh-aw-logs\.sqlite payload-hashes\.json control-settings\.json inventory-sources\.json drain3_weights\.json[\s\S]*?-s "\$snapshot_root\/\$file"[\s\S]*?Activity snapshot contains no JSONL shards[\s\S]*?exit 1/,
