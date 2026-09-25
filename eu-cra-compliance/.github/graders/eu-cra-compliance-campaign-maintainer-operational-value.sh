@@ -4,7 +4,6 @@ set -euo pipefail
 export LC_ALL=C
 
 REPOSITORY="githubnext/gh-aw-cao"
-WORKFLOW_NAME="EU CRA / Maintenance"
 LEDGER_PATH="eu-cra-compliance/implementation-status.md"
 MATURATION_SECONDS=2592000
 

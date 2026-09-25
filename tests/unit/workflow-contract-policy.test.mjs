@@ -254,7 +254,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "eu-cra-compliance.md": { credits: 200, timeout: 15, dispatchMax: 48, workers: 6 },
     "eu-cra-compliance-campaign-maintainer.md": { credits: 200, timeout: 20 },
     "optimization.md": { credits: 250, timeout: 15, dispatchMax: 12, workers: 2 },
-    "self-care.md": { credits: 200, timeout: 15, dispatchMax: 16, workers: 16 },
+    "self-care.md": { credits: 200, timeout: 15, dispatchMax: 17, workers: 17 },
     "cao-evolution-failures-investigator.md": { credits: 500, timeout: 30 },
     "cao-evolution-compiler-security.md": { credits: 500, timeout: 45 },
     "dependabot-update-planner.md": { credits: 600, timeout: 60 },
@@ -285,6 +285,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "self-care-pages-health.md": { credits: 400, timeout: 120 },
     "self-care-primer-brand-checker.md": { credits: 400, timeout: 25 },
     "self-care-reactive-ui-expert.md": { credits: 500, timeout: 45 },
+    "self-care-release-blogger.md": { credits: 400, timeout: 30 },
     "self-care-server-go-logging.md": { credits: 400, timeout: 40 },
   };
 
