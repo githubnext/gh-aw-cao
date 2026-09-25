@@ -107,6 +107,11 @@ function identifierKey(value) {
 function pageSelectionDescriptor(page, index) {
   const pageId = String(page.id ?? "");
   const pageJson = JSON.stringify(page);
+  const searchableBody = {
+    description: page.description,
+    definitionViews: page.definition?.views,
+    views: page.views,
+  };
   return {
     index,
     pageId,
@@ -114,7 +119,7 @@ function pageSelectionDescriptor(page, index) {
     pageJson,
     pageTerms: new Set(identifierTerms(pageId)),
     titleTerms: new Set(identifierTerms(page.title)),
-    pageBodyTerms: new Set(identifierTerms(pageJson)),
+    pageBodyTerms: new Set(identifierTerms(JSON.stringify(searchableBody))),
   };
 }
 
@@ -162,6 +167,9 @@ export function rankDashboardPageIds({
   changedFiles,
   limit = maximumSelectedDashboardPageCount,
 }) {
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new Error("Dashboard page selection limit must be a positive integer.");
+  }
   const pagesById = new Map(pageSelectionDescriptors(dashboard).map((page) => [page.pageId, page]));
   const changedFileDescriptors = changedFiles.map((path) => ({
     pathSegmentKeys: new Set(path.split(/[\\/]+/).map(identifierKey).filter(Boolean)),
@@ -260,7 +268,7 @@ export function selectAffectedPageIds({ dashboard, changedFiles, baseRef }) {
       return ranked(allPageIds);
     }
   }
-  return allPageIds.filter((pageId) => selected.has(pageId));
+  return withoutIgnoredDashboardPageIds(allPageIds.filter((pageId) => selected.has(pageId)));
 }
 
 function main() {
