@@ -12910,6 +12910,7 @@
         "title": "Operational Value",
         "description": "Computed package-defined operational value for each repository.",
         "icon": "graph",
+        "class-name": "value-page",
         "definition": {
           "data-state": {
             "availability": true
@@ -12950,7 +12951,6 @@
             {
               "id": "operational-value-observations",
               "description": "Time-ordered computed values with their repository and campaign context.",
-              "disclosure": "supplemental",
               "data": {
                 "source": "operational-values",
                 "order-by": [

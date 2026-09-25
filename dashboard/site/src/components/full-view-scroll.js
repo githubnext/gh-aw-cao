@@ -12,19 +12,25 @@ const CHART_SIBLING_SELECTOR = '.chart-widget';
 
 /**
  * Toggles `dashboard-full-view` on the dashboard root, scoped to pages where the
- * full-view table has no chart siblings.
+ * full-view table has no preceding charts. Preceding views are located anywhere earlier
+ * in the page's document order, not only among the full-view table's immediate siblings,
+ * so pages that group views into declarative `sections` (for example Operational Value's
+ * Insights section) are treated the same as flat single-grid pages such as Runs and Cost.
  * @param {HTMLElement} root
  * @param {HTMLElement | undefined} page
  */
 export function syncFullViewMode(root, page) {
   const fullView = page?.querySelector(FULL_VIEW_SELECTOR);
-  const siblings = fullView?.parentElement
-    ? [...fullView.parentElement.querySelectorAll(':scope > .custom-view')].filter((view) => view !== fullView)
+  const precedingViews = fullView && page
+    ? [...page.querySelectorAll('.custom-view')].filter((view) => (
+      view !== fullView
+      && Boolean(view.compareDocumentPosition(fullView) & Node.DOCUMENT_POSITION_FOLLOWING)
+    ))
     : [];
   const selectedFullViewMode = ['table', 'card'].includes(page?.dataset.viewMode ?? '');
   const canPin = Boolean(fullView) && (
     selectedFullViewMode
-    || siblings.every((view) => !view.querySelector(CHART_SIBLING_SELECTOR))
+    || precedingViews.every((view) => !view.querySelector(CHART_SIBLING_SELECTOR))
   );
   root.classList.toggle('dashboard-full-view', canPin);
   if (!canPin) root.classList.remove('dashboard-full-view-scrolled');
