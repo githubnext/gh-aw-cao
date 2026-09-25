@@ -92,13 +92,16 @@ const GH_AW_INSTALLER_COMMAND = 'curl --fail --silent --show-error --location ht
 const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json';
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
-const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'issue-status', 'query', 'computation', 'operational-value', 'cluster-problems', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
+const COMMANDS = new Set(['init', 'setup-auth', 'add', 'update', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'issue-status', 'query', 'computation', 'operational-value', 'cluster-problems', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
 
 // Intentional CLI misuse that should print usage without an internal stack trace.
 class UsageError extends Error {}
 
 const USAGE = `Usage:
   cao init
+  cao setup-auth github-app [--repo OWNER/REPO] [--enterprise SLUG] [APP_SETUP_OPTIONS...]
+  cao setup-auth token [--repo OWNER/REPO] --acknowledge-token-risks
+  cao setup-auth workflow-token
   cao add CAMPAIGN [GH_AW_ADD_OPTIONS...]
   cao update [--pre-releases] [GH_AW_UPDATE_OPTIONS...]
   cao mode (live|preview) CAMPAIGN...
@@ -285,6 +288,56 @@ export async function initializeCaoPolicy({
     throw new Error(`${policyPath} already exists`);
   } catch (error) {
     if (error?.code !== 'ENOENT') throw error;
+  }
+
+  export function setupCaoAuthentication(method, arguments_ = [], {
+    execute = spawnSync
+  } = {}) {
+    if (method === 'github-app') {
+      const script = path.join('.github', 'workflows', 'shared', 'setup-github-apps.mjs');
+      const result = execute(process.execPath, [script, ...arguments_], { stdio: 'inherit' });
+      if (result.error || result.status !== 0) {
+        throw new Error(`GitHub App setup failed: ${commandFailureMessage(result, `exit ${result.status}`)}`);
+      }
+      return { command: 'setup-auth', profile: 'github-app' };
+    }
+    if (method === 'token') {
+      const options = parseOptions(arguments_);
+      rejectUnknownOptions(options, ['repo', 'acknowledge-token-risks']);
+      if (!options['acknowledge-token-risks']) {
+        throw new UsageError(
+          'token setup requires --acknowledge-token-risks after reviewing the user-bound, '
+          + 'single-owner, expiration, approval, rotation, and API compatibility limits',
+        );
+      }
+      const repo = option(options, 'repo', false);
+      const auth = execute('gh', ['auth', 'status'], { encoding: 'utf8' });
+      if (auth.error || auth.status !== 0) {
+        throw new Error(`GitHub CLI authentication check failed: ${commandFailureMessage(auth, 'gh auth status failed')}`);
+      }
+      const secretArguments = ['secret', 'set', 'GH_AW_GITHUB_TOKEN'];
+      if (repo) secretArguments.push('--repo', repo);
+      const result = execute('gh', secretArguments, { stdio: 'inherit' });
+      if (result.error || result.status !== 0) {
+        throw new Error(`Fine-grained token setup failed: ${commandFailureMessage(result, `exit ${result.status}`)}`);
+      }
+      return {
+        command: 'setup-auth',
+        profile: 'fine-grained-token',
+        secret: 'GH_AW_GITHUB_TOKEN',
+        ...(repo ? { repo } : {}),
+      };
+    }
+    if (method === 'workflow-token') {
+      if (arguments_.length > 0) throw new UsageError(`Unexpected argument: ${arguments_[0]}`);
+      return {
+        command: 'setup-auth',
+        profile: 'workflow-token',
+        configured: true,
+        limitation: 'Use only for control-repository work or bounded public-target review.',
+      };
+    }
+    throw new UsageError('cao setup-auth requires github-app, token, or workflow-token');
   }
   const version = parseGhAwVersion(execute('gh', ['aw', 'version'], { encoding: 'utf8' }));
   await writeJsonAtomically(absolutePath, minimalPolicy(version));
@@ -829,7 +882,8 @@ function parseOptions(arguments_) {
     const argument = arguments_[index];
     if (!argument.startsWith('--') && !aliases[argument]) throw new UsageError(`Unexpected argument: ${argument}`);
     const name = aliases[argument] ?? argument.slice(2);
-    if (name === 'help' || name === 'stdin' || name === 'keep' || name === 'diagnose') {
+    if (name === 'help' || name === 'stdin' || name === 'keep' || name === 'diagnose'
+      || name === 'acknowledge-token-risks') {
       options[name] = 'true';
       continue;
     }
@@ -2636,6 +2690,9 @@ export async function runCli(arguments_, input = process.stdin, { signal } = {})
   if (command === 'init') {
     if (rawOptionArguments.length > 0) throw new UsageError(`Unexpected argument: ${rawOptionArguments[0]}`);
     return initializeCaoPolicy();
+  }
+  if (command === 'setup-auth') {
+    return setupCaoAuthentication(rawOptionArguments[0], rawOptionArguments.slice(1));
   }
   if (command === 'add') {
     return addCaoCampaign(rawOptionArguments[0], rawOptionArguments.slice(1));

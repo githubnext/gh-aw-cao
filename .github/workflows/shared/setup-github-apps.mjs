@@ -54,6 +54,8 @@ export function parseArgs(argv) {
     readAppName: "",
     writeAppName: "",
     policy: ".github/workflows/cao.json",
+    appOwner: "",
+    appOwnerType: "organization",
     dryRun: false,
     force: false,
     openBrowser: true,
@@ -69,6 +71,9 @@ export function parseArgs(argv) {
       options.writeAppName = requireArgument(argv, ++index, argument);
     } else if (argument === "--policy") {
       options.policy = requireArgument(argv, ++index, argument);
+    } else if (argument === "--enterprise") {
+      options.appOwner = requireArgument(argv, ++index, argument);
+      options.appOwnerType = "enterprise";
     } else if (argument === "--dry-run") {
       options.dryRun = true;
     } else if (argument === "--force") {
@@ -109,13 +114,13 @@ export function validateAppName(name, flag) {
   }
 }
 
-export function buildGitHubAppManifest({ name, homepageUrl, redirectUrl, description, permissions, public: publicApp = false }) {
+export function buildGitHubAppManifest({ name, homepageUrl, redirectUrl, description, permissions }) {
   return {
     name,
     url: homepageUrl,
     hook_attributes: { url: homepageUrl, active: false },
     redirect_url: redirectUrl,
-    public: publicApp,
+    public: false,
     request_oauth_on_install: false,
     description,
     default_permissions: permissions,
@@ -286,6 +291,9 @@ function existingGitHubApp(name, clientId) {
   if (payload.client_id !== clientId || !payload.slug) {
     throw new Error(`stored credentials do not match GitHub App ${name}`);
   }
+  if (payload.public) {
+    throw new Error(`GitHub App ${name} is public; CAO requires private Apps`);
+  }
   return {
     id: String(payload.id ?? ""),
     clientId: payload.client_id,
@@ -295,7 +303,14 @@ function existingGitHubApp(name, clientId) {
   };
 }
 
-async function createGitHubApp({ owner, name, homepageUrl, description, permissions, public: publicApp, openBrowser }) {
+export function appRegistrationUrl(ownerType, owner, state) {
+  if (ownerType === "enterprise") {
+    return `https://github.com/enterprises/${owner}/settings/apps/new?state=${state}`;
+  }
+  return `https://github.com/organizations/${owner}/settings/apps/new?state=${state}`;
+}
+
+async function createGitHubApp({ owner, ownerType, name, homepageUrl, description, permissions, openBrowser }) {
   const state = randomBytes(16).toString("hex");
   let page = "";
   let complete;
@@ -359,9 +374,8 @@ async function createGitHubApp({ owner, name, homepageUrl, description, permissi
     redirectUrl,
     description,
     permissions,
-    public: publicApp,
   });
-  const registrationUrl = `https://github.com/organizations/${owner}/settings/apps/new?state=${state}`;
+  const registrationUrl = appRegistrationUrl(ownerType, owner, state);
   page = registrationPage(registrationUrl, manifest);
   const localUrl = `http://127.0.0.1:${address.port}/register`;
 
@@ -384,10 +398,10 @@ async function createGitHubApp({ owner, name, homepageUrl, description, permissi
 }
 
 function printManifestReview(owner, manifest) {
-  console.error(`\nCreate ${manifest.public ? "cross-account" : "private"} GitHub App for ${owner}:`);
+  console.error(`\nCreate private GitHub App for ${owner}:`);
   console.error(`- name: ${manifest.name}`);
   console.error(`- homepage: ${manifest.url}`);
-  console.error(`- installable by other accounts: ${manifest.public ? "yes" : "no"}`);
+  console.error("- public: no");
   console.error("- permissions:");
   for (const [permission, level] of Object.entries(manifest.default_permissions).sort()) {
     console.error(`  - ${permission}: ${level}`);
@@ -523,6 +537,7 @@ Options:
   --read-app-name NAME    Globally unique read App name
   --write-app-name NAME   Globally unique write App name
   --policy PATH           CAO policy (default: .github/workflows/cao.json)
+  --enterprise SLUG       Create private enterprise-owned Apps for organizations in that enterprise
   --dry-run               Print manifests without changing GitHub
   --force                 Create replacements even when both credential pairs exist
   --no-open               Print browser URLs instead of opening them
@@ -537,10 +552,21 @@ async function main() {
   }
   const repo = options.repo || runGh(["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"]);
   splitRepo(repo);
-  const [owner] = splitRepo(repo);
+  const [controlOwner] = splitRepo(repo);
   const policy = loadControlPolicy(options.policy);
   const installationTargets = deriveInstallationTargets(policy, repo);
-  const crossOrganization = installationTargets.some((target) => target.owner.toLowerCase() !== owner.toLowerCase());
+  const appOwner = options.appOwner || controlOwner;
+  if (options.appOwnerType === "organization") {
+    const externalTarget = installationTargets.find(
+      (target) => target.owner.toLowerCase() !== controlOwner.toLowerCase(),
+    );
+    if (externalTarget) {
+      throw new Error(
+        `private organization-owned Apps cannot be installed on ${externalTarget.owner}; `
+        + "use --enterprise SLUG for organizations in one enterprise or configure a fine-grained token",
+      );
+    }
+  }
   const homepageUrl = `https://github.com/${repo}`;
   const appNames = {
     read: options.readAppName || deriveAppName(repo, "read"),
@@ -563,23 +589,27 @@ async function main() {
         redirectUrl: "http://127.0.0.1:0/callback",
         description: `Central Agentic Ops ${profile.label} App for ${repo}`,
         permissions: profile.permissions,
-        public: crossOrganization,
       }),
     }));
-    console.log(JSON.stringify({ repo, installationTargets, apps }, null, 2));
+    console.log(JSON.stringify({
+      repo,
+      appOwner: { type: options.appOwnerType, login: appOwner },
+      installationTargets,
+      apps,
+    }, null, 2));
     return;
   }
 
   runGh(["auth", "status"]);
   const target = verifyTarget(repo);
+  if (options.appOwnerType === "enterprise") {
+    runGh(["api", `/enterprises/${appOwner}`, "--jq", ".slug"]);
+  }
   const state = repositoryState(repo);
   for (const profile of APP_PROFILES) {
     const complete = state.variables.has(profile.variable) && state.secrets.has(profile.secret);
     if (complete && !options.force) {
       const app = existingGitHubApp(appNames[profile.role], repositoryVariableValue(repo, profile.variable));
-      if (crossOrganization) {
-        console.error(`${profile.label} App must allow installation outside ${owner}; update its visibility if an external installation cannot be opened.`);
-      }
       await ensureInstallations(app, installationTargets, options.openBrowser);
       continue;
     }
@@ -587,12 +617,12 @@ async function main() {
       console.error(`${profile.label} App credentials are incomplete; creating a replacement pair.`);
     }
     const app = await createGitHubApp({
-      owner: target.owner,
+      owner: appOwner,
+      ownerType: options.appOwnerType,
       name: appNames[profile.role],
       homepageUrl: target.homepageUrl,
       description: `Central Agentic Ops ${profile.label} App for ${repo}`,
       permissions: profile.permissions,
-      public: crossOrganization,
       openBrowser: options.openBrowser,
     });
     setRepositoryCredentials(profile, app, repo);
