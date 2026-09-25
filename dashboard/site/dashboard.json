@@ -1667,13 +1667,13 @@
         "compute": [
           {
             "as": "table",
-            "function": "coalesce",
+            "function": "concat",
             "args": [
               {
                 "value": "campaigns"
               },
               {
-                "value": "campaigns"
+                "value": ""
               }
             ]
           }
@@ -1698,13 +1698,13 @@
         "compute": [
           {
             "as": "table",
-            "function": "coalesce",
+            "function": "concat",
             "args": [
               {
                 "value": "repositories"
               },
               {
-                "value": "repositories"
+                "value": ""
               }
             ]
           }
@@ -1729,13 +1729,13 @@
         "compute": [
           {
             "as": "table",
-            "function": "coalesce",
+            "function": "concat",
             "args": [
               {
                 "value": "workflows"
               },
               {
-                "value": "workflows"
+                "value": ""
               }
             ]
           }
@@ -1760,13 +1760,13 @@
         "compute": [
           {
             "as": "table",
-            "function": "coalesce",
+            "function": "concat",
             "args": [
               {
                 "value": "workflow runs"
               },
               {
-                "value": "workflow runs"
+                "value": ""
               }
             ]
           }
@@ -1791,13 +1791,13 @@
         "compute": [
           {
             "as": "table",
-            "function": "coalesce",
+            "function": "concat",
             "args": [
               {
                 "value": "network domains"
               },
               {
-                "value": "network domains"
+                "value": ""
               }
             ]
           }
@@ -1822,13 +1822,13 @@
         "compute": [
           {
             "as": "table",
-            "function": "coalesce",
+            "function": "concat",
             "args": [
               {
                 "value": "tool events"
               },
               {
-                "value": "tool events"
+                "value": ""
               }
             ]
           }
@@ -1853,13 +1853,13 @@
         "compute": [
           {
             "as": "table",
-            "function": "coalesce",
+            "function": "concat",
             "args": [
               {
                 "value": "audit events"
               },
               {
-                "value": "audit events"
+                "value": ""
               }
             ]
           }
@@ -1884,13 +1884,13 @@
         "compute": [
           {
             "as": "table",
-            "function": "coalesce",
+            "function": "concat",
             "args": [
               {
                 "value": "issue events"
               },
               {
-                "value": "issue events"
+                "value": ""
               }
             ]
           }
@@ -1915,13 +1915,13 @@
         "compute": [
           {
             "as": "table",
-            "function": "coalesce",
+            "function": "concat",
             "args": [
               {
                 "value": "operational values"
               },
               {
-                "value": "operational values"
+                "value": ""
               }
             ]
           }
@@ -1932,7 +1932,7 @@
           ],
           "values": [
             {
-              "field": "operational-value-definition",
+              "field": "id",
               "as": "records",
               "reducer": "count"
             }
@@ -1946,13 +1946,13 @@
         "compute": [
           {
             "as": "table",
-            "function": "coalesce",
+            "function": "concat",
             "args": [
               {
                 "value": "ingestion transactions"
               },
               {
-                "value": "ingestion transactions"
+                "value": ""
               }
             ]
           }
@@ -8098,7 +8098,7 @@
                 "field": "failure-percent"
               },
               {
-                "value": " \u00b7 "
+                "value": " · "
               },
               {
                 "field": "failure-count"
@@ -8119,7 +8119,7 @@
                 "field": "observed-failure-summary"
               },
               {
-                "value": "\u2014"
+                "value": "—"
               }
             ]
           },
