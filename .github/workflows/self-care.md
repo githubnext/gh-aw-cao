@@ -61,7 +61,7 @@ imports:
     with:
       campaign: self-care
       role: orchestrator
-      dispatch_max: 15
+      dispatch_max: 16
       orchestrator_credits: 200
       worker_credits_per_target: 4750
 
@@ -87,8 +87,8 @@ network:
 
 safe-outputs:
   dispatch-workflow:
-    workflows: [self-care-accessibility-checker, self-care-code-improvement, self-care-dashboard-data-schema, self-care-dashboard-debug-logging, self-care-dashboard-performance, self-care-data-acquisition-audit, self-care-dashboard-language-refactor, self-care-dashboard-review, self-care-docs-build-time-investigator, self-care-glossary, self-care-open-source-failures, self-care-pages-health, self-care-primer-brand-checker, self-care-reactive-ui-expert, self-care-server-go-logging]
-    max: 15
+    workflows: [self-care-accessibility-checker, self-care-code-improvement, self-care-dashboard-data-schema, self-care-dashboard-debug-logging, self-care-dashboard-performance, self-care-data-acquisition-audit, self-care-dashboard-language-refactor, self-care-dashboard-review, self-care-docs-build-time-investigator, self-care-docs-maintainer, self-care-glossary, self-care-open-source-failures, self-care-pages-health, self-care-primer-brand-checker, self-care-reactive-ui-expert, self-care-server-go-logging]
+    max: 16
   threat-detection: false
 
 source: githubnext/gh-aw-cao@a4b937e2ee4e540d3ccce1377f8943315670f33d
@@ -111,6 +111,7 @@ The single eligible repository contains the documentation site and dashboard mai
 - `self-care-dashboard-data-schema`: downloads every JSON file advertised by the deployed Pages manifest and opens one focused draft pull request when the inferred pseudo schemas change.
 - `self-care-dashboard-review`: uses deterministic checks and CFO, CSO, and CTO browser journeys to assess dashboard correctness, decision support, efficiency, and usability.
 - `self-care-docs-build-time-investigator`: analyzes Documentation Pages workflow timing evidence and opens one issue with a non-repeating caching or dashboard build-speed improvement.
+- `self-care-docs-maintainer`: scans recent merged pull request diffs and ADR changes, verifies them against current repository files, and opens one focused draft pull request for an evidenced documentation correction.
 - `self-care-glossary`: scans recent merged pull requests and default-branch code changes, then opens one focused draft pull request when repository evidence supports a glossary update.
 - `self-care-data-acquisition-audit`: reviews gh-aw logs, GitHub API access, predownloads, indexing, and caching, then opens one focused draft pull request when the acquisition audit is stale.
 - `self-care-dashboard-language-refactor`: replaces one over-specialized dashboard view with tested reusable subcomponents configured through Dashboard Language and opens one focused draft pull request.
@@ -120,12 +121,12 @@ The single eligible repository contains the documentation site and dashboard mai
 - `self-care-reactive-ui-expert`: maintains the reactive UI skill, migrates JavaScript-produced view sources to request-scoped dashboard queries, reviews recent dashboard JavaScript changes, and replaces evidenced imperative DOM updates with owned reactive elements, data binding, and effects.
 - `self-care-server-go-logging`: refactors one Go server subsystem with privacy-preserving internal logging and focused unit tests that use real code without mocks, then opens one focused draft pull request.
 
-After selecting the authorized target, dispatch every non-cadence-limited worker. Dispatch `self-care-dashboard-data-schema` and `self-care-glossary` only when no run of the respective workflow is in progress or started during the preceding 24 hours. Inspect at most the ten most recent runs of each workflow to make this decision. Dispatch `self-care-pages-health` only when no run of that workflow is queued, in progress, or started during the preceding six hours. Inspect at most the 20 most recent Pages Health workflow runs to make this decision. If any run history is unavailable or ambiguous, fail closed by not dispatching the affected cadence-limited worker and record the incomplete cadence check. Never dispatch a worker in review mode or for another repository.
+After selecting the authorized target, dispatch every non-cadence-limited worker. Dispatch `self-care-dashboard-data-schema`, `self-care-docs-maintainer`, and `self-care-glossary` only when no run of the respective workflow is in progress or started during the preceding 24 hours. Inspect at most the ten most recent runs of each workflow to make this decision. Dispatch `self-care-pages-health` only when no run of that workflow is queued, in progress, or started during the preceding six hours. Inspect at most the 20 most recent Pages Health workflow runs to make this decision. If any run history is unavailable or ambiguous, fail closed by not dispatching the affected cadence-limited worker and record the incomplete cadence check. Never dispatch a worker in review mode or for another repository.
 
 ## Completion
 
 Finish with the standard orchestrator report inherited from `shared/control.md`. Preserve `Scope`, `Repository Decisions`, `Workers`, `Dispatches`, and `Outcome`, including every standard field. Use exact precomputed totals for repositories scanned and distinguish eligible, selected, skipped, and deferred repositories. Use `0`, `none`, or `not applicable` for every empty field.
 
-In `Outcome`, additionally state whether the sole authorized live target was selected, whether every non-cadence-limited SelfCare worker was dispatched, whether the dashboard data schema and glossary workers were daily-eligible and dispatched, and whether the Pages Health worker was six-hour-eligible and dispatched.
+In `Outcome`, additionally state whether the sole authorized live target was selected, whether every non-cadence-limited SelfCare worker was dispatched, whether the dashboard data schema, docs maintainer, and glossary workers were daily-eligible and dispatched, and whether the Pages Health worker was six-hour-eligible and dispatched.
 
 {{#runtime-import? .github/cao/self-care.md}}
