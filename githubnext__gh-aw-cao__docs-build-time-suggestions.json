@@ -1,6 +1,6 @@
 {
   "source_sha": "bf3638fbdd0696d43d08017df0cc93770fb3672e",
-  "next_category": "reusable dashboard generation",
+  "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
       "evaluated_at": "2026-09-17T12:52:00Z",
@@ -395,6 +395,24 @@
         36194500299
       ],
       "outcome": "no-op: evidence window 2026-09-25T22:00:08Z to 2026-09-25T23:21:35Z. Analyzed 9 comparable successful docs.yml runs from the latest 20 completed runs in the last 14 days (6 schedule, 3 push), while disclosing 7 skipped workflow_run runs, 3 cancelled runs, and 1 action_required workflow_run outlier. Parent workflow median duration was 53.0s (p90 69.4s), build median 33.0s (p90 38.6s), deploy-job median 11.0s (p90 18.2s), and build-job queue median 3.0s (p90 10.8s). Trusted job-step metadata and bounded logs confirmed Restore cached CAO Dashboard succeeded on 9/9 runs with Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact skipped on every sampled success, Upload Pages artifact stayed small at 5.0s median with a stable ~24.5 MB github-pages artifact, and Build documentation remained 8.0s median. The largest repeated current cost is external Deploy Pages latency at 7.0s median with 12-19s push and first-schedule outliers, while workflow-level queue time stayed low after excluding build-to-deploy waiting. Source review shows docs.yml already reuses the shared dashboard cache produced by cao-dashboard.yml and no repeated rebuild or packaging path remains large enough to justify a fresh repository-side recommendation expected to save at least 60 seconds or 15 percent of median execution time without weakening correctness, freshness, or deployment safety. No non-duplicate reusable-dashboard recommendation met the threshold.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-25T23:40:00Z",
+      "worker_run_id": 36201420623,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        36201306664,
+        36200657437,
+        36199325202,
+        36198220813,
+        36197199100,
+        36196411894,
+        36195333545,
+        36194654033,
+        36194581102
+      ],
+      "outcome": "no-op: evidence window 2026-09-25T22:00:58Z to 2026-09-25T23:31:40Z. Analyzed 9 comparable successful docs.yml runs from the latest 20 completed runs in the last 14 days (7 schedule, 2 push), while disclosing 7 skipped workflow_run runs, 3 cancelled runs, 1 action_required workflow_run outlier, and the absence of completed workflow_run successes in this sample. Parent workflow median duration was 53.0s (p90 69.4s), build median 33.0s (p90 38.6s), deploy-job median 10.0s (p90 18.2s), and queue median 0.0s (p90 0.0s). Trusted job-step metadata and bounded logs confirmed Restore node_modules succeeded on 9/9 runs with Install dependencies and Save node_modules skipped on 8/9 runs, Build documentation remained 8.0s median, Restore cached CAO Dashboard hit on 9/9 runs from key central-agentic-ops-dashboard with a stable ~17 MiB payload, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact were skipped on every sampled success. Upload Pages artifact stayed at 5.0s median and Deploy Pages at 7.0s median. Source review of .github/workflows/docs.yml and .github/workflows/cao-dashboard.yml shows the current shared dashboard cache path is working as intended, so there is no fresh reusable-dashboard bottleneck large enough to justify a non-duplicate workflow change expected to save at least 60 seconds or 15 percent of median execution time without weakening correctness, freshness, or deployment safety.",
       "suggestion_fingerprint": ""
     }
   ]
