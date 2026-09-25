@@ -153,27 +153,29 @@ test("ranks and caps broad dashboard changes to five likely pages", () => {
 });
 
 test("ranks page ids by changed file terms while preserving dashboard order ties", () => {
-  assert.deepEqual(rankDashboardPageIds({
+  const rankedDashboard = {
     dashboard: {
-      dashboard: {
-        pages: [
-          { id: "overview", title: "Overview", views: [] },
-          { id: "cost", title: "Cost", views: [] },
-          { id: "operational-value", title: "Operational Value", views: [] },
-          { id: "workflow-runtime", title: "Workflow runtime", views: [] },
-          { id: "repositories", title: "Repositories", views: [] },
-          { id: "campaigns", title: "Campaigns", views: [] },
-        ],
-      },
+      pages: [
+        { id: "overview", title: "Overview", views: [] },
+        { id: "cost", title: "Cost", views: [] },
+        { id: "operational-value", title: "Operational Value", views: [] },
+        { id: "workflow-runtime", title: "Workflow runtime", views: [] },
+        { id: "repositories", title: "Repositories", views: [] },
+        { id: "campaigns", title: "Campaigns", views: [] },
+      ],
     },
-    pageIds: [
-      "overview",
-      "cost",
-      "operational-value",
-      "workflow-runtime",
-      "repositories",
-      "campaigns",
-    ],
+  };
+  const pageIds = [
+    "overview",
+    "cost",
+    "operational-value",
+    "workflow-runtime",
+    "repositories",
+    "campaigns",
+  ];
+  assert.deepEqual(rankDashboardPageIds({
+    dashboard: rankedDashboard,
+    pageIds,
     changedFiles: [
       "dashboard/site/src/data/queries/operational-value.js",
       "dashboard/site/src/components/workflow-runtime.js",
@@ -183,6 +185,33 @@ test("ranks page ids by changed file terms while preserving dashboard order ties
     "workflow-runtime",
     "overview",
     "cost",
+    "repositories",
+  ]);
+  assert.deepEqual(rankDashboardPageIds({
+    dashboard: rankedDashboard,
+    pageIds,
+    changedFiles: [
+      "dashboard/site/src/data/queries/operational-value.js",
+      "dashboard/site/src/components/workflow-runtime.js",
+    ],
+    limit: 2,
+  }), ["operational-value", "workflow-runtime"]);
+  assert.deepEqual(rankDashboardPageIds({
+    dashboard: rankedDashboard,
+    pageIds: [
+      "overview",
+      "cost",
+      "operational-value",
+      "workflow-runtime",
+      "repositories",
+      "campaigns",
+    ],
+    changedFiles: ["unrelated/no-match.txt"],
+  }), [
+    "overview",
+    "cost",
+    "operational-value",
+    "workflow-runtime",
     "repositories",
   ]);
 });

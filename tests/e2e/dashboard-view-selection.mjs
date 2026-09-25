@@ -9,6 +9,7 @@ const primaryDashboardPath = "dashboard/site/dashboard.json";
 // PR assessments are informational and run live-data browser checks; five pages
 // keeps the job fast while still sampling the most relevant affected surfaces.
 export const maximumSelectedDashboardPageCount = 5;
+const pageSelectionDescriptorsByDashboard = new WeakMap();
 const pageSelectionWeights = Object.freeze({
   pathIncludesPageId: 100,
   pageIdTerm: 30,
@@ -116,7 +117,13 @@ function pageSelectionDescriptor(page, index) {
 }
 
 function pageSelectionDescriptors(dashboard) {
-  return dashboard.dashboard.pages.map((page, index) => pageSelectionDescriptor(page, index));
+  const cached = pageSelectionDescriptorsByDashboard.get(dashboard);
+  if (cached) return cached;
+  const descriptors = dashboard.dashboard.pages.map((page, index) =>
+    pageSelectionDescriptor(page, index)
+  );
+  pageSelectionDescriptorsByDashboard.set(dashboard, descriptors);
+  return descriptors;
 }
 
 function pageSelectionScore(page, changedFiles) {
@@ -209,7 +216,8 @@ export function selectAffectedPageIds({ dashboard, changedFiles, baseRef }) {
     dashboard.dashboard.pages.map((page) => page.id),
   );
   const selected = new Set();
-  const ranked = (pageIds) => rankDashboardPageIds({ dashboard, pageIds, changedFiles });
+  const ranked = (pageIds, options = {}) =>
+    rankDashboardPageIds({ dashboard, pageIds, changedFiles, ...options });
 
   for (const path of changedFiles) {
     if (path.endsWith("/dashboard.json") || path === primaryDashboardPath) {
@@ -250,7 +258,7 @@ export function selectAffectedPageIds({ dashboard, changedFiles, baseRef }) {
       return ranked(allPageIds);
     }
   }
-  return ranked(allPageIds.filter((pageId) => selected.has(pageId)));
+  return ranked(allPageIds.filter((pageId) => selected.has(pageId)), { limit: Infinity });
 }
 
 function main() {
