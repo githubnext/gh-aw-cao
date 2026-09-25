@@ -598,6 +598,47 @@ describe('chart element helpers', () => {
       .toEqual(['1M', '500K', '0']);
   });
 
+  it('packs the temporal chart y-axis gutter around its formatted labels', () => {
+    const chart = renderChartWidget('line', [
+      { x: '2026-09-10', y: 918, color: null },
+      { x: '2026-09-11', y: 0, color: null }
+    ], [{ name: 'value', className: 'chart-series-1' }]);
+
+    expect(chart.getAttribute('style')).toBe('--line-chart-left: 7%;');
+    expect(chart.querySelector('.line-chart-y-axis .line-chart-axis')?.getAttribute('x1')).toBe('7');
+    expect(chart.querySelector('.line-chart-grid')?.getAttribute('x1')).toBe('7');
+    expect(chart.querySelector('.line-chart-series')?.getAttribute('points')).toBe('7,4 100,38');
+  });
+
+  it('accounts for punctuation and wide glyphs when packing the y-axis gutter', () => {
+    const points = [
+      { x: '2026-09-10', y: 9_999, color: null },
+      { x: '2026-09-11', y: 0, color: null }
+    ];
+    const currencyChart = renderChartWidget('line', points, [], null, 'Total', {
+      name: 'US dollars',
+      symbol: 'USD',
+      significant: 2,
+      format: 'usd'
+    });
+    const unitChart = renderChartWidget('line', points, [], null, 'Total', {
+      name: 'Megawatts',
+      symbol: 'MW',
+      significant: 2
+    });
+    const longUnitChart = renderChartWidget('line', points, [], null, 'Total', {
+      name: 'Long unit',
+      symbol: 'W'.repeat(100),
+      significant: 2
+    });
+
+    expect([...currencyChart.querySelectorAll('.line-chart-y-axis text')].map((tick) => tick.textContent))
+      .toEqual(['$9,999.00', '$4,999.50', '$0.00']);
+    expect(currencyChart.getAttribute('style')).toBe('--line-chart-left: 15%;');
+    expect(unitChart.getAttribute('style')).toBe('--line-chart-left: 15%;');
+    expect(longUnitChart.getAttribute('style')).toBe('--line-chart-left: 75%;');
+  });
+
   it('renders area marks and stacks color series over the shared ordered axis', () => {
     const points = [
       { x: '2026-09-01', y: 2, color: 'review' },
@@ -616,9 +657,9 @@ describe('chart element helpers', () => {
     expect(chart.querySelectorAll('path.area-chart-area')).toHaveLength(2);
     expect(chart.querySelectorAll('.area-chart-point')).toHaveLength(4);
     expect(chart.querySelector('[data-chart-series="review"]')?.getAttribute('d'))
-      .toBe('M 16 24.4 L 100 10.8 L 100 38 L 16 38 Z');
+      .toBe('M 10 24.4 L 100 10.8 L 100 38 L 10 38 Z');
     expect(chart.querySelector('[data-chart-series="triage"]')?.getAttribute('d'))
-      .toBe('M 16 4 L 100 4 L 100 10.8 L 16 24.4 Z');
+      .toBe('M 10 4 L 100 4 L 100 10.8 L 10 24.4 Z');
     expect(chart.querySelector('.chart-point')?.getAttribute('aria-label')).toContain('2 AIC');
   });
 
@@ -654,7 +695,7 @@ describe('chart element helpers', () => {
       .sort((left, right) => left - right);
 
     expect(scatter.getAttribute('data-chart-widget')).toBe('scatter');
-    expect(xCoordinates).toEqual([16, 37, 100]);
+    expect(xCoordinates).toEqual([11, 33.25, 100]);
     expect([...scatter.querySelectorAll('.timeline-chart-axis span')].map((tick) => tick.getAttribute('title'))).toEqual([
       '2026-09-04T10:00:00.000Z',
       '2026-09-04T12:00:00.000Z',

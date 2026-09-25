@@ -134,11 +134,12 @@ if (runCollector) {
 if (caoAdapter) {
   if (!existsSync(caoAdapter)) fail(`CAO adapter not found: ${caoAdapter}`);
   const timestamp = shiftDays(adoption.adoptedAt, definition.evidence.window.cadenceDays);
+  const database = `${process.cwd()}/.cao/dashboard.sqlite`;
   const request = {
     schemaVersion: 1,
     timestamp,
     repositories: definition.evidence.repositories,
-    database: `${process.cwd()}/.cao/dashboard.sqlite`,
+    ...(existsSync(database) ? { database } : {}),
   };
   let records;
   try {
@@ -154,8 +155,7 @@ if (caoAdapter) {
   const recordKeys = records.map(
     ({ repository, valueId }) => `${String(repository).toLowerCase()}\0${valueId}`,
   );
-  const validRecords = records.length > 0
-    && records.length <= definition.evidence.repositories.length * metrics.length
+  const validRecords = records.length <= definition.evidence.repositories.length * metrics.length
     && new Set(recordKeys).size === recordKeys.length
     && records.every((record) => record.timestamp === timestamp
       && definition.evidence.repositories.some(

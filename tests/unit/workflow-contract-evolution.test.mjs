@@ -23,6 +23,7 @@ test("Optimization installs its bounded token workers", () => {
   const workerEntries = Object.entries(descriptor.workers);
   const declaredWorkflowIds = [descriptor.orchestrator, ...Object.values(descriptor.workers)].sort();
   const includedWorkflowIds = manifest.includes
+    .filter((include) => typeof include === "string")
     .filter((include) => include.endsWith(".md"))
     .map((include) => include.split("/").at(-1).replace(/\.md$/, ""))
     .sort();

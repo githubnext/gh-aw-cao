@@ -116,6 +116,8 @@ const dashboardExpectedFiles = [
   ).matchAll(/^\s+destination: (.+)$/gm)].map((match) => match[1]),
 ];
 const optimizationExpectedFiles = [
+  "optimization/operational-value.mjs",
+  "optimization/operational-value/optimization-token-optimizer.mjs",
   "optimization/.github/graders/optimization-token-auditor-operational-value.sh",
   "optimization/.github/graders/optimization-token-optimizer-operational-value.sh",
   ".github/workflows/graders/optimization-token-auditor-operational-value.sh",

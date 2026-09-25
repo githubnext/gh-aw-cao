@@ -2741,11 +2741,27 @@ function validateView(view, viewNode, path, viewIds, errors) {
       for (const key of linkButtonConfigKeys) {
         if (view.config[key] === undefined) continue;
         validateStringField(view.config[key], `${path}.config.${key}`, true, errors);
-        if (view.element !== 'link-button-list') {
+        if (view.element !== 'link-button-list' && !(key === 'empty-message' && view.element === 'measure-history')) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
             `config.${key} is supported only for the link-button-list element.`,
             `${path}.config.${key}`
+          ));
+        }
+      }
+      if (view.config['measure-source'] !== undefined) {
+        validateStringField(view.config['measure-source'], `${path}.config.measure-source`, true, errors);
+        if (view.element !== 'measure-history') {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'config.measure-source is supported only for the measure-history element.',
+            `${path}.config.measure-source`
+          ));
+        } else if (!['operational-value', 'operational-grader'].includes(String(view.config['measure-source']))) {
+          errors.push(createError(
+            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+            'measure-history config.measure-source must use a canonical measure source value.',
+            `${path}.config.measure-source`
           ));
         }
       }

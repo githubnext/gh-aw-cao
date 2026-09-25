@@ -2629,7 +2629,7 @@ export async function analyzeDashboardComplexityFile({
   };
 }
 
-export async function runCli(arguments_, input = process.stdin, signal) {
+export async function runCli(arguments_, input = process.stdin, { signal } = {}) {
   const [command, ...rawOptionArguments] = arguments_;
   if (!command || command === '--help' || command === 'help') return USAGE;
   if (command === 'init') {
@@ -2840,7 +2840,8 @@ export async function runCli(arguments_, input = process.stdin, signal) {
       timestamp: option(options, 'timestamp', false) || new Date().toISOString(),
       repositories: repositoryOptions,
       rateLimitReserve: operationalValueReserve(option(options, 'max-github-api-rate-limit', false), UsageError),
-      retentionWindow: retentionWindowMs(options)
+      retentionWindow: retentionWindowMs(options),
+      signal
     });
   }
 
@@ -2901,19 +2902,27 @@ export async function runCli(arguments_, input = process.stdin, signal) {
 async function main() {
   const arguments_ = process.argv.slice(2);
   const controller = new AbortController();
-  const handlers = new Map(['SIGINT', 'SIGTERM'].map((signal) => [
-    signal,
-    () => controller.abort(new Error(`Problem clustering cancelled by ${signal}`))
-  ]));
-  if (arguments_[0] === 'cluster-problems') {
-    for (const [signal, handler] of handlers) process.once(signal, handler);
+  let terminationSignal;
+  const terminate = (signal) => {
+    terminationSignal = signal;
+    controller.abort(new Error(`Received ${signal}`));
+  };
+  const onSigint = () => terminate('SIGINT');
+  const onSigterm = () => terminate('SIGTERM');
+  if (arguments_[0] === 'operational-value' || arguments_[0] === 'cluster-problems') {
+    process.once('SIGINT', onSigint);
+    process.once('SIGTERM', onSigterm);
   }
   try {
-    const output = await runCli(arguments_, process.stdin, controller.signal);
+    const output = await runCli(arguments_, process.stdin, { signal: controller.signal });
     process.stdout.write(`${typeof output === 'string' ? output : JSON.stringify(output, null, 2)}\n`);
     if (typeof output === 'object' && output?.command === 'doctor' && !output.healthy) process.exitCode = 2;
+  } catch (error) {
+    if (!controller.signal.aborted || error !== controller.signal.reason) throw error;
+    process.exitCode = terminationSignal === 'SIGINT' ? 130 : 143;
   } finally {
-    for (const [signal, handler] of handlers) process.removeListener(signal, handler);
+    process.removeListener('SIGINT', onSigint);
+    process.removeListener('SIGTERM', onSigterm);
   }
 }
 

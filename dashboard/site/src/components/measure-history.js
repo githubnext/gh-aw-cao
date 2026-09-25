@@ -4,6 +4,7 @@
 
 import { h } from '../dom.js';
 import { formatNumber } from '../view-formatters.js';
+import { renderStatusBadge } from './badge.js';
 import { listChartSeries, renderChartLegend, renderChartWidget } from './chart-elements.js';
 import { rowsFor } from './source-rows.js';
 
@@ -15,6 +16,9 @@ const SELECT_POINT_MESSAGE = 'Select a point to inspect that observation.';
 export function renderMeasureHistory(context) {
   const sourceName = context.sourceNames[0] ?? '';
   const metrics = rowsFor(context.sources, sourceName);
+  const measureSource = context.elementConfig?.['measure-source'] === 'operational-value'
+    ? 'operational-value'
+    : 'operational-grader';
   if (metrics.length === 0) {
     return h('section', { className: 'measure-history', 'aria-label': context.title },
       h('p', { className: 'empty-message' }, context.elementConfig?.['empty-message'] ?? 'No measure history was observed in the selected horizon.'));
@@ -24,16 +28,21 @@ export function renderMeasureHistory(context) {
     h('div', { className: 'insights-section-heading' },
       h('div', null,
         h('span', { className: 'insights-eyebrow' }, 'Selected horizon'),
-        h('h2', null, 'Measure and diagnostic history'),
-        h('p', null, 'Each measure occupies its own row, preserves every retained extract, keeps workflow series separate, and supports selecting individual observations.'))),
-    h('div', { className: 'insights-measure-rows' }, ...metrics.map((metric) => renderMeasureRow(metric))));
+        h('h2', null, measureSource === 'operational-value'
+          ? 'Repository operational-value history'
+          : 'Measure and diagnostic history'),
+        h('p', null, measureSource === 'operational-value'
+          ? 'Each repository-level measure preserves every retained observation. Interim evidence remains visible and is marked dubious until it matures.'
+          : 'Each measure occupies its own row, preserves every retained extract, keeps workflow series separate, and supports selecting individual observations.'))),
+    h('div', { className: 'insights-measure-rows' }, ...metrics.map((metric) => renderMeasureRow(metric, measureSource))));
 }
 
 /**
  * @param {Record<string, unknown>} metric
+ * @param {'operational-value'|'operational-grader'} measureSource
  * @returns {HTMLElement}
  */
-function renderMeasureRow(metric) {
+function renderMeasureRow(metric, measureSource) {
   const points = /** @type {Array<{ x: string, y: number, color: string, key: string }>} */ (
     (Array.isArray(metric.points) ? metric.points : []).slice().sort((left, right) => Date.parse(left.x) - Date.parse(right.x))
   );
@@ -41,13 +50,21 @@ function renderMeasureRow(metric) {
   const kind = String(metric['metric-kind']);
   const name = String(metric['metric-name'] || metric.metric || 'Metric');
   const title = kind === 'primary' ? humanizeIdentifier(name) : name;
+  const maturityStatus = String(metric['maturity-status'] || '');
+  const dubious = measureSource === 'operational-value' && maturityStatus !== 'matured';
   const chart = renderChartWidget('line', points, series);
   const readout = h('p', { className: 'insights-point-readout', role: 'status' }, SELECT_POINT_MESSAGE);
   attachPointSelection(chart, points, readout);
   return h('section', { className: 'insights-plot-panel insights-measure-row', 'data-metric-kind': kind },
     h('header', null,
-      h('h3', null, title),
-      h('p', null, describeMeasure(kind, title, points, series.length))),
+      h('div', { className: 'insights-measure-heading' },
+        h('h3', null, title),
+        dubious
+          ? h('span', { className: 'insights-dubious-flag' },
+            h('span', null, 'Dubious'),
+            renderStatusBadge(maturityStatus || 'interim'))
+          : null),
+      h('p', null, describeMeasure(kind, title, points, series.length, measureSource, maturityStatus))),
     h('div', { className: 'insights-measure-plot' },
       h('span', { className: 'insights-axis-label insights-axis-y' }, `${title} (measured value)`),
       h('div', { className: 'insights-measure-canvas' }, chart),
@@ -61,12 +78,16 @@ function renderMeasureRow(metric) {
  * @param {string} title
  * @param {Array<{ x: string, y: number }>} points
  * @param {number} seriesCount
+ * @param {'operational-value'|'operational-grader'} measureSource
+ * @param {string} maturityStatus
  * @returns {string}
  */
-function describeMeasure(kind, title, points, seriesCount) {
-  const lead = kind === 'primary'
-    ? `Primary operational-grader measure “${title}” extracted from this package's workflow runs.`
-    : `Diagnostic measure “${title}” reported alongside the primary operational grader.`;
+function describeMeasure(kind, title, points, seriesCount, measureSource, maturityStatus) {
+  const lead = measureSource === 'operational-value'
+    ? `Repository operational-value measure “${title}”.${maturityStatus && maturityStatus !== 'matured' ? ` Its ${maturityStatus} observations are provisional lower bounds, not verified attainment.` : ''}`
+    : kind === 'primary'
+      ? `Primary operational-grader measure “${title}” extracted from this package's workflow runs.`
+      : `Diagnostic measure “${title}” reported alongside the primary operational grader.`;
   const extracts = `${formatNumber(points.length)} ${points.length === 1 ? 'extract' : 'extracts'}`;
   const seriesText = `${formatNumber(seriesCount)} workflow series`;
   const first = points[0] ? formatInstant(points[0].x) : '';
@@ -140,6 +161,6 @@ function formatInstant(value) {
 
 /** @param {string} value */
 function humanizeIdentifier(value) {
-  const normalized = value.replaceAll(/[-_]+/g, ' ').trim();
+  const normalized = value.replaceAll(/[-_.]+/g, ' ').trim();
   return normalized ? `${normalized.charAt(0).toUpperCase()}${normalized.slice(1)}` : 'Metric';
 }

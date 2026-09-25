@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { readFile, readdir, mkdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { canonicalTimestamp } from '../dashboard/site/src/data/model/schema.js';
@@ -7,6 +7,7 @@ import { readCollection } from '../dashboard/site/src/data/storage/indexeddb.js'
 export const REPOSITORY_COORDINATE = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
 const OPERATIONAL_VALUE_ID = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
 const WORKER_TIMEOUT_MS = 2 * 60 * 1000;
+const RATE_LIMIT_TIMEOUT_MS = 30 * 1000;
 const WORKER_ENVIRONMENT = [
   'CI',
   'HOME',
@@ -45,13 +46,18 @@ async function discoverOperationalValueScripts(root) {
   return scripts;
 }
 
-function githubApiRemaining(env) {
-  const result = spawnSync('gh', ['api', 'rate_limit', '--jq', '.resources.core.remaining'], {
-    encoding: 'utf8',
-    env
+async function githubApiRemaining(env, signal) {
+  const result = await runChildProcess('gh', ['api', 'rate_limit', '--jq', '.resources.core.remaining'], {
+    env,
+    signal,
+    timeoutMs: RATE_LIMIT_TIMEOUT_MS
   });
+  signal?.throwIfAborted();
   if (result.error || result.status !== 0) {
-    throw new Error(`Unable to read GitHub API rate limit: ${commandFailureMessage(result, 'gh api rate_limit failed')}`);
+    const message = result.timedOut
+      ? `timed out after ${RATE_LIMIT_TIMEOUT_MS} ms`
+      : commandFailureMessage(result, 'gh api rate_limit failed');
+    throw new Error(`Unable to read GitHub API rate limit: ${message}`);
   }
   const remaining = Number(String(result.stdout).trim());
   if (!Number.isSafeInteger(remaining) || remaining < 0) {
@@ -78,17 +84,124 @@ function redactToken(message, token) {
   return token ? String(message).replaceAll(token, '***') : String(message);
 }
 
-function runOperationalValueWorker(entry, request, env) {
-  const result = spawnSync(process.execPath, [entry.script], {
-    encoding: 'utf8',
-    input: request,
-    maxBuffer: 16 * 1024 * 1024,
-    timeout: WORKER_TIMEOUT_MS,
-    killSignal: 'SIGKILL',
-    env
+function terminateProcessTree(child) {
+  if (!child.pid) return;
+  if (process.platform === 'win32') {
+    const script = [
+      '$processes = Get-CimInstance Win32_Process',
+      '$children = @{}',
+      'foreach ($process in $processes) { $children[$process.ParentProcessId] += @($process.ProcessId) }',
+      'function Stop-Tree([int]$id) {',
+      '  foreach ($descendant in @($children[$id])) { Stop-Tree $descendant }',
+      '  Stop-Process -Id $id -Force -ErrorAction SilentlyContinue',
+      '}',
+      `Stop-Tree ${child.pid}`
+    ].join('; ');
+    spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+      windowsHide: true
+    });
+    return;
+  }
+  try {
+    process.kill(-child.pid, 'SIGKILL');
+    return;
+  } catch {}
+  const processes = spawnSync('ps', ['-eo', 'pid=,ppid='], { encoding: 'utf8' });
+  const children = new Map();
+  for (const line of String(processes.stdout ?? '').split(/\r?\n/)) {
+    const [pid, parent] = line.trim().split(/\s+/).map(Number);
+    if (!Number.isSafeInteger(pid) || !Number.isSafeInteger(parent)) continue;
+    const siblings = children.get(parent) ?? [];
+    siblings.push(pid);
+    children.set(parent, siblings);
+  }
+  const tree = [];
+  const visit = (pid) => {
+    tree.push(pid);
+    for (const descendant of children.get(pid) ?? []) visit(descendant);
+  };
+  visit(child.pid);
+  for (const pid of tree) {
+    try {
+      process.kill(pid, 'SIGSTOP');
+    } catch {}
+  }
+  for (const pid of tree.reverse()) {
+    try {
+      process.kill(pid, 'SIGKILL');
+    } catch {}
+  }
+}
+
+function runChildProcess(command, args, {
+  env,
+  input,
+  maxBuffer = 16 * 1024 * 1024,
+  signal,
+  timeoutMs
+} = {}) {
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+  const workerSignal = signal
+    ? AbortSignal.any([signal, timeoutSignal])
+    : timeoutSignal;
+  return new Promise((resolve) => {
+    const child = spawn(command, args, {
+      detached: process.platform !== 'win32',
+      env,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      windowsHide: true
+    });
+    const stdout = [];
+    const stderr = [];
+    let stdoutLength = 0;
+    let stderrLength = 0;
+    let error;
+    const collect = (chunks, chunk, stream) => {
+      chunks.push(chunk);
+      if (stream === 'stdout') stdoutLength += chunk.length;
+      else stderrLength += chunk.length;
+      if (stdoutLength > maxBuffer || stderrLength > maxBuffer) {
+        error ??= new Error(`${stream} exceeded maxBuffer`);
+        terminateProcessTree(child);
+      }
+    };
+    child.stdout.on('data', (chunk) => collect(stdout, chunk, 'stdout'));
+    child.stderr.on('data', (chunk) => collect(stderr, chunk, 'stderr'));
+    child.once('error', (cause) => {
+      error = cause;
+    });
+    child.once('exit', () => terminateProcessTree(child));
+    child.once('close', (status) => {
+      workerSignal.removeEventListener('abort', abortWorker);
+      terminateProcessTree(child);
+      resolve({
+        error,
+        status,
+        stdout: Buffer.concat(stdout).toString('utf8'),
+        stderr: Buffer.concat(stderr).toString('utf8'),
+        timedOut: timeoutSignal.aborted && !signal?.aborted
+      });
+    });
+    const abortWorker = () => terminateProcessTree(child);
+    workerSignal.addEventListener('abort', abortWorker, { once: true });
+    if (workerSignal.aborted) abortWorker();
+    child.stdin.end(input, () => {});
   });
+}
+
+async function runOperationalValueWorker(entry, request, env, { signal, timeoutMs = WORKER_TIMEOUT_MS } = {}) {
+  const result = await runChildProcess(process.execPath, [entry.script], {
+    env,
+    input: request,
+    signal,
+    timeoutMs
+  });
+  signal?.throwIfAborted();
   if (result.error || result.status !== 0) {
-    throw new Error(`${entry.script} failed: ${commandFailureMessage(result, 'operational-value.mjs failed')}`);
+    const message = result.timedOut
+      ? `timed out after ${timeoutMs} ms`
+      : commandFailureMessage(result, 'operational-value.mjs failed');
+    throw new Error(`${entry.script} failed: ${message}`, { cause: result.error });
   }
   return result.stdout;
 }
@@ -119,6 +232,10 @@ function parseOperationalValueOutput(content, source, repositories) {
     const repository = String(record.repository ?? '');
     const valueId = String(record.valueId ?? '');
     const value = record.value;
+    const metricRole = record.metricRole ?? 'primary';
+    const metricName = record.metricName ?? valueId;
+    const metricDirection = record.metricDirection ?? 'increase';
+    const maturityStatus = record.maturityStatus ?? 'matured';
     if (!REPOSITORY_COORDINATE.test(repository) || !allowedRepositories.has(repository.toLowerCase())) {
       throw new Error(`${source}:${index + 1}.repository must identify a requested repository`);
     }
@@ -128,7 +245,28 @@ function parseOperationalValueOutput(content, source, repositories) {
     if (typeof value !== 'number' || !Number.isFinite(value)) {
       throw new Error(`${source}:${index + 1}.value must be a finite number`);
     }
-    return [{ timestamp, repository, valueId, value }];
+    if (!['primary', 'diagnostic'].includes(metricRole)) {
+      throw new Error(`${source}:${index + 1}.metricRole must be primary or diagnostic`);
+    }
+    if (typeof metricName !== 'string' || !metricName.trim()) {
+      throw new Error(`${source}:${index + 1}.metricName must be a non-empty string`);
+    }
+    if (!['increase', 'decrease', 'maintain', 'target'].includes(metricDirection)) {
+      throw new Error(`${source}:${index + 1}.metricDirection is invalid`);
+    }
+    if (!['matured', 'interim', 'unavailable'].includes(maturityStatus)) {
+      throw new Error(`${source}:${index + 1}.maturityStatus is invalid`);
+    }
+    return [{
+      timestamp,
+      repository,
+      valueId,
+      value,
+      ...(Object.hasOwn(record, 'metricRole') ? { metricRole } : {}),
+      ...(Object.hasOwn(record, 'metricName') ? { metricName: metricName.trim() } : {}),
+      ...(Object.hasOwn(record, 'metricDirection') ? { metricDirection } : {}),
+      ...(Object.hasOwn(record, 'maturityStatus') ? { maturityStatus } : {})
+    }];
   });
 }
 
@@ -162,8 +300,11 @@ export async function runOperationalValue({
   timestamp = new Date().toISOString(),
   repositories = [],
   rateLimitReserve,
-  retentionWindow
+  retentionWindow,
+  signal,
+  workerTimeoutMs = WORKER_TIMEOUT_MS
 }) {
+  signal?.throwIfAborted();
   const observedAt = canonicalTimestamp(timestamp, '--timestamp');
   const selectedRepositories = repositories.length > 0
     ? repositories
@@ -194,25 +335,32 @@ export async function runOperationalValue({
   };
   for (const entry of scripts) {
     try {
-      if (rateLimitReserve !== undefined && githubApiRemaining(worker.env) <= rateLimitReserve) {
+      signal?.throwIfAborted();
+      if (rateLimitReserve !== undefined && await githubApiRemaining(worker.env, signal) <= rateLimitReserve) {
         throw new Error(`GitHub API core remaining is at or below the reserved ${rateLimitReserve} requests`);
       }
-      const output = runOperationalValueWorker(entry, request, worker.env);
+      const output = await runOperationalValueWorker(entry, request, worker.env, {
+        signal,
+        timeoutMs: workerTimeoutMs
+      });
       values.push(...parseOperationalValueOutput(output, entry.script, uniqueRepositories)
         .map((record) => ({ ...record, campaign: entry.package })));
     } catch (error) {
+      signal?.throwIfAborted();
       warn(entry, error);
     }
   }
+  signal?.throwIfAborted();
   if (rateLimitReserve !== undefined) {
     try {
-      if (githubApiRemaining(worker.env) < rateLimitReserve) {
+      if (await githubApiRemaining(worker.env, signal) < rateLimitReserve) {
         throw new Error(`Operational value crossed the reserved GitHub API floor of ${rateLimitReserve} requests`);
       }
     } catch (error) {
       warn(null, error);
     }
   }
+  signal?.throwIfAborted();
   const output = outputPath ? path.resolve(outputPath) : undefined;
   if (output) {
     await mkdir(path.dirname(output), { recursive: true });
@@ -225,7 +373,11 @@ export async function runOperationalValue({
         campaign: record.campaign,
         campaign_id: `campaign:${record.campaign}`,
         value_id: record.valueId,
-        value: record.value
+        value: record.value,
+        metric_role: record.metricRole ?? 'primary',
+        metric_name: record.metricName ?? record.valueId,
+        metric_direction: record.metricDirection ?? 'increase',
+        maturity_status: record.maturityStatus ?? 'matured'
       }
     }));
     const retained = retentionWindow === undefined
@@ -244,6 +396,7 @@ export async function runOperationalValue({
       await rm(temporary, { force: true });
     }
   }
+  signal?.throwIfAborted();
   return {
     command: 'operational-value',
     timestamp: observedAt,

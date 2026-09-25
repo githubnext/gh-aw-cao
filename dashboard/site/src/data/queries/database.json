@@ -295,6 +295,8 @@
       { "field": "rollout-mode" },
       { "field": "value", "as": "operational-value" },
       { "field": "valueId", "as": "operational-value-definition" },
+      { "field": "operational-value-role" },
+      { "field": "operational-value-name" },
       { "field": "operational-value-unit" },
       { "field": "operational-value-direction" },
       { "field": "requested-evidence-at" },

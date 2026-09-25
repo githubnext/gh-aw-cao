@@ -1,13 +1,146 @@
 import assert from 'node:assert/strict';
-import { execFileSync, spawnSync } from 'node:child_process';
-import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { pathToFileURL } from 'node:url';
+import { runOperationalValue } from '../../activity/operational-value.mjs';
 
 const root = path.resolve(import.meta.dirname, '..', '..');
 const cao = path.join(root, 'activity', 'cao.mjs');
+
+test('operational-value worker execution is cancellable', async () => {
+  const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-value-abort-'));
+  const packageDirectory = path.join(temporary, 'example');
+  const orphanMarker = path.join(temporary, 'orphan');
+  mkdirSync(packageDirectory);
+  writeFileSync(path.join(packageDirectory, 'operational-value.mjs'), `
+import { spawn } from 'node:child_process';
+spawn(process.execPath, ['-e', ${JSON.stringify(
+  `setTimeout(() => require('node:fs').writeFileSync(${JSON.stringify(orphanMarker)}, 'alive'), 150); setInterval(() => {}, 1_000);`
+)}]);
+setInterval(() => {}, 1_000);\n`);
+  const controller = new AbortController();
+  const reason = new Error('operational value cancelled');
+  const cancellation = setTimeout(() => controller.abort(reason), 50);
+
+  try {
+    await assert.rejects(runOperationalValue({
+      indexedDB: null,
+      databasePath: path.join(temporary, 'dashboard.sqlite'),
+      root: temporary,
+      repositories: ['githubnext/gh-aw-cao'],
+      signal: controller.signal
+    }), reason);
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    assert.equal(existsSync(orphanMarker), false);
+  } finally {
+    clearTimeout(cancellation);
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('operational-value worker execution times out and continues', async () => {
+  const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-value-timeout-'));
+  const failedDirectory = path.join(temporary, 'failed');
+  const successfulDirectory = path.join(temporary, 'successful');
+  mkdirSync(failedDirectory);
+  mkdirSync(successfulDirectory);
+  writeFileSync(path.join(failedDirectory, 'operational-value.mjs'), 'setInterval(() => {}, 1_000);\n');
+  writeFileSync(path.join(successfulDirectory, 'operational-value.mjs'), `
+const chunks = [];
+for await (const chunk of process.stdin) chunks.push(chunk);
+const request = JSON.parse(Buffer.concat(chunks).toString());
+console.log(JSON.stringify({timestamp:request.timestamp,repository:request.repositories[0],valueId:"successful",value:1}));\n`);
+
+  try {
+    const result = await runOperationalValue({
+      indexedDB: null,
+      databasePath: path.join(temporary, 'dashboard.sqlite'),
+      root: temporary,
+      repositories: ['githubnext/gh-aw-cao'],
+      workerTimeoutMs: 500
+    });
+
+    assert.equal(result.warnings.length, 1);
+    assert.match(result.warnings[0].message, /timed out after 500 ms/);
+    assert.deepEqual(result.values.map(({ campaign, valueId }) => ({ campaign, valueId })), [
+      { campaign: 'successful', valueId: 'successful' }
+    ]);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('operational-value cleans up descendants after worker failure', async () => {
+  const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-value-failure-tree-'));
+  const packageDirectory = path.join(temporary, 'failed');
+  const orphanMarker = path.join(temporary, 'orphan');
+  mkdirSync(packageDirectory);
+  writeFileSync(path.join(packageDirectory, 'operational-value.mjs'), `
+import { spawn } from 'node:child_process';
+spawn(process.execPath, ['-e', ${JSON.stringify(
+  `setTimeout(() => require('node:fs').writeFileSync(${JSON.stringify(orphanMarker)}, 'alive'), 150); setInterval(() => {}, 1_000);`
+)}]);
+process.exit(1);\n`);
+
+  try {
+    const result = await runOperationalValue({
+      indexedDB: null,
+      databasePath: path.join(temporary, 'dashboard.sqlite'),
+      root: temporary,
+      repositories: ['githubnext/gh-aw-cao']
+    });
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    assert.equal(result.warnings.length, 1);
+    assert.equal(existsSync(orphanMarker), false);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('cao operational-value terminates worker process trees on SIGTERM', async () => {
+  const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-value-sigterm-'));
+  const packageDirectory = path.join(temporary, 'example');
+  const orphanMarker = path.join(temporary, 'orphan');
+  const readyMarker = path.join(temporary, 'ready');
+  mkdirSync(packageDirectory);
+  writeFileSync(path.join(packageDirectory, 'operational-value.mjs'), `
+import { spawn } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
+spawn(process.execPath, ['-e', ${JSON.stringify(
+  `setTimeout(() => require('node:fs').writeFileSync(${JSON.stringify(orphanMarker)}, 'alive'), 300); setInterval(() => {}, 1_000);`
+)}]);
+writeFileSync(${JSON.stringify(readyMarker)}, 'ready');
+setInterval(() => {}, 1_000);\n`);
+
+  try {
+    const execution = spawn(process.execPath, [
+      cao,
+      'operational-value',
+      '--database', path.join(temporary, 'dashboard.sqlite'),
+      '--root', temporary,
+      '--repository', 'githubnext/gh-aw-cao'
+    ], { stdio: 'ignore' });
+    for (let attempt = 0; attempt < 40 && !existsSync(readyMarker); attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    assert.equal(existsSync(readyMarker), true);
+    execution.kill('SIGTERM');
+    const [status, signal] = await new Promise((resolve) => {
+      execution.once('close', (code, closedBySignal) => resolve([code, closedBySignal]));
+    });
+    await new Promise((resolve) => setTimeout(resolve, 350));
+
+    assert.equal(status, 143);
+    assert.equal(signal, null);
+    assert.equal(existsSync(orphanMarker), false);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
 
 test('cao operational-value runs package scripts and ingests emitted JSONL', () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-value-'));
@@ -20,7 +153,7 @@ test('cao operational-value runs package scripts and ingests emitted JSONL', () 
 const request = JSON.parse(readFileSync(0, 'utf8'));
 for (const repository of request.repositories) {
   const isolated = process.env.GH_TOKEN === "read-only-token" && process.env.UNRELATED_SECRET === undefined;
-  console.log(JSON.stringify({timestamp:request.timestamp,repository,valueId:"example-count",value:isolated ? 2 : 0}));
+  console.log(JSON.stringify({timestamp:request.timestamp,repository,valueId:"example-count",value:isolated ? 2 : 0,metricRole:"diagnostic",metricName:"Example count",metricDirection:"decrease",maturityStatus:"interim"}));
 }\n`);
   chmodSync(script, 0o755);
 
@@ -52,6 +185,18 @@ for (const repository of request.repositories) {
     { repository: 'github/gh-aw', valueId: 'example-count', value: 2 },
     { repository: 'githubnext/gh-aw-cao', valueId: 'example-count', value: 2 },
   ]);
+  assert.deepEqual(
+    stored.map((record) => ({
+      role: record['operational-value-role'],
+      name: record['operational-value-name'],
+      direction: record['operational-value-direction'],
+      maturity: record['maturity-status'],
+    })),
+    [
+      { role: 'diagnostic', name: 'Example count', direction: 'decrease', maturity: 'interim' },
+      { role: 'diagnostic', name: 'Example count', direction: 'decrease', maturity: 'interim' },
+    ],
+  );
 });
 
 test('cao operational-value warns on worker failure and preserves successful values', () => {

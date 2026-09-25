@@ -116,6 +116,7 @@ test("operational workflows use the transitive CAO campaign bundle", () => {
       .map((workflowId) => `.github/workflows/${workflowId}.md`)
       .sort();
     const includedWorkflowPaths = manifest.includes
+      .filter((include) => typeof include === "string")
       .filter((include) => include.endsWith(".md"))
       .sort();
 
@@ -204,7 +205,7 @@ test("focused campaign manifests do not cross-own campaign files", () => {
     const files = [
       ...(manifest.includes ?? []).filter((entry) => entry !== "../aw.yml").map((entry) => typeof entry === "string" ? {
         source: entry,
-        destination: entry,
+        destination: entry.startsWith(".github/workflows/") ? entry : `${campaignName}/${entry}`,
       } : entry),
       ...(manifest.resources ?? []),
     ];

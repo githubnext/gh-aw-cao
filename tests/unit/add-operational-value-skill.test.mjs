@@ -41,7 +41,7 @@ includes:
   ), /workflow not found: unrelated/);
 });
 
-test("campaign wiring creates one standard adapter and idempotent manifest entries", () => {
+test("campaign wiring creates one standard adapter without unsupported manifest entries", () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), "operational-value-campaign-wire-"));
   mkdirSync(path.join(temporary, "example/operational-value"), { recursive: true });
   writeFileSync(path.join(temporary, "example/aw.yml"), `name: Example
@@ -68,8 +68,9 @@ includes:
     readFileSync(path.join(root, ".github/skills/add-operational-value/templates/campaign-operational-value.mjs"), "utf8"),
   );
   const manifest = readFileSync(path.join(temporary, "example/aw.yml"), "utf8");
-  assert.equal((manifest.match(/- operational-value\.mjs/g) ?? []).length, 1);
-  assert.equal((manifest.match(/- operational-value\/example\.mjs/g) ?? []).length, 1);
+  assert.equal(manifest.includes("operational-value.mjs"), false);
+  assert.equal(manifest.includes("operational-value/example.mjs"), false);
+  assert.equal(manifest.endsWith("\n"), true);
 
   writeFileSync(path.join(temporary, "example/operational-value.mjs"), "custom adapter\n");
   assert.throws(
@@ -123,4 +124,40 @@ for (const repository of request.repositories) {
     { encoding: "utf8" },
   );
   assert.equal(output, `verified ${valueModule}\n`);
+});
+
+test("attainment evaluation waits for one full post-adoption matured window", () => {
+  const temporary = mkdtempSync(path.join(os.tmpdir(), "operational-value-maturation-"));
+  const source = path.join(root, "optimization/operational-value/optimization-token-optimizer.mjs");
+  const valueModule = path.join(temporary, "maturation-test.mjs");
+  writeFileSync(valueModule, `
+import * as original from ${JSON.stringify(pathToFileURL(source).href)};
+export const definition = {
+  ...original.definition,
+  slug: "maturation-test",
+  sourcePath: ".github/workflows/maturation-test.md"
+};
+export const collectBatch = original.collectBatch;
+export const scoreMetric = original.scoreMetric;
+`);
+
+  assert.throws(
+    () => execFileSync(
+      process.execPath,
+      [
+        path.join(scripts, "evaluate.mjs"),
+        "--function",
+        valueModule,
+        "--end",
+        "2026-09-24T20:48:02Z",
+        "--output-dir",
+        path.join(temporary, "reports"),
+        "--no-runs",
+        "githubnext/gh-aw-cao",
+        "maturation-test",
+      ],
+      { cwd: root, stdio: "pipe" },
+    ),
+    /evaluation end must follow 2026-10-13T23:30:36Z/,
+  );
 });

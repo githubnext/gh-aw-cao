@@ -8059,6 +8059,42 @@
         }
       },
       {
+        "name": "campaign-operational-value-primary-series",
+        "intent": "Project repository-level campaign operational value into temporal series while preserving maturity status.",
+        "description": "Repository operational-value history with interim observations kept visibly separate from matured evidence.",
+        "from": "operational-values",
+        "filter": {
+          "predicates": [
+            {
+              "field": "operational-value-role",
+              "equals": "primary"
+            }
+          ]
+        },
+        "temporal-series": {
+          "time": "observed-at",
+          "series": "repository",
+          "shape": "groups",
+          "carry": [
+            "campaign",
+            "maturity-status"
+          ],
+          "measures": [
+            {
+              "field": "operational-value",
+              "key": "operational-value-definition",
+              "kind": "primary"
+            }
+          ]
+        }
+      },
+      {
+        "name": "campaign-operational-value-plot-inventory",
+        "intent": "Describe each repository operational-value plot rendered on campaign Insights.",
+        "description": "One plot-inventory row for every repository operational-value measure and maturity state.",
+        "from": "campaign-operational-value-primary-series"
+      },
+      {
         "name": "campaign-operational-grader-plot-inventory",
         "intent": "Describe each rendered operational-grader plot using the shared campaign Insights plot contract.",
         "description": "One plot-inventory row for every operational-grader measure or diagnostic rendered on campaign Insights.",
@@ -8086,8 +8122,9 @@
         "name": "campaign-insight-plot-inventory",
         "intent": "Inventory every plot rendered on each campaign Insights page through one reusable plot contract.",
         "description": "One campaign row per rendered Insights plot, independent of the plot's data source or renderer.",
-        "from": "campaign-operational-grader-plot-inventory",
+        "from": "campaign-operational-value-plot-inventory",
         "union": [
+          "campaign-operational-grader-plot-inventory",
           "campaign-audit-summary-plot-inventory"
         ]
       },
@@ -10789,6 +10826,29 @@
             }
           },
           {
+            "id": "campaign-operational-value-history",
+            "title": "Repository operational value",
+            "description": "Repository-level operational value over time. Interim points are visible but explicitly marked dubious until their evidence matures.",
+            "data": {
+              "sources": [
+                "campaign-operational-value-primary-series"
+              ],
+              "arguments": [
+                {
+                  "name": "campaign",
+                  "field": "campaign"
+                }
+              ]
+            },
+            "mark": "element",
+            "element": "measure-history",
+            "layout": "full",
+            "config": {
+              "measure-source": "operational-value",
+              "empty-message": "No repository operational-value observations have been published for this campaign yet."
+            }
+          },
+          {
             "id": "campaign-operational-grader-history",
             "title": "Operational grader history",
             "description": "Every retained operational-grader measure and diagnostic, separated by metric and workflow series.",
@@ -12728,6 +12788,124 @@
         "description": "Compare observed agent and model combinations from workflow runs."
       },
       {
+        "id": "operational-value",
+        "kind": "built-in",
+        "page": "operational-value",
+        "title": "Operational Value",
+        "description": "Computed package-defined operational value for each repository.",
+        "icon": "graph",
+        "definition": {
+          "data-state": {
+            "availability": true
+          },
+          "views": [
+            {
+              "id": "operational-value-history",
+              "title": "Operational value over time",
+              "description": "Each line tracks one package-defined value ID across retained repository observations.",
+              "data": {
+                "source": "operational-values"
+              },
+              "mark": "chart",
+              "chart": "line",
+              "layout": "full",
+              "empty-message": "No operational-value observations are available.",
+              "encoding": {
+                "x": {
+                  "field": "observed-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "time-unit": "day",
+                  "title": "Observed"
+                },
+                "y": {
+                  "field": "operational-value",
+                  "type": "quantitative",
+                  "aggregate": "mean",
+                  "title": "Operational value"
+                },
+                "color": {
+                  "field": "operational-value-definition",
+                  "type": "nominal",
+                  "title": "Value ID"
+                }
+              }
+            },
+            {
+              "id": "operational-value-observations",
+              "description": "Time-ordered computed values with their repository and campaign context.",
+              "disclosure": "supplemental",
+              "data": {
+                "source": "operational-values",
+                "order-by": [
+                  {
+                    "field": "observed-at",
+                    "direction": "desc"
+                  }
+                ],
+                "limit": 100
+              },
+              "mark": "table",
+              "controls": "interactive",
+              "layout": "full-view",
+              "empty-message": "No operational-value observations are available.",
+              "encoding": {
+                "columns": [
+                  {
+                    "field": "observed-at",
+                    "type": "temporal",
+                    "title": "Observed",
+                    "format": "human-friendly-timestamp"
+                  },
+                  {
+                    "field": "operational-value-definition",
+                    "type": "nominal",
+                    "title": "Value ID"
+                  },
+                  {
+                    "field": "operational-value",
+                    "type": "quantitative",
+                    "title": "Value"
+                  },
+                  {
+                    "field": "repository",
+                    "type": "nominal",
+                    "title": "Repository",
+                    "display": "repository-link"
+                  },
+                  {
+                    "field": "campaign",
+                    "type": "nominal",
+                    "title": "Campaign"
+                  }
+                ]
+              },
+              "lazy-list": true
+            }
+          ],
+          "sections": [
+            {
+              "id": "insights",
+              "title": "Insights",
+              "description": "Trends in computed operational value by value ID.",
+              "layout": "full",
+              "views": [
+                "operational-value-history"
+              ]
+            },
+            {
+              "id": "observations",
+              "title": "Observations",
+              "description": "The retained evidence behind the operational-value trends.",
+              "layout": "full",
+              "views": [
+                "operational-value-observations"
+              ]
+            }
+          ]
+        }
+      },
+      {
         "id": "findings",
         "kind": "built-in",
         "page": "findings",
@@ -13992,6 +14170,7 @@
           "workflows",
           "runs",
           "issues",
+          "operational-value",
           "cost",
           "engines-models",
           "firewall",

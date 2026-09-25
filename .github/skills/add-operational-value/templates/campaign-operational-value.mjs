@@ -98,6 +98,10 @@ for (const moduleFile of moduleFiles) {
         repository: windows[index].repository,
         valueId: `${definition.slug}.${metric.id}`,
         value,
+        metricRole: metric.role,
+        metricName: metric.name,
+        metricDirection: metric.direction,
+        maturityStatus: collections[index].evidence?.maturityStatus ?? "matured",
       }));
     }
   }

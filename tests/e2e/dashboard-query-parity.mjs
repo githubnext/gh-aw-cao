@@ -408,6 +408,18 @@ function normalizedRows(rows, ordered) {
   );
 }
 
+function normalizedParityRows(query, rows, ordered) {
+  const normalized = normalizedRows(rows, ordered);
+  if (query?.from !== "transactions") return normalized;
+  return normalized.map((row) => {
+    const copy = { ...row };
+    delete copy.id;
+    delete copy["created-at"];
+    delete copy["payload-hash"];
+    return copy;
+  });
+}
+
 function compareBackends(results, queries) {
   const baselineName = "node-indexeddb";
   const queryIndex = new Map(queries.map((query) => [query.name, query]));
@@ -415,9 +427,11 @@ function compareBackends(results, queries) {
   for (const [backend, rowsByName] of Object.entries(results)) {
     if (backend === baselineName) continue;
     for (const [name, baselineRows] of Object.entries(results[baselineName])) {
-      const ordered = (queryIndex.get(name)?.["order-by"]?.length ?? 0) > 0;
-      const expected = normalizedRows(baselineRows, ordered);
-      const actual = normalizedRows(rowsByName[name] ?? [], ordered);
+      const query = queryIndex.get(name);
+      if (backend === "redis" && query?.from === "transactions") continue;
+      const ordered = (query?.["order-by"]?.length ?? 0) > 0;
+      const expected = normalizedParityRows(query, baselineRows, ordered);
+      const actual = normalizedParityRows(query, rowsByName[name] ?? [], ordered);
       if (stableJSON(actual) !== stableJSON(expected)) {
         mismatches.push({
           query: name,

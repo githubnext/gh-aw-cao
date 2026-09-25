@@ -19,10 +19,18 @@ const NON_SCALING_POINT_LENGTH = 0.001;
 const MAX_INTERACTIVE_LINE_POINTS = 500;
 const MAX_RENDERED_LINE_POINTS = 2_000;
 const MAX_TIMELINE_TICKS = 5;
-const LINE_CHART_LEFT = 16;
 const LINE_CHART_RIGHT = 100;
 const LINE_CHART_BOTTOM = 38;
 const LINE_CHART_HEIGHT = 34;
+const LINE_CHART_MIN_LEFT = 5;
+const LINE_CHART_MIN_PLOT_WIDTH = 25;
+const LINE_CHART_LABEL_GAP = 2;
+// Approximate the 2.6px SVG axis font before attachment: digits 1.5,
+// punctuation 0.75, wide glyphs 2.1, and remaining glyphs 1.6 viewBox units.
+const LINE_CHART_LABEL_DIGIT_WIDTH = 1.5;
+const LINE_CHART_LABEL_DEFAULT_WIDTH = 1.6;
+const LINE_CHART_LABEL_NARROW_WIDTH = 0.75;
+const LINE_CHART_LABEL_WIDE_WIDTH = 2.1;
 const MAX_BAR_AXIS_TICKS = 5;
 const MAX_HORIZONTAL_BARS = 100;
 const BAR_CHART_LEFT = 12;
@@ -428,7 +436,7 @@ function renderInteractiveChartMark({ className, entryIndex, label, shape, toolt
  * @param {ChartSeriesDescriptor[]} series
  * @param {{ entries: Array<[string, number]>, total: number } | null} [pieSummary]
  * @param {string} [totalLabel]
- * @param {{ name: string, symbol: string, significant: number } | null} [unit]
+ * @param {{ name: string, symbol: string, significant: number, format?: string } | null} [unit]
  * @param {Record<string, unknown> | null} [timeRange]
  * @param {string | null} [referenceField]
  * @returns {HTMLElement}
@@ -656,7 +664,6 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
     const timelineTicks = isScatterChart
       ? scatterChartTimeAxisTicks(parsedTimes, minimumTime, maximumTime)
       : lineChartTimelineTicks(xValues);
-    const plotWidth = LINE_CHART_RIGHT - LINE_CHART_LEFT;
     /** @type {Map<string, Array<{ x: number, lower: number, upper: number }>>} */
     const areaCoordinates = new Map();
     let maximum = 1;
@@ -668,20 +675,17 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
           const value = toNumber(point.y);
           valuesByX.set(point.x, (valuesByX.get(point.x) ?? 0) + (Number.isFinite(value) ? Math.max(0, value) : 0));
         }
-        const coordinates = xValues.map((xValue, xIndex) => {
+        areaCoordinates.set(seriesName, xValues.map((xValue, xIndex) => {
           const lower = cumulativeByX.get(xValue) ?? 0;
           const upper = lower + (valuesByX.get(xValue) ?? 0);
           cumulativeByX.set(xValue, upper);
           maximum = Math.max(maximum, upper);
           return {
-            x: xValues.length < 2
-              ? LINE_CHART_LEFT + (plotWidth / 2)
-              : LINE_CHART_LEFT + ((xIndex / (xValues.length - 1)) * plotWidth),
+            x: xValues.length < 2 ? 0.5 : xIndex / (xValues.length - 1),
             lower,
             upper
           };
-        });
-        areaCoordinates.set(seriesName, coordinates);
+        }));
       }
     } else {
       for (const point of points) {
@@ -700,11 +704,22 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
     const dotPointRadius = dotChartPointRadius(points.length);
     const yTicks = [maximum, maximum / 2, 0];
     const yTickLabels = yTicks.map((value) => formatChartAxisTick(value, unit));
+    const lineChartLeft = Math.min(
+      LINE_CHART_RIGHT - LINE_CHART_MIN_PLOT_WIDTH,
+      Math.max(
+        LINE_CHART_MIN_LEFT,
+        Math.ceil(Math.max(...yTickLabels.map(estimateLineChartLabelWidth)) + LINE_CHART_LABEL_GAP)
+      )
+    );
+    const plotWidth = LINE_CHART_RIGHT - lineChartLeft;
+    for (const coordinates of areaCoordinates.values()) {
+      for (const coordinate of coordinates) coordinate.x = lineChartLeft + (coordinate.x * plotWidth);
+    }
     const gridLines = yTicks.map((value) => {
       const y = LINE_CHART_BOTTOM - ((value / maximum) * LINE_CHART_HEIGHT);
       return h('line', {
         className: 'line-chart-grid',
-        x1: LINE_CHART_LEFT,
+        x1: lineChartLeft,
         y1: y,
         x2: LINE_CHART_RIGHT,
         y2: y
@@ -717,15 +732,18 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
     const xStep = xValues.length > 1 ? plotWidth / (xValues.length - 1) : plotWidth;
     const windowBand = highlightedIndexes.length > 0
       ? {
-        start: Math.max(LINE_CHART_LEFT, LINE_CHART_LEFT + ((Math.min(...highlightedIndexes) - 0.5) * xStep)),
-        end: Math.min(LINE_CHART_RIGHT, LINE_CHART_LEFT + ((Math.max(...highlightedIndexes) + 0.5) * xStep))
+        start: Math.max(lineChartLeft, lineChartLeft + ((Math.min(...highlightedIndexes) - 0.5) * xStep)),
+        end: Math.min(LINE_CHART_RIGHT, lineChartLeft + ((Math.max(...highlightedIndexes) + 0.5) * xStep))
       }
       : null;
     /** @param {number} value */
     const scaledAreaY = (value) => Number((LINE_CHART_BOTTOM - (value / maximum) * LINE_CHART_HEIGHT).toFixed(4));
     return renderChartWidgetShell(
       chartType,
-      { 'data-line-rendering': showInteractivePoints ? 'rich' : 'compact' },
+      {
+        'data-line-rendering': showInteractivePoints ? 'rich' : 'compact',
+        style: `--line-chart-left: ${lineChartLeft}%;`
+      },
       h(
         'svg',
         {
@@ -752,27 +770,27 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
             const y = LINE_CHART_BOTTOM - ((value / maximum) * LINE_CHART_HEIGHT);
             return [
               gridLines[index],
-              h('text', { x: LINE_CHART_LEFT - 1.5, y: y + 1, 'text-anchor': 'end' }, yTickLabels[index])
+              h('text', { x: lineChartLeft - 1.5, y: y + 1, 'text-anchor': 'end' }, yTickLabels[index])
             ];
           }),
           h('line', {
             className: 'line-chart-axis',
-            x1: LINE_CHART_LEFT,
+            x1: lineChartLeft,
             y1: LINE_CHART_BOTTOM - LINE_CHART_HEIGHT,
-            x2: LINE_CHART_LEFT,
+            x2: lineChartLeft,
             y2: LINE_CHART_BOTTOM
           })
         ),
         h('line', {
           className: 'line-chart-axis',
-          x1: LINE_CHART_LEFT,
+          x1: lineChartLeft,
           y1: LINE_CHART_BOTTOM,
           x2: LINE_CHART_RIGHT,
           y2: LINE_CHART_BOTTOM
         }),
         ...referenceLines.map(({ seriesName, value }) => h('line', {
           className: `dot-chart-reference ${seriesClassNames.get(seriesName) ?? 'chart-series-1'}`,
-          x1: LINE_CHART_LEFT,
+          x1: lineChartLeft,
           y1: LINE_CHART_BOTTOM - (Math.max(0, value) / maximum) * LINE_CHART_HEIGHT,
           x2: LINE_CHART_RIGHT,
           y2: LINE_CHART_BOTTOM - (Math.max(0, value) / maximum) * LINE_CHART_HEIGHT,
@@ -787,10 +805,10 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
             const xIndex = xIndexes.get(point.x) ?? 0;
             const pointTime = Date.parse(point.x);
             const x = isScatterChart && maximumTime > minimumTime && Number.isFinite(pointTime)
-              ? LINE_CHART_LEFT + (((pointTime - minimumTime) / (maximumTime - minimumTime)) * plotWidth)
+              ? lineChartLeft + (((pointTime - minimumTime) / (maximumTime - minimumTime)) * plotWidth)
               : xValues.length < 2
-                ? LINE_CHART_LEFT + (plotWidth / 2)
-                : LINE_CHART_LEFT + ((xIndex / (xValues.length - 1)) * plotWidth);
+                ? lineChartLeft + (plotWidth / 2)
+                : lineChartLeft + ((xIndex / (xValues.length - 1)) * plotWidth);
             const y = LINE_CHART_BOTTOM - (Math.max(0, toNumber(point.y)) / maximum) * LINE_CHART_HEIGHT;
             return { point, x, y };
           });
@@ -1503,6 +1521,19 @@ function formatChartAxisTick(value, unit) {
   }).format(value);
   if (unit?.format === 'usd') return compact.startsWith('-') ? `-$${compact.slice(1)}` : `$${compact}`;
   return unit && unit.format !== 'number' ? `${compact} ${unit.symbol}` : compact;
+}
+
+/** @param {string} label */
+function estimateLineChartLabelWidth(label) {
+  return [...label].reduce((width, character) => width + (
+    /\d/.test(character)
+      ? LINE_CHART_LABEL_DIGIT_WIDTH
+      : /[.,:\s]/.test(character)
+        ? LINE_CHART_LABEL_NARROW_WIDTH
+        : /[MW%@]/.test(character)
+          ? LINE_CHART_LABEL_WIDE_WIDTH
+          : LINE_CHART_LABEL_DEFAULT_WIDTH
+  ), 0);
 }
 
 /**

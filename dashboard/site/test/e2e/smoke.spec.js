@@ -720,13 +720,16 @@ test('Runs renders a last-week stacked area graph above its responsive table and
   await expect(areaGraph.locator('.chart-legend-area')).toContainText('failure');
   await expect(areaGraph.locator('.chart-legend-area')).toContainText('success');
   await expect(areaGraph.locator('.line-chart-y-axis text')).toHaveText(['100', '50', '0']);
+  await expect(areaGraph.locator('[data-chart-widget="area"]')).toHaveAttribute('style', '--line-chart-left: 7%;');
   const areaGraphHeadingBox = await areaGraph.getByRole('heading', { name: 'Runs in the last week' }).boundingBox();
   const areaGraphChartBox = await areaGraph.locator('[data-chart-widget="area"] svg').boundingBox();
-  if (areaGraphHeadingBox === null || areaGraphChartBox === null) {
+  const areaGraphTimelineBox = await areaGraph.locator('.timeline-chart-axis').boundingBox();
+  if (areaGraphHeadingBox === null || areaGraphChartBox === null || areaGraphTimelineBox === null) {
     throw new Error('Expected area graph heading and chart boxes to be measurable.');
   }
   expect(areaGraphChartBox.width).toBeGreaterThan(0);
   expect(areaGraphChartBox.height).toBeGreaterThan(0);
+  expect(areaGraphTimelineBox.x).toBeCloseTo(areaGraphChartBox.x + (areaGraphChartBox.width * 0.07), 0);
   await page.getByRole('button', { name: 'Table', exact: true }).click();
   await expect(table).toBeVisible();
   await expect(table.locator('tbody > tr')).toHaveCount(25);
@@ -1433,7 +1436,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(cleanNavigation).toHaveText(['Overview']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
-  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Cost', 'Models & Agents', 'Firewall', 'MCPs']);
+  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Operational Value', 'Cost', 'Models & Agents', 'Firewall', 'MCPs']);
   await expect(maintenance.locator('summary')).toHaveText('Maintenance');
   await expect(maintenance.getByRole('link')).toHaveText(['Maintenance', 'Indexing', 'Settings']);
   await expect(maintenance).toHaveClass(/nav-section-bottom/);
@@ -2475,6 +2478,19 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
             { workflow: '.github/workflows/aw-doctor.md', run: '1', 'operational-grader': 0.25 }
           ],
           metadata
+        },
+        'operational-values': {
+          source: 'operational-values',
+          rows: [
+            {
+              campaign: 'ambient-context', repository: 'gh-aw-cao', 'operational-value': 0.5,
+              'operational-value-definition': 'ambient-context.repository-value',
+              'operational-value-role': 'primary',
+              'maturity-status': 'matured',
+              'observed-at': '2026-09-14T14:00:00Z'
+            }
+          ],
+          metadata
         }
       };
 
@@ -2540,7 +2556,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await expect(campaignNavigation).toHaveCSS('display', 'flex');
   await expect(campaignNavigation).toHaveCSS('border-bottom-style', 'solid');
   await expect(campaignNavigation.locator('[aria-current="page"]')).toHaveCount(0);
-  await expect(campaignNavigation.locator('.count-badge')).toHaveText(['3', '1']);
+  await expect(campaignNavigation.locator('.count-badge')).toHaveText(['4', '1']);
   const campaignTabBadges = await campaignNavigation.locator('.count-badge').allTextContents();
   await expect(page.getByRole('heading', { name: 'Orchestrator and workers', level: 3 })).toHaveCount(0);
   await campaignNavigation.getByRole('link', { name: 'Problems' }).click();
@@ -2621,22 +2637,25 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   const campaignInsights = page.locator('[data-page-id="campaign-insights"]');
   await expect(campaignInsights).toBeVisible();
   await expect(campaignInsights).toHaveAttribute('data-view-mode', 'chart');
-  await expect(campaignInsights.locator('.view-mode-control')).toHaveCount(0);
+  await expect(campaignInsights.locator('.view-mode-control')).toHaveCount(1);
   await expect(campaignInsights.getByRole('navigation', { name: 'Ambient Context views' })).toBeVisible();
   await expect(campaignInsights.getByRole('navigation', { name: 'Ambient Context views' })).toHaveCSS('display', 'grid');
   const mobileBack = page.getByRole('button', { name: 'Go back' });
   await expect(mobileBack).toBeVisible();
   await expect(page.locator('.overview-header')).toContainText('Operational activity for the Ambient Context campaign.');
-  await expect(campaignInsights.locator('.measure-history [data-chart-widget="line"]')).toHaveCount(3);
+  await expect(campaignInsights.locator('.measure-history [data-chart-widget="line"]')).toHaveCount(4);
   await expect(campaignInsights.locator('.measure-history .chart-point')).toHaveCount(6);
-  await expect(campaignInsights.locator('.measure-history')).toContainText('Repository readiness');
-  await expect(campaignInsights.locator('.measure-history')).toContainText('Quality');
-  await expect(campaignInsights.locator('.measure-history')).toContainText('Efficiency');
-  await expect(campaignInsights.locator('.insights-measure-rows > .insights-measure-row')).toHaveCount(3);
-  await expect(campaignInsights.locator('.insights-measure-row').first().locator('.insights-axis-x')).toHaveText('Observation time (UTC)');
-  const measureReadout = campaignInsights.locator('.insights-measure-row').first().locator('.insights-point-readout');
+  const operationalValueHistory = campaignInsights.getByRole('region', { name: 'Repository operational value' });
+  const graderHistory = campaignInsights.getByRole('region', { name: 'Operational grader history' });
+  await expect(operationalValueHistory).toContainText('Ambient context repository value');
+  await expect(graderHistory).toContainText('Repository readiness');
+  await expect(graderHistory).toContainText('Quality');
+  await expect(graderHistory).toContainText('Efficiency');
+  await expect(campaignInsights.locator('.insights-measure-rows > .insights-measure-row')).toHaveCount(4);
+  await expect(graderHistory.locator('.insights-measure-row').first().locator('.insights-axis-x')).toHaveText('Observation time (UTC)');
+  const measureReadout = graderHistory.locator('.insights-measure-row').first().locator('.insights-point-readout');
   await expect(measureReadout).toHaveText('Select a point to inspect that observation.');
-  const measurePoint = campaignInsights.locator('.insights-measure-row').first().locator('.chart-point[data-chart-point-key]').first();
+  const measurePoint = graderHistory.locator('.insights-measure-row').first().locator('.chart-point[data-chart-point-key]').first();
   await measurePoint.dispatchEvent('click');
   await expect(measureReadout).not.toHaveText('Select a point to inspect that observation.');
   await expect(campaignInsights.locator('.insights-measure-row .chart-point[aria-pressed="true"]')).toHaveCount(1);

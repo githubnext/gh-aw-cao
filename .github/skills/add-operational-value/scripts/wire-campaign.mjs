@@ -39,24 +39,4 @@ if (existsSync(adapter)) {
   writeFileSync(adapter, templateSource, { flag: "wx" });
 }
 
-const source = readFileSync(manifest, "utf8");
-const lines = source.split("\n");
-const includesIndex = lines.findIndex((line) => line === "includes:");
-if (includesIndex < 0) fail(`${campaign}/aw.yml has no includes list`);
-let insertIndex = includesIndex + 1;
-while (insertIndex < lines.length && (/^\s+-\s+/.test(lines[insertIndex]) || lines[insertIndex] === "")) {
-  insertIndex += 1;
-}
-const required = [
-  "operational-value.mjs",
-  `operational-value/${workflow}.mjs`,
-];
-const additions = required
-  .filter((include) => !lines.some((line) => line.trim() === `- ${include}`))
-  .map((include) => `  - ${include}`);
-if (additions.length > 0) {
-  lines.splice(insertIndex, 0, ...additions);
-  writeFileSync(manifest, lines.join("\n"));
-}
-
-console.log(`wired ${campaign}/aw.yml: ${required.join(", ")}`);
+console.log(`verified ${campaign}/operational-value.mjs`);
