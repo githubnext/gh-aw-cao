@@ -353,6 +353,7 @@ export function renderDashboard(input) {
 function enableNavigationIndicatorUpdates(root, pages, loadPageSources, signal) {
   const sourceNames = navigationIndicatorSourceNames(pages);
   if (!loadPageSources?.loadSources || sourceNames.length === 0) return;
+  // The loader resolves the first snapshot; later snapshots arrive through onUpdate.
   void loadPageSources.loadSources(sourceNames, {
     signal,
     onUpdate: (sources) => syncDashboardNavigationIndicators(root, pages, sources)

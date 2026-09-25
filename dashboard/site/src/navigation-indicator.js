@@ -1,11 +1,11 @@
 /**
  * Resolves the declarative navigation indicator for one page.
- * The returned tests are source predicates; a presenter should subscribe to
+ * The returned predicates are source predicates; a presenter should subscribe to
  * those bounded sources and a navigation component should show the indicator
- * when any test's row field equals its declared scalar value.
+ * when any predicate's row field equals its declared scalar value.
  *
  * @param {Record<string, unknown>} page
- * @returns {{ label: string, tests: Array<Record<string, unknown>> } | null}
+ * @returns {{ label: string, predicates: Array<Record<string, unknown>> } | null}
  */
 export function navigationIndicator(page) {
   if (!isPlainObject(page['navigation-indicator'])) return null;
@@ -17,7 +17,7 @@ export function navigationIndicator(page) {
   if (tests.length === 0) return null;
   return {
     label: indicator.label,
-    tests
+    predicates: tests
   };
 }
 
@@ -37,7 +37,7 @@ export function navigationIndicatorSourceNames(pages) {
 export function navigationIndicatorSourceNamesForPage(page) {
   const indicator = navigationIndicator(page);
   if (!indicator) return [];
-  return indicator.tests.flatMap((test) => (
+  return indicator.predicates.flatMap((test) => (
     typeof test.source === 'string' ? [test.source] : []
   ));
 }
