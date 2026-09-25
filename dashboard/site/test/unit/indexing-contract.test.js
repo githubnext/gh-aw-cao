@@ -26,8 +26,9 @@ describe('indexing dashboard', () => {
             {
               id: 'ingest-normalized-jsonl:one',
               kind: 'ingest-normalized-jsonl',
-              createdAt: '2026-09-24T00:00:00Z',
+              createdAt: '2026-09-23T00:00:00Z',
               records: 12,
+              committedRecords: 10,
               rawRuns: 3
             },
             {
@@ -35,6 +36,7 @@ describe('indexing dashboard', () => {
               kind: 'ingest-normalized-jsonl',
               createdAt: '2026-09-24T01:00:00Z',
               records: 8,
+              committedRecords: 7,
               rawRuns: 2
             },
             {
@@ -42,46 +44,20 @@ describe('indexing dashboard', () => {
               kind: 'ingest-dashboard-sources',
               createdAt: '2026-09-24T02:00:00Z',
               records: 99,
+              committedRecords: 99,
               rawRuns: 99
             }
           ],
           metadata
         },
-        audits: {
-          source: 'audits',
-          rows: [
-            { event: 'audit:one', 'event-timestamp': '2026-09-23T23:00:00Z' },
-            { event: 'audit:two', 'event-timestamp': '2026-09-24T01:00:00Z' }
-          ],
-          metadata
-        },
-        domains: {
-          source: 'domains',
-          rows: [{ event: 'domain:one', 'event-timestamp': '2026-09-24T02:00:00Z' }],
-          metadata
-        },
-        tools: {
-          source: 'tools',
-          rows: [{ event: 'tool:one', 'event-timestamp': '2026-09-24T03:00:00Z' }],
-          metadata
-        },
-        issues: {
-          source: 'issues',
-          rows: [{ event: 'issue:one', 'event-timestamp': '2026-09-23T22:00:00Z' }],
-          metadata
-        },
         campaigns: { source: 'campaigns', rows: [{ campaign: 'one' }], metadata },
         repositories: { source: 'repositories', rows: [{ repository: 'one' }], metadata },
         workflows: { source: 'workflows', rows: [{ workflow: 'one' }, { workflow: 'two' }], metadata },
-        runs: {
-          source: 'runs',
-          rows: [
-            { run: 'one', 'created-at': '2026-09-23T20:00:00Z' },
-            { run: 'two', 'created-at': '2026-09-24T20:00:00Z' },
-            { run: 'three', 'created-at': '2026-09-24T21:00:00Z' }
-          ],
-          metadata
-        },
+        runs: { source: 'runs', rows: [{ run: 'one' }, { run: 'two' }, { run: 'three' }], metadata },
+        domains: { source: 'domains', rows: [], metadata },
+        tools: { source: 'tools', rows: [{ event: 'tool:one' }], metadata },
+        audits: { source: 'audits', rows: [{ event: 'audit:one' }, { event: 'audit:two' }], metadata },
+        issues: { source: 'issues', rows: [{ event: 'issue:one' }], metadata },
         'operational-values': { source: 'operational-values', rows: [], metadata }
       },
       [
@@ -92,11 +68,11 @@ describe('indexing dashboard', () => {
     );
 
     expect(results['indexing-daily-records'].rows).toEqual([
-      { day: '2026-09-23', records: 2 },
-      { day: '2026-09-24', records: 3 }
+      { day: '2026-09-23', records: 10 },
+      { day: '2026-09-24', records: 7 }
     ]);
     expect(results['indexing-daily-workflow-runs'].rows).toEqual([
-      { day: '2026-09-23', 'workflow-runs': 1 },
+      { day: '2026-09-23', 'workflow-runs': 3 },
       { day: '2026-09-24', 'workflow-runs': 2 }
     ]);
     expect(results['indexing-database-table-counts'].rows).toEqual([
@@ -106,11 +82,11 @@ describe('indexing dashboard', () => {
       { table: 'workflows', records: 2 },
       { table: 'campaigns', records: 1 },
       { table: 'issue events', records: 1 },
-      { table: 'network domains', records: 1 },
       { table: 'repositories', records: 1 },
       { table: 'tool events', records: 1 }
     ]);
     const tableLabels = results['indexing-database-table-counts'].rows.map((row) => row.table);
+    expect(tableLabels).not.toContain('network domains');
     expect(tableLabels).not.toContain('operational values');
   });
 

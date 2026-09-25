@@ -1614,20 +1614,27 @@
     "queries": [
       {
         "name": "indexing-daily-records",
-        "intent": "Count retained CAO Activity records by their observed UTC day.",
-        "from": "audits",
-        "union": [
-          "domains",
-          "tools",
-          "issues"
-        ],
+        "intent": "Aggregate records committed from CAO Activity by ingestion UTC day.",
+        "from": "transactions",
+        "filter": {
+          "predicates": [
+            {
+              "field": "kind",
+              "in": [
+                "ingest-jsonl",
+                "ingest-normalized-json",
+                "ingest-normalized-jsonl"
+              ]
+            }
+          ]
+        },
         "compute": [
           {
             "as": "day",
             "function": "date-day",
             "args": [
               {
-                "field": "event-timestamp"
+                "field": "createdAt"
               }
             ]
           }
@@ -1638,9 +1645,9 @@
           ],
           "values": [
             {
-              "field": "event",
+              "field": "committedRecords",
               "as": "records",
-              "reducer": "count"
+              "reducer": "sum"
             }
           ]
         },
@@ -1653,15 +1660,27 @@
       },
       {
         "name": "indexing-daily-workflow-runs",
-        "intent": "Count retained workflow runs by their creation UTC day.",
-        "from": "runs",
+        "intent": "Aggregate workflow runs ingested from CAO Activity by UTC day.",
+        "from": "transactions",
+        "filter": {
+          "predicates": [
+            {
+              "field": "kind",
+              "in": [
+                "ingest-jsonl",
+                "ingest-normalized-json",
+                "ingest-normalized-jsonl"
+              ]
+            }
+          ]
+        },
         "compute": [
           {
             "as": "day",
             "function": "date-day",
             "args": [
               {
-                "field": "created-at"
+                "field": "createdAt"
               }
             ]
           }
@@ -1672,9 +1691,9 @@
           ],
           "values": [
             {
-              "field": "run",
+              "field": "rawRuns",
               "as": "workflow-runs",
-              "reducer": "count"
+              "reducer": "sum"
             }
           ]
         },
