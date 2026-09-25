@@ -289,6 +289,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .nav-indicator[hidden] { display: none; }
 .sidebar-collapsed .nav-indicator { position: absolute; top: 6px; right: 7px; margin-left: 0; }
 .mobile-nav-menu { display: none; }
+.mobile-nav-menu-indicator { position: absolute; top: 6px; right: 6px; margin-left: 0; }
 .app-main { min-width: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 .app-main > .top-nav { position: relative; z-index: 20; border-bottom: 1px solid var(--border); }
 .app-main > .top-nav .shell { display: flex; align-items: center; gap: 24px; width: 100%; padding: 14px var(--dashboard-page-padding-inline); }
@@ -2042,7 +2043,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .primary-nav .nav-item .nav-label { display: none; }
   .primary-nav a[aria-current="page"]::before { content: none; }
   .mobile-nav-menu { display: block; position: relative; margin-left: 0; }
-  .mobile-nav-menu > summary { width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 50%; background: var(--canvas-subtle); color: var(--fg); cursor: pointer; list-style: none; }
+  .mobile-nav-menu > summary { width: 44px; height: 44px; display: grid; place-items: center; position: relative; border: 1px solid var(--border); border-radius: 50%; background: var(--canvas-subtle); color: var(--fg); cursor: pointer; list-style: none; }
   .mobile-nav-menu > summary::-webkit-details-marker { display: none; }
   .mobile-nav-menu > summary:hover, .mobile-nav-menu[open] > summary { background: var(--neutral-muted); }
   .mobile-nav-menu-list { width: min(280px, calc(100vw - 24px)); max-height: min(520px, calc(100vh - 140px)); display: flex; flex-direction: column; gap: 2px; overflow-y: auto; position: absolute; z-index: 30; top: calc(100% + 4px); right: 0; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent); }

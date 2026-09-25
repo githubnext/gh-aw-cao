@@ -154,7 +154,9 @@ describe('dashboard sidebar', () => {
 
     const updatesLink = sidebar.querySelector('[data-nav-page-id="maintenance"]');
     const mobileUpdatesLink = sidebar.querySelector('[data-mobile-nav-page-id="maintenance"]');
+    const mobileMenuSummary = sidebar.querySelector('.mobile-nav-menu > summary');
     expect(updatesLink?.querySelector('[data-nav-indicator]')?.hasAttribute('hidden')).toBe(true);
+    expect(mobileMenuSummary?.querySelector('[data-mobile-nav-menu-indicator]')?.hasAttribute('hidden')).toBe(true);
 
     syncDashboardNavigationIndicators(sidebar, pages, {
       campaigns: {
@@ -166,6 +168,8 @@ describe('dashboard sidebar', () => {
     expect(updatesLink?.getAttribute('aria-label')).toBe('Updates, updates available');
     expect(mobileUpdatesLink?.querySelector('[data-nav-indicator]')?.hasAttribute('hidden')).toBe(false);
     expect(mobileUpdatesLink?.getAttribute('aria-label')).toBe('Updates, updates available');
+    expect(mobileMenuSummary?.querySelector('[data-mobile-nav-menu-indicator]')?.hasAttribute('hidden')).toBe(false);
+    expect(mobileMenuSummary?.getAttribute('aria-label')).toBe('Select view, updates available');
 
     syncDashboardNavigationIndicators(sidebar, pages, {
       campaigns: {
@@ -175,6 +179,8 @@ describe('dashboard sidebar', () => {
 
     expect(updatesLink?.querySelector('[data-nav-indicator]')?.hasAttribute('hidden')).toBe(true);
     expect(updatesLink?.getAttribute('aria-label')).toBe('Updates');
+    expect(mobileMenuSummary?.querySelector('[data-mobile-nav-menu-indicator]')?.hasAttribute('hidden')).toBe(true);
+    expect(mobileMenuSummary?.getAttribute('aria-label')).toBe('Select view');
 
     syncDashboardNavigationIndicators(sidebar, pages, {
       'maintenance-repositories': {
@@ -184,6 +190,7 @@ describe('dashboard sidebar', () => {
 
     expect(updatesLink?.querySelector('[data-nav-indicator]')?.hasAttribute('hidden')).toBe(false);
     expect(updatesLink?.getAttribute('aria-label')).toBe('Updates, updates available');
+    expect(mobileMenuSummary?.querySelector('[data-mobile-nav-menu-indicator]')?.hasAttribute('hidden')).toBe(false);
   });
 
   it('places the hosted user control at the bottom of the sidebar', () => {
