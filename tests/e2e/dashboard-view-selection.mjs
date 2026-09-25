@@ -9,7 +9,6 @@ const primaryDashboardPath = "dashboard/site/dashboard.json";
 // PR assessments are informational and run live-data browser checks; five pages
 // keeps the job fast while still sampling the most relevant affected surfaces.
 export const maximumSelectedDashboardPageCount = 5;
-const pageSelectionDescriptorsByDashboard = new WeakMap();
 const pageSelectionWeights = Object.freeze({
   pathIncludesPageId: 100,
   pageIdTerm: 30,
@@ -98,33 +97,33 @@ export function sharedDashboardConfigurationChanged(current, previous) {
   return JSON.stringify(shared(current)) !== JSON.stringify(shared(previous));
 }
 
+function identifierKey(value) {
+  return identifierTerms(value).join("-");
+}
+
 function pageSelectionDescriptor(page, index) {
   const pageId = String(page.id ?? "");
+  const pageJson = JSON.stringify(page);
   return {
     index,
     pageId,
-    pageIdLower: pageId.toLowerCase(),
+    pageIdKey: identifierKey(pageId),
+    pageJson,
     pageTerms: new Set(identifierTerms(pageId)),
     titleTerms: new Set(identifierTerms(page.title)),
-    pageBodyTerms: new Set(identifierTerms(JSON.stringify(page))),
+    pageBodyTerms: new Set(identifierTerms(pageJson)),
   };
 }
 
 function pageSelectionDescriptors(dashboard) {
-  const cached = pageSelectionDescriptorsByDashboard.get(dashboard);
-  if (cached) return cached;
-  const descriptors = new Map(
-    dashboard.dashboard.pages.map((page, index) => [page.id, pageSelectionDescriptor(page, index)]),
-  );
-  pageSelectionDescriptorsByDashboard.set(dashboard, descriptors);
-  return descriptors;
+  return dashboard.dashboard.pages.map((page, index) => pageSelectionDescriptor(page, index));
 }
 
 function pageSelectionScore(page, changedFiles) {
   let score = 0;
 
-  for (const { pathSegments, terms } of changedFiles) {
-    if (page.pageIdLower && pathSegments.has(page.pageIdLower)) {
+  for (const { pathSegmentKeys, terms } of changedFiles) {
+    if (page.pageIdKey && pathSegmentKeys.has(page.pageIdKey)) {
       score += pageSelectionWeights.pathIncludesPageId;
     }
     for (const term of terms) {
@@ -154,21 +153,14 @@ export function rankDashboardPageIds({
   changedFiles,
   limit = maximumSelectedDashboardPageCount,
 }) {
-  const pagesById = pageSelectionDescriptors(dashboard);
+  const pagesById = new Map(pageSelectionDescriptors(dashboard).map((page) => [page.pageId, page]));
   const changedFileDescriptors = changedFiles.map((path) => ({
-    pathSegments: new Set(path.toLowerCase().split(/[^a-z0-9-]+/).filter(Boolean)),
+    pathSegmentKeys: new Set(path.split(/[\\/]+/).map(identifierKey).filter(Boolean)),
     terms: new Set(identifierTerms(path)),
   }));
   return withoutIgnoredDashboardPageIds([...new Set(pageIds)])
-    .map((pageId) => {
-      const page = pagesById.get(pageId);
-      if (!page) {
-        throw new Error(
-          `Dashboard page "${pageId}" was selected from changed files but is not declared.`,
-        );
-      }
-      return page;
-    })
+    .map((pageId) => pagesById.get(pageId))
+    .filter(Boolean)
     .map((page) => ({
       pageId: page.pageId,
       index: page.index,
@@ -180,9 +172,9 @@ export function rankDashboardPageIds({
 }
 
 function pagesUsingElement(dashboard, element) {
-  return dashboard.dashboard.pages
-    .filter((page) => JSON.stringify(page).includes(`"element":"${element}"`))
-    .map((page) => page.id);
+  return pageSelectionDescriptors(dashboard)
+    .filter((page) => page.pageJson.includes(`"element":"${element}"`))
+    .map((page) => page.pageId);
 }
 
 function canScopeComponent(path) {
