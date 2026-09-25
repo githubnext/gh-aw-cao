@@ -328,7 +328,7 @@ export function setupCaoAuthentication(method, arguments_ = [], {
     if (options['dry-run']) {
       return {
         command: 'setup-auth',
-        profile: 'enterprise-github-app',
+        profile: 'enterprise-app',
         repo,
         credentials: credentials.map(({ role, clientId, variable, secret }) => ({
           role, clientId, variable, secret,
@@ -353,7 +353,7 @@ export function setupCaoAuthentication(method, arguments_ = [], {
         throw new Error(`Enterprise App private-key setup failed: ${commandFailureMessage(secretResult, `exit ${secretResult.status}`)}`);
       }
     }
-    return { command: 'setup-auth', profile: 'enterprise-github-app', repo };
+    return { command: 'setup-auth', profile: 'enterprise-app', repo };
   }
   if (method === 'token') {
     const options = parseOptions(arguments_);

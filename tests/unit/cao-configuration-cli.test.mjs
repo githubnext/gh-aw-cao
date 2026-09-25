@@ -148,7 +148,7 @@ test("cao setup-auth configures existing enterprise Apps without key arguments",
   ]);
   assert.deepEqual(result, {
     command: "setup-auth",
-    profile: "enterprise-github-app",
+    profile: "enterprise-app",
     repo: "acme/control",
   });
   assert.equal(calls.flatMap(([, arguments_]) => arguments_).some((value) => /PRIVATE KEY/.test(value)), false);
@@ -168,7 +168,7 @@ test("cao setup-auth previews enterprise App credential configuration without Gi
 
   assert.deepEqual(result, {
     command: "setup-auth",
-    profile: "enterprise-github-app",
+    profile: "enterprise-app",
     repo: "acme/control",
     credentials: [
       {
