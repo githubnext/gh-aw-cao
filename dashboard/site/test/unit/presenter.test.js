@@ -3217,7 +3217,9 @@ describe('presenter built-in and custom pages', () => {
       expect(rendered.querySelector('#page-title')?.textContent).toBe('Overview');
       const experimentalBadge = /** @type {HTMLElement} */ (rendered.querySelector('.title-area [data-page-experimental]'));
       expect(experimentalBadge.hidden).toBe(true);
-      expect(experimentalBadge.querySelector('.octicon-beaker')?.getAttribute('aria-hidden')).toBe('true');
+      const experimentalIcon = experimentalBadge.querySelector('.octicon-beaker');
+      if (!(experimentalIcon instanceof SVGElement)) throw new Error('Expected the experimental icon to render.');
+      expect(experimentalIcon.getAttribute('aria-hidden')).toBe('true');
     } finally {
       disposeDashboard(rendered);
       rendered.remove();
