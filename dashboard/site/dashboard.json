@@ -8224,21 +8224,16 @@
         "intent": "Project repository-level campaign operational value into temporal series while preserving maturity status.",
         "description": "Repository operational-value history with interim observations kept visibly separate from matured evidence.",
         "from": "operational-values",
-        "filter": {
-          "predicates": [
-            {
-              "field": "operational-value-role",
-              "equals": "primary"
-            }
-          ]
-        },
         "temporal-series": {
           "time": "observed-at",
           "series": "repository",
           "shape": "groups",
           "carry": [
             "campaign",
-            "maturity-status"
+            "maturity-status",
+            "operational-value-role",
+            "operational-value-name",
+            "adoption-at"
           ],
           "measures": [
             {

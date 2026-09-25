@@ -95,10 +95,22 @@ describe('Audit dashboard view', () => {
           rows: [{
             campaign: 'optimization',
             repository: 'gh-aw',
-            'operational-value': 0,
+            'operational-value': 0.5,
             'operational-value-definition': 'optimization-token-optimizer.verified-opportunity-share',
             'operational-value-role': 'primary',
+            'operational-value-name': 'Verified opportunity share',
             'maturity-status': 'interim',
+            'adoption-at': '2026-09-15T23:30:36Z',
+            'observed-at': '2026-09-24T20:56:21Z'
+          }, {
+            campaign: 'optimization',
+            repository: 'gh-aw',
+            'operational-value': 1,
+            'operational-value-definition': 'optimization-token-optimizer.recommendation-acceptance-share',
+            'operational-value-role': 'diagnostic',
+            'operational-value-name': 'Recommendation acceptance share',
+            'maturity-status': 'interim',
+            'adoption-at': '2026-09-15T23:30:36Z',
             'observed-at': '2026-09-24T20:56:21Z'
           }],
           metadata
@@ -106,12 +118,19 @@ describe('Audit dashboard view', () => {
       }
     }));
 
-    expect(result['campaign-operational-value-primary-series'].rows).toEqual([expect.objectContaining({
-      campaign: 'optimization',
-      'maturity-status': 'interim',
-      'metric-kind': 'primary',
-      points: [expect.objectContaining({ x: '2026-09-24T20:56:21Z', y: 0, color: 'gh-aw' })]
-    })]);
+    expect(result['campaign-operational-value-primary-series'].rows).toEqual([
+      expect.objectContaining({
+        campaign: 'optimization',
+        'maturity-status': 'interim',
+        'operational-value-role': 'primary',
+        'adoption-at': '2026-09-15T23:30:36Z',
+        points: [expect.objectContaining({ x: '2026-09-24T20:56:21Z', y: 0.5, color: 'gh-aw' })]
+      }),
+      expect.objectContaining({
+        'operational-value-role': 'diagnostic',
+        points: [expect.objectContaining({ y: 1 })]
+      })
+    ]);
   });
 
   it('projects only issue outcomes produced by campaign workers', () => {

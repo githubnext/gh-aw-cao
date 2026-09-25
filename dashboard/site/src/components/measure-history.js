@@ -47,12 +47,30 @@ function renderMeasureRow(metric, measureSource) {
     (Array.isArray(metric.points) ? metric.points : []).slice().sort((left, right) => Date.parse(left.x) - Date.parse(right.x))
   );
   const series = listChartSeries(points);
-  const kind = String(metric['metric-kind']);
-  const name = String(metric['metric-name'] || metric.metric || 'Metric');
+  const kind = String(measureSource === 'operational-value'
+    ? metric['operational-value-role'] || metric['metric-kind']
+    : metric['metric-kind']);
+  const name = String(measureSource === 'operational-value'
+    ? metric['operational-value-name'] || metric['metric-name'] || metric.metric || 'Metric'
+    : metric['metric-name'] || metric.metric || 'Metric');
   const title = kind === 'primary' ? humanizeIdentifier(name) : name;
   const maturityStatus = String(metric['maturity-status'] || '');
   const dubious = measureSource === 'operational-value' && maturityStatus !== 'matured';
-  const chart = renderChartWidget('line', points, series);
+  const adoptionAt = String(metric['adoption-at'] || '');
+  const chart = renderChartWidget(
+    'line',
+    points,
+    series,
+    null,
+    'Total',
+    null,
+    null,
+    null,
+    (label) => label,
+    measureSource === 'operational-value' && Number.isFinite(Date.parse(adoptionAt))
+      ? { at: adoptionAt, label: 'Workflow adopted' }
+      : null
+  );
   const readout = h('p', { className: 'insights-point-readout', role: 'status' }, SELECT_POINT_MESSAGE);
   attachPointSelection(chart, points, readout);
   return h('section', { className: 'insights-plot-panel insights-measure-row', 'data-metric-kind': kind },

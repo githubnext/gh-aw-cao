@@ -192,18 +192,7 @@ function completeComparison(record, intervention) {
 export function buildEvidence(records, request) {
   const firstMatureAt = Date.parse(definition.adoption.adoptedAt)
     + (definition.evidence.window.durationDays + definition.evidence.window.maturationDays) * DAY_MS;
-  if (Date.parse(request.observedAt) < firstMatureAt) {
-    return {
-      maturityStatus: "interim",
-      dubious: true,
-      eligibleOpportunityCount: 0,
-      verifiedOpportunityCount: 0,
-      acceptedRecommendationCount: 0,
-      outcomeUnknownCount: 0,
-      dispositionUnknownCount: 0,
-      guardedNetGainRatioSum: 0,
-    };
-  }
+  const preMaturity = Date.parse(request.observedAt) < firstMatureAt;
   const repository = request.repository?.toLowerCase();
   const supportedRepositories = new Set(
     definition.evidence.repositories.map((value) => value.toLowerCase()),
@@ -274,8 +263,10 @@ export function buildEvidence(records, request) {
   }
 
   return {
-    maturityStatus: outcomeUnknownCount > 0 || dispositionUnknownCount > 0 ? "interim" : "matured",
-    dubious: outcomeUnknownCount > 0 || dispositionUnknownCount > 0,
+    maturityStatus: preMaturity || outcomeUnknownCount > 0 || dispositionUnknownCount > 0
+      ? "interim"
+      : "matured",
+    dubious: preMaturity || outcomeUnknownCount > 0 || dispositionUnknownCount > 0,
     eligibleOpportunityCount: opportunities.length,
     verifiedOpportunityCount,
     acceptedRecommendationCount,
@@ -312,13 +303,27 @@ function queryAudits(database) {
 }
 
 export async function collectBatch(requests, context = {}) {
+  const firstMatureAt = Date.parse(definition.adoption.adoptedAt)
+    + (definition.evidence.window.durationDays + definition.evidence.window.maturationDays) * DAY_MS;
   const valid = Array.isArray(requests) && requests.length > 0
-    && requests.every((request) => ["windowStart", "windowEnd", "observedAt"]
-      .every((key) => typeof request[key] === "string" && !Number.isNaN(Date.parse(request[key])))
-      && (!request.repository || definition.evidence.repositories
+    && requests.every((request) => {
+      const timestampsValid = ["windowStart", "windowEnd", "observedAt"]
+        .every((key) => typeof request[key] === "string" && !Number.isNaN(Date.parse(request[key])));
+      if (!timestampsValid) return false;
+      const observedAt = Date.parse(request.observedAt);
+      const windowStart = Date.parse(request.windowStart);
+      const windowEnd = Date.parse(request.windowEnd);
+      const interim = observedAt < firstMatureAt;
+      return (!request.repository || definition.evidence.repositories
         .some((repository) => repository.toLowerCase() === request.repository.toLowerCase()))
-      && Date.parse(request.windowEnd) - Date.parse(request.windowStart) === 14 * DAY_MS
-      && Date.parse(request.observedAt) - Date.parse(request.windowEnd) >= 14 * DAY_MS);
+        && (interim
+          ? request.windowStart === definition.adoption.adoptedAt
+            && windowEnd === observedAt
+            && windowEnd >= windowStart
+            && windowEnd - windowStart <= 14 * DAY_MS
+          : windowEnd - windowStart === 14 * DAY_MS
+            && observedAt - windowEnd >= 14 * DAY_MS);
+    });
   if (!valid) fail("invalid batch collection request");
   if (!existsSync(ACTIVITY_CLI)) fail("CAO Activity CLI is unavailable");
 

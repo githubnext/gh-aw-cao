@@ -303,6 +303,7 @@
       { "field": "evidence-cutoff" },
       { "field": "maturity-at" },
       { "field": "maturity-status" },
+      { "field": "adoption-at" },
       { "field": "baseline-value" },
       { "field": "delta-from-baseline" },
       { "field": "accepted-evidence-provenance" },

@@ -236,6 +236,7 @@ function parseOperationalValueOutput(content, source, repositories) {
     const metricName = record.metricName ?? valueId;
     const metricDirection = record.metricDirection ?? 'increase';
     const maturityStatus = record.maturityStatus ?? 'matured';
+    const adoptionAt = record.adoptionAt;
     if (!REPOSITORY_COORDINATE.test(repository) || !allowedRepositories.has(repository.toLowerCase())) {
       throw new Error(`${source}:${index + 1}.repository must identify a requested repository`);
     }
@@ -257,6 +258,9 @@ function parseOperationalValueOutput(content, source, repositories) {
     if (!['matured', 'interim', 'unavailable'].includes(maturityStatus)) {
       throw new Error(`${source}:${index + 1}.maturityStatus is invalid`);
     }
+    if (adoptionAt !== undefined && !Number.isFinite(Date.parse(adoptionAt))) {
+      throw new Error(`${source}:${index + 1}.adoptionAt must be an ISO-8601 timestamp`);
+    }
     return [{
       timestamp,
       repository,
@@ -265,7 +269,8 @@ function parseOperationalValueOutput(content, source, repositories) {
       ...(Object.hasOwn(record, 'metricRole') ? { metricRole } : {}),
       ...(Object.hasOwn(record, 'metricName') ? { metricName: metricName.trim() } : {}),
       ...(Object.hasOwn(record, 'metricDirection') ? { metricDirection } : {}),
-      ...(Object.hasOwn(record, 'maturityStatus') ? { maturityStatus } : {})
+      ...(Object.hasOwn(record, 'maturityStatus') ? { maturityStatus } : {}),
+      ...(Object.hasOwn(record, 'adoptionAt') ? { adoptionAt: canonicalTimestamp(adoptionAt, `${source}:${index + 1}.adoptionAt`) } : {})
     }];
   });
 }
@@ -377,7 +382,8 @@ export async function runOperationalValue({
         metric_role: record.metricRole ?? 'primary',
         metric_name: record.metricName ?? record.valueId,
         metric_direction: record.metricDirection ?? 'increase',
-        maturity_status: record.maturityStatus ?? 'matured'
+        maturity_status: record.maturityStatus ?? 'matured',
+        adoption_at: record.adoptionAt
       }
     }));
     const retained = retentionWindow === undefined

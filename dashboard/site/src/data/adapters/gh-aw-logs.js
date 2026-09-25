@@ -1121,6 +1121,7 @@ function createCachedGhAwJsonlAccumulator(options) {
         'operational-value-name': optionalString(value.metric_name) ?? valueId,
         'operational-value-direction': optionalString(value.metric_direction) ?? 'increase',
         'maturity-status': optionalString(value.maturity_status) ?? 'matured',
+        'adoption-at': optionalString(value.adoption_at),
         timestamp: observedAt
       }
     });
