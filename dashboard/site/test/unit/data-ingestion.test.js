@@ -227,11 +227,11 @@ describe('database table ingestion and queries', () => {
     expect((await readCanonicalBatch(indexedDB)).repositories).toHaveLength(251);
   });
 
-  it('streams schema 13 normalized JSONL with legacy package campaign fields', async () => {
+  it('streams schema 17 normalized JSONL with legacy package campaign fields', async () => {
     const lines = [
       {
         kind: 'metadata',
-        schemaVersion: 13,
+        schemaVersion: 17,
         ingestionVersion: 3,
         sourceRecords: 1,
         phase: 'records',
