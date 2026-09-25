@@ -332,8 +332,8 @@ process.exit(1);
     assert.equal(graphqlCalls.length, 2);
     const issueQuery = graphqlCalls.find((arguments_) => arguments_.some((argument) => argument.includes('issue(number: 42)')));
     assert.ok(issueQuery);
-    assert.ok(issueQuery.includes('owner=githubnext'));
-    assert.ok(issueQuery.includes('name=gh-aw-cao'));
+    assert.ok(issueQuery.some((argument) => argument.includes('owner=githubnext')));
+    assert.ok(issueQuery.some((argument) => argument.includes('name=gh-aw-cao')));
   } finally {
     await rm(item.root, { recursive: true, force: true });
   }
