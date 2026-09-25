@@ -146,7 +146,7 @@ test('Indexing shows CAO Activity status, size trend, and retained transactions'
     </script>
   `);
 
-  const maintenanceNavigation = page.locator('.nav-section').filter({ hasText: 'Maintenance' });
+  const maintenanceNavigation = page.locator('.nav-section').filter({ hasText: 'Updates' });
   await maintenanceNavigation.getByRole('link', { name: 'Indexing' }).click();
 
   const root = page.locator('.dashboard-root');
@@ -974,13 +974,13 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
 
   const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
   const data = page.locator('.nav-section').filter({ hasText: 'Data' });
-  const maintenance = page.locator('.nav-section').filter({ hasText: 'Maintenance' });
+  const maintenance = page.locator('.nav-section').filter({ hasText: 'Updates' });
   await expect(cleanNavigation).toHaveText(['Overview']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
   await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Operational Value', 'Cost', 'Models & Agents', 'Steering', 'Firewall', 'MCPs']);
-  await expect(maintenance.locator('summary')).toHaveText('Maintenance');
-  await expect(maintenance.getByRole('link')).toHaveText(['Maintenance', 'Indexing', 'Settings']);
+  await expect(maintenance.locator('summary')).toHaveText('Updates');
+  await expect(maintenance.getByRole('link')).toHaveText(['Updates', 'Indexing', 'Settings']);
   await expect(maintenance).toHaveClass(/nav-section-bottom/);
   await expect.poll(async () => {
     const [navBox, manageBox] = await Promise.all([
@@ -1089,7 +1089,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
   await expect(overviewPage.locator('.factory-station')).toHaveCount(2);
   await page.locator('.mobile-nav-menu > summary').click();
-  await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Maintenance']);
+  await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Updates']);
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toHaveCount(0);
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(overviewPage.locator('.factory-intro')).toBeInViewport();
