@@ -1494,7 +1494,6 @@ function chartCategoryLinks(points) {
     } else {
       links.set(point.x, point.link);
     }
-
   }
   return links;
 }
