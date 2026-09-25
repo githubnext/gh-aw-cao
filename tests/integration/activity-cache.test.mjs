@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { appendFile, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
+import { promisify } from "node:util";
+import { parse } from "yaml";
 
 const cachePaths = [
   "${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite",
@@ -70,14 +75,6 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   assert.match(notifyFailureJob, /CAO_ACTIVITY_INDEX_FAILED[\s\S]*?CAO_ACTIVITY_CACHE_FAILED/);
   assert.match(notifyFailureJob, /Assign this issue to an agent/);
   assert.match(notifyFailureJob, /GITHUB_WORKFLOW_SHA[\s\S]*?githubnext\/gh-aw-cao\/blob\/main\/skills\/debug-cao\/SKILL\.md/);
-  assert.match(
-    cacheJob,
-    /Verify activity snapshot[\s\S]*?for file in gh-aw-logs\.sqlite payload-hashes\.json control-settings\.json inventory-sources\.json drain3_weights\.json[\s\S]*?-s "\$snapshot_root\/\$file"[\s\S]*?Activity snapshot contains no JSONL shards[\s\S]*?exit 1/,
-  );
-  assert.match(cacheJob, /for phase in runs records/);
-  assert.match(cacheJob, /gh-aw-logs-\$phase" -maxdepth 1 -type f -name '\*\.jsonl'/);
-  assert.doesNotMatch(cacheJob, /for phase in runs events/);
-  assert.doesNotMatch(cacheJob, /Activity run and record shard sets do not match/);
   assert.doesNotMatch(cacheJob, /actions\/checkout@|activity-app-token|gh aw logs|ingest-jsonl/);
   assert.match(
     workflow,
@@ -156,4 +153,89 @@ test("activity cache consumers use the producer cache version paths", async () =
 
   assertCachePathSets(dashboardWorkflow, 1);
   assertCachePathSets(sharedCache, 2);
+});
+
+const execute = promisify(execFile);
+const rateLimitRecord = `${JSON.stringify({
+  schema_version: 2,
+  kind: "github_api_rate_limit",
+  rate_limit: {
+    host: "github.com",
+    start: { limit: 5000, remaining: 5000, reset: 1790374802, used: 0 },
+    end: { limit: 5000, remaining: 5000, reset: 1790374804, used: 0 },
+  },
+})}\n`;
+
+// Produces an Activity snapshot the way the index job does when collection
+// discovers no agentic workflow runs: the only raw records are rate limits.
+async function zeroRunSnapshot(t) {
+  const runnerTemp = await mkdtemp(path.join(os.tmpdir(), "cao-activity-zero-run-"));
+  t.after(() => rm(runnerTemp, { recursive: true, force: true }));
+  const root = path.join(runnerTemp, "cao-activity");
+  const shards = path.join(root, "gh-aw-logs-shards");
+  const runs = path.join(root, "gh-aw-logs-runs");
+  const records = path.join(root, "gh-aw-logs-records");
+  const database = path.join(root, "gh-aw-logs.sqlite");
+  const inventory = path.join(root, "inventory-sources.json");
+  await mkdir(shards, { recursive: true });
+  await writeFile(path.join(shards, "logs-1790371204-0000-d98491943277f167.jsonl"), rateLimitRecord);
+  await writeFile(path.join(root, "control-settings.json"), '{"allowed_repositories":["junco-org/control"]}\n');
+  await writeFile(inventory, '{"workflows":{"rows":[]}}\n');
+  const phases = ["--shard-dir", shards, "--runs-dir", runs, "--records-dir", records, "--inventory", inventory];
+  await execute(process.execPath, ["activity/cao.mjs", "hash-payloads", ...phases]);
+  await execute(process.execPath, [
+    "activity/cao.mjs", "ingest-jsonl", "--database", database, "--runs-dir", runs, "--records-dir", records,
+    "--retention-days", "30", "--run-retention-days", "30",
+  ]);
+  await execute(process.execPath, [
+    "activity/cao.mjs", "hash-payloads", "--database", database, ...phases,
+    "--output", path.join(root, "payload-hashes.json"),
+  ]);
+  return { runnerTemp, root };
+}
+
+async function verifySnapshot(runnerTemp) {
+  const workflow = parse(await readFile(".github/workflows/cao-activity.yml", "utf8"));
+  const { run } = workflow.jobs.cache.steps.find(({ name }) => name === "Verify activity snapshot");
+  try {
+    await execute("bash", ["-e", "-c", run], { env: { ...process.env, RUNNER_TEMP: runnerTemp } });
+    return { code: 0, stderr: "" };
+  } catch (error) {
+    return { code: error.code, stderr: error.stderr };
+  }
+}
+
+test("a zero-run Activity snapshot publishes explicit empty phase shards and passes verification", async (t) => {
+  const { runnerTemp, root } = await zeroRunSnapshot(t);
+  const manifest = JSON.parse(await readFile(path.join(root, "payload-hashes.json"), "utf8"));
+  for (const phase of ["runs", "records"]) {
+    const names = Object.keys(manifest).filter((name) => name.startsWith(`gh-aw-logs-${phase}/`));
+    assert.equal(names.length, 1, `${phase} phase is published explicitly`);
+    const lines = (await readFile(path.join(root, names[0]), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
+    assert.deepEqual(lines.map(({ kind, phase: linePhase, records: count }) => [kind, linePhase, count]), [["metadata", phase, 0]]);
+  }
+  assert.deepEqual(await verifySnapshot(runnerTemp), { code: 0, stderr: "" });
+});
+
+test("Activity snapshot verification still rejects incomplete snapshots", async (t) => {
+  const { runnerTemp, root } = await zeroRunSnapshot(t);
+  const [runShard] = (await readdir(path.join(root, "gh-aw-logs-runs"))).filter((name) => name.endsWith(".jsonl"));
+  await appendFile(
+    path.join(root, "gh-aw-logs-runs", runShard),
+    `${JSON.stringify({ kind: "record", collection: "runs", record: { id: "1" } })}\n`,
+  );
+  const withRuns = await verifySnapshot(runnerTemp);
+  assert.equal(withRuns.code, 1);
+  assert.match(withRuns.stderr, /Activity snapshot file is missing or empty: drain3_weights\.json/);
+
+  await writeFile(path.join(root, "drain3_weights.json"), "{}\n");
+  assert.equal((await verifySnapshot(runnerTemp)).code, 0);
+
+  await rm(path.join(root, "gh-aw-logs-records"), { recursive: true });
+  const withoutRecords = await verifySnapshot(runnerTemp);
+  assert.equal(withoutRecords.code, 1);
+  assert.match(withoutRecords.stderr, /Activity snapshot contains no records shards/);
+
+  await rm(path.join(root, "control-settings.json"));
+  assert.match((await verifySnapshot(runnerTemp)).stderr, /missing or empty: control-settings\.json/);
 });

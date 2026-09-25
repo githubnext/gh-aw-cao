@@ -262,6 +262,10 @@ JSONL MAY remain in the private Activity cache for audit and rebuild operations,
 but MUST NOT be copied into the dashboard artifact or listed in its deployed
 payload manifest. The browser MUST fail closed when compacted run-information
 shards are absent; it MUST NOT fall back to raw Activity JSONL.
+A phase that has no records SHALL still publish exactly one consolidated shard
+containing only its metadata header (`records: 0`), so a collection that
+observed no agentic workflow runs is explicit. Such a header-only shard
+satisfies the run-information requirement above; its absence does not.
 
 Published phase shards SHALL be consolidated across source shards before
 publication. A canonical record observed by more than one Activity source shard
