@@ -337,6 +337,19 @@ failing.
 | `CAO_COLLECT_RATE_LIMIT_FLOOR` | requests reserved per installation |
 | `CAO_COLLECT_PROJECTION_INTERVAL` | minimum interval between projections |
 | `CAO_COLLECT_RECOVER_DELIVERIES` | replay failed webhook deliveries to close gaps |
+| `CAO_COLLECT_QUEUE_MAX_LENGTH` | bound on the task and dead-letter streams (default 200 000) |
+
+### Retention and erasure
+
+The evidence lake is retained collected evidence, not a cache: cold start
+replays it without contacting GitHub. Retention therefore has to be governed
+deliberately.
+
+Leaving ingestion scope erases evidence. When an installation is deleted or
+suspended, or repositories are removed from it, the server deletes that
+repository's shards from the lake and requests a projection, so the canonical
+database stops reporting it. Uninstalling the GitHub App is the supported way
+to withdraw consent, and it takes effect without operator action.
 
 `specs/server-ingestion.md` is the normative contract, and
 `adr/server-webhook-driven-ingestion.md` records why the design is shaped this

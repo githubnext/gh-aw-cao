@@ -58,6 +58,17 @@ param maximumWorkers int = 20
 @minValue(1)
 param backlogPerWorker int = 25
 
+@description('Application Insights connection string. Collection is unobservable without it.')
+@secure()
+param applicationInsightsConnectionString string
+
+@description('Log Analytics workspace resource ID receiving container console and system logs.')
+param logAnalyticsWorkspaceResourceId string = ''
+
+@description('Bound on the collection task and dead-letter streams.')
+@minValue(1000)
+param queueMaxLength int = 200000
+
 var lakeStorageAccountName = '${toLower(take(replace(namePrefix, '-', ''), 7))}lake${uniqueString(resourceGroup().id, namePrefix)}'
 var streamKey = '${redisNamespace}:collect:tasks'
 var consumerGroup = 'collectors'
@@ -90,9 +101,27 @@ resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
   location: location
   tags: tags
   properties: {
-    appLogsConfiguration: {
+    // Console and system logs go to Azure Monitor, which requires the
+    // diagnostic setting below. Without a workspace the destination is left
+    // unset rather than pointing at a sink that was never created.
+    appLogsConfiguration: empty(logAnalyticsWorkspaceResourceId) ? {} : {
       destination: 'azure-monitor'
     }
+    zoneRedundant: false
+  }
+}
+
+resource environmentDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (!empty(logAnalyticsWorkspaceResourceId)) {
+  name: 'collection-logs'
+  scope: environment
+  properties: {
+    workspaceId: logAnalyticsWorkspaceResourceId
+    logs: [
+      {
+        categoryGroup: 'allLogs'
+        enabled: true
+      }
+    ]
   }
 }
 
@@ -111,12 +140,36 @@ resource lakeAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
     minimumTlsVersion: 'TLS1_2'
     supportsHttpsTrafficOnly: true
     allowBlobPublicAccess: false
+    allowCrossTenantReplication: false
+    publicNetworkAccess: 'Enabled'
+    networkAcls: {
+      bypass: 'AzureServices'
+      defaultAction: 'Allow'
+    }
+    encryption: {
+      requireInfrastructureEncryption: true
+      keySource: 'Microsoft.Storage'
+      services: {
+        file: {
+          enabled: true
+          keyType: 'Account'
+        }
+      }
+    }
   }
 }
 
 resource lakeFileService 'Microsoft.Storage/storageAccounts/fileServices@2023-05-01' = {
   parent: lakeAccount
   name: 'default'
+  properties: {
+    // The lake is retained evidence that cold start replays, so an accidental
+    // share deletion must be recoverable.
+    shareDeleteRetentionPolicy: {
+      enabled: true
+      days: 30
+    }
+  }
 }
 
 resource lakeShare 'Microsoft.Storage/storageAccounts/fileServices/shares@2023-05-01' = {
@@ -170,6 +223,24 @@ var collectionEnvironment = [
     name: 'CAO_COLLECT_CONTROL_REPOSITORY'
     value: controlRepository
   }
+  {
+    name: 'CAO_COLLECT_QUEUE_MAX_LENGTH'
+    value: string(queueMaxLength)
+  }
+  {
+    // Collection is an unattended background system acting on customer
+    // repositories, so it must be traceable rather than silent.
+    name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+    secretRef: 'application-insights-connection-string'
+  }
+  {
+    name: 'OTEL_SERVICE_NAME'
+    value: '${namePrefix}-collector'
+  }
+  {
+    name: 'DEBUG'
+    value: 'cao:collect:*'
+  }
 ]
 
 var collectionSecrets = [
@@ -187,6 +258,10 @@ var collectionSecrets = [
     name: 'cao-redis-password'
     keyVaultUrl: '${keyVaultUri}secrets/cao-redis-password'
     identity: collectorIdentity.id
+  }
+  {
+    name: 'application-insights-connection-string'
+    value: applicationInsightsConnectionString
   }
 ]
 

@@ -130,7 +130,7 @@ func (b Backfill) enumerate(ctx context.Context) ([]enrolledRepository, int, err
 		if err != nil {
 			// One installation that cannot be read must not abort cold start
 			// for the rest; the gap is visible in enrollment coverage.
-			backfillLog.Printf("installation enumeration failed; continuing")
+			backfillLog.Printf("installation enumeration failed; continuing installation=%d", installation.ID)
 			continue
 		}
 		names := make([]string, 0, len(covered))

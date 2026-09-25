@@ -100,7 +100,7 @@ func (q Queue) Enqueue(ctx context.Context, task Task) (bool, error) {
 			return false, err
 		}
 		if !fresh {
-			queueLog.Printf("collapsed duplicate task")
+			queueLog.Printf("collapsed duplicate task repository=%s", repository)
 			return false, nil
 		}
 	}
@@ -114,7 +114,7 @@ func (q Queue) Enqueue(ctx context.Context, task Task) (bool, error) {
 	}); err != nil {
 		return false, err
 	}
-	queueLog.Printf("enqueued task attempt=%d", task.Attempt)
+	queueLog.Printf("enqueued task repository=%s attempt=%d", repository, task.Attempt)
 	return true, nil
 }
 
@@ -190,7 +190,7 @@ func (q Queue) Retry(ctx context.Context, lease Lease, cause error) error {
 		if cause != nil {
 			reason = cause.Error()
 		}
-		queueLog.Printf("dead-lettering task attempts=%d", task.Attempt)
+		queueLog.Printf("dead-lettering task repository=%s attempts=%d", task.Repository, task.Attempt)
 		return q.deadLetter(ctx, task, reason)
 	}
 	task.NotBefore = time.Now().UTC().Add(backoff(task.Attempt))

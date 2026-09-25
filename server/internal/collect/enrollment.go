@@ -106,38 +106,47 @@ func (e Enrollment) AddRepositories(ctx context.Context, installationID int64, r
 	return nil
 }
 
-// RemoveRepositories drops repositories from enrollment.
-func (e Enrollment) RemoveRepositories(ctx context.Context, installationID int64, repositories []string) error {
+// RemoveRepositories drops repositories from enrollment and reports the
+// normalized names it removed, so the caller can erase their retained
+// evidence.
+func (e Enrollment) RemoveRepositories(
+	ctx context.Context, installationID int64, repositories []string) ([]string, error) {
+	removed := make([]string, 0, len(repositories))
 	for _, repository := range repositories {
 		name, err := NormalizeRepository(repository)
 		if err != nil {
-			return err
+			return removed, err
 		}
 		if err := e.Store.SetRemove(ctx, repositoriesKey, name); err != nil {
-			return err
+			return removed, err
 		}
 		if installationID > 0 {
 			if err := e.Store.SetRemove(ctx, installationRepositoriesKey(installationID), name); err != nil {
-				return err
+				return removed, err
 			}
 		}
 		if err := e.Store.HashDelete(ctx, repositoryInstallations, name); err != nil {
-			return err
+			return removed, err
 		}
+		removed = append(removed, name)
 	}
-	return nil
+	return removed, nil
 }
 
-// RemoveInstallation drops an installation and every repository it covered.
-func (e Enrollment) RemoveInstallation(ctx context.Context, installationID int64) error {
+// RemoveInstallation drops an installation and every repository it covered,
+// reporting those repositories so their retained evidence can be erased.
+func (e Enrollment) RemoveInstallation(ctx context.Context, installationID int64) ([]string, error) {
+	var removed []string
 	cursor := ""
 	for {
 		repositories, next, err := e.Store.SetScan(ctx, installationRepositoriesKey(installationID), cursor, 500)
 		if err != nil {
-			return err
+			return removed, err
 		}
-		if err := e.RemoveRepositories(ctx, installationID, repositories); err != nil {
-			return err
+		names, err := e.RemoveRepositories(ctx, installationID, repositories)
+		removed = append(removed, names...)
+		if err != nil {
+			return removed, err
 		}
 		if next == "0" || next == "" {
 			break
@@ -145,9 +154,9 @@ func (e Enrollment) RemoveInstallation(ctx context.Context, installationID int64
 		cursor = next
 	}
 	if err := e.Store.Clear(ctx, installationRepositoriesKey(installationID)); err != nil {
-		return err
+		return removed, err
 	}
-	return e.Store.SetRemove(ctx, installationsKey, strconv.FormatInt(installationID, 10))
+	return removed, e.Store.SetRemove(ctx, installationsKey, strconv.FormatInt(installationID, 10))
 }
 
 // Enrolled reports whether a repository is in scope. Admission fails closed:

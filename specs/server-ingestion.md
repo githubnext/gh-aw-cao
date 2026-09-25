@@ -219,6 +219,23 @@ per installation.
 - A misconfigured collector MUST fail startup or degrade to the Actions profile.
   It MUST NOT degrade to a partial collector.
 
+## 11b. Retention and erasure
+
+The evidence lake is retained evidence rather than a cache, so retention is a
+governed property and not an accident of disk usage.
+
+- Leaving ingestion scope MUST erase retained evidence. When an installation is
+  deleted or suspended, or repositories are removed from it, an implementation
+  MUST delete that repository's shards from the evidence lake and MUST request a
+  projection so the canonical database stops reporting it.
+- Erasure MUST be driven by the same webhook admission path as enrollment, so
+  withdrawing consent takes effect without operator action.
+- An erasure failure MUST fail the delivery rather than report it complete, so
+  the delivery is retried instead of silently retaining evidence.
+- The task and dead-letter queues MUST be bounded. Acknowledged entries persist
+  until trimmed, so an unbounded queue grows with total event volume rather than
+  with outstanding work.
+
 ## 12. Observability
 
 An implementation MUST expose collection status reporting at least enrollment
@@ -228,6 +245,10 @@ count.
 - In the Actions profile the same surface MUST report that collection is not
   configured, and MUST NOT fail.
 - Status MUST NOT include tokens, secrets, prompts, or payload contents.
+- Collection acts unattended on customer repositories, so it MUST be traceable:
+  enqueue, collection, dead-lettering, redelivery, and erasure MUST each record
+  the repository or delivery they concern. A deployment MUST route these records
+  and the process's telemetry to a durable sink.
 
 ## 13. Conformance checklist
 
@@ -244,4 +265,6 @@ A conforming implementation:
    and atomically activated;
 8. recovers gaps by webhook delivery replay rather than routine sweeps;
 9. governs GitHub budget per installation and fails closed;
-10. passes a profile equivalence test against an Actions-published directory.
+10. passes a profile equivalence test against an Actions-published directory;
+11. erases retained evidence for repositories that leave ingestion scope, and
+    bounds its queues.

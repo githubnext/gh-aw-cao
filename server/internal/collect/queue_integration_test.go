@@ -62,7 +62,7 @@ func TestEnrollmentTracksInstallationCoverage(t *testing.T) {
 	if coverage.Repositories != 2 || coverage.Installations != 1 {
 		t.Fatalf("unexpected coverage %+v", coverage)
 	}
-	if err := enrollment.RemoveInstallation(ctx, 7); err != nil {
+	if _, err := enrollment.RemoveInstallation(ctx, 7); err != nil {
 		t.Fatal(err)
 	}
 	enrolled, err = enrollment.Enrolled(ctx, "octo/api")
@@ -245,5 +245,64 @@ func TestAdmitterRefusesRepositoriesOutsideScope(t *testing.T) {
 	}
 	if !admission.Enqueued || admission.Kind != IntentCollect {
 		t.Fatalf("unexpected admission %+v", admission)
+	}
+}
+
+// Un-enrollment is a withdrawal of consent, so it must erase retained
+// evidence rather than merely stop collecting.
+func TestAdmitterErasesEvidenceWhenScopeIsWithdrawn(t *testing.T) {
+	store, ctx := integrationStore(t)
+	lake := Lake{Directory: t.TempDir()}
+	if err := lake.Prepare(); err != nil {
+		t.Fatal(err)
+	}
+	enrollment := Enrollment{Store: store}
+	if err := enrollment.AddRepositories(ctx, 11, []string{"acme/kept", "acme/withdrawn"}); err != nil {
+		t.Fatal(err)
+	}
+	projector := Projector{Store: store, Lake: lake, Enrollment: enrollment}
+	admitter := Admitter{
+		Enrollment: enrollment,
+		Queue:      Queue{Store: store},
+		Lake:       &lake,
+		Projection: projector,
+	}
+	shards := map[string]string{
+		lake.ShardDirectory(): "raw",
+		lake.RunsDirectory():  "runs",
+	}
+	for directory := range shards {
+		for _, repository := range []string{"acme/kept", "acme/withdrawn"} {
+			name := directory + "/" + lake.ShardPrefix(repository) + "0001.jsonl"
+			if err := WriteFileAtomic(name, []byte("{}\n")); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	payload := []byte(`{"action":"removed","installation":{"id":11},` +
+		`"repositories_removed":[{"full_name":"acme/withdrawn"}]}`)
+	admission, err := admitter.Admit(ctx, "installation_repositories", payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if admission.Erased != 1 {
+		t.Fatalf("erased %d repositories, want 1", admission.Erased)
+	}
+	for directory := range shards {
+		withdrawn := directory + "/" + lake.ShardPrefix("acme/withdrawn") + "0001.jsonl"
+		if _, err := os.Stat(withdrawn); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("withdrawn evidence survived in %s: %v", directory, err)
+		}
+		kept := directory + "/" + lake.ShardPrefix("acme/kept") + "0001.jsonl"
+		if _, err := os.Stat(kept); err != nil {
+			t.Fatalf("enrolled evidence was erased from %s: %v", directory, err)
+		}
+	}
+	dirty, err := projector.PendingProjection(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !dirty {
+		t.Fatal("erasure did not request a projection, so the database keeps the rows")
 	}
 }

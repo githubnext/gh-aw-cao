@@ -74,7 +74,7 @@ func (r DeliveryReplayer) Recover(ctx context.Context) (ReplayResult, error) {
 			continue
 		}
 		if err := r.Client.Redeliver(ctx, delivery.ID); err != nil {
-			recoveryLog.Printf("redelivery request failed")
+			recoveryLog.Printf("redelivery request failed delivery=%d", delivery.ID)
 			continue
 		}
 		result.Redelivered++

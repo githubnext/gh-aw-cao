@@ -14,6 +14,11 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
+// defaultQueueMaxLength bounds the task and dead-letter streams. Acked stream
+// entries persist until trimmed, so an untrimmed queue grows monotonically
+// with event volume rather than with outstanding work.
+const defaultQueueMaxLength = 200_000
+
 // CollectorConfig configures the optional server collection profile.
 //
 // Leaving it nil selects the default Actions profile, in which the server
@@ -52,6 +57,9 @@ type CollectorConfig struct {
 	Consumer string
 	// RecoverDeliveries enables webhook delivery replay for gap recovery.
 	RecoverDeliveries bool
+	// QueueMaxLength bounds the task and dead-letter streams so an unattended
+	// queue cannot grow Redis without bound.
+	QueueMaxLength int
 }
 
 // Validate reports whether the collector can be constructed.
@@ -67,6 +75,9 @@ func (config *CollectorConfig) Validate() error {
 	}
 	if strings.TrimSpace(config.CatalogRoot) == "" {
 		return errors.New("collection requires the catalog root containing activity/cao.mjs")
+	}
+	if config.QueueMaxLength <= 0 {
+		config.QueueMaxLength = defaultQueueMaxLength
 	}
 	return nil
 }
@@ -114,7 +125,7 @@ func NewCollector(store *redisx.Store, config CollectorConfig, databaseQueriesPa
 		return nil, err
 	}
 	enrollment := collect.Enrollment{Store: store}
-	queue := collect.Queue{Store: store}
+	queue := collect.Queue{Store: store, MaxLength: int64(config.QueueMaxLength)}
 	budget := &githubapp.Budget{Store: store, Floor: config.RateLimitFloor}
 	runner := collect.Runner{
 		Lake:                  lake,
@@ -154,7 +165,10 @@ func NewCollector(store *redisx.Store, config CollectorConfig, databaseQueriesPa
 		lake:       lake,
 		runner:     runner,
 		projector:  projector,
-		admitter:   collect.Admitter{Enrollment: enrollment, Queue: queue},
+		admitter: collect.Admitter{
+			Enrollment: enrollment, Queue: queue,
+			Lake: &lake, Projection: projector,
+		},
 		backfill:   backfill,
 		reporter: collect.Reporter{
 			Enrollment: enrollment, Queue: queue, Backfill: backfill,

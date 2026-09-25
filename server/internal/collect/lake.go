@@ -88,6 +88,44 @@ func (l Lake) Prepare() error {
 	return nil
 }
 
+// Forget deletes every shard collected for repository.
+//
+// Un-enrollment is a withdrawal of consent, so it must erase retained evidence
+// and not merely stop collecting. The caller is responsible for requesting a
+// projection afterwards, which is what removes the repository's rows from the
+// canonical database.
+func (l Lake) Forget(repository string) error {
+	normalized, err := NormalizeRepository(repository)
+	if err != nil {
+		return err
+	}
+	if err := l.Validate(); err != nil {
+		return err
+	}
+	prefix := l.ShardPrefix(normalized)
+	for _, directory := range []string{
+		l.ShardDirectory(), l.RunsDirectory(), l.RecordsDirectory(),
+	} {
+		entries, err := os.ReadDir(directory)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				continue
+			}
+			return fmt.Errorf("read evidence lake directory: %w", err)
+		}
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.HasPrefix(entry.Name(), prefix) {
+				continue
+			}
+			if err := os.Remove(filepath.Join(directory, entry.Name())); err != nil &&
+				!errors.Is(err, os.ErrNotExist) {
+				return fmt.Errorf("remove retained evidence: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
 // Populated reports whether the lake holds evidence that can repopulate an
 // empty canonical database without contacting GitHub.
 func (l Lake) Populated() (bool, error) {

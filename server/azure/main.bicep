@@ -378,8 +378,11 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
           value: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/cao-collect-private-key)'
         }
         {
+          // The Function App admits deliveries and never collects or projects,
+          // so it has no evidence-lake mount. It still needs a writable path
+          // because collection configuration is validated at startup.
           name: 'CAO_COLLECT_LAKE_DIRECTORY'
-          value: '/evidence'
+          value: '/tmp/cao-evidence'
         }
         {
           name: 'CAO_COLLECT_CATALOG_ROOT'
@@ -429,6 +432,8 @@ module collection 'collector.bicep' = if (collectionEnabled) {
     controlRepository: collectorControlRepository
     githubAppId: collectorGithubAppId
     maximumWorkers: collectorMaximumWorkers
+    applicationInsightsConnectionString: insights.properties.ConnectionString
+    logAnalyticsWorkspaceResourceId: logAnalyticsWorkspaceResourceId
   }
   dependsOn: [
     collectorPrivateKeyValue

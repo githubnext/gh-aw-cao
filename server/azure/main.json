@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.47.16.16243",
-      "templateHash": "8828124765304227423"
+      "templateHash": "15322160933883682605"
     }
   },
   "parameters": {
@@ -412,7 +412,7 @@
           "ftpsState": "Disabled",
           "minTlsVersion": "1.2",
           "http20Enabled": true,
-          "appSettings": "[concat(createArray(createObject('name', 'FUNCTIONS_EXTENSION_VERSION', 'value', '~4'), createObject('name', 'FUNCTIONS_WORKER_RUNTIME', 'value', 'custom'), createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', reference(resourceId('Microsoft.Insights/components', format('{0}-ai', parameters('functionAppName'))), '2020-02-02').ConnectionString), createObject('name', 'AzureWebJobsStorage', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/azure-webjobs-storage)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)), createObject('name', 'CAO_DASHBOARD_HOSTING', 'value', 'azure-functions'), createObject('name', 'CAO_AZURE_ALLOWED_HOSTS', 'value', join(parameters('allowedHosts'), ',')), createObject('name', 'CAO_AZURE_REQUIRE_HTTPS', 'value', 'true'), createObject('name', 'CAO_REDIS_NAMESPACE', 'value', 'azure-dashboard'), createObject('name', 'CAO_REDIS_URL', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/cao-redis-url)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)), createObject('name', 'CAO_GITHUB_CLIENT_ID', 'value', parameters('githubClientId')), createObject('name', 'CAO_GITHUB_CLIENT_SECRET', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/github-oauth-client-secret)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)), createObject('name', 'CAO_GITHUB_REDIRECT_URL', 'value', variables('githubRedirectUri')), createObject('name', 'CAO_GITHUB_ALLOWED_ORGS', 'value', join(parameters('githubAllowedOrganizations'), ',')), createObject('name', 'CAO_GITHUB_ALLOWED_TEAMS', 'value', join(parameters('githubAllowedTeams'), ',')), createObject('name', 'CAO_SESSION_SECRET', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/cao-session-secret)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri))), if(empty(parameters('previousSessionSecret')), createArray(), createArray(createObject('name', 'CAO_SESSION_SECRET_PREVIOUS', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/cao-session-secret-previous)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)))), if(not(variables('collectionEnabled')), createArray(), createArray(createObject('name', 'CAO_GITHUB_WEBHOOK_SECRET', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/cao-github-webhook-secret)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)), createObject('name', 'CAO_GITHUB_ADMIN_USERS', 'value', join(parameters('githubAdminUsers'), ',')), createObject('name', 'CAO_COLLECT_APP_ID', 'value', parameters('collectorGithubAppId')), createObject('name', 'CAO_COLLECT_PRIVATE_KEY', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/cao-collect-private-key)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)), createObject('name', 'CAO_COLLECT_LAKE_DIRECTORY', 'value', '/evidence'), createObject('name', 'CAO_COLLECT_CATALOG_ROOT', 'value', '/app'), createObject('name', 'CAO_COLLECT_CONTROL_REPOSITORY', 'value', parameters('collectorControlRepository')), createObject('name', 'CAO_COLLECT_WORKERS', 'value', '0'))))]"
+          "appSettings": "[concat(createArray(createObject('name', 'FUNCTIONS_EXTENSION_VERSION', 'value', '~4'), createObject('name', 'FUNCTIONS_WORKER_RUNTIME', 'value', 'custom'), createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', reference(resourceId('Microsoft.Insights/components', format('{0}-ai', parameters('functionAppName'))), '2020-02-02').ConnectionString), createObject('name', 'AzureWebJobsStorage', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/azure-webjobs-storage)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)), createObject('name', 'CAO_DASHBOARD_HOSTING', 'value', 'azure-functions'), createObject('name', 'CAO_AZURE_ALLOWED_HOSTS', 'value', join(parameters('allowedHosts'), ',')), createObject('name', 'CAO_AZURE_REQUIRE_HTTPS', 'value', 'true'), createObject('name', 'CAO_REDIS_NAMESPACE', 'value', 'azure-dashboard'), createObject('name', 'CAO_REDIS_URL', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/cao-redis-url)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)), createObject('name', 'CAO_GITHUB_CLIENT_ID', 'value', parameters('githubClientId')), createObject('name', 'CAO_GITHUB_CLIENT_SECRET', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/github-oauth-client-secret)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)), createObject('name', 'CAO_GITHUB_REDIRECT_URL', 'value', variables('githubRedirectUri')), createObject('name', 'CAO_GITHUB_ALLOWED_ORGS', 'value', join(parameters('githubAllowedOrganizations'), ',')), createObject('name', 'CAO_GITHUB_ALLOWED_TEAMS', 'value', join(parameters('githubAllowedTeams'), ',')), createObject('name', 'CAO_SESSION_SECRET', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/cao-session-secret)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri))), if(empty(parameters('previousSessionSecret')), createArray(), createArray(createObject('name', 'CAO_SESSION_SECRET_PREVIOUS', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/cao-session-secret-previous)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)))), if(not(variables('collectionEnabled')), createArray(), createArray(createObject('name', 'CAO_GITHUB_WEBHOOK_SECRET', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/cao-github-webhook-secret)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)), createObject('name', 'CAO_GITHUB_ADMIN_USERS', 'value', join(parameters('githubAdminUsers'), ',')), createObject('name', 'CAO_COLLECT_APP_ID', 'value', parameters('collectorGithubAppId')), createObject('name', 'CAO_COLLECT_PRIVATE_KEY', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/cao-collect-private-key)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)), createObject('name', 'CAO_COLLECT_LAKE_DIRECTORY', 'value', '/tmp/cao-evidence'), createObject('name', 'CAO_COLLECT_CATALOG_ROOT', 'value', '/app'), createObject('name', 'CAO_COLLECT_CONTROL_REPOSITORY', 'value', parameters('collectorControlRepository')), createObject('name', 'CAO_COLLECT_WORKERS', 'value', '0'))))]"
         }
       },
       "dependsOn": [
@@ -484,6 +484,12 @@
           },
           "maximumWorkers": {
             "value": "[parameters('collectorMaximumWorkers')]"
+          },
+          "applicationInsightsConnectionString": {
+            "value": "[reference(resourceId('Microsoft.Insights/components', format('{0}-ai', parameters('functionAppName'))), '2020-02-02').ConnectionString]"
+          },
+          "logAnalyticsWorkspaceResourceId": {
+            "value": "[parameters('logAnalyticsWorkspaceResourceId')]"
           }
         },
         "template": {
@@ -493,7 +499,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.47.16.16243",
-              "templateHash": "914310548828844077"
+              "templateHash": "166203517985989653"
             }
           },
           "parameters": {
@@ -596,6 +602,27 @@
               "metadata": {
                 "description": "Stream backlog per worker before another worker is added."
               }
+            },
+            "applicationInsightsConnectionString": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Application Insights connection string. Collection is unobservable without it."
+              }
+            },
+            "logAnalyticsWorkspaceResourceId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Log Analytics workspace resource ID receiving container console and system logs."
+              }
+            },
+            "queueMaxLength": {
+              "type": "int",
+              "defaultValue": 200000,
+              "minValue": 1000,
+              "metadata": {
+                "description": "Bound on the collection task and dead-letter streams."
+              }
             }
           },
           "variables": {
@@ -630,6 +657,22 @@
               {
                 "name": "CAO_COLLECT_CONTROL_REPOSITORY",
                 "value": "[parameters('controlRepository')]"
+              },
+              {
+                "name": "CAO_COLLECT_QUEUE_MAX_LENGTH",
+                "value": "[string(parameters('queueMaxLength'))]"
+              },
+              {
+                "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+                "secretRef": "application-insights-connection-string"
+              },
+              {
+                "name": "OTEL_SERVICE_NAME",
+                "value": "[format('{0}-collector', parameters('namePrefix'))]"
+              },
+              {
+                "name": "DEBUG",
+                "value": "cao:collect:*"
               }
             ],
             "collectionSecrets": [
@@ -647,6 +690,10 @@
                 "name": "cao-redis-password",
                 "keyVaultUrl": "[format('{0}secrets/cao-redis-password', parameters('keyVaultUri'))]",
                 "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-collector-identity', parameters('namePrefix')))]"
+              },
+              {
+                "name": "application-insights-connection-string",
+                "value": "[parameters('applicationInsightsConnectionString')]"
               }
             ]
           },
@@ -679,10 +726,28 @@
               "location": "[parameters('location')]",
               "tags": "[parameters('tags')]",
               "properties": {
-                "appLogsConfiguration": {
-                  "destination": "azure-monitor"
-                }
+                "appLogsConfiguration": "[if(empty(parameters('logAnalyticsWorkspaceResourceId')), createObject(), createObject('destination', 'azure-monitor'))]",
+                "zoneRedundant": false
               }
+            },
+            {
+              "condition": "[not(empty(parameters('logAnalyticsWorkspaceResourceId')))]",
+              "type": "Microsoft.Insights/diagnosticSettings",
+              "apiVersion": "2021-05-01-preview",
+              "scope": "[resourceId('Microsoft.App/managedEnvironments', format('{0}-collectors', parameters('namePrefix')))]",
+              "name": "collection-logs",
+              "properties": {
+                "workspaceId": "[parameters('logAnalyticsWorkspaceResourceId')]",
+                "logs": [
+                  {
+                    "categoryGroup": "allLogs",
+                    "enabled": true
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.App/managedEnvironments', format('{0}-collectors', parameters('namePrefix')))]"
+              ]
             },
             {
               "type": "Microsoft.Storage/storageAccounts",
@@ -697,13 +762,35 @@
               "properties": {
                 "minimumTlsVersion": "TLS1_2",
                 "supportsHttpsTrafficOnly": true,
-                "allowBlobPublicAccess": false
+                "allowBlobPublicAccess": false,
+                "allowCrossTenantReplication": false,
+                "publicNetworkAccess": "Enabled",
+                "networkAcls": {
+                  "bypass": "AzureServices",
+                  "defaultAction": "Allow"
+                },
+                "encryption": {
+                  "requireInfrastructureEncryption": true,
+                  "keySource": "Microsoft.Storage",
+                  "services": {
+                    "file": {
+                      "enabled": true,
+                      "keyType": "Account"
+                    }
+                  }
+                }
               }
             },
             {
               "type": "Microsoft.Storage/storageAccounts/fileServices",
               "apiVersion": "2023-05-01",
               "name": "[format('{0}/{1}', variables('lakeStorageAccountName'), 'default')]",
+              "properties": {
+                "shareDeleteRetentionPolicy": {
+                  "enabled": true,
+                  "days": 30
+                }
+              },
               "dependsOn": [
                 "[resourceId('Microsoft.Storage/storageAccounts', variables('lakeStorageAccountName'))]"
               ]
@@ -907,6 +994,7 @@
       "dependsOn": [
         "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'cao-collect-private-key')]",
         "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'cao-redis-password')]",
+        "[resourceId('Microsoft.Insights/components', format('{0}-ai', parameters('functionAppName')))]",
         "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
         "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'cao-redis-url')]",
         "[resourceId('Microsoft.Cache/redisEnterprise', parameters('redisEnterpriseName'))]"

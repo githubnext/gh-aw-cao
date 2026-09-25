@@ -159,7 +159,7 @@ func (r Runner) Collect(ctx context.Context, task Task) error {
 	if err := r.compact(ctx, repository); err != nil {
 		return err
 	}
-	runnerLog.Printf("collected repository evidence")
+	runnerLog.Printf("collected evidence repository=%s", repository)
 	return nil
 }
 
