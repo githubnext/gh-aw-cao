@@ -8,16 +8,6 @@ import { root, workflow } from "./workflow-contract.helpers.mjs";
 
 // Operational-value grader, smoke, and canary contracts.
 
-test("one-shot operational-value graders consume only the gh-aw request", () => {
-  for (const name of [
-    "optimization-token-auditor-operational-value.sh",
-    "optimization-token-optimizer-operational-value.sh",
-  ]) {
-    const source = readFileSync(join(root, ".github", "workflows", "graders", name), "utf8");
-    assert.doesNotMatch(source, /gh aw logs|--definition|--metric|--grade-run/, name);
-  }
-});
-
 test("operational-value graders expose deterministic run-scoped contracts", () => {
   const gradersDirectory = join(root, ".github", "workflows", "graders");
   const graders = readdirSync(gradersDirectory).filter((name) => name.endsWith("-operational-value.sh"));
@@ -33,8 +23,6 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
     "eu-cra-compliance-security-requirements-auditor-operational-value.sh",
     "eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh",
     "eu-cra-compliance-vulnerability-handling-auditor-operational-value.sh",
-    "optimization-token-auditor-operational-value.sh",
-    "optimization-token-optimizer-operational-value.sh",
     "repo-assist-issue-fix-operational-value.sh",
     "repo-assist-issue-triage-operational-value.sh",
     "repo-assist-maintenance-operational-value.sh",
@@ -45,8 +33,6 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
   ]);
   const oneShotGraders = new Set([
     "dreaming-agents-md-curator-operational-value.sh",
-    "optimization-token-auditor-operational-value.sh",
-    "optimization-token-optimizer-operational-value.sh",
     "repo-assist-issue-fix-operational-value.sh",
     "repo-assist-issue-triage-operational-value.sh",
     "repo-assist-maintenance-operational-value.sh",
@@ -107,9 +93,7 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
   for (const name of oneShotGraders) {
     const packagePath = name.startsWith("repo-assist-")
       ? join(root, "repo-assist")
-      : name.startsWith("dreaming-")
-        ? join(root, "dreaming")
-        : join(root, "optimization");
+      : join(root, "dreaming");
     assert.equal(
       readFileSync(join(packagePath, ".github", "graders", name), "utf8"),
       readFileSync(join(gradersDirectory, name), "utf8"),

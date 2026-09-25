@@ -29,7 +29,7 @@ const valid = timeline.schemaVersion === 2
       || (snapshot.window?.startAt && snapshot.window?.endAt
         && Array.isArray(snapshot.provenance) && snapshot.provenance.length > 0))
     && Object.values(snapshot.metrics).every((value) => value === null
-      || (typeof value === "number" && value >= 0 && value <= 1)))
+      || (typeof value === "number" && Number.isFinite(value))))
   && Array.isArray(metrics) && metrics.filter(({ role }) => role === "primary").length === 1
   && metrics.every(({ status }) => ["evaluated", "unevaluated"].includes(status))
   && (timeline.runs ?? []).every(({ runId, createdAt }) => runId != null && typeof createdAt === "string");
@@ -40,7 +40,7 @@ if (args[1]) {
   const svg = readFileSync(args[1], "utf8");
   if (!svg.includes('viewBox="0 0 1280 ')) fail("SVG must use a 1280px viewBox");
   if (!svg.includes("prefers-color-scheme:dark")) fail("SVG must include adaptive dark styling");
-  if (!svg.includes(">Goal measure<")) fail("SVG must label the goal-oriented axis");
+  if (!svg.includes(">Native measure<")) fail("SVG must label the native-value axis");
 }
 if (args[2]) {
   if (!existsSync(args[2])) fail(`definitions not found: ${args[2]}`);

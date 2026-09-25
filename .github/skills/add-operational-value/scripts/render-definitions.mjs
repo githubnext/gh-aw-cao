@@ -24,11 +24,10 @@ const direction = {
 const metricSections = artifact.metricReview.metrics.map((metric) => `### ${metric.presentation.name ?? metric.name}
 
 - **What it tells you:** ${metric.name}. This is a \`${metric.role}\` measure.
-- **Normalized scoring formula:** \`${metric.formula}\`
+- **Native measurement formula:** \`${metric.formula}\`
+- **Unit:** \`${metric.unit}\`
 - **Goal:** ${direction[metric.direction]}
-- **Chart display:** ${metric.presentation.transform === "complement"
-    ? "The chart shows `1 - normalized score` so improvement follows the workflow goal downward."
-    : "The chart shows the normalized score directly."}
+- **Chart display:** The chart shows the native value directly on a metric-specific axis.
 `).join("\n");
 const chartGuidance = mode === "attainment-only"
   ? `- Observations begin at workflow adoption on \`${artifact.adoptionAt.split("T")[0]}\`.
@@ -68,7 +67,7 @@ ${metricSections}
 - **Maturation delay:** ${definition.evidence.window.maturationDays} days
 - **Filters:** ${definition.evidence.filters.map((item) => `\`${item}\``).join("; ")}
 
-${comparison} The structured evidence, exact snapshots, provenance, and normalized scores are recorded in the adjacent \`${slug}-timeline.json\` artifact.
+${comparison} The structured evidence, exact snapshots, provenance, units, and native values are recorded in the adjacent \`${slug}-timeline.json\` artifact.
 
 ## Important limitation
 

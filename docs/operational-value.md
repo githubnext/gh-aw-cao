@@ -14,6 +14,8 @@ CAO uses one shared campaign module for both collection paths:
 
 Both paths import the same frozen evidence contract, collector, and scoring functions. Routine collection does not rebuild repository history, and a metric cannot drift between the dashboard record and its historical report.
 
+The rolling Activity database is a query source for current observations, not the definition of operational-value history. Explicit evaluation schedules observations from adoption and incrementally preserves accepted snapshots. Git and other immutable repository facts can be reconstructed at historical cutoffs. Ephemeral run, usage, artifact, queue, and tool-call facts can be backfilled only while their source remains available; an expired interval without a contemporaneous snapshot is missing, not zero. The current live Activity publication retains 30 days of operational-value records, while the explicit evidence archive is the durable since-adoption record.
+
 ## Daily File Diet example
 
 The Daily File Diet workflow in `github/gh-aw` aims to keep non-test Go source files under `pkg/` within a 999-line threshold. Its frozen, baseline-comparable contract evaluates weekly immutable repository snapshots using:

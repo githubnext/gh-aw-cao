@@ -220,6 +220,7 @@ describe('dashboard data operations', () => {
       series: 'workflow',
       shape: 'groups',
       carry: ['package'],
+      trend: { direction: 'preferred-direction' },
       measures: [{ field: 'operational-value', key: 'operational-value-definition', kind: 'primary' }],
       maps: [{ field: 'diagnostics', definitions: 'diagnostic-definitions', group: 'operational-value-definition', kind: 'diagnostic' }]
     }]);
@@ -227,6 +228,13 @@ describe('dashboard data operations', () => {
     expect(grouped[0]).toMatchObject({
       package: 'alpha',
       'metric-key': 'primary:repository-readiness',
+      'trend-start-value': 0.4,
+      'trend-end-value': 0.8,
+      'trend-delta': 0.4,
+      'trend-relative-percent': 100,
+      'trend-observed-direction': 'up',
+      'trend-assessment': 'neutral',
+      'trend-observation-count': 2,
       points: [
         { x: '2026-09-01T00:00:00Z', y: 0.4, color: 'worker.md', key: 'primary:repository-readiness:0' },
         { x: '2026-09-02T00:00:00Z', y: 0.8, color: 'worker.md', key: 'primary:repository-readiness:3' }

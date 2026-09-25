@@ -118,10 +118,6 @@ const dashboardExpectedFiles = [
 const optimizationExpectedFiles = [
   "optimization/operational-value.mjs",
   "optimization/operational-value/optimization-token-optimizer.mjs",
-  "optimization/.github/graders/optimization-token-auditor-operational-value.sh",
-  "optimization/.github/graders/optimization-token-optimizer-operational-value.sh",
-  ".github/workflows/graders/optimization-token-auditor-operational-value.sh",
-  ".github/workflows/graders/optimization-token-optimizer-operational-value.sh",
   ".github/workflows/optimization-token-auditor.md",
   ".github/workflows/optimization-token-optimizer.md",
   ".github/workflows/optimization.md",

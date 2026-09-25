@@ -32,8 +32,8 @@ const snapshots = observations.snapshots.map((snapshot, index) => {
   const metricValues = {};
   for (const metric of definition.metrics) {
     const value = valueModule.scoreMetric(metric.id, snapshot.evidence);
-    if (value !== null && (typeof value !== "number" || value < 0 || value > 1)) {
-      fail(`${metric.id} returned an invalid score for snapshot ${index}`);
+    if (value !== null && (typeof value !== "number" || !Number.isFinite(value))) {
+      fail(`${metric.id} returned an invalid native value for snapshot ${index}`);
     }
     metricValues[metric.id] = value;
   }
@@ -42,6 +42,12 @@ const snapshots = observations.snapshots.map((snapshot, index) => {
 const first = snapshots[0].metrics;
 const last = snapshots.at(-1).metrics;
 const mode = definition.evaluation?.mode ?? "baseline-comparable";
+const improvement = (metric, before, after) => {
+  if (before === null || after === null) return null;
+  if (metric.direction === "increase") return after - before;
+  if (metric.direction === "decrease") return before - after;
+  return Math.abs(before - metric.target) - Math.abs(after - metric.target);
+};
 const reviewMetrics = definition.metrics.map((metric) => {
   const before = mode === "attainment-only" ? null : (first[metric.id] ?? null);
   const after = last[metric.id] ?? null;
@@ -52,7 +58,7 @@ const reviewMetrics = definition.metrics.map((metric) => {
     beforeValue: before,
     afterValue: after,
     attainmentValue: mode === "attainment-only" ? after : null,
-    improvement: before === null || after === null ? null : after - before,
+    improvement: improvement(metric, before, after),
   };
 });
 const {

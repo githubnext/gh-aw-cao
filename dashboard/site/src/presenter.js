@@ -39,6 +39,7 @@ export { enableDashboardKeyboardNavigation, updateWithViewTransition };
 
 const debugPerformance = createDebug('render:performance');
 const debugNavigation = createDebug('render:navigation');
+const debugRender = createDebug('render');
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 import {
   dashboardPageLazySourceNames as collectDashboardPageLazySourceNames,
@@ -66,11 +67,11 @@ import {
  */
 
 /**
- * @typedef {{ id: string, kind: 'built-in', page: string, title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, ['filter-bar']?: boolean, form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], definition?: { views?: Array<unknown>, sections?: PresentablePageSection[], ['data-state']?: Record<string, boolean> } }} PresentableBuiltInPage
+ * @typedef {{ id: string, kind: 'built-in', page: string, title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, ['filter-bar']?: boolean, ['view-mode-control']?: boolean, form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], definition?: { views?: Array<unknown>, sections?: PresentablePageSection[], ['data-state']?: Record<string, boolean> } }} PresentableBuiltInPage
  */
 
 /**
- * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, ['filter-bar']?: boolean, form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string, ['title-format']?: 'title-case' }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
+ * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, ['filter-bar']?: boolean, ['view-mode-control']?: boolean, form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string, ['title-format']?: 'title-case' }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
  */
 
 /**
@@ -775,9 +776,10 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
     ? page.route['navigation-page']
     : undefined;
   const viewModes = page.id === 'overview' ? [] : availableViewModes(views);
+  const viewModeControlEnabled = page['view-mode-control'] !== false;
   const selectedViewMode = /** @type {'chart'|'table'|'card'|undefined} */ (
-    viewModes.includes(queryContext?.viewMode ?? 'chart')
-      ? queryContext?.viewMode ?? 'chart'
+    viewModes.includes(viewModeControlEnabled ? queryContext?.viewMode ?? 'chart' : 'chart')
+      ? viewModeControlEnabled ? queryContext?.viewMode ?? 'chart' : 'chart'
       : defaultViewMode(views)
   );
   const sections = Array.isArray(page.sections) ? page.sections : [];
@@ -916,7 +918,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
         : [...pageSources.values()])
     })
     : null;
-  const viewModeControl = viewModes.length > 1
+  const viewModeControl = viewModeControlEnabled && viewModes.length > 1
     ? renderViewModeControl(viewModes, selectedViewMode, (viewMode) => {
       dispatchQueryContextChange(currentFilters, currentTimeWindow, viewMode);
     })
@@ -1401,8 +1403,18 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
           if (pendingPage.hasAttribute('data-page-pending')) {
             showPageSkeleton(pendingPage, retainedRouteTabs);
           }
-          void rendered.then(replacePage).catch(() => {
+          void rendered.then(replacePage).catch((error) => {
             if (revision !== activationRevision || activePageId !== pageId || !currentPage.parentNode) return;
+            debugRender('page render failed', {
+              pageId,
+              message: error instanceof Error ? error.message : String(error)
+            });
+            emitDashboardDebugEvent(root.ownerDocument, DASHBOARD_RENDER_EVENT, {
+              kind: 'page',
+              pageId,
+              status: 'failed',
+              message: error instanceof Error ? error.message : String(error)
+            });
             currentPage.replaceChildren(renderEmptyMessage('Unable to load this page.', { role: 'alert' }));
             currentPage.removeAttribute('aria-busy');
             currentPage.removeAttribute('aria-label');

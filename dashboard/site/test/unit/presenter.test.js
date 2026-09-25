@@ -1791,6 +1791,65 @@ describe('presenter built-in and custom pages', () => {
     expect(contexts.at(-1)).toMatchObject({ pageId: 'runs', queryContext: { viewMode: 'card' } });
   });
 
+  it('keeps the default presentation without view-mode controls when disabled', async () => {
+    const rendered = renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'fixed-view-mode-dashboard',
+          title: 'Fixed View Mode',
+          pages: [{
+            id: 'runs',
+            kind: /** @type {'custom'} */ ('custom'),
+            title: 'Runs',
+            'view-mode-control': false,
+            views: [
+              {
+                id: 'runs-chart',
+                title: 'Run trend',
+                data: { source: 'runs' },
+                mark: 'chart',
+                chart: 'line',
+                encoding: {
+                  x: { field: 'started-at', type: 'temporal' },
+                  y: { field: 'run-count', type: 'quantitative' }
+                }
+              },
+              {
+                id: 'runs-table',
+                title: 'Runs',
+                data: { source: 'runs' },
+                mark: 'table',
+                encoding: { columns: [{ field: 'run' }] }
+              }
+            ]
+          }]
+        }
+      },
+      sources: {
+        runs: {
+          source: 'runs',
+          rows: [{ run: '1', 'run-count': 1, 'started-at': '2026-09-16T10:00:00Z' }],
+          metadata: {
+            'source-id': 'runs-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-16T10:00:00Z',
+            'retrieved-at': '2026-09-16T10:00:00Z',
+            availability: 'available',
+            completeness: 'complete',
+            freshness: 'fresh'
+          }
+        }
+      }
+    });
+
+    const page = await activatePage(rendered, 'runs');
+    expect(page?.getAttribute('data-view-mode')).toBe('chart');
+    expect(page?.querySelector('.view-mode-control')).toBeNull();
+    expect(page?.querySelector('[data-view-id="runs-chart"]')?.getAttribute('data-view-mode-content')).toBe('chart');
+    expect(page?.querySelector('[data-view-id="runs-table"]')?.getAttribute('data-view-mode-content')).toBe('table');
+  });
+
   it('omits page chrome when a page has only one card view mode', async () => {
     const rendered = renderDashboard({
       document: {
