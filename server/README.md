@@ -318,11 +318,63 @@ The same binary runs every role:
 | `cao-dashboard collect` | lease tasks, collect repositories, and project |
 | `cao-dashboard backfill` | cold start: replay the lake, enumerate installations, seed tasks |
 | `cao-dashboard backfill -replay-only` | repopulate the database from retained evidence with no GitHub requests |
+| `cao-dashboard doctor` | run a read-only, systematic check-up of Redis, canonical data, queries, and collection |
 
 `GET /api/admin/collection/status` reports enrollment coverage, queue backlog,
 in-flight tasks, dead letters, cold-start phase, and per-installation rate-limit
 headroom. In the default profile it reports `{"configured": false}` rather than
 failing.
+
+### Diagnose a deployment
+
+`cao-dashboard doctor` runs a read-only check-up of the current server
+configuration. It does not contact GitHub, write to Redis, repair data, or
+report secret values. Every check has a stable identifier such as
+`redis.memory` or `data.generations`, a severity, observed facts, and an
+operator remedy. The default text report is intended to be readable by both a
+person and an agent:
+
+```bash
+go -C server run ./cmd/cao-dashboard doctor \
+  --redis-url "$CAO_REDIS_URL" \
+  --redis-namespace production-dashboard
+```
+
+The standard check-up covers:
+
+- build and runtime identity, external collection tooling, and profile
+  exclusivity;
+- Redis connectivity, latency, TLS posture, server state, clients,
+  persistence, memory headroom, `noeviction`, and namespace contents;
+- active-generation age, schema compatibility, source counts, referential
+  integrity, duplicate identifiers, and generation reclamation;
+- the canonical Dashboard Language query document;
+- collection configuration without reading secrets, enrollment coverage,
+  queue backlog, pending work, dead letters, cold-start state, rate-limit
+  headroom, evidence-lake replayability, and projection activity.
+
+Add `--deep` to read every active source through the production Redis loading
+path and confirm that rows decode, recorded counts match, and no source is
+approaching the 200,000-row fail-closed limit. This can read the whole active
+generation, so it is deliberately opt-in.
+
+```bash
+go -C server run ./cmd/cao-dashboard doctor \
+  --redis-url "$CAO_REDIS_URL" \
+  --redis-namespace production-dashboard \
+  --deep
+```
+
+Use `--format json` for a versioned agent/automation contract. JSON and text
+contain the same observations and stable check identifiers. The command exits
+non-zero when any check fails; `--strict` also makes warnings non-zero, which
+is useful as a deployment gate. Each check is bounded independently by
+`--timeout` (10 seconds by default), so one unavailable diagnostic surface
+cannot hang the whole report.
+
+The report prints only a redacted Redis endpoint. It reports whether a webhook
+secret or App private key is configured, never its value, and it only `stat`s a
+private-key file rather than reading it.
 
 ### Collection settings
 

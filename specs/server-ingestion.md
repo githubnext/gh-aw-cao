@@ -270,6 +270,20 @@ count.
   enqueue, collection, dead-lettering, redelivery, and erasure MUST each record
   the repository or delivery they concern. A deployment MUST route these records
   and the process's telemetry to a durable sink.
+- The server MUST provide a read-only check-up that reports the selected
+  profile, Redis connectivity and safety posture, active-generation status,
+  canonical integrity, query-definition validity, generation reclamation,
+  and, when collection is configured, enrollment, queue, cold-start,
+  rate-limit, evidence-lake, and tooling state.
+- Each check MUST have a stable machine-readable identifier, severity,
+  human-readable summary, observed facts, and a remedy for non-passing states.
+  The same observations MUST be available in a versioned structured format.
+- The check-up MUST NOT contact GitHub, mutate Redis, repair data, read secret
+  contents unnecessarily, or report tokens, passwords, private keys, webhook
+  secrets, payload contents, or prompts. Dependency checks MUST be bounded so
+  an unavailable surface cannot hang the full report.
+- Expensive checks that read the full active generation MUST be explicit and
+  MUST use the production source-loading path and its fail-closed row bounds.
 
 ## 13. Conformance checklist
 

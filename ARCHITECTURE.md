@@ -122,7 +122,12 @@ loopback-only. Its host-neutral mode uses GitHub OAuth and explicit organization
 or team authorization, verifies and deduplicates GitHub webhooks, and rebuilds
 through a staged generation before atomically changing the active pointer.
 Redis remains reconstructable from GitHub / gh-aw state and never becomes an
-authority.
+authority. The same server binary provides a read-only diagnostic check-up
+that inspects the runtime, Redis safety and capacity, the active canonical
+generation, query definitions, and the optional collection profile. It
+produces the same stable check identifiers and observations as human-readable
+text or versioned JSON, never contacts GitHub or mutates Redis, and requires an
+explicit deep mode before reading every active row.
 
 The Redis profile acquires evidence through exactly one of two mutually
 exclusive ingestion profiles. By default the Activity workflow collects

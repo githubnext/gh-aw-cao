@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/doctor"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	debuglogger "github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
@@ -29,11 +30,16 @@ const defaultRedisURL = "redis://127.0.0.1:6379/0"
 
 var commandLog = debuglogger.New("cao:cli")
 
+var errDoctorFoundProblems = errors.New("doctor found problems")
+
 func main() {
 	if override := strings.TrimSpace(os.Getenv("CAO_BUILD_VERSION")); override != "" {
 		version = override
 	}
 	if err := run(os.Args[1:]); err != nil {
+		if errors.Is(err, errDoctorFoundProblems) {
+			os.Exit(1)
+		}
 		log.Printf("error: %v", err)
 		os.Exit(1)
 	}
@@ -41,7 +47,8 @@ func main() {
 
 func run(arguments []string) error {
 	if len(arguments) == 0 {
-		return errors.New("usage: cao-dashboard <serve|serve-hosted|ingest|collect|backfill> [flags]")
+		return errors.New(
+			"usage: cao-dashboard <serve|serve-hosted|ingest|collect|backfill|doctor> [flags]")
 	}
 	switch arguments[0] {
 	case "serve":
@@ -59,11 +66,79 @@ func run(arguments []string) error {
 	case "backfill":
 		commandLog.Printf("running backfill command")
 		return backfillCommand(arguments[1:])
+	case "doctor":
+		commandLog.Printf("running doctor command")
+		return doctorCommand(arguments[1:])
 	default:
 		return fmt.Errorf(
-			"unknown subcommand %q; expected serve, serve-hosted, ingest, collect, or backfill",
+			"unknown subcommand %q; expected serve, serve-hosted, ingest, collect, backfill, or doctor",
 			arguments[0])
 	}
+}
+
+// doctorCommand runs the read-only diagnostic check-up.
+//
+// It reports rather than repairs, and it exits non-zero when it found a
+// breaking condition so it is usable as a deployment gate as well as by a
+// person or an agent reading the report.
+func doctorCommand(arguments []string) error {
+	flags := flag.NewFlagSet("doctor", flag.ContinueOnError)
+	redisURL := flags.String("redis-url", "", "server-side Redis URL; defaults to CAO_REDIS_URL then "+defaultRedisURL)
+	defaultNamespace, err := redisx.DefaultNamespace(".")
+	if err != nil {
+		return err
+	}
+	if configured := strings.TrimSpace(os.Getenv("CAO_REDIS_NAMESPACE")); configured != "" {
+		defaultNamespace = configured
+	}
+	redisNamespace := flags.String("redis-namespace", defaultNamespace, "Redis key namespace")
+	databaseQueries := flags.String("database-queries",
+		"../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
+	format := flags.String("format", "text", "report format: text or json")
+	deep := flags.Bool("deep", false, "additionally read every source to confirm stored rows decode")
+	strict := flags.Bool("strict", false, "exit non-zero on warnings as well as failures")
+	timeout := flags.Duration("timeout", 10*time.Second, "per-check timeout")
+	if err := flags.Parse(arguments); err != nil {
+		return err
+	}
+	endpoint := strings.TrimSpace(*redisURL)
+	if endpoint == "" {
+		endpoint = strings.TrimSpace(os.Getenv("CAO_REDIS_URL"))
+	}
+	if endpoint == "" {
+		endpoint = defaultRedisURL
+	}
+	namespace, err := redisx.NormalizeNamespace(*redisNamespace)
+	if err != nil {
+		return err
+	}
+	check := doctor.Doctor{
+		RedisURL:            endpoint,
+		Namespace:           namespace,
+		DatabaseQueriesPath: *databaseQueries,
+		Version:             version,
+		Deep:                *deep,
+		Timeout:             *timeout,
+	}
+	// A client that cannot be constructed is itself a finding, so the report
+	// is still produced; the Redis checks report why they could not run.
+	if client, err := redisx.New(endpoint); err == nil {
+		check.Store = redisx.NewStore(client, namespace)
+	} else {
+		commandLog.Printf("doctor could not construct a Redis client")
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	report := check.Run(ctx)
+	if err := doctor.Render(os.Stdout, report, *format); err != nil {
+		return err
+	}
+	if report.Failed(*strict) {
+		// main recognizes this sentinel and exits without adding a redundant
+		// error line, so the report remains the whole output.
+		return errDoctorFoundProblems
+	}
+	return nil
 }
 
 func serveHosted(arguments []string) error {
