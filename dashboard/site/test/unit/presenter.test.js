@@ -169,7 +169,10 @@ describe('dashboard DOM provenance', () => {
       freshness: 'fresh',
       availability: 'available'
     });
+    /** @type {string[]} */
+    const subscriptionOrder = [];
     const loadSources = vi.fn((sourceNames) => {
+      subscriptionOrder.push('background');
       expect(sourceNames).toEqual(['maintenance-campaign-updates']);
       return Promise.resolve(/** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ ({
         'maintenance-campaign-updates': {
@@ -180,16 +183,17 @@ describe('dashboard DOM provenance', () => {
       }));
     });
     const loadPageSources = /** @type {import('../../src/presenter.js').PageSourceLoader} */ (vi.fn((pageId) => {
+      subscriptionOrder.push(`page:${pageId}`);
       const result = pageId === 'maintenance'
         ? { campaigns: { source: 'campaigns', rows: [{ 'campaign-update-state': 'update-available' }], metadata } }
         : {};
       return Promise.resolve(/** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (result));
     }));
-    loadPageSources.loadSources = loadSources;
+    loadPageSources.subscribeBackgroundSources = loadSources;
 
     const rendered = renderDashboardView({ document, sources: {}, loadPageSources });
 
-    expect(loadSources).not.toHaveBeenCalled();
+    expect(subscriptionOrder.slice(0, 2)).toEqual(['page:overview', 'background']);
     expect(rendered.querySelector('[data-nav-page-id="maintenance"]')?.getAttribute('aria-label'))
       .toBe('Updates');
     await vi.waitFor(() => {
@@ -228,7 +232,7 @@ describe('dashboard DOM provenance', () => {
         }
       }));
       const loadPageSources = /** @type {import('../../src/presenter.js').PageSourceLoader} */ (vi.fn(() => Promise.resolve({})));
-      loadPageSources.loadSources = vi.fn(() => Promise.reject(new Error('unavailable')));
+      loadPageSources.subscribeBackgroundSources = vi.fn(() => Promise.reject(new Error('unavailable')));
 
       const rendered = renderDashboard({ document, sources: {}, loadPageSources });
 
