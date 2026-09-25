@@ -152,10 +152,8 @@ export function syncDashboardNavigationIndicators(root, pages, sources) {
     const title = pageTitle(page);
     const active = indicatorMatches(indicator, sources);
     const label = active ? `${title}, ${indicator.label}` : title;
-    const pageId = String(page.id);
-    const links = [...root.querySelectorAll('[data-nav-page-id], [data-mobile-nav-page-id]')]
-      .filter((link) => link instanceof HTMLElement
-        && (link.dataset.navPageId === pageId || link.dataset.mobileNavPageId === pageId));
+    const pageId = quoteAttributeValue(String(page.id));
+    const links = root.querySelectorAll(`[data-nav-page-id="${pageId}"], [data-mobile-nav-page-id="${pageId}"]`);
     for (const link of links) {
       if (!(link instanceof HTMLAnchorElement)) continue;
       link.setAttribute('aria-label', label);
@@ -273,15 +271,20 @@ function renderMobileNavItem(page, isActive) {
   );
 }
 
-/** @param {{ predicates: Array<Record<string, unknown>> } | null} indicator @param {Record<string, { rows?: Array<Record<string, unknown>> } | undefined>} sources */
+/** @param {{ predicates: Array<Record<string, unknown>> }} indicator @param {Record<string, { rows?: Array<Record<string, unknown>> } | undefined>} sources */
 function indicatorMatches(indicator, sources) {
-  return indicator?.predicates.some((test) => {
+  return indicator.predicates.some((test) => {
     if (typeof test.source !== 'string' || typeof test.field !== 'string') return false;
     const sourceName = test.source;
     const fieldName = test.field;
     const rows = sources[sourceName]?.rows;
     return Array.isArray(rows) && rows.some((row) => row[fieldName] === test.equals);
-  }) === true;
+  });
+}
+
+/** @param {string} value */
+function quoteAttributeValue(value) {
+  return value.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
 }
 
 

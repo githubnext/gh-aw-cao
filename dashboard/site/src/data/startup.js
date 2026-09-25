@@ -177,54 +177,20 @@ export async function startDashboardData(options) {
       );
     },
   );
-  /** @type {PageSourceLoader} */
-  const loadPageSources = async (pageId, pageOptions) => {
-    await preparePage?.(pageId);
-    const sourceNames = pageSourceNames(pageId, pageOptions.queryContext?.viewMode);
-    const paginatedSources = pagePaginatedSourceBindings(pageId);
-    const pagination = continuationRequests(Object.keys(paginatedSources));
-    return new Promise((resolve, reject) => {
-      let receivedInitialSnapshot = false;
-      const abort = () => reject(new DOMException("Dashboard page load was cancelled.", "AbortError"));
-      pageOptions.signal.addEventListener("abort", abort, { once: true });
-      subscribeCanonicalDashboardView(
-        `page:${pageId}`,
-        sourceNames,
-        dashboardContext,
-        (sources) => {
-          const boundSources = bindContinuations(pageId, sources, paginatedSources, pageOptions);
-          if (!receivedInitialSnapshot) {
-            receivedInitialSnapshot = true;
-            pageOptions.signal.removeEventListener("abort", abort);
-            resolve(boundSources);
-            return;
-          }
-          pageOptions.onUpdate(boundSources);
-        },
-        pagination,
-        {
-          signal: pageOptions.signal,
-          pageId,
-          routeParameters: pageOptions.routeParameters,
-          queryContext: pageOptions.queryContext,
-          onError: (error) => {
-            if (!receivedInitialSnapshot) {
-              pageOptions.signal.removeEventListener("abort", abort);
-              reject(error);
-            } else {
-              console.error(`Unable to update dashboard page ${pageId}: ${error.message}`);
-            }
-          },
-        },
-      );
-    });
-  };
-  loadPageSources.loadSources = async (sourceNames, pageOptions) => {
+  /**
+   * Subscribes to a bounded source set. The returned promise resolves with the
+   * first snapshot; later snapshots are delivered through `pageOptions.onUpdate`.
+   * @param {string} subscriptionId
+   * @param {string[]} sourceNames
+   * @param {PageLoadOptions & { pageId?: string }} pageOptions
+   * @param {Record<string, { limit: number, continuationToken?: string }>} pagination
+   * @param {(sources: DashboardSources) => DashboardSources} transform
+   * @param {string} errorLabel
+   */
+  const subscribeSources = (subscriptionId, sourceNames, pageOptions, pagination, transform, errorLabel) => {
     if (pageOptions.signal.aborted) {
       throw new DOMException("Dashboard source load was cancelled.", "AbortError");
     }
-    const subscriptionSourceNames = [...new Set(sourceNames)];
-    const subscriptionId = `sources:${subscriptionSourceNames.toSorted().join(",")}`;
     return new Promise((resolve, reject) => {
       let receivedInitialSnapshot = false;
       const cleanup = () => pageOptions.signal.removeEventListener("abort", abort);
@@ -235,32 +201,62 @@ export async function startDashboardData(options) {
       pageOptions.signal.addEventListener("abort", abort, { once: true });
       subscribeCanonicalDashboardView(
         subscriptionId,
-        subscriptionSourceNames,
+        sourceNames,
         dashboardContext,
         (sources) => {
+          const transformedSources = transform(sources);
           if (!receivedInitialSnapshot) {
             receivedInitialSnapshot = true;
             cleanup();
-            resolve(sources);
+            resolve(transformedSources);
             return;
           }
-          pageOptions.onUpdate(sources);
+          pageOptions.onUpdate(transformedSources);
         },
-        {},
+        pagination,
         {
           signal: pageOptions.signal,
+          pageId: pageOptions.pageId,
+          routeParameters: pageOptions.routeParameters,
           queryContext: pageOptions.queryContext,
           onError: (error) => {
             cleanup();
             if (!receivedInitialSnapshot) {
               reject(error);
             } else {
-              console.error(`Unable to update dashboard sources: ${error.message}`);
+              console.error(`${errorLabel}: ${error.message}`);
             }
           },
         },
       );
     });
+  };
+  /** @type {PageSourceLoader} */
+  const loadPageSources = async (pageId, pageOptions) => {
+    await preparePage?.(pageId);
+    const sourceNames = pageSourceNames(pageId, pageOptions.queryContext?.viewMode);
+    const paginatedSources = pagePaginatedSourceBindings(pageId);
+    const pagination = continuationRequests(Object.keys(paginatedSources));
+    return subscribeSources(
+      `page:${pageId}`,
+      sourceNames,
+      { ...pageOptions, pageId },
+      pagination,
+      (sources) => bindContinuations(pageId, sources, paginatedSources, pageOptions),
+      `Unable to update dashboard page ${pageId}`
+    );
+  };
+  loadPageSources.loadSources = async (sourceNames, pageOptions) => {
+    const subscriptionSourceNames = [...new Set(sourceNames)];
+    const subscriptionId = `sources:${subscriptionSourceNames.toSorted().join(",")}`;
+    return subscribeSources(
+      subscriptionId,
+      subscriptionSourceNames,
+      pageOptions,
+      {},
+      (sources) => sources,
+      "Unable to update dashboard sources"
+    );
   };
   loadPageSources.prepare = async (pageId) => {
     await preparePage?.(pageId);

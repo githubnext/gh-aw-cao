@@ -91,7 +91,7 @@ describe('dashboard document validation', () => {
           path: expect.stringMatching(/navigation-indicator\.label$/)
         }),
         expect.objectContaining({
-          message: 'navigation-indicator predicate equals must be a scalar.',
+          message: 'navigation-indicator predicate equals is required.',
           path: expect.stringMatching(/navigation-indicator\.any\[0\]\.equals$/)
         })
       ])

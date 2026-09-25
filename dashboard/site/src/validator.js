@@ -1678,7 +1678,9 @@ function validateNavigationIndicator(indicator, indicatorNode, path, errors) {
     validateObjectKeys(predicateNode, NAVIGATION_INDICATOR_PREDICATE_KEYS, predicatePath, errors);
     validateStringField(predicate.source, `${predicatePath}.source`, true, errors);
     validateStringField(predicate.field, `${predicatePath}.field`, true, errors);
-    if (!Object.hasOwn(predicate, 'equals') || ['object', 'function', 'symbol'].includes(typeof predicate.equals)) {
+    if (!Object.hasOwn(predicate, 'equals')) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'navigation-indicator predicate equals is required.', `${predicatePath}.equals`));
+    } else if (['object', 'function', 'symbol'].includes(typeof predicate.equals)) {
       errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'navigation-indicator predicate equals must be a scalar.', `${predicatePath}.equals`));
     }
   });
