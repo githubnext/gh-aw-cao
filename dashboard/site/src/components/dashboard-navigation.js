@@ -1,4 +1,5 @@
 import { h } from '../dom.js';
+import { navigationIndicator } from '../navigation-indicator.js';
 import { agenticWorkflowMark, octicon } from '../octicons.js';
 import { scopedStorageKey } from '../storage-scope.js';
 import { titleCase } from './count-formatters.js';
@@ -148,6 +149,7 @@ export function syncDashboardNavigationIndicators(root, pages, sources) {
   for (const page of pages) {
     const title = pageTitle(page);
     const indicator = navigationIndicator(page);
+    if (!indicator) continue;
     const active = indicatorMatches(indicator, sources);
     const label = active && indicator?.label ? `${title}, ${indicator.label}` : title;
     for (const link of root.querySelectorAll(`[data-nav-page-id="${cssEscape(String(page.id))}"], [data-mobile-nav-page-id="${cssEscape(String(page.id))}"]`)) {
@@ -268,20 +270,6 @@ function renderMobileNavItem(page, isActive) {
   );
 }
 
-/** @param {Record<string, unknown>} page */
-function navigationIndicator(page) {
-  if (!isPlainObject(page['navigation-indicator'])) return null;
-  const indicator = /** @type {Record<string, unknown>} */ (page['navigation-indicator']);
-  const tests = Array.isArray(indicator.any)
-    ? indicator.any.filter(isPlainObject)
-    : [indicator].filter(isPlainObject);
-  if (tests.length === 0) return null;
-  return {
-    label: typeof indicator.label === 'string' && indicator.label.length > 0 ? indicator.label : 'attention required',
-    tests
-  };
-}
-
 /** @param {{ tests: Array<Record<string, unknown>> } | null} indicator @param {Record<string, { rows?: Array<Record<string, unknown>> } | undefined>} sources */
 function indicatorMatches(indicator, sources) {
   return indicator?.tests.some((test) => {
@@ -291,11 +279,6 @@ function indicatorMatches(indicator, sources) {
     const rows = sources[sourceName]?.rows;
     return Array.isArray(rows) && rows.some((row) => row[fieldName] === test.equals);
   }) === true;
-}
-
-/** @param {unknown} value */
-function isPlainObject(value) {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /** @param {string} value */

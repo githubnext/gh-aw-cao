@@ -32,6 +32,7 @@ import { buildChartPoints, prepareChartPoints, prepareTableRows, toViewText } fr
 import { enableDashboardKeyboardNavigation, updateWithViewTransition } from './components/dashboard-interactions.js';
 import { requestDashboardRefresh } from './dashboard-data-updates.js';
 import { createDebug } from './debug.js';
+import { navigationIndicatorSourceNames } from './navigation-indicator.js';
 
 export { enableDashboardKeyboardNavigation, updateWithViewTransition };
 
@@ -360,20 +361,6 @@ function enableNavigationIndicatorUpdates(root, pages, loadPageSources, signal) 
       if (signal.aborted || error?.name === 'AbortError') return;
       console.error(`Unable to update dashboard navigation indicators: ${error instanceof Error ? error.message : String(error)}`);
     });
-}
-
-/** @param {Array<PresentableBuiltInPage | PresentableCustomPage>} pages */
-function navigationIndicatorSourceNames(pages) {
-  const sourceNames = new Set();
-  for (const page of pages) {
-    if (!isPlainObject(page['navigation-indicator'])) continue;
-    const indicator = /** @type {Record<string, unknown>} */ (page['navigation-indicator']);
-    const tests = Array.isArray(indicator.any) ? indicator.any : [indicator];
-    for (const test of tests) {
-      if (isPlainObject(test) && typeof test.source === 'string') sourceNames.add(test.source);
-    }
-  }
-  return [...sourceNames];
 }
 
 /**

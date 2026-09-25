@@ -220,13 +220,18 @@ export async function startDashboardData(options) {
     });
   };
   loadPageSources.loadSources = async (sourceNames, pageOptions) => {
+    if (pageOptions.signal.aborted) {
+      throw new DOMException("Dashboard source load was cancelled.", "AbortError");
+    }
+    const subscriptionSourceNames = [...new Set(sourceNames)];
+    const subscriptionId = `sources:${subscriptionSourceNames.toSorted().join(",")}`;
     return new Promise((resolve, reject) => {
       let receivedInitialSnapshot = false;
       const abort = () => reject(new DOMException("Dashboard source load was cancelled.", "AbortError"));
       pageOptions.signal.addEventListener("abort", abort, { once: true });
       subscribeCanonicalDashboardView(
-        `sources:${sourceNames.join(",")}`,
-        sourceNames,
+        subscriptionId,
+        subscriptionSourceNames,
         dashboardContext,
         (sources) => {
           if (!receivedInitialSnapshot) {

@@ -1,3 +1,5 @@
+import { navigationIndicatorSourceNamesForPage } from './navigation-indicator.js';
+
 /**
  * Builds the dependency graph connecting rendered dashboard content to
  * declarative queries.
@@ -55,7 +57,7 @@ export function buildDashboardQueryUsageGraph(dashboard) {
   if (Array.isArray(dashboard.pages)) {
     dashboard.pages.forEach((page, pageIndex) => {
       if (!isRecord(page)) return;
-      const navigationIndicatorNames = navigationIndicatorQueryNames(page);
+      const navigationIndicatorNames = navigationIndicatorSourceNamesForPage(page);
       if (navigationIndicatorNames.length > 0) {
         const node = addNode(`navigation-indicator:$.dashboard.pages[${pageIndex}].navigation-indicator`);
         labels.set(node, `Navigation indicator: ${nodeLabel(page, pageIndex)}`);
@@ -197,16 +199,6 @@ function viewQueryNames(view) {
   }
   if (isRecord(view.list) && isRecord(view.list.drill)) names.push(view.list.drill.query);
   return names;
-}
-
-/** @param {Record<string, unknown>} page */
-function navigationIndicatorQueryNames(page) {
-  if (!isRecord(page['navigation-indicator'])) return [];
-  const indicator = page['navigation-indicator'];
-  const tests = Array.isArray(indicator.any) ? indicator.any : [indicator];
-  return tests.flatMap((test) => (
-    isRecord(test) && typeof test.source === 'string' ? [test.source] : []
-  ));
 }
 
 /** @param {unknown} value @returns {value is Record<string, any>} */
