@@ -82,7 +82,6 @@ test("cao setup-auth delegates private GitHub App setup options", () => {
   const calls = [];
   const result = setupCaoAuthentication("github-app", [
     "--repo", "acme/control",
-    "--enterprise", "acme-enterprise",
     "--dry-run",
   ], {
     execute(command, arguments_, options) {
@@ -96,7 +95,6 @@ test("cao setup-auth delegates private GitHub App setup options", () => {
     [
       path.join(".github", "workflows", "shared", "setup-github-apps.mjs"),
       "--repo", "acme/control",
-      "--enterprise", "acme-enterprise",
       "--dry-run",
     ],
     { stdio: "inherit" },
@@ -126,6 +124,34 @@ test("cao setup-auth configures a consented fine-grained token through stdin", (
     secret: "GH_AW_GITHUB_TOKEN",
     repo: "acme/control",
   });
+});
+
+test("cao setup-auth configures existing enterprise Apps without key arguments", () => {
+  const calls = [];
+  const result = setupCaoAuthentication("enterprise-app", [
+    "--repo", "acme/control",
+    "--read-client-id", "Iv1.read",
+    "--write-client-id", "Iv1.write",
+  ], {
+    execute(command, arguments_, options) {
+      calls.push([command, arguments_, options]);
+      return { status: 0, stdout: "", stderr: "" };
+    },
+  });
+
+  assert.deepEqual(calls, [
+    ["gh", ["auth", "status"], { encoding: "utf8" }],
+    ["gh", ["variable", "set", "GH_AW_GITHUB_READ_APP_ID", "--repo", "acme/control", "--body", "Iv1.read"], { encoding: "utf8" }],
+    ["gh", ["secret", "set", "GH_AW_GITHUB_READ_APP_PRIVATE_KEY", "--repo", "acme/control"], { stdio: "inherit" }],
+    ["gh", ["variable", "set", "GH_AW_GITHUB_WRITE_APP_ID", "--repo", "acme/control", "--body", "Iv1.write"], { encoding: "utf8" }],
+    ["gh", ["secret", "set", "GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY", "--repo", "acme/control"], { stdio: "inherit" }],
+  ]);
+  assert.deepEqual(result, {
+    command: "setup-auth",
+    profile: "enterprise-github-app",
+    repo: "acme/control",
+  });
+  assert.equal(calls.flatMap(([, arguments_]) => arguments_).some((value) => /PRIVATE KEY/.test(value)), false);
 });
 
 test("cao setup-auth requires explicit token risk acknowledgement", () => {

@@ -33,26 +33,28 @@ For one organization:
 
 An organization-owned private App fails closed when policy enrolls a repository owned by another organization.
 
-For organizations in one enterprise, create enterprise-owned private Apps:
+For organizations in one enterprise, create the read and write Apps manually in the enterprise settings. [GitHub App manifests do not support enterprise-owned Apps](https://docs.github.com/en/enterprise-cloud@latest/apps/sharing-github-apps/registering-a-github-app-from-a-manifest). Install each private App separately on the selected repositories in every enrolled organization, then configure the control repository:
 
 ```bash
-./cao.sh setup-auth github-app \
+./cao.sh setup-auth enterprise-app \
   --repo acme/central-agentic-ops \
-  --enterprise acme-enterprise \
+  --read-client-id '<read-app-client-id>' \
+  --write-client-id '<write-app-client-id>' \
   --dry-run
 
-./cao.sh setup-auth github-app \
+./cao.sh setup-auth enterprise-app \
   --repo acme/central-agentic-ops \
-  --enterprise acme-enterprise
+  --read-client-id '<read-app-client-id>' \
+  --write-client-id '<write-app-client-id>'
 ```
 
-The operator must be able to create Apps for that enterprise and approve each organization installation. Always select only the repositories printed by the command.
+The client IDs are not secrets. The command stores them as repository variables and prompts for each PEM private key through `gh secret set`; never put a private key in a command argument. The operator must be able to create Apps for that enterprise and approve each organization installation.
 
 :::caution[Enterprise installation is not repository access]
-Installing an App on the enterprise grants only requested enterprise permissions. CAO's read and write Apps require separate organization installations to access organization or repository resources. GitHub's enterprise-installed App capability is in public preview; CAO does not depend on it for normal runtime access.
+[Installing an App on the enterprise](https://docs.github.com/en/enterprise-cloud@latest/apps/using-github-apps/installing-a-github-app-on-your-enterprise) grants only requested enterprise permissions. CAO's read and write Apps require separate organization installations to access organization or repository resources. GitHub's enterprise-installed App capability is in public preview; CAO does not depend on it for normal runtime access.
 :::
 
-The setup command stores App client IDs in `GH_AW_GITHUB_READ_APP_ID` and `GH_AW_GITHUB_WRITE_APP_ID` repository variables. It sends private keys to the corresponding Actions secrets through standard input and does not save them to disk.
+The setup commands store App client IDs in `GH_AW_GITHUB_READ_APP_ID` and `GH_AW_GITHUB_WRITE_APP_ID` repository variables. They send private keys to the corresponding Actions secrets through standard input and do not save them to disk.
 
 ## Configure a fine-grained token
 

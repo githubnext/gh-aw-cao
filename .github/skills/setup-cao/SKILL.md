@@ -108,13 +108,22 @@ Do not leave angle-bracket placeholders in authored files or pass placeholders t
     node .github/workflows/shared/setup-github-apps.mjs --repo <organization>/<control-repository>
     ```
 
-    Prefer the installed CAO command, which mirrors gh-aw's App manifest conversion flow without changing campaign delivery:
+    Prefer the installed CAO command. The helper mirrors gh-aw's App manifest conversion flow without changing campaign delivery:
 
     ```bash
     ./cao.sh setup-auth github-app --repo <organization>/<control-repository>
     ```
 
-    For multiple organizations in one enterprise, use `--enterprise <enterprise-slug>` to create enterprise-owned private Apps. The helper keeps the root campaign manifest config-free, stores client IDs as repository variables, and sends private keys to repository secrets through standard input. Do not install the campaign over in-tree workflows in a source-managed control repository. After setup, verify these names exist in the control repository:
+    For multiple organizations in one enterprise, GitHub App manifests cannot create enterprise-owned Apps. Require an enterprise owner to create the private read and write Apps manually and install them separately on selected repositories in each enrolled organization. Then configure their existing client IDs and enter each PEM only at the interactive secret prompt:
+
+    ```bash
+    ./cao.sh setup-auth enterprise-app \
+      --repo <organization>/<control-repository> \
+      --read-client-id <read-app-client-id> \
+      --write-client-id <write-app-client-id>
+    ```
+
+    The helper keeps the root campaign manifest config-free, stores client IDs as repository variables, and sends private keys to repository secrets through standard input. Do not install the campaign over in-tree workflows in a source-managed control repository. After setup, verify these names exist in the control repository:
 
     - variable `GH_AW_GITHUB_READ_APP_ID` and secret `GH_AW_GITHUB_READ_APP_PRIVATE_KEY`;
     - variable `GH_AW_GITHUB_WRITE_APP_ID` and secret `GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY`.

@@ -54,8 +54,6 @@ export function parseArgs(argv) {
     readAppName: "",
     writeAppName: "",
     policy: ".github/workflows/cao.json",
-    appOwner: "",
-    appOwnerType: "organization",
     dryRun: false,
     force: false,
     openBrowser: true,
@@ -71,9 +69,6 @@ export function parseArgs(argv) {
       options.writeAppName = requireArgument(argv, ++index, argument);
     } else if (argument === "--policy") {
       options.policy = requireArgument(argv, ++index, argument);
-    } else if (argument === "--enterprise") {
-      options.appOwner = requireArgument(argv, ++index, argument);
-      options.appOwnerType = "enterprise";
     } else if (argument === "--dry-run") {
       options.dryRun = true;
     } else if (argument === "--force") {
@@ -303,14 +298,11 @@ function existingGitHubApp(name, clientId) {
   };
 }
 
-export function appRegistrationUrl(ownerType, owner, state) {
-  if (ownerType === "enterprise") {
-    return `https://github.com/enterprises/${owner}/settings/apps/new?state=${state}`;
-  }
+export function appRegistrationUrl(owner, state) {
   return `https://github.com/organizations/${owner}/settings/apps/new?state=${state}`;
 }
 
-async function createGitHubApp({ owner, ownerType, name, homepageUrl, description, permissions, openBrowser }) {
+async function createGitHubApp({ owner, name, homepageUrl, description, permissions, openBrowser }) {
   const state = randomBytes(16).toString("hex");
   let page = "";
   let complete;
@@ -375,7 +367,7 @@ async function createGitHubApp({ owner, ownerType, name, homepageUrl, descriptio
     description,
     permissions,
   });
-  const registrationUrl = appRegistrationUrl(ownerType, owner, state);
+  const registrationUrl = appRegistrationUrl(owner, state);
   page = registrationPage(registrationUrl, manifest);
   const localUrl = `http://127.0.0.1:${address.port}/register`;
 
@@ -537,7 +529,6 @@ Options:
   --read-app-name NAME    Globally unique read App name
   --write-app-name NAME   Globally unique write App name
   --policy PATH           CAO policy (default: .github/workflows/cao.json)
-  --enterprise SLUG       Create private enterprise-owned Apps for organizations in that enterprise
   --dry-run               Print manifests without changing GitHub
   --force                 Create replacements even when both credential pairs exist
   --no-open               Print browser URLs instead of opening them
@@ -555,17 +546,14 @@ async function main() {
   const [controlOwner] = splitRepo(repo);
   const policy = loadControlPolicy(options.policy);
   const installationTargets = deriveInstallationTargets(policy, repo);
-  const appOwner = options.appOwner || controlOwner;
-  if (options.appOwnerType === "organization") {
-    const externalTarget = installationTargets.find(
-      (target) => target.owner.toLowerCase() !== controlOwner.toLowerCase(),
+  const externalTarget = installationTargets.find(
+    (target) => target.owner.toLowerCase() !== controlOwner.toLowerCase(),
+  );
+  if (externalTarget) {
+    throw new Error(
+      `private organization-owned Apps cannot be installed on ${externalTarget.owner}; `
+      + "configure existing enterprise-owned Apps or a fine-grained token",
     );
-    if (externalTarget) {
-      throw new Error(
-        `private organization-owned Apps cannot be installed on ${externalTarget.owner}; `
-        + "use --enterprise SLUG for organizations in one enterprise or configure a fine-grained token",
-      );
-    }
   }
   const homepageUrl = `https://github.com/${repo}`;
   const appNames = {
@@ -591,20 +579,12 @@ async function main() {
         permissions: profile.permissions,
       }),
     }));
-    console.log(JSON.stringify({
-      repo,
-      appOwner: { type: options.appOwnerType, login: appOwner },
-      installationTargets,
-      apps,
-    }, null, 2));
+    console.log(JSON.stringify({ repo, installationTargets, apps }, null, 2));
     return;
   }
 
   runGh(["auth", "status"]);
   const target = verifyTarget(repo);
-  if (options.appOwnerType === "enterprise") {
-    runGh(["api", `/enterprises/${appOwner}`, "--jq", ".slug"]);
-  }
   const state = repositoryState(repo);
   for (const profile of APP_PROFILES) {
     const complete = state.variables.has(profile.variable) && state.secrets.has(profile.secret);
@@ -617,8 +597,7 @@ async function main() {
       console.error(`${profile.label} App credentials are incomplete; creating a replacement pair.`);
     }
     const app = await createGitHubApp({
-      owner: appOwner,
-      ownerType: options.appOwnerType,
+      owner: target.owner,
       name: appNames[profile.role],
       homepageUrl: target.homepageUrl,
       description: `Central Agentic Ops ${profile.label} App for ${repo}`,
