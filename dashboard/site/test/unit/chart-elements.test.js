@@ -600,7 +600,7 @@ describe('chart element helpers', () => {
   });
 
   it('keeps temporal chart y-axis labels visually compact', () => {
-    expect(primerStylesheet()).toContain('.line-chart-y-axis text { fill: var(--muted); font-size: 1.8px;');
+    expect(primerStylesheet()).toMatch(/\.line-chart-y-axis text \{[^}]*font-size: 1\.8px;/);
   });
 
   it('packs the temporal chart y-axis gutter around its formatted labels', () => {
