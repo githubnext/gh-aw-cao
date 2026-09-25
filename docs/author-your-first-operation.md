@@ -17,7 +17,7 @@ Bring:
 
 - a short description of the repository outcome you want;
 - one low-risk repository that can be used for the first review run;
-- a GitHub organization with Actions and organization-billed Copilot enabled;
+- a GitHub organization with Actions, and inference credentials for the engine you choose (organization-billed Copilot is needed only for Copilot-backed runs; see [Configure Authentication](authentication.md));
 - GitHub CLI authenticated with `repo` and `workflow` scopes;
 - GitHub Agentic Workflows `v0.89.21` or newer.
 

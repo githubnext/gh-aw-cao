@@ -140,7 +140,10 @@ test("authentication prefers an optional GitHub App and retains bounded fallback
   assert.match(authentication, /including the Checks API/);
   assert.match(authentication, /Obtain explicit confirmation to proceed/);
   assert.match(authentication, /presence of an existing PAT secret, is not consent/);
-  assert.match(authentication, /CAO requires organization billing/);
+  assert.match(authentication, /CAO installation does not require Copilot organization billing/);
+  assert.match(authentication, /verifying it up front is completely optional/);
+  assert.match(authentication, /most user tokens cannot read organization billing/);
+  assert.match(authentication, /Customers may author workflows with another gh-aw-supported engine\/provider/);
   assert.match(authentication, /does not support `COPILOT_GITHUB_TOKEN` inference fallback/);
 });
 
