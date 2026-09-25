@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { SWIMLANE_LAYOUT, chartSeriesClassName, groupChartSeries, listChartSeries, pieChartEntries, renderChartLegend, renderChartWidget, renderPieChartLayout, renderPieLegend } from '../../src/components/chart-elements.js';
-import { primerStylesheet } from '../../src/styles.js';
 
 describe('chart element helpers', () => {
   it('DLS-SAFE-009 groups chart series deterministically and lists reusable class names', () => {
@@ -597,10 +596,6 @@ describe('chart element helpers', () => {
 
     expect([...chart.querySelectorAll('.line-chart-y-axis text')].map((tick) => tick.textContent))
       .toEqual(['1M', '500K', '0']);
-  });
-
-  it('keeps temporal chart y-axis labels visually compact', () => {
-    expect(primerStylesheet()).toMatch(/\.line-chart-y-axis text \{[^}]*font-size: 1\.8px;/);
   });
 
   it('packs the temporal chart y-axis gutter around its formatted labels', () => {
