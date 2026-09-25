@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 20
     services:
       redis:
-        image: redis/redis-stack-server:7.4.0-v8
+        image: redis:7.4-alpine
         ports:
           - 6379:6379
         options: >-

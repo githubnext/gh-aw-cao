@@ -307,7 +307,7 @@ The implementation profile defined by this specification is:
 | Canonical model | 17 | Campaign, Repository, Workflow, Run, Domain, Tool, Audit, Issue, and Operational Value records |
 | Browser IndexedDB | 25 | Nine canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
 | Local SQLite projection | IndexedDB 22 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records`, containing the same logical stores and JSON records as IndexedDB |
-| Local Redis server projection | Canonical model 14 | Immutable active generation of logical-source hashes plus RediSearch indexes, queried only through the loopback Go HTTP(S) server |
+| Local Redis server projection | Canonical model 14 | Immutable active generation of logical-source row sets, queried only through the loopback Go HTTP(S) server |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
 
 ## 5.2 Local Redis server profile
@@ -325,9 +325,8 @@ Node.js dashboard preview server. It SHALL:
 * serve the built dashboard and its query API over HTTP on loopback by default,
   or HTTPS only when the operator provides a certificate and key;
 * keep the Redis URL and any Redis credentials exclusively in the Go process;
-* execute Dashboard Language queries on the server and push every compatible
-  filter, search, numeric/time range, aggregation, ordering, and limit into
-  RediSearch before bounded Go execution of unsupported stages;
+* execute Dashboard Language queries on the server against Redis row sets using
+  the same bounded Go query engine as unsupported dashboard stages;
 * keep active browser views subscribed to generation changes and return fresh,
   bounded query payloads after successful ingestion.
 

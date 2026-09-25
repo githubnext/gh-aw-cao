@@ -404,6 +404,8 @@ jobs:
             }
             const serverUrl = process.env.GITHUB_SERVER_URL || 'https://github.com'
             const runUrl = `${serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            const workflowSha = process.env.GITHUB_WORKFLOW_SHA
+            const debugSkillUrl = `${serverUrl}/${context.repo.owner}/${context.repo.repo}/blob/${workflowSha}/.github/skills/debug-cao/SKILL.md`
             const rows = failures
               .map(({ code, message, result }) => `| \`${code}\` | ${message} | ${result} |`)
               .join('\n')
@@ -421,6 +423,9 @@ jobs:
               '## Suggested next step',
               '',
               'Assign this issue to an agent and ask it to fix the workflow failure using the failure code(s) above.',
+              '',
+              '---',
+              `For a version-pinned diagnosis, ask an agent to follow the [\`debug-cao\` skill](${debugSkillUrl}) from workflow commit \`${workflowSha}\`.`,
             ].join('\n')
             const openIssues = await github.paginate(github.rest.issues.listForRepo, {
               ...context.repo,

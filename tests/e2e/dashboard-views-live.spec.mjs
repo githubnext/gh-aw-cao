@@ -28,6 +28,7 @@ const outputDirectory = resolve(
 );
 const maximumDomNodes = 6_000;
 const maximumFailedViews = 5;
+const maximumActivityShards = 25;
 
 function selectedPages(dashboard) {
   const selected = process.env.DASHBOARD_PAGE_IDS;
@@ -79,7 +80,7 @@ test("each selected dashboard view renders with live data", async ({ page }, tes
 
     preview = await startDashboardServer({
       downloadData: (destination) =>
-        downloadDeployedDashboardData(destination, sourceUrl),
+        downloadDeployedDashboardData(destination, sourceUrl, fetch, maximumActivityShards),
       host: "127.0.0.1",
       port: 0,
     });

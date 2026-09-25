@@ -82,6 +82,8 @@ describe('dashboard source ingestion queries', () => {
           'engine-version': '1.2.3',
           'requested-model': 'model-a',
           'resolved-model': 'model-b',
+          'failure-message': 'Dependency update failed',
+          'failure-detail': 'Dependency update failed',
           'started-at': '2026-09-09T04:45:00Z',
           'ended-at': '2026-09-09T04:50:00Z'
         }],
@@ -159,7 +161,9 @@ describe('dashboard source ingestion queries', () => {
       engine: 'copilot',
       engineVersion: '1.2.3',
       requestedModel: 'model-a',
-      resolvedModel: 'model-b'
+      resolvedModel: 'model-b',
+      failureMessage: 'Dependency update failed',
+      failureDetail: 'Dependency update failed'
     });
     expect(batch.domains).toEqual([]);
     expect(batch.tools).toEqual([]);

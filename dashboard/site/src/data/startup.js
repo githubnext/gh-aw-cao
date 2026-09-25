@@ -91,7 +91,7 @@ export function createBatchedSourceLoader(dashboardContext) {
 /** @typedef {Record<string, import('../presenter.js').LogicalSourceInput>} DashboardSources */
 /** @typedef {{ filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc' | 'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card', formValues?: Record<string, string|number|boolean> }} DashboardQueryContext */
 /** @typedef {{ signal: AbortSignal, onUpdate: (sources: DashboardSources) => void, routeParameters?: Record<string, string>, queryContext?: DashboardQueryContext }} PageLoadOptions */
-/** @typedef {((pageId: string, options: PageLoadOptions) => Promise<DashboardSources>) & { prepare?: (pageId: string) => Promise<void>, loadSources?: (sourceNames: string[], options: PageLoadOptions) => Promise<DashboardSources> }} PageSourceLoader */
+/** @typedef {((pageId: string, options: PageLoadOptions) => Promise<DashboardSources>) & { prepare?: (pageId: string) => Promise<void>, subscribeBackgroundSources?: (sourceNames: string[], options: PageLoadOptions) => Promise<DashboardSources> }} PageSourceLoader */
 
 /**
  * Gives a cached render two animation frames to commit before network activity starts.
@@ -143,8 +143,14 @@ export async function startDashboardData(options) {
   } = options;
   const cleanup = new AbortController();
   let stopAutomaticDataUpdates = () => {};
+  /** @type {() => void} */
+  let startBackgroundWork = () => {};
+  const backgroundWorkStarted = new Promise((resolve) => {
+    startBackgroundWork = () => resolve(undefined);
+  });
   browserWindow.addEventListener("pagehide", (event) => {
     if (!event.persisted) {
+      startBackgroundWork();
       cleanup.abort();
       stopAutomaticDataUpdates();
     }
@@ -243,7 +249,11 @@ export async function startDashboardData(options) {
       errorLabel: `Unable to update dashboard page ${pageId}`
     });
   };
-  loadPageSources.loadSources = async (sourceNames, pageOptions) => {
+  loadPageSources.subscribeBackgroundSources = async (sourceNames, pageOptions) => {
+    await backgroundWorkStarted;
+    if (pageOptions.signal.aborted) {
+      throw new DOMException("Dashboard source load was cancelled.", "AbortError");
+    }
     const subscriptionSourceNames = [...new Set(sourceNames)].toSorted();
     return subscribeSources({
       subscriptionId: `sources:${subscriptionSourceNames.join(",")}`,
@@ -323,6 +333,8 @@ export async function startDashboardData(options) {
   });
 
   await settleUi();
+  // The active page is subscribed and painted before lower-priority work begins.
+  startBackgroundWork();
   if (!cleanup.signal.aborted) {
     startAutomaticUpdates();
     refreshSources(false);

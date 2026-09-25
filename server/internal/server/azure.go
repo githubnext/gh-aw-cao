@@ -175,10 +175,13 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 	if err := store.Ping(ctx); err != nil {
 		return nil, errors.New("redis is unavailable")
 	}
-	if err := store.CheckRediSearch(ctx); err != nil {
+	definitions, err := ParseDashboardQueries(dashboardQueriesPath)
+	if err != nil {
 		return nil, err
 	}
-	definitions, err := ParseDashboardQueries(dashboardQueriesPath)
+	// The collection profile is optional. When it is unconfigured this reads
+	// as nil and the Functions front end behaves exactly as before.
+	collector, err := CollectorConfigFromEnv()
 	if err != nil {
 		return nil, err
 	}
@@ -186,6 +189,9 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 		HostingMode:      HostingModeAzureFunctions,
 		SiteDirectory:    siteDirectory,
 		DashboardQueries: definitions,
+		Collector:        collector,
+		WebhookSecret:    os.Getenv("CAO_GITHUB_WEBHOOK_SECRET"),
+		AdminUsers:       splitCSV(os.Getenv("CAO_GITHUB_ADMIN_USERS")),
 		AzureProxy: AzureProxyPolicy{
 			AllowedHosts:   splitCSV(os.Getenv("CAO_AZURE_ALLOWED_HOSTS")),
 			RequireHTTPS:   true,

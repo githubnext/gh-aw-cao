@@ -62,13 +62,6 @@ func (s *Store) Ping(ctx context.Context) error {
 	return nil
 }
 
-func (s *Store) CheckRediSearch(ctx context.Context) error {
-	if _, err := s.Client.Do(ctx, "FT._LIST"); err != nil {
-		return fmt.Errorf("redis RediSearch module is unavailable: %w", err)
-	}
-	return nil
-}
-
 func (s *Store) TryLock(ctx context.Context, name, token string, ttl time.Duration) (bool, error) {
 	value, err := s.Client.Do(ctx, "SET", s.Key("lock:"+name), token, "NX", "PX", strconv.FormatInt(ttl.Milliseconds(), 10))
 	if err != nil {
@@ -175,28 +168,16 @@ func (s *Store) Activate(ctx context.Context, generation, dataRevision string, e
 	return revision, nil
 }
 
-func (s *Store) PutSource(ctx context.Context, generation string, source model.Source) (map[string]string, error) {
+// PutSource stages one source's rows.
+//
+// Rows are stored as a single raw JSON document per key plus a set of the keys
+// in the source. Nothing else is written: the previous implementation also
+// wrote every scalar field as its own hash field purely so RediSearch could
+// index it, which doubled the memory a generation occupied to serve a pushdown
+// path that no canonical query was eligible for.
+func (s *Store) PutSource(ctx context.Context, generation string, source model.Source) error {
 	redisLog.Printf("staging source rows=%d", len(source.Rows))
-	aliases, types := sourceSchema(source.Rows)
 	prefix := s.rowPrefix(generation, source.Source)
-	index := s.indexName(generation, source.Source)
-	_, _ = s.Client.Do(ctx, "FT.DROPINDEX", index)
-	indexCommand := []string{"FT.CREATE", index, "ON", "HASH", "PREFIX", "1", prefix, "SCHEMA", "raw", "TEXT", "NOSTEM"}
-	fields := make([]string, 0, len(aliases))
-	for field := range aliases {
-		fields = append(fields, field)
-	}
-	sort.Strings(fields)
-	for _, field := range fields {
-		indexCommand = append(indexCommand, aliases[field], types[field])
-		if types[field] == "TEXT" {
-			indexCommand = append(indexCommand, "NOSTEM")
-		}
-		indexCommand = append(indexCommand, "SORTABLE")
-	}
-	if _, err := s.Client.Do(ctx, indexCommand...); err != nil {
-		return nil, fmt.Errorf("create RediSearch index for %s: %w", source.Source, err)
-	}
 	setKey := s.sourceSetKey(generation, source.Source)
 	commands := make([][]string, 0, redisWriteBatchSize)
 	flush := func(rowNumber int) error {
@@ -209,51 +190,30 @@ func (s *Store) PutSource(ctx context.Context, generation string, source model.S
 		commands = commands[:0]
 		return nil
 	}
+	script := `redis.call("HSET", KEYS[1], "raw", ARGV[1]); redis.call("SADD", KEYS[2], KEYS[1]); return "OK"`
 	for rowNumber, row := range source.Rows {
 		data, err := json.Marshal(row)
 		if err != nil {
-			return nil, fmt.Errorf("encode %s row: %w", source.Source, err)
+			return fmt.Errorf("encode %s row: %w", source.Source, err)
 		}
-		id := rowID(row, rowNumber)
-		key := prefix + id
-		command := []string{"HSET", key, "raw", string(data)}
-		for _, field := range fields {
-			value, ok := scalarIndexValue(row[field])
-			if types[field] == "NUMERIC" {
-				if number, numeric := numericIndexValue(row[field]); numeric {
-					value, ok = strconv.FormatFloat(number, 'g', -1, 64), true
-				} else {
-					ok = false
-				}
-			}
-			if ok {
-				command = append(command, aliases[field], value)
-			}
-		}
-		script := `redis.call("HSET", KEYS[1], unpack(ARGV)); redis.call("SADD", KEYS[2], KEYS[1]); return "OK"`
-		arguments := []string{"EVAL", script, "2", key, setKey}
-		arguments = append(arguments, command[2:]...)
-		commands = append(commands, arguments)
+		key := prefix + rowID(row, rowNumber)
+		commands = append(commands, []string{"EVAL", script, "2", key, setKey, string(data)})
 		if len(commands) == cap(commands) {
 			if err := flush(rowNumber); err != nil {
-				return nil, err
+				return err
 			}
 		}
 	}
 	if err := flush(len(source.Rows) - 1); err != nil {
-		return nil, err
+		return err
 	}
 	metadata, _ := json.Marshal(source.Metadata)
-	schema, _ := json.Marshal(aliases)
-	schemaTypes, _ := json.Marshal(types)
 	if _, err := s.Client.Do(ctx, "HSET", s.generationKey(generation),
 		"source:"+source.Source+":metadata", string(metadata),
-		"source:"+source.Source+":aliases", string(schema),
-		"source:"+source.Source+":types", string(schemaTypes),
 	); err != nil {
-		return nil, err
+		return err
 	}
-	return aliases, nil
+	return nil
 }
 
 func (s *Store) PutDiagnostics(ctx context.Context, generation string, diagnostics model.Diagnostics) error {
@@ -280,42 +240,22 @@ func (s *Store) Diagnostics(ctx context.Context, generation string) (model.Diagn
 	return diagnostics, nil
 }
 
+// LoadSource reads a source's rows and lets the query engine evaluate the
+// definition.
+//
+// There is deliberately no query pushdown. Pushdown required RediSearch, and
+// therefore a Redis tier with modules, while none of the canonical projection
+// queries were eligible for it: each one joins, unions, computes, or projects
+// columns, and none bounds its result below the search result cap. Evaluating
+// in the engine is the path those queries always took, so removing pushdown
+// removed a second implementation rather than a capability.
 func (s *Store) LoadSource(ctx context.Context, generation, name string, definition *query.Definition) (model.Source, model.Metrics, error) {
-	metadata, aliases, types, err := s.sourceInfo(ctx, generation, name)
+	metadata, err := s.sourceInfo(ctx, generation, name)
 	if err != nil {
 		return model.Source{}, model.Metrics{}, err
 	}
-	plan := PlanQuery(s.indexName(generation, name), name, definition, aliases, types)
-	redisLog.Printf("planned source pushed_down=%d fallback=%d", len(plan.PushedDown), len(plan.Fallback))
-	metrics := model.Metrics{PushedDown: plan.PushedDown, FallbackOperations: plan.Fallback, RedisCommands: 1}
-	if len(plan.PushedDown) > 0 {
-		value, searchErr := s.Client.Do(ctx, plan.Command...)
-		metrics.RedisCommands++
-		if searchErr == nil {
-			rows, parseErr := parseSearchRows(value, plan.Aggregate)
-			if parseErr == nil {
-				if plan.Aggregate {
-					inverse := map[string]string{}
-					for field, alias := range aliases {
-						inverse[alias] = field
-					}
-					for _, row := range rows {
-						for field, value := range row {
-							if original := inverse[field]; original != "" {
-								delete(row, field)
-								row[original] = value
-							}
-						}
-					}
-				}
-				metrics.RedisRows = len(rows)
-				redisLog.Printf("loaded source rows=%d mode=search", len(rows))
-				return model.Source{Source: name, Rows: rows, Metadata: metadata}, metrics, nil
-			}
-		}
-		metrics.FallbackOperations = append(metrics.FallbackOperations, "redis-search-error")
-		metrics.PushedDown = nil
-	}
+	_ = definition
+	metrics := model.Metrics{FallbackOperations: []string{"query"}, RedisCommands: 1}
 	value, err := s.Client.Do(ctx, "SMEMBERS", s.sourceSetKey(generation, name))
 	metrics.RedisCommands++
 	if err != nil {
@@ -359,151 +299,19 @@ func (s *Store) LoadSource(ctx context.Context, generation, name string, definit
 	return model.Source{Source: name, Rows: rows, Metadata: metadata}, metrics, nil
 }
 
-func (s *Store) sourceInfo(ctx context.Context, generation, name string) (model.Metadata, map[string]string, map[string]string, error) {
-	value, err := s.Client.Do(ctx, "HMGET", s.generationKey(generation), "source:"+name+":metadata", "source:"+name+":aliases", "source:"+name+":types")
+func (s *Store) sourceInfo(ctx context.Context, generation, name string) (model.Metadata, error) {
+	value, err := s.Client.Do(ctx, "HGET", s.generationKey(generation), "source:"+name+":metadata")
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
-	fields, err := Strings(value)
-	if err != nil || len(fields) != 3 {
-		return nil, nil, nil, fmt.Errorf("%w: %q", ErrSourceUnavailable, name)
+	if value == nil {
+		return nil, fmt.Errorf("%w: %q", ErrSourceUnavailable, name)
 	}
 	metadata := model.Metadata{}
-	aliases := map[string]string{}
-	types := map[string]string{}
-	if fields[0] != "" {
-		_ = json.Unmarshal([]byte(fields[0]), &metadata)
+	if raw := fmt.Sprint(value); raw != "" {
+		_ = json.Unmarshal([]byte(raw), &metadata)
 	}
-	if fields[1] != "" {
-		_ = json.Unmarshal([]byte(fields[1]), &aliases)
-	}
-	if fields[2] != "" {
-		_ = json.Unmarshal([]byte(fields[2]), &types)
-	}
-	if fields[0] == "" && fields[1] == "" {
-		return nil, nil, nil, fmt.Errorf("%w: %q", ErrSourceUnavailable, name)
-	}
-	return metadata, aliases, types, nil
-}
-
-func sourceSchema(rows []model.Row) (map[string]string, map[string]string) {
-	aliases, types := map[string]string{}, map[string]string{}
-	stringValues := map[string]map[string]bool{}
-	for _, row := range rows {
-		for field, value := range row {
-			if _, ok := scalarIndexValue(value); !ok {
-				continue
-			}
-			if aliases[field] == "" {
-				sum := sha256.Sum256([]byte(field))
-				aliases[field] = "f_" + hex.EncodeToString(sum[:6])
-			}
-			if _, ok := numericIndexValue(value); ok {
-				if types[field] == "" {
-					types[field] = "NUMERIC"
-				}
-			} else if _, ok := value.(bool); ok {
-				types[field] = "TAG"
-			} else {
-				if stringValues[field] == nil {
-					stringValues[field] = map[string]bool{}
-				}
-				stringValues[field][fmt.Sprint(value)] = true
-				if types[field] != "NUMERIC" {
-					types[field] = "TAG"
-				}
-			}
-		}
-	}
-	for field, values := range stringValues {
-		lower := strings.ToLower(field)
-		textual := strings.Contains(lower, "title") || strings.Contains(lower, "message") ||
-			strings.Contains(lower, "detail") || strings.Contains(lower, "description") ||
-			strings.Contains(lower, "readme") || strings.Contains(lower, "summary")
-		if textual || len(values) > max(64, len(rows)/4) {
-			types[field] = "TEXT"
-		}
-	}
-	return aliases, types
-}
-
-func scalarIndexValue(value any) (string, bool) {
-	switch value := value.(type) {
-	case string:
-		return value, true
-	case float64:
-		return strconv.FormatFloat(value, 'g', -1, 64), true
-	case int:
-		return strconv.Itoa(value), true
-	case bool:
-		return strconv.FormatBool(value), true
-	case nil:
-		return "", false
-	default:
-		return "", false
-	}
-}
-
-func numericIndexValue(value any) (float64, bool) {
-	switch value := value.(type) {
-	case float64:
-		return value, true
-	case int:
-		return float64(value), true
-	default:
-		if text, ok := value.(string); ok {
-			if instant, err := time.Parse(time.RFC3339Nano, text); err == nil {
-				return float64(instant.UnixMilli()), true
-			}
-		}
-		return 0, false
-	}
-}
-
-func parseSearchRows(value any, aggregate bool) ([]model.Row, error) {
-	items, ok := value.([]any)
-	if !ok || len(items) == 0 {
-		return nil, errors.New("invalid RediSearch response")
-	}
-	rows := []model.Row{}
-	if aggregate {
-		for i := 1; i < len(items); i++ {
-			fields, ok := items[i].([]any)
-			if !ok {
-				continue
-			}
-			row := model.Row{}
-			for j := 0; j+1 < len(fields); j += 2 {
-				row[fmt.Sprint(fields[j])] = parseScalar(fmt.Sprint(fields[j+1]))
-			}
-			rows = append(rows, row)
-		}
-		return rows, nil
-	}
-	for i := 1; i+1 < len(items); i += 2 {
-		fields, ok := items[i+1].([]any)
-		if !ok {
-			continue
-		}
-		for j := 0; j+1 < len(fields); j += 2 {
-			if fmt.Sprint(fields[j]) != "raw" {
-				continue
-			}
-			var row model.Row
-			if err := json.Unmarshal([]byte(fmt.Sprint(fields[j+1])), &row); err != nil {
-				return nil, err
-			}
-			rows = append(rows, row)
-		}
-	}
-	return rows, nil
-}
-
-func parseScalar(value string) any {
-	if number, err := strconv.ParseFloat(value, 64); err == nil {
-		return number
-	}
-	return value
+	return metadata, nil
 }
 
 func rowID(row model.Row, fallback int) string {
@@ -537,7 +345,4 @@ func (s *Store) sourceSetKey(generation, source string) string {
 }
 func (s *Store) rowPrefix(generation, source string) string {
 	return s.generationKey(generation) + ":source:" + safeName(source) + ":row:"
-}
-func (s *Store) indexName(generation, source string) string {
-	return s.namespace + ":idx:" + safeName(generation+"|"+source)
 }

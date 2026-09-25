@@ -47,6 +47,44 @@ test("downloads canonical deployed dashboard inputs", async () => {
   }
 });
 
+test("limits the downloaded activity shards when requested", async () => {
+  const destination = await mkdtemp(join(tmpdir(), "dashboard-view-data-"));
+  const requested = [];
+  const fetcher = async (url) => {
+    requested.push(String(url));
+    const content = String(url).endsWith("payload-hashes.json")
+      ? JSON.stringify({
+          "gh-aw-logs-runs/first.jsonl": "a".repeat(64),
+          "gh-aw-logs-records/second.jsonl": "b".repeat(64),
+        })
+      : String(url).endsWith("inventory-sources.json")
+        ? '{"repositories":[]}'
+        : '{"kind":"record"}\n';
+    return {
+      ok: true,
+      body: new Blob([content]).stream(),
+      json: async () => JSON.parse(content),
+    };
+  };
+
+  try {
+    await downloadDeployedDashboardData(
+      destination,
+      "https://example.test/cao/payload-hashes.json",
+      fetcher,
+      1,
+    );
+
+    assert.deepEqual(requested, [
+      "https://example.test/cao/payload-hashes.json",
+      "https://example.test/cao/inventory-sources.json",
+      "https://example.test/cao/gh-aw-logs-runs/first.jsonl",
+    ]);
+  } finally {
+    await rm(destination, { recursive: true });
+  }
+});
+
 test("waits for both deployed dashboard downloads when one fails", async () => {
   const destination = await mkdtemp(join(tmpdir(), "dashboard-view-data-"));
   let inventoryFinished = false;

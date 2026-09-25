@@ -77,8 +77,8 @@ Open only the unguessable URL printed by the server. The server uses only Node.j
 
 `server/` contains a separate Go implementation for testing the
 dashboard with server-owned storage and query execution. It ingests the compacted
-data files from a deployed dashboard artifact into dockerized Redis Stack,
-executes Dashboard Language queries on the server with RediSearch pushdown, and
+data files from a deployed dashboard artifact into dockerized Redis,
+executes Dashboard Language queries on the server with the Go query engine, and
 serves the built dashboard over loopback HTTP by default or explicitly
 configured HTTPS. The browser receives only
 bounded query results; the Redis URL and credentials remain in the Go process.

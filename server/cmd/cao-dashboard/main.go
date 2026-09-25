@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/doctor"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	debuglogger "github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
@@ -29,11 +30,16 @@ const defaultRedisURL = "redis://127.0.0.1:6379/0"
 
 var commandLog = debuglogger.New("cao:cli")
 
+var errDoctorFoundProblems = errors.New("doctor found problems")
+
 func main() {
 	if override := strings.TrimSpace(os.Getenv("CAO_BUILD_VERSION")); override != "" {
 		version = override
 	}
 	if err := run(os.Args[1:]); err != nil {
+		if errors.Is(err, errDoctorFoundProblems) {
+			os.Exit(1)
+		}
 		log.Printf("error: %v", err)
 		os.Exit(1)
 	}
@@ -41,7 +47,8 @@ func main() {
 
 func run(arguments []string) error {
 	if len(arguments) == 0 {
-		return errors.New("usage: cao-dashboard <serve|serve-hosted|ingest> [flags]")
+		return errors.New(
+			"usage: cao-dashboard <serve|serve-hosted|ingest|collect|backfill|doctor> [flags]")
 	}
 	switch arguments[0] {
 	case "serve":
@@ -53,9 +60,85 @@ func run(arguments []string) error {
 	case "serve-hosted":
 		commandLog.Printf("running hosted serve command")
 		return serveHosted(arguments[1:])
+	case "collect":
+		commandLog.Printf("running collect command")
+		return collectCommand(arguments[1:])
+	case "backfill":
+		commandLog.Printf("running backfill command")
+		return backfillCommand(arguments[1:])
+	case "doctor":
+		commandLog.Printf("running doctor command")
+		return doctorCommand(arguments[1:])
 	default:
-		return fmt.Errorf("unknown subcommand %q; expected serve, serve-hosted, or ingest", arguments[0])
+		return fmt.Errorf(
+			"unknown subcommand %q; expected serve, serve-hosted, ingest, collect, backfill, or doctor",
+			arguments[0])
 	}
+}
+
+// doctorCommand runs the read-only diagnostic check-up.
+//
+// It reports rather than repairs, and it exits non-zero when it found a
+// breaking condition so it is usable as a deployment gate as well as by a
+// person or an agent reading the report.
+func doctorCommand(arguments []string) error {
+	flags := flag.NewFlagSet("doctor", flag.ContinueOnError)
+	redisURL := flags.String("redis-url", "", "server-side Redis URL; defaults to CAO_REDIS_URL then "+defaultRedisURL)
+	defaultNamespace, err := redisx.DefaultNamespace(".")
+	if err != nil {
+		return err
+	}
+	if configured := strings.TrimSpace(os.Getenv("CAO_REDIS_NAMESPACE")); configured != "" {
+		defaultNamespace = configured
+	}
+	redisNamespace := flags.String("redis-namespace", defaultNamespace, "Redis key namespace")
+	databaseQueries := flags.String("database-queries",
+		"../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
+	format := flags.String("format", "text", "report format: text or json")
+	deep := flags.Bool("deep", false, "additionally read every source to confirm stored rows decode")
+	strict := flags.Bool("strict", false, "exit non-zero on warnings as well as failures")
+	timeout := flags.Duration("timeout", 10*time.Second, "per-check timeout")
+	if err := flags.Parse(arguments); err != nil {
+		return err
+	}
+	endpoint := strings.TrimSpace(*redisURL)
+	if endpoint == "" {
+		endpoint = strings.TrimSpace(os.Getenv("CAO_REDIS_URL"))
+	}
+	if endpoint == "" {
+		endpoint = defaultRedisURL
+	}
+	namespace, err := redisx.NormalizeNamespace(*redisNamespace)
+	if err != nil {
+		return err
+	}
+	check := doctor.Doctor{
+		RedisURL:            endpoint,
+		Namespace:           namespace,
+		DatabaseQueriesPath: *databaseQueries,
+		Version:             version,
+		Deep:                *deep,
+		Timeout:             *timeout,
+	}
+	// A client that cannot be constructed is itself a finding, so the report
+	// is still produced; the Redis checks report why they could not run.
+	if client, err := redisx.New(endpoint); err == nil {
+		check.Store = redisx.NewStore(client, namespace)
+	} else {
+		commandLog.Printf("doctor could not construct a Redis client")
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	report := check.Run(ctx)
+	if err := doctor.Render(os.Stdout, report, *format); err != nil {
+		return err
+	}
+	if report.Failed(*strict) {
+		// main recognizes this sentinel and exits without adding a redundant
+		// error line, so the report remains the whole output.
+		return errDoctorFoundProblems
+	}
+	return nil
 }
 
 func serveHosted(arguments []string) error {
@@ -197,4 +280,87 @@ func ingestCommand(arguments []string) error {
 		return err
 	}
 	return json.NewEncoder(os.Stdout).Encode(result)
+}
+
+// collectCommand runs the collection worker role. It is the same binary as the
+// server, started with a different role, so collection scales independently
+// without a second deployment artifact.
+func collectCommand(arguments []string) error {
+	flags := flag.NewFlagSet("collect", flag.ContinueOnError)
+	databaseQueries := flags.String("database-queries",
+		"../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
+	consumer := flags.String("consumer", "", "consumer name; defaults to the hostname")
+	project := flags.Bool("project", true, "participate in coalesced projection")
+	if err := flags.Parse(arguments); err != nil {
+		return err
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	shutdownTelemetry, err := telemetry.Setup(ctx, version)
+	if err != nil {
+		return fmt.Errorf("configure telemetry: %w", err)
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		_ = shutdownTelemetry(shutdownCtx)
+	}()
+	collector, err := server.NewCollectorFromEnv(ctx, *databaseQueries)
+	if err != nil {
+		return err
+	}
+	name := strings.TrimSpace(*consumer)
+	if name == "" {
+		hostname, err := os.Hostname()
+		if err != nil {
+			return fmt.Errorf("resolve consumer name: %w", err)
+		}
+		name = hostname
+	}
+	worker := collector.Worker(name)
+	worker.Project = *project
+	log.Printf("collection worker %s started", name)
+	if err := worker.Run(ctx); err != nil && ctx.Err() == nil {
+		return err
+	}
+	return nil
+}
+
+// backfillCommand performs cold start and exits. It is safe to re-run: a
+// populated evidence lake is replayed without GitHub requests, and enrollment
+// and queue writes are idempotent.
+func backfillCommand(arguments []string) error {
+	flags := flag.NewFlagSet("backfill", flag.ContinueOnError)
+	databaseQueries := flags.String("database-queries",
+		"../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
+	replayOnly := flags.Bool("replay-only", false,
+		"reproject the evidence lake without contacting GitHub")
+	if err := flags.Parse(arguments); err != nil {
+		return err
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	collector, err := server.NewCollectorFromEnv(ctx, *databaseQueries)
+	if err != nil {
+		return err
+	}
+	backfill := collector.Backfill()
+	if *replayOnly {
+		result, err := backfill.Replay(ctx)
+		if err != nil {
+			return err
+		}
+		log.Printf("replayed evidence lake revision=%d", result.Revision)
+		return nil
+	}
+	state, err := backfill.Run(ctx)
+	if err != nil {
+		return err
+	}
+	report, err := json.MarshalIndent(state, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(report))
+	return nil
 }

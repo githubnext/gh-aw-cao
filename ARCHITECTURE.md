@@ -114,13 +114,32 @@ normalized run and record JSONL; browser ingestion fails closed rather than
 falling back to raw Activity JSONL. Static-browser download, normalization, persistence, and queries run in a
 dedicated Web Worker. The optional Redis profile ingests the same deployed
 dashboard artifact in a Go HTTP(S) server, keeps Redis credentials server-side,
-pushes compatible Dashboard Language operations into RediSearch, and returns
-only canonical, bounded query payloads to the browser. Its local mode remains
+executes Dashboard Language in Go against Redis row sets, and returns only
+canonical, bounded query payloads to the browser. It deliberately uses only
+core Redis commands, not RediSearch or other Redis modules, so the hosted cost
+floor is storage capacity rather than module support. Its local mode remains
 loopback-only. Its host-neutral mode uses GitHub OAuth and explicit organization
 or team authorization, verifies and deduplicates GitHub webhooks, and rebuilds
 through a staged generation before atomically changing the active pointer.
 Redis remains reconstructable from GitHub / gh-aw state and never becomes an
-authority. The main thread receives
+authority. The same server binary provides a read-only diagnostic check-up
+that inspects the runtime, Redis safety and capacity, the active canonical
+generation, query definitions, and the optional collection profile. It
+produces the same stable check identifiers and observations as human-readable
+text or versioned JSON, never contacts GitHub or mutates Redis, and requires an
+explicit deep mode before reading every active row.
+
+The Redis profile acquires evidence through exactly one of two mutually
+exclusive ingestion profiles. By default the Activity workflow collects
+evidence in GitHub Actions and publishes a snapshot that the server ingests.
+As an alternative, the server itself collects evidence from GitHub App
+installations, admitting webhook deliveries into a queue, collecting one
+repository at a time with the same `gh aw logs --audit` and `activity/cao.mjs`
+commands the workflow runs, and writing into an evidence lake laid out exactly
+like a published snapshot. Because the layout is the same, one projector serves
+both profiles and a retained lake repopulates a database on cold start without
+contacting GitHub. Configuring both profiles fails at startup: a canonical
+database has one writer. The main thread receives
 only bounded view payloads in either profile. Versioned computations transform canonical evidence
 into partitioned measures and actionable insights so consumers do not repeatedly
 scan the full Activity corpus. Computation results remain derived evidence:
@@ -285,8 +304,9 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
 - **Node.js 24 and ECMAScript modules** implement dependency-light control,
   collection, data, and local tooling.
 - **JSONL** is the bounded evidence interchange; **SQLite** supports local tools
-  and agents; **IndexedDB** supports the static browser dashboard; **Redis
-  Stack/RediSearch** supports the optional disposable server projection.
+  and agents; **IndexedDB** supports the static browser dashboard; **Redis**
+  supports the optional disposable server projection with generation-scoped row
+  sets and no module requirement.
 - **Go** implements the isolated host-neutral HTTP(S) ingestion, reconciliation,
   rebuild, and query service.
 - **Dashboard Language** keeps data operations declarative and off the browser
