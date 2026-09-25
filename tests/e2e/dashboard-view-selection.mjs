@@ -7,6 +7,12 @@ import { withoutIgnoredDashboardPageIds } from "./dashboard-view-assessment.mjs"
 const repositoryRoot = resolve(import.meta.dirname, "../..");
 const primaryDashboardPath = "dashboard/site/dashboard.json";
 export const maximumSelectedDashboardPageIds = 5;
+const pageSelectionWeights = Object.freeze({
+  pathIncludesPageId: 100,
+  pageIdTerm: 30,
+  titleTerm: 15,
+  pageBodyTerm: 3,
+});
 
 const selectionStopWords = new Set([
   "component",
@@ -93,26 +99,33 @@ function pageSelectionScore(page, changedFiles) {
   const pageId = String(page.id ?? "");
   const pageIdLower = pageId.toLowerCase();
   const pageTerms = new Set(identifierTerms(pageId));
-  const titleText = `${page.title ?? ""} ${page.page ?? ""}`.toLowerCase();
-  const pageText = JSON.stringify(page).toLowerCase();
+  const titleTerms = new Set(identifierTerms(`${page.title ?? ""} ${page.page ?? ""}`));
+  const pageBodyTerms = new Set(identifierTerms(JSON.stringify(page)));
   let score = 0;
 
   for (const path of changedFiles) {
     const normalizedPath = path.toLowerCase();
-    if (pageIdLower && normalizedPath.includes(pageIdLower)) score += 100;
+    if (pageIdLower && normalizedPath.includes(pageIdLower)) {
+      score += pageSelectionWeights.pathIncludesPageId;
+    }
     for (const term of identifierTerms(path)) {
       if (pageTerms.has(term)) {
-        score += 30;
-      } else if (titleText.includes(term)) {
-        score += 15;
-      } else if (pageText.includes(term)) {
-        score += 3;
+        score += pageSelectionWeights.pageIdTerm;
+      } else if (titleTerms.has(term)) {
+        score += pageSelectionWeights.titleTerm;
+      } else if (pageBodyTerms.has(term)) {
+        score += pageSelectionWeights.pageBodyTerm;
       }
     }
   }
   return score;
 }
 
+/**
+ * Rank candidate dashboard page IDs for PR assessment, ignoring preserved pages,
+ * deduplicating candidates, sorting by changed-file relevance with dashboard
+ * order as the stable tie-breaker, and truncating to the requested limit.
+ */
 export function rankDashboardPageIds({
   dashboard,
   pageIds,
@@ -121,8 +134,7 @@ export function rankDashboardPageIds({
 }) {
   const pages = dashboard.dashboard.pages;
   const pagesById = new Map(pages.map((page, index) => [page.id, { page, index }]));
-  return [...new Set(pageIds)]
-    .filter((pageId) => withoutIgnoredDashboardPageIds([pageId]).length > 0)
+  return withoutIgnoredDashboardPageIds([...new Set(pageIds)])
     .map((pageId) => pagesById.get(pageId))
     .filter(Boolean)
     .map(({ page, index }) => ({
