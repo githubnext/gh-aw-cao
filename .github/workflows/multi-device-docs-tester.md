@@ -224,7 +224,7 @@ Create one issue titled "Multi-Device Docs Testing Report - [Date]" with:
 ```markdown
 ### Test Summary
 - Triggered by: @${{ github.actor }}
-- Workflow run: [§${{ github.run_id }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+- Workflow run: [§${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 - Devices tested: {count}
 - Browser engines tested: {count}
 - Color schemes tested: {count}

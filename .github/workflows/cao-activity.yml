@@ -337,12 +337,18 @@ jobs:
           mkdir -p "$snapshot_root/gh-aw-logs-runs"
           mkdir -p "$snapshot_root/gh-aw-logs-records"
           missing=0
-          for file in gh-aw-logs.sqlite payload-hashes.json control-settings.json inventory-sources.json drain3_weights.json; do
+          for file in gh-aw-logs.sqlite payload-hashes.json control-settings.json inventory-sources.json; do
             if [[ ! -s "$snapshot_root/$file" ]]; then
               echo "Activity snapshot file is missing or empty: $file" >&2
               missing=1
             fi
           done
+          # A collection that observed no agentic runs publishes header-only
+          # phase shards and trains no drain3 weights.
+          if grep -qs '"kind":"record"' "$snapshot_root"/gh-aw-logs-runs/*.jsonl && [[ ! -s "$snapshot_root/drain3_weights.json" ]]; then
+            echo "Activity snapshot file is missing or empty: drain3_weights.json" >&2
+            missing=1
+          fi
           if ! find "$snapshot_root/gh-aw-logs-shards" -maxdepth 1 -type f -name '*.jsonl' -print -quit | grep -q .; then
             echo "Activity snapshot contains no JSONL shards" >&2
             missing=1

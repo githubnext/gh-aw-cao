@@ -1837,32 +1837,41 @@ async function consolidatePhasePayloads(phase, cachePaths, outputDirectory, maxB
     }
     if (current.length > 0) parts.push(current);
     for (const [index, part] of parts.entries()) {
-      const header = `${JSON.stringify({
-        kind: 'metadata',
-        schemaVersion: CANONICAL_SCHEMA_VERSION,
-        ingestionVersion: NORMALIZED_JSONL_INGESTION_VERSION,
-        sourceRecords: part.length,
-        phase,
-        records: part.length
-      })}\n`;
-      const content = header + part.join('');
-      const digest = createHash('sha256').update(content).digest('hex');
-      const name = `${bucket}-${String(index).padStart(4, '0')}-${digest.slice(0, 16)}.jsonl`;
-      const outputPath = path.join(outputDirectory, name);
-      written.push(name);
-      try {
-        await stat(outputPath);
-        continue;
-      } catch (error) {
-        if (!(error && error.code === 'ENOENT')) throw error;
-      }
-      const temporaryPath = `${outputPath}.${process.pid}.tmp`;
-      await writeFile(temporaryPath, content, { flag: 'wx' });
-      await rename(temporaryPath, outputPath);
+      written.push(await writeConsolidatedShard(phase, bucket, index, part, outputDirectory));
     }
     buckets.delete(bucket);
   }
+  // A phase with no records still publishes one header-only shard, so an empty
+  // collection is explicit rather than indistinguishable from missing output.
+  if (written.length === 0) {
+    written.push(await writeConsolidatedShard(phase, STRUCTURAL_CONSOLIDATION_BUCKET, 0, [], outputDirectory));
+  }
   return written;
+}
+
+async function writeConsolidatedShard(phase, bucket, index, lines, outputDirectory) {
+  const header = `${JSON.stringify({
+    kind: 'metadata',
+    schemaVersion: CANONICAL_SCHEMA_VERSION,
+    ingestionVersion: NORMALIZED_JSONL_INGESTION_VERSION,
+    sourceRecords: lines.length,
+    phase,
+    records: lines.length
+  })}\n`;
+  const content = header + lines.join('');
+  const digest = createHash('sha256').update(content).digest('hex');
+  const name = `${bucket}-${String(index).padStart(4, '0')}-${digest.slice(0, 16)}.jsonl`;
+  const outputPath = path.join(outputDirectory, name);
+  try {
+    await stat(outputPath);
+    return name;
+  } catch (error) {
+    if (!(error && error.code === 'ENOENT')) throw error;
+  }
+  const temporaryPath = `${outputPath}.${process.pid}.tmp`;
+  await writeFile(temporaryPath, content, { flag: 'wx' });
+  await rename(temporaryPath, outputPath);
+  return name;
 }
 
 async function hashActivityPayloads({

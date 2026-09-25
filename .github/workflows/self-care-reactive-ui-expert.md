@@ -108,6 +108,7 @@ safe-outputs:
     max-patch-files: 24
     allowed-files:
       - ".github/skills/reactive-ui/SKILL.md"
+      - ".github/skills/migrate-dashboard-view/SKILL.md"
       - "aw.yml"
       - "dashboard/aw.yml"
       - "dashboard/site/dashboard.json"
