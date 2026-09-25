@@ -296,15 +296,6 @@ describe('dashboard view query contracts', () => {
       config: { body: 'insights' }
     });
 
-    expect(viewsOf(insights)[1]).toMatchObject({
-      data: {
-        sources: ['campaign-operational-grader-series'],
-        arguments: [{ name: 'campaign', field: 'campaign' }]
-      },
-      mark: 'element',
-      element: 'measure-history'
-    });
-
     expect(viewsOf(problems).find((view) => view.id === 'campaign-current-runtime-problems')).toMatchObject({
       data: { source: 'campaign-problem-items' },
       mark: 'list',

@@ -79,13 +79,13 @@ records by `organization` and `repository`, and left-joins those query results
 in the data Web Worker. Activity collection and browser components do not
 reconstruct those relationships.
 
-## Package problem clustering
+## Campaign problem clustering
 
 After canonical ingestion and operational-value collection, Activity runs
 `cao cluster-problems`. The command discovers one optional
-`<package>/problem-clustering.mjs` file in each installed top-level package.
-This lets packages contribute deterministic problem computations without
-adding package-specific branches to the Activity workflow.
+`<campaign>/problem-clustering.mjs` file in each installed top-level campaign.
+This lets campaigns contribute deterministic problem computations without
+adding campaign-specific branches to the Activity workflow.
 
 Each script receives one JSON request on standard input:
 
@@ -106,19 +106,19 @@ Optional fields are `observedAt`, `severity`, `summary`, `campaign`,
 `critical`, `high`, `medium`, `low`, or `info`.
 
 Activity validates and bounds the output, then atomically replaces only that
-package's rows in the `cao_problems` SQLite table. A failing script leaves its
-previous rows intact and does not prevent other packages from contributing.
+campaign's rows in the `cao_problems` SQLite table. A failing script leaves its
+previous rows intact and does not prevent other campaigns from contributing.
 Scripts receive a private database snapshot and cannot mutate the canonical
-Activity projection directly. Rows from packages that no longer contribute a
+Activity projection directly. Rows from campaigns that no longer contribute a
 clustering script are removed during the next run. Each script runs in a
 separate process with bounded output and a two-minute timeout. Worker failures
-and timeouts are isolated per package; cancellation terminates the active worker
-and stops further package processing while retaining rows committed by workers
+and timeouts are isolated per campaign; cancellation terminates the active worker
+and stops further campaign processing while retaining rows committed by workers
 that already completed.
 
 Set `NODE_DEBUG=cao:problem-clustering` to trace discovery, snapshot creation,
 worker lifecycle and duration, bounded output size, persistence counts, failure
-retention, cleanup, and cancellation. Debug events contain package names and
+retention, cleanup, and cancellation. Debug events contain campaign names and
 aggregate metadata only; they do not include problem records, evidence, worker
 output, database contents, or credentials.
 

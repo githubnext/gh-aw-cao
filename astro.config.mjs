@@ -108,6 +108,7 @@ export default defineConfig({
             { label: "Author your first campaign", link: "/author-your-first-operation/" },
             { label: "Campaign Catalog", link: "/catalog/" },
             { label: "Configure authentication", link: "/authentication/" },
+            { label: "Authentication profiles", link: "/control-plane-authentication/" },
           ],
         },
         {

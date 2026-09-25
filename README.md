@@ -18,7 +18,7 @@ curl --fail --silent --show-error --location \
 
 The installer adds gh-aw and the core CAO campaign, installs CAO project skills under `.github/skills/`, creates the minimal control policy, and makes the repository-local `./cao.sh` CLI executable. It makes no CAO changes when rerun after installation.
 
-Central Agentic Ops campaigns reusable orchestrators and focused workers so platform teams can automate repository operations without copying workflows into every repository.
+Central Agentic Ops provides persistent agentic campaigns that continuously pursue defined outcomes across explicit repository fleets without copying workflows into every repository.
 
 - **Reach more repositories:** deterministically discover and batch inventories of 100,000+ repositories while keeping each run bounded.
 - **Roll out with confidence:** review proposed outcomes away from the target, then promote each campaign independently to `live`.
@@ -28,7 +28,7 @@ Central Agentic Ops campaigns reusable orchestrators and focused workers so plat
 
 Central Agentic Ops extends
 [GitHub Agentic Workflows](https://github.github.com/gh-aw/) with a catalog of
-reusable operations and a central control plane for explicit repository fleets.
+reusable campaigns and a central control plane for explicit repository fleets.
 It does not replace repository permissions, branch protections, or human review.
 
 See the [open issues](https://github.com/githubnext/gh-aw-cao/issues) for current

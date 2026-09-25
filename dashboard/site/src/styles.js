@@ -529,6 +529,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .scope-label { border-right: 1px solid var(--border); }
 .filter-toggle { border-block: 0; border-left: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
 .count-badge { align-self: center; display: inline-flex; min-width: 20px; height: 20px; padding: 0 6px; align-items: center; justify-content: center; border-radius: 2em; background: var(--neutral-muted); font-size: .6875rem; text-align: center; line-height: 1; }
+.filter-control > .count-badge { margin: 0 9px 0 3px; }
 .filter-control input { min-width: 0; flex: 1; padding: 5px 12px; border: 0; outline: 0; background: transparent; color: var(--accent); font: inherit; }
 .search-control { padding-inline: 9px; border-left: 1px solid var(--border); color: var(--muted); }
 .scope-period { min-height: 30px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font-size: .75rem; font-weight: 600; white-space: nowrap; }
@@ -1926,7 +1927,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
 }
 @media (max-width: 700px) {
   .dashboard-page.notifications-page > .page-chrome > .filter-bar { display: none; }
-  .dashboard-page.notifications-page .view-mode-control { display: none; }
+  .view-mode-control { display: none; }
   body, .dashboard-root { font-size: 1rem; }
   .campaign-tabs { min-height: 0; display: grid; gap: 0; padding-top: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
   .campaign-tabs a { min-height: 44px; padding: 10px 12px; border-radius: 0; background: transparent; font-size: .875rem; }
@@ -2031,8 +2032,6 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .toolbar { align-items: stretch; flex-wrap: wrap; }
   .dashboard-page > .page-chrome > .filter-bar { display: none; }
   .dashboard-page > .page-chrome > .filter-bar .filter-tuning-controls { display: grid; grid-template-columns: minmax(0, 1fr); }
-  .view-mode-control { width: 100%; }
-  .view-mode-option { min-height: 44px; flex: 1; justify-content: center; }
   .filter-control { min-width: 0; flex-basis: 100%; }
   .filter-toggle[aria-expanded="true"] { background: var(--neutral-muted); }
   .scope-period { min-height: 44px; }

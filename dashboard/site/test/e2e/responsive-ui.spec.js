@@ -116,6 +116,36 @@ test('notification filters and view controls are hidden on mobile', async ({ pag
   await expect(notifications.locator('.entity-card-list-status-danger .octicon-x-circle-fill')).toBeVisible();
 });
 
+test('the chart/cards view mode control is hidden on mobile for non-notification pages', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(async ({ documentModel, presenterModuleUrl }) => {
+    const { renderDashboard } = await import(presenterModuleUrl);
+    document.querySelector('#root')?.append(renderDashboard({
+      document: documentModel,
+      sources: {}
+    }));
+  }, {
+    documentModel: {
+      'language-version': dashboardDocument['language-version'],
+      dashboard: {
+        id: 'issues-mobile',
+        title: 'Issues',
+        'card-templates': dashboardDocument.dashboard['card-templates'],
+        pages: [dashboardDocument.dashboard.pages.find(
+          /** @param {{ id?: string }} page */
+          (page) => page.id === 'issues'
+        )]
+      }
+    },
+    presenterModuleUrl: 'http://dashboard.test/src/presenter.js'
+  });
+
+  const issuesPage = page.locator('[data-page-id="issues"]');
+  await expect(issuesPage).not.toHaveClass(/notifications-page/);
+  await expect(issuesPage.locator('.view-mode-control')).toBeHidden();
+  await expect(page.locator('.mobile-view-mode-toggle')).toBeVisible();
+});
+
 test('notifications move in at the lower right and center on mobile', async ({ page }) => {
   await page.setContent(`
     <style id="notification-styles"></style>

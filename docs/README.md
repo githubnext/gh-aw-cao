@@ -1,13 +1,13 @@
 ---
 title: Central Agentic Ops
-description: Build a campaign once, run it across repositories, and prove the outcome.
+description: Persistent agentic work that continuously pursues a defined outcome across a set of targets.
 template: splash
 editUrl: false
 prev: false
 next: false
 hero:
   title: Central Agentic Ops
-  tagline: Build a campaign once. Run it everywhere. Turn engineering expertise into reusable AI campaigns that improve one repository or thousands.
+  tagline: A persistent body of agentic work that continuously pursues a defined outcome across one repository or thousands.
   actions:
     - text: Run your first campaign
       link: /gh-aw-cao/getting-started/

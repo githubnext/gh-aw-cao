@@ -169,14 +169,6 @@ tools:
     max-file-count: 500
     max-patch-size: 16384
 
-graders:
-  operational-value:
-    name: Dependabot task consumption
-    description: Whether a PR-sized child task receives assignment, participation, a linked pull request, or completed closure within 14 days
-    unit: proportion
-    direction: higher_is_better
-    run: ./graders/dependabot-update-planner-operational-value.sh
-
 safe-outputs:
   update-issue:
     target: "*"
