@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { parse } from "yaml";
 import config from "../playwright/configs/dashboard-query-performance.config.mjs";
 import {
   QUERY_CHUNK_SIZE,
@@ -40,6 +41,20 @@ test("deployed integration isolates query benchmark reporting from test permissi
   assert.match(workflow, /pattern: dashboard-query-performance-\*/);
   assert.match(workflow, /scripts\/merge-dashboard-query-performance\.mjs/);
   assert.match(workflow, /dashboard-query-performance-results/);
+});
+
+test("deployed integration pull request trigger only watches query benchmark inputs", () => {
+  const workflow = parse(readFileSync(".github/workflows/dashboard-deployed-integration.yml", "utf8"));
+  const paths = workflow.on.pull_request.paths;
+  assert.ok(paths.includes("dashboard/site/dashboard.json"));
+  assert.ok(paths.includes("dashboard/site/src/data/**"));
+  assert.ok(paths.includes("dashboard/site/src/data-*.js"));
+  assert.ok(paths.includes("dashboard/site/src/dashboard-chunks.js"));
+  assert.ok(paths.includes("tests/e2e/dashboard-query-performance.spec.mjs"));
+  assert.ok(paths.includes("tests/performance/dashboard-query-cost.test.mjs"));
+  assert.ok(!paths.includes("dashboard/site/**"));
+  assert.ok(!paths.includes("dashboard/site/src/notification-service.js"));
+  assert.ok(!paths.includes("dashboard/site/src/styles.js"));
 });
 
 test("deployed proxy targets remain under the trusted dashboard URL", () => {

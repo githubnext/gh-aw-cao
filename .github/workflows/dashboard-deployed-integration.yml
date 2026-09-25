@@ -4,9 +4,18 @@ on:
   pull_request:
     paths:
       - .github/workflows/dashboard-deployed-integration.yml
-      - dashboard/site/**
+      - dashboard/site/dashboard.json
+      - dashboard/site/dashboard-pages/**
+      - dashboard/site/src/data/**
+      - dashboard/site/src/data-*.js
+      - dashboard/site/src/dashboard-chunks.js
+      - dashboard/site/src/dashboard-app.js
+      - dashboard/site/src/debug.js
+      - dashboard/site/src/remote-data-backend.js
+      - dashboard/site/src/source-*.js
       - package.json
       - package-lock.json
+      - scripts/merge-dashboard-query-performance.mjs
       - tests/e2e/dashboard-deployed-refresh-helpers.mjs
       - tests/e2e/dashboard-query-performance-helpers.mjs
       - tests/e2e/dashboard-query-performance.spec.mjs
