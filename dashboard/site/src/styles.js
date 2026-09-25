@@ -1372,8 +1372,8 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .dashboard-overview-page .custom-view[data-view-layout="half"].chart-view-pie .pie-chart-card > :is(.view-source, .view-metadata, .view-context) { grid-column: 1; }
 .dashboard-overview-page > .custom-view-grid { display: block; background: transparent; }
 .dashboard-overview-page .custom-view { margin: 0; }
+/* Overview card group: "overview-header" and "overview-floor" are styled as one joined card (shared border, no seam between them); "overview-campaigns" is a separate card. This view-id list is duplicated in the ≤700px mobile override below; keep both in sync when adding/renaming a view. */
 .dashboard-overview-page > .custom-view-grid > .custom-view:is([data-view-id="overview-header"], [data-view-id="overview-floor"], [data-view-id="overview-campaigns"]) { overflow: hidden; border: 1px solid var(--border); border-radius: 4px; background: var(--canvas); }
-/* "overview-header" and "overview-floor" are two view IDs styled as one joined card (shared border, no seam between them); keep both selectors in sync when editing either. */
 .dashboard-overview-page > .custom-view-grid > .custom-view[data-view-id="overview-header"] { border-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 .dashboard-overview-page > .custom-view-grid > .custom-view[data-view-id="overview-floor"] { border-top-left-radius: 0; border-top-right-radius: 0; margin-bottom: 16px; }
 .factory-intro { min-height: 210px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 420px); align-items: center; gap: 48px; padding: 32px 40px; background: linear-gradient(115deg, color-mix(in srgb, var(--success) 8%, var(--canvas)) 0 34%, var(--canvas) 68%, color-mix(in srgb, var(--accent) 6%, var(--canvas)) 100%); }
