@@ -21,7 +21,8 @@ Before you begin, make sure you have:
 - one low-risk public repository in that organization to use as the target;
 - GitHub Actions enabled for both repositories;
 - [GitHub CLI](https://cli.github.com/) installed and authenticated;
-- access to GitHub Copilot through organization billing for Agentic Workflow runs.
+
+The bundled Dependabot workflows in this guide use Copilot inference. You need organization-billed GitHub Copilot access **before Step 5**, not to install CAO. Without that access, you can install CAO but must configure and compile an explicitly authored workflow using another supported engine/provider and its credentials before running a review proof. See [Configure Authentication](authentication.md).
 
 :::tip[Start with the setup skill]
 From an empty control repository, ask your coding agent to load and follow the

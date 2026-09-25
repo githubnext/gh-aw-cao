@@ -21,9 +21,9 @@ Choose a GitHub App unless the built-in token fully covers the bounded run. GitH
 
 ## Copilot Engine Authentication
 
-Copilot inference authentication is separate from GitHub API and target-repository authentication. CAO requires organization billing: every Copilot-backed workflow declares `copilot-requests: write`, and gh-aw compiles it to use the built-in `${{ github.token }}` for inference. This static workflow contract supports non-interactive `gh aw add` without install-time source rewriting.
+Model inference authentication is separate from GitHub API and target-repository authentication. CAO installation does not require Copilot organization billing. The bundled agentic workflows are Copilot-backed: they declare `copilot-requests: write`, and gh-aw compiles them to use the built-in `${{ github.token }}` for inference. This static workflow contract supports non-interactive `gh aw add` without install-time source rewriting.
 
-Before installation, require API evidence of an active organization entitlement or explicit confirmation from an organization administrator when the billing endpoint is inaccessible or inconclusive. Stop when organization billing is unavailable. CAO does not support `COPILOT_GITHUB_TOKEN` inference fallback, runtime token precedence, or mixed authentication profiles. A GitHub App, `GH_AW_GITHUB_TOKEN`, OAuth token, or target-access PAT serves a different authorization boundary and cannot authenticate Copilot inference for CAO.
+Before running a Copilot-backed workflow, verify an active organization entitlement through the billing API or explicit confirmation from an organization administrator when the endpoint is inaccessible or inconclusive. Without it, do not run that workflow: a granted `copilot-requests: write` permission alone does not ensure model access. Customers may author workflows with another gh-aw-supported engine/provider and configure that provider's credentials in Actions secrets; this requires an explicit workflow change and compilation, not a silent runtime fallback for the bundled workflows. CAO does not support `COPILOT_GITHUB_TOKEN` inference fallback, runtime token precedence, or mixed authentication profiles. A GitHub App, `GH_AW_GITHUB_TOKEN`, OAuth token, or target-access PAT serves a different authorization boundary and cannot authenticate model inference.
 
 ## Policy
 
