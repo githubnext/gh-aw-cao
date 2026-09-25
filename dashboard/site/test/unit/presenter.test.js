@@ -2412,18 +2412,21 @@ describe('presenter built-in and custom pages', () => {
         title: 'Security Dashboard',
         pages: [
           {
-            id: 'findings',
-            kind: /** @type {'built-in'} */ ('built-in'),
-            page: 'findings',
+            id: 'finding-review',
+            kind: /** @type {'custom'} */ ('custom'),
             title: 'Findings',
-            definition: {
-              'data-state': {
-                availability: true
-              },
-              views: [
-                { id: 'findings-source', data: { source: 'findings' } }
-              ]
-            }
+            views: [{
+              id: 'finding-review-table',
+              data: { source: 'findings' },
+              mark: 'table',
+              encoding: {
+                columns: [
+                  { field: 'finding-summary', type: 'nominal' },
+                  { field: 'issue-link', type: 'nominal' }
+                ],
+                href: { field: 'issue-link', type: 'nominal' }
+              }
+            }]
           }
         ]
       }
@@ -2466,13 +2469,13 @@ describe('presenter built-in and custom pages', () => {
 
     expect(rendered.querySelector('#page-title')?.textContent).toBe('Findings');
     expect(rendered.querySelector('.sidebar-brand > span')?.textContent).toBe('github');
-    expect(rendered.querySelector('[data-page-id="findings"] .custom-table thead')?.textContent).toContain('Issue Link');
+    expect(rendered.querySelector('[data-page-id="finding-review"] .custom-table thead')?.textContent).toContain('Issue Link');
 
-    const summaryCell = rendered.querySelector('[data-page-id="findings"] .custom-table tbody td');
+    const summaryCell = rendered.querySelector('[data-page-id="finding-review"] .custom-table tbody td');
     expect(summaryCell?.textContent).toContain('<img src=x onerror=alert(1)>');
     expect(summaryCell?.querySelector('img')).toBeNull();
 
-    const issueLink = rendered.querySelector('[data-page-id="findings"] .custom-table tbody a');
+    const issueLink = rendered.querySelector('[data-page-id="finding-review"] .custom-table tbody a');
     expect(issueLink?.getAttribute('href')).toBe('https://example.com/issues/1');
     expect(issueLink?.getAttribute('aria-label')).toBe('Issue 1 label');
     expect(issueLink?.getAttribute('target')).toBe('_blank');
