@@ -1,0 +1,912 @@
+{
+  "repository": "githubnext/gh-aw-cao",
+  "workflowName": "SelfCare / Dashboard Data Schema",
+  "adoptionAt": "2026-09-08T14:58:45Z",
+  "evaluationMode": "attainment-only",
+  "window": {
+    "startAt": "2026-09-08T14:58:45Z",
+    "endAt": "2026-09-25T04:50:43Z"
+  },
+  "evidenceCoverage": {
+    "completeFromAdoption": true,
+    "hasPreAdoptionBaseline": false,
+    "baselineDescription": "No comparable pre-adoption baseline is available; observations begin at adoption.",
+    "reason": "Comparable historical outcome evidence cannot be reconstructed."
+  },
+  "runs": [],
+  "caveat": "The evidence measures post-adoption attainment only; without a comparable pre-adoption baseline it cannot establish improvement or causation.",
+  "schemaVersion": 2,
+  "definitionSchemaVersion": 3,
+  "generatedAt": "2026-09-25T04:50:44Z",
+  "workflowSlug": "self-care-dashboard-data-schema",
+  "sourcePath": ".github/workflows/self-care-dashboard-data-schema.md",
+  "valueFunction": {
+    "path": "self-care/operational-value/self-care-dashboard-data-schema.mjs",
+    "sha256": "53c3cdb5d35836dbec79b55d2f0ffeed566d1cfef7ebf833bfb0ea142aaa3179",
+    "definition": {
+      "schemaVersion": 3,
+      "slug": "self-care-dashboard-data-schema",
+      "repository": "githubnext/gh-aw-cao",
+      "workflowName": "SelfCare / Dashboard Data Schema",
+      "sourcePath": ".github/workflows/self-care-dashboard-data-schema.md",
+      "adoption": {
+        "commit": "c33a4c2de76ae12cd9beb9ec9f01f9bbf3359639",
+        "adoptedAt": "2026-09-08T14:58:45Z",
+        "baselineCommit": "be27b41d7dfc615b0a603c41a815dd1dfd528866",
+        "baselineAt": "2026-09-08T14:51:39Z"
+      },
+      "evaluation": {
+        "mode": "attainment-only"
+      },
+      "evidence": {
+        "key": "dashboard-data-schema-synchronization",
+        "repositories": [
+          "githubnext/gh-aw-cao"
+        ],
+        "opportunity": "Each valid JSON source advertised by the deployed dashboard data manifest during a daily observation.",
+        "filters": [
+          "The manifest must advertise at most 500 unique source names matching the workflow's source-name allowlist.",
+          "The manifest and every advertised source must be available and valid JSON.",
+          "Schema inference samples at most 50 rows, six nested levels, and twelve displayed object properties.",
+          "The checked-in specification is read from the last immutable repository commit at or before the observation cutoff."
+        ],
+        "collection": "Fetch one complete deployed Pages snapshot, infer its bounded pseudo schemas, and compare every generated source section with specs/dashboard-data.md at the immutable cutoff commit.",
+        "window": {
+          "durationDays": 1,
+          "cadenceDays": 1,
+          "maturationDays": 0
+        },
+        "zeroRule": "A complete deployed snapshot with advertised sources and no matching checked-in source sections records zero.",
+        "missingRule": "An unavailable or malformed manifest, source, cutoff commit, or specification records missing rather than zero."
+      },
+      "model": {
+        "architecture": "Direct source-opportunity attainment with a whole-document synchronization diagnostic.",
+        "recommendation": "Use matching advertised source share as primary and retain exact whole-document synchronization as a strict diagnostic.",
+        "presentation": {
+          "label": "Dashboard schema synchronization",
+          "betterLabel": "More advertised sources documented exactly"
+        }
+      },
+      "summary": {
+        "nativeLabel": "Share of advertised dashboard sources with matching pseudo-schema sections"
+      },
+      "metrics": [
+        {
+          "id": "matching-source-share",
+          "name": "Matching source share",
+          "role": "primary",
+          "formula": "advertised source sections exactly matching inferred pseudo schemas / advertised sources",
+          "direction": "increase",
+          "presentation": {
+            "name": "Matching sources",
+            "legendLabel": "Matching sources",
+            "transform": "identity"
+          }
+        },
+        {
+          "id": "document-synchronized",
+          "name": "Whole document synchronized",
+          "role": "diagnostic",
+          "formula": "1 when the checked-in specification exactly equals the generated pseudo-schema document; otherwise 0",
+          "direction": "increase",
+          "presentation": {
+            "name": "Document synchronized",
+            "legendLabel": "Exact document",
+            "transform": "identity"
+          }
+        }
+      ],
+      "validationExamples": {
+        "targetAttained": {
+          "valid": true,
+          "opportunityCount": 2,
+          "matchingCount": 2,
+          "documentMatch": true
+        },
+        "targetMissed": {
+          "valid": true,
+          "opportunityCount": 2,
+          "matchingCount": 0,
+          "documentMatch": false
+        },
+        "missing": {
+          "valid": false,
+          "opportunityCount": 0
+        },
+        "malformed": {
+          "valid": true,
+          "opportunityCount": "two",
+          "matchingCount": 2,
+          "documentMatch": true
+        }
+      }
+    }
+  },
+  "metricReview": {
+    "architecture": "Direct source-opportunity attainment with a whole-document synchronization diagnostic.",
+    "recommendation": "Use matching advertised source share as primary and retain exact whole-document synchronization as a strict diagnostic.",
+    "presentation": {
+      "label": "Dashboard schema synchronization",
+      "betterLabel": "More advertised sources documented exactly"
+    },
+    "metrics": [
+      {
+        "id": "matching-source-share",
+        "name": "Matching source share",
+        "role": "primary",
+        "formula": "advertised source sections exactly matching inferred pseudo schemas / advertised sources",
+        "direction": "increase",
+        "presentation": {
+          "name": "Matching sources",
+          "legendLabel": "Matching sources",
+          "transform": "identity"
+        },
+        "status": "unevaluated",
+        "beforeValue": null,
+        "afterValue": null,
+        "attainmentValue": null,
+        "improvement": null
+      },
+      {
+        "id": "document-synchronized",
+        "name": "Whole document synchronized",
+        "role": "diagnostic",
+        "formula": "1 when the checked-in specification exactly equals the generated pseudo-schema document; otherwise 0",
+        "direction": "increase",
+        "presentation": {
+          "name": "Document synchronized",
+          "legendLabel": "Exact document",
+          "transform": "identity"
+        },
+        "status": "unevaluated",
+        "beforeValue": null,
+        "afterValue": null,
+        "attainmentValue": null,
+        "improvement": null
+      }
+    ]
+  },
+  "summary": {
+    "nativeLabel": "Share of advertised dashboard sources with matching pseudo-schema sections"
+  },
+  "snapshots": [
+    {
+      "observedAt": "2026-09-08T14:58:45Z",
+      "window": {
+        "startAt": "2026-09-07T14:58:45Z",
+        "endAt": "2026-09-08T14:58:45Z"
+      },
+      "evidence": {
+        "valid": false,
+        "key": "dashboard-data-schema-synchronization",
+        "repositories": [
+          "githubnext/gh-aw-cao"
+        ],
+        "opportunity": "Each valid JSON source advertised by the deployed dashboard data manifest during a daily observation.",
+        "filters": [
+          "The manifest must advertise at most 500 unique source names matching the workflow's source-name allowlist.",
+          "The manifest and every advertised source must be available and valid JSON.",
+          "Schema inference samples at most 50 rows, six nested levels, and twelve displayed object properties.",
+          "The checked-in specification is read from the last immutable repository commit at or before the observation cutoff."
+        ],
+        "collection": "Fetch one complete deployed Pages snapshot, infer its bounded pseudo schemas, and compare every generated source section with specs/dashboard-data.md at the immutable cutoff commit.",
+        "window": {
+          "durationDays": 1,
+          "cadenceDays": 1,
+          "maturationDays": 0
+        },
+        "maturityStatus": "interim",
+        "dubious": true,
+        "reason": "Command failed: gh api --method GET repos/githubnext/gh-aw-cao/commits -f until=2026-09-08T14:58:45Z -f per_page=1\ngh: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable. Example:\n  env:\n    GH_TOKEN: ${{ github.token }}\n"
+      },
+      "provenance": [
+        {
+          "repository": "githubnext/gh-aw-cao",
+          "kind": "workflow-adoption",
+          "ref": "c33a4c2de76ae12cd9beb9ec9f01f9bbf3359639"
+        }
+      ],
+      "metrics": {
+        "matching-source-share": null,
+        "document-synchronized": null
+      }
+    },
+    {
+      "observedAt": "2026-09-09T14:58:45Z",
+      "window": {
+        "startAt": "2026-09-08T14:58:45Z",
+        "endAt": "2026-09-09T14:58:45Z"
+      },
+      "evidence": {
+        "valid": false,
+        "key": "dashboard-data-schema-synchronization",
+        "repositories": [
+          "githubnext/gh-aw-cao"
+        ],
+        "opportunity": "Each valid JSON source advertised by the deployed dashboard data manifest during a daily observation.",
+        "filters": [
+          "The manifest must advertise at most 500 unique source names matching the workflow's source-name allowlist.",
+          "The manifest and every advertised source must be available and valid JSON.",
+          "Schema inference samples at most 50 rows, six nested levels, and twelve displayed object properties.",
+          "The checked-in specification is read from the last immutable repository commit at or before the observation cutoff."
+        ],
+        "collection": "Fetch one complete deployed Pages snapshot, infer its bounded pseudo schemas, and compare every generated source section with specs/dashboard-data.md at the immutable cutoff commit.",
+        "window": {
+          "durationDays": 1,
+          "cadenceDays": 1,
+          "maturationDays": 0
+        },
+        "maturityStatus": "matured",
+        "dubious": true,
+        "reason": "Command failed: gh api --method GET repos/githubnext/gh-aw-cao/commits -f until=2026-09-09T14:58:45Z -f per_page=1\ngh: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable. Example:\n  env:\n    GH_TOKEN: ${{ github.token }}\n"
+      },
+      "provenance": [
+        {
+          "repository": "githubnext/gh-aw-cao",
+          "kind": "workflow-adoption",
+          "ref": "c33a4c2de76ae12cd9beb9ec9f01f9bbf3359639"
+        }
+      ],
+      "metrics": {
+        "matching-source-share": null,
+        "document-synchronized": null
+      }
+    },
+    {
+      "observedAt": "2026-09-10T14:58:45Z",
+      "window": {
+        "startAt": "2026-09-09T14:58:45Z",
+        "endAt": "2026-09-10T14:58:45Z"
+      },
+      "evidence": {
+        "valid": false,
+        "key": "dashboard-data-schema-synchronization",
+        "repositories": [
+          "githubnext/gh-aw-cao"
+        ],
+        "opportunity": "Each valid JSON source advertised by the deployed dashboard data manifest during a daily observation.",
+        "filters": [
+          "The manifest must advertise at most 500 unique source names matching the workflow's source-name allowlist.",
+          "The manifest and every advertised source must be available and valid JSON.",
+          "Schema inference samples at most 50 rows, six nested levels, and twelve displayed object properties.",
+          "The checked-in specification is read from the last immutable repository commit at or before the observation cutoff."
+        ],
+        "collection": "Fetch one complete deployed Pages snapshot, infer its bounded pseudo schemas, and compare every generated source section with specs/dashboard-data.md at the immutable cutoff commit.",
+        "window": {
+          "durationDays": 1,
+          "cadenceDays": 1,
+          "maturationDays": 0
+        },
+        "maturityStatus": "matured",
+        "dubious": true,
+        "reason": "Command failed: gh api --method GET repos/githubnext/gh-aw-cao/commits -f until=2026-09-10T14:58:45Z -f per_page=1\ngh: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable. Example:\n  env:\n    GH_TOKEN: ${{ github.token }}\n"
+      },
+      "provenance": [
+        {
+          "repository": "githubnext/gh-aw-cao",
+          "kind": "workflow-adoption",
+          "ref": "c33a4c2de76ae12cd9beb9ec9f01f9bbf3359639"
+        }
+      ],
+      "metrics": {
+        "matching-source-share": null,
+        "document-synchronized": null
+      }
+    },
+    {
+      "observedAt": "2026-09-11T14:58:45Z",
+      "window": {
+        "startAt": "2026-09-10T14:58:45Z",
+        "endAt": "2026-09-11T14:58:45Z"
+      },
+      "evidence": {
+        "valid": false,
+        "key": "dashboard-data-schema-synchronization",
+        "repositories": [
+          "githubnext/gh-aw-cao"
+        ],
+        "opportunity": "Each valid JSON source advertised by the deployed dashboard data manifest during a daily observation.",
+        "filters": [
+          "The manifest must advertise at most 500 unique source names matching the workflow's source-name allowlist.",
+          "The manifest and every advertised source must be available and valid JSON.",
+          "Schema inference samples at most 50 rows, six nested levels, and twelve displayed object properties.",
+          "The checked-in specification is read from the last immutable repository commit at or before the observation cutoff."
+        ],
+        "collection": "Fetch one complete deployed Pages snapshot, infer its bounded pseudo schemas, and compare every generated source section with specs/dashboard-data.md at the immutable cutoff commit.",
+        "window": {
+          "durationDays": 1,
+          "cadenceDays": 1,
+          "maturationDays": 0
+        },
+        "maturityStatus": "matured",
+        "dubious": true,
+        "reason": "Command failed: gh api --method GET repos/githubnext/gh-aw-cao/commits -f until=2026-09-11T14:58:45Z -f per_page=1\ngh: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable. Example:\n  env:\n    GH_TOKEN: ${{ github.token }}\n"
+      },
+      "provenance": [
+        {
+          "repository": "githubnext/gh-aw-cao",
+          "kind": "workflow-adoption",
+          "ref": "c33a4c2de76ae12cd9beb9ec9f01f9bbf3359639"
+        }
+      ],
+      "metrics": {
+        "matching-source-share": null,
+        "document-synchronized": null
+      }
+    },
+    {
+      "observedAt": "2026-09-12T14:58:45Z",
+      "window": {
+        "startAt": "2026-09-11T14:58:45Z",
+        "endAt": "2026-09-12T14:58:45Z"
+      },
+      "evidence": {
+        "valid": false,
+        "key": "dashboard-data-schema-synchronization",
+        "repositories": [
+          "githubnext/gh-aw-cao"
+        ],
+        "opportunity": "Each valid JSON source advertised by the deployed dashboard data manifest during a daily observation.",
+        "filters": [
+          "The manifest must advertise at most 500 unique source names matching the workflow's source-name allowlist.",
+          "The manifest and every advertised source must be available and valid JSON.",
+          "Schema inference samples at most 50 rows, six nested levels, and twelve displayed object properties.",
+          "The checked-in specification is read from the last immutable repository commit at or before the observation cutoff."
+        ],
+        "collection": "Fetch one complete deployed Pages snapshot, infer its bounded pseudo schemas, and compare every generated source section with specs/dashboard-data.md at the immutable cutoff commit.",
+        "window": {
+          "durationDays": 1,
+          "cadenceDays": 1,
+          "maturationDays": 0
+        },
+        "maturityStatus": "matured",
+        "dubious": true,
+        "reason": "Command failed: gh api --method GET repos/githubnext/gh-aw-cao/commits -f until=2026-09-12T14:58:45Z -f per_page=1\ngh: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable. Example:\n  env:\n    GH_TOKEN: ${{ github.token }}\n"
+      },
+      "provenance": [
+        {
+          "repository": "githubnext/gh-aw-cao",
+          "kind": "workflow-adoption",
+          "ref": "c33a4c2de76ae12cd9beb9ec9f01f9bbf3359639"
+        }
+      ],
+      "metrics": {
+        "matching-source-share": null,
+        "document-synchronized": null
+      }
+    },
+    {
+      "observedAt": "2026-09-13T14:58:45Z",
+      "window": {
+        "startAt": "2026-09-12T14:58:45Z",
+        "endAt": "2026-09-13T14:58:45Z"
+      },
+      "evidence": {
+        "valid": false,
+        "key": "dashboard-data-schema-synchronization",
+        "repositories": [
+          "githubnext/gh-aw-cao"
+        ],
+        "opportunity": "Each valid JSON source advertised by the deployed dashboard data manifest during a daily observation.",
+        "filters": [
+          "The manifest must advertise at most 500 unique source names matching the workflow's source-name allowlist.",
+          "The manifest and every advertised source must be available and valid JSON.",
+          "Schema inference samples at most 50 rows, six nested levels, and twelve displayed object properties.",
+          "The checked-in specification is read from the last immutable repository commit at or before the observation cutoff."
+        ],
+        "collection": "Fetch one complete deployed Pages snapshot, infer its bounded pseudo schemas, and compare every generated source section with specs/dashboard-data.md at the immutable cutoff commit.",
+        "window": {
+          "durationDays": 1,
+          "cadenceDays": 1,
+          "maturationDays": 0
+        },
+        "maturityStatus": "matured",
+        "dubious": true,
+        "reason": "Command failed: gh api --method GET repos/githubnext/gh-aw-cao/commits -f until=2026-09-13T14:58:45Z -f per_page=1\ngh: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable. Example:\n  env:\n    GH_TOKEN: ${{ github.token }}\n"
+      },
+      "provenance": [
+        {
+          "repository": "githubnext/gh-aw-cao",
+          "kind": "workflow-adoption",
+          "ref": "c33a4c2de76ae12cd9beb9ec9f01f9bbf3359639"
+        }
+      ],
+      "metrics": {
+        "matching-source-share": null,
+        "document-synchronized": null
+      }
+    },
+    {
+      "observedAt": "2026-09-14T14:58:45Z",
+      "window": {
+        "startAt": "2026-09-13T14:58:45Z",
+        "endAt": "2026-09-14T14:58:45Z"
+      },
+      "evidence": {
+        "valid": false,
+        "key": "dashboard-data-schema-synchronization",
+        "repositories": [
+          "githubnext/gh-aw-cao"
+        ],
+        "opportunity": "Each valid JSON source advertised by the deployed dashboard data manifest during a daily observation.",
+        "filters": [
+          "The manifest must advertise at most 500 unique source names matching the workflow's source-name allowlist.",
+          "The manifest and every advertised source must be available and valid JSON.",
+          "Schema inference samples at most 50 rows, six nested levels, and twelve displayed object properties.",
+          "The checked-in specification is read from the last immutable repository commit at or before the observation cutoff."
+        ],
+        "collection": "Fetch one complete deployed Pages snapshot, infer its bounded pseudo schemas, and compare every generated source section with specs/dashboard-data.md at the immutable cutoff commit.",
+        "window": {
+          "durationDays": 1,
+          "cadenceDays": 1,
+          "maturationDays": 0
+        },
+        "maturityStatus": "matured",
+        "dubious": true,
+        "reason": "Command failed: gh api --method GET repos/githubnext/gh-aw-cao/commits -f until=2026-09-14T14:58:45Z -f per_page=1\ngh: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable. Example:\n  env:\n    GH_TOKEN: ${{ github.token }}\n"
+      },
+      "provenance": [
+        {
+          "repository": "githubnext/gh-aw-cao",
+          "kind": "workflow-adoption",
+          "ref": "c33a4c2de76ae12cd9beb9ec9f01f9bbf3359639"
+        }
+      ],
+      "metrics": {
+        "matching-source-share": null,
+        "document-synchronized": null
+      }
+    },
+    {
+      "observedAt": "2026-09-15T14:58:45Z",
+      "window": {
+        "startAt": "2026-09-14T14:58:45Z",
+        "endAt": "2026-09-15T14:58:45Z"
+      },
+      "evidence": {
+        "valid": false,
+        "key": "dashboard-data-schema-synchronization",
+        "repositories": [
+          "githubnext/gh-aw-cao"
+        ],
+        "opportunity": "Each valid JSON source advertised by the deployed dashboard data manifest during a daily observation.",
+        "filters": [
+          "The manifest must advertise at most 500 unique source names matching the workflow's source-name allowlist.",
+          "The manifest and every advertised source must be available and valid JSON.",
+          "Schema inference samples at most 50 rows, six nested levels, and twelve displayed object properties.",
+          "The checked-in specification is read from the last immutable repository commit at or before the observation cutoff."
+        ],
+        "collection": "Fetch one complete deployed Pages snapshot, infer its bounded pseudo schemas, and compare every generated source section with specs/dashboard-data.md at the immutable cutoff commit.",
+        "window": {
+          "durationDays": 1,
+          "cadenceDays": 1,
+          "maturationDays": 0
+        },
+        "maturityStatus": "matured",
+        "dubious": true,
+        "reason": "Command failed: gh api --method GET repos/githubnext/gh-aw-cao/commits -f until=2026-09-15T14:58:45Z -f per_page=1\ngh: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable. Example:\n  env:\n    GH_TOKEN: ${{ github.token }}\n"
+      },
+      "provenance": [
+        {
+          "repository": "githubnext/gh-aw-cao",
+          "kind": "workflow-adoption",
+          "ref": "c33a4c2de76ae12cd9beb9ec9f01f9bbf3359639"
+        }
+      ],
+      "metrics": {
+        "matching-source-share": null,
+        "document-synchronized": null
+      }
+    },
+    {
+      "observedAt": "2026-09-16T14:58:45Z",
+      "window": {
+        "startAt": "2026-09-15T14:58:45Z",
+        "endAt": "2026-09-16T14:58:45Z"
+      },
+      "evidence": {
+        "valid": false,
+        "key": "dashboard-data-schema-synchronization",
+        "repositories": [
+          "githubnext/gh-aw-cao"
+        ],
+        "opportunity": "Each valid JSON source advertised by the deployed dashboard data manifest during a daily observation.",
+        "filters": [
+          "The manifest must advertise at most 500 unique source names matching the workflow's source-name allowlist.",
+          "The manifest and every advertised source must be available and valid JSON.",
+          "Schema inference samples at most 50 rows, six nested levels, and twelve displayed object properties.",
+          "The checked-in specification is read from the last immutable repository commit at or before the observation cutoff."
+        ],
+        "collection": "Fetch one complete deployed Pages snapshot, infer its bounded pseudo schemas, and compare every generated source section with specs/dashboard-data.md at the immutable cutoff commit.",
+        "window": {
+          "durationDays": 1,
+          "cadenceDays": 1,
+          "maturationDays": 0
+        },
+        "maturityStatus": "matured",
+        "dubious": true,
+        "reason": "Command failed: gh api --method GET repos/githubnext/gh-aw-cao/commits -f until=2026-09-16T14:58:45Z -f per_page=1\ngh: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable. Example:\n  env:\n    GH_TOKEN: ${{ github.token }}\n"
+      },
+      "provenance": [
+        {
+          "repository": "githubnext/gh-aw-cao",
+          "kind": "workflow-adoption",
+          "ref": "c33a4c2de76ae12cd9beb9ec9f01f9bbf3359639"
+        }
+      ],
+      "metrics": {
+        "matching-source-share": null,
+        "document-synchronized": null
+      }
+    },
+    {
+      "observedAt": "2026-09-17T14:58:45Z",
+      "window": {
+        "startAt": "2026-09-16T14:58:45Z",
+        "endAt": "2026-09-17T14:58:45Z"
+      },
+      "evidence": {
+        "valid": false,
+        "key": "dashboard-data-schema-synchronization",
+        "repositories": [
+          "githubnext/gh-aw-cao"
+        ],
+        "opportunity": "Each valid JSON source advertised by the deployed dashboard data manifest during a daily observation.",
+        "filters": [
+          "The manifest must advertise at most 500 unique source names matching the workflow's source-name allowlist.",
+          "The manifest and every advertised source must be available and valid JSON.",
+          "Schema inference samples at most 50 rows, six nested levels, and twelve displayed object properties.",
+          "The checked-in specification is read from the last immutable repository commit at or before the observation cutoff."
+        ],
+        "collection": "Fetch one complete deployed Pages snapshot, infer its bounded pseudo schemas, and compare every generated source section with specs/dashboard-data.md at the immutable cutoff commit.",
+        "window": {
+          "durationDays": 1,
+          "cadenceDays": 1,
+          "maturationDays": 0
+        },
+        "maturityStatus": "matured",
+        "dubious": true,
+        "reason": "Command failed: gh api --method GET repos/githubnext/gh-aw-cao/commits -f until=2026-09-17T14:58:45Z -f per_page=1\ngh: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable. Example:\n  env:\n    GH_TOKEN: ${{ github.token }}\n"
+      },
+      "provenance": [
+        {
+          "repository": "githubnext/gh-aw-cao",
+          "kind": "workflow-adoption",
+          "ref": "c33a4c2de76ae12cd9beb9ec9f01f9bbf3359639"
+        }
+      ],
+      "metrics": {
+        "matching-source-share": null,
+        "document-synchronized": null
+      }
+    },
+    {
+      "observedAt": "2026-09-18T14:58:45Z",
+      "window": {
+        "startAt": "2026-09-17T14:58:45Z",
+        "endAt": "2026-09-18T14:58:45Z"
+      },
+      "evidence": {
+        "valid": false,
+        "key": "dashboard-data-schema-synchronization",
+        "repositories": [
+          "githubnext/gh-aw-cao"
+        ],
+        "opportunity": "Each valid JSON source advertised by the deployed dashboard data manifest during a daily observation.",
+        "filters": [
+          "The manifest must advertise at most 500 unique source names matching the workflow's source-name allowlist.",
+          "The manifest and every advertised source must be available and valid JSON.",
+          "Schema inference samples at most 50 rows, six nested levels, and twelve displayed object properties.",
+          "The checked-in specification is read from the last immutable repository commit at or before the observation cutoff."
+        ],
+        "collection": "Fetch one complete deployed Pages snapshot, infer its bounded pseudo schemas, and compare every generated source section with specs/dashboard-data.md at the immutable cutoff commit.",
+        "window": {
+          "durationDays": 1,
+          "cadenceDays": 1,
+          "maturationDays": 0
+        },
+        "maturityStatus": "matured",
+        "dubious": true,
+        "reason": "Command failed: gh api --method GET repos/githubnext/gh-aw-cao/commits -f until=2026-09-18T14:58:45Z -f per_page=1\ngh: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable. Example:\n  env:\n    GH_TOKEN: ${{ github.token }}\n"
+      },
+      "provenance": [
+        {
+          "repository": "githubnext/gh-aw-cao",
+          "kind": "workflow-adoption",
+          "ref": "c33a4c2de76ae12cd9beb9ec9f01f9bbf3359639"
+        }
+      ],
+      "metrics": {
+        "matching-source-share": null,
+        "document-synchronized": null
+      }
+    },
+    {
+      "observedAt": "2026-09-19T14:58:45Z",
+      "window": {
+        "startAt": "2026-09-18T14:58:45Z",
+        "endAt": "2026-09-19T14:58:45Z"
+      },
+      "evidence": {
+        "valid": false,
+        "key": "dashboard-data-schema-synchronization",
+        "repositories": [
+          "githubnext/gh-aw-cao"
+        ],
+        "opportunity": "Each valid JSON source advertised by the deployed dashboard data manifest during a daily observation.",
+        "filters": [
+          "The manifest must advertise at most 500 unique source names matching the workflow's source-name allowlist.",
+          "The manifest and every advertised source must be available and valid JSON.",
+          "Schema inference samples at most 50 rows, six nested levels, and twelve displayed object properties.",
+          "The checked-in specification is read from the last immutable repository commit at or before the observation cutoff."
+        ],
+        "collection": "Fetch one complete deployed Pages snapshot, infer its bounded pseudo schemas, and compare every generated source section with specs/dashboard-data.md at the immutable cutoff commit.",
+        "window": {
+          "durationDays": 1,
+          "cadenceDays": 1,
+          "maturationDays": 0
+        },
+        "maturityStatus": "matured",
+        "dubious": true,
+        "reason": "Command failed: gh api --method GET repos/githubnext/gh-aw-cao/commits -f until=2026-09-19T14:58:45Z -f per_page=1\ngh: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable. Example:\n  env:\n    GH_TOKEN: ${{ github.token }}\n"
+      },
+      "provenance": [
+        {
+          "repository": "githubnext/gh-aw-cao",
+          "kind": "workflow-adoption",
+          "ref": "c33a4c2de76ae12cd9beb9ec9f01f9bbf3359639"
+        }
+      ],
+      "metrics": {
+        "matching-source-share": null,
+        "document-synchronized": null
+      }
+    },
+    {
+      "observedAt": "2026-09-20T14:58:45Z",
+      "window": {
+        "startAt": "2026-09-19T14:58:45Z",
+        "endAt": "2026-09-20T14:58:45Z"
+      },
+      "evidence": {
+        "valid": false,
+        "key": "dashboard-data-schema-synchronization",
+        "repositories": [
+          "githubnext/gh-aw-cao"
+        ],
+        "opportunity": "Each valid JSON source advertised by the deployed dashboard data manifest during a daily observation.",
+        "filters": [
+          "The manifest must advertise at most 500 unique source names matching the workflow's source-name allowlist.",
+          "The manifest and every advertised source must be available and valid JSON.",
+          "Schema inference samples at most 50 rows, six nested levels, and twelve displayed object properties.",
+          "The checked-in specification is read from the last immutable repository commit at or before the observation cutoff."
+        ],
+        "collection": "Fetch one complete deployed Pages snapshot, infer its bounded pseudo schemas, and compare every generated source section with specs/dashboard-data.md at the immutable cutoff commit.",
+        "window": {
+          "durationDays": 1,
+          "cadenceDays": 1,
+          "maturationDays": 0
+        },
+        "maturityStatus": "matured",
+        "dubious": true,
+        "reason": "Command failed: gh api --method GET repos/githubnext/gh-aw-cao/commits -f until=2026-09-20T14:58:45Z -f per_page=1\ngh: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable. Example:\n  env:\n    GH_TOKEN: ${{ github.token }}\n"
+      },
+      "provenance": [
+        {
+          "repository": "githubnext/gh-aw-cao",
+          "kind": "workflow-adoption",
+          "ref": "c33a4c2de76ae12cd9beb9ec9f01f9bbf3359639"
+        }
+      ],
+      "metrics": {
+        "matching-source-share": null,
+        "document-synchronized": null
+      }
+    },
+    {
+      "observedAt": "2026-09-21T14:58:45Z",
+      "window": {
+        "startAt": "2026-09-20T14:58:45Z",
+        "endAt": "2026-09-21T14:58:45Z"
+      },
+      "evidence": {
+        "valid": false,
+        "key": "dashboard-data-schema-synchronization",
+        "repositories": [
+          "githubnext/gh-aw-cao"
+        ],
+        "opportunity": "Each valid JSON source advertised by the deployed dashboard data manifest during a daily observation.",
+        "filters": [
+          "The manifest must advertise at most 500 unique source names matching the workflow's source-name allowlist.",
+          "The manifest and every advertised source must be available and valid JSON.",
+          "Schema inference samples at most 50 rows, six nested levels, and twelve displayed object properties.",
+          "The checked-in specification is read from the last immutable repository commit at or before the observation cutoff."
+        ],
+        "collection": "Fetch one complete deployed Pages snapshot, infer its bounded pseudo schemas, and compare every generated source section with specs/dashboard-data.md at the immutable cutoff commit.",
+        "window": {
+          "durationDays": 1,
+          "cadenceDays": 1,
+          "maturationDays": 0
+        },
+        "maturityStatus": "matured",
+        "dubious": true,
+        "reason": "Command failed: gh api --method GET repos/githubnext/gh-aw-cao/commits -f until=2026-09-21T14:58:45Z -f per_page=1\ngh: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable. Example:\n  env:\n    GH_TOKEN: ${{ github.token }}\n"
+      },
+      "provenance": [
+        {
+          "repository": "githubnext/gh-aw-cao",
+          "kind": "workflow-adoption",
+          "ref": "c33a4c2de76ae12cd9beb9ec9f01f9bbf3359639"
+        }
+      ],
+      "metrics": {
+        "matching-source-share": null,
+        "document-synchronized": null
+      }
+    },
+    {
+      "observedAt": "2026-09-22T14:58:45Z",
+      "window": {
+        "startAt": "2026-09-21T14:58:45Z",
+        "endAt": "2026-09-22T14:58:45Z"
+      },
+      "evidence": {
+        "valid": false,
+        "key": "dashboard-data-schema-synchronization",
+        "repositories": [
+          "githubnext/gh-aw-cao"
+        ],
+        "opportunity": "Each valid JSON source advertised by the deployed dashboard data manifest during a daily observation.",
+        "filters": [
+          "The manifest must advertise at most 500 unique source names matching the workflow's source-name allowlist.",
+          "The manifest and every advertised source must be available and valid JSON.",
+          "Schema inference samples at most 50 rows, six nested levels, and twelve displayed object properties.",
+          "The checked-in specification is read from the last immutable repository commit at or before the observation cutoff."
+        ],
+        "collection": "Fetch one complete deployed Pages snapshot, infer its bounded pseudo schemas, and compare every generated source section with specs/dashboard-data.md at the immutable cutoff commit.",
+        "window": {
+          "durationDays": 1,
+          "cadenceDays": 1,
+          "maturationDays": 0
+        },
+        "maturityStatus": "matured",
+        "dubious": true,
+        "reason": "Command failed: gh api --method GET repos/githubnext/gh-aw-cao/commits -f until=2026-09-22T14:58:45Z -f per_page=1\ngh: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable. Example:\n  env:\n    GH_TOKEN: ${{ github.token }}\n"
+      },
+      "provenance": [
+        {
+          "repository": "githubnext/gh-aw-cao",
+          "kind": "workflow-adoption",
+          "ref": "c33a4c2de76ae12cd9beb9ec9f01f9bbf3359639"
+        }
+      ],
+      "metrics": {
+        "matching-source-share": null,
+        "document-synchronized": null
+      }
+    },
+    {
+      "observedAt": "2026-09-23T14:58:45Z",
+      "window": {
+        "startAt": "2026-09-22T14:58:45Z",
+        "endAt": "2026-09-23T14:58:45Z"
+      },
+      "evidence": {
+        "valid": false,
+        "key": "dashboard-data-schema-synchronization",
+        "repositories": [
+          "githubnext/gh-aw-cao"
+        ],
+        "opportunity": "Each valid JSON source advertised by the deployed dashboard data manifest during a daily observation.",
+        "filters": [
+          "The manifest must advertise at most 500 unique source names matching the workflow's source-name allowlist.",
+          "The manifest and every advertised source must be available and valid JSON.",
+          "Schema inference samples at most 50 rows, six nested levels, and twelve displayed object properties.",
+          "The checked-in specification is read from the last immutable repository commit at or before the observation cutoff."
+        ],
+        "collection": "Fetch one complete deployed Pages snapshot, infer its bounded pseudo schemas, and compare every generated source section with specs/dashboard-data.md at the immutable cutoff commit.",
+        "window": {
+          "durationDays": 1,
+          "cadenceDays": 1,
+          "maturationDays": 0
+        },
+        "maturityStatus": "matured",
+        "dubious": true,
+        "reason": "Command failed: gh api --method GET repos/githubnext/gh-aw-cao/commits -f until=2026-09-23T14:58:45Z -f per_page=1\ngh: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable. Example:\n  env:\n    GH_TOKEN: ${{ github.token }}\n"
+      },
+      "provenance": [
+        {
+          "repository": "githubnext/gh-aw-cao",
+          "kind": "workflow-adoption",
+          "ref": "c33a4c2de76ae12cd9beb9ec9f01f9bbf3359639"
+        }
+      ],
+      "metrics": {
+        "matching-source-share": null,
+        "document-synchronized": null
+      }
+    },
+    {
+      "observedAt": "2026-09-24T14:58:45Z",
+      "window": {
+        "startAt": "2026-09-23T14:58:45Z",
+        "endAt": "2026-09-24T14:58:45Z"
+      },
+      "evidence": {
+        "valid": false,
+        "key": "dashboard-data-schema-synchronization",
+        "repositories": [
+          "githubnext/gh-aw-cao"
+        ],
+        "opportunity": "Each valid JSON source advertised by the deployed dashboard data manifest during a daily observation.",
+        "filters": [
+          "The manifest must advertise at most 500 unique source names matching the workflow's source-name allowlist.",
+          "The manifest and every advertised source must be available and valid JSON.",
+          "Schema inference samples at most 50 rows, six nested levels, and twelve displayed object properties.",
+          "The checked-in specification is read from the last immutable repository commit at or before the observation cutoff."
+        ],
+        "collection": "Fetch one complete deployed Pages snapshot, infer its bounded pseudo schemas, and compare every generated source section with specs/dashboard-data.md at the immutable cutoff commit.",
+        "window": {
+          "durationDays": 1,
+          "cadenceDays": 1,
+          "maturationDays": 0
+        },
+        "maturityStatus": "matured",
+        "dubious": true,
+        "reason": "Command failed: gh api --method GET repos/githubnext/gh-aw-cao/commits -f until=2026-09-24T14:58:45Z -f per_page=1\ngh: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable. Example:\n  env:\n    GH_TOKEN: ${{ github.token }}\n"
+      },
+      "provenance": [
+        {
+          "repository": "githubnext/gh-aw-cao",
+          "kind": "workflow-adoption",
+          "ref": "c33a4c2de76ae12cd9beb9ec9f01f9bbf3359639"
+        }
+      ],
+      "metrics": {
+        "matching-source-share": null,
+        "document-synchronized": null
+      }
+    },
+    {
+      "observedAt": "2026-09-25T04:50:43Z",
+      "window": {
+        "startAt": "2026-09-24T04:50:43Z",
+        "endAt": "2026-09-25T04:50:43Z"
+      },
+      "evidence": {
+        "valid": false,
+        "key": "dashboard-data-schema-synchronization",
+        "repositories": [
+          "githubnext/gh-aw-cao"
+        ],
+        "opportunity": "Each valid JSON source advertised by the deployed dashboard data manifest during a daily observation.",
+        "filters": [
+          "The manifest must advertise at most 500 unique source names matching the workflow's source-name allowlist.",
+          "The manifest and every advertised source must be available and valid JSON.",
+          "Schema inference samples at most 50 rows, six nested levels, and twelve displayed object properties.",
+          "The checked-in specification is read from the last immutable repository commit at or before the observation cutoff."
+        ],
+        "collection": "Fetch one complete deployed Pages snapshot, infer its bounded pseudo schemas, and compare every generated source section with specs/dashboard-data.md at the immutable cutoff commit.",
+        "window": {
+          "durationDays": 1,
+          "cadenceDays": 1,
+          "maturationDays": 0
+        },
+        "maturityStatus": "matured",
+        "dubious": true,
+        "reason": "Command failed: gh api --method GET repos/githubnext/gh-aw-cao/commits -f until=2026-09-25T04:50:43Z -f per_page=1\ngh: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable. Example:\n  env:\n    GH_TOKEN: ${{ github.token }}\n"
+      },
+      "provenance": [
+        {
+          "repository": "githubnext/gh-aw-cao",
+          "kind": "workflow-adoption",
+          "ref": "c33a4c2de76ae12cd9beb9ec9f01f9bbf3359639"
+        }
+      ],
+      "metrics": {
+        "matching-source-share": null,
+        "document-synchronized": null
+      }
+    }
+  ]
+}

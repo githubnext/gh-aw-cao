@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "repository": "githubnext/gh-aw-cao",
+  "workflowSlug": "self-care-dashboard-data-schema",
+  "functions": {
+    "53c3cdb5d35836dbec79b55d2f0ffeed566d1cfef7ebf833bfb0ea142aaa3179": {
+      "valueFunctionSha256": "53c3cdb5d35836dbec79b55d2f0ffeed566d1cfef7ebf833bfb0ea142aaa3179",
+      "snapshots": []
+    }
+  }
+}

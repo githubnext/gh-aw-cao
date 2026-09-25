@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 780" role="img" aria-labelledby="title description">
+<title id="title">SelfCare / Dashboard Data Schema workflow attainment timeline</title>
+<desc id="description">Goal-oriented repository outcome metrics after workflow adoption, with workflow run conclusions over time.</desc>
+<style>:root{--fg:#1f2328;--muted:#59636e;--bg:#ffffff;--subtle:#f6f8fa;--border:#d1d9e0;--adoption:#8250df;--success:#1a7f37;--danger:#cf222e;--data-blue:#0969da;--data-green:#1a7f37;--data-orange:#bc4c00;--data-red:#cf222e;--data-cyan:#1b7c83;--data-pink:#bf3989}@media(prefers-color-scheme:dark){:root{--fg:#f0f6fc;--muted:#9198a1;--bg:#0d1117;--subtle:#151b23;--border:#3d444d;--adoption:#a371f7;--success:#3fb950;--danger:#f85149;--data-blue:#4493f8;--data-green:#3fb950;--data-orange:#d29922;--data-red:#ff7b72;--data-cyan:#39c5cf;--data-pink:#db61a2}}text{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;fill:var(--fg);font-size:20px}.title{font-size:30px;font-weight:700}.section{font-size:20px;font-weight:600}.axis{font-size:17px}.muted{fill:var(--muted)}.grid{stroke:var(--border);stroke-width:1}.metric{fill:none;stroke-width:3;stroke-linejoin:round;stroke-linecap:round}.point{stroke:var(--bg);stroke-width:2}.run-success{stroke:var(--success)}.run-failure{stroke:var(--danger)}.run-other{stroke:var(--muted)}</style>
+<rect width="1280" height="780" fill="var(--bg)"/>
+<text x="120" y="48" class="title">SelfCare / Dashboard Data Schema attainment over time</text>
+<text x="120" y="100" class="section muted">Post-adoption attainment</text>
+<line class="grid" x1="120" y1="110" x2="1160" y2="110"/><text x="102" y="116" text-anchor="end" class="axis muted">1</text>
+<line class="grid" x1="120" y1="197.5" x2="1160" y2="197.5"/><text x="102" y="203.5" text-anchor="end" class="axis muted">0.75</text>
+<line class="grid" x1="120" y1="285" x2="1160" y2="285"/><text x="102" y="291" text-anchor="end" class="axis muted">0.5</text>
+<line class="grid" x1="120" y1="372.5" x2="1160" y2="372.5"/><text x="102" y="378.5" text-anchor="end" class="axis muted">0.25</text>
+<line class="grid" x1="120" y1="460" x2="1160" y2="460"/><text x="102" y="466" text-anchor="end" class="axis muted">0</text>
+<line class="grid" x1="120" y1="110" x2="120" y2="460"/><text x="120" y="490" text-anchor="middle" class="axis muted">Sep 08</text>
+<line class="grid" x1="308.2040161472522" y1="110" x2="308.2040161472522" y2="460"/><text x="308.2040161472522" y="490" text-anchor="middle" class="axis muted">Sep 11</text>
+<line class="grid" x1="496.4080322945044" y1="110" x2="496.4080322945044" y2="460"/><text x="496.4080322945044" y="490" text-anchor="middle" class="axis muted">Sep 14</text>
+<line class="grid" x1="684.6120484417567" y1="110" x2="684.6120484417567" y2="460"/><text x="684.6120484417567" y="490" text-anchor="middle" class="axis muted">Sep 17</text>
+<line class="grid" x1="872.8160645890088" y1="110" x2="872.8160645890088" y2="460"/><text x="872.8160645890088" y="490" text-anchor="middle" class="axis muted">Sep 20</text>
+<line class="grid" x1="1061.0200807362612" y1="110" x2="1061.0200807362612" y2="460"/><text x="1061.0200807362612" y="490" text-anchor="middle" class="axis muted">Sep 23</text>
+<line class="grid" x1="1160" y1="110" x2="1160" y2="460"/><text x="1160" y="490" text-anchor="middle" class="axis muted">Sep 25</text>
+<text transform="translate(36 285) rotate(-90)" text-anchor="middle" class="axis">Goal measure</text>
+<line x1="120" y1="78" x2="120" y2="460" stroke="var(--adoption)" stroke-width="3" stroke-dasharray="5 6"/>
+<polyline class="metric" stroke="var(--data-blue)" points=""/>
+<line x1="120" y1="540" x2="154" y2="540" stroke="var(--data-blue)" stroke-width="4"/><text x="166" y="547">Matching sources</text>
+<polyline class="metric" stroke="var(--data-green)" points=""/>
+<line x1="640" y1="540" x2="674" y2="540" stroke="var(--data-green)" stroke-width="4"/><text x="686" y="547">Exact document</text>
+<line x1="640" y1="560" x2="674" y2="560" stroke="var(--adoption)" stroke-width="3" stroke-dasharray="5 6"/><text x="686" y="567">Workflow adopted</text>
+<text x="120" y="642" class="section">Workflow runs</text>
+<rect x="120" y="660" width="1040" height="46" fill="var(--subtle)"/>
+<circle cx="126" cy="751" r="6" fill="var(--success)"/><text x="142" y="758" class="axis muted">Success</text><circle cx="292" cy="751" r="6" fill="var(--danger)"/><text x="308" y="758" class="axis muted">Failure</text><circle cx="448" cy="751" r="6" fill="var(--muted)"/><text x="464" y="758" class="axis muted">Other</text>
+</svg>
