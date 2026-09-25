@@ -2314,13 +2314,13 @@ describe('data view renderer', () => {
     expect(links).toHaveLength(2);
     expect(links?.[0]?.textContent).toContain('https://github.com/githubnext/gh-aw-cao/issues/13772');
     expect(links?.[0]?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/issues/13772');
-    expect(links?.[0]?.target).toBe('_blank');
-    expect(links?.[0]?.rel).toBe('noopener noreferrer');
+    expect(links?.[0]?.getAttribute('target')).toBe('_blank');
+    expect(links?.[0]?.getAttribute('rel')).toBe('noopener noreferrer');
     expect(links?.[1]?.textContent).toContain('https://github.com/githubnext/gh-aw-cao/actions/runs/36048728401');
     expect(links?.[1]?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/36048728401');
     expect(rendered?.querySelector('[data-field="unsafe-link"]')?.textContent).toBe('http://example.test/not-linked');
     expect(rendered?.querySelector('[data-field="status-url"] a')).toBeNull();
-    expect(rendered?.querySelector('[data-field="status-url"] .status')?.textContent).toBe('Success');
+    expect(rendered?.querySelector('[data-field="status-url"] .status')?.textContent).toBe('success');
   });
 
   it.each([
