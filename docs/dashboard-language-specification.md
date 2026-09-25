@@ -957,7 +957,7 @@ The optional page `icon` is the canonical name of an Octicon supported by the pr
 
 The optional page `navigation-label` provides a concise sidebar label when the page title is more descriptive. A dashboard `navigation` section may reference a focused subset of declared pages; omitted pages remain available as deep-link destinations.
 
-A page may declare `navigation-indicator` with a non-empty `label` and an `any` sequence of source predicates. Each predicate names a bounded source, scalar `field`, and scalar `equals` value. Presenters subscribe only to those declared indicator sources, set the navigation item's accessible label to include the indicator label when any predicate matches, and render a status dot as a supporting visual cue. Indicator sources should be declarative query outputs that already encode the business condition.
+A page may declare `navigation-indicator` with a non-empty `label` and an `any` sequence of bounded source names. Presenters subscribe only to those declared indicator sources, set the navigation item's accessible label to include the indicator label when any source returns a row, and render a status dot as a supporting visual cue. Indicator sources **MUST** be declarative query outputs that already encode the business condition.
 
 A navigation section may set `experimental: true`. Presenters combine pages from all experimental sections into one visible **Experimental** navigation section that is collapsed by default. Activating a direct deep link to an experimental page expands that section. This metadata changes navigation presentation only and does not grant authorization or access to data.
 

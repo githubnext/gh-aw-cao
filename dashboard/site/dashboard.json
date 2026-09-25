@@ -13167,16 +13167,8 @@
         "navigation-indicator": {
           "label": "updates available",
           "any": [
-            {
-              "source": "maintenance-campaign-updates",
-              "field": "campaign-update-state",
-              "equals": "update-available"
-            },
-            {
-              "source": "maintenance-repository-upgrades",
-              "field": "upgrade-required",
-              "equals": 1
-            }
+            "maintenance-campaign-updates",
+            "maintenance-repository-upgrades"
           ]
         },
         "icon": "tools",

@@ -72,6 +72,9 @@ function declaredQueryReferences(value) {
     if ((key === 'sources' || key === 'union') && Array.isArray(nested)) {
       return nested.filter((name) => typeof name === 'string' && queryNames.has(name));
     }
+    if (key === 'any' && typeof configured.label === 'string' && Array.isArray(nested)) {
+      return nested.filter((name) => typeof name === 'string' && queryNames.has(name));
+    }
     return declaredQueryReferences(nested);
   });
 }

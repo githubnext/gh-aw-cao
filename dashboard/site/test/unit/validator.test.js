@@ -154,7 +154,7 @@ describe('dashboard document validation', () => {
     invalidPage.dashboard.pages
       .find((/** @type {{ id?: string }} */ page) => page.id === 'maintenance')['navigation-indicator'] = {
         label: '',
-        any: [{ source: 'maintenance-campaign-updates', field: 'campaign-update-state' }]
+        any: [{}]
       };
 
     expect(validateDashboardDocument(JSON.stringify(invalidPage))).toMatchObject({
@@ -165,8 +165,8 @@ describe('dashboard document validation', () => {
           path: expect.stringMatching(/navigation-indicator\.label$/)
         }),
         expect.objectContaining({
-          message: 'navigation-indicator predicate equals is required.',
-          path: expect.stringMatching(/navigation-indicator\.any\[0\]\.equals$/)
+          message: 'any[0] must be a non-empty string.',
+          path: expect.stringMatching(/navigation-indicator\.any\[0\]$/)
         })
       ])
     });

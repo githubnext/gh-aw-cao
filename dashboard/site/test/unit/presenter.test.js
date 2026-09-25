@@ -150,7 +150,7 @@ describe('dashboard DOM provenance', () => {
             views: [],
             'navigation-indicator': {
               label: 'updates available',
-              any: [{ source: 'maintenance-campaign-updates', field: 'campaign-update-state', equals: 'update-available' }]
+              any: ['maintenance-campaign-updates']
             }
           }
         ],
@@ -202,6 +202,45 @@ describe('dashboard DOM provenance', () => {
       onUpdate: expect.any(Function)
     }));
     disposeDashboard(rendered);
+  });
+
+  it('logs and ignores navigation indicator source failures', async () => {
+    const originalUrl = window.location.href;
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    window.history.replaceState({}, '', '?debug=render:navigation');
+    vi.resetModules();
+    try {
+      const { renderDashboard, disposeDashboard: dispose } = await import('../../src/presenter.js');
+      const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ (/** @type {unknown} */ ({
+        languageVersion: '0.1.0',
+        dashboard: {
+          title: 'Indicator dashboard',
+          pages: [{
+            id: 'maintenance',
+            kind: 'custom',
+            title: 'Maintenance',
+            views: [],
+            'navigation-indicator': {
+              label: 'updates available',
+              any: ['maintenance-campaign-updates']
+            }
+          }]
+        }
+      }));
+      const loadPageSources = /** @type {import('../../src/presenter.js').PageSourceLoader} */ (vi.fn(() => Promise.resolve({})));
+      loadPageSources.loadSources = vi.fn(() => Promise.reject(new Error('unavailable')));
+
+      const rendered = renderDashboard({ document, sources: {}, loadPageSources });
+
+      await vi.waitFor(() => {
+        expect(debug).toHaveBeenCalledWith('[cao:render:navigation]', 'indicator update failed', { error: 'unavailable' });
+      });
+      dispose(rendered);
+    } finally {
+      window.history.replaceState({}, '', originalUrl);
+      debug.mockRestore();
+      vi.resetModules();
+    }
   });
 
   it('loads a page chunk before mounting its independently bound elements', async () => {
