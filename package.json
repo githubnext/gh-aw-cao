@@ -25,7 +25,7 @@
     "docs:dev": "astro dev",
     "docs:build": "astro build",
     "docs:preview": "astro preview",
-    "lint": "node scripts/check-file-sizes.mjs && npm run check:gh-aw-versions",
+    "lint": "node scripts/check-file-sizes.mjs && npm run check:gh-aw-versions && eslint .",
     "check:gh-aw-versions": "node scripts/check-gh-aw-versions.mjs",
     "typecheck:cao": "npx tsc -p .github/workflows/shared/tsconfig.json",
     "test": "npm run test:unit && npm run test:integration",
@@ -71,6 +71,7 @@
     "@github/local-action": "^7.0.1",
     "@playwright/test": "^1.63.0",
     "@types/node": "^26.5.1",
+    "eslint": "^9.39.5",
     "fake-indexeddb": "^6.2.5",
     "typescript": "^7.0.2"
   },
