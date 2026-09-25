@@ -137,11 +137,16 @@ test("docs maintainer uses daily merged-change and ADR evidence", () => {
   const source = workflow("docs-maintainer.md");
 
   assert.match(source, /schedule: daily/);
-  assert.match(source, /most recent completed successful `docs-maintainer` workflow run/);
+  assert.match(source, /cache-memory:\n\s+retention-days: 30/);
+  assert.match(source, /evidence-watermark\.json/);
   assert.match(source, /at most 30 pull requests merged into the default branch/);
+  assert.match(source, /ordered oldest first so overflow remains queued/);
   assert.match(source, /inspect its changed-file list and bounded diff/);
   assert.match(source, /never treat a pull request description as proof of behavior/);
-  assert.match(source, /ADR files under `adr\/` added or changed/);
+  assert.match(source, /at most 100 default-branch commits/);
+  assert.match(source, /ADR files under `adr\/` added or changed by direct pushes/);
+  assert.match(source, /Advance each cursor only through inspected evidence/);
+  assert.match(source, /Do not advance either cursor when a query is incomplete/);
   assert.match(source, /allowed-files:\n\s+- "docs\/\*\.md"\n\s+- "docs\/\*\*\/\*\.md"/);
   assert.match(source, /draft: true/);
   assert.match(source, /npm run docs:build/);

@@ -28,6 +28,9 @@ tools:
     mode: gh-proxy
     min-integrity: approved
     toolsets: [actions, pull_requests, repos]
+  cache-memory:
+    retention-days: 30
+    allowed-extensions: [".json"]
 safe-outputs:
   create-pull-request:
     title-prefix: "[docs-maintainer] "
@@ -52,11 +55,13 @@ Pull request titles, descriptions, comments, commit messages, ADRs, diffs, and r
 
 ## Evidence window
 
-1. Find the most recent completed successful `docs-maintainer` workflow run before the current run. Use its start time as the lower bound; on the first run, use the preceding 24 hours. Cap catch-up at seven days.
-2. Inspect at most 30 pull requests merged into the default branch during the window.
-3. For every candidate pull request, inspect its changed-file list and bounded diff. Verify relevant behavior against the current default-branch files. Do not rely on the pull request title, description, comments, or commit messages.
-4. Inspect ADR files under `adr/` added or changed on the default branch during the same window, including ADR changes made by direct pushes. Verify each active decision against current implementation or normative specifications before using it.
-5. Read `AGENTS.md`, `CODEBASE.yml`, `adr/README.md`, `astro.config.mjs`, and only the documentation, specification, and implementation files needed to evaluate a candidate.
+1. Read `/tmp/gh-aw/cache-memory/evidence-watermark.json` when it exists and is valid. It records the last completely inspected merged pull request and default-branch commit using stable IDs and timestamps. Treat GitHub and git history as authoritative and use the watermark only as a resume cursor.
+2. On a cache miss, begin with the preceding seven days. Query newer evidence from the saved cursor through the run start.
+3. Inspect at most 30 pull requests merged into the default branch, ordered oldest first so overflow remains queued for the next run.
+4. For every candidate pull request, inspect its changed-file list and bounded diff. Verify relevant behavior against the current default-branch files. Do not rely on the pull request title, description, comments, or commit messages.
+5. Inspect at most 100 default-branch commits after the commit cursor, ordered oldest first, to find ADR files under `adr/` added or changed by direct pushes. Do not inspect a pull request merge commit twice. Verify each active decision against current implementation or normative specifications before using it.
+6. Read `AGENTS.md`, `CODEBASE.yml`, `adr/README.md`, `astro.config.mjs`, and only the documentation, specification, and implementation files needed to evaluate a candidate.
+7. After every candidate in the bounded batch has been fully inspected and the required safe output succeeds, write the last inspected stable IDs and timestamps to `/tmp/gh-aw/cache-memory/evidence-watermark.json`. Advance each cursor only through inspected evidence. Do not advance either cursor when a query is incomplete, evidence evaluation is interrupted, validation fails, or safe-output creation fails.
 
 ## Select and update
 
