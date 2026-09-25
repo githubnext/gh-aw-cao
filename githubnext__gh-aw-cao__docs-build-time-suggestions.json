@@ -1,6 +1,6 @@
 {
-  "source_sha": "4fabd26d69501d41f4825b8fe081fbca35afea97",
-  "next_category": "Astro documentation generation",
+  "source_sha": "2e3eef61a80773ab3961221a2789e877944ad65e",
+  "next_category": "reusable dashboard generation",
   "evaluations": [
     {
       "evaluated_at": "2026-09-17T12:52:00Z",
@@ -240,6 +240,18 @@
       ],
       "outcome": "no-op: evidence window 2026-09-17T16:51:01Z to 2026-09-17T17:32:01Z. Analyzed 6 comparable successful docs.yml runs from the latest 20 completed runs in the last 14 days (3 schedule, 2 push, 1 workflow_run), while disclosing 3 skipped, 2 cancelled, and 8 action_required workflow_run outliers. Parent workflow median duration was 88.5s (p90 146.5s), build median 55.5s (p90 67.5s), deploy-job median 27.0s (p90 68.5s), and queue median 0s (p90 0s). Trusted step metadata and bounded logs confirmed dependency caching is already effective: Set up Node.js restored the npm cache in 6/6 samples and Restore node_modules restored a ~282 MiB cache in 6/6 samples, while Install dependencies and Save node_modules were skipped on all 6 runs. Build documentation remained small at 6.5s median (p90 8.0s). The repeated larger costs were dashboard artifact download after guaranteed dashboard-cache misses in 5/5 log-inspected runs and github-pages artifact upload of about 159.9 MB every run, consuming 21.5s median by itself. No fresh non-duplicate dependency-caching change meets the >=60s or >=15% threshold safely; the only material optimization remains the already-recorded reusable-dashboard suggestion fingerprint c1979ae4b7fcb3efb1c3.",
       "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-25T20:26:43Z",
+      "worker_run_id": 36185504820,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        36185380427,
+        36184166606,
+        36184023842,
+        36183784586
+      ],
+      "outcome": "incomplete: latest 20 completed docs.yml runs in the last 14 days contained only 4 comparable successful runs after excluding cancelled runs and non-success conclusions, below the required minimum of 5. Evidence window 2026-09-25T20:06:54Z to 2026-09-25T20:22:29Z. Stopped before timing analysis and recommendation generation per worker contract."
     }
   ]
 }
