@@ -7,6 +7,25 @@ import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
 import { runProblemClustering } from '../../activity/problem-clustering.mjs';
 
+async function waitForProblem(databasePath, producer, problemId) {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const database = new DatabaseSync(databasePath);
+    try {
+      const row = database.prepare(
+        'SELECT 1 FROM cao_problems WHERE producer = ? AND problem_id = ?'
+      ).get(producer, problemId);
+      if (row) return;
+    } catch {
+      // The clustering run may still be creating the table.
+    } finally {
+      database.close();
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error(`Timed out waiting for ${producer}/${problemId}`);
+}
+
 test('package clustering scripts replace only their validated problem rows', async () => {
   const temporary = await mkdtemp(path.join(os.tmpdir(), 'cao-problem-clustering-'));
   const databasePath = path.join(temporary, 'activity.sqlite');
@@ -191,9 +210,9 @@ test('timed-out workers retain their rows and do not block other packages', asyn
       databasePath,
       root: packageRoot,
       timestamp: '2026-09-24T23:05:09.441Z',
-      workerTimeoutMs: 50
+      workerTimeoutMs: 1_000
     });
-    assert.match(result.warnings[0].message, /timed out after 50 ms/);
+    assert.match(result.warnings[0].message, /timed out after 1000 ms/);
     const verify = new DatabaseSync(databasePath);
     try {
       assert.deepEqual(
@@ -240,15 +259,16 @@ test('cancellation terminates the active worker and stops package processing', a
         fixPrompt: 'Resolve the unexpected problem.'
       }));
     `);
-    setTimeout(() => controller.abort(new Error('clustering cancelled')), 500).unref();
-
+    const clustering = runProblemClustering({
+      databasePath,
+      root: packageRoot,
+      timestamp: '2026-09-24T23:05:09.441Z',
+      signal: controller.signal
+    });
+    await waitForProblem(databasePath, 'a-healthy', 'completed');
+    controller.abort(new Error('clustering cancelled'));
     await assert.rejects(
-      runProblemClustering({
-        databasePath,
-        root: packageRoot,
-        timestamp: '2026-09-24T23:05:09.441Z',
-        signal: controller.signal
-      }),
+      clustering,
       /clustering cancelled/
     );
     const verify = new DatabaseSync(databasePath);
