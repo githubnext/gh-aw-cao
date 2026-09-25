@@ -251,7 +251,7 @@ steps:
       test -s /tmp/gh-aw/agent/release-data/current_release.json
 
       gh api --paginate "/repos/$GITHUB_REPOSITORY/releases?per_page=100" |
-        jq --arg release_tag "$RELEASE_TAG" --slurp \
+        jq --slurp --arg release_tag "$RELEASE_TAG" \
           '[add[] | select(.draft == false and .prerelease == false and .tag_name != $release_tag)][0] // {}' \
         > /tmp/gh-aw/agent/release-data/previous_release.json
 
