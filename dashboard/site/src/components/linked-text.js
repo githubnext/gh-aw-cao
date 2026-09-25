@@ -61,14 +61,14 @@ export function createEntityAwareCellRenderer(entityLinkFields, findLink, render
  */
 function isExternalLinkField(column) {
   return [column.field, column.as, column.title]
-    .some((candidate) => typeof candidate === 'string' && hasExternalLinkToken(candidate));
+    .some((candidate) => typeof candidate === 'string' && hasUrlOrLinkToken(candidate));
 }
 
 /**
  * @param {string} value
  * @returns {boolean}
  */
-function hasExternalLinkToken(value) {
+function hasUrlOrLinkToken(value) {
   const tokenized = value.replace(/([a-z0-9])([A-Z][a-z])/g, '$1 $2');
   return /(?:^|[^a-z0-9])(?:url|link)(?:$|[^a-z0-9])/i.test(tokenized);
 }
