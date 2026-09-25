@@ -123,6 +123,9 @@ export function deadDashboardPages(pages, references) {
 function isDynamicallyRoutedPage(page) {
   if (!page.route || typeof page.route !== 'object') return false;
   const route = /** @type {Record<string, unknown>} */ (page.route);
+  // Best-effort exemption: these route shapes are usually entered through
+  // query-backed dashboard links, so this static pass avoids classifying them
+  // as dead without evaluating runtime data rows.
   return (
     typeof route['hash-query-parameter'] === 'string' && route['hash-query-parameter'].length > 0
   ) || (
