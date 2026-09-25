@@ -255,8 +255,9 @@ if (args[0] === 'aw' && args[1] === 'logs') {
 }
 if (args[0] === 'api' && args[1] === 'graphql') {
   const query = args.find((argument) => argument.startsWith('query=')) || '';
-  if (query.includes('repository(')) {
+  if (query.includes('issue(number: 42)')) {
     process.stdout.write(JSON.stringify({ data: {
+      // issue-status aliases the first batch item as i0.
       repository: { i0: {
         number: 42,
         state: 'CLOSED',
