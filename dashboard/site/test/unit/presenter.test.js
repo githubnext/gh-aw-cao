@@ -146,7 +146,7 @@ describe('dashboard DOM provenance', () => {
           {
             id: 'maintenance',
             kind: 'custom',
-            title: 'Maintenance',
+            title: 'Updates',
             views: [],
             'navigation-indicator': {
               label: 'updates available',
@@ -156,7 +156,7 @@ describe('dashboard DOM provenance', () => {
         ],
         navigation: [
           { pages: ['overview'] },
-          { label: 'Maintenance', placement: 'bottom', pages: ['maintenance'] }
+          { label: 'Updates', placement: 'bottom', pages: ['maintenance'] }
         ]
       }
     }));
@@ -191,10 +191,10 @@ describe('dashboard DOM provenance', () => {
 
     expect(loadSources).not.toHaveBeenCalled();
     expect(rendered.querySelector('[data-nav-page-id="maintenance"]')?.getAttribute('aria-label'))
-      .toBe('Maintenance');
+      .toBe('Updates');
     await vi.waitFor(() => {
       expect(rendered.querySelector('[data-nav-page-id="maintenance"]')?.getAttribute('aria-label'))
-        .toBe('Maintenance, updates available');
+        .toBe('Updates, updates available');
     });
     expect(loadPageSources).not.toHaveBeenCalledWith('maintenance', expect.anything());
     expect(loadSources).toHaveBeenCalledWith(['maintenance-campaign-updates'], expect.objectContaining({
@@ -218,7 +218,7 @@ describe('dashboard DOM provenance', () => {
           pages: [{
             id: 'maintenance',
             kind: 'custom',
-            title: 'Maintenance',
+            title: 'Updates',
             views: [],
             'navigation-indicator': {
               label: 'updates available',
@@ -1801,7 +1801,7 @@ describe('presenter built-in and custom pages', () => {
           pages: [{
             id: 'maintenance',
             kind: /** @type {'custom'} */ ('custom'),
-            title: 'Maintenance',
+            title: 'Updates',
             views: [{
               id: 'campaigns',
               title: 'Campaigns',

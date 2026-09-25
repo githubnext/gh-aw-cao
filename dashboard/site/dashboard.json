@@ -10146,7 +10146,7 @@
       },
       {
         "name": "maintenance-campaign-updates",
-        "intent": "Expose at most one CAO package update row for the Maintenance navigation indicator.",
+        "intent": "Expose at most one CAO package update row for the Updates navigation indicator.",
         "from": "campaigns",
         "filter": {
           "predicates": [
@@ -10165,7 +10165,7 @@
       },
       {
         "name": "maintenance-repository-upgrades",
-        "intent": "Expose at most one gh-aw compiler upgrade row for the Maintenance navigation indicator.",
+        "intent": "Expose at most one gh-aw compiler upgrade row for the Updates navigation indicator.",
         "from": "maintenance-repositories",
         "filter": {
           "predicates": [
@@ -13826,8 +13826,8 @@
       {
         "id": "maintenance",
         "kind": "custom",
-        "title": "Maintenance",
-        "navigation-label": "Maintenance",
+        "title": "Updates",
+        "navigation-label": "Updates",
         "navigation-indicator": {
           "label": "updates available",
           "any": [
@@ -15005,7 +15005,7 @@
         ]
       },
       {
-        "label": "Maintenance",
+        "label": "Updates",
         "placement": "bottom",
         "pages": [
           "maintenance",
