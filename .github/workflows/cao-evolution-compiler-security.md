@@ -108,10 +108,6 @@ safe-outputs:
 
 timeout-minutes: 45
 
-graders:
-  operational-value:
-    run: ./graders/cao-evolution-compiler-security-operational-value.sh
-
 steps:
   - name: Compile workflows with full validation and security scanning
     env:

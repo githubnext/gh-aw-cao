@@ -135,7 +135,6 @@ test("CAO Evolution compiler security worker runs the full validation suite", ()
 
   assert.match(source, /^name: "CAO Evolution \/ AW Compiler Security"$/m);
   assert.match(source, /worker: compiler-security/);
-  assert.match(source, /run: \.\/graders\/cao-evolution-compiler-security-operational-value\.sh/);
   assert.match(source, />"\$report_dir\/result\.json"/);
   assert.match(source, /gh aw compile \\/);
   for (const flag of [

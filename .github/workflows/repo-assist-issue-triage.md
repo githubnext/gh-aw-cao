@@ -86,14 +86,6 @@ concurrency:
   job-discriminator: ${{ github.run_id }}
   cancel-in-progress: true
 
-graders:
-  operational-value:
-    name: Bounded issue triage request
-    description: Whether the current run requested a bounded, target-bound triage action for one issue
-    unit: proportion
-    direction: higher_is_better
-    run: ./graders/repo-assist-issue-triage-operational-value.sh
-
 tracker-id: repo-assist-issue-triage
 
 tools:

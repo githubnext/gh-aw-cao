@@ -902,7 +902,7 @@ delivery, usefulness, implementation, or operational value.
 
 The engine MUST use only producer-supplied operational-grader results from the
 upstream `operational-value` protocol. It MUST NOT treat those run-scoped
-results as package-defined repository operational value.
+results as campaign-defined repository operational value.
 It MUST preserve the native metric value, metric order, unit, direction,
 grader identity, evaluator identity when present, and status. It MUST NOT
 normalize, clamp, replay, combine, or infer missing values.
