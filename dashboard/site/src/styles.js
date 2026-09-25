@@ -701,7 +701,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .chart-series-12 { stroke: var(--violet); }
 .line-chart-axis { stroke: var(--border); stroke-width: 1; }
 .line-chart-grid { stroke: var(--border-muted); stroke-width: .5; stroke-dasharray: 2 2; }
-.line-chart-y-axis text { fill: var(--muted); font-size: 2.6px; font-variant-numeric: tabular-nums; }
+.line-chart-y-axis text { fill: var(--muted); font-size: 1.8px; font-variant-numeric: tabular-nums; }
 .histogram-chart-grid { stroke: var(--border-muted); stroke-width: .5; stroke-dasharray: 1.5 2; }
 .line-chart-series { stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; }
 .area-chart-area { stroke-width: 1; fill-opacity: .52; vector-effect: non-scaling-stroke; }
