@@ -75,6 +75,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
             ${{ runner.temp }}/cao-activity/drain3_weights.json
+            ${{ runner.temp }}/cao-activity/memory
           key: ${{ steps.activity-cache-key.outputs.value }}
           restore-keys: |
             cao-activity-v5-
@@ -181,6 +182,25 @@ jobs:
               throw new Error(`Workflow discovery failed with exit code ${result.exitCode}`)
             }
             core.info('Workflow discovery completed')
+
+      - name: Fetch repository memory refs into a separate checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: cao-memory-source
+          fetch-depth: 0
+          persist-credentials: false
+          token: ${{ steps.activity-app-token.outputs.token || github.token }}
+
+      - name: Collect campaign repository memory
+        env:
+          REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity/inventory-sources.json
+          REPORT_REPOSITORY_MEMORY: ${{ runner.temp }}/cao-activity/memory
+        run: |
+          node activity/repository-memory.mjs \
+            "$GITHUB_WORKSPACE/cao-memory-source" \
+            "$REPORT_INVENTORY_SOURCES" \
+            "$REPORT_REPOSITORY_MEMORY"
 
       - name: Download agentic workflow logs
         env:
@@ -316,6 +336,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
             ${{ runner.temp }}/cao-activity/drain3_weights.json
+            ${{ runner.temp }}/cao-activity/memory
 
   cache:
     needs: index
@@ -343,6 +364,10 @@ jobs:
               missing=1
             fi
           done
+          if [[ ! -s "$snapshot_root/memory/manifest.json" ]]; then
+            echo "Activity snapshot file is missing or empty: memory/manifest.json" >&2
+            missing=1
+          fi
           # A collection that observed no agentic runs publishes header-only
           # phase shards and trains no drain3 weights.
           if grep -qs '"kind":"record"' "$snapshot_root"/gh-aw-logs-runs/*.jsonl && [[ ! -s "$snapshot_root/drain3_weights.json" ]]; then
@@ -378,6 +403,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
             ${{ runner.temp }}/cao-activity/drain3_weights.json
+            ${{ runner.temp }}/cao-activity/memory
           key: ${{ needs.index.outputs.cache-key }}
 
   notify-failure:

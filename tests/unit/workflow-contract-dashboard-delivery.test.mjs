@@ -219,6 +219,7 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   const activityCollector = readFileSync(join(root, "activity", "collect-logs.sh"), "utf8");
   const activityLogs = readFileSync(join(root, "activity", "logs.mjs"), "utf8");
   const activityRunner = readFileSync(join(root, "activity", "run-activity.mjs"), "utf8");
+  const repositoryMemory = readFileSync(join(root, "activity", "repository-memory.mjs"), "utf8");
   const reportAssets = ["aic-usage.mjs", "activity-collectors.mjs", "bundle-dashboards.mjs", "compose-dashboard-documents.mjs", "configure-site.mjs", "dashboard-language-sources.mjs", "records.mjs", "text-utils.mjs"];
   const activityEntrypoints = new Set(["activity-collectors.mjs"]);
   const buildEntrypoints = new Set(["bundle-dashboards.mjs", "configure-site.mjs"]);
@@ -255,6 +256,10 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(activityIndexJob, /pull-requests: read\n\s+security-events: read\n\s+vulnerability-alerts: read/);
   assert.match(activityIndexJob, /permission-security-events: read/);
   assert.match(activityIndexJob, /permission-vulnerability-alerts: read/);
+  assert.match(activityIndexJob, /Fetch repository memory refs into a separate checkout[\s\S]*?path: cao-memory-source[\s\S]*?fetch-depth: 0[\s\S]*?persist-credentials: false/);
+  assert.match(activityIndexJob, /Collect campaign repository memory[\s\S]*?activity\/repository-memory\.mjs[\s\S]*?cao-memory-source[\s\S]*?cao-activity\/memory/);
+  assert.match(repositoryMemory, /for-each-ref[\s\S]*?MEMORY_REF_PREFIX/);
+  assert.match(repositoryMemory, /ls-tree[\s\S]*?cat-file/);
   assert.doesNotMatch(activityIndexJob, /actions\/cache\/save@/);
   assert.match(activityIndexJob, /Upload activity snapshot[\s\S]*?retention-days: 1/);
   assert.match(activityCacheJob, /needs: index[\s\S]*?actions: write[\s\S]*?contents: none/);
@@ -268,6 +273,7 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(activityNotifyFailureJob, /GITHUB_WORKFLOW_SHA[\s\S]*?githubnext\/gh-aw-cao\/blob\/main\/skills\/debug-cao\/SKILL\.md/);
   assert.doesNotMatch(activityNotifyFailureJob, /cancelled/);
   assert.match(dashboardWorkflow, /key: cao-activity-v5-lookup-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
+  assert.match(dashboardWorkflow, /Restore collected activity data[\s\S]*?cao-activity\/memory/);
   assert.match(activityWorkflow, /Restore legacy activity cache layout[\s\S]*?restore-keys: \|[\s\S]*?cao-activity-v3-/);
   assert.equal((activityWorkflow.match(/cao-activity-v3-/g) || []).length, 1);
   assert.doesNotMatch(dashboardWorkflow, /(?:key|restore-keys): cao-activity-(?!v5-)/);
@@ -300,6 +306,7 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(siteBuildScript, /from "esbuild"/);
   assert.match(dashboardWorkflow, /const crypto = require\('crypto'\)[\s\S]*?const collectedFiles = \[[\s\S]*?'inventory-sources\.json'[\s\S]*?'gh-aw-logs\.sqlite'[\s\S]*?for \(const fileName of collectedFiles\)[\s\S]*?fs\.copyFileSync[\s\S]*?payloadHashes\['gh-aw-logs\.sqlite'\] = crypto[\s\S]*?createHash\('sha256'\)[\s\S]*?REPORT_OUTPUT[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?const payloadManifest = path\.join\(process\.env\.REPORT_OUTPUT, 'payload-hashes\.json'\)[\s\S]*?Wrote payload-hashes\.json[\s\S]*?\['gh-aw-logs-runs', 'gh-aw-logs-records'\][\s\S]*?recursive: true/);
   assert.doesNotMatch(dashboardWorkflow, /REPORT_DASHBOARD_SOURCES|\/sources\.json/);
+  assert.match(dashboardWorkflow, /fs\.cpSync\(memorySource, memoryDestination, \{ recursive: true \}\)/);
   assert.doesNotMatch(dashboardManifest, /redirects\.mjs/);
   assert.doesNotMatch(dashboardWorkflow, /legacy dashboard redirects|redirects\.mjs/);
   assert.match(dashboardWorkflow, /actions\/upload-artifact@[0-9a-f]{40}/);
@@ -436,7 +443,7 @@ test("Activity campaign owns the shared collected-data cache contract", () => {
   assert.equal((workflow.match(/pull-requests: read/g) || []).length, 3);
   assert.match(workflow, /Generate GitHub App token for activity[\s\S]*?GH_AW_GITHUB_READ_APP_ID[\s\S]*?GH_AW_GITHUB_READ_APP_PRIVATE_KEY/);
   assert.match(workflow, /actions\/create-github-app-token@[0-9a-f]{40}/);
-  assert.equal((workflow.match(/steps\.activity-app-token\.outputs\.token \|\| github\.token/g) || []).length, 4);
+  assert.equal((workflow.match(/steps\.activity-app-token\.outputs\.token \|\| github\.token/g) || []).length, 5);
   assert.doesNotMatch(workflow, /ACTIVITY_INDEXER|ACTIVITY_LOGS|ACTIVITY_RUNNER|GITHUB_TELEMETRY|cao-gh\.jsonl/);
   assert.match(workflow, /Collect dashboard inventory[\s\S]*?uses: actions\/github-script@[0-9a-f]{40}[\s\S]*?core\.info\('Workflow discovery started'\)[\s\S]*?'discover-workflows'[\s\S]*?core\.info\('Workflow discovery completed'\)/);
   assert.match(workflow, /Restore activity cache[\s\S]*?Download agentic workflow logs[\s\S]*?Upload activity snapshot[\s\S]*?cache:[\s\S]*?needs: index[\s\S]*?Download activity snapshot[\s\S]*?Save activity cache/);
