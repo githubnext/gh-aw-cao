@@ -110,6 +110,20 @@ describe('dashboard sidebar', () => {
     expect(labels).toEqual(['Main', 'Experimental']);
   });
 
+  it('labels experimental pages in desktop and mobile navigation', () => {
+    const sidebar = renderDashboardNavigation([
+      { id: 'overview', title: 'Overview' },
+      { id: 'preview', title: 'Preview', experimental: true }
+    ], 'Example', [{ label: 'Main', pages: ['overview', 'preview'] }]);
+
+    const desktopLink = sidebar.querySelector('[data-nav-page-id="preview"]');
+    const mobileLink = sidebar.querySelector('[data-mobile-nav-page-id="preview"]');
+    expect(desktopLink?.querySelector('.experimental-page-label')?.textContent).toBe('Experimental');
+    expect(mobileLink?.querySelector('.experimental-page-label')?.textContent).toBe('Experimental');
+    expect(desktopLink?.getAttribute('aria-label')).toBe('Preview, Experimental');
+    expect(mobileLink?.getAttribute('aria-label')).toBe('Preview, Experimental');
+  });
+
   it('anchors bottom navigation sections after the standard sections', () => {
     const sidebar = renderDashboardNavigation([
       { id: 'overview', title: 'Overview' },

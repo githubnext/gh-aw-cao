@@ -16,7 +16,7 @@ const metadata = {
 };
 
 describe('indexing dashboard', () => {
-  it('projects normalized ingestion transactions into non-empty insights', () => {
+  it('projects retained records and workflow runs into daily insights', () => {
     const results = executeDashboardQueries(
       dashboard.queries,
       {
@@ -26,8 +26,9 @@ describe('indexing dashboard', () => {
             {
               id: 'ingest-normalized-jsonl:one',
               kind: 'ingest-normalized-jsonl',
-              createdAt: '2026-09-24T00:00:00Z',
+              createdAt: '2026-09-23T00:00:00Z',
               records: 12,
+              committedRecords: 10,
               rawRuns: 3
             },
             {
@@ -35,6 +36,7 @@ describe('indexing dashboard', () => {
               kind: 'ingest-normalized-jsonl',
               createdAt: '2026-09-24T01:00:00Z',
               records: 8,
+              committedRecords: 7,
               rawRuns: 2
             },
             {
@@ -42,6 +44,7 @@ describe('indexing dashboard', () => {
               kind: 'ingest-dashboard-sources',
               createdAt: '2026-09-24T02:00:00Z',
               records: 99,
+              committedRecords: 99,
               rawRuns: 99
             }
           ],
@@ -57,11 +60,20 @@ describe('indexing dashboard', () => {
         issues: { source: 'issues', rows: [{ event: 'issue:one' }], metadata },
         'operational-values': { source: 'operational-values', rows: [], metadata }
       },
-      ['indexing-daily-ingestion', 'indexing-database-table-counts']
+      [
+        'indexing-daily-records',
+        'indexing-daily-workflow-runs',
+        'indexing-database-table-counts'
+      ]
     );
 
-    expect(results['indexing-daily-ingestion'].rows).toEqual([
-      { day: '2026-09-24', records: 20, 'workflow-runs': 5 }
+    expect(results['indexing-daily-records'].rows).toEqual([
+      { day: '2026-09-23', records: 10 },
+      { day: '2026-09-24', records: 7 }
+    ]);
+    expect(results['indexing-daily-workflow-runs'].rows).toEqual([
+      { day: '2026-09-23', 'workflow-runs': 3 },
+      { day: '2026-09-24', 'workflow-runs': 2 }
     ]);
     expect(results['indexing-database-table-counts'].rows).toEqual([
       { table: 'ingestion transactions', records: 3 },

@@ -66,11 +66,11 @@ import {
  */
 
 /**
- * @typedef {{ id: string, kind: 'built-in', page: string, title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, ['filter-bar']?: boolean, form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], definition?: { views?: Array<unknown>, sections?: PresentablePageSection[], ['data-state']?: Record<string, boolean> } }} PresentableBuiltInPage
+ * @typedef {{ id: string, kind: 'built-in', page: string, title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, experimental?: boolean, ['filter-bar']?: boolean, form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], definition?: { views?: Array<unknown>, sections?: PresentablePageSection[], ['data-state']?: Record<string, boolean> } }} PresentableBuiltInPage
  */
 
 /**
- * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, ['filter-bar']?: boolean, form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string, ['title-format']?: 'title-case' }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
+ * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, experimental?: boolean, ['filter-bar']?: boolean, form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string, ['title-format']?: 'title-case' }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
  */
 
 /**
@@ -221,6 +221,7 @@ export function renderDashboard(input) {
     header: renderDashboardHeader({
       title: initialPage ? getPageTitle(initialPage) : '',
       description: initialPage?.description,
+      experimental: initialPage?.experimental,
       overviewPageHref: overviewPage ? `#page-${encodeURIComponent(overviewPage.id)}` : initialPageHref,
       dashboardHorizon: dashboardHorizon.element,
       dashboardAppearance,
@@ -686,6 +687,7 @@ function renderPagePlaceholder(page) {
     'data-page-id': page.id,
     'data-page-title': getPageTitle(page),
     'data-page-description': payload.description ?? '',
+    'data-page-experimental': page.experimental === true ? 'true' : undefined,
     'data-route-parameter': routeParameter,
     'data-route-navigation-page': routeNavigationPage,
     'data-route-title-format': payload.route?.['title-format'],
@@ -1121,6 +1123,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   const breadcrumbDashboard = root.querySelector('[data-breadcrumb-dashboard]');
   const pageTitle = root.querySelector('#page-title');
   const pageTitleLink = root.querySelector('[data-page-title-link]');
+  const pageExperimental = root.querySelector('[data-page-experimental]');
   const pageDescription = root.querySelector('.overview-header [data-page-description]');
   const pageMode = root.querySelector('[data-page-mode]');
   const pageScroller = root.querySelector('main.dashboard-prototype');
@@ -1187,6 +1190,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const description = routeDescription.trim() || page?.dataset.pageDescription || '';
     if (breadcrumbPage) breadcrumbPage.textContent = title;
     if (pageTitle) pageTitle.textContent = title;
+    if (pageExperimental instanceof HTMLElement) pageExperimental.hidden = page?.dataset.pageExperimental !== 'true';
     updateDocumentTitle(root.ownerDocument, title, dashboardTitle);
     renderPageTitleLink(pageTitleLink, null);
     if (pageDescription) {

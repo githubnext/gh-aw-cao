@@ -1613,8 +1613,54 @@
     },
     "queries": [
       {
-        "name": "indexing-daily-ingestion",
-        "intent": "Aggregate new workflow runs and records ingested from CAO Activity by UTC day.",
+        "name": "indexing-daily-records",
+        "intent": "Aggregate records committed from CAO Activity by ingestion UTC day.",
+        "from": "transactions",
+        "filter": {
+          "predicates": [
+            {
+              "field": "kind",
+              "in": [
+                "ingest-jsonl",
+                "ingest-normalized-json",
+                "ingest-normalized-jsonl"
+              ]
+            }
+          ]
+        },
+        "compute": [
+          {
+            "as": "day",
+            "function": "date-day",
+            "args": [
+              {
+                "field": "createdAt"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "day"
+          ],
+          "values": [
+            {
+              "field": "committedRecords",
+              "as": "records",
+              "reducer": "sum"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "day",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
+        "name": "indexing-daily-workflow-runs",
+        "intent": "Aggregate workflow runs ingested from CAO Activity by UTC day.",
         "from": "transactions",
         "filter": {
           "predicates": [
@@ -1647,11 +1693,6 @@
             {
               "field": "rawRuns",
               "as": "workflow-runs",
-              "reducer": "sum"
-            },
-            {
-              "field": "records",
-              "as": "records",
               "reducer": "sum"
             }
           ]
@@ -10156,6 +10197,7 @@
         "title": "Steering",
         "navigation-label": "Steering",
         "icon": "stopwatch",
+        "experimental": true,
         "class-name": "steering-page",
         "description": "Gateway steering warnings injected when agentic runs approach their AI Credit budget, their time limit, or another declared limit.",
         "views": [
@@ -13256,6 +13298,7 @@
         "page": "issues",
         "title": "Issues",
         "icon": "issue-opened",
+        "experimental": true,
         "description": "Retained GitHub issues created by agentic workflow safe outputs.",
         "definition": {
           "data-state": {
@@ -13440,6 +13483,7 @@
         "title": "Indexing",
         "navigation-label": "Indexing",
         "icon": "database",
+        "experimental": true,
         "description": "Monitor CAO Activity ingestion and inspect retained dashboard transactions.",
         "views": [
           {
@@ -13472,7 +13516,7 @@
             "title": "Indexed data over time",
             "description": "New workflow runs and records retained from CAO Activity each day.",
             "data": {
-              "source": "indexing-daily-ingestion"
+              "source": "indexing-daily-records"
             },
             "mark": "chart",
             "chart": "bar",
@@ -13496,7 +13540,7 @@
             "title": "Workflow runs indexed",
             "description": "New workflow runs retained from CAO Activity each day.",
             "data": {
-              "source": "indexing-daily-ingestion"
+              "source": "indexing-daily-workflow-runs"
             },
             "mark": "chart",
             "chart": "bar",

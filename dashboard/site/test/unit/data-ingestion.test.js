@@ -123,6 +123,15 @@ describe('database table ingestion and queries', () => {
       committedRecords: 1
     });
 
+    const legacyReceipt = (await readTransactions(indexedDB))
+      .find(({ kind }) => kind === 'ingest-normalized-jsonl');
+    expect(legacyReceipt).toBeDefined();
+    delete legacyReceipt.rawRuns;
+    await recordTransaction(indexedDB, legacyReceipt);
+    await expect(ingestNormalizedJsonl(indexedDB, chunks(), options)).resolves.toMatchObject({
+      updated: true,
+      committedRecords: 1
+    });
     await expect(ingestNormalizedJsonl(indexedDB, chunks(), options)).resolves.toMatchObject({
       updated: false,
       skipped: true
@@ -181,7 +190,11 @@ describe('database table ingestion and queries', () => {
     expect((await readCanonicalBatch(indexedDB)).runs.map(({ id }) => id).sort())
       .toEqual(['run:current', 'run:expired']);
     expect(await readTransactions(indexedDB)).toEqual(expect.arrayContaining([
-      expect.objectContaining({ kind: 'ingest-normalized-jsonl', maintenanceDeferred: true })
+      expect.objectContaining({
+        kind: 'ingest-normalized-jsonl',
+        maintenanceDeferred: true,
+        rawRuns: 1
+      })
     ]));
 
     await finalizeNormalizedJsonlIngestion(indexedDB, maintenance);

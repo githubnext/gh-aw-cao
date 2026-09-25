@@ -1022,6 +1022,22 @@ describe('presenter built-in and custom pages', () => {
           source: 'indexing-database-table-counts',
           rows: [{ table: 'ingestion transactions', records: 1 }],
           metadata
+        },
+        'indexing-daily-records': {
+          source: 'indexing-daily-records',
+          rows: [
+            { day: '2026-09-01', records: 8 },
+            { day: '2026-09-02', records: 10 }
+          ],
+          metadata
+        },
+        'indexing-daily-workflow-runs': {
+          source: 'indexing-daily-workflow-runs',
+          rows: [
+            { day: '2026-09-01', 'workflow-runs': 6 },
+            { day: '2026-09-02', 'workflow-runs': 8 }
+          ],
+          metadata
         }
       }
     });
@@ -3071,7 +3087,7 @@ describe('presenter built-in and custom pages', () => {
                 encoding: { value: { field: 'run', aggregate: 'count' } }
               }]
             },
-            { id: 'second', kind: /** @type {'custom'} */ ('custom'), title: 'Second', description: 'Second page description', views: [] }
+            { id: 'second', kind: /** @type {'custom'} */ ('custom'), title: 'Second', description: 'Second page description', experimental: true, views: [] }
           ]
         }
       },
@@ -3113,6 +3129,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('#page-title')?.textContent).toBe('First');
     expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('First');
     expect(rendered.querySelector('[data-page-description]')?.textContent).toBe('First page description');
+    expect(/** @type {HTMLElement} */ (rendered.querySelector('.title-area [data-page-experimental]')).hidden).toBe(true);
     expect(rendered.ownerDocument.title).toBe('First · Page Navigation');
     first.dispatchEvent(new CustomEvent('dashboard-route-allocation', {
       bubbles: true,
@@ -3153,6 +3170,8 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('#page-title')?.textContent).toBe('Canonical second');
     expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Canonical second');
     expect(rendered.querySelector('[data-page-description]')?.textContent).toBe('Canonical second description');
+    expect(/** @type {HTMLElement} */ (rendered.querySelector('.title-area [data-page-experimental]')).hidden).toBe(false);
+    expect(rendered.querySelector('.title-area [data-page-experimental]')?.textContent).toBe('Experimental');
     expect(rendered.ownerDocument.title).toBe('Canonical second · Page Navigation');
     expect(titleLink.hidden).toBe(true);
     expect(titleLink.hasAttribute('href')).toBe(false);
@@ -3169,6 +3188,7 @@ describe('presenter built-in and custom pages', () => {
 
     pageScroller.scrollTop = 80;
     firstLink.click();
+    expect(/** @type {HTMLElement} */ (rendered.querySelector('.title-area [data-page-experimental]')).hidden).toBe(true);
 
     expect(renderedSecond.hasAttribute('data-page-pending')).toBe(true);
     expect(renderedSecond.childElementCount).toBe(0);

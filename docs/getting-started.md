@@ -82,7 +82,7 @@ curl --fail --silent --show-error --location \
   bash
 ```
 
-The script installs `gh-aw` when needed, adds the latest published core CAO campaign, initializes the minimal control policy, and makes the repository-local `./cao.sh` CLI executable. Rerunning it after those files are installed makes no changes. Use the individual `gh aw` and CAO CLI commands when you intentionally need an older campaign release.
+The script installs `gh-aw` when needed, adds the latest published core CAO campaign, initializes the minimal control policy, and makes the repository-local `./cao.sh` CLI executable. If an installed `gh-aw` is too old for the campaign, the installer asks before running `gh extension upgrade gh-aw`. Declining or running without an interactive terminal stops setup without an error; run `gh extension upgrade gh-aw` and rerun the installer when ready. Rerunning it after those files are installed makes no changes. Use the individual `gh aw` and CAO CLI commands when you intentionally need an older campaign release.
 
 The root campaign installs:
 

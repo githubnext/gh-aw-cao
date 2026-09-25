@@ -242,8 +242,8 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Query `temporal-series.measures[]` | `field`, `key`, `kind` |
 | Query `temporal-series.maps[]` | `field`, `definitions`, `group`, `kind` |
 | Query `select` entry | `field`, `as` |
-| Built-in page | `id`, `kind`, `page`, `title`, `navigation-label`, `navigation-indicator`, `description`, `icon`, `class-name`, `form`, `definition` |
-| Custom page | `id`, `kind`, `title`, `navigation-label`, `navigation-indicator`, `description`, `icon`, `class-name`, `form`, `route`, `views`, `sections` |
+| Built-in page | `id`, `kind`, `page`, `title`, `navigation-label`, `navigation-indicator`, `description`, `icon`, `class-name`, `experimental`, `form`, `definition` |
+| Custom page | `id`, `kind`, `title`, `navigation-label`, `navigation-indicator`, `description`, `icon`, `class-name`, `experimental`, `form`, `route`, `views`, `sections` |
 | Page `form` | `title`, `description`, `update`, `fields` |
 | Form `update` | `strategy`, `delay-ms` |
 | Form field | `id`, `label`, `description`, `control`, `default`, `min`, `max`, `step`, `options` |
@@ -958,6 +958,8 @@ The optional page `icon` is the canonical name of an Octicon supported by the pr
 
 The optional page `navigation-label` provides a concise sidebar label when the page title is more descriptive. A dashboard `navigation` section may reference a focused subset of declared pages; omitted pages remain available as deep-link destinations.
 
+A page may set `experimental: true`. Presenters render a visible **Experimental** label with the page in navigation and beside its active page title. This metadata is informational only and does not grant authorization or access to data.
+
 A page may declare `navigation-indicator` with a non-empty `label` and an `any` sequence of bounded source names. Presenters subscribe only to those declared indicator sources, set the navigation item's accessible label to include the indicator label when any source returns a row, and render a status dot as a supporting visual cue. Indicator sources **MUST** be declarative query outputs that already encode the business condition.
 
 A navigation section may set `experimental: true`. Presenters combine pages from all experimental sections into one visible **Experimental** navigation section that is collapsed by default. Activating a direct deep link to an experimental page expands that section. This metadata changes navigation presentation only and does not grant authorization or access to data.
@@ -983,6 +985,7 @@ For pages that opt in to `filter-bar: true`, the presenter renders a filter bar 
 - **DLS-PAGE-013:** The `findings` page **MUST** expose finding summary, severity, status, scope, time, provenance, and available issue, pull-request, and run links.
 - **DLS-PAGE-014:** Every built-in page **MUST** honor the dashboard scope, time, and filters and expose availability.
 - **DLS-PAGE-015:** The `campaigns` page **MUST** expose centrally managed campaign inventory, rollout-mode filtering, actual campaign AIC against summed per-run limits without treating missing usage as zero, the complete-attempt AIC allowance, retained usage coverage, and time-ordered successful, failed, and cancelled campaign-run trends.
+- **DLS-PAGE-016:** `experimental`, when present on a page, **MUST** be Boolean and defaults to `false`. A presenter **MUST** render an **Experimental** label in every navigation item for that page and beside the active page title.
 - **DLS-PAGE-016:** When `class-name` is present, it **MUST** be a canonical identifier and a renderer **MUST** add it to the page container without deriving additional CSS class names from `id` or `page`.
 - **DLS-PAGE-017:** The `issues` page **MUST** use the predefined built-in page configuration and the reusable `issue` entity-card definition, bind to a declared query with issue arguments, and drill to each issue's safe GitHub URL.
 - **DLS-PAGE-017:** A presenter **MUST** render one filter bar in the view chrome only when that page declares `filter-bar: true`, toggle its tuning controls from the horizon text, and apply valid filter edits automatically. A presenter **MUST** persist time-horizon and rollout-mode settings globally in local storage and activate all rollout modes by default. Available view-mode controls **MUST** remain in page chrome when the filter bar is omitted.

@@ -157,10 +157,9 @@ export function syncDashboardNavigationIndicators(root, pages, sources) {
   for (const page of pages) {
     const indicator = navigationIndicator(page);
     if (!indicator) continue;
-    const title = pageTitle(page);
     const active = indicatorMatches(indicator, sources);
     if (active) activeMobileIndicatorLabels.push(indicator.label);
-    const label = active ? `${title}, ${indicator.label}` : title;
+    const label = pageNavigationAccessibleLabel(page, active ? indicator.label : '');
     const pageId = selectorIdentifier(String(page.id));
     const links = root.querySelectorAll(`[data-nav-page-id="${pageId}"], [data-mobile-nav-page-id="${pageId}"]`);
     for (const link of links) {
@@ -242,6 +241,20 @@ function pageIcon(page) {
   return typeof page.icon === 'string' ? page.icon : 'server';
 }
 
+/** @param {Record<string, unknown>} page @param {string} [indicatorLabel] */
+function pageNavigationAccessibleLabel(page, indicatorLabel = '') {
+  return [pageTitle(page), page.experimental === true ? 'Experimental' : '', indicatorLabel]
+    .filter(Boolean)
+    .join(', ');
+}
+
+/** @param {Record<string, unknown>} page */
+function renderExperimentalPageLabel(page) {
+  return page.experimental === true
+    ? h('span', { className: 'experimental-page-label', 'aria-hidden': 'true' }, 'Experimental')
+    : null;
+}
+
 /** @param {Record<string, unknown>} page @param {boolean} isActive @param {boolean} mobileOverflow @param {boolean} narrowMobileOverflow */
 function renderNavItem(page, isActive, mobileOverflow, narrowMobileOverflow) {
   const title = pageTitle(page);
@@ -252,12 +265,13 @@ function renderNavItem(page, isActive, mobileOverflow, narrowMobileOverflow) {
       href: `#page-${page.id}`,
       className: `nav-item${isActive ? ' active' : ''}${mobileOverflow ? ' mobile-nav-overflow' : ''}${narrowMobileOverflow ? ' narrow-mobile-nav-overflow' : ''}`,
       'aria-current': isActive ? 'page' : undefined,
-      'aria-label': title,
+      'aria-label': pageNavigationAccessibleLabel(page),
       title,
       'data-nav-page-id': page.id
     },
     octicon(pageIcon(page)),
     h('span', { className: 'nav-label' }, title),
+    renderExperimentalPageLabel(page),
     hasIndicator ? h('span', { className: 'nav-indicator', hidden: true, 'aria-hidden': 'true', 'data-nav-indicator': '' }) : null
   );
 }
@@ -272,12 +286,13 @@ function renderMobileNavItem(page, isActive) {
       href: `#page-${page.id}`,
       className: `mobile-nav-item${isActive ? ' active' : ''}`,
       'aria-current': isActive ? 'page' : undefined,
-      'aria-label': title,
+      'aria-label': pageNavigationAccessibleLabel(page),
       title,
       'data-mobile-nav-page-id': page.id
     },
     octicon(pageIcon(page)),
     h('span', { className: 'mobile-nav-label' }, title),
+    renderExperimentalPageLabel(page),
     hasIndicator ? h('span', { className: 'nav-indicator', hidden: true, 'aria-hidden': 'true', 'data-nav-indicator': '' }) : null
   );
 }

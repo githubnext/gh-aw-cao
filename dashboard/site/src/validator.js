@@ -1644,6 +1644,13 @@ function validatePage(page, pageNode, path, pageIds, errors) {
   if (page['class-name'] !== undefined) {
     validateRequiredIdentifier(page['class-name'], `${path}.class-name`, 'page class name', errors);
   }
+  if (page.experimental !== undefined && typeof page.experimental !== 'boolean') {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      'experimental must be a Boolean when present.',
+      `${path}.experimental`
+    ));
+  }
   if (page['filter-bar'] !== undefined && typeof page['filter-bar'] !== 'boolean') {
     errors.push(createError(
       ERROR_CODES.missingOrInvalidRequiredField,

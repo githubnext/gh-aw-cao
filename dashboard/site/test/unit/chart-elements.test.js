@@ -185,7 +185,11 @@ describe('chart element helpers', () => {
     }
 
     const point = [{ x: 'only', y: 1, color: null }];
-    for (const chartType of ['bar', 'histogram', 'line']) {
+    const bar = renderChartWidget('bar', point, listChartSeries(point));
+    expect(bar.querySelector('[role="status"]')).toBeNull();
+    expect(bar.querySelector('rect[role="img"]')).not.toBeNull();
+
+    for (const chartType of ['histogram', 'line']) {
       const chart = renderChartWidget(chartType, point, listChartSeries(point));
       expect(chart.querySelector('[role="status"]')?.textContent).toBe('Not enough data to show this visualization.');
     }
