@@ -58,10 +58,10 @@ const DETAIL_GROUPS = [
     title: 'Scope',
     fields: [
       ['Campaign', 'campaign-name', 'campaign'],
-      ['Workflow', 'workflow-name', 'workflow'],
+      ['Workflow', 'workflow-name', 'workflow', 'workflow-link'],
       ['Workflow role', 'workflow-role'],
-      ['Runtime repository', 'runtime-repository'],
-      ['Target repository', 'target-repository']
+      ['Runtime repository', 'runtime-repository', undefined, 'repository-link'],
+      ['Target repository', 'target-repository', undefined, 'target-repository-link']
     ]
   },
   {
@@ -136,7 +136,8 @@ function renderProblem(problem) {
       'div',
       { className: 'problem-view-sections' },
       ...DETAIL_GROUPS.map((group) => renderDetailGroup(group, problem))
-    )
+    ),
+    renderFailureLog(problem)
   );
 }
 
@@ -147,7 +148,7 @@ function renderHighlight(label, value) {
 }
 
 /**
- * @param {{ title: string, fields: string[][] }} group
+ * @param {{ title: string, fields: (string | undefined)[][] }} group
  * @param {Record<string, unknown>} problem
  */
 function renderDetailGroup(group, problem) {
@@ -158,11 +159,25 @@ function renderDetailGroup(group, problem) {
     h(
       'dl',
       null,
-      ...group.fields.map(([label, field, fallback]) => {
-        const value = text(problem[field]) || (fallback ? text(problem[fallback]) : '') || 'Unavailable';
-        return h('div', null, h('dt', null, label), h('dd', null, value));
+      ...group.fields.map(([label, field, fallback, linkField]) => {
+        const value = text(problem[field ?? '']) || (fallback ? text(problem[fallback]) : '') || 'Unavailable';
+        const link = linkField ? findLink(problem, linkField) : null;
+        return h('div', null, h('dt', null, label), h('dd', null, renderExternalLinkOrFallback(link, value, value)));
       })
     )
+  );
+}
+
+/** @param {Record<string, unknown>} problem */
+function renderFailureLog(problem) {
+  const log = text(problem['failure-log']);
+  return h(
+    'section',
+    { className: 'problem-view-log', 'aria-label': 'Raw failed-step log' },
+    h('h2', null, 'Raw failed-step log'),
+    log
+      ? h('pre', null, log)
+      : h('p', null, 'The collector did not retain raw output for this failed step.')
   );
 }
 

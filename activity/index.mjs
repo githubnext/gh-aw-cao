@@ -84,8 +84,15 @@ function runRecord(run, repository) {
     ...(run.failure_job ? { failureJob: String(run.failure_job) } : {}),
     ...(run.failure_step ? { failureStep: String(run.failure_step) } : {}),
     ...(run.failure_message ? { failureMessage: String(run.failure_message) } : {}),
+    ...(failureLog(run.failure_log ?? run.failureLog ?? run.failed_step_log ?? run.failedStepLog)),
     ...(Array.isArray(run.jobs) ? { jobs: run.jobs.map(performanceJobRecord) } : {}),
   };
+}
+
+function failureLog(value) {
+  if (typeof value !== "string") return {};
+  const log = value.replace(/\r\n?/g, "\n").trim();
+  return log ? { failureLog: log.slice(0, 65_536) } : {};
 }
 
 function summarizeRuns(records) {

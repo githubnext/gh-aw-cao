@@ -8067,6 +8067,10 @@
                 "as": "failure-step"
               },
               {
+                "field": "failure-log",
+                "as": "failure-log"
+              },
+              {
                 "field": "gh-aw-version",
                 "as": "gh-aw-version"
               },
@@ -8089,6 +8093,14 @@
               {
                 "field": "run-link",
                 "as": "run-link"
+              },
+              {
+                "field": "repository-link",
+                "as": "repository-link"
+              },
+              {
+                "field": "workflow-link",
+                "as": "workflow-link"
               }
             ]
           }
@@ -8112,6 +8124,47 @@
               },
               {
                 "field": "workflow-name"
+              }
+            ]
+          },
+          {
+            "as": "_target-repository",
+            "function": "lower",
+            "args": [
+              {
+                "field": "target-repository"
+              }
+            ]
+          },
+          {
+            "as": "_target-repository-encoded",
+            "function": "url-encode",
+            "args": [
+              {
+                "field": "_target-repository"
+              }
+            ]
+          },
+          {
+            "as": "target-repository-link",
+            "function": "dashboard-link",
+            "args": [
+              {
+                "field": "target-repository"
+              },
+              {
+                "function": "concat",
+                "args": [
+                  {
+                    "value": "#page-repository-detail?repository="
+                  },
+                  {
+                    "field": "_target-repository-encoded"
+                  }
+                ]
+              },
+              {
+                "field": "target-repository"
               }
             ]
           }

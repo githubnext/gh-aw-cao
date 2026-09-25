@@ -1885,6 +1885,10 @@ tbody tr:hover { background: var(--canvas-subtle); }
 .problem-view-section h2 { margin: 0 0 16px; font-size: 1rem; }
 .problem-view-section dl { display: grid; gap: 14px; margin: 0; }
 .problem-view-section dd { margin: 4px 0 0; overflow-wrap: anywhere; }
+.problem-view-log { min-width: 0; padding: 20px; border: 1px solid var(--border); border-radius: 6px; }
+.problem-view-log h2 { margin: 0 0 16px; font-size: 1rem; }
+.problem-view-log p { margin: 0; color: var(--muted); }
+.problem-view-log pre { max-height: 32rem; margin: 0; overflow: auto; padding: 16px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font: .75rem/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 .mode-indicator { min-height: 22px; display: inline-flex; flex: none; align-items: center; gap: 5px; padding: 1px 7px; border: 1px solid var(--border); border-radius: 2em; font-size: .6875rem; font-weight: 600; text-transform: none; white-space: nowrap; }
 .mode-indicator[hidden] { display: none; }
 .mode-indicator .octicon { width: 13px; height: 13px; flex-basis: 13px; }
