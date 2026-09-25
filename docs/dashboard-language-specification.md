@@ -1054,6 +1054,7 @@ A dashboard CLI action placement is `toolbar`, `settings`, `view`, or `row`. A `
 A dashboard CLI action command is a single-line GitHub CLI invocation.
 Presenters recognize `gh aw ...`, `gh workflow run <workflow> ...`, and
 `gh agent-task create --from-file -` by default; the workflow command triggers a workflow that declares `workflow_dispatch`, while the agent-task command receives the reviewed prompt through standard input.
+The agent-task invocation follows the [GitHub CLI `agent-task create` reference](https://cli.github.com/manual/gh_agent-task_create), where `--from-file -` reads the task description from standard input.
 Workflow dispatch commands may use `--repo`, `--ref`, and non-file-backed
 inputs through `--raw-field` (`-f`). Presenters reject file-reading workflow inputs
 such as `--field` (`-F`); the only stdin-backed input is the reviewed prompt for

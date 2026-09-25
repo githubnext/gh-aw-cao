@@ -58,6 +58,7 @@ const allowedCommandPrefixes = [
     usage: "gh workflow run <workflow>",
   },
   {
+    // https://cli.github.com/manual/gh_agent-task_create
     tokens: ["gh", "agent-task", "create"],
     minimumArguments: 2,
     validateArguments: (args) =>
