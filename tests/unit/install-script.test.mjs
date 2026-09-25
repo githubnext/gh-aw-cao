@@ -22,8 +22,8 @@ if [[ "\${1:-} \${2:-}" == "aw version" ]]; then
   echo "gh aw version $(cat "$FAKE_GH_AW_INSTALLED")"
   exit 0
 fi
-if [[ "\${1:-} \${2:-} \${3:-}" == "extension upgrade gh-aw" ]]; then
-  echo "upgrade" >> "$FAKE_COMMAND_LOG"
+if [[ "\${1:-} \${2:-} \${3:-}" == "aw upgrade --pre-releases" ]]; then
+  echo "upgrade --pre-releases" >> "$FAKE_COMMAND_LOG"
   printf '%s\\n' "v0.89.21" > "$FAKE_GH_AW_INSTALLED"
   exit 0
 fi
@@ -97,7 +97,7 @@ printf '%s\\n' '#!/usr/bin/env bash' 'printf "v0.89.20\\n" > "$FAKE_GH_AW_INSTAL
     if (process.platform !== "win32") {
       await writeFile(ghAwInstalled, "v0.88.0\n");
       const declined = await executeFile("bash", [installScript, "githubnext/gh-aw-cao@v1.2.3"], { cwd: root, env });
-      assert.match(declined.stdout, /gh extension upgrade gh-aw.*rerun the CAO installer/);
+      assert.match(declined.stdout, /gh aw upgrade --pre-releases.*rerun the CAO installer/);
       assert.equal(await readFile(log, "utf8"), "add\ninit\nadd-force\n");
 
       await rm(ghAwInstalled);
@@ -121,8 +121,8 @@ test("install.sh offers a manifest-required upgrade, retries on approval, and st
 set -euo pipefail
 if [[ "\${1:-} \${2:-}" == "aw version" ]]; then
   echo "gh aw version $(cat "$FAKE_GH_AW_INSTALLED")"
-elif [[ "\${1:-} \${2:-} \${3:-}" == "extension upgrade gh-aw" ]]; then
-  echo upgrade >> "$FAKE_COMMAND_LOG"
+elif [[ "\${1:-} \${2:-} \${3:-}" == "aw upgrade --pre-releases" ]]; then
+  echo "upgrade --pre-releases" >> "$FAKE_COMMAND_LOG"
   echo v0.89.21 > "$FAKE_GH_AW_INSTALLED"
 elif [[ "\${1:-} \${2:-}" == "aw add" ]]; then
   echo add >> "$FAKE_COMMAND_LOG"
@@ -153,7 +153,7 @@ fi
       /unrelated installation failure/,
     );
     const declined = await executeFile("bash", [installScript], { cwd: root, env });
-    assert.match(declined.stdout, /gh extension upgrade gh-aw.*rerun the CAO installer/);
+    assert.match(declined.stdout, /gh aw upgrade --pre-releases.*rerun the CAO installer/);
     assert.equal(await readFile(log, "utf8"), "add\nadd\n");
     assert.equal(await readFile(installed, "utf8"), "v0.89.20\n");
 
@@ -161,14 +161,14 @@ fi
     const no = await executeFile("bash", ["-c",
       `printf 'n\\n' | script -q -e -c 'cat "${installScript}" | bash' /dev/null`,
     ], { cwd: root, env, timeout: 10_000 });
-    assert.match(no.stdout, /gh extension upgrade gh-aw.*rerun the CAO installer/);
+    assert.match(no.stdout, /gh aw upgrade --pre-releases.*rerun the CAO installer/);
     assert.equal(await readFile(log, "utf8"), "add\nadd\nadd\n");
 
     const { stdout } = await executeFile("bash", ["-c",
       `printf 'y\\n' | script -q -e -c 'cat "${installScript}" | bash' /dev/null`,
     ], { cwd: root, env, timeout: 10_000 });
-    assert.match(stdout, /Upgrade it now with gh extension upgrade gh-aw/);
-    assert.equal(await readFile(log, "utf8"), "add\nadd\nadd\nadd\nupgrade\nadd\n");
+    assert.match(stdout, /Upgrade it now with gh aw upgrade --pre-releases/);
+    assert.equal(await readFile(log, "utf8"), "add\nadd\nadd\nadd\nupgrade --pre-releases\nadd\n");
     assert.equal(await readFile(installed, "utf8"), "v0.89.21\n");
   } finally {
     await rm(root, { recursive: true, force: true });

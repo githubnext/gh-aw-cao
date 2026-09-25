@@ -32,13 +32,13 @@ process.exit(1);
 upgrade_gh_aw() {
   local answer
   if [[ -r /dev/tty ]]; then
-    printf 'The installed gh-aw is too old for this CAO campaign. Upgrade it now with gh extension upgrade gh-aw? [y/N] ' > /dev/tty
+    printf 'The installed gh-aw is too old for this CAO campaign. Upgrade it now with gh aw upgrade --pre-releases? [y/N] ' > /dev/tty
     if IFS= read -r answer < /dev/tty && [[ "$answer" =~ ^[Yy]$ ]]; then
-      gh extension upgrade gh-aw
+      gh aw upgrade --pre-releases
       return
     fi
   fi
-  printf 'gh-aw was not upgraded. Run `gh extension upgrade gh-aw`, then rerun the CAO installer.\n'
+  printf 'gh-aw was not upgraded. Run `gh aw upgrade --pre-releases`, then rerun the CAO installer.\n'
   return 1
 }
 
