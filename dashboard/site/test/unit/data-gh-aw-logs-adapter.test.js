@@ -169,6 +169,18 @@ describe('gh-aw logs adapter', () => {
             key_findings: [{ code: 'high_token_usage', title: 'Slow response', severity: 'medium' }],
             missing_tools: [{ tool: 'search', timestamp: '2026-09-09T04:00:20Z' }],
             skill_activations: [{ name: 'review', status: 'success', timestamp: '2026-09-09T04:00:30Z' }],
+            gateway_steering_events: [
+              {
+                type: 'token_steering',
+                message: '[AWF TOKEN WARNING] 90% of the AI credit budget is used.',
+                timestamp: '2026-09-09T04:00:35Z'
+              },
+              {
+                type: 'timeout_steering',
+                message: '[AWF TIME WARNING] 2 minutes remain before the workflow times out.',
+                timestamp: '2026-09-09T04:00:40Z'
+              }
+            ],
             created_items: [{
               type: 'create_issue',
               url: 'https://github.com/githubnext/gh-aw-cao/issues/42',
@@ -299,6 +311,19 @@ describe('gh-aw logs adapter', () => {
         type: 'audit.finding',
         code: 'high_token_usage',
         summary: 'Slow response'
+      }),
+      expect.objectContaining({
+        type: 'audit.gateway_steering',
+        code: 'token_steering',
+        status: 'token_steering',
+        timestamp: '2026-09-09T04:00:35.000Z',
+        summary: '[AWF TOKEN WARNING] 90% of the AI credit budget is used.'
+      }),
+      expect.objectContaining({
+        type: 'audit.gateway_steering',
+        code: 'timeout_steering',
+        status: 'timeout_steering',
+        summary: '[AWF TIME WARNING] 2 minutes remain before the workflow times out.'
       })
     ]));
     expect(batch.tools).toEqual(expect.arrayContaining([

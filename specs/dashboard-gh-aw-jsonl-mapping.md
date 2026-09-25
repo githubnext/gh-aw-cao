@@ -234,6 +234,7 @@ Enriched Runs SHALL emit these Audit records:
 | Each `graders.results[]` item | `workflow_run_grader` |
 | `safe_items_count` exists | `workflow_run_safe_outputs` |
 | `comparison` exists | `workflow_run_comparison` |
+| Each `gateway_steering_events[]` item | `audit.gateway_steering` |
 
 Each `mcp_tool_usage.tool_calls[]` item SHALL emit a `tool.call` Tool record and
 a correlated outcome record. When the run-level projection is absent or empty,
@@ -256,6 +257,15 @@ A `skill_activations` item SHALL become a Tool record with `toolType="skill"`
 and `isSkill=true`. Each record SHALL preserve the source item's `code` as its
 machine-readable audit kind. Dashboard queries SHALL use `code` when present and
 retain the `audit.*` type only as the category and legacy fallback.
+
+Gateway steering warnings SHALL map to Audit records. `gateway_steering_events`,
+taken from the enriched Run when present and otherwise from
+`audit.gateway_steering_events`, SHALL emit one `audit.gateway_steering` record
+per item. Each record SHALL preserve the source item's `type`, such as
+`token_steering` or `timeout_steering`, as both its audit `code` and its event
+status, its `message` as the event summary, and its `timestamp` when available.
+Steering types SHALL NOT be restricted to a closed list, so a steering type that
+gh-aw adds later remains observable without a schema change.
 
 Each `safe_output_item` envelope SHALL emit `safe_output.created` with source
 `safe-output` for its preceding `run` envelope with the

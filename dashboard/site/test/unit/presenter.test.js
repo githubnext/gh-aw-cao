@@ -978,6 +978,11 @@ describe('presenter built-in and custom pages', () => {
             error: ''
           }],
           metadata
+        },
+        'indexing-database-table-counts': {
+          source: 'indexing-database-table-counts',
+          rows: [{ table: 'ingestion transactions', records: 1 }],
+          metadata
         }
       }
     });

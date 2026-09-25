@@ -27,15 +27,15 @@ Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-op
 
 - `OWNER/REPO`: repository containing the workflow. Outcome evidence may come from other affected repositories.
 - `WORKFLOW-NAME`: filename stem using lowercase letters, numbers, and single hyphens, such as `daily-file-diet`. Do not accept a path or `.md` suffix.
-- `CAMPAIGN-SLUG`: optional top-level campaign directory containing `aw.yml`. It scopes workflow selection and owns the shared CAO adapter. Never infer it from a workflow name.
+- `CAMPAIGN-SLUG`: optional top-level campaign directory containing `aw.yml`. It scopes workflow selection to directly included workers and owns the shared CAO adapter. Never infer it from a workflow name.
 - After validation, set `WORKFLOW-PATH` to `.github/workflows/WORKFLOW-NAME.md` and use `WORKFLOW-NAME` unchanged as the slug.
 - Never infer the repository, workflow, or campaign from the workspace, environment, or Git remotes.
 
 ## Workflow
 
 1. **Resolve the workflow.**
-  - Without `WORKFLOW-NAME`, run `.github/skills/add-operational-value/scripts/list-repository-workflows.mjs OWNER/REPO`, appending `--campaign CAMPAIGN-SLUG` when supplied. Reproduce every returned name in the assistant response as a Markdown list, ask the user to select one, and stop. Tool output is not user-visible; never say the list is "shown above." Do not summarize or truncate it.
-  - With `WORKFLOW-NAME`, run the same command with `WORKFLOW-NAME` before the optional campaign flag. Use its output as `WORKFLOW-PATH`. Campaign-scoped resolution must reject workflows not directly included by that campaign. If resolution fails, ask for a valid name.
+  - Without `WORKFLOW-NAME`, run `.github/skills/add-operational-value/scripts/list-repository-workflows.mjs OWNER/REPO`, appending `--campaign CAMPAIGN-SLUG` when supplied. Campaign-scoped results contain only directly included worker workflows; never offer an orchestrator as a choice. Reproduce every returned name in the assistant response as a Markdown list, ask the user to select one, and stop. Tool output is not user-visible; never say the list is "shown above." Do not summarize or truncate it.
+  - With `WORKFLOW-NAME`, run the same command with `WORKFLOW-NAME` before the optional campaign flag. Use its output as `WORKFLOW-PATH`. Campaign-scoped resolution must reject orchestrators and workflows not directly included by that campaign. If resolution fails, ask for a valid name.
   - Design exactly one selected workflow per invocation. A campaign scopes ownership and selection; it does not combine distinct workflow outcome contracts.
 
 2. **Protect an existing design.** Run `.github/skills/add-operational-value/scripts/value-function-path.mjs OWNER/REPO WORKFLOW-NAME [CAMPAIGN-SLUG]`. Without a campaign, the default package is `WORKFLOW-NAME`. With a campaign, the canonical module is `CAMPAIGN-SLUG/operational-value/WORKFLOW-NAME.mjs` and the shared adapter is `CAMPAIGN-SLUG/operational-value.mjs`. If the module exists, verify it with `.github/skills/add-operational-value/scripts/verify-value-function.mjs --cao-adapter <adapter> <path>`, report that it was left unchanged, and continue at step 7. Do not inspect post-adoption evidence or redesign it.

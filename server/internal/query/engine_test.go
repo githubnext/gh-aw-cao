@@ -108,6 +108,29 @@ func TestLinkHrefComputedField(t *testing.T) {
 	}
 }
 
+func TestLiteralComputedField(t *testing.T) {
+	definition := Definition{
+		Name: "labels", From: "rows",
+		Compute: []ComputedField{{
+			As: "label", Function: "literal",
+			Args: []Argument{{Value: "workflow runs"}},
+		}},
+	}
+	if err := Validate([]Definition{definition}); err != nil {
+		t.Fatal(err)
+	}
+
+	result, _, _, err := ExecuteDefinition(definition, map[string]model.Source{
+		"rows": {Rows: []model.Row{{"id": "1"}, {"id": "2"}}},
+	}, MaxOperations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Rows) != 2 || result.Rows[0]["label"] != "workflow runs" || result.Rows[1]["label"] != "workflow runs" {
+		t.Fatalf("unexpected literal labels: %#v", result.Rows)
+	}
+}
+
 func TestAggregateOmitsMissingGroupFields(t *testing.T) {
 	definition := Definition{
 		Name: "grouped",
@@ -167,6 +190,30 @@ func TestLeftJoinDoesNotMatchBlankKeys(t *testing.T) {
 	}
 	if len(result.Rows) != 1 || result.Rows[0]["workflow-name"] != nil {
 		t.Fatalf("blank join keys matched unexpectedly: %#v", result.Rows)
+	}
+}
+
+func TestUnavailableUnionFailsClosed(t *testing.T) {
+	definition := Definition{
+		Name:  "combined",
+		From:  "available",
+		Union: []string{"unavailable"},
+	}
+	result, _, _, err := ExecuteDefinition(definition, map[string]model.Source{
+		"available": {
+			Rows:     []model.Row{{"id": "1"}},
+			Metadata: model.Metadata{"availability": "available"},
+		},
+		"unavailable": {
+			Rows:     []model.Row{},
+			Metadata: model.Metadata{"availability": "unavailable"},
+		},
+	}, MaxOperations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Rows) != 0 || result.Metadata["availability"] != "unavailable" {
+		t.Fatalf("unavailable union input did not fail closed: %#v", result)
 	}
 }
 

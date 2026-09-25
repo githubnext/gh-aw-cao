@@ -279,6 +279,7 @@
       }
     ],
     "select": [
+      { "field": "id" },
       { "field": "organization" },
       { "field": "repository" },
       { "field": "repository-name" },

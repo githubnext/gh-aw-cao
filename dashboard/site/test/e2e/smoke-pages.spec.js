@@ -119,8 +119,8 @@ test('Indexing shows CAO Activity status, size trend, and retained transactions'
         'indexing-database-table-counts': {
           source: 'indexing-database-table-counts',
           rows: [
-            { kind: 'ingest-jsonl', transactions: 50 },
-            { kind: 'ingest-dashboard-sources', transactions: 50 }
+            { table: 'workflow runs', records: 100 },
+            { table: 'ingestion transactions', records: 100 }
           ],
           metadata
         },
@@ -978,7 +978,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(cleanNavigation).toHaveText(['Overview']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
-  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Operational Value', 'Cost', 'Models & Agents', 'Firewall', 'MCPs']);
+  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Operational Value', 'Cost', 'Models & Agents', 'Steering', 'Firewall', 'MCPs']);
   await expect(maintenance.locator('summary')).toHaveText('Maintenance');
   await expect(maintenance.getByRole('link')).toHaveText(['Maintenance', 'Indexing', 'Settings']);
   await expect(maintenance).toHaveClass(/nav-section-bottom/);
