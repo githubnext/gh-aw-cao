@@ -4,6 +4,8 @@ min-version: v0.89.21
 experimental: true
 includes:
   - ../aw.yml
+  - operational-value.mjs
+  - operational-value/eslint-rules-applier.mjs
   - .github/workflows/eslint-rules-applier.md
   - .github/workflows/eslint-rules-inventory.md
   - .github/workflows/eslint-rules-librarian.md
