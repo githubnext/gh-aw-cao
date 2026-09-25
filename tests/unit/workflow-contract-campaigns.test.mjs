@@ -546,7 +546,9 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /gh aw doctor --repo <organization>\/<control-repository> --dir \./);
   assert.match(setupSkill, /gh api orgs\/<organization>\/copilot\/billing/);
   assert.match(setupSkill, /Organization billing is optional for CAO installation, but required to run the bundled Copilot-backed workflows/);
-  assert.match(setupSkill, /This does not block CAO installation/);
+  assert.match(setupSkill, /Checking Copilot organization billing is completely optional/);
+  assert.match(setupSkill, /token usually cannot read organization billing/);
+  assert.match(setupSkill, /If the command fails, is forbidden, or is inconclusive, say so once and continue/);
   assert.match(setupSkill, /explicitly author and compile a workflow using another supported engine\/provider/);
   assert.match(setupSkill, /`total_seats: 0`[\s\S]*?HTTP 403/);
   assert.match(setupSkill, /GitHub App or `GH_AW_GITHUB_TOKEN` for target access does not authenticate model inference/);

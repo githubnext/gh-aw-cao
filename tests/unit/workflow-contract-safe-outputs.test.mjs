@@ -41,7 +41,8 @@ test("operations creation guidance scopes detection and omits worker evals", () 
   assert.match(campaignSkill, /Choose a supported gh-aw engine and model for each workflow/);
   assert.match(campaignSkill, /not as a blocker to authoring campaigns for other providers/);
   assert.match(campaignSkill, /gh api orgs\/<organization>\/copilot\/billing/);
-  assert.match(campaignSkill, /`total_seats: 0` with `seat_management_setting: unconfigured` as unavailable for Copilot runs/);
+  assert.match(campaignSkill, /is completely optional: the user's token may not have access to billing information/);
+  assert.match(campaignSkill, /affirmative `total_seats: 0` with `seat_management_setting: unconfigured` as Copilot runs being unavailable/);
   assert.match(campaignSkill, /Pi or Codex workflow using a `copilot\/\*` model is Copilot-backed/);
   assert.match(campaignSkill, /Do not use `aw\.yml` bootstrap `config`/);
 });
