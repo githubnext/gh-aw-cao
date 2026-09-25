@@ -61,7 +61,7 @@ It does not receive a token, discovery query, or permission to dispatch another 
 
 ## Worker Value
 
-An operational grader evaluates one worker run. It is not repository operational value: package-defined `operational-value.mjs` programs compute those campaign-specific repository metrics separately. Dispatch counts, generated outputs, and model assessments prove neither an operational-grader result nor operational value.
+An operational grader evaluates one worker run. It is not repository operational value: campaign-defined `operational-value.mjs` programs compute those campaign-specific repository metrics separately. Dispatch counts, generated outputs, and model assessments prove neither an operational-grader result nor operational value.
 
 Each worker may register an operational grader under `.github/workflows/graders/<worker-stem>-operational-value.sh` using the workflow-relative path `./graders/<worker-stem>-operational-value.sh`. The current gh-aw protocol retains the `operational-value` identifier: it invokes the evaluator once without arguments, writes one run request to standard input, and accepts one ordered array of `{id,value}` metrics from standard output. The first metric is primary and later metrics are diagnostics.
 
@@ -75,7 +75,7 @@ A successful dispatch or generated suggestion is activity, not proof of a reposi
 A bundled worker is grader-enabled only when a clean `gh aw add` consumer receives both its Markdown workflow and referenced `.github/workflows/graders/*.sh` evaluator. Keeping the evaluator beside the workflow under `graders/` lets the compiler and campaign installer resolve the same workflow-relative path.
 :::
 
-Apply the current upstream gh-aw operational-value designer and verifier independently to every worker in a campaign. These tools author operational graders; do not create placeholder evaluators or treat their run-scoped results as package-defined repository operational value.
+Apply the current upstream gh-aw operational-value designer and verifier independently to every worker in a campaign. These tools author operational graders; do not create placeholder evaluators or treat their run-scoped results as campaign-defined repository operational value.
 
 ## Current Worker Eligibility
 
