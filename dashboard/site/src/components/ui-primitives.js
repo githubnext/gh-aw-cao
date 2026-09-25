@@ -290,6 +290,13 @@ const DASHBOARD_VIEW_SKELETON_LAYOUTS = [
   [7, 5, 4, 4, 4, 12]
 ];
 
+/** Minimum height, in pixels, of a randomized page-skeleton block. */
+const DASHBOARD_VIEW_SKELETON_MIN_BLOCK_HEIGHT_PX = 48;
+/** Maximum extra height, in pixels, randomly added on top of the minimum. */
+const DASHBOARD_VIEW_SKELETON_BLOCK_HEIGHT_VARIANCE_PX = 64;
+/** Entrance-animation delay, in milliseconds, added per subsequent block. */
+const DASHBOARD_VIEW_SKELETON_BLOCK_DELAY_STEP_MS = 60;
+
 /**
  * Renders a randomized "UI layout" `aria-hidden` loading skeleton for a full
  * dashboard page view. Unlike {@link renderSkeletonBars}, which draws a
@@ -305,10 +312,12 @@ const DASHBOARD_VIEW_SKELETON_LAYOUTS = [
 export function renderDashboardViewSkeleton() {
   const layout = DASHBOARD_VIEW_SKELETON_LAYOUTS[Math.floor(Math.random() * DASHBOARD_VIEW_SKELETON_LAYOUTS.length)];
   const blocks = layout.map((span, index) => {
-    const height = 48 + Math.round(Math.random() * 64);
+    const height = DASHBOARD_VIEW_SKELETON_MIN_BLOCK_HEIGHT_PX
+      + Math.round(Math.random() * DASHBOARD_VIEW_SKELETON_BLOCK_HEIGHT_VARIANCE_PX);
+    const delay = index * DASHBOARD_VIEW_SKELETON_BLOCK_DELAY_STEP_MS;
     return h('span', {
       className: 'dashboard-view-skeleton-block',
-      style: `--dashboard-view-skeleton-span: ${span}; --dashboard-view-skeleton-height: ${height}px; --dashboard-view-skeleton-delay: ${index * 60}ms`
+      style: `--dashboard-view-skeleton-span: ${span}; --dashboard-view-skeleton-height: ${height}px; --dashboard-view-skeleton-delay: ${delay}ms`
     });
   });
   return h(

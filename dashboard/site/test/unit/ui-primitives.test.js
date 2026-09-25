@@ -208,16 +208,27 @@ describe('ui primitives', () => {
     }
   });
 
-  it('varies the page skeleton layout pattern across renders', () => {
-    const layouts = new Set();
-    for (let attempt = 0; attempt < 40; attempt += 1) {
-      const rendered = renderDashboardViewSkeleton();
-      const spans = [...rendered.querySelectorAll('span.dashboard-view-skeleton-block')]
-        .filter((block) => block instanceof HTMLElement)
-        .map((block) => block.style.getPropertyValue('--dashboard-view-skeleton-span'));
-      layouts.add(spans.join(','));
-    }
-    expect(layouts.size).toBeGreaterThan(1);
+  it('picks a different deterministic layout pattern and block height per Math.random draw', () => {
+    const randomSpy = vi.spyOn(Math, 'random');
+
+    randomSpy.mockReturnValueOnce(0).mockReturnValue(0);
+    const first = renderDashboardViewSkeleton();
+    const firstSpans = [...first.querySelectorAll('span.dashboard-view-skeleton-block')]
+      .filter((block) => block instanceof HTMLElement)
+      .map((block) => block.style.getPropertyValue('--dashboard-view-skeleton-span'));
+    expect(firstSpans).toEqual(['12', '6', '6', '4', '4', '4']);
+    expect(/** @type {HTMLElement} */ (first.firstElementChild).style.getPropertyValue('--dashboard-view-skeleton-height')).toBe('48px');
+
+    randomSpy.mockReset();
+    randomSpy.mockReturnValueOnce(0.99).mockReturnValue(1);
+    const second = renderDashboardViewSkeleton();
+    const secondSpans = [...second.querySelectorAll('span.dashboard-view-skeleton-block')]
+      .filter((block) => block instanceof HTMLElement)
+      .map((block) => block.style.getPropertyValue('--dashboard-view-skeleton-span'));
+    expect(secondSpans).toEqual(['7', '5', '4', '4', '4', '12']);
+    expect(/** @type {HTMLElement} */ (second.firstElementChild).style.getPropertyValue('--dashboard-view-skeleton-height')).toBe('112px');
+
+    randomSpy.mockRestore();
   });
 
   it('renders the shared loading placeholder blocks used by the dashboard shell and page skeletons', () => {
