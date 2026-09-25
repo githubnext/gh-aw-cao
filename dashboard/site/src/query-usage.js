@@ -55,6 +55,13 @@ export function buildDashboardQueryUsageGraph(dashboard) {
   if (Array.isArray(dashboard.pages)) {
     dashboard.pages.forEach((page, pageIndex) => {
       if (!isRecord(page)) return;
+      const navigationIndicatorNames = navigationIndicatorQueryNames(page);
+      if (navigationIndicatorNames.length > 0) {
+        const node = addNode(`navigation-indicator:$.dashboard.pages[${pageIndex}].navigation-indicator`);
+        labels.set(node, `Navigation indicator: ${nodeLabel(page, pageIndex)}`);
+        roots.add(node);
+        addQueryEdges(node, navigationIndicatorNames);
+      }
       const definition = page.kind === 'built-in' && isRecord(page.definition)
         ? page.definition
         : page;
@@ -190,6 +197,16 @@ function viewQueryNames(view) {
   }
   if (isRecord(view.list) && isRecord(view.list.drill)) names.push(view.list.drill.query);
   return names;
+}
+
+/** @param {Record<string, unknown>} page */
+function navigationIndicatorQueryNames(page) {
+  if (!isRecord(page['navigation-indicator'])) return [];
+  const indicator = page['navigation-indicator'];
+  const tests = Array.isArray(indicator.any) ? indicator.any : [indicator];
+  return tests.flatMap((test) => (
+    isRecord(test) && typeof test.source === 'string' ? [test.source] : []
+  ));
 }
 
 /** @param {unknown} value @returns {value is Record<string, any>} */

@@ -300,7 +300,7 @@ function isPlainObject(value) {
 
 /** @param {string} value */
 function cssEscape(value) {
-  return globalThis.CSS?.escape ? globalThis.CSS.escape(value) : value.replaceAll('"', '\\"').replaceAll('\\', '\\\\');
+  return globalThis.CSS?.escape ? globalThis.CSS.escape(value) : value.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
 }
 
 /** @param {HTMLElement} root */

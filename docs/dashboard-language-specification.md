@@ -241,8 +241,8 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Query `temporal-series.measures[]` | `field`, `key`, `kind` |
 | Query `temporal-series.maps[]` | `field`, `definitions`, `group`, `kind` |
 | Query `select` entry | `field`, `as` |
-| Built-in page | `id`, `kind`, `page`, `title`, `navigation-label`, `description`, `icon`, `class-name`, `definition` |
-| Custom page | `id`, `kind`, `title`, `navigation-label`, `description`, `icon`, `class-name`, `route`, `views`, `sections` |
+| Built-in page | `id`, `kind`, `page`, `title`, `navigation-label`, `navigation-indicator`, `description`, `icon`, `class-name`, `definition` |
+| Custom page | `id`, `kind`, `title`, `navigation-label`, `navigation-indicator`, `description`, `icon`, `class-name`, `route`, `views`, `sections` |
 | Navigation section | `label`, `pages`, `experimental`, `placement` |
 | Page section | `id`, `title`, `description`, `layout`, `views`, `count-source`, `count-sources`, `count-field`, `count-label` |
 | Custom page `route` | `hash-query-parameter`, `navigation-page`, `title-format`, `tabs-class-name`, `tab`, `tabs` |
@@ -847,6 +847,8 @@ Allowed built-in page names are:
 The optional page `icon` is the canonical name of an Octicon supported by the presenter. It controls navigation presentation without changing page semantics and defaults to `server`. A validator **MUST** reject names outside the presenter's canonical Octicon set.
 
 The optional page `navigation-label` provides a concise sidebar label when the page title is more descriptive. A dashboard `navigation` section may reference a focused subset of declared pages; omitted pages remain available as deep-link destinations.
+
+A page may declare `navigation-indicator` with a non-empty `label` and an `any` sequence of source predicates. Each predicate names a bounded source, scalar `field`, and scalar `equals` value. Presenters subscribe only to those declared indicator sources, set the navigation item's accessible label to include the indicator label when any predicate matches, and render a status dot as a supporting visual cue. Indicator sources should be declarative query outputs that already encode the business condition.
 
 A navigation section may set `experimental: true`. Presenters combine pages from all experimental sections into one visible **Experimental** navigation section that is collapsed by default. Activating a direct deep link to an experimental page expands that section. This metadata changes navigation presentation only and does not grant authorization or access to data.
 

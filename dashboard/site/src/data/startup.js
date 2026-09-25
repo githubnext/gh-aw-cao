@@ -91,7 +91,7 @@ export function createBatchedSourceLoader(dashboardContext) {
 /** @typedef {Record<string, import('../presenter.js').LogicalSourceInput>} DashboardSources */
 /** @typedef {{ filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc' | 'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' }} DashboardQueryContext */
 /** @typedef {{ signal: AbortSignal, onUpdate: (sources: DashboardSources) => void, routeParameters?: Record<string, string>, queryContext?: DashboardQueryContext }} PageLoadOptions */
-/** @typedef {((pageId: string, options: PageLoadOptions) => Promise<DashboardSources>) & { prepare?: (pageId: string) => Promise<void> }} PageSourceLoader */
+/** @typedef {((pageId: string, options: PageLoadOptions) => Promise<DashboardSources>) & { prepare?: (pageId: string) => Promise<void>, loadSources?: (sourceNames: string[], options: PageLoadOptions) => Promise<DashboardSources> }} PageSourceLoader */
 
 /**
  * Gives a cached render two animation frames to commit before network activity starts.
@@ -213,6 +213,40 @@ export async function startDashboardData(options) {
               reject(error);
             } else {
               console.error(`Unable to update dashboard page ${pageId}: ${error.message}`);
+            }
+          },
+        },
+      );
+    });
+  };
+  loadPageSources.loadSources = async (sourceNames, pageOptions) => {
+    return new Promise((resolve, reject) => {
+      let receivedInitialSnapshot = false;
+      const abort = () => reject(new DOMException("Dashboard source load was cancelled.", "AbortError"));
+      pageOptions.signal.addEventListener("abort", abort, { once: true });
+      subscribeCanonicalDashboardView(
+        `sources:${sourceNames.join(",")}`,
+        sourceNames,
+        dashboardContext,
+        (sources) => {
+          if (!receivedInitialSnapshot) {
+            receivedInitialSnapshot = true;
+            pageOptions.signal.removeEventListener("abort", abort);
+            resolve(sources);
+            return;
+          }
+          pageOptions.onUpdate(sources);
+        },
+        {},
+        {
+          signal: pageOptions.signal,
+          queryContext: pageOptions.queryContext,
+          onError: (error) => {
+            if (!receivedInitialSnapshot) {
+              pageOptions.signal.removeEventListener("abort", abort);
+              reject(error);
+            } else {
+              console.error(`Unable to update dashboard sources: ${error.message}`);
             }
           },
         },

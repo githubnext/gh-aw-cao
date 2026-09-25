@@ -132,11 +132,7 @@ describe('dashboard DOM provenance', () => {
     expect(rendered.querySelector('[data-page-id="overview"]')).toBe(overviewBefore);
     expect(rendered.querySelector('.factory-floor')).not.toBeNull();
     expect(rendered.querySelector('[data-view-id="overview-campaigns"]')).not.toBeNull();
-    expect(loadPageSources).toHaveBeenCalledTimes(1);
-    expect(loadPageSources).toHaveBeenCalledWith('maintenance', expect.objectContaining({
-      signal: expect.any(AbortSignal),
-      onUpdate: expect.any(Function)
-    }));
+    expect(loadPageSources).not.toHaveBeenCalledWith('maintenance', expect.anything());
     disposeDashboard(rendered);
   });
 
@@ -154,7 +150,7 @@ describe('dashboard DOM provenance', () => {
             views: [],
             'navigation-indicator': {
               label: 'updates available',
-              any: [{ source: 'campaigns', field: 'campaign-update-state', equals: 'update-available' }]
+              any: [{ source: 'maintenance-campaign-updates', field: 'campaign-update-state', equals: 'update-available' }]
             }
           }
         ],
@@ -173,12 +169,23 @@ describe('dashboard DOM provenance', () => {
       freshness: 'fresh',
       availability: 'available'
     });
-    const loadPageSources = vi.fn((pageId) => {
+    const loadSources = vi.fn((sourceNames) => {
+      expect(sourceNames).toEqual(['maintenance-campaign-updates']);
+      return Promise.resolve(/** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ ({
+        'maintenance-campaign-updates': {
+          source: 'maintenance-campaign-updates',
+          rows: [{ 'campaign-update-state': 'update-available' }],
+          metadata
+        }
+      }));
+    });
+    const loadPageSources = /** @type {import('../../src/presenter.js').PageSourceLoader} */ (vi.fn((pageId) => {
       const result = pageId === 'maintenance'
         ? { campaigns: { source: 'campaigns', rows: [{ 'campaign-update-state': 'update-available' }], metadata } }
         : {};
       return Promise.resolve(/** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (result));
-    });
+    }));
+    loadPageSources.loadSources = loadSources;
 
     const rendered = renderDashboardView({ document, sources: {}, loadPageSources });
 
@@ -186,7 +193,8 @@ describe('dashboard DOM provenance', () => {
       expect(rendered.querySelector('[data-nav-page-id="maintenance"]')?.getAttribute('aria-label'))
         .toBe('Maintenance, updates available');
     });
-    expect(loadPageSources).toHaveBeenCalledWith('maintenance', expect.objectContaining({
+    expect(loadPageSources).not.toHaveBeenCalledWith('maintenance', expect.anything());
+    expect(loadSources).toHaveBeenCalledWith(['maintenance-campaign-updates'], expect.objectContaining({
       signal: expect.any(AbortSignal),
       onUpdate: expect.any(Function)
     }));

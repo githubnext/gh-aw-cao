@@ -91,7 +91,7 @@ import {
  */
 
 /**
- * @typedef {((pageId: string, options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>>) & { prepare?: (pageId: string) => Promise<void> }} PageSourceLoader
+ * @typedef {((pageId: string, options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>>) & { prepare?: (pageId: string) => Promise<void>, loadSources?: (sourceNames: string[], options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>> }} PageSourceLoader
  */
 
 /**
@@ -280,7 +280,6 @@ export function renderDashboard(input) {
               evaluatedAt
             ));
           }
-
         };
         /** @param {Record<string, LogicalSourceInput>} pageSources */
         const render = (pageSources) => {
@@ -350,23 +349,31 @@ export function renderDashboard(input) {
  * @param {AbortSignal} signal
  */
 function enableNavigationIndicatorUpdates(root, pages, loadPageSources, signal) {
-  if (!loadPageSources) return;
-  for (const page of pages.filter(hasNavigationIndicator)) {
-    void loadPageSources(page.id, {
-      signal,
-      onUpdate: (sources) => syncDashboardNavigationIndicators(root, pages, sources)
-    })
-      .then((sources) => syncDashboardNavigationIndicators(root, pages, sources))
-      .catch((error) => {
-        if (signal.aborted || error?.name === 'AbortError') return;
-        console.error(`Unable to update dashboard navigation indicators: ${error instanceof Error ? error.message : String(error)}`);
-      });
-  }
+  const sourceNames = navigationIndicatorSourceNames(pages);
+  if (!loadPageSources?.loadSources || sourceNames.length === 0) return;
+  void loadPageSources.loadSources(sourceNames, {
+    signal,
+    onUpdate: (sources) => syncDashboardNavigationIndicators(root, pages, sources)
+  })
+    .then((sources) => syncDashboardNavigationIndicators(root, pages, sources))
+    .catch((error) => {
+      if (signal.aborted || error?.name === 'AbortError') return;
+      console.error(`Unable to update dashboard navigation indicators: ${error instanceof Error ? error.message : String(error)}`);
+    });
 }
 
-/** @param {PresentableBuiltInPage | PresentableCustomPage} page */
-function hasNavigationIndicator(page) {
-  return isPlainObject(page['navigation-indicator']);
+/** @param {Array<PresentableBuiltInPage | PresentableCustomPage>} pages */
+function navigationIndicatorSourceNames(pages) {
+  const sourceNames = new Set();
+  for (const page of pages) {
+    if (!isPlainObject(page['navigation-indicator'])) continue;
+    const indicator = /** @type {Record<string, unknown>} */ (page['navigation-indicator']);
+    const tests = Array.isArray(indicator.any) ? indicator.any : [indicator];
+    for (const test of tests) {
+      if (isPlainObject(test) && typeof test.source === 'string') sourceNames.add(test.source);
+    }
+  }
+  return [...sourceNames];
 }
 
 /**

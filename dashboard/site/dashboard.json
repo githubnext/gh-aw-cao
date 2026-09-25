@@ -9232,6 +9232,44 @@
         ]
       },
       {
+        "name": "maintenance-campaign-updates",
+        "intent": "Expose at most one CAO package update row for the Maintenance navigation indicator.",
+        "from": "campaigns",
+        "filter": {
+          "predicates": [
+            {
+              "field": "campaign-update-state",
+              "equals": "update-available"
+            }
+          ]
+        },
+        "select": [
+          {
+            "field": "campaign-update-state"
+          }
+        ],
+        "limit": 1
+      },
+      {
+        "name": "maintenance-repository-upgrades",
+        "intent": "Expose at most one gh-aw compiler upgrade row for the Maintenance navigation indicator.",
+        "from": "maintenance-repositories",
+        "filter": {
+          "predicates": [
+            {
+              "field": "upgrade-required",
+              "equals": 1
+            }
+          ]
+        },
+        "select": [
+          {
+            "field": "upgrade-required"
+          }
+        ],
+        "limit": 1
+      },
+      {
         "name": "domain-entity-insights",
         "intent": "Summarize one domain entity for its dedicated Insights view.",
         "from": "domains",
@@ -13139,14 +13177,14 @@
           "label": "updates available",
           "any": [
             {
-              "source": "campaigns",
+              "source": "maintenance-campaign-updates",
               "field": "campaign-update-state",
               "equals": "update-available"
             },
             {
-              "source": "maintenance-repositories",
-              "field": "upgrade-state",
-              "equals": "update-available"
+              "source": "maintenance-repository-upgrades",
+              "field": "upgrade-required",
+              "equals": 1
             }
           ]
         },
