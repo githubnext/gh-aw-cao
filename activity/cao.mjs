@@ -44,6 +44,7 @@ import {
   readDashboardTableCounts
 } from './dashboard-complexity.mjs';
 import { pruneDashboardDocument } from './dashboard-prune.mjs';
+import { commandHandlers } from './commands/index.mjs';
 
 const debug = createDebug('ingest');
 const debugHash = createDebug('hash-payloads');
@@ -2737,274 +2738,84 @@ export async function analyzeDashboardComplexityFile({
 export async function runCli(arguments_, input = process.stdin, { signal } = {}) {
   const [command, ...rawOptionArguments] = arguments_;
   if (!command || command === '--help' || command === 'help') return USAGE;
-  if (command === 'init') {
-    if (rawOptionArguments.length > 0) throw new UsageError(`Unexpected argument: ${rawOptionArguments[0]}`);
-    return initializeCaoPolicy();
-  }
-  if (command === 'setup-auth') {
-    return setupCaoAuthentication(rawOptionArguments[0], rawOptionArguments.slice(1));
-  }
-  if (command === 'add') {
-    return addCaoCampaign(rawOptionArguments[0], rawOptionArguments.slice(1));
-  }
-  if (command === 'update') {
-    return updateCaoCampaigns(rawOptionArguments);
-  }
-  if (command === 'mode') {
-    return setCaoCampaignMode(rawOptionArguments[0], rawOptionArguments.slice(1));
-  }
-  if (command === 'enable' || command === 'disable') {
-    return setCaoCampaignWorkflowsEnabled(command, rawOptionArguments);
-  }
   if (!COMMANDS.has(command) && arguments_.length === 2) {
     return runLegacyIngestion(command, rawOptionArguments[0]);
   }
+  const handler = commandHandlers.get(command);
+  if (!handler) throw new UsageError(`Unknown command: ${command}`);
+  if (['init', 'setup-auth', 'add', 'update', 'mode', 'enable', 'disable'].includes(command)) {
+    return handler({
+      arguments_: rawOptionArguments,
+      UsageError,
+      initializeCaoPolicy,
+      setupCaoAuthentication,
+      addCaoCampaign,
+      updateCaoCampaigns,
+      setCaoCampaignMode,
+      setCaoCampaignWorkflowsEnabled,
+    });
+  }
   const optionArguments = [...rawOptionArguments];
-  const dashboardQueryId = command === 'dashboard-complexity' && !optionArguments[0]?.startsWith('--')
+  const positional = command === 'dashboard-complexity' && !optionArguments[0]?.startsWith('--')
     ? optionArguments.shift()
     : undefined;
-  const ghResource = command === 'gh' ? optionArguments[0] : undefined;
-  if (command === 'gh' && (!ghResource || ghResource === 'help' || ghResource === '--help')) return USAGE;
+  const resource = command === 'gh' ? optionArguments[0] : undefined;
+  if (command === 'gh' && (!resource || resource === 'help' || resource === '--help')) return USAGE;
   const computation = command === 'computation' ? optionArguments[0] : undefined;
   if (command === 'computation' && (!computation || computation === 'help' || computation === '--help')) return USAGE;
   const options = parseOptions(
     command === 'gh' || command === 'computation' ? optionArguments.slice(1) : optionArguments
   );
   if (options.help) return USAGE;
-  if (command === 'download') {
-    rejectUnknownOptions(options, ['url', 'output']);
-    return downloadDeployedDashboardData({
-      url: option(options, 'url', false),
-      output: option(options, 'output', false)
-    });
-  }
-  if (command === 'discover-workflows') {
-    rejectUnknownOptions(options, ['root', 'control-settings', 'inventory', 'output', 'repo']);
-    return discoverWorkflows({
-      root: option(options, 'root', false) || '.',
-      controlSettingsPath: option(options, 'control-settings'),
-      inventoryPath: option(options, 'inventory'),
-      outputPath: option(options, 'output'),
-      repository: option(options, 'repo'),
-    });
-  }
-  if (command === 'dashboard-complexity') {
-    rejectUnknownOptions(options, ['input', 'database', 'format', 'limit']);
-    const limit = option(options, 'limit', false);
-    return analyzeDashboardComplexityFile({
-      inputPath: option(options, 'input'),
-      queryId: dashboardQueryId,
-      databasePath: option(options, 'database', false),
-      format: option(options, 'format', false) || 'json',
-      limit: limit === undefined ? undefined : Number(limit)
-    });
-  }
-  if (command === 'prune-dashboard') {
-    rejectUnknownOptions(options, ['input', 'output']);
-    return pruneDashboardFile({
-      inputPath: option(options, 'input'),
-      outputPath: option(options, 'output', false)
-    });
-  }
-  if (command === 'audit-jsonl') {
-    rejectUnknownOptions(options, ['input-dir']);
-    return auditJsonlDirectory(option(options, 'input-dir', false) || DEFAULT_SHARDS_PATH);
-  }
-  if (command === 'compact-jsonl') {
-    rejectUnknownOptions(options, ['input-dir', 'group', 'max-bytes']);
-    const groups = options.group
-      ? Array.isArray(options.group) ? options.group : [options.group]
-      : [];
-    return compactJsonlShards(
-      path.resolve(option(options, 'input-dir')),
-      groups,
-      option(options, 'max-bytes', false) === undefined
-        ? DEFAULT_COMPACTED_JSONL_SHARD_BYTES
-        : Number(option(options, 'max-bytes', false))
-    );
-  }
-  if (command === 'hash-payloads') {
-    rejectUnknownOptions(options, ['database', 'shard-dir', 'normalized-dir', 'runs-dir', 'records-dir', 'inventory', 'output']);
-    const hashes = await hashActivityPayloads({
-      databasePath: option(options, 'database', false) ? path.resolve(option(options, 'database', false)) : undefined,
-      shardDirectory: option(options, 'shard-dir', false) ? path.resolve(option(options, 'shard-dir', false)) : undefined,
-      normalizedDirectory: option(options, 'normalized-dir', false)
-        ? path.resolve(option(options, 'normalized-dir', false))
-        : undefined,
-      runsDirectory: option(options, 'runs-dir', false)
-        ? path.resolve(option(options, 'runs-dir', false))
-        : undefined,
-      recordsDirectory: option(options, 'records-dir', false)
-        ? path.resolve(option(options, 'records-dir', false))
-        : undefined,
-      inventoryPath: option(options, 'inventory', false) ? path.resolve(option(options, 'inventory', false)) : undefined
-    });
-    const outputPath = option(options, 'output', false);
-    if (outputPath) {
-      await writeFile(path.resolve(outputPath), `${JSON.stringify(hashes, null, 2)}\n`);
-    }
-    return hashes;
-  }
-  if (command === 'activity-stats') {
-    rejectUnknownOptions(options, ['repo', 'workflow', 'artifact', 'limit', 'keep', 'output']);
-    const stats = await activityWorkflowStats({
-      repo: option(options, 'repo', false),
-      workflow: option(options, 'workflow', false),
-      artifact: option(options, 'artifact', false),
-      limit: option(options, 'limit', false),
-      keep: Boolean(options.keep)
-    });
-    const outputPath = option(options, 'output', false);
-    if (outputPath) {
-      await writeFile(path.resolve(outputPath), `${JSON.stringify(stats, null, 2)}\n`);
-    }
-    return stats;
-  }
   const rawQuery = command === 'query' && options.stdin
     ? await rawQueryFromStdin(options, input)
     : undefined;
   const databasePath = option(options, 'database', false) || DEFAULT_DATABASE_PATH;
-  if (command === 'doctor') {
-    rejectUnknownOptions(options, ['database', 'ttl-days', 'run-ttl-days']);
-    return doctorSqliteDatabase(databasePath, {
-      ttlDays: ttlDays(options),
-      runTtlDays: runTtlDays(options)
-    });
-  }
-  if (command === 'cluster-problems') {
-    rejectUnknownOptions(options, ['database', 'root', 'timestamp']);
-    return runProblemClustering({
-      databasePath,
-      root: option(options, 'root', false) || '.',
-      timestamp: option(options, 'timestamp', false) || new Date().toISOString(),
-      signal
-    });
-  }
-  const indexedDB = await createDatabase(databasePath);
-
-  if (command === 'issue-status') {
-    rejectUnknownOptions(options, [
-      'database',
-      'input-dir',
-      'batch-size',
-      'graphql-cost-budget',
-      'graphql-min-remaining'
-    ]);
-    return updateIssueStatuses(
-      indexedDB,
-      option(options, 'input-dir'),
-      options
-    );
-  }
-  if (command === 'gh') {
-    rejectUnknownOptions(options, ['database', 'repo', 'workflow', 'status', 'since', 'until', 'limit']);
-    if (ghResource !== 'runs' && options.status) {
-      throw new UsageError('--status is only supported for cao gh runs');
-    }
-    return queryGhData(indexedDB, ghResource, options);
-  }
-  if (command === 'computation') {
-    rejectUnknownOptions(options, ['database', 'inventory', 'campaign', 'diagnose']);
-    if (!hasComputation(computation)) {
-      throw new UsageError(`Unknown computation: ${computation}`);
-    }
-    if (options.diagnose && !options.campaign) {
-      throw new UsageError('--diagnose requires --campaign SLUG');
-    }
-    const inventoryPath = path.resolve(
-      option(options, 'inventory', false)
-        || path.join(path.dirname(path.resolve(databasePath)), 'inventory-sources.json')
-    );
-    let inventorySources;
-    try {
-      inventorySources = JSON.parse(await readFile(inventoryPath, 'utf8'));
-    } catch (error) {
-      if (error && error.code === 'ENOENT') {
-        throw new Error(`Runtime health requires campaign inventory: ${inventoryPath}. Run "cao download" first or pass --inventory FILE.`);
-      }
-      throw new Error(`Unable to read computation inventory ${inventoryPath}: ${error instanceof Error ? error.message : String(error)}`);
-    }
-    return queryComputation(indexedDB, computation, {
-      campaign: option(options, 'campaign', false),
-      diagnose: Boolean(options.diagnose),
-      inventorySources
-    });
-  }
-  if (command === 'operational-value') {
-    rejectUnknownOptions(options, ['database', 'root', 'output', 'timestamp', 'repository', 'retention-days', 'max-github-api-rate-limit']);
-    const repositoryOptions = options.repository === undefined
-      ? []
-      : Array.isArray(options.repository) ? options.repository : [options.repository];
-    for (const repository of repositoryOptions) {
-      if (!REPOSITORY_COORDINATE.test(repository)) {
-        throw new UsageError('--repository must use OWNER/REPO form');
-      }
-    }
-    return runOperationalValue({
-      indexedDB,
-      databasePath,
-      root: option(options, 'root', false) || '.',
-      outputPath: option(options, 'output', false),
-      timestamp: option(options, 'timestamp', false) || new Date().toISOString(),
-      repositories: repositoryOptions,
-      rateLimitReserve: operationalValueReserve(option(options, 'max-github-api-rate-limit', false), UsageError),
-      retentionWindow: retentionWindowMs(options),
-      signal
-    });
-  }
-
-  if (command === 'ingest') {
-    rejectUnknownOptions(options, ['database', 'context', 'logs', 'retention-days', 'run-retention-days']);
-    const result = await ingestGhAwLogDirectory(
-      indexedDB,
-      path.resolve(option(options, 'context')),
-      path.resolve(option(options, 'logs')),
-      {
-        retentionWindowMs: retentionWindowMs(options),
-        retentionWindowMsByStore: { runs: runRetentionWindowMs(options) }
-      }
-    );
-    return { result, counts: await databaseCounts(indexedDB) };
-  }
-  if (command === 'ingest-jsonl') {
-    rejectUnknownOptions(options, ['database', 'input', 'input-dir', 'runs-dir', 'records-dir', 'context', 'retention-days', 'run-retention-days']);
-    const inputPath = option(options, 'input', false);
-    const inputDirectory = option(options, 'input-dir', false);
-    if (inputPath && inputDirectory) throw new UsageError('Options --input and --input-dir cannot be combined');
-    const contextPath = option(options, 'context', false);
-    const context = contextPath
-      ? JSON.parse(await readFile(path.resolve(contextPath), 'utf8'))
-      : undefined;
-    const ingestOptions = {
-      retentionWindowMs: retentionWindowMs(options),
-      retentionWindowMsByStore: { runs: runRetentionWindowMs(options) },
-      context
-    };
-    const runsDirectory = option(options, 'runs-dir', false);
-    const recordsDirectory = option(options, 'records-dir', false);
-    if (Boolean(runsDirectory) !== Boolean(recordsDirectory)) {
-      throw new Error('--runs-dir and --records-dir must be provided together');
-    }
-    if ((inputPath || inputDirectory) && runsDirectory) {
-      throw new Error('Phased shard directories cannot be combined with --input or --input-dir');
-    }
-    const result = runsDirectory && recordsDirectory
-      ? await ingestNormalizedShardDirectories(indexedDB, [
-          ['runs', path.resolve(runsDirectory)],
-          ['records', path.resolve(recordsDirectory)]
-        ], ingestOptions)
-      : inputPath
-        ? await ingestJsonlFile(indexedDB, path.resolve(inputPath), ingestOptions)
-        : await ingestJsonlShardDirectory(indexedDB, path.resolve(inputDirectory || DEFAULT_SHARDS_PATH), ingestOptions);
-    return { result, counts: await databaseCounts(indexedDB) };
-  }
-  if (command === 'query') {
-    rejectUnknownOptions(options, ['database', 'collection', 'id', 'where', 'limit', 'stdin']);
-    return rawQuery
-      ? queryRawCanonicalData(indexedDB, rawQuery)
-      : queryCanonicalData(indexedDB, options);
-  }
-  throw new UsageError(`Unknown command: ${command}`);
+  const databaseCommands = new Set(['issue-status', 'gh', 'computation', 'operational-value', 'ingest', 'ingest-jsonl', 'query']);
+  const indexedDB = databaseCommands.has(command) ? await createDatabase(databasePath) : undefined;
+  return handler({
+    options,
+    positional,
+    resource,
+    computation,
+    rawQuery,
+    databasePath,
+    indexedDB,
+    signal,
+    UsageError,
+    DEFAULT_SHARDS_PATH,
+    DEFAULT_COMPACTED_JSONL_SHARD_BYTES,
+    REPOSITORY_COORDINATE,
+    option,
+    rejectUnknownOptions,
+    ttlDays,
+    runTtlDays,
+    retentionWindowMs,
+    runRetentionWindowMs,
+    downloadDeployedDashboardData,
+    discoverWorkflows,
+    analyzeDashboardComplexityFile,
+    pruneDashboardFile,
+    auditJsonlDirectory,
+    compactJsonlShards,
+    hashActivityPayloads,
+    activityWorkflowStats,
+    doctorSqliteDatabase,
+    runProblemClustering,
+    updateIssueStatuses,
+    queryGhData,
+    hasComputation,
+    queryComputation,
+    runOperationalValue,
+    operationalValueReserve,
+    ingestGhAwLogDirectory,
+    ingestNormalizedShardDirectories,
+    ingestJsonlFile,
+    ingestJsonlShardDirectory,
+    databaseCounts,
+    queryRawCanonicalData,
+    queryCanonicalData,
+  });
 }
 
 async function main() {

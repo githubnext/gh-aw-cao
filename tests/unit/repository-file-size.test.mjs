@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
-test("tracked files except the built-in dashboard, dependency lockfiles, and asset images do not exceed 256 KiB", () => {
+test("tracked files stay within repository byte and source-line limits", () => {
   const result = spawnSync(process.execPath, ["scripts/check-file-sizes.mjs"], {
     cwd: root,
     encoding: "utf8",

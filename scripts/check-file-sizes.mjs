@@ -1,15 +1,23 @@
 import { execFileSync } from "node:child_process";
-import { statSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
 const maximumSize = 256 * 1024;
+const maximumLines = 3000;
 const imageExtensions = new Set([".avif", ".gif", ".ico", ".jpeg", ".jpg", ".png", ".svg", ".webp"]);
+const sourceExtensions = new Set([".js", ".jsx", ".mjs", ".ts", ".tsx"]);
 const excludedFiles = new Set(["dashboard/site/dashboard.json"]);
+const lineCountExclusions = new Set([
+  "dashboard/site/src/validator.js",
+  "dashboard/site/test/unit/presenter.test.js",
+  "dashboard/site/test/unit/validator.test.js",
+  "tests/unit/dashboard-language-sources.test.mjs",
+]);
 const root = path.resolve(import.meta.dirname, "..");
 let trackedFiles;
 
 try {
-  trackedFiles = execFileSync("git", ["ls-files", "-z"], {
+  trackedFiles = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "-z"], {
     cwd: root,
     encoding: "utf8",
   })
@@ -34,6 +42,20 @@ if (oversizedFiles.length > 0) {
   console.error(`Tracked files must not exceed 256 KiB (${maximumSize} bytes):`);
   for (const { file, size } of oversizedFiles) {
     console.error(`- ${file} (${size} bytes)`);
+  }
+  process.exitCode = 1;
+}
+
+const overlongFiles = trackedFiles.flatMap((file) => {
+  if (lineCountExclusions.has(file) || !sourceExtensions.has(path.extname(file).toLowerCase())) return [];
+  const lineCount = readFileSync(path.join(root, file), "utf8").split(/\r?\n/).length;
+  return lineCount > maximumLines ? [{ file, lineCount }] : [];
+});
+
+if (overlongFiles.length > 0) {
+  console.error(`Source files must not exceed ${maximumLines} lines:`);
+  for (const { file, lineCount } of overlongFiles) {
+    console.error(`- ${file} (${lineCount} lines)`);
   }
   process.exitCode = 1;
 }
