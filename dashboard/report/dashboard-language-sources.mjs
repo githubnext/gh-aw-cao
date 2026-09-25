@@ -2861,7 +2861,7 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
     graderObservations,
     generatedAt,
     valueAvailable || usageAvailable,
-    operationalValues.complete === true && usageComplete,
+    usageComplete,
   );
   const githubAsOf = telemetryAsOf(githubTelemetry, generatedAt);
   const githubFreshness = telemetryFreshness(githubTelemetry, generatedAt);

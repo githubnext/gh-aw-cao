@@ -8,7 +8,7 @@ import { root, workflow } from "./workflow-contract.helpers.mjs";
 
 // Operational-value grader, smoke, and canary contracts.
 
-test("one-shot operational-value graders consume only the gh-aw request", () => {
+test("no per-workflow operational-value graders remain", () => {
   assert.deepEqual(readdirSync(join(root, ".github", "workflows", "graders")), []);
 });
 
