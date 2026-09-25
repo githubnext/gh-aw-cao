@@ -260,9 +260,10 @@ function pieChartSegmentPath(startFraction, endFraction, separated = false) {
  * @param {number} total
  * @param {Map<string, { href: string, label: string }>} [links]
  * @param {{ name: string, symbol: string, significant: number } | null} [unit]
+ * @param {(label: string) => string} [formatLabel]
  * @returns {HTMLElement}
  */
-export function renderPieLegend(entries, total, links = new Map(), unit = null) {
+export function renderPieLegend(entries, total, links = new Map(), unit = null, formatLabel = (label) => label) {
   const rankedEntries = entries
     .map((entry, index) => ({ entry, index }))
     .sort((left, right) => right.entry[1] - left.entry[1] || left.index - right.index);
@@ -273,7 +274,7 @@ export function renderPieLegend(entries, total, links = new Map(), unit = null) 
     ({ entry: [label, value] }) => {
       const link = links.get(label) ?? null;
       return [
-        h('span', null, renderSafeLink(label, link)),
+        h('span', null, renderSafeLink(formatLabel(label), link)),
         h('strong', null, formatPieValue(value, unit)),
         h('small', null, total > 0 ? formatCoveragePercent(value / total) : '0%')
       ];
@@ -439,9 +440,10 @@ function renderInteractiveChartMark({ className, entryIndex, label, shape, toolt
  * @param {{ name: string, symbol: string, significant: number, format?: string } | null} [unit]
  * @param {Record<string, unknown> | null} [timeRange]
  * @param {string | null} [referenceField]
+ * @param {(label: string) => string} [formatCategory]
  * @returns {HTMLElement}
  */
-export function renderChartWidget(chartType, points, series, pieSummary = null, totalLabel = 'Total', unit = null, timeRange = null, referenceField = null) {
+export function renderChartWidget(chartType, points, series, pieSummary = null, totalLabel = 'Total', unit = null, timeRange = null, referenceField = null, formatCategory = (label) => label) {
   const pieData = chartType === 'pie' ? pieSummary ?? pieChartEntries(points) : null;
   const entryCount = pieData ? pieData.entries.length : points.length;
   const minimumEntries = ['heatmap', 'horizontal-bar', 'pie', 'scatter'].includes(chartType) ? 1 : 2;
@@ -612,12 +614,13 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
           const value = Number.isFinite(numericValue) ? numericValue : 0;
           const barSize = Math.max(0, value);
           const label = chartPointLabel(point, unit);
+          const category = formatCategory(point.x);
           return h(
             'li',
             { className: 'horizontal-bar-chart-row' },
             h('span', { className: 'horizontal-bar-chart-label', title: point.x },
               renderSafeLink(
-                h('bdi', { className: 'horizontal-bar-chart-label-text', dir: 'ltr' }, String(point.x ?? '')),
+                h('bdi', { className: 'horizontal-bar-chart-label-text', dir: 'ltr' }, category),
                 point.link ?? null
               )
             ),

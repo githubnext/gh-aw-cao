@@ -12,6 +12,7 @@ import {
   CUSTOM_PAGE_KEYS,
   DASHBOARD_KEYS,
   DASHBOARD_HORIZON_KEYS,
+  DASHBOARD_LINK_FIELD_NAMES,
   DASHBOARD_QUERY_LIMITS,
   COMPUTE_FUNCTION_ARITY,
   NUMERIC_COMPUTE_FUNCTIONS,
@@ -5498,10 +5499,10 @@ function validateHrefFieldDefinition(fieldNode, fieldDefinition, sourceName, pat
     return;
   }
 
-  if (!LINK_FIELD_NAMES.includes(fieldName)) {
+  if (!LINK_FIELD_NAMES.includes(fieldName) && !DASHBOARD_LINK_FIELD_NAMES.includes(fieldName)) {
     errors.push(createError(
       ERROR_CODES.invalidLinkReference,
-      'href.field must reference exactly one relation-specific link field.',
+      'href.field must reference one relation-specific link field or one declared campaign, repository, or workflow dashboard link field.',
       `${path}.field`
     ));
   }

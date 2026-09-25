@@ -4,7 +4,7 @@
 
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
-import { formatAggregateValue, formatRelativeTime } from '../view-formatters.js';
+import { formatAggregateValue, formatRelativeTime, formatString } from '../view-formatters.js';
 import { formatCount, titleCase } from './count-formatters.js';
 import { renderCellDisplay } from './cell-display.js';
 import { resolveCardStatus } from './card-status.js';
@@ -1266,7 +1266,8 @@ function renderChartView(context) {
       value ? fieldTitle(value) : 'Total',
       value ? fieldUnit(value, context.units ?? {}) : null,
       isPlainObject(view.data) && isPlainObject(view.data.time) ? view.data.time : null,
-      reference?.field ?? null
+      reference?.field ?? null,
+      pieCategoryLabelFormatter(x)
     );
     const chartLegend = (color || yDefinitions.length > 1) && !['heatmap', 'pie', 'swimlane'].includes(chartType)
       ? renderChartLegend(chartSeries, chartType)
@@ -1279,7 +1280,8 @@ function renderChartView(context) {
               pieSummary.entries,
               pieSummary.total,
               chartCategoryLinks(renderedPoints),
-              y ? fieldUnit(y, context.units ?? {}) : null
+              y ? fieldUnit(y, context.units ?? {}) : null,
+              pieCategoryLabelFormatter(x)
             ))]
           : [chartWidget]),
         ...(chartLegend && chartType === 'scatter' ? [chartLegend] : [])
@@ -1495,6 +1497,15 @@ function chartCategoryLinks(points) {
     }
   }
   return links;
+}
+
+/**
+ * @param {Record<string, unknown> | null} x
+ * @returns {(label: string) => string}
+ */
+function pieCategoryLabelFormatter(x) {
+  const format = typeof x?.format === 'string' ? x.format : undefined;
+  return (label) => formatString(label, format, label);
 }
 
 /**

@@ -8991,6 +8991,9 @@
             "field": "campaign-name"
           },
           {
+            "field": "campaign-dashboard-link"
+          },
+          {
             "field": "aic"
           }
         ],
@@ -9020,11 +9023,68 @@
                 "field": "repository"
               }
             ]
+          },
+          {
+            "as": "encoded-repository",
+            "function": "url-encode",
+            "args": [
+              {
+                "field": "repository-coordinate"
+              }
+            ]
+          },
+          {
+            "as": "repository-dashboard-href",
+            "function": "concat",
+            "args": [
+              {
+                "value": "#page-repository-detail?repository="
+              },
+              {
+                "field": "encoded-repository"
+              }
+            ]
+          },
+          {
+            "as": "repository-dashboard-label",
+            "function": "concat",
+            "args": [
+              {
+                "value": "View "
+              },
+              {
+                "field": "repository-coordinate"
+              },
+              {
+                "value": " repository dashboard"
+              }
+            ]
+          },
+          {
+            "as": "repository-dashboard-link",
+            "function": "dashboard-link",
+            "args": [
+              {
+                "value": ""
+              },
+              {
+                "field": "repository-dashboard-href"
+              },
+              {
+                "field": "repository-dashboard-label"
+              },
+              {
+                "field": "repository-coordinate"
+              }
+            ]
           }
         ],
         "select": [
           {
             "field": "repository-coordinate"
+          },
+          {
+            "field": "repository-dashboard-link"
           },
           {
             "field": "aic"
@@ -9062,11 +9122,68 @@
                 "field": "workflow"
               }
             ]
+          },
+          {
+            "as": "encoded-workflow",
+            "function": "url-encode",
+            "args": [
+              {
+                "field": "workflow-coordinate"
+              }
+            ]
+          },
+          {
+            "as": "workflow-dashboard-href",
+            "function": "concat",
+            "args": [
+              {
+                "value": "#page-workflow-runtime?workflow="
+              },
+              {
+                "field": "encoded-workflow"
+              }
+            ]
+          },
+          {
+            "as": "workflow-dashboard-label",
+            "function": "concat",
+            "args": [
+              {
+                "value": "View "
+              },
+              {
+                "field": "workflow-coordinate"
+              },
+              {
+                "value": " workflow dashboard"
+              }
+            ]
+          },
+          {
+            "as": "workflow-dashboard-link",
+            "function": "dashboard-link",
+            "args": [
+              {
+                "value": ""
+              },
+              {
+                "field": "workflow-dashboard-href"
+              },
+              {
+                "field": "workflow-dashboard-label"
+              },
+              {
+                "field": "workflow-coordinate"
+              }
+            ]
           }
         ],
         "select": [
           {
             "field": "workflow-coordinate"
+          },
+          {
+            "field": "workflow-dashboard-link"
           },
           {
             "field": "aic"
@@ -13467,6 +13584,9 @@
                 "type": "quantitative",
                 "title": "AIC cost",
                 "unit": "aic"
+              },
+              "href": {
+                "field": "campaign-dashboard-link"
               }
             }
           },
@@ -13492,6 +13612,9 @@
                 "type": "quantitative",
                 "title": "AIC cost",
                 "unit": "aic"
+              },
+              "href": {
+                "field": "repository-dashboard-link"
               }
             }
           },
@@ -13517,13 +13640,17 @@
               "x": {
                 "field": "workflow-coordinate",
                 "type": "nominal",
-                "title": "Workflow"
+                "title": "Workflow",
+                "format": "workflow-identity-label"
               },
               "y": {
                 "field": "aic",
                 "type": "quantitative",
                 "title": "AIC cost",
                 "unit": "aic"
+              },
+              "href": {
+                "field": "workflow-dashboard-link"
               }
             }
           }
