@@ -6,7 +6,10 @@ import { withoutIgnoredDashboardPageIds } from "./dashboard-view-assessment.mjs"
 
 const repositoryRoot = resolve(import.meta.dirname, "../..");
 const primaryDashboardPath = "dashboard/site/dashboard.json";
+// PR assessments are informational and run live-data browser checks; five pages
+// keeps the job fast while still sampling the most relevant affected surfaces.
 export const maximumSelectedDashboardPageCount = 5;
+const pageSelectionDescriptorsByDashboard = new WeakMap();
 const pageSelectionWeights = Object.freeze({
   pathIncludesPageId: 100,
   pageIdTerm: 30,
@@ -107,6 +110,16 @@ function pageSelectionDescriptor(page, index) {
   };
 }
 
+function pageSelectionDescriptors(dashboard) {
+  const cached = pageSelectionDescriptorsByDashboard.get(dashboard);
+  if (cached) return cached;
+  const descriptors = new Map(
+    dashboard.dashboard.pages.map((page, index) => [page.id, pageSelectionDescriptor(page, index)]),
+  );
+  pageSelectionDescriptorsByDashboard.set(dashboard, descriptors);
+  return descriptors;
+}
+
 function pageSelectionScore(page, changedFiles) {
   let score = 0;
 
@@ -138,8 +151,7 @@ export function rankDashboardPageIds({
   changedFiles,
   limit = maximumSelectedDashboardPageCount,
 }) {
-  const pages = dashboard.dashboard.pages;
-  const pagesById = new Map(pages.map((page, index) => [page.id, pageSelectionDescriptor(page, index)]));
+  const pagesById = pageSelectionDescriptors(dashboard);
   const changedFileDescriptors = changedFiles.map((path) => ({
     normalizedPath: path.toLowerCase(),
     terms: identifierTerms(path),
@@ -147,7 +159,11 @@ export function rankDashboardPageIds({
   return withoutIgnoredDashboardPageIds([...new Set(pageIds)])
     .map((pageId) => {
       const page = pagesById.get(pageId);
-      if (!page) throw new Error(`Dashboard page "${pageId}" is not declared.`);
+      if (!page) {
+        throw new Error(
+          `Dashboard page "${pageId}" was selected from changed files but is not declared.`,
+        );
+      }
       return page;
     })
     .map((page) => ({
