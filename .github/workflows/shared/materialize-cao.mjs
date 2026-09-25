@@ -12,14 +12,6 @@ const rootResources = [
   '.github/actions/setup-cao-runtime',
   '.github/cao/instructions.md',
 ];
-const rootUndeployedResources = [
-  '.github/skills/add-cao-campaign',
-  '.github/skills/analyze-cao',
-  '.github/skills/cao-cli',
-  '.github/skills/create-cao-campaign',
-  '.github/skills/setup-cao',
-];
-
 function validateCampaign(campaign) {
   if (!/^(?:root|activity|dashboard|[a-z0-9-]+)$/.test(campaign)) {
     throw new Error(`Invalid CAO campaign name: ${campaign}`);
@@ -96,9 +88,10 @@ function copyResource(sourceRoot, repositoryRoot, resource) {
   cpSync(source, destination, { force: true, recursive: true });
 }
 
-function removeUndeployedRootResources(repositoryRoot) {
-  for (const resource of rootUndeployedResources) {
-    rmSync(path.join(repositoryRoot, ...resource.split('/')), { force: true, recursive: true });
+function removeUndeployedRootResources(sourceRoot, repositoryRoot) {
+  const portableSkills = readdirSync(path.join(sourceRoot, 'skills'));
+  for (const skill of portableSkills) {
+    rmSync(path.join(repositoryRoot, '.github', 'skills', skill), { force: true, recursive: true });
   }
   const skillsDirectory = path.join(repositoryRoot, '.github', 'skills');
   try {
@@ -127,7 +120,7 @@ export function materializeCaoFromSource(campaign, sourceRoot, repositoryRoot) {
   const resources = campaign === 'root' ? rootResources : [campaign];
   validateResources(sourceRoot, resources);
   for (const resource of resources) copyResource(sourceRoot, repositoryRoot, resource);
-  if (campaign === 'root') removeUndeployedRootResources(repositoryRoot);
+  if (campaign === 'root') removeUndeployedRootResources(sourceRoot, repositoryRoot);
   return resources;
 }
 
@@ -183,7 +176,7 @@ export async function materializeCao(campaign = 'root', repositoryRoot = process
     for (const plan of plans) {
       for (const resource of plan.resources) copyResource(plan.sourceRoot, repositoryRoot, resource);
     }
-    if (campaign === 'root') removeUndeployedRootResources(repositoryRoot);
+    if (campaign === 'root') removeUndeployedRootResources(plans[0].sourceRoot, repositoryRoot);
     return {
       campaign,
       revision: plans[0].revision,

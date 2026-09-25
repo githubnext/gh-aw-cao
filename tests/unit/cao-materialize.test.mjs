@@ -14,11 +14,15 @@ const sourceRoot = path.resolve(import.meta.dirname, "..", "..");
 test("CAO materialization preserves canonical source paths", () => {
   const destination = mkdtempSync(path.join(tmpdir(), "cao-materialize-layout-"));
   try {
-    const installedCaoSkill = path.join(destination, ".github", "skills", "setup-cao", "SKILL.md");
+    const installedCaoSkills = ["setup-cao", "debug-cao"].map((skill) =>
+      path.join(destination, ".github", "skills", skill, "SKILL.md")
+    );
     const consumerSkill = path.join(destination, ".github", "skills", "consumer-skill", "SKILL.md");
-    mkdirSync(path.dirname(installedCaoSkill), { recursive: true });
+    for (const installedCaoSkill of installedCaoSkills) {
+      mkdirSync(path.dirname(installedCaoSkill), { recursive: true });
+      writeFileSync(installedCaoSkill, "installed");
+    }
     mkdirSync(path.dirname(consumerSkill), { recursive: true });
-    writeFileSync(installedCaoSkill, "installed");
     writeFileSync(consumerSkill, "consumer-owned");
 
     materializeCaoFromSource("root", sourceRoot, destination);
@@ -46,7 +50,9 @@ test("CAO materialization preserves canonical source paths", () => {
     assert.equal(existsSync(path.join(destination, ".github", "aw", "activity")), false);
     assert.equal(existsSync(path.join(destination, ".github", "aw", "dashboard")), false);
     assert.equal(existsSync(path.join(destination, ".github", "aw", "dependabot")), false);
-    assert.equal(existsSync(installedCaoSkill), false);
+    for (const installedCaoSkill of installedCaoSkills) {
+      assert.equal(existsSync(installedCaoSkill), false);
+    }
     assert.equal(readFileSync(consumerSkill, "utf8"), "consumer-owned");
   } finally {
     rmSync(destination, { force: true, recursive: true });
