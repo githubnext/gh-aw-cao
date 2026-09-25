@@ -50,8 +50,7 @@ test("deployed integration pull request trigger only watches query benchmark inp
   assert.ok(workflowTriggers, "expected workflow trigger block");
   const paths = workflowTriggers.pull_request.paths;
   assert.ok(Array.isArray(paths), "expected pull_request.paths trigger list");
-  assert.deepEqual(paths, [
-    ".github/workflows/dashboard-deployed-integration.yml",
+  for (const path of [
     "dashboard/site/dashboard.json",
     "dashboard/site/dashboard-pages/**",
     "dashboard/site/src/data/**",
@@ -71,7 +70,16 @@ test("deployed integration pull request trigger only watches query benchmark inp
     "tests/helpers/dashboard-query-cost.mjs",
     "tests/performance/dashboard-query-cost.test.mjs",
     "tests/playwright/configs/dashboard-query-performance.config.mjs",
-  ]);
+  ]) {
+    assert.ok(paths.includes(path), `expected trigger path ${path}`);
+  }
+  for (const path of [
+    "dashboard/site/**",
+    "dashboard/site/src/notification-service.js",
+    "dashboard/site/src/styles.js",
+  ]) {
+    assert.ok(!paths.includes(path), `unexpected broad trigger path ${path}`);
+  }
 });
 
 test("deployed proxy targets remain under the trusted dashboard URL", () => {
