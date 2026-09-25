@@ -112,6 +112,7 @@ steps:
       const freshnessMs = 2 * 60 * 60 * 1000;
       const windowMs = 7 * 24 * 60 * 60 * 1000;
       const failedConclusions = new Set(["failure", "timed_out", "startup_failure"]);
+      const serverUrl = process.env.GITHUB_SERVER_URL;
 
       function write(payload) {
         fs.mkdirSync(path.dirname(outputPath), { recursive: true });
@@ -128,6 +129,11 @@ steps:
           projects: [],
           failures: [],
         });
+      }
+
+      if (!serverUrl) {
+        incomplete("GitHub Actions server URL is unavailable");
+        process.exit(0);
       }
 
       if (!fs.existsSync(sourcePath)) {
@@ -187,8 +193,8 @@ steps:
             failureJob: run.failureJob || null,
             failureStep: run.failureStep || null,
             failureMessage: run.failureMessage || null,
-            url: run.runId && process.env.GITHUB_SERVER_URL
-              ? `${process.env.GITHUB_SERVER_URL}/${workflow.repository}/actions/runs/${run.runId}`
+            url: run.runId
+              ? `${serverUrl}/${workflow.repository}/actions/runs/${run.runId}`
               : workflow.htmlUrl,
           });
         }

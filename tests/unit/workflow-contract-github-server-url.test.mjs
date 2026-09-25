@@ -5,7 +5,18 @@ import test from "node:test";
 
 import { workflowsDirectory } from "./workflow-contract.helpers.mjs";
 
-const HARDCODED_ACTIONS_URL = /https:\/\/github\.com\/(?:\$\{\{\s*github\.repository\s*\}\}|(?:[^/\s)]+\/)?[^/\s)]+)\/actions\//;
+// Match repository paths expressed as an Actions expression, a JavaScript template, or owner/repository.
+const HARDCODED_ACTIONS_URL = /https:\/\/github\.com\/(?:\$\{\{\s*github\.repository\s*\}\}|\$\{[^}]+\}|[^/\s)]+\/[^/\s)]+)\/actions\//;
+
+test("GitHub Actions URL lint recognizes literal and interpolated repository paths", () => {
+  for (const url of [
+    "https://github.com/octo/repository/actions/runs/1",
+    "https://github.com/${workflow.repository}/actions/runs/${run.runId}",
+    "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+  ]) {
+    assert.match(url, HARDCODED_ACTIONS_URL);
+  }
+});
 
 function workflowSources(directory = workflowsDirectory, prefix = "") {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
