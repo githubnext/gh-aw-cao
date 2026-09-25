@@ -1,5 +1,4 @@
 import 'fake-indexeddb/auto';
-import { createHash, webcrypto } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -8,7 +7,6 @@ import {
   ingestCachedGhAwJsonl,
   ingestDashboardSources,
   ingestGhAwLogs,
-  ingestNormalizedJson,
   ingestNormalizedJsonl,
   ingestSqlExport
 } from '../../src/data/ingest/coordinator.js';
@@ -123,11 +121,11 @@ describe('database table ingestion and queries', () => {
       committedRecords: 1
     });
 
-    const legacyReceipt = (await readTransactions(indexedDB))
+    const incompleteReceipt = (await readTransactions(indexedDB))
       .find(({ kind }) => kind === 'ingest-normalized-jsonl');
-    expect(legacyReceipt).toBeDefined();
-    delete legacyReceipt.rawRuns;
-    await recordTransaction(indexedDB, legacyReceipt);
+    expect(incompleteReceipt).toBeDefined();
+    delete incompleteReceipt.rawRuns;
+    await recordTransaction(indexedDB, incompleteReceipt);
     await expect(ingestNormalizedJsonl(indexedDB, chunks(), options)).resolves.toMatchObject({
       updated: true,
       committedRecords: 1
@@ -144,10 +142,58 @@ describe('database table ingestion and queries', () => {
     ]);
     expect(await readTransactions(indexedDB)).toEqual(expect.arrayContaining([
       expect.objectContaining({
+        id: `ingest-normalized-jsonl:sha256:${options.payloadIdentity}:v3`,
         kind: 'ingest-normalized-jsonl',
         payloadHash: options.payloadIdentity
       })
     ]));
+  });
+
+  it('does not treat an unsupported normalized JSON receipt as a current JSONL shard', async () => {
+    const payloadIdentity = 'e'.repeat(64);
+    await recordTransaction(indexedDB, {
+      id: `ingest-normalized-json:sha256:${payloadIdentity}:v3`,
+      kind: 'ingest-normalized-json',
+      createdAt: '2026-09-09T05:00:00Z',
+      payloadHash: payloadIdentity,
+      ingestionVersion: 3
+    });
+    async function* chunks() {
+      yield JSON.stringify({
+        kind: 'metadata',
+        schemaVersion: CANONICAL_SCHEMA_VERSION,
+        ingestionVersion: 3,
+        phase: 'runs',
+        records: 0
+      });
+    }
+    await expect(ingestNormalizedJsonl(indexedDB, chunks(), {
+      payloadIdentity,
+      payloadScope: 'https://example.test/gh-aw-logs-runs/shard.jsonl',
+      expectedPhase: 'runs'
+    })).resolves.toMatchObject({ updated: true });
+    expect(await readTransactions(indexedDB)).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: `ingest-normalized-jsonl:sha256:${payloadIdentity}:v3`,
+        kind: 'ingest-normalized-jsonl'
+      })
+    ]));
+  });
+
+  it('rejects obsolete normalized JSONL schemas', async () => {
+    async function* chunks() {
+      yield JSON.stringify({
+        kind: 'metadata',
+        schemaVersion: 12,
+        ingestionVersion: 3,
+        phase: 'runs',
+        records: 0
+      });
+    }
+    await expect(ingestNormalizedJsonl(indexedDB, chunks(), {
+      payloadIdentity: 'a'.repeat(64),
+      payloadScope: 'https://example.test/gh-aw-logs-runs/obsolete.jsonl'
+    })).rejects.toThrow('Unsupported normalized activity schema: 12');
   });
 
   it('defers canonical maintenance for batched shard imports until it is finalized', async () => {
@@ -240,49 +286,6 @@ describe('database table ingestion and queries', () => {
     expect((await readCanonicalBatch(indexedDB)).repositories).toHaveLength(251);
   });
 
-  it('streams schema 13 normalized JSONL with legacy package campaign fields', async () => {
-    const lines = [
-      {
-        kind: 'metadata',
-        schemaVersion: 13,
-        ingestionVersion: 3,
-        sourceRecords: 1,
-        phase: 'records',
-        records: 1
-      },
-      {
-        kind: 'record',
-        collection: 'operationalValues',
-        record: {
-          id: 'operational-value:dependabot',
-          repositoryId: 'repository:githubnext/gh-aw-cao',
-          package: 'dependabot',
-          packageId: 'package:dependabot',
-          value: 1,
-          valueId: 'dependabot-vulnerability-alerts',
-          timestamp: '2026-09-09T05:00:00Z',
-          observedAt: '2026-09-09T05:00:00Z',
-          provenance: { source: 'test', sourceId: 'dependabot-value', observedAt: '2026-09-09T05:00:00Z' }
-        }
-      }
-    ].map((line) => JSON.stringify(line)).join('\n');
-    async function* chunks() { yield lines; }
-
-    await expect(ingestNormalizedJsonl(indexedDB, chunks(), {
-      payloadIdentity: 'c'.repeat(64),
-      payloadScope: 'https://example.test/gh-aw-logs-records/schema-13.jsonl',
-      expectedPhase: /** @type {const} */ ('records')
-    })).resolves.toMatchObject({ committedRecords: 1 });
-
-    const batch = await readCanonicalBatch(indexedDB);
-    expect(batch.operationalValues).toEqual([
-      expect.objectContaining({
-        campaignId: 'campaign:dependabot',
-        campaign: 'dependabot'
-      })
-    ]);
-  });
-
   it('retries a truncated normalized stream without recording a receipt', async () => {
     const metadata = {
       kind: 'metadata',
@@ -319,294 +322,6 @@ describe('database table ingestion and queries', () => {
     await expect(ingestNormalizedJsonl(indexedDB, complete(), options))
       .resolves.toMatchObject({ committedRecords: 251 });
     expect((await readCanonicalBatch(indexedDB)).repositories).toHaveLength(251);
-  });
-
-  it('imports pre-normalized JSON with a published identity and skips repeats', async () => {
-    const payload = {
-      schemaVersion: CANONICAL_SCHEMA_VERSION,
-      ingestionVersion: 2,
-      sourceRecords: 1,
-      batch: {
-        campaigns: [],
-        repositories: [{
-          id: 'repository:normalized',
-          observedAt: metadata['as-of'],
-          provenance: { source: 'test', sourceId: 'normalized', observedAt: metadata['as-of'] }
-        }],
-        workflows: [],
-        runs: [],
-        domains: [],
-        tools: [],
-        audits: [],
-        issues: [],
-        operationalValues: []
-      }
-    };
-    const options = {
-      payloadIdentity: 'a'.repeat(64),
-      payloadScope: 'https://example.test/gh-aw-logs-normalized/shard.json'
-    };
-
-    await expect(ingestNormalizedJson(indexedDB, payload, options)).resolves.toMatchObject({
-      updated: true,
-      records: 1,
-      timings: { parsingMs: 0, normalizationMs: 0, storageMs: expect.any(Number) }
-    });
-    await expect(ingestNormalizedJson(indexedDB, payload, options)).resolves.toMatchObject({
-      updated: false,
-      skipped: true
-    });
-    await expect(ingestNormalizedJson(indexedDB, payload, {
-      ...options,
-      payloadScope: 'https://example.test/gh-aw-logs-normalized/renamed-shard.json'
-    })).resolves.toMatchObject({
-      updated: false,
-      skipped: true
-    });
-    await expect(readTransactions(indexedDB)).resolves.toEqual([
-      expect.objectContaining({
-        id: `ingest-normalized-json:sha256:${options.payloadIdentity}:v2`,
-        payloadHash: options.payloadIdentity,
-        payloadScope: options.payloadScope
-      })
-    ]);
-    expect((await readCanonicalBatch(indexedDB)).repositories).toEqual(payload.batch.repositories);
-  });
-
-  it('migrates legacy scope-keyed normalized shard receipts to stable SHA receipts', async () => {
-    vi.stubGlobal('crypto', webcrypto);
-    const payloadIdentity = 'f'.repeat(64);
-    const payloadScope = 'https://example.test/gh-aw-logs-normalized/legacy-shard.json';
-    const scopeHash = createHash('sha256').update(payloadScope).digest('hex');
-    await recordTransaction(indexedDB, {
-      id: `ingest-normalized-json:current:${scopeHash}`,
-      kind: 'ingest-normalized-json',
-      createdAt: '2026-09-09T05:00:00.000Z',
-      payloadScope,
-      payloadHash: payloadIdentity,
-      ingestionVersion: 2
-    });
-
-    await expect(ingestNormalizedJson(indexedDB, {
-      schemaVersion: CANONICAL_SCHEMA_VERSION,
-      ingestionVersion: 2,
-      sourceRecords: 0,
-      batch: {
-        campaigns: [],
-        repositories: [],
-        workflows: [],
-        runs: [],
-        domains: [],
-        tools: [],
-        audits: [],
-        issues: []
-      }
-    }, { payloadIdentity, payloadScope })).resolves.toMatchObject({
-      updated: false,
-      skipped: true
-    });
-    await expect(readTransactions(indexedDB)).resolves.toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: `ingest-normalized-json:sha256:${payloadIdentity}:v2` })
-    ]));
-    vi.unstubAllGlobals();
-  });
-
-  it('imports legacy package-shaped normalized JSON as campaigns', async () => {
-    const repositoryId = 'repository:githubnext%2Fgh-aw-cao';
-    const legacyPackageId = 'package:dashboard-sources:maintenance';
-    const payload = {
-      schemaVersion: CANONICAL_SCHEMA_VERSION,
-      ingestionVersion: 2,
-      sourceRecords: 2,
-      phase: 'runs',
-      batch: {
-        packages: [{
-          id: legacyPackageId,
-          slug: 'maintenance',
-          name: 'Maintenance',
-          packageLink: 'https://example.test/packages/maintenance',
-          observedAt: metadata['as-of'],
-          provenance: { source: 'test', sourceId: 'maintenance', observedAt: metadata['as-of'] }
-        }],
-        repositories: [{
-          id: repositoryId,
-          observedAt: metadata['as-of'],
-          provenance: { source: 'test', sourceId: 'normalized', observedAt: metadata['as-of'] }
-        }],
-        workflows: [{
-          id: 'workflow:githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fmaintenance.md',
-          repositoryId,
-          campaignId: legacyPackageId,
-          packageId: legacyPackageId,
-          package: 'maintenance',
-          packageName: 'Maintenance',
-          packageIcon: 'tools',
-          observedAt: metadata['as-of'],
-          provenance: { source: 'test', sourceId: 'maintenance-workflow', observedAt: metadata['as-of'] }
-        }],
-        runs: [],
-        domains: [],
-        tools: [],
-        audits: [],
-        issues: []
-      }
-    };
-    const options = {
-      payloadIdentity: 'c'.repeat(64),
-      payloadScope: 'https://example.test/gh-aw-logs-runs/shard.json',
-      expectedPhase: /** @type {const} */ ('runs')
-    };
-
-    await expect(ingestNormalizedJson(indexedDB, payload, options)).resolves.toMatchObject({
-      updated: true,
-      records: 2
-    });
-    await expect(readCanonicalBatch(indexedDB)).resolves.toMatchObject({
-      campaigns: [expect.objectContaining({
-        id: 'campaign:dashboard-sources:maintenance',
-        slug: 'maintenance',
-        campaignLink: 'https://example.test/packages/maintenance'
-      })],
-      workflows: [expect.objectContaining({
-        campaignId: 'campaign:dashboard-sources:maintenance',
-        campaign: 'maintenance',
-        campaignName: 'Maintenance',
-        campaignIcon: 'tools'
-      })]
-    });
-  });
-
-  it('migrates schema 12 phased shards to repository-scoped run and issue identities', async () => {
-    const repositoryId = 'github:repository:1';
-    const workflowId = 'github:workflow:2';
-    const canonicalRecord = (
-      /** @type {string} */ id,
-      /** @type {string} */ observedAt,
-      /** @type {Record<string, unknown>} */ fields = {}
-    ) => ({
-      id,
-      observedAt,
-      provenance: { source: 'test', sourceId: id, observedAt },
-      ...fields
-    });
-    /** @returns {import('../../src/data/model/schema.js').CanonicalBatch} */
-    const emptyBatch = () => ({
-      campaigns: [],
-      repositories: [],
-      workflows: [],
-      runs: [],
-      domains: [],
-      tools: [],
-      audits: [],
-      issues: [],
-      operationalValues: []
-    });
-    const runsBatch = emptyBatch();
-    runsBatch.repositories.push(canonicalRecord(repositoryId, '2026-09-09T04:00:00Z'));
-    runsBatch.workflows.push(canonicalRecord(workflowId, '2026-09-09T04:00:00Z', { repositoryId }));
-    runsBatch.runs.push(
-      canonicalRecord('github:run:12345:attempt:1', '2026-09-09T04:00:00Z', {
-        githubRunId: '12345',
-        attempt: 1,
-        owner: 'githubnext',
-        repository: 'gh-aw-cao',
-        repositoryId,
-        workflowId
-      }),
-      canonicalRecord('github:run:12345:attempt:2', '2026-09-09T05:00:00Z', {
-        githubRunId: '12345',
-        attempt: 2,
-        owner: 'githubnext',
-        repository: 'gh-aw-cao',
-        repositoryId,
-        workflowId
-      })
-    );
-    await ingestNormalizedJson(indexedDB, {
-      schemaVersion: 12,
-      ingestionVersion: 2,
-      sourceRecords: 2,
-      phase: 'runs',
-      batch: runsBatch
-    }, {
-      payloadIdentity: '1'.repeat(64),
-      payloadScope: 'https://example.test/gh-aw-logs-runs/schema-12.json',
-      expectedPhase: 'runs'
-    });
-
-    const recordsBatch = emptyBatch();
-    recordsBatch.issues.push(
-      canonicalRecord('issue:safe-output:unkeyed', '2026-09-09T03:00:00Z', {
-        runId: 'github:run:12345:attempt:1',
-        timestamp: '2026-09-09T03:00:00Z'
-      }),
-      canonicalRecord('issue:safe-output:first', '2026-09-09T04:00:00Z', {
-        runId: 'github:run:12345:attempt:1',
-        number: 42,
-        url: 'https://github.com/githubnext/gh-aw-cao/issues/42',
-        timestamp: '2026-09-09T04:00:00Z'
-      }),
-      canonicalRecord('issue:safe-output:second', '2026-09-09T05:00:00Z', {
-        runId: 'github:run:12345:attempt:2',
-        number: 42,
-        url: 'https://github.com/githubnext/gh-aw-cao/issues/42',
-        timestamp: '2026-09-09T05:00:00Z'
-      })
-    );
-    await ingestNormalizedJson(indexedDB, {
-      schemaVersion: 12,
-      ingestionVersion: 2,
-      sourceRecords: 2,
-      phase: 'records',
-      batch: recordsBatch
-    }, {
-      payloadIdentity: '2'.repeat(64),
-      payloadScope: 'https://example.test/gh-aw-logs-records/schema-12.json',
-      expectedPhase: 'records'
-    });
-
-    const stored = await readCanonicalBatch(indexedDB);
-    expect(stored.runs).toEqual([
-      expect.objectContaining({
-        id: 'github:run:githubnext/gh-aw-cao:12345',
-        attempt: 2
-      })
-    ]);
-    expect(stored.issues).toEqual([
-      expect.objectContaining({
-        id: 'github:issue:githubnext/gh-aw-cao:42',
-        runId: 'github:run:githubnext/gh-aw-cao:12345'
-      })
-    ]);
-  });
-
-  it('rejects mislabeled or mixed phased payloads', async () => {
-    const payload = {
-      schemaVersion: CANONICAL_SCHEMA_VERSION,
-      ingestionVersion: 2,
-      sourceRecords: 1,
-      phase: 'records',
-      batch: {
-        campaigns: [],
-        repositories: [],
-        workflows: [],
-        runs: [{ id: 'run:unexpected' }],
-        domains: [],
-        tools: [],
-        audits: [],
-        issues: []
-      }
-    };
-    const options = {
-      payloadIdentity: 'b'.repeat(64),
-      payloadScope: 'https://example.test/gh-aw-logs-records/shard.json',
-      expectedPhase: /** @type {const} */ ('records')
-    };
-
-    await expect(ingestNormalizedJson(indexedDB, payload, options))
-      .rejects.toThrow('Normalized records payload must not include runs');
-    await expect(ingestNormalizedJson(indexedDB, { ...payload, phase: 'runs' }, options))
-      .rejects.toThrow('Normalized activity payload phase must be records');
   });
 
   it('upserts current sources for immediate canonical queries', async () => {

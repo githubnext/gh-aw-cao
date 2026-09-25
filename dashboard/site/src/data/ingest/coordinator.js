@@ -7,15 +7,13 @@ import {
 } from '../adapters/gh-aw-logs.js';
 import { adaptSqlExport } from '../adapters/sql-export.js';
 import { buildDailyOverviewAggregates } from '../analytics/daily-overview-aggregates.js';
-import { issueCoordinates, runId } from '../model/ids.js';
 import { CANONICAL_SCHEMA_VERSION } from '../model/schema.js';
-import { normalize, orderRunRecords } from '../normalize/index.js';
+import { normalize } from '../normalize/index.js';
 import {
   publishDailyOverviewAggregates,
   pruneStaleDailyOverviewAggregates,
   ENTITY_STORES,
   maintainCanonicalDatabase,
-  readCanonicalBatch,
   readCollection,
   readRecord,
   readTransaction,
@@ -41,7 +39,6 @@ const debug = createDebug('data:ingestion');
 
 const DASHBOARD_SOURCE_INGESTION_VERSION = 5;
 const GH_AW_JSONL_INGESTION_VERSION = 4;
-export const NORMALIZED_JSON_INGESTION_VERSION = 2;
 export const NORMALIZED_JSONL_INGESTION_VERSION = 3;
 const MAX_QUOTA_RECOVERY_ATTEMPTS = 4;
 const MAX_USAGE_RECOVERY_ATTEMPTS = 4;
@@ -57,13 +54,6 @@ const NORMALIZED_BATCH_COLLECTIONS = /** @type {const} */ ([
   'operationalValues'
 ]);
 const NORMALIZED_JSONL_WRITE_BATCH_SIZE = 250;
-const LEGACY_PACKAGE_FIELD_ALIASES = /** @type {const} */ ({
-  packageId: 'campaignId',
-  package: 'campaign',
-  packageName: 'campaignName',
-  packageIcon: 'campaignIcon',
-  packageLink: 'campaignLink'
-});
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 let dailyOverviewAggregateGenerationSequence = 0;
 
@@ -120,132 +110,6 @@ function isQuotaExceededError(error) {
     && /** @type {{ name?: unknown }} */ (error).name === 'QuotaExceededError';
 }
 
-/** @param {unknown} value */
-function migrateLegacyPackageId(value) {
-  return typeof value === 'string' && value.startsWith('package:')
-    ? `campaign:${value.slice('package:'.length)}`
-    : value;
-}
-
-/** @param {unknown} value */
-function hasLegacyPackageAliases(value) {
-  return Boolean(value && typeof value === 'object' && !Array.isArray(value) && (
-    (typeof /** @type {{ id?: unknown }} */ (value).id === 'string'
-      && /** @type {{ id: string }} */ (value).id.startsWith('package:'))
-    || (typeof /** @type {{ campaignId?: unknown }} */ (value).campaignId === 'string'
-      && /** @type {{ campaignId: string }} */ (value).campaignId.startsWith('package:'))
-    || Object.keys(LEGACY_PACKAGE_FIELD_ALIASES).some((field) => Object.hasOwn(value, field))
-  ));
-}
-
-/** @param {unknown} candidate */
-function migrateLegacyPackageAliases(candidate) {
-  if (!hasLegacyPackageAliases(candidate)) return candidate;
-  const record = { .../** @type {Record<string, unknown>} */ (candidate) };
-  record.id = migrateLegacyPackageId(record.id);
-  record.campaignId = migrateLegacyPackageId(record.campaignId);
-  for (const [legacyField, campaignField] of Object.entries(LEGACY_PACKAGE_FIELD_ALIASES)) {
-    if (record[campaignField] === undefined && record[legacyField] !== undefined) {
-      record[campaignField] = legacyField === 'packageId'
-        ? migrateLegacyPackageId(record[legacyField])
-        : record[legacyField];
-    }
-    delete record[legacyField];
-  }
-  return record;
-}
-
-/**
- * Accepts normalized shards emitted shortly before the package-to-campaign
- * vocabulary rename. The schema and ingestion versions did not change in that
- * transition, so cached payloads may still contain the legacy collection and
- * relationship field names.
- *
- * @param {Record<string, unknown>} batch
- * @returns {import('../model/schema.js').CanonicalBatch}
- */
-function migrateNormalizedBatch(batch) {
-  if (!Array.isArray(batch.operationalValues)) batch = { ...batch, operationalValues: [] };
-  const migrated = { ...batch };
-  if (!Array.isArray(migrated.campaigns) && Array.isArray(migrated.packages)) {
-    migrated.campaigns = migrated.packages.map(migrateLegacyPackageAliases);
-  }
-  for (const collection of NORMALIZED_BATCH_COLLECTIONS) {
-    if (Array.isArray(migrated[collection])) {
-      migrated[collection] = migrated[collection].map(migrateLegacyPackageAliases);
-    }
-  }
-  delete migrated.packages;
-  return /** @type {import('../model/schema.js').CanonicalBatch} */ (migrated);
-}
-
-/**
- * @param {Record<string, unknown>} record
- * @param {import('../model/schema.js').EntityKind} kind
- * @returns {import('../model/schema.js').CanonicalObservation}
- */
-function normalizedRecordObservation(record, kind) {
-  const provenance = record.provenance && typeof record.provenance === 'object' && !Array.isArray(record.provenance)
-    ? /** @type {Record<string, unknown>} */ (record.provenance)
-    : {};
-  return {
-    kind,
-    source: typeof provenance.source === 'string' ? provenance.source : 'normalized-activity',
-    sourceId: typeof provenance.sourceId === 'string' ? provenance.sourceId : String(record.id),
-    observedAt: String(record.observedAt),
-    data: record
-  };
-}
-
-/**
- * Migrates the immediately preceding canonical schema, whose run IDs included
- * attempts and whose issue IDs were source-specific.
- *
- * @param {IDBFactory} indexedDB
- * @param {import('../model/schema.js').CanonicalBatch} batch
- */
-async function migrateSchema12Batch(indexedDB, batch) {
-  const storedRuns = batch.runs.length > 0 ? [] : (await readCanonicalBatch(indexedDB)).runs;
-  const legacyRunIds = new Map();
-  for (const record of [...storedRuns, ...batch.runs]) {
-    const canonicalId = runId(
-      String(record.owner),
-      String(record.repository),
-      /** @type {string | number} */ (record.githubRunId)
-    );
-    legacyRunIds.set(
-      `github:run:${String(record.githubRunId).trim()}:attempt:${Number(record.attempt)}`,
-      canonicalId
-    );
-    legacyRunIds.set(String(record.id), canonicalId);
-  }
-  const migrateRunLink = (/** @type {Record<string, unknown>} */ record) => ({
-    ...record,
-    runId: legacyRunIds.get(String(record.runId)) ?? record.runId
-  });
-  const migratableIssues = batch.issues.filter((record) => {
-    if (record.owner !== undefined && record.repository !== undefined && record.number !== undefined) return true;
-    if (typeof record.url !== 'string') return false;
-    try {
-      issueCoordinates(record.url);
-      return true;
-    } catch {
-      return false;
-    }
-  });
-  const migrated = {
-    ...batch,
-    runs: batch.runs.length > 0
-      ? normalize(batch.runs.map((record) => normalizedRecordObservation(record, 'run'))).runs
-      : [],
-    domains: orderRunRecords(batch.domains.map(migrateRunLink)),
-    tools: orderRunRecords(batch.tools.map(migrateRunLink)),
-    audits: orderRunRecords(batch.audits.map(migrateRunLink)),
-    issues: normalize(migratableIssues.map((record) => normalizedRecordObservation(migrateRunLink(record), 'issue'))).issues
-  };
-  return /** @type {import('../model/schema.js').CanonicalBatch} */ (migrated);
-}
-
 /**
  * @param {unknown} payload
  * @param {string | undefined} identity
@@ -284,10 +148,9 @@ async function transactionId(kind, scope) {
   return `${kind}:current:${await payloadHash(scope, undefined)}`;
 }
 
-/** @param {string} hash * @param {number} [ingestionVersion]
-*/
-function normalizedShardTransactionId(hash, ingestionVersion = NORMALIZED_JSON_INGESTION_VERSION) {
- return `ingest-normalized-json:sha256:${hash}:v${ingestionVersion}`;
+/** @param {string} hash */
+function normalizedJsonlShardTransactionId(hash) {
+  return `ingest-normalized-jsonl:sha256:${hash}:v${NORMALIZED_JSONL_INGESTION_VERSION}`;
 }
 
 /** @param {string} hash */
@@ -331,28 +194,14 @@ export async function isCachedGhAwJsonlCurrent(indexedDB, options) {
 
 /**
  * @param {IDBFactory} indexedDB
- * @param {{ payloadIdentity: string, payloadScope: string, expectedPhase?: 'runs' | 'records' }} options
- * @param {number} [ingestionVersion]
+ * @param {{ payloadIdentity: string, expectedPhase?: 'runs' | 'records' }} options
  */
-export async function isNormalizedJsonCurrent(
-  indexedDB,
-  options,
-  ingestionVersion = NORMALIZED_JSON_INGESTION_VERSION
-) {
-  const receiptId = normalizedShardTransactionId(options.payloadIdentity, ingestionVersion);
-  const receipt = await readTransaction(indexedDB, receiptId);
-  if (receipt?.payloadHash === options.payloadIdentity
-      && receipt.ingestionVersion === ingestionVersion) {
-    if (options.expectedPhase === 'runs' && !Number.isSafeInteger(receipt.rawRuns)) return false;
-    return true;
-  }
-  const legacyReceipt = await readCurrentIngestion(indexedDB, 'ingest-normalized-json', options.payloadScope);
-  if (legacyReceipt?.payloadHash !== options.payloadIdentity
-      || legacyReceipt.ingestionVersion !== ingestionVersion) {
-    return false;
-  }
-  await recordTransaction(indexedDB, { ...legacyReceipt, id: receiptId });
-  return true;
+export async function isNormalizedJsonlCurrent(indexedDB, options) {
+  const receipt = await readTransaction(indexedDB, normalizedJsonlShardTransactionId(options.payloadIdentity));
+  return receipt?.kind === 'ingest-normalized-jsonl'
+    && receipt.payloadHash === options.payloadIdentity
+    && receipt.ingestionVersion === NORMALIZED_JSONL_INGESTION_VERSION
+    && (options.expectedPhase !== 'runs' || Number.isSafeInteger(receipt.rawRuns));
 }
 
 /**
@@ -655,87 +504,6 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
 }
 
 /**
- * Imports a build-time normalized activity shard without browser-side
- * adaptation or normalization.
- *
- * @param {IDBFactory} indexedDB
- * @param {unknown} input
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, onLockWait?: () => void, payloadIdentity: string, payloadScope: string, expectedPhase?: 'runs' | 'records', signal?: AbortSignal }} options
- */
-export function ingestNormalizedJson(indexedDB, input, options) {
-  return serializeIngestion(indexedDB, async () => {
-    let phase = 'adapting';
-    try {
-      if (!input || typeof input !== 'object' || Array.isArray(input)) {
-        throw new TypeError('Normalized activity payload must be an object');
-      }
-
-      const payload = /** @type {{ schemaVersion?: unknown, ingestionVersion?: unknown, sourceRecords?: unknown, phase?: unknown, batch?: unknown }} */ (input);
-      if (![CANONICAL_SCHEMA_VERSION, 16, 15, 14, 13, 12].includes(Number(payload.schemaVersion))) {
-        throw new TypeError(`Unsupported normalized activity schema: ${String(payload.schemaVersion)}`);
-      }
-      if (payload.ingestionVersion !== NORMALIZED_JSON_INGESTION_VERSION) {
-        throw new TypeError(`Unsupported normalized activity ingestion version: ${String(payload.ingestionVersion)}`);
-      }
-      if (!payload.batch || typeof payload.batch !== 'object' || Array.isArray(payload.batch)) {
-        throw new TypeError('Normalized activity payload must include a canonical batch');
-      }
-      let batch = migrateNormalizedBatch(/** @type {Record<string, unknown>} */ (payload.batch));
-      if (payload.schemaVersion === 12) {
-        batch = await migrateSchema12Batch(indexedDB, batch);
-      }
-      for (const collection of NORMALIZED_BATCH_COLLECTIONS) {
-        if (!Array.isArray(batch[collection])) {
-          throw new TypeError(`Normalized activity payload is missing ${collection}`);
-        }
-      }
-      if (options.expectedPhase) {
-        if (payload.phase !== options.expectedPhase) {
-          throw new TypeError(`Normalized activity payload phase must be ${options.expectedPhase}`);
-        }
-        const excluded = options.expectedPhase === 'runs'
-          ? ['domains', 'tools', 'audits', 'issues', 'operationalValues']
-          : ['campaigns', 'repositories', 'workflows', 'runs'];
-        for (const collection of excluded) {
-          if (batch[/** @type {keyof import('../model/schema.js').CanonicalBatch} */ (collection)].length > 0) {
-            throw new TypeError(`Normalized ${options.expectedPhase} payload must not include ${collection}`);
-          }
-        }
-      }
-      if (await isNormalizedJsonCurrent(indexedDB, options)) {
-        debug('skipped unchanged normalized activity shard', { scope: options.payloadScope });
-        return { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 };
-      }
-      phase = 'writing';
-      const storageStartedAt = monotonicNow();
-      const result = await ingestCanonicalBatch(indexedDB, batch, {
-        ...options,
-        preserveWorkflowCampaignMappings: true,
-        preserveRepositoryRecords: true
-      });
-      options.signal?.throwIfAborted();
-      const timings = { parsingMs: 0, normalizationMs: 0, storageMs: monotonicNow() - storageStartedAt };
-      await recordTransaction(indexedDB, {
-        id: normalizedShardTransactionId(options.payloadIdentity),
-        kind: 'ingest-normalized-json',
-        createdAt: new Date(options.now ?? Date.now()).toISOString(),
-        payloadScope: options.payloadScope,
-        payloadHash: options.payloadIdentity,
-        ingestionVersion: NORMALIZED_JSON_INGESTION_VERSION,
-        records: Number(payload.sourceRecords ?? 0),
-        committedRecords: result.committedRecords,
-        storage: result.idb,
-        timings
-      });
-      return { ...result, records: Number(payload.sourceRecords ?? 0), timings };
-    } catch (error) {
-      if (error instanceof CanonicalIngestionError) throw error;
-      throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, error);
-    }
-  }, { onLockWait: options.onLockWait, signal: options.signal });
-}
-
-/**
  * Applies retention and size limits for a normalized JSONL ingestion using the
  * caller's configured windows and storage estimate.
  *
@@ -794,7 +562,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
       if (!chunks || typeof chunks !== 'object' || !(Symbol.asyncIterator in chunks)) {
         throw new TypeError('Normalized activity JSONL must be an async iterable');
       }
-      if (await isNormalizedJsonCurrent(indexedDB, options, NORMALIZED_JSONL_INGESTION_VERSION)) {
+      if (await isNormalizedJsonlCurrent(indexedDB, options)) {
         debug('skipped unchanged normalized activity JSONL shard', { scope: options.payloadScope });
         return { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 };
       }
@@ -802,7 +570,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
       const encoder = new TextEncoder();
       let pending = '';
       let lineNumber = 0;
-      /** @type {{ phase: 'all' | 'runs' | 'records', records: number, sourceRecords?: number, schemaVersion: number } | null} */
+      /** @type {{ phase: 'all' | 'runs' | 'records', records: number, sourceRecords?: number } | null} */
       let header = null;
       let batch = emptyNormalizedBatch();
       let bufferedRecords = 0;
@@ -812,8 +580,6 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
       const flush = async () => {
         if (bufferedRecords === 0) return;
         phase = 'writing';
-        batch = migrateNormalizedBatch(/** @type {Record<string, unknown>} */ (batch));
-        if (header?.schemaVersion === 12) batch = await migrateSchema12Batch(indexedDB, batch);
         await preserveStreamedStructuralMetadata(indexedDB, batch);
         const result = await upsertCanonicalBatch(indexedDB, batch, {
           validateRelationships: false,
@@ -849,7 +615,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
             throw new TypeError('Normalized activity JSONL must start with metadata');
           }
           const schemaVersion = Number(envelope.schemaVersion);
-          if (![CANONICAL_SCHEMA_VERSION, 16, 15, 14, 13, 12].includes(schemaVersion)) {
+          if (schemaVersion !== CANONICAL_SCHEMA_VERSION) {
             throw new TypeError(`Unsupported normalized activity schema: ${String(envelope.schemaVersion)}`);
           }
           if (envelope.ingestionVersion !== NORMALIZED_JSONL_INGESTION_VERSION) {
@@ -868,7 +634,6 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
           header = {
             phase: /** @type {'all' | 'runs' | 'records'} */ (envelope.phase),
             records: Number(envelope.records),
-            schemaVersion,
             sourceRecords: Number.isSafeInteger(envelope.sourceRecords)
               ? Number(envelope.sourceRecords)
               : undefined
@@ -925,7 +690,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
         : await maintainNormalizedJsonlDatabase(indexedDB, options);
       const result = { updated: true, committedBatches, committedRecords };
       await recordTransaction(indexedDB, {
-        id: normalizedShardTransactionId(options.payloadIdentity, NORMALIZED_JSONL_INGESTION_VERSION),
+        id: normalizedJsonlShardTransactionId(options.payloadIdentity),
         kind: 'ingest-normalized-jsonl',
         createdAt: new Date(options.now ?? Date.now()).toISOString(),
         payloadScope: options.payloadScope,
