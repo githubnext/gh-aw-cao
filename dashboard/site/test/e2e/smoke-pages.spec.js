@@ -895,24 +895,6 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
           rows: [{ 'safe-output-count': 1, 'observed-at': '2026-08-29T09:40:00Z' }],
           metadata
         },
-        'operational-graders': {
-          source: 'operational-graders',
-          rows: [
-            {
-              'operational-grader': 0.6,
-              'operational-grader-definition': 'accepted-outcome',
-              'observed-at': '2026-08-01T09:45:00Z',
-              'evidence-link': evidenceLink
-            },
-            {
-              'operational-grader': 0.8,
-              'operational-grader-definition': 'accepted-outcome',
-              'observed-at': '2026-08-29T09:45:00Z',
-              'evidence-link': evidenceLink
-            }
-          ],
-          metadata
-        },
         usage: {
           source: 'usage',
           rows: [

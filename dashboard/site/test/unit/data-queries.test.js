@@ -1010,16 +1010,10 @@ describe('declarative dashboard queries', () => {
       rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', 'safe-output': 'report-1' }],
       metadata: metadata('outcomes')
     };
-    const operationalGraders = {
-      source: 'operational-graders',
-      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', 'operational-grader': 1 }],
-      metadata: metadata('operational-graders')
-    };
-
     const derived = executeDashboardQueries(
       dashboardQueries,
-      { ...emptyRunRecordSources, campaigns, repositories, workflows: queryWorkflows, runs, audits: events, outcomes, 'operational-graders': operationalGraders, usage },
-      ['entity-workflows', 'repository-activity', 'workflow-inventory', 'campaign-operational-grader-totals', 'campaign-repository-coverage', 'campaign-inventory']
+      { ...emptyRunRecordSources, campaigns, repositories, workflows: queryWorkflows, runs, audits: events, outcomes, usage },
+      ['entity-workflows', 'repository-activity', 'workflow-inventory', 'campaign-repository-coverage', 'campaign-inventory']
     );
 
     expect(derived['entity-workflows'].rows).toEqual([
@@ -1031,7 +1025,6 @@ describe('declarative dashboard queries', () => {
       repository: 'githubnext/gh-aw-cao',
       workflows: 3,
       reports: 1,
-      'evaluated-workflows': 1,
       runs: 3,
       ingestion: '66.7%',
       'failure-summary': '33.3% · 1 failed',
@@ -1043,10 +1036,6 @@ describe('declarative dashboard queries', () => {
       expect.objectContaining({ workflow: 'b.md', runs: 0, 'successful-runs': 0, 'failed-runs': 0, 'aic-per-run': null, ingestion: null }),
       expect.objectContaining({ workflow: 'c.md', runs: 1, 'successful-runs': 1, 'failed-runs': 0, 'aic-per-run': 0, ingestion: '100%' })
     ]);
-    expect(derived['campaign-operational-grader-totals'].rows).toEqual([{
-      campaign: 'aw-doctor',
-      'grader-result': 1
-    }]);
     expect(derived['campaign-repository-coverage'].rows).toEqual([{
       campaign: 'aw-doctor',
       'covered-repositories': 1
@@ -1066,7 +1055,6 @@ describe('declarative dashboard queries', () => {
       dispatches: 2,
       'covered-repositories': 1,
       aic: 10,
-      'grader-result': 1
     }]);
   });
 
@@ -1128,7 +1116,6 @@ describe('declarative dashboard queries', () => {
     expect(derived['repository-activity'].rows).toEqual([expect.objectContaining({
       repository: 'githubnext/gh-aw-cao',
       reports: null,
-      'evaluated-workflows': null,
       runs: 1,
       aic: 4
     })]);

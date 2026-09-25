@@ -17,7 +17,13 @@ function evaluate(worker, input) {
   ));
 }
 
-test("Optimization workers use deterministic one-shot operational-value contracts", { skip: process.platform === "win32" }, () => {
+test("Optimization workers no longer use run-scoped operational-value graders", () => {
+  for (const worker of workers) {
+    assert.doesNotMatch(workflow(`${worker}.md`), /^graders:/m);
+  }
+});
+
+test("Optimization workers use deterministic one-shot operational-value contracts", { skip: "legacy run-scoped graders were removed" }, () => {
   for (const worker of workers) {
     const fixtures = JSON.parse(readFileSync(
       join(root, ".github", "workflows", "graders", `${worker}-operational-value.fixtures.json`),
@@ -30,7 +36,7 @@ test("Optimization workers use deterministic one-shot operational-value contract
   }
 });
 
-test("Optimization campaign installs exactly two workers and their evaluators", () => {
+test("Optimization campaign installs exactly two workers without per-workflow evaluators", () => {
   const manifest = readFileSync(join(root, "optimization", "aw.yml"), "utf8");
   const descriptor = JSON.parse(readFileSync(join(root, "optimization", "cao.json"), "utf8"));
 
@@ -41,12 +47,7 @@ test("Optimization campaign installs exactly two workers and their evaluators", 
   assert.match(manifest, /\.github\/workflows\/optimization-token-auditor\.md/);
   assert.match(manifest, /\.github\/workflows\/optimization-token-optimizer\.md/);
   assert.doesNotMatch(manifest, /ai-credit|agents-md|skills-curator|token-efficiency|intervention-tracker/);
-  for (const worker of workers) {
-    assert.match(
-      readFileSync(join(root, "optimization", ".github", "graders", `${worker}-operational-value.sh`), "utf8"),
-      /^#!\/usr\/bin\/env bash/m,
-    );
-  }
+  assert.doesNotMatch(manifest, /\.github\/graders\//);
 });
 
 test("Optimization workers are review-capped, target-scoped, and idempotent", () => {
