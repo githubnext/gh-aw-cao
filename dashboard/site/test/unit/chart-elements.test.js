@@ -247,6 +247,31 @@ describe('chart element helpers', () => {
       .toContain('Alpha repository: 40');
   });
 
+  it('formats linked horizontal bar categories without changing their destinations', () => {
+    const points = [{
+      x: 'githubnext/gh-aw-cao:.github/workflows/optimization-agents-and-curator.md',
+      y: 40,
+      color: null,
+      link: { href: '#page-workflow-runtime?workflow=optimization', label: 'View workflow dashboard' }
+    }];
+    const chart = renderChartWidget(
+      'horizontal-bar',
+      points,
+      listChartSeries(points),
+      null,
+      'Total',
+      null,
+      null,
+      null,
+      (label) => label.replace('.github/workflows/', '').replace(':', ' (') + ')'
+    );
+
+    expect(chart.querySelector('.horizontal-bar-chart-label a')?.getAttribute('href'))
+      .toBe('#page-workflow-runtime?workflow=optimization');
+    expect(chart.querySelector('.horizontal-bar-chart-label-text')?.textContent)
+      .toBe('githubnext/gh-aw-cao (optimization-agents-and-curator.md)');
+  });
+
   it('preserves complete horizontal bar labels with shared prefixes', () => {
     const points = [
       { x: 'dependabot-update-planner: Review error logs', y: 25, color: 'success' },

@@ -1266,7 +1266,8 @@ function renderChartView(context) {
       value ? fieldTitle(value) : 'Total',
       value ? fieldUnit(value, context.units ?? {}) : null,
       isPlainObject(view.data) && isPlainObject(view.data.time) ? view.data.time : null,
-      reference?.field ?? null
+      reference?.field ?? null,
+      pieCategoryLabelFormatter(x)
     );
     const chartLegend = (color || yDefinitions.length > 1) && !['heatmap', 'pie', 'swimlane'].includes(chartType)
       ? renderChartLegend(chartSeries, chartType)

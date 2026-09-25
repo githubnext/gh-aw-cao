@@ -440,9 +440,10 @@ function renderInteractiveChartMark({ className, entryIndex, label, shape, toolt
  * @param {{ name: string, symbol: string, significant: number, format?: string } | null} [unit]
  * @param {Record<string, unknown> | null} [timeRange]
  * @param {string | null} [referenceField]
+ * @param {(label: string) => string} [formatCategory]
  * @returns {HTMLElement}
  */
-export function renderChartWidget(chartType, points, series, pieSummary = null, totalLabel = 'Total', unit = null, timeRange = null, referenceField = null) {
+export function renderChartWidget(chartType, points, series, pieSummary = null, totalLabel = 'Total', unit = null, timeRange = null, referenceField = null, formatCategory = (label) => label) {
   const pieData = chartType === 'pie' ? pieSummary ?? pieChartEntries(points) : null;
   const entryCount = pieData ? pieData.entries.length : points.length;
   const minimumEntries = ['heatmap', 'horizontal-bar', 'pie', 'scatter'].includes(chartType) ? 1 : 2;
@@ -613,12 +614,13 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
           const value = Number.isFinite(numericValue) ? numericValue : 0;
           const barSize = Math.max(0, value);
           const label = chartPointLabel(point, unit);
+          const category = formatCategory(point.x);
           return h(
             'li',
             { className: 'horizontal-bar-chart-row' },
             h('span', { className: 'horizontal-bar-chart-label', title: point.x },
               renderSafeLink(
-                h('bdi', { className: 'horizontal-bar-chart-label-text', dir: 'ltr' }, String(point.x ?? '')),
+                h('bdi', { className: 'horizontal-bar-chart-label-text', dir: 'ltr' }, category),
                 point.link ?? null
               )
             ),
