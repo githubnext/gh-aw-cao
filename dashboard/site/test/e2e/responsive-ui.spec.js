@@ -248,11 +248,17 @@ test('full-view chart, card, and table content share the page inset', async ({ p
     </div>
   `);
 
-  const contentInsets = await page.locator('[data-view-content]').evaluateAll((elements) => (
-    elements.map((element) => element.getBoundingClientRect().x)
-  ));
+  const [contentInsets, expectedInset] = await Promise.all([
+    page.locator('[data-view-content]').evaluateAll((elements) => (
+      elements.map((element) => element.getBoundingClientRect().x)
+    )),
+    page.locator('main.dashboard-prototype').evaluate((main) => {
+      const pageInset = Number.parseFloat(getComputedStyle(main).getPropertyValue('--dashboard-page-padding-inline'));
+      return main.getBoundingClientRect().x + (pageInset * 2);
+    })
+  ]);
 
-  expect(contentInsets).toEqual([248, 248, 248]);
+  expect(contentInsets).toEqual([expectedInset, expectedInset, expectedInset]);
 });
 
 const horizontalBarFixtureLabel = '.github/workflows/extremely-long-dependabot-update-planner.md';
