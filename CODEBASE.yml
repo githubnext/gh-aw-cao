@@ -13,7 +13,7 @@ project:
     - JSONL
     - SQLite
     - IndexedDB
-    - Redis Stack
+    - Redis
     - Go
     - Dashboard Language
     - Astro/Starlight
@@ -120,7 +120,7 @@ components:
     responsibility: rebuildable per-browser data projection
   redis_projection:
     path: server/
-    responsibility: disposable generation-scoped dashboard projection with RediSearch indexes
+    responsibility: disposable generation-scoped dashboard projection using core Redis row sets
   dashboard_https_server:
     path: server/
     responsibility: ingest deployed dashboard artifacts, execute Dashboard Language queries server-side, and serve bounded canonical results locally or through an authenticated host-neutral profile

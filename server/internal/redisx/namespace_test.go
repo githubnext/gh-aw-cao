@@ -74,7 +74,7 @@ func TestStoreNamespacesUseDisjointKeysAndIndexes(t *testing.T) {
 		first.generationKey("generation"),
 		first.sourceSetKey("generation", "runs"),
 		first.rowPrefix("generation", "runs") + "row",
-		first.indexName("generation", "runs"),
+		first.generationsKey(),
 	}
 	secondNames := []string{
 		second.activeKey(),
@@ -83,7 +83,7 @@ func TestStoreNamespacesUseDisjointKeysAndIndexes(t *testing.T) {
 		second.generationKey("generation"),
 		second.sourceSetKey("generation", "runs"),
 		second.rowPrefix("generation", "runs") + "row",
-		second.indexName("generation", "runs"),
+		second.generationsKey(),
 	}
 	for i := range firstNames {
 		if firstNames[i] == secondNames[i] {

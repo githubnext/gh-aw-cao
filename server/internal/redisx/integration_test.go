@@ -39,12 +39,12 @@ func TestRedisStackIntegration(t *testing.T) {
 		Rows:     []model.Row{{"id": "1", "conclusion": "success", "duration": 5}},
 		Metadata: model.Metadata{"availability": "available"},
 	}
-	if _, err := store.PutSource(ctx, generation, source); err != nil {
+	if err := store.PutSource(ctx, generation, source); err != nil {
 		t.Fatal(err)
 	}
 	otherSource := source
 	otherSource.Rows = []model.Row{{"id": "1", "conclusion": "failure", "duration": 8}}
-	if _, err := otherStore.PutSource(ctx, generation, otherSource); err != nil {
+	if err := otherStore.PutSource(ctx, generation, otherSource); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := store.Activate(
@@ -89,7 +89,11 @@ func TestRedisStackIntegration(t *testing.T) {
 	}
 }
 
-func TestRedisSearchFailurePreservesResidualQuery(t *testing.T) {
+// Rows are stored as a single raw document. The previous implementation also
+// wrote every scalar field as its own hash field so RediSearch could index it,
+// which doubled a generation's memory to serve a pushdown path no canonical
+// query was eligible for. This guards that the duplication stays gone.
+func TestRowsAreStoredOnlyAsRawDocuments(t *testing.T) {
 	rawURL := os.Getenv("REDIS_URL")
 	if rawURL == "" {
 		t.Skip("REDIS_URL is not set")
@@ -98,14 +102,14 @@ func TestRedisSearchFailurePreservesResidualQuery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	namespace, err := NormalizeNamespace("search-fallback-" + strconv.FormatInt(time.Now().UnixNano(), 36))
+	namespace, err := NormalizeNamespace("raw-only-" + strconv.FormatInt(time.Now().UnixNano(), 36))
 	if err != nil {
 		t.Fatal(err)
 	}
 	store := NewStore(client, namespace)
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	generation := "search-fallback"
+	generation := "raw-only"
 	source := model.Source{
 		Source: "runs",
 		Rows: []model.Row{
@@ -113,12 +117,34 @@ func TestRedisSearchFailurePreservesResidualQuery(t *testing.T) {
 			{"id": "2", "conclusion": "failure"},
 		},
 	}
-	if _, err := store.PutSource(ctx, generation, source); err != nil {
+	if err := store.PutSource(ctx, generation, source); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.Do(ctx, "FT.DROPINDEX", store.indexName(generation, "runs")); err != nil {
+	members, err := client.Do(ctx, "SMEMBERS", store.sourceSetKey(generation, "runs"))
+	if err != nil {
 		t.Fatal(err)
 	}
+	keys, err := Strings(members)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(keys) != 2 {
+		t.Fatalf("got %d row keys, want 2", len(keys))
+	}
+	for _, key := range keys {
+		value, err := client.Do(ctx, "HKEYS", key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		fields, err := Strings(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(fields) != 1 || fields[0] != "raw" {
+			t.Fatalf("row %s holds %v, want only the raw document", key, fields)
+		}
+	}
+	// Filtering still works: the query engine evaluates the definition.
 	definition := query.Definition{
 		Name: "failures",
 		From: "runs",
@@ -132,9 +158,9 @@ func TestRedisSearchFailurePreservesResidualQuery(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(loaded.Rows) != 2 {
-		t.Fatalf("got %d fallback rows, want 2", len(loaded.Rows))
+		t.Fatalf("got %d rows, want both rows returned for engine evaluation", len(loaded.Rows))
 	}
 	if len(metrics.PushedDown) != 0 {
-		t.Fatalf("failed Redis search reported pushed-down operations: %#v", metrics.PushedDown)
+		t.Fatalf("reported pushed-down operations: %#v", metrics.PushedDown)
 	}
 }

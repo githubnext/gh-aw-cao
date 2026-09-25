@@ -175,9 +175,6 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 	if err := store.Ping(ctx); err != nil {
 		return nil, errors.New("redis is unavailable")
 	}
-	if err := store.CheckRediSearch(ctx); err != nil {
-		return nil, err
-	}
 	definitions, err := ParseDashboardQueries(dashboardQueriesPath)
 	if err != nil {
 		return nil, err

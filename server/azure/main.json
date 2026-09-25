@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.47.16.16243",
-      "templateHash": "14678230042880072953"
+      "templateHash": "16663024274036363741"
     }
   },
   "parameters": {
@@ -44,31 +44,30 @@
     "redisEnterpriseName": {
       "type": "string",
       "metadata": {
-        "description": "Redis Enterprise cache name. The default database enables RediSearch."
+        "description": "Azure Managed Redis cache name."
       }
     },
     "redisSkuName": {
       "type": "string",
-      "defaultValue": "Enterprise_E10",
+      "defaultValue": "Balanced_B0",
       "allowedValues": [
-        "Enterprise_E10",
-        "Enterprise_E20",
-        "Enterprise_E50",
-        "Enterprise_E100",
-        "EnterpriseFlash_F300",
-        "EnterpriseFlash_F700",
-        "EnterpriseFlash_F1500"
+        "Balanced_B0",
+        "Balanced_B1",
+        "Balanced_B3",
+        "Balanced_B5",
+        "Balanced_B10",
+        "MemoryOptimized_M10"
       ],
       "metadata": {
-        "description": "Redis Enterprise SKU with RediSearch module support. The Go server creates per-generation FT indexes and issues FT.SEARCH/FT.AGGREGATE queries, so Basic/Standard/Premium Azure Cache for Redis are not valid for this dashboard."
+        "description": "Redis SKU. The server uses only core key-value commands (HSET/HGET/SMEMBERS/EVAL) and no Redis modules, so the smallest SKU that holds the retained generations is sufficient. Size this from retained dashboard data volume, not from feature requirements."
       }
     },
     "redisCapacity": {
       "type": "int",
-      "defaultValue": 2,
-      "minValue": 2,
+      "defaultValue": 1,
+      "minValue": 1,
       "metadata": {
-        "description": "Redis Enterprise capacity. Production deployments should size this from retained dashboard data volume."
+        "description": "Redis capacity. The module-free default uses the smallest capacity; increase only when retained generations need more memory or throughput."
       }
     },
     "allowedHosts": {
@@ -287,7 +286,7 @@
       "name": "[format('{0}/{1}', parameters('keyVaultName'), 'cao-redis-url')]",
       "properties": {
         "value": "[parameters('redisConnectionString')]",
-        "contentType": "CAO dashboard Redis Enterprise rediss URL"
+        "contentType": "CAO dashboard Redis rediss URL"
       },
       "dependsOn": [
         "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
@@ -367,12 +366,7 @@
       "properties": {
         "clientProtocol": "Encrypted",
         "clusteringPolicy": "EnterpriseCluster",
-        "evictionPolicy": "NoEviction",
-        "modules": [
-          {
-            "name": "RediSearch"
-          }
-        ]
+        "evictionPolicy": "NoEviction"
       },
       "dependsOn": [
         "[resourceId('Microsoft.Cache/redisEnterprise', parameters('redisEnterpriseName'))]"

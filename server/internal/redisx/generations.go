@@ -10,8 +10,8 @@ import (
 
 // generationRetentionGrace is how long a superseded generation is kept after a
 // newer one is activated. Activation only flips a pointer, so a reader that
-// resolved the previous generation may still be issuing FT.SEARCH against it.
-// Dropping it immediately would fail those queries.
+// resolved the previous generation may still be reading its rows.
+// Dropping it immediately would fail those reads.
 const generationRetentionGrace = 10 * time.Minute
 
 // DefaultGenerationRetention is how many generations are kept regardless of
@@ -36,8 +36,8 @@ func (s *Store) TrackGeneration(ctx context.Context, generation string) error {
 
 // PruneGenerations reclaims superseded generations.
 //
-// Each projection writes a full copy of the canonical dataset plus its
-// RediSearch indexes. Redis is configured NoEviction, so without reclamation a
+// Each projection writes a full copy of the canonical dataset. Redis is
+// configured NoEviction, so without reclamation a
 // frequently projecting deployment exhausts memory and every subsequent write
 // fails. Reclamation is therefore part of activation, not an operator task.
 //
@@ -116,9 +116,6 @@ func (s *Store) DropGeneration(ctx context.Context, generation string) error {
 		return err
 	}
 	for _, source := range sources {
-		// The index is dropped first so no query can resolve rows that are
-		// about to disappear.
-		_, _ = s.Client.Do(ctx, "FT.DROPINDEX", s.indexName(generation, source))
 		setKey := s.sourceSetKey(generation, source)
 		members, err := s.Client.Do(ctx, "SMEMBERS", setKey)
 		if err != nil {

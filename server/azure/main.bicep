@@ -19,24 +19,23 @@ param storageAccountName string
 @description('Key Vault name used for GitHub OAuth, session, and Redis connection secrets.')
 param keyVaultName string
 
-@description('Redis Enterprise cache name. The default database enables RediSearch.')
+@description('Azure Managed Redis cache name.')
 param redisEnterpriseName string
 
 @allowed([
-  'Enterprise_E10'
-  'Enterprise_E20'
-  'Enterprise_E50'
-  'Enterprise_E100'
-  'EnterpriseFlash_F300'
-  'EnterpriseFlash_F700'
-  'EnterpriseFlash_F1500'
+  'Balanced_B0'
+  'Balanced_B1'
+  'Balanced_B3'
+  'Balanced_B5'
+  'Balanced_B10'
+  'MemoryOptimized_M10'
 ])
-@description('Redis Enterprise SKU with RediSearch module support. The Go server creates per-generation FT indexes and issues FT.SEARCH/FT.AGGREGATE queries, so Basic/Standard/Premium Azure Cache for Redis are not valid for this dashboard.')
-param redisSkuName string = 'Enterprise_E10'
+@description('Redis SKU. The server uses only core key-value commands (HSET/HGET/SMEMBERS/EVAL) and no Redis modules, so the smallest SKU that holds the retained generations is sufficient. Size this from retained dashboard data volume, not from feature requirements.')
+param redisSkuName string = 'Balanced_B0'
 
-@minValue(2)
-@description('Redis Enterprise capacity. Production deployments should size this from retained dashboard data volume.')
-param redisCapacity int = 2
+@minValue(1)
+@description('Redis capacity. The module-free default uses the smallest capacity; increase only when retained generations need more memory or throughput.')
+param redisCapacity int = 1
 
 @description('Public host names that Azure Front Door/App Service is allowed to forward to the Go dashboard handler.')
 param allowedHosts array
@@ -188,7 +187,7 @@ resource redisConnectionStringValue 'Microsoft.KeyVault/vaults/secrets@2023-07-0
   name: 'cao-redis-url'
   properties: {
     value: redisConnectionString
-    contentType: 'CAO dashboard Redis Enterprise rediss URL'
+    contentType: 'CAO dashboard Redis rediss URL'
   }
 }
 
@@ -249,11 +248,6 @@ resource redisDatabase 'Microsoft.Cache/redisEnterprise/databases@2024-11-01' = 
     clientProtocol: 'Encrypted'
     clusteringPolicy: 'EnterpriseCluster'
     evictionPolicy: 'NoEviction'
-    modules: [
-      {
-        name: 'RediSearch'
-      }
-    ]
   }
 }
 

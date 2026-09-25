@@ -4,11 +4,15 @@ import test from 'node:test';
 
 const bicep = await readFile(new URL('../../server/azure/main.bicep', import.meta.url), 'utf8');
 
-test('Azure dashboard Bicep uses Redis Enterprise with RediSearch and TLS app settings', () => {
+test('Azure dashboard Bicep uses a module-free Redis cache and TLS app settings', () => {
   assert.match(bicep, /Experimental Azure Functions deployment baseline/);
   assert.match(bicep, /Review and validate tenant-specific security, compliance, networking/);
   assert.match(bicep, /Microsoft\.Cache\/redisEnterprise@/);
-  assert.match(bicep, /name:\s*'RediSearch'/);
+  // The server issues only core key-value commands, so no Redis module is
+  // provisioned and the SKU floor is not forced by feature requirements.
+  assert.doesNotMatch(bicep, /RediSearch/);
+  assert.doesNotMatch(bicep, /modules:/);
+  assert.match(bicep, /param redisSkuName string = 'Balanced_B0'/);
   assert.match(bicep, /clientProtocol:\s*'Encrypted'/);
   assert.match(bicep, /publicNetworkAccess:\s*'Disabled'/);
   assert.match(bicep, /CAO_REDIS_URL/);

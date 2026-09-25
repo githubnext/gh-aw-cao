@@ -124,8 +124,5 @@ func storeFromClient(ctx context.Context, client *redisx.Client) (*redisx.Store,
 	if err := store.Ping(ctx); err != nil {
 		return nil, errors.New("redis is unavailable")
 	}
-	if err := store.CheckRediSearch(ctx); err != nil {
-		return nil, err
-	}
 	return store, nil
 }

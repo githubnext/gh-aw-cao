@@ -210,7 +210,7 @@ func Run(ctx context.Context, store *redisx.Store, directory string, options Opt
 		source.Metadata["source-revision"] = dataRevision
 		source.Metadata["availability"] = availability(source.Rows)
 		source.Metadata["row-count"] = len(source.Rows)
-		if _, err := store.PutSource(ctx, generation, source); err != nil {
+		if err := store.PutSource(ctx, generation, source); err != nil {
 			return Result{}, fmt.Errorf("stage generation %s: %w", generation, err)
 		}
 		ingestLog.Printf("staged source rows=%d", len(source.Rows))

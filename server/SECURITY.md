@@ -5,7 +5,7 @@ The Go dashboard server has three security profiles:
 - the default local profile used by `cao-dashboard serve`, for one trusted
   operator on loopback; and
 - the explicit Azure Functions profile, for remote access through GitHub OAuth,
-  server-side sessions, Azure trusted-proxy headers, and Redis Enterprise; and
+  server-side sessions, Azure trusted-proxy headers, and Azure Managed Redis; and
 - the host-neutral `serve-hosted` profile, with the same GitHub identity boundary
   behind an explicitly trusted HTTPS proxy and any compatible managed Redis.
 
@@ -198,8 +198,8 @@ session, and clears cookies.
 ### Azure lifecycle and transport limits
 
 Cold starts rebuild the app from environment configuration, validate Redis
-connectivity, and check RediSearch with `FT._LIST` before serving. Request
-cancellation is propagated through `request.Context()` to Redis calls.
+connectivity before serving. Request cancellation is propagated through
+`request.Context()` to Redis calls.
 
 Health checks remain at `GET /api/v1/health`. Unauthenticated health responses
 only report Redis connectivity and data availability. Authenticated sessions
@@ -223,7 +223,7 @@ The Azure Functions profile assumes the following actors:
 | Network attacker | Can observe or interfere with traffic outside Azure/GitHub TLS channels. | HTTPS-only Function App, TLS Redis, verified Redis certificates, and no plaintext remote Redis are required. |
 | Azure platform/operator | Can deploy Bicep, configure app settings, rotate keys, and view platform metadata. | Uses reviewed Bicep, managed identity, Key Vault RBAC, non-secret outputs, and secret rotation procedures; does not copy secret values into logs, tickets, or checked-in files. |
 | GitHub OAuth/API | Issues tokens and reports membership. | OAuth client secret remains in Key Vault, tokens remain server-side, refresh failures clear sessions, and membership is rechecked before session creation. |
-| Redis Enterprise | Stores disposable projection rows, indexes, encrypted OAuth session records, and active-generation pointers. | Is not authoritative; data can be rebuilt from trusted dashboard artifacts; access is TLS-only and namespace-scoped. |
+| Redis | Stores disposable projection rows, encrypted OAuth session records, and active-generation pointers. | Is not authoritative; data can be rebuilt from trusted dashboard artifacts; access is TLS-only and namespace-scoped. |
 | Telemetry/diagnostics reader | Can view Application Insights and operational logs. | Sees only structured, non-secret operational metadata; no tokens, cookies, Redis URLs, prompt contents, source records, or secret values are logged. |
 
 Protected assets:
@@ -232,7 +232,7 @@ Protected assets:
   authorization decisions;
 - `CAO_SESSION_SECRET`, encrypted session records, session cookies, and CSRF
   tokens;
-- Redis Enterprise URL/access key and namespaced dashboard projection;
+- Redis URL/access key and namespaced dashboard projection;
 - compacted dashboard source artifacts, logical source rows, diagnostics, and
   query results;
 - Bicep, app settings, Key Vault RBAC assignments, deployment history, and
@@ -254,9 +254,9 @@ Primary threats and mitigations:
   `CAO_AZURE_ALLOWED_HOSTS` allow-list and required HTTPS forwarded protocol.
   The local profile keeps separate loopback `Host` protections.
 - **Redis compromise or data confusion**: mitigated by treating Redis as
-  disposable derived state, using TLS-only Redis Enterprise with RediSearch,
-  namespacing every key/index, disabling Redis public network access in Bicep,
-  and rebuilding from trusted artifacts when needed.
+  disposable derived state, using TLS-only Redis, namespacing every key,
+  disabling Redis public network access in Bicep, and rebuilding from trusted
+  artifacts when needed.
 - **Long-lived connection assumptions**: mitigated by treating SSE as
   best-effort in Functions and requiring `/api/v1/refresh` polling as the
   reliable revision check.
@@ -276,7 +276,7 @@ use:
 - The Bicep template is a baseline and does not by itself prove tenant-specific
   network isolation, private endpoint reachability, cost limits, backup
   posture, data residency, or regulatory compliance.
-- Redis Enterprise stores derived dashboard data plus encrypted sessions; an
+- Redis stores derived dashboard data plus encrypted sessions; an
   organization must validate whether its data classification permits that
   projection and retention model.
 - The profile has focused automated tests and Bicep contract checks, but it
@@ -304,8 +304,8 @@ Keep the Azure secure-computing baseline enabled:
 
 - HTTPS-only Function App, TLS 1.2 or newer, disabled FTPS, and no local bearer
   capability in Azure mode;
-- Redis Enterprise encrypted client protocol, RediSearch module, disabled Redis
-  public network access, and no Redis credentials in browser payloads;
+- Redis encrypted client protocol, disabled Redis public network access, and no
+  Redis credentials in browser payloads;
 - storage HTTPS enforcement and no public blob access for Functions runtime
   state;
 - Key Vault RBAC authorization, soft delete, and no secret values in Bicep
@@ -331,18 +331,18 @@ minute interval begins.
   deterministically from the absolute checkout/worktree path, and
   `--redis-namespace` may supply an explicit deployment identifier.
 - The namespace applies to active-generation pointers, revision counters,
-  generation metadata, row sets, row hashes, and RediSearch indexes.
+  generation metadata, row sets, and row hashes.
 
 Namespace isolation prevents accidental collisions between local deployments.
 It does not replace Redis ACLs. Use a dedicated Redis instance or database and
 credentials restricted to the deployment namespace for separate trust
 boundaries.
 
-For Azure, use Redis Enterprise with the RediSearch module and encrypted client
-protocol. `server/azure/main.bicep` sets Redis public network access to
-disabled and expects the Redis URL to be delivered through Key Vault-backed app
-settings. Redis Enterprise client authentication currently relies on access
-keys; do not output them. To rotate, regenerate the Redis access key, update
+For Azure, use encrypted Redis client protocol. `server/azure/main.bicep` sets
+Redis public network access to disabled and expects the Redis URL to be
+delivered through Key Vault-backed app settings. Redis client authentication
+currently relies on access keys; do not output them. To rotate, regenerate the
+Redis access key, update
 the `cao-redis-url` Key Vault secret with the new `rediss://` URL, then restart
 the Function App so Key Vault references resolve the latest secret version.
 
@@ -386,8 +386,8 @@ capability check.
 - Unsupported prediction queries fail closed.
 - Invalid, cyclic, over-budget, stale-pagination, and unavailable-source
   requests return explicit errors rather than partial results.
-- Compatible filtering, aggregation, sorting, and limiting are pushed into
-  RediSearch; bounded Go execution handles residual operations.
+- Filtering, aggregation, sorting, limiting, joins, unions, and computed fields
+  are evaluated by the bounded Go query engine against Redis row sets.
 
 The access capability authorizes the holder to query all data in the active
 local dashboard generation. There is no per-source or per-row authorization.

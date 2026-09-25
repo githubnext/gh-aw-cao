@@ -3,9 +3,9 @@
 The `server/` module is an optional backend for running the Central Agentic Ops
 dashboard with server-owned persistence and query execution. It ingests the
 same compacted data published with the deployed dashboard, materializes
-generation-scoped logical sources in Redis Stack, executes Dashboard Language
-queries in Go with RediSearch pushdown, and serves the built dashboard either
-over loopback HTTP or through an authenticated host-neutral service profile.
+generation-scoped logical sources in Redis, executes Dashboard Language queries
+in Go, and serves the built dashboard either over loopback HTTP or through an
+authenticated host-neutral service profile.
 
 The browser never connects to Redis and never receives the Redis URL or
 credentials. It communicates only with the same-origin HTTP(S) API.
@@ -49,15 +49,15 @@ events likewise contain fixed identifiers only.
 flowchart LR
   Artifact["Deployed dashboard artifact<br/>inventory + run JSONL + record JSONL"]
   Ingest["Go ingester<br/>verify, parse, project"]
-  Redis["Redis Stack<br/>generation rows + RediSearch indexes"]
-  API["Go HTTP(S) server<br/>query planner + bounded fallback"]
+  Redis["Redis<br/>generation row sets"]
+  API["Go HTTP(S) server<br/>bounded query engine"]
   Browser["Dashboard browser app<br/>render bounded view payloads"]
 
   Artifact --> Ingest
   Ingest -->|"stage complete generation"| Redis
   Redis -->|"atomic activation"| API
   Browser -->|"POST /api/v1/query"| API
-  API -->|"FT.SEARCH / FT.AGGREGATE"| Redis
+  API -->|"HGET/SMEMBERS/EVAL"| Redis
   Redis --> API
   API -->|"LogicalSourceInput JSON"| Browser
   API -->|"SSE revision events"| Browser
@@ -70,13 +70,13 @@ flowchart LR
 | CLI | `cmd/cao-dashboard/` | Implements the `ingest` and `serve` commands and keeps Redis configuration in the server process. |
 | Artifact ingestion | `internal/ingest/` | Validates deployed manifests and hashes, loads run shards before record shards, projects canonical records into logical dashboard sources, and activates complete generations. |
 | Query engine | `internal/query/` | Validates Dashboard Language definitions and executes joins, filters, computed fields, aggregates, temporal series, selection, ordering, and limits under resource budgets. |
-| Redis projection | `internal/redisx/` | Stores source rows and metadata, creates RediSearch indexes, plans compatible pushdown, loads bounded fallbacks, and atomically publishes the active generation. |
+| Redis projection | `internal/redisx/` | Stores source rows and metadata with core Redis commands and atomically publishes the active generation. |
 | HTTP(S)/API server | `internal/server/` | Enforces loopback binding, optionally terminates operator-configured TLS, serves static dashboard assets, handles API requests, and publishes revision events. |
-| Azure Functions profile | `internal/server/azure.go` | Builds the same HTTP handler without starting a listener, validates Azure app settings, requires `rediss://` Redis, checks RediSearch availability, and trusts forwarded host/protocol headers only for configured Azure hosts. |
+| Azure Functions profile | `internal/server/azure.go` | Builds the same HTTP handler without starting a listener, validates Azure app settings, requires `rediss://` Redis, and trusts forwarded host/protocol headers only for configured Azure hosts. |
 | GitHub OAuth sessions | `internal/server/oauth.go` | Implements the GitHub OAuth authorization-code flow, active organization/team authorization, refresh-token rotation, server-side encrypted sessions in Redis, logout revocation, and CSRF protection for mutating requests. |
 | Shared API model | `internal/model/` | Defines logical sources, active-generation metadata, diagnostics, and query metrics. |
 | Telemetry | `internal/telemetry/` | Configures the OpenTelemetry TracerProvider from standard `OTEL_*` environment variables, exposes the server's tracer, and writes W3C trace/span id response headers. |
-| Local Redis | `docker-compose.yml` | Runs Redis Stack with RediSearch on `127.0.0.1:6379`. |
+| Local Redis | `docker-compose.yml` | Runs plain Redis on `127.0.0.1:6379`. |
 
 ## Hosted service profile
 
@@ -148,7 +148,7 @@ gone stale. Write commands are not replayed automatically.
 The Azure Functions profile keeps the dashboard browser isolated from Redis,
 GitHub tokens, refresh tokens, Redis access keys, and Key Vault secret values.
 The Function App is the only public application boundary and the only component
-that talks to GitHub APIs, Key Vault references, and Redis Enterprise.
+that talks to GitHub APIs, Key Vault references, and Azure Managed Redis.
 
 ```mermaid
 flowchart LR
@@ -157,7 +157,7 @@ flowchart LR
   Function["Function App<br/>Go dashboard HTTP handler<br/>GitHub OAuth sessions + CSRF"]
   GitHubOAuth["GitHub OAuth + API<br/>login, refresh, org/team membership"]
   KeyVault["Azure Key Vault<br/>OAuth secret, session secret, Redis URL"]
-  Redis["Azure Redis Enterprise<br/>TLS + RediSearch<br/>derived dashboard projection"]
+  Redis["Azure Managed Redis<br/>TLS<br/>derived dashboard projection"]
   Storage["Functions storage account<br/>runtime state only"]
   Insights["Application Insights<br/>non-secret operational telemetry"]
   Operators["Control-plane operators<br/>deploy Bicep + rotate secrets"]
@@ -166,7 +166,7 @@ flowchart LR
   Edge -->|"trusted forwarded host/proto only when allow-listed"| Function
   Function -->|"OAuth code, refresh, membership checks"| GitHubOAuth
   Function -->|"Key Vault references resolved by managed identity"| KeyVault
-  Function -->|"rediss:// FT.SEARCH / FT.AGGREGATE"| Redis
+  Function -->|"rediss:// core Redis commands"| Redis
   Function -->|"runtime binding state"| Storage
   Function -->|"no tokens, no Redis URL, no source records"| Insights
   Operators -->|"reviewed Bicep + secret rotation"| KeyVault
@@ -186,8 +186,8 @@ Primary actors and responsibilities:
   scale in, or terminate long-lived SSE requests.
 - **GitHub OAuth/API**: issues expiring access/refresh tokens and confirms
   organization/team membership; GitHub tokens never leave the server.
-- **Redis Enterprise**: stores disposable, namespaced dashboard projections and
-  RediSearch indexes; it is not an authority or source of truth.
+- **Redis**: stores disposable, namespaced dashboard projections; it is not an
+  authority or source of truth.
 - **Control-plane operator**: reviews Bicep/app settings, keeps Key Vault
   mandatory, rotates credentials, and validates compliance evidence.
 
@@ -199,7 +199,7 @@ Trust boundaries:
   PATs and no GitHub tokens forwarded to the browser.
 - Function App ↔ Key Vault: managed identity and RBAC only; no secret values in
   Bicep outputs, logs, checked-in parameters, or browser-readable state.
-- Function App ↔ Redis Enterprise: TLS-only `rediss://` and a deployment
+- Function App ↔ Redis: TLS-only `rediss://` and a deployment
   namespace for disposable derived data.
 
 ## Data ingestion
@@ -227,8 +227,8 @@ The ingestion sequence is:
 5. Project canonical Campaign, Repository, Workflow, Run, Domain, Tool, Audit,
    and Issue records through
    `dashboard/site/src/data/queries/database.json`.
-6. Stage every logical source, its metadata, diagnostics, row set, and
-   RediSearch index under a new immutable generation.
+6. Stage every logical source, its metadata, diagnostics, and row set under a
+   new immutable generation.
 7. Atomically update the namespaced active pointer and increment the namespaced
    active revision only after the generation is complete.
 
@@ -405,8 +405,10 @@ Known limits, in the order they will be felt at scale:
   Go manifest validation. That is the structural ceiling on projection
   frequency, and it is why `CAO_COLLECT_PROJECTION_INTERVAL` defaults to five
   minutes rather than to seconds.
-- Redis Enterprise is a fixed always-on cost carried for RediSearch, not for
-  key-value storage. It does not scale to zero the way collection workers do.
+- Redis is still an always-on cost, but it is now sized for retained key-value
+  data only. No Redis module is required, so the default Azure SKU is the
+  smallest `Balanced_B0` tier and operators can scale by retained-generation
+  memory rather than by RediSearch availability.
 - The Elastic Premium Function plan is always-on. It is sized for webhook
   admission, which is constant-time, so the smallest plan that meets the
   tenant's network requirements is the right one.
@@ -423,15 +425,14 @@ Redis is a disposable query projection, not an authoritative data source.
 | `<namespace>:active` | Active generation, monotonically increasing revision, artifact revision, evaluation time, activation time, and source counts. |
 | `<namespace>:active-generation` | Active generation pointer updated during atomic activation. |
 | `<namespace>:revision-sequence` | Revision counter used by atomic activation. |
-| `<namespace>:g:<generation>` | Source metadata, field aliases and types, and canonical diagnostics for one generation. |
+| `<namespace>:g:<generation>` | Source metadata and canonical diagnostics for one generation. |
 | `<namespace>:g:<generation>:source:<hash>:rows` | Set of row keys for one logical source. |
-| `<namespace>:g:<generation>:source:<hash>:row:<id>` | Hash containing the complete JSON row plus scalar indexed fields. |
-| `<namespace>:idx:<hash>` | RediSearch index scoped to one source in one generation. |
+| `<namespace>:g:<generation>:source:<hash>:row:<id>` | Hash containing the complete JSON row. |
 
-Source names, field names, and row identities are converted to deterministic
-hashes before becoming Redis key or index fragments. Complete row JSON remains
-available for bounded fallback execution. Every key and RediSearch index is
-scoped by `--redis-namespace`. The default is a stable
+Source names and row identities are converted to deterministic hashes before
+becoming Redis key fragments. Complete row JSON remains available for bounded
+query-engine execution. Every key is scoped by `--redis-namespace`. The default
+is a stable
 `cao:checkout-<path-hash>` value derived from the absolute checkout/worktree
 path, so separate checkouts using Redis database 0 do not collide. Explicit
 values are normalized to a lowercase `cao:` namespace and reject Redis glob
@@ -589,13 +590,13 @@ session-bound CSRF token.
 platform keeps the invocation alive. Clients must treat SSE as best-effort and
 fall back to `/api/v1/refresh` because Functions instances may cold-start,
 scale in, or terminate long-running requests. Cold starts rebuild the Go app
-from app settings and check Redis plus RediSearch before serving requests.
+from app settings and check Redis before serving requests.
 Request cancellation propagates through `request.Context()` to Redis queries.
 
 The Bicep deployment in `server/azure/main.bicep` provisions a Function App,
-Key Vault, Application Insights, storage, and Redis Enterprise with the
-RediSearch module. Every secret-bearing app setting—including Functions runtime
-storage—uses a versionless Key Vault reference so ordinary credential rotation
+Key Vault, Application Insights, storage, and module-free Azure Managed Redis.
+Every secret-bearing app setting—including Functions runtime storage—uses a
+versionless Key Vault reference so ordinary credential rotation
 does not require rewriting application configuration. Session-key rotation uses
 the optional secure `previousSessionSecret` deployment parameter: deploy the old
 key as previous and the new key as current, wait for active sessions and queued
@@ -603,7 +604,7 @@ revocations to drain, then remove the previous key. Encrypted records carry a
 key identifier, and the server can read both keys during that window. The
 template outputs only non-secret host names, redirect URI, Redis database name,
 and Key Vault URI. Redis access keys
-are an unavoidable path for Redis Enterprise client authentication today;
+are an unavoidable path for Azure Managed Redis client authentication today;
 store the `rediss://` URL in Key Vault, rotate the Redis key in Azure, publish a
 new Key Vault secret version, and allow the platform to refresh the reference.
 
@@ -651,7 +652,7 @@ npm run dashboard:server:setup:macos
 ```
 
 The command installs Homebrew Go, Node.js 24, the Docker CLI, Docker Compose,
-Colima, and the dashboard npm dependencies. Redis Stack with RediSearch runs only through
+Colima, and the dashboard npm dependencies. Plain Redis runs only through
 `server/docker-compose.yml`; the setup does not install or start a native Redis
 service.
 
@@ -751,6 +752,6 @@ dashboard CI:
 
 - **Go format, lint, and tests** runs Go 1.27.1, golangci-lint v2.13.2, and the
   server unit suite.
-- **Redis dashboard integration** starts Redis Stack, runs the Redis integration
+- **Redis dashboard integration** starts Redis, runs the Redis integration
   tests, builds the dashboard and server, ingests the deployed shard subset,
   launches the localhost HTTP server, and executes the Playwright view assertions.
