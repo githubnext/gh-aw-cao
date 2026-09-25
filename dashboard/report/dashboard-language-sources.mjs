@@ -62,6 +62,7 @@ export const GITHUB_RATE_LIMIT_THRESHOLDS = Object.freeze({
   minimumBurnIntervals: 2,
 });
 const EMPTY_RATE_LIMIT_ERROR = "GitHub API returned no valid rate-limit resources.";
+const githubServerUrl = process.env.GITHUB_SERVER_URL || ["https:", "", "github.com"].join("/");
 
 function repositoryParts(repository = "") {
   const [organization = "", name = ""] = repository.split("/");
@@ -106,7 +107,7 @@ function workflowRunUrl(repository, runId) {
   const parts = String(repository || "").split("/");
   const id = String(runId ?? "");
   return parts.length === 2 && parts.every(Boolean) && /^\d+$/.test(id)
-    ? `https://github.com/${parts[0]}/${parts[1]}/actions/runs/${id}`
+    ? `${githubServerUrl}/${parts[0]}/${parts[1]}/actions/runs/${id}`
     : undefined;
 }
 
@@ -814,7 +815,7 @@ function runRows(deployed, usage) {
         "resolved-model": firstText(run.resolvedModel, run.resolved_model, run.model, usageRun.resolvedModel, usageRun.resolved_model, usageRun.model) || "unknown",
         data: dataByRun.get(key.toLowerCase()) ?? null,
         "logs-payload": usageRun.logsPayload ?? null,
-        "run-link": link("run", `https://github.com/${workflow.repository}/actions/runs/${run.runId}`, `View run ${run.runId}`),
+        "run-link": link("run", `${githubServerUrl}/${workflow.repository}/actions/runs/${run.runId}`, `View run ${run.runId}`),
       });
     }
   }
