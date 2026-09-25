@@ -119,8 +119,8 @@ test('Indexing shows CAO Activity status, size trend, and retained transactions'
         'indexing-database-table-counts': {
           source: 'indexing-database-table-counts',
           rows: [
-            { kind: 'ingest-jsonl', transactions: 50 },
-            { kind: 'ingest-dashboard-sources', transactions: 50 }
+            { table: 'workflow runs', records: 100 },
+            { table: 'ingestion transactions', records: 100 }
           ],
           metadata
         },

@@ -46,7 +46,16 @@ describe('indexing dashboard', () => {
             }
           ],
           metadata
-        }
+        },
+        campaigns: { source: 'campaigns', rows: [{ id: 'campaign:one' }], metadata },
+        repositories: { source: 'repositories', rows: [{ id: 'repository:one' }], metadata },
+        workflows: { source: 'workflows', rows: [{ id: 'workflow:one' }, { id: 'workflow:two' }], metadata },
+        runs: { source: 'runs', rows: [{ id: 'run:one' }, { id: 'run:two' }, { id: 'run:three' }], metadata },
+        domains: { source: 'domains', rows: [], metadata },
+        tools: { source: 'tools', rows: [{ id: 'tool:one' }], metadata },
+        audits: { source: 'audits', rows: [{ id: 'audit:one' }, { id: 'audit:two' }], metadata },
+        issues: { source: 'issues', rows: [{ id: 'issue:one' }], metadata },
+        'operational-values': { source: 'operational-values', rows: [], metadata }
       },
       ['indexing-daily-ingestion', 'indexing-database-table-counts']
     );
@@ -55,8 +64,14 @@ describe('indexing dashboard', () => {
       { day: '2026-09-24', records: 20, 'workflow-runs': 5 }
     ]);
     expect(results['indexing-database-table-counts'].rows).toEqual([
-      { kind: 'ingest-normalized-jsonl', transactions: 2 },
-      { kind: 'ingest-dashboard-sources', transactions: 1 }
+      { table: 'workflow runs', records: 3 },
+      { table: 'audit events', records: 2 },
+      { table: 'workflows', records: 2 },
+      { table: 'campaigns', records: 1 },
+      { table: 'ingestion transactions', records: 3 },
+      { table: 'issue events', records: 1 },
+      { table: 'repositories', records: 1 },
+      { table: 'tool events', records: 1 }
     ]);
   });
 
@@ -72,7 +87,8 @@ describe('indexing dashboard', () => {
       data: { source: 'indexing-database-table-counts' }
     });
     expect(dashboard.queries.find(/** @param {any} query */ (query) => query.name === 'indexing-database-table-counts')['order-by'])
-      .toEqual([{ field: 'transactions', direction: 'desc' }]);
+      .toEqual([{ field: 'records', direction: 'desc' }, { field: 'table', direction: 'asc' }]);
+    expect(page.views[0].id).toBe('indexing-database-table-counts');
     expect(transactions).toMatchObject({
       mark: 'list',
       list: { style: 'entity-cards', card: 'ingestion-transaction' }

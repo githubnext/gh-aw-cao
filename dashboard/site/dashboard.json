@@ -1661,25 +1661,338 @@
         ]
       },
       {
-        "name": "indexing-database-table-counts",
-        "intent": "Count retained ingestion transactions by database table type.",
-        "from": "transactions",
+        "name": "indexing-campaigns-table-count",
+        "intent": "Count retained campaigns rows in the dashboard database.",
+        "from": "campaigns",
+        "compute": [
+          {
+            "as": "table",
+            "function": "coalesce",
+            "args": [
+              {
+                "value": "campaigns"
+              },
+              {
+                "value": "campaigns"
+              }
+            ]
+          }
+        ],
         "aggregate": {
           "by": [
-            "kind"
+            "table"
           ],
           "values": [
             {
               "field": "id",
-              "as": "transactions",
+              "as": "records",
               "reducer": "count"
             }
           ]
-        },
+        }
+      },
+      {
+        "name": "indexing-repositories-table-count",
+        "intent": "Count retained repositories rows in the dashboard database.",
+        "from": "repositories",
+        "compute": [
+          {
+            "as": "table",
+            "function": "coalesce",
+            "args": [
+              {
+                "value": "repositories"
+              },
+              {
+                "value": "repositories"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "table"
+          ],
+          "values": [
+            {
+              "field": "id",
+              "as": "records",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "indexing-workflows-table-count",
+        "intent": "Count retained workflows rows in the dashboard database.",
+        "from": "workflows",
+        "compute": [
+          {
+            "as": "table",
+            "function": "coalesce",
+            "args": [
+              {
+                "value": "workflows"
+              },
+              {
+                "value": "workflows"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "table"
+          ],
+          "values": [
+            {
+              "field": "id",
+              "as": "records",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "indexing-runs-table-count",
+        "intent": "Count retained workflow runs rows in the dashboard database.",
+        "from": "runs",
+        "compute": [
+          {
+            "as": "table",
+            "function": "coalesce",
+            "args": [
+              {
+                "value": "workflow runs"
+              },
+              {
+                "value": "workflow runs"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "table"
+          ],
+          "values": [
+            {
+              "field": "id",
+              "as": "records",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "indexing-domains-table-count",
+        "intent": "Count retained network domains rows in the dashboard database.",
+        "from": "domains",
+        "compute": [
+          {
+            "as": "table",
+            "function": "coalesce",
+            "args": [
+              {
+                "value": "network domains"
+              },
+              {
+                "value": "network domains"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "table"
+          ],
+          "values": [
+            {
+              "field": "id",
+              "as": "records",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "indexing-tools-table-count",
+        "intent": "Count retained tool events rows in the dashboard database.",
+        "from": "tools",
+        "compute": [
+          {
+            "as": "table",
+            "function": "coalesce",
+            "args": [
+              {
+                "value": "tool events"
+              },
+              {
+                "value": "tool events"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "table"
+          ],
+          "values": [
+            {
+              "field": "id",
+              "as": "records",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "indexing-audits-table-count",
+        "intent": "Count retained audit events rows in the dashboard database.",
+        "from": "audits",
+        "compute": [
+          {
+            "as": "table",
+            "function": "coalesce",
+            "args": [
+              {
+                "value": "audit events"
+              },
+              {
+                "value": "audit events"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "table"
+          ],
+          "values": [
+            {
+              "field": "id",
+              "as": "records",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "indexing-issues-table-count",
+        "intent": "Count retained issue events rows in the dashboard database.",
+        "from": "issues",
+        "compute": [
+          {
+            "as": "table",
+            "function": "coalesce",
+            "args": [
+              {
+                "value": "issue events"
+              },
+              {
+                "value": "issue events"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "table"
+          ],
+          "values": [
+            {
+              "field": "id",
+              "as": "records",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "indexing-operational-values-table-count",
+        "intent": "Count retained operational values rows in the dashboard database.",
+        "from": "operational-values",
+        "compute": [
+          {
+            "as": "table",
+            "function": "coalesce",
+            "args": [
+              {
+                "value": "operational values"
+              },
+              {
+                "value": "operational values"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "table"
+          ],
+          "values": [
+            {
+              "field": "id",
+              "as": "records",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "indexing-transactions-table-count",
+        "intent": "Count retained ingestion transactions rows in the dashboard database.",
+        "from": "transactions",
+        "compute": [
+          {
+            "as": "table",
+            "function": "coalesce",
+            "args": [
+              {
+                "value": "ingestion transactions"
+              },
+              {
+                "value": "ingestion transactions"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "table"
+          ],
+          "values": [
+            {
+              "field": "id",
+              "as": "records",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "indexing-database-table-counts",
+        "intent": "Count retained canonical dashboard database rows by table.",
+        "from": "indexing-campaigns-table-count",
+        "union": [
+          "indexing-repositories-table-count",
+          "indexing-workflows-table-count",
+          "indexing-runs-table-count",
+          "indexing-domains-table-count",
+          "indexing-tools-table-count",
+          "indexing-audits-table-count",
+          "indexing-issues-table-count",
+          "indexing-operational-values-table-count",
+          "indexing-transactions-table-count"
+        ],
         "order-by": [
           {
-            "field": "transactions",
+            "field": "records",
             "direction": "desc"
+          },
+          {
+            "field": "table",
+            "direction": "asc"
           }
         ]
       },
@@ -7785,7 +8098,7 @@
                 "field": "failure-percent"
               },
               {
-                "value": " · "
+                "value": " \u00b7 "
               },
               {
                 "field": "failure-count"
@@ -7806,7 +8119,7 @@
                 "field": "observed-failure-summary"
               },
               {
-                "value": "—"
+                "value": "\u2014"
               }
             ]
           },
@@ -8300,7 +8613,7 @@
           ],
           "values": [
             {
-            "field": "campaign",
+              "field": "campaign",
               "as": "items",
               "reducer": "count"
             }
@@ -11071,9 +11384,24 @@
           "tabs-class-name": "campaign-tabs",
           "tab": "insights",
           "tabs": [
-            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            }
           ]
         },
         "views": [
@@ -11238,9 +11566,24 @@
           "tabs-class-name": "campaign-tabs",
           "tab": "problems",
           "tabs": [
-            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            }
           ]
         },
         "views": [
@@ -11379,9 +11722,24 @@
           "title-format": "title-case",
           "tabs-class-name": "campaign-tabs",
           "tabs": [
-            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            }
           ]
         },
         "views": [
@@ -11423,9 +11781,24 @@
           "title-format": "title-case",
           "tabs-class-name": "campaign-tabs",
           "tabs": [
-            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            }
           ]
         },
         "views": [
@@ -11529,9 +11902,24 @@
           "tabs-class-name": "campaign-tabs",
           "tab": "issues",
           "tabs": [
-            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            }
           ]
         },
         "views": [
@@ -11670,9 +12058,24 @@
           "title-format": "title-case",
           "tabs-class-name": "campaign-tabs",
           "tabs": [
-            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            }
           ]
         },
         "views": [
@@ -11924,9 +12327,24 @@
           "title-format": "title-case",
           "tabs-class-name": "campaign-tabs",
           "tabs": [
-            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            }
           ]
         },
         "views": [
@@ -12041,9 +12459,24 @@
           "title-format": "title-case",
           "tabs-class-name": "campaign-tabs",
           "tabs": [
-            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            }
           ]
         },
         "views": [
@@ -12788,6 +13221,31 @@
         "description": "Monitor CAO Activity ingestion and inspect retained dashboard transactions.",
         "views": [
           {
+            "id": "indexing-database-table-counts",
+            "title": "Database table counts",
+            "description": "Canonical rows retained by dashboard database table.",
+            "data": {
+              "source": "indexing-database-table-counts",
+              "limit": 100
+            },
+            "mark": "chart",
+            "chart": "horizontal-bar",
+            "layout": "full",
+            "empty-message": "No canonical dashboard rows have been retained.",
+            "encoding": {
+              "x": {
+                "field": "table",
+                "type": "nominal",
+                "title": "Table"
+              },
+              "y": {
+                "field": "records",
+                "type": "quantitative",
+                "title": "Rows"
+              }
+            }
+          },
+          {
             "id": "indexing-size",
             "title": "Indexed data over time",
             "description": "New workflow runs and records retained from CAO Activity each day.",
@@ -12832,31 +13290,6 @@
                 "field": "workflow-runs",
                 "type": "quantitative",
                 "title": "New workflow runs"
-              }
-            }
-          },
-          {
-            "id": "indexing-database-table-counts",
-            "title": "Database table counts",
-            "description": "Retained ingestion transactions by type.",
-            "data": {
-              "source": "indexing-database-table-counts",
-              "limit": 100
-            },
-            "mark": "chart",
-            "chart": "horizontal-bar",
-            "layout": "full",
-            "empty-message": "No ingestion transactions have been retained.",
-            "encoding": {
-              "x": {
-                "field": "kind",
-                "type": "nominal",
-                "title": "Table"
-              },
-              "y": {
-                "field": "transactions",
-                "type": "quantitative",
-                "title": "Transactions"
               }
             }
           },
