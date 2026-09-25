@@ -304,8 +304,8 @@ The implementation profile defined by this specification is:
 
 | Layer | Version | Physical structure |
 | --- | ---: | --- |
-| Canonical model | 16 | Campaign, Repository, Workflow, Run, Domain, Tool, Audit, Issue, and Operational Value records |
-| Browser IndexedDB | 24 | Nine canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
+| Canonical model | 17 | Campaign, Repository, Workflow, Run, Domain, Tool, Audit, Issue, and Operational Value records |
+| Browser IndexedDB | 25 | Nine canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
 | Local SQLite projection | IndexedDB 22 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records`, containing the same logical stores and JSON records as IndexedDB |
 | Local Redis server projection | Canonical model 14 | Immutable active generation of logical-source hashes plus RediSearch indexes, queried only through the loopback Go HTTP(S) server |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
@@ -1742,7 +1742,7 @@ The canonical browser database SHALL use:
 
 ```js
 const DATABASE_NAME = "gh-aw-cao-dashboard-data";
-const DATABASE_VERSION = 24;
+const DATABASE_VERSION = 25;
 ```
 
 The name MAY be scoped by deployment path to prevent unrelated dashboard
@@ -1754,7 +1754,7 @@ rows.
 
 # 27. Object Stores
 
-IndexedDB version 24 SHALL define:
+IndexedDB version 25 SHALL define:
 
 ```text
 campaigns
@@ -1809,7 +1809,7 @@ conclusion
 
 The generation-ordered runtime-computation indexes described by Section 73 are
 reserved for the physical version that implements the computation projection.
-They are not part of IndexedDB version 24. That implementation MUST increment
+They are not part of IndexedDB version 25. That implementation MUST increment
 the physical version and update Section 5.1 before relying on those indexes.
 
 ### run-linked tables
