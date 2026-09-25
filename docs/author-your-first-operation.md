@@ -37,7 +37,7 @@ Open your CAO source or control repository in a coding agent. Then use this
 prompt, replacing the bracketed values:
 
 ```text
-Read and follow .github/skills/create-cao-campaign/SKILL.md.
+Read and follow skills/create-cao-campaign/SKILL.md.
 
 Create a campaign for this outcome:
 [What should become measurably better in a repository?]

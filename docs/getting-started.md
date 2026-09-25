@@ -25,7 +25,7 @@ Before you begin, make sure you have:
 
 :::tip[Start with the setup skill]
 From an empty control repository, ask your coding agent to load and follow the
-[`setup-cao` skill](https://github.com/githubnext/gh-aw-cao/blob/main/.github/skills/setup-cao/SKILL.md).
+[`setup-cao` skill](https://github.com/githubnext/gh-aw-cao/blob/main/skills/setup-cao/SKILL.md).
 The skill gathers the control repository, campaign, target, visibility, and authentication choices before it changes the repository, then proves the boundary with one review run. The manual steps below describe the same boundary for operators who need to inspect each action.
 :::
 
