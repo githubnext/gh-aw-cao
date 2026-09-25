@@ -3211,11 +3211,17 @@ describe('presenter built-in and custom pages', () => {
     });
     rendered.ownerDocument.body.append(rendered);
 
-    await activatePage(rendered, 'overview');
+    try {
+      await activatePage(rendered, 'overview');
 
-    expect(rendered.querySelector('#page-title')?.textContent).toBe('Overview');
-    expect(/** @type {HTMLElement} */ (rendered.querySelector('.title-area [data-page-experimental]')).hidden).toBe(true);
-    disposeDashboard(rendered);
+      expect(rendered.querySelector('#page-title')?.textContent).toBe('Overview');
+      const experimentalBadge = /** @type {HTMLElement} */ (rendered.querySelector('.title-area [data-page-experimental]'));
+      expect(experimentalBadge.hidden).toBe(true);
+      expect(experimentalBadge.querySelector('.octicon-beaker')?.getAttribute('aria-hidden')).toBe('true');
+    } finally {
+      disposeDashboard(rendered);
+      rendered.remove();
+    }
   });
 
   it('replaces a failed asynchronous page render with an accessible error message', async () => {
