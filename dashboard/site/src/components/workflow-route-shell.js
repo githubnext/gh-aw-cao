@@ -94,21 +94,21 @@ function workflowRouteAllocation(config, route, workflow, title) {
             href: crumb.href.replace('{repository-encoded}', encodeURIComponent(route.repository))
           }))
         }
-
-        /**
-         * @param {Record<string, unknown>} row
-         * @param {string} label
-         * @returns {{ href: string, label: string } | null}
-         */
-        function routeTitleLink(row, label) {
-          const link = findLink(row, 'workflow-link');
-          const href = link?.externalHref ?? link?.href;
-          return href && !href.startsWith('#')
-            ? { href, label: `Open ${label} on GitHub` }
-            : null;
-        }
       : {})
   };
+}
+
+/**
+ * @param {Record<string, unknown>} row
+ * @param {string} label
+ * @returns {{ href: string, label: string } | null}
+ */
+function routeTitleLink(row, label) {
+  const link = findLink(row, 'workflow-link');
+  const href = link?.externalHref ?? link?.href;
+  return href && !href.startsWith('#')
+    ? { href, label: `Open ${label} on GitHub` }
+    : null;
 }
 
 /**

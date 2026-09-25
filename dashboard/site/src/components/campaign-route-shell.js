@@ -134,48 +134,6 @@ export function renderCampaignRouteShell(context, config) {
         content: config.bodyRenderer?.({ context, campaignId, campaignName, workflows }) ?? null
       };
     }
-
-    /**
-     * @param {string} campaignName
-     * @param {Array<Record<string, unknown>>} workflows
-     * @returns {{ titleLink: { href: string, label: string }} | {}}
-     */
-    function campaignTitleLink(campaignName, workflows) {
-      for (const workflow of workflows) {
-        const repositoryLink = findLink(workflow, 'repository-link');
-        const repositoryHref = repositoryLink?.externalHref ?? repositoryLink?.href;
-        if (!repositoryHref || repositoryHref.startsWith('#')) continue;
-        const href = campaignFolderHref(repositoryHref, text(workflow['campaign-readme-path']));
-        if (href) {
-          return {
-            titleLink: {
-              href,
-              label: `Open ${campaignName} campaign source on GitHub`
-            }
-          };
-        }
-      }
-      return {};
-    }
-
-    /**
-     * @param {string} repositoryHref
-     * @param {string} readmePath
-     * @returns {string}
-     */
-    function campaignFolderHref(repositoryHref, readmePath) {
-      try {
-        const url = new URL(repositoryHref);
-        if (url.protocol !== 'https:' || url.pathname.split('/').filter(Boolean).length < 2) return '';
-        const directory = readmePath.includes('/') ? readmePath.slice(0, readmePath.lastIndexOf('/')) : '';
-        if (!directory) return url.href;
-        const encodedDirectory = directory.split('/').map(encodeURIComponent).join('/');
-        url.pathname = `${url.pathname.replace(/\/$/, '')}/tree/HEAD/${encodedDirectory}`;
-        return url.href;
-      } catch {
-        return '';
-      }
-    }
   });
   effect(() => {
     for (const binding of Object.values(bindings)) {
@@ -195,6 +153,48 @@ export function renderCampaignRouteShell(context, config) {
   }, { signal: scope.signal });
   scope.bind(root);
   return root;
+}
+
+/**
+ * @param {string} campaignName
+ * @param {Array<Record<string, unknown>>} workflows
+ * @returns {{ titleLink: { href: string, label: string }} | {}}
+ */
+function campaignTitleLink(campaignName, workflows) {
+  for (const workflow of workflows) {
+    const repositoryLink = findLink(workflow, 'repository-link');
+    const repositoryHref = repositoryLink?.externalHref ?? repositoryLink?.href;
+    if (!repositoryHref || repositoryHref.startsWith('#')) continue;
+    const href = campaignFolderHref(repositoryHref, text(workflow['campaign-readme-path']));
+    if (href) {
+      return {
+        titleLink: {
+          href,
+          label: `Open ${campaignName} campaign source on GitHub`
+        }
+      };
+    }
+  }
+  return {};
+}
+
+/**
+ * @param {string} repositoryHref
+ * @param {string} readmePath
+ * @returns {string}
+ */
+function campaignFolderHref(repositoryHref, readmePath) {
+  try {
+    const url = new URL(repositoryHref);
+    if (url.protocol !== 'https:' || url.pathname.split('/').filter(Boolean).length < 2) return '';
+    const directory = readmePath.includes('/') ? readmePath.slice(0, readmePath.lastIndexOf('/')) : '';
+    if (!directory) return url.href;
+    const encodedDirectory = directory.split('/').map(encodeURIComponent).join('/');
+    url.pathname = `${url.pathname.replace(/\/$/, '')}/tree/HEAD/${encodedDirectory}`;
+    return url.href;
+  } catch {
+    return '';
+  }
 }
 
 /**

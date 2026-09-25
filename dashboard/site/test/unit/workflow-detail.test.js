@@ -154,6 +154,10 @@ describe('workflow detail route', () => {
     expect(allocation.mock.calls[0][0].detail).toEqual({
       title: 'Ambient Context',
       description: 'Durable reports produced by .github/workflows/ambient-context.md in githubnext/gh-aw-cao.',
+      titleLink: {
+        href: 'https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/ambient-context.md',
+        label: 'Open Ambient Context workflow on GitHub'
+      },
       mode: 'review',
       navigationPage: 'repositories',
       breadcrumbs: [

@@ -274,6 +274,10 @@ describe('renderWorkflowRuntime', () => {
     expect(detail).toEqual({
       title: 'Multi-Device Docs Tester',
       description: 'Run health, AI Credit usage, and operational grader results for .github/workflows/multi-device-docs-tester.md in githubnext/gh-aw-cao.',
+      titleLink: {
+        href: 'https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/multi-device-docs-tester.md',
+        label: 'Open Multi-Device Docs Tester workflow on GitHub'
+      },
       mode: 'review',
       navigationPage: 'campaigns'
     });
