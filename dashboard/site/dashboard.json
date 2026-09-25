@@ -531,11 +531,6 @@
             "title": "# dispatches"
           },
           {
-            "field": "grader-result",
-            "title": "# grader",
-            "unit": "ops-grader"
-          },
-          {
             "field": "aic",
             "title": "# aic",
             "unit": "aic"
@@ -1661,25 +1656,308 @@
         ]
       },
       {
-        "name": "indexing-database-table-counts",
-        "intent": "Count retained ingestion transactions by database table type.",
-        "from": "transactions",
+        "name": "indexing-campaigns-table-count",
+        "intent": "Count retained campaigns rows in the dashboard database.",
+        "from": "campaigns",
+        "compute": [
+          {
+            "as": "table",
+            "function": "literal",
+            "args": [
+              {
+                "value": "campaigns"
+              }
+            ]
+          }
+        ],
         "aggregate": {
           "by": [
-            "kind"
+            "table"
+          ],
+          "values": [
+            {
+              "field": "campaign",
+              "as": "records",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "indexing-repositories-table-count",
+        "intent": "Count retained repositories rows in the dashboard database.",
+        "from": "repositories",
+        "compute": [
+          {
+            "as": "table",
+            "function": "literal",
+            "args": [
+              {
+                "value": "repositories"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "table"
+          ],
+          "values": [
+            {
+              "field": "repository",
+              "as": "records",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "indexing-workflows-table-count",
+        "intent": "Count retained workflows rows in the dashboard database.",
+        "from": "workflows",
+        "compute": [
+          {
+            "as": "table",
+            "function": "literal",
+            "args": [
+              {
+                "value": "workflows"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "table"
+          ],
+          "values": [
+            {
+              "field": "workflow",
+              "as": "records",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "indexing-runs-table-count",
+        "intent": "Count retained workflow runs rows in the dashboard database.",
+        "from": "runs",
+        "compute": [
+          {
+            "as": "table",
+            "function": "literal",
+            "args": [
+              {
+                "value": "workflow runs"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "table"
+          ],
+          "values": [
+            {
+              "field": "run",
+              "as": "records",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "indexing-domains-table-count",
+        "intent": "Count retained network domains rows in the dashboard database.",
+        "from": "domains",
+        "compute": [
+          {
+            "as": "table",
+            "function": "literal",
+            "args": [
+              {
+                "value": "network domains"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "table"
+          ],
+          "values": [
+            {
+              "field": "event",
+              "as": "records",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "indexing-tools-table-count",
+        "intent": "Count retained tool events rows in the dashboard database.",
+        "from": "tools",
+        "compute": [
+          {
+            "as": "table",
+            "function": "literal",
+            "args": [
+              {
+                "value": "tool events"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "table"
+          ],
+          "values": [
+            {
+              "field": "event",
+              "as": "records",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "indexing-audits-table-count",
+        "intent": "Count retained audit events rows in the dashboard database.",
+        "from": "audits",
+        "compute": [
+          {
+            "as": "table",
+            "function": "literal",
+            "args": [
+              {
+                "value": "audit events"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "table"
+          ],
+          "values": [
+            {
+              "field": "event",
+              "as": "records",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "indexing-issues-table-count",
+        "intent": "Count retained issue events rows in the dashboard database.",
+        "from": "issues",
+        "compute": [
+          {
+            "as": "table",
+            "function": "literal",
+            "args": [
+              {
+                "value": "issue events"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "table"
+          ],
+          "values": [
+            {
+              "field": "event",
+              "as": "records",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "indexing-operational-values-table-count",
+        "intent": "Count retained operational values rows in the dashboard database.",
+        "from": "operational-values",
+        "compute": [
+          {
+            "as": "table",
+            "function": "literal",
+            "args": [
+              {
+                "value": "operational values"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "table"
+          ],
+          "values": [
+            {
+              "field": "operational-value",
+              "as": "records",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "indexing-transactions-table-count",
+        "intent": "Count retained ingestion transactions rows in the dashboard database.",
+        "from": "transactions",
+        "compute": [
+          {
+            "as": "table",
+            "function": "literal",
+            "args": [
+              {
+                "value": "ingestion transactions"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "table"
           ],
           "values": [
             {
               "field": "id",
-              "as": "transactions",
+              "as": "records",
               "reducer": "count"
             }
           ]
-        },
+        }
+      },
+      {
+        "name": "indexing-database-table-counts",
+        "intent": "Count retained canonical dashboard database rows by table.",
+        "from": "indexing-campaigns-table-count",
+        "union": [
+          "indexing-repositories-table-count",
+          "indexing-workflows-table-count",
+          "indexing-runs-table-count",
+          "indexing-domains-table-count",
+          "indexing-tools-table-count",
+          "indexing-audits-table-count",
+          "indexing-issues-table-count",
+          "indexing-operational-values-table-count",
+          "indexing-transactions-table-count"
+        ],
         "order-by": [
           {
-            "field": "transactions",
+            "field": "records",
             "direction": "desc"
+          },
+          {
+            "field": "table",
+            "direction": "asc"
           }
         ]
       },
@@ -3903,9 +4181,480 @@
         ]
       },
       {
+        "name": "steering-events",
+        "intent": "Prepare observed gateway steering warnings for aggregation by steering type and workflow.",
+        "description": "Gateway steering warnings emitted when a run approaches its AI Credit budget, time limit, or another declared limit, labelled with a readable steering type.",
+        "from": "audits",
+        "filter": {
+          "predicates": [
+            {
+              "field": "event-type",
+              "equals": "audit.gateway_steering"
+            }
+          ]
+        },
+        "joins": [
+          {
+            "source": "workflows",
+            "type": "left",
+            "on": [
+              {
+                "left": "organization",
+                "right": "organization"
+              },
+              {
+                "left": "repository",
+                "right": "repository"
+              },
+              {
+                "left": "workflow",
+                "right": "workflow"
+              }
+            ],
+            "fields": [
+              {
+                "field": "campaign",
+                "as": "campaign"
+              },
+              {
+                "field": "workflow-name",
+                "as": "workflow-name"
+              }
+            ]
+          }
+        ],
+        "compute": [
+          {
+            "as": "steering-code",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "code"
+              },
+              {
+                "field": "event-status"
+              },
+              {
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "as": "_token-steering",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "steering-code"
+              },
+              {
+                "value": "token_steering"
+              }
+            ]
+          },
+          {
+            "as": "_timeout-steering",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "steering-code"
+              },
+              {
+                "value": "timeout_steering"
+              }
+            ]
+          },
+          {
+            "as": "_turn-steering",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "steering-code"
+              },
+              {
+                "value": "turn_steering"
+              },
+              {
+                "value": "max_turns_steering"
+              }
+            ]
+          },
+          {
+            "as": "_turn-steering-type",
+            "function": "if",
+            "args": [
+              {
+                "field": "_turn-steering"
+              },
+              {
+                "value": "Running out of turns"
+              },
+              {
+                "field": "steering-code"
+              }
+            ]
+          },
+          {
+            "as": "_timeout-steering-type",
+            "function": "if",
+            "args": [
+              {
+                "field": "_timeout-steering"
+              },
+              {
+                "value": "Running out of time"
+              },
+              {
+                "field": "_turn-steering-type"
+              }
+            ]
+          },
+          {
+            "as": "steering-type",
+            "function": "if",
+            "args": [
+              {
+                "field": "_token-steering"
+              },
+              {
+                "value": "Running out of tokens"
+              },
+              {
+                "field": "_timeout-steering-type"
+              }
+            ]
+          },
+          {
+            "as": "workflow-coordinate",
+            "function": "concat",
+            "args": [
+              {
+                "field": "organization"
+              },
+              {
+                "value": "/"
+              },
+              {
+                "field": "repository"
+              },
+              {
+                "value": ":"
+              },
+              {
+                "field": "workflow"
+              }
+            ]
+          },
+          {
+            "as": "workflow-label",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "workflow-name"
+              },
+              {
+                "field": "workflow-coordinate"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "id"
+          },
+          {
+            "field": "organization"
+          },
+          {
+            "field": "repository"
+          },
+          {
+            "field": "workflow"
+          },
+          {
+            "field": "workflow-name"
+          },
+          {
+            "field": "workflow-coordinate"
+          },
+          {
+            "field": "workflow-label"
+          },
+          {
+            "field": "campaign"
+          },
+          {
+            "field": "run"
+          },
+          {
+            "field": "run-link"
+          },
+          {
+            "field": "steering-code"
+          },
+          {
+            "field": "steering-type"
+          },
+          {
+            "field": "event-summary"
+          },
+          {
+            "field": "observed-at"
+          }
+        ]
+      },
+      {
+        "name": "steering-type-totals",
+        "intent": "Show how often each kind of steering warning occurred.",
+        "description": "Observed gateway steering warnings grouped by steering type with the number of affected runs and workflows.",
+        "from": "steering-events",
+        "aggregate": {
+          "by": [
+            "steering-type",
+            "steering-code"
+          ],
+          "values": [
+            {
+              "field": "id",
+              "as": "events",
+              "reducer": "count"
+            },
+            {
+              "field": "run",
+              "as": "runs",
+              "reducer": "distinct-count"
+            },
+            {
+              "field": "workflow-coordinate",
+              "as": "workflows",
+              "reducer": "distinct-count"
+            }
+          ]
+        },
+        "select": [
+          {
+            "field": "steering-type"
+          },
+          {
+            "field": "steering-code"
+          },
+          {
+            "field": "events"
+          },
+          {
+            "field": "runs"
+          },
+          {
+            "field": "workflows"
+          }
+        ],
+        "order-by": [
+          {
+            "field": "events",
+            "direction": "desc"
+          },
+          {
+            "field": "steering-type",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
+        "name": "steering-workflow-totals",
+        "intent": "Count steering warnings for each workflow.",
+        "description": "Gateway steering warnings grouped by workflow, split into token-budget and time-limit warnings.",
+        "from": "steering-events",
+        "aggregate": {
+          "by": [
+            "workflow-coordinate",
+            "organization",
+            "repository",
+            "workflow",
+            "workflow-label",
+            "campaign"
+          ],
+          "values": [
+            {
+              "field": "id",
+              "as": "events",
+              "reducer": "count"
+            },
+            {
+              "field": "run",
+              "as": "runs",
+              "reducer": "distinct-count"
+            },
+            {
+              "field": "id",
+              "as": "token-events",
+              "reducer": "count",
+              "filter": {
+                "predicates": [
+                  {
+                    "field": "steering-code",
+                    "equals": "token_steering"
+                  }
+                ]
+              }
+            },
+            {
+              "field": "id",
+              "as": "time-events",
+              "reducer": "count",
+              "filter": {
+                "predicates": [
+                  {
+                    "field": "steering-code",
+                    "equals": "timeout_steering"
+                  }
+                ]
+              }
+            },
+            {
+              "field": "steering-type",
+              "as": "steering-types",
+              "reducer": "distinct-count"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "events",
+            "direction": "desc"
+          },
+          {
+            "field": "workflow-coordinate",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
+        "name": "steering-workflows",
+        "intent": "Present workflow steering totals with a link to each workflow dashboard.",
+        "description": "Workflow steering totals labelled with a link to the workflow runtime page.",
+        "from": "steering-workflow-totals",
+        "compute": [
+          {
+            "as": "encoded-workflow",
+            "function": "url-encode",
+            "args": [
+              {
+                "field": "workflow-coordinate"
+              }
+            ]
+          },
+          {
+            "as": "workflow-dashboard-href",
+            "function": "concat",
+            "args": [
+              {
+                "value": "#page-workflow-runtime?workflow="
+              },
+              {
+                "field": "encoded-workflow"
+              }
+            ]
+          },
+          {
+            "as": "workflow-dashboard-label",
+            "function": "concat",
+            "args": [
+              {
+                "value": "View "
+              },
+              {
+                "field": "workflow-coordinate"
+              },
+              {
+                "value": " workflow dashboard"
+              }
+            ]
+          },
+          {
+            "as": "workflow-dashboard-link",
+            "function": "dashboard-link",
+            "args": [
+              {
+                "value": ""
+              },
+              {
+                "field": "workflow-dashboard-href"
+              },
+              {
+                "field": "workflow-dashboard-label"
+              },
+              {
+                "field": "workflow-label"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "workflow-coordinate"
+          },
+          {
+            "field": "workflow-label"
+          },
+          {
+            "field": "workflow-dashboard-link"
+          },
+          {
+            "field": "organization"
+          },
+          {
+            "field": "repository"
+          },
+          {
+            "field": "campaign"
+          },
+          {
+            "field": "events"
+          },
+          {
+            "field": "runs"
+          },
+          {
+            "field": "token-events"
+          },
+          {
+            "field": "time-events"
+          },
+          {
+            "field": "steering-types"
+          }
+        ],
+        "order-by": [
+          {
+            "field": "events",
+            "direction": "desc"
+          },
+          {
+            "field": "workflow-coordinate",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
+        "name": "steering-top-workflows",
+        "intent": "Highlight the workflows with the most steering warnings.",
+        "description": "The ten workflows with the highest observed gateway steering warning totals.",
+        "from": "steering-workflows",
+        "order-by": [
+          {
+            "field": "events",
+            "direction": "desc"
+          },
+          {
+            "field": "workflow-coordinate",
+            "direction": "asc"
+          }
+        ],
+        "limit": 10
+      },
+      {
         "name": "engines-models-usage",
-        "intent": "Summarize workflow runs by their agent and model identifiers.",
-        "description": "Observed workflow runs grouped by agent ID and model ID.",
+        "intent": "Summarize run-level AIC and token usage by agent and model identifiers without treating unavailable telemetry as zero.",
+        "description": "Observed workflow runs grouped by agent ID and model ID. Each AIC and token statistic uses only runs that reported that metric.",
         "from": "runs",
         "compute": [
           {
@@ -3936,8 +4685,93 @@
             },
             {
               "field": "aic-total",
+              "as": "minimum-aic-per-run",
+              "reducer": "min"
+            },
+            {
+              "field": "aic-total",
               "as": "average-aic-per-run",
               "reducer": "mean"
+            },
+            {
+              "field": "aic-total",
+              "as": "maximum-aic-per-run",
+              "reducer": "max"
+            },
+            {
+              "field": "input-tokens",
+              "as": "minimum-input-tokens-per-run",
+              "reducer": "min"
+            },
+            {
+              "field": "input-tokens",
+              "as": "average-input-tokens-per-run",
+              "reducer": "mean"
+            },
+            {
+              "field": "input-tokens",
+              "as": "maximum-input-tokens-per-run",
+              "reducer": "max"
+            },
+            {
+              "field": "output-tokens",
+              "as": "minimum-output-tokens-per-run",
+              "reducer": "min"
+            },
+            {
+              "field": "output-tokens",
+              "as": "average-output-tokens-per-run",
+              "reducer": "mean"
+            },
+            {
+              "field": "output-tokens",
+              "as": "maximum-output-tokens-per-run",
+              "reducer": "max"
+            },
+            {
+              "field": "cache-read-tokens",
+              "as": "minimum-cache-read-tokens-per-run",
+              "reducer": "min"
+            },
+            {
+              "field": "cache-read-tokens",
+              "as": "average-cache-read-tokens-per-run",
+              "reducer": "mean"
+            },
+            {
+              "field": "cache-read-tokens",
+              "as": "maximum-cache-read-tokens-per-run",
+              "reducer": "max"
+            },
+            {
+              "field": "cache-write-tokens",
+              "as": "minimum-cache-write-tokens-per-run",
+              "reducer": "min"
+            },
+            {
+              "field": "cache-write-tokens",
+              "as": "average-cache-write-tokens-per-run",
+              "reducer": "mean"
+            },
+            {
+              "field": "cache-write-tokens",
+              "as": "maximum-cache-write-tokens-per-run",
+              "reducer": "max"
+            },
+            {
+              "field": "reasoning-tokens",
+              "as": "minimum-reasoning-tokens-per-run",
+              "reducer": "min"
+            },
+            {
+              "field": "reasoning-tokens",
+              "as": "average-reasoning-tokens-per-run",
+              "reducer": "mean"
+            },
+            {
+              "field": "reasoning-tokens",
+              "as": "maximum-reasoning-tokens-per-run",
+              "reducer": "max"
             }
           ]
         },
@@ -3950,6 +4784,57 @@
           },
           {
             "field": "average-aic-per-run"
+          },
+          {
+            "field": "minimum-aic-per-run"
+          },
+          {
+            "field": "maximum-aic-per-run"
+          },
+          {
+            "field": "minimum-input-tokens-per-run"
+          },
+          {
+            "field": "average-input-tokens-per-run"
+          },
+          {
+            "field": "maximum-input-tokens-per-run"
+          },
+          {
+            "field": "minimum-output-tokens-per-run"
+          },
+          {
+            "field": "average-output-tokens-per-run"
+          },
+          {
+            "field": "maximum-output-tokens-per-run"
+          },
+          {
+            "field": "minimum-cache-read-tokens-per-run"
+          },
+          {
+            "field": "average-cache-read-tokens-per-run"
+          },
+          {
+            "field": "maximum-cache-read-tokens-per-run"
+          },
+          {
+            "field": "minimum-cache-write-tokens-per-run"
+          },
+          {
+            "field": "average-cache-write-tokens-per-run"
+          },
+          {
+            "field": "maximum-cache-write-tokens-per-run"
+          },
+          {
+            "field": "minimum-reasoning-tokens-per-run"
+          },
+          {
+            "field": "average-reasoning-tokens-per-run"
+          },
+          {
+            "field": "maximum-reasoning-tokens-per-run"
           }
         ],
         "order-by": [
@@ -7332,25 +8217,6 @@
         }
       },
       {
-        "name": "repository-evaluated-workflow-totals",
-        "intent": "Summarize distinct workflows with operational-grader evaluations by repository.",
-        "description": "Distinct evaluated workflow totals for each repository.",
-        "from": "operational-graders",
-        "aggregate": {
-          "by": [
-            "organization",
-            "repository"
-          ],
-          "values": [
-            {
-              "field": "workflow",
-              "as": "evaluated-workflows",
-              "reducer": "distinct-count"
-            }
-          ]
-        }
-      },
-      {
         "name": "repository-run-totals",
         "intent": "Summarize distinct runs, failures, and approval-required runs by repository.",
         "description": "Distinct run and conclusion totals for each repository.",
@@ -7470,26 +8336,6 @@
               {
                 "field": "reports",
                 "as": "observed-reports"
-              }
-            ]
-          },
-          {
-            "source": "repository-evaluated-workflow-totals",
-            "type": "left",
-            "on": [
-              {
-                "left": "organization",
-                "right": "organization"
-              },
-              {
-                "left": "repository",
-                "right": "repository"
-              }
-            ],
-            "fields": [
-              {
-                "field": "evaluated-workflows",
-                "as": "observed-evaluated-workflows"
               }
             ]
           },
@@ -7725,13 +8571,13 @@
           },
           {
             "as": "outcomes-observed",
-            "function": "sum",
+            "function": "coalesce",
             "args": [
               {
                 "field": "observed-reports"
               },
               {
-                "field": "observed-evaluated-workflows"
+                "value": 0
               }
             ]
           },
@@ -7960,10 +8806,6 @@
             "as": "reports"
           },
           {
-            "field": "observed-evaluated-workflows",
-            "as": "evaluated-workflows"
-          },
-          {
             "field": "runs"
           },
           {
@@ -8002,243 +8844,23 @@
         ]
       },
       {
-        "name": "workflow-operational-grader-totals",
-        "intent": "Summarize operational-grader results for each evaluated workflow.",
-        "description": "Observed operational-grader totals grouped by producing workflow.",
-        "from": "operational-graders",
-        "aggregate": {
-          "by": [
-            "workflow"
-          ],
-          "values": [
-            {
-              "field": "operational-grader",
-              "as": "grader-result",
-              "reducer": "sum"
-            }
-          ]
-        }
-      },
-      {
-        "name": "campaign-operational-graders",
-        "intent": "Retain every operational-grader result and diagnostic for campaign-scoped temporal analysis.",
-        "description": "Operational-grader observations attributed to centrally managed campaigns by repository and workflow identity.",
-        "from": "operational-graders",
-        "order-by": [
-          {
-            "field": "observed-at",
-            "direction": "asc"
-          }
-        ],
-        "joins": [
-          {
-            "source": "workflows",
-            "type": "left",
-            "on": [
-              {
-                "left": "organization",
-                "right": "organization"
-              },
-              {
-                "left": "repository",
-                "right": "repository"
-              },
-              {
-                "left": "workflow",
-                "right": "workflow"
-              }
-            ],
-            "fields": [
-              {
-                "field": "campaign",
-                "as": "_workflow-campaign"
-              },
-              {
-                "field": "campaign-name",
-                "as": "_workflow-campaign-name"
-              }
-            ]
-          }
-        ],
-        "compute": [
-          {
-            "function": "coalesce",
-            "args": [
-              {
-                "field": "campaign"
-              },
-              {
-                "field": "_workflow-campaign"
-              }
-            ],
-            "as": "_campaign"
-          },
-          {
-            "function": "coalesce",
-            "args": [
-              {
-                "field": "campaign-name"
-              },
-              {
-                "field": "_workflow-campaign-name"
-              }
-            ],
-            "as": "_campaign-name"
-          }
-        ],
-        "select": [
-          {
-            "field": "organization"
-          },
-          {
-            "field": "repository"
-          },
-          {
-            "field": "repository-name"
-          },
-          {
-            "field": "_campaign",
-            "as": "campaign"
-          },
-          {
-            "field": "_campaign-name",
-            "as": "campaign-name"
-          },
-          {
-            "field": "campaign-icon"
-          },
-          {
-            "field": "workflow"
-          },
-          {
-            "field": "run"
-          },
-          {
-            "field": "run-attempt"
-          },
-          {
-            "field": "observation-id"
-          },
-          {
-            "field": "experiment"
-          },
-          {
-            "field": "operational-case"
-          },
-          {
-            "field": "evaluator-digest"
-          },
-          {
-            "field": "rollout-mode"
-          },
-          {
-            "field": "operational-grader"
-          },
-          {
-            "field": "operational-grader-definition"
-          },
-          {
-            "field": "operational-grader-unit"
-          },
-          {
-            "field": "operational-grader-direction"
-          },
-          {
-            "field": "requested-evidence-at"
-          },
-          {
-            "field": "evidence-cutoff"
-          },
-          {
-            "field": "maturity-at"
-          },
-          {
-            "field": "maturity-status"
-          },
-          {
-            "field": "baseline-value"
-          },
-          {
-            "field": "delta-from-baseline"
-          },
-          {
-            "field": "accepted-evidence-provenance"
-          },
-          {
-            "field": "diagnostics"
-          },
-          {
-            "field": "diagnostic-definitions"
-          },
-          {
-            "field": "observed-at"
-          },
-          {
-            "field": "evidence-link"
-          },
-          {
-            "field": "organization-link"
-          },
-          {
-            "field": "repository-link"
-          },
-          {
-            "field": "workflow-link"
-          },
-          {
-            "field": "run-link"
-          }
-        ]
-      },
-      {
-        "name": "campaign-operational-grader-series",
-        "intent": "Project campaign operational-grader measures and diagnostics into reusable temporal series.",
-        "description": "Tidy temporal metric rows for campaign operational-grader analysis.",
-        "from": "campaign-operational-graders",
-        "temporal-series": {
-          "time": "observed-at",
-          "series": "workflow",
-          "shape": "groups",
-          "carry": [
-            "campaign"
-          ],
-          "measures": [
-            {
-              "field": "operational-grader",
-              "key": "operational-grader-definition",
-              "kind": "primary"
-            }
-          ],
-          "maps": [
-            {
-              "field": "diagnostics",
-              "definitions": "diagnostic-definitions",
-              "group": "operational-grader-definition",
-              "kind": "diagnostic"
-            }
-          ]
-        }
-      },
-      {
         "name": "campaign-operational-value-primary-series",
         "intent": "Project repository-level campaign operational value into temporal series while preserving maturity status.",
         "description": "Repository operational-value history with interim observations kept visibly separate from matured evidence.",
         "from": "operational-values",
-        "filter": {
-          "predicates": [
-            {
-              "field": "operational-value-role",
-              "equals": "primary"
-            }
-          ]
-        },
         "temporal-series": {
           "time": "observed-at",
           "series": "repository",
           "shape": "groups",
           "carry": [
             "campaign",
-            "maturity-status"
+            "maturity-status",
+            "operational-value-role",
+            "operational-value-name",
+            "adoption-at",
+            "evaluation-mode",
+            "workflow-slug",
+            "workflow-name"
           ],
           "measures": [
             {
@@ -8254,12 +8876,6 @@
         "intent": "Describe each repository operational-value plot rendered on campaign Insights.",
         "description": "One plot-inventory row for every repository operational-value measure and maturity state.",
         "from": "campaign-operational-value-primary-series"
-      },
-      {
-        "name": "campaign-operational-grader-plot-inventory",
-        "intent": "Describe each rendered operational-grader plot using the shared campaign Insights plot contract.",
-        "description": "One plot-inventory row for every operational-grader measure or diagnostic rendered on campaign Insights.",
-        "from": "campaign-operational-grader-series"
       },
       {
         "name": "campaign-audit-summary-plot-inventory",
@@ -8285,7 +8901,6 @@
         "description": "One campaign row per rendered Insights plot, independent of the plot's data source or renderer.",
         "from": "campaign-operational-value-plot-inventory",
         "union": [
-          "campaign-operational-grader-plot-inventory",
           "campaign-audit-summary-plot-inventory"
         ]
       },
@@ -8300,7 +8915,7 @@
           ],
           "values": [
             {
-            "field": "campaign",
+              "field": "campaign",
               "as": "items",
               "reducer": "count"
             }
@@ -8339,57 +8954,6 @@
               "field": "campaign",
               "as": "items",
               "reducer": "count"
-            }
-          ]
-        }
-      },
-      {
-        "name": "campaign-operational-grader-totals",
-        "intent": "Summarize operational-grader results for each centrally managed campaign.",
-        "description": "Observed operational-grader totals attributed to centrally managed campaign workflows.",
-        "from": "workflow-inventory",
-        "joins": [
-          {
-            "source": "workflow-operational-grader-totals",
-            "type": "inner",
-            "on": [
-              {
-                "left": "workflow",
-                "right": "workflow"
-              }
-            ],
-            "fields": [
-              {
-                "field": "grader-result",
-                "as": "workflow-grader-result"
-              }
-            ]
-          }
-        ],
-        "filter": {
-          "predicates": [
-            {
-              "field": "workflow-role",
-              "in": [
-                "orchestrator",
-                "worker"
-              ]
-            },
-            {
-              "field": "workflow-active",
-              "equals": "true"
-            }
-          ]
-        },
-        "aggregate": {
-          "by": [
-            "campaign"
-          ],
-          "values": [
-            {
-              "field": "workflow-grader-result",
-              "as": "grader-result",
-              "reducer": "sum"
             }
           ]
         }
@@ -8447,6 +9011,64 @@
             }
           ]
         }
+      },
+      {
+        "name": "campaign-readme-orchestrators",
+        "intent": "Resolve one repository link for each campaign README from its declared orchestrator workflow.",
+        "from": "workflows",
+        "filter": {
+          "predicates": [
+            {
+              "field": "workflow-role",
+              "equals": "orchestrator"
+            }
+          ]
+        },
+        "select": [
+          {
+            "field": "campaign"
+          },
+          {
+            "field": "repository-link"
+          }
+        ]
+      },
+      {
+        "name": "campaign-readme-details",
+        "intent": "Present retained campaign README content with its repository-relative link context.",
+        "from": "campaigns",
+        "joins": [
+          {
+            "source": "campaign-readme-orchestrators",
+            "type": "left",
+            "on": [
+              {
+                "left": "campaign",
+                "right": "campaign"
+              }
+            ],
+            "fields": [
+              {
+                "field": "repository-link",
+                "as": "repository-link"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "campaign"
+          },
+          {
+            "field": "campaign-readme"
+          },
+          {
+            "field": "campaign-readme-path"
+          },
+          {
+            "field": "repository-link"
+          }
+        ]
       },
       {
         "name": "overview-campaign-links",
@@ -8753,22 +9375,6 @@
             ]
           },
           {
-            "source": "campaign-operational-grader-totals",
-            "type": "left",
-            "on": [
-              {
-                "left": "campaign",
-                "right": "campaign"
-              }
-            ],
-            "fields": [
-              {
-                "field": "grader-result",
-                "as": "grader-result"
-              }
-            ]
-          },
-          {
             "source": "campaign-repository-coverage",
             "type": "left",
             "on": [
@@ -8970,9 +9576,6 @@
           },
           {
             "field": "aic"
-          },
-          {
-            "field": "grader-result"
           }
         ],
         "order-by": [
@@ -9103,6 +9706,21 @@
         "from": "workflow-aic-totals",
         "compute": [
           {
+            "as": "repository-coordinate",
+            "function": "concat",
+            "args": [
+              {
+                "field": "organization"
+              },
+              {
+                "value": "/"
+              },
+              {
+                "field": "repository"
+              }
+            ]
+          },
+          {
             "as": "workflow-coordinate",
             "function": "concat",
             "args": [
@@ -9179,6 +9797,12 @@
           }
         ],
         "select": [
+          {
+            "field": "repository-coordinate"
+          },
+          {
+            "field": "workflow"
+          },
           {
             "field": "workflow-coordinate"
           },
@@ -9394,7 +10018,7 @@
       },
       {
         "name": "maintenance-campaign-updates",
-        "intent": "Expose at most one CAO package update row for the Maintenance navigation indicator.",
+        "intent": "Expose at most one CAO package update row for the Updates navigation indicator.",
         "from": "campaigns",
         "filter": {
           "predicates": [
@@ -9413,7 +10037,7 @@
       },
       {
         "name": "maintenance-repository-upgrades",
-        "intent": "Expose at most one gh-aw compiler upgrade row for the Maintenance navigation indicator.",
+        "intent": "Expose at most one gh-aw compiler upgrade row for the Updates navigation indicator.",
         "from": "maintenance-repositories",
         "filter": {
           "predicates": [
@@ -9518,6 +10142,119 @@
       }
     ],
     "pages": [
+      {
+        "id": "steering",
+        "kind": "custom",
+        "title": "Steering",
+        "navigation-label": "Steering",
+        "icon": "stopwatch",
+        "class-name": "steering-page",
+        "description": "Gateway steering warnings injected when agentic runs approach their AI Credit budget, their time limit, or another declared limit.",
+        "views": [
+          {
+            "id": "steering-type-breakdown",
+            "title": "Steering types",
+            "description": "The share of observed steering warnings by steering type, such as running out of tokens or running out of time.",
+            "data": {
+              "source": "steering-type-totals",
+              "limit": 10
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "layout": "full",
+            "empty-message": "No steering warnings were observed in the selected horizon.",
+            "encoding": {
+              "x": {
+                "field": "steering-type",
+                "type": "nominal",
+                "title": "Steering type"
+              },
+              "y": {
+                "field": "events",
+                "type": "quantitative",
+                "title": "Steering events"
+              }
+            }
+          },
+          {
+            "id": "steering-top-workflows",
+            "title": "Workflows with the most steering",
+            "description": "The ten workflows with the highest observed steering warning totals.",
+            "data": {
+              "source": "steering-top-workflows",
+              "limit": 10
+            },
+            "mark": "chart",
+            "chart": "horizontal-bar",
+            "layout": "full",
+            "empty-message": "No workflow steering warnings were observed in the selected horizon.",
+            "encoding": {
+              "x": {
+                "field": "workflow-coordinate",
+                "type": "nominal",
+                "title": "Workflow",
+                "format": "workflow-identity-label"
+              },
+              "y": {
+                "field": "events",
+                "type": "quantitative",
+                "title": "Steering events"
+              },
+              "href": {
+                "field": "workflow-dashboard-link"
+              }
+            }
+          },
+          {
+            "id": "steering-workflows",
+            "title": "Workflows with steering entries",
+            "description": "Observed steering warnings by workflow, split into token-budget and time-limit warnings.",
+            "data": {
+              "source": "steering-workflows"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "column-summaries": true,
+            "layout": "full-view",
+            "empty-message": "No workflow steering warnings were observed in the selected horizon.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "workflow-dashboard-link",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "events",
+                  "type": "quantitative",
+                  "title": "Steering events"
+                },
+                {
+                  "field": "token-events",
+                  "type": "quantitative",
+                  "title": "Out of tokens"
+                },
+                {
+                  "field": "time-events",
+                  "type": "quantitative",
+                  "title": "Out of time"
+                },
+                {
+                  "field": "runs",
+                  "type": "quantitative",
+                  "title": "Runs"
+                }
+              ]
+            }
+          }
+        ]
+      },
       {
         "id": "firewall",
         "kind": "custom",
@@ -9690,127 +10427,6 @@
             }
           }
         ]
-      },
-      {
-        "id": "organizations",
-        "kind": "built-in",
-        "page": "organizations",
-        "title": "Organizations",
-        "icon": "server",
-        "definition": {
-          "data-state": {
-            "availability": true
-          },
-          "views": [
-            {
-              "id": "organizations-by-aic",
-              "title": "AI Credit usage by organization",
-              "description": "Measured AI Credit allocation identifies where agent activity is concentrated.",
-              "data": {
-                "source": "usage"
-              },
-              "mark": "chart",
-              "chart": "pie",
-              "layout": "full",
-              "encoding": {
-                "x": {
-                  "field": "organization",
-                  "type": "nominal",
-                  "title": "Organization"
-                },
-                "y": {
-                  "field": "aic",
-                  "type": "quantitative",
-                  "aggregate": "sum",
-                  "title": "Total AIC",
-                  "unit": "aic"
-                },
-                "href": {
-                  "field": "organization-link",
-                  "type": "nominal"
-                }
-              }
-            },
-            {
-              "id": "organizations-organizations-source",
-              "data": {
-                "source": "organizations"
-              },
-              "mark": "table",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "organization",
-                    "type": "nominal"
-                  }
-                ]
-              }
-            },
-            {
-              "id": "organizations-repositories-source",
-              "disclosure": "supplemental",
-              "data": {
-                "source": "repositories"
-              },
-              "mark": "table",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "repository",
-                    "type": "nominal"
-                  }
-                ]
-              }
-            },
-            {
-              "id": "organizations-workflows-source",
-              "disclosure": "supplemental",
-              "data": {
-                "source": "workflows"
-              },
-              "mark": "table",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "workflow",
-                    "type": "nominal"
-                  }
-                ]
-              }
-            },
-            {
-              "id": "organizations-runs-source",
-              "disclosure": "supplemental",
-              "data": {
-                "source": "runs"
-              },
-              "mark": "metric",
-              "encoding": {
-                "value": {
-                  "field": "run",
-                  "type": "nominal",
-                  "aggregate": "distinct-count"
-                }
-              }
-            },
-            {
-              "id": "organizations-usage-source",
-              "disclosure": "supplemental",
-              "data": {
-                "source": "usage"
-              },
-              "mark": "metric",
-              "encoding": {
-                "value": {
-                  "field": "aic",
-                  "type": "quantitative",
-                  "aggregate": "sum",
-                  "unit": "aic"
-                }
-              }
-            }
-          ]
-        }
       },
       {
         "id": "repositories",
@@ -10833,8 +11449,7 @@
               "sources": [
                 "workflows",
                 "runs",
-                "usage",
-                "operational-graders"
+                "usage"
               ]
             },
             "mark": "element",
@@ -11079,12 +11694,6 @@
                     "unit": "aic"
                   },
                   {
-                    "field": "grader-result",
-                    "type": "quantitative",
-                    "title": "Ops Grader",
-                    "unit": "ops-grader"
-                  },
-                  {
                     "field": "registration",
                     "type": "nominal",
                     "title": "Registration",
@@ -11109,9 +11718,24 @@
           "tabs-class-name": "campaign-tabs",
           "tab": "insights",
           "tabs": [
-            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            }
           ]
         },
         "views": [
@@ -11123,7 +11747,9 @@
                 "workflows",
                 "campaign-insight-tab-counts",
                 "campaign-problem-tab-counts",
-                "campaign-issue-tab-counts"
+                "campaign-issue-tab-counts",
+                "campaign-operational-value-primary-series",
+                "campaign-runs"
               ],
               "arguments": [
                 {
@@ -11138,48 +11764,6 @@
             "config": {
               "body": "insights"
             }
-          },
-          {
-            "id": "campaign-operational-value-history",
-            "title": "Repository operational value",
-            "description": "Repository-level operational value over time. Interim points are visible but explicitly marked dubious until their evidence matures.",
-            "data": {
-              "sources": [
-                "campaign-operational-value-primary-series"
-              ],
-              "arguments": [
-                {
-                  "name": "campaign",
-                  "field": "campaign"
-                }
-              ]
-            },
-            "mark": "element",
-            "element": "measure-history",
-            "layout": "full",
-            "config": {
-              "measure-source": "operational-value",
-              "empty-message": "No repository operational-value observations have been published for this campaign yet."
-            }
-          },
-          {
-            "id": "campaign-operational-grader-history",
-            "title": "Operational grader history",
-            "description": "Every retained operational-grader measure and diagnostic, separated by metric and workflow series.",
-            "data": {
-              "sources": [
-                "campaign-operational-grader-series"
-              ],
-              "arguments": [
-                {
-                  "name": "campaign",
-                  "field": "campaign"
-                }
-              ]
-            },
-            "mark": "element",
-            "element": "measure-history",
-            "layout": "full"
           },
           {
             "id": "campaign-audit-event-summary-buckets",
@@ -11276,9 +11860,24 @@
           "tabs-class-name": "campaign-tabs",
           "tab": "problems",
           "tabs": [
-            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            }
           ]
         },
         "views": [
@@ -11417,9 +12016,24 @@
           "title-format": "title-case",
           "tabs-class-name": "campaign-tabs",
           "tabs": [
-            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            }
           ]
         },
         "views": [
@@ -11446,6 +12060,125 @@
             "config": {
               "body": "overview"
             }
+          },
+          {
+            "id": "campaign-readme",
+            "title": "README",
+            "data": {
+              "sources": [
+                "campaign-readme-details"
+              ],
+              "arguments": [
+                {
+                  "name": "campaign",
+                  "field": "campaign"
+                }
+              ]
+            },
+            "mark": "element",
+            "element": "markdown",
+            "config": {
+              "content-field": "campaign-readme",
+              "path-field": "campaign-readme-path",
+              "base-link-field": "repository-link",
+              "empty-message": "Campaign README content is unavailable in this inventory."
+            },
+            "layout": "full"
+          },
+          {
+            "id": "campaign-settings",
+            "title": "Settings",
+            "data": {
+              "source": "campaigns",
+              "arguments": [
+                {
+                  "name": "campaign",
+                  "field": "campaign"
+                }
+              ]
+            },
+            "mark": "table",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "campaign-description",
+                  "type": "nominal",
+                  "title": "Description"
+                },
+                {
+                  "field": "campaign-enabled",
+                  "type": "nominal",
+                  "title": "State",
+                  "display": "active-state"
+                },
+                {
+                  "field": "campaign-mode",
+                  "type": "nominal",
+                  "title": "Rollout",
+                  "display": "mode"
+                },
+                {
+                  "field": "campaign-worker-count",
+                  "type": "quantitative",
+                  "title": "Workers"
+                }
+              ],
+              "actions": [
+                {
+                  "action": "set-campaign-preview",
+                  "presentation": "cli-action",
+                  "icon": "eye",
+                  "label": "Switch to preview",
+                  "context": [
+                    "campaign"
+                  ],
+                  "when": {
+                    "field": "campaign-mode",
+                    "equals": "live"
+                  }
+                },
+                {
+                  "action": "set-campaign-live",
+                  "presentation": "cli-action",
+                  "icon": "play",
+                  "label": "Switch to live",
+                  "context": [
+                    "campaign"
+                  ],
+                  "when": {
+                    "field": "campaign-mode",
+                    "equals": "review"
+                  }
+                },
+                {
+                  "action": "disable-campaign",
+                  "presentation": "cli-action",
+                  "icon": "pause",
+                  "label": "Pause campaign",
+                  "context": [
+                    "campaign"
+                  ],
+                  "when": {
+                    "field": "campaign-enabled",
+                    "equals": true
+                  }
+                },
+                {
+                  "action": "enable-campaign",
+                  "presentation": "cli-action",
+                  "icon": "play",
+                  "label": "Enable campaign",
+                  "context": [
+                    "campaign"
+                  ],
+                  "when": {
+                    "field": "campaign-enabled",
+                    "equals": false
+                  }
+                }
+              ]
+            },
+            "layout": "full"
           }
         ]
       },
@@ -11461,9 +12194,24 @@
           "title-format": "title-case",
           "tabs-class-name": "campaign-tabs",
           "tabs": [
-            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            }
           ]
         },
         "views": [
@@ -11567,9 +12315,24 @@
           "tabs-class-name": "campaign-tabs",
           "tab": "issues",
           "tabs": [
-            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            }
           ]
         },
         "views": [
@@ -11708,9 +12471,24 @@
           "title-format": "title-case",
           "tabs-class-name": "campaign-tabs",
           "tabs": [
-            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            }
           ]
         },
         "views": [
@@ -11962,9 +12740,24 @@
           "title-format": "title-case",
           "tabs-class-name": "campaign-tabs",
           "tabs": [
-            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            }
           ]
         },
         "views": [
@@ -12079,9 +12872,24 @@
           "title-format": "title-case",
           "tabs-class-name": "campaign-tabs",
           "tabs": [
-            { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
-            { "id": "problems", "label": "Problems", "icon": "alert", "page": "campaign-problems" },
-            { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            }
           ]
         },
         "views": [
@@ -12603,207 +13411,6 @@
         }
       },
       {
-        "id": "graders",
-        "kind": "built-in",
-        "page": "graders",
-        "title": "Graders",
-        "icon": "server",
-        "definition": {
-          "data-state": {
-            "availability": true
-          },
-          "views": [
-            {
-              "id": "grader-observation-trend",
-              "title": "Grader observation trend",
-              "description": "Mean grader values over time reveal whether assessed quality is improving.",
-              "data": {
-                "source": "grader-observations",
-                "time": {
-                  "range": "30d"
-                }
-              },
-              "mark": "chart",
-              "chart": "line",
-              "layout": "full",
-              "encoding": {
-                "x": {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "format": "human-friendly-timestamp",
-                  "time-unit": "day"
-                },
-                "y": {
-                  "field": "value",
-                  "type": "quantitative",
-                  "aggregate": "mean"
-                },
-                "color": {
-                  "field": "grader",
-                  "type": "nominal"
-                }
-              }
-            },
-            {
-              "id": "graders-graders-source",
-              "disclosure": "supplemental",
-              "data": {
-                "source": "graders",
-                "order-by": [
-                  {
-                    "field": "grader",
-                    "direction": "asc"
-                  }
-                ],
-                "limit": 100
-              },
-              "mark": "table",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "grader",
-                    "type": "nominal"
-                  }
-                ]
-              }
-            },
-            {
-              "id": "graders-observations-source",
-              "disclosure": "supplemental",
-              "data": {
-                "source": "grader-observations",
-                "order-by": [
-                  {
-                    "field": "observed-at",
-                    "direction": "desc"
-                  }
-                ],
-                "limit": 100
-              },
-              "mark": "table",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "grader",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "run",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "value",
-                    "type": "quantitative"
-                  },
-                  {
-                    "field": "status",
-                    "type": "nominal",
-                    "display": "status"
-                  },
-                  {
-                    "field": "observed-at",
-                    "type": "temporal",
-                    "format": "human-friendly-timestamp"
-                  }
-                ]
-              }
-            }
-          ]
-        }
-      },
-      {
-        "id": "evals",
-        "kind": "built-in",
-        "page": "evals",
-        "title": "Evals",
-        "icon": "server",
-        "definition": {
-          "data-state": {
-            "availability": true
-          },
-          "views": [
-            {
-              "id": "eval-results",
-              "title": "Evaluation results",
-              "description": "The result distribution surfaces the leading evaluation-quality signal.",
-              "data": {
-                "source": "eval-observations"
-              },
-              "mark": "chart",
-              "chart": "pie",
-              "layout": "full",
-              "encoding": {
-                "x": {
-                  "field": "eval-result",
-                  "type": "nominal",
-                  "title": "Result"
-                },
-                "y": {
-                  "field": "run",
-                  "type": "quantitative",
-                  "aggregate": "count",
-                  "title": "Evaluations"
-                }
-              }
-            },
-            {
-              "id": "evals-evals-source",
-              "disclosure": "supplemental",
-              "data": {
-                "source": "evals"
-              },
-              "mark": "table",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "eval",
-                    "type": "nominal"
-                  }
-                ]
-              }
-            },
-            {
-              "id": "evals-observations-source",
-              "disclosure": "supplemental",
-              "data": {
-                "source": "eval-observations"
-              },
-              "mark": "table",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "eval",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "run",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "eval-result",
-                    "type": "nominal",
-                    "display": "status"
-                  },
-                  {
-                    "field": "requested-model",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "resolved-model",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "observed-at",
-                    "type": "temporal",
-                    "format": "human-friendly-timestamp"
-                  }
-                ]
-              }
-            }
-          ]
-        }
-      },
-      {
         "id": "run-events",
         "kind": "custom",
         "title": "Run",
@@ -12825,6 +13432,31 @@
         "icon": "database",
         "description": "Monitor CAO Activity ingestion and inspect retained dashboard transactions.",
         "views": [
+          {
+            "id": "indexing-database-table-counts",
+            "title": "Database table counts",
+            "description": "Rows retained by dashboard database table, including ingestion transactions.",
+            "data": {
+              "source": "indexing-database-table-counts",
+              "limit": 100
+            },
+            "mark": "chart",
+            "chart": "horizontal-bar",
+            "layout": "full",
+            "empty-message": "No canonical dashboard rows have been retained.",
+            "encoding": {
+              "x": {
+                "field": "table",
+                "type": "nominal",
+                "title": "Table"
+              },
+              "y": {
+                "field": "records",
+                "type": "quantitative",
+                "title": "Rows"
+              }
+            }
+          },
           {
             "id": "indexing-size",
             "title": "Indexed data over time",
@@ -12870,31 +13502,6 @@
                 "field": "workflow-runs",
                 "type": "quantitative",
                 "title": "New workflow runs"
-              }
-            }
-          },
-          {
-            "id": "indexing-database-table-counts",
-            "title": "Database table counts",
-            "description": "Retained ingestion transactions by type.",
-            "data": {
-              "source": "indexing-database-table-counts",
-              "limit": 100
-            },
-            "mark": "chart",
-            "chart": "horizontal-bar",
-            "layout": "full",
-            "empty-message": "No ingestion transactions have been retained.",
-            "encoding": {
-              "x": {
-                "field": "kind",
-                "type": "nominal",
-                "title": "Table"
-              },
-              "y": {
-                "field": "transactions",
-                "type": "quantitative",
-                "title": "Transactions"
               }
             }
           },
@@ -13005,15 +13612,60 @@
             }
           },
           {
-            "id": "engines-models-usage",
-            "title": "Engines and models",
-            "description": "Observed workflow runs grouped by agent and model identifiers.",
+            "id": "engines-models-aic-insights",
+            "disclosure-label": "AIC per observed run",
+            "description": "Minimum, average, and maximum AIC for each agent and model combination. Blank values mean no run reported AIC.",
+            "data": {
+              "source": "engines-models-usage"
+            },
+            "mark": "table",
+            "disclosure": "supplemental",
+            "controls": "interactive",
+            "empty-message": "No agent or model usage metadata is available.",
+            "layout": "full",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "summary",
+                  "type": "nominal",
+                  "title": "Agent / model"
+                },
+                {
+                  "field": "runs",
+                  "type": "quantitative",
+                  "title": "Observed runs"
+                },
+                {
+                  "field": "minimum-aic-per-run",
+                  "type": "quantitative",
+                  "title": "Minimum AIC",
+                  "unit": "aic-per-run"
+                },
+                {
+                  "field": "average-aic-per-run",
+                  "type": "quantitative",
+                  "title": "Average AIC",
+                  "unit": "aic-per-run"
+                },
+                {
+                  "field": "maximum-aic-per-run",
+                  "type": "quantitative",
+                  "title": "Maximum AIC",
+                  "unit": "aic-per-run"
+                }
+              ]
+            }
+          },
+          {
+            "id": "engines-models-token-insights",
+            "title": "Token statistics per observed run",
+            "description": "Minimum, average, and maximum token counts for each agent and model combination. Telemetry is partial: blank values mean no run reported that token class.",
             "data": {
               "source": "engines-models-usage"
             },
             "mark": "table",
             "controls": "interactive",
-            "empty-message": "No engine or model usage metadata is available.",
+            "empty-message": "No agent or model usage metadata is available.",
             "layout": "full-view",
             "encoding": {
               "columns": [
@@ -13025,13 +13677,82 @@
                 {
                   "field": "runs",
                   "type": "quantitative",
-                  "title": "Runs"
+                  "title": "Observed runs"
                 },
                 {
-                  "field": "average-aic-per-run",
+                  "field": "minimum-input-tokens-per-run",
                   "type": "quantitative",
-                  "title": "Average AIC",
-                  "unit": "aic-per-run"
+                  "title": "Input minimum"
+                },
+                {
+                  "field": "average-input-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Input average"
+                },
+                {
+                  "field": "maximum-input-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Input maximum"
+                },
+                {
+                  "field": "minimum-output-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Output minimum"
+                },
+                {
+                  "field": "average-output-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Output average"
+                },
+                {
+                  "field": "maximum-output-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Output maximum"
+                },
+                {
+                  "field": "minimum-cache-read-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Cache read minimum"
+                },
+                {
+                  "field": "average-cache-read-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Cache read average"
+                },
+                {
+                  "field": "maximum-cache-read-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Cache read maximum"
+                },
+                {
+                  "field": "minimum-cache-write-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Cache write minimum"
+                },
+                {
+                  "field": "average-cache-write-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Cache write average"
+                },
+                {
+                  "field": "maximum-cache-write-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Cache write maximum"
+                },
+                {
+                  "field": "minimum-reasoning-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Reasoning minimum"
+                },
+                {
+                  "field": "average-reasoning-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Reasoning average"
+                },
+                {
+                  "field": "maximum-reasoning-tokens-per-run",
+                  "type": "quantitative",
+                  "title": "Reasoning maximum"
                 }
               ]
             },
@@ -13162,21 +13883,13 @@
       {
         "id": "maintenance",
         "kind": "custom",
-        "title": "Maintenance",
-        "navigation-label": "Maintenance",
+        "title": "Updates",
+        "navigation-label": "Updates",
         "navigation-indicator": {
           "label": "updates available",
           "any": [
-            {
-              "source": "maintenance-campaign-updates",
-              "field": "campaign-update-state",
-              "equals": "update-available"
-            },
-            {
-              "source": "maintenance-repository-upgrades",
-              "field": "upgrade-required",
-              "equals": 1
-            }
+            "maintenance-campaign-updates",
+            "maintenance-repository-upgrades"
           ]
         },
         "icon": "tools",
@@ -13451,10 +14164,15 @@
             "empty-message": "No workflow AI Credit cost was observed.",
             "encoding": {
               "x": {
-                "field": "workflow-coordinate",
+                "field": "workflow",
                 "type": "nominal",
                 "title": "Workflow",
-                "format": "workflow-identity-label"
+                "format": "workflow-relative-path"
+              },
+              "section": {
+                "field": "repository-coordinate",
+                "type": "nominal",
+                "title": "Repository"
               },
               "y": {
                 "field": "aic",
@@ -14344,11 +15062,12 @@
           "cost",
           "engines-models",
           "firewall",
-          "mcps"
+          "mcps",
+          "steering"
         ]
       },
       {
-        "label": "Maintenance",
+        "label": "Updates",
         "placement": "bottom",
         "pages": [
           "maintenance",

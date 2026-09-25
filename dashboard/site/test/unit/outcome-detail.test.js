@@ -87,7 +87,7 @@ describe('outcome detail', () => {
         description: 'Daily review · Pull Request · Closed',
         titleLink: {
           href: 'https://github.com/octo/repo/pull/1',
-          label: '#1'
+          label: 'Open #1 on GitHub'
         }
       }
     }));

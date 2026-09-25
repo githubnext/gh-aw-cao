@@ -146,17 +146,17 @@ describe('dashboard DOM provenance', () => {
           {
             id: 'maintenance',
             kind: 'custom',
-            title: 'Maintenance',
+            title: 'Updates',
             views: [],
             'navigation-indicator': {
               label: 'updates available',
-              any: [{ source: 'maintenance-campaign-updates', field: 'campaign-update-state', equals: 'update-available' }]
+              any: ['maintenance-campaign-updates']
             }
           }
         ],
         navigation: [
           { pages: ['overview'] },
-          { label: 'Maintenance', placement: 'bottom', pages: ['maintenance'] }
+          { label: 'Updates', placement: 'bottom', pages: ['maintenance'] }
         ]
       }
     }));
@@ -191,10 +191,10 @@ describe('dashboard DOM provenance', () => {
 
     expect(loadSources).not.toHaveBeenCalled();
     expect(rendered.querySelector('[data-nav-page-id="maintenance"]')?.getAttribute('aria-label'))
-      .toBe('Maintenance');
+      .toBe('Updates');
     await vi.waitFor(() => {
       expect(rendered.querySelector('[data-nav-page-id="maintenance"]')?.getAttribute('aria-label'))
-        .toBe('Maintenance, updates available');
+        .toBe('Updates, updates available');
     });
     expect(loadPageSources).not.toHaveBeenCalledWith('maintenance', expect.anything());
     expect(loadSources).toHaveBeenCalledWith(['maintenance-campaign-updates'], expect.objectContaining({
@@ -202,6 +202,45 @@ describe('dashboard DOM provenance', () => {
       onUpdate: expect.any(Function)
     }));
     disposeDashboard(rendered);
+  });
+
+  it('logs and ignores navigation indicator source failures', async () => {
+    const originalUrl = window.location.href;
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    window.history.replaceState({}, '', '?debug=render:navigation');
+    vi.resetModules();
+    try {
+      const { renderDashboard, disposeDashboard: dispose } = await import('../../src/presenter.js');
+      const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ (/** @type {unknown} */ ({
+        languageVersion: '0.1.0',
+        dashboard: {
+          title: 'Indicator dashboard',
+          pages: [{
+            id: 'maintenance',
+            kind: 'custom',
+            title: 'Updates',
+            views: [],
+            'navigation-indicator': {
+              label: 'updates available',
+              any: ['maintenance-campaign-updates']
+            }
+          }]
+        }
+      }));
+      const loadPageSources = /** @type {import('../../src/presenter.js').PageSourceLoader} */ (vi.fn(() => Promise.resolve({})));
+      loadPageSources.loadSources = vi.fn(() => Promise.reject(new Error('unavailable')));
+
+      const rendered = renderDashboard({ document, sources: {}, loadPageSources });
+
+      await vi.waitFor(() => {
+        expect(debug).toHaveBeenCalledWith('[cao:render:navigation]', 'indicator update failed', { error: 'unavailable' });
+      });
+      dispose(rendered);
+    } finally {
+      window.history.replaceState({}, '', originalUrl);
+      debug.mockRestore();
+      vi.resetModules();
+    }
   });
 
   it('loads a page chunk before mounting its independently bound elements', async () => {
@@ -470,7 +509,8 @@ describe('dashboard DOM provenance', () => {
                   id: 'summary',
                   title: 'Summary',
                   mark: 'element',
-                  element: 'measure-history',
+                  element: 'link-button-list',
+                  config: { 'label-field': 'metric-name', 'link-field': 'metric-link' },
                   data: { source: 'summary' }
                 },
                 {
@@ -496,6 +536,7 @@ describe('dashboard DOM provenance', () => {
             rows: [{
               'metric-kind': 'primary',
               'metric-name': 'runs',
+              'metric-link': { href: '#page-trace', label: 'View runs' },
               points: [{ x: '2026-09-07T18:00:00Z', y: 2, color: 'Runs', key: 'runs-1' }]
             }],
             metadata: {
@@ -522,7 +563,7 @@ describe('dashboard DOM provenance', () => {
       expect(page?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0]');
       expect(section?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].sections[0]');
       expect(summary?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
-      expect(summary?.querySelector('h2')?.getAttribute('data-js-view')).toBe('measure-history');
+      expect(summary?.querySelector('h2')?.getAttribute('data-js-view')).toBe('link-button-list');
       expect(metric?.querySelector('.metric-value')?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[1]');
       await vi.waitFor(() => {
         expect([...rendered.querySelectorAll('*')].every((element) => element.hasAttribute('data-json-path'))).toBe(true);
@@ -532,7 +573,7 @@ describe('dashboard DOM provenance', () => {
       summary?.append(dynamicChild);
       await vi.waitFor(() => {
         expect(dynamicChild.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
-        expect(dynamicChild.getAttribute('data-js-view')).toBe('measure-history');
+        expect(dynamicChild.getAttribute('data-js-view')).toBe('link-button-list');
       });
 
       const replacementSection = rendered.ownerDocument.createElement('section');
@@ -546,7 +587,7 @@ describe('dashboard DOM provenance', () => {
       await vi.waitFor(() => {
         expect(replacementSection.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].sections[0]');
         expect(replacementView.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
-        expect(replacementView.querySelector('dt')?.getAttribute('data-js-view')).toBe('measure-history');
+        expect(replacementView.querySelector('dt')?.getAttribute('data-js-view')).toBe('link-button-list');
       });
     } finally {
       window.history.pushState(null, '', '/');
@@ -660,6 +701,57 @@ describe('dashboard DOM provenance', () => {
 });
 
 describe('presenter built-in and custom pages', () => {
+  it('renders a declarative page form before the page views', () => {
+    const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ (/** @type {unknown} */ ({
+      languageVersion: '0.1.0',
+      dashboard: {
+        id: 'simulator-dashboard',
+        title: 'Simulator dashboard',
+        pages: [{
+          id: 'simulator',
+          kind: 'custom',
+          title: 'Simulator',
+          form: {
+            title: 'Scenario',
+            fields: [
+              { id: 'multiplier', label: 'Multiplier', control: 'slider', default: 1, min: 0, max: 4, step: 0.25 }
+            ]
+          },
+          views: [{
+            id: 'usage',
+            data: { source: 'usage' },
+            mark: 'metric',
+            encoding: { value: { field: 'aic', aggregate: 'sum' } }
+          }]
+        }]
+      }
+    }));
+    const rendered = renderDashboard({
+      document,
+      sources: {
+        usage: {
+          source: 'usage',
+          rows: [{ aic: 2 }],
+          metadata: {
+            'source-id': 'usage',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-24T00:00:00Z',
+            'retrieved-at': '2026-09-24T00:00:00Z',
+            availability: 'available',
+            completeness: 'complete',
+            freshness: 'fresh'
+          }
+        }
+      }
+    });
+    const page = rendered.querySelector('[data-page-id="simulator"]');
+    expect(page?.querySelector(':scope > .dashboard-parameter-form')).not.toBeNull();
+    const slider = page?.querySelector('input[type="range"]');
+    expect(slider).toBeInstanceOf(HTMLInputElement);
+    expect(/** @type {HTMLInputElement} */ (slider).value).toBe('1');
+    disposeDashboard(rendered);
+  });
+
   it('resolves reusable view IDs referenced by custom pages', () => {
     const rendered = renderDashboard({
       document: {
@@ -822,8 +914,29 @@ describe('presenter built-in and custom pages', () => {
         'engines-models-usage': {
           source: 'engines-models-usage',
           rows: [
-            { summary: 'copilot / gpt-5.6-sol', runs: 2, 'average-aic-per-run': 5 },
-            { summary: 'pi / claude-sonnet-5', runs: 1, 'average-aic-per-run': 8 }
+            {
+              summary: 'copilot / gpt-5.6-sol',
+              runs: 2,
+              'minimum-aic-per-run': 4,
+              'average-aic-per-run': 5,
+              'maximum-aic-per-run': 6,
+              'minimum-input-tokens-per-run': 100,
+              'average-input-tokens-per-run': 150,
+              'maximum-input-tokens-per-run': 200,
+              'minimum-output-tokens-per-run': 30,
+              'average-output-tokens-per-run': 45,
+              'maximum-output-tokens-per-run': 60
+            },
+            {
+              summary: 'pi / claude-sonnet-5',
+              runs: 1,
+              'minimum-aic-per-run': 8,
+              'average-aic-per-run': 8,
+              'maximum-aic-per-run': 8,
+              'minimum-input-tokens-per-run': 300,
+              'average-input-tokens-per-run': 300,
+              'maximum-input-tokens-per-run': 300
+            }
           ],
           metadata
         },
@@ -836,7 +949,9 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     expect(page?.querySelectorAll('[data-chart-widget="pie"]')).toHaveLength(1);
     expect(page?.querySelectorAll('[data-chart-widget="horizontal-bar"]')).toHaveLength(1);
-    expect(page?.querySelector('[data-view-id="engines-models-distribution"] + [data-view-id="engines-models-cost"] + [data-view-id="engines-models-usage"]')).not.toBeNull();
+    expect(page?.querySelector('[data-view-id="engines-models-distribution"] + [data-view-id="engines-models-cost"]')).not.toBeNull();
+    expect(page?.querySelector('[data-view-id="engines-models-aic-insights"]')).not.toBeNull();
+    expect(page?.querySelector('[data-view-id="engines-models-token-insights"]')).not.toBeNull();
     expect([...(page?.querySelectorAll('[data-view-id="engines-models-cost"] .horizontal-bar-chart-label') ?? [])].map((value) => value.textContent))
       .toEqual(['pi / claude-sonnet-5', 'copilot / gpt-5.6-sol']);
     expect([...(page?.querySelectorAll('[data-view-id="engines-models-cost"] .horizontal-bar-chart-value') ?? [])].map((value) => value.textContent))
@@ -845,11 +960,12 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.textContent).toContain('copilot');
     expect(page?.textContent).toContain('gpt-5.6-sol');
     expect(page?.textContent).toContain('claude-sonnet-5');
+    expect(page?.textContent).toContain('Telemetry is partial');
     expect(page?.textContent).not.toContain('Requested model');
     expect(page?.querySelector('.view-mode-control')).not.toBeNull();
     expect(page?.textContent).not.toContain('Agent event');
     expect(page?.textContent).not.toContain('Summary');
-    expect(page?.querySelectorAll('tbody tr')).toHaveLength(2);
+    expect(page?.querySelectorAll('tbody tr')).toHaveLength(4);
   });
 
 
@@ -887,6 +1003,11 @@ describe('presenter built-in and custom pages', () => {
             'activity-status': 'success',
             error: ''
           }],
+          metadata
+        },
+        'indexing-database-table-counts': {
+          source: 'indexing-database-table-counts',
+          rows: [{ table: 'ingestion transactions', records: 1 }],
           metadata
         }
       }
@@ -933,7 +1054,7 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const page = await activatePage(rendered, 'engines-models');
-    expect(page?.textContent).toContain('No engine or model usage metadata is available.');
+    expect(page?.textContent).toContain('No agent or model usage metadata is available.');
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     rendered.remove();
   });
@@ -1706,7 +1827,7 @@ describe('presenter built-in and custom pages', () => {
           pages: [{
             id: 'maintenance',
             kind: /** @type {'custom'} */ ('custom'),
-            title: 'Maintenance',
+            title: 'Updates',
             views: [{
               id: 'campaigns',
               title: 'Campaigns',
@@ -2383,94 +2504,6 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-page-id="runs"]')?.getAttribute('data-page-kind')).toBe('custom');
   });
 
-  it('DLS-PAGE-009 DLS-PAGE-014 renders built-in evals page with distinguishable definitions and observations, observed subject, YES/NO/UNKNOWN result, evaluation model when available, time, provenance, and independent data state deterministically', () => {
-    /** @type {import('../../src/presenter.js').PresentationInput['document']} */
-    const document = {
-      languageVersion: '0.1.0',
-      dashboard: {
-        id: 'evals-dashboard',
-        title: 'Evals Dashboard',
-        pages: [
-          {
-            id: 'evals',
-            kind: /** @type {'built-in'} */ ('built-in'),
-            page: 'evals',
-            title: 'Evals',
-            definition: {
-              'data-state': {
-                availability: true
-              },
-              views: [
-                { id: 'evals-source', data: { source: 'evals' } },
-                { id: 'eval-observations-source', data: { source: 'eval-observations' } }
-              ]
-            }
-          }
-        ]
-      }
-    };
-
-    const rendered = renderDashboard({
-      document,
-      sources: {
-        evals: {
-          source: 'evals',
-          rows: [
-            { eval: 'release-risk', 'eval-name': 'Release Risk', 'eval-question': 'Is the release risky?', 'requested-model': 'gpt-4o', 'observed-at': '2026-08-29T09:00:00Z' },
-            { eval: 'doc-quality', 'eval-name': 'Documentation Quality', 'eval-question': 'Is the documentation complete?', 'requested-model': 'claude-3.5', 'observed-at': '2026-08-29T09:05:00Z' }
-          ],
-          metadata: {
-            'source-id': 'evals-fixture',
-            'source-kind': 'fixture',
-            'as-of': '2026-08-29T20:00:00Z',
-            'retrieved-at': '2026-08-29T20:01:00Z',
-            completeness: 'partial',
-            freshness: 'stale',
-            availability: 'available'
-          }
-        },
-        'eval-observations': {
-          source: 'eval-observations',
-          rows: [
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/daily.yml', run: '1001', eval: 'release-risk', 'eval-result': 'YES', 'requested-model': 'gpt-4o', 'resolved-model': 'gpt-4.1', 'rollout-mode': 'live', 'observed-at': '2026-08-29T10:00:00Z' },
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/daily.yml', run: '1002', eval: 'release-risk', 'eval-result': 'UNKNOWN', 'requested-model': 'gpt-4o', 'resolved-model': '', 'rollout-mode': 'live', 'observed-at': '2026-08-29T10:10:00Z' },
-            { organization: 'octo-org', repository: 'octo-repo', workflow: '.github/workflows/nightly.yml', run: '2001', eval: 'doc-quality', 'eval-result': 'NO', 'requested-model': 'claude-3.5', 'resolved-model': 'claude-3.7', 'rollout-mode': 'review', 'observed-at': '2026-08-29T10:20:00Z' }
-          ],
-          metadata: {
-            'source-id': 'eval-observations-fixture',
-            'source-kind': 'fixture',
-            'as-of': '2026-08-29T20:00:00Z',
-            'retrieved-at': '2026-08-29T20:01:00Z',
-            completeness: 'complete',
-            freshness: 'fresh',
-            availability: 'available'
-          }
-        }
-      }
-    });
-
-    const evalsPage = rendered.querySelector('[data-page-name="evals"]');
-    expect(evalsPage?.textContent).toContain('Evals Evals Source');
-    expect(evalsPage?.textContent).toContain('Evals Observations Source');
-    expect(/** @type {HTMLElement | null} */ (rendered.querySelector('.data-state-summary'))?.hidden).toBe(true);
-    expect(evalsPage?.querySelectorAll('.custom-table')[0]?.querySelectorAll('tbody tr')).toHaveLength(2);
-    expect(evalsPage?.querySelectorAll('.custom-table')[1]?.querySelectorAll('tbody tr')).toHaveLength(3);
-    expect(evalsPage?.textContent).toContain('release-risk');
-    expect(evalsPage?.textContent).toContain('UNKNOWN');
-
-    const sidebarCurrentPage = rendered.querySelector('.primary-nav a[aria-current="page"]');
-    expect(sidebarCurrentPage?.getAttribute('aria-current')).toBe('page');
-    expect(sidebarCurrentPage?.textContent).toContain('Evals');
-
-    const skipLink = rendered.querySelector('.skip-link');
-    expect(skipLink?.getAttribute('href')).toBe('#main-content');
-
-    expect(evalsPage?.textContent).toContain('NO');
-    expect(evalsPage?.textContent).toContain('claude-3.7');
-    expect(evalsPage?.textContent).not.toContain('Source: evals');
-    expect(evalsPage?.textContent).not.toContain('Source: eval-observations');
-  });
-
   it('DLS-SAFE-003 DLS-SAFE-004 DLS-SAFE-007 DLS-SAFE-010 renders non-empty accessible names and inert text labels while preserving only safe https external link attributes', () => {
     /** @type {import('../../src/presenter.js').PresentationInput['document']} */
     const document = {
@@ -3074,16 +3107,19 @@ describe('presenter built-in and custom pages', () => {
         title: 'Linked issue',
         titleLink: {
           href: 'https://github.com/octo/repo/issues/42',
-          label: '#42'
+          label: 'Open #42 on GitHub'
         }
       }
     }));
     const titleLink = /** @type {HTMLAnchorElement} */ (rendered.querySelector('[data-page-title-link]'));
     expect(titleLink.hidden).toBe(false);
-    expect(titleLink.textContent).toBe('#42');
+    expect(titleLink.textContent).toBe('Open #42 on GitHub');
     expect(titleLink.getAttribute('href')).toBe('https://github.com/octo/repo/issues/42');
     expect(titleLink.getAttribute('target')).toBe('_blank');
     expect(titleLink.getAttribute('rel')).toBe('noopener noreferrer');
+    expect(titleLink.getAttribute('aria-label')).toBeNull();
+    expect(titleLink.getAttribute('title')).toBe('Open #42 on GitHub');
+    expect(titleLink.querySelector('.octicon-mark-github')).not.toBeNull();
     expect(rendered.ownerDocument.title).toBe('Linked issue · Page Navigation');
 
     secondLink.dataset.routeTitle = 'Canonical second';

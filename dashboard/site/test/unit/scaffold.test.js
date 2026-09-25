@@ -142,6 +142,36 @@ describe('DLS-CONF-004 scaffold gates', () => {
     expect(styles).toContain('text-size-adjust: 100%;');
   });
 
+  it('styles maintenance list actions as primary buttons', () => {
+    const style = document.createElement('style');
+    style.textContent = primerStylesheet();
+    document.head.append(style);
+    try {
+      const stylesheet = style.sheet;
+      if (!stylesheet) throw new Error('Primer stylesheet did not parse');
+      const rules = [...stylesheet.cssRules].filter((rule) => rule.type === window.CSSRule.STYLE_RULE);
+      const triggerRule = /** @type {CSSStyleRule | undefined} */ (
+        rules.find((rule) => /** @type {CSSStyleRule} */ (rule).selectorText === '.document-list-header .cli-action-trigger')
+      );
+      const hoverRule = /** @type {CSSStyleRule | undefined} */ (
+        rules.find((rule) => /** @type {CSSStyleRule} */ (rule).selectorText === '.document-list-header .cli-action-trigger:hover')
+      );
+      const iconRule = /** @type {CSSStyleRule | undefined} */ (
+        rules.find((rule) => /** @type {CSSStyleRule} */ (rule).selectorText === '.document-list-header .cli-action-trigger > .octicon')
+      );
+
+      expect(triggerRule?.style.getPropertyValue('border')).toBe('1px solid var(--accent)');
+      expect(triggerRule?.style.getPropertyValue('background')).toBe('var(--accent)');
+      expect(triggerRule?.style.getPropertyValue('color')).toBe('var(--canvas)');
+      expect(hoverRule?.style.getPropertyValue('border-color')).toBe('var(--accent)');
+      expect(hoverRule?.style.getPropertyValue('background')).toBe('color-mix(in srgb, var(--accent) 88%, var(--fg))');
+      expect(hoverRule?.style.getPropertyValue('color')).toBe('var(--canvas)');
+      expect(iconRule?.style.getPropertyValue('color')).toBe('inherit');
+    } finally {
+      style.remove();
+    }
+  });
+
   it('uses the Primer body font size on mobile', () => {
     const style = document.createElement('style');
     style.textContent = primerStylesheet();
@@ -259,6 +289,12 @@ describe('DLS-CONF-004 scaffold gates', () => {
 
     expect(panelLayer).toBeGreaterThan(headerLayer);
     expect(styles).toContain('.filter-bar-expanded :is(.horizon-summary:hover, .horizon-summary:focus-within) .horizon-tooltip { visibility: hidden; opacity: 0; }');
+  });
+
+  it('spaces the filter count badge from the eye icon and control boundary', () => {
+    const styles = readFileSync(resolve('src/styles.js'), 'utf8');
+
+    expect(styles).toContain('.filter-control > .count-badge { margin: 0 9px 0 3px; }');
   });
 
   it('systematically ellipsizes output evidence at every viewport size', () => {

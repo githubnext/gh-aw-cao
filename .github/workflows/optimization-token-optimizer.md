@@ -92,14 +92,6 @@ tools:
     toolsets: [repos, issues, actions]
   agentic-workflows:
 
-graders:
-  operational-value:
-    name: Actionable optimization recommendation
-    description: Whether the run produced one target- and workflow-bound recommendation with measurable evidence and validation
-    unit: proportion
-    direction: higher_is_better
-    run: ./graders/optimization-token-optimizer-operational-value.sh
-
 safe-outputs:
   mentions: false
   allowed-github-references: []

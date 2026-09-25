@@ -46,7 +46,16 @@ describe('indexing dashboard', () => {
             }
           ],
           metadata
-        }
+        },
+        campaigns: { source: 'campaigns', rows: [{ campaign: 'one' }], metadata },
+        repositories: { source: 'repositories', rows: [{ repository: 'one' }], metadata },
+        workflows: { source: 'workflows', rows: [{ workflow: 'one' }, { workflow: 'two' }], metadata },
+        runs: { source: 'runs', rows: [{ run: 'one' }, { run: 'two' }, { run: 'three' }], metadata },
+        domains: { source: 'domains', rows: [], metadata },
+        tools: { source: 'tools', rows: [{ event: 'tool:one' }], metadata },
+        audits: { source: 'audits', rows: [{ event: 'audit:one' }, { event: 'audit:two' }], metadata },
+        issues: { source: 'issues', rows: [{ event: 'issue:one' }], metadata },
+        'operational-values': { source: 'operational-values', rows: [], metadata }
       },
       ['indexing-daily-ingestion', 'indexing-database-table-counts']
     );
@@ -55,9 +64,18 @@ describe('indexing dashboard', () => {
       { day: '2026-09-24', records: 20, 'workflow-runs': 5 }
     ]);
     expect(results['indexing-database-table-counts'].rows).toEqual([
-      { kind: 'ingest-normalized-jsonl', transactions: 2 },
-      { kind: 'ingest-dashboard-sources', transactions: 1 }
+      { table: 'ingestion transactions', records: 3 },
+      { table: 'workflow runs', records: 3 },
+      { table: 'audit events', records: 2 },
+      { table: 'workflows', records: 2 },
+      { table: 'campaigns', records: 1 },
+      { table: 'issue events', records: 1 },
+      { table: 'repositories', records: 1 },
+      { table: 'tool events', records: 1 }
     ]);
+    const tableLabels = results['indexing-database-table-counts'].rows.map((row) => row.table);
+    expect(tableLabels).not.toContain('network domains');
+    expect(tableLabels).not.toContain('operational values');
   });
 
   it('uses a sorted horizontal count chart and focused transaction cards without a table facet', () => {
@@ -72,7 +90,8 @@ describe('indexing dashboard', () => {
       data: { source: 'indexing-database-table-counts' }
     });
     expect(dashboard.queries.find(/** @param {any} query */ (query) => query.name === 'indexing-database-table-counts')['order-by'])
-      .toEqual([{ field: 'transactions', direction: 'desc' }]);
+      .toEqual([{ field: 'records', direction: 'desc' }, { field: 'table', direction: 'asc' }]);
+    expect(page.views[0].id).toBe('indexing-database-table-counts');
     expect(transactions).toMatchObject({
       mark: 'list',
       list: { style: 'entity-cards', card: 'ingestion-transaction' }

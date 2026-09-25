@@ -7,6 +7,7 @@ import { formatNumber } from '../view-formatters.js';
 import { renderStatusBadge } from './badge.js';
 import { listChartSeries, renderChartLegend, renderChartWidget } from './chart-elements.js';
 import { rowsFor } from './source-rows.js';
+import { renderTemporalMetricPlot } from './temporal-metric-plot.js';
 
 const SELECT_POINT_MESSAGE = 'Select a point to inspect that observation.';
 
@@ -23,18 +24,80 @@ export function renderMeasureHistory(context) {
     return h('section', { className: 'measure-history', 'aria-label': context.title },
       h('p', { className: 'empty-message' }, context.elementConfig?.['empty-message'] ?? 'No measure history was observed in the selected horizon.'));
   }
+  if (measureSource === 'operational-value') {
+    return renderOperationalValueHistory(context, metrics);
+  }
 
   return h('section', { className: 'measure-history', 'aria-label': context.title },
     h('div', { className: 'insights-section-heading' },
       h('div', null,
         h('span', { className: 'insights-eyebrow' }, 'Selected horizon'),
-        h('h2', null, measureSource === 'operational-value'
-          ? 'Repository operational-value history'
-          : 'Measure and diagnostic history'),
-        h('p', null, measureSource === 'operational-value'
-          ? 'Each repository-level measure preserves every retained observation. Interim evidence remains visible and is marked dubious until it matures.'
-          : 'Each measure occupies its own row, preserves every retained extract, keeps workflow series separate, and supports selecting individual observations.'))),
+        h('h2', null, 'Measure and diagnostic history'),
+        h('p', null, 'Each measure occupies its own row, preserves every retained extract, keeps workflow series separate, and supports selecting individual observations.'))),
     h('div', { className: 'insights-measure-rows' }, ...metrics.map((metric) => renderMeasureRow(metric, measureSource))));
+}
+
+/**
+ * @param {import('./ui-elements.js').ElementRenderContext} context
+ * @param {Record<string, unknown>[]} rows
+ */
+function renderOperationalValueHistory(context, rows) {
+  const repositories = new Set(rows.flatMap((row) => (
+    Array.isArray(row.points) ? row.points.map((point) => String(point.color || '')) : []
+  )).filter(Boolean));
+  const metrics = rows.flatMap((row) => {
+    const points = Array.isArray(row.points) ? row.points : [];
+    /** @type {Map<string, Record<string, unknown>[]>} */
+    const byRepository = new Map();
+    for (const point of points) {
+      const repository = String(point.color || 'Repository');
+      byRepository.set(repository, [...(byRepository.get(repository) ?? []), point]);
+    }
+    const name = String(row['operational-value-name'] || row['metric-name'] || row.metric || 'Metric');
+    return [...byRepository].map(([repository, repositoryPoints]) => ({
+      id: `${String(row.metric || name)}:${repository}`,
+      label: repositories.size > 1 ? `${name} · ${repository}` : name,
+      points: repositoryPoints.map((point) => ({
+        x: String(point.x),
+        y: Number(point.y),
+        key: String(point.key || '')
+      }))
+    }));
+  });
+  const first = rows[0] ?? {};
+  const adoptionAt = String(first['adoption-at'] || '');
+  const mode = first['evaluation-mode'] === 'attainment-only'
+    ? 'attainment-only'
+    : 'baseline-comparable';
+  const workflowName = String(first['workflow-name'] || context.title || 'Operational value');
+  const maturityStatuses = [...new Set(rows.map((row) => String(row['maturity-status'] || 'matured')))];
+  const dubious = maturityStatuses.some((status) => status !== 'matured');
+  const runSource = context.sourceNames[1] ?? '';
+  const runs = rowsFor(context.sources, runSource).map((run) => ({
+    createdAt: String(run['started-at'] || ''),
+    conclusion: String(run.status || run['run-status'] || 'unknown')
+  }));
+
+  return h('section', { className: 'measure-history', 'aria-label': context.title },
+    h('div', { className: 'insights-section-heading' },
+      h('div', null,
+        h('span', { className: 'insights-eyebrow' }, 'Selected horizon'),
+        h('div', { className: 'insights-measure-heading' },
+          h('h2', null, 'Repository operational-value history'),
+          dubious
+            ? h('span', { className: 'insights-dubious-flag' },
+              h('span', null, 'Dubious'),
+              renderStatusBadge(maturityStatuses.join(', ')))
+            : null),
+        h('p', null, 'Goal-oriented measures before and after adoption, followed by workflow run conclusions over the same temporal horizon. Interim evidence remains visible and marked dubious until it matures.'))),
+    h('div', { className: 'insights-plot-panel insights-temporal-plot-panel' },
+      renderTemporalMetricPlot({
+        title: workflowName,
+        mode,
+        adoptionAt,
+        metrics,
+        runs
+      })));
 }
 
 /**
@@ -47,12 +110,30 @@ function renderMeasureRow(metric, measureSource) {
     (Array.isArray(metric.points) ? metric.points : []).slice().sort((left, right) => Date.parse(left.x) - Date.parse(right.x))
   );
   const series = listChartSeries(points);
-  const kind = String(metric['metric-kind']);
-  const name = String(metric['metric-name'] || metric.metric || 'Metric');
+  const kind = String(measureSource === 'operational-value'
+    ? metric['operational-value-role'] || metric['metric-kind']
+    : metric['metric-kind']);
+  const name = String(measureSource === 'operational-value'
+    ? metric['operational-value-name'] || metric['metric-name'] || metric.metric || 'Metric'
+    : metric['metric-name'] || metric.metric || 'Metric');
   const title = kind === 'primary' ? humanizeIdentifier(name) : name;
   const maturityStatus = String(metric['maturity-status'] || '');
   const dubious = measureSource === 'operational-value' && maturityStatus !== 'matured';
-  const chart = renderChartWidget('line', points, series);
+  const adoptionAt = String(metric['adoption-at'] || '');
+  const chart = renderChartWidget(
+    'line',
+    points,
+    series,
+    null,
+    'Total',
+    null,
+    null,
+    null,
+    (label) => label,
+    measureSource === 'operational-value' && Number.isFinite(Date.parse(adoptionAt))
+      ? { at: adoptionAt, label: 'Workflow adopted' }
+      : null
+  );
   const readout = h('p', { className: 'insights-point-readout', role: 'status' }, SELECT_POINT_MESSAGE);
   attachPointSelection(chart, points, readout);
   return h('section', { className: 'insights-plot-panel insights-measure-row', 'data-metric-kind': kind },

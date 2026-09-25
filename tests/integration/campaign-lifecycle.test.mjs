@@ -48,6 +48,31 @@ const activityExpectedFiles = [
   "activity/actions-context.mjs",
   "activity/actions-log.mjs",
   "activity/cao.mjs",
+  "activity/commands/activity-stats.mjs",
+  "activity/commands/add.mjs",
+  "activity/commands/audit-jsonl.mjs",
+  "activity/commands/cluster-problems.mjs",
+  "activity/commands/compact-jsonl.mjs",
+  "activity/commands/computation.mjs",
+  "activity/commands/dashboard-complexity.mjs",
+  "activity/commands/disable.mjs",
+  "activity/commands/discover-workflows.mjs",
+  "activity/commands/doctor.mjs",
+  "activity/commands/download.mjs",
+  "activity/commands/enable.mjs",
+  "activity/commands/gh.mjs",
+  "activity/commands/hash-payloads.mjs",
+  "activity/commands/index.mjs",
+  "activity/commands/ingest-jsonl.mjs",
+  "activity/commands/ingest.mjs",
+  "activity/commands/init.mjs",
+  "activity/commands/issue-status.mjs",
+  "activity/commands/mode.mjs",
+  "activity/commands/operational-value.mjs",
+  "activity/commands/prune-dashboard.mjs",
+  "activity/commands/query.mjs",
+  "activity/commands/setup-auth.mjs",
+  "activity/commands/update.mjs",
   "activity/collect-logs.sh",
   "activity/computations/index.mjs",
   "activity/computations/runtime-health.mjs",
@@ -61,10 +86,6 @@ const activityExpectedFiles = [
   ".github/workflows/cao-activity.yml",
 ];
 const caoEvolutionExpectedFiles = [
-  "cao-evolution/.github/graders/cao-evolution-failures-investigator-operational-value.sh",
-  "cao-evolution/.github/graders/cao-evolution-compiler-security-operational-value.sh",
-  ".github/workflows/graders/cao-evolution-failures-investigator-operational-value.sh",
-  ".github/workflows/graders/cao-evolution-compiler-security-operational-value.sh",
   ".github/workflows/cao-evolution-failures-investigator.md",
   ".github/workflows/cao-evolution-compiler-security.md",
   ".github/workflows/cao-evolution-efficiency.md",
@@ -84,19 +105,6 @@ const ukAiAdvisoryExpectedFiles = [
 const craExpectedFiles = [
   "eu-cra-compliance/implementation-status.md",
   "eu-cra-compliance/eu-cra-report-operational-value-runtime.bash",
-  "eu-cra-compliance/.github/graders/eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
-  "eu-cra-compliance/.github/graders/eu-cra-compliance-conformity-release-evidence-operational-value.sh",
-  "eu-cra-compliance/.github/graders/eu-cra-compliance-campaign-maintainer-operational-value.sh",
-  "eu-cra-compliance/.github/graders/eu-cra-compliance-scope-classifier-operational-value.sh",
-  "eu-cra-compliance/.github/graders/eu-cra-compliance-security-requirements-auditor-operational-value.sh",
-  "eu-cra-compliance/.github/graders/eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh",
-  "eu-cra-compliance/.github/graders/eu-cra-compliance-vulnerability-handling-auditor-operational-value.sh",
-  ".github/workflows/graders/eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
-  ".github/workflows/graders/eu-cra-compliance-conformity-release-evidence-operational-value.sh",
-  ".github/workflows/graders/eu-cra-compliance-scope-classifier-operational-value.sh",
-  ".github/workflows/graders/eu-cra-compliance-security-requirements-auditor-operational-value.sh",
-  ".github/workflows/graders/eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh",
-  ".github/workflows/graders/eu-cra-compliance-vulnerability-handling-auditor-operational-value.sh",
   ".github/workflows/eu-cra-compliance-article-14-reporting-readiness.md",
   ".github/workflows/eu-cra-compliance-conformity-release-evidence.md",
   ".github/workflows/eu-cra-compliance-campaign-maintainer.md",
@@ -105,7 +113,6 @@ const craExpectedFiles = [
   ".github/workflows/eu-cra-compliance-supply-chain-sbom-auditor.md",
   ".github/workflows/eu-cra-compliance-vulnerability-handling-auditor.md",
   ".github/workflows/eu-cra-compliance.md",
-  ".github/workflows/graders/eu-cra-compliance-campaign-maintainer-operational-value.sh",
   ".github/workflows/shared/control.md",
 ];
 const dashboardExpectedFiles = [
@@ -118,10 +125,6 @@ const dashboardExpectedFiles = [
 const optimizationExpectedFiles = [
   "optimization/operational-value.mjs",
   "optimization/operational-value/optimization-token-optimizer.mjs",
-  "optimization/.github/graders/optimization-token-auditor-operational-value.sh",
-  "optimization/.github/graders/optimization-token-optimizer-operational-value.sh",
-  ".github/workflows/graders/optimization-token-auditor-operational-value.sh",
-  ".github/workflows/graders/optimization-token-optimizer-operational-value.sh",
   ".github/workflows/optimization-token-auditor.md",
   ".github/workflows/optimization-token-optimizer.md",
   ".github/workflows/optimization.md",
@@ -129,8 +132,6 @@ const optimizationExpectedFiles = [
   ".github/workflows/shared/control.md",
 ];
 const selfCareExpectedFiles = [
-  "self-care/.github/graders/self-care-docs-build-time-investigator-operational-value.sh",
-  ".github/workflows/graders/self-care-docs-build-time-investigator-operational-value.sh",
   ".github/workflows/self-care-accessibility-checker.md",
   ".github/workflows/self-care-code-improvement.md",
   ".github/workflows/self-care-dashboard-data-schema.md",
@@ -151,10 +152,6 @@ const selfCareExpectedFiles = [
 ];
 const softwareDevelopmentPracticesExpectedFiles = [
   "software-development-practices/software-development-guidance-operational-value-runtime.bash",
-  "software-development-practices/.github/graders/software-development-practices-github-well-architected-operational-value.sh",
-  "software-development-practices/.github/graders/software-development-practices-nist-ssdf-operational-value.sh",
-  ".github/workflows/graders/software-development-practices-github-well-architected-operational-value.sh",
-  ".github/workflows/graders/software-development-practices-nist-ssdf-operational-value.sh",
   ".github/workflows/shared/control.md",
   ".github/workflows/software-development-practices-github-well-architected.md",
   ".github/workflows/software-development-practices-nist-ssdf.md",
@@ -315,19 +312,6 @@ test("gh aw add installs the focused EU CRA campaign contract", { timeout: 180_0
       [
         "eu-cra-compliance/implementation-status.md",
         "eu-cra-compliance/eu-cra-report-operational-value-runtime.bash",
-        "eu-cra-compliance/.github/graders/eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
-        "eu-cra-compliance/.github/graders/eu-cra-compliance-conformity-release-evidence-operational-value.sh",
-        "eu-cra-compliance/.github/graders/eu-cra-compliance-campaign-maintainer-operational-value.sh",
-        "eu-cra-compliance/.github/graders/eu-cra-compliance-scope-classifier-operational-value.sh",
-        "eu-cra-compliance/.github/graders/eu-cra-compliance-security-requirements-auditor-operational-value.sh",
-        "eu-cra-compliance/.github/graders/eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh",
-        "eu-cra-compliance/.github/graders/eu-cra-compliance-vulnerability-handling-auditor-operational-value.sh",
-        ".github/workflows/graders/eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
-        ".github/workflows/graders/eu-cra-compliance-conformity-release-evidence-operational-value.sh",
-        ".github/workflows/graders/eu-cra-compliance-scope-classifier-operational-value.sh",
-        ".github/workflows/graders/eu-cra-compliance-security-requirements-auditor-operational-value.sh",
-        ".github/workflows/graders/eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh",
-        ".github/workflows/graders/eu-cra-compliance-vulnerability-handling-auditor-operational-value.sh",
         ".github/workflows/eu-cra-compliance-article-14-reporting-readiness.md",
         ".github/workflows/eu-cra-compliance-conformity-release-evidence.md",
         ".github/workflows/eu-cra-compliance-campaign-maintainer.md",
@@ -336,9 +320,8 @@ test("gh aw add installs the focused EU CRA campaign contract", { timeout: 180_0
         ".github/workflows/eu-cra-compliance-supply-chain-sbom-auditor.md",
         ".github/workflows/eu-cra-compliance-vulnerability-handling-auditor.md",
         ".github/workflows/eu-cra-compliance.md",
-        ".github/workflows/graders/eu-cra-compliance-campaign-maintainer-operational-value.sh",
       ].sort(),
-      "focused CRA campaign manifest must own its entry workflows, evaluator, and ledger",
+      "focused CRA campaign manifest must own its entry workflows and ledger",
     );
   } finally {
     rmSync(consumer, { recursive: true, force: true });
@@ -439,16 +422,12 @@ test("gh aw add installs the focused Software Development Practices campaign con
     assert.deepEqual(
       installedManifest.files.map(({ destination }) => destination).sort(),
       [
-        "software-development-practices/.github/graders/software-development-practices-github-well-architected-operational-value.sh",
-        "software-development-practices/.github/graders/software-development-practices-nist-ssdf-operational-value.sh",
         "software-development-practices/software-development-guidance-operational-value-runtime.bash",
-        ".github/workflows/graders/software-development-practices-github-well-architected-operational-value.sh",
-        ".github/workflows/graders/software-development-practices-nist-ssdf-operational-value.sh",
         ".github/workflows/software-development-practices-github-well-architected.md",
         ".github/workflows/software-development-practices-nist-ssdf.md",
         ".github/workflows/software-development-practices.md",
       ],
-      "focused Software Development Practices campaign manifest must own its entry workflows, evaluators, and runtime",
+      "focused Software Development Practices campaign manifest must own its entry workflows and runtime",
     );
   } finally {
     rmSync(consumer, { recursive: true, force: true });
@@ -541,22 +520,13 @@ test("gh aw update replaces workflows and restores campaign-owned assets after c
   const consumer = await installCampaign(dependabotUpdateSource);
 
   try {
-    assert.ok(
-      existsSync(join(consumer, "dependabot", ".github", "graders", "dependabot-update-planner-operational-value.sh")),
-      "Dependabot campaign omitted its campaign-owned operational-value grader",
-    );
-    assert.ok(
-      existsSync(join(consumer, ".github", "workflows", "graders", "dependabot-update-planner-operational-value.sh")),
-      "Dependabot campaign omitted its operational-value grader",
-    );
     const orchestratorPath = join(consumer, ".github", "workflows", "dependabot.md");
     const orchestrator = readFileSync(orchestratorPath, "utf8");
     writeFileSync(orchestratorPath, `${orchestrator}\n# local integration-test change\n`);
 
     const removedFiles = [
-      "dependabot/.github/graders/dependabot-update-planner-operational-value.sh",
+      "dependabot/operational-value.mjs",
       ".github/workflows/dependabot-update-planner.md",
-      ".github/workflows/graders/dependabot-update-planner-operational-value.sh",
       ".github/workflows/shared/control.md",
     ];
     for (const relativePath of removedFiles) {

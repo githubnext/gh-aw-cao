@@ -94,8 +94,8 @@ function resolveGithubEntityLink(row, field, fallbackLabel) {
  *   rowLimit?: number,
  *   units?: Record<string, { name: string, symbol: string, significant: number }>,
  *   prepareTableRows: (rows: Array<Record<string, unknown>>, columns: TableField[], data: unknown) => Array<Record<string, unknown>>,
- *   buildChartPoints: (pageId: string, title: string, rows: Array<Record<string, unknown>>, x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, hrefField: string | null, weight?: Record<string, any> | null) => ChartPoint[],
- *   prepareChartPoints: (points: ChartPoint[], x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, data: unknown) => ChartPoint[],
+ *   buildChartPoints: (pageId: string, title: string, rows: Array<Record<string, unknown>>, x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, hrefField: string | null, weight?: Record<string, any> | null, section?: Record<string, any> | null) => ChartPoint[],
+ *   prepareChartPoints: (points: ChartPoint[], x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, data: unknown, section?: Record<string, any> | null) => ChartPoint[],
  *   toText: (value: unknown) => string,
  *   cardTemplates?: Record<string, { icon: string, 'icon-field'?: string, status?: { field: string, 'fallback-field'?: string, title?: string }, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], 'detail-labels'?: string, metrics?: TableField[], timing?: Array<TableField & { icon: string }>, actions?: Array<{ action: string, context: string[], when?: { field: string, equals: unknown } }>, drill?: Record<string, unknown> }>,
  *   continuation?: { token: string, totalRows: number, load: (token: string) => Promise<{ rows: Array<Record<string, unknown>>, continuationToken?: string }> }
@@ -1221,6 +1221,9 @@ function renderChartView(context) {
     .filter((definition) => isPlainObject(definition) && typeof definition.field === 'string');
   const y = yDefinitions[0] ?? null;
   const color = isPlainObject(encoding?.color) && typeof encoding.color.field === 'string' ? encoding.color : null;
+  const chartSection = isPlainObject(encoding?.section) && typeof encoding.section.field === 'string'
+    ? encoding.section
+    : null;
   const weight = isPlainObject(encoding?.weight) && typeof encoding.weight.field === 'string' ? encoding.weight : null;
   const reference = isPlainObject(encoding?.reference) && typeof encoding.reference.field === 'string' ? encoding.reference : null;
   const href = isPlainObject(encoding?.href) && typeof encoding.href.field === 'string' ? encoding.href : null;
@@ -1240,15 +1243,14 @@ function renderChartView(context) {
       })));
       return prepareChartPoints(points, x, y, null, view.data);
     }
-    return prepareChartPoints(
-      weight
+    const chartPoints = chartSection
+      ? buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null, weight, chartSection)
+      : weight
         ? buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null, weight)
-        : buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null),
-      x,
-      value,
-      series,
-      view.data
-    );
+        : buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null);
+    return chartSection
+      ? prepareChartPoints(chartPoints, x, value, series, view.data, chartSection)
+      : prepareChartPoints(chartPoints, x, value, series, view.data);
   };
   const points = pointsForRows(rows);
   const description = typeof view.description === 'string' && view.description.length > 0

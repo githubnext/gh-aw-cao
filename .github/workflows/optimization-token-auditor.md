@@ -86,14 +86,6 @@ tools:
     toolsets: [repos, issues, actions]
   agentic-workflows:
 
-graders:
-  operational-value:
-    name: Actionable token audit
-    description: Whether the run produced one target-bound audit with complete cost, activity, and reliability evidence
-    unit: proportion
-    direction: higher_is_better
-    run: ./graders/optimization-token-auditor-operational-value.sh
-
 safe-outputs:
   mentions: false
   allowed-github-references: []

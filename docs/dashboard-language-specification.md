@@ -133,7 +133,7 @@ This specification defines three conformance classes:
 | AI Credits (`aic`) | A normalized usage or accounting measure supplied by an authoritative source; not a token count. |
 | Run conclusion | The terminal GitHub Actions result of a completed run. |
 | Outcome | A later repository-state evaluation of a safe output, distinct from run status and conclusion. |
-| Operational value | A package-defined, timestamped numeric metric for one repository and campaign. |
+| Operational value | A campaign-defined, timestamped numeric metric for one repository and campaign. |
 | Operational grader | An ordered set of native finite numeric metrics or `null` published by gh-aw for one run; the first metric is primary and later metrics are diagnostics. |
 
 ### 3.2 Entity Relationships
@@ -226,14 +226,15 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Tooltip | `label`, `description`, `icon` |
 | `defaults` | `scope`, `time`, `filters` |
 | Unit definition | `name`, `symbol`, `significant`, `format` |
-| Query definition | `name`, `intent`, `description`, `from`, `union`, `time`, `joins`, `filter`, `compute`, `temporal-series`, `aggregate`, `predict`, `select`, `order-by`, `limit` |
+| Query definition | `name`, `intent`, `description`, `parameters`, `from`, `union`, `time`, `joins`, `filter`, `compute`, `temporal-series`, `aggregate`, `predict`, `select`, `order-by`, `limit` |
+| Query parameter | `name`, `type` |
 | Query `joins` entry | `source`, `type`, `on`, `fields` |
 | Query join key | `left`, `right` |
 | Query join field | `field`, `as` |
 | Query `filter` | `predicates` |
 | Query predicate | `field`, `equals`, `in`, `includes` |
 | Query computed field | `as`, `function`, `args` |
-| Query computed argument | exactly one of `field`, `value`, or `context`; `context` is `time-end` |
+| Query computed argument | exactly one of `field`, `value`, `context`, or `parameter`; `context` is `time-end` |
 | Query `aggregate` | `by`, `values` |
 | Query aggregate value | `field`, `as`, `reducer` |
 | Query `predict` entry | `field`, `on`, `method`, `order`, `groupby`, `as` |
@@ -241,8 +242,12 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Query `temporal-series.measures[]` | `field`, `key`, `kind` |
 | Query `temporal-series.maps[]` | `field`, `definitions`, `group`, `kind` |
 | Query `select` entry | `field`, `as` |
-| Built-in page | `id`, `kind`, `page`, `title`, `navigation-label`, `navigation-indicator`, `description`, `icon`, `class-name`, `definition` |
-| Custom page | `id`, `kind`, `title`, `navigation-label`, `navigation-indicator`, `description`, `icon`, `class-name`, `route`, `views`, `sections` |
+| Built-in page | `id`, `kind`, `page`, `title`, `navigation-label`, `navigation-indicator`, `description`, `icon`, `class-name`, `form`, `definition` |
+| Custom page | `id`, `kind`, `title`, `navigation-label`, `navigation-indicator`, `description`, `icon`, `class-name`, `form`, `route`, `views`, `sections` |
+| Page `form` | `title`, `description`, `update`, `fields` |
+| Form `update` | `strategy`, `delay-ms` |
+| Form field | `id`, `label`, `description`, `control`, `default`, `min`, `max`, `step`, `options` |
+| Radio option | `value`, `label` |
 | Navigation section | `label`, `pages`, `experimental`, `placement` |
 | Page section | `id`, `title`, `description`, `layout`, `views`, `count-source`, `count-sources`, `count-field`, `count-label` |
 | Custom page `route` | `hash-query-parameter`, `navigation-page`, `title-format`, `tabs-class-name`, `tab`, `tabs` |
@@ -270,7 +275,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 - **DLS-DOC-007:** A validator **MUST** reject unknown keys, unknown enumerated values, and duplicate mapping keys.
 - **DLS-DOC-008:** `defaults`, when present, **MUST** be a mapping containing only `scope`, `time`, and `filters`.
 - **DLS-DOC-009:** Every page **MUST** set `kind` to `built-in` or `custom` and satisfy the corresponding page shape in Sections 10 or 11.
-- **DLS-DOC-009a:** `config`, when present, **MUST** appear only on `mark: element` views. Version 0.1.0 defines `config.body` only for the `workflow-route-page`, `campaign-route`, and `outcome-detail-section` elements. For `workflow-route-page`, it **MUST** be one of `insights`, `reports`, or `runs`. For `campaign-route`, it **MUST** be one of `overview`, `workflows`, `runs`, `issues`, `pull-requests`, `repositories`, `insights`, or `reports`; the legacy value `dispatches` **MUST** remain accepted as an alias for `runs`. A campaign route presenter **MUST** expose `overview`, `workflows`, and `runs` as the initial campaign-scoped resource navigation: horizontal tabs on desktop and touch-sized vertical navigation buttons on narrow mobile viewports. Every navigation target **MUST** retain the campaign route binding, and each selected page's views **MUST** apply that binding through the declarative query boundary. For `outcome-detail-section`, `config.body` **MUST** be `discussion` or `metadata`. A conforming presenter **MUST** derive companion navigation, route targets, labels, and icons for route-aware compositions from canonical body values instead of hard-coding page-specific identities in a view component. Version 0.1.0 defines `config.stations` for `factory-floor`; it **MUST** be a non-empty list of unique values selected from `campaigns` and `repositories`, in the order those stations appear. Version 0.1.0 defines `config.labels` and `config.animate: number` for `factory-floor`; labels **MUST** be a non-empty mapping keyed by canonical kebab-case label identifiers whose values are plural text variables containing exactly the non-empty strings `singular` and `plural`. Version 0.1.0 defines `config.sources` for `factory-header` and `factory-floor`; it **MUST** be a non-empty mapping from canonical presentation role identifiers to declared source names, using only the roles `presentation` and `rhythm` for `factory-header`, and `campaigns` and `repositories` for `factory-floor`. A role not overridden through `config.sources` **MUST** resolve to that element's default source name for the overview page. The bound sources **MUST** contain presentation-ready values; the presenter **MUST NOT** join source records, calculate operational metrics, or reconstruct business relationships. A conforming presenter **MUST** resolve every presentation role solely through `config.sources`, never through a hard-coded source name, so `factory-header` and `factory-floor` can be bound to differently named sources on any page.
+- **DLS-DOC-009a:** `config`, when present, **MUST** appear only on `mark: element` views. Version 0.1.0 defines `config.body` only for the `workflow-route-page`, `campaign-route`, and `outcome-detail-section` elements. For `workflow-route-page`, it **MUST** be one of `insights`, `reports`, or `runs`. For `campaign-route`, it **MUST** be one of `overview`, `workflows`, `runs`, `issues`, `pull-requests`, `repositories`, `insights`, or `reports`; the legacy value `dispatches` **MUST** remain accepted as an alias for `runs`. A campaign route presenter **MUST** expose `overview`, `workflows`, and `runs` as the initial campaign-scoped resource navigation: horizontal tabs on desktop and touch-sized vertical navigation buttons on narrow mobile viewports. Every navigation target **MUST** retain the campaign route binding, and each selected page's views **MUST** apply that binding through the declarative query boundary. For `outcome-detail-section`, `config.body` **MUST** be `discussion` or `metadata`. A conforming presenter **MUST** derive companion navigation, route targets, labels, and icons for route-aware compositions from canonical body values instead of hard-coding page-specific identities in a view component. Version 0.1.0 defines `config.stations` for `factory-floor`; it **MUST** be a non-empty list of unique values selected from `campaigns` and `repositories`, in the order those stations appear. Version 0.1.0 defines `config.labels` and `config.animate: number` for `factory-floor`; labels **MUST** be a non-empty mapping keyed by canonical kebab-case label identifiers whose values are plural text variables containing exactly the non-empty strings `singular` and `plural`. Version 0.1.0 defines `config.sources` for `factory-header` and `factory-floor`; it **MUST** be a non-empty mapping from canonical presentation role identifiers to declared source names, using only the roles `presentation` and `rhythm` for `factory-header`, and `campaigns` and `repositories` for `factory-floor`. A role not overridden through `config.sources` **MUST** resolve to that element's default source name for the overview page. The bound sources **MUST** contain presentation-ready values; the presenter **MUST NOT** join source records, calculate operational metrics, or reconstruct business relationships. A conforming presenter **MUST** resolve every presentation role solely through `config.sources`, never through a hard-coded source name, so `factory-header` and `factory-floor` can be bound to differently named sources on any page. The generic `markdown` element **MUST** declare `config.content-field`; it **MAY** declare `config.path-field`, `config.base-link-field`, and `config.empty-message`. Relative links **MUST** resolve only beneath the safe HTTPS repository identified by the configured relation-specific link field.
 - **DLS-DOC-010:** Titles and descriptions **MUST** be strings; IDs, references, and timestamps **MUST NOT** rely on YAML implicit type coercion.
 - **DLS-DOC-011:** `github-url-base`, when present, **MUST** be an absolute HTTPS URL without credentials, query, or fragment. It identifies the GitHub web URL base used to resolve GitHub-addressable entity links and defaults to `https://github.com`.
 - **DLS-DOC-012:** `repository`, when present, **MUST** be a non-empty `owner/repo` slug identifying the GitHub repository hosting the dashboard. A presenter **MUST NOT** fabricate a report action toolbar's GitHub repository link when `repository` is absent.
@@ -317,7 +322,7 @@ The database table vocabulary is closed in version 0.1.0. Views continue to use
 | `engine-usage-summary` | agentic engine usage summary | `engine`, `runs`, `invocations`, `total-aic`, `estimated-usd`, `min-engine-version`, `max-engine-version`, `models` |
 | `outcomes` | safe-output outcome observation | scope IDs, `campaign`, `runtime-repository`, `workflow-name`, `run`, `run-conclusion`, `safe-output`, `outcome-number`, `outcome-title`, `outcome-summary`, `outcome-body-html`, `outcome-category`, `outcome-status`, `outcome-state`, `evidence-strength`, `rollout-mode`, `engine`, `engine-version`, `requested-model`, `resolved-model`, `published-at`, `observed-at`, `issue-link`, `pull-request-link`, `run-link`, `external-link`, `organization-link`, `repository-link`, `workflow-link` |
 | `findings` | finding | scope IDs, `run`, `finding`, `finding-severity`, `finding-status`, `finding-summary`, `observed-at`, `engine`, `engine-version`, `requested-model`, `resolved-model`, `issue-link`, `pull-request-link`, `run-link`, `external-link`, `organization-link`, `repository-link`, `workflow-link` |
-| `operational-values` | Package-defined repository metric | repository and campaign scope IDs, `operational-value`, `operational-value-definition`, `operational-value-role`, `operational-value-name`, `operational-value-direction`, `maturity-status`, `observed-at`, `organization-link`, `repository-link`, `campaign-link` |
+| `operational-values` | Campaign-defined repository metric | repository and campaign scope IDs, `operational-value`, `operational-value-definition`, `operational-value-role`, `operational-value-name`, `operational-value-direction`, `maturity-status`, `observed-at`, `organization-link`, `repository-link`, `campaign-link` |
 | `operational-graders` | gh-aw `operational-value` grader result | scope IDs, `observation-id`, `run`, `run-attempt`, `experiment`, `rollout-mode`, `operational-grader`, `operational-grader-definition`, `operational-grader-unit`, `operational-grader-direction`, `diagnostics`, `diagnostic-definitions`, `observed-at`, `evidence-link`, `organization-link`, `repository-link`, `workflow-link`, `run-link` |
 | `token-efficiency-opportunities` | one stable frozen token-efficiency opportunity | scope IDs, `opportunity-id`, `opportunity-kind`, `assignment-run`, `experiment`, `evidence-window-start`, `evidence-window-end`, `evidence-state`, `evidence-confidence`, `cost-grain`, `observed-at`, `evidence-link`, `repository-link`, `workflow-link`, `run-link` |
 | `token-efficiency-interventions` | one append-only lifecycle observation for one token-efficiency intervention | scope IDs, `opportunity-id`, `intervention-id`, `lifecycle-observation-id`, `previous-intervention-state`, `intervention-state`, `previous-recommendation-disposition`, `recommendation-disposition`, `supersedes-intervention-id`, `superseded-by-intervention-id`, `recommendation-churn-count`, `recommendation-churn-rate`, `experiment`, `control-variant`, `optimized-variant`, `proposed-savings-aic`, `evidence-state`, `missing-reason`, `safe-output-id`, `implementation-change-id`, `implementation-run-ids`, `accepted-at`, `implementation-started-at`, `implementation-completed-at`, `rejected-at`, `superseded-at`, `observed-at`, `issue-link`, `pull-request-link`, `evidence-link`, `repository-link`, `workflow-link`, `run-link` |
@@ -368,7 +373,7 @@ The canonical raw-token measures are `input-tokens`, `output-tokens`, `cache-rea
 
 ### 5.3 Campaigns, Graders, Evals, and Operational Value
 
-A campaign groups one orchestrator and one or more workers that execute centrally managed operations. `max-ai-credits` is the configured per-run limit for one workflow; `campaign-aic-allowance` is the sum of those limits for one complete campaign attempt and is not actual usage. `campaign-inventory-warnings` is the campaign-level count of missing compiled orchestration and declared worker inventory. A grader applies a named grading criterion and produces a deterministic grader observation. An operational grader is the ordered native metric result published by gh-aw's `operational-value` protocol for one run. Operational value is a separate package-defined repository metric linked to its campaign. An eval is a binary evaluation question and produces a `yes`, `no`, or `unknown` observation; it may use an AI model. These concepts are not interchangeable.
+A campaign groups one orchestrator and one or more workers that execute centrally managed operations. `max-ai-credits` is the configured per-run limit for one workflow; `campaign-aic-allowance` is the sum of those limits for one complete campaign attempt and is not actual usage. `campaign-inventory-warnings` is the campaign-level count of missing compiled orchestration and declared worker inventory. A grader applies a named grading criterion and produces a deterministic grader observation. An operational grader is the ordered native metric result published by gh-aw's `operational-value` protocol for one run. Operational value is a separate campaign-defined repository metric linked to its campaign. An eval is a binary evaluation question and produces a `yes`, `no`, or `unknown` observation; it may use an AI model. These concepts are not interchangeable.
 
 ### 5.4 Normative Source Requirements
 
@@ -399,6 +404,11 @@ A campaign groups one orchestrator and one or more workers that execute centrall
 `dashboard.queries`, when present, declares reusable query results. A query is a closed, structured projection over Section 5.1 database tables or earlier queries; it contains no SQL text, scripts, callbacks, templates, or general-purpose expressions.
 
 Each query retains a non-empty `intent` containing the original natural-language specification that led to the query. This authoring metadata gives future dashboard modifications the requested outcome behind the current clauses; it does not affect execution or presentation.
+
+A query may declare typed scalar `parameters`. Parameter references are inert,
+tagged values resolved from the active page form before the query graph enters
+the data worker. Parameters change scalar operands only; they cannot select a
+source, field, join, reducer, limit, or other query structure.
 
 ```yaml
 queries:
@@ -478,6 +488,7 @@ Computed fields use only the following typed, deterministic functions with the s
 | `coalesce` | 2–8 | first argument that is not null, empty text, or a structured value |
 | `link-href` | 1 | text `href` read from a structured link field, or null |
 | `concat` | 2–8 | text |
+| `literal` | 1 | scalar value |
 | `lower`, `upper`, `title-case`, `trim`, `url-encode` | 1 | text |
 | `date-day` | 1 | UTC calendar date text |
 | `calendar-week-point` | 3 | serializable calendar point from timestamp, `time-end`, and run conclusion |
@@ -559,7 +570,7 @@ The transform preserves source-row order and measure declaration or map-property
 
 #### 5.5.4 Normative Query Requirements
 
-- **DLS-QUERY-001:** `queries`, when present, **MUST** be a non-empty sequence of mappings. Each query **MUST** declare a `name` matching the canonical identifier pattern in **DLS-DOC-005**, a non-empty `intent` containing its original natural-language specification, and one `from` input; **MAY** declare `description`, `union`, `time`, `joins`, `filter`, `compute`, `temporal-series`, `aggregate`, `predict`, `select`, `order-by`, and `limit`; and **MUST NOT** declare any other key. A presenter and query execution layer **MUST** treat `intent` as inert authoring metadata.
+- **DLS-QUERY-001:** `queries`, when present, **MUST** be a non-empty sequence of mappings. Each query **MUST** declare a `name` matching the canonical identifier pattern in **DLS-DOC-005**, a non-empty `intent` containing its original natural-language specification, and one `from` input; **MAY** declare `description`, `parameters`, `union`, `time`, `joins`, `filter`, `compute`, `temporal-series`, `aggregate`, `predict`, `select`, `order-by`, and `limit`; and **MUST NOT** declare any other key. A presenter and query execution layer **MUST** treat `intent` as inert authoring metadata.
 - **DLS-QUERY-002:** A query `name` **MUST** be unique among queries and **MUST NOT** shadow a Section 5.1 table name. A declared query name **MAY** be used wherever a view selects data.
 - **DLS-QUERY-003:** `from`, every `union[]`, and every `joins[].source` **MUST** name one Section 5.1 database table or one query declared earlier in the sequence. Forward references, self references, and cycles **MUST** be rejected. `union`, when present, **MUST** be a non-empty sequence; its rows are appended in declaration order, fields from every unioned table or query are available to later clauses, and a field absent from one row has a null value for query operations.
 - **DLS-QUERY-004:** Clause execution order **MUST** be `from`, then `union` in declaration order, then `joins` in declaration order, then `filter`, `compute` in declaration order, `temporal-series`, `aggregate`, `predict` in declaration order, `select`, `order-by`, and finally `limit`.
@@ -585,6 +596,105 @@ The transform preserves source-row order and measure declaration or map-property
 - **DLS-QUERY-024:** An aggregate-local `filter` **MUST** contain only `predicates`, with one to eight entries. Each predicate **MUST** contain only `field` and exactly one of `equals` or `in`; `equals` **MUST** be a finite number, text, or boolean, and `in` **MUST** contain one to 32 such literals. The referenced field **MUST** exist immediately before aggregation and **MUST** be scalar. Structured links, aggregate outputs, and fields produced by later clauses **MUST** be rejected with `DLS-E011` or `DLS-E010` as applicable.
 - **DLS-QUERY-025:** A query **MUST NOT** declare more than 64 aggregate values. Aggregate-local predicate evaluation **MUST** count against the operation budget in **DLS-QUERY-018**. It **MUST NOT** expand rows, alter group formation, access external state, execute code, or introduce sequence semantics.
 - **DLS-QUERY-026:** `temporal-series` **MUST** declare valid scalar `time` and `series` fields and at least one bounded `measures` or `maps` entry. It **MUST** emit only finite numeric values with valid timestamps, preserve deterministic order, remain within **DLS-QUERY-013** limits, execute in the data Web Worker, and expose the statically known tidy output fields defined in Section 5.5.3.
+- **DLS-QUERY-027:** `parameters`, when present, **MUST** be a non-empty sequence of mappings containing exactly a unique canonical `name` and a `type` of `number`, `string`, or `boolean`. A parameter reference **MUST** contain exactly `parameter` naming one parameter declared by the same query. Version 0.1.0 permits parameter references as query predicate `equals`, `gte`, or `lt` operands and as computed-field arguments. A parameter **MUST NOT** alter query topology or output schema.
+- **DLS-QUERY-028:** Before query execution, the presenter **MUST** resolve every parameter reference to one finite number, string, or Boolean value supplied by the active page form. A computed-field parameter reference resolves as a literal computed argument. A missing, structured, non-finite, undeclared, or type-incompatible value **MUST** fail the page projection closed and **MUST NOT** execute a broader query with the predicate or computation removed.
+
+### 5.6 Parameterized Page Forms
+
+A built-in or custom page may declare one `form` that supplies typed scalar
+values to parameterized queries selected by that page. Form state belongs to
+the current rendered page instance. Version 0.1.0 does not serialize it into
+the URL or persistent browser storage.
+
+```json
+{
+  "dashboard": {
+    "queries": [
+      {
+        "name": "simulated-usage",
+        "intent": "Estimate observed AIC under an operator-selected multiplier.",
+        "parameters": [
+          { "name": "multiplier", "type": "number" },
+          { "name": "include-live", "type": "boolean" },
+          { "name": "profile", "type": "string" }
+        ],
+        "from": "usage",
+        "compute": [
+          {
+            "as": "selected-aic",
+            "function": "if",
+            "args": [
+              { "parameter": "include-live" },
+              { "field": "aic" },
+              { "value": 0 }
+            ]
+          },
+          {
+            "as": "simulated-aic",
+            "function": "product",
+            "args": [
+              { "field": "selected-aic" },
+              { "parameter": "multiplier" }
+            ]
+          },
+          {
+            "as": "profile-label",
+            "function": "coalesce",
+            "args": [
+              { "parameter": "profile" },
+              { "value": "balanced" }
+            ]
+          }
+        ]
+      }
+    ],
+    "pages": [
+      {
+        "id": "simulator",
+        "kind": "custom",
+        "title": "Performance simulator",
+        "form": {
+          "title": "Scenario",
+          "update": { "strategy": "debounce", "delay-ms": 250 },
+          "fields": [
+            { "id": "multiplier", "label": "AIC multiplier", "control": "slider", "default": 1, "min": 0, "max": 4, "step": 0.25 },
+            { "id": "include-live", "label": "Include live runs", "control": "checkbox", "default": true },
+            {
+              "id": "profile",
+              "label": "Profile",
+              "control": "radio",
+              "default": "balanced",
+              "options": [
+                { "value": "balanced", "label": "Balanced" },
+                { "value": "fast", "label": "Fast" }
+              ]
+            }
+          ]
+        },
+        "views": [
+          {
+            "id": "simulated-aic",
+            "data": { "source": "simulated-usage" },
+            "mark": "chart",
+            "chart": "line",
+            "encoding": {
+              "x": { "field": "observed-at", "type": "temporal", "time-unit": "day" },
+              "y": { "field": "simulated-aic", "type": "quantitative" }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+- **DLS-FORM-001:** `form` **MUST** contain a non-empty `fields` sequence and **MAY** contain non-empty `title` and `description` strings and one `update` mapping. Field IDs **MUST** be unique canonical identifiers and **MUST** name a parameter declared by a dashboard query.
+- **DLS-FORM-002:** A form field **MUST** declare a non-empty `label`, one `control` of `slider`, `checkbox`, or `radio`, and a typed `default`. `slider` **MUST** declare finite numeric `min`, `max`, and positive `step`, with `min < max` and `default` inside the inclusive range. `checkbox` **MUST** have a Boolean default. `radio` **MUST** declare 2 to 12 uniquely valued, consistently typed scalar options and a default matching one option.
+- **DLS-FORM-003:** Form fields **MUST** render in declaration order in an automatic responsive layout. Authors **MUST NOT** declare coordinates, columns, or breakpoints. Every control **MUST** expose its label, description when present, current value or checked state, keyboard operation, and native accessibility semantics.
+- **DLS-FORM-004:** `update.strategy` **MUST** be `debounce` or `throttle`; `delay-ms` **MUST** be an integer from 50 through 2000. The defaults are `debounce` and 250 milliseconds. Rapid updates **MUST** coalesce at the declared cadence, preserve the latest complete form state, cancel superseded requests or subscriptions, and prevent stale results from replacing newer results.
+- **DLS-FORM-005:** Form interaction code **MUST NOT** query data, filter rows, compute business state, or reconstruct relationships. It may own typed form state and DOM synchronization only. Query substitution and execution **MUST** remain inside the canonical page projection and data-worker boundary.
+- **DLS-FORM-006:** Form values **MUST** remain in memory for the active dashboard document and **MUST** reset to authored defaults when that document or page state is recreated. Version 0.1.0 presenters **MUST NOT** persist form values in URLs or browser storage.
 
 ---
 
@@ -698,7 +808,7 @@ An **output row** is the post-aggregation result of applying grouping and aggreg
 The **canonical post-aggregation row order** is defined for every output grain, entity-grain or group-grain, as follows:
 
 1. Apply each declared `order-by` clause in sequence, comparing each row's resolved output identifier value ascending or descending as declared.
-2. Break any ties remaining after step 1, or order all rows when `order-by` is entirely omitted, by the view's remaining unaggregated output dimensions that are not already fully determined by step 1. Only the grouping-capable encoding channels defined in Section 11.1 (`x`, `y`, `color`, and each `columns` entry) can hold an unaggregated output dimension; `value` and `href` are excluded because they do not participate in grouping. Consider these channels in that fixed declaration order (`x`, then `y`, then `color`, then each `columns` entry in its declared sequence), each compared ascending by canonical field value after time bucketing.
+2. Break any ties remaining after step 1, or order all rows when `order-by` is entirely omitted, by the view's remaining unaggregated output dimensions that are not already fully determined by step 1. Only the grouping-capable encoding channels defined in Section 11.1 (`x`, `y`, `color`, `section`, and each `columns` entry) can hold an unaggregated output dimension; `value` and `href` are excluded because they do not participate in grouping. Consider these channels in that fixed declaration order (`x`, then `y`, then `color`, then `section`, then each `columns` entry in its declared sequence), each compared ascending by canonical field value after time bucketing.
 3. Break any ties still remaining after step 2 by canonical entity ID ascending, when a canonical entity ID is present at the output grain; an entity-grain output row always has a canonical entity ID available for this step.
 
 A presenter **MUST** apply `limit` only after the canonical post-aggregation row order from steps 1 through 3 is fully resolved.
@@ -848,7 +958,7 @@ The optional page `icon` is the canonical name of an Octicon supported by the pr
 
 The optional page `navigation-label` provides a concise sidebar label when the page title is more descriptive. A dashboard `navigation` section may reference a focused subset of declared pages; omitted pages remain available as deep-link destinations.
 
-A page may declare `navigation-indicator` with a non-empty `label` and an `any` sequence of source predicates. Each predicate names a bounded source, scalar `field`, and scalar `equals` value. Presenters subscribe only to those declared indicator sources, set the navigation item's accessible label to include the indicator label when any predicate matches, and render a status dot as a supporting visual cue. Indicator sources should be declarative query outputs that already encode the business condition.
+A page may declare `navigation-indicator` with a non-empty `label` and an `any` sequence of bounded source names. Presenters subscribe only to those declared indicator sources, set the navigation item's accessible label to include the indicator label when any source returns a row, and render a status dot as a supporting visual cue. Indicator sources **MUST** be declarative query outputs that already encode the business condition.
 
 A navigation section may set `experimental: true`. Presenters combine pages from all experimental sections into one visible **Experimental** navigation section that is collapsed by default. Activating a direct deep link to an experimental page expands that section. This metadata changes navigation presentation only and does not grant authorization or access to data.
 
@@ -869,7 +979,7 @@ For pages that opt in to `filter-bar: true`, the presenter renders a filter bar 
 - **DLS-PAGE-009:** The `evals` page **MUST** keep eval definitions and eval observations distinguishable and expose observed subject, `YES`, `NO`, or `UNKNOWN` result, evaluation model when available, time, and provenance.
 - **DLS-PAGE-010:** The `usage` page **MUST** present each raw-token measure separately from AIC and expose estimated USD, engine, engine version, requested model, resolved model, scope, rollout mode, time, and provenance.
 - **DLS-PAGE-011:** The `engines-models` page **MUST** expose model and agentic-engine summaries with AIC totals, estimated pricing, run counts, engine version ranges, plus run-level engine, requested model, and resolved model evidence where available.
-- **DLS-PAGE-012:** The `operational-value` page **MUST** expose time-ordered package-defined repository metrics with their value identifiers, campaigns, repositories, and observation timestamps. Null observations **MUST** remain unavailable rather than becoming zero.
+- **DLS-PAGE-012:** The `operational-value` page **MUST** expose time-ordered campaign-defined repository metrics with their value identifiers, campaigns, repositories, and observation timestamps. Null observations **MUST** remain unavailable rather than becoming zero.
 - **DLS-PAGE-013:** The `findings` page **MUST** expose finding summary, severity, status, scope, time, provenance, and available issue, pull-request, and run links.
 - **DLS-PAGE-014:** Every built-in page **MUST** honor the dashboard scope, time, and filters and expose availability.
 - **DLS-PAGE-015:** The `campaigns` page **MUST** expose centrally managed campaign inventory, rollout-mode filtering, actual campaign AIC against summed per-run limits without treating missing usage as zero, the complete-attempt AIC allowance, retained usage coverage, and time-ordered successful, failed, and cancelled campaign-run trends.
@@ -927,7 +1037,7 @@ An element view may declare a compact `title-link` beside an allocated page titl
 | Named UI element | `element` | no encoding; one `element` name |
 | Callout | `callout` | no encoding or data; one `callout` mapping |
 
-Allowed encoding channels are `value`, `columns`, `x`, `y`, `color`, `reference`, and `href`. `columns` is a non-empty sequence of field definitions. A line chart's `y` channel may be a sequence of two to eight quantitative field definitions, rendered as one named series per field; such a chart does not also encode `color`. Other channels contain one field definition. The `href` channel references one relation-specific link field or one declared `campaign-dashboard-link`, `repository-dashboard-link`, or `workflow-dashboard-link` field; it does not select from multiple links. The quantitative `reference` channel is available only to dot charts and renders each distinct value as a horizontal reference line in the corresponding color series.
+Allowed encoding channels are `value`, `columns`, `x`, `y`, `color`, `section`, `reference`, and `href`. `columns` is a non-empty sequence of field definitions. A line chart's `y` channel may be a sequence of two to eight quantitative field definitions, rendered as one named series per field; such a chart does not also encode `color`. Other channels contain one field definition. The `href` channel references one relation-specific link field or one declared `campaign-dashboard-link`, `repository-dashboard-link`, or `workflow-dashboard-link` field; it does not select from multiple links. The quantitative `reference` channel is available only to dot charts and renders each distinct value as a horizontal reference line in the corresponding color series. The nominal or ordinal `section` channel is available only to horizontal bar charts and groups bars beneath section headings in first-appearance order.
 
 A metric view may select the reusable card widget with a `metric` mapping. The mapping uses `style: card`, one canonical Octicon `icon`, one `tone` value of `attention`, `danger`, `neutral`, or `review`, and a canonical `navigation-page`. A card may opt into a CSS number animation with `animate: number`; whole-number values then increment from zero to the declared target, while assistive technology receives the final value. A metric card renders unavailable evidence as an absent value rather than zero and links to the declared dashboard page without deriving navigation from the view or source identity.
 
@@ -937,7 +1047,7 @@ Callout views declare static explanatory content rather than logical-source obse
 
 A smell row identifies one detected condition with a stable `smell-id` and unique `smell-observation-id`. `smell-category` classifies the condition, `smell-severity` expresses its consequence, `smell-summary` states the finding, `smell-evidence` records the supporting observation, and optional `smell-recommendation` carries bounded remediation guidance. `agent-smells` contains native behavioral audit assessments, `workflow-smells` contains deterministic workflow configuration defects, `security-findings` contains detected unsafe behavior, and `control-plane-smells` contains policy, rollout, or campaign inventory defects. Producers **MUST NOT** emit a smell solely from an agent's disabled, blocked, slow, or stale runtime state. A workflow-attributable smell **SHOULD** include the narrowest available evidence link. The canonical Home attention view normalizes all four smell sources into independently attributable attention signals.
 
-The optional table-column field `display` is `text`, `status`, `grader-status`, `mode`, `active-state`, `label`, `ref`, `digest`, `outcome-link`, `run-link`, `repository-link`, `workflow-link`, or `evidence-link` and defaults to `text`. It selects presentation independently from the field name. The optional table-column field `filter` is boolean and defaults to `true`; `false` excludes the column from interactive facet filters without changing its display or sorting. Named UI element values are `campaign-route`, `workflow-route-page`, `outcome-detail`, `outcome-detail-section`, `problem-detail`, `entity-route`, `configuration-policy`, `measure-history`, `factory-header`, `factory-floor`, and `link-button-list`; renderers dispatch these values without inferring behavior from page IDs, view IDs, or source contents.
+The optional table-column field `display` is `text`, `status`, `grader-status`, `mode`, `active-state`, `label`, `ref`, `digest`, `outcome-link`, `run-link`, `repository-link`, `workflow-link`, or `evidence-link` and defaults to `text`. It selects presentation independently from the field name. The optional table-column field `filter` is boolean and defaults to `true`; `false` excludes the column from interactive facet filters without changing its display or sorting. Named UI element values are `campaign-route`, `workflow-route-page`, `outcome-detail`, `outcome-detail-section`, `problem-detail`, `entity-route`, `configuration-policy`, `measure-history`, `factory-header`, `factory-floor`, `link-button-list`, and `markdown`; renderers dispatch these values without inferring behavior from page IDs, view IDs, or source contents.
 
 A dashboard CLI action placement is `toolbar`, `settings`, `view`, or `row`. A `view` action is rendered only by the view that references it and is not duplicated in Settings or the global toolbar.
 
@@ -958,7 +1068,7 @@ An entity-card list declares `list.style: entity-cards` and references one decla
 
 The `link-button-list` element presents one declared source as an inset grouped list of navigation rows, matching a native mobile settings list: an uppercase section caption, a rounded container, one tinted Octicon badge per row, hairline separators inset to the label, and a trailing disclosure chevron. Its config declares `label-field`, `link-field`, `fallback-icon`, an optional `icon-field`, optional `indicator-field` and `indicator-label-field`, and an optional `empty-message`; link values use the same safe dashboard-link or HTTPS-link contract as other dashboard links. When an indicator is present, it is rendered as an accessible trailing status cue without changing the declared link target.
 
-An element that presents counted summary boxes may declare `config.labels`, a mapping of canonical label identifiers to **plural text variables**. A plural text variable is a mapping containing exactly the non-empty strings `singular` and `plural`. The presenter selects `singular` when the presented count has an absolute value of one and `plural` otherwise, so a box reading `1 Repositories` becomes `1 Repository`. A plural text variable is author-declared display text only: it does not change counting, filtering, aggregation, ordering, or source values, and an undeclared label keeps the element's built-in text. The `factory-floor` element declares the `repositories`, `successful-runs`, `dispatches`, and `value-gains` labels for its overview boxes. It may set `config.animate: number` to increment whole-number counter values from zero to their declared targets with CSS. The separate `factory-header` element owns factory status, retained-output summary, work-in-motion state, and weekly rhythm. Authors reconstruct the complete factory surface by declaring these elements as independent views in the required order.
+An element that presents counted summary boxes may declare `config.labels`, a mapping of canonical label identifiers to **plural text variables**. A plural text variable is a mapping containing exactly the non-empty strings `singular` and `plural`. The presenter selects `singular` when the presented count has an absolute value of one and `plural` otherwise, so a box reading `1 Repositories` becomes `1 Repository`. A plural text variable is author-declared display text only: it does not change counting, filtering, aggregation, ordering, or source values, and an undeclared label keeps the element's built-in text. The `factory-floor` element declares the `repositories`, `successful-runs`, `dispatches`, and `value-gains` labels for its overview boxes. It may set `config.animate: number` to increment whole-number counter values from zero to their declared targets with CSS. The separate `factory-header` element owns campaign status, retained-output summary, work-in-motion state, and weekly rhythm. Authors reconstruct the complete campaign overview by declaring these elements as independent views in the required order. The `factory-header` and `factory-floor` identifiers are retained for Dashboard Language compatibility.
 
 `factory-header` and `factory-floor` are independently loading named elements. Their page shell does not wait for a combined page projection: each declared presentation query is bound to the view separately. An unresolved source places only its dependent widget in a loading state; resolving or refreshing one source updates only widgets that consume that source. A page-level subscription must not emit aliases for independently bound sources it did not request.
 
@@ -1031,7 +1141,7 @@ Disclosure changes presentation only. It does not change data processing, data s
 - **DLS-VIEW-003:** `metric` **MUST** encode exactly one `value` field and **MAY** encode `href`; it **MUST NOT** encode chart or table channels.
 - **DLS-VIEW-004:** `table` **MUST** encode non-empty `columns` and **MAY** encode `href`; it **MUST NOT** encode `value`, `x`, `y`, or `color`.
 - **DLS-VIEW-004a:** `list` **MUST** declare `list.style: cards`, a canonical `list.icon`, a view-placed dashboard CLI action through `list.action`, and non-empty encoded `columns`. The first column **MUST** supply each card title; remaining columns **MUST** supply labeled details. It **MAY** encode conditional row `actions` and **MUST NOT** encode `value`, `x`, `y`, `color`, or `href`.
-- **DLS-VIEW-005:** `chart` **MUST** encode `x` and `y`, **MAY** encode `color`, `href`, and the swimlane-only `weight`, and **MUST NOT** encode `value` or `columns`. Its optional `chart` widget **MUST** be `area`, `line`, `dot`, `bar`, `horizontal-bar`, `pie`, `heatmap`, `histogram`, `scatter`, or `swimlane`. Except for heatmaps and swimlanes, `y` **MUST** be quantitative. A line chart **MAY** encode `y` as a sequence of two to eight quantitative fields, which **MUST** render as one named series per field and **MUST NOT** also encode `color`; all other charts **MUST** encode exactly one `y` field. An area chart **MUST** use ordinal or temporal `x`; temporal `x` **MUST** declare a time unit, and `color`, when present, **MUST** produce a normally stacked area in deterministic series order. Line, dot, and scatter charts **MUST** use temporal `x`; dot and scatter charts **MUST NOT** connect observations, and scatter charts **MUST** position observations proportionally by timestamp. Dot charts **MAY** encode one unaggregated quantitative `reference` field as horizontal lines. Other chart widgets **MUST NOT** encode `reference`. Pie, heatmap, histogram, and horizontal-bar charts **MUST** use nominal or ordinal `x`. A horizontal-bar chart **MUST** declare `data.limit` no greater than 100 and **MUST** render text labels to the left of left-aligned bars. A histogram **MUST NOT** encode `color` or `href` and **MUST** automatically bin its post-processing quantitative `y` values using the deterministic rule in Section 11.1. A heatmap **MUST** use nominal or ordinal `y`, **MUST** encode an aggregated quantitative `color`, **MUST** declare `data.limit` no greater than 100, and **MUST NOT** render more than 100 cells or 12 categories on either axis. Its cells **MUST** expose both category labels and the formatted quantitative value without relying on color alone. A swimlane **MUST** use unbucketed temporal `x` and unaggregated nominal or ordinal `y`, **MAY** encode one unaggregated quantitative `weight` field, **MUST** render each observation in exactly one labeled categorical lane with its weight as the represented observation count, and **MUST NOT** connect observations or imply quantitative distance between lanes. Other chart widgets **MUST NOT** encode `weight`.
+- **DLS-VIEW-005:** `chart` **MUST** encode `x` and `y`, **MAY** encode `color`, `href`, the horizontal-bar-only `section`, and the swimlane-only `weight`, and **MUST NOT** encode `value` or `columns`. Its optional `chart` widget **MUST** be `area`, `line`, `dot`, `bar`, `horizontal-bar`, `pie`, `heatmap`, `histogram`, `scatter`, or `swimlane`. Except for heatmaps and swimlanes, `y` **MUST** be quantitative. A line chart **MAY** encode `y` as a sequence of two to eight quantitative fields, which **MUST** render as one named series per field and **MUST NOT** also encode `color`; all other charts **MUST** encode exactly one `y` field. An area chart **MUST** use ordinal or temporal `x`; temporal `x` **MUST** declare a time unit, and `color`, when present, **MUST** produce a normally stacked area in deterministic series order. Line, dot, and scatter charts **MUST** use temporal `x`; dot and scatter charts **MUST NOT** connect observations, and scatter charts **MUST** position observations proportionally by timestamp. Dot charts **MAY** encode one unaggregated quantitative `reference` field as horizontal lines. Other chart widgets **MUST NOT** encode `reference`. Pie, heatmap, histogram, and horizontal-bar charts **MUST** use nominal or ordinal `x`. A horizontal-bar chart **MUST** declare `data.limit` no greater than 100, **MUST** render text labels to the left of left-aligned bars, and **MAY** encode one unaggregated nominal or ordinal `section` field to group bars beneath section headings in first-appearance order. Other chart widgets **MUST NOT** encode `section`. A histogram **MUST NOT** encode `color` or `href` and **MUST** automatically bin its post-processing quantitative `y` values using the deterministic rule in Section 11.1. A heatmap **MUST** use nominal or ordinal `y`, **MUST** encode an aggregated quantitative `color`, **MUST** declare `data.limit` no greater than 100, and **MUST NOT** render more than 100 cells or 12 categories on either axis. Its cells **MUST** expose both category labels and the formatted quantitative value without relying on color alone. A swimlane **MUST** use unbucketed temporal `x` and unaggregated nominal or ordinal `y`, **MAY** encode one unaggregated quantitative `weight` field, **MUST** render each observation in exactly one labeled categorical lane with its weight as the represented observation count, and **MUST NOT** connect observations or imply quantitative distance between lanes. Other chart widgets **MUST NOT** encode `weight`.
 - **DLS-VIEW-006:** A `chart` with temporal `x` **MUST** use the line time-series default when its widget is omitted; any other valid `chart` **MUST** use the bar default. An optional `layout` hint **MUST** be `full`, `full-view`, `half`, `third`, or `horizontal`, **MUST NOT** change source order, and **MAY** be collapsed by a presenter. `full-view` **SHOULD** consume the available viewport height.
 - **DLS-VIEW-007:** An encoding field **MUST** exist in the selected source and its declared type **MUST** be compatible with its intrinsic type or aggregate output type; when the field is aggregated, the effective output identifier **MUST** be the explicit `as` value or the canonical `<aggregate>-<field>` name, and duplicate identifiers within a view **MUST** be rejected. An `href` field **MUST** have intrinsic type link.
 - **DLS-VIEW-008:** A field definition **MUST** contain `field` and **MAY** contain only `type`, `aggregate`, `time-unit`, `title`, `as`, `display`, `filter`, `format`, and `unit` in addition; `as` is valid only when `aggregate` is not `none`. `display` is valid only on table columns and **MUST** be `text`, `status`, `grader-status`, `mode`, `active-state`, `label`, `digest`, `outcome-link`, `run-link`, `repository-link`, `workflow-link`, or `evidence-link`. `filter` is valid only on table columns and **MUST** be boolean. `format`, when present, **MUST** be `human-friendly-timestamp`, `workflow-relative-path`, `workflow-run-url`, or `shortened-url`. `human-friendly-timestamp` is valid only on temporal fields and **MUST** expose the original timestamp, an exact UTC date and time, and the human-friendly text defined in Section 11.1. The remaining formats are valid only on nominal or ordinal fields. `workflow-relative-path` **MUST** affect presentation only by removing a leading `.github/workflows/` while preserving the `.md` extension. `workflow-run-url` is valid only on table columns and **MUST** present a canonical github.com Actions run URL as an external link labeled with the run ID, while leaving non-matching values as plain text. `shortened-url` is valid only on table columns and **MUST** present an HTTPS URL as an external link with intermediate path segments replaced by `...`, retain its final path segment, and leave other values as plain text.
@@ -1326,6 +1436,7 @@ dashboard:
 
 ### Version 0.1.0 (Working Draft)
 
+- Added page-level parameterized forms with automatic layout, sliders, Boolean checkboxes, radio groups, typed query parameters, and bounded debounce/throttle update policies.
 - Initial Dashboard Language specification.
 - Defined intrinsic entities, observations, dimensions, measures, and relationships.
 - Defined built-in pages and constrained custom views.
@@ -1537,6 +1648,6 @@ Invalid because operational value is non-additive and cannot use `sum`.
 | Grader observation | What result did a named grading criterion emit? | Eval observation or run conclusion |
 | Eval observation | Did a named binary evaluation return `yes`, `no`, or `unknown`? | Grader observation, operational grader, or operational value |
 | Operational grader | What native metric value did gh-aw publish for one run under the `operational-value` protocol? | Repository operational value, AIC, outcome, normalized score, or causal impact |
-| Operational value | What package-defined metric was observed for one repository and campaign? | Run-scoped operational grader, AIC, outcome, or causal impact |
+| Operational value | What campaign-defined metric was observed for one repository and campaign? | Run-scoped operational grader, AIC, outcome, or causal impact |
 
----
+----

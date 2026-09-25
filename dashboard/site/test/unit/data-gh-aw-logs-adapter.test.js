@@ -98,7 +98,14 @@ describe('gh-aw logs adapter', () => {
           created_at: '2026-09-09T03:59:00Z',
           started_at: '2026-09-09T04:00:00Z',
           updated_at: '2026-09-09T04:01:00Z',
-          token_usage_summary: { total_aic: 2.5 },
+          token_usage_summary: {
+            total_aic: 2.5,
+            total_input_tokens: 100,
+            total_output_tokens: 20,
+            total_cache_read_tokens: 10,
+            total_cache_write_tokens: 5,
+            by_model: { 'gpt-5.4': { reasoning_tokens: 15 } }
+          },
           tool_calls: [{ tool: 'report_incomplete', server: 'safeoutputs', status: 'incomplete' }],
           job_details: [{
             id: 404,
@@ -144,7 +151,14 @@ describe('gh-aw logs adapter', () => {
           created_at: '2026-09-09T03:59:00Z',
           started_at: '2026-09-09T04:00:00Z',
           updated_at: '2026-09-09T04:01:00Z',
-          token_usage_summary: { total_aic: 2.5 },
+          token_usage_summary: {
+            total_aic: 2.5,
+            total_input_tokens: 100,
+            total_output_tokens: 20,
+            total_cache_read_tokens: 10,
+            total_cache_write_tokens: 5,
+            by_model: { 'gpt-5.4': { reasoning_tokens: 15 } }
+          },
           job_details: [{
             id: 404,
             name: 'agent',
@@ -169,6 +183,18 @@ describe('gh-aw logs adapter', () => {
             key_findings: [{ code: 'high_token_usage', title: 'Slow response', severity: 'medium' }],
             missing_tools: [{ tool: 'search', timestamp: '2026-09-09T04:00:20Z' }],
             skill_activations: [{ name: 'review', status: 'success', timestamp: '2026-09-09T04:00:30Z' }],
+            gateway_steering_events: [
+              {
+                type: 'token_steering',
+                message: '[AWF TOKEN WARNING] 90% of the AI credit budget is used.',
+                timestamp: '2026-09-09T04:00:35Z'
+              },
+              {
+                type: 'timeout_steering',
+                message: '[AWF TIME WARNING] 2 minutes remain before the workflow times out.',
+                timestamp: '2026-09-09T04:00:40Z'
+              }
+            ],
             created_items: [{
               type: 'create_issue',
               url: 'https://github.com/githubnext/gh-aw-cao/issues/42',
@@ -272,6 +298,11 @@ describe('gh-aw logs adapter', () => {
         terminalOutcome: 'report_incomplete',
         terminalOutcomeDetail: 'The agent reported that required evidence or access was unavailable.',
         aicTotal: 2.5,
+        inputTokens: 100,
+        outputTokens: 20,
+        cacheReadTokens: 10,
+        cacheWriteTokens: 5,
+        reasoningTokens: 15,
         agentId: 'copilot',
         agentVersion: '1.0.83',
         modelId: 'gpt-5.4',
@@ -299,6 +330,19 @@ describe('gh-aw logs adapter', () => {
         type: 'audit.finding',
         code: 'high_token_usage',
         summary: 'Slow response'
+      }),
+      expect.objectContaining({
+        type: 'audit.gateway_steering',
+        code: 'token_steering',
+        status: 'token_steering',
+        timestamp: '2026-09-09T04:00:35.000Z',
+        summary: '[AWF TOKEN WARNING] 90% of the AI credit budget is used.'
+      }),
+      expect.objectContaining({
+        type: 'audit.gateway_steering',
+        code: 'timeout_steering',
+        status: 'timeout_steering',
+        summary: '[AWF TIME WARNING] 2 minutes remain before the workflow times out.'
       })
     ]));
     expect(batch.tools).toEqual(expect.arrayContaining([

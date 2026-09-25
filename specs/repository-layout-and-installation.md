@@ -20,7 +20,7 @@ This specification defines the repository layout and installation lifecycle for
 Central Agentic Ops (CAO). It establishes one canonical executable runtime
 layout for catalog, source-managed, and installed control repositories, assigns
 ownership to catalog resources and gh-aw metadata, and defines the
-fail-closed materialization strategy required when gh-aw package installation
+fail-closed materialization strategy required when gh-aw campaign installation
 cannot place arbitrary executable resources at their canonical paths.
 
 ## 1. Status and conformance
@@ -53,7 +53,7 @@ control repository, or more than one of those roles.
 | `.github/workflows/shared/materialize-cao.mjs` | CAO bootstrap | Trusted canonical-runtime materializer |
 | `.github/actions/setup-cao-runtime/` | CAO bootstrap | Local runtime verification action |
 | `.github/cao/instructions.md` | Control repository | Optional CAO operator guidance |
-| `.github/aw/` | gh-aw | Instructions, package and campaign records, ownership metadata, and gh-aw runtime data |
+| `.github/aw/` | gh-aw | Instructions, campaign records, ownership metadata, and gh-aw runtime data |
 
 An executable CAO resource MUST use the same repository-relative path in a
 catalog and in a conforming control repository. A conforming implementation
@@ -70,7 +70,7 @@ The root `aw.yml` MUST include Activity and Dashboard as the deterministic
 components of a complete CAO installation. Operational campaign manifests
 MUST identify the workflows and catalog resources that they own.
 
-Activity and Dashboard component manifests are root-package components. Direct
+Activity and Dashboard component manifests are root-campaign components. Direct
 `gh aw add` of either component MAY install its supported manifest resources,
 but it MUST be treated as incomplete until canonical runtime materialization
 has succeeded. Documentation and tooling MUST direct operators to the root CAO
@@ -83,7 +83,7 @@ Operators MUST NOT rely on uncommitted local changes inside `activity/`,
 update. Consumer-owned policy and steering files outside the selected
 campaign-owned destinations MUST NOT be replaced by materialization.
 
-Installed package and campaign records under `.github/aw/` MUST be modified
+Installed campaign records under `.github/aw/` MUST be modified
 only through gh-aw campaign commands. CAO lifecycle tooling MUST consume those
 records as provenance; it MUST NOT create substitute ownership records.
 
@@ -92,7 +92,7 @@ records as provenance; it MUST NOT create substitute ownership records.
 ### 4.1 Provenance
 
 Before replacing any runtime destination, the materializer MUST read installed
-CAO package or campaign records and select only records belonging to the CAO
+CAO campaign records and select only records belonging to the CAO
 catalog repository. Each selected record MUST contain a full, 40-character
 `resolvedCommit` SHA. Missing, shortened, tag-only, mutable, or otherwise
 invalid provenance MUST fail closed.
@@ -124,13 +124,13 @@ destination set.
 ### 4.3 Lifecycle entry points
 
 The supported root CAO installer MUST materialize the root runtime after gh-aw
-has resolved the root package record. `cao add` MUST materialize a selected
+has resolved the root campaign record. `cao add` MUST materialize a selected
 non-root campaign before reading its declaration. `cao add` MUST reject the
-root package before invoking gh-aw and direct operators to the root installer.
-`cao update` MUST materialize each updated selected package before merging
+root campaign before invoking gh-aw and direct operators to the root installer.
+`cao update` MUST materialize each updated selected campaign before merging
 declarations.
 
-gh-aw package installation by itself cannot run this post-install lifecycle.
+gh-aw campaign installation by itself cannot run this post-install lifecycle.
 Therefore an implementation MUST NOT represent direct Activity or Dashboard
 component installation as a complete CAO installation.
 
@@ -149,14 +149,14 @@ because execution resolves authority at the exact workflow revision.
 
 ## 6. Removal and recovery
 
-The current CAO lifecycle does not support package removal. Operators MUST NOT
-use `gh aw remove` as a CAO package-removal procedure: it removes workflow files
-but does not remove materializer-owned canonical directories or package records,
+The current CAO lifecycle does not support campaign removal. Operators MUST NOT
+use `gh aw remove` as a CAO campaign-removal procedure: it removes workflow files
+but does not remove materializer-owned canonical directories or campaign records,
 and would leave orphaned executable material. A future CAO removal lifecycle
-MUST remove the selected package record and its bounded canonical destination
+MUST remove the selected campaign record and its bounded canonical destination
 transactionally; until then, removal is unsupported.
 
-If package provenance, archive acquisition, archive extraction, bundle
+If campaign provenance, archive acquisition, archive extraction, bundle
 validation, or local runtime verification fails, lifecycle tooling and
 workflows MUST stop before executing the affected CAO runtime. An operator MAY
 recover only by installing or updating through a supported lifecycle entry
@@ -175,7 +175,7 @@ A conforming implementation MUST test:
 5. absence of executable CAO runtime mirrors under `.github/aw/`;
 6. local fail-closed Activity and Dashboard runtime verification; and
 7. installation and update behavior for canonical destinations; and
-8. rejection or documentation of unsupported package removal until a
+8. rejection or documentation of unsupported campaign removal until a
    transactional removal lifecycle exists.
 
 Generated workflow lock files are implementation artifacts. Conformance tests

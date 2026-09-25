@@ -10,7 +10,12 @@ import {
   CAMPAIGN_ROUTE_DEFAULT_BODY,
   CAMPAIGN_ROUTE_VARIANT_VALUES
 } from './route-body-specification.js';
-import { renderCampaignReadme } from './campaign-readme.js';
+import { renderMeasureHistory } from './measure-history.js';
+
+const CAMPAIGN_OPERATIONAL_VALUE_SOURCES = [
+  'campaign-operational-value-primary-series',
+  'campaign-runs'
+];
 
 /**
  * @typedef {'overview'|'workflows'|'runs'|'issues'|'repositories'|'insights'|'problems'|'reports'|'dispatches'} CampaignRouteBody
@@ -46,7 +51,7 @@ const CAMPAIGN_ROUTE_COMPOSITIONS = {
     selectMessage: 'Select a campaign to view its overview.',
     description: 'Operational activity for the {campaignName} campaign.',
     currentTab: 'overview',
-    bodyRenderer: ({ campaignId, campaignName, workflows }) => renderCampaignReadme({ campaignId, campaignName, workflows })
+    bodyRenderer: undefined
   },
   workflows: {
     rootClassName: 'campaign-workflows',
@@ -81,7 +86,16 @@ const CAMPAIGN_ROUTE_COMPOSITIONS = {
     selectMessage: 'Select a campaign to view its audit insights.',
     description: 'Operational activity for the {campaignName} campaign.',
     currentTab: 'insights',
-    bodyRenderer: undefined
+    bodyRenderer: ({ context }) => renderMeasureHistory({
+      ...context,
+      title: 'Repository operational value',
+      sourceNames: CAMPAIGN_OPERATIONAL_VALUE_SOURCES,
+      elementConfig: {
+        ...context.elementConfig,
+        'measure-source': 'operational-value',
+        'empty-message': 'No repository operational-value observations have been published for this campaign yet.'
+      }
+    })
   },
   problems: {
     rootClassName: 'campaign-problems',

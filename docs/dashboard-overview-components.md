@@ -21,17 +21,17 @@ keeps the interface consistent without hiding business logic in page code.
 
 ## Declarative composition
 
-Dashboard Language exposes the factory as two reusable named elements declared
+Dashboard Language exposes the campaign overview as two reusable named elements declared
 as separate views in `dashboard.json`:
 
 - `header` owns status, retained-output context, work-in-motion state, and
-  Factory rhythm.
+  Campaign rhythm.
 - `floor` owns the two linked metric stations and their aggregate accessible
   summary.
 
 The default dashboard declares `factory-header` followed by `factory-floor`.
 Each view selects only presentation-ready query outputs, and their declared order
-reconstructs the complete factory layout without page-specific composition code
+reconstructs the complete campaign overview without page-specific composition code
 or main-thread business derivation.
 Each declared source binds independently to the reactive tree, so the page and
 both element roots appear immediately. Pending state is shown only by the status,
@@ -52,7 +52,7 @@ evidence is removed.
 
 - [Status header](dashboard-overview-status-header.md) explains the operating
 	state, work-in-motion label, and retained-output summary.
-- [Factory rhythm](dashboard-overview-factory-rhythm.md) explains the seven-day
+- [Campaign rhythm](dashboard-overview-campaign-rhythm.md) explains the seven-day
 	successful-run comparison.
 - [Registered repositories](dashboard-overview-registered-repositories.md)
 	explains the repository-scope count.

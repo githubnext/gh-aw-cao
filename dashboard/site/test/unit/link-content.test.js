@@ -196,7 +196,7 @@ describe('link content helpers', () => {
       'identifier-field': 'run'
     })).toEqual({
       href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/42',
-      label: '#42'
+      label: 'Open #42 on GitHub'
     });
     expect(resolveTitleLink(row, {
       'href-field': 'run-link',

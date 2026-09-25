@@ -106,10 +106,6 @@ tools:
     toolsets: [repos, issues, pull_requests, actions, dependabot, code_security, security_advisories]
   web-fetch:
 
-graders:
-  operational-value:
-    run: ./graders/eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh
-
 safe-outputs:
   create-issue:
     expires: 30d

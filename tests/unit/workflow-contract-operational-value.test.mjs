@@ -1,167 +1,22 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { root, workflow } from "./workflow-contract.helpers.mjs";
 
-// Operational-value grader, smoke, and canary contracts.
+// Repository-scoped operational-value, smoke, and canary contracts.
 
-test("one-shot operational-value graders consume only the gh-aw request", () => {
-  for (const name of [
-    "optimization-token-auditor-operational-value.sh",
-    "optimization-token-optimizer-operational-value.sh",
-  ]) {
-    const source = readFileSync(join(root, ".github", "workflows", "graders", name), "utf8");
-    assert.doesNotMatch(source, /gh aw logs|--definition|--metric|--grade-run/, name);
-  }
-});
-
-test("operational-value graders expose deterministic run-scoped contracts", () => {
-  const gradersDirectory = join(root, ".github", "workflows", "graders");
-  const graders = readdirSync(gradersDirectory).filter((name) => name.endsWith("-operational-value.sh"));
-  assert.deepEqual(graders.sort(), [
-    "cao-evolution-compiler-security-operational-value.sh",
-    "cao-evolution-failures-investigator-operational-value.sh",
-    "dependabot-update-planner-operational-value.sh",
-    "dreaming-agents-md-curator-operational-value.sh",
-    "eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
-    "eu-cra-compliance-campaign-maintainer-operational-value.sh",
-    "eu-cra-compliance-conformity-release-evidence-operational-value.sh",
-    "eu-cra-compliance-scope-classifier-operational-value.sh",
-    "eu-cra-compliance-security-requirements-auditor-operational-value.sh",
-    "eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh",
-    "eu-cra-compliance-vulnerability-handling-auditor-operational-value.sh",
-    "optimization-token-auditor-operational-value.sh",
-    "optimization-token-optimizer-operational-value.sh",
-    "repo-assist-issue-fix-operational-value.sh",
-    "repo-assist-issue-triage-operational-value.sh",
-    "repo-assist-maintenance-operational-value.sh",
-    "repo-assist-pr-upkeep-operational-value.sh",
-    "self-care-docs-build-time-investigator-operational-value.sh",
-    "software-development-practices-github-well-architected-operational-value.sh",
-    "software-development-practices-nist-ssdf-operational-value.sh",
-  ]);
-  const oneShotGraders = new Set([
-    "dreaming-agents-md-curator-operational-value.sh",
-    "optimization-token-auditor-operational-value.sh",
-    "optimization-token-optimizer-operational-value.sh",
-    "repo-assist-issue-fix-operational-value.sh",
-    "repo-assist-issue-triage-operational-value.sh",
-    "repo-assist-maintenance-operational-value.sh",
-    "repo-assist-pr-upkeep-operational-value.sh",
-  ]);
-  for (const name of graders.filter((name) => !oneShotGraders.has(name))) {
-    const executable = join(gradersDirectory, name);
-    const workflowName = name.replace(/-operational-value\.sh$/, ".md");
-    assert.match(
-      workflow(workflowName),
-      new RegExp(`graders:\\s+operational-value:[\\s\\S]*?run: ${`./graders/${name}`.replaceAll(".", "\\.")}`),
-      `${name}: workflow must execute the frozen operational-value evaluator`,
-    );
-    const definition = JSON.parse(execFileSync(executable, ["--definition"], { encoding: "utf8" }));
-    const materializedDirectory = mkdtempSync(join(tmpdir(), "cao-grader-"));
-    const materializedEvaluator = join(materializedDirectory, "operational_value_evaluator.sh");
-    try {
-      cpSync(executable, materializedEvaluator);
-      const materializedDefinition = JSON.parse(execFileSync(materializedEvaluator, ["--definition"], {
-        encoding: "utf8",
-        env: { ...process.env, GITHUB_WORKSPACE: root },
-      }));
-      assert.deepEqual(materializedDefinition, definition, `${name}: materialized evaluator`);
-    } finally {
-      rmSync(materializedDirectory, { recursive: true, force: true });
-    }
-    assert.equal(definition.schemaVersion, 4, name);
-    assert.equal(definition.grader, "operational-value", name);
-    const score = (example) => JSON.parse(execFileSync(executable, ["--metric"], {
-      encoding: "utf8",
-      input: JSON.stringify(definition.validationExamples[example]),
-    }));
-    assert.ok(score("targetAttained") > score("targetMissed"), name);
-    assert.equal(score("targetMissed"), 0, `${name}: complete missed opportunity`);
-    assert.equal(score("missing"), null, `${name}: missing`);
-    assert.equal(score("malformed"), null, `${name}: malformed`);
-  }
-
-  for (const name of oneShotGraders) {
-    const executable = join(gradersDirectory, name);
-    const workflowName = name.replace(/-operational-value\.sh$/, ".md");
-    const fixtures = JSON.parse(readFileSync(executable.replace(/\.sh$/, ".fixtures.json"), "utf8"));
-    assert.match(
-      workflow(workflowName),
-      new RegExp(`graders:\\s+operational-value:[\\s\\S]*run: ${`./graders/${name}`.replaceAll(".", "\\.")}`),
-      `${name}: workflow must execute the frozen operational-value evaluator`,
-    );
-    for (const fixture of fixtures) {
-      const evaluate = () => JSON.parse(execFileSync(executable, {
-        encoding: "utf8",
-        input: JSON.stringify(fixture.request),
-      }));
-      assert.deepEqual(evaluate(), fixture.expected, `${name}: ${fixture.name}`);
-      assert.deepEqual(evaluate(), fixture.expected, `${name}: ${fixture.name} deterministic rerun`);
-    }
-  }
-
-  for (const name of oneShotGraders) {
-    const packagePath = name.startsWith("repo-assist-")
-      ? join(root, "repo-assist")
-      : name.startsWith("dreaming-")
-        ? join(root, "dreaming")
-        : join(root, "optimization");
-    assert.equal(
-      readFileSync(join(packagePath, ".github", "graders", name), "utf8"),
-      readFileSync(join(gradersDirectory, name), "utf8"),
-      `${name}: bundled evaluator must match the compiled source`,
+test("no per-workflow operational-value graders remain", () => {
+  const workflowDirectory = join(root, ".github", "workflows");
+  const workflowSources = readdirSync(workflowDirectory).filter((name) => name.endsWith(".md"));
+  assert.ok(workflowSources.length > 0);
+  for (const name of workflowSources) {
+    assert.doesNotMatch(
+      readFileSync(join(workflowDirectory, name), "utf8"),
+      /^graders:\n\s+operational-value:/m,
+      name,
     );
   }
-
-  const dependabotWorker = workflow("dependabot-update-planner.md");
-  const dependabotName = "dependabot-update-planner-operational-value.sh";
-  const dependabotEvaluator = readFileSync(join(gradersDirectory, dependabotName), "utf8");
-  assert.match(dependabotWorker, new RegExp(`graders:\\s+operational-value:[\\s\\S]*run: \\.\\/graders\\/${dependabotName}`));
-  const auditorWorker = workflow("optimization-token-auditor.md");
-  const optimizerWorker = workflow("optimization-token-optimizer.md");
-  assert.match(dependabotWorker, /checks: read/);
-  assert.match(dependabotWorker, /statuses: read/);
-  assert.match(dependabotWorker, /create-issue:\n(?:    .*\n)*?    deduplicate-by-title: true/);
-  assert.match(dependabotWorker, /require-temporary-id: true/);
-  assert.match(dependabotWorker, /canonical unprefixed subject/i);
-  assert.match(dependabotWorker, /Use that exact subject on every run/);
-  assert.match(dependabotWorker, /repo-memory:/);
-  assert.match(dependabotWorker, /Do not call `search_issues`/);
-  assert.match(dependabotWorker, /target\/\.github\/dependabot\.md/);
-  assert.match(dependabotWorker, /GET \/orgs\/\{org\}\/dependabot\/repository-access/);
-  assert.match(dependabotWorker, /vulnerability-alerts: read/);
-  assert.match(dependabotWorker, /checking out `target_repo` proves only repository contents access/);
-  assert.match(dependabotWorker, /Build the complete routine version-update inventory directly from every repository-declared package manager/);
-  assert.match(dependabotWorker, /Their absence does not make the inventory incomplete/);
-  assert.match(dependabotWorker, /Call `missing_tool` or `report_incomplete`/);
-  assert.match(dependabotWorker, /summarize unavailable alert evidence as "zero open alerts/);
-  assert.match(dependabotWorker, /After Dependabot alerts and package-manager queries have produced the update inventory/);
-  assert.match(dependabotWorker, /not proof of a current update unless direct Dependabot evidence still identifies that update/);
-  assert.match(dependabotWorker, /pull-request evidence was not used as a substitute update inventory/);
-  assert.match(dependabotWorker, /Apply in this order/);
-  assert.match(dependabotWorker, /Security and access boundaries/);
-  assert.match(dependabotWorker, /exactly one pull request/);
-  assert.match(dependabotWorker, /Do not assign this parent issue/);
-  assert.match(dependabotWorker, /Respond to issue comments/);
-  assert.match(dependabotEvaluator, /dependabot-plan-consumption/);
-  assert.match(dependabotEvaluator, /--definition\|--metric\|--grade-run/);
-  assert.match(dependabotEvaluator, /repos\/\$evidence_repo\/issues\/\$issue_number/);
-  assert.match(dependabotEvaluator, /issues\/\$issue_number\/sub_issues/);
-  assert.match(dependabotEvaluator, /child_count <= 12/);
-  assert.match(dependabotEvaluator, /parentAssigneeCount/);
-  assert.match(auditorWorker, /imports:[\s\S]*uses: shared\/activity-cache\.md/);
-  assert.match(auditorWorker, /deduplicate-by-title: true/);
-  assert.match(auditorWorker, /expires: 3d/);
-  assert.match(auditorWorker, /Token usage audit for TARGET_REPO/);
-  assert.match(optimizerWorker, /imports:[\s\S]*uses: shared\/activity-cache\.md/);
-  assert.match(optimizerWorker, /deduplicate-by-title: true/);
-  assert.match(optimizerWorker, /expires: 14d/);
-  assert.match(optimizerWorker, /Optimize TARGET_WORKFLOW in TARGET_REPO/);
-  assert.match(optimizerWorker, /accepted-outcome criteria/);
 });
 
 test("review smoke is manual, protected, bounded, and cannot change the target", () => {

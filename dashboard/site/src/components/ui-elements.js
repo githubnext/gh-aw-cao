@@ -9,7 +9,7 @@ import { renderEntityRoute } from './entity-route.js';
 import { renderFactoryFloorElement } from './factory-floor.js';
 import { renderFactoryHeaderElement } from './factory-header.js';
 import { renderLinkButtonList } from './link-button-list.js';
-import { renderMeasureHistory } from './measure-history.js';
+import { renderMarkdownElement } from './markdown.js';
 import { renderOutcomeDetail } from './outcome-detail.js';
 import { isOutcomeDetailSectionConfig, renderOutcomeDetailSection } from './outcome-detail-sections.js';
 import { renderProblemDetail } from './problem-detail.js';
@@ -32,7 +32,7 @@ import { renderWorkflowRoutePage } from './workflow-route-page.js';
  *   element?: string,
  *   viewId?: string,
  *   viewIndex?: number,
- *   elementConfig?: { body?: string, sections?: string[], stations?: string[], section?: string, labels?: Record<string, unknown>, animate?: string, 'view-all-page'?: string, 'view-all-label'?: string, 'label-field'?: string, 'link-field'?: string, 'icon-field'?: string, 'fallback-icon'?: string, 'indicator-field'?: string, 'indicator-label-field'?: string, 'empty-message'?: string, 'measure-source'?: 'operational-value'|'operational-grader' },
+ *   elementConfig?: { body?: string, sections?: string[], stations?: string[], section?: string, labels?: Record<string, unknown>, animate?: string, 'view-all-page'?: string, 'view-all-label'?: string, 'label-field'?: string, 'link-field'?: string, 'icon-field'?: string, 'fallback-icon'?: string, 'indicator-field'?: string, 'indicator-label-field'?: string, 'empty-message'?: string, 'measure-source'?: 'operational-value'|'operational-grader', 'content-field'?: string, 'path-field'?: string, 'base-link-field'?: string },
  *   headingTag: 'h3'|'h4'
  * }} ElementRenderContext
  */
@@ -47,10 +47,10 @@ const ELEMENT_RENDERERS = new Map([
   ['problem-detail', renderProblemDetail],
   ['configuration-policy', renderConfigurationView],
   ['entity-route', renderEntityRoute],
-  ['measure-history', renderMeasureHistory],
   ['factory-header', renderFactoryHeaderElement],
   ['factory-floor', renderFactoryFloorElement],
-  ['link-button-list', renderLinkButtonList]
+  ['link-button-list', renderLinkButtonList],
+  ['markdown', renderMarkdownElement]
 ]);
 
 /** Elements that load declared sources independently of the active page subscription. */
@@ -73,10 +73,10 @@ const EMPTY_AWARE_ELEMENTS = new Set([
   'problem-detail',
   'configuration-policy',
   'entity-route',
-  'measure-history',
   'factory-header',
   'factory-floor',
-  'link-button-list'
+  'link-button-list',
+  'markdown'
 ]);
 const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy']);
 

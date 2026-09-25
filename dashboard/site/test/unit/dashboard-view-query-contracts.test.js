@@ -72,6 +72,9 @@ function declaredQueryReferences(value) {
     if ((key === 'sources' || key === 'union') && Array.isArray(nested)) {
       return nested.filter((name) => typeof name === 'string' && queryNames.has(name));
     }
+    if (key === 'any' && typeof configured.label === 'string' && Array.isArray(nested)) {
+      return nested.filter((name) => typeof name === 'string' && queryNames.has(name));
+    }
     return declaredQueryReferences(nested);
   });
 }
@@ -123,7 +126,8 @@ describe('dashboard view query contracts', () => {
         mark: 'chart',
         chart: 'horizontal-bar',
         encoding: {
-          x: { field: 'workflow-coordinate' },
+          x: { field: 'workflow' },
+          section: { field: 'repository-coordinate' },
           y: { field: 'aic', unit: 'aic' }
         }
       }
@@ -169,22 +173,6 @@ describe('dashboard view query contracts', () => {
     });
   });
 
-  it('keeps assessment-sensitive high-cardinality views declaratively bounded', () => {
-    const pagesById = new Map(dashboard.pages.map((/** @type {Record<string, unknown>} */ page) => [page.id, page]));
-    const boundedViews = [
-      ['graders', 'graders-graders-source', 100],
-      ['graders', 'graders-observations-source', 100]
-    ];
-
-    for (const [pageId, viewId, limit] of boundedViews) {
-      const view = viewsOf(pagesById.get(pageId)).find((candidate) => candidate.id === viewId);
-      const data = /** @type {Record<string, unknown> | undefined} */ (view?.data);
-
-      expect(data?.limit, `${pageId}/${viewId} should bound rendered source rows`).toBe(limit);
-      expect(data?.['order-by'], `${pageId}/${viewId} should choose deterministic retained rows`).toEqual(expect.any(Array));
-    }
-  });
-
   it('renders the failed-runs ledger as a bounded lazy table', () => {
     const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) =>
       candidate.id === 'overview-failed-runs'
@@ -226,14 +214,18 @@ describe('dashboard view query contracts', () => {
     for (const [pageId, body] of Object.entries(primaryPages)) {
       const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === pageId);
       const firstView = viewsOf(page)[0];
+      const sources = [
+        'workflows',
+        'campaign-insight-tab-counts',
+        'campaign-problem-tab-counts',
+        'campaign-issue-tab-counts',
+        ...(pageId === 'campaign-insights'
+          ? ['campaign-operational-value-primary-series', 'campaign-runs']
+          : [])
+      ];
       expect(firstView).toMatchObject({
         data: {
-          sources: [
-            'workflows',
-            'campaign-insight-tab-counts',
-            'campaign-problem-tab-counts',
-            'campaign-issue-tab-counts'
-          ],
+          sources,
           arguments: [{ name: 'campaign', field: 'campaign' }]
         },
         mark: 'element',
@@ -288,23 +280,21 @@ describe('dashboard view query contracts', () => {
     const problems = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-problems');
     const runs = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-runs');
 
-    expect(viewsOf(insights)[1]).toMatchObject({
+    expect(viewsOf(insights)[0]).toMatchObject({
       data: {
-        sources: ['campaign-operational-value-primary-series'],
+        sources: [
+          'workflows',
+          'campaign-insight-tab-counts',
+          'campaign-problem-tab-counts',
+          'campaign-issue-tab-counts',
+          'campaign-operational-value-primary-series',
+          'campaign-runs'
+        ],
         arguments: [{ name: 'campaign', field: 'campaign' }]
       },
       mark: 'element',
-      element: 'measure-history',
-      config: { 'measure-source': 'operational-value' }
-    });
-
-    expect(viewsOf(insights)[2]).toMatchObject({
-      data: {
-        sources: ['campaign-operational-grader-series'],
-        arguments: [{ name: 'campaign', field: 'campaign' }]
-      },
-      mark: 'element',
-      element: 'measure-history'
+      element: 'campaign-route',
+      config: { body: 'insights' }
     });
 
     expect(viewsOf(problems).find((view) => view.id === 'campaign-current-runtime-problems')).toMatchObject({

@@ -119,8 +119,8 @@ test('Indexing shows CAO Activity status, size trend, and retained transactions'
         'indexing-database-table-counts': {
           source: 'indexing-database-table-counts',
           rows: [
-            { kind: 'ingest-jsonl', transactions: 50 },
-            { kind: 'ingest-dashboard-sources', transactions: 50 }
+            { table: 'workflow runs', records: 100 },
+            { table: 'ingestion transactions', records: 100 }
           ],
           metadata
         },
@@ -146,8 +146,10 @@ test('Indexing shows CAO Activity status, size trend, and retained transactions'
     </script>
   `);
 
-  const maintenanceNavigation = page.locator('.nav-section').filter({ hasText: 'Maintenance' });
-  await maintenanceNavigation.getByRole('link', { name: 'Indexing' }).click();
+  const updatesNavigation = page.locator('.nav-section').filter({
+    has: page.locator('summary', { hasText: /^Updates$/ })
+  });
+  await updatesNavigation.getByRole('link', { name: 'Indexing' }).click();
 
   const root = page.locator('.dashboard-root');
   const transactionsPage = page.locator('[data-page-id="indexing"]');
@@ -893,24 +895,6 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
           rows: [{ 'safe-output-count': 1, 'observed-at': '2026-08-29T09:40:00Z' }],
           metadata
         },
-        'operational-graders': {
-          source: 'operational-graders',
-          rows: [
-            {
-              'operational-grader': 0.6,
-              'operational-grader-definition': 'accepted-outcome',
-              'observed-at': '2026-08-01T09:45:00Z',
-              'evidence-link': evidenceLink
-            },
-            {
-              'operational-grader': 0.8,
-              'operational-grader-definition': 'accepted-outcome',
-              'observed-at': '2026-08-29T09:45:00Z',
-              'evidence-link': evidenceLink
-            }
-          ],
-          metadata
-        },
         usage: {
           source: 'usage',
           rows: [
@@ -974,18 +958,20 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
 
   const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
   const data = page.locator('.nav-section').filter({ hasText: 'Data' });
-  const maintenance = page.locator('.nav-section').filter({ hasText: 'Maintenance' });
+  const updatesSection = page.locator('.nav-section').filter({
+    has: page.locator('summary', { hasText: /^Updates$/ })
+  });
   await expect(cleanNavigation).toHaveText(['Overview']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
-  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Operational Value', 'Cost', 'Models & Agents', 'Firewall', 'MCPs']);
-  await expect(maintenance.locator('summary')).toHaveText('Maintenance');
-  await expect(maintenance.getByRole('link')).toHaveText(['Maintenance', 'Indexing', 'Settings']);
-  await expect(maintenance).toHaveClass(/nav-section-bottom/);
+  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Operational Value', 'Cost', 'Models & Agents', 'Firewall', 'MCPs', 'Steering']);
+  await expect(updatesSection.locator('summary')).toHaveText('Updates');
+  await expect(updatesSection.getByRole('link')).toHaveText(['Updates', 'Indexing', 'Settings']);
+  await expect(updatesSection).toHaveClass(/nav-section-bottom/);
   await expect.poll(async () => {
     const [navBox, manageBox] = await Promise.all([
       page.locator('.primary-nav').boundingBox(),
-      maintenance.boundingBox()
+      updatesSection.boundingBox()
     ]);
     return navBox !== null && manageBox !== null
       ? Math.round(navBox.y + navBox.height - (manageBox.y + manageBox.height))
@@ -1089,7 +1075,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
   await expect(overviewPage.locator('.factory-station')).toHaveCount(2);
   await page.locator('.mobile-nav-menu > summary').click();
-  await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Maintenance']);
+  await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Updates']);
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toHaveCount(0);
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(overviewPage.locator('.factory-intro')).toBeInViewport();
