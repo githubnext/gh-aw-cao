@@ -445,7 +445,7 @@ describe('dashboard document validation', () => {
     expect(rejected.ok).toBe(false);
     expect(rejected.errors).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        message: 'CLI action command must start with "./cao.sh", "gh aw", or "gh workflow run".'
+        message: 'CLI action command must start with "./cao.sh", "gh aw", "gh workflow run", or be "gh agent-task create --from-file -".'
       })
     ]));
 
@@ -454,7 +454,7 @@ describe('dashboard document validation', () => {
       ok: false,
       errors: expect.arrayContaining([
         expect.objectContaining({
-          message: 'CLI action command must start with "./cao.sh", "gh aw", or "gh workflow run".'
+          message: 'CLI action command must start with "./cao.sh", "gh aw", "gh workflow run", or be "gh agent-task create --from-file -".'
         })
       ])
     });
@@ -769,6 +769,7 @@ describe('dashboard document validation', () => {
       'ended-at'
     ]);
     expect(detailsView.encoding.actions).toEqual([{
+      action: 'create-agent-task',
       intent: 'Investigate this failed workflow run.',
       presentation: 'copy-prompt',
       icon: 'search',
@@ -791,6 +792,10 @@ describe('dashboard document validation', () => {
     detailsView.encoding.actions[0].presentation = 'copy-command';
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
     detailsView.encoding.actions[0].presentation = 'copy-prompt';
+
+    detailsView.encoding.actions[0].action = 'update-campaign';
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+    detailsView.encoding.actions[0].action = 'create-agent-task';
 
     detailsView.encoding.actions[0].context.push('not-a-run-field');
     const invalidContext = validateDashboardDocument(JSON.stringify(document));

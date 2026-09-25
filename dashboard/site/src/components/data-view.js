@@ -17,7 +17,7 @@ import { renderCloseButton, isPlainObject, isSafeHttpsUrl, createCopyControl, cr
 import { clearTimeWindowFilter, isTimeWindowFilterActive } from './filter-bar.js';
 import { processScatterPoints } from '../data-processor.js';
 import { MAX_RENDERED_SCATTER_POINTS } from '../scatter-clustering.js';
-import { renderDeclaredCliAction, renderRowCliAction } from './cli-actions.js';
+import { createPromptCliActionControl, renderDeclaredCliAction, renderRowCliAction } from './cli-actions.js';
 import { effect, onCleanup, state } from '../reactive.js';
 import { createDebug } from '../debug.js';
 
@@ -1525,7 +1525,7 @@ function actionMatches(action, row) {
 }
 
 /**
- * @param {{ intent?: string, presentation: string, icon: string, label: string, context: string[] }} action
+ * @param {{ intent?: string, action?: string, presentation: string, icon: string, label: string, context: string[] }} action
  * @param {Record<string, unknown>} row
  */
 export function renderIntentAction(action, row) {
@@ -1541,7 +1541,7 @@ export function renderIntentAction(action, row) {
     ariaLabel: `${action.label} prompt preview`,
     onFallbackClose: () => triggerButton?.focus()
   });
-  const { button: copyButton, status, reset: resetCopyControl } = createCopyControl({
+  const copyControl = createCopyControl({
     getContent: () => content,
     label: 'Copy prompt',
     buttonClassName: 'table-intent-copy-button',
@@ -1550,6 +1550,10 @@ export function renderIntentAction(action, row) {
     failureText: 'Could not copy prompt.',
     trackState: true
   });
+  const promptCliAction = typeof action.action === 'string'
+    ? createPromptCliActionControl(action.action, () => content)
+    : null;
+  const activeControl = promptCliAction ?? copyControl;
   dialog.append(
     h(
       'header',
@@ -1562,11 +1566,12 @@ export function renderIntentAction(action, row) {
       })
     ),
     h('pre', { className: 'table-intent-preview' }, content),
+    ...(promptCliAction ? [promptCliAction.output] : []),
     h(
       'footer',
       { className: 'table-intent-dialog-footer' },
-      status,
-      copyButton
+      activeControl.status,
+      activeControl.button
     )
   );
   triggerButton = /** @type {HTMLButtonElement} */ (h(
@@ -1578,7 +1583,7 @@ export function renderIntentAction(action, row) {
       'aria-label': action.label,
       'data-intent-presentation': action.presentation,
       onClick: () => {
-        resetCopyControl();
+        activeControl.reset();
         openPreview();
       }
     },

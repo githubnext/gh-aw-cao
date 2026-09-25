@@ -57,6 +57,15 @@ const allowedCommandPrefixes = [
     validateArguments: validWorkflowDispatchArguments,
     usage: "gh workflow run <workflow>",
   },
+  {
+    tokens: ["gh", "agent-task", "create"],
+    minimumArguments: 2,
+    validateArguments: (args) =>
+      args.length === 2
+      && (args[0] === "--from-file" || args[0] === "-F")
+      && args[1] === "-",
+    usage: "gh agent-task create --from-file -",
+  },
 ];
 
 export async function resolveGhAwCompilerVersion(workingDirectory = process.cwd()) {
@@ -288,6 +297,7 @@ export async function executeDashboardCommand({
   githubToken,
   ghExecutable = "gh",
   execute = executeFile,
+  input,
   onOutput,
   streamCommand = runDashboardCommandStreaming,
 }) {
@@ -322,6 +332,7 @@ export async function executeDashboardCommand({
       workingDirectory,
       githubToken: resolvedGithubToken,
       gitIdentity,
+      input,
       onOutput,
     });
   }
@@ -332,6 +343,7 @@ export async function executeDashboardCommand({
       maxBuffer: maximumOutputBytes,
       timeout: timeoutMilliseconds,
       windowsHide: true,
+      ...(input === undefined ? {} : { input }),
     });
     return {
       ok: true,
@@ -361,6 +373,7 @@ export function runDashboardCommandStreaming({
   workingDirectory,
   githubToken,
   gitIdentity,
+  input,
   onOutput,
 }) {
   return new Promise((resolve, reject) => {
@@ -369,8 +382,9 @@ export function runDashboardCommandStreaming({
       env: commandEnvironment(githubToken, gitIdentity),
       shell: false,
       windowsHide: true,
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
     });
+    if (input !== undefined) child.stdin.end(input);
     let settled = false;
     let timedOut = false;
     const timer = setTimeout(() => {

@@ -995,10 +995,17 @@ function validateDashboard(dashboard, dashboardNode, errors) {
           commandTokens?.[0] === 'gh'
           && commandTokens[1] === 'workflow'
           && commandTokens[2] === 'run';
-        if (!isCaoCommand && !isGhAwCommand && !isWorkflowDispatchCommand) {
+        const isAgentTaskCreateCommand =
+          commandTokens?.length === 5
+          && commandTokens[0] === 'gh'
+          && commandTokens[1] === 'agent-task'
+          && commandTokens[2] === 'create'
+          && ['--from-file', '-F'].includes(commandTokens[3])
+          && commandTokens[4] === '-';
+        if (!isCaoCommand && !isGhAwCommand && !isWorkflowDispatchCommand && !isAgentTaskCreateCommand) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
-            'CLI action command must start with "./cao.sh", "gh aw", or "gh workflow run".',
+            'CLI action command must start with "./cao.sh", "gh aw", "gh workflow run", or be "gh agent-task create --from-file -".',
             `${path}.command`
           ));
         }
@@ -3404,8 +3411,20 @@ function validateTableActions(encoding, encodingNode, mark, sourceName, path, er
       }
     } else {
       validateStringField(action.intent, `${actionPath}.intent`, true, errors);
-      if (action.action !== undefined) {
-        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'copy-prompt table actions must not declare action.', `${actionPath}.action`));
+      if (action.presentation === 'copy-prompt' && action.action !== undefined) {
+        validateRequiredIdentifier(action.action, `${actionPath}.action`, 'Prompt CLI action reference', errors);
+        const declaredAction = typeof action.action === 'string'
+          ? declaredCliActions.get(action.action)
+          : undefined;
+        if (typeof action.action === 'string' && !declaredAction) {
+          errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'copy-prompt must reference a declared dashboard CLI action.', `${actionPath}.action`));
+        } else if (declaredAction?.placement !== 'row') {
+          errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'copy-prompt must reference a row-placed dashboard CLI action.', `${actionPath}.action`));
+        } else if (declaredAction.command !== 'gh agent-task create --from-file -') {
+          errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'copy-prompt CLI action must use "gh agent-task create --from-file -".', `${actionPath}.action`));
+        }
+      } else if (action.action !== undefined) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'external-link table actions must not declare action.', `${actionPath}.action`));
       }
     }
     if (action.presentation === 'external-link' && (
