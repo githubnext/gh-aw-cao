@@ -221,6 +221,7 @@ test("root campaign bootstraps an empty CAO and preserves resources during workf
     for (const relativePath of excludedControlPlaneSkillFiles) {
       assert.equal(existsSync(join(consumer, relativePath)), false, `root campaign retained project skill ${relativePath}`);
     }
+    assert.equal(existsSync(join(consumer, ".github", "skills")), false);
     const policyPath = join(consumer, ".github", "workflows", "cao.json");
     const policy = `${JSON.stringify({
       version: 1,
