@@ -152,7 +152,7 @@ export function syncDashboardNavigationIndicators(root, pages, sources) {
     const title = pageTitle(page);
     const active = indicatorMatches(indicator, sources);
     const label = active ? `${title}, ${indicator.label}` : title;
-    const pageId = quoteAttributeValue(String(page.id));
+    const pageId = selectorIdentifier(String(page.id));
     const links = root.querySelectorAll(`[data-nav-page-id="${pageId}"], [data-mobile-nav-page-id="${pageId}"]`);
     for (const link of links) {
       if (!(link instanceof HTMLAnchorElement)) continue;
@@ -283,8 +283,8 @@ function indicatorMatches(indicator, sources) {
 }
 
 /** @param {string} value */
-function quoteAttributeValue(value) {
-  return value.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
+function selectorIdentifier(value) {
+  return globalThis.CSS?.escape ? globalThis.CSS.escape(value) : value.replace(/[^a-zA-Z0-9_-]/g, '\\$&');
 }
 
 

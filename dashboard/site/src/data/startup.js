@@ -180,14 +180,11 @@ export async function startDashboardData(options) {
   /**
    * Subscribes to a bounded source set. The returned promise resolves with the
    * first snapshot; later snapshots are delivered through `pageOptions.onUpdate`.
-   * @param {string} subscriptionId
-   * @param {string[]} sourceNames
-   * @param {PageLoadOptions & { pageId?: string }} pageOptions
-   * @param {Record<string, { limit: number, continuationToken?: string }>} pagination
-   * @param {(sources: DashboardSources) => DashboardSources} transform
-   * @param {string} errorLabel
+   * @param {{ subscriptionId: string, sourceNames: string[], pageOptions: PageLoadOptions & { pageId?: string }, pagination?: Record<string, { limit: number, continuationToken?: string }>, transform?: (sources: DashboardSources) => DashboardSources, errorLabel: string }} options
    */
-  const subscribeSources = (subscriptionId, sourceNames, pageOptions, pagination, transform, errorLabel) => {
+  const subscribeSources = (options) => {
+    const pageOptions = options.pageOptions;
+    const transform = options.transform ?? ((sources) => sources);
     if (pageOptions.signal.aborted) {
       throw new DOMException("Dashboard source load was cancelled.", "AbortError");
     }
@@ -200,8 +197,8 @@ export async function startDashboardData(options) {
       };
       pageOptions.signal.addEventListener("abort", abort, { once: true });
       subscribeCanonicalDashboardView(
-        subscriptionId,
-        sourceNames,
+        options.subscriptionId,
+        options.sourceNames,
         dashboardContext,
         (sources) => {
           const transformedSources = transform(sources);
@@ -213,7 +210,7 @@ export async function startDashboardData(options) {
           }
           pageOptions.onUpdate(transformedSources);
         },
-        pagination,
+        options.pagination ?? {},
         {
           signal: pageOptions.signal,
           pageId: pageOptions.pageId,
@@ -224,7 +221,7 @@ export async function startDashboardData(options) {
             if (!receivedInitialSnapshot) {
               reject(error);
             } else {
-              console.error(`${errorLabel}: ${error.message}`);
+              console.error(`${options.errorLabel}: ${error.message}`);
             }
           },
         },
@@ -237,26 +234,23 @@ export async function startDashboardData(options) {
     const sourceNames = pageSourceNames(pageId, pageOptions.queryContext?.viewMode);
     const paginatedSources = pagePaginatedSourceBindings(pageId);
     const pagination = continuationRequests(Object.keys(paginatedSources));
-    return subscribeSources(
-      `page:${pageId}`,
+    return subscribeSources({
+      subscriptionId: `page:${pageId}`,
       sourceNames,
-      { ...pageOptions, pageId },
+      pageOptions: { ...pageOptions, pageId },
       pagination,
-      (sources) => bindContinuations(pageId, sources, paginatedSources, pageOptions),
-      `Unable to update dashboard page ${pageId}`
-    );
+      transform: (sources) => bindContinuations(pageId, sources, paginatedSources, pageOptions),
+      errorLabel: `Unable to update dashboard page ${pageId}`
+    });
   };
   loadPageSources.loadSources = async (sourceNames, pageOptions) => {
-    const subscriptionSourceNames = [...new Set(sourceNames)];
-    const subscriptionId = `sources:${subscriptionSourceNames.toSorted().join(",")}`;
-    return subscribeSources(
-      subscriptionId,
-      subscriptionSourceNames,
+    const subscriptionSourceNames = [...new Set(sourceNames)].toSorted();
+    return subscribeSources({
+      subscriptionId: `sources:${subscriptionSourceNames.join(",")}`,
+      sourceNames: subscriptionSourceNames,
       pageOptions,
-      {},
-      (sources) => sources,
-      "Unable to update dashboard sources"
-    );
+      errorLabel: "Unable to update dashboard sources"
+    });
   };
   loadPageSources.prepare = async (pageId) => {
     await preparePage?.(pageId);
