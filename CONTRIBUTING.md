@@ -82,7 +82,7 @@ If you have write access but are not yet a core team member:
 
 1. Open your pull request in draft mode and continue working there.
 2. When the change is complete and validated, mark the pull request ready for
-   review and assign the maintainers.
+   review and request a review from the maintainers.
 3. The maintainers will either approve and merge it immediately or return it
    with comments for follow-up.
 
