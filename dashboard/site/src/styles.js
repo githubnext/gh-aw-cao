@@ -316,7 +316,9 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .document-list-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
 .document-list-header > p { margin: 0; color: var(--muted); font-size: .75rem; }
 .document-list-header .declared-cli-action { flex: none; }
-.document-list-header .cli-action-trigger { min-height: 32px; align-items: center; padding: 6px 10px; border: 1px solid var(--border); background: var(--canvas); }
+.document-list-header .cli-action-trigger { min-height: 32px; align-items: center; padding: 6px 10px; border: 1px solid var(--accent); background: var(--accent); color: var(--canvas); }
+.document-list-header .cli-action-trigger:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 88%, var(--fg)); color: var(--canvas); }
+.document-list-header .cli-action-trigger > .octicon { color: inherit; }
 .document-list-header .cli-action-trigger-copy small { display: none; }
 .document-list { overflow: hidden; display: grid; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 0; background: var(--canvas); list-style: none; }
 .document-list-card { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 14px 16px; border-top: 1px solid var(--border); }
