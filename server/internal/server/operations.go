@@ -167,6 +167,14 @@ func (a *App) githubWebhook(response http.ResponseWriter, request *http.Request)
 		writeError(response, http.StatusBadRequest, "GitHub delivery and event headers are required")
 		return
 	}
+	if admitter, ok := a.reconciler.(EventAdmitter); ok {
+		a.admitWebhook(response, request, admitter, GitHubWebhook{
+			Delivery: delivery,
+			Event:    event,
+			Payload:  payload,
+		})
+		return
+	}
 	token, err := operationToken()
 	if err != nil {
 		writeError(response, http.StatusInternalServerError, "reconciliation could not start")
@@ -200,6 +208,54 @@ func (a *App) githubWebhook(response http.ResponseWriter, request *http.Request)
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(request.Context()), projectionTimeout)
 	go a.performReconciliation(ctx, cancel, token, eventPayload)
 	writeJSON(response, http.StatusAccepted, map[string]any{"accepted": true})
+}
+
+// EventAdmitter is implemented by a reconciler that admits webhook deliveries
+// without taking the global projection lease.
+//
+// The directory reconciler does not implement it, so the default profile keeps
+// its existing lease-per-delivery behavior unchanged.
+type EventAdmitter interface {
+	Admit(ctx context.Context, event GitHubWebhook) (map[string]any, error)
+}
+
+// admitWebhook records the delivery and hands it to the admitting reconciler.
+// Admission is bounded work — enrollment bookkeeping or a queue append — so it
+// runs inline and reports its outcome instead of spawning a projection.
+func (a *App) admitWebhook(
+	response http.ResponseWriter,
+	request *http.Request,
+	admitter EventAdmitter,
+	event GitHubWebhook,
+) {
+	fresh, err := a.store.RememberDelivery(request.Context(), event.Delivery, deliveryTTL)
+	if err != nil {
+		writeError(response, http.StatusServiceUnavailable, "webhook deduplication is unavailable")
+		return
+	}
+	if !fresh {
+		writeJSON(response, http.StatusAccepted, map[string]any{"accepted": true, "duplicate": true})
+		return
+	}
+	result, err := admitter.Admit(request.Context(), event)
+	if err != nil {
+		// Forget the delivery so a retry of a transiently failed admission is
+		// not silently swallowed as a duplicate.
+		a.forgetDelivery(request.Context(), event.Delivery)
+		writeError(response, http.StatusServiceUnavailable, "webhook admission is unavailable")
+		return
+	}
+	payload := map[string]any{"accepted": true}
+	for key, value := range result {
+		payload[key] = value
+	}
+	writeJSON(response, http.StatusAccepted, payload)
+}
+
+func (a *App) forgetDelivery(parent context.Context, delivery string) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(parent), 3*time.Second)
+	defer cancel()
+	_ = a.store.ForgetDelivery(ctx, delivery)
 }
 
 func (a *App) performReconciliation(

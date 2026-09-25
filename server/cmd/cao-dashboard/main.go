@@ -41,7 +41,7 @@ func main() {
 
 func run(arguments []string) error {
 	if len(arguments) == 0 {
-		return errors.New("usage: cao-dashboard <serve|serve-hosted|ingest> [flags]")
+		return errors.New("usage: cao-dashboard <serve|serve-hosted|ingest|collect|backfill> [flags]")
 	}
 	switch arguments[0] {
 	case "serve":
@@ -53,8 +53,16 @@ func run(arguments []string) error {
 	case "serve-hosted":
 		commandLog.Printf("running hosted serve command")
 		return serveHosted(arguments[1:])
+	case "collect":
+		commandLog.Printf("running collect command")
+		return collectCommand(arguments[1:])
+	case "backfill":
+		commandLog.Printf("running backfill command")
+		return backfillCommand(arguments[1:])
 	default:
-		return fmt.Errorf("unknown subcommand %q; expected serve, serve-hosted, or ingest", arguments[0])
+		return fmt.Errorf(
+			"unknown subcommand %q; expected serve, serve-hosted, ingest, collect, or backfill",
+			arguments[0])
 	}
 }
 
@@ -197,4 +205,87 @@ func ingestCommand(arguments []string) error {
 		return err
 	}
 	return json.NewEncoder(os.Stdout).Encode(result)
+}
+
+// collectCommand runs the collection worker role. It is the same binary as the
+// server, started with a different role, so collection scales independently
+// without a second deployment artifact.
+func collectCommand(arguments []string) error {
+	flags := flag.NewFlagSet("collect", flag.ContinueOnError)
+	databaseQueries := flags.String("database-queries",
+		"../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
+	consumer := flags.String("consumer", "", "consumer name; defaults to the hostname")
+	project := flags.Bool("project", true, "participate in coalesced projection")
+	if err := flags.Parse(arguments); err != nil {
+		return err
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	shutdownTelemetry, err := telemetry.Setup(ctx, version)
+	if err != nil {
+		return fmt.Errorf("configure telemetry: %w", err)
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		_ = shutdownTelemetry(shutdownCtx)
+	}()
+	collector, err := server.NewCollectorFromEnv(ctx, *databaseQueries)
+	if err != nil {
+		return err
+	}
+	name := strings.TrimSpace(*consumer)
+	if name == "" {
+		hostname, err := os.Hostname()
+		if err != nil {
+			return fmt.Errorf("resolve consumer name: %w", err)
+		}
+		name = hostname
+	}
+	worker := collector.Worker(name)
+	worker.Project = *project
+	log.Printf("collection worker %s started", name)
+	if err := worker.Run(ctx); err != nil && ctx.Err() == nil {
+		return err
+	}
+	return nil
+}
+
+// backfillCommand performs cold start and exits. It is safe to re-run: a
+// populated evidence lake is replayed without GitHub requests, and enrollment
+// and queue writes are idempotent.
+func backfillCommand(arguments []string) error {
+	flags := flag.NewFlagSet("backfill", flag.ContinueOnError)
+	databaseQueries := flags.String("database-queries",
+		"../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
+	replayOnly := flags.Bool("replay-only", false,
+		"reproject the evidence lake without contacting GitHub")
+	if err := flags.Parse(arguments); err != nil {
+		return err
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	collector, err := server.NewCollectorFromEnv(ctx, *databaseQueries)
+	if err != nil {
+		return err
+	}
+	backfill := collector.Backfill()
+	if *replayOnly {
+		result, err := backfill.Replay(ctx)
+		if err != nil {
+			return err
+		}
+		log.Printf("replayed evidence lake revision=%d", result.Revision)
+		return nil
+	}
+	state, err := backfill.Run(ctx)
+	if err != nil {
+		return err
+	}
+	report, err := json.MarshalIndent(state, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(report))
+	return nil
 }

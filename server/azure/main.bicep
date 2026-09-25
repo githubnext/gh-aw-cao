@@ -70,6 +70,43 @@ param redisConnectionString string
 @description('Optional Log Analytics workspace resource ID for Application Insights. Leave empty to create classic component-only telemetry.')
 param logAnalyticsWorkspaceResourceId string = ''
 
+// Optional server collection profile.
+//
+// Leaving collectorImage empty deploys the default profile unchanged: the
+// dashboard serves snapshots published by the Activity workflow and the server
+// collects nothing. Supplying an image selects the alternative profile, in
+// which this deployment collects evidence itself. The two profiles are
+// alternatives, never layers.
+
+@description('Optional container image running the collection role. Empty deploys no collection.')
+param collectorImage string = ''
+
+@description('GitHub App identifier whose installations define ingestion scope. Required with collectorImage.')
+param collectorGithubAppId string = ''
+
+@secure()
+@description('GitHub App private key in PEM form. Required with collectorImage.')
+param collectorPrivateKey string = ''
+
+@secure()
+@description('Shared secret verifying GitHub webhook deliveries. Required with collectorImage.')
+param githubWebhookSecret string = ''
+
+@secure()
+@description('Redis access key used only by the collection autoscaler to read stream backlog. Required with collectorImage.')
+param collectorRedisPassword string = ''
+
+@description('GitHub logins permitted to run administrative operations.')
+param githubAdminUsers array = []
+
+@description('Control repository used for logical source discovery, in OWNER/REPOSITORY form.')
+param collectorControlRepository string = ''
+
+@description('Maximum number of collection workers.')
+param collectorMaximumWorkers int = 20
+
+var collectionEnabled = !empty(collectorImage)
+
 var tags = {
   workload: 'gh-aw-cao-dashboard'
   hostingMode: 'azure-functions'
@@ -143,6 +180,33 @@ resource redisConnectionStringValue 'Microsoft.KeyVault/vaults/secrets@2023-07-0
   properties: {
     value: redisConnectionString
     contentType: 'CAO dashboard Redis Enterprise rediss URL'
+  }
+}
+
+resource collectorPrivateKeyValue 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (collectionEnabled) {
+  parent: keyVault
+  name: 'cao-collect-private-key'
+  properties: {
+    value: collectorPrivateKey
+    contentType: 'GitHub App private key for the collection profile'
+  }
+}
+
+resource collectorRedisPasswordValue 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (collectionEnabled) {
+  parent: keyVault
+  name: 'cao-redis-password'
+  properties: {
+    value: collectorRedisPassword
+    contentType: 'Redis access key for the collection autoscaler'
+  }
+}
+
+resource githubWebhookSecretValue 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (collectionEnabled) {
+  parent: keyVault
+  name: 'cao-github-webhook-secret'
+  properties: {
+    value: githubWebhookSecret
+    contentType: 'GitHub webhook shared secret'
   }
 }
 
@@ -293,6 +357,42 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
           name: 'CAO_SESSION_SECRET_PREVIOUS'
           value: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/cao-session-secret-previous)'
         }
+      ], !collectionEnabled ? [] : [
+        // With collection configured the Function App admits webhook
+        // deliveries into the collection queue. It performs no collection of
+        // its own, so its per-request work stays constant.
+        {
+          name: 'CAO_GITHUB_WEBHOOK_SECRET'
+          value: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/cao-github-webhook-secret)'
+        }
+        {
+          name: 'CAO_GITHUB_ADMIN_USERS'
+          value: join(githubAdminUsers, ',')
+        }
+        {
+          name: 'CAO_COLLECT_APP_ID'
+          value: collectorGithubAppId
+        }
+        {
+          name: 'CAO_COLLECT_PRIVATE_KEY'
+          value: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/cao-collect-private-key)'
+        }
+        {
+          name: 'CAO_COLLECT_LAKE_DIRECTORY'
+          value: '/evidence'
+        }
+        {
+          name: 'CAO_COLLECT_CATALOG_ROOT'
+          value: '/app'
+        }
+        {
+          name: 'CAO_COLLECT_CONTROL_REPOSITORY'
+          value: collectorControlRepository
+        }
+        {
+          name: 'CAO_COLLECT_WORKERS'
+          value: '0'
+        }
       ])
     }
   }
@@ -315,6 +415,29 @@ resource keyVaultSecretsUser 'Microsoft.Authorization/roleAssignments@2022-04-01
   }
 }
 
+module collection 'collector.bicep' = if (collectionEnabled) {
+  name: 'collection-workers'
+  params: {
+    location: location
+    tags: tags
+    namePrefix: functionAppName
+    collectorImage: collectorImage
+    keyVaultUri: keyVault.properties.vaultUri
+    keyVaultName: keyVault.name
+    redisHost: redisEnterprise.properties.hostName
+    redisNamespace: 'azure-dashboard'
+    controlRepository: collectorControlRepository
+    githubAppId: collectorGithubAppId
+    maximumWorkers: collectorMaximumWorkers
+  }
+  dependsOn: [
+    collectorPrivateKeyValue
+    collectorRedisPasswordValue
+    redisConnectionStringValue
+  ]
+}
+
+output collectionEnabled bool = collectionEnabled
 output functionHostName string = functionApp.properties.defaultHostName
 output githubOAuthRedirectUri string = githubRedirectUri
 output redisEnterpriseHostName string = redisEnterprise.properties.hostName

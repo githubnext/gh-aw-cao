@@ -1,0 +1,249 @@
+package collect
+
+import (
+	"context"
+	"errors"
+	"os"
+	"strconv"
+	"testing"
+	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+)
+
+func integrationStore(t *testing.T) (*redisx.Store, context.Context) {
+	t.Helper()
+	rawURL := os.Getenv("REDIS_URL")
+	if rawURL == "" {
+		t.Skip("REDIS_URL is not set")
+	}
+	client, err := redisx.New(rawURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	namespace, err := redisx.NormalizeNamespace("collect-" + strconv.FormatInt(time.Now().UnixNano(), 36))
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := redisx.NewStore(client, namespace)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	t.Cleanup(cancel)
+	if err := store.Ping(ctx); err != nil {
+		t.Fatal(err)
+	}
+	// Each test uses a unique namespace, so leftover keys never cross tests.
+	return store, ctx
+}
+
+func TestEnrollmentTracksInstallationCoverage(t *testing.T) {
+	store, ctx := integrationStore(t)
+	enrollment := Enrollment{Store: store}
+	if err := enrollment.AddRepositories(ctx, 7, []string{"Octo/API", "octo/web"}); err != nil {
+		t.Fatal(err)
+	}
+	enrolled, err := enrollment.Enrolled(ctx, "octo/api")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !enrolled {
+		t.Fatal("expected the repository to be enrolled")
+	}
+	installation, err := enrollment.InstallationFor(ctx, "octo/api")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if installation != 7 {
+		t.Fatalf("installation = %d, want 7", installation)
+	}
+	coverage, err := enrollment.Coverage(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if coverage.Repositories != 2 || coverage.Installations != 1 {
+		t.Fatalf("unexpected coverage %+v", coverage)
+	}
+	if err := enrollment.RemoveInstallation(ctx, 7); err != nil {
+		t.Fatal(err)
+	}
+	enrolled, err = enrollment.Enrolled(ctx, "octo/api")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if enrolled {
+		t.Fatal("removing an installation must unenroll its repositories")
+	}
+}
+
+func TestQueueDebouncesAndLeasesExactlyOnce(t *testing.T) {
+	store, ctx := integrationStore(t)
+	queue := Queue{Store: store, Debounce: time.Minute}
+	if err := queue.Ensure(ctx); err != nil {
+		t.Fatal(err)
+	}
+	task := Task{Repository: "octo/api", InstallationID: 7, Reason: "workflow_run"}
+	first, err := queue.Enqueue(ctx, task)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := queue.Enqueue(ctx, task)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !first || second {
+		t.Fatalf("expected a burst to collapse to one task, got first=%t second=%t", first, second)
+	}
+	depth, err := queue.Depth(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if depth != 1 {
+		t.Fatalf("depth = %d, want 1", depth)
+	}
+	leases, err := queue.Lease(ctx, "worker-a", 10, 50*time.Millisecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(leases) != 1 {
+		t.Fatalf("leased %d tasks, want 1", len(leases))
+	}
+	other, err := queue.Lease(ctx, "worker-b", 10, 50*time.Millisecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(other) != 0 {
+		t.Fatalf("a leased task must not be delivered twice, got %d", len(other))
+	}
+	// Admission clears the debounce marker so events arriving during a
+	// collection schedule a follow-up instead of being lost.
+	if err := queue.Admit(ctx, leases[0].Task); err != nil {
+		t.Fatal(err)
+	}
+	followUp, err := queue.Enqueue(ctx, task)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !followUp {
+		t.Fatal("an event during collection must schedule a follow-up")
+	}
+	if err := queue.Complete(ctx, leases[0]); err != nil {
+		t.Fatal(err)
+	}
+	pending, err := queue.Pending(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pending != 0 {
+		t.Fatalf("pending = %d, want 0 after completion", pending)
+	}
+}
+
+func TestQueueReclaimsAbandonedWork(t *testing.T) {
+	store, ctx := integrationStore(t)
+	queue := Queue{Store: store}
+	if err := queue.Ensure(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := queue.Enqueue(ctx, Task{Repository: "octo/api", InstallationID: 7}); err != nil {
+		t.Fatal(err)
+	}
+	leases, err := queue.Lease(ctx, "crashed-worker", 10, 50*time.Millisecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(leases) != 1 {
+		t.Fatalf("leased %d tasks, want 1", len(leases))
+	}
+	time.Sleep(50 * time.Millisecond)
+	reclaimed, err := queue.Reclaim(ctx, "healthy-worker", 10*time.Millisecond, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(reclaimed) != 1 || reclaimed[0].Task.Repository != "octo/api" {
+		t.Fatalf("expected the abandoned task to be reclaimed, got %+v", reclaimed)
+	}
+}
+
+func TestQueueDeadLettersAfterRepeatedFailures(t *testing.T) {
+	store, ctx := integrationStore(t)
+	queue := Queue{Store: store, MaxAttempts: 2}
+	if err := queue.Ensure(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := queue.Enqueue(ctx, Task{Repository: "octo/api", InstallationID: 7}); err != nil {
+		t.Fatal(err)
+	}
+	failure := errors.New("collection failed")
+	for attempt := 0; attempt < 3; attempt++ {
+		leases, err := queue.Lease(ctx, "worker", 10, 50*time.Millisecond)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(leases) == 0 {
+			break
+		}
+		if err := queue.Retry(ctx, leases[0], failure); err != nil {
+			t.Fatal(err)
+		}
+	}
+	dead, err := queue.DeadLetters(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dead != 1 {
+		t.Fatalf("dead letters = %d, want 1 after exhausting attempts", dead)
+	}
+}
+
+func TestQueueSerializesOneRepository(t *testing.T) {
+	store, ctx := integrationStore(t)
+	queue := Queue{Store: store}
+	if err := queue.LockRepository(ctx, "octo/api", "token-a", time.Minute); err != nil {
+		t.Fatal(err)
+	}
+	err := queue.LockRepository(ctx, "octo/api", "token-b", time.Minute)
+	if !errors.Is(err, ErrRepositoryBusy) {
+		t.Fatalf("expected a busy repository, got %v", err)
+	}
+	if err := queue.UnlockRepository(ctx, "octo/api", "token-a"); err != nil {
+		t.Fatal(err)
+	}
+	if err := queue.LockRepository(ctx, "octo/api", "token-b", time.Minute); err != nil {
+		t.Fatalf("expected the lock to be released: %v", err)
+	}
+}
+
+func TestAdmitterRefusesRepositoriesOutsideScope(t *testing.T) {
+	store, ctx := integrationStore(t)
+	enrollment := Enrollment{Store: store}
+	queue := Queue{Store: store}
+	if err := queue.Ensure(ctx); err != nil {
+		t.Fatal(err)
+	}
+	admitter := Admitter{Enrollment: enrollment, Queue: queue}
+	payload := []byte(`{"action":"completed","installation":{"id":7},
+		"repository":{"full_name":"stranger/repo"}}`)
+	if _, err := admitter.Admit(ctx, "workflow_run", payload); !errors.Is(err, ErrNotEnrolled) {
+		t.Fatalf("expected an unenrolled repository to be refused, got %v", err)
+	}
+	depth, err := queue.Depth(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if depth != 0 {
+		t.Fatalf("depth = %d, want 0 for an out-of-scope delivery", depth)
+	}
+	enroll := []byte(`{"action":"created","installation":{"id":7},
+		"repositories":[{"full_name":"octo/api"}]}`)
+	if _, err := admitter.Admit(ctx, "installation", enroll); err != nil {
+		t.Fatal(err)
+	}
+	collect := []byte(`{"action":"completed","installation":{"id":7},
+		"repository":{"full_name":"octo/api"}}`)
+	admission, err := admitter.Admit(ctx, "workflow_run", collect)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !admission.Enqueued || admission.Kind != IntentCollect {
+		t.Fatalf("unexpected admission %+v", admission)
+	}
+}

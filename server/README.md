@@ -239,6 +239,109 @@ The active generation also records an authoritative `evaluatedAt` timestamp
 derived from the latest canonical row or source metadata timestamp. Relative
 dashboard time windows use this value rather than browser wall-clock time.
 
+### Ingestion profiles
+
+Evidence reaches the server through exactly one of two profiles. They are
+alternatives, not layers, because a canonical database has one writer.
+
+| | Published snapshots (default) | Server collection (optional) |
+|---|---|---|
+| Evidence acquired by | `cao-activity.yml` in GitHub Actions | the server's collection workers |
+| Server configuration | `CAO_SOURCE_DIRECTORY` | `CAO_COLLECT_APP_ID` and the other `CAO_COLLECT_*` settings |
+| GitHub credentials | held by the workflow | a GitHub App held by the deployment |
+| Event source | workflow schedule | webhook deliveries |
+| Deployment | Function App only | Function App plus Container Apps workers |
+
+The default profile is unchanged: with only `CAO_SOURCE_DIRECTORY` configured
+the server behaves exactly as before and performs no GitHub collection.
+
+Configuring both is rejected at startup rather than resolved silently, so a
+deployment can never have two writers for one database.
+
+To switch a deployment to the collection profile, unset `CAO_SOURCE_DIRECTORY`,
+set the `CAO_COLLECT_*` settings, and deploy `collectorImage`. To switch back,
+reverse both. Switching does not lose data: the canonical database is rebuilt
+from whichever evidence the selected profile retains.
+
+### Collection profile
+
+Collection separates three concerns that fail differently:
+
+1. **Admission.** The existing `POST /api/github/webhook` endpoint verifies the
+   signature, deduplicates the delivery, and appends one task to a Redis
+   stream. Admission is constant-time and takes no projection lease, so a
+   delivery burst cannot block the endpoint.
+2. **Collection.** Workers lease tasks and run the same
+   `gh aw logs --audit` and `activity/cao.mjs` commands the Activity workflow
+   runs, writing into the evidence lake. One repository is collected at a time,
+   and GitHub budget is reserved per installation before each collection.
+3. **Projection.** Collected evidence is projected by the existing
+   `internal/ingest` package. Projection is coalesced behind a dirty flag and a
+   minimum interval, so projection cost follows the collection rate rather than
+   the event rate.
+
+The evidence lake is laid out byte-compatibly with a snapshot published by the
+Activity workflow:
+
+```text
+gh-aw-logs-shards/     collected, not yet compacted
+gh-aw-logs-runs/*.jsonl
+gh-aw-logs-records/*.jsonl
+payload-hashes.json
+inventory-sources.json
+```
+
+That is what makes the profiles interchangeable, and it is why cold start needs
+no GitHub access: a retained lake is replayed directly.
+
+Enrollment is derived from GitHub App installations. A delivery for a
+repository outside the enrollment set is acknowledged and dropped rather than
+collected, so credential reach never widens ingestion scope.
+
+Rate limits are governed per installation. Each collection reserves budget
+before it starts and passes the reserve to the collection subprocess, so the
+subprocess stops before exhausting the installation. An installation that
+receives a rate-limit response is parked with jitter; other installations keep
+running.
+
+Failed collections are retried with backoff and moved to a dead-letter stream
+after the attempt limit, where they remain visible in collection status rather
+than disappearing.
+
+### Collection roles
+
+The same binary runs every role:
+
+| Command | Role |
+|---|---|
+| `cao-dashboard serve-hosted` | serve the dashboard and admit webhook deliveries |
+| `cao-dashboard collect` | lease tasks, collect repositories, and project |
+| `cao-dashboard backfill` | cold start: replay the lake, enumerate installations, seed tasks |
+| `cao-dashboard backfill -replay-only` | repopulate the database from retained evidence with no GitHub requests |
+
+`GET /api/admin/collection/status` reports enrollment coverage, queue backlog,
+in-flight tasks, dead letters, cold-start phase, and per-installation rate-limit
+headroom. In the default profile it reports `{"configured": false}` rather than
+failing.
+
+### Collection settings
+
+| Setting | Meaning |
+|---|---|
+| `CAO_COLLECT_APP_ID` | GitHub App identifier; unset selects the default profile |
+| `CAO_COLLECT_PRIVATE_KEY` / `CAO_COLLECT_PRIVATE_KEY_FILE` | App private key in PEM form |
+| `CAO_COLLECT_LAKE_DIRECTORY` | evidence lake directory, shared by workers |
+| `CAO_COLLECT_CATALOG_ROOT` | directory containing `activity/cao.mjs` |
+| `CAO_COLLECT_CONTROL_REPOSITORY` | control repository used for inventory discovery |
+| `CAO_COLLECT_WORKERS` | in-process workers; zero when workers scale separately |
+| `CAO_COLLECT_RATE_LIMIT_FLOOR` | requests reserved per installation |
+| `CAO_COLLECT_PROJECTION_INTERVAL` | minimum interval between projections |
+| `CAO_COLLECT_RECOVER_DELIVERIES` | replay failed webhook deliveries to close gaps |
+
+`specs/server-ingestion.md` is the normative contract, and
+`adr/server-webhook-driven-ingestion.md` records why the design is shaped this
+way.
+
 ## Redis model
 
 Redis is a disposable query projection, not an authoritative data source.

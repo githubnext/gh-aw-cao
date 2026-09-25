@@ -182,10 +182,19 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 	if err != nil {
 		return nil, err
 	}
+	// The collection profile is optional. When it is unconfigured this reads
+	// as nil and the Functions front end behaves exactly as before.
+	collector, err := CollectorConfigFromEnv()
+	if err != nil {
+		return nil, err
+	}
 	app, err := New(store, Config{
 		HostingMode:      HostingModeAzureFunctions,
 		SiteDirectory:    siteDirectory,
 		DashboardQueries: definitions,
+		Collector:        collector,
+		WebhookSecret:    os.Getenv("CAO_GITHUB_WEBHOOK_SECRET"),
+		AdminUsers:       splitCSV(os.Getenv("CAO_GITHUB_ADMIN_USERS")),
 		AzureProxy: AzureProxyPolicy{
 			AllowedHosts:   splitCSV(os.Getenv("CAO_AZURE_ALLOWED_HOSTS")),
 			RequireHTTPS:   true,

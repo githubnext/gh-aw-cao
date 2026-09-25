@@ -120,7 +120,19 @@ loopback-only. Its host-neutral mode uses GitHub OAuth and explicit organization
 or team authorization, verifies and deduplicates GitHub webhooks, and rebuilds
 through a staged generation before atomically changing the active pointer.
 Redis remains reconstructable from GitHub / gh-aw state and never becomes an
-authority. The main thread receives
+authority.
+
+The Redis profile acquires evidence through exactly one of two mutually
+exclusive ingestion profiles. By default the Activity workflow collects
+evidence in GitHub Actions and publishes a snapshot that the server ingests.
+As an alternative, the server itself collects evidence from GitHub App
+installations, admitting webhook deliveries into a queue, collecting one
+repository at a time with the same `gh aw logs --audit` and `activity/cao.mjs`
+commands the workflow runs, and writing into an evidence lake laid out exactly
+like a published snapshot. Because the layout is the same, one projector serves
+both profiles and a retained lake repopulates a database on cold start without
+contacting GitHub. Configuring both profiles fails at startup: a canonical
+database has one writer. The main thread receives
 only bounded view payloads in either profile. Versioned computations transform canonical evidence
 into partitioned measures and actionable insights so consumers do not repeatedly
 scan the full Activity corpus. Computation results remain derived evidence:
