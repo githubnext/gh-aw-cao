@@ -17,6 +17,7 @@ SelfCare runs repository-local maintenance for `githubnext/gh-aw-cao`. Its orche
 - **Pages Health** runs at most once per rolling six hours, scrolls every deployed dashboard view under desktop, mobile, and low-bandwidth profiles, and opens a focused draft PR with the highest-confidence JavaScript quick wins it can validate.
 - **Primer Brand Checker** audits the dashboard against current Primer brand guidance and opens one focused draft pull request when an evidenced fix is available.
 - **Reactive UI Expert** maintains the reactive UI skill, migrates JavaScript-produced view sources to request-scoped dashboard queries, reviews recent dashboard JavaScript changes for reactive patterns, and extracts direct HTML mutations into reactive elements, data binding, and effects.
+- **Server Go Logging** refactors one server Go subsystem with privacy-preserving internal logging and focused unit tests that exercise real code without mocks.
 
 The checked-in control policy admits only `githubnext/gh-aw-cao` as a live target, and the target-authority declaration grants this repository's control plane authority for the campaign. The orchestrator rejects every other repository and every non-live candidate; all fifteen workers repeat those checks before performing their mission. Open Source Failures selects public project records only from the dashboard's validated activity snapshot; it does not discover or access repositories independently.
 

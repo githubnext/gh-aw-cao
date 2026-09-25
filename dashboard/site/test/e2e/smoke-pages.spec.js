@@ -964,9 +964,9 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(cleanNavigation).toHaveText(['Overview']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
-  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Operational Value', 'Cost', 'Models & Agents', 'Firewall', 'MCPs', 'Steering']);
+  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Repositories', 'Workflows', 'Runs', 'IssuesExperimental', 'Operational Value', 'Cost', 'Models & Agents', 'Firewall', 'MCPs', 'SteeringExperimental']);
   await expect(updatesSection.locator('summary')).toHaveText('Updates');
-  await expect(updatesSection.getByRole('link')).toHaveText(['Updates', 'Indexing', 'Settings']);
+  await expect(updatesSection.getByRole('link')).toHaveText(['Updates', 'IndexingExperimental', 'Settings']);
   await expect(updatesSection).toHaveClass(/nav-section-bottom/);
   await expect.poll(async () => {
     const [navBox, manageBox] = await Promise.all([
@@ -977,7 +977,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
       ? Math.round(navBox.y + navBox.height - (manageBox.y + manageBox.height))
       : null;
   }).toBeLessThanOrEqual(1);
-  await expect(page.locator('.nav-section').filter({ hasText: 'Experimental' })).toHaveCount(0);
+  await expect(page.locator('.nav-section-label', { hasText: /^Experimental$/ })).toHaveCount(0);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
   await expect(page.locator('.account-menu')).toHaveCount(0);
   await expect(page.locator('.refresh-button')).toHaveCount(0);

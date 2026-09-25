@@ -152,6 +152,54 @@ describe('declarative dashboard queries', () => {
     expect(result['overview-factory-status'].rows).toEqual([{ 'factory-heading': 'Your campaigns are humming.' }]);
   });
 
+  it('uses retained failure descriptions as campaign problem titles', () => {
+    const result = executeDashboardQueries(
+      dashboardQueries,
+      {
+        runs: {
+          source: 'runs',
+          rows: [{
+            organization: 'githubnext',
+            repository: 'gh-aw-cao',
+            workflow: '.github/workflows/dashboard.md',
+            run: '42',
+            'run-attempt': 1,
+            'run-status': 'completed',
+            'run-conclusion': 'failure',
+            'started-at': '2026-09-09T04:00:00Z',
+            'failure-message': 'Dependency update failed',
+            'failure-detail': 'Dependency update failed',
+            'target-repository': 'github/gh-aw',
+            'rollout-mode': 'review'
+          }],
+          metadata: metadata('runs')
+        },
+        workflows: {
+          source: 'workflows',
+          rows: [{
+            organization: 'githubnext',
+            repository: 'gh-aw-cao',
+            workflow: '.github/workflows/dashboard.md',
+            campaign: 'dashboard',
+            'campaign-name': 'CAO Dashboard',
+            'workflow-name': 'Dashboard',
+            'workflow-role': 'worker'
+          }],
+          metadata: metadata('workflows')
+        }
+      },
+      ['campaign-problem-items']
+    );
+
+    expect(result['campaign-problem-items'].rows).toEqual([
+      expect.objectContaining({
+        'problem-title': 'Dependency update failed',
+        'failure-message': 'Dependency update failed',
+        'status-detail': 'Dependency update failed'
+      })
+    ]);
+  });
+
   it('produces presentation-ready Overview header and station payloads', () => {
     const result = executeDashboardQueries(
       dashboardQueries,

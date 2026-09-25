@@ -284,6 +284,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "self-care-pages-health.md": { credits: 400, timeout: 120 },
     "self-care-primer-brand-checker.md": { credits: 400, timeout: 25 },
     "self-care-reactive-ui-expert.md": { credits: 500, timeout: 45 },
+    "self-care-server-go-logging.md": { credits: 400, timeout: 40 },
   };
 
   for (const [name, limits] of Object.entries(expected)) {

@@ -15,6 +15,7 @@
     "open-source-failures": "self-care-open-source-failures",
     "pages-health": "self-care-pages-health",
     "primer-brand-checker": "self-care-primer-brand-checker",
-    "reactive-ui-expert": "self-care-reactive-ui-expert"
+    "reactive-ui-expert": "self-care-reactive-ui-expert",
+    "server-go-logging": "self-care-server-go-logging"
   }
 }

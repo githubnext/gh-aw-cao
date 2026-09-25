@@ -21,7 +21,8 @@ Before you begin, make sure you have:
 - one low-risk public repository in that organization to use as the target;
 - GitHub Actions enabled for both repositories;
 - [GitHub CLI](https://cli.github.com/) installed and authenticated;
-- access to GitHub Copilot through organization billing for Agentic Workflow runs.
+
+The bundled Dependabot workflows in this guide use Copilot inference. You need organization-billed GitHub Copilot access **before Step 5**, not to install CAO. Without that access, you can install CAO but must configure and compile an explicitly authored workflow using another supported engine/provider and its credentials before running a review proof. See [Configure Authentication](authentication.md).
 
 :::tip[Start with the setup skill]
 From an empty control repository, ask your coding agent to load and follow the
@@ -81,7 +82,7 @@ curl --fail --silent --show-error --location \
   bash
 ```
 
-The script installs `gh-aw` when needed, adds the latest published core CAO campaign, initializes the minimal control policy, and makes the repository-local `./cao.sh` CLI executable. Rerunning it after those files are installed makes no changes. Use the individual `gh aw` and CAO CLI commands when you intentionally need an older campaign release.
+The script installs `gh-aw` when needed, adds the latest published core CAO campaign, initializes the minimal control policy, and makes the repository-local `./cao.sh` CLI executable. If an installed `gh-aw` is too old for the campaign, the installer asks before running `gh extension upgrade gh-aw`. Declining or running without an interactive terminal stops setup without an error; run `gh extension upgrade gh-aw` and rerun the installer when ready. Rerunning it after those files are installed makes no changes. Use the individual `gh aw` and CAO CLI commands when you intentionally need an older campaign release.
 
 The root campaign installs:
 
