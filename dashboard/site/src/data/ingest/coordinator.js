@@ -149,7 +149,7 @@ async function transactionId(kind, scope) {
 }
 
 /** @param {string} hash */
-function normalizedShardTransactionId(hash) {
+function normalizedJsonlShardTransactionId(hash) {
   return `ingest-normalized-jsonl:sha256:${hash}:v${NORMALIZED_JSONL_INGESTION_VERSION}`;
 }
 
@@ -197,7 +197,7 @@ export async function isCachedGhAwJsonlCurrent(indexedDB, options) {
  * @param {{ payloadIdentity: string, expectedPhase?: 'runs' | 'records' }} options
  */
 export async function isNormalizedJsonlCurrent(indexedDB, options) {
-  const receipt = await readTransaction(indexedDB, normalizedShardTransactionId(options.payloadIdentity));
+  const receipt = await readTransaction(indexedDB, normalizedJsonlShardTransactionId(options.payloadIdentity));
   return receipt?.kind === 'ingest-normalized-jsonl'
     && receipt.payloadHash === options.payloadIdentity
     && receipt.ingestionVersion === NORMALIZED_JSONL_INGESTION_VERSION
@@ -690,7 +690,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
         : await maintainNormalizedJsonlDatabase(indexedDB, options);
       const result = { updated: true, committedBatches, committedRecords };
       await recordTransaction(indexedDB, {
-        id: normalizedShardTransactionId(options.payloadIdentity),
+        id: normalizedJsonlShardTransactionId(options.payloadIdentity),
         kind: 'ingest-normalized-jsonl',
         createdAt: new Date(options.now ?? Date.now()).toISOString(),
         payloadScope: options.payloadScope,
