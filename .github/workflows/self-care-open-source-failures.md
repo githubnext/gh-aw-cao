@@ -100,6 +100,7 @@ steps:
   - name: Prepare bounded public failure evidence
     env:
       ACTIVITY_ROOT: ${{ runner.temp }}/cao-activity
+      GITHUB_SERVER_URL: ${{ github.server_url }}
     run: |
       node <<'EOF'
       const fs = require("node:fs");

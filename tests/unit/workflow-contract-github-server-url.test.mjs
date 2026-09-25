@@ -5,7 +5,7 @@ import test from "node:test";
 
 import { workflowsDirectory } from "./workflow-contract.helpers.mjs";
 
-const HARDCODED_ACTIONS_URL = /https:\/\/github\.com\/(?:\$\{\{\s*github\.repository\s*\}\}|[^/\s)]+)\/actions\//;
+const HARDCODED_ACTIONS_URL = /https:\/\/github\.com\/(?:\$\{\{\s*github\.repository\s*\}\}|(?:[^/\s)]+\/)?[^/\s)]+)\/actions\//;
 
 function workflowSources(directory = workflowsDirectory, prefix = "") {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
