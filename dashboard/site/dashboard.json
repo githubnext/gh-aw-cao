@@ -13791,7 +13791,8 @@
             },
             "mark": "table",
             "disclosure": "supplemental",
-            "empty-message": "No AI Credit usage data is available for agent and model combinations.",
+            "controls": "interactive",
+            "empty-message": "No agent or model usage metadata is available.",
             "layout": "full",
             "encoding": {
               "columns": [
