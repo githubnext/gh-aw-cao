@@ -1,6 +1,6 @@
 # SelfCare
 
-SelfCare runs repository-local maintenance for `githubnext/gh-aw-cao`. Its orchestrator dispatches sixteen live-only workers:
+SelfCare runs repository-local maintenance for `githubnext/gh-aw-cao`. Its orchestrator dispatches seventeen live-only workers:
 
 - **Accessibility Checker** audits the rendered documentation site and publishes one prioritized accessibility issue.
 - **Code Improvement** extracts one evidenced duplicated dashboard UI construct into a tested reusable component and opens one focused draft pull request.
@@ -20,8 +20,8 @@ SelfCare runs repository-local maintenance for `githubnext/gh-aw-cao`. Its orche
 - **Release Blogger** describes the release or pre-release published in the preceding 24 hours in a GitHub Blog-style post under the documentation site's blog directory and opens one focused draft pull request. The orchestrator dispatches this worker at most once per rolling 24 hours.
 - **Server Go Logging** refactors one server Go subsystem with privacy-preserving internal logging and focused unit tests that exercise real code without mocks.
 
-The checked-in control policy admits only `githubnext/gh-aw-cao` as a live target, and the target-authority declaration grants this repository's control plane authority for the campaign. The orchestrator rejects every other repository and every non-live candidate; all sixteen workers repeat those checks before performing their mission. Open Source Failures selects public project records only from the dashboard's validated activity snapshot; it does not discover or access repositories independently.
+The checked-in control policy admits only `githubnext/gh-aw-cao` as a live target, and the target-authority declaration grants this repository's control plane authority for the campaign. The orchestrator rejects every other repository and every non-live candidate; all seventeen workers repeat those checks before performing their mission. Open Source Failures selects public project records only from the dashboard's validated activity snapshot; it does not discover or access repositories independently.
 
-The campaign uses `shared/control.md` for policy resolution, target authority, dispatch envelopes, safe-output routing, and correlation. It dispatches at most sixteen workflows for its single target.
+The campaign uses `shared/control.md` for policy resolution, target authority, dispatch envelopes, safe-output routing, and correlation. It dispatches at most seventeen workflows for its single target.
 
 The Docs Build-Time Investigator registers an operational grader through gh-aw's `operational-value` protocol. It measures material `docs.yml` execution-time reduction while requiring completed-run reliability to be preserved. The campaign dashboard keeps recommendations distinct from matured attainment. Design graders for the other workers after adoption evidence establishes measurable accessibility, component-reuse, declarative-view-reuse, reactive-UI-maintenance, glossary-maintenance, data-acquisition, dashboard-review, public-failure-remediation, and brand-maintenance outcomes.
