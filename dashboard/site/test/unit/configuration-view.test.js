@@ -204,7 +204,7 @@ describe('Configuration dashboard view', () => {
   it('exposes Settings in the bottom management navigation without a chart', () => {
     const dashboard = JSON.parse(readFileSync(resolve('dashboard.json'), 'utf8')).dashboard;
     const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'configuration');
-    const manageNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => candidate.label === 'Maintenance');
+    const manageNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => candidate.label === 'Updates');
 
     expect(page.title).toBe('Settings');
     expect(page.icon).toBe('gear');
@@ -222,9 +222,9 @@ describe('Configuration dashboard view', () => {
   it('separates CAO package and compiler maintenance inventory', () => {
     const dashboard = JSON.parse(readFileSync(resolve('dashboard.json'), 'utf8')).dashboard;
     const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'maintenance');
-    const manageNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => candidate.label === 'Maintenance');
+    const manageNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => candidate.label === 'Updates');
 
-    expect(page.title).toBe('Maintenance');
+    expect(page.title).toBe('Updates');
     expect(page['filter-bar']).toBeUndefined();
     expect(page.views.map((/** @type {{ data: { source: string } }} */ view) => view.data.source))
       .toEqual(['campaigns', 'maintenance-repositories']);
