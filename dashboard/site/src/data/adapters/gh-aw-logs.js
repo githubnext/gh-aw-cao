@@ -187,6 +187,15 @@ function runMetadata(run) {
     })
     .sort((left, right) => right.aic - left.aic || left.model.localeCompare(right.model))[0]?.model;
   const aicTotal = finiteNumber(summary.total_aic) ?? finiteNumber(run.aic);
+  /** @type {number|null} */
+  let reasoningTokens = null;
+  for (const usage of Object.values(byModel)) {
+    const record = usage && typeof usage === 'object' && !Array.isArray(usage)
+      ? /** @type {Record<string, unknown>} */ (usage)
+      : {};
+    const count = finiteNumber(record.reasoning_tokens);
+    if (count !== null) reasoningTokens = (reasoningTokens ?? 0) + count;
+  }
   return {
     agentId: normalizedId('copilot', run.agent_id, run.agent, run.engine_id, awInfo.engine_id),
     agentVersion: firstOptionalString(
@@ -223,6 +232,11 @@ function runMetadata(run) {
     firewallVersion: firstOptionalString(run.firewall_version, awInfo.firewall_version, awInfo.awf_version),
     gatewayVersion: firstOptionalString(run.gateway_version, awInfo.awmg_version),
     aicTotal,
+    inputTokens: finiteNumber(summary.total_input_tokens),
+    outputTokens: finiteNumber(summary.total_output_tokens),
+    cacheReadTokens: finiteNumber(summary.total_cache_read_tokens),
+    cacheWriteTokens: finiteNumber(summary.total_cache_write_tokens),
+    reasoningTokens,
     tokenUsage
   };
 }
@@ -1267,6 +1281,11 @@ function createCachedGhAwJsonlAccumulator(options) {
         gatewayVersion: metadata.gatewayVersion,
         aic: metadata.aicTotal,
         aicTotal: metadata.aicTotal,
+        inputTokens: metadata.inputTokens,
+        outputTokens: metadata.outputTokens,
+        cacheReadTokens: metadata.cacheReadTokens,
+        cacheWriteTokens: metadata.cacheWriteTokens,
+        reasoningTokens: metadata.reasoningTokens,
         tokenUsage: metadata.tokenUsage,
         ambientContext: enrichedValue.ambient_context,
         workingSet: enrichedValue.working_set,

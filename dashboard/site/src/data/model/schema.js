@@ -1,4 +1,4 @@
-export const CANONICAL_SCHEMA_VERSION = 16;
+export const CANONICAL_SCHEMA_VERSION = 17;
 
 export const ENTITY_KINDS = /** @type {const} */ ([
   'campaign',

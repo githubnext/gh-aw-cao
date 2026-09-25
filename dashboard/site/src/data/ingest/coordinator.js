@@ -670,7 +670,7 @@ export function ingestNormalizedJson(indexedDB, input, options) {
       }
 
       const payload = /** @type {{ schemaVersion?: unknown, ingestionVersion?: unknown, sourceRecords?: unknown, phase?: unknown, batch?: unknown }} */ (input);
-      if (![CANONICAL_SCHEMA_VERSION, 15, 14, 13, 12].includes(Number(payload.schemaVersion))) {
+      if (![CANONICAL_SCHEMA_VERSION, 16, 15, 14, 13, 12].includes(Number(payload.schemaVersion))) {
         throw new TypeError(`Unsupported normalized activity schema: ${String(payload.schemaVersion)}`);
       }
       if (payload.ingestionVersion !== NORMALIZED_JSON_INGESTION_VERSION) {
@@ -847,7 +847,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
             throw new TypeError('Normalized activity JSONL must start with metadata');
           }
           const schemaVersion = Number(envelope.schemaVersion);
-          if (![CANONICAL_SCHEMA_VERSION, 15, 14, 13, 12].includes(schemaVersion)) {
+          if (![CANONICAL_SCHEMA_VERSION, 16, 15, 14, 13, 12].includes(schemaVersion)) {
             throw new TypeError(`Unsupported normalized activity schema: ${String(envelope.schemaVersion)}`);
           }
           if (envelope.ingestionVersion !== NORMALIZED_JSONL_INGESTION_VERSION) {
