@@ -154,10 +154,10 @@ const request = JSON.parse(await new Promise((resolve) => {
 }));
 for (const repository of request.repositories) {
   for (const valueId of [
-    "daily-file-diet.largest-file-lines",
-    "daily-file-diet.compliant-line-mass-percent"
+    "daily-file-diet.largest-file-health",
+    "daily-file-diet.compliant-line-mass-share"
   ]) {
-    const metricUnit = valueId.endsWith("largest-file-lines") ? "lines" : "percent";
+    const metricUnit = valueId.endsWith("largest-file-health") ? "score" : "share";
     console.log(JSON.stringify({repository, valueId, value: 0.5, metricUnit, timestamp: request.timestamp}));
   }
 }

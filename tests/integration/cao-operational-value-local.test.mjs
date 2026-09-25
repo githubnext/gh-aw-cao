@@ -92,8 +92,8 @@ fi
     assert.deepEqual(
       result.values.map(({ campaign, valueId }) => ({ campaign, valueId })),
       [
-        { campaign: "daily-file-diet", valueId: "daily-file-diet.largest-file-lines" },
-        { campaign: "daily-file-diet", valueId: "daily-file-diet.compliant-line-mass-percent" },
+        { campaign: "daily-file-diet", valueId: "daily-file-diet.largest-file-health" },
+        { campaign: "daily-file-diet", valueId: "daily-file-diet.compliant-line-mass-share" },
       ],
     );
 
@@ -106,8 +106,8 @@ fi
       })),
       [
         { campaign: "dependabot", valueId: "dependabot-update-planner.consumed-plan-share", value: 1 },
-        { campaign: "daily-file-diet", valueId: "daily-file-diet.largest-file-lines", value: 1200 },
-        { campaign: "daily-file-diet", valueId: "daily-file-diet.compliant-line-mass-percent", value: 40 },
+        { campaign: "daily-file-diet", valueId: "daily-file-diet.largest-file-health", value: 0.8325 },
+        { campaign: "daily-file-diet", valueId: "daily-file-diet.compliant-line-mass-share", value: 0.4 },
       ],
     );
   } finally {

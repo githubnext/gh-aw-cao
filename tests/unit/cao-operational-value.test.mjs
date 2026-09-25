@@ -398,14 +398,14 @@ fi
       {
         campaign: 'daily-file-diet',
         repository: 'github/gh-aw',
-        valueId: 'daily-file-diet.largest-file-lines',
-        value: 1200,
+        valueId: 'daily-file-diet.largest-file-health',
+        value: 0.8325,
       },
       {
         campaign: 'daily-file-diet',
         repository: 'github/gh-aw',
-        valueId: 'daily-file-diet.compliant-line-mass-percent',
-        value: 40,
+        valueId: 'daily-file-diet.compliant-line-mass-share',
+        value: 0.4,
       },
       {
         campaign: 'daily-file-diet',
