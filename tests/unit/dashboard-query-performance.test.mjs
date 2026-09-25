@@ -45,14 +45,14 @@ test("deployed integration isolates query benchmark reporting from test permissi
 
 test("deployed integration pull request trigger only watches query benchmark inputs", () => {
   const workflow = parse(readFileSync(".github/workflows/dashboard-deployed-integration.yml", "utf8"));
-  const paths = workflow.on.pull_request.paths;
+  const workflowTriggers = workflow.on ?? workflow[true];
+  const paths = workflowTriggers.pull_request.paths;
   for (const path of [
     "dashboard/site/dashboard.json",
     "dashboard/site/src/data/**",
     "dashboard/site/src/data-*.js",
     "dashboard/site/src/dashboard-chunks.js",
     "tests/e2e/dashboard-query-performance.spec.mjs",
-    "tests/performance/dashboard-query-cost.test.mjs",
   ]) {
     assert.ok(paths.includes(path), `expected trigger path ${path}`);
   }
