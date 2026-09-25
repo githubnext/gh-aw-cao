@@ -135,7 +135,7 @@ For each remaining workflow, keep these dimensions separate:
 - total and median AI Credit per successful run;
 - input, output, cache-read, cache-write, and reasoning tokens;
 - turns, duration, errors, retries, failure rate, and cancellation rate;
-- operational-value observations and accepted outcomes when available;
+- operational-grader observations and accepted outcomes when available, kept separate from repository operational value;
 - configured tools, network access, repeated setup, prompt structure, and deterministic work currently assigned to the model.
 
 Never infer accepted value from runtime success or output creation. Never synthesize total tokens from raw token classes. Compare only like-for-like cost grains.

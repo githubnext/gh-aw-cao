@@ -17,32 +17,53 @@ type HostingMode string
 
 const (
 	HostingModeLocal          HostingMode = "local"
+	HostingModeHosted         HostingMode = "hosted"
 	HostingModeAzureFunctions HostingMode = "azure-functions"
 )
 
-type AzureProxyPolicy struct {
-	AllowedHosts []string
-	RequireHTTPS bool
+type ProxyPolicy struct {
+	AllowedHosts   []string
+	RequireHTTPS   bool
+	TrustForwarded bool
 }
 
-func validateAzureMode(store *redisx.Store, config *Config) error {
-	if config.HostingMode != HostingModeAzureFunctions {
+type AzureProxyPolicy = ProxyPolicy
+
+func validateHostedMode(store *redisx.Store, config *Config) error {
+	if config.HostingMode != HostingModeAzureFunctions && config.HostingMode != HostingModeHosted {
 		return nil
 	}
-	if strings.TrimSpace(config.Listen) != "" || config.CertFile != "" || config.KeyFile != "" {
+	if config.HostingMode == HostingModeAzureFunctions &&
+		(strings.TrimSpace(config.Listen) != "" || config.CertFile != "" || config.KeyFile != "") {
 		return errors.New("azure Functions mode must not configure a listener or TLS files")
 	}
+	if config.HostingMode == HostingModeAzureFunctions {
+		config.AzureProxy.TrustForwarded = true
+	}
 	if strings.TrimSpace(config.AccessToken) != "" {
-		return errors.New("azure Functions mode does not support local bearer capabilities")
+		return errors.New("hosted mode does not support local bearer capabilities")
 	}
 	if store == nil {
-		return errors.New("azure Functions mode requires Redis")
+		return errors.New("hosted mode requires Redis")
 	}
-	if len(config.AzureProxy.AllowedHosts) == 0 {
-		return errors.New("azure Functions mode requires an explicit trusted proxy host policy")
+	if len(config.Proxy.AllowedHosts) == 0 && len(config.AzureProxy.AllowedHosts) == 0 {
+		return errors.New("hosted mode requires an explicit trusted proxy host policy")
+	}
+	policy := config.Proxy
+	if config.HostingMode == HostingModeAzureFunctions {
+		policy = config.AzureProxy
+	}
+	if !policy.RequireHTTPS {
+		return errors.New("hosted mode requires HTTPS")
+	}
+	if config.HostingMode == HostingModeHosted {
+		if err := validateHostedListen(config.Listen, config.CertFile, config.KeyFile); err != nil {
+			return err
+		}
+		config.Proxy.TrustForwarded = isLoopbackListen(config.Listen)
 	}
 	if config.GitHubOAuth == nil {
-		return errors.New("azure Functions mode requires GitHub OAuth configuration")
+		return errors.New("hosted mode requires GitHub OAuth configuration")
 	}
 	if err := config.GitHubOAuth.validate(); err != nil {
 		return err
@@ -51,9 +72,14 @@ func validateAzureMode(store *redisx.Store, config *Config) error {
 }
 
 func validAzureProxyRequest(request *http.Request, policy AzureProxyPolicy) bool {
-	host := forwardedHeader(request, "X-Forwarded-Host")
-	if host == "" {
-		host = request.Host
+	host := request.Host
+	secure := request.TLS != nil
+	if policy.TrustForwarded {
+		if forwarded := forwardedHeader(request, "X-Forwarded-Host"); forwarded != "" {
+			host = forwarded
+		}
+		proto := strings.ToLower(strings.TrimSpace(strings.Split(forwardedHeader(request, "X-Forwarded-Proto"), ",")[0]))
+		secure = proto == "https"
 	}
 	host = strings.ToLower(strings.TrimSpace(strings.Split(host, ",")[0]))
 	if host == "" {
@@ -75,8 +101,7 @@ func validAzureProxyRequest(request *http.Request, policy AzureProxyPolicy) bool
 	if !policy.RequireHTTPS {
 		return true
 	}
-	proto := strings.ToLower(strings.TrimSpace(strings.Split(forwardedHeader(request, "X-Forwarded-Proto"), ",")[0]))
-	return proto == "https"
+	return secure
 }
 
 func forwardedHeader(request *http.Request, name string) string {
@@ -162,22 +187,25 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 		SiteDirectory:    siteDirectory,
 		DashboardQueries: definitions,
 		AzureProxy: AzureProxyPolicy{
-			AllowedHosts: splitCSV(os.Getenv("CAO_AZURE_ALLOWED_HOSTS")),
-			RequireHTTPS: strings.TrimSpace(os.Getenv("CAO_AZURE_REQUIRE_HTTPS")) != "false",
+			AllowedHosts:   splitCSV(os.Getenv("CAO_AZURE_ALLOWED_HOSTS")),
+			RequireHTTPS:   true,
+			TrustForwarded: true,
 		},
 		GitHubOAuth: &GitHubOAuthConfig{
-			ClientID:             os.Getenv("CAO_GITHUB_CLIENT_ID"),
-			ClientSecret:         os.Getenv("CAO_GITHUB_CLIENT_SECRET"),
-			RedirectURL:          os.Getenv("CAO_GITHUB_REDIRECT_URL"),
-			SessionSecret:        os.Getenv("CAO_SESSION_SECRET"),
-			AllowedOrganizations: splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_ORGS")),
-			AllowedTeams:         splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_TEAMS")),
+			ClientID:              os.Getenv("CAO_GITHUB_CLIENT_ID"),
+			ClientSecret:          os.Getenv("CAO_GITHUB_CLIENT_SECRET"),
+			RedirectURL:           os.Getenv("CAO_GITHUB_REDIRECT_URL"),
+			SessionSecret:         os.Getenv("CAO_SESSION_SECRET"),
+			PreviousSessionSecret: os.Getenv("CAO_SESSION_SECRET_PREVIOUS"),
+			AllowedOrganizations:  splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_ORGS")),
+			AllowedTeams:          splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_TEAMS")),
 		},
 		Logger: logger,
 	})
 	if err != nil {
 		return nil, err
 	}
+	go app.oauth.runRevocationWorker(context.WithoutCancel(ctx))
 	return app.AzureFunctionsHandler(), nil
 }
 

@@ -1,14 +1,14 @@
 ---
 title: What Is Central Agentic Ops?
-description: Campaign engineering expertise once, operate across repositories, and prove the outcome.
+description: Package engineering expertise once, run campaigns across repositories, and prove the outcome.
 ---
 
-Central Agentic Ops brings **agentic operations as code** to GitHub.
+Central Agentic Ops brings **agentic campaigns as code** to GitHub.
 
 ## Campaign Once. Operate Everywhere.
 
-Turn engineering expertise into a reusable operation campaign. Choose a ready
-operation or build your own, customize it once, run it safely across any set of
+Turn engineering expertise into a reusable campaign. Choose a ready
+campaign or build your own, customize it once, run it safely across any set of
 repositories, and prove the value it delivers.
 
 :::note[More than an agent factory or control plane]
@@ -31,10 +31,10 @@ The [Quickstart](getting-started.md) guides you through the rest.
 ```mermaid
 flowchart TB
   you(["You"])
-  ready["Discover<br/>ready operations"]
-  custom["Create<br/>your own operations"]
-  campaign["Operation campaign<br/>your expertise as reusable code"]
-  hub["Operations hub<br/>customize · control · coordinate"]
+  ready["Discover<br/>ready campaigns"]
+  custom["Create<br/>your own campaigns"]
+  campaign["Campaign<br/>your expertise as reusable code"]
+  hub["Campaign hub<br/>customize · control · coordinate"]
   estate["Your repositories<br/>one or thousands"]
   outcomes["Proven outcomes<br/>review · cost · value"]
   improve["Improve once<br/>reuse everywhere"]
@@ -48,22 +48,22 @@ flowchart TB
 ## What “Central” Means
 
 Central does not mean one global installation. Each organization, team, region,
-or trust boundary can run its own operations hub. Work is centralized within
+or trust boundary can run its own campaign hub. Work is centralized within
 that boundary and distributed across the enterprise.
 
 ## The System Improves With You
 
-The **CAO Evolution** operation closes the loop. It uses retained outcomes and
-review evidence to spot recurring capabilities your installed operations do not
-cover, then suggests one relevant operation from the official catalog or a
-custom operation to author. It never installs or enables the suggestion: your
+The **CAO Evolution** campaign closes the loop. It uses retained outcomes and
+review evidence to spot recurring capabilities your installed campaigns do not
+cover, then suggests one relevant campaign from the official catalog or a
+custom campaign to author. It never installs or enables the suggestion: your
 maintainers review that change and choose its rollout.
 
 ## Why It Is Different
 
-- **Operations as code:** campaign a desired repository outcome, not only a
+- **Campaigns as code:** package a desired repository outcome, not only a
   prompt or agent persona.
-- **Ready or custom:** adopt a proven operation or create one unique to your
+- **Ready or custom:** adopt a proven campaign or create one unique to your
   organization.
 - **Fleet-scale:** improve once and reuse across thousands of repositories
   without copying workflows everywhere.
@@ -71,5 +71,5 @@ maintainers review that change and choose its rollout.
   value instead of counting agent activity.
 
 [Start with the Quickstart](getting-started.md), [author your first
-operation](author-your-first-operation.md), or [browse ready
-operations](catalog.md).
+campaign](author-your-first-operation.md), or [browse ready
+campaigns](catalog.md).

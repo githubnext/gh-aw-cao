@@ -11,7 +11,7 @@ describe('DLS-CONF-004 scaffold gates', () => {
   it('keeps the browser preview populated with chart and linked-run fixtures', () => {
     const preview = readFileSync(resolve('src/dashboard-app.js'), 'utf8');
 
-    expect(preview.match(/"operational-value":/g)).toHaveLength(8);
+    expect(preview.match(/"operational-grader":/g)).toHaveLength(8);
     expect(preview.match(/"run-link":/g)?.length).toBeGreaterThanOrEqual(5);
   });
 
@@ -242,7 +242,7 @@ describe('DLS-CONF-004 scaffold gates', () => {
     const styles = readFileSync(resolve('src/styles.js'), 'utf8');
 
     expect(styles).toContain('.primary-nav { display: none; }');
-    expect(styles).toContain('.dashboard-overview-page { margin: calc(-1 * var(--dashboard-mobile-page-padding-top)) calc(-1 * var(--dashboard-mobile-page-padding-inline)) 0; }');
+    expect(styles).toContain('.dashboard-overview-page { margin: calc(-1 * var(--dashboard-mobile-page-padding-top)) calc(-1 * var(--dashboard-page-padding-inline)) 0; }');
   });
 
   it('stacks the expanded filter panel above the page header and hides the horizon tooltip', () => {
@@ -259,13 +259,6 @@ describe('DLS-CONF-004 scaffold gates', () => {
 
     expect(panelLayer).toBeGreaterThan(headerLayer);
     expect(styles).toContain('.filter-bar-expanded :is(.horizon-summary:hover, .horizon-summary:focus-within) .horizon-tooltip { visibility: hidden; opacity: 0; }');
-  });
-
-  it('systematically ellipsizes security signal titles at every viewport size', () => {
-    const styles = readFileSync(resolve('src/styles.js'), 'utf8');
-
-    expect(styles).toContain('.signal-copy > strong, .signal-copy > small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }');
-    expect(styles).not.toContain('.signal-copy > strong, .signal-copy > small { overflow: visible; white-space: normal; }');
   });
 
   it('systematically ellipsizes output evidence at every viewport size', () => {

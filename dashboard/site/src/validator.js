@@ -12,6 +12,7 @@ import {
   CUSTOM_PAGE_KEYS,
   DASHBOARD_KEYS,
   DASHBOARD_HORIZON_KEYS,
+  DASHBOARD_LINK_FIELD_NAMES,
   DASHBOARD_QUERY_LIMITS,
   COMPUTE_FUNCTION_ARITY,
   NUMERIC_COMPUTE_FUNCTIONS,
@@ -62,7 +63,6 @@ import {
   FACTORY_FLOOR_STATION_VALUES,
   FACTORY_HEADER_SOURCE_ROLES,
   FACTORY_FLOOR_SOURCE_ROLES,
-  FACTORY_OVERVIEW_SECTION_VALUES,
   FILTER_DIMENSION_VALUES,
   DETECTION_STATE_VALUES,
   FINDING_SEVERITY_VALUES,
@@ -75,12 +75,15 @@ import {
   MAX_CLI_ACTIONS,
   MAX_CLI_ACTION_ARGUMENTS,
   MAX_CLI_ACTION_COMMAND_LENGTH,
+  NAVIGATION_INDICATOR_KEYS,
+  NAVIGATION_INDICATOR_PREDICATE_KEYS,
   NAVIGATION_SECTION_KEYS,
   NON_ADDITIVE_MEASURE_FIELDS,
   ORDER_BY_KEYS,
   ORDER_DIRECTION_VALUES,
   OUTCOME_STATE_VALUES,
   PAGE_ROUTE_KEYS,
+  PAGE_ROUTE_TITLE_FORMAT_VALUES,
   PAGE_ROUTE_TAB_KEYS,
   MAX_PAGE_ROUTE_TABS,
   PAGE_ICON_VALUES,
@@ -142,7 +145,6 @@ import {
 import {
   OUTCOME_DETAIL_SECTION_BODY_VALUES,
   CAMPAIGN_ROUTE_BODY_VALUES,
-  WORK_VIEW_BODY_VALUES,
   WORKFLOW_ROUTE_BODY_VALUES
 } from './components/route-body-specification.js';
 import { cliActionTemplateFields } from './cli-action-template.js';
@@ -649,6 +651,7 @@ function validateCardTemplates(templates, templatesNode, errors) {
     validateCardTemplateStatus(template.status, getValueNodeByKey(templateNode, 'status'), `${path}.status`, errors);
     validateCardTemplateTiming(template.timing, getValueNodeByKey(templateNode, 'timing'), `${path}.timing`, errors);
     validateCardTemplateActions(template.actions, getValueNodeByKey(templateNode, 'actions'), `${path}.actions`, errors);
+    validateListDrill(template.drill, getValueNodeByKey(templateNode, 'drill'), path, 'entity-cards', errors);
     for (const key of ['labels', 'details']) {
       const fields = template[key];
       if (!Array.isArray(fields) || (key === 'details' && fields.length === 0)) {
@@ -1147,6 +1150,28 @@ function validateDashboard(dashboard, dashboardNode, errors) {
     }
     validatePage(resolveReusablePageViews(page), getSequenceItemNode(getValueNodeByKey(dashboardNode, 'pages'), index), `$.dashboard.pages[${index}]`, pageIds, errors);
   });
+  (Array.isArray(dashboard['card-templates']) ? dashboard['card-templates'] : []).forEach((template, index) => {
+    if (!isPlainObject(template) || !isPlainObject(template.drill)) return;
+    const fields = [
+      template.title,
+      template.subtitle,
+      template.status,
+      ...(Array.isArray(template.labels) ? template.labels : []),
+      ...(Array.isArray(template.details) ? template.details : []),
+      ...(Array.isArray(template.timing) ? template.timing : [])
+    ].flatMap((field) => (
+      isPlainObject(field) && typeof field.field === 'string' ? [field.field] : []
+    ));
+    validateQueryDrillReferences(
+      template.drill,
+      `$.dashboard.card-templates[${index}].drill`,
+      dashboard,
+      pageIds,
+      declaredQueries,
+      fields,
+      errors
+    );
+  });
   dashboard.pages.forEach((page, index) => {
     page = resolveReusablePageViews(page);
     if (!isPlainObject(page)) return;
@@ -1217,75 +1242,11 @@ function validateDashboard(dashboard, dashboardNode, errors) {
           ? `${viewPath}.card-drill`
           : `${viewPath}.list.drill`;
         if (drill?.type === 'query') {
-          if (typeof drill.page === 'string' && IDENTIFIER_PATTERN.test(drill.page) && !pageIds.has(drill.page)) {
-            errors.push(createError(
-              ERROR_CODES.missingOrInvalidRequiredField,
-              'query drill page must reference a declared dashboard page id.',
-              `${drillPath}.page`
-            ));
-          }
-          if (typeof drill.query === 'string' && IDENTIFIER_PATTERN.test(drill.query) && !declaredQueries.has(drill.query)) {
-            errors.push(createError(
-              ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-              'query drill query must reference a declared dashboard query.',
-              `${drillPath}.query`
-            ));
-          }
           const sourceName = isPlainObject(view.data) && typeof view.data.source === 'string'
             ? view.data.source
             : null;
           const fields = sourceName ? sourceFieldNames(sourceName) : null;
-          for (const [field, fieldPath] of [
-            [drill['title-field'], `${drillPath}.title-field`],
-            ...(Array.isArray(drill.arguments)
-              ? drill.arguments.map((argument, argumentIndex) => [
-                  isPlainObject(argument) ? argument.field : undefined,
-                  `${drillPath}.arguments[${argumentIndex}].field`
-                ])
-              : [])
-          ]) {
-            if (fields && typeof field === 'string' && !fields.includes(field)) {
-              errors.push(createError(
-                ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-                'query drill field must be declared by the current view data source.',
-                String(fieldPath)
-              ));
-            }
-          }
-          const targetPage = resolveReusablePageViews(/** @type {unknown[]} */ (dashboard.pages)
-            .find((candidate) => isPlainObject(candidate) && candidate.id === drill.page));
-          const targetViews = isPlainObject(targetPage)
-            ? targetPage.kind === 'built-in' && isPlainObject(targetPage.definition)
-              ? targetPage.definition.views
-              : targetPage.views
-            : undefined;
-          const argumentNames = new Set(Array.isArray(drill.arguments)
-            ? drill.arguments.flatMap((argument) => (
-                isPlainObject(argument) && typeof argument.name === 'string' ? [argument.name] : []
-              ))
-            : []);
-          const destinationBindsQuery = Array.isArray(targetViews) && targetViews.some((targetView) => {
-            if (!isPlainObject(targetView) || !isPlainObject(targetView.data) || targetView.data.source !== drill.query) return false;
-            const boundNames = new Set(Array.isArray(targetView.data.arguments)
-              ? targetView.data.arguments.flatMap((argument) => (
-                  isPlainObject(argument) && typeof argument.name === 'string' ? [argument.name] : []
-                ))
-              : []);
-            return [...argumentNames].every((name) => boundNames.has(name));
-          });
-          if (
-            typeof drill.page === 'string'
-            && pageIds.has(drill.page)
-            && typeof drill.query === 'string'
-            && declaredQueries.has(drill.query)
-            && !destinationBindsQuery
-          ) {
-            errors.push(createError(
-              ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-              'query drill destination must bind the declared query and every drill argument.',
-              drillPath
-            ));
-          }
+          validateQueryDrillReferences(drill, drillPath, dashboard, pageIds, declaredQueries, fields, errors);
         }
       });
     }
@@ -1443,6 +1404,13 @@ function validateDashboard(dashboard, dashboardNode, errors) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
             'USD units must use symbol "USD" and significant 0.001.',
+            path
+          ));
+        }
+        if (definition.format === 'aicc' && (definition.name !== 'AICc($)' || definition.significant !== 2)) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'AIC cost units must use name "AICc($)" and significant 2.',
             path
           ));
         }
@@ -1640,6 +1608,12 @@ function validatePage(page, pageNode, path, pageIds, errors) {
 
   validateOptionalStringField(page.title, `${path}.title`, errors);
   validateOptionalStringField(page['navigation-label'], `${path}.navigation-label`, errors);
+  validateNavigationIndicator(
+    page['navigation-indicator'],
+    getValueNodeByKey(pageNode, 'navigation-indicator'),
+    `${path}.navigation-indicator`,
+    errors
+  );
   validateOptionalStringField(page.description, `${path}.description`, errors);
   if (page['class-name'] !== undefined) {
     validateRequiredIdentifier(page['class-name'], `${path}.class-name`, 'page class name', errors);
@@ -1676,6 +1650,41 @@ function validatePage(page, pageNode, path, pageIds, errors) {
   validateObjectKeys(pageNode, [...BUILT_IN_PAGE_KEYS, ...CUSTOM_PAGE_KEYS], path, errors);
 }
 
+/**
+ * @param {unknown} indicator
+ * @param {unknown} indicatorNode
+ * @param {string} path
+ * @param {ValidationError[]} errors
+ */
+function validateNavigationIndicator(indicator, indicatorNode, path, errors) {
+  if (indicator === undefined) return;
+  if (!isPlainObject(indicator)) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'navigation-indicator must be a mapping.', path));
+    return;
+  }
+  validateObjectKeys(indicatorNode, NAVIGATION_INDICATOR_KEYS, path, errors);
+  validateStringField(indicator.label, `${path}.label`, true, errors);
+  if (!Array.isArray(indicator.any) || indicator.any.length === 0) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'navigation-indicator any must be a non-empty sequence.', `${path}.any`));
+    return;
+  }
+  indicator.any.forEach((predicate, index) => {
+    const predicatePath = `${path}.any[${index}]`;
+    const predicateNode = getSequenceItemNode(getValueNodeByKey(indicatorNode, 'any'), index);
+    if (!isPlainObject(predicate)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'navigation-indicator predicate must be a mapping.', predicatePath));
+      return;
+    }
+    validateObjectKeys(predicateNode, NAVIGATION_INDICATOR_PREDICATE_KEYS, predicatePath, errors);
+    validateStringField(predicate.source, `${predicatePath}.source`, true, errors);
+    validateStringField(predicate.field, `${predicatePath}.field`, true, errors);
+    if (!Object.hasOwn(predicate, 'equals')) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'navigation-indicator predicate equals is required.', `${predicatePath}.equals`));
+    } else if (!['string', 'number', 'boolean'].includes(typeof predicate.equals)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'navigation-indicator predicate equals must be a scalar.', `${predicatePath}.equals`));
+    }
+  });
+}
 
 /**
  * @param {Record<string, unknown>} page
@@ -2234,7 +2243,7 @@ function validateRouteTabs(route, routePath, errors) {
       identifiers.add(tab.id);
     }
   }
-  if (typeof route.tab !== 'string' || !identifiers.has(route.tab)) {
+  if (route.tab !== undefined && (typeof route.tab !== 'string' || !identifiers.has(route.tab))) {
     errors.push(createError(
       ERROR_CODES.missingOrInvalidRequiredField,
       'route tab must name one declared route tab id.',
@@ -2288,6 +2297,24 @@ function validateCustomPage(page, pageNode, path, errors) {
           page.route['navigation-page'],
           `${routePath}.navigation-page`,
           'route navigation page',
+          errors
+        );
+      }
+      const routeTitleFormat = page.route['title-format'];
+      if (routeTitleFormat !== undefined
+          && (typeof routeTitleFormat !== 'string'
+            || !PAGE_ROUTE_TITLE_FORMAT_VALUES.includes(routeTitleFormat))) {
+        errors.push(createError(
+          ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+          `route title-format must be one of: ${PAGE_ROUTE_TITLE_FORMAT_VALUES.join(', ')}.`,
+          `${routePath}.title-format`
+        ));
+      }
+      if (page.route['tabs-class-name'] !== undefined) {
+        validateRequiredIdentifier(
+          page.route['tabs-class-name'],
+          `${routePath}.tabs-class-name`,
+          'route tabs class name',
           errors
         );
       }
@@ -2624,15 +2651,13 @@ function validateView(view, viewNode, path, viewIds, errors) {
     } else {
       const configNode = getValueNodeByKey(viewNode, 'config');
       validateObjectKeys(configNode, VIEW_ELEMENT_CONFIG_KEYS, `${path}.config`, errors);
-      if ((view.element === 'workflow-route' || view.element === 'workflow-route-page' || view.element === 'campaign-route' || view.element === 'outcome-detail-section' || view.element === 'work-project-view') && view.config.body !== undefined) {
+      if ((view.element === 'workflow-route-page' || view.element === 'campaign-route' || view.element === 'outcome-detail-section') && view.config.body !== undefined) {
         validateStringField(view.config.body, `${path}.config.body`, true, errors);
-       const allowedBodies = view.element === 'workflow-route' || view.element === 'workflow-route-page'
+       const allowedBodies = view.element === 'workflow-route-page'
          ? WORKFLOW_ROUTE_BODY_VALUES
          : view.element === 'campaign-route'
            ? CAMPAIGN_ROUTE_BODY_VALUES
-           : view.element === 'work-project-view'
-             ? WORK_VIEW_BODY_VALUES
-             : OUTCOME_DETAIL_SECTION_BODY_VALUES;
+           : OUTCOME_DETAIL_SECTION_BODY_VALUES;
        if (typeof view.config.body === 'string' && !allowedBodies.includes(view.config.body)) {
          errors.push(createError(
            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
@@ -2643,68 +2668,30 @@ function validateView(view, viewNode, path, viewIds, errors) {
       } else if (view.config.body !== undefined) {
        errors.push(createError(
          ERROR_CODES.missingOrInvalidRequiredField,
-         'config.body is supported only for the workflow-route, workflow-route-page, campaign-route, outcome-detail-section, and work-project-view elements.',
+         'config.body is supported only for the workflow-route-page, campaign-route, and outcome-detail-section elements.',
          `${path}.config.body`
        ));
       }
       if (view.config['view-all-page'] !== undefined) {
         validateStringField(view.config['view-all-page'], `${path}.config.view-all-page`, true, errors);
-        if (view.element !== 'signal-list' && view.element !== 'needs-attention-list') {
-          errors.push(createError(
-            ERROR_CODES.missingOrInvalidRequiredField,
-            'config.view-all-page is supported only for the signal-list element.',
-            `${path}.config.view-all-page`
-          ));
-        }
+        errors.push(createError(
+          ERROR_CODES.missingOrInvalidRequiredField,
+          'config.view-all-page is not supported by a registered element.',
+          `${path}.config.view-all-page`
+        ));
       }
       if (view.config['view-all-label'] !== undefined) {
         validateStringField(view.config['view-all-label'], `${path}.config.view-all-label`, true, errors);
-        if (view.element !== 'signal-list' && view.element !== 'needs-attention-list') {
-          errors.push(createError(
-            ERROR_CODES.missingOrInvalidRequiredField,
-            'config.view-all-label is supported only for the signal-list element.',
-            `${path}.config.view-all-label`
-          ));
-        }
+        errors.push(createError(
+          ERROR_CODES.missingOrInvalidRequiredField,
+          'config.view-all-label is not supported by a registered element.',
+          `${path}.config.view-all-label`
+        ));
       }
-      const allowedSections = view.element === 'work-project-view'
-        ? WORK_VIEW_BODY_VALUES
-        : view.element === 'outcomes-overview'
-          ? FACTORY_OVERVIEW_SECTION_VALUES
-          : null;
-      if (allowedSections && view.config.sections !== undefined) {
-       if (!Array.isArray(view.config.sections) || view.config.sections.length === 0) {
-         errors.push(createError(
-           ERROR_CODES.missingOrInvalidRequiredField,
-           `${view.element} config.sections must be a non-empty list.`,
-           `${path}.config.sections`
-         ));
-       } else {
-         const seenSections = new Set();
-         for (let index = 0; index < view.config.sections.length; index += 1) {
-           const section = view.config.sections[index];
-           validateStringField(section, `${path}.config.sections[${index}]`, true, errors);
-           if (seenSections.has(section)) {
-             errors.push(createError(
-               ERROR_CODES.unknownOrDuplicateKey,
-               `${view.element} config.sections values must be unique.`,
-               `${path}.config.sections[${index}]`
-             ));
-           }
-           seenSections.add(section);
-           if (typeof section === 'string' && !allowedSections.includes(section)) {
-             errors.push(createError(
-               ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-               `${view.element} config.sections must use canonical section values.`,
-               `${path}.config.sections[${index}]`
-             ));
-           }
-         }
-       }
-      } else if (view.config.sections !== undefined) {
+      if (view.config.sections !== undefined) {
        errors.push(createError(
          ERROR_CODES.missingOrInvalidRequiredField,
-         'config.sections is supported only for the work-project-view and outcomes-overview elements.',
+         'config.sections is not supported by a registered element.',
          `${path}.config.sections`
        ));
       }
@@ -2756,10 +2743,10 @@ function validateView(view, viewNode, path, viewIds, errors) {
         }
       }
       if (view.config.animate !== undefined) {
-        if (view.element !== 'factory-floor' && view.element !== 'outcomes-overview') {
+        if (view.element !== 'factory-floor') {
           errors.push(createError(
             ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-            'config.animate is supported only for the factory-floor and outcomes-overview elements.',
+            'config.animate is supported only for the factory-floor element.',
             `${path}.config.animate`
           ));
         }
@@ -2798,11 +2785,27 @@ function validateView(view, viewNode, path, viewIds, errors) {
       for (const key of linkButtonConfigKeys) {
         if (view.config[key] === undefined) continue;
         validateStringField(view.config[key], `${path}.config.${key}`, true, errors);
-        if (view.element !== 'link-button-list') {
+        if (view.element !== 'link-button-list' && !(key === 'empty-message' && view.element === 'measure-history')) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
             `config.${key} is supported only for the link-button-list element.`,
             `${path}.config.${key}`
+          ));
+        }
+      }
+      if (view.config['measure-source'] !== undefined) {
+        validateStringField(view.config['measure-source'], `${path}.config.measure-source`, true, errors);
+        if (view.element !== 'measure-history') {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'config.measure-source is supported only for the measure-history element.',
+            `${path}.config.measure-source`
+          ));
+        } else if (!['operational-value', 'operational-grader'].includes(String(view.config['measure-source']))) {
+          errors.push(createError(
+            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+            'measure-history config.measure-source must use a canonical measure source value.',
+            `${path}.config.measure-source`
           ));
         }
       }
@@ -3230,6 +3233,87 @@ function validateListDrill(drill, drillNode, listPath, style, errors) {
 }
 
 /**
+ * @param {Record<string, any>} drill
+ * @param {string} drillPath
+ * @param {Record<string, any>} dashboard
+ * @param {Set<string>} pageIds
+ * @param {Map<string, string[] | undefined>} declaredQueries
+ * @param {string[] | null | undefined} fields
+ * @param {ValidationError[]} errors
+ */
+function validateQueryDrillReferences(drill, drillPath, dashboard, pageIds, declaredQueries, fields, errors) {
+  if (drill.type !== 'query') return;
+  if (typeof drill.page === 'string' && IDENTIFIER_PATTERN.test(drill.page) && !pageIds.has(drill.page)) {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      'query drill page must reference a declared dashboard page id.',
+      `${drillPath}.page`
+    ));
+  }
+  if (typeof drill.query === 'string' && IDENTIFIER_PATTERN.test(drill.query) && !declaredQueries.has(drill.query)) {
+    errors.push(createError(
+      ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+      'query drill query must reference a declared dashboard query.',
+      `${drillPath}.query`
+    ));
+  }
+  for (const [field, fieldPath] of [
+    [drill['title-field'], `${drillPath}.title-field`],
+    ...(Array.isArray(drill.arguments)
+      ? drill.arguments.map((argument, argumentIndex) => [
+          isPlainObject(argument) ? argument.field : undefined,
+          `${drillPath}.arguments[${argumentIndex}].field`
+        ])
+      : [])
+  ]) {
+    if (fields && typeof field === 'string' && !fields.includes(field)) {
+      errors.push(createError(
+        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        'query drill field must be declared by the current card or view data source.',
+        String(fieldPath)
+      ));
+    }
+  }
+  const targetPage = resolveReusablePageViews(/** @type {unknown[]} */ (dashboard.pages)
+    .find((candidate) => isPlainObject(candidate) && candidate.id === drill.page));
+  const targetViews = isPlainObject(targetPage)
+    ? targetPage.kind === 'built-in' && isPlainObject(targetPage.definition)
+      ? targetPage.definition.views
+      : targetPage.views
+    : undefined;
+  const argumentNames = new Set(Array.isArray(drill.arguments)
+    ? drill.arguments.flatMap((argument) => (
+        isPlainObject(argument) && typeof argument.name === 'string' ? [argument.name] : []
+      ))
+    : []);
+  const destinationBindsQuery = Array.isArray(targetViews) && targetViews.some((targetView) => {
+    if (!isPlainObject(targetView) || !isPlainObject(targetView.data)) return false;
+    const bindsQuery = targetView.data.source === drill.query
+      || (Array.isArray(targetView.data.sources) && targetView.data.sources.includes(drill.query));
+    if (!bindsQuery) return false;
+    const boundNames = new Set(Array.isArray(targetView.data.arguments)
+      ? targetView.data.arguments.flatMap((argument) => (
+          isPlainObject(argument) && typeof argument.name === 'string' ? [argument.name] : []
+        ))
+      : []);
+    return [...argumentNames].every((name) => boundNames.has(name));
+  });
+  if (
+    typeof drill.page === 'string'
+    && pageIds.has(drill.page)
+    && typeof drill.query === 'string'
+    && declaredQueries.has(drill.query)
+    && !destinationBindsQuery
+  ) {
+    errors.push(createError(
+      ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+      'query drill destination must bind the declared query and every drill argument.',
+      drillPath
+    ));
+  }
+}
+
+/**
  * @param {unknown} viewAll
  * @param {unknown} viewAllNode
  * @param {string} listPath
@@ -3510,14 +3594,21 @@ function validateProgressiveDisclosure(views, path, errors) {
 function validateGraphicalLayout(views, viewsPath, errors, pageId) {
   if (pageId !== undefined && GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS.has(pageId)) return;
   const validViews = views.filter(isPlainObject);
-  const defaultOpenTables = validViews.filter((view) => (
-    view.locked !== true && view.mark === 'table' && view.disclosure !== 'supplemental'
-  ));
+  const unlockedTables = validViews.filter((view) => view.locked !== true && view.mark === 'table');
+  const defaultOpenTables = unlockedTables.filter((view) => view.disclosure !== 'supplemental');
   for (const table of defaultOpenTables.slice(1)) {
     const index = views.indexOf(table);
     errors.push(createError(
       ERROR_CODES.invalidProgressiveDisclosureConfiguration,
       'Only one table may be open by default on a page. Mark additional tables as "supplemental".',
+      `${viewsPath}[${index}].disclosure`
+    ));
+  }
+  if (unlockedTables.length === 1 && defaultOpenTables.length === 0) {
+    const index = views.indexOf(unlockedTables[0]);
+    errors.push(createError(
+      ERROR_CODES.invalidProgressiveDisclosureConfiguration,
+      '"supplemental" disclosure is reserved for additional tables beyond a page\u2019s first; a page\u2019s only table must not hide its content behind disclosure.',
       `${viewsPath}[${index}].disclosure`
     ));
   }
@@ -3918,7 +4009,7 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
                 `${argumentPath}.field`,
                 typeof computed.function !== 'string' ? 'read'
                   : NUMERIC_COMPUTE_FUNCTIONS.includes(computed.function) ? 'numeric'
-                    : ['coalesce', 'dashboard-link'].includes(computed.function) ? 'read' : 'scalar'
+                    : ['coalesce', 'dashboard-link', 'link-href'].includes(computed.function) ? 'read' : 'scalar'
               );
             } else if (hasContext && argument.context !== 'time-end') {
               errors.push(createError(
@@ -5458,10 +5549,10 @@ function validateHrefFieldDefinition(fieldNode, fieldDefinition, sourceName, pat
     return;
   }
 
-  if (!LINK_FIELD_NAMES.includes(fieldName)) {
+  if (!LINK_FIELD_NAMES.includes(fieldName) && !DASHBOARD_LINK_FIELD_NAMES.includes(fieldName)) {
     errors.push(createError(
       ERROR_CODES.invalidLinkReference,
-      'href.field must reference exactly one relation-specific link field.',
+      'href.field must reference one relation-specific link field or one declared campaign, repository, or workflow dashboard link field.',
       `${path}.field`
     ));
   }

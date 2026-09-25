@@ -28,7 +28,7 @@ const scenarios = [
     id: 'cfo',
     persona: 'Chief Financial Officer',
     question: 'Where is AI Credit usage concentrated, and is it producing operational value?',
-    routes: ['usage', 'campaigns', 'repositories']
+    routes: ['cost', 'campaigns', 'repositories']
   },
   {
     id: 'cto',
@@ -40,7 +40,7 @@ const scenarios = [
     id: 'cso',
     persona: 'Chief Security Officer',
     question: 'Which assurance gap requires immediate action?',
-    routes: ['firewall', 'findings', 'mcps']
+    routes: ['firewall', 'overview-security-findings', 'mcps']
   }
 ];
 

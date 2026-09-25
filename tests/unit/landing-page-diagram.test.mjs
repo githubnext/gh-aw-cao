@@ -6,6 +6,7 @@ import { buildWizardPolicy, selectConfiguredOperations } from "../../docs/lib/co
 
 const controlPolicy = JSON.parse(readFileSync(".github/workflows/cao.json", "utf8"));
 
+const landingPage = readFileSync("docs/README.md", "utf8");
 const hero = readFileSync("docs/components/HierarchyHero.astro", "utf8");
 const illustration = readFileSync("docs/components/DispatchIllustration.astro", "utf8");
 const wizard = readFileSync("docs/components/OpsWizard.astro", "utf8");
@@ -16,6 +17,16 @@ const sparklePathData = "M7.53 1.282a.5.5 0 0 1 .94 0l.478 1.306a7.492 7.492 0 0
 function withoutRootPalette(svg) {
   return svg.replace(/:root \{[^}]+\}/, ":root {}");
 }
+
+test("landing page presents catalog packages as campaigns", () => {
+  assert.match(landingPage, /Run your first campaign/);
+  assert.match(landingPage, /Explore campaigns/);
+  assert.match(hero, /Agentic campaigns as code/);
+  assert.match(hero, /Choose a ready campaign or build your own/);
+  assert.match(wizard, /Start a campaign in three steps/);
+  assert.match(wizard, /Choose the campaign to run/);
+  assert.doesNotMatch(`${landingPage}\n${hero}`, /\bfactor(?:y|ies)\b/i);
+});
 
 test("landing diagram fallbacks use concrete light and dark palettes", () => {
   for (const layout of ["fallback", "mobile"]) {

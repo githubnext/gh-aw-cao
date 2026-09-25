@@ -12,6 +12,17 @@ describe('declaredRouteTabs', () => {
     expect(declaredRouteTabs({ tabs, tab: 'settings' })).toEqual({ tabs, currentTab: 'settings' });
   });
 
+  it('carries the declared tab class into loading and hydrated route chrome', () => {
+    expect(declaredRouteTabs({
+      tabs,
+      'tabs-class-name': 'campaign-tabs'
+    })).toEqual({
+      tabs,
+      currentTab: '',
+      className: 'campaign-tabs'
+    });
+  });
+
   it('ignores routes without usable tab declarations', () => {
     expect(declaredRouteTabs(null)).toBeNull();
     expect(declaredRouteTabs({})).toBeNull();
@@ -39,6 +50,21 @@ describe('renderDeclaredRouteTabs', () => {
     expect(links.map((link) => link.textContent?.trim())).toEqual(['Overview', 'Settings']);
     expect(links[0].getAttribute('href')).toBe('#page-repository-detail?repository=octo-org%2Focto%20repo');
     expect(links[1].getAttribute('aria-current')).toBe('page');
+  });
+
+  it('uses a declared tab class without adding count badges', () => {
+    element = renderDeclaredRouteTabs({
+      routeParameter: 'campaign',
+      currentTab: 'overview',
+      tabs,
+      className: 'campaign-tabs'
+    });
+    element.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'campaign', value: 'optimization' }
+    }));
+
+    expect(element.querySelector('[data-route-tabs]')?.classList.contains('campaign-tabs')).toBe(true);
+    expect(element.querySelector('.count-badge')).toBeNull();
   });
 
   it('ignores route changes for other parameters and clears on an empty value', () => {

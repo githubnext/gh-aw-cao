@@ -43,6 +43,7 @@ export const COMPUTE_FUNCTION_ARITY = {
   'date-day': [1, 1],
   'calendar-week-point': [3, 3],
   'dashboard-link': [3, 4],
+  'link-href': [1, 1],
   'equals-any': [2, 8],
   'greater-than': [2, 2],
   if: [3, 3],
@@ -60,7 +61,7 @@ export const COMPUTE_FUNCTION_ARITY = {
 
 /** Computed-field functions whose result is always text or null. */
 export const TEXT_COMPUTE_FUNCTIONS = [
-  'concat', 'lower', 'upper', 'title-case', 'trim', 'replace-suffix', 'url-encode', 'date-day', 'calendar-week-point', 'format-count', 'format-percent', 'failure-streak-point'
+  'concat', 'lower', 'upper', 'title-case', 'trim', 'replace-suffix', 'url-encode', 'date-day', 'calendar-week-point', 'format-count', 'format-percent', 'failure-streak-point', 'link-href'
 ];
 
 /** Computed-field functions whose result is always a finite number or null. */
@@ -320,6 +321,10 @@ export function computeValue(row, definition) {
     return href.startsWith('#page-') && label && identity
       ? { ...existing, 'dashboard-href': href, 'dashboard-label': label }
       : null;
+  }
+  if (definition.function === 'link-href') {
+    const link = values[0];
+    return isPlainObject(link) && typeof link.href === 'string' && link.href ? link.href : null;
   }
   if (definition.function === 'equals-any') {
     return values.slice(1).some((value) => sameValue(values[0], value));

@@ -241,10 +241,10 @@ describe('declarative dashboard queries', () => {
         'firewall-observations': {
           source: 'firewall-observations',
           rows: [
-            { domain: 'api.github.com', organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', decision: 'allowed', 'request-count': 2 },
-            { domain: 'api.github.com', organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', decision: 'denied', 'request-count': 5 },
-            { domain: 'api.github.com', organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', decision: 'denied', 'request-count': 3 },
-            { domain: 'uploads.github.com', organization: 'githubnext', repository: 'other', workflow: 'c.md', run: '3', decision: 'allowed', 'request-count': 7 }
+            { domain: 'api.github.com', organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', decision: 'allowed', 'request-count': 2, 'workflow-link': { href: 'https://github.com/githubnext/gh-aw-cao/blob/HEAD/a.md' } },
+            { domain: 'api.github.com', organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', decision: 'denied', 'request-count': 5, 'workflow-link': { href: 'https://github.com/githubnext/gh-aw-cao/blob/HEAD/a.md' } },
+            { domain: 'api.github.com', organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', decision: 'denied', 'request-count': 3, 'workflow-link': { href: 'https://github.com/githubnext/gh-aw-cao/blob/HEAD/a.md' } },
+            { domain: 'uploads.github.com', organization: 'githubnext', repository: 'other', workflow: 'c.md', run: '3', decision: 'allowed', 'request-count': 7, 'workflow-link': { href: 'https://github.example.com/githubnext/other/blob/HEAD/c.md' } }
           ],
           metadata: metadata('firewall-observations')
         },
@@ -282,6 +282,7 @@ describe('declarative dashboard queries', () => {
         organization: 'githubnext',
         repository: 'gh-aw-cao',
         workflow: 'a.md',
+        'workflow-source-url': 'https://github.com/githubnext/gh-aw-cao/blob/HEAD/a.md',
         runs: 2,
         accepted: 2,
         blocked: 8
@@ -291,6 +292,7 @@ describe('declarative dashboard queries', () => {
         organization: 'githubnext',
         repository: 'other',
         workflow: 'c.md',
+        'workflow-source-url': 'https://github.example.com/githubnext/other/blob/HEAD/c.md',
         runs: 1,
         accepted: 7,
         blocked: 0
@@ -945,7 +947,13 @@ describe('declarative dashboard queries', () => {
   it('computes Repositories, Workflows, and Campaigns view payloads from dashboard queries', () => {
     const repositories = {
       source: 'repositories',
-      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', 'repository-link': { href: 'repo' } }],
+      rows: [{
+        id: 'repository:githubnext/gh-aw-cao',
+        organization: 'githubnext',
+        repository: 'gh-aw-cao',
+        'repository-coordinate': 'githubnext/gh-aw-cao',
+        'repository-link': { href: 'repo' }
+      }],
       metadata: metadata('repositories')
     };
     const queryWorkflows = {
@@ -984,7 +992,7 @@ describe('declarative dashboard queries', () => {
       rows: [
         { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1, event: 'workflow_dispatch', 'run-conclusion': 'failure', 'aic-total': 4, 'started-at': '2026-09-01T01:00:00Z' },
         { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1, event: 'schedule', 'run-conclusion': 'success', 'aic-total': 6, 'started-at': '2026-09-02T01:00:00Z' },
-        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'c.md', run: '3', 'run-attempt': 1, event: 'schedule', 'run-conclusion': 'success', 'aic-total': 0, 'started-at': '2026-09-03T01:00:00Z' }
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'c.md', run: '3', 'run-attempt': 1, event: 'workflow_dispatch', 'run-conclusion': 'success', 'aic-total': 0, 'target-repository': 'githubnext/gh-aw-cao', 'started-at': '2026-09-03T01:00:00Z' }
       ],
       metadata: metadata('runs')
     };
@@ -1002,16 +1010,16 @@ describe('declarative dashboard queries', () => {
       rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', 'safe-output': 'report-1' }],
       metadata: metadata('outcomes')
     };
-    const operationalValues = {
-      source: 'operational-values',
-      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', 'operational-value': 1 }],
-      metadata: metadata('operational-values')
+    const operationalGraders = {
+      source: 'operational-graders',
+      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', 'operational-grader': 1 }],
+      metadata: metadata('operational-graders')
     };
 
     const derived = executeDashboardQueries(
       dashboardQueries,
-      { ...emptyRunRecordSources, campaigns, repositories, workflows: queryWorkflows, runs, audits: events, outcomes, 'operational-values': operationalValues, usage },
-      ['entity-workflows', 'repository-activity', 'workflow-inventory', 'campaign-operational-value-totals', 'campaign-inventory']
+      { ...emptyRunRecordSources, campaigns, repositories, workflows: queryWorkflows, runs, audits: events, outcomes, 'operational-graders': operationalGraders, usage },
+      ['entity-workflows', 'repository-activity', 'workflow-inventory', 'campaign-operational-grader-totals', 'campaign-repository-coverage', 'campaign-inventory']
     );
 
     expect(derived['entity-workflows'].rows).toEqual([
@@ -1035,9 +1043,13 @@ describe('declarative dashboard queries', () => {
       expect.objectContaining({ workflow: 'b.md', runs: 0, 'successful-runs': 0, 'failed-runs': 0, 'aic-per-run': null, ingestion: null }),
       expect.objectContaining({ workflow: 'c.md', runs: 1, 'successful-runs': 1, 'failed-runs': 0, 'aic-per-run': 0, ingestion: '100%' })
     ]);
-    expect(derived['campaign-operational-value-totals'].rows).toEqual([{
+    expect(derived['campaign-operational-grader-totals'].rows).toEqual([{
       campaign: 'aw-doctor',
-      'value-created': 1
+      'grader-result': 1
+    }]);
+    expect(derived['campaign-repository-coverage'].rows).toEqual([{
+      campaign: 'aw-doctor',
+      'covered-repositories': 1
     }]);
     expect(derived['campaign-inventory'].rows).toEqual([{
       campaign: 'aw-doctor',
@@ -1051,9 +1063,10 @@ describe('declarative dashboard queries', () => {
       modes: 'review',
       registration: 'false, true',
       runs: 3,
-      dispatches: 1,
+      dispatches: 2,
+      'covered-repositories': 1,
       aic: 10,
-      'value-created': 1
+      'grader-result': 1
     }]);
   });
 

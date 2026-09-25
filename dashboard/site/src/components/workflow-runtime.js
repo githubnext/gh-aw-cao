@@ -1,5 +1,5 @@
 /**
- * Route-aware workflow runtime and operational-value view.
+ * Route-aware workflow runtime and operational-grader view.
  */
 
 import { h } from '../dom.js';
@@ -54,9 +54,9 @@ export function renderWorkflowValueReport(context, workflow) {
   const workflowPath = text(workflow.workflow);
   const workflowName = text(workflow['workflow-name']) || workflowPath || 'Unknown workflow';
   const observations = latestEvaluatorObservations(
-    matchingRows(context, 'operational-values', repository, workflowPath)
+    matchingRows(context, 'operational-graders', repository, workflowPath)
   );
-  return renderValueReport(workflowName, repository, workflowPath, observations, context.sources['operational-values']?.metadata);
+  return renderValueReport(workflowName, repository, workflowPath, observations, context.sources['operational-graders']?.metadata);
 }
 
 /**
@@ -192,10 +192,10 @@ function renderValueReport(workflowName, repository, workflowPath, observations,
         'div',
         { className: 'value-empty' },
         octicon('graph'),
-        h('h3', null, unavailable ? 'Operational-value evidence unavailable' : 'No workflow observations yet'),
+        h('h3', null, unavailable ? 'Operational-grader evidence unavailable' : 'No workflow observations yet'),
         unavailable
-          ? h('p', null, 'Operational-value collection was unavailable for this dashboard refresh.')
-          : h('p', null, 'Operational value will appear after this workflow publishes a valid ', h('code', null, 'grader_results.json'), '.')
+          ? h('p', null, 'Operational-grader collection was unavailable for this dashboard refresh.')
+          : h('p', null, 'Operational grader results will appear after this workflow publishes a valid ', h('code', null, 'grader_results.json'), '.')
       ),
       h('div', { className: 'value-details-unavailable' }, 'Run evidence unavailable')
     );
@@ -204,7 +204,7 @@ function renderValueReport(workflowName, repository, workflowPath, observations,
   const comparable = comparableObservations(observations);
   const latest = comparable.at(-1) ?? observations.at(-1) ?? {};
   const observedAverage = comparable.length > 0
-    ? comparable.reduce((total, row) => total + finiteNumber(row['operational-value']), 0) / comparable.length
+    ? comparable.reduce((total, row) => total + finiteNumber(row['operational-grader']), 0) / comparable.length
     : null;
   return h(
     'section',
@@ -214,17 +214,17 @@ function renderValueReport(workflowName, repository, workflowPath, observations,
       workflowName,
       repository,
       workflowPath,
-      h('div', { className: 'value-score' }, h('strong', null, formatMetricValue(latest['operational-value'])), h('span', null, 'Latest observation')),
-      "Native run-scoped metrics from the workflow's operational-value evaluator."
+      h('div', { className: 'value-score' }, h('strong', null, formatMetricValue(latest['operational-grader'])), h('span', null, 'Latest observation')),
+      "Native run-scoped metrics from the workflow's operational grader."
     ),
     h(
       'div',
-      { className: 'value-chart', role: 'group', 'aria-label': 'Operational-value summary' },
+      { className: 'value-chart', role: 'group', 'aria-label': 'Operational-grader summary' },
       renderValueHistory(observations),
       h(
         'dl',
         null,
-        renderVitalStat('Latest', formatMetricValue(latest['operational-value'])),
+        renderVitalStat('Latest', formatMetricValue(latest['operational-grader'])),
         renderVitalStat('Observed average', formatMetricValue(observedAverage)),
         renderVitalStat('Observations', formatNumber(comparable.length)),
         renderVitalStat('Evaluator', renderDigest(latest['evaluator-digest']) ?? 'Unavailable')
@@ -324,7 +324,7 @@ function primaryChangeSeries(weekly) {
   const first = weekly[0].value;
   const points = weekly.map((week) => ({ weekStart: week.weekStart, change: week.value - first }));
   return [{
-    name: 'Primary operational value',
+    name: 'Primary operational grader',
     points,
     latestChange: points.at(-1)?.change ?? 0
   }];
@@ -424,13 +424,13 @@ function weeklyAttainment(observations) {
   return [...groupObservationsByWeek(observations)].sort(([left], [right]) => left.localeCompare(right)).flatMap(([weekStart, rows]) => {
     const opportunities = new Map();
     for (const row of rows) {
-      const value = nativeValue(row['operational-value']);
+      const value = nativeValue(row['operational-grader']);
       if (value === null) continue;
       const key = text(row['operational-case']) || `run:${text(row.run)}`;
       const existing = opportunities.get(key);
       if (!existing || rowTime(row) >= rowTime(existing)) opportunities.set(key, row);
     }
-    const values = [...opportunities.values()].map((row) => /** @type {number} */ (nativeValue(row['operational-value'])));
+    const values = [...opportunities.values()].map((row) => /** @type {number} */ (nativeValue(row['operational-grader'])));
     return values.length === 0 ? [] : [{ weekStart, value: values.reduce((total, value) => total + value, 0) / values.length }];
   });
 }
@@ -502,7 +502,7 @@ function formatWeek(value) {
 function renderObservationTable(observations) {
   return h(
     'div',
-    { className: 'table-region', role: 'region', tabIndex: 0, 'aria-label': 'Workflow operational-value observations' },
+    { className: 'table-region', role: 'region', tabIndex: 0, 'aria-label': 'Workflow operational-grader observations' },
     h(
       'table',
       null,
@@ -519,7 +519,7 @@ function renderObservationTable(observations) {
             null,
             h('th', { scope: 'row' }, runLink ? h('a', { href: runLink.href, 'aria-label': runLink.label }, observed) : observed),
             h('td', null, text(row['operational-case']) || `Run ${text(row.run)}`),
-            h('td', null, formatMetricValue(row['operational-value'])),
+            h('td', null, formatMetricValue(row['operational-grader'])),
             h(
               'td',
               null,
@@ -535,7 +535,7 @@ function renderObservationTable(observations) {
 
 /** @param {Array<Record<string, unknown>>} observations */
 function comparableObservations(observations) {
-  const valid = observations.filter((row) => nativeValue(row['operational-value']) !== null);
+  const valid = observations.filter((row) => nativeValue(row['operational-grader']) !== null);
 
   const opportunities = new Map();
   for (const row of valid) {
@@ -612,4 +612,3 @@ function formatObservationDate(value) {
   const date = text(value);
   return Number.isFinite(Date.parse(date)) ? formatUtcDateTime(date) : 'Unknown';
 }
-

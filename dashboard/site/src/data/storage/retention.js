@@ -17,7 +17,8 @@ const RETENTION_TIMESTAMPS = {
   domains: ['timestamp', 'observedAt'],
   tools: ['timestamp', 'observedAt'],
   audits: ['timestamp', 'observedAt'],
-  issues: ['timestamp', 'observedAt']
+  issues: ['timestamp', 'observedAt'],
+  operationalValues: ['timestamp', 'observedAt']
 };
 
 const STORES = /** @type {const} */ ([
@@ -28,7 +29,8 @@ const STORES = /** @type {const} */ ([
   'domains',
   'tools',
   'audits',
-  'issues'
+  'issues',
+  'operationalValues'
 ]);
 const RUN_LINKED_STORES = /** @type {const} */ (['domains', 'tools', 'audits', 'issues']);
 const WORKFLOW_INVENTORY_FIELDS = /** @type {const} */ ([
@@ -122,6 +124,7 @@ export function capCanonicalBatchSize(batch, maxBytes) {
     repositories: batch.repositories,
     workflows: batch.workflows,
     runs: batch.runs.filter((record) => !evictedRuns.has(String(record.id))),
+    operationalValues: batch.operationalValues ?? [],
     ...Object.fromEntries(RUN_LINKED_STORES.map((storeName) => [
       storeName,
       batch[storeName].filter((record) => !evictedRuns.has(String(record.runId)))
@@ -252,6 +255,9 @@ function pruneOrphans(merged) {
       if (!runs.has(String(record.runId))) merged[storeName].delete(id);
     }
   }
+  for (const [id, record] of merged.operationalValues) {
+    if (!repositories.has(String(record.repositoryId))) merged.operationalValues.delete(id);
+  }
 }
 
 /**
@@ -271,7 +277,8 @@ function collectUnreferencedParents(merged, incoming) {
   }
   const referencedRepositories = new Set([
     ...[...merged.workflows.values()].map((workflow) => String(workflow.repositoryId)),
-    ...[...merged.runs.values()].map((run) => String(run.repositoryId))
+    ...[...merged.runs.values()].map((run) => String(run.repositoryId)),
+    ...[...merged.operationalValues.values()].map((value) => String(value.repositoryId))
   ]);
   for (const [id] of merged.repositories) {
     if (!incomingRepositories.has(id) && !referencedRepositories.has(id)) merged.repositories.delete(id);

@@ -73,6 +73,53 @@ func TestRedisURLErrorsDoNotExposeCredentials(t *testing.T) {
 	}
 }
 
+func TestClientReusesConnectionsForConcurrentSafePooling(t *testing.T) {
+	var listenConfig net.ListenConfig
+	listener, err := listenConfig.Listen(t.Context(), "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = listener.Close() })
+	accepted := make(chan int, 1)
+	serverErr := make(chan error, 1)
+	go func() {
+		connection, err := listener.Accept()
+		if err != nil {
+			serverErr <- err
+			return
+		}
+		defer func() { _ = connection.Close() }()
+		accepted <- 1
+		reader := bufio.NewReader(connection)
+		for range 2 {
+			if _, err := readRESP(reader); err != nil {
+				serverErr <- err
+				return
+			}
+			if _, err := fmt.Fprint(connection, "+PONG\r\n"); err != nil {
+				serverErr <- err
+				return
+			}
+		}
+		serverErr <- nil
+	}()
+	client, err := New("redis://" + listener.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if _, err := client.Do(t.Context(), "PING"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := <-serverErr; err != nil {
+		t.Fatal(err)
+	}
+	if count := <-accepted; count != 1 {
+		t.Fatalf("accepted %d connections, want one reused connection", count)
+	}
+}
+
 func TestRedissUsesVerifiedTLSAndPreservesAuthenticationAndDatabase(t *testing.T) {
 	certificate, roots := testRedisCertificate(t)
 	address, commands, serverErr := startTLSRedis(t, certificate, 3)

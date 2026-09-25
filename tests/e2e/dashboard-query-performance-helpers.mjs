@@ -67,6 +67,16 @@ export function deployedProxyTarget(pathname, baseUrl) {
     : null;
 }
 
+export async function availableDeployedActivityShardEntries(entries, { baseUrl, fetchImpl = fetch }) {
+  const checked = await Promise.all(entries.map(async (entry) => {
+    const target = deployedProxyTarget(`/${entry.sourceName}`, baseUrl);
+    if (!target) return null;
+    const response = await fetchImpl(target, { method: "HEAD", redirect: "error" }).catch(() => null);
+    return response?.ok ? entry : null;
+  }));
+  return checked.filter(Boolean);
+}
+
 export function roundMilliseconds(value) {
   return Math.round(value * 100) / 100;
 }

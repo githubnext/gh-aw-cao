@@ -1,11 +1,11 @@
 # Go and Redis dashboard server
 
-The `server/` module is a local-only backend for running the Central Agentic
-Ops dashboard with server-owned persistence and query execution. It ingests the
+The `server/` module is an optional backend for running the Central Agentic Ops
+dashboard with server-owned persistence and query execution. It ingests the
 same compacted data published with the deployed dashboard, materializes
 generation-scoped logical sources in Redis Stack, executes Dashboard Language
-queries in Go with RediSearch pushdown, and serves the built dashboard over
-loopback HTTP by default or operator-configured HTTPS.
+queries in Go with RediSearch pushdown, and serves the built dashboard either
+over loopback HTTP or through an authenticated host-neutral service profile.
 
 The browser never connects to Redis and never receives the Redis URL or
 credentials. It communicates only with the same-origin HTTP(S) API.
@@ -26,12 +26,17 @@ Available namespaces are `cao:cli`, `cao:server`, `cao:ingest`, `cao:query`,
 and `cao:redis`. `ACTIONS_RUNNER_DEBUG=true` enables all namespaces when
 `DEBUG` is unset. Logs contain operation names, counts, timings, and status;
 they do not include access tokens, OAuth credentials, Redis credentials,
-query payloads, or source records.
+query payloads, or source records. Authentication paths emit fixed
+`oauth branch=<operation>.<outcome>` identifiers for every decision and outcome;
+the identifiers never contain user, request, session, or credential values.
+In the hosted dashboard, add `?debug=auth` to enable matching client-side
+authentication branch events through `dashboard/site/src/debug.js`; these
+events likewise contain fixed identifiers only.
 
 > [!IMPORTANT]
 > The default `serve` command remains local-only: it uses a local bearer
 > capability and intentionally rejects non-loopback listen addresses. Remote
-> hosting is supported only through the explicit Azure Functions profile, which
+> Hosted use requires the explicit `serve-hosted` or Azure Functions profile, which
 > replaces the local capability with GitHub OAuth, refresh-token-backed
 > server-side sessions, explicit GitHub organization/team authorization, and an
 > Azure trusted-proxy policy. PATs are not supported. The Azure Functions
@@ -72,6 +77,64 @@ flowchart LR
 | Shared API model | `internal/model/` | Defines logical sources, active-generation metadata, diagnostics, and query metrics. |
 | Telemetry | `internal/telemetry/` | Configures the OpenTelemetry TracerProvider from standard `OTEL_*` environment variables, exposes the server's tracer, and writes W3C trace/span id response headers. |
 | Local Redis | `docker-compose.yml` | Runs Redis Stack with RediSearch on `127.0.0.1:6379`. |
+
+## Hosted service profile
+
+`serve-hosted` runs the same stateless Go service on a container, VM,
+Kubernetes workload, or comparable host. It defaults to
+`127.0.0.1:8080`, where a same-host or same-pod HTTPS proxy may forward requests.
+A non-loopback listener is accepted only when `--cert` and `--key` configure
+TLS at the CAO service itself. It is not coupled to a Redis provider or cloud
+SDK. Configuration is supplied through:
+
+| Variable | Purpose |
+| --- | --- |
+| `CAO_REDIS_URL` | Required TLS `rediss://` endpoint. Credentials remain server-side. Plaintext Redis is limited to local `serve` mode. |
+| `CAO_REDIS_NAMESPACE` | Optional deployment namespace; defaults to `hosted-dashboard`. |
+| `CAO_ALLOWED_HOSTS` | Required comma-separated trusted public host names. |
+| `CAO_GITHUB_CLIENT_ID`, `CAO_GITHUB_CLIENT_SECRET`, `CAO_GITHUB_REDIRECT_URL` | GitHub OAuth application. |
+| `CAO_SESSION_SECRET` | Current session encryption/signing secret of at least 32 characters. |
+| `CAO_SESSION_SECRET_PREVIOUS` | Optional previous session secret retained only during controlled rotation. |
+| `CAO_GITHUB_ALLOWED_ORGS`, `CAO_GITHUB_ALLOWED_TEAMS` | Explicit authorization policy. |
+| `CAO_GITHUB_ADMIN_USERS` | Required comma-separated GitHub logins allowed to trigger rebuilds. |
+| `CAO_GITHUB_WEBHOOK_SECRET` | Required GitHub webhook signature secret of at least 32 characters. |
+| `CAO_SOURCE_DIRECTORY` | Required authoritative deployed gh-aw artifact directory used by rebuild/reconciliation. |
+
+Hosted HTTPS enforcement cannot be disabled. Forwarded host and protocol
+headers are trusted only when the service is bound to loopback; externally
+reachable listeners validate their direct TLS connection and `Host` header.
+Supply secrets through the deployment platform's secret manager (for example,
+Key Vault references, Kubernetes Secrets mounted into the process environment,
+or an equivalent managed facility), never command-line arguments or checked-in
+configuration.
+
+The hosted server exposes canonical repository/run APIs, verifies and
+deduplicates webhook deliveries, and coordinates projection updates with a
+Redis lease so multiple replicas do not rebuild concurrently. Webhooks trigger
+authoritative re-ingestion; they are not treated as complete canonical records.
+Validated webhook and rebuild requests return `202` before projection work
+continues under a bounded, request-independent context. Only explicitly listed
+administrators may call `POST /api/admin/rebuild`; it always forces a new staged
+generation, validates it, then atomically activates it. A failed rebuild leaves
+the previous generation active.
+
+The hosted dashboard shows a user icon at the lower left of the navigation.
+It appears only after the server confirms an authenticated GitHub session and
+opens a user view with account switching and logout. Logout remains on a
+non-cacheable signed-out page until the user explicitly starts another login.
+“Use another GitHub account” clears and revokes the current CAO session, then
+starts a fresh OAuth flow with GitHub's account chooser. Only the newly selected
+account is retained in the browser session; tokens for every account remain
+server-side.
+
+`internal/server/auth_model_test.go` defines the browser authentication state
+model and generates every valid login, switch-account, and logout path through
+three transitions. Each generated path drives the real HTTP handlers and checks
+the canonical session endpoint after every transition.
+
+The Redis command client reuses a bounded connection pool, applies operation
+deadlines, and retries read-only commands once when a pooled connection has
+gone stale. Write commands are not replayed automatically.
 
 ### Hosted Azure architecture
 
@@ -242,10 +305,18 @@ IndexedDB ingestion:
 | Endpoint | Purpose |
 | --- | --- |
 | `GET /api/v1/health` | Public readiness exposes only Redis connectivity and data availability; capability-authenticated requests also receive generation/revision and source/row counts. |
+| `GET /api/health` | Public liveness; an empty Redis instance is healthy and reports `rebuildRequired`. |
+| `GET /api/readiness` | Public readiness; returns 503 until an active generation exists. |
 | `POST /api/v1/query` | Execute requested Dashboard Language queries and return bounded logical sources plus metrics. |
 | `POST /api/v1/refresh` | Return the current revision and authoritative evaluation time without ingesting data. |
 | `GET /api/v1/events` | Server-Sent Events stream that notifies active views when the Redis revision changes. |
 | `GET /api/v1/diagnostics` | Canonical schema counts, relationship errors, and duplicate IDs for the active generation. |
+| `GET /api/repositories` and `GET /api/repositories/:id` | Return canonical repository objects. |
+| `GET /api/repositories/:id/runs` and `GET /api/workflows/:id/runs` | Return related canonical runs. |
+| `GET /api/runs/:id/jobs`, `GET /api/runs/:id/sessions`, `GET /api/sessions/:id/events` | Return related canonical execution records when published. |
+| `POST /api/github/webhook` | Verify, deduplicate, and reconcile a GitHub delivery. |
+| `POST /api/admin/rebuild` | Force a staged full rebuild and atomic activation. |
+| `GET /api/admin/rebuild/status` | Return shared rebuild state for all replicas. |
 
 API responses use `Cache-Control: no-store`. The dashboard service worker
 excludes `/api/` so query results and event streams are never placed in browser
@@ -348,12 +419,18 @@ Request cancellation propagates through `request.Context()` to Redis queries.
 
 The Bicep deployment in `server/azure/main.bicep` provisions a Function App,
 Key Vault, Application Insights, storage, and Redis Enterprise with the
-RediSearch module. Secret app settings use Key Vault references. The template
-outputs only non-secret host names, redirect URI, Redis database name, and Key
-Vault URI. Redis access keys are an unavoidable path for Redis Enterprise
-client authentication today; store the `rediss://` URL in Key Vault, rotate the
-Redis key in Azure, update the Key Vault secret version, and restart the
-Function App so it resolves the new reference.
+RediSearch module. Every secret-bearing app setting—including Functions runtime
+storage—uses a versionless Key Vault reference so ordinary credential rotation
+does not require rewriting application configuration. Session-key rotation uses
+the optional secure `previousSessionSecret` deployment parameter: deploy the old
+key as previous and the new key as current, wait for active sessions and queued
+revocations to drain, then remove the previous key. Encrypted records carry a
+key identifier, and the server can read both keys during that window. The
+template outputs only non-secret host names, redirect URI, Redis database name,
+and Key Vault URI. Redis access keys
+are an unavoidable path for Redis Enterprise client authentication today;
+store the `rediss://` URL in Key Vault, rotate the Redis key in Azure, publish a
+new Key Vault secret version, and allow the platform to refresh the reference.
 
 ### Azure secure-computing baseline
 

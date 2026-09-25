@@ -78,6 +78,36 @@ func TestEmptyAggregateBehavior(t *testing.T) {
 	}
 }
 
+func TestLinkHrefComputedField(t *testing.T) {
+	definition := Definition{
+		Name: "links", From: "rows",
+		Compute: []ComputedField{{
+			As: "href", Function: "link-href",
+			Args: []Argument{fieldArgument("link")},
+		}},
+	}
+	if err := Validate([]Definition{definition}); err != nil {
+		t.Fatal(err)
+	}
+
+	result, _, _, err := ExecuteDefinition(definition, map[string]model.Source{
+		"rows": {Rows: []model.Row{
+			{"link": map[string]any{"href": "https://github.example/workflow.yml", "label": "Workflow"}},
+			{"link": map[string]any{"href": ""}},
+			{"link": "not-a-link"},
+		}},
+	}, MaxOperations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Rows[0]["href"] != "https://github.example/workflow.yml" {
+		t.Fatalf("unexpected link href: %#v", result.Rows[0]["href"])
+	}
+	if result.Rows[1]["href"] != nil || result.Rows[2]["href"] != nil {
+		t.Fatalf("invalid links did not produce null: %#v", result.Rows)
+	}
+}
+
 func TestAggregateOmitsMissingGroupFields(t *testing.T) {
 	definition := Definition{
 		Name: "grouped",

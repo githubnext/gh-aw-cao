@@ -271,7 +271,7 @@ function runAggregates(run) {
   const graders = run.graders && typeof run.graders === 'object' && !Array.isArray(run.graders)
     ? /** @type {Record<string, unknown>} */ (run.graders)
     : {};
-  const operationalValueResults = (Array.isArray(graders.results) ? graders.results : [])
+  const operationalGraderResults = (Array.isArray(graders.results) ? graders.results : [])
     .filter((value) => value && typeof value === 'object' && !Array.isArray(value))
     .map((value) => /** @type {Record<string, unknown>} */ (value))
     .filter((value) => value.id === 'operational-value' || value.source === 'operational-value')
@@ -301,7 +301,7 @@ function runAggregates(run) {
     firewallBlockedCalls: hasFirewallAggregate ? firewallBlockedCalls : null,
     mcpToolCalls: hasMcpAggregate ? toolCalls.length : null,
     mcpResponseBytes: hasMcpAggregate ? mcpResponseBytes : null,
-    operationalValue: operationalValueResults.length === 1 ? operationalValueResults[0] : null,
+    operationalGrader: operationalGraderResults.length === 1 ? operationalGraderResults[0] : null,
     highPriorityAuditItems: hasPriorityAggregate ? priorityCount('high') : null,
     mediumPriorityAuditItems: hasPriorityAggregate ? priorityCount('medium') : null
   };
@@ -401,7 +401,12 @@ function specializedFields(type, fields, kind) {
       repositoryFullName: `${owner}/${repository}`,
       number,
       isPullRequest: fields.githubEntityType === 'pull_request',
-      url
+      url,
+      state: optionalString(fields.issueState),
+      closed: typeof fields.issueClosed === 'boolean' ? fields.issueClosed : undefined,
+      stateReason: fields.issueStateReason === null ? null : optionalString(fields.issueStateReason),
+      closedAt: fields.issueClosedAt === null ? null : optionalString(fields.issueClosedAt),
+      statusObservedAt: optionalString(fields.issueStatusObservedAt)
     };
   }
   if (kind === 'tool') {
@@ -885,6 +890,8 @@ function createCachedGhAwJsonlAccumulator(options) {
   const tokenEfficiencyObservationsByRun = new Map();
   /** @type {Map<string, Record<string, unknown>[]>} */
   const tokenEfficiencyLifecycleObservationsByRun = new Map();
+  /** @type {{ value: Record<string, unknown>, line: number }[]} */
+  const operationalValues = [];
   /** @type {Map<string, string>} */
   const latestRunByGithubId = new Map();
   /** @type {Map<string, CachedRun>} */
@@ -908,6 +915,13 @@ function createCachedGhAwJsonlAccumulator(options) {
     records += 1;
     if (envelope.kind === 'github_api_rate_limit') {
       rateLimitEnvelopes.push({ envelope, line });
+    }
+    if (envelope.kind === 'operational_value') {
+      operationalValues.push({
+        value: objectValue(envelope.operational_value, `gh-aw JSONL line ${line}.operational_value`),
+        line
+      });
+      return;
     }
     if (envelope.kind === 'safe_output_item') {
       safeOutputItems += 1;
@@ -1059,6 +1073,58 @@ function createCachedGhAwJsonlAccumulator(options) {
   const repositories = new Map();
   /** @type {Map<string, import('../model/schema.js').CanonicalObservation>} */
   const workflows = new Map();
+  for (const { value, line } of operationalValues) {
+    const repository = requiredString(value.repository, `gh-aw JSONL line ${line}.operational_value.repository`);
+    const coordinates = repositoryCoordinates(repository);
+    const observedAt = canonicalTimestamp(
+      value.timestamp,
+      `gh-aw JSONL line ${line}.operational_value.timestamp`
+    );
+    const valueId = requiredString(value.value_id, `gh-aw JSONL line ${line}.operational_value.value_id`);
+    const campaign = typeof value.campaign === 'string' && value.campaign.trim()
+      ? value.campaign.trim()
+      : undefined;
+    const campaignId = typeof value.campaign_id === 'string' && value.campaign_id.trim()
+      ? value.campaign_id.trim()
+      : campaign ? sourceId('campaign', 'inventory', campaign) : undefined;
+    const metric = finiteNumber(value.value);
+    if (metric === null) {
+      throw new TypeError(`gh-aw JSONL line ${line}.operational_value.value must be a finite number`);
+    }
+    const repositoryId = repositoryCoordinateId(coordinates.owner, coordinates.name);
+    repositories.set(repositoryId, {
+      kind: 'repository',
+      source: OBSERVATION_SOURCE,
+      sourceId: `repository:${coordinates.fullName.toLowerCase()}`,
+      observedAt,
+      data: {
+        id: repositoryId,
+        owner: coordinates.owner,
+        name: coordinates.name,
+        fullName: coordinates.fullName,
+        visibility: 'unknown'
+      }
+    });
+    observations.push({
+      kind: 'operational-value',
+      source: OBSERVATION_SOURCE,
+      sourceId: `operational-value:${coordinates.fullName.toLowerCase()}:${valueId}:${observedAt}`,
+      observedAt,
+      data: {
+        repositoryId,
+        repository: coordinates.fullName,
+        campaignId,
+        campaign,
+        valueId,
+        value: metric,
+        'operational-value-role': optionalString(value.metric_role) ?? 'primary',
+        'operational-value-name': optionalString(value.metric_name) ?? valueId,
+        'operational-value-direction': optionalString(value.metric_direction) ?? 'increase',
+        'maturity-status': optionalString(value.maturity_status) ?? 'matured',
+        timestamp: observedAt
+      }
+    });
+  }
 
   /** @param {CachedRun} candidate */
   const structuralIds = (candidate) => {
@@ -1739,6 +1805,11 @@ function createCachedGhAwJsonlAccumulator(options) {
         && !Array.isArray(safeOutput.value)
         ? /** @type {Record<string, unknown>} */ (safeOutput.value)
         : {};
+      const issueStatus = record.github_issue_status
+        && typeof record.github_issue_status === 'object'
+        && !Array.isArray(record.github_issue_status)
+        ? /** @type {Record<string, unknown>} */ (record.github_issue_status)
+        : {};
       emitEvent(
         'safe_output.created',
         timestamp(record.timestamp) ?? completedAt ?? enriched.observedAt,
@@ -1756,6 +1827,13 @@ function createCachedGhAwJsonlAccumulator(options) {
           correlationId: optionalString(record.url ?? record.temporaryId),
           safeOutputType: optionalString(record.type),
           githubEntityType: safeOutputGithubEntityType(record),
+          issueState: optionalString(issueStatus.state),
+          issueClosed: typeof issueStatus.closed === 'boolean' ? issueStatus.closed : undefined,
+          issueStateReason: issueStatus.state_reason === null
+            ? null
+            : optionalString(issueStatus.state_reason),
+          issueClosedAt: issueStatus.closed_at === null ? null : optionalString(issueStatus.closed_at),
+          issueStatusObservedAt: optionalString(issueStatus.observed_at),
           payloadRef: `gh-aw-logs-shards#L${safeOutput.line}`
         }
       );

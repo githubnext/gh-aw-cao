@@ -176,19 +176,24 @@ current command syntax.
 Evaluate every generated or modified Dashboard Language query before accepting it:
 
 ```bash
-cao dashboard-complexity --input dashboard/site/dashboard.json
+cao dashboard-complexity \
+  --input dashboard/site/dashboard.json \
+  --database .cao/gh-aw-logs.sqlite
 ```
 
-The command reports a normalized upper-bound row-read estimate, symbolic source
-coefficients, stage-level reads, parent queries and views that consume each query, and a
-ranking from highest to lowest computation pressure. Pressure includes the selected query
-plus each unique transitive dependency materialized once, matching compiler reuse within one
-execution batch.
+The command reports an upper-bound row-read estimate, database-table coefficients,
+stage-level reads, parent queries and views that consume each query, and a ranking from
+highest to lowest computation pressure. With `--database`, canonical tables are weighted by
+their deployed row counts normalized to the largest table. Pressure includes the selected
+query plus each unique transitive dependency materialized once, matching compiler reuse
+within one execution batch.
 
 Inspect one generated query directly by passing its query ID before the options:
 
 ```bash
-cao dashboard-complexity QUERY_ID --input dashboard/site/dashboard.json
+cao dashboard-complexity QUERY_ID \
+  --input dashboard/site/dashboard.json \
+  --database .cao/gh-aw-logs.sqlite
 ```
 
 Use `--format markdown` for a review-ready ranking and `--limit COUNT` to bound graph-wide
@@ -199,9 +204,9 @@ because the query is declarative; look for an existing base query, a narrower so
 earlier filtering, fewer joins, or reusable intermediate aggregation. If the increase is
 intentional, explain the evidence and tradeoff in the review.
 
-The normalized model sets every external source to one row and assumes no selectivity.
-Use the symbolic source coefficients to reason about real cardinalities rather than treating
-the normalized totals as runtime measurements.
+Without `--database`, the normalized model gives every canonical database table weight one.
+Both models assume no selectivity and exclude logical sources that are not backed by a
+canonical database table.
 
 ### Prune and reuse dashboard queries
 

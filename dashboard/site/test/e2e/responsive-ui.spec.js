@@ -140,21 +140,82 @@ test('notifications move in at the lower right and center on mobile', async ({ p
   expect(Math.abs((bounds?.x ?? 0) + (bounds?.width ?? 0) / 2 - 195)).toBeLessThan(1);
 });
 
+test('full-view content keeps a responsive horizontal inset', async ({ page }) => {
+  const styles = await page.evaluate(async (stylesUrl) => {
+    const { getPrimerStyles } = await import(stylesUrl);
+    return getPrimerStyles();
+  }, 'http://dashboard.test/src/styles.js');
+  await page.setContent(`
+    <style>${styles}</style>
+    <div class="dashboard-root dashboard-full-view">
+      <div class="app-shell">
+        <aside class="org-sidebar"></aside>
+        <div class="app-main">
+          <div class="top-nav"><div class="shell">Campaigns</div></div>
+          <div class="site-callouts"><div data-callout>Refresh warning</div></div>
+          <main class="dashboard-prototype">
+            <div class="report-body" data-page-content>Campaigns content</div>
+          </main>
+        </div>
+      </div>
+    </div>
+  `);
+
+  const contentLayout = () => page.locator('main.dashboard-prototype').evaluate((main) => {
+    const content = main.querySelector('[data-page-content]');
+    if (!(content instanceof HTMLElement)) throw new Error('Expected page content.');
+    const mainBounds = main.getBoundingClientRect();
+    const contentBounds = content.getBoundingClientRect();
+    return {
+      left: contentBounds.left - mainBounds.left,
+      right: mainBounds.right - contentBounds.right,
+      top: contentBounds.top - mainBounds.top,
+      bottom: mainBounds.bottom - contentBounds.bottom,
+      scrollbarGutter: getComputedStyle(main).scrollbarGutter
+    };
+  });
+
+  // The full-view modifier replaces the default stable gutter while preserving full-height content.
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await expect.poll(contentLayout).toEqual({
+    left: 24,
+    right: 24,
+    top: 0,
+    bottom: 0,
+    scrollbarGutter: 'auto'
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(contentLayout).toEqual({
+    left: 14,
+    right: 14,
+    top: 0,
+    bottom: 0,
+    scrollbarGutter: 'auto'
+  });
+});
+
 const horizontalBarFixtureLabel = '.github/workflows/extremely-long-dependabot-update-planner.md';
 const horizontalBarFixtureSuffix = 'planner.md';
 
 /** @param {import('@playwright/test').Page} page */
-async function renderHorizontalBarFixture(page) {
+async function renderHorizontalBarFixture(page, {
+  labels = [horizontalBarFixtureLabel],
+  stageWidth = 220
+} = {}) {
   await page.setContent(`
     <style id="dashboard-styles"></style>
-    <main class="chart-stage" style="width: 220px"></main>
+    <main class="chart-stage" style="width: ${stageWidth}px"></main>
     <script type="module">
       import { getPrimerStyles } from 'http://dashboard.test/src/styles.js';
       import { renderChartWidget } from 'http://dashboard.test/src/components/chart-elements.js';
       document.querySelector('#dashboard-styles').textContent = getPrimerStyles();
-      document.querySelector('.chart-stage').append(renderChartWidget('horizontal-bar', [
-        { x: ${JSON.stringify(horizontalBarFixtureLabel)}, y: 27 }
-      ], [{ name: 'value', className: 'chart-series-1' }]));
+      const labels = ${JSON.stringify(labels)};
+      document.querySelector('.chart-stage').append(renderChartWidget(
+        'horizontal-bar',
+        labels.map((label, index) => ({ x: label, y: 27 - index })),
+        [{ name: 'value', className: 'chart-series-1' }]
+      ));
     </script>
   `);
 }
@@ -264,6 +325,23 @@ test('desktop horizontal bar labels keep standard end truncation', async ({ page
   expect(labelRendering.suffixRight).toBeGreaterThan(labelRendering.textRight);
 });
 
+test('large-screen horizontal bars show complete labels with shared prefixes', async ({ page }) => {
+  const labels = [
+    '.github/workflows/dependabot-update-planner.md',
+    '.github/workflows/dependabot-update-worker.md'
+  ];
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await renderHorizontalBarFixture(page, { labels, stageWidth: 1000 });
+
+  const renderedLabels = page.locator('.horizontal-bar-chart-label-text');
+  await expect(renderedLabels).toHaveCount(labels.length);
+  await expect(renderedLabels.nth(0)).toHaveText(labels[0]);
+  await expect(renderedLabels.nth(1)).toHaveText(labels[1]);
+  await expect.poll(() => renderedLabels.evaluateAll((elements) => (
+    elements.every((element) => element.scrollWidth <= element.clientWidth)
+  ))).toBe(true);
+});
+
 test('issue card labels stay compact with centered text and balanced padding', async ({ page }) => {
   await page.setContent(`
     <style id="dashboard-styles"></style>
@@ -361,4 +439,71 @@ test('campaign card actions wrap together on narrow screens', async ({ page }) =
   const maxWrappedRows = 2;
   const actionGap = 6;
   expect(actionsBox.height).toBeLessThanOrEqual(controlBox.height * maxWrappedRows + actionGap);
+});
+
+test('mobile chart cards keep content close to the viewport edges', async ({ page }) => {
+  const mobilePageInsetPx = 14;
+  const mobileCardGutterPx = 12;
+  // Chart content may only be inset by the page padding plus the narrowed mobile card gutter.
+  const maxContentInsetPx = mobilePageInsetPx + mobileCardGutterPx;
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(async (presenterModuleUrl) => {
+    const { renderDashboard } = await import(presenterModuleUrl);
+    document.querySelector('#root')?.append(renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'mobile-chart-dashboard',
+          title: 'gh-aw-cao',
+          pages: [{
+            id: 'cost',
+            kind: 'custom',
+            title: 'Cost',
+            views: [{
+              id: 'cost-per-campaign',
+              title: 'Cost per campaign',
+              data: { source: 'usage' },
+              mark: 'chart',
+              chart: 'pie',
+              encoding: {
+                x: { field: 'campaign', type: 'nominal', title: 'Campaign' },
+                y: { field: 'aic', type: 'quantitative', aggregate: 'sum', title: 'AIC cost' }
+              }
+            }]
+          }]
+        }
+      },
+      sources: {
+        usage: {
+          source: 'usage',
+          rows: [
+            { campaign: 'eu-cra', aic: 19_255 },
+            { campaign: 'cao-evolution', aic: 7657 }
+          ],
+          metadata: {
+            'source-id': 'mobile-chart-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-01T03:00:00Z',
+            'retrieved-at': '2026-09-01T03:01:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'available'
+          }
+        }
+      }
+    }));
+  }, 'http://dashboard.test/src/presenter.js');
+
+  const card = page.locator('.pie-chart-card');
+  await expect(card).toBeVisible();
+  await expect(card).toHaveCSS('padding-left', `${mobileCardGutterPx}px`);
+  await expect(card).toHaveCSS('padding-right', `${mobileCardGutterPx}px`);
+
+  const heading = card.getByRole('heading', { name: 'Cost per campaign' });
+  const headingBox = await heading.boundingBox();
+  expect(headingBox).not.toBeNull();
+  if (headingBox === null) throw new Error('Expected a visible chart heading.');
+  const viewportWidth = page.viewportSize()?.width ?? 0;
+  expect(headingBox.x).toBeLessThanOrEqual(maxContentInsetPx);
+  expect(viewportWidth - (headingBox.x + headingBox.width)).toBeLessThanOrEqual(maxContentInsetPx);
 });

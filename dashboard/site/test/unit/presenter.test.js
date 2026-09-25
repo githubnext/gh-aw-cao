@@ -132,7 +132,75 @@ describe('dashboard DOM provenance', () => {
     expect(rendered.querySelector('[data-page-id="overview"]')).toBe(overviewBefore);
     expect(rendered.querySelector('.factory-floor')).not.toBeNull();
     expect(rendered.querySelector('[data-view-id="overview-campaigns"]')).not.toBeNull();
-    expect(loadPageSources).not.toHaveBeenCalled();
+    expect(loadPageSources).not.toHaveBeenCalledWith('maintenance', expect.anything());
+    disposeDashboard(rendered);
+  });
+
+  it('subscribes navigation indicators to their page sources', async () => {
+    const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ (/** @type {unknown} */ ({
+      languageVersion: '0.1.0',
+      dashboard: {
+        title: 'Indicator dashboard',
+        pages: [
+          { id: 'overview', kind: 'custom', title: 'Overview', views: [] },
+          {
+            id: 'maintenance',
+            kind: 'custom',
+            title: 'Maintenance',
+            views: [],
+            'navigation-indicator': {
+              label: 'updates available',
+              any: [{ source: 'maintenance-campaign-updates', field: 'campaign-update-state', equals: 'update-available' }]
+            }
+          }
+        ],
+        navigation: [
+          { pages: ['overview'] },
+          { label: 'Maintenance', placement: 'bottom', pages: ['maintenance'] }
+        ]
+      }
+    }));
+    const metadata = /** @type {const} */ ({
+      'source-id': 'campaigns',
+      'source-kind': 'fixture',
+      'as-of': '',
+      'retrieved-at': '',
+      completeness: 'complete',
+      freshness: 'fresh',
+      availability: 'available'
+    });
+    const loadSources = vi.fn((sourceNames) => {
+      expect(sourceNames).toEqual(['maintenance-campaign-updates']);
+      return Promise.resolve(/** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ ({
+        'maintenance-campaign-updates': {
+          source: 'maintenance-campaign-updates',
+          rows: [{ 'campaign-update-state': 'update-available' }],
+          metadata
+        }
+      }));
+    });
+    const loadPageSources = /** @type {import('../../src/presenter.js').PageSourceLoader} */ (vi.fn((pageId) => {
+      const result = pageId === 'maintenance'
+        ? { campaigns: { source: 'campaigns', rows: [{ 'campaign-update-state': 'update-available' }], metadata } }
+        : {};
+      return Promise.resolve(/** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (result));
+    }));
+    loadPageSources.loadSources = loadSources;
+
+    const rendered = renderDashboardView({ document, sources: {}, loadPageSources });
+
+    expect(loadSources).not.toHaveBeenCalled();
+    expect(rendered.querySelector('[data-nav-page-id="maintenance"]')?.getAttribute('aria-label'))
+      .toBe('Maintenance');
+    await vi.waitFor(() => {
+      expect(rendered.querySelector('[data-nav-page-id="maintenance"]')?.getAttribute('aria-label'))
+        .toBe('Maintenance, updates available');
+    });
+    expect(loadPageSources).not.toHaveBeenCalledWith('maintenance', expect.anything());
+    expect(loadSources).toHaveBeenCalledWith(['maintenance-campaign-updates'], expect.objectContaining({
+      signal: expect.any(AbortSignal),
+      onUpdate: expect.any(Function)
+    }));
     disposeDashboard(rendered);
   });
 
@@ -402,7 +470,7 @@ describe('dashboard DOM provenance', () => {
                   id: 'summary',
                   title: 'Summary',
                   mark: 'element',
-                  element: 'summary-grid',
+                  element: 'measure-history',
                   data: { source: 'summary' }
                 },
                 {
@@ -425,7 +493,11 @@ describe('dashboard DOM provenance', () => {
         sources: {
           summary: {
             source: 'summary',
-            rows: [{ label: 'Runs', value: 2 }],
+            rows: [{
+              'metric-kind': 'primary',
+              'metric-name': 'runs',
+              points: [{ x: '2026-09-07T18:00:00Z', y: 2, color: 'Runs', key: 'runs-1' }]
+            }],
             metadata: {
               'source-id': 'summary-fixture',
               'source-kind': 'fixture',
@@ -450,7 +522,7 @@ describe('dashboard DOM provenance', () => {
       expect(page?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0]');
       expect(section?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].sections[0]');
       expect(summary?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
-      expect(summary?.querySelector('dt')?.getAttribute('data-js-view')).toBe('summary-grid');
+      expect(summary?.querySelector('h2')?.getAttribute('data-js-view')).toBe('measure-history');
       expect(metric?.querySelector('.metric-value')?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[1]');
       await vi.waitFor(() => {
         expect([...rendered.querySelectorAll('*')].every((element) => element.hasAttribute('data-json-path'))).toBe(true);
@@ -460,7 +532,7 @@ describe('dashboard DOM provenance', () => {
       summary?.append(dynamicChild);
       await vi.waitFor(() => {
         expect(dynamicChild.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
-        expect(dynamicChild.getAttribute('data-js-view')).toBe('summary-grid');
+        expect(dynamicChild.getAttribute('data-js-view')).toBe('measure-history');
       });
 
       const replacementSection = rendered.ownerDocument.createElement('section');
@@ -474,7 +546,7 @@ describe('dashboard DOM provenance', () => {
       await vi.waitFor(() => {
         expect(replacementSection.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].sections[0]');
         expect(replacementView.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
-        expect(replacementView.querySelector('dt')?.getAttribute('data-js-view')).toBe('summary-grid');
+        expect(replacementView.querySelector('dt')?.getAttribute('data-js-view')).toBe('measure-history');
       });
     } finally {
       window.history.pushState(null, '', '/');
@@ -677,7 +749,7 @@ describe('presenter built-in and custom pages', () => {
     expect([...firewallCard?.querySelectorAll('.entity-card-list-metric') ?? []].map((metric) => metric.textContent))
       .toEqual(['0Allowed', '3177281Blocked', '1Runs']);
     expect(firewallCard?.querySelector('[data-card-drill="query"]')?.getAttribute('href'))
-      .toBe('#page-firewall-domain-workflows?query=firewall-domain-workflows&title=blocked.example&domain=blocked.example');
+      .toBe('#page-domain-insights?query=domain-entity-insights&title=blocked.example&domain=blocked.example');
     expect(text).not.toContain('firewall failure');
     rendered.remove();
   });
@@ -765,6 +837,10 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelectorAll('[data-chart-widget="pie"]')).toHaveLength(1);
     expect(page?.querySelectorAll('[data-chart-widget="horizontal-bar"]')).toHaveLength(1);
     expect(page?.querySelector('[data-view-id="engines-models-distribution"] + [data-view-id="engines-models-cost"] + [data-view-id="engines-models-usage"]')).not.toBeNull();
+    expect([...(page?.querySelectorAll('[data-view-id="engines-models-cost"] .horizontal-bar-chart-label') ?? [])].map((value) => value.textContent))
+      .toEqual(['pi / claude-sonnet-5', 'copilot / gpt-5.6-sol']);
+    expect([...(page?.querySelectorAll('[data-view-id="engines-models-cost"] .horizontal-bar-chart-value') ?? [])].map((value) => value.textContent))
+      .toEqual(['$0.08', '$0.06']);
     expect(page?.getAttribute('data-page-title')).toBe('Models & Agents');
     expect(page?.textContent).toContain('copilot');
     expect(page?.textContent).toContain('gpt-5.6-sol');
@@ -777,7 +853,7 @@ describe('presenter built-in and custom pages', () => {
   });
 
 
-  it('renders transaction entries as one full-view interactive lazy table', async () => {
+  it('renders indexing trends, database table counts, and transaction cards', async () => {
     const metadata = {
       'source-id': 'transactions-fixture',
       'source-kind': 'fixture',
@@ -808,6 +884,7 @@ describe('presenter built-in and custom pages', () => {
             duplicateRawRunObservations: 1,
             duplicateAgenticRunObservations: 2,
             unenrichedRuns: 3,
+            'activity-status': 'success',
             error: ''
           }],
           metadata
@@ -817,28 +894,19 @@ describe('presenter built-in and custom pages', () => {
 
     document.body.append(rendered);
     try {
-      window.location.hash = '#page-transactions';
-      await vi.waitFor(() => expect(rendered.querySelector('[data-page-id="transactions"]')?.hasAttribute('data-page-pending')).toBe(false));
-      const page = rendered.querySelector('[data-page-id="transactions"]');
-      expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
-      expect(page?.querySelectorAll('[data-view-id]')).toHaveLength(1);
-      expect(page?.querySelector('.line-chart-series')).toBeNull();
+      window.location.hash = '#page-indexing';
+      await vi.waitFor(() => expect(rendered.querySelector('[data-page-id="indexing"]')?.hasAttribute('data-page-pending')).toBe(false));
+      const page = rendered.querySelector('[data-page-id="indexing"]');
+      expect(page?.querySelectorAll('[data-view-id]')).toHaveLength(4);
+      expect(page?.querySelectorAll('[data-chart-widget="bar"]')).toHaveLength(2);
+      expect(page?.querySelectorAll('[data-chart-widget="horizontal-bar"]')).toHaveLength(1);
       expect(page?.textContent).not.toContain('Local database');
-      expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
-      expect(page?.querySelector('input[type="search"]')).not.toBeNull();
       expect(page?.textContent).toContain('ingest-jsonl');
-      expect(page?.textContent).toContain('https://dashboard.example/.../logs-1.jsonl');
-      expect(page?.querySelector('tbody a')?.getAttribute('href')).toBe('https://dashboard.example/gh-aw-logs-shards/logs-1.jsonl');
-      const headings = [...page?.querySelectorAll('thead tr:first-child th') ?? []].map((heading) => heading.textContent?.trim());
-      expect(headings.at(-1)).toBe('Created');
-      expect(headings).toEqual(expect.arrayContaining([
-        'Committed records',
-        'Records',
-        'Raw payload records',
-        'Transaction',
-        'Payload hash',
-        'Payload ETag'
-      ]));
+      const transactions = page?.querySelector('[data-view-id="transaction-entries"]');
+      expect(transactions?.querySelector('.entity-card-list-card')).not.toBeNull();
+      expect(transactions?.textContent).toContain('Committed records');
+      expect(transactions?.textContent).toContain('Payload hash');
+      expect(transactions?.querySelector('input[type="search"]')).toBeNull();
     } finally {
       rendered.remove();
       window.history.replaceState(null, '', '/');
@@ -964,10 +1032,13 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('.view-metadata-summary')).toBeNull();
     expect(rendered.querySelector('.horizon-summary [aria-label="Data status"]')).toBeNull();
     expect(rendered.querySelector('.filter-tuning-controls .horizon-details [aria-label="Data status"]')).toBeNull();
-    expect(page?.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
-    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('dependabot.yml (githubnext/gh-aw-cao)');
-    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('ci.yml (github/target-service)');
-    expect([...(page?.querySelectorAll('[data-view-id="workflows-by-runs"] .chart-legend-pie strong') ?? [])].map((value) => value.textContent)).toEqual(['2', '1']);
+    expect(page?.querySelector('[data-chart-widget="horizontal-bar"]')).not.toBeNull();
+    expect([...(page?.querySelectorAll('[data-view-id="workflows-by-aic-per-run"] .horizontal-bar-chart-label') ?? [])].map((value) => value.textContent))
+      .toEqual(['dependabot.yml (githubnext/gh-aw-cao)', 'ci.yml (github/target-service)']);
+    expect([...(page?.querySelectorAll('[data-view-id="workflows-by-aic-per-run"] .horizontal-bar-chart-value') ?? [])].map((value) => value.textContent))
+      .toEqual(['15', '5']);
+    expect(page?.querySelector('[data-view-id="workflows-by-aic-per-run"] .horizontal-bar-chart-label a')?.getAttribute('href'))
+      .toContain('#page-workflow-runtime?workflow=');
     expect(page?.querySelector('[data-view-id="workflows-inventory"][data-view-layout="full-view"]')).not.toBeNull();
     const rocket = rendered.querySelector('[data-nav-page-id="workflows"] .octicon-rocket');
     expect(rocket?.classList.contains('octicon-rocket')).toBe(true);
@@ -1360,7 +1431,7 @@ describe('presenter built-in and custom pages', () => {
         },
         outcomes: { source: 'outcomes', rows: [], metadata },
         'safe-output-performance': { source: 'safe-output-performance', rows: [], metadata },
-        'operational-values': { source: 'operational-values', rows: [], metadata },
+        'operational-graders': { source: 'operational-graders', rows: [], metadata },
         usage: { source: 'usage', rows: [], metadata },
         runs: { source: 'runs', rows: [], metadata },
         repositories: { source: 'repositories', rows: [], metadata },
@@ -2307,7 +2378,7 @@ describe('presenter built-in and custom pages', () => {
 
     const headings = [...rendered.querySelectorAll('[data-page-id="runs"] .page-section h3')].map((element) => element.textContent);
     expect(headings).toEqual(['Runs in the last week', 'Runs']);
-    expect(rendered.querySelectorAll('[data-page-id="runs"] [data-chart-widget="swimlane"]')).toHaveLength(1);
+    expect(rendered.querySelectorAll('[data-page-id="runs"] [data-chart-widget="area"]')).toHaveLength(1);
     expect(rendered.querySelectorAll('[data-page-id="runs"] .custom-table')).toHaveLength(1);
     expect(rendered.querySelector('[data-page-id="runs"]')?.getAttribute('data-page-kind')).toBe('custom');
   });
@@ -2409,18 +2480,21 @@ describe('presenter built-in and custom pages', () => {
         title: 'Security Dashboard',
         pages: [
           {
-            id: 'findings',
-            kind: /** @type {'built-in'} */ ('built-in'),
-            page: 'findings',
+            id: 'finding-review',
+            kind: /** @type {'custom'} */ ('custom'),
             title: 'Findings',
-            definition: {
-              'data-state': {
-                availability: true
-              },
-              views: [
-                { id: 'findings-source', data: { source: 'findings' } }
-              ]
-            }
+            views: [{
+              id: 'finding-review-table',
+              data: { source: 'findings' },
+              mark: 'table',
+              encoding: {
+                columns: [
+                  { field: 'finding-summary', type: 'nominal' },
+                  { field: 'issue-link', type: 'nominal' }
+                ],
+                href: { field: 'issue-link', type: 'nominal' }
+              }
+            }]
           }
         ]
       }
@@ -2463,13 +2537,13 @@ describe('presenter built-in and custom pages', () => {
 
     expect(rendered.querySelector('#page-title')?.textContent).toBe('Findings');
     expect(rendered.querySelector('.sidebar-brand > span')?.textContent).toBe('github');
-    expect(rendered.querySelector('[data-page-id="findings"] .custom-table thead')?.textContent).toContain('Issue Link');
+    expect(rendered.querySelector('[data-page-id="finding-review"] .custom-table thead')?.textContent).toContain('Issue Link');
 
-    const summaryCell = rendered.querySelector('[data-page-id="findings"] .custom-table tbody td');
+    const summaryCell = rendered.querySelector('[data-page-id="finding-review"] .custom-table tbody td');
     expect(summaryCell?.textContent).toContain('<img src=x onerror=alert(1)>');
     expect(summaryCell?.querySelector('img')).toBeNull();
 
-    const issueLink = rendered.querySelector('[data-page-id="findings"] .custom-table tbody a');
+    const issueLink = rendered.querySelector('[data-page-id="finding-review"] .custom-table tbody a');
     expect(issueLink?.getAttribute('href')).toBe('https://example.com/issues/1');
     expect(issueLink?.getAttribute('aria-label')).toBe('Issue 1 label');
     expect(issueLink?.getAttribute('target')).toBe('_blank');
@@ -3012,6 +3086,8 @@ describe('presenter built-in and custom pages', () => {
     expect(titleLink.getAttribute('rel')).toBe('noopener noreferrer');
     expect(rendered.ownerDocument.title).toBe('Linked issue · Page Navigation');
 
+    secondLink.dataset.routeTitle = 'Canonical second';
+    secondLink.dataset.routeDescription = 'Canonical second description';
     secondLink.click();
 
     expect(first.hidden).toBe(true);
@@ -3025,10 +3101,10 @@ describe('presenter built-in and custom pages', () => {
     expect(second.getAttribute('aria-label')).toBe('Loading view');
     expect(secondLink.getAttribute('aria-current')).toBe('page');
     expect(rendered.ownerDocument.defaultView?.location.hash).toBe('#page-second');
-    expect(rendered.querySelector('#page-title')?.textContent).toBe('Second');
-    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Second');
-    expect(rendered.querySelector('[data-page-description]')?.textContent).toBe('Second page description');
-    expect(rendered.ownerDocument.title).toBe('Second · Page Navigation');
+    expect(rendered.querySelector('#page-title')?.textContent).toBe('Canonical second');
+    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Canonical second');
+    expect(rendered.querySelector('[data-page-description]')?.textContent).toBe('Canonical second description');
+    expect(rendered.ownerDocument.title).toBe('Canonical second · Page Navigation');
     expect(titleLink.hidden).toBe(true);
     expect(titleLink.hasAttribute('href')).toBe(false);
     expect(rendered.ownerDocument.activeElement).toBe(rendered.querySelector('#page-title'));
@@ -3039,6 +3115,8 @@ describe('presenter built-in and custom pages', () => {
     expect(renderedSecond.hidden).toBe(false);
     expect(renderedSecond.hasAttribute('data-page-pending')).toBe(false);
     expect(renderedSecond.hasAttribute('aria-busy')).toBe(false);
+    expect(rendered.querySelector('#page-title')?.textContent).toBe('Canonical second');
+    expect(rendered.querySelector('[data-page-description]')?.textContent).toBe('Canonical second description');
 
     pageScroller.scrollTop = 80;
     firstLink.click();
@@ -3179,6 +3257,142 @@ describe('presenter built-in and custom pages', () => {
       disposeNavigation();
     } finally {
       root.remove();
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
+  it('does not navigate when the current route tab is clicked', () => {
+    const root = document.createElement('div');
+    root.innerHTML = `
+      <main class="dashboard-prototype">
+        <section class="dashboard-page" id="page-first" data-page-id="first">
+          <nav data-route-tabs aria-label="Ambient Context views">
+            <a data-nav-page-id="first" href="#page-first?campaign=ambient-context" aria-current="page">Overview</a>
+          </nav>
+        </section>
+      </main>
+    `;
+    document.body.append(root);
+    const renderPage = vi.fn(() => null);
+    try {
+      const disposeNavigation = enableDashboardPageNavigation(root, 'Dashboard', renderPage, 'first');
+      const currentTab = /** @type {HTMLAnchorElement} */ (root.querySelector('[aria-current="page"]'));
+      const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+      currentTab.dispatchEvent(click);
+
+      expect(click.defaultPrevented).toBe(true);
+      expect(renderPage).not.toHaveBeenCalled();
+      disposeNavigation();
+    } finally {
+      root.remove();
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
+  it('animates query drills forward and browser back navigation backward', () => {
+    /** @type {Array<string | undefined>} */
+    const directions = [];
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      value: vi.fn((callback) => {
+        directions.push(document.documentElement.dataset.navigationDirection);
+        callback();
+        return { finished: Promise.resolve() };
+      })
+    });
+    const root = document.createElement('div');
+    root.innerHTML = `
+      <a data-nav-page-id="first" href="#page-first">First</a>
+      <a data-card-drill="query" data-nav-page-id="second" href="#page-second?query=items&title=Item">Item</a>
+      <main class="dashboard-prototype">
+        <section class="dashboard-page" id="page-first" data-page-id="first"></section>
+        <section class="dashboard-page" id="page-second" data-page-id="second"></section>
+      </main>
+    `;
+    document.body.append(root);
+    try {
+      const disposeNavigation = enableDashboardPageNavigation(root, 'Dashboard', () => null, 'first');
+      /** @type {HTMLAnchorElement} */ (root.querySelector('[data-card-drill="query"]')).click();
+
+      window.history.replaceState(
+        { centralAgenticOpsNavigationIndex: 0 },
+        '',
+        '/#page-first'
+      );
+      window.dispatchEvent(new PopStateEvent('popstate', {
+        state: { centralAgenticOpsNavigationIndex: 0 }
+      }));
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+
+      expect(directions.at(0)).toBe('forward');
+      expect(directions.at(-1)).toBe('backward');
+      disposeNavigation();
+    } finally {
+      root.remove();
+      Reflect.deleteProperty(document, 'startViewTransition');
+      delete document.documentElement.dataset.navigationDirection;
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
+  it('persists page scroll positions for reload and browser history restoration', async () => {
+    const createRoot = () => {
+      const root = document.createElement('div');
+      root.innerHTML = `
+        <a data-nav-page-id="first" href="#page-first">First</a>
+        <a data-nav-page-id="second" href="#page-second">Second</a>
+        <main class="dashboard-prototype">
+          <section class="dashboard-page" id="page-first" data-page-id="first"></section>
+          <section class="dashboard-page" id="page-second" data-page-id="second"></section>
+        </main>
+      `;
+      document.body.append(root);
+      return root;
+    };
+    const firstRoot = createRoot();
+    try {
+      const disposeFirstNavigation = enableDashboardPageNavigation(firstRoot, 'Dashboard', () => null, 'first');
+      const firstScroller = /** @type {HTMLElement} */ (firstRoot.querySelector('main.dashboard-prototype'));
+      firstScroller.scrollTop = 240;
+      firstScroller.dispatchEvent(new Event('scroll'));
+      await vi.waitFor(() => {
+        expect(window.history.state?.centralAgenticOpsScrollTop).toBe(240);
+      });
+      disposeFirstNavigation();
+      firstRoot.remove();
+
+      const reloadedRoot = createRoot();
+      const disposeReloadedNavigation = enableDashboardPageNavigation(reloadedRoot, 'Dashboard', () => null, 'first');
+      const reloadedScroller = /** @type {HTMLElement} */ (reloadedRoot.querySelector('main.dashboard-prototype'));
+      expect(reloadedScroller.scrollTop).toBe(240);
+
+      /** @type {HTMLAnchorElement} */ (reloadedRoot.querySelector('[data-nav-page-id="second"]')).click();
+      await vi.waitFor(() => {
+        expect(reloadedRoot.querySelector('[data-page-id="second"]')?.hasAttribute('hidden')).toBe(false);
+      });
+      reloadedScroller.scrollTop = 80;
+      reloadedScroller.dispatchEvent(new Event('scroll'));
+      window.history.replaceState(
+        {
+          centralAgenticOpsNavigationIndex: 0,
+          centralAgenticOpsScrollPageId: 'first',
+          centralAgenticOpsScrollTop: 240
+        },
+        '',
+        '/#page-first'
+      );
+      window.dispatchEvent(new PopStateEvent('popstate', {
+        state: {
+          centralAgenticOpsNavigationIndex: 0,
+          centralAgenticOpsScrollPageId: 'first',
+          centralAgenticOpsScrollTop: 240
+        }
+      }));
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      expect(reloadedScroller.scrollTop).toBe(240);
+      disposeReloadedNavigation();
+      reloadedRoot.remove();
+    } finally {
       window.history.replaceState(null, '', '/');
     }
   });

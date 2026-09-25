@@ -40,7 +40,7 @@ A manual dispatch can narrow a run, such as changing an authorized `live` run to
 
 `workflow_dispatch` authenticates the caller as the GitHub App bot that holds the write-App credential. Allowlisting that bot preserves safe-output worker dispatches, but its login alone is not cryptographic proof of a particular orchestrator run, App installation, or dispatch envelope: a holder of the same App credential can submit equivalent workflow-dispatch inputs directly.
 
-CAO therefore treats the write-App credential, its control-repository secret, and its selected installations as part of the trusted control-plane boundary. A worker independently fails closed unless the policy at its exact workflow SHA declares its campaign and worker, keeps both enabled, accepts the requested mode and output route, and accepts the target owner and any exact repository allowlist. The target repository cannot widen, narrow, or veto this authority through its own files. These checks prevent a dispatch from widening policy, operation, target, or mode, even when the caller has the allowlisted bot identity.
+CAO therefore treats the write-App credential, its control-repository secret, and its selected installations as part of the trusted control-plane boundary. A worker independently fails closed unless the policy at its exact workflow SHA declares its campaign and worker, keeps both enabled, accepts the requested mode and output route, and accepts the target owner and any exact repository allowlist. The target repository cannot widen, narrow, or veto this authority through its own files. These checks prevent a dispatch from widening policy, campaign, target, or mode, even when the caller has the allowlisted bot identity.
 
 The correlation ID and control-plane run URL provide audit linkage only; they are dispatch inputs and cannot establish provenance by themselves. A deployment that requires proof that *only* a particular orchestrator run issued a worker dispatch needs a signed, replay-resistant envelope generated outside the agent-visible dispatch inputs (or a GitHub-provided source-run attestation). Do not treat the App login, installation access, or a matching run URL as a substitute for that stronger guarantee.
 
@@ -65,7 +65,7 @@ Setup creates one atomic control-plane revision:
 1. Install the gh-aw campaign from an immutable CAO tag or commit.
 2. Verify that campaign installation copied `.github/workflows/shared/control.mjs` and `.github/workflows/shared/policy.mjs`.
 3. Declare the installed campaign and its worker-to-workflow mapping in `.github/workflows/cao.json`.
-4. Commit the workflows, generated locks, campaign records, and policy together, then push before running the operation.
+4. Commit the workflows, generated locks, campaign records, and policy together, then push before running the campaign.
 
 The Bash installer installs the root CAO campaign and creates the consumer-owned policy. The campaign provides one runtime copy under `.github/workflows/shared/`. Controlled workflows receive it through their existing exact-SHA shared checkout; they do not fetch another copy from the CAO repository. Follow [Quickstart: add Central Agentic Ops](getting-started.md#step-3---add-central-agentic-ops) to bootstrap the repository and [Quickstart: set the first-run boundary](getting-started.md#step-4---set-the-first-run-boundary) to configure its scope.
 

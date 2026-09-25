@@ -72,7 +72,7 @@ architecture:
     canonical_evidence: source-neutral records with stable identities, relationships, quality, and provenance
     bounded_computation_results: partitioned, versioned measures and actionable insights with bounded evidence references
     computation_authority: authority inferred from a derived computation result
-    outcome_inference_from_runtime: treating runtime success as verification, accepted outcome, or operational value
+    outcome_inference_from_runtime: treating runtime success as verification, accepted outcome, an operational-grader result, or operational value
     generation_scoped_computation_results: disposable bounded measure results keyed to one canonical generation, measure version, partition, and input fingerprint
 
 components:
@@ -120,16 +120,34 @@ components:
     responsibility: rebuildable per-browser data projection
   redis_projection:
     path: server/
-    responsibility: disposable generation-scoped local dashboard projection with RediSearch indexes
+    responsibility: disposable generation-scoped dashboard projection with RediSearch indexes
   dashboard_https_server:
     path: server/
-    responsibility: ingest deployed dashboard artifacts, execute Dashboard Language queries server-side, and serve bounded results with static dashboard assets over loopback HTTP or explicitly configured HTTPS
+    responsibility: ingest deployed dashboard artifacts, execute Dashboard Language queries server-side, and serve bounded canonical results locally or through an authenticated host-neutral profile
+  dashboard_canonical_api:
+    path: server/internal/server/
+    responsibility: expose canonical repositories, workflows, runs, jobs, sessions, and events without exposing Redis keys or representations
+  dashboard_github_auth:
+    path: server/internal/server/oauth.go
+    responsibility: authenticate hosted users through GitHub and enforce explicit organization or team authorization with server-side sessions
+  dashboard_webhook_reconciliation:
+    path: server/internal/server/operations.go
+    responsibility: verify and deduplicate GitHub deliveries and reconcile the disposable projection from authoritative inputs
+  dashboard_rebuild_control:
+    path: server/internal/server/operations.go
+    responsibility: coordinate multi-replica rebuilds, stage and validate a fresh generation, atomically activate it, and report operational status
   dashboard_language_queries:
     path: dashboard/site/src/data/
     responsibility: declarative query definitions executed by the browser data worker
   computations:
     path: specs/computations.md
     responsibility: define deterministic partitioned measures that transform canonical evidence into bounded actionable insights
+  package_operational_value:
+    path: <operation>/operational-value.mjs
+    responsibility: compute timestamped repository-scoped metrics for installed packages through the cao operational-value command
+  package_problem_clustering:
+    path: <operation>/problem-clustering.mjs
+    responsibility: compute bounded package problem rows from a private Activity SQLite snapshot through the cao cluster-problems command
   computation_reference_runtime:
     path: research/computations/
     responsibility: experimentally evaluate proposed versioned measures over selected and ordered partitions without implying dashboard production integration
@@ -166,6 +184,10 @@ dependencies:
   - dashboard_https_server -> redis_projection
   - redis_projection -> dashboard_https_server
   - dashboard_https_server -> dashboard_language_queries
+  - dashboard_https_server -> dashboard_canonical_api
+  - dashboard_github_auth -> dashboard_https_server
+  - dashboard_webhook_reconciliation -> dashboard_rebuild_control
+  - dashboard_rebuild_control -> redis_projection
   - sqlite_projection -> computations
   - indexeddb_projection -> computations
   - computations -> computation_reference_runtime
@@ -174,6 +196,11 @@ dependencies:
   - computation_projection -> dashboard_language_queries
   - dashboard_language_queries -> dashboard_ui
   - computations -> cao_cli
+  - package_operational_value -> cao_cli
+  - package_operational_value -> activity_jsonl_shards
+  - sqlite_projection -> package_problem_clustering
+  - package_problem_clustering -> cao_cli
+  - activity_jsonl_shards -> indexeddb_projection
 
 boundaries:
   - subject: policy_resolution
@@ -225,19 +252,27 @@ invariants:
   - "The deployed dashboard artifact MUST NOT contain or manifest raw Activity JSONL; browser ingestion MUST consume compacted normalized run and record JSONL and fail closed when run-information shards are absent."
   - "Normalized Activity shards MUST be JSONL and browser consumers MUST stream bounded record batches without buffering a complete shard."
   - "Missing, stale, partial, and zero evidence are distinct states."
-  - "Dashboard data operations MUST be declared in Dashboard Language and execute outside the browser main thread: in the data Web Worker for static deployment or in the Go HTTP(S) server for the local Redis profile."
-  - "In the local Redis profile, Dashboard Language queries execute in the Go HTTP(S) server and compatible stages MUST be pushed into Redis before bounded Go fallback."
+  - "Dashboard data operations MUST be declared in Dashboard Language and execute outside the browser main thread: in the data Web Worker for static deployment or in the Go HTTP(S) server for the Redis profile."
+  - "In the Redis profile, Dashboard Language queries execute in the Go HTTP(S) server and compatible stages MUST be pushed into Redis before bounded Go fallback."
   - "The local Redis profile MUST bind to loopback, use HTTP by default for localhost debugging, enable HTTPS only with operator-supplied certificate files, and MUST NOT expose Redis endpoints or credentials to browser code."
-  - "Remote Redis dashboard exposure, authentication, GitHub live querying, and webhooks are outside the local profile."
+  - "The hosted Redis profile MUST use GitHub OAuth with explicit organization or team authorization, explicit rebuild administrators, server-side secrets and sessions, and an explicit account-selection flow for switching GitHub identities; Redis transport MUST use TLS, non-loopback listeners MUST terminate TLS, and forwarded headers may be trusted only across a loopback-bound proxy boundary."
+  - "Hosted logout and account switching MUST remove active session authority before remote token revocation; failed GitHub revocations MUST retain encrypted credentials only in the durable Redis pending-revocation queue for bounded maintenance retries through credential expiry."
+  - "Hosted session encryption MUST identify the active key and support one explicitly configured previous key during controlled rotation; the previous key MUST remain available until sessions and revocation records using it drain."
+  - "OAuth refresh MUST atomically compare-and-swap the encrypted session record; a refresh superseded by logout or another refresh MUST revoke or durably queue its newly issued credentials and MUST NOT restore session authority."
+  - "GitHub webhook deliveries MUST be signature-verified and deduplicated before reconciliation; webhook payloads are invalidation signals rather than projection authority."
+  - "Redis rebuilds MUST use a distributed lock, stage and validate a fresh immutable generation, and atomically activate it without modifying the active generation in place."
+  - "An empty Redis instance is healthy but not ready and MUST report that a rebuild is required."
+  - "Browsers and external clients MUST NOT receive Redis endpoints, credentials, keys, or Redis-specific representations."
   - "Computations MUST consume canonical evidence, preserve evidence quality and provenance, and emit bounded, versioned results."
   - "Computation results MUST NOT grant authority or turn runtime success into verification, accepted outcomes, or operational value."
-  - "Successful-Run value computations MUST report produced outputs, native operational-value measurements, and efficiency as separate axes; output creation MUST NOT imply acceptance or value, and no composite score may be invented."
+  - "Successful-Run value computations MUST report produced outputs, native operational-grader measurements, and efficiency as separate axes; operational value is reserved for package-defined repository campaign metrics, output creation MUST NOT imply acceptance or value, and no composite score may be invented."
   - "Overview counters MUST use IndexedDB-native counts or generation-safe precomputed daily values; Run-table scans, clustering, and audit diagnosis execute only in drill-down or compatible bounded materializations."
   - "Materialized computation results MUST remain generation-scoped disposable state; runtime facts and failure scopes are precomputed, while detailed audit causes and actions are cached only for selected or prioritized partitions."
   - "Runtime computation partitions MUST be target-aware for workers: form Campaign, Workflow, and target Repository evaluation partitions before evaluating success boundaries so one target's success cannot mask another target's failures."
   - "Runtime computations MUST evaluate Campaign orchestrators before enumerating worker-target partitions; a failing, unknown, or unobserved orchestrator gates worker evaluation without converting skipped workers into healthy, failed, or not-observed results."
   - "The cao computation namespace exposes production measures; runtime-health selection, joins, and ordering execute through Dashboard Language queries before versioned measure evaluation."
   - "Failure of a downstream computation MUST NOT invalidate a compatible upstream result."
+  - "Package problem clustering MUST use bounded, timed, cancelable subprocesses over a private Activity snapshot; require each emitted problem to include an actionable fix prompt; atomically replace only the producer's cao_problems rows; retain prior rows when that producer fails; and remove rows for uninstalled producers."
   - "Dashboard UI effects and components MUST NOT query source data or reconstruct business relationships."
   - "ADRs are durable decision history; current requirements and conformance rules live in specs/ or specification-style documentation."
   - "Generated workflow lock files MUST NOT be edited directly."
@@ -273,14 +308,18 @@ flows:
     - computation_projection
     - dashboard_language_queries
     - dashboard_ui
-  activity_dashboard_local_redis:
+  activity_dashboard_redis:
     - gh_aw_logs
     - activity_jsonl_shards
     - activity_run_information_shards
     - activity_record_shards
     - dashboard_publisher
     - dashboard_https_server
+    - dashboard_github_auth
+    - dashboard_webhook_reconciliation
+    - dashboard_rebuild_control
     - redis_projection
+    - dashboard_canonical_api
     - dashboard_language_queries
     - dashboard_ui
   activity_cli:

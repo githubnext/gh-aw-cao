@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { processDataRequest } from '../../src/data-worker.js';
 import { dashboardQueryDefects } from '../../src/data/queries/declarative.js';
+import { CAMPAIGN_ROUTE_BODY_VALUES } from '../../src/components/route-body-specification.js';
 import { TABLE_FIELDS } from '../../src/specification.js';
 
 const document = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8'));
@@ -82,13 +83,97 @@ describe('dashboard view query contracts', () => {
     )).toEqual([]);
   });
 
+  it('renders the Cost page with concise titles and a workflow bar chart in the Data section', () => {
+    const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'cost');
+    const dataSection = dashboard.navigation.find(
+      (/** @type {Record<string, unknown>} */ section) => section.label === 'Data'
+    );
+
+    expect(/** @type {Record<string, unknown> | undefined} */ (dataSection)?.pages).toContain('cost');
+    expect(page).toMatchObject({
+      icon: 'credit-card'
+    });
+    expect(viewsOf(page)).toMatchObject([
+      {
+        id: 'cost-by-campaign',
+        title: 'Cost per campaign',
+        data: { source: 'cost-by-campaign' },
+        mark: 'chart',
+        chart: 'pie',
+        encoding: {
+          x: { field: 'campaign-name' },
+          y: { field: 'aic', unit: 'aic' }
+        }
+      },
+      {
+        id: 'cost-by-repository',
+        title: 'Cost per repository',
+        data: { source: 'cost-by-repository' },
+        mark: 'chart',
+        chart: 'pie',
+        encoding: {
+          x: { field: 'repository-coordinate' },
+          y: { field: 'aic', unit: 'aic' }
+        }
+      },
+      {
+        id: 'cost-by-workflow',
+        title: 'Cost per workflow',
+        data: { source: 'cost-by-workflow' },
+        mark: 'chart',
+        chart: 'horizontal-bar',
+        encoding: {
+          x: { field: 'workflow-coordinate' },
+          y: { field: 'aic', unit: 'aic' }
+        }
+      }
+    ]);
+  });
+
+  it('renders operational value with an Insights-first value-ID timeline in the Data section', () => {
+    const page = dashboard.pages.find(
+      (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'operational-value'
+    );
+    const dataSection = dashboard.navigation.find(
+      (/** @type {Record<string, unknown>} */ section) => section.label === 'Data'
+    );
+
+    expect(/** @type {Record<string, unknown> | undefined} */ (dataSection)?.pages)
+      .toContain('operational-value');
+    expect(page).toMatchObject({
+      kind: 'built-in',
+      page: 'operational-value',
+      definition: {
+        sections: [
+          {
+            id: 'insights',
+            views: ['operational-value-history']
+          },
+          {
+            id: 'observations',
+            views: ['operational-value-observations']
+          }
+        ]
+      }
+    });
+    expect(viewsOf(page)[0]).toMatchObject({
+      id: 'operational-value-history',
+      data: { source: 'operational-values' },
+      mark: 'chart',
+      chart: 'line',
+      encoding: {
+        x: { field: 'observed-at', type: 'temporal' },
+        y: { field: 'operational-value', type: 'quantitative' },
+        color: { field: 'operational-value-definition', type: 'nominal' }
+      }
+    });
+  });
+
   it('keeps assessment-sensitive high-cardinality views declaratively bounded', () => {
     const pagesById = new Map(dashboard.pages.map((/** @type {Record<string, unknown>} */ page) => [page.id, page]));
     const boundedViews = [
       ['graders', 'graders-graders-source', 100],
-      ['graders', 'graders-observations-source', 100],
-      ['usage', 'usage-usage-source', 100],
-      ['findings', 'findings-source', 100]
+      ['graders', 'graders-observations-source', 100]
     ];
 
     for (const [pageId, viewId, limit] of boundedViews) {
@@ -127,6 +212,130 @@ describe('dashboard view query contracts', () => {
       const view = views.find((candidate) => candidate.id === viewId);
       expect(/** @type {Record<string, unknown> | undefined} */ (view?.data)?.source).toBe('dispatches');
     }
+  });
+
+  it('uses one shared route shell first across every primary campaign tab', () => {
+    const primaryPages = {
+      'campaign-insights': 'insights',
+      'campaign-problems': 'problems',
+      'campaign-runs': 'runs',
+      'campaign-issues': 'issues',
+      'campaign-detail': 'overview'
+    };
+
+    for (const [pageId, body] of Object.entries(primaryPages)) {
+      const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === pageId);
+      const firstView = viewsOf(page)[0];
+      expect(firstView).toMatchObject({
+        data: {
+          sources: [
+            'workflows',
+            'campaign-insight-tab-counts',
+            'campaign-problem-tab-counts',
+            'campaign-issue-tab-counts'
+          ],
+          arguments: [{ name: 'campaign', field: 'campaign' }]
+        },
+        mark: 'element',
+        element: 'campaign-route',
+        config: { body }
+      });
+    }
+
+    expect(dashboard.pages.some((/** @type {Record<string, unknown>} */ page) => page.id === 'campaign-dispatches')).toBe(false);
+  });
+
+  it('uses one declarative route template and Insights destination for every campaign entry path', () => {
+    const campaignPages = dashboard.pages.filter((/** @type {Record<string, unknown>} */ page) => (
+      /** @type {Record<string, unknown> | undefined} */ (page.route)?.['hash-query-parameter'] === 'campaign'
+    ));
+    const expectedTabs = [
+      { id: 'insights', label: 'Insights', icon: 'graph', page: 'campaign-insights' },
+      { id: 'problems', label: 'Problems', icon: 'alert', page: 'campaign-problems' },
+      { id: 'issues', label: 'Issues', icon: 'issue-opened', page: 'campaign-issues' }
+    ];
+
+    for (const page of campaignPages) {
+      expect(page.route).toMatchObject({
+        'title-format': 'title-case',
+        'tabs-class-name': 'campaign-tabs',
+        tabs: expectedTabs
+      });
+    }
+    expect(JSON.stringify(dashboard.queries)).not.toContain('#page-campaign-detail?campaign=');
+    expect(JSON.stringify(dashboard.queries)).toContain('#page-campaign-insights?campaign=');
+    expect(dashboard.pages.some((/** @type {Record<string, unknown>} */ page) => page.id === 'campaign-pull-requests')).toBe(false);
+    expect(CAMPAIGN_ROUTE_BODY_VALUES).not.toContain('pull-requests');
+  });
+
+  it('renders campaign issues with the reusable issue card template', () => {
+    const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-issues');
+    const issueView = viewsOf(page).find((view) => view.id === 'campaign-issue-table');
+
+    expect(issueView).toMatchObject({
+      data: { source: 'campaign-worker-issues', 'route-field': 'campaign' },
+      mark: 'list',
+      list: {
+        style: 'entity-cards',
+        card: 'issue',
+        drill: { type: 'external', field: 'issue-link' }
+      }
+    });
+  });
+
+  it('keeps campaign content data-driven through reusable views and templates', () => {
+    const insights = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-insights');
+    const problems = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-problems');
+    const runs = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-runs');
+
+    expect(viewsOf(insights)[1]).toMatchObject({
+      data: {
+        sources: ['campaign-operational-value-primary-series'],
+        arguments: [{ name: 'campaign', field: 'campaign' }]
+      },
+      mark: 'element',
+      element: 'measure-history',
+      config: { 'measure-source': 'operational-value' }
+    });
+
+    expect(viewsOf(insights)[2]).toMatchObject({
+      data: {
+        sources: ['campaign-operational-grader-series'],
+        arguments: [{ name: 'campaign', field: 'campaign' }]
+      },
+      mark: 'element',
+      element: 'measure-history'
+    });
+
+    expect(viewsOf(problems).find((view) => view.id === 'campaign-current-runtime-problems')).toMatchObject({
+      data: { source: 'campaign-problem-items' },
+      mark: 'list',
+      list: { style: 'entity-cards', card: 'problem' }
+    });
+    expect(viewsOf(runs).find((view) => view.id === 'campaign-run-status')).toMatchObject({
+      data: { source: 'campaign-runs', 'route-field': 'campaign' },
+      mark: 'chart'
+    });
+  });
+
+  it('renders one campaign problem as a dedicated full detail view', () => {
+    const detailPage = dashboard.pages.find(
+      (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-problem-detail'
+    );
+    const detailView = dashboard.views.find(
+      (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-problem-detail-view'
+    );
+
+    expect(detailPage).toMatchObject({
+      route: { 'hash-query-parameter': 'target-repository' },
+      views: ['campaign-problem-detail-view']
+    });
+    expect(detailView).toMatchObject({
+      data: { sources: ['campaign-problem-items'] },
+      mark: 'element',
+      element: 'problem-detail',
+      layout: 'full'
+    });
   });
 
   it('renders issues per repository and one activity inventory', () => {
@@ -176,6 +385,16 @@ describe('dashboard view query contracts', () => {
         chart: 'pie'
       },
       {
+        id: 'issues-by-status',
+        data: { source: 'issue-safe-outputs' },
+        mark: 'chart',
+        chart: 'pie',
+        encoding: {
+          x: { field: 'issue-status-detail' },
+          y: { field: 'entity-url', aggregate: 'count' }
+        }
+      },
+      {
         id: 'issues-source',
         data: {
           source: 'issue-safe-outputs',
@@ -215,6 +434,11 @@ describe('dashboard view query contracts', () => {
         'event-timestamp': '2026-09-20T12:00:00Z',
         'github-entity-type': 'issue',
         'is-pull-request': false,
+        'issue-state': 'CLOSED',
+        'issue-closed': true,
+        'issue-state-reason': 'COMPLETED',
+        'issue-closed-at': '2026-09-20T12:30:00Z',
+        'issue-status-observed-at': '2026-09-20T12:31:00Z',
         'safe-output-type': 'create_issue',
         'event-summary': 'Fix issue view',
         'correlation-id': 'https://github.com/githubnext/gh-aw-cao/issues/13439'
@@ -265,6 +489,9 @@ describe('dashboard view query contracts', () => {
       expect.objectContaining({
         'event-summary': 'Fix issue view',
         'entity-url': 'https://github.com/githubnext/gh-aw-cao/issues/13439',
+        'issue-status': 'Closed',
+        'issue-closing-status': 'Completed',
+        'issue-status-detail': 'Closed: Completed',
         repository: 'gh-aw-cao'
       })
     ]);

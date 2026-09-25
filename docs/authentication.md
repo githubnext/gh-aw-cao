@@ -135,11 +135,11 @@ The workflow token is scoped to the repository containing the workflow. Public c
 - worker workflows receive repository names and routing policy, never credentials.
 - Each Orchestrator and worker workflow run resolves its own token through imported shared control.
 - Tokens must not appear in prompts, logs, safe outputs, Repo Memory, review bundles, or correlation metadata.
-- For operations outside the public read-only profile, the App installation or PAT repository selection must cover every repository the enabled operations may read or update.
+- For campaigns outside the public read-only profile, the App installation or PAT repository selection must cover every repository the enabled campaigns may read or update.
 
 ## Permissions
 
-Grant only permissions required by installed operations. The current full catalog separates these App-level ceilings; each minted token is narrower when its job or safe-output handler needs fewer permissions:
+Grant only permissions required by installed campaigns. The current full catalog separates these App-level ceilings; each minted token is narrower when its job or safe-output handler needs fewer permissions:
 
 | Permission | Read App | Write App | Reason |
 | --- | --- | --- | --- |
@@ -171,7 +171,7 @@ The GitHub CLI prompts for the token without echoing it. Do not include the toke
 For GitHub Apps:
 
 1. Add each replacement private key to its corresponding repository secret.
-2. Validate review runs for each installed operation.
+2. Validate review runs for each installed campaign.
 3. Revoke each old private key.
 4. Recheck both App installations, repository access, and permissions.
 
@@ -185,7 +185,7 @@ For a PAT:
 For suspected credential exposure, set affected campaign kill switches to `false`, cancel active runs, revoke the credential, inspect GitHub Actions logs and safe outputs, rotate credentials, and resume in review mode.
 
 :::danger[Suspected exposure]
-Stopping an operation does not revoke its credential. Disable affected runs and revoke the App installation or PAT before investigating further.
+Stopping a campaign does not revoke its credential. Disable affected runs and revoke the App installation or PAT before investigating further.
 :::
 
 ## Validation

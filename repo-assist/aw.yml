@@ -1,6 +1,6 @@
 name: Repo Assist
 description: Review-first issue triage, issue fixes, repository maintenance, and owned pull request upkeep.
-min-version: v0.89.20
+min-version: v0.89.21
 experimental: true
 includes:
   - ../aw.yml

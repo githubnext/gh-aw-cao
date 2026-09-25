@@ -823,13 +823,13 @@
           ],
           metadata: metadata("grader-observations-fixture"),
         },
-        "operational-values": {
-          source: "operational-values",
+        "operational-graders": {
+          source: "operational-graders",
           rows: [
             {
               "observed-at": "2026-08-10T08:30:00Z",
-              "operational-value": 0,
-              "operational-value-definition": "validated-dependency-resolution",
+              "operational-grader": 0,
+              "operational-grader-definition": "validated-dependency-resolution",
               "operational-case": "dependency-pr:github/example-api:41",
               "evaluator-digest": "sha256:dependabot123",
               organization: "githubnext",
@@ -845,8 +845,8 @@
             },
             {
               "observed-at": "2026-08-17T08:30:00Z",
-              "operational-value": 0,
-              "operational-value-definition": "validated-dependency-resolution",
+              "operational-grader": 0,
+              "operational-grader-definition": "validated-dependency-resolution",
               "operational-case": "dependency-pr:github/example-web:52",
               "evaluator-digest": "sha256:dependabot123",
               organization: "githubnext",
@@ -862,8 +862,8 @@
             },
             {
               "observed-at": "2026-08-24T08:30:00Z",
-              "operational-value": 1,
-              "operational-value-definition": "validated-dependency-resolution",
+              "operational-grader": 1,
+              "operational-grader-definition": "validated-dependency-resolution",
               "operational-case": "dependency-pr:github/example-cli:63",
               "evaluator-digest": "sha256:dependabot123",
               organization: "githubnext",
@@ -879,8 +879,8 @@
             },
             {
               "observed-at": "2026-08-31T08:30:00Z",
-              "operational-value": 1,
-              "operational-value-definition": "validated-dependency-resolution",
+              "operational-grader": 1,
+              "operational-grader-definition": "validated-dependency-resolution",
               "operational-case": "dependency-pr:github/example-sdk:74",
               "evaluator-digest": "sha256:dependabot123",
               organization: "githubnext",
@@ -896,8 +896,8 @@
             },
             {
               "observed-at": "2026-08-29T09:10:00Z",
-              "operational-value": 0.82,
-              "operational-value-definition": "issue-resolution-rate",
+              "operational-grader": 0.82,
+              "operational-grader-definition": "issue-resolution-rate",
               "operational-case": "triage",
               "evaluator-digest": "sha256:abc123",
               organization: "github",
@@ -914,8 +914,8 @@
             },
             {
               "observed-at": "2026-08-27T09:10:00Z",
-              "operational-value": 0.58,
-              "operational-value-definition": "issue-resolution-rate",
+              "operational-grader": 0.58,
+              "operational-grader-definition": "issue-resolution-rate",
               "operational-case": "triage",
               "evaluator-digest": "sha256:def456",
               organization: "github",
@@ -932,8 +932,8 @@
             },
             {
               "observed-at": "2026-08-28T09:10:00Z",
-              "operational-value": 0.71,
-              "operational-value-definition": "issue-resolution-rate",
+              "operational-grader": 0.71,
+              "operational-grader-definition": "issue-resolution-rate",
               "operational-case": "triage",
               "evaluator-digest": "sha256:ghi789",
               organization: "github",
@@ -950,8 +950,8 @@
             },
             {
               "observed-at": "2026-08-29T10:10:00Z",
-              "operational-value": 0.76,
-              "operational-value-definition": "review-quality",
+              "operational-grader": 0.76,
+              "operational-grader-definition": "review-quality",
               "operational-case": "review",
               "evaluator-digest": "sha256:jkl012",
               organization: "github",
@@ -967,7 +967,7 @@
               "run-link": runLink("1002"),
             },
           ],
-          metadata: metadata("operational-values-fixture"),
+          metadata: metadata("operational-graders-fixture"),
         },
       });
 

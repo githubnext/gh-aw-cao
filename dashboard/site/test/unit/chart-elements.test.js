@@ -228,7 +228,7 @@ describe('chart element helpers', () => {
 
   it('renders bounded horizontal bars with labels on the left and shared bar colors', () => {
     const points = [
-      { x: 'Alpha repository', y: 40, color: 'success' },
+      { x: 'Alpha repository', y: 40, color: 'success', link: { href: '#page-alpha', label: 'View Alpha repository' } },
       { x: 'Beta repository', y: 20, color: 'failure' }
     ];
     const chart = renderChartWidget('horizontal-bar', points, listChartSeries(points));
@@ -238,6 +238,7 @@ describe('chart element helpers', () => {
     expect(chart.querySelector('.horizontal-bar-chart-list')?.getAttribute('aria-label')).toBe('Horizontal bar chart with 2 bars');
     expect([...chart.querySelectorAll('.horizontal-bar-chart-label')].map((label) => label.textContent))
       .toEqual(['Alpha repository', 'Beta repository']);
+    expect(chart.querySelector('.horizontal-bar-chart-label a')?.getAttribute('href')).toBe('#page-alpha');
     expect(chart.querySelectorAll('.bar-chart-bar')).toHaveLength(2);
     expect(chart.querySelector('.horizontal-bar-chart-bar')?.getAttribute('style')).toContain('--horizontal-bar-size: 100%');
     expect([...chart.querySelectorAll('.horizontal-bar-chart-value')].map((value) => value.textContent))
@@ -246,7 +247,32 @@ describe('chart element helpers', () => {
       .toContain('Alpha repository: 40');
   });
 
-  it('elides shared horizontal bar label prefixes while preserving full titles and accessible values', () => {
+  it('formats linked horizontal bar categories without changing their destinations', () => {
+    const points = [{
+      x: 'githubnext/gh-aw-cao:.github/workflows/optimization-agents-and-curator.md',
+      y: 40,
+      color: null,
+      link: { href: '#page-workflow-runtime?workflow=optimization', label: 'View workflow dashboard' }
+    }];
+    const chart = renderChartWidget(
+      'horizontal-bar',
+      points,
+      listChartSeries(points),
+      null,
+      'Total',
+      null,
+      null,
+      null,
+      (label) => label.replace('.github/workflows/', '').replace(':', ' (') + ')'
+    );
+
+    expect(chart.querySelector('.horizontal-bar-chart-label a')?.getAttribute('href'))
+      .toBe('#page-workflow-runtime?workflow=optimization');
+    expect(chart.querySelector('.horizontal-bar-chart-label-text')?.textContent)
+      .toBe('githubnext/gh-aw-cao (optimization-agents-and-curator.md)');
+  });
+
+  it('preserves complete horizontal bar labels with shared prefixes', () => {
     const points = [
       { x: 'dependabot-update-planner: Review error logs', y: 25, color: 'success' },
       { x: 'dependabot-update-planner: Update advisory summary', y: 13, color: 'failure' }
@@ -254,10 +280,7 @@ describe('chart element helpers', () => {
     const chart = renderChartWidget('horizontal-bar', points, listChartSeries(points));
     const labels = [...chart.querySelectorAll('.horizontal-bar-chart-label')];
 
-    expect(labels.map((label) => label.textContent)).toEqual([
-      '…Review error logs',
-      '…Update advisory summary'
-    ]);
+    expect(labels.map((label) => label.textContent)).toEqual(points.map((point) => point.x));
     expect(labels.map((label) => label.getAttribute('title'))).toEqual(points.map((point) => point.x));
     expect(chart.querySelector('.horizontal-bar-chart-value')?.getAttribute('aria-label'))
       .toBe('dependabot-update-planner: Review error logs: 25, success');
@@ -535,6 +558,8 @@ describe('chart element helpers', () => {
     expect(line.querySelector('.line-chart-series')?.getAttribute('style')).toContain('--chart-entry-index: 0');
     expect(line.querySelector('.line-chart-point')?.getAttribute('style')).toContain('--chart-point-size: 6px');
     expect(line.querySelector('.chart-point')?.getAttribute('style')).toContain('--chart-entry-index: 0');
+    expect([...line.querySelectorAll('.line-chart-y-axis text')].map((tick) => tick.textContent)).toEqual(['3', '1.50', '0']);
+    expect(line.querySelector('[data-chart-axis="y"]')).not.toBeNull();
     expect([...line.querySelectorAll('.timeline-chart-axis span')].map((tick) => tick.textContent)).toEqual([
       'Aug 29',
       'Aug 30'
@@ -588,6 +613,57 @@ describe('chart element helpers', () => {
     expect(fullPieSegments[1]?.getAttribute('d')).toBe('M 21 5.0845');
   });
 
+  it('compacts large temporal chart y-axis labels within the reserved gutter', () => {
+    const chart = renderChartWidget('line', [
+      { x: '2026-08-29', y: 1_000_000, color: null },
+      { x: '2026-08-30', y: 500_000, color: null }
+    ], [{ name: 'value', className: 'chart-series-1' }]);
+
+    expect([...chart.querySelectorAll('.line-chart-y-axis text')].map((tick) => tick.textContent))
+      .toEqual(['1M', '500K', '0']);
+  });
+
+  it('packs the temporal chart y-axis gutter around its formatted labels', () => {
+    const chart = renderChartWidget('line', [
+      { x: '2026-09-10', y: 918, color: null },
+      { x: '2026-09-11', y: 0, color: null }
+    ], [{ name: 'value', className: 'chart-series-1' }]);
+
+    expect(chart.getAttribute('style')).toBe('--line-chart-left: 7%;');
+    expect(chart.querySelector('.line-chart-y-axis .line-chart-axis')?.getAttribute('x1')).toBe('7');
+    expect(chart.querySelector('.line-chart-grid')?.getAttribute('x1')).toBe('7');
+    expect(chart.querySelector('.line-chart-series')?.getAttribute('points')).toBe('7,4 100,38');
+  });
+
+  it('accounts for punctuation and wide glyphs when packing the y-axis gutter', () => {
+    const points = [
+      { x: '2026-09-10', y: 9_999, color: null },
+      { x: '2026-09-11', y: 0, color: null }
+    ];
+    const currencyChart = renderChartWidget('line', points, [], null, 'Total', {
+      name: 'US dollars',
+      symbol: 'USD',
+      significant: 2,
+      format: 'usd'
+    });
+    const unitChart = renderChartWidget('line', points, [], null, 'Total', {
+      name: 'Megawatts',
+      symbol: 'MW',
+      significant: 2
+    });
+    const longUnitChart = renderChartWidget('line', points, [], null, 'Total', {
+      name: 'Long unit',
+      symbol: 'W'.repeat(100),
+      significant: 2
+    });
+
+    expect([...currencyChart.querySelectorAll('.line-chart-y-axis text')].map((tick) => tick.textContent))
+      .toEqual(['$9,999.00', '$4,999.50', '$0.00']);
+    expect(currencyChart.getAttribute('style')).toBe('--line-chart-left: 15%;');
+    expect(unitChart.getAttribute('style')).toBe('--line-chart-left: 15%;');
+    expect(longUnitChart.getAttribute('style')).toBe('--line-chart-left: 75%;');
+  });
+
   it('renders area marks and stacks color series over the shared ordered axis', () => {
     const points = [
       { x: '2026-09-01', y: 2, color: 'review' },
@@ -606,9 +682,9 @@ describe('chart element helpers', () => {
     expect(chart.querySelectorAll('path.area-chart-area')).toHaveLength(2);
     expect(chart.querySelectorAll('.area-chart-point')).toHaveLength(4);
     expect(chart.querySelector('[data-chart-series="review"]')?.getAttribute('d'))
-      .toBe('M 0 24.4 L 100 10.8 L 100 38 L 0 38 Z');
+      .toBe('M 10 24.4 L 100 10.8 L 100 38 L 10 38 Z');
     expect(chart.querySelector('[data-chart-series="triage"]')?.getAttribute('d'))
-      .toBe('M 0 4 L 100 4 L 100 10.8 L 0 24.4 Z');
+      .toBe('M 10 4 L 100 4 L 100 10.8 L 10 24.4 Z');
     expect(chart.querySelector('.chart-point')?.getAttribute('aria-label')).toContain('2 AIC');
   });
 
@@ -644,7 +720,7 @@ describe('chart element helpers', () => {
       .sort((left, right) => left - right);
 
     expect(scatter.getAttribute('data-chart-widget')).toBe('scatter');
-    expect(xCoordinates).toEqual([0, 25, 100]);
+    expect(xCoordinates).toEqual([11, 33.25, 100]);
     expect([...scatter.querySelectorAll('.timeline-chart-axis span')].map((tick) => tick.getAttribute('title'))).toEqual([
       '2026-09-04T10:00:00.000Z',
       '2026-09-04T12:00:00.000Z',

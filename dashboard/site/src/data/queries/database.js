@@ -24,6 +24,7 @@ const DATABASE_TABLE_SOURCES = new Set([
   'workflows',
   'runs',
   ...RUN_RECORD_STORES,
+  'operational-values',
   'transactions'
 ]);
 
@@ -385,7 +386,7 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
   ));
   const stores = [...new Set(databaseRequested.flatMap(queryStores))];
   const transactionRequested = stores.includes('transactions');
-  const collectionStores = /** @type {Array<'campaigns'|'repositories'|'workflows'|'runs'|'domains'|'tools'|'audits'|'issues'>} */ (
+  const collectionStores = /** @type {Array<'campaigns'|'repositories'|'workflows'|'runs'|'domains'|'tools'|'audits'|'issues'|'operationalValues'>} */ (
     stores.filter((name) => name !== 'transactions')
   );
   const databaseStartedAt = monotonicNow();

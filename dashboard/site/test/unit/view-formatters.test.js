@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatAggregateValue, formatClockDuration, formatCompactElapsedTime, formatHumanFriendlyTimestamp, formatNumber, formatPercent, formatRelativeTime, formatString, formatUsd, renderTemplate, resolveThresholdStatus, stringOrFallback, toNumber } from '../../src/view-formatters.js';
+import { formatAggregateValue, formatAicc, formatClockDuration, formatCompactElapsedTime, formatHumanFriendlyTimestamp, formatNumber, formatPercent, formatRelativeTime, formatString, formatUsd, renderTemplate, resolveThresholdStatus, stringOrFallback, toNumber } from '../../src/view-formatters.js';
 
 /**
  * @param {unknown} value
@@ -69,6 +69,10 @@ describe('view formatter helpers', () => {
     const usd = { name: 'US dollars', symbol: 'USD', significant: 0.001, format: 'usd' };
     expect(formatNumber(0.0341, usd)).toBe('$0.035');
     expect(formatNumber(1, usd)).toBe('$1.00');
+    const aicc = { name: 'AICc($)', symbol: 'cAIC', significant: 2, format: 'aicc' };
+    expect(formatNumber(341, aicc)).toBe('$3.42');
+    expect(formatNumber(2.5, aicc)).toBe('$0.02');
+    expect(formatNumber(-2.5, aicc)).toBe('-$0.02');
     const duration = { name: 'Human-friendly duration', symbol: 's', significant: 1, format: 'duration' };
     expect(formatNumber(45, duration)).toBe('45s');
     expect(formatNumber(5_000, duration)).toBe('1h 23m');
@@ -90,6 +94,13 @@ describe('view formatter helpers', () => {
     expect(formatUsd(0.0001)).toBe('$0.001');
     expect(formatUsd(0.00049)).toBe('$0.001');
     expect(formatUsd(-0.0004)).toBe('$0.00');
+  });
+
+  it('formats AIC cost as US dollars using the browser internationalization API', () => {
+    expect(formatAicc(0)).toBe('$0.00');
+    expect(formatAicc(1)).toBe('$0.01');
+    expect(formatAicc(123_456)).toBe('$1,234.56');
+    expect(formatAicc(-150)).toBe('-$1.50');
   });
 
   it('formats a 0-1 ratio as a locale percentage string', () => {

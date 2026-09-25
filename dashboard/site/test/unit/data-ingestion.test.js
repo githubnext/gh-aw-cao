@@ -227,6 +227,49 @@ describe('database table ingestion and queries', () => {
     expect((await readCanonicalBatch(indexedDB)).repositories).toHaveLength(251);
   });
 
+  it('streams schema 13 normalized JSONL with legacy package campaign fields', async () => {
+    const lines = [
+      {
+        kind: 'metadata',
+        schemaVersion: 13,
+        ingestionVersion: 3,
+        sourceRecords: 1,
+        phase: 'records',
+        records: 1
+      },
+      {
+        kind: 'record',
+        collection: 'operationalValues',
+        record: {
+          id: 'operational-value:dependabot',
+          repositoryId: 'repository:githubnext/gh-aw-cao',
+          package: 'dependabot',
+          packageId: 'package:dependabot',
+          value: 1,
+          valueId: 'dependabot-vulnerability-alerts',
+          timestamp: '2026-09-09T05:00:00Z',
+          observedAt: '2026-09-09T05:00:00Z',
+          provenance: { source: 'test', sourceId: 'dependabot-value', observedAt: '2026-09-09T05:00:00Z' }
+        }
+      }
+    ].map((line) => JSON.stringify(line)).join('\n');
+    async function* chunks() { yield lines; }
+
+    await expect(ingestNormalizedJsonl(indexedDB, chunks(), {
+      payloadIdentity: 'c'.repeat(64),
+      payloadScope: 'https://example.test/gh-aw-logs-records/schema-13.jsonl',
+      expectedPhase: /** @type {const} */ ('records')
+    })).resolves.toMatchObject({ committedRecords: 1 });
+
+    const batch = await readCanonicalBatch(indexedDB);
+    expect(batch.operationalValues).toEqual([
+      expect.objectContaining({
+        campaignId: 'campaign:dependabot',
+        campaign: 'dependabot'
+      })
+    ]);
+  });
+
   it('retries a truncated normalized stream without recording a receipt', async () => {
     const metadata = {
       kind: 'metadata',
@@ -282,7 +325,8 @@ describe('database table ingestion and queries', () => {
         domains: [],
         tools: [],
         audits: [],
-        issues: []
+        issues: [],
+        operationalValues: []
       }
     };
     const options = {
@@ -441,7 +485,8 @@ describe('database table ingestion and queries', () => {
       domains: [],
       tools: [],
       audits: [],
-      issues: []
+      issues: [],
+      operationalValues: []
     });
     const runsBatch = emptyBatch();
     runsBatch.repositories.push(canonicalRecord(repositoryId, '2026-09-09T04:00:00Z'));

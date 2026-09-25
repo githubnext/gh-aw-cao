@@ -501,6 +501,7 @@ function computeArgumentUsage(functionName, argumentIndex) {
     functionName === 'coalesce'
     || (functionName === 'if' && argumentIndex > 0)
     || (functionName === 'dashboard-link' && argumentIndex === 0)
+    || functionName === 'link-href'
   ) return 'read';
   return 'scalar';
 }

@@ -91,7 +91,7 @@ describe('Configuration dashboard view', () => {
     expect(rendered.querySelector('[data-theme-value]')).toBeNull();
     expect(rendered.querySelector('.configuration-database-counts')).toBeNull();
     expect(rendered.querySelector('.reset-dashboard-trigger')).not.toBeNull();
-    expect(rendered.querySelector('.configuration-transactions-button')?.getAttribute('href')).toBe('#page-transactions');
+    expect(rendered.querySelector('a[href="#page-indexing"]')).toBeNull();
     const debugSettings = rendered.querySelector('.configuration-debug-settings');
     expect(debugSettings).toBe(rendered.lastElementChild);
     const debugLink = debugSettings?.querySelector('a');
@@ -204,7 +204,7 @@ describe('Configuration dashboard view', () => {
   it('exposes Settings in the bottom management navigation without a chart', () => {
     const dashboard = JSON.parse(readFileSync(resolve('dashboard.json'), 'utf8')).dashboard;
     const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'configuration');
-    const manageNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => candidate.label === 'Manage');
+    const manageNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => candidate.label === 'Maintenance');
 
     expect(page.title).toBe('Settings');
     expect(page.icon).toBe('gear');
@@ -222,7 +222,7 @@ describe('Configuration dashboard view', () => {
   it('separates CAO package and compiler maintenance inventory', () => {
     const dashboard = JSON.parse(readFileSync(resolve('dashboard.json'), 'utf8')).dashboard;
     const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'maintenance');
-    const manageNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => candidate.label === 'Manage');
+    const manageNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => candidate.label === 'Maintenance');
 
     expect(page.title).toBe('Maintenance');
     expect(page['filter-bar']).toBeUndefined();

@@ -20,7 +20,10 @@ on:
 permissions:
   actions: read
   contents: read
+  issues: read
   pull-requests: read
+  security-events: read
+  vulnerability-alerts: read
 
 concurrency:
   group: central-agentic-ops-activity
@@ -34,7 +37,10 @@ jobs:
     permissions:
       actions: read
       contents: read
+      issues: read
       pull-requests: read
+      security-events: read
+      vulnerability-alerts: read
     steps:
       - name: Checkout trusted activity source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -125,7 +131,10 @@ jobs:
           github-api-url: ${{ github.api_url }}
           permission-actions: read
           permission-contents: read
+          permission-issues: read
           permission-pull-requests: read
+          permission-security-events: read
+          permission-vulnerability-alerts: read
 
       - name: Resolve gh-aw compiler version
         id: gh-aw-compiler
@@ -135,7 +144,7 @@ jobs:
 
       - name: Install gh-aw CLI
         continue-on-error: true
-        uses: github/gh-aw-actions/setup-cli@925900cb40de9cb7652268d0cd14e00f9b7d2189 # v0.89.20
+        uses: github/gh-aw-actions/setup-cli@924af5fdc64061cfbf66fb584c8b07e2ac230c60 # v0.89.21
         env:
           GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
         with:
@@ -177,12 +186,15 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
           REPORT_AIC_CACHE: ${{ runner.temp }}/cao-gh-aw-logs
+          REPORT_ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
           REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity/control-settings.json
           REPORT_DRAIN3_WEIGHTS: ${{ runner.temp }}/cao-activity/drain3_weights.json
           REPORT_GH_AW_LOGS_EXIT_CODE: ${{ runner.temp }}/cao-activity/gh-aw-logs-exit-code
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
           REPORT_LOG_TIMEOUT: "15"
           REPORT_MAX_GITHUB_API_RATE_LIMIT: "-4000"
+          REPORT_ISSUE_STATUS_GRAPHQL_COST_BUDGET: "25"
+          REPORT_ISSUE_STATUS_GRAPHQL_MIN_REMAINING: "500"
           REPORT_MAX_STORAGE: "1200"
           REPORT_RUN_LIMIT: "10000"
           REPORT_RUN_WINDOW_DAYS: "30"
@@ -220,6 +232,55 @@ jobs:
             --records-dir "$REPORT_GH_AW_LOGS_RECORDS" \
             --retention-days 30 \
             --run-retention-days 30
+
+      - name: Compute repository operational value
+        env:
+          ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
+          CAO_OPERATIONAL_VALUE_GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
+          REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
+        run: |
+          if ! node activity/cao.mjs operational-value \
+              --database "$ACTIVITY_DATABASE" \
+              --root . \
+              --output "$REPORT_GH_AW_LOGS_SHARDS/operational-values.jsonl" \
+              --retention-days 30 \
+              --max-github-api-rate-limit -2000; then
+            echo "::warning::Operational value collection failed; continuing activity indexing."
+          fi
+
+      - name: Generate operational value shards
+        env:
+          REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
+        run: |
+          node activity/cao.mjs hash-payloads \
+            --shard-dir "$REPORT_GH_AW_LOGS_SHARDS" \
+            --runs-dir "$RUNNER_TEMP/cao-activity/gh-aw-logs-runs" \
+            --records-dir "$RUNNER_TEMP/cao-activity/gh-aw-logs-records" \
+            --inventory "$RUNNER_TEMP/cao-activity/inventory-sources.json"
+
+      - name: Ingest operational value
+        env:
+          ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
+        run: |
+          node activity/cao.mjs ingest-jsonl \
+            --database "$ACTIVITY_DATABASE" \
+            --runs-dir "$RUNNER_TEMP/cao-activity/gh-aw-logs-runs" \
+            --records-dir "$RUNNER_TEMP/cao-activity/gh-aw-logs-records" \
+            --retention-days 30 \
+            --run-retention-days 30
+
+      - name: Compute package problems
+        env:
+          ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
+        run: |
+          node activity/cao.mjs cluster-problems \
+            --database "$ACTIVITY_DATABASE" \
+            --root .
+
+      - name: Validate activity database
+        env:
+          ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
+        run: |
           node activity/cao.mjs doctor \
             --database "$ACTIVITY_DATABASE" \
             --ttl-days 30 \
@@ -312,3 +373,73 @@ jobs:
             ${{ runner.temp }}/cao-activity/inventory-sources.json
             ${{ runner.temp }}/cao-activity/drain3_weights.json
           key: ${{ needs.index.outputs.cache-key }}
+
+  notify-failure:
+    needs: [index, cache]
+    if: ${{ always() && (needs.index.result == 'failure' || needs.index.result == 'cancelled' || needs.cache.result == 'failure' || needs.cache.result == 'cancelled') }}
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Notify current repository about CAO Activity failure
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const title = 'CAO Activity workflow failure'
+            const failures = [
+              {
+                code: 'CAO_ACTIVITY_INDEX_FAILED',
+                result: '${{ needs.index.result }}',
+                message: 'The activity indexing job failed while collecting or validating CAO activity data.',
+              },
+              {
+                code: 'CAO_ACTIVITY_CACHE_FAILED',
+                result: '${{ needs.cache.result }}',
+                message: 'The activity cache publication job failed while saving the validated activity snapshot.',
+              },
+            ].filter(({ result }) => result === 'failure' || result === 'cancelled')
+            if (failures.length === 0) {
+              core.info('No failed CAO Activity jobs to report')
+              return
+            }
+            const serverUrl = process.env.GITHUB_SERVER_URL || 'https://github.com'
+            const runUrl = `${serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            const rows = failures
+              .map(({ code, message, result }) => `| \`${code}\` | ${message} | ${result} |`)
+              .join('\n')
+            const body = [
+              'The CAO Activity workflow failed in this repository.',
+              '',
+              `Run: ${runUrl}`,
+              '',
+              '## Failure codes',
+              '',
+              '| Code | Message | Job result |',
+              '| --- | --- | --- |',
+              rows,
+              '',
+              '## Suggested next step',
+              '',
+              'Assign this issue to an agent and ask it to fix the workflow failure using the failure code(s) above.',
+            ].join('\n')
+            const openIssues = await github.paginate(github.rest.issues.listForRepo, {
+              ...context.repo,
+              state: 'open',
+              per_page: 100,
+            })
+            const existingIssue = openIssues.find((issue) => !issue.pull_request && issue.title === title)
+            if (existingIssue) {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: existingIssue.number,
+                body,
+              })
+              core.info(`Commented on existing issue #${existingIssue.number}`)
+              return
+            }
+            const { data: issue } = await github.rest.issues.create({
+              ...context.repo,
+              title,
+              body,
+            })
+            core.info(`Created issue #${issue.number}`)

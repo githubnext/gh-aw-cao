@@ -95,7 +95,7 @@ function isFailedRunCountShape(definition) {
 }
 
 /**
- * Recognizes the daily conclusion query used by the Runs swimlane. Request
+ * Recognizes the daily conclusion query used by the Runs line graph. Request
  * scoped `@time` predicates are allowed because the materialized records use
  * the same UTC day computed by the query.
  *
@@ -139,8 +139,48 @@ function isRunsDailyConclusionsShape(definition) {
   return {
     countAs: String(count.as),
     startDay: String(predicates.find((predicate) => typeof predicate.gte === 'string')?.gte ?? '').slice(0, 10) || null,
-    endDay: String(predicates.find((predicate) => typeof predicate.lt === 'string')?.lt ?? '').slice(0, 10) || null
+    endDay: String(predicates.find((predicate) => typeof predicate.lt === 'string')?.lt ?? '').slice(0, 10) || null,
+    endExclusive: /T00:00(?::00(?:\.000)?)?Z$/.test(String(predicates.find((predicate) => typeof predicate.lt === 'string')?.lt ?? ''))
   };
+}
+
+/**
+ * @param {import('../analytics/daily-overview-aggregates.js').DailyOverviewAggregateRecord[]} records
+ * @param {{ countAs: string, startDay: string | null, endDay: string | null, endExclusive: boolean }} shape
+ */
+function summarizeDailyConclusions(records, shape) {
+  const filtered = records.filter((record) => (
+    (!shape.startDay || record.day >= shape.startDay)
+    && (!shape.endDay || (shape.endExclusive ? record.day < shape.endDay : record.day <= shape.endDay))
+  ));
+  const conclusions = [...new Set(filtered.flatMap((record) => Object.entries(record.runsByConclusion ?? {})
+    .filter(([, count]) => Number.isFinite(count) && count > 0)
+    .map(([conclusion]) => conclusion)))];
+  const firstRecord = filtered[0];
+  const lastRecord = filtered.at(-1);
+  if (!firstRecord || !lastRecord || conclusions.length === 0) return [];
+
+  const byDay = new Map(filtered.map((record) => [record.day, record.runsByConclusion ?? {}]));
+  const firstDay = shape.startDay ?? firstRecord.day;
+  const lastDay = shape.endDay ?? lastRecord.day;
+  const rows = [];
+  const lastTimestamp = Date.parse(`${lastDay}T00:00:00Z`);
+  for (
+    let timestamp = Date.parse(`${firstDay}T00:00:00Z`);
+    shape.endExclusive ? timestamp < lastTimestamp : timestamp <= lastTimestamp;
+    timestamp += 86_400_000
+  ) {
+    const day = new Date(timestamp).toISOString().slice(0, 10);
+    const counts = byDay.get(day) ?? {};
+    for (const conclusion of conclusions) {
+      rows.push({
+        day,
+        'run-conclusion': conclusion,
+        [shape.countAs]: counts[conclusion] ?? 0
+      });
+    }
+  }
+  return rows;
 }
 
 /**
@@ -167,20 +207,9 @@ const ELIGIBLE_QUERIES = /** @type {const} */ ({
     matchShape: isRunsDailyConclusionsShape,
     /**
      * @param {import('../analytics/daily-overview-aggregates.js').DailyOverviewAggregateRecord[]} records
-     * @param {{ countAs: string, startDay: string | null, endDay: string | null }} shape
+     * @param {{ countAs: string, startDay: string | null, endDay: string | null, endExclusive: boolean }} shape
      */
-    summarize: (records, shape) => records
-      .filter((record) => (
-        (!shape.startDay || record.day >= shape.startDay)
-        && (!shape.endDay || record.day <= shape.endDay)
-      ))
-      .flatMap((record) => Object.entries(record.runsByConclusion ?? {})
-        .filter(([, count]) => Number.isFinite(count) && count > 0)
-        .map(([conclusion, count]) => ({
-          day: record.day,
-          'run-conclusion': conclusion,
-          [shape.countAs]: count
-        })))
+    summarize: summarizeDailyConclusions
   }
 });
 

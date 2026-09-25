@@ -216,6 +216,7 @@ describe('canonical IndexedDB', () => {
       'dailyOverviewAggregates',
       'domains',
       'issues',
+      'operationalValues',
       'overviewAggregateMetadata',
       'repositories',
       'runs',
@@ -232,6 +233,8 @@ describe('canonical IndexedDB', () => {
     expect([...database.transaction('tools').objectStore('tools').indexNames]).toEqual(['byRun']);
     expect([...database.transaction('audits').objectStore('audits').indexNames]).toEqual(['byRun']);
     expect([...database.transaction('issues').objectStore('issues').indexNames]).toEqual(['byRun']);
+    expect([...database.transaction('operationalValues').objectStore('operationalValues').indexNames])
+      .toEqual(['byRepository', 'byValue']);
     expect([...database.transaction('transactions').objectStore('transactions').indexNames]).toEqual(['byCreatedAt']);
     expect([...database.transaction('dailyOverviewAggregates').objectStore('dailyOverviewAggregates').indexNames])
       .toEqual(['byGenerationDay']);
@@ -293,6 +296,7 @@ describe('canonical IndexedDB', () => {
       'dailyOverviewAggregates',
       'domains',
       'issues',
+      'operationalValues',
       'overviewAggregateMetadata',
       'repositories',
       'runs',
@@ -331,6 +335,7 @@ describe('canonical IndexedDB', () => {
       'dailyOverviewAggregates',
       'domains',
       'issues',
+      'operationalValues',
       'overviewAggregateMetadata',
       'repositories',
       'runs',

@@ -1,6 +1,6 @@
 name: Central Agentic Ops
 description: Central agentic workflow control plane for reusable campaigns at the organization level
-min-version: v0.89.20
+min-version: v0.89.21
 experimental: true
 includes:
   - activity/aw.yml

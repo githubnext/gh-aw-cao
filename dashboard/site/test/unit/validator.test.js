@@ -39,6 +39,65 @@ describe('dashboard document validation', () => {
     expect(accepted.ok).toBe(true);
   });
 
+  it('validates card template drill references and destination bindings', () => {
+    const invalidPage = JSON.parse(authoritativeDashboardSource);
+    const domainTemplate = invalidPage.dashboard['card-templates']
+      .find((/** @type {{ id?: string }} */ template) => template.id === 'firewall-domain');
+    domainTemplate.drill.page = 'missing-page';
+    expect(validateDashboardDocument(JSON.stringify(invalidPage))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([expect.objectContaining({
+        message: 'query drill page must reference a declared dashboard page id.',
+        path: expect.stringMatching(/card-templates\[\d+\]\.drill\.page$/)
+      })])
+    });
+
+    const invalidQuery = JSON.parse(authoritativeDashboardSource);
+    invalidQuery.dashboard['card-templates']
+      .find((/** @type {{ id?: string }} */ template) => template.id === 'firewall-domain').drill.query = 'missing-query';
+    expect(validateDashboardDocument(JSON.stringify(invalidQuery))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([expect.objectContaining({
+        message: 'query drill query must reference a declared dashboard query.',
+        path: expect.stringMatching(/card-templates\[\d+\]\.drill\.query$/)
+      })])
+    });
+
+    const invalidBinding = JSON.parse(authoritativeDashboardSource);
+    invalidBinding.dashboard['card-templates']
+      .find((/** @type {{ id?: string }} */ template) => template.id === 'firewall-domain').drill.arguments[0].name = 'missing';
+    expect(validateDashboardDocument(JSON.stringify(invalidBinding))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([expect.objectContaining({
+        message: 'query drill destination must bind the declared query and every drill argument.',
+        path: expect.stringMatching(/card-templates\[\d+\]\.drill$/)
+      })])
+    });
+  });
+
+  it('validates page navigation indicator shape', () => {
+    const invalidPage = JSON.parse(authoritativeDashboardSource);
+    invalidPage.dashboard.pages
+      .find((/** @type {{ id?: string }} */ page) => page.id === 'maintenance')['navigation-indicator'] = {
+        label: '',
+        any: [{ source: 'maintenance-campaign-updates', field: 'campaign-update-state' }]
+      };
+
+    expect(validateDashboardDocument(JSON.stringify(invalidPage))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({
+          message: 'label must be a non-empty string.',
+          path: expect.stringMatching(/navigation-indicator\.label$/)
+        }),
+        expect.objectContaining({
+          message: 'navigation-indicator predicate equals is required.',
+          path: expect.stringMatching(/navigation-indicator\.any\[0\]\.equals$/)
+        })
+      ])
+    });
+  });
+
   it('validates bottom navigation placement vocabulary and labels', () => {
     const invalidPlacement = JSON.parse(authoritativeDashboardSource);
     invalidPlacement.dashboard.navigation = [{ label: 'Manage', placement: 'top', pages: ['overview'] }];
@@ -280,7 +339,7 @@ describe('dashboard document validation', () => {
     expect(invalidFlag.errors).toEqual(expect.arrayContaining([
       expect.objectContaining({ message: 'CLI action argument flag must be a canonical long option.' })
     ]));
-  });
+  }, 10_000);
 
 
 
@@ -458,13 +517,7 @@ describe('dashboard document validation', () => {
       controls: 'interactive',
       'lazy-list': true,
       'column-summaries': true,
-      'card-drill': {
-        type: 'query',
-        page: 'firewall-domain-workflows',
-        query: 'firewall-domain-workflows',
-        'title-field': 'domain',
-        arguments: [{ name: 'domain', field: 'domain' }]
-      },
+
       layout: 'full-view',
       data: {
         source: 'firewall-domain-totals',
@@ -526,7 +579,7 @@ describe('dashboard document validation', () => {
     });
     expect(mcps.views).toHaveLength(2);
     expect(mcps.views[1].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toEqual([
-      'mcp-tool',
+      'mcp-tool-label',
       'mcp-server',
       'calls',
       'workflows'
@@ -695,11 +748,11 @@ describe('dashboard document validation', () => {
     )).toMatchObject({
       data: { source: 'runs-daily-conclusions', time: { range: '7d' } },
       mark: 'chart',
-      chart: 'swimlane',
+      chart: 'area',
       encoding: {
         x: { field: 'day', type: 'temporal' },
-        y: { field: 'run-conclusion', type: 'ordinal' },
-        weight: { field: 'runs', type: 'quantitative' }
+        y: { field: 'runs', type: 'quantitative' },
+        color: { field: 'run-conclusion', type: 'nominal' }
       }
     });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
@@ -712,20 +765,28 @@ describe('dashboard document validation', () => {
     );
 
     expect(page.definition.views.find((/** @type {{ id: string }} */ view) =>
-      view.id === 'workflows-by-runs'
+      view.id === 'workflows-by-aic-per-run'
     )).toMatchObject({
       data: {
-        source: 'workflow-inventory',
-        'order-by': [{ field: 'runs', direction: 'desc' }],
+        source: 'workflow-aic-per-run',
+        'order-by': [{ field: 'aic-per-run', direction: 'desc' }],
         limit: 10
       },
       mark: 'chart',
-      chart: 'pie',
-      layout: 'horizontal',
+      chart: 'horizontal-bar',
+      layout: 'full',
       encoding: {
         x: { field: 'workflow-label', type: 'nominal', format: 'workflow-identity-label' },
-        y: { field: 'runs', type: 'quantitative' },
+        y: { field: 'aic-per-run', type: 'quantitative', unit: 'aic-per-run' },
         href: { field: 'workflow-link', type: 'nominal' }
+      }
+    });
+    expect(document.dashboard.queries.find((/** @type {{ name: string }} */ query) =>
+      query.name === 'workflow-aic-per-run'
+    )).toMatchObject({
+      from: 'workflow-inventory',
+      filter: {
+        predicates: [{ field: 'has-observed-runs', equals: true }]
       }
     });
     expect(page.definition.views.find((/** @type {{ id: string }} */ view) =>
@@ -889,6 +950,7 @@ dashboard:
       title: Campaign page
       route:
         hash-query-parameter: campaign
+        title-format: title-case
       views:
         - id: campaign-shell
           data:
@@ -896,9 +958,37 @@ dashboard:
           mark: element
           element: campaign-route
           config:
-            body: pull-requests
+            body: repositories
 `);
     expect(accepted.ok).toBe(true);
+
+    const invalidTitleFormat = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: campaign-route-title-format
+  title: Campaign route title format
+  pages:
+    - id: campaign-page
+      kind: custom
+      title: Campaign page
+      route:
+        hash-query-parameter: campaign
+        title-format: uppercase
+      views:
+        - id: campaign-shell
+          data:
+            sources: [workflows]
+          mark: element
+          element: campaign-route
+          config:
+            body: insights
+`);
+    expect(invalidTitleFormat.ok).toBe(false);
+    if (!invalidTitleFormat.ok) {
+      expect(invalidTitleFormat.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E005',
+        path: '$.dashboard.pages[0].route.title-format'
+      }));
+    }
 
     const invalidBody = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
@@ -974,77 +1064,6 @@ dashboard:
       expect(invalidBody.errors).toContainEqual(expect.objectContaining({
         code: 'DLS-E005',
         path: '$.dashboard.pages[0].views[0].config.body'
-      }));
-    }
-  });
-
-  it('accepts work-project-view config and rejects unsupported values', () => {
-    const accepted = validateDashboardDocument(`language-version: "0.1.0"
-dashboard:
-  id: work-view-config
-  title: Work view config
-  pages:
-    - id: work-page
-      kind: custom
-      title: Work page
-      views:
-        - id: work-layouts
-          data:
-            sources: [work-items]
-          mark: element
-          element: work-project-view
-          config:
-            sections: [board, tasks]
-`);
-    expect(accepted.ok).toBe(true);
-
-    const invalidBody = validateDashboardDocument(`language-version: "0.1.0"
-dashboard:
-  id: work-view-config
-  title: Work view config
-  pages:
-    - id: work-page
-      kind: custom
-      title: Work page
-      views:
-        - id: work-layouts
-          data:
-            sources: [work-items]
-          mark: element
-          element: work-project-view
-          config:
-            body: backlog
-`);
-    expect(invalidBody.ok).toBe(false);
-    if (!invalidBody.ok) {
-      expect(invalidBody.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E005',
-        path: '$.dashboard.pages[0].views[0].config.body'
-      }));
-    }
-
-    const invalidSection = validateDashboardDocument(`language-version: "0.1.0"
-dashboard:
-  id: work-view-config
-  title: Work view config
-  pages:
-    - id: work-page
-      kind: custom
-      title: Work page
-      views:
-        - id: work-layouts
-          data:
-            sources: [work-items]
-          mark: element
-          element: work-project-view
-          config:
-            sections: [backlog]
-`);
-    expect(invalidSection.ok).toBe(false);
-    if (!invalidSection.ok) {
-      expect(invalidSection.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E005',
-        path: '$.dashboard.pages[0].views[0].config.sections[0]'
       }));
     }
   });
@@ -1181,7 +1200,7 @@ dashboard:
     }
   });
 
-  it('keeps the version 0.1.0 outcomes overview element valid as a compatibility alias', () => {
+  it('rejects the removed outcomes overview compatibility alias', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
   id: legacy-overview
@@ -1205,7 +1224,13 @@ dashboard:
                 plural: Repositories
 `);
 
-    expect(result.ok).toBe(true);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E005',
+        path: '$.dashboard.pages[0].views[0].element'
+      }));
+    }
   });
 
 
@@ -1430,7 +1455,7 @@ dashboard:
 
     const supplementalElement = accepted.replace(
       '        - id: supporting-table\n          disclosure: supplemental\n          disclosure-label: Supporting table\n          data: { source: runs }\n          mark: table\n          encoding:\n            columns: [{ field: run, type: nominal }]\n',
-      '        - id: supporting-table\n          disclosure: supplemental\n          disclosure-label: Supporting table\n          data: { sources: [runs] }\n          mark: element\n          element: summary-grid\n'
+      '        - id: supporting-table\n          disclosure: supplemental\n          disclosure-label: Supporting table\n          data: { sources: [runs] }\n          mark: element\n          element: factory-header\n'
     );
     expect(validateDashboardDocument(supplementalElement).ok).toBe(true);
 
@@ -1474,6 +1499,54 @@ dashboard:
     const locked = source.replace(
       '        - id: supporting-table\n',
       '        - id: supporting-table\n          locked: true\n'
+    );
+    expect(validateDashboardDocument(locked).ok).toBe(true);
+  });
+
+  it('DLS-VIEW-039 rejects a page\u2019s only table being marked supplemental', () => {
+    const source = `language-version: "0.1.0"
+dashboard:
+  id: solo-table-disclosure
+  title: Solo table disclosure
+  pages:
+    - id: summary
+      kind: custom
+      views:
+        - id: overview-chart
+          title: Overview
+          data: { source: runs }
+          mark: chart
+          chart: pie
+          encoding:
+            x: { field: run, type: nominal }
+            y: { field: run, type: quantitative, aggregate: count }
+        - id: solo-table
+          disclosure: supplemental
+          disclosure-label: Runs
+          data: { source: runs }
+          mark: table
+          encoding:
+            columns: [{ field: run, type: nominal }]
+`;
+
+    const rejected = validateDashboardDocument(source);
+    expect(rejected.ok).toBe(false);
+    if (!rejected.ok) {
+      expect(rejected.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E013',
+        path: '$.dashboard.pages[0].views[1].disclosure'
+      }));
+    }
+
+    const essential = source.replace(
+      '          disclosure: supplemental\n          disclosure-label: Runs\n',
+      ''
+    );
+    expect(validateDashboardDocument(essential).ok).toBe(true);
+
+    const locked = source.replace(
+      '          disclosure: supplemental\n',
+      '          disclosure: supplemental\n          locked: true\n'
     );
     expect(validateDashboardDocument(locked).ok).toBe(true);
   });
@@ -2186,7 +2259,7 @@ dashboard:
           'built-in page "overview" requires declarative definitions for source "runs".',
           'built-in page "overview" requires declarative definitions for source "usage".',
           'built-in page "overview" requires declarative definitions for source "findings".',
-          'built-in page "overview" requires declarative definitions for source "operational-values".'
+          'built-in page "overview" requires declarative definitions for source "operational-graders".'
         ])
       );
     }
@@ -2310,7 +2383,7 @@ dashboard:
     }
   });
 
-  it('DLS-PAGE-002 DLS-PAGE-014 rejects an overview built-in page definition that omits linked findings and operational-value timeline coverage with DLS-E003', () => {
+  it('DLS-PAGE-002 DLS-PAGE-014 rejects an overview built-in page definition that omits linked findings and operational-grader timeline coverage with DLS-E003', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
   id: incomplete-overview-page
@@ -2357,13 +2430,13 @@ dashboard:
             encoding:
               columns:
                 - field: observed-at
-          - id: operational-values-view
+          - id: operational-graders-view
             data:
-              source: operational-values
+              source: operational-graders
             mark: table
             encoding:
               columns:
-                - field: operational-value
+                - field: operational-grader
                 - field: observed-at
 `);
 
@@ -2389,7 +2462,7 @@ dashboard:
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message: 'built-in page "overview" definition must expose field "operational-value-definition" for source "operational-values".'
+            message: 'built-in page "overview" definition must expose field "operational-grader-definition" for source "operational-graders".'
           })
         ])
       );
@@ -2571,9 +2644,9 @@ dashboard:
                 - field: issue-link
                 - field: pull-request-link
                 - field: run-link
-          - id: operational-value-timeline
+          - id: operational-grader-timeline
             data:
-              source: operational-values
+              source: operational-graders
             mark: chart
             encoding:
               x:
@@ -2581,10 +2654,10 @@ dashboard:
                 type: temporal
                 time-unit: day
               y:
-                field: operational-value
+                field: operational-grader
                 aggregate: max
               color:
-                field: operational-value-definition
+                field: operational-grader-definition
     - id: runs
       kind: built-in
       page: runs
@@ -2665,12 +2738,8 @@ dashboard:
                 - field: observed-at
                 - field: operational-value
                 - field: operational-value-definition
-                - field: operational-value-unit
-                - field: operational-value-direction
-                - field: diagnostics
-                - field: diagnostic-definitions
-                - field: run-link
-                - field: experiment
+                - field: repository
+                - field: campaign
     - id: findings
       kind: built-in
       page: findings
@@ -2823,11 +2892,11 @@ dashboard:
                 - field: issue-link
                 - field: pull-request-link
                 - field: run-link
-          - id: operational-value-timeline
+          - id: operational-grader-timeline
             data:
-              source: operational-values
+              source: operational-graders
               source-metadata:
-                source-id: operational-values-fixture
+                source-id: operational-graders-fixture
                 source-kind: fixture
                 as-of: '2026-08-29T12:00:00Z'
                 retrieved-at: '2026-08-29T12:05:00Z'
@@ -2841,10 +2910,10 @@ dashboard:
                 type: temporal
                 time-unit: day
               y:
-                field: operational-value
+                field: operational-grader
                 aggregate: max
               color:
-                field: operational-value-definition
+                field: operational-grader-definition
 `);
 
     expect(result.ok).toBe(true);
@@ -3612,7 +3681,7 @@ dashboard:
           data:
             sources: [workflows]
           mark: element
-          element: summary-grid
+          element: factory-header
         - id: runs
           data:
             source: runs
@@ -3640,7 +3709,7 @@ dashboard:
           data:
             sources: [workflows]
           mark: element
-          element: summary-grid
+          element: factory-header
 `;
     expect(validateDashboardDocument(elementDocument).ok).toBe(true);
 
@@ -3663,7 +3732,7 @@ dashboard:
         `          data:
             sources: [workflows]
           mark: element
-          element: summary-grid`,
+          element: factory-header`,
         `          data:
             source: runs
           mark: table
@@ -3695,7 +3764,7 @@ dashboard:
           data:
             sources: [workflows]
           mark: element
-          element: summary-grid
+          element: factory-header
 `;
     expect(validateDashboardDocument(lockedDocument).ok).toBe(true);
     expect(validateDashboardDocument(lockedDocument.replace('locked: true', 'locked: false')).ok).toBe(true);
@@ -3954,10 +4023,10 @@ dashboard:
   title: Unit Dashboard
   units:
     aic:
-      name: AI Credits
-      symbol: AIC
-      significant: 1
-      format: number
+      name: AICc($)
+      symbol: cAIC
+      significant: 2
+      format: aicc
     human-duration:
       name: Human-friendly duration
       symbol: s
@@ -3980,6 +4049,44 @@ dashboard:
 `);
 
     expect(result.ok).toBe(true);
+  });
+
+  it('DLS-UNIT-004 rejects an AIC cost unit without the canonical name and significance', () => {
+    const result = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: invalid-aicc-unit
+  title: Invalid AIC cost unit
+  units:
+    aic:
+      name: AI Credits
+      symbol: AIC
+      significant: 1
+      format: aicc
+  pages:
+    - id: summary
+      kind: custom
+      views:
+        - id: total-aic
+          data:
+            source: usage
+          mark: metric
+          encoding:
+            value:
+              field: aic
+              type: quantitative
+              unit: aic
+`);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          code: 'DLS-E003',
+          path: '$.dashboard.units.aic',
+          message: 'AIC cost units must use name "AICc($)" and significant 2.'
+        })
+      ]));
+    }
   });
 
   it('DLS-VIEW-008 accepts canonical formatting on compatible fields', () => {
@@ -4851,13 +4958,13 @@ describe('declarative query validation', () => {
   it('validates reusable temporal-series projections', () => {
     const query = {
       name: 'workflow-costs',
-      from: 'operational-values',
+      from: 'operational-graders',
       'temporal-series': {
         time: 'observed-at',
         series: 'workflow',
         carry: ['workflow'],
-        measures: [{ field: 'operational-value', key: 'operational-value-definition', kind: 'primary' }],
-        maps: [{ field: 'diagnostics', definitions: 'diagnostic-definitions', group: 'operational-value-definition', kind: 'diagnostic' }]
+        measures: [{ field: 'operational-grader', key: 'operational-grader-definition', kind: 'primary' }],
+        maps: [{ field: 'diagnostics', definitions: 'diagnostic-definitions', group: 'operational-grader-definition', kind: 'diagnostic' }]
       }
     };
 

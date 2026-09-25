@@ -37,7 +37,7 @@ const WORKFLOW_ROUTE_BODY_COMPOSITIONS = /** @type {Readonly<Record<WorkflowRout
     rootClassName: 'workflow-runtime',
     contentClassName: 'workflow-runtime-content',
     selectMessage: 'Select a workflow to inspect its runtime.',
-    description: 'Run health, AI Credit usage, and operational value for {workflow} in {repository}.',
+    description: 'Run health, AI Credit usage, and operational grader results for {workflow} in {repository}.',
     navigationPage: 'campaigns',
     pageId: 'workflow-runtime',
     breadcrumbs: undefined,

@@ -5,9 +5,12 @@ import path from 'node:path';
 import test from 'node:test';
 import {
   analyzeDashboardComplexity,
-  formatDashboardComplexityMarkdown
+  formatDashboardComplexityMarkdown,
+  readDashboardTableCounts
 } from '../../activity/dashboard-complexity.mjs';
 import { runCli } from '../../activity/cao.mjs';
+import { DatabaseSync } from 'node:sqlite';
+import { SQLITE_INDEXEDDB_METADATA_SCHEMA } from '../../dashboard/site/src/data/storage/sqlite-indexeddb.js';
 
 function dashboard() {
   return {
@@ -65,7 +68,7 @@ test('estimates row reads and ranks queries by dependency-amortized pressure', (
     rank: 3,
     'used-by': ['query:joined', 'query:summary'],
     model: 'normalized-upper-bound',
-    assumptions: 'Each external source has one row; selectivity is 1; query dependencies materialize once per batch.',
+    assumptions: 'Each database table has weight 1; selectivity is 1; query dependencies materialize once per batch.',
     class: 'linear-row-reads',
     'direct-row-read-units': 3,
     'dependency-row-read-units': 0,
@@ -89,6 +92,10 @@ test('estimates row reads and ranks queries by dependency-amortized pressure', (
     { rank: 3, name: 'base', score: 3 }
   ]);
   assert.equal(analysis.summary['materialize-all-row-read-units'], 9);
+  assert.deepEqual(Object.keys(analysis.summary['source-coefficients']), [
+    'repositories',
+    'runs'
+  ]);
 });
 
 test('formats a bounded markdown complexity ranking', () => {
@@ -98,6 +105,7 @@ test('formats a bounded markdown complexity ranking', () => {
 
   assert.match(markdown, /^### Dashboard query complexity/m);
   assert.match(markdown, /\| Rank \| Query \| Used by \| Total \|/);
+  assert.match(markdown, /Database table coefficients: `runs` 8, `repositories` 1/);
   assert.match(markdown, /\| 1 \| `joined` \| `view:joined-view` \| 7 \| 4 \| 3 \| linear \|/);
   assert.match(markdown, /\| 2 \| `summary` \| `page:overview\/view:summary-card` \| 5 \| 2 \| 3 \| linear \|/);
   assert.doesNotMatch(markdown, /\| 3 \| `base`/);
@@ -136,6 +144,54 @@ test('cao dashboard-complexity reports the full graph or one query id', async ()
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test('weights database tables by normalized deployed row counts', async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'cao-dashboard-complexity-database-'));
+  const databasePath = path.join(directory, 'dashboard.sqlite');
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const connection = new DatabaseSync(databasePath);
+  connection.exec(SQLITE_INDEXEDDB_METADATA_SCHEMA);
+  connection.prepare('INSERT INTO __idb_databases (name, version) VALUES (?, 1)')
+    .run('gh-aw-cao-dashboard-data');
+  for (const [table, count] of [['repositories', 4], ['runs', 8], ['workflows', 2]]) {
+    connection.prepare('INSERT INTO __idb_stores (database_name, name, key_path) VALUES (?, ?, ?)')
+      .run('gh-aw-cao-dashboard-data', table, '"id"');
+    for (let index = 0; index < count; index += 1) {
+      connection.prepare(`
+        INSERT INTO __idb_records (database_name, store_name, record_key, value)
+        VALUES (?, ?, ?, ?)
+      `).run('gh-aw-cao-dashboard-data', table, String(index), '{}');
+    }
+  }
+  connection.close();
+
+  const tableCounts = readDashboardTableCounts(databasePath);
+  assert.deepEqual(tableCounts, { repositories: 4, runs: 8, workflows: 2 });
+  const analysis = analyzeDashboardComplexity(dashboard(), { tableCounts });
+  const byName = Object.fromEntries(analysis.inventory.map((query) => [query.name, query]));
+
+  assert.equal(analysis.summary.model, 'deployment-weighted-upper-bound');
+  assert.equal(analysis.summary['materialize-all-row-read-units'], 8.5);
+  assert.deepEqual(analysis.summary['source-coefficients'], {
+    repositories: 0.5,
+    runs: 8
+  });
+  assert.equal(byName.joined['total-row-read-units'], 6.5);
+  assert.match(
+    formatDashboardComplexityMarkdown(analysis),
+    /Deployed table rows: `repositories` 4, `runs` 8, `workflows` 2/
+  );
+
+  const emptyTable = analyzeDashboardComplexity({
+    dashboard: {
+      queries: [{ name: 'empty-campaigns', from: 'campaigns' }]
+    }
+  }, {
+    tableCounts: { campaigns: 0, runs: 8 }
+  });
+  assert.equal(emptyTable.summary['materialize-all-row-read-units'], 0);
+  assert.deepEqual(emptyTable.summary['source-coefficients'], { campaigns: 0 });
 });
 
 test('cao dashboard-complexity rejects unknown queries and invalid limits', async () => {

@@ -65,7 +65,7 @@ export function renderPanelHeader(headingId, heading, description, options = {})
 /**
  * Renders a `<tr>` of `<th scope="col">` header cells from plain label
  * strings. Shared by the campaign summary table and the workflow
- * operational-value observation table, which both build a single header
+ * operational-grader observation table, which both build a single header
  * row from a flat list of column labels.
  * @param {string[]} labels
  * @returns {HTMLElement}
@@ -221,7 +221,7 @@ export function formatUtcDateTime(value) {
 /**
  * Renders a digest string's first 12 characters wrapped in `<code>`, or
  * `null` when the digest is empty. Shared by the table cell display's
- * `digest` type and the workflow operational-value evaluator stat, which
+ * `digest` type and the workflow operational-grader stat, which
  * both truncate and code-format a digest but differ in their own fallback
  * content for the empty case.
  * @param {unknown} value

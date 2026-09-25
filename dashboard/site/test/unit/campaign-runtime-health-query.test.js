@@ -62,7 +62,7 @@ it('opens campaigns with runtime problems on Problems and healthy campaigns on I
       campaign: 'aw-doctor',
       'problem-indicator': 'alert',
       'campaign-dashboard-link': expect.objectContaining({
-        'dashboard-href': '#page-campaign-problems?campaign=aw-doctor'
+        'dashboard-href': '#page-campaign-insights?campaign=aw-doctor'
       })
     }),
     expect.objectContaining({

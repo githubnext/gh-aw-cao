@@ -32,9 +32,9 @@ const agents = [
     <summary class="wizard-toggle">
       <span class="wizard-eyebrow">Setup wizard</span>
       <span class="wizard-toggle-copy">
-        <span class="wizard-toggle-title" id="ops-wizard-title">Start an operation in three steps</span>
+        <span class="wizard-toggle-title" id="ops-wizard-title">Start a campaign in three steps</span>
         <span class="wizard-toggle-lede">
-          Generate a copy-ready prompt for creating a private control plane and running the first review-mode operation.
+          Generate a copy-ready prompt for creating a private control plane and running the first review-mode campaign.
         </span>
       </span>
       <span class="wizard-toggle-action" aria-hidden="true">
@@ -46,8 +46,8 @@ const agents = [
     <div class="wizard-body">
       <div class="wizard-intro">
         <p class="wizard-lede">
-          Pick the operation you want to run and the coding agent you use, then copy the generated prompt. The agent
-          creates your private control plane repository, installs the operation, and runs it once in <code>review</code>
+          Pick the campaign you want to run and the coding agent you use, then copy the generated prompt. The agent
+          creates your private control plane repository, installs the campaign, and runs it once in <code>review</code>
           mode.
         </p>
         <ul class="wizard-badges" aria-label="Wizard benefits">
@@ -59,7 +59,7 @@ const agents = [
 
       <form class="wizard-form" data-ops-wizard>
     <fieldset class="wizard-step">
-      <legend><span class="step-number">1</span> Choose the operation to run</legend>
+      <legend><span class="step-number">1</span> Choose the campaign to run</legend>
       <div class="card-grid">
         {
           operations.map((operation) => (
@@ -80,11 +80,11 @@ const agents = [
           ))
         }
         <label class="option-card">
-          <input type="radio" name="operation" value="custom" data-operation-name="Custom operation" />
+          <input type="radio" name="operation" value="custom" data-operation-name="Custom campaign" />
           <span class="option-body">
-            <span class="option-name">Custom operation</span>
+            <span class="option-name">Custom campaign</span>
             <span class="option-description">
-              Describe your own operation. The prompt uses the bundled <code>create-cao-campaign</code> skill to design the
+              Describe your own campaign. The prompt uses the bundled <code>create-cao-campaign</code> skill to design the
               orchestrator and workers for you.
             </span>
           </span>
@@ -92,7 +92,7 @@ const agents = [
         </label>
       </div>
       <div class="custom-idea" data-custom-idea>
-        <label for="ops-wizard-idea">Describe the operation you want</label>
+        <label for="ops-wizard-idea">Describe the campaign you want</label>
         <textarea
           id="ops-wizard-idea"
           name="idea"
@@ -149,7 +149,7 @@ const agents = [
       <noscript>
         <p class="run-hint">
           This wizard needs JavaScript. Follow the <a href="/gh-aw-cao/getting-started/">Quickstart</a> to install
-          an operation manually.
+          a campaign manually.
         </p>
       </noscript>
       <div class="prompt-panel" aria-label="Generated prompt preview">
@@ -219,7 +219,7 @@ const agents = [
     const isCustom = operation.value === "custom";
     const idea =
       (form.querySelector<HTMLTextAreaElement>('textarea[name="idea"]')?.value || "").trim() ||
-      "<describe the operation you want to run>";
+      "<describe the campaign you want to run>";
     const operationName = operation.dataset.operationName || operation.value;
     const engine = agent.value;
     const policy = !isCustom
@@ -237,7 +237,7 @@ const agents = [
     const body = isCustom
       ? [
           `4. Install the catalog campaigns and bundled skills: \`gh aw add ${CATALOG}@${CATALOG_REF}\`.`,
-          "5. Read `.github/skills/create-cao-campaign/SKILL.md` and follow it to design a new operation campaign for:",
+          "5. Read `.github/skills/create-cao-campaign/SKILL.md` and follow it to design a new campaign for:",
           "",
           `   > ${idea}`,
           "",
@@ -247,7 +247,7 @@ const agents = [
           "9. Commit and push the policy, sources, and generated `.lock.yml` files together.",
         ]
       : [
-          `4. Install the operation campaign: \`gh aw add ${CATALOG}/${operation.value}@${CATALOG_REF}\`.`,
+          `4. Install the campaign: \`gh aw add ${CATALOG}/${operation.value}@${CATALOG_REF}\`.`,
           `5. Set \`engine: ${engine}\` in the installed workflow frontmatter, then recompile with \`gh aw compile\`.`,
           "6. Create `.github/workflows/cao.json` with this policy:",
           "",
@@ -278,7 +278,7 @@ const agents = [
       "",
       `Follow the Central Agentic Ops setup skill at ${SETUP_SKILL_URL}. Read it before taking any setup action, then use it to complete this request.`,
       "",
-      `Act as my operations engineer. Set up a private GitHub control plane repository at \`${controlRepo}\` that runs the ${isCustom ? "custom operation described below" : `"${operationName}" operation`} from the Central Agentic Ops catalog (https://github.com/${CATALOG}). The control plane holds the workflows and credentials; target repositories never receive copies of them.`,
+      `Act as my campaign engineer. Set up a private GitHub control plane repository at \`${controlRepo}\` that runs the ${isCustom ? "custom campaign described below" : `"${operationName}" campaign`} from the Central Agentic Ops catalog (https://github.com/${CATALOG}). The control plane holds the workflows and credentials; target repositories never receive copies of them.`,
       "",
       ...setup,
       ...body,
@@ -288,7 +288,7 @@ const agents = [
       "## Rules",
       "",
       "- Keep the control repository private.",
-      "- Keep the operation in `review` mode for the first run; never switch it to `live` without asking me.",
+      "- Keep the campaign in `review` mode for the first run; never switch it to `live` without asking me.",
       "- Never edit generated `.lock.yml` files by hand; change the Markdown source and recompile.",
       "- Stop and ask me before adding secrets, widening permissions, or targeting additional repositories.",
       "",

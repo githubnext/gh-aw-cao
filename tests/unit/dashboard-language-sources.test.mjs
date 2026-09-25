@@ -2753,7 +2753,7 @@ test("dashboard source bridge derives admission gates from resolved control poli
   ]);
 });
 
-test("dashboard source bridge retains unavailable grader records separately from value observations", () => {
+test("dashboard source bridge retains unavailable grader records separately from operational-grader observations", () => {
   const sources = buildDashboardLanguageSources({
     deployed: {
       generatedAt: "2026-08-31T12:00:00Z",
@@ -2801,7 +2801,7 @@ test("dashboard source bridge retains unavailable grader records separately from
     report: { generatedAt: "2026-08-31T12:00:00Z", records: [] },
   });
 
-  assert.equal(sources["operational-values"].rows.length, 1);
+  assert.equal(sources["operational-graders"].rows.length, 1);
   assert.equal(sources["grader-observations"].rows.length, 2);
   assert.deepEqual(
     sources["grader-observations"].rows.map((row) => ({
@@ -2833,7 +2833,7 @@ test("dashboard source bridge retains unavailable grader records separately from
   );
 });
 
-test("dashboard source bridge preserves ordered native metrics and historical coverage", () => {
+test("dashboard source bridge preserves ordered operational-grader metrics and historical coverage", () => {
   const sources = buildDashboardLanguageSources({
     deployed: {
       generatedAt: "2026-09-01T12:00:00Z",
@@ -2875,7 +2875,7 @@ test("dashboard source bridge preserves ordered native metrics and historical co
   });
 
   assert.deepEqual(
-    sources["operational-values"].rows[0],
+    sources["operational-graders"].rows[0],
     {
       organization: "github",
       repository: "gh-aw",
@@ -2885,10 +2885,10 @@ test("dashboard source bridge preserves ordered native metrics and historical co
       "run-attempt": 2,
       "observation-id": "github/gh-aw:daily-file-diet:42:2",
       "rollout-mode": "unknown",
-      "operational-value": 80,
-      "operational-value-definition": "accepted-outcomes",
-      "operational-value-unit": "count",
-      "operational-value-direction": "higher_is_better",
+      "operational-grader": 80,
+      "operational-grader-definition": "accepted-outcomes",
+      "operational-grader-unit": "count",
+      "operational-grader-direction": "higher_is_better",
       "observed-at": "2026-08-31T10:00:00Z",
       diagnostics: { "repository-health": 65, "unavailable-evidence": null },
       "diagnostic-definitions": [
@@ -2909,11 +2909,11 @@ test("dashboard source bridge preserves ordered native metrics and historical co
   );
   assert.deepEqual(
     {
-      asOf: sources["operational-values"].metadata["as-of"],
-      retrievedAt: sources["operational-values"].metadata["retrieved-at"],
-      coverageStart: sources["operational-values"].metadata["coverage-start"],
-      coverageEnd: sources["operational-values"].metadata["coverage-end"],
-      completeness: sources["operational-values"].metadata.completeness,
+      asOf: sources["operational-graders"].metadata["as-of"],
+      retrievedAt: sources["operational-graders"].metadata["retrieved-at"],
+      coverageStart: sources["operational-graders"].metadata["coverage-start"],
+      coverageEnd: sources["operational-graders"].metadata["coverage-end"],
+      completeness: sources["operational-graders"].metadata.completeness,
     },
     {
       asOf: "2026-09-01T11:00:00Z",
@@ -2925,7 +2925,7 @@ test("dashboard source bridge preserves ordered native metrics and historical co
   );
 });
 
-test("dashboard source bridge preserves legacy operational-value cache observations", () => {
+test("dashboard source bridge preserves legacy operational-grader cache observations", () => {
   const sources = buildDashboardLanguageSources({
     deployed: {
       generatedAt: "2026-09-01T12:00:00Z",
@@ -2967,9 +2967,9 @@ test("dashboard source bridge preserves legacy operational-value cache observati
   });
 
   assert.deepEqual(
-    sources["operational-values"].rows.map((row) => ({
-      value: row["operational-value"],
-      definition: row["operational-value-definition"],
+    sources["operational-graders"].rows.map((row) => ({
+      value: row["operational-grader"],
+      definition: row["operational-grader-definition"],
       diagnostics: row.diagnostics,
       observedAt: row["observed-at"],
     })),

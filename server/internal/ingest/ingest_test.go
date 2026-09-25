@@ -121,6 +121,91 @@ func TestDeployedSubsetProjectsCanonicalSources(t *testing.T) {
 	}
 }
 
+func TestProjectsOperationalValuesWithCampaign(t *testing.T) {
+	canonical := map[string][]model.Row{}
+	for _, collection := range collections {
+		canonical[collection] = []model.Row{}
+	}
+	canonical["campaigns"] = []model.Row{{
+		"id": "campaign:dependabot", "slug": "dependabot", "name": "Dependabot", "icon": "dependabot",
+	}}
+	canonical["repositories"] = []model.Row{{
+		"id": "repository:fixture", "owner": "githubnext", "name": "gh-aw-cao", "fullName": "githubnext/gh-aw-cao",
+	}}
+	canonical["operationalValues"] = []model.Row{{
+		"id": "operational-value:dependabot", "repositoryId": "repository:fixture", "repository": "githubnext/gh-aw-cao",
+		"campaign": "dependabot", "valueId": "dependabot-vulnerability-alerts", "value": 2.0,
+		"timestamp": "2026-09-24T10:00:00Z",
+	}}
+	definitions, err := loadDefinitions("../../../dashboard/site/src/data/queries/database.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sources, err := projectSources(canonical, map[string]model.Source{}, definitions)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rows := sources["operational-values"].Rows
+	if len(rows) != 1 {
+		t.Fatalf("expected one operational value row, got %#v", rows)
+	}
+	if rows[0]["campaign"] != "dependabot" || rows[0]["campaign-name"] != "Dependabot" {
+		t.Fatalf("operational value row omitted campaign fields: %#v", rows[0])
+	}
+	if rows[0]["operational-value-definition"] != "dependabot-vulnerability-alerts" || rows[0]["operational-value"] != 2.0 {
+		t.Fatalf("operational value row omitted metric fields: %#v", rows[0])
+	}
+}
+
+func TestOperationalValuesProjectionReplacesInventoryRows(t *testing.T) {
+	canonical := map[string][]model.Row{}
+	for _, collection := range collections {
+		canonical[collection] = []model.Row{}
+	}
+	inventory := map[string]model.Source{
+		"operational-values": {
+			Source: "operational-values",
+			Rows: []model.Row{{
+				"repository": "control-plane", "observed-at": "2026-09-23T18:05:00Z", "operational-value": 42,
+			}},
+			Metadata: model.Metadata{},
+		},
+	}
+	definitions, err := loadDefinitions("../../../dashboard/site/src/data/queries/database.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sources, err := projectSources(canonical, inventory, definitions)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if rows := sources["operational-values"].Rows; len(rows) != 0 {
+		t.Fatalf("expected canonical operational-values projection to replace inventory rows, got %#v", rows)
+	}
+}
+
+func TestOperationalValueRelationshipErrorReportedOnce(t *testing.T) {
+	canonical := map[string][]model.Row{}
+	for _, collection := range collections {
+		canonical[collection] = []model.Row{}
+	}
+	canonical["operationalValues"] = []model.Row{{
+		"id": "operational-value:orphan", "repositoryId": "repository:missing",
+	}}
+
+	errors := relationshipErrors(canonical)
+	if len(errors) != 1 {
+		t.Fatalf("expected one relationship error, got %#v", errors)
+	}
+	if errors[0] != "operational-value:orphan.repositoryId does not reference an existing repository" {
+		t.Fatalf("unexpected relationship error: %#v", errors)
+	}
+}
+
 func TestSourceEvaluationTimeUsesLatestCanonicalOrSourceTimestamp(t *testing.T) {
 	sources := map[string]model.Source{
 		"runs": {
@@ -134,6 +219,24 @@ func TestSourceEvaluationTimeUsesLatestCanonicalOrSourceTimestamp(t *testing.T) 
 
 	if got := sourceEvaluationTime(sources).Format(time.RFC3339Nano); got != "2026-01-04T12:30:00Z" {
 		t.Fatalf("got evaluatedAt %s", got)
+	}
+}
+
+func TestValidateDiagnosticsRejectsInvalidStagingGeneration(t *testing.T) {
+	if err := validateDiagnostics(model.Diagnostics{
+		RelationshipErrors: []string{"session.runId does not reference an existing run"},
+	}); err == nil {
+		t.Fatal("relationship errors were accepted")
+	}
+	if err := validateDiagnostics(model.Diagnostics{
+		DuplicateRecordIDs: map[string][]string{"runs": {"run-1"}},
+	}); err == nil {
+		t.Fatal("duplicate canonical IDs were accepted")
+	}
+	if err := validateDiagnostics(model.Diagnostics{
+		DuplicateRecordIDs: map[string][]string{},
+	}); err != nil {
+		t.Fatalf("valid diagnostics were rejected: %v", err)
 	}
 }
 

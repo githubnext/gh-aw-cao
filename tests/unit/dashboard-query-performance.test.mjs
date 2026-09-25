@@ -4,6 +4,7 @@ import test from "node:test";
 import config from "../playwright/configs/dashboard-query-performance.config.mjs";
 import {
   QUERY_CHUNK_SIZE,
+  availableDeployedActivityShardEntries,
   deployedProxyTarget,
   mergeQueryPerformanceReports,
   overviewPhaseBreakdown,
@@ -52,6 +53,46 @@ test("deployed proxy targets remain under the trusted dashboard URL", () => {
     "https://githubnext.github.io",
   );
   assert.equal(deployedProxyTarget("/../private", base), null);
+});
+
+test("deployed shard availability checks filter missing manifest entries", async () => {
+  const base = "https://githubnext.github.io/gh-aw-cao/cao/";
+  const requests = [];
+  const entries = [
+    {
+      name: "gh-aw-logs-runs/available.jsonl",
+      sourceName: "gh-aw-logs-runs/available.jsonl",
+      hash: "a".repeat(64),
+    },
+    {
+      name: "gh-aw-logs-runs/missing.jsonl",
+      sourceName: "gh-aw-logs-runs/missing.jsonl",
+      hash: "b".repeat(64),
+    },
+    {
+      name: "gh-aw-logs-records/unreachable.jsonl",
+      sourceName: "gh-aw-logs-records/unreachable.jsonl",
+      hash: "c".repeat(64),
+    },
+  ];
+
+  const available = await availableDeployedActivityShardEntries(entries, {
+    baseUrl: base,
+    async fetchImpl(url, options) {
+      requests.push([url.href, options]);
+      if (url.pathname.endsWith("/unreachable.jsonl")) throw new Error("network unavailable");
+      return new Response(null, {
+        status: url.pathname.endsWith("/available.jsonl") ? 200 : 404,
+      });
+    },
+  });
+
+  assert.deepEqual(available, [entries[0]]);
+  assert.deepEqual(requests, [
+    [`${base}gh-aw-logs-runs/available.jsonl`, { method: "HEAD", redirect: "error" }],
+    [`${base}gh-aw-logs-runs/missing.jsonl`, { method: "HEAD", redirect: "error" }],
+    [`${base}gh-aw-logs-records/unreachable.jsonl`, { method: "HEAD", redirect: "error" }],
+  ]);
 });
 
 test("dashboard query timing summary distinguishes initial, continuation, and fill timings", () => {

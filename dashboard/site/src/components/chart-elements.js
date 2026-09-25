@@ -19,6 +19,18 @@ const NON_SCALING_POINT_LENGTH = 0.001;
 const MAX_INTERACTIVE_LINE_POINTS = 500;
 const MAX_RENDERED_LINE_POINTS = 2_000;
 const MAX_TIMELINE_TICKS = 5;
+const LINE_CHART_RIGHT = 100;
+const LINE_CHART_BOTTOM = 38;
+const LINE_CHART_HEIGHT = 34;
+const LINE_CHART_MIN_LEFT = 5;
+const LINE_CHART_MIN_PLOT_WIDTH = 25;
+const LINE_CHART_LABEL_GAP = 2;
+// Approximate the 2.6px SVG axis font before attachment: digits 1.5,
+// punctuation 0.75, wide glyphs 2.1, and remaining glyphs 1.6 viewBox units.
+const LINE_CHART_LABEL_DIGIT_WIDTH = 1.5;
+const LINE_CHART_LABEL_DEFAULT_WIDTH = 1.6;
+const LINE_CHART_LABEL_NARROW_WIDTH = 0.75;
+const LINE_CHART_LABEL_WIDE_WIDTH = 2.1;
 const MAX_BAR_AXIS_TICKS = 5;
 const MAX_HORIZONTAL_BARS = 100;
 const BAR_CHART_LEFT = 12;
@@ -41,7 +53,6 @@ const PIE_CHART_SEGMENT_GAP = 0.03;
 const PIE_CHART_CENTER_TEXT_LENGTH = 21;
 const MAX_SWIMLANE_SECTIONS_PER_LANE = 120;
 // Avoid hiding short incidental overlaps such as "QA " or "run " prefixes.
-const MIN_COMMON_LABEL_PREFIX = 8;
 /** @type {Array<[string, string]>} */
 const SWIMLANE_DEFINITIONS = [
   ['action-required', 'Action required'],
@@ -249,9 +260,10 @@ function pieChartSegmentPath(startFraction, endFraction, separated = false) {
  * @param {number} total
  * @param {Map<string, { href: string, label: string }>} [links]
  * @param {{ name: string, symbol: string, significant: number } | null} [unit]
+ * @param {(label: string) => string} [formatLabel]
  * @returns {HTMLElement}
  */
-export function renderPieLegend(entries, total, links = new Map(), unit = null) {
+export function renderPieLegend(entries, total, links = new Map(), unit = null, formatLabel = (label) => label) {
   const rankedEntries = entries
     .map((entry, index) => ({ entry, index }))
     .sort((left, right) => right.entry[1] - left.entry[1] || left.index - right.index);
@@ -262,7 +274,7 @@ export function renderPieLegend(entries, total, links = new Map(), unit = null) 
     ({ entry: [label, value] }) => {
       const link = links.get(label) ?? null;
       return [
-        h('span', null, renderSafeLink(label, link)),
+        h('span', null, renderSafeLink(formatLabel(label), link)),
         h('strong', null, formatPieValue(value, unit)),
         h('small', null, total > 0 ? formatCoveragePercent(value / total) : '0%')
       ];
@@ -333,40 +345,6 @@ function renderChartWidgetShell(chartType, extraAttrs, ...children) {
  */
 function renderChartWidgetEmptyState(chartType, message) {
   return renderChartWidgetShell(chartType, null, renderEmptyMessage(message, { role: 'status' }));
-}
-
-/**
- * Strips a shared, separator-aligned label prefix and prepends an ellipsis,
- * returning the original labels when no substantial prefix can be removed.
- * @param {string[]} labels
- * @returns {string[]}
- */
-function elideCommonLabelPrefix(labels) {
-  if (labels.length < 2 || labels.some((label) => label.length === 0)) return labels;
-
-  const firstLabel = labels[0];
-  if (firstLabel === undefined) return labels;
-  let commonLength = firstLabel.length;
-  for (let labelIndex = 1; labelIndex < labels.length; labelIndex += 1) {
-    const label = labels[labelIndex];
-    if (label === undefined) return labels;
-    commonLength = Math.min(commonLength, label.length);
-    let index = 0;
-    while (index < commonLength && firstLabel[index] === label[index]) index += 1;
-    commonLength = index;
-    if (commonLength < MIN_COMMON_LABEL_PREFIX) return labels;
-  }
-
-  const commonPrefix = firstLabel.slice(0, commonLength);
-  const separatorMatches = [...commonPrefix.matchAll(/[/:\\._ -]+/g)];
-  const lastSeparator = separatorMatches.at(-1);
-  const prefixLength = lastSeparator?.index !== undefined
-    ? lastSeparator.index + lastSeparator[0].length
-    : commonLength;
-  if (prefixLength < MIN_COMMON_LABEL_PREFIX) return labels;
-  const suffixes = labels.map((label) => label.slice(prefixLength).trimStart());
-  if (suffixes.some((suffix) => suffix.length === 0)) return labels;
-  return suffixes.map((suffix) => `…${suffix}`);
 }
 
 /**
@@ -459,12 +437,13 @@ function renderInteractiveChartMark({ className, entryIndex, label, shape, toolt
  * @param {ChartSeriesDescriptor[]} series
  * @param {{ entries: Array<[string, number]>, total: number } | null} [pieSummary]
  * @param {string} [totalLabel]
- * @param {{ name: string, symbol: string, significant: number } | null} [unit]
+ * @param {{ name: string, symbol: string, significant: number, format?: string } | null} [unit]
  * @param {Record<string, unknown> | null} [timeRange]
  * @param {string | null} [referenceField]
+ * @param {(label: string) => string} [formatCategory]
  * @returns {HTMLElement}
  */
-export function renderChartWidget(chartType, points, series, pieSummary = null, totalLabel = 'Total', unit = null, timeRange = null, referenceField = null) {
+export function renderChartWidget(chartType, points, series, pieSummary = null, totalLabel = 'Total', unit = null, timeRange = null, referenceField = null, formatCategory = (label) => label) {
   const pieData = chartType === 'pie' ? pieSummary ?? pieChartEntries(points) : null;
   const entryCount = pieData ? pieData.entries.length : points.length;
   const minimumEntries = ['heatmap', 'horizontal-bar', 'pie', 'scatter'].includes(chartType) ? 1 : 2;
@@ -624,7 +603,6 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
     }
     const maximum = Math.max(...points.map((point) => toNumber(point.y)).filter(Number.isFinite), 1);
     const seriesClassNames = new Map(series.map((item) => [item.name, item.className]));
-    const displayLabels = elideCommonLabelPrefix(points.map((point) => String(point.x ?? '')));
     return renderChartWidgetShell(
       chartType,
       null,
@@ -636,12 +614,15 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
           const value = Number.isFinite(numericValue) ? numericValue : 0;
           const barSize = Math.max(0, value);
           const label = chartPointLabel(point, unit);
-          const displayLabel = displayLabels[index] ?? point.x;
+          const category = formatCategory(point.x);
           return h(
             'li',
             { className: 'horizontal-bar-chart-row' },
             h('span', { className: 'horizontal-bar-chart-label', title: point.x },
-              h('bdi', { className: 'horizontal-bar-chart-label-text', dir: 'ltr' }, displayLabel)
+              renderSafeLink(
+                h('bdi', { className: 'horizontal-bar-chart-label-text', dir: 'ltr' }, category),
+                point.link ?? null
+              )
             ),
             h(
               'span',
@@ -697,18 +678,17 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
           const value = toNumber(point.y);
           valuesByX.set(point.x, (valuesByX.get(point.x) ?? 0) + (Number.isFinite(value) ? Math.max(0, value) : 0));
         }
-        const coordinates = xValues.map((xValue, xIndex) => {
+        areaCoordinates.set(seriesName, xValues.map((xValue, xIndex) => {
           const lower = cumulativeByX.get(xValue) ?? 0;
           const upper = lower + (valuesByX.get(xValue) ?? 0);
           cumulativeByX.set(xValue, upper);
           maximum = Math.max(maximum, upper);
           return {
-            x: xValues.length < 2 ? 50 : (xIndex / (xValues.length - 1)) * 100,
+            x: xValues.length < 2 ? 0.5 : xIndex / (xValues.length - 1),
             lower,
             upper
           };
-        });
-        areaCoordinates.set(seriesName, coordinates);
+        }));
       }
     } else {
       for (const point of points) {
@@ -725,23 +705,48 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
     for (const { value } of referenceLines) maximum = Math.max(maximum, value);
     const pointSize = lineChartPointSize(points.length);
     const dotPointRadius = dotChartPointRadius(points.length);
-    const gridLines = [4, 21, 38].map((y) => h('line', { className: 'line-chart-grid', x1: 0, y1: y, x2: 100, y2: y }));
+    const yTicks = [maximum, maximum / 2, 0];
+    const yTickLabels = yTicks.map((value) => formatChartAxisTick(value, unit));
+    const lineChartLeft = Math.min(
+      LINE_CHART_RIGHT - LINE_CHART_MIN_PLOT_WIDTH,
+      Math.max(
+        LINE_CHART_MIN_LEFT,
+        Math.ceil(Math.max(...yTickLabels.map(estimateLineChartLabelWidth)) + LINE_CHART_LABEL_GAP)
+      )
+    );
+    const plotWidth = LINE_CHART_RIGHT - lineChartLeft;
+    for (const coordinates of areaCoordinates.values()) {
+      for (const coordinate of coordinates) coordinate.x = lineChartLeft + (coordinate.x * plotWidth);
+    }
+    const gridLines = yTicks.map((value) => {
+      const y = LINE_CHART_BOTTOM - ((value / maximum) * LINE_CHART_HEIGHT);
+      return h('line', {
+        className: 'line-chart-grid',
+        x1: lineChartLeft,
+        y1: y,
+        x2: LINE_CHART_RIGHT,
+        y2: y
+      });
+    });
     const highlightedIndexes = [...new Set(points.flatMap((point) => {
       const index = point.highlighted ? xIndexes.get(point.x) : undefined;
       return index === undefined ? [] : [index];
     }))];
-    const xStep = xValues.length > 1 ? 100 / (xValues.length - 1) : 100;
+    const xStep = xValues.length > 1 ? plotWidth / (xValues.length - 1) : plotWidth;
     const windowBand = highlightedIndexes.length > 0
       ? {
-        start: Math.max(0, (Math.min(...highlightedIndexes) - 0.5) * xStep),
-        end: Math.min(100, (Math.max(...highlightedIndexes) + 0.5) * xStep)
+        start: Math.max(lineChartLeft, lineChartLeft + ((Math.min(...highlightedIndexes) - 0.5) * xStep)),
+        end: Math.min(LINE_CHART_RIGHT, lineChartLeft + ((Math.max(...highlightedIndexes) + 0.5) * xStep))
       }
       : null;
     /** @param {number} value */
-    const scaledAreaY = (value) => Number((38 - (value / maximum) * 34).toFixed(4));
+    const scaledAreaY = (value) => Number((LINE_CHART_BOTTOM - (value / maximum) * LINE_CHART_HEIGHT).toFixed(4));
     return renderChartWidgetShell(
       chartType,
-      { 'data-line-rendering': showInteractivePoints ? 'rich' : 'compact' },
+      {
+        'data-line-rendering': showInteractivePoints ? 'rich' : 'compact',
+        style: `--line-chart-left: ${lineChartLeft}%;`
+      },
       h(
         'svg',
         {
@@ -758,17 +763,40 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
           x: windowBand.start,
           y: 0,
           width: Math.max(windowBand.end - windowBand.start, 1),
-          height: 38,
+          height: LINE_CHART_BOTTOM,
           'aria-hidden': 'true'
         }) : null,
-        ...gridLines,
-        h('line', { className: 'line-chart-axis', x1: 0, y1: 38, x2: 100, y2: 38 }),
+        h(
+          'g',
+          { className: 'line-chart-y-axis', 'data-chart-axis': 'y', 'aria-hidden': 'true' },
+          ...yTicks.flatMap((value, index) => {
+            const y = LINE_CHART_BOTTOM - ((value / maximum) * LINE_CHART_HEIGHT);
+            return [
+              gridLines[index],
+              h('text', { x: lineChartLeft - 1.5, y: y + 1, 'text-anchor': 'end' }, yTickLabels[index])
+            ];
+          }),
+          h('line', {
+            className: 'line-chart-axis',
+            x1: lineChartLeft,
+            y1: LINE_CHART_BOTTOM - LINE_CHART_HEIGHT,
+            x2: lineChartLeft,
+            y2: LINE_CHART_BOTTOM
+          })
+        ),
+        h('line', {
+          className: 'line-chart-axis',
+          x1: lineChartLeft,
+          y1: LINE_CHART_BOTTOM,
+          x2: LINE_CHART_RIGHT,
+          y2: LINE_CHART_BOTTOM
+        }),
         ...referenceLines.map(({ seriesName, value }) => h('line', {
           className: `dot-chart-reference ${seriesClassNames.get(seriesName) ?? 'chart-series-1'}`,
-          x1: 0,
-          y1: 38 - (Math.max(0, value) / maximum) * 34,
-          x2: 100,
-          y2: 38 - (Math.max(0, value) / maximum) * 34,
+          x1: lineChartLeft,
+          y1: LINE_CHART_BOTTOM - (Math.max(0, value) / maximum) * LINE_CHART_HEIGHT,
+          x2: LINE_CHART_RIGHT,
+          y2: LINE_CHART_BOTTOM - (Math.max(0, value) / maximum) * LINE_CHART_HEIGHT,
           'data-chart-reference': seriesName,
           'data-chart-reference-value': String(value),
           'aria-hidden': 'true'
@@ -780,9 +808,11 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
             const xIndex = xIndexes.get(point.x) ?? 0;
             const pointTime = Date.parse(point.x);
             const x = isScatterChart && maximumTime > minimumTime && Number.isFinite(pointTime)
-              ? ((pointTime - minimumTime) / (maximumTime - minimumTime)) * 100
-              : xValues.length < 2 ? 50 : (xIndex / (xValues.length - 1)) * 100;
-            const y = 38 - (Math.max(0, toNumber(point.y)) / maximum) * 34;
+              ? lineChartLeft + (((pointTime - minimumTime) / (maximumTime - minimumTime)) * plotWidth)
+              : xValues.length < 2
+                ? lineChartLeft + (plotWidth / 2)
+                : lineChartLeft + ((xIndex / (xValues.length - 1)) * plotWidth);
+            const y = LINE_CHART_BOTTOM - (Math.max(0, toNumber(point.y)) / maximum) * LINE_CHART_HEIGHT;
             return { point, x, y };
           });
           const renderedCoordinates = sampleLineCoordinates(coordinates, renderedPointLimit);
@@ -1472,6 +1502,41 @@ function sampledIndexes(valueCount, maximumCount) {
 function compactAxisLabel(value) {
   const formatted = formatTimelineTick(value);
   return formatted.length > 12 ? `${formatted.slice(0, 11)}…` : formatted;
+}
+
+/**
+ * @param {number} value
+ * @param {{ name: string, symbol: string, significant: number, format?: string } | null} unit
+ */
+function formatChartAxisTick(value, unit) {
+  if (Math.abs(value) < 10_000) return formatNumber(value, unit);
+  if (unit?.format === 'aicc') {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      notation: 'compact',
+      maximumFractionDigits: 1
+    }).format(value / 100);
+  }
+  const compact = new Intl.NumberFormat('en', {
+    notation: 'compact',
+    maximumFractionDigits: 1
+  }).format(value);
+  if (unit?.format === 'usd') return compact.startsWith('-') ? `-$${compact.slice(1)}` : `$${compact}`;
+  return unit && unit.format !== 'number' ? `${compact} ${unit.symbol}` : compact;
+}
+
+/** @param {string} label */
+function estimateLineChartLabelWidth(label) {
+  return [...label].reduce((width, character) => width + (
+    /\d/.test(character)
+      ? LINE_CHART_LABEL_DIGIT_WIDTH
+      : /[.,:\s]/.test(character)
+        ? LINE_CHART_LABEL_NARROW_WIDTH
+        : /[MW%@]/.test(character)
+          ? LINE_CHART_LABEL_WIDE_WIDTH
+          : LINE_CHART_LABEL_DEFAULT_WIDTH
+  ), 0);
 }
 
 /**

@@ -21,6 +21,7 @@ describe('dashboard debug logging', () => {
 
   it('supports exact, wildcard, and excluded categories', () => {
     expect(isDebugEnabled('data', '?debug=data,render')).toBe(true);
+    expect(isDebugEnabled('auth', '?debug=auth')).toBe(true);
     expect(isDebugEnabled('render:lazy', '?debug=render:*')).toBe(true);
     expect(isDebugEnabled('render:verbose', '?debug=render:*,-render:verbose')).toBe(false);
     expect(isDebugEnabled('worker', '?debug=1')).toBe(true);

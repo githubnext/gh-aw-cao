@@ -60,7 +60,7 @@ export function renderDeclaredRouteTabs(options) {
 /**
  * Reads the declared tabs of a custom page route.
  * @param {unknown} route
- * @returns {{ tabs: DeclaredRouteTab[], currentTab: string } | null}
+ * @returns {{ tabs: DeclaredRouteTab[], currentTab: string, className?: string } | null}
  */
 export function declaredRouteTabs(route) {
   if (route === null || typeof route !== 'object') return null;
@@ -75,6 +75,9 @@ export function declaredRouteTabs(route) {
   if (tabs.length === 0) return null;
   return {
     tabs: /** @type {DeclaredRouteTab[]} */ (tabs),
-    currentTab: typeof definition.tab === 'string' ? definition.tab : ''
+    currentTab: typeof definition.tab === 'string' ? definition.tab : '',
+    ...(typeof definition['tabs-class-name'] === 'string'
+      ? { className: definition['tabs-class-name'] }
+      : {})
   };
 }

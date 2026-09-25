@@ -39,7 +39,7 @@ const sourceNames = [
   "repository-coverage",
   "outcomes",
   "findings",
-  "operational-values",
+  "operational-graders",
   "github-api-rate-limits",
   "github-api-collector-health",
   "github-api-call-stacks",
@@ -2460,18 +2460,18 @@ function evidenceRecordRows(outcomes, findings, workItems) {
   return [...outcomeRecords, ...findingRecords];
 }
 
-function operationalValueDefinitionKey(record, evaluatorDigest = record.evaluatorDigest) {
+function operationalGraderDefinitionKey(record, evaluatorDigest = record.evaluatorDigest) {
   return `${record.repository || ""}\0${record.workflowId || ""}\0${evaluatorDigest || ""}`;
 }
 
-function operationalValueDefinitionLookup(values) {
+function operationalGraderDefinitionLookup(values) {
   const definitions = Array.isArray(values.definitions) ? values.definitions : [];
   const byDigest = new Map();
   const singleByWorkflow = new Map();
   const definitionsByWorkflow = new Map();
   for (const definition of definitions) {
-    byDigest.set(operationalValueDefinitionKey(definition), definition);
-    const workflowKey = operationalValueDefinitionKey(definition, "");
+    byDigest.set(operationalGraderDefinitionKey(definition), definition);
+    const workflowKey = operationalGraderDefinitionKey(definition, "");
     definitionsByWorkflow.set(workflowKey, [...(definitionsByWorkflow.get(workflowKey) ?? []), definition]);
   }
   for (const [workflowKey, workflowDefinitions] of definitionsByWorkflow) {
@@ -2488,14 +2488,14 @@ function diagnosticValues(record) {
     : {};
 }
 
-function operationalValueMetrics(definitions, record) {
+function operationalGraderMetrics(definitions, record) {
   if (Array.isArray(record.metrics)) return record.metrics;
   // Legacy cache records predate metric arrays. Prefer an exact evaluator
   // definition; if retained records no longer match the current digest, use the
   // workflow-level fallback only when it is unambiguous. Otherwise group the
   // primary value under the stable generic metric id.
-  const definition = definitions.byDigest.get(operationalValueDefinitionKey(record))
-    ?? definitions.singleByWorkflow.get(operationalValueDefinitionKey(record, ""))
+  const definition = definitions.byDigest.get(operationalGraderDefinitionKey(record))
+    ?? definitions.singleByWorkflow.get(operationalGraderDefinitionKey(record, ""))
     ?? {};
   const diagnostics = diagnosticValues(record);
   const primary = typeof definition.operationalValue === "string"
@@ -2513,12 +2513,12 @@ function operationalValueMetrics(definitions, record) {
   ];
 }
 
-function operationalValueRows(values) {
-  const definitions = operationalValueDefinitionLookup(values);
+function operationalGraderRows(values) {
+  const definitions = operationalGraderDefinitionLookup(values);
   return (values.records || []).filter(hasOperationalValueResult).map((record) => {
     const repository = repositoryParts(record.repository);
     const runAttempt = Number(record.runAttempt || record.run?.attempt || 1);
-    const metrics = operationalValueMetrics(definitions, record);
+    const metrics = operationalGraderMetrics(definitions, record);
     const primary = metrics[0] || {};
     const diagnostics = Object.fromEntries(metrics.slice(1).map((metric) => [metric.id, metric.value]));
     const observedAt = operationalValueRecordTime(record);
@@ -2530,10 +2530,10 @@ function operationalValueRows(values) {
       "run-attempt": runAttempt,
       "observation-id": `${record.repository}:${record.workflowId}:${record.runId}:${runAttempt}`,
       "rollout-mode": "unknown",
-      "operational-value": metrics.length > 0 ? primary.value : record.value,
-      "operational-value-definition": primary.id || record.workflowId || "operational-value",
-      "operational-value-unit": record.unit,
-      "operational-value-direction": record.direction,
+      "operational-grader": metrics.length > 0 ? primary.value : record.value,
+      "operational-grader-definition": primary.id || record.workflowId || "operational-value",
+      "operational-grader-unit": record.unit,
+      "operational-grader-direction": record.direction,
       diagnostics,
       "diagnostic-definitions": metrics.slice(1).map((metric) => ({ id: metric.id, name: metric.id })),
       "observed-at": observedAt,
@@ -2543,7 +2543,7 @@ function operationalValueRows(values) {
   });
 }
 
-function operationalValueSource(name, rows, values, generatedAt, available) {
+function operationalGraderSource(name, rows, values, generatedAt, available) {
   const complete = values.complete === true;
   const retrievedAt = values.generatedAt || generatedAt;
   const result = source(name, rows, retrievedAt, available, complete);
@@ -2562,7 +2562,7 @@ function operationalValueGraderRows(values) {
       workflow: record.workflowPath?.replace(/\.lock\.yml$/, ".md") || record.workflowId || "",
       run: record.runId == null ? "Unavailable" : String(record.runId),
       grader: "operational-value",
-      "grader-name": record.graderName || "Operational value",
+      "grader-name": record.graderName || "Operational grader",
       status: record.status || "unavailable",
       value: record.value,
       unit: record.unit,
@@ -2727,7 +2727,7 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
   const agentAssignments = agentAssignmentRows(workflows, runs, workItems);
   const evidenceAvailable = workItemsAvailable || outcomes.length > 0 || findings.length > 0;
   const evidenceRecords = evidenceRecordRows(outcomes, findings, workItems);
-  const values = operationalValueRows(operationalValues);
+  const operationalGraders = operationalGraderRows(operationalValues);
   const experiments = experimentTelemetryRows(usage);
   const graders = graderTelemetryRows(usage);
   const evals = evalTelemetryRows(usage);
@@ -2736,7 +2736,7 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
     ...graders.observations,
   ];
   const repositories = new Map();
-  for (const row of [...workflows, ...runs, ...findings, ...values]) {
+  for (const row of [...workflows, ...runs, ...findings, ...operationalGraders]) {
     if (!row.organization || !row.repository) continue;
     repositories.set(`${row.organization}/${row.repository}`, {
       organization: row.organization,
@@ -2986,7 +2986,7 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
     valueAvailable || usageAvailable,
     operationalValues.complete === true && usageComplete,
   );
-  sources["operational-values"] = operationalValueSource("operational-values", values, operationalValues, generatedAt, valueAvailable);
+  sources["operational-graders"] = operationalGraderSource("operational-graders", operationalGraders, operationalValues, generatedAt, valueAvailable);
   const githubAsOf = telemetryAsOf(githubTelemetry, generatedAt);
   const githubFreshness = telemetryFreshness(githubTelemetry, generatedAt);
   const githubRateLimitRows = githubTelemetryRows(githubTelemetry, generatedAt);

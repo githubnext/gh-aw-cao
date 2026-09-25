@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" role="img" aria-labelledby="title description">
   <title id="title">How Central Agentic Ops executes work</title>
-  <desc id="description">The private central control repository contains rollout policy and operation campaigns. Orchestrators and workers run inside that central boundary. A central worker inspects one remote target at a time and emits only declared safe outputs. Control-plane workflows are not installed in or run from target repositories. Results remain correlated with the originating central run.</desc>
+  <desc id="description">The private central control repository contains rollout policy and campaigns. Orchestrators and workers run inside that central boundary. A central worker inspects one remote target at a time and emits only declared safe outputs. Control-plane workflows are not installed in or run from target repositories. Results remain correlated with the originating central run.</desc>
   <defs>
     <style>
       :root{--bg:#fff;--surface:#f6f8fa;--surface-strong:#fff;--text:#1f2328;--muted:#59636e;--border:#d0d7de;--accent:#8250df;--success:#1f883d;--danger:#cf222e;--attention:#9a6700}
@@ -31,7 +31,7 @@
   <rect x="296" y="96" width="220" height="338" rx="8" class="surface"/>
   <circle cx="324" cy="126" r="7" fill="var(--accent)"/>
   <text x="342" y="132" class="eyebrow">RUN CENTRALLY</text>
-  <text x="320" y="176" class="heading">Operation campaigns</text>
+  <text x="320" y="176" class="heading">Campaigns</text>
   <text x="320" y="205" class="copy">Orchestrators and workers</text>
   <text x="320" y="226" class="copy">execute in this repository.</text>
   <rect x="320" y="258" width="172" height="54" rx="6" class="node"/>

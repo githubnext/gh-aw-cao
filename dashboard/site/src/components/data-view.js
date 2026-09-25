@@ -4,7 +4,7 @@
 
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
-import { formatAggregateValue, formatRelativeTime } from '../view-formatters.js';
+import { formatAggregateValue, formatRelativeTime, formatString } from '../view-formatters.js';
 import { formatCount, titleCase } from './count-formatters.js';
 import { renderCellDisplay } from './cell-display.js';
 import { resolveCardStatus } from './card-status.js';
@@ -97,7 +97,7 @@ function resolveGithubEntityLink(row, field, fallbackLabel) {
  *   buildChartPoints: (pageId: string, title: string, rows: Array<Record<string, unknown>>, x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, hrefField: string | null, weight?: Record<string, any> | null) => ChartPoint[],
  *   prepareChartPoints: (points: ChartPoint[], x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, data: unknown) => ChartPoint[],
  *   toText: (value: unknown) => string,
- *   cardTemplates?: Record<string, { icon: string, 'icon-field'?: string, status?: { field: string, 'fallback-field'?: string, title?: string }, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], 'detail-labels'?: string, metrics?: TableField[], timing?: Array<TableField & { icon: string }>, actions?: Array<{ action: string, context: string[], when?: { field: string, equals: unknown } }> }>,
+ *   cardTemplates?: Record<string, { icon: string, 'icon-field'?: string, status?: { field: string, 'fallback-field'?: string, title?: string }, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], 'detail-labels'?: string, metrics?: TableField[], timing?: Array<TableField & { icon: string }>, actions?: Array<{ action: string, context: string[], when?: { field: string, equals: unknown } }>, drill?: Record<string, unknown> }>,
  *   continuation?: { token: string, totalRows: number, load: (token: string) => Promise<{ rows: Array<Record<string, unknown>>, continuationToken?: string }> }
  * }} DataViewContext
  */
@@ -315,13 +315,15 @@ function renderListView(context) {
  *   headingTag: 'h3'|'h4',
  *   renderValue: (column: string | { field: string, display?: unknown, format?: unknown, type?: unknown }, value: unknown, row: Record<string, unknown>) => string | HTMLElement,
  *   toText: (value: unknown) => string,
- *   definition: { icon: string, status?: { field: string, 'fallback-field'?: string, title?: string }, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], 'detail-labels'?: string, metrics?: TableField[], timing?: Array<TableField & { icon: string }> },
+ *   definition: { icon: string, status?: { field: string, 'fallback-field'?: string, title?: string }, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], 'detail-labels'?: string, metrics?: TableField[], timing?: Array<TableField & { icon: string }>, drill?: Record<string, unknown> },
  *   listAction: HTMLElement | null
  * }} options
  */
 function renderEntityCardListView(options) {
   const { pageId, title, view, rows, metadata, contextDetails, headingTag, renderValue, toText, definition, listAction } = options;
-  const drill = isPlainObject(view.list) && isPlainObject(view.list.drill) ? view.list.drill : null;
+  const drill = isPlainObject(view.list) && isPlainObject(view.list.drill)
+    ? view.list.drill
+    : isPlainObject(definition.drill) ? definition.drill : null;
   const grouped = isPlainObject(view.list) && view.list.appearance === 'grouped';
   const cards = renderEntityCardItems(rows, {
     pageId,
@@ -399,7 +401,12 @@ function renderEntityCardItems(rows, options) {
     const titleContent = target?.external
       ? renderExternalLink(target.link)
       : target
-        ? h('a', { href: target.link.href, 'data-card-drill': 'query' }, target.link.label)
+        ? h('a', {
+            href: target.link.href,
+            'data-card-drill': 'query',
+            'data-nav-page-id': target.pageId,
+            'data-route-title': target.routeTitle
+          }, target.link.label)
         : renderedTitle;
     if (target && titleContent instanceof HTMLAnchorElement) {
       titleContent.dataset.cardDrill = target.external ? 'external' : 'query';
@@ -561,7 +568,7 @@ function activateCardDrill(event) {
  * @param {Record<string, unknown>} row
  * @param {Record<string, unknown> | null} drill
  * @param {string} title
- * @returns {{ external: boolean, link: { href: string, label: string } } | null}
+ * @returns {{ external: true, link: { href: string, label: string } } | { external: false, pageId: string, routeTitle: string, link: { href: string, label: string } } | null}
  */
 function resolveEntityCardDrill(row, drill, title) {
   if (!drill || typeof drill.type !== 'string') return null;
@@ -590,6 +597,8 @@ function resolveEntityCardDrill(row, drill, title) {
   const suffix = parameters.size > 0 ? `?${parameters.toString()}` : '';
   return {
     external: false,
+    pageId: drill.page,
+    routeTitle: String(pageTitle),
     link: {
       href: `#page-${encodeURIComponent(drill.page)}${suffix}`,
       label: title
@@ -952,14 +961,11 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
     ? view.encoding.href
     : null;
   const hrefField = typeof hrefDefinition?.field === 'string' ? hrefDefinition.field : null;
-  const drill = isPlainObject(view['card-drill'])
-    ? view['card-drill']
-    : hrefField ? { type: 'external', field: hrefField } : null;
   const pageSize = 25;
   const availableRows = [...rows];
   const initialRows = availableRows.slice(0, pageSize);
   const columnFields = new Set(columns.map((column) => column.field));
-  /** @type {{ icon: string, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], 'detail-labels'?: string, metrics?: TableField[] }} */
+  /** @type {{ icon: string, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], 'detail-labels'?: string, metrics?: TableField[], drill?: Record<string, unknown> }} */
   const definition = Object.values(cardTemplates)
     .filter((template) => columnFields.has(template.title.field))
     .toSorted((left, right) => (
@@ -971,6 +977,11 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
       labels: columns.slice(1).filter((column) => ['label', 'status', 'active-state', 'mode'].includes(String(column.display))),
       details: columns.slice(1).filter((column) => !['label', 'status', 'active-state', 'mode'].includes(String(column.display)))
     };
+  const drill = isPlainObject(view['card-drill'])
+    ? view['card-drill']
+    : hrefField
+      ? { type: 'external', field: hrefField }
+      : isPlainObject(definition.drill) ? definition.drill : null;
   const quantitativeFields = new Set(columns
     .filter((column) => column.type === 'quantitative')
     .map((column) => column.field));
@@ -1255,7 +1266,8 @@ function renderChartView(context) {
       value ? fieldTitle(value) : 'Total',
       value ? fieldUnit(value, context.units ?? {}) : null,
       isPlainObject(view.data) && isPlainObject(view.data.time) ? view.data.time : null,
-      reference?.field ?? null
+      reference?.field ?? null,
+      pieCategoryLabelFormatter(x)
     );
     const chartLegend = (color || yDefinitions.length > 1) && !['heatmap', 'pie', 'swimlane'].includes(chartType)
       ? renderChartLegend(chartSeries, chartType)
@@ -1268,7 +1280,8 @@ function renderChartView(context) {
               pieSummary.entries,
               pieSummary.total,
               chartCategoryLinks(renderedPoints),
-              y ? fieldUnit(y, context.units ?? {}) : null
+              y ? fieldUnit(y, context.units ?? {}) : null,
+              pieCategoryLabelFormatter(x)
             ))]
           : [chartWidget]),
         ...(chartLegend && chartType === 'scatter' ? [chartLegend] : [])
@@ -1484,6 +1497,15 @@ function chartCategoryLinks(points) {
     }
   }
   return links;
+}
+
+/**
+ * @param {Record<string, unknown> | null} x
+ * @returns {(label: string) => string}
+ */
+function pieCategoryLabelFormatter(x) {
+  const format = typeof x?.format === 'string' ? x.format : undefined;
+  return (label) => formatString(label, format, label);
 }
 
 /**

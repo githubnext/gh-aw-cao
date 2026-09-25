@@ -1,11 +1,13 @@
 # Server security
 
-The Go dashboard server has two security profiles:
+The Go dashboard server has three security profiles:
 
 - the default local profile used by `cao-dashboard serve`, for one trusted
   operator on loopback; and
 - the explicit Azure Functions profile, for remote access through GitHub OAuth,
-  server-side sessions, Azure trusted-proxy headers, and Redis Enterprise.
+  server-side sessions, Azure trusted-proxy headers, and Redis Enterprise; and
+- the host-neutral `serve-hosted` profile, with the same GitHub identity boundary
+  behind an explicitly trusted HTTPS proxy and any compatible managed Redis.
 
 ## Supported security boundary
 
@@ -21,7 +23,31 @@ The supported deployment is:
 
 GitHub authentication, organization authorization, multi-user access, public
 hosting, reverse proxies, tunnels, and webhook ingestion are not part of the
-local profile. Do not expose `serve` through a tunnel or public reverse proxy.
+local profile. Use `serve-hosted` rather than exposing `serve` through a tunnel
+or public reverse proxy.
+
+## Host-neutral hosted profile
+
+Hosted mode rejects local bearer capabilities and requires GitHub OAuth,
+explicit organization or team authorization, and an exact trusted-host policy.
+Administrative rebuilds additionally require an explicit GitHub login in
+`CAO_GITHUB_ADMIN_USERS`.
+Mutating browser requests require the session-bound CSRF token. The webhook
+route is exempt from browser authentication only because it independently
+requires a valid `X-Hub-Signature-256` signature and delivery identity.
+
+Webhook delivery IDs and projection leases are stored in the deployment Redis
+namespace. Failed reconciliation removes its delivery marker so GitHub can
+retry. Full rebuilds and webhook reconciliation share a distributed lease;
+only a complete staged generation is atomically activated. Redis remains
+disposable, and health distinguishes an available service from ready data.
+
+`CAO_REDIS_URL`, OAuth secrets, the webhook secret, and session secrets are
+process-only configuration resolved by the deployment's secret manager. They
+are never accepted as hosted command-line flags, returned by APIs, or written
+to logs. Every hosted Redis connection uses `rediss://` with certificate and
+hostname verification; the core service imports no cloud identity or
+secret-management SDK.
 
 ## Dashboard access capability
 
@@ -72,6 +98,22 @@ telemetry. Restart the server to rotate an automatically generated token.
 The capability mechanism is local access control, not a replacement for
 identity-aware authentication in a remote service.
 
+## Hosted transport boundary
+
+Hosted mode has no developer override for transport protections:
+
+- it requires `rediss://` even when Redis is on loopback;
+- it requires HTTPS and rejects attempts to disable that policy;
+- it binds to loopback by default, allowing forwarded host/protocol headers
+  only across that local process or pod boundary; and
+- a non-loopback bind requires an operator-supplied TLS certificate and key,
+  ignores forwarded headers, and validates the direct TLS connection and
+  allow-listed `Host`.
+
+Plaintext loopback Redis, generated bearer capabilities, and optional local TLS
+belong only to the separate `serve` developer profile. They cannot be enabled
+in `serve-hosted`.
+
 ## Azure Functions profile
 
 > [!WARNING]
@@ -110,6 +152,31 @@ server must verify an allowed organization or team membership before creating a
 session. Do not add PAT handling to Azure mode; PATs bypass the required
 browser login, refresh-token rotation, revocation, and explicit membership
 authorization controls.
+
+Organization and team authorization is revalidated whenever an OAuth access
+token is refreshed. Failed revalidation deletes the session and revokes both
+the previous and newly issued credentials.
+
+Users with multiple personal or managed-user GitHub identities can explicitly
+switch accounts from the dashboard. Switching is a CSRF-protected mutation that
+revokes and deletes the current server session before redirecting to GitHub's
+account chooser; CAO never combines authority or tokens from multiple accounts
+in one browser session. If GitHub revocation is unavailable, logout and account
+switching atomically remove the active session, clear its cookies, and retain
+the encrypted credentials only in a Redis-backed pending-revocation queue.
+Subsequent OAuth entry retries queued revocation without restoring session
+authority.
+
+Encrypted session and pending-revocation records carry a non-secret key
+identifier. During controlled rotation, configure the old key through
+`CAO_SESSION_SECRET_PREVIOUS` while `CAO_SESSION_SECRET` contains the new key;
+remove the previous key only after active sessions and queued revocations using
+it have drained or their credentials have expired. The revocation worker runs
+at startup and every minute, retries bounded batches, and retains encrypted
+queue records through the latest known access/refresh credential expiry.
+Refresh persistence uses an atomic compare-and-swap against the encrypted
+session record, so concurrent logout cannot be overwritten by a late token
+refresh; superseded credentials are revoked or queued separately.
 
 Access tokens and refresh tokens remain server-side. They are encrypted with an
 AES-GCM key derived from `CAO_SESSION_SECRET` before being stored in Redis under
@@ -220,17 +287,18 @@ use:
 ### Azure secure-computing and compliance controls
 
 Key Vault is mandatory for every secret-bearing Azure setting. The deployment
-contract must keep the GitHub OAuth client secret, session secret, and Redis
-`rediss://` URL in Key Vault and wire the Function App through Key Vault
-references. Do not emit these values from Bicep, commit them in parameter
-files, copy them into app settings as literals, or log them during deployment.
+contract keeps the GitHub OAuth client secret, session secret, Redis
+`rediss://` URL, and Functions runtime storage connection in Key Vault and wires
+the Function App through versionless Key Vault references. Do not emit these
+values from Bicep, commit them in parameter files, copy them into app settings
+as literals, or log them during deployment.
 
 Use a system-assigned managed identity and Key Vault RBAC for secret reads.
 Review Key Vault access policies/role assignments, Azure activity logs, and
 Function App configuration changes as part of compliance evidence. Secret
 rotation should happen through GitHub OAuth settings, Azure Redis/storage key
-rotation, and new Key Vault secret versions, followed by a Function App restart
-to resolve current references.
+rotation, and new Key Vault secret versions. Versionless references allow the
+platform to resolve current versions without changing application settings.
 
 Keep the Azure secure-computing baseline enabled:
 
@@ -245,6 +313,11 @@ Keep the Azure secure-computing baseline enabled:
 - Application Insights/telemetry with structured operational metadata only,
   never GitHub tokens, Redis URLs, session secrets, cookies, authorization
   headers, source records, or prompt contents.
+
+The Azure Elastic Premium baseline keeps one always-on instance for the
+process-lifetime revocation worker. Redis remains the durable queue across
+process replacement; each startup resumes bounded retry batches before the
+minute interval begins.
 
 ## Redis transport and isolation
 

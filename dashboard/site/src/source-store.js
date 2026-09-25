@@ -25,7 +25,7 @@ const IDLE_ENTRY = { status: 'idle', origin: 'query', source: null };
 
 /** @type {Map<string, import('./reactive.js').State<SourceEntry>>} */
 const entries = new Map();
-/** @typedef {{ pageId?: string, viewId?: string, sourceIndex?: number, bindingKey?: string, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' } }} SourceRequestOptions */
+/** @typedef {{ pageId?: string, viewId?: string, sourceIndex?: number, bindingKey?: string, refreshViewSource?: boolean, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' } }} SourceRequestOptions */
 
 /** @type {Set<string>} */
 const requested = new Set();
@@ -115,7 +115,9 @@ async function loadRequestedSource(bindingKey) {
   // Rows handed over by a rendered view are refreshed by the next render, so a
   // query result must not silently replace them with unfiltered rows.
   const current = untracked(() => entry.get());
-  if (current.origin === 'view' && current.status === 'ready') return;
+  if (current.origin === 'view'
+      && current.status === 'ready'
+      && requestOptions.get(bindingKey)?.refreshViewSource !== true) return;
   const generation = (generations.get(bindingKey) ?? 0) + 1;
   generations.set(bindingKey, generation);
   // Ready rows stay on screen while they reload, and a source already loading

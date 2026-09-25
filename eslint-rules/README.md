@@ -104,7 +104,7 @@ The omitted fields default to an enabled campaign and worker and 100 percent rol
 
 ## Operational Value
 
-This campaign intentionally ships no operational-value grader. Its value — a rule adopted and a class of defect stopped — is decided by a maintainer days or weeks after a run, so nothing observable at a single run's boundary would measure it honestly. Recording a self-reported score at that boundary would fabricate attainment, so the workers report evidence and outcomes instead, and the dashboard shows runs and adoption requests rather than a synthetic success rate.
+This campaign intentionally ships no operational grader. Its value — a rule adopted and a class of defect stopped — is decided by a maintainer days or weeks after a run, so nothing observable at a single run's boundary would measure it honestly. Recording a self-reported score at that boundary would fabricate attainment, so the workers report evidence and outcomes instead, and the dashboard shows runs and adoption requests rather than a synthetic success rate.
 
 ## Pause or Stop
 

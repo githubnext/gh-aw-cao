@@ -43,20 +43,27 @@ type Config struct {
 	KeyFile             string
 	AccessToken         string
 	HostingMode         HostingMode
+	Proxy               ProxyPolicy
 	AzureProxy          AzureProxyPolicy
 	GitHubOAuth         *GitHubOAuthConfig
 	DatabaseQueriesPath string
 	DashboardQueries    []query.Definition
 	SourceDirectory     string
+	Reconciler          Reconciler
+	WebhookSecret       string
+	AdminUsers          []string
 	Logger              *log.Logger
 }
 
 type App struct {
-	store       *redisx.Store
-	config      Config
-	accessToken string
-	oauth       *githubOAuth
-	hub         *eventHub
+	store         *redisx.Store
+	config        Config
+	accessToken   string
+	oauth         *githubOAuth
+	hub           *eventHub
+	canonical     canonicalService
+	reconciler    Reconciler
+	webhookSecret []byte
 }
 
 func New(store *redisx.Store, config Config) (*App, error) {
@@ -70,10 +77,10 @@ func New(store *redisx.Store, config Config) (*App, error) {
 		if err := ValidateListen(config.Listen, config.CertFile, config.KeyFile); err != nil {
 			return nil, err
 		}
-	} else if mode != HostingModeAzureFunctions {
+	} else if mode != HostingModeAzureFunctions && mode != HostingModeHosted {
 		return nil, fmt.Errorf("unsupported hosting mode %q", mode)
 	}
-	if err := validateAzureMode(store, &config); err != nil {
+	if err := validateHostedMode(store, &config); err != nil {
 		return nil, err
 	}
 	info, err := os.Stat(config.SiteDirectory)
@@ -85,7 +92,7 @@ func New(store *redisx.Store, config Config) (*App, error) {
 	}
 	var oauth *githubOAuth
 	var accessToken string
-	if mode == HostingModeAzureFunctions {
+	if mode == HostingModeAzureFunctions || mode == HostingModeHosted {
 		oauth = newGitHubOAuth(*config.GitHubOAuth, store)
 	} else {
 		accessToken = strings.TrimSpace(config.AccessToken)
@@ -99,8 +106,19 @@ func New(store *redisx.Store, config Config) (*App, error) {
 			return nil, errors.New("dashboard access token must contain at least 32 characters")
 		}
 	}
+	reconciler := config.Reconciler
+	if reconciler == nil && config.SourceDirectory != "" {
+		reconciler = DirectoryReconciler{
+			Store: store, SourceDirectory: config.SourceDirectory,
+			DatabaseQueriesPath: config.DatabaseQueriesPath,
+		}
+	}
 	serverLog.Printf("initialized hosting_mode=%s oauth=%t source_ingestion=%t", mode, oauth != nil, config.SourceDirectory != "")
-	return &App{store: store, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub()}, nil
+	return &App{
+		store: store, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub(),
+		canonical: canonicalService{store: store}, reconciler: reconciler,
+		webhookSecret: []byte(config.WebhookSecret),
+	}, nil
 }
 
 func (a *App) Serve(ctx context.Context) error {
@@ -109,6 +127,9 @@ func (a *App) Serve(ctx context.Context) error {
 		result, err := ingest.Run(ctx, a.store, a.config.SourceDirectory, ingest.Options{DatabaseQueriesPath: a.config.DatabaseQueriesPath})
 		if err != nil {
 			return fmt.Errorf("initial ingestion failed: %w", err)
+		}
+		if a.oauth != nil {
+			go a.oauth.runRevocationWorker(ctx)
 		}
 		a.hub.Broadcast(result.Revision)
 		a.config.Logger.Printf("activated local dashboard revision %d", result.Revision)
@@ -138,7 +159,11 @@ func (a *App) Serve(ctx context.Context) error {
 		WriteTimeout:      65 * time.Second,
 		IdleTimeout:       90 * time.Second,
 	}
-	a.config.Logger.Printf("serving local dashboard at %s", a.capabilityURL())
+	if a.oauth != nil {
+		a.config.Logger.Printf("serving hosted dashboard on %s", a.config.Listen)
+	} else {
+		a.config.Logger.Printf("serving local dashboard at %s", a.capabilityURL())
+	}
 	go func() {
 		<-ctx.Done()
 		shutdown, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
@@ -161,14 +186,29 @@ func (a *App) Handler() http.Handler {
 	}
 	if a.oauth != nil {
 		register("GET /auth/login", a.oauth.login)
+		register("GET /auth/logged-out", a.oauth.loggedOut)
 		register("GET /auth/callback", a.oauth.callback)
 		register("POST /auth/logout", a.oauth.logout)
+		register("POST /auth/switch-account", a.oauth.switchAccount)
+		register("GET /api/auth/session", a.oauth.currentAccount)
 	}
 	register("GET /api/v1/health", a.health)
+	register("GET /api/health", a.health)
+	register("GET /api/readiness", a.readiness)
 	register("GET /api/v1/events", a.events)
 	register("POST /api/v1/query", a.query)
 	register("GET /api/v1/diagnostics", a.diagnostics)
 	register("POST /api/v1/refresh", a.refresh)
+	register("GET /api/repositories", a.repositories)
+	register("GET /api/repositories/{id}", a.repository)
+	register("GET /api/repositories/{id}/runs", a.repositoryRuns)
+	register("GET /api/workflows/{id}/runs", a.workflowRuns)
+	register("GET /api/runs/{id}/jobs", a.runJobs)
+	register("GET /api/runs/{id}/sessions", a.runSessions)
+	register("GET /api/sessions/{id}/events", a.sessionEvents)
+	register("POST /api/github/webhook", a.githubWebhook)
+	register("POST /api/admin/rebuild", a.rebuild)
+	register("GET /api/admin/rebuild/status", a.rebuildStatus)
 	mux.HandleFunc("/", a.static)
 	instrumented := otelhttp.NewHandler(withResponseTraceHeaders(mux), telemetry.ServiceName,
 		otelhttp.WithSpanNameFormatter(func(_ string, request *http.Request) string {
@@ -218,32 +258,47 @@ func (a *App) capabilityURL() string {
 func (a *App) requireAccess(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		if a.oauth != nil {
+			a.logAuthBranch("access.hosted_mode")
 			a.requireGitHubAccess(next).ServeHTTP(response, request)
 			return
 		}
 		if !validLocalRequestHost(request.Host) {
+			a.logAuthBranch("access.local_host_rejected")
 			http.Error(response, "invalid request host", http.StatusMisdirectedRequest)
 			return
 		}
-		if request.URL.Path == "/api/v1/health" {
+		if publicServiceEndpoint(request.URL.Path) || request.URL.Path == "/api/github/webhook" {
+			a.logAuthBranch("access.local_public_allowed")
 			next.ServeHTTP(response, request)
 			return
 		}
 		if !strings.HasPrefix(request.URL.Path, "/api/") {
 			if (request.Method == http.MethodGet || request.Method == http.MethodHead) &&
 				constantTimeTokenEqual(request.URL.Query().Get("access_token"), a.accessToken) {
+				a.logAuthBranch("access.local_capability_accepted")
 				a.serveIndex(response, a.accessToken)
 				return
 			}
+			a.logAuthBranch("access.local_static_allowed")
 			next.ServeHTTP(response, request)
 			return
 		}
 		if a.authorized(request) {
+			a.logAuthBranch("access.local_bearer_accepted")
 			next.ServeHTTP(response, request)
 			return
 		}
+		a.logAuthBranch("access.local_bearer_rejected")
 		writeError(response, http.StatusUnauthorized, "dashboard access token is required")
 	})
+}
+
+func (a *App) logAuthBranch(branch string) {
+	if a.oauth != nil {
+		a.oauth.emitAuthBranch(branch)
+		return
+	}
+	serverLog.Printf("oauth branch=%s", branch)
 }
 
 func validLocalRequestHost(value string) bool {
@@ -265,33 +320,79 @@ func (a *App) authorized(request *http.Request) bool {
 
 func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		if !validAzureProxyRequest(request, a.config.AzureProxy) {
+		policy := a.config.Proxy
+		if len(policy.AllowedHosts) == 0 {
+			policy = a.config.AzureProxy
+		}
+		if !validAzureProxyRequest(request, policy) {
+			a.logAuthBranch("access.proxy_rejected")
 			http.Error(response, "invalid forwarded request host", http.StatusMisdirectedRequest)
 			return
 		}
-		if request.URL.Path == "/api/v1/health" ||
+		if publicServiceEndpoint(request.URL.Path) ||
+			request.URL.Path == "/api/github/webhook" ||
 			strings.HasPrefix(request.URL.Path, "/auth/login") ||
+			strings.HasPrefix(request.URL.Path, "/auth/logged-out") ||
 			strings.HasPrefix(request.URL.Path, "/auth/callback") {
+			a.logAuthBranch("access.public_allowed")
 			next.ServeHTTP(response, request)
 			return
 		}
-		session, ok := a.oauth.session(response, request)
+		var session oauthSession
+		var ok bool
+		if request.URL.Path == "/auth/logout" || request.URL.Path == "/auth/switch-account" {
+			a.logAuthBranch("access.mutation_session_checked")
+			session, ok = a.oauth.loadRequestSession(request)
+		} else {
+			a.logAuthBranch("access.refreshable_session_checked")
+			session, ok = a.oauth.session(response, request)
+		}
 		if !ok {
 			if strings.HasPrefix(request.URL.Path, "/api/") || request.URL.Path == "/auth/logout" {
+				a.logAuthBranch("access.unauthorized")
 				writeError(response, http.StatusUnauthorized, "GitHub authentication is required")
 				return
 			}
+			a.logAuthBranch("access.login_redirected")
 			http.Redirect(response, request, "/auth/login", http.StatusFound)
 			return
 		}
 		if request.Method != http.MethodGet && request.Method != http.MethodHead && request.Method != http.MethodOptions {
 			if !constantTimeTokenEqual(request.Header.Get("X-CSRF-Token"), session.CSRFToken) {
+				a.logAuthBranch("access.csrf_rejected")
 				writeError(response, http.StatusForbidden, "CSRF token is required")
 				return
 			}
+			a.logAuthBranch("access.csrf_accepted")
+		} else {
+			a.logAuthBranch("access.safe_method")
 		}
+		a.logAuthBranch("access.authorized")
+		request = request.WithContext(context.WithValue(request.Context(), oauthSessionContextKey{}, session))
 		next.ServeHTTP(response, request)
 	})
+}
+
+type oauthSessionContextKey struct{}
+
+func (a *App) adminAuthorized(request *http.Request) bool {
+	if a.oauth == nil {
+		a.logAuthBranch("admin.local_mode_allowed")
+		return true
+	}
+	session, ok := request.Context().Value(oauthSessionContextKey{}).(oauthSession)
+	if !ok {
+		a.logAuthBranch("admin.session_missing")
+		return false
+	}
+	for _, login := range a.config.AdminUsers {
+		if strings.EqualFold(strings.TrimSpace(login), session.Login) {
+			a.logAuthBranch("admin.allowed")
+			return true
+		}
+	}
+	a.logAuthBranch("admin.denied")
+	return false
 }
 
 func constantTimeTokenEqual(candidate, expected string) bool {
@@ -324,10 +425,18 @@ func (a *App) health(response http.ResponseWriter, request *http.Request) {
 	}
 	serverLog.Printf("health status=%d redis=%t data=%t", status, redisHealthy, active.Generation != "")
 	payload := map[string]any{
-		"redis": map[string]any{"connected": redisHealthy},
-		"data":  map[string]any{"available": active.Generation != ""},
+		"status": "healthy",
+		"redis":  map[string]any{"connected": redisHealthy},
+		"data":   map[string]any{"available": active.Generation != "", "rebuildRequired": active.Generation == ""},
 	}
-	if a.authorized(request) || (a.oauth != nil && a.oauth.requestHasSession(request)) {
+	if !redisHealthy {
+		payload["status"] = "unhealthy"
+	}
+	detailsAuthorized := a.authorized(request) || (a.oauth != nil && a.oauth.requestHasSession(request))
+	if detailsAuthorized {
+		if a.oauth != nil {
+			a.logAuthBranch("health.details_authorized")
+		}
 		rowCount := 0
 		for _, count := range active.Counts {
 			rowCount += count
@@ -337,8 +446,34 @@ func (a *App) health(response http.ResponseWriter, request *http.Request) {
 		payload["counts"] = active.Counts
 		payload["sourceCount"] = len(active.Counts)
 		payload["rowCount"] = rowCount
+	} else if a.oauth != nil {
+		a.logAuthBranch("health.details_redacted")
 	}
 	writeJSON(response, status, payload)
+}
+
+func (a *App) readiness(response http.ResponseWriter, request *http.Request) {
+	ctx, cancel := context.WithTimeout(request.Context(), 3*time.Second)
+	defer cancel()
+	active, activeErr := a.store.Active(ctx)
+	redisHealthy := a.store.Ping(ctx) == nil
+	ready := redisHealthy && activeErr == nil && active.Generation != ""
+	status := http.StatusOK
+	if !ready {
+		status = http.StatusServiceUnavailable
+	}
+	writeJSON(response, status, map[string]any{
+		"ready": ready,
+		"redis": map[string]any{"connected": redisHealthy},
+		"data": map[string]any{
+			"available":       active.Generation != "",
+			"rebuildRequired": active.Generation == "",
+		},
+	})
+}
+
+func publicServiceEndpoint(path string) bool {
+	return path == "/api/v1/health" || path == "/api/health" || path == "/api/readiness"
 }
 
 func (a *App) events(response http.ResponseWriter, request *http.Request) {
@@ -669,6 +804,7 @@ func (a *App) serveIndex(response http.ResponseWriter, accessToken string) {
 	html := string(content)
 	injections := `<meta name="dashboard-data-backend" content="redis-http">`
 	if a.oauth != nil {
+		injections += `<meta name="cao-auth-mode" content="github">`
 		injections += `<script>const m=document.cookie.match(/(?:^|;\s*)cao_csrf=([^;]+)/);if(m){const c=decodeURIComponent(m[1]);const f=window.fetch.bind(window);window.fetch=(i,n={})=>{const u=typeof i==="string"?i:i.url;if(u&&new URL(u,location.href).origin===location.origin){const h=new Headers(n.headers||{});if(!h.has("X-CSRF-Token"))h.set("X-CSRF-Token",c);n={...n,headers:h};}return f(i,n);};}</script>`
 	} else if accessToken != "" {
 		token, _ := json.Marshal(accessToken)

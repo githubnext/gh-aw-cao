@@ -62,12 +62,24 @@ export function issueId(owner, repository, issueNumber) {
   if (!normalizedOwner || !normalizedRepository) {
     throw new TypeError('Issue repository owner and name are required');
   }
+
   const coordinate = `${normalizedOwner}/${normalizedRepository}`.toLowerCase();
   const normalizedNumber = Number(issueNumber);
   if (!Number.isInteger(normalizedNumber) || normalizedNumber < 1) {
     throw new TypeError('Issue number must be a positive integer');
   }
   return `github:issue:${coordinate}:${normalizedNumber}`;
+}
+
+/** @param {string} repository @param {string} valueId @param {string} observedAt */
+export function operationalValueId(repository, valueId, observedAt) {
+  const coordinate = repository.trim().toLowerCase();
+  const metric = valueId.trim().toLowerCase();
+  const timestamp = observedAt.trim();
+  if (!coordinate || !metric || !timestamp) {
+    throw new TypeError('Operational value repository, value ID, and timestamp are required');
+  }
+  return `operational-value:${encodeURIComponent(`${coordinate}:${metric}:${timestamp}`)}`;
 }
 
 /** @param {string} value */

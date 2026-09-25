@@ -5,7 +5,7 @@
 import { renderLinkTabs } from './tab-nav.js';
 
 /**
- * @typedef {{ id: string, label: string, icon: string, href: string, count?: number, trailingIcon?: string }} RouteTab
+ * @typedef {{ id: string, label: string, icon: string, href: string, count?: number, trailingIcon?: string, routeTitle?: string, routeDescription?: string }} RouteTab
  */
 
 /**
@@ -32,7 +32,10 @@ export function renderRouteTabSet(options) {
   });
   tabs.dataset.routeTabs = '';
   tabs.dataset.routeTabsCurrent = options.currentTab;
-  for (const link of tabs.querySelectorAll('a')) {
+  for (const [index, link] of [...tabs.querySelectorAll('a')].entries()) {
+    const tab = options.tabs[index];
+    if (tab?.routeTitle) link.dataset.routeTitle = tab.routeTitle;
+    if (tab?.routeDescription) link.dataset.routeDescription = tab.routeDescription;
     const route = link.getAttribute('href')?.split('?', 1)[0] ?? '';
     if (route.startsWith('#page-')) link.dataset.navPageId = decodeURIComponent(route.slice('#page-'.length));
   }

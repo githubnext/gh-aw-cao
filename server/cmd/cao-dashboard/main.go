@@ -41,7 +41,7 @@ func main() {
 
 func run(arguments []string) error {
 	if len(arguments) == 0 {
-		return errors.New("usage: cao-dashboard <serve|ingest> [flags]")
+		return errors.New("usage: cao-dashboard <serve|serve-hosted|ingest> [flags]")
 	}
 	switch arguments[0] {
 	case "serve":
@@ -50,9 +50,44 @@ func run(arguments []string) error {
 	case "ingest":
 		commandLog.Printf("running ingest command")
 		return ingestCommand(arguments[1:])
+	case "serve-hosted":
+		commandLog.Printf("running hosted serve command")
+		return serveHosted(arguments[1:])
 	default:
-		return fmt.Errorf("unknown subcommand %q; expected serve or ingest", arguments[0])
+		return fmt.Errorf("unknown subcommand %q; expected serve, serve-hosted, or ingest", arguments[0])
 	}
+}
+
+func serveHosted(arguments []string) error {
+	flags := flag.NewFlagSet("serve-hosted", flag.ContinueOnError)
+	listen := flags.String("listen", "127.0.0.1:8080", "listen address; non-loopback listeners require TLS")
+	cert := flags.String("cert", "", "TLS certificate PEM file required for a non-loopback listener")
+	key := flags.String("key", "", "TLS private key PEM file required for a non-loopback listener")
+	siteDirectory := flags.String("site", "../dashboard/site/dist", "built dashboard site directory")
+	databaseQueries := flags.String("database-queries", "../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
+	dashboardQueries := flags.String("dashboard-queries", "../dashboard/site/dashboard.json", "default dashboard query document")
+	if err := flags.Parse(arguments); err != nil {
+		return err
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	shutdownTelemetry, err := telemetry.Setup(ctx, version)
+	if err != nil {
+		return fmt.Errorf("configure telemetry: %w", err)
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		_ = shutdownTelemetry(shutdownCtx)
+	}()
+	app, err := server.NewHostedAppFromEnv(
+		ctx, *listen, *cert, *key, *siteDirectory, *dashboardQueries, *databaseQueries,
+		log.New(os.Stderr, "cao-dashboard: ", log.LstdFlags),
+	)
+	if err != nil {
+		return err
+	}
+	return app.Serve(ctx)
 }
 
 func serve(arguments []string) error {

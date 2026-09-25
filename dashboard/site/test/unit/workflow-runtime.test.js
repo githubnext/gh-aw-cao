@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { renderWorkflowRuntime } from '../../src/components/workflow-runtime.js';
 import { createWorkflowRoutePageView } from '../../src/components/workflow-route-page-views.js';
 import { renderWorkflowRoutePage } from '../../src/components/workflow-route-page.js';
-import { renderWorkflowRouteView } from '../../src/components/workflow-route-view.js';
 
 const completeMetadata = {
   'source-id': 'fixture',
@@ -48,7 +47,7 @@ function context(overrides = {}) {
   return {
     pageId: 'workflow-runtime',
     title: 'Workflow runtime',
-    sourceNames: ['workflows', 'runs', 'usage', 'operational-values'],
+    sourceNames: ['workflows', 'runs', 'usage', 'operational-graders'],
     contextDetails: [],
     routeParameter: 'workflow',
     headingTag: /** @type {'h3'} */ ('h3'),
@@ -72,8 +71,8 @@ function context(overrides = {}) {
           { organization: 'githubnext', repository: 'gh-aw-cao', workflow: workflow.workflow, run: '2', aic: 7.5 }
         ]
       },
-      'operational-values': {
-        source: 'operational-values',
+      'operational-graders': {
+        source: 'operational-graders',
         metadata: completeMetadata,
         rows: /** @type {Array<Record<string, unknown>>} */ ([])
       },
@@ -95,13 +94,13 @@ describe('renderWorkflowRuntime', () => {
       id: 'workflow-runtime-route',
       title: 'Workflow runtime',
       body: 'insights',
-      sources: ['workflows', 'runs', 'usage', 'operational-values'],
+      sources: ['workflows', 'runs', 'usage', 'operational-graders'],
       layout: 'full'
     })).toEqual({
       id: 'workflow-runtime-route',
       title: 'Workflow runtime',
       data: {
-        sources: ['workflows', 'runs', 'usage', 'operational-values']
+        sources: ['workflows', 'runs', 'usage', 'operational-graders']
       },
       mark: 'element',
       element: 'workflow-route-page',
@@ -168,8 +167,8 @@ describe('renderWorkflowRuntime', () => {
 
   it('renders retained operational-value observations and evidence', () => {
     const sources = context().sources;
-    sources['operational-values'] = {
-      source: 'operational-values',
+    sources['operational-graders'] = {
+      source: 'operational-graders',
       metadata: completeMetadata,
       rows: [
         {
@@ -177,7 +176,7 @@ describe('renderWorkflowRuntime', () => {
           repository: 'gh-aw-cao',
           workflow: workflow.workflow,
           run: '0',
-          'operational-value': 40,
+          'operational-grader': 40,
           'operational-case': 'docs-run-1',
           'maturity-status': 'matured',
           'evaluator-digest': 'sha256:old',
@@ -189,7 +188,7 @@ describe('renderWorkflowRuntime', () => {
           repository: 'gh-aw-cao',
           workflow: workflow.workflow,
           run: '1',
-          'operational-value': 75,
+          'operational-grader': 75,
           'operational-case': 'docs-run-1',
           'maturity-status': 'matured',
           'evaluator-digest': 'sha256:abcdefghijk',
@@ -206,7 +205,7 @@ describe('renderWorkflowRuntime', () => {
           repository: 'gh-aw-cao',
           workflow: workflow.workflow,
           run: '2',
-          'operational-value': 80,
+          'operational-grader': 80,
           'operational-case': 'docs-run-1',
           'maturity-status': 'matured',
           'evaluator-digest': 'sha256:abcdefghijk',
@@ -247,10 +246,10 @@ describe('renderWorkflowRuntime', () => {
     ]);
   });
 
-  it('distinguishes unavailable operational-value evidence from an observed empty result', () => {
+  it('distinguishes unavailable operational-grader evidence from an observed empty result', () => {
     const sources = context().sources;
-    sources['operational-values'] = {
-      source: 'operational-values',
+    sources['operational-graders'] = {
+      source: 'operational-graders',
       metadata: { ...completeMetadata, availability: /** @type {'unavailable'} */ ('unavailable') },
       rows: /** @type {Array<Record<string, unknown>>} */ ([])
     };
@@ -258,7 +257,7 @@ describe('renderWorkflowRuntime', () => {
     selectWorkflow(rendered);
 
     expect(rendered.querySelector('.value-report-empty')?.textContent).toContain('Unavailable');
-    expect(rendered.querySelector('.value-report-empty')?.textContent).toContain('Operational-value evidence unavailable');
+    expect(rendered.querySelector('.value-report-empty')?.textContent).toContain('Operational-grader evidence unavailable');
     expect(rendered.querySelector('.value-report-empty')?.textContent).not.toContain('No workflow observations yet');
   });
 
@@ -274,7 +273,7 @@ describe('renderWorkflowRuntime', () => {
     selectWorkflow(rendered);
     expect(detail).toEqual({
       title: 'Multi-Device Docs Tester',
-      description: 'Run health, AI Credit usage, and operational value for .github/workflows/multi-device-docs-tester.md in githubnext/gh-aw-cao.',
+      description: 'Run health, AI Credit usage, and operational grader results for .github/workflows/multi-device-docs-tester.md in githubnext/gh-aw-cao.',
       mode: 'review',
       navigationPage: 'campaigns'
     });
@@ -283,18 +282,6 @@ describe('renderWorkflowRuntime', () => {
     expect(rendered.textContent).toBe('Select a workflow to inspect its runtime.');
     selectWorkflow(rendered, 'githubnext/gh-aw-cao:.github/workflows/missing.md');
     expect(rendered.textContent).toBe('Workflow not found.');
-  });
-
-  it('uses declarative route view ids to choose the workflow insights composition', () => {
-    const rendered = renderWorkflowRouteView({
-      ...context(),
-      pageId: 'custom-workflow-page',
-      elementConfig: { body: 'insights' }
-    });
-    selectWorkflow(rendered);
-
-    expect(rendered.querySelector('.repository-tabs [aria-current="page"]')?.textContent).toBe('Insights');
-    expect(rendered.querySelector('.workflow-runtime-metrics')).not.toBeNull();
   });
 
   it('keeps workflow-route-page navigation aligned with the configured page route', () => {

@@ -1,6 +1,6 @@
 ---
 title: Operational Observability Visualization Specification
-description: Evidence and visual-encoding requirements for attention-oriented agentic operations dashboards.
+description: Evidence and visual-encoding requirements for attention-oriented agentic campaign dashboards.
 version: 0.2.0
 status: Working Draft
 editors:
@@ -19,7 +19,7 @@ sidebar:
 
 ## Abstract
 
-This specification defines how an agentic operations dashboard presents domain-level attention, runtime health, security and control evidence, operational value, execution episodes, resource usage, evidence quality, overlap, anomalies, and topology. It separates direct observations from inferred conditions; requires exact evidence for causal relationships; defines readiness gates for policy and statistical verdicts; and specifies accessible visual, textual, and compliance behavior. It does not define data collection, workflow execution, or control-plane policy.
+This specification defines how an agentic campaign dashboard presents domain-level attention, runtime health, security and control evidence, operational value, execution episodes, resource usage, evidence quality, overlap, anomalies, and topology. It separates direct observations from inferred conditions; requires exact evidence for causal relationships; defines readiness gates for policy and statistical verdicts; and specifies accessible visual, textual, and compliance behavior. It does not define data collection, workflow execution, or control-plane policy.
 
 ## Status of This Document
 
@@ -168,7 +168,7 @@ The attention overview **MUST** represent these domains when applicable evidence
 |---|---|---|
 | Runtime health | Are executions failing, blocked, or incomplete? | Runs and runtime triage. |
 | Security and controls | Do control gates, explicit warnings, or assurance evidence require review? | Security and control evidence. |
-| Value and outcomes | Which operational-value metrics are available, and what do their declared units and directions mean? | Grader and outcome evidence. |
+| Value and outcomes | Which operational-grader metrics are available, and what do their declared units and directions mean? | Grader and outcome evidence. |
 | Episodes and autonomy | Are orchestrator and worker behaviors attributable through exact evidence? | Correlated execution episodes. |
 | Cost and efficiency | What resource allocation is measured, and can a budget or anomaly verdict be supported? | Usage and efficiency evidence. |
 | Evidence quality | Which collection, inventory, or attribution gaps limit dashboard claims? | Coverage diagnostics. |

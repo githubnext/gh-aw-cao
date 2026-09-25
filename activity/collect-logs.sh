@@ -12,6 +12,9 @@ window_days="${REPORT_RUN_WINDOW_DAYS:-30}"
 run_limit="${REPORT_RUN_LIMIT:-10}"
 request_timeout="${REPORT_LOG_TIMEOUT:-10}"
 rate_limit="${REPORT_MAX_GITHUB_API_RATE_LIMIT:--2000}"
+activity_database="${REPORT_ACTIVITY_DATABASE:-}"
+issue_status_cost_budget="${REPORT_ISSUE_STATUS_GRAPHQL_COST_BUDGET:-25}"
+issue_status_min_remaining="${REPORT_ISSUE_STATUS_GRAPHQL_MIN_REMAINING:-500}"
 max_storage="${REPORT_MAX_STORAGE:-1200}"
 
 mkdir -p "$output_directory" "$shard_directory" "$(dirname "$exit_code_path")"
@@ -89,6 +92,20 @@ if [[ $exit_code -eq 0 ]]; then
       compact_args+=(--group "$shard_group")
     done
     node "$cao_script" "${compact_args[@]}" || exit_code=$?
+  fi
+  if [[ $exit_code -eq 0 && -n "$activity_database" ]]; then
+    node "$cao_script" ingest-jsonl \
+      --database "$activity_database" \
+      --input-dir "$shard_directory" \
+      --retention-days "$window_days" \
+      --run-retention-days "$window_days" || exit_code=$?
+  fi
+  if [[ $exit_code -eq 0 && -n "$activity_database" ]]; then
+    node "$cao_script" issue-status \
+      --database "$activity_database" \
+      --input-dir "$shard_directory" \
+      --graphql-cost-budget "$issue_status_cost_budget" \
+      --graphql-min-remaining "$issue_status_min_remaining" || exit_code=$?
   fi
 fi
 

@@ -1,0 +1,336 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 780" role="img" aria-labelledby="title description">
+<title id="title">Daily File Diet workflow value timeline</title>
+<desc id="description">Goal-oriented repository outcome metrics before and after workflow adoption, with workflow run conclusions over time.</desc>
+<style>:root{--fg:#1f2328;--muted:#59636e;--bg:#ffffff;--subtle:#f6f8fa;--border:#d1d9e0;--adoption:#8250df;--success:#1a7f37;--danger:#cf222e;--data-blue:#0969da;--data-green:#1a7f37;--data-orange:#bc4c00;--data-red:#cf222e;--data-cyan:#1b7c83;--data-pink:#bf3989}@media(prefers-color-scheme:dark){:root{--fg:#f0f6fc;--muted:#9198a1;--bg:#0d1117;--subtle:#151b23;--border:#3d444d;--adoption:#a371f7;--success:#3fb950;--danger:#f85149;--data-blue:#4493f8;--data-green:#3fb950;--data-orange:#d29922;--data-red:#ff7b72;--data-cyan:#39c5cf;--data-pink:#db61a2}}text{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;fill:var(--fg);font-size:20px;letter-spacing:0}.title{font-size:30px;font-weight:700}.section{font-size:20px;font-weight:600}.axis{font-size:17px}.muted{fill:var(--muted)}.grid{stroke:var(--border);stroke-width:1}.metric{fill:none;stroke-width:3;stroke-linejoin:round;stroke-linecap:round}.point{stroke:var(--bg);stroke-width:2}.run-success{stroke:var(--success)}.run-failure{stroke:var(--danger)}.run-other{stroke:var(--muted)}</style>
+<rect width="1280" height="780" fill="var(--bg)"/>
+<text x="120" y="48" class="title">Daily File Diet value over time</text>
+<rect x="120" y="78" width="78.38735510721091" height="382" fill="var(--subtle)"/><text x="140" y="100" class="section muted">Pre-adoption baseline</text><text x="216.3873551072109" y="100" class="section muted">Post-adoption history</text>
+<line class="grid" x1="120" y1="110" x2="1160" y2="110"/><text x="102" y="116" text-anchor="end" class="axis muted">1</text>
+<line class="grid" x1="120" y1="197.5" x2="1160" y2="197.5"/><text x="102" y="203.5" text-anchor="end" class="axis muted">0.75</text>
+<line class="grid" x1="120" y1="285" x2="1160" y2="285"/><text x="102" y="291" text-anchor="end" class="axis muted">0.5</text>
+<line class="grid" x1="120" y1="372.5" x2="1160" y2="372.5"/><text x="102" y="378.5" text-anchor="end" class="axis muted">0.25</text>
+<line class="grid" x1="120" y1="460" x2="1160" y2="460"/><text x="102" y="466" text-anchor="end" class="axis muted">0</text>
+<line class="grid" x1="120" y1="110" x2="120" y2="460"/><text x="120" y="490" text-anchor="middle" class="axis muted">Oct 25</text>
+<line class="grid" x1="250.64559184535153" y1="110" x2="250.64559184535153" y2="460"/><text x="250.64559184535153" y="490" text-anchor="middle" class="axis muted">Nov 29</text>
+<line class="grid" x1="381.29118369070306" y1="110" x2="381.29118369070306" y2="460"/><text x="381.29118369070306" y="490" text-anchor="middle" class="axis muted">Jan 03</text>
+<line class="grid" x1="511.93677553605465" y1="110" x2="511.93677553605465" y2="460"/><text x="511.93677553605465" y="490" text-anchor="middle" class="axis muted">Feb 07</text>
+<line class="grid" x1="642.5823673814061" y1="110" x2="642.5823673814061" y2="460"/><text x="642.5823673814061" y="490" text-anchor="middle" class="axis muted">Mar 14</text>
+<line class="grid" x1="773.2279592267578" y1="110" x2="773.2279592267578" y2="460"/><text x="773.2279592267578" y="490" text-anchor="middle" class="axis muted">Apr 18</text>
+<line class="grid" x1="903.8735510721093" y1="110" x2="903.8735510721093" y2="460"/><text x="903.8735510721093" y="490" text-anchor="middle" class="axis muted">May 23</text>
+<line class="grid" x1="1034.5191429174608" y1="110" x2="1034.5191429174608" y2="460"/><text x="1034.5191429174608" y="490" text-anchor="middle" class="axis muted">Jun 27</text>
+<line class="grid" x1="1160" y1="110" x2="1160" y2="460"/><text x="1160" y="490" text-anchor="middle" class="axis muted">Jul 31</text>
+<text transform="translate(36 285) rotate(-90)" text-anchor="middle" class="axis">Goal measure</text>
+<line x1="198.3873551072109" y1="78" x2="198.3873551072109" y2="460" stroke="var(--adoption)" stroke-width="3" stroke-dasharray="5 6"/>
+<polyline class="metric" stroke="var(--data-blue)" points="120,235.54757635 146.1291183690703,237.33066290000002 172.25823673814062,234.34210530000001 198.3873551072109,293.35081275000005 224.51647347628122,304.1421433 250.64559184535153,303.0701269 276.7747102144218,326.76999365 302.90382858349216,350.80578515 329.03294695256244,380.2086555 355.1620653216328,409.61439585 381.29118369070306,435.5586593 407.42030205977335,398.0148271 433.5494204288437,378.75480415 459.678538797914,420.24844724999997 485.8076571669843,448.8081396 511.93677553605465,433.75 538.0658939051249,369.96282514999996 564.1950122741953,425.2840397 590.3241306432656,426.13924055 616.4532490123358,328.1222708 642.5823673814061,449.46601955 668.7114857504765,420.5239788 694.8406041195467,372.5 720.9697224886171,372.5 747.0988408576874,372.5 773.2279592267578,458.9520958 799.357077595828,454.48275854999997 825.4861959648982,431.6651333 851.6153143339686,427.28675125 877.7444327030389,408.3361773 903.8735510721093,396.3636363 930.0026694411795,298.08499185 956.1317878102498,370.54396410000004 982.2609061793202,352.3076922 1008.3900245483904,334.13461525 1034.5191429174608,336.7509727 1060.6482612865311,335.1448808 1086.7773796556014,405.56213015000003 1112.9064980246717,387.72041290000004 1139.035616393742,416.44171775 1160,413.77932235"/>
+<circle class="point" fill="var(--data-blue)" cx="120" cy="235.54757635" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="146.1291183690703" cy="237.33066290000002" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="172.25823673814062" cy="234.34210530000001" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="198.3873551072109" cy="293.35081275000005" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="224.51647347628122" cy="304.1421433" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="250.64559184535153" cy="303.0701269" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="276.7747102144218" cy="326.76999365" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="302.90382858349216" cy="350.80578515" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="329.03294695256244" cy="380.2086555" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="355.1620653216328" cy="409.61439585" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="381.29118369070306" cy="435.5586593" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="407.42030205977335" cy="398.0148271" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="433.5494204288437" cy="378.75480415" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="459.678538797914" cy="420.24844724999997" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="485.8076571669843" cy="448.8081396" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="511.93677553605465" cy="433.75" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="538.0658939051249" cy="369.96282514999996" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="564.1950122741953" cy="425.2840397" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="590.3241306432656" cy="426.13924055" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="616.4532490123358" cy="328.1222708" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="642.5823673814061" cy="449.46601955" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="668.7114857504765" cy="420.5239788" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="694.8406041195467" cy="372.5" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="720.9697224886171" cy="372.5" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="747.0988408576874" cy="372.5" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="773.2279592267578" cy="458.9520958" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="799.357077595828" cy="454.48275854999997" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="825.4861959648982" cy="431.6651333" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="851.6153143339686" cy="427.28675125" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="877.7444327030389" cy="408.3361773" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="903.8735510721093" cy="396.3636363" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="930.0026694411795" cy="298.08499185" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="956.1317878102498" cy="370.54396410000004" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="982.2609061793202" cy="352.3076922" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="1008.3900245483904" cy="334.13461525" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="1034.5191429174608" cy="336.7509727" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="1060.6482612865311" cy="335.1448808" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="1086.7773796556014" cy="405.56213015000003" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="1112.9064980246717" cy="387.72041290000004" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="1139.035616393742" cy="416.44171775" r="6"/>
+<circle class="point" fill="var(--data-blue)" cx="1160" cy="413.77932235" r="6"/>
+<polyline class="metric" stroke="var(--data-green)" points="120,171.67439179999997 146.1291183690703,174.75314300000002 172.25823673814062,178.7556002 198.3873551072109,162.9818128 224.51647347628122,180.6777995 250.64559184535153,186.46193065 276.7747102144218,175.63955195 302.90382858349216,158.49078745000003 329.03294695256244,141.99495355 355.1620653216328,122.70729110000002 381.29118369070306,120.98366464999998 407.42030205977335,121.21790564999998 433.5494204288437,128.10932165000003 459.678538797914,125.90027879999997 485.8076571669843,119.11817024999999 511.93677553605465,119.17792539999999 538.0658939051249,119.76078634999999 564.1950122741953,121.24197585000002 590.3241306432656,121.61655389999999 616.4532490123358,123.06375070000001 642.5823673814061,112.74698060000003 668.7114857504765,123.28936735000002 694.8406041195467,125.61684145000004 720.9697224886171,120.34013750000003 747.0988408576874,125.01243869999996 773.2279592267578,112.16493515000002 799.357077595828,112.12920889999998 825.4861959648982,122.37095405000002 851.6153143339686,124.21683165000002 877.7444327030389,126.00973849999997 903.8735510721093,127.31366280000003 930.0026694411795,135.50467184999997 956.1317878102498,134.18985799999996 982.2609061793202,135.76561120000002 1008.3900245483904,138.0268072 1034.5191429174608,136.59532224999998 1060.6482612865311,137.5457035 1086.7773796556014,124.08325415000002 1112.9064980246717,127.86885765 1139.035616393742,128.62780255 1160,128.39145035"/>
+<circle class="point" fill="var(--data-green)" cx="120" cy="171.67439179999997" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="146.1291183690703" cy="174.75314300000002" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="172.25823673814062" cy="178.7556002" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="198.3873551072109" cy="162.9818128" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="224.51647347628122" cy="180.6777995" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="250.64559184535153" cy="186.46193065" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="276.7747102144218" cy="175.63955195" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="302.90382858349216" cy="158.49078745000003" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="329.03294695256244" cy="141.99495355" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="355.1620653216328" cy="122.70729110000002" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="381.29118369070306" cy="120.98366464999998" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="407.42030205977335" cy="121.21790564999998" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="433.5494204288437" cy="128.10932165000003" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="459.678538797914" cy="125.90027879999997" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="485.8076571669843" cy="119.11817024999999" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="511.93677553605465" cy="119.17792539999999" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="538.0658939051249" cy="119.76078634999999" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="564.1950122741953" cy="121.24197585000002" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="590.3241306432656" cy="121.61655389999999" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="616.4532490123358" cy="123.06375070000001" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="642.5823673814061" cy="112.74698060000003" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="668.7114857504765" cy="123.28936735000002" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="694.8406041195467" cy="125.61684145000004" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="720.9697224886171" cy="120.34013750000003" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="747.0988408576874" cy="125.01243869999996" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="773.2279592267578" cy="112.16493515000002" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="799.357077595828" cy="112.12920889999998" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="825.4861959648982" cy="122.37095405000002" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="851.6153143339686" cy="124.21683165000002" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="877.7444327030389" cy="126.00973849999997" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="903.8735510721093" cy="127.31366280000003" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="930.0026694411795" cy="135.50467184999997" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="956.1317878102498" cy="134.18985799999996" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="982.2609061793202" cy="135.76561120000002" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="1008.3900245483904" cy="138.0268072" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="1034.5191429174608" cy="136.59532224999998" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="1060.6482612865311" cy="137.5457035" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="1086.7773796556014" cy="124.08325415000002" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="1112.9064980246717" cy="127.86885765" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="1139.035616393742" cy="128.62780255" r="6"/>
+<circle class="point" fill="var(--data-green)" cx="1160" cy="128.39145035" r="6"/>
+<line x1="120" y1="540" x2="154" y2="540" stroke="var(--data-blue)" stroke-width="4"/><text x="166" y="547">Largest-file health</text>
+<line x1="640" y1="540" x2="674" y2="540" stroke="var(--data-green)" stroke-width="4"/><text x="686" y="547">Compliant line mass</text>
+<line x1="640" y1="560" x2="674" y2="560" stroke="var(--adoption)" stroke-width="3" stroke-dasharray="5 6"/><text x="686" y="567">Workflow adopted</text>
+<text x="120" y="642" class="section">Workflow runs</text>
+<rect x="120" y="660" width="1040" height="46" fill="var(--subtle)"/>
+<line x1="198.3883487740801" y1="660" x2="198.3883487740801" y2="706" stroke-width="3" class="run-success"/>
+<line x1="199.91911418752738" y1="660" x2="199.91911418752738" y2="706" stroke-width="3" class="run-success"/>
+<line x1="199.9752779670905" y1="660" x2="199.9752779670905" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="200.0971101658352" y1="660" x2="200.0971101658352" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="205.8039550101539" y1="660" x2="205.8039550101539" y2="706" stroke-width="3" class="run-success"/>
+<line x1="209.5354333214221" y1="660" x2="209.5354333214221" y2="706" stroke-width="3" class="run-success"/>
+<line x1="210.0311434804279" y1="660" x2="210.0311434804279" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="210.070933358103" y1="660" x2="210.070933358103" y2="706" stroke-width="3" class="run-success"/>
+<line x1="213.26885576352123" y1="660" x2="213.26885576352123" y2="706" stroke-width="3" class="run-success"/>
+<line x1="216.99929720501285" y1="660" x2="216.99929720501285" y2="706" stroke-width="3" class="run-success"/>
+<line x1="220.72887458835731" y1="660" x2="220.72887458835731" y2="706" stroke-width="3" class="run-success"/>
+<line x1="231.93423985772284" y1="660" x2="231.93423985772284" y2="706" stroke-width="3" class="run-success"/>
+<line x1="235.66692785039697" y1="660" x2="235.66692785039697" y2="706" stroke-width="3" class="run-success"/>
+<line x1="239.4024672349566" y1="660" x2="239.4024672349566" y2="706" stroke-width="3" class="run-success"/>
+<line x1="243.12958205258175" y1="660" x2="243.12958205258175" y2="706" stroke-width="3" class="run-success"/>
+<line x1="246.86179481327497" y1="660" x2="246.86179481327497" y2="706" stroke-width="3" class="run-success"/>
+<line x1="258.066728053567" y1="660" x2="258.066728053567" y2="706" stroke-width="3" class="run-success"/>
+<line x1="261.80053932183233" y1="660" x2="261.80053932183233" y2="706" stroke-width="3" class="run-success"/>
+<line x1="265.53214724182254" y1="660" x2="265.53214724182254" y2="706" stroke-width="3" class="run-success"/>
+<line x1="269.26643374206884" y1="660" x2="269.26643374206884" y2="706" stroke-width="3" class="run-success"/>
+<line x1="272.9920364579365" y1="660" x2="272.9920364579365" y2="706" stroke-width="3" class="run-success"/>
+<line x1="284.1951119732122" y1="660" x2="284.1951119732122" y2="706" stroke-width="3" class="run-success"/>
+<line x1="287.9288368356629" y1="660" x2="287.9288368356629" y2="706" stroke-width="3" class="run-success"/>
+<line x1="291.66342575626066" y1="660" x2="291.66342575626066" y2="706" stroke-width="3" class="run-success"/>
+<line x1="295.39745303906284" y1="660" x2="295.39745303906284" y2="706" stroke-width="3" class="run-success"/>
+<line x1="310.33062437257126" y1="660" x2="310.33062437257126" y2="706" stroke-width="3" class="run-success"/>
+<line x1="319.7775881096294" y1="660" x2="319.7775881096294" y2="706" stroke-width="3" class="run-success"/>
+<line x1="320.7636512671288" y1="660" x2="320.7636512671288" y2="706" stroke-width="3" class="run-success"/>
+<line x1="321.514431391166" y1="660" x2="321.514431391166" y2="706" stroke-width="3" class="run-success"/>
+<line x1="322.527366757041" y1="660" x2="322.527366757041" y2="706" stroke-width="3" class="run-success"/>
+<line x1="322.66488161115603" y1="660" x2="322.66488161115603" y2="706" stroke-width="3" class="run-success"/>
+<line x1="325.24379275997376" y1="660" x2="325.24379275997376" y2="706" stroke-width="3" class="run-success"/>
+<line x1="336.4430232164947" y1="660" x2="336.4430232164947" y2="706" stroke-width="3" class="run-success"/>
+<line x1="340.1623615107957" y1="660" x2="340.1623615107957" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="340.1780009632587" y1="660" x2="340.1780009632587" y2="706" stroke-width="3" class="run-success"/>
+<line x1="340.19364041572163" y1="660" x2="340.19364041572163" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="340.3485660415012" y1="660" x2="340.3485660415012" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="340.37418536556345" y1="660" x2="340.37418536556345" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="340.40943893796623" y1="660" x2="340.40943893796623" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="343.9053317954206" y1="660" x2="343.9053317954206" y2="706" stroke-width="3" class="run-success"/>
+<line x1="344.48805260984193" y1="660" x2="344.48805260984193" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="344.5374335329501" y1="660" x2="344.5374335329501" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="344.5442163894051" y1="660" x2="344.5442163894051" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="344.5624912192168" y1="660" x2="344.5624912192168" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="344.5650401907508" y1="660" x2="344.5650401907508" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="347.64674677538073" y1="660" x2="347.64674677538073" y2="706" stroke-width="3" class="run-success"/>
+<line x1="351.38021242038724" y1="660" x2="351.38021242038724" y2="706" stroke-width="3" class="run-success"/>
+<line x1="362.58480003742034" y1="660" x2="362.58480003742034" y2="706" stroke-width="3" class="run-success"/>
+<line x1="366.31623514578115" y1="660" x2="366.31623514578115" y2="706" stroke-width="3" class="run-success"/>
+<line x1="368.33722394899996" y1="660" x2="368.33722394899996" y2="706" stroke-width="3" class="run-success"/>
+<line x1="370.04430042736817" y1="660" x2="370.04430042736817" y2="706" stroke-width="3" class="run-success"/>
+<line x1="373.7792349712248" y1="660" x2="373.7792349712248" y2="706" stroke-width="3" class="run-success"/>
+<line x1="377.50898516619867" y1="660" x2="377.50898516619867" y2="706" stroke-width="3" class="run-success"/>
+<line x1="383.01286275175767" y1="660" x2="383.01286275175767" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="383.0269901024632" y1="660" x2="383.0269901024632" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="383.0521773974519" y1="660" x2="383.0521773974519" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="388.7106349855316" y1="660" x2="388.7106349855316" y2="706" stroke-width="3" class="run-success"/>
+<line x1="392.4393051078216" y1="660" x2="392.4393051078216" y2="706" stroke-width="3" class="run-success"/>
+<line x1="396.17423965167825" y1="660" x2="396.17423965167825" y2="706" stroke-width="3" class="run-success"/>
+<line x1="399.9079645141289" y1="660" x2="399.9079645141289" y2="706" stroke-width="3" class="run-success"/>
+<line x1="403.6382763468984" y1="660" x2="403.6382763468984" y2="706" stroke-width="3" class="run-success"/>
+<line x1="414.84035819530493" y1="660" x2="414.84035819530493" y2="706" stroke-width="3" class="run-success"/>
+<line x1="418.572441347276" y1="660" x2="418.572441347276" y2="706" stroke-width="3" class="run-success"/>
+<line x1="422.3050861370428" y1="660" x2="422.3050861370428" y2="706" stroke-width="3" class="run-success"/>
+<line x1="426.03656444831097" y1="660" x2="426.03656444831097" y2="706" stroke-width="3" class="run-success"/>
+<line x1="429.7673515130613" y1="660" x2="429.7673515130613" y2="706" stroke-width="3" class="run-success"/>
+<line x1="430.7189387504905" y1="660" x2="430.7189387504905" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="440.973580840574" y1="660" x2="440.973580840574" y2="706" stroke-width="3" class="run-success"/>
+<line x1="444.70713289139525" y1="660" x2="444.70713289139525" y2="706" stroke-width="3" class="run-success"/>
+<line x1="448.4386112026634" y1="660" x2="448.4386112026634" y2="706" stroke-width="3" class="run-success"/>
+<line x1="452.1729409058171" y1="660" x2="452.1729409058171" y2="706" stroke-width="3" class="run-success"/>
+<line x1="455.90169743392175" y1="660" x2="455.90169743392175" y2="706" stroke-width="3" class="run-success"/>
+<line x1="467.10339045616206" y1="660" x2="467.10339045616206" y2="706" stroke-width="3" class="run-success"/>
+<line x1="470.83668328953917" y1="660" x2="470.83668328953917" y2="706" stroke-width="3" class="run-success"/>
+<line x1="474.5713154130443" y1="660" x2="474.5713154130443" y2="706" stroke-width="3" class="run-success"/>
+<line x1="478.32029090179174" y1="660" x2="478.32029090179174" y2="706" stroke-width="3" class="run-success"/>
+<line x1="482.0498682851362" y1="660" x2="482.0498682851362" y2="706" stroke-width="3" class="run-success"/>
+<line x1="493.2556655835753" y1="660" x2="493.2556655835753" y2="706" stroke-width="3" class="run-success"/>
+<line x1="496.98688467739936" y1="660" x2="496.98688467739936" y2="706" stroke-width="3" class="run-success"/>
+<line x1="500.72039352531317" y1="660" x2="500.72039352531317" y2="706" stroke-width="3" class="run-success"/>
+<line x1="504.4565377505759" y1="660" x2="504.4565377505759" y2="706" stroke-width="3" class="run-success"/>
+<line x1="508.18447342344075" y1="660" x2="508.18447342344075" y2="706" stroke-width="3" class="run-success"/>
+<line x1="519.3957574911142" y1="660" x2="519.3957574911142" y2="706" stroke-width="3" class="run-success"/>
+<line x1="523.1287911070472" y1="660" x2="523.1287911070472" y2="706" stroke-width="3" class="run-success"/>
+<line x1="526.8610470706476" y1="660" x2="526.8610470706476" y2="706" stroke-width="3" class="run-success"/>
+<line x1="530.5927845993599" y1="660" x2="530.5927845993599" y2="706" stroke-width="3" class="run-success"/>
+<line x1="534.3149310826391" y1="660" x2="534.3149310826391" y2="706" stroke-width="3" class="run-success"/>
+<line x1="545.5174881630265" y1="660" x2="545.5174881630265" y2="706" stroke-width="3" class="run-success"/>
+<line x1="549.25034896733" y1="660" x2="549.25034896733" y2="706" stroke-width="3" class="run-success"/>
+<line x1="552.9852403082793" y1="660" x2="552.9852403082793" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="556.7205636783021" y1="660" x2="556.7205636783021" y2="706" stroke-width="3" class="run-success"/>
+<line x1="560.4410684511018" y1="660" x2="560.4410684511018" y2="706" stroke-width="3" class="run-success"/>
+<line x1="571.6495875327043" y1="660" x2="571.6495875327043" y2="706" stroke-width="3" class="run-success"/>
+<line x1="574.3787151903998" y1="660" x2="574.3787151903998" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="574.3928857440126" y1="660" x2="574.3928857440126" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="574.4201899814618" y1="660" x2="574.4201899814618" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="575.3837876271359" y1="660" x2="575.3837876271359" y2="706" stroke-width="3" class="run-success"/>
+<line x1="579.115611561663" y1="660" x2="579.115611561663" y2="706" stroke-width="3" class="run-success"/>
+<line x1="582.849379627021" y1="660" x2="582.849379627021" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="586.5680266748043" y1="660" x2="586.5680266748043" y2="706" stroke-width="3" class="run-success"/>
+<line x1="597.7699357115814" y1="660" x2="597.7699357115814" y2="706" stroke-width="3" class="run-success"/>
+<line x1="601.4998587181847" y1="660" x2="601.4998587181847" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="605.2310346091014" y1="660" x2="605.2310346091014" y2="706" stroke-width="3" class="run-success"/>
+<line x1="608.9701166320642" y1="660" x2="608.9701166320642" y2="706" stroke-width="3" class="run-success"/>
+<line x1="612.6927383473244" y1="660" x2="612.6927383473244" y2="706" stroke-width="3" class="run-success"/>
+<line x1="623.9065713865316" y1="660" x2="623.9065713865316" y2="706" stroke-width="3" class="run-success"/>
+<line x1="627.6358463495246" y1="660" x2="627.6358463495246" y2="706" stroke-width="3" class="run-success"/>
+<line x1="631.3688367625502" y1="660" x2="631.3688367625502" y2="706" stroke-width="3" class="run-success"/>
+<line x1="635.1002286680038" y1="660" x2="635.1002286680038" y2="706" stroke-width="3" class="run-success"/>
+<line x1="638.8290716019231" y1="660" x2="638.8290716019231" y2="706" stroke-width="3" class="run-success"/>
+<line x1="640.3093328166709" y1="660" x2="640.3093328166709" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="642.6512760186395" y1="660" x2="642.6512760186395" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="646.6557967043991" y1="660" x2="646.6557967043991" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="650.044071119629" y1="660" x2="650.044071119629" y2="706" stroke-width="3" class="run-success"/>
+<line x1="650.9786364115598" y1="660" x2="650.9786364115598" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="650.9819198325189" y1="660" x2="650.9819198325189" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="653.7746853727501" y1="660" x2="653.7746853727501" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="654.0487214141109" y1="660" x2="654.0487214141109" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="654.0555906763806" y1="660" x2="654.0555906763806" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="654.9040957768576" y1="660" x2="654.9040957768576" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="654.9265180857756" y1="660" x2="654.9265180857756" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="654.9957291433603" y1="660" x2="654.9957291433603" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="655.0444620228582" y1="660" x2="655.0444620228582" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="655.1693184251178" y1="660" x2="655.1693184251178" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="657.5091446846259" y1="660" x2="657.5091446846259" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="661.2364323138805" y1="660" x2="661.2364323138805" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="664.9589244204185" y1="660" x2="664.9589244204185" y2="706" stroke-width="3" class="run-success"/>
+<line x1="676.1712453578684" y1="660" x2="676.1712453578684" y2="706" stroke-width="3" class="run-success"/>
+<line x1="679.9032421040248" y1="660" x2="679.9032421040248" y2="706" stroke-width="3" class="run-success"/>
+<line x1="683.6358004879769" y1="660" x2="683.6358004879769" y2="706" stroke-width="3" class="run-success"/>
+<line x1="687.3685316835583" y1="660" x2="687.3685316835583" y2="706" stroke-width="3" class="run-success"/>
+<line x1="691.0974610232925" y1="660" x2="691.0974610232925" y2="706" stroke-width="3" class="run-success"/>
+<line x1="702.3026102781213" y1="660" x2="702.3026102781213" y2="706" stroke-width="3" class="run-success"/>
+<line x1="706.0355574882394" y1="660" x2="706.0355574882394" y2="706" stroke-width="3" class="run-success"/>
+<line x1="709.7670357995077" y1="660" x2="709.7670357995077" y2="706" stroke-width="3" class="run-success"/>
+<line x1="713.4985141107757" y1="660" x2="713.4985141107757" y2="706" stroke-width="3" class="run-success"/>
+<line x1="717.1235836612254" y1="660" x2="717.1235836612254" y2="706" stroke-width="3" class="run-success"/>
+<line x1="728.3230301322832" y1="660" x2="728.3230301322832" y2="706" stroke-width="3" class="run-success"/>
+<line x1="732.0586991255648" y1="660" x2="732.0586991255648" y2="706" stroke-width="3" class="run-success"/>
+<line x1="735.7911711037021" y1="660" x2="735.7911711037021" y2="706" stroke-width="3" class="run-success"/>
+<line x1="739.5245935458013" y1="660" x2="739.5245935458013" y2="706" stroke-width="3" class="run-success"/>
+<line x1="743.2540845233311" y1="660" x2="743.2540845233311" y2="706" stroke-width="3" class="run-success"/>
+<line x1="754.4549134874243" y1="660" x2="754.4549134874243" y2="706" stroke-width="3" class="run-success"/>
+<line x1="758.1879039004498" y1="660" x2="758.1879039004498" y2="706" stroke-width="3" class="run-success"/>
+<line x1="761.9205054873092" y1="660" x2="761.9205054873092" y2="706" stroke-width="3" class="run-success"/>
+<line x1="765.6563904951277" y1="660" x2="765.6563904951277" y2="706" stroke-width="3" class="run-success"/>
+<line x1="769.3844557767147" y1="660" x2="769.3844557767147" y2="706" stroke-width="3" class="run-success"/>
+<line x1="780.5875744948978" y1="660" x2="780.5875744948978" y2="706" stroke-width="3" class="run-success"/>
+<line x1="784.3164606317246" y1="660" x2="784.3164606317246" y2="706" stroke-width="3" class="run-success"/>
+<line x1="788.0492782331207" y1="660" x2="788.0492782331207" y2="706" stroke-width="3" class="run-success"/>
+<line x1="791.7818366170728" y1="660" x2="791.7818366170728" y2="706" stroke-width="3" class="run-success"/>
+<line x1="795.5148270300984" y1="660" x2="795.5148270300984" y2="706" stroke-width="3" class="run-success"/>
+<line x1="806.7436514781583" y1="660" x2="806.7436514781583" y2="706" stroke-width="3" class="run-success"/>
+<line x1="810.482819906936" y1="660" x2="810.482819906936" y2="706" stroke-width="3" class="run-success"/>
+<line x1="814.2120084641142" y1="660" x2="814.2120084641142" y2="706" stroke-width="3" class="run-success"/>
+<line x1="817.942838731772" y1="660" x2="817.942838731772" y2="706" stroke-width="3" class="run-success"/>
+<line x1="821.6423900945039" y1="660" x2="821.6423900945039" y2="706" stroke-width="3" class="run-success"/>
+<line x1="831.1186021998423" y1="660" x2="831.1186021998423" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="832.8749299925964" y1="660" x2="832.8749299925964" y2="706" stroke-width="3" class="run-success"/>
+<line x1="836.5840291978541" y1="660" x2="836.5840291978541" y2="706" stroke-width="3" class="run-success"/>
+<line x1="840.3461383704379" y1="660" x2="840.3461383704379" y2="706" stroke-width="3" class="run-success"/>
+<line x1="844.0841403207169" y1="660" x2="844.0841403207169" y2="706" stroke-width="3" class="run-success"/>
+<line x1="847.7849877706693" y1="660" x2="847.7849877706693" y2="706" stroke-width="3" class="run-success"/>
+<line x1="859.0698895924778" y1="660" x2="859.0698895924778" y2="706" stroke-width="3" class="run-success"/>
+<line x1="862.7671512011198" y1="660" x2="862.7671512011198" y2="706" stroke-width="3" class="run-success"/>
+<line x1="866.5060604124532" y1="660" x2="866.5060604124532" y2="706" stroke-width="3" class="run-success"/>
+<line x1="870.211314558956" y1="660" x2="870.211314558956" y2="706" stroke-width="3" class="run-success"/>
+<line x1="873.9429656818537" y1="660" x2="873.9429656818537" y2="706" stroke-width="3" class="run-success"/>
+<line x1="885.248475290471" y1="660" x2="885.248475290471" y2="706" stroke-width="3" class="run-success"/>
+<line x1="888.9483290735543" y1="660" x2="888.9483290735543" y2="706" stroke-width="3" class="run-success"/>
+<line x1="892.6484852769892" y1="660" x2="892.6484852769892" y2="706" stroke-width="3" class="run-success"/>
+<line x1="896.4150443490306" y1="660" x2="896.4150443490306" y2="706" stroke-width="3" class="run-success"/>
+<line x1="900.1081152756591" y1="660" x2="900.1081152756591" y2="706" stroke-width="3" class="run-success"/>
+<line x1="911.3567698581955" y1="660" x2="911.3567698581955" y2="706" stroke-width="3" class="run-success"/>
+<line x1="915.0682452233577" y1="660" x2="915.0682452233577" y2="706" stroke-width="3" class="run-success"/>
+<line x1="918.830656816293" y1="660" x2="918.830656816293" y2="706" stroke-width="3" class="run-success"/>
+<line x1="922.577644971302" y1="660" x2="922.577644971302" y2="706" stroke-width="3" class="run-success"/>
+<line x1="926.2793564794017" y1="660" x2="926.2793564794017" y2="706" stroke-width="3" class="run-success"/>
+<line x1="937.6237919075471" y1="660" x2="937.6237919075471" y2="706" stroke-width="3" class="run-success"/>
+<line x1="941.2459668632039" y1="660" x2="941.2459668632039" y2="706" stroke-width="3" class="run-success"/>
+<line x1="945.0228514301034" y1="660" x2="945.0228514301034" y2="706" stroke-width="3" class="run-success"/>
+<line x1="948.6695656371386" y1="660" x2="948.6695656371386" y2="706" stroke-width="3" class="run-success"/>
+<line x1="952.3980197448918" y1="660" x2="952.3980197448918" y2="706" stroke-width="3" class="run-success"/>
+<line x1="963.6450758198562" y1="660" x2="963.6450758198562" y2="706" stroke-width="3" class="run-success"/>
+<line x1="967.3164588869918" y1="660" x2="967.3164588869918" y2="706" stroke-width="3" class="run-success"/>
+<line x1="971.0920041637632" y1="660" x2="971.0920041637632" y2="706" stroke-width="3" class="run-success"/>
+<line x1="974.8391651304017" y1="660" x2="974.8391651304017" y2="706" stroke-width="3" class="run-success"/>
+<line x1="978.5465794222724" y1="660" x2="978.5465794222724" y2="706" stroke-width="3" class="run-success"/>
+<line x1="989.8895459515677" y1="660" x2="989.8895459515677" y2="706" stroke-width="3" class="run-success"/>
+<line x1="993.5743219199837" y1="660" x2="993.5743219199837" y2="706" stroke-width="3" class="run-success"/>
+<line x1="997.2276461718444" y1="660" x2="997.2276461718444" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1000.9427073783172" y1="660" x2="1000.9427073783172" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1004.6857640687568" y1="660" x2="1004.6857640687568" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1019.570418537304" y1="660" x2="1019.570418537304" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1023.282109917003" y1="660" x2="1023.282109917003" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1027.0135882282711" y1="660" x2="1027.0135882282711" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1030.738370088899" y1="660" x2="1030.738370088899" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1042.0340294346393" y1="660" x2="1042.0340294346393" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1045.6608703042907" y1="660" x2="1045.6608703042907" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="1049.4257876658526" y1="660" x2="1049.4257876658526" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1053.1171736790939" y1="660" x2="1053.1171736790939" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1056.8536203247081" y1="660" x2="1056.8536203247081" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1068.1501437285951" y1="660" x2="1068.1501437285951" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1071.8065353868783" y1="660" x2="1071.8065353868783" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1075.4997791251362" y1="660" x2="1075.4997791251362" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1079.305177610891" y1="660" x2="1079.305177610891" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1082.995915580522" y1="660" x2="1082.995915580522" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1094.2042186475878" y1="660" x2="1094.2042186475878" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="1094.4251583158077" y1="660" x2="1094.4251583158077" y2="706" stroke-width="3" class="run-failure"/>
+<line x1="1097.871540641432" y1="660" x2="1097.871540641432" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1101.611141099283" y1="660" x2="1101.611141099283" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1105.3586476891805" y1="660" x2="1105.3586476891805" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1109.0686541554924" y1="660" x2="1109.0686541554924" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1120.3205057531732" y1="660" x2="1120.3205057531732" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1124.0188042315917" y1="660" x2="1124.0188042315917" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1127.7585775010725" y1="660" x2="1127.7585775010725" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1131.493036812948" y1="660" x2="1131.493036812948" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1135.2202380363879" y1="660" x2="1135.2202380363879" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1146.483624810333" y1="660" x2="1146.483624810333" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1150.161963545553" y1="660" x2="1150.161963545553" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1153.901218380145" y1="660" x2="1153.901218380145" y2="706" stroke-width="3" class="run-success"/>
+<line x1="1157.6238832983126" y1="660" x2="1157.6238832983126" y2="706" stroke-width="3" class="run-success"/>
+<circle cx="126" cy="751" r="6" fill="var(--success)"/><text x="142" y="758" class="axis muted">Success</text><circle cx="292" cy="751" r="6" fill="var(--danger)"/><text x="308" y="758" class="axis muted">Failure</text><circle cx="448" cy="751" r="6" fill="var(--muted)"/><text x="464" y="758" class="axis muted">Other</text>
+</svg>

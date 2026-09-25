@@ -5,6 +5,10 @@ import { actionsLog as log } from "../../activity/actions-log.mjs";
 import { readGhAwLogShards } from "../../activity/gh-aw-logs.mjs";
 import { hasOperationalValueResult, operationalValueRecordTime } from "./operational-value-records.mjs";
 
+// The upstream protocol calls this grader `operational-value`. Within CAO its
+// run-scoped results are operational graders, not package-defined repository
+// operational values.
+
 function metricValue(value) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
@@ -77,7 +81,7 @@ function operationalValueResult(run) {
 }
 
 export async function collectOperationalValues() {
-  log.group`Collect operational-value observations`;
+  log.group`Collect operational-grader observations`;
   try {
     const inventoryPath = process.env.REPORT_DEPLOYED_WORKFLOWS;
     const logsPath = process.env.REPORT_GH_AW_LOGS_SHARDS;
@@ -164,7 +168,7 @@ export async function collectOperationalValues() {
           observedAt: selected.run?.updatedAt || selected.run?.createdAt || null,
           observationSource: "logs-jsonl",
           resultAvailable: false,
-          reason: run ? "operational-value result not found" : "run not found in gh-aw logs JSONL",
+          reason: run ? "operational grader result not found" : "run not found in gh-aw logs JSONL",
         });
         continue;
       }
@@ -196,7 +200,7 @@ export async function collectOperationalValues() {
       await writeFile(cachePath, `${JSON.stringify(output, null, 2)}\n`);
       log.info`Updated operational-value cache at ${cachePath}`;
     }
-    log.info`Collected ${output.observedRuns} operational-value observations from ${output.selectedRuns} cached runs`;
+    log.info`Collected ${output.observedRuns} operational-grader observations from ${output.selectedRuns} cached runs`;
   } finally {
     log.endGroup();
   }

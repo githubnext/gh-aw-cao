@@ -21,11 +21,16 @@ const redisWriteBatchSize = 100
 var ErrSourceUnavailable = errors.New("redis source is unavailable")
 
 type Store struct {
-	Client    *Client
+	Client    CommandClient
 	namespace string
 }
 
-func NewStore(client *Client, namespaces ...string) *Store {
+type CommandClient interface {
+	Do(context.Context, ...string) (any, error)
+	DoMany(context.Context, [][]string) ([]any, error)
+}
+
+func NewStore(client CommandClient, namespaces ...string) *Store {
 	var namespace string
 	switch len(namespaces) {
 	case 0:
@@ -62,6 +67,57 @@ func (s *Store) CheckRediSearch(ctx context.Context) error {
 		return fmt.Errorf("redis RediSearch module is unavailable: %w", err)
 	}
 	return nil
+}
+
+func (s *Store) TryLock(ctx context.Context, name, token string, ttl time.Duration) (bool, error) {
+	value, err := s.Client.Do(ctx, "SET", s.Key("lock:"+name), token, "NX", "PX", strconv.FormatInt(ttl.Milliseconds(), 10))
+	if err != nil {
+		return false, err
+	}
+	return value != nil && fmt.Sprint(value) == "OK", nil
+}
+
+func (s *Store) Unlock(ctx context.Context, name, token string) error {
+	script := `if redis.call("GET", KEYS[1]) == ARGV[1] then return redis.call("DEL", KEYS[1]) else return 0 end`
+	_, err := s.Client.Do(ctx, "EVAL", script, "1", s.Key("lock:"+name), token)
+	return err
+}
+
+func (s *Store) LockHeld(ctx context.Context, name string) (bool, error) {
+	value, err := s.Client.Do(ctx, "GET", s.Key("lock:"+name))
+	if err != nil {
+		return false, err
+	}
+	return value != nil, nil
+}
+
+func (s *Store) RememberDelivery(ctx context.Context, delivery string, ttl time.Duration) (bool, error) {
+	sum := sha256.Sum256([]byte(delivery))
+	key := s.Key("github-delivery:" + hex.EncodeToString(sum[:]))
+	value, err := s.Client.Do(ctx, "SET", key, "1", "NX", "PX", strconv.FormatInt(ttl.Milliseconds(), 10))
+	if err != nil {
+		return false, err
+	}
+	return value != nil && fmt.Sprint(value) == "OK", nil
+}
+
+func (s *Store) ForgetDelivery(ctx context.Context, delivery string) error {
+	sum := sha256.Sum256([]byte(delivery))
+	_, err := s.Client.Do(ctx, "DEL", s.Key("github-delivery:"+hex.EncodeToString(sum[:])))
+	return err
+}
+
+func (s *Store) SetOperationalState(ctx context.Context, name string, value []byte) error {
+	_, err := s.Client.Do(ctx, "SET", s.Key("state:"+name), string(value))
+	return err
+}
+
+func (s *Store) OperationalState(ctx context.Context, name string) ([]byte, error) {
+	value, err := s.Client.Do(ctx, "GET", s.Key("state:"+name))
+	if err != nil || value == nil {
+		return nil, err
+	}
+	return []byte(fmt.Sprint(value)), nil
 }
 
 func (s *Store) Key(suffix string) string {

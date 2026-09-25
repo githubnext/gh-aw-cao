@@ -144,6 +144,9 @@ export function formatNumber(value, unit = null, includeUnit = true) {
     if (unit.format === 'usd') {
       return formatUsd(value);
     }
+    if (unit.format === 'aicc') {
+      return formatAicc(rounded);
+    }
     return `${rounded.toFixed(fractionDigits(unit.significant))}${includeUnit && unit.format !== 'number' ? ` ${unit.symbol}` : ''}`;
   }
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
@@ -165,6 +168,18 @@ export function formatUsd(value) {
     maximumFractionDigits: 3
   }).format(Math.abs(rounded));
   return rounded < 0 ? `-$${formatted}` : `$${formatted}`;
+}
+
+/**
+ * Formats AI Credits as their US dollar cost, where 100 AIC equals one dollar.
+ * @param {number} value
+ * @returns {string}
+ */
+export function formatAicc(value) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD'
+  }).format(value / 100);
 }
 
 /**

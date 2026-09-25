@@ -488,6 +488,8 @@ describe('data view renderer', () => {
     const queryLink = /** @type {HTMLAnchorElement} */ (query?.querySelector('.entity-card-list-title a'));
     expect(queryLink?.getAttribute('href'))
       .toBe('#page-issue-events?query=issue-events&title=Investigate+failing+compiler+run&issue-id=42');
+    expect(queryLink?.dataset.navPageId).toBe('issue-events');
+    expect(queryLink?.dataset.routeTitle).toBe('Investigate failing compiler run');
     const activate = vi.spyOn(queryLink, 'click');
     query?.querySelector('.entity-card-list-card')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(activate).toHaveBeenCalledOnce();
@@ -651,7 +653,14 @@ describe('data view renderer', () => {
           'icon-field': 'operation-icon',
           title: { field: 'operation-name' },
           labels: [],
-          details: []
+          details: [],
+          drill: {
+            type: 'query',
+            page: 'operation-insights',
+            query: 'operation-insights',
+            'title-field': 'operation-name',
+            arguments: [{ name: 'operation', field: 'operation-name' }]
+          }
         }
       },
       metadata,
@@ -667,6 +676,45 @@ describe('data view renderer', () => {
     expect(rendered?.querySelector('.issue-list-card-icon .octicon-gear')).not.toBeNull();
     expect(rendered?.querySelector('[data-card-drill]')?.getAttribute('href'))
       .toBe('#page-campaign-insights?campaign=doctor');
+  });
+
+  it('uses the known entity type drill when the view does not define one', () => {
+    const rendered = renderDataView('list', {
+      pageId: 'audits',
+      title: 'Audit events',
+      sourceName: 'audit-events',
+      view: {
+        mark: 'list',
+        list: { style: 'entity-cards', card: 'audit', icon: 'checklist' },
+        encoding: { columns: [{ field: 'event-summary' }] }
+      },
+      rows: [{ 'event-summary': 'Policy mismatch' }],
+      cardTemplates: {
+        audit: {
+          icon: 'checklist',
+          title: { field: 'event-summary' },
+          labels: [],
+          details: [],
+          drill: {
+            type: 'query',
+            page: 'audit-insights',
+            query: 'audit-entity-insights',
+            'title-field': 'event-summary',
+            arguments: [{ name: 'audit', field: 'event-summary' }]
+          }
+        }
+      },
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    expect(rendered?.querySelector('[data-card-drill]')?.getAttribute('href'))
+      .toBe('#page-audit-insights?query=audit-entity-insights&title=Policy+mismatch&audit=Policy+mismatch');
   });
 
   it('renders grouped entity-card lists with a trailing disclosure chevron', () => {
@@ -1101,7 +1149,7 @@ describe('data view renderer', () => {
         layout: 'full-view',
         encoding: {
           columns: [
-            { field: 'mcp-tool', type: 'nominal', title: 'MCP tool' },
+            { field: 'mcp-tool-label', type: 'nominal', title: 'MCP tool' },
             { field: 'mcp-server', type: 'nominal', title: 'MCP server' },
             { field: 'calls', type: 'quantitative', title: 'Calls' },
             { field: 'workflows', type: 'quantitative', title: 'Workflows' }
@@ -1109,11 +1157,24 @@ describe('data view renderer', () => {
         }
       },
       sourceName: 'mcp-tool-totals',
-      rows: [{ 'mcp-tool': 'issue_read', 'mcp-server': 'github', calls: 4778, workflows: 12 }],
+      rows: [{
+        'mcp-tool-label': 'github/issue_read',
+        'mcp-tool': 'issue_read',
+        'mcp-server': 'github',
+        calls: 4778,
+        workflows: 12
+      }],
       cardTemplates: {
         'mcp-tool': {
           icon: 'mcp',
-          title: { field: 'mcp-tool', title: 'MCP tool' },
+          drill: {
+            type: 'query',
+            page: 'tool-insights',
+            query: 'tool-entity-insights',
+            'title-field': 'mcp-tool-label',
+            arguments: [{ name: 'tool', field: 'mcp-tool-label' }]
+          },
+          title: { field: 'mcp-tool-label', title: 'MCP tool' },
           subtitle: { field: 'mcp-server', title: 'MCP server' },
           labels: [],
           details: [
@@ -1132,9 +1193,11 @@ describe('data view renderer', () => {
     });
 
     const card = rendered?.querySelector('[data-mobile-card-list] .entity-card-list-card');
-    expect(card?.querySelector('.entity-card-list-title')?.textContent).toBe('issue_read');
+    expect(card?.querySelector('.entity-card-list-title')?.textContent).toBe('github/issue_read');
     expect(card?.querySelector('.entity-card-list-subtitle')?.textContent).toBe('github');
     expect(card?.querySelector('.entity-card-list-subtitle')?.getAttribute('aria-label')).toBe('MCP server: github');
+    expect(card?.querySelector('[data-card-drill]')?.getAttribute('href'))
+      .toBe('#page-tool-insights?query=tool-entity-insights&title=github%2Fissue_read&tool=github%2Fissue_read');
     const metrics = [...card?.querySelectorAll('.entity-card-list-metric') ?? []]
       .map((metric) => metric.textContent);
     expect(metrics).toEqual(['4778Calls', '12Workflows']);
@@ -1395,6 +1458,95 @@ describe('data view renderer', () => {
       view: { ...context.view, chart: 'bar' }
     });
     expect(bar?.querySelector('.table-region')).toBeNull();
+  });
+
+  it('links declared pie entities and formats workflow coordinates', () => {
+    const context = /** @type {Parameters<typeof renderDataView>[1]} */ ({
+      pageId: 'cost',
+      title: 'Cost per workflow',
+      view: {
+        mark: 'chart',
+        chart: 'pie',
+        encoding: {
+          x: { field: 'workflow-coordinate', type: 'nominal', format: 'workflow-identity-label' },
+          y: { field: 'aic', type: 'quantitative' }
+        }
+      },
+      sourceName: 'cost-by-workflow',
+      rows: [],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: () => [],
+      buildChartPoints: () => [],
+      prepareChartPoints: (points) => points,
+      toText: String
+    });
+    const workflow = 'githubnext/gh-aw-cao:.github/workflows/optimization-agents-and-curator.md';
+    const inferred = renderDataView('chart', {
+      ...context,
+      buildChartPoints: () => [{
+        key: workflow,
+        x: workflow,
+        y: 3,
+        color: null,
+        link: {
+          href: '#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Foptimization-agents-and-curator.md',
+          label: `View ${workflow} workflow dashboard`
+        }
+      }]
+    });
+
+    const inferredLink = inferred?.querySelector('.chart-legend-pie a');
+    expect(inferredLink?.getAttribute('href')).toBe(`#page-workflow-runtime?workflow=${encodeURIComponent(workflow)}`);
+    expect(inferredLink?.getAttribute('aria-label')).toBe(`View ${workflow} workflow dashboard`);
+    expect(inferredLink?.textContent).toBe('optimization-agents-and-curator.md (githubnext/gh-aw-cao)');
+
+    const repository = renderDataView('chart', {
+      ...context,
+      view: {
+        ...context.view,
+        encoding: {
+          ...context.view.encoding,
+          x: { field: 'repository-coordinate', type: 'nominal' }
+        }
+      },
+      buildChartPoints: () => [{
+        key: 'githubnext/gh-aw-cao',
+        x: 'githubnext/gh-aw-cao',
+        y: 3,
+        color: null,
+        link: {
+          href: '#page-repository-detail?repository=githubnext%2Fgh-aw-cao',
+          label: 'View githubnext/gh-aw-cao repository dashboard'
+        }
+      }]
+    });
+    expect(repository?.querySelector('.chart-legend-pie a')?.getAttribute('href'))
+      .toBe('#page-repository-detail?repository=githubnext%2Fgh-aw-cao');
+
+    const campaign = renderDataView('chart', {
+      ...context,
+      view: {
+        ...context.view,
+        encoding: {
+          ...context.view.encoding,
+          x: { field: 'campaign-name', type: 'nominal' }
+        }
+      },
+      buildChartPoints: () => [{
+        key: 'dev-practices',
+        x: 'Dev Practices',
+        y: 3,
+        color: null,
+        link: {
+          href: '#page-campaign-insights?campaign=dev-practices',
+          label: 'View Dev Practices campaign dashboard'
+        }
+      }]
+    });
+    expect(campaign?.querySelector('.chart-legend-pie a')?.getAttribute('href'))
+      .toBe('#page-campaign-insights?campaign=dev-practices');
   });
 
   it('renders swimlane continuation pages incrementally without blocking the initial view', async () => {
@@ -2213,6 +2365,55 @@ describe('data view renderer', () => {
     expect(links?.[1]?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao');
     expect(links?.[2]?.textContent).toBe('.github/workflows/self-care.md');
     expect(links?.[2]?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/self-care.md');
+  });
+
+  it('renders URL and link fields as safe external links when no explicit renderer applies', () => {
+    const rendered = renderDataView('table', {
+      pageId: 'raw-evidence',
+      title: 'Raw evidence',
+      view: {
+        mark: 'table',
+        'column-summaries': false,
+        encoding: {
+          columns: [
+            { field: 'entity-url', type: 'nominal', title: 'Entity URL' },
+            { field: 'run-href', type: 'nominal', title: 'Run link', as: 'run-link-value' },
+            { field: 'unsafe-link', type: 'nominal', title: 'Unsafe link' },
+            { field: 'curl-command', type: 'nominal', title: 'cURL command' },
+            { field: 'status-url', type: 'nominal', title: 'Status URL', display: 'status' }
+          ]
+        }
+      },
+      sourceName: 'raw-evidence',
+      rows: [{
+        'entity-url': 'https://github.com/githubnext/gh-aw-cao/issues/13772',
+        'run-link-value': 'https://github.com/githubnext/gh-aw-cao/actions/runs/36048728401',
+        'unsafe-link': 'http://example.test/not-linked',
+        'curl-command': 'https://example.test/from-curl',
+        'status-url': 'success'
+      }],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const links = rendered?.querySelectorAll('tbody a');
+    expect(links).toHaveLength(2);
+    expect(links?.[0]?.textContent).toContain('https://github.com/githubnext/gh-aw-cao/issues/13772');
+    expect(links?.[0]?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/issues/13772');
+    expect(links?.[0]?.getAttribute('target')).toBe('_blank');
+    expect(links?.[0]?.getAttribute('rel')).toBe('noopener noreferrer');
+    expect(links?.[1]?.textContent).toContain('https://github.com/githubnext/gh-aw-cao/actions/runs/36048728401');
+    expect(links?.[1]?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/36048728401');
+    expect(rendered?.querySelector('[data-field="unsafe-link"]')?.textContent).toBe('http://example.test/not-linked');
+    expect(rendered?.querySelector('[data-field="curl-command"] a')).toBeNull();
+    expect(rendered?.querySelector('[data-field="curl-command"]')?.textContent).toBe('https://example.test/from-curl');
+    expect(rendered?.querySelector('[data-field="status-url"] a')).toBeNull();
+    expect(rendered?.querySelector('[data-field="status-url"] .status')?.textContent).toBe('success');
   });
 
   it.each([

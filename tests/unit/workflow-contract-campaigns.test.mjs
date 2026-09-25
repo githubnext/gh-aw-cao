@@ -116,6 +116,7 @@ test("operational workflows use the transitive CAO campaign bundle", () => {
       .map((workflowId) => `.github/workflows/${workflowId}.md`)
       .sort();
     const includedWorkflowPaths = manifest.includes
+      .filter((include) => typeof include === "string")
       .filter((include) => include.endsWith(".md"))
       .sort();
 
@@ -204,7 +205,7 @@ test("focused campaign manifests do not cross-own campaign files", () => {
     const files = [
       ...(manifest.includes ?? []).filter((entry) => entry !== "../aw.yml").map((entry) => typeof entry === "string" ? {
         source: entry,
-        destination: entry,
+        destination: entry.startsWith(".github/workflows/") ? entry : `${campaignName}/${entry}`,
       } : entry),
       ...(manifest.resources ?? []),
     ];
@@ -489,6 +490,16 @@ test("Agent customizations preserve deterministic core campaign boundaries", () 
   assert.match(repositoryInstructions, /apply `skills\/create-cao-campaign\/SKILL\.md`/);
   assert.match(repositoryInstructions, /required `\.github\/workflows\/shared\/control\.md` imports/);
   assert.doesNotMatch(repositoryInstructions, /operational-value-designer\/SKILL\.md/);
+});
+
+test("campaign creation guidance defines optional package problem clustering", () => {
+  const campaignSkill = readFileSync(join(root, ".github", "skills", "create-cao-campaign", "SKILL.md"), "utf8");
+
+  assert.match(campaignSkill, /<campaign-slug>\/problem-clustering\.mjs/);
+  assert.match(campaignSkill, /Emit a JSONL sequence: zero or more newline-delimited JSON objects/);
+  assert.match(campaignSkill, /an actionable `fixPrompt` that an agent can follow/);
+  assert.match(campaignSkill, /do not add campaign-specific clustering steps to the Activity workflow/);
+  assert.match(campaignSkill, /fault-isolated, timed, cancelable subprocess/);
 });
 
 test("README routes zero-to-CAO requests to the setup skill", () => {

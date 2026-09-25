@@ -38,6 +38,11 @@
       "payloadPath": "rate_limit",
       "emits": ["audit"],
       "requiresContext": ["repository", "workflow", "run", "observedAt"]
+    },
+    "operational_value": {
+      "payloadPath": "operational_value",
+      "emits": ["repository", "operational-value"],
+      "identity": ["repository", "value_id", "timestamp"]
     }
   }
 }

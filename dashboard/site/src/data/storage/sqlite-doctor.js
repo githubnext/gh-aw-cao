@@ -225,7 +225,7 @@ function scanRecordsFromConnection(connection) {
 
 /** @param {import('../model/schema.js').CanonicalBatch} batch */
 function counts(batch) {
-  return Object.fromEntries(ENTITY_STORES.map((store) => [store, batch[store].length]));
+  return Object.fromEntries(ENTITY_STORES.map((store) => [store, batch[store]?.length ?? 0]));
 }
 
 /** @param {{ store: string, reason: string }[]} invalid */
@@ -256,9 +256,9 @@ function retainedTransactions(transactions, horizon) {
  */
 function sameBatch(left, right) {
   return ENTITY_STORES.every((store) => JSON.stringify(
-    [...left[store]].sort((a, b) => String(a.id).localeCompare(String(b.id)))
+    [...(left[store] ?? [])].sort((a, b) => String(a.id).localeCompare(String(b.id)))
   ) === JSON.stringify(
-    [...right[store]].sort((a, b) => String(a.id).localeCompare(String(b.id)))
+    [...(right[store] ?? [])].sort((a, b) => String(a.id).localeCompare(String(b.id)))
   ));
 }
 
@@ -321,7 +321,7 @@ function writeCanonicalDatabase(connection, batch, transactions) {
     INSERT INTO __idb_records (database_name, store_name, record_key, value) VALUES (?, ?, ?, ?)
   `);
   for (const store of ENTITY_STORES) {
-    for (const record of batch[store]) {
+    for (const record of batch[store] ?? []) {
       insertRecord.run(DATABASE_NAME, store, JSON.stringify(record.id), JSON.stringify(record));
     }
   }
@@ -557,7 +557,7 @@ export async function doctorSqliteDatabase(filename, options = {}) {
   const transactions = retainedTransactions(scanned.transactions, horizon);
   const transactionRowsRemoved = scanned.transactions.length - transactions.length;
   const canonicalRowsRemoved = ENTITY_STORES.reduce(
-    (total, store) => total + scanned.batch[store].length - repairedBatch[store].length,
+    (total, store) => total + (scanned.batch[store]?.length ?? 0) - (repairedBatch[store]?.length ?? 0),
     0
   );
   const canonicalDataChanged = !sameBatch(scanned.batch, repairedBatch);
@@ -618,7 +618,9 @@ export async function doctorSqliteDatabase(filename, options = {}) {
     const lockedBatch = repair.scanned.batch;
     invalidRecordsRemoved = repair.scanned.invalid.length;
     repairedCanonicalRows = ENTITY_STORES.reduce(
-      (total, store) => total + lockedBatch[store].length - repair.repairedBatch[store].length,
+      (total, store) => total
+        + (lockedBatch[store]?.length ?? 0)
+        - (repair.repairedBatch[store]?.length ?? 0),
       0
     );
     repairedTransactionRows = repair.scanned.transactions.length - repair.transactions.length;

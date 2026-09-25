@@ -176,7 +176,12 @@ export async function materializeCao(campaign = 'root', repositoryRoot = process
 
 export function verifyCaoRuntime(bundle, repositoryRoot = process.cwd()) {
   const required = {
-    activity: ['activity/cao.mjs', 'activity/control-settings.mjs', 'activity/collect-logs.sh'],
+    activity: [
+      'activity/cao.mjs',
+      'activity/control-settings.mjs',
+      'activity/collect-logs.sh',
+      'activity/problem-clustering.mjs',
+    ],
     dashboard: ['dashboard/site/package.json', 'dashboard/report/aic-usage.mjs'],
   }[bundle];
   if (!required) throw new Error(`Unknown CAO runtime bundle: ${bundle}`);

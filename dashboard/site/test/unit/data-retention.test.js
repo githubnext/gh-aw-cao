@@ -174,6 +174,26 @@ describe('canonical retention merge', () => {
     expect(merged.audits.map((event) => event.id)).toEqual(['event:1']);
   });
 
+  it('keeps retained operational values and their repository parents in partial collections', () => {
+    const previous = batch([]);
+    previous.operationalValues.push({
+      id: 'operational-value:dependabot',
+      repositoryId: 'repository:1',
+      repository: 'githubnext/gh-aw-cao',
+      campaign: 'dependabot',
+      valueId: 'dependabot-vulnerability-alerts',
+      value: 3,
+      timestamp: '2026-09-01T04:00:00Z',
+      observedAt: '2026-09-01T04:00:00Z'
+    });
+    const incoming = normalize([]);
+
+    const merged = mergeRetainedRecords(previous, incoming, { now: NOW });
+
+    expect(merged.operationalValues.map((value) => value.id)).toEqual(['operational-value:dependabot']);
+    expect(merged.repositories.map((repository) => repository.id)).toEqual(['repository:1']);
+  });
+
   it('drops the oldest whole run subtree to fit a byte cap', () => {
     const records = batch([
       { eventId: 'event:old', timestamp: '2026-09-01T04:00:00Z' }

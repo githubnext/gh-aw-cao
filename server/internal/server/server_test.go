@@ -38,6 +38,64 @@ func TestValidateListenSafety(t *testing.T) {
 	}
 }
 
+func TestValidateHostedListenRequiresTLSOutsideLoopback(t *testing.T) {
+	if err := validateHostedListen("127.0.0.1:8080", "", ""); err != nil {
+		t.Fatalf("loopback hosted listener rejected: %v", err)
+	}
+	if err := validateHostedListen("0.0.0.0:8080", "", ""); err == nil {
+		t.Fatal("expected non-loopback hosted listener without TLS to be rejected")
+	}
+	if err := validateHostedListen("0.0.0.0:8443", "cert.pem", "key.pem"); err != nil {
+		t.Fatalf("TLS-protected hosted listener rejected: %v", err)
+	}
+}
+
+func TestHostedRedisRequiresTLS(t *testing.T) {
+	if err := validateHostedRedisURL("redis://127.0.0.1:6379/0"); err == nil {
+		t.Fatal("hosted mode accepted plaintext loopback Redis")
+	}
+	if err := validateHostedRedisURL("rediss://redis.example.com:6380/0"); err != nil {
+		t.Fatalf("hosted mode rejected TLS Redis: %v", err)
+	}
+}
+
+func TestHostedProxyHeadersAreTrustedOnlyOnLoopbackBoundary(t *testing.T) {
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "https://internal.example.test/", nil)
+	request.Host = "internal.example.test"
+	request.Header.Set("X-Forwarded-Host", "dashboard.example.com")
+	request.Header.Set("X-Forwarded-Proto", "https")
+
+	direct := ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true}
+	if validAzureProxyRequest(request, direct) {
+		t.Fatal("direct hosted listener trusted caller-supplied forwarded headers")
+	}
+
+	loopbackProxy := direct
+	loopbackProxy.TrustForwarded = true
+	if !validAzureProxyRequest(request, loopbackProxy) {
+		t.Fatal("loopback proxy boundary rejected trusted forwarded headers")
+	}
+}
+
+func TestHostedModesCannotDisableHTTPS(t *testing.T) {
+	config := Config{
+		HostingMode: HostingModeHosted,
+		Listen:      "127.0.0.1:8080",
+		Proxy:       ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}},
+		GitHubOAuth: validOAuthConfig("https://github.test"),
+	}
+	if err := validateHostedMode(&redisx.Store{}, &config); err == nil {
+		t.Fatal("hosted mode accepted disabled HTTPS enforcement")
+	}
+
+	config.HostingMode = HostingModeAzureFunctions
+	config.Listen = ""
+	config.AzureProxy = AzureProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}}
+	if err := validateHostedMode(&redisx.Store{}, &config); err == nil {
+		t.Fatal("Azure Functions mode accepted disabled HTTPS enforcement")
+	}
+}
+
 func TestCapabilityURLUsesConfiguredTransport(t *testing.T) {
 	app := &App{config: Config{Listen: "127.0.0.1:8443"}, accessToken: testAccessToken}
 	if got := app.capabilityURL(); !strings.HasPrefix(got, "http://") {
@@ -408,6 +466,7 @@ func fakeRedis(t *testing.T) (string, func()) {
 	ctx, cancel := context.WithCancel(context.Background())
 	var mu sync.Mutex
 	values := map[string]string{}
+	sets := map[string]map[string]bool{}
 	go func() {
 		for {
 			connection, err := listener.Accept()
@@ -419,54 +478,128 @@ func fakeRedis(t *testing.T) (string, func()) {
 					_ = connection.Close()
 				}()
 				reader := bufio.NewReader(connection)
-				command, err := readCommand(reader)
-				if err != nil {
-					return
-				}
-				if len(command) > 0 && command[0] == "AUTH" {
-					_, _ = fmt.Fprint(connection, "+OK\r\n")
-					command, err = readCommand(reader)
+				for {
+					command, err := readCommand(reader)
 					if err != nil {
 						return
 					}
-				}
-				switch command[0] {
-				case "PING":
-					_, _ = fmt.Fprint(connection, "+PONG\r\n")
-				case "FT._LIST":
-					_, _ = fmt.Fprint(connection, "*0\r\n")
-				case "SET":
-					mu.Lock()
-					values[command[1]] = command[2]
-					mu.Unlock()
-					_, _ = fmt.Fprint(connection, "+OK\r\n")
-				case "GET":
-					mu.Lock()
-					value, ok := values[command[1]]
-					mu.Unlock()
-					if !ok {
-						_, _ = fmt.Fprint(connection, "$-1\r\n")
-					} else {
-						_, _ = fmt.Fprintf(connection, "$%d\r\n%s\r\n", len(value), value)
+					switch command[0] {
+					case "AUTH", "SELECT":
+						_, _ = fmt.Fprint(connection, "+OK\r\n")
+					case "PING":
+						_, _ = fmt.Fprint(connection, "+PONG\r\n")
+					case "FT._LIST":
+						_, _ = fmt.Fprint(connection, "*0\r\n")
+					case "SET":
+						mu.Lock()
+						_, exists := values[command[1]]
+						if len(command) < 4 || command[3] != "NX" || !exists {
+							values[command[1]] = command[2]
+						}
+						mu.Unlock()
+						if len(command) >= 4 && command[3] == "NX" && exists {
+							_, _ = fmt.Fprint(connection, "$-1\r\n")
+						} else {
+							_, _ = fmt.Fprint(connection, "+OK\r\n")
+						}
+					case "GET":
+						mu.Lock()
+						value, ok := values[command[1]]
+						mu.Unlock()
+						if !ok {
+							_, _ = fmt.Fprint(connection, "$-1\r\n")
+						} else {
+							_, _ = fmt.Fprintf(connection, "$%d\r\n%s\r\n", len(value), value)
+						}
+					case "DEL":
+						mu.Lock()
+						_, ok := values[command[1]]
+						delete(values, command[1])
+						mu.Unlock()
+						if ok {
+							_, _ = fmt.Fprint(connection, ":1\r\n")
+						} else {
+							_, _ = fmt.Fprint(connection, ":0\r\n")
+						}
+					case "EVAL":
+						mu.Lock()
+						result := 1
+						bulkResult := ""
+						switch {
+						case len(command) >= 6 && strings.Contains(command[1], `redis.call("SADD"`) && strings.Contains(command[1], `redis.call("DEL"`):
+							bulkResult = values[command[3]]
+							if bulkResult == "" {
+								result = 0
+								break
+							}
+							values[command[4]] = bulkResult
+							if sets[command[5]] == nil {
+								sets[command[5]] = map[string]bool{}
+							}
+							sets[command[5]][command[4]] = true
+							delete(values, command[3])
+						case len(command) >= 6 && strings.Contains(command[1], `redis.call("SADD"`):
+							values[command[3]] = command[5]
+							if sets[command[4]] == nil {
+								sets[command[4]] = map[string]bool{}
+							}
+							sets[command[4]][command[3]] = true
+						case len(command) >= 6 && strings.Contains(command[1], `redis.call("SREM"`):
+							if values[command[3]] == command[5] {
+								delete(values, command[3])
+								delete(sets[command[4]], command[3])
+							} else {
+								result = 0
+							}
+						case len(command) >= 7 && strings.Contains(command[1], `ARGV[1]`):
+							if values[command[3]] == command[4] {
+								values[command[3]] = command[5]
+							} else {
+								result = 0
+							}
+						case len(command) >= 5 && strings.Contains(command[1], `redis.call("DEL"`):
+							if values[command[3]] == command[4] {
+								delete(values, command[3])
+							}
+						}
+						mu.Unlock()
+						if bulkResult != "" {
+							_, _ = fmt.Fprintf(connection, "$%d\r\n%s\r\n", len(bulkResult), bulkResult)
+						} else {
+							_, _ = fmt.Fprintf(connection, ":%d\r\n", result)
+						}
+					case "SRANDMEMBER":
+						mu.Lock()
+						member := ""
+						for candidate := range sets[command[1]] {
+							member = candidate
+							break
+						}
+						mu.Unlock()
+						if member == "" {
+							_, _ = fmt.Fprint(connection, "$-1\r\n")
+						} else {
+							_, _ = fmt.Fprintf(connection, "$%d\r\n%s\r\n", len(member), member)
+						}
+					case "SREM":
+						mu.Lock()
+						removed := sets[command[1]][command[2]]
+						delete(sets[command[1]], command[2])
+						mu.Unlock()
+						if removed {
+							_, _ = fmt.Fprint(connection, ":1\r\n")
+						} else {
+							_, _ = fmt.Fprint(connection, ":0\r\n")
+						}
+					case "HGETALL":
+						_, _ = fmt.Fprint(connection, "*10\r\n$10\r\ngeneration\r\n$2\r\ng1\r\n$8\r\nrevision\r\n$1\r\n1\r\n$6\r\ncounts\r\n$2\r\n{}\r\n$11\r\nactivatedAt\r\n$20\r\n2026-01-01T00:00:00Z\r\n$11\r\nevaluatedAt\r\n$20\r\n2026-02-03T04:05:06Z\r\n")
+					case "HMGET":
+						_, _ = fmt.Fprint(connection, "*3\r\n$28\r\n{\"availability\":\"available\"}\r\n$2\r\n{}\r\n$2\r\n{}\r\n")
+					case "SMEMBERS":
+						_, _ = fmt.Fprint(connection, "*0\r\n")
+					default:
+						_, _ = fmt.Fprint(connection, "-ERR unsupported\r\n")
 					}
-				case "DEL":
-					mu.Lock()
-					_, ok := values[command[1]]
-					delete(values, command[1])
-					mu.Unlock()
-					if ok {
-						_, _ = fmt.Fprint(connection, ":1\r\n")
-					} else {
-						_, _ = fmt.Fprint(connection, ":0\r\n")
-					}
-				case "HGETALL":
-					_, _ = fmt.Fprint(connection, "*10\r\n$10\r\ngeneration\r\n$2\r\ng1\r\n$8\r\nrevision\r\n$1\r\n1\r\n$6\r\ncounts\r\n$2\r\n{}\r\n$11\r\nactivatedAt\r\n$20\r\n2026-01-01T00:00:00Z\r\n$11\r\nevaluatedAt\r\n$20\r\n2026-02-03T04:05:06Z\r\n")
-				case "HMGET":
-					_, _ = fmt.Fprint(connection, "*3\r\n$28\r\n{\"availability\":\"available\"}\r\n$2\r\n{}\r\n$2\r\n{}\r\n")
-				case "SMEMBERS":
-					_, _ = fmt.Fprint(connection, "*0\r\n")
-				default:
-					_, _ = fmt.Fprint(connection, "-ERR unsupported\r\n")
 				}
 			}()
 			select {

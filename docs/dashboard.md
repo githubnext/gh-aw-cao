@@ -42,7 +42,7 @@ following up, check the availability, completeness, and freshness shown with it:
 
 - **Empty** means the dashboard has evidence and found no matching activity.
 - **Unavailable** means the dashboard could not obtain the evidence it needs.
-- **Partial** means the result may describe only part of the operation.
+- **Partial** means the result may describe only part of the campaign.
 - **Stale** means newer activity may not be represented yet.
 
 These distinctions keep missing information from looking like a healthy zero.
@@ -52,7 +52,7 @@ rollout mode, safe output, outcome, and operational value.
 
 ## Know the boundary
 
-The dashboard helps you observe and investigate operations. It does not start
+The dashboard helps you observe and investigate campaigns. It does not start
 work, approve an output, grant workflow authority, change rollout policy, or
 write to a repository. Make those decisions through the control repository and
 its reviewed workflows and policy.

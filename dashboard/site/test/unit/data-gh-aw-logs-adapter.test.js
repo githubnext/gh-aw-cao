@@ -573,7 +573,7 @@ describe('gh-aw logs adapter', () => {
       firewallBlockedCalls: 2,
       mcpToolCalls: 2,
       mcpResponseBytes: 192,
-      operationalValue: 8,
+      operationalGrader: 8,
       highPriorityAuditItems: 1,
       mediumPriorityAuditItems: 1
     });

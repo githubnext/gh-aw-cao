@@ -53,7 +53,7 @@ Before a campaign enters `live`, assign exactly one control repository as live m
 
 ## Catalog Ownership and Discovery
 
-Use one authoritative catalog for a shared campaign rather than duplicating its ownership across installations. The catalog repository's root `aw.yml` is the canonical campaign descriptor: it names the campaign, sets its minimum gh-aw version, and declares the workflows included in the full campaign. It is not a runtime authority or target-enrollment descriptor. Catalog maintainers publish pinned releases. An organization may install those releases directly or publish separately named local campaigns and repository-local workflows, but it must not silently fork the identity of a shared campaign. Each control repository retains ownership of its local extensions, credentials, targets, rollout, and incident response. In an enterprise deployment, enterprise-owned operations dispatch directly from the enterprise control repository to allowlisted repositories; the catalog does not dispatch through organization control repositories.
+Use one authoritative catalog for a shared campaign rather than duplicating its ownership across installations. The catalog repository's root `aw.yml` is the canonical campaign descriptor: it names the campaign, sets its minimum gh-aw version, and declares the workflows included in the full campaign. It is not a runtime authority or target-enrollment descriptor. Catalog maintainers publish pinned releases. An organization may install those releases directly or publish separately named local campaigns and repository-local workflows, but it must not silently fork the identity of a shared campaign. Each control repository retains ownership of its local extensions, credentials, targets, rollout, and incident response. In an enterprise deployment, enterprise-owned campaigns dispatch directly from the enterprise control repository to allowlisted repositories; the catalog does not dispatch through organization control repositories.
 
 When gh-aw installs the campaign, it writes a generated manifest under `.github/aw/campaigns/` in the control repository. That manifest records the installed campaign and file inventory used by the campaign lifecycle. Together, the source `aw.yml` and generated installation manifest provide campaign and installation provenance. They do not establish runtime authority, live status, or credential health; those remain operating records. Do not add a mutation workflow merely to register them.
 
@@ -109,7 +109,7 @@ Repository-local workflow names cannot shadow central workers. Shared control re
 
 ## Repository Outcome Projection
 
-Repository reporting is organized by the repository whose state, opportunity, or outcome was analyzed. It includes work from every visible Agentic Workflow acting on that repository, whether the workflow runs locally or as a worker in a centrally managed operation. Operation membership determines orchestration and governance; it does not determine whether an outcome appears in the repository view.
+Repository reporting is organized by the repository whose state, opportunity, or outcome was analyzed. It includes work from every visible Agentic Workflow acting on that repository, whether the workflow runs locally or as a worker in a centrally managed campaign. Campaign membership determines orchestration and governance; it does not determine whether an outcome appears in the repository view.
 
 Keep these dimensions separate in every report record:
 
@@ -120,7 +120,7 @@ Keep these dimensions separate in every report record:
 | **Output repository** | Repository containing the durable issue, pull request, comment, or review artifact | `owner/repository` |
 | **Campaign membership** | Optional campaign and worker relationship used for central orchestration | `(runtime_repository, operation_slug, worker_path)` |
 
-For a repository-local workflow, the runtime and subject repositories are normally the same and operation membership is absent. For a central worker, the runtime repository is the control repository, the subject is the selected target, and the output repository may be the review repository or the target according to the effective mode.
+For a repository-local workflow, the runtime and subject repositories are normally the same and campaign membership is absent. For a central worker, the runtime repository is the control repository, the subject is the selected target, and the output repository may be the review repository or the target according to the effective mode.
 
 Operational-value opportunities are deduplicated within `(subject_repository, opportunity_key, evaluator_digest)`. The producer remains attributable through `(runtime_repository, workflow_path)`. Ownership remains policy and provenance metadata: definition owner, runtime owner, subject owner, output owner, and live mutation authority must not be collapsed into one ambiguous `owner` field.
 

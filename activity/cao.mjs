@@ -9,6 +9,7 @@ import { createInterface } from 'node:readline';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import { setTimeout as delay } from 'node:timers/promises';
 import { pathToFileURL } from 'node:url';
 import { createDebug } from './debug.mjs';
 import { adaptCachedGhAwJsonlStream, createCachedJsonlPayloadHasher } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
@@ -28,12 +29,19 @@ import { readCollection, readRecord, readTransactions } from '../dashboard/site/
 import { mergeActivityStructuralRecord } from '../dashboard/site/src/data/storage/retention.js';
 import { doctorSqliteDatabase } from '../dashboard/site/src/data/storage/sqlite-doctor.js';
 import { installSqliteIndexedDB } from '../dashboard/site/src/data/storage/sqlite-indexeddb.js';
+import {
+  operationalValueReserve,
+  REPOSITORY_COORDINATE,
+  runOperationalValue
+} from './operational-value.mjs';
+import { runProblemClustering } from './problem-clustering.mjs';
 import { discoverInventory } from './inventory.mjs';
 import { discoverInventoryDashboardSources } from './inventory-sources.mjs';
 import { hasComputation, queryComputation } from './computations/index.mjs';
 import {
   analyzeDashboardComplexity,
-  formatDashboardComplexityMarkdown
+  formatDashboardComplexityMarkdown,
+  readDashboardTableCounts
 } from './dashboard-complexity.mjs';
 import { pruneDashboardDocument } from './dashboard-prune.mjs';
 
@@ -47,7 +55,8 @@ const ENTITY_COLLECTIONS = [
   'domains',
   'tools',
   'audits',
-  'issues'
+  'issues',
+  'operationalValues'
 ];
 const NORMALIZED_COLLECTIONS = ['campaigns', ...ENTITY_COLLECTIONS];
 const QUERY_COLLECTIONS = [...ENTITY_COLLECTIONS, 'transactions'];
@@ -60,6 +69,9 @@ const DEFAULT_ACTIVITY_STATS_WORKFLOW = 'cao-activity.yml';
 const DEFAULT_ACTIVITY_STATS_ARTIFACT = 'cao-activity-index';
 const DEFAULT_ACTIVITY_STATS_LIMIT = 5;
 const DEFAULT_GH_LIMIT = 30;
+const DEFAULT_ISSUE_STATUS_BATCH_SIZE = 50;
+const DEFAULT_ISSUE_STATUS_GRAPHQL_COST_BUDGET = 25;
+const DEFAULT_ISSUE_STATUS_GRAPHQL_MIN_REMAINING = 500;
 const DEFAULT_COMPACTED_JSONL_SHARD_BYTES = 4 * 1024 * 1024;
 // Per-shard normalization output is retained only as an incremental cache. It lives
 // in a subdirectory so it is never published, hashed into the manifest, or ingested.
@@ -80,7 +92,7 @@ const GH_AW_INSTALLER_COMMAND = 'curl --fail --silent --show-error --location ht
 const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json';
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
-const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'query', 'computation', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
+const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'issue-status', 'query', 'computation', 'operational-value', 'cluster-problems', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
 
 // Intentional CLI misuse that should print usage without an internal stack trace.
 class UsageError extends Error {}
@@ -93,14 +105,17 @@ const USAGE = `Usage:
   cao enable CAMPAIGN...
   cao disable CAMPAIGN...
   cao discover-workflows --control-settings FILE --inventory FILE --output FILE --repo OWNER/REPO [--root DIRECTORY]
-  cao dashboard-complexity [QUERY_ID] --input FILE [--format json|markdown] [--limit COUNT]
+  cao dashboard-complexity [QUERY_ID] --input FILE [--database FILE] [--format json|markdown] [--limit COUNT]
   cao prune-dashboard --input FILE [--output FILE]
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY|--runs-dir DIRECTORY --records-dir DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input-dir SHARD_DIRECTORY]
   cao compact-jsonl --input-dir SHARD_DIRECTORY --group OWNER/REPOSITORY=SHARD_PREFIX [--group OWNER/REPOSITORY=SHARD_PREFIX...] [--max-bytes BYTES]
+  cao issue-status [--database FILE] --input-dir SHARD_DIRECTORY [--batch-size COUNT] [--graphql-cost-budget POINTS] [--graphql-min-remaining POINTS]
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao computation runtime-health [--database FILE] [--inventory FILE] [--campaign SLUG] [--diagnose]
+  cao operational-value [--database FILE] [--root DIRECTORY] [--output FILE] [--timestamp TIME] [--repository OWNER/REPO] [--retention-days DAYS|all] [--max-github-api-rate-limit LIMIT]
+  cao cluster-problems [--database FILE] [--root DIRECTORY] [--timestamp TIME]
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
   cao download [--url URL] [--output DIRECTORY]
   cao hash-payloads [--database FILE] [--shard-dir SHARD_DIRECTORY] [--normalized-dir DIRECTORY] [--runs-dir DIRECTORY] [--records-dir DIRECTORY] [--inventory FILE] [--output FILE]
@@ -114,9 +129,12 @@ Query local CAO data as JSON. Download the deployed snapshot before querying:
   cao dashboard-complexity --input dashboard/site/dashboard.json
   cao dashboard-complexity campaign-inventory --input dashboard/site/dashboard.json
   cao prune-dashboard --input dashboard.json --output dashboard.pruned.json
+  cao issue-status --input-dir .cao/gh-aw-logs-shards --graphql-cost-budget 25 --graphql-min-remaining 500
   cao computation runtime-health
   cao computation runtime-health --campaign dependabot
   cao computation runtime-health --campaign dependabot --diagnose
+  cao operational-value --output .cao/gh-aw-logs-shards/operational-values.jsonl --max-github-api-rate-limit -2000
+  cao cluster-problems
   cao gh runs -R githubnext/gh-aw-cao -w cao-activity --status failure --since 2026-09-01 --until 2026-09-15
   cao gh issues -R githubnext/gh-aw-cao --since 2026-09-01
   cao gh prs -R githubnext/gh-aw-cao -w cao-activity -L 10
@@ -155,6 +173,17 @@ Activity stats defaults (uses the "gh" CLI and requires GH_TOKEN):
   WORKFLOW  ${DEFAULT_ACTIVITY_STATS_WORKFLOW}
   ARTIFACT  ${DEFAULT_ACTIVITY_STATS_ARTIFACT}
   LIMIT     ${DEFAULT_ACTIVITY_STATS_LIMIT}
+
+Operational value scripts:
+  cao operational-value discovers <package>/operational-value.mjs below --root.
+  Each script receives one JSON request on stdin and emits JSONL records with
+  timestamp, repository, valueId, and a finite numeric value.
+
+Problem clustering scripts:
+  cao cluster-problems discovers <package>/problem-clustering.mjs below --root.
+  Each script receives one JSON request on stdin and emits bounded JSONL problem
+  records with actionable fixPrompt fields. Successful output replaces that
+  package's rows in cao_problems.
 
 `;
 
@@ -807,7 +836,7 @@ function parseOptions(arguments_) {
     const value = arguments_[index + 1];
     if (!value || value.startsWith('--')) throw new UsageError(`Missing value for --${name}`);
     index += 1;
-    if (name === 'where' || name === 'group') {
+    if (name === 'where' || name === 'group' || name === 'repository') {
       const existing = options[name];
       options[name] = [...(Array.isArray(existing) ? existing : []), value];
     } else if (options[name] !== undefined) {
@@ -1251,15 +1280,48 @@ function deployedDataUrl(value) {
   return url;
 }
 
-async function downloadFile(url, destination, { allowEmpty = false } = {}) {
-  const response = await fetch(url, {
-    headers: { accept: 'application/x-ndjson, application/json, text/plain' },
-    redirect: 'follow',
-    signal: AbortSignal.timeout(120_000)
-  });
+class TransientDownloadError extends Error {}
+
+function isTransientTransportError(error) {
+  const transientCodes = new Set([
+    'EAI_AGAIN',
+    'ECONNREFUSED',
+    'ECONNRESET',
+    'ENETUNREACH',
+    'EPIPE',
+    'ETIMEDOUT',
+    'UND_ERR_SOCKET'
+  ]);
+  return error instanceof TypeError
+    || error?.name === 'AbortError'
+    || error?.name === 'TimeoutError'
+    || transientCodes.has(error?.code)
+    || (error?.cause && isTransientTransportError(error.cause));
+}
+
+async function downloadFile(url, destination, { allowEmpty = false, signal } = {}) {
+  let response;
+  try {
+    response = await fetch(url, {
+      headers: { accept: 'application/x-ndjson, application/json, text/plain' },
+      redirect: 'follow',
+      signal: signal
+        ? AbortSignal.any([signal, AbortSignal.timeout(120_000)])
+        : AbortSignal.timeout(120_000)
+    });
+  } catch (error) {
+    throw new TransientDownloadError(`Unable to download ${url}: transport failure`, { cause: error });
+  }
   if (!response.ok) throw new Error(`Unable to download ${url}: HTTP ${response.status}`);
   if (!response.body) throw new Error(`Unable to download ${url}: response body is empty`);
-  await pipeline(Readable.fromWeb(response.body), createWriteStream(destination, { flags: 'wx' }));
+  try {
+    await pipeline(Readable.fromWeb(response.body), createWriteStream(destination, { flags: 'wx' }));
+  } catch (error) {
+    if (isTransientTransportError(error)) {
+      throw new TransientDownloadError(`Unable to download ${url}: interrupted response`, { cause: error });
+    }
+    throw error;
+  }
   const size = (await stat(destination)).size;
   if (!allowEmpty && size === 0) {
     throw new Error(`Unable to download ${url}: response body is empty`);
@@ -1284,86 +1346,111 @@ export async function downloadDeployedDashboardData({
   const inventoryUrl = new URL('inventory-sources.json', manifestUrl);
   const outputDirectory = path.resolve(output);
   await mkdir(outputDirectory, { recursive: true });
-  const temporaryDirectory = await mkdtemp(path.join(outputDirectory, '.deployed-dashboard-'));
-  const temporaryManifest = path.join(temporaryDirectory, 'payload-hashes.json');
-  const temporaryPayloads = path.join(temporaryDirectory, 'payloads');
-  const temporaryDatabase = path.join(temporaryDirectory, 'gh-aw-logs.sqlite');
-  const temporaryInventory = path.join(temporaryDirectory, 'inventory-sources.json');
   const manifestPath = path.join(outputDirectory, 'payload-hashes.json');
   const databasePath = path.join(outputDirectory, 'gh-aw-logs.sqlite');
   const inventoryPath = path.join(outputDirectory, 'inventory-sources.json');
+  const isChecksumMismatch = (error) => error instanceof Error
+    && /^Activity (?:SQLite|shard) checksum mismatch: /.test(error.message);
+  const isTransientDownloadFailure = (error) => error instanceof TransientDownloadError
+    || (error instanceof Error && /: HTTP (?:408|425|429|5\d\d)$/.test(error.message));
 
-  try {
-    await Promise.all([
-      downloadFile(manifestUrl, temporaryManifest),
-      downloadFile(databaseUrl, temporaryDatabase),
-      downloadFile(inventoryUrl, temporaryInventory)
-    ]);
-    const inventorySources = JSON.parse(await readFile(temporaryInventory, 'utf8'));
-    if (!isMapping(inventorySources)) {
-      throw new Error('Deployed inventory sources must contain a JSON object.');
-    }
-    const hashes = JSON.parse(await readFile(temporaryManifest, 'utf8'));
-    const validDigest = (digest) => /^[a-f0-9]{64}$/i.test(String(digest));
-    const expectedDatabaseDigest = hashes['gh-aw-logs.sqlite'];
-    if (!validDigest(expectedDatabaseDigest)) {
-      throw new Error('Activity snapshot manifest contains no valid SQLite checksum.');
-    }
-    const databaseDigest = await hashFileContents(temporaryDatabase);
-    if (databaseDigest !== expectedDatabaseDigest.toLowerCase()) {
-      throw new Error('Activity SQLite checksum mismatch: gh-aw-logs.sqlite');
-    }
-    const runEntries = Object.entries(hashes)
-      .filter(([name, digest]) => /^gh-aw-logs-runs\/[^/]+\.jsonl$/.test(name)
-        && validDigest(digest))
-      .sort(([left], [right]) => left.localeCompare(right));
-    const recordEntries = Object.entries(hashes)
-      .filter(([name, digest]) => /^gh-aw-logs-records\/[^/]+\.jsonl$/.test(name)
-        && validDigest(digest))
-      .sort(([left], [right]) => left.localeCompare(right));
-    const rawEntries = Object.entries(hashes)
-      .filter(([name, digest]) => /^gh-aw-logs-shards\/[^/]+\.jsonl$/.test(name)
-        && validDigest(digest))
-      .sort(([left], [right]) => left.localeCompare(right));
-    const payloadEntries = runEntries.length > 0 ? [...runEntries, ...recordEntries] : rawEntries;
-    if (payloadEntries.length === 0) throw new Error('Activity shard manifest contains no valid JSONL shards.');
-    await mkdir(temporaryPayloads);
-    for (const [name, expectedDigest] of payloadEntries) {
-      const destination = path.join(temporaryPayloads, name);
-      await mkdir(path.dirname(destination), { recursive: true });
-      const size = await downloadFile(new URL(name, manifestUrl), destination, { allowEmpty: true });
-      const hash = createHash('sha256');
-      for await (const chunk of createReadStream(destination)) hash.update(chunk);
-      if (hash.digest('hex') !== expectedDigest.toLowerCase()) {
-        throw new Error(`Activity shard checksum mismatch: ${name}`);
+  const downloadAttempt = async () => {
+    const temporaryDirectory = await mkdtemp(path.join(outputDirectory, '.deployed-dashboard-'));
+    const temporaryManifest = path.join(temporaryDirectory, 'payload-hashes.json');
+    const temporaryPayloads = path.join(temporaryDirectory, 'payloads');
+    const temporaryDatabase = path.join(temporaryDirectory, 'gh-aw-logs.sqlite');
+    const temporaryInventory = path.join(temporaryDirectory, 'inventory-sources.json');
+    const abortController = new AbortController();
+    try {
+      const downloads = [
+        downloadFile(manifestUrl, temporaryManifest, { signal: abortController.signal }),
+        downloadFile(databaseUrl, temporaryDatabase, { signal: abortController.signal }),
+        downloadFile(inventoryUrl, temporaryInventory, { signal: abortController.signal })
+      ];
+      await Promise.all(downloads).catch(async (error) => {
+        abortController.abort();
+        await Promise.allSettled(downloads);
+        throw error;
+      });
+      const inventorySources = JSON.parse(await readFile(temporaryInventory, 'utf8'));
+      if (!isMapping(inventorySources)) {
+        throw new Error('Deployed inventory sources must contain a JSON object.');
       }
-      if (size === 0) {
-        delete hashes[name];
-        await rm(destination);
+      const hashes = JSON.parse(await readFile(temporaryManifest, 'utf8'));
+      const validDigest = (digest) => /^[a-f0-9]{64}$/i.test(String(digest));
+      const expectedDatabaseDigest = hashes['gh-aw-logs.sqlite'];
+      if (!validDigest(expectedDatabaseDigest)) {
+        throw new Error('Activity snapshot manifest contains no valid SQLite checksum.');
       }
+      const databaseDigest = await hashFileContents(temporaryDatabase);
+      if (databaseDigest !== expectedDatabaseDigest.toLowerCase()) {
+        throw new Error('Activity SQLite checksum mismatch: gh-aw-logs.sqlite');
+      }
+      const runEntries = Object.entries(hashes)
+        .filter(([name, digest]) => /^gh-aw-logs-runs\/[^/]+\.jsonl$/.test(name)
+          && validDigest(digest))
+        .sort(([left], [right]) => left.localeCompare(right));
+      const recordEntries = Object.entries(hashes)
+        .filter(([name, digest]) => /^gh-aw-logs-records\/[^/]+\.jsonl$/.test(name)
+          && validDigest(digest))
+        .sort(([left], [right]) => left.localeCompare(right));
+      const rawEntries = Object.entries(hashes)
+        .filter(([name, digest]) => /^gh-aw-logs-shards\/[^/]+\.jsonl$/.test(name)
+          && validDigest(digest))
+        .sort(([left], [right]) => left.localeCompare(right));
+      const payloadEntries = runEntries.length > 0 ? [...runEntries, ...recordEntries] : rawEntries;
+      if (payloadEntries.length === 0) throw new Error('Activity shard manifest contains no valid JSONL shards.');
+      await mkdir(temporaryPayloads);
+      for (const [name, expectedDigest] of payloadEntries) {
+        const destination = path.join(temporaryPayloads, name);
+        await mkdir(path.dirname(destination), { recursive: true });
+        const size = await downloadFile(new URL(name, manifestUrl), destination, { allowEmpty: true });
+        const hash = createHash('sha256');
+        for await (const chunk of createReadStream(destination)) hash.update(chunk);
+        if (hash.digest('hex') !== expectedDigest.toLowerCase()) {
+          throw new Error(`Activity shard checksum mismatch: ${name}`);
+        }
+        if (size === 0) {
+          delete hashes[name];
+          await rm(destination);
+        }
+      }
+      await writeFile(temporaryManifest, `${JSON.stringify(hashes, null, 2)}\n`);
+      const payloadDirectories = [...new Set(payloadEntries.map(([name]) => name.split('/')[0]))];
+      for (const directory of payloadDirectories) {
+        const destination = path.join(outputDirectory, directory);
+        await rm(destination, { recursive: true, force: true });
+        await rename(path.join(temporaryPayloads, directory), destination);
+      }
+      await replaceFile(temporaryManifest, manifestPath);
+      await replaceFile(temporaryDatabase, databasePath);
+      await replaceFile(temporaryInventory, inventoryPath);
+      return {
+        manifestUrl: manifestUrl.href,
+        databaseUrl: databaseUrl.href,
+        inventoryUrl: inventoryUrl.href,
+        manifest: manifestPath,
+        payloadDirectories: payloadDirectories.map((directory) => path.join(outputDirectory, directory)),
+        database: databasePath,
+        inventory: inventoryPath
+      };
+    } finally {
+      abortController.abort();
+      await rm(temporaryDirectory, { recursive: true, force: true });
     }
-    await writeFile(temporaryManifest, `${JSON.stringify(hashes, null, 2)}\n`);
-    const payloadDirectories = [...new Set(payloadEntries.map(([name]) => name.split('/')[0]))];
-    for (const directory of payloadDirectories) {
-      const destination = path.join(outputDirectory, directory);
-      await rm(destination, { recursive: true, force: true });
-      await rename(path.join(temporaryPayloads, directory), destination);
+  };
+
+  let lastError;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      return await downloadAttempt();
+    } catch (error) {
+      lastError = error;
+      if ((!isChecksumMismatch(error) && !isTransientDownloadFailure(error)) || attempt === 3) throw error;
+      if (isTransientDownloadFailure(error)) await delay(attempt * 1_000);
     }
-    await replaceFile(temporaryManifest, manifestPath);
-    await replaceFile(temporaryDatabase, databasePath);
-    await replaceFile(temporaryInventory, inventoryPath);
-    return {
-      manifestUrl: manifestUrl.href,
-      databaseUrl: databaseUrl.href,
-      inventoryUrl: inventoryUrl.href,
-      manifest: manifestPath,
-      payloadDirectories: payloadDirectories.map((directory) => path.join(outputDirectory, directory)),
-      database: databasePath,
-      inventory: inventoryPath
-    };
-  } finally {
-    await rm(temporaryDirectory, { recursive: true, force: true });
   }
+  throw lastError;
 }
 
 export async function ingestGhAwLogDirectory(indexedDB, contextPath, logDirectory, options = {}) {
@@ -1754,7 +1841,8 @@ async function hashActivityPayloads({
               domains: [],
               tools: [],
               audits: [],
-              issues: []
+              issues: [],
+              operationalValues: []
             }
           },
           records: {
@@ -1770,7 +1858,8 @@ async function hashActivityPayloads({
               audits: batch.audits.filter((audit) =>
                 String(audit.status ?? '').trim().toLowerCase() !== 'info'
               ),
-              issues: batch.issues
+              issues: batch.issues,
+              operationalValues: batch.operationalValues
             }
           }
         };
@@ -2060,6 +2149,255 @@ function inTimeRange(timestamp, range) {
     && (range.until === undefined || timestamp <= range.until);
 }
 
+function boundedPositiveInteger(value, name, defaultValue, maximum) {
+  if (value === undefined) return defaultValue;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > maximum) {
+    throw new UsageError(`--${name} must be an integer from 1 to ${maximum}`);
+  }
+  return parsed;
+}
+
+function nonNegativeInteger(value, name, defaultValue) {
+  if (value === undefined) return defaultValue;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 0) {
+    throw new UsageError(`--${name} must be a non-negative integer`);
+  }
+  return parsed;
+}
+
+function graphqlDocument(query, variables = {}) {
+  const arguments_ = ['api', 'graphql', '-f', `query=${query}`];
+  for (const [name, value] of Object.entries(variables)) {
+    arguments_.push('-f', `${name}=${value}`);
+  }
+  const result = spawnSync('gh', arguments_, {
+    encoding: 'utf8',
+    env: { ...process.env, GH_PAGER: 'cat' },
+    maxBuffer: 16 * 1024 * 1024
+  });
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    throw new Error(`GitHub GraphQL query failed: ${String(result.stderr || result.stdout).trim() || `exit ${result.status}`}`);
+  }
+  let document;
+  try {
+    document = JSON.parse(result.stdout);
+  } catch {
+    throw new Error('GitHub GraphQL query returned invalid JSON');
+  }
+  if (Array.isArray(document.errors) && document.errors.length > 0) {
+    throw new Error(`GitHub GraphQL query failed: ${document.errors.map((error) => error.message).join('; ')}`);
+  }
+  return document;
+}
+
+function graphqlRateLimit(document) {
+  const rateLimit = document?.data?.rateLimit;
+  if (![rateLimit?.cost, rateLimit?.remaining].every(Number.isSafeInteger)) {
+    throw new Error('GitHub GraphQL response did not include rate-limit cost and remaining points');
+  }
+  return {
+    cost: rateLimit.cost,
+    remaining: rateLimit.remaining,
+    resetAt: typeof rateLimit.resetAt === 'string' ? rateLimit.resetAt : null
+  };
+}
+
+function issueStatusKey(repository, number) {
+  return `${repository.toLowerCase()}#${number}`;
+}
+
+function issueStatusTargets(issues) {
+  const targets = new Map();
+  for (const issue of issues) {
+    if (issue.isPullRequest === true) continue;
+    const repository = String(issue.repositoryFullName ?? (
+      typeof issue.owner === 'string' && typeof issue.repository === 'string'
+        ? `${issue.owner}/${issue.repository}`
+        : ''
+    ));
+    const number = Number(issue.number);
+    if (!repository.includes('/') || !Number.isSafeInteger(number) || number < 1) continue;
+    const [owner, ...repositoryParts] = repository.split('/');
+    const name = repositoryParts.join('/');
+    if (!owner || !name || name.includes('/')) continue;
+    targets.set(issueStatusKey(repository, number), {
+      owner,
+      name,
+      repository: `${owner}/${name}`,
+      number,
+      statusObservedAt: issue.statusObservedAt
+    });
+  }
+  return [...targets.values()].sort((left, right) => {
+    const leftObserved = Date.parse(String(left.statusObservedAt ?? ''));
+    const rightObserved = Date.parse(String(right.statusObservedAt ?? ''));
+    const freshness = (Number.isFinite(leftObserved) ? leftObserved : Number.NEGATIVE_INFINITY)
+      - (Number.isFinite(rightObserved) ? rightObserved : Number.NEGATIVE_INFINITY);
+    return freshness || left.repository.localeCompare(right.repository) || left.number - right.number;
+  });
+}
+
+function issueStatusQuery(batch) {
+  const fields = batch.map((target, index) => (
+    `i${index}: issue(number: ${target.number}) { number state stateReason closedAt url }`
+  )).join('\n');
+  return `query($owner: String!, $name: String!) {
+  repository(owner: $owner, name: $name) {
+    ${fields}
+  }
+  rateLimit { cost remaining resetAt }
+}`;
+}
+
+async function applyIssueStatuses(directory, statuses) {
+  let updatedFiles = 0;
+  let updatedRecords = 0;
+  const names = (await readdir(directory)).filter((name) => name.endsWith('.jsonl')).sort();
+  for (const name of names) {
+    const filePath = path.join(directory, name);
+    const lines = [];
+    let changed = false;
+    for await (const line of jsonlLines([filePath])) {
+      const envelope = JSON.parse(line);
+      const entity = envelope?.kind === 'safe_output_item'
+        ? githubEntityUrl(envelope.safe_output?.url)
+        : undefined;
+      const status = entity && !entity.url.includes('/pull/')
+        ? statuses.get(issueStatusKey(entity.repository, entity.number))
+        : undefined;
+      if (status) {
+        envelope.safe_output = { ...envelope.safe_output, github_issue_status: status };
+        changed = true;
+        updatedRecords += 1;
+        lines.push(JSON.stringify(envelope));
+      } else {
+        lines.push(line);
+      }
+    }
+    if (!changed) continue;
+    const temporaryPath = `${filePath}.${process.pid}.tmp`;
+    await writeFile(temporaryPath, `${lines.join('\n')}\n`, { flag: 'wx' });
+    await rename(temporaryPath, filePath);
+    updatedFiles += 1;
+  }
+  return { updatedFiles, updatedRecords };
+}
+
+export async function updateIssueStatuses(indexedDB, inputDirectory, options) {
+  const batchSize = boundedPositiveInteger(
+    option(options, 'batch-size', false),
+    'batch-size',
+    DEFAULT_ISSUE_STATUS_BATCH_SIZE,
+    100
+  );
+  const costBudget = boundedPositiveInteger(
+    option(options, 'graphql-cost-budget', false),
+    'graphql-cost-budget',
+    DEFAULT_ISSUE_STATUS_GRAPHQL_COST_BUDGET,
+    5000
+  );
+  const minimumRemaining = nonNegativeInteger(
+    option(options, 'graphql-min-remaining', false),
+    'graphql-min-remaining',
+    DEFAULT_ISSUE_STATUS_GRAPHQL_MIN_REMAINING
+  );
+  const targets = issueStatusTargets(await readCollection(indexedDB, 'issues'));
+  if (targets.length === 0) {
+    return {
+      command: 'issue-status',
+      issues: 0,
+      queried: 0,
+      statuses: 0,
+      updatedFiles: 0,
+      updatedRecords: 0,
+      rateLimit: {
+        budget: costBudget,
+        cost: 0,
+        minimumRemaining,
+        remaining: null,
+        resetAt: null
+      },
+      stopped: null,
+      errors: []
+    };
+  }
+  const initialDocument = graphqlDocument('query { rateLimit { cost remaining resetAt } }');
+  let rateLimit = graphqlRateLimit(initialDocument);
+  let cost = rateLimit.cost;
+  const statuses = new Map();
+  const errors = [];
+  let queried = 0;
+  let stopped = null;
+
+  const byRepository = Map.groupBy(targets, (target) => target.repository);
+  outer: for (const repositoryTargets of byRepository.values()) {
+    for (let offset = 0; offset < repositoryTargets.length; offset += batchSize) {
+      if (cost + 1 > costBudget) {
+        stopped = 'cost-budget';
+        break outer;
+      }
+      if (rateLimit.remaining - 1 < minimumRemaining) {
+        stopped = 'remaining-floor';
+        break outer;
+      }
+      const batch = repositoryTargets.slice(offset, offset + batchSize);
+      const [{ owner, name, repository }] = batch;
+      let document;
+      try {
+        document = graphqlDocument(issueStatusQuery(batch), { owner, name });
+      } catch (error) {
+        errors.push({
+          repository,
+          message: error instanceof Error ? error.message : String(error)
+        });
+        stopped = 'query-error';
+        break outer;
+      }
+      rateLimit = graphqlRateLimit(document);
+      cost += rateLimit.cost;
+      const result = document.data?.repository;
+      for (let index = 0; index < batch.length; index += 1) {
+        queried += 1;
+        const issue = result?.[`i${index}`];
+        if (!issue) continue;
+        const target = batch[index];
+        statuses.set(issueStatusKey(target.repository, target.number), {
+          state: issue.state,
+          closed: issue.state === 'CLOSED',
+          state_reason: issue.stateReason ?? null,
+          closed_at: issue.closedAt ?? null,
+          observed_at: new Date().toISOString()
+        });
+      }
+      if (cost > costBudget) {
+        stopped = 'cost-budget';
+        break outer;
+      }
+    }
+  }
+
+  const updates = await applyIssueStatuses(path.resolve(inputDirectory), statuses);
+  return {
+    command: 'issue-status',
+    issues: targets.length,
+    queried,
+    statuses: statuses.size,
+    ...updates,
+    rateLimit: {
+      budget: costBudget,
+      cost,
+      minimumRemaining,
+      remaining: rateLimit.remaining,
+      resetAt: rateLimit.resetAt
+    },
+    stopped,
+    errors
+  };
+}
+
 export async function queryGhData(indexedDB, resource, options) {
   if (!GH_RESOURCES.has(resource)) throw new Error(`Unknown gh resource: ${resource}`);
   const [repositories, workflows, runs, issues] = await Promise.all([
@@ -2254,7 +2592,8 @@ export async function analyzeDashboardComplexityFile({
   inputPath,
   queryId,
   format = 'json',
-  limit
+  limit,
+  databasePath
 } = {}) {
   let document;
   try {
@@ -2271,7 +2610,10 @@ export async function analyzeDashboardComplexityFile({
   if (limit !== undefined && (!Number.isInteger(limit) || limit < 1)) {
     throw new UsageError('--limit must be a positive integer');
   }
-  const analysis = analyzeDashboardComplexity(document);
+  const tableCounts = databasePath === undefined
+    ? undefined
+    : readDashboardTableCounts(path.resolve(databasePath));
+  const analysis = analyzeDashboardComplexity(document, { tableCounts });
   const selected = queryId === undefined
     ? undefined
     : analysis.inventory.find((query) => query.name === queryId);
@@ -2288,7 +2630,7 @@ export async function analyzeDashboardComplexityFile({
   };
 }
 
-export async function runCli(arguments_, input = process.stdin) {
+export async function runCli(arguments_, input = process.stdin, { signal } = {}) {
   const [command, ...rawOptionArguments] = arguments_;
   if (!command || command === '--help' || command === 'help') return USAGE;
   if (command === 'init') {
@@ -2340,11 +2682,12 @@ export async function runCli(arguments_, input = process.stdin) {
     });
   }
   if (command === 'dashboard-complexity') {
-    rejectUnknownOptions(options, ['input', 'format', 'limit']);
+    rejectUnknownOptions(options, ['input', 'database', 'format', 'limit']);
     const limit = option(options, 'limit', false);
     return analyzeDashboardComplexityFile({
       inputPath: option(options, 'input'),
       queryId: dashboardQueryId,
+      databasePath: option(options, 'database', false),
       format: option(options, 'format', false) || 'json',
       limit: limit === undefined ? undefined : Number(limit)
     });
@@ -2421,8 +2764,31 @@ export async function runCli(arguments_, input = process.stdin) {
       runTtlDays: runTtlDays(options)
     });
   }
+  if (command === 'cluster-problems') {
+    rejectUnknownOptions(options, ['database', 'root', 'timestamp']);
+    return runProblemClustering({
+      databasePath,
+      root: option(options, 'root', false) || '.',
+      timestamp: option(options, 'timestamp', false) || new Date().toISOString(),
+      signal
+    });
+  }
   const indexedDB = await createDatabase(databasePath);
 
+  if (command === 'issue-status') {
+    rejectUnknownOptions(options, [
+      'database',
+      'input-dir',
+      'batch-size',
+      'graphql-cost-budget',
+      'graphql-min-remaining'
+    ]);
+    return updateIssueStatuses(
+      indexedDB,
+      option(options, 'input-dir'),
+      options
+    );
+  }
   if (command === 'gh') {
     rejectUnknownOptions(options, ['database', 'repo', 'workflow', 'status', 'since', 'until', 'limit']);
     if (ghResource !== 'runs' && options.status) {
@@ -2455,6 +2821,28 @@ export async function runCli(arguments_, input = process.stdin) {
       campaign: option(options, 'campaign', false),
       diagnose: Boolean(options.diagnose),
       inventorySources
+    });
+  }
+  if (command === 'operational-value') {
+    rejectUnknownOptions(options, ['database', 'root', 'output', 'timestamp', 'repository', 'retention-days', 'max-github-api-rate-limit']);
+    const repositoryOptions = options.repository === undefined
+      ? []
+      : Array.isArray(options.repository) ? options.repository : [options.repository];
+    for (const repository of repositoryOptions) {
+      if (!REPOSITORY_COORDINATE.test(repository)) {
+        throw new UsageError('--repository must use OWNER/REPO form');
+      }
+    }
+    return runOperationalValue({
+      indexedDB,
+      databasePath,
+      root: option(options, 'root', false) || '.',
+      outputPath: option(options, 'output', false),
+      timestamp: option(options, 'timestamp', false) || new Date().toISOString(),
+      repositories: repositoryOptions,
+      rateLimitReserve: operationalValueReserve(option(options, 'max-github-api-rate-limit', false), UsageError),
+      retentionWindow: retentionWindowMs(options),
+      signal
     });
   }
 
@@ -2513,9 +2901,30 @@ export async function runCli(arguments_, input = process.stdin) {
 }
 
 async function main() {
-  const output = await runCli(process.argv.slice(2));
-  process.stdout.write(`${typeof output === 'string' ? output : JSON.stringify(output, null, 2)}\n`);
-  if (typeof output === 'object' && output?.command === 'doctor' && !output.healthy) process.exitCode = 2;
+  const arguments_ = process.argv.slice(2);
+  const controller = new AbortController();
+  let terminationSignal;
+  const terminate = (signal) => {
+    terminationSignal = signal;
+    controller.abort(new Error(`Received ${signal}`));
+  };
+  const onSigint = () => terminate('SIGINT');
+  const onSigterm = () => terminate('SIGTERM');
+  if (arguments_[0] === 'operational-value' || arguments_[0] === 'cluster-problems') {
+    process.once('SIGINT', onSigint);
+    process.once('SIGTERM', onSigterm);
+  }
+  try {
+    const output = await runCli(arguments_, process.stdin, { signal: controller.signal });
+    process.stdout.write(`${typeof output === 'string' ? output : JSON.stringify(output, null, 2)}\n`);
+    if (typeof output === 'object' && output?.command === 'doctor' && !output.healthy) process.exitCode = 2;
+  } catch (error) {
+    if (!controller.signal.aborted || error !== controller.signal.reason) throw error;
+    process.exitCode = terminationSignal === 'SIGINT' ? 130 : 143;
+  } finally {
+    process.removeListener('SIGINT', onSigint);
+    process.removeListener('SIGTERM', onSigterm);
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {

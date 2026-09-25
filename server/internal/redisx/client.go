@@ -11,13 +11,14 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
 
 var redisLog = logger.New("cao:redis")
+
+const maxIdleConnectionAge = 5 * time.Minute
 
 type Client struct {
 	address   string
@@ -26,7 +27,22 @@ type Client struct {
 	database  int
 	tlsConfig *tls.Config
 	timeout   time.Duration
-	mu        sync.Mutex
+	pool      chan *redisConnection
+}
+
+type redisConnection struct {
+	connection net.Conn
+	reader     *bufio.Reader
+	writer     *bufio.Writer
+	lastUsed   time.Time
+}
+
+type redisResponseError struct {
+	message string
+}
+
+func (err redisResponseError) Error() string {
+	return err.message
 }
 
 func New(rawURL string) (*Client, error) {
@@ -75,6 +91,7 @@ func New(rawURL string) (*Client, error) {
 		database:  database,
 		tlsConfig: tlsConfig,
 		timeout:   10 * time.Second,
+		pool:      make(chan *redisConnection, 8),
 	}, nil
 }
 
@@ -87,61 +104,124 @@ func isLoopbackHost(hostname string) bool {
 }
 
 func (c *Client) Do(ctx context.Context, args ...string) (any, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
 	if len(args) > 0 {
 		redisLog.Printf("executing command=%s arguments=%d", args[0], len(args)-1)
 	}
-	return c.do(ctx, args...)
-}
-
-func (c *Client) do(ctx context.Context, args ...string) (any, error) {
-	connection, reader, writer, err := c.connect(ctx)
-	if err != nil {
-		return nil, err
+	attempts := 1
+	if len(args) > 0 && retryableCommand(args[0]) {
+		attempts = 2
 	}
-	defer func() {
-		_ = connection.Close()
-	}()
-	if err := writeCommand(writer, args...); err != nil {
-		return nil, err
+	var lastErr error
+	for attempt := 0; attempt < attempts; attempt++ {
+		connection, reused, err := c.acquire(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if err := c.setDeadline(ctx, connection.connection); err != nil {
+			c.release(connection, false)
+			lastErr = err
+			continue
+		}
+		if err := writeCommand(connection.writer, args...); err != nil {
+			c.release(connection, false)
+			lastErr = err
+			continue
+		}
+		if err := connection.writer.Flush(); err != nil {
+			c.release(connection, false)
+			lastErr = err
+			continue
+		}
+		value, err := readRESP(connection.reader)
+		c.release(connection, err == nil)
+		if err == nil {
+			return value, nil
+		}
+		var responseErr redisResponseError
+		if errors.As(err, &responseErr) {
+			return nil, err
+		}
+		lastErr = err
+		if !reused {
+			break
+		}
 	}
-	if err := writer.Flush(); err != nil {
-		return nil, err
-	}
-	return readRESP(reader)
+	return nil, lastErr
 }
 
 func (c *Client) DoMany(ctx context.Context, commands [][]string) ([]any, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
 	redisLog.Printf("executing command batch size=%d", len(commands))
-	connection, reader, writer, err := c.connect(ctx)
+	connection, _, err := c.acquire(ctx)
 	if err != nil {
 		return nil, err
 	}
+	reusable := false
 	defer func() {
-		_ = connection.Close()
+		c.release(connection, reusable)
 	}()
+	if err := c.setDeadline(ctx, connection.connection); err != nil {
+		return nil, err
+	}
 	for _, command := range commands {
-		if err := writeCommand(writer, command...); err != nil {
+		if err := writeCommand(connection.writer, command...); err != nil {
 			return nil, err
 		}
 	}
-	if err := writer.Flush(); err != nil {
+	if err := connection.writer.Flush(); err != nil {
 		return nil, err
 	}
 	results := make([]any, len(commands))
 	for index := range commands {
-		results[index], err = readRESP(reader)
+		results[index], err = readRESP(connection.reader)
 		if err != nil {
 			return nil, err
 		}
 	}
+	reusable = true
 	return results, nil
 }
 
-func (c *Client) connect(ctx context.Context) (net.Conn, *bufio.Reader, *bufio.Writer, error) {
+func (c *Client) acquire(ctx context.Context) (*redisConnection, bool, error) {
+	select {
+	case connection := <-c.pool:
+		if time.Since(connection.lastUsed) > maxIdleConnectionAge {
+			_ = connection.connection.Close()
+			fresh, err := c.connect(ctx)
+			return fresh, false, err
+		}
+		return connection, true, nil
+	default:
+		connection, err := c.connect(ctx)
+		return connection, false, err
+	}
+}
+
+func (c *Client) release(connection *redisConnection, reusable bool) {
+	if connection == nil {
+		return
+	}
+	if !reusable {
+		_ = connection.connection.Close()
+		return
+	}
+	_ = connection.connection.SetDeadline(time.Time{})
+	connection.lastUsed = time.Now()
+	select {
+	case c.pool <- connection:
+	default:
+		_ = connection.connection.Close()
+	}
+}
+
+func (c *Client) setDeadline(ctx context.Context, connection net.Conn) error {
+	deadline := time.Now().Add(c.timeout)
+	if value, ok := ctx.Deadline(); ok && value.Before(deadline) {
+		deadline = value
+	}
+	return connection.SetDeadline(deadline)
+}
+
+func (c *Client) connect(ctx context.Context) (*redisConnection, error) {
 	redisLog.Printf("opening connection tls=%t", c.tlsConfig != nil)
 	dialer := net.Dialer{Timeout: c.timeout}
 	var connection net.Conn
@@ -157,13 +237,12 @@ func (c *Client) connect(ctx context.Context) (net.Conn, *bufio.Reader, *bufio.W
 	}
 	if err != nil {
 		redisLog.Printf("connection failed")
-		return nil, nil, nil, fmt.Errorf("connect to Redis: %w", err)
+		return nil, fmt.Errorf("connect to Redis: %w", err)
 	}
-	deadline := time.Now().Add(c.timeout)
-	if value, ok := ctx.Deadline(); ok && value.Before(deadline) {
-		deadline = value
+	if err := c.setDeadline(ctx, connection); err != nil {
+		_ = connection.Close()
+		return nil, err
 	}
-	_ = connection.SetDeadline(deadline)
 	reader := bufio.NewReader(connection)
 	writer := bufio.NewWriter(connection)
 	if c.password != "" {
@@ -173,32 +252,41 @@ func (c *Client) connect(ctx context.Context) (net.Conn, *bufio.Reader, *bufio.W
 		}
 		if err := writeCommand(writer, authentication...); err != nil {
 			_ = connection.Close()
-			return nil, nil, nil, err
+			return nil, err
 		}
 		if err := writer.Flush(); err != nil {
 			_ = connection.Close()
-			return nil, nil, nil, err
+			return nil, err
 		}
 		if _, err := readRESP(reader); err != nil {
 			_ = connection.Close()
-			return nil, nil, nil, errors.New("redis authentication failed")
+			return nil, errors.New("redis authentication failed")
 		}
 	}
 	if c.database != 0 {
 		if err := writeCommand(writer, "SELECT", strconv.Itoa(c.database)); err != nil {
 			_ = connection.Close()
-			return nil, nil, nil, err
+			return nil, err
 		}
 		if err := writer.Flush(); err != nil {
 			_ = connection.Close()
-			return nil, nil, nil, err
+			return nil, err
 		}
 		if _, err := readRESP(reader); err != nil {
 			_ = connection.Close()
-			return nil, nil, nil, err
+			return nil, err
 		}
 	}
-	return connection, reader, writer, nil
+	return &redisConnection{connection: connection, reader: reader, writer: writer}, nil
+}
+
+func retryableCommand(command string) bool {
+	switch strings.ToUpper(command) {
+	case "PING", "GET", "HGET", "HGETALL", "HMGET", "SMEMBERS", "FT._LIST", "FT.SEARCH", "FT.AGGREGATE":
+		return true
+	default:
+		return false
+	}
 }
 
 func writeCommand(writer *bufio.Writer, args ...string) error {
@@ -230,7 +318,7 @@ func readRESP(reader *bufio.Reader) (any, error) {
 		if lineErr != nil {
 			return nil, lineErr
 		}
-		return nil, errors.New(message)
+		return nil, redisResponseError{message: message}
 	case ':':
 		value, lineErr := line()
 		if lineErr != nil {

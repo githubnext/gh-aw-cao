@@ -60,6 +60,10 @@ param githubClientSecret string
 param sessionSecret string
 
 @secure()
+@description('Optional previous session secret retained during controlled key rotation until active sessions and pending revocations are drained.')
+param previousSessionSecret string = ''
+
+@secure()
 @description('TLS Redis URL, for example rediss://:<access-key>@cache.region.redisenterprise.cache.azure.net:10000/0. Store a rotated value here rather than outputting Redis keys.')
 param redisConnectionString string
 
@@ -98,8 +102,9 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
       name: 'standard'
     }
     enableRbacAuthorization: true
-    enabledForTemplateDeployment: true
+    enabledForTemplateDeployment: false
     enableSoftDelete: true
+    enablePurgeProtection: true
     softDeleteRetentionInDays: 90
     publicNetworkAccess: 'Enabled'
   }
@@ -123,12 +128,30 @@ resource sessionSecretValue 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   }
 }
 
+resource previousSessionSecretValue 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (!empty(previousSessionSecret)) {
+  parent: keyVault
+  name: 'cao-session-secret-previous'
+  properties: {
+    value: previousSessionSecret
+    contentType: 'Previous CAO dashboard session encryption secret retained during rotation'
+  }
+}
+
 resource redisConnectionStringValue 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   parent: keyVault
   name: 'cao-redis-url'
   properties: {
     value: redisConnectionString
     contentType: 'CAO dashboard Redis Enterprise rediss URL'
+  }
+}
+
+resource functionsStorageConnectionStringValue 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: keyVault
+  name: 'azure-webjobs-storage'
+  properties: {
+    value: 'DefaultEndpointsProtocol=https;AccountName=${storage.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storage.listKeys().keys[0].value}'
+    contentType: 'Azure Functions runtime storage connection'
   }
 }
 
@@ -200,10 +223,11 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
     clientAffinityEnabled: false
     siteConfig: {
       alwaysOn: true
+      minimumElasticInstanceCount: 1
       ftpsState: 'Disabled'
       minTlsVersion: '1.2'
       http20Enabled: true
-      appSettings: [
+      appSettings: concat([
         {
           name: 'FUNCTIONS_EXTENSION_VERSION'
           value: '~4'
@@ -218,7 +242,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         }
         {
           name: 'AzureWebJobsStorage'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storage.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storage.listKeys().keys[0].value}'
+          value: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/azure-webjobs-storage)'
         }
         {
           name: 'CAO_DASHBOARD_HOSTING'
@@ -238,7 +262,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         }
         {
           name: 'CAO_REDIS_URL'
-          value: '@Microsoft.KeyVault(SecretUri=${redisConnectionStringValue.properties.secretUriWithVersion})'
+          value: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/cao-redis-url)'
         }
         {
           name: 'CAO_GITHUB_CLIENT_ID'
@@ -246,7 +270,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         }
         {
           name: 'CAO_GITHUB_CLIENT_SECRET'
-          value: '@Microsoft.KeyVault(SecretUri=${githubClientSecretValue.properties.secretUriWithVersion})'
+          value: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/github-oauth-client-secret)'
         }
         {
           name: 'CAO_GITHUB_REDIRECT_URL'
@@ -262,11 +286,23 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         }
         {
           name: 'CAO_SESSION_SECRET'
-          value: '@Microsoft.KeyVault(SecretUri=${sessionSecretValue.properties.secretUriWithVersion})'
+          value: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/cao-session-secret)'
         }
-      ]
+      ], empty(previousSessionSecret) ? [] : [
+        {
+          name: 'CAO_SESSION_SECRET_PREVIOUS'
+          value: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/cao-session-secret-previous)'
+        }
+      ])
     }
   }
+  dependsOn: [
+    functionsStorageConnectionStringValue
+    githubClientSecretValue
+    redisConnectionStringValue
+    sessionSecretValue
+    previousSessionSecretValue
+  ]
 }
 
 resource keyVaultSecretsUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {

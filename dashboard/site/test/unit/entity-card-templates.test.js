@@ -35,7 +35,7 @@ describe('entity card templates', () => {
       ],
       details: [
         { field: 'dispatches', title: '# dispatches' },
-        { field: 'value-created', title: '# value', unit: 'ops-value' },
+        { field: 'grader-result', title: '# grader', unit: 'ops-grader' },
         { field: 'aic', title: '# aic', unit: 'aic' }
       ]
     });
@@ -59,6 +59,21 @@ describe('entity card templates', () => {
       title: 'Campaigns',
       data: { source: 'campaign-inventory' },
       mark: 'table'
+    });
+    expect(pages.campaigns.definition.views.find(
+      (/** @type {Record<string, any>} */ view) => view.id === 'campaigns-repository-coverage'
+    )).toMatchObject({
+      title: 'Repository coverage by campaign',
+      data: {
+        source: 'campaign-inventory',
+        limit: 100
+      },
+      mark: 'chart',
+      chart: 'horizontal-bar',
+      encoding: {
+        x: { field: 'campaign-name', type: 'nominal' },
+        y: { field: 'covered-repositories', type: 'quantitative' }
+      }
     });
   });
 
@@ -115,6 +130,13 @@ describe('entity card templates', () => {
     expect(templates['firewall-domain']).toEqual({
       id: 'firewall-domain',
       icon: 'globe',
+      drill: {
+        type: 'query',
+        page: 'domain-insights',
+        query: 'domain-entity-insights',
+        'title-field': 'domain',
+        arguments: [{ name: 'domain', field: 'domain' }]
+      },
       title: { field: 'domain', title: 'Domain' },
       labels: [],
       details: [
@@ -130,16 +152,8 @@ describe('entity card templates', () => {
     const domainList = firewall.views.find(
       (/** @type {Record<string, any>} */ view) => view.id === 'security-firewall-domains'
     );
-    expect(domainList).toMatchObject({
-      mark: 'table',
-      'card-drill': {
-        type: 'query',
-        page: 'firewall-domain-workflows',
-        query: 'firewall-domain-workflows',
-        'title-field': 'domain',
-        arguments: [{ name: 'domain', field: 'domain' }]
-      }
-    });
+    expect(domainList).toMatchObject({ mark: 'table' });
+    expect(domainList['card-drill']).toBeUndefined();
     expect(views['firewall-domain-workflows']).toMatchObject({
       data: {
         source: 'firewall-domain-workflows',
@@ -169,6 +183,16 @@ describe('entity card templates', () => {
   });
 
   it('drills from repositories through workflows and runs to events', () => {
+    expect(templates.repository).toMatchObject({
+      title: { field: 'repository' },
+      details: [{ field: 'runs', title: 'Runs' }]
+    });
+    expect(templates.repository.actions).toBeUndefined();
+    expect(views['entity-repositories'].data.source).toBe('repository-activity');
+    expect(views['entity-repositories'].encoding.columns).toEqual([
+      { field: 'repository', type: 'nominal', title: 'Repository' },
+      { field: 'runs', type: 'quantitative', title: 'Runs' }
+    ]);
     expect(views['entity-repositories'].list).toMatchObject({
       card: 'repository',
       drill: {
@@ -177,7 +201,7 @@ describe('entity card templates', () => {
         query: 'entity-workflows',
         arguments: [
           { name: 'organization', field: 'organization' },
-          { name: 'repository', field: 'repository' }
+          { name: 'repository', field: 'repository-name' }
         ]
       }
     });
