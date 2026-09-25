@@ -26,8 +26,9 @@ test("publishes installed campaign memory from remote refs without checking them
     git(repository, "checkout", "--orphan", "memory/ambient-context");
     git(repository, "rm", "-rf", ".");
     writeFileSync(join(repository, "notes.json"), '{"answer":42}\n');
+    writeFileSync(join(repository, ".state.json"), '{"cursor":1}\n');
     symlinkSync("../runtime.txt", join(repository, "outside"));
-    git(repository, "add", "notes.json", "outside");
+    git(repository, "add", "notes.json", ".state.json", "outside");
     git(repository, "commit", "-m", "memory");
     const memoryHead = git(repository, "rev-parse", "HEAD");
     git(repository, "update-ref", "refs/remotes/origin/memory/ambient-context", memoryHead);
@@ -49,6 +50,7 @@ test("publishes installed campaign memory from remote refs without checking them
 
     assert.equal(readFileSync(join(repository, "runtime.txt"), "utf8"), "runtime checkout\n");
     assert.equal(readFileSync(join(output, "ambient-context", "notes.json"), "utf8"), '{"answer":42}\n');
+    assert.equal(readFileSync(join(output, "ambient-context", ".state.json"), "utf8"), '{"cursor":1}\n');
     assert.deepEqual(manifest, {
       version: 1,
       generatedAt: "2026-09-25T22:24:29.769Z",
@@ -56,11 +58,18 @@ test("publishes installed campaign memory from remote refs without checking them
         campaign: "ambient-context",
         branch: "memory/ambient-context",
         commit: memoryHead,
-        files: [{
-          path: "notes.json",
-          oid: git(repository, "rev-parse", `${memoryHead}:notes.json`),
-          size: 14,
-        }],
+        files: [
+          {
+            path: ".state.json",
+            oid: git(repository, "rev-parse", `${memoryHead}:.state.json`),
+            size: 13,
+          },
+          {
+            path: "notes.json",
+            oid: git(repository, "rev-parse", `${memoryHead}:notes.json`),
+            size: 14,
+          },
+        ],
       }],
     });
     assert.deepEqual(JSON.parse(readFileSync(join(output, "manifest.json"), "utf8")), manifest);

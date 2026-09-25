@@ -344,6 +344,7 @@ jobs:
           name: central-agentic-ops-dashboard
           path: ${{ runner.temp }}/central-agentic-ops-dashboard
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 1
 
   cache:

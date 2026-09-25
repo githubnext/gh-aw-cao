@@ -327,6 +327,7 @@ jobs:
           name: cao-activity-index
           retention-days: 1
           if-no-files-found: error
+          include-hidden-files: true
           path: |
             ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
             ${{ runner.temp }}/cao-activity/gh-aw-logs-shards

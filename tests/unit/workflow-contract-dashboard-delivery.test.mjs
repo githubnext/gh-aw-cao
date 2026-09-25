@@ -261,7 +261,7 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(repositoryMemory, /for-each-ref[\s\S]*?MEMORY_REF_PREFIX/);
   assert.match(repositoryMemory, /ls-tree[\s\S]*?cat-file/);
   assert.doesNotMatch(activityIndexJob, /actions\/cache\/save@/);
-  assert.match(activityIndexJob, /Upload activity snapshot[\s\S]*?retention-days: 1/);
+  assert.match(activityIndexJob, /Upload activity snapshot[\s\S]*?retention-days: 1[\s\S]*?include-hidden-files: true/);
   assert.match(activityCacheJob, /needs: index[\s\S]*?actions: write[\s\S]*?contents: none/);
   assert.match(activityCacheJob, /Download activity snapshot[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity[\s\S]*?Save activity cache/);
   assert.doesNotMatch(activityCacheJob, /GH_AW_GITHUB_READ_APP_PRIVATE_KEY|gh aw logs/);
@@ -310,6 +310,7 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.doesNotMatch(dashboardManifest, /redirects\.mjs/);
   assert.doesNotMatch(dashboardWorkflow, /legacy dashboard redirects|redirects\.mjs/);
   assert.match(dashboardWorkflow, /actions\/upload-artifact@[0-9a-f]{40}/);
+  assert.match(dashboardWorkflow, /name: central-agentic-ops-dashboard[\s\S]*?include-hidden-files: true/);
   assert.match(dashboardCacheJob, /needs: build[\s\S]*?permissions:[\s\S]*?actions: write/);
   assert.match(dashboardCacheJob, /Download dashboard artifact[\s\S]*?name: central-agentic-ops-dashboard[\s\S]*?path: dist\/cao[\s\S]*?Delete previous dashboard cache/);
   assert.match(dashboardCacheJob, /Delete previous dashboard cache[\s\S]*?cache\.key === process\.env\.DASHBOARD_CACHE_KEY[\s\S]*?cache\.ref === process\.env\.GITHUB_REF[\s\S]*?deleteActionsCacheById[\s\S]*?cache_id: cache\.id/);
