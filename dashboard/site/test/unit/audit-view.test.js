@@ -23,7 +23,6 @@ describe('Audit dashboard view', () => {
 
     expect(insights.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual([
       'campaign-insights-navigation',
-      'campaign-operational-value-history',
       'campaign-operational-grader-history',
       'campaign-audit-event-summary-buckets',
       'campaign-audit-event-table'
@@ -33,20 +32,13 @@ describe('Audit dashboard view', () => {
         'workflows',
         'campaign-insight-tab-counts',
         'campaign-problem-tab-counts',
-        'campaign-issue-tab-counts'
+        'campaign-issue-tab-counts',
+        'campaign-operational-value-primary-series',
+        'campaign-runs'
       ],
       arguments: [{ name: 'campaign', field: 'campaign' }]
     });
     expect(insights.views[1]).toMatchObject({
-      data: {
-        sources: ['campaign-operational-value-primary-series', 'campaign-runs'],
-        arguments: [{ name: 'campaign', field: 'campaign' }]
-      },
-      mark: 'element',
-      element: 'measure-history',
-      config: { 'measure-source': 'operational-value' }
-    });
-    expect(insights.views[2]).toMatchObject({
       data: {
         sources: ['campaign-operational-grader-series'],
         arguments: [{ name: 'campaign', field: 'campaign' }]
@@ -54,13 +46,13 @@ describe('Audit dashboard view', () => {
       mark: 'element',
       element: 'measure-history'
     });
-    expect(insights.views.slice(3).map((/** @type {{ data: Record<string, string> }} */ view) => view.data)).toEqual([
+    expect(insights.views.slice(2).map((/** @type {{ data: Record<string, string> }} */ view) => view.data)).toEqual([
       expect.objectContaining({ source: 'audit-event-summary-buckets', 'route-field': 'campaign' }),
       expect.objectContaining({ source: 'audit-event-summary-buckets', 'route-field': 'campaign' })
     ]);
     expect(insights.views.filter((/** @type {{ mark: string }} */ view) => view.mark !== 'element')
       .map((/** @type {{ mark: string }} */ view) => view.mark)).toEqual(['chart', 'list']);
-    expect(insights.views[3]).toMatchObject({
+    expect(insights.views[2]).toMatchObject({
       title: 'Severity audit events',
       chart: 'horizontal-bar',
       data: {

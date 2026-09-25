@@ -11882,7 +11882,9 @@
                 "workflows",
                 "campaign-insight-tab-counts",
                 "campaign-problem-tab-counts",
-                "campaign-issue-tab-counts"
+                "campaign-issue-tab-counts",
+                "campaign-operational-value-primary-series",
+                "campaign-runs"
               ],
               "arguments": [
                 {
@@ -11896,30 +11898,6 @@
             "layout": "full",
             "config": {
               "body": "insights"
-            }
-          },
-          {
-            "id": "campaign-operational-value-history",
-            "title": "Repository operational value",
-            "description": "Repository-level operational value over time. Interim points are visible but explicitly marked dubious until their evidence matures.",
-            "data": {
-              "sources": [
-                "campaign-operational-value-primary-series",
-                "campaign-runs"
-              ],
-              "arguments": [
-                {
-                  "name": "campaign",
-                  "field": "campaign"
-                }
-              ]
-            },
-            "mark": "element",
-            "element": "measure-history",
-            "layout": "full",
-            "config": {
-              "measure-source": "operational-value",
-              "empty-message": "No repository operational-value observations have been published for this campaign yet."
             }
           },
           {

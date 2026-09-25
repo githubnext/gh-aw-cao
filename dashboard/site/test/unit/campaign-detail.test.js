@@ -149,7 +149,29 @@ function context() {
     sources: {
       workflows: { source: 'workflows', metadata, rows: workflows },
       outcomes: { source: 'outcomes', metadata, rows: outcomes },
-      'operational-graders': { source: 'operational-graders', metadata, rows: operationalGraders }
+      'operational-graders': { source: 'operational-graders', metadata, rows: operationalGraders },
+      'campaign-operational-value-primary-series': {
+        source: 'campaign-operational-value-primary-series',
+        metadata,
+        rows: [{
+          campaign: 'ambient-context',
+          metric: 'ambient-context.guidance-freshness',
+          'operational-value-name': 'Guidance freshness',
+          'maturity-status': 'matured',
+          'adoption-at': '2026-08-01T18:00:00Z',
+          'evaluation-mode': 'baseline-comparable',
+          'workflow-name': 'Ambient Context',
+          points: [
+            { x: '2026-08-01T18:00:00Z', y: 0.25, color: 'gh-aw-cao', key: 'value:0' },
+            { x: '2026-08-31T18:00:00Z', y: 0.75, color: 'gh-aw-cao', key: 'value:1' }
+          ]
+        }]
+      },
+      'campaign-runs': {
+        source: 'campaign-runs',
+        metadata,
+        rows: [{ campaign: 'ambient-context', 'started-at': '2026-08-24T18:00:00Z', status: 'success' }]
+      }
     }
   };
 }
@@ -169,7 +191,8 @@ describe('campaign detail route', () => {
     }));
 
     expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.textContent).toBe('Insights');
-    expect(rendered.querySelector('.measure-history')).toBeNull();
+    expect(rendered.querySelector('.measure-history')).not.toBeNull();
+    expect(rendered.querySelector('.temporal-plot-title')?.textContent).toBe('Ambient Context value over time');
   });
 
   it('keeps the compatibility Info route outside the reusable campaign tabs', () => {
