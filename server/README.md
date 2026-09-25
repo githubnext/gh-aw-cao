@@ -335,7 +335,9 @@ failing.
 | `CAO_COLLECT_CONTROL_REPOSITORY` | control repository used for inventory discovery |
 | `CAO_COLLECT_WORKERS` | in-process workers; zero when workers scale separately |
 | `CAO_COLLECT_RATE_LIMIT_FLOOR` | requests reserved per installation |
-| `CAO_COLLECT_PROJECTION_INTERVAL` | minimum interval between projections |
+| `CAO_COLLECT_PROJECTION_INTERVAL` | minimum interval between projections (default 5 minutes) |
+| `CAO_COLLECT_RETAIN_GENERATIONS` | superseded canonical generations kept for rollback (default 3) |
+| `CAO_COLLECT_INVENTORY_LIMIT` | optional cap on enrolled repositories; exceeding it fails the projection |
 | `CAO_COLLECT_RECOVER_DELIVERIES` | replay failed webhook deliveries to close gaps |
 | `CAO_COLLECT_QUEUE_MAX_LENGTH` | bound on the task and dead-letter streams (default 200 000) |
 | `CAO_COLLECT_ADMIT_ONLY` | admit deliveries without collecting; requires no private key |
@@ -367,6 +369,50 @@ to withdraw consent, and it takes effect without operator action.
 `specs/server-ingestion.md` is the normative contract, and
 `adr/server-webhook-driven-ingestion.md` records why the design is shaped this
 way.
+
+### Cost and sizing
+
+Steady-state cost is dominated by projection rather than by collection, because
+a projection's cost scales with retained evidence while a collection's cost
+scales with what changed. Three properties keep that affordable.
+
+Projection is *skipped* when nothing changed. A collection re-enumerates a
+repository's window and usually downloads nothing new, so the lake's
+content-addressed data revision is normally unchanged and the projector reuses
+the active generation instead of rewriting it. Only an explicit operator
+rebuild bypasses this.
+
+Superseded generations are *reclaimed*. Each projection that does run writes a
+complete copy of the canonical dataset plus its search indexes, and Redis is
+configured `NoEviction`. Reclamation is part of activation: a bounded number of
+generations is retained for rollback, and a generation is only dropped once a
+grace period has passed so in-flight reads finish. Tune with
+`CAO_COLLECT_RETAIN_GENERATIONS`; raise it to widen the rollback window at the
+cost of Redis memory. Redis capacity should be sized for the retained
+generation count, not for one copy of the dataset.
+
+The evidence lake is *many small per-repository shards*, so it is bound by file
+metadata operations rather than throughput. The lake share therefore defaults
+to a premium (provisioned SSD) file share; a Standard share's IOPS scale only
+with provisioned size and become the projection bottleneck well before capacity
+does. Set `collectorLakeStorageSku` to a `Standard_*` value only for small
+deployments where cost matters more than projection latency.
+
+Known limits, in the order they will be felt at scale:
+
+- Every projection rehashes the whole lake twice before it can decide whether
+  anything changed: once in `activity/cao.mjs hash-payloads` and once in the
+  Go manifest validation. That is the structural ceiling on projection
+  frequency, and it is why `CAO_COLLECT_PROJECTION_INTERVAL` defaults to five
+  minutes rather than to seconds.
+- Redis Enterprise is a fixed always-on cost carried for RediSearch, not for
+  key-value storage. It does not scale to zero the way collection workers do.
+- The Elastic Premium Function plan is always-on. It is sized for webhook
+  admission, which is constant-time, so the smallest plan that meets the
+  tenant's network requirements is the right one.
+- Collection workers do scale to zero: `minimumWorkers` defaults to zero and
+  KEDA scales on stream backlog, so an idle deployment pays for storage, Redis,
+  and the Function plan only.
 
 ## Redis model
 

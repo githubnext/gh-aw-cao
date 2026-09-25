@@ -105,6 +105,15 @@ param collectorControlRepository string = ''
 @description('Maximum number of collection workers.')
 param collectorMaximumWorkers int = 20
 
+@description('Evidence lake file share tier. Premium is provisioned SSD; Standard is IOPS-throttled by share size.')
+@allowed([
+  'Premium_LRS'
+  'Premium_ZRS'
+  'Standard_LRS'
+  'Standard_ZRS'
+])
+param collectorLakeStorageSku string = 'Premium_LRS'
+
 var collectionEnabled = !empty(collectorImage)
 
 var tags = {
@@ -421,6 +430,7 @@ module collection 'collector.bicep' = if (collectionEnabled) {
     controlRepository: collectorControlRepository
     githubAppId: collectorGithubAppId
     maximumWorkers: collectorMaximumWorkers
+    lakeStorageSku: collectorLakeStorageSku
     applicationInsightsConnectionString: insights.properties.ConnectionString
     logAnalyticsWorkspaceResourceId: logAnalyticsWorkspaceResourceId
   }

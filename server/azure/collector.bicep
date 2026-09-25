@@ -65,10 +65,24 @@ param applicationInsightsConnectionString string
 @description('Log Analytics workspace resource ID receiving container console and system logs.')
 param logAnalyticsWorkspaceResourceId string = ''
 
+@description('Evidence lake file share tier. Premium is provisioned SSD; Standard is IOPS-throttled by share size.')
+@allowed([
+  'Premium_LRS'
+  'Premium_ZRS'
+  'Standard_LRS'
+  'Standard_ZRS'
+])
+param lakeStorageSku string = 'Premium_LRS'
+
 @description('Bound on the collection task and dead-letter streams.')
 @minValue(1000)
 param queueMaxLength int = 200000
 
+// Premium file shares are provisioned SSD and live in a FileStorage account;
+// Standard shares live in a general-purpose account. The lake is many small
+// per-repository shards, so it is metadata-operation bound rather than
+// throughput bound, and Standard share IOPS scale only with provisioned size.
+var lakePremium = startsWith(lakeStorageSku, 'Premium')
 var lakeStorageAccountName = '${toLower(take(replace(namePrefix, '-', ''), 7))}lake${uniqueString(resourceGroup().id, namePrefix)}'
 var streamKey = '${redisNamespace}:collect:tasks'
 var consumerGroup = 'collectors'
@@ -132,11 +146,12 @@ resource lakeAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: lakeStorageAccountName
   location: location
   tags: tags
-  kind: 'StorageV2'
+  kind: lakePremium ? 'FileStorage' : 'StorageV2'
   sku: {
-    name: 'Standard_LRS'
+    name: lakeStorageSku
   }
   properties: {
+    accessTier: lakePremium ? 'Premium' : 'Hot'
     minimumTlsVersion: 'TLS1_2'
     supportsHttpsTrafficOnly: true
     allowBlobPublicAccess: false
@@ -176,7 +191,9 @@ resource lakeShare 'Microsoft.Storage/storageAccounts/fileServices/shares@2023-0
   parent: lakeFileService
   name: 'evidence-lake'
   properties: {
-    shareQuota: lakeQuotaGigabytes
+    // A premium share provisions IOPS and throughput from its quota, so the
+    // quota is a performance setting there rather than only a ceiling.
+    shareQuota: lakePremium ? max(lakeQuotaGigabytes, 100) : lakeQuotaGigabytes
     enabledProtocols: 'SMB'
   }
 }

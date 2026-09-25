@@ -154,6 +154,17 @@ Projection converts the evidence lake into an active canonical generation.
   rather than activate a generation known to be inconsistent.
 - On successful activation the implementation MUST increment the revision and
   notify connected clients through the existing revision channel.
+- Projection MUST short-circuit when the lake's content-addressed data revision
+  already matches the active generation. A collection re-enumerates a window and
+  usually adds nothing, so rewriting an identical dataset would be the dominant
+  steady-state cost. An explicit operator rebuild MAY bypass this short-circuit.
+- An implementation MUST reclaim superseded generations, retaining a bounded
+  number for rollback and honouring a grace period so in-flight reads complete.
+  Every projection writes a complete new generation; without reclamation a
+  no-eviction store exhausts memory and every subsequent write fails.
+- Inventory discovery MUST NOT silently truncate the enrolled repository set. An
+  implementation MAY enforce a configured bound, but exceeding it MUST fail the
+  projection rather than publish a partial inventory.
 
 ## 8. Cold start
 
@@ -274,4 +285,6 @@ A conforming implementation:
 11. erases retained evidence for repositories that leave ingestion scope, and
     bounds its queues;
 12. admits deliveries without collection credentials, and fails closed when an
-    admission-only process is asked to collect or project.
+    admission-only process is asked to collect or project;
+13. short-circuits projection for an unchanged lake, reclaims superseded
+    generations, and refuses to publish a truncated inventory.

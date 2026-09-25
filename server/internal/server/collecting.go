@@ -48,7 +48,14 @@ type CollectorConfig struct {
 	RequestTimeoutMinutes int
 	RateLimitFloor        int
 	MinProjectionInterval time.Duration
-	CollectionTimeout     time.Duration
+	// RetainGenerations bounds superseded canonical generations kept in Redis
+	// for rollback. Zero selects the shared default.
+	RetainGenerations int
+	// InventoryLimit optionally caps enrolled repositories named during
+	// inventory discovery. Zero means unbounded; exceeding a configured limit
+	// fails the projection rather than publishing a partial inventory.
+	InventoryLimit    int
+	CollectionTimeout time.Duration
 
 	// Workers enables in-process collection workers. Deployments that scale
 	// collection separately leave this zero and run the collect role instead.
@@ -182,14 +189,16 @@ func NewCollector(store *redisx.Store, config CollectorConfig, databaseQueriesPa
 		return nil, err
 	}
 	projector := collect.Projector{
-		Store:               store,
-		Lake:                lake,
-		Enrollment:          enrollment,
-		CatalogRoot:         config.CatalogRoot,
-		NodeBinary:          config.NodeBinary,
-		DatabaseQueriesPath: databaseQueriesPath,
-		ControlRepository:   config.ControlRepository,
-		MinInterval:         config.MinProjectionInterval,
+		Store:                    store,
+		Lake:                     lake,
+		Enrollment:               enrollment,
+		CatalogRoot:              config.CatalogRoot,
+		NodeBinary:               config.NodeBinary,
+		DatabaseQueriesPath:      databaseQueriesPath,
+		ControlRepository:        config.ControlRepository,
+		MinInterval:              config.MinProjectionInterval,
+		RetainGenerations:        config.RetainGenerations,
+		InventoryRepositoryLimit: config.InventoryLimit,
 	}
 	backfill := collect.Backfill{
 		Store: store, Enrollment: enrollment, Queue: queue,
@@ -207,7 +216,7 @@ func NewCollector(store *redisx.Store, config CollectorConfig, databaseQueriesPa
 			Enrollment: enrollment, Queue: queue,
 			Lake: &lake, Projection: projector,
 		},
-		backfill:   backfill,
+		backfill: backfill,
 		reporter: collect.Reporter{
 			Enrollment: enrollment, Queue: queue, Backfill: backfill,
 			Budget: budget, Store: store,
@@ -229,7 +238,7 @@ func (c *Collector) Rebuild(ctx context.Context) (ingest.Result, error) {
 		return ingest.Result{}, err
 	}
 	if populated {
-		return c.projector.Project(ctx)
+		return c.projector.Rebuild(ctx)
 	}
 	state, err := c.backfill.Run(ctx)
 	if err != nil {

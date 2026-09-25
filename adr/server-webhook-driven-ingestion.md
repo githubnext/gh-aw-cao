@@ -143,6 +143,29 @@ KEDA-scaled Azure Container Apps worker runs a `collect` role from the same
 image; `backfill` performs cold start; local development can run every role in
 one process.
 
+### 9. Generations are reclaimed at activation, not by an operator
+
+Every projection writes a complete new canonical generation and activation only
+flips a pointer. Reuse of the Actions projector therefore inherited an
+assumption that no longer holds: under Actions a projection happens once per
+published snapshot, so leaked generations were slow enough to be invisible.
+Collection projects continuously, which turns that leak into memory exhaustion
+of a `NoEviction` Redis, and every subsequent write — collection included —
+fails.
+
+Reclamation is therefore part of activation rather than a scheduled sweep or an
+operator runbook. A registry of activated generations makes superseded ones
+findable without a keyspace scan; a bounded retention count keeps a rollback
+target; a grace period keeps readers that already resolved the previous
+generation from having it pulled out from under them mid-query. The Actions
+profile gets the same reclamation, because it is the same projector.
+
+The complementary decision is that a projection which would change nothing does
+not run at all: the lake's data revision is content-addressed, a collection
+usually adds nothing to the lake, so the common case short-circuits. Only an
+explicit operator rebuild forces a rewrite, because an operator rebuilding is
+repairing Redis rather than publishing new evidence.
+
 ## Alternatives considered
 
 **Replace `cao-activity.yml`.** Rejected. The Actions-only story must stay intact

@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.47.16.16243",
-      "templateHash": "2692362678515147754"
+      "templateHash": "14678230042880072953"
     }
   },
   "parameters": {
@@ -183,6 +183,19 @@
       "defaultValue": 20,
       "metadata": {
         "description": "Maximum number of collection workers."
+      }
+    },
+    "collectorLakeStorageSku": {
+      "type": "string",
+      "defaultValue": "Premium_LRS",
+      "allowedValues": [
+        "Premium_LRS",
+        "Premium_ZRS",
+        "Standard_LRS",
+        "Standard_ZRS"
+      ],
+      "metadata": {
+        "description": "Evidence lake file share tier. Premium is provisioned SSD; Standard is IOPS-throttled by share size."
       }
     }
   },
@@ -485,6 +498,9 @@
           "maximumWorkers": {
             "value": "[parameters('collectorMaximumWorkers')]"
           },
+          "lakeStorageSku": {
+            "value": "[parameters('collectorLakeStorageSku')]"
+          },
           "applicationInsightsConnectionString": {
             "value": "[reference(resourceId('Microsoft.Insights/components', format('{0}-ai', parameters('functionAppName'))), '2020-02-02').ConnectionString]"
           },
@@ -499,7 +515,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.47.16.16243",
-              "templateHash": "166203517985989653"
+              "templateHash": "947882728126865901"
             }
           },
           "parameters": {
@@ -616,6 +632,19 @@
                 "description": "Log Analytics workspace resource ID receiving container console and system logs."
               }
             },
+            "lakeStorageSku": {
+              "type": "string",
+              "defaultValue": "Premium_LRS",
+              "allowedValues": [
+                "Premium_LRS",
+                "Premium_ZRS",
+                "Standard_LRS",
+                "Standard_ZRS"
+              ],
+              "metadata": {
+                "description": "Evidence lake file share tier. Premium is provisioned SSD; Standard is IOPS-throttled by share size."
+              }
+            },
             "queueMaxLength": {
               "type": "int",
               "defaultValue": 200000,
@@ -626,6 +655,7 @@
             }
           },
           "variables": {
+            "lakePremium": "[startsWith(parameters('lakeStorageSku'), 'Premium')]",
             "lakeStorageAccountName": "[format('{0}lake{1}', toLower(take(replace(parameters('namePrefix'), '-', ''), 7)), uniqueString(resourceGroup().id, parameters('namePrefix')))]",
             "streamKey": "[format('{0}:collect:tasks', parameters('redisNamespace'))]",
             "consumerGroup": "collectors",
@@ -755,11 +785,12 @@
               "name": "[variables('lakeStorageAccountName')]",
               "location": "[parameters('location')]",
               "tags": "[parameters('tags')]",
-              "kind": "StorageV2",
+              "kind": "[if(variables('lakePremium'), 'FileStorage', 'StorageV2')]",
               "sku": {
-                "name": "Standard_LRS"
+                "name": "[parameters('lakeStorageSku')]"
               },
               "properties": {
+                "accessTier": "[if(variables('lakePremium'), 'Premium', 'Hot')]",
                 "minimumTlsVersion": "TLS1_2",
                 "supportsHttpsTrafficOnly": true,
                 "allowBlobPublicAccess": false,
@@ -800,7 +831,7 @@
               "apiVersion": "2023-05-01",
               "name": "[format('{0}/{1}/{2}', variables('lakeStorageAccountName'), 'default', 'evidence-lake')]",
               "properties": {
-                "shareQuota": "[parameters('lakeQuotaGigabytes')]",
+                "shareQuota": "[if(variables('lakePremium'), max(parameters('lakeQuotaGigabytes'), 100), parameters('lakeQuotaGigabytes'))]",
                 "enabledProtocols": "SMB"
               },
               "dependsOn": [

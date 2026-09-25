@@ -53,6 +53,8 @@ func CollectorConfigFromEnv() (*CollectorConfig, error) {
 		RateLimitFloor:        envInt("CAO_COLLECT_RATE_LIMIT_FLOOR", 0),
 		Workers:               envInt("CAO_COLLECT_WORKERS", 0),
 		QueueMaxLength:        envInt("CAO_COLLECT_QUEUE_MAX_LENGTH", 0),
+		RetainGenerations:     envInt("CAO_COLLECT_RETAIN_GENERATIONS", 0),
+		InventoryLimit:        envInt("CAO_COLLECT_INVENTORY_LIMIT", 0),
 		MinProjectionInterval: envDuration("CAO_COLLECT_PROJECTION_INTERVAL"),
 		CollectionTimeout:     envDuration("CAO_COLLECT_TIMEOUT"),
 		RecoverDeliveries:     envBool("CAO_COLLECT_RECOVER_DELIVERIES"),

@@ -48,14 +48,26 @@ type Projector struct {
 	LockTTL time.Duration
 	// Timeout bounds one projection.
 	Timeout time.Duration
+	// RetainGenerations bounds superseded generations kept for rollback.
+	RetainGenerations int
 	// InventoryRepositoryLimit bounds how many enrolled repositories are named
-	// during inventory discovery.
+	// during inventory discovery. Zero means unbounded: truncating the
+	// inventory would silently drop enrolled repositories from the dashboard
+	// while reporting success.
 	InventoryRepositoryLimit int
 }
 
+// defaultProjectionInterval is the shortest gap between two projections.
+//
+// A projection rehashes the whole evidence lake before it can decide whether
+// anything changed, so its cost scales with retained evidence rather than with
+// the collection that triggered it. Five minutes keeps the dashboard current
+// without making that whole-lake scan the dominant steady-state cost.
+const defaultProjectionInterval = 5 * time.Minute
+
 func (p Projector) minInterval() time.Duration {
 	if p.MinInterval <= 0 {
-		return 60 * time.Second
+		return defaultProjectionInterval
 	}
 	return p.MinInterval
 }
@@ -101,6 +113,17 @@ var ErrProjectionBusy = errors.New("a projection update is already running")
 // Project regenerates the manifest and activates a new generation. A failed
 // projection leaves the previously active generation serving.
 func (p Projector) Project(ctx context.Context) (ingest.Result, error) {
+	return p.project(ctx, false)
+}
+
+// Rebuild reprojects unconditionally. An operator rebuilding is repairing the
+// canonical database, so an unchanged lake must still be reprojected rather
+// than short-circuited.
+func (p Projector) Rebuild(ctx context.Context) (ingest.Result, error) {
+	return p.project(ctx, true)
+}
+
+func (p Projector) project(ctx context.Context, force bool) (ingest.Result, error) {
 	if p.DatabaseQueriesPath == "" {
 		return ingest.Result{}, errors.New("database query path is required")
 	}
@@ -128,9 +151,15 @@ func (p Projector) Project(ctx context.Context) (ingest.Result, error) {
 	if err := p.refreshCompaction(ctx); err != nil {
 		return ingest.Result{}, err
 	}
+	// Force is deliberately not set. A collection re-enumerates a repository's
+	// window and usually adds nothing, so most projections would otherwise
+	// rewrite an identical canonical dataset. The content-addressed data
+	// revision skips those, which is what keeps a 60-second projection
+	// interval affordable.
 	result, err := ingest.Run(ctx, p.Store, p.Lake.Directory, ingest.Options{
 		DatabaseQueriesPath: p.DatabaseQueriesPath,
-		Force:               true,
+		RetainGenerations:   p.RetainGenerations,
+		Force:               force,
 	})
 	if err != nil {
 		// The lake is unchanged and the previous generation keeps serving, so
@@ -216,26 +245,32 @@ func (p Projector) refreshInventory(ctx context.Context) error {
 	return p.run(ctx, arguments)
 }
 
+// enrolledRepositories names every enrolled repository.
+//
+// The enumeration is deliberately unbounded by default. Truncating it would
+// silently omit enrolled repositories from the inventory, and therefore from
+// the dashboard, while still reporting a successful projection. An operator who
+// needs a bound sets InventoryRepositoryLimit, and exceeding it fails the
+// projection rather than publishing a partial inventory.
 func (p Projector) enrolledRepositories(ctx context.Context) ([]string, error) {
-	limit := p.InventoryRepositoryLimit
-	if limit <= 0 {
-		limit = 5000
-	}
 	var repositories []string
 	cursor := ""
-	for len(repositories) < limit {
+	for {
 		page, next, err := p.Enrollment.ScanRepositories(ctx, cursor, 500)
 		if err != nil {
 			return nil, err
 		}
 		repositories = append(repositories, page...)
+		if p.InventoryRepositoryLimit > 0 && len(repositories) > p.InventoryRepositoryLimit {
+			return nil, fmt.Errorf(
+				"enrolled repositories exceed the configured inventory limit of %d",
+				p.InventoryRepositoryLimit,
+			)
+		}
 		if next == "0" || next == "" {
 			break
 		}
 		cursor = next
-	}
-	if len(repositories) > limit {
-		repositories = repositories[:limit]
 	}
 	sort.Strings(repositories)
 	return repositories, nil
