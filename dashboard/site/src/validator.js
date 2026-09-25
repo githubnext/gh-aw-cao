@@ -2785,7 +2785,10 @@ function validateView(view, viewNode, path, viewIds, errors) {
       for (const key of linkButtonConfigKeys) {
         if (view.config[key] === undefined) continue;
         validateStringField(view.config[key], `${path}.config.${key}`, true, errors);
-        if (view.element !== 'link-button-list' && !(key === 'empty-message' && view.element === 'measure-history')) {
+        if (
+          view.element !== 'link-button-list'
+          && !(key === 'empty-message' && (view.element === 'measure-history' || view.element === 'markdown'))
+        ) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
             `config.${key} is supported only for the link-button-list element.`,

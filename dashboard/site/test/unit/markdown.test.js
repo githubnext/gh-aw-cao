@@ -2,13 +2,23 @@
 import { describe, expect, it } from 'vitest';
 import { renderMarkdownElement } from '../../src/components/markdown.js';
 
+/** @type {import('../../src/presenter.js').SourceMetadata} */
 const metadata = {
+  'source-id': 'records',
+  'source-kind': 'query',
   availability: 'available',
   completeness: 'complete',
+  freshness: 'fresh',
   provenance: [],
-  'as-of': '2026-09-25T00:00:00Z'
+  'as-of': '2026-09-25T00:00:00Z',
+  'retrieved-at': '2026-09-25T00:00:00Z'
 };
 
+/**
+ * @param {Array<Record<string, unknown>>} rows
+ * @param {Record<string, string>} [config]
+ * @returns {import('../../src/components/ui-elements.js').ElementRenderContext}
+ */
 function context(rows, config = {}) {
   return {
     pageId: 'detail',
@@ -41,7 +51,7 @@ describe('generic markdown element', () => {
 
   it('drops unsafe links and renders an explicit empty state', () => {
     const rendered = renderMarkdownElement(context([{
-      readme: '[unsafe](javascript:alert(1)) [escape](../../../outside)',
+      readme: '[unsafe](javascript:alert(1)) [escape](../../../../outside)',
       path: 'campaign/README.md',
       'repository-link': { href: 'https://github.com/owner/repository', label: 'Repository' }
     }], {

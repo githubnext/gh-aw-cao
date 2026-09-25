@@ -88,6 +88,7 @@ Named elements own specialized DOM, accessibility, interaction, local state, and
 | `factory-header` | Presents factory status, retained-output context, work in motion, and weekly rhythm. |
 | `factory-floor` | Presents linked repository, run, dispatch, and value stations. |
 | `link-button-list` | Presents one source as an inset grouped list of Octicon navigation rows with disclosure chevrons. |
+| `markdown` | Presents retained Markdown from a declared source field with safe repository-relative links. |
 
 ## Testing standard
 
