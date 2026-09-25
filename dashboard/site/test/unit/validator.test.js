@@ -1480,6 +1480,54 @@ dashboard:
     expect(validateDashboardDocument(locked).ok).toBe(true);
   });
 
+  it('DLS-VIEW-039 rejects a page\u2019s only table being marked supplemental', () => {
+    const source = `language-version: "0.1.0"
+dashboard:
+  id: solo-table-disclosure
+  title: Solo table disclosure
+  pages:
+    - id: summary
+      kind: custom
+      views:
+        - id: overview-chart
+          title: Overview
+          data: { source: runs }
+          mark: chart
+          chart: pie
+          encoding:
+            x: { field: run, type: nominal }
+            y: { field: run, type: quantitative, aggregate: count }
+        - id: solo-table
+          disclosure: supplemental
+          disclosure-label: Runs
+          data: { source: runs }
+          mark: table
+          encoding:
+            columns: [{ field: run, type: nominal }]
+`;
+
+    const rejected = validateDashboardDocument(source);
+    expect(rejected.ok).toBe(false);
+    if (!rejected.ok) {
+      expect(rejected.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E013',
+        path: '$.dashboard.pages[0].views[1].disclosure'
+      }));
+    }
+
+    const essential = source.replace(
+      '          disclosure: supplemental\n          disclosure-label: Runs\n',
+      ''
+    );
+    expect(validateDashboardDocument(essential).ok).toBe(true);
+
+    const locked = source.replace(
+      '          disclosure: supplemental\n',
+      '          disclosure: supplemental\n          locked: true\n'
+    );
+    expect(validateDashboardDocument(locked).ok).toBe(true);
+  });
+
   it('ignores graphical layout rules for designated dashboard pages', () => {
     const source = `language-version: "0.1.0"
 dashboard:

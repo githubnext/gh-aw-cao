@@ -10478,8 +10478,6 @@
           },
           {
             "id": "workflow-report-table",
-            "disclosure-label": "Reports",
-            "disclosure": "supplemental",
             "data": {
               "source": "workflow-reports",
               "route-field": "workflow-route"
@@ -11448,8 +11446,6 @@
           },
           {
             "id": "campaign-workflow-table",
-            "disclosure-label": "Orchestrator and workers",
-            "disclosure": "supplemental",
             "data": {
               "source": "campaign-workflows",
               "route-field": "campaign"
@@ -12093,8 +12089,6 @@
           },
           {
             "id": "campaign-report-table",
-            "disclosure-label": "Reports",
-            "disclosure": "supplemental",
             "data": {
               "source": "campaign-reports",
               "route-field": "campaign"
@@ -12809,7 +12803,6 @@
             },
             {
               "id": "usage-usage-source",
-              "disclosure": "supplemental",
               "data": {
                 "source": "usage",
                 "order-by": [
@@ -13289,7 +13282,6 @@
             },
             {
               "id": "findings-source",
-              "disclosure": "supplemental",
               "data": {
                 "source": "findings",
                 "order-by": [
