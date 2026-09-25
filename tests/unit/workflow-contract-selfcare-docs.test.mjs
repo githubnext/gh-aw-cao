@@ -153,7 +153,9 @@ test("docs maintainer uses daily merged-change and ADR evidence", () => {
   assert.match(source, /ADR files under `adr\/` added or changed by direct pushes/);
   assert.match(source, /Advance each cursor only through fully inspected evidence/);
   assert.match(source, /safe-output failure will therefore be retried on the next run/);
-  assert.match(source, /Clear it only when a merged, provenance-verified `docs-maintainer` pull request cites every pending/);
+  assert.match(source, /Clear it when a merged, provenance-verified `docs-maintainer` pull request cites every pending/);
+  assert.match(source, /documentation was fixed independently or the correction is no longer necessary/);
+  assert.match(source, /clear the pending evidence while retaining its advanced cursors/);
   assert.match(source, /allowed-files:\n\s+- "docs\/\*\.md"\n\s+- "docs\/\*\*\/\*\.md"/);
   assert.match(source, /draft: true/);
   assert.match(source, /npm run docs:build/);
