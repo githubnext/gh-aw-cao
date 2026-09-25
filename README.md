@@ -16,7 +16,7 @@ curl --fail --silent --show-error --location \
   bash
 ```
 
-The installer adds gh-aw and the core CAO campaign, installs CAO project skills under `.github/skills/`, creates the minimal control policy, and makes the repository-local `./cao.sh` CLI executable. It makes no CAO changes when rerun after installation.
+The installer adds gh-aw and the core CAO campaign, creates the minimal control policy, and makes the repository-local `./cao.sh` CLI executable. It makes no CAO changes when rerun after installation. Install the Agent Plugin separately when you want the portable CAO skills.
 
 Central Agentic Ops provides persistent agentic campaigns that continuously pursue defined outcomes across explicit repository fleets without copying workflows into every repository.
 

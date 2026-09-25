@@ -22,7 +22,7 @@ const controlRuntimeFiles = [
   ".github/workflows/shared/policy.mjs",
   ".github/workflows/shared/setup-github-apps.mjs",
 ];
-const controlPlaneSkillFiles = [
+const excludedControlPlaneSkillFiles = [
   ".github/skills/add-cao-campaign/SKILL.md",
   ".github/skills/analyze-cao/SKILL.md",
   ".github/skills/cao-cli/SKILL.md",
@@ -218,8 +218,8 @@ test("root campaign bootstraps an empty CAO and preserves resources during workf
     for (const relativePath of controlRuntimeFiles) {
       assert.ok(existsSync(join(consumer, relativePath)), `root campaign omitted control file ${relativePath}`);
     }
-    for (const relativePath of controlPlaneSkillFiles) {
-      assert.ok(existsSync(join(consumer, relativePath)), `root campaign omitted project skill ${relativePath}`);
+    for (const relativePath of excludedControlPlaneSkillFiles) {
+      assert.equal(existsSync(join(consumer, relativePath)), false, `root campaign retained project skill ${relativePath}`);
     }
     const policyPath = join(consumer, ".github", "workflows", "cao.json");
     const policy = `${JSON.stringify({
