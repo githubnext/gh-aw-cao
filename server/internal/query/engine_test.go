@@ -108,6 +108,29 @@ func TestLinkHrefComputedField(t *testing.T) {
 	}
 }
 
+func TestLiteralComputedField(t *testing.T) {
+	definition := Definition{
+		Name: "labels", From: "rows",
+		Compute: []ComputedField{{
+			As: "label", Function: "literal",
+			Args: []Argument{{Value: "workflow runs"}},
+		}},
+	}
+	if err := Validate([]Definition{definition}); err != nil {
+		t.Fatal(err)
+	}
+
+	result, _, _, err := ExecuteDefinition(definition, map[string]model.Source{
+		"rows": {Rows: []model.Row{{"id": "1"}, {"id": "2"}}},
+	}, MaxOperations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Rows) != 2 || result.Rows[0]["label"] != "workflow runs" || result.Rows[1]["label"] != "workflow runs" {
+		t.Fatalf("unexpected literal labels: %#v", result.Rows)
+	}
+}
+
 func TestAggregateOmitsMissingGroupFields(t *testing.T) {
 	definition := Definition{
 		Name: "grouped",

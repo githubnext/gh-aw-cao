@@ -119,7 +119,7 @@ func Validate(definitions []Definition) error {
 
 func computeArity(function string) (int, int, bool) {
 	arities := map[string][2]int{
-		"coalesce": {2, 8}, "concat": {2, 8}, "lower": {1, 1}, "upper": {1, 1},
+		"literal": {1, 1}, "coalesce": {2, 8}, "concat": {2, 8}, "lower": {1, 1}, "upper": {1, 1},
 		"title-case": {1, 1}, "trim": {1, 1}, "replace-suffix": {3, 3}, "url-encode": {1, 1},
 		"date-day": {1, 1}, "calendar-week-point": {3, 3}, "dashboard-link": {3, 4}, "link-href": {1, 1},
 		"equals-any": {2, 8}, "greater-than": {2, 2}, "if": {3, 3}, "format-count": {1, 1},
@@ -617,6 +617,8 @@ func computeValue(row model.Row, definition ComputedField) (any, error) {
 		}
 	}
 	switch definition.Function {
+	case "literal":
+		return scalarValue(values[0]), nil
 	case "coalesce":
 		for _, value := range values {
 			if !empty(value) && scalar(value) {
