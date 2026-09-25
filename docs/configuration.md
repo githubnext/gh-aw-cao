@@ -39,6 +39,8 @@ Commit the file before running an installed campaign. A missing or invalid docum
 
 Control repositories must declare `gh-aw-version` at the document root. Campaign infrastructure reads this exact release when installing the CLI, and fleet maintenance can compare it with the expected release to identify repositories that need an upgrade. The field remains optional for target-authority-only documents.
 
+`cao.json` is the canonical gh-aw version pin for a control repository. Do not duplicate the pin in `.github/workflows/aw.json`; that file configures repository-wide compiler behavior such as strict mode, maintenance, and automatic upgrades. `npm run check:gh-aw-versions` verifies that campaign `min-version` fields, generated workflow compiler versions, and documentation examples match the control policy.
+
 The schema defaults are:
 
 | JSON path | Default | Range or values |

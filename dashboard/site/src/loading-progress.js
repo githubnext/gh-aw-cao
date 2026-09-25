@@ -1,9 +1,12 @@
 import { injectStyleOnce } from './dom.js';
+import { createDebug } from './debug.js';
 
 const MAX_PROGRESS = 0.94;
 const INITIAL_PROGRESS = 0.08;
 const COMPLETION_DURATION = 240;
 const activeProgress = new WeakMap();
+
+const debugLoadingProgress = createDebug('loading-progress');
 
 /**
  * @typedef {{
@@ -97,6 +100,7 @@ export function setLoadingProgressState(document, state) {
     active.bar.classList.add('loading-progress-complete');
     active.bar.style.transform = 'scaleX(1)';
     active.bar.setAttribute('aria-valuenow', '100');
+    debugLoadingProgress({ event: 'all-operations-complete', id: state.id });
     active.completionTimer = window.setTimeout(() => {
       if (active.operations.size > 0) return;
       active.bar.remove();
@@ -120,6 +124,9 @@ export function setLoadingProgressState(document, state) {
     };
     activeProgress.set(document, active);
     document.body.prepend(bar);
+    debugLoadingProgress({ event: 'bar-created', id: state.id });
+  } else if (state.phase === 'start' && active.operations.size > 0) {
+    debugLoadingProgress({ event: 'concurrent-operation-started', id: state.id, activeCount: active.operations.size + 1 });
   }
   window.clearTimeout(active.completionTimer);
   active.bar.classList.remove('loading-progress-complete');

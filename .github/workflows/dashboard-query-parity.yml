@@ -3,8 +3,34 @@ name: Dashboard query parity
 on:
   workflow_dispatch:
   pull_request:
+    paths:
+      - .github/workflows/dashboard-query-parity.yml
+      - package.json
+      - package-lock.json
+      - tests/e2e/dashboard-query-parity.mjs
+      - dashboard/site/dashboard.json
+      - dashboard/site/src/**
+      - server/go.mod
+      - server/go.sum
+      - server/cmd/**
+      - server/internal/**
+      - "!server/**/*_test.go"
+      - "!server/**/*.md"
   push:
     branches: [main]
+    paths:
+      - .github/workflows/dashboard-query-parity.yml
+      - package.json
+      - package-lock.json
+      - tests/e2e/dashboard-query-parity.mjs
+      - dashboard/site/dashboard.json
+      - dashboard/site/src/**
+      - server/go.mod
+      - server/go.sum
+      - server/cmd/**
+      - server/internal/**
+      - "!server/**/*_test.go"
+      - "!server/**/*.md"
 
 permissions:
   contents: read
