@@ -100,14 +100,6 @@ concurrency:
   job-discriminator: ${{ github.run_id }}
   cancel-in-progress: true
 
-graders:
-  operational-value:
-    name: Decision-ready issue fix
-    description: Whether the current run requested one target-bound issue-fix patch with the required decision and validation evidence
-    unit: proportion
-    direction: higher_is_better
-    run: ./graders/repo-assist-issue-fix-operational-value.sh
-
 tracker-id: repo-assist-issue-fix
 
 tools:

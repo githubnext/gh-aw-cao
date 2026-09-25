@@ -28,7 +28,7 @@ A general description for work performed with limited manual intervention. Autom
 
 ## Campaign
 
-A bounded repository-management capability that an operator configures, supervises, and evaluates, together with its distributable workflows, shared dependencies, and manifest. A campaign is implemented by one coordinator and one or more workers. Examples include Dependabot review, workflow optimization, and compliance assessment.
+A persistent body of agentic work that continuously pursues a defined outcome across a set of targets. An operator configures, supervises, and evaluates a campaign together with its distributable workflows, shared dependencies, and manifest. A campaign is implemented by one coordinator and one or more workers. Examples include Dependabot review, workflow optimization, and compliance assessment.
 
 ## Canonical data
 
@@ -76,11 +76,11 @@ A later repository-state observation of what happened to a safe output, such as 
 
 ## Operational value
 
-A package-defined, timestamped numeric metric for one repository and campaign. An installed campaign computes these records through its `operational-value.mjs`; operational value is not inferred from run volume, safe-output count, grader output, or activity alone.
+A campaign-defined, timestamped numeric metric for one repository and campaign. An installed campaign computes these records through its `operational-value.mjs`; operational value is not inferred from run volume, safe-output count, grader output, or activity alone.
 
 ## Operational grader
 
-The run-scoped result produced by gh-aw's upstream `operational-value` grader protocol. The protocol identifier remains `operational-value` for compatibility, but CAO refers to the resulting grader evidence as an operational grader so it is not confused with package-defined repository operational value.
+The run-scoped result produced by gh-aw's upstream `operational-value` grader protocol. The protocol identifier remains `operational-value` for compatibility, but CAO refers to the resulting grader evidence as an operational grader so it is not confused with campaign-defined repository operational value.
 
 ## Run
 

@@ -47,7 +47,7 @@ function context(overrides = {}) {
   return {
     pageId: 'workflow-runtime',
     title: 'Workflow runtime',
-    sourceNames: ['workflows', 'runs', 'usage', 'operational-graders'],
+    sourceNames: ['workflows', 'runs', 'usage'],
     contextDetails: [],
     routeParameter: 'workflow',
     headingTag: /** @type {'h3'} */ ('h3'),
@@ -71,11 +71,6 @@ function context(overrides = {}) {
           { organization: 'githubnext', repository: 'gh-aw-cao', workflow: workflow.workflow, run: '2', aic: 7.5 }
         ]
       },
-      'operational-graders': {
-        source: 'operational-graders',
-        metadata: completeMetadata,
-        rows: /** @type {Array<Record<string, unknown>>} */ ([])
-      },
       ...overrides
     }
   };
@@ -94,13 +89,13 @@ describe('renderWorkflowRuntime', () => {
       id: 'workflow-runtime-route',
       title: 'Workflow runtime',
       body: 'insights',
-      sources: ['workflows', 'runs', 'usage', 'operational-graders'],
+      sources: ['workflows', 'runs', 'usage'],
       layout: 'full'
     })).toEqual({
       id: 'workflow-runtime-route',
       title: 'Workflow runtime',
       data: {
-        sources: ['workflows', 'runs', 'usage', 'operational-graders']
+        sources: ['workflows', 'runs', 'usage']
       },
       mark: 'element',
       element: 'workflow-route-page',
@@ -111,7 +106,7 @@ describe('renderWorkflowRuntime', () => {
     });
   });
 
-  it('renders workflow identity, health, registration, usage, and the value empty state', () => {
+  it('renders workflow identity, health, registration, and usage', () => {
     const rendered = renderWorkflowRuntime(context());
     selectWorkflow(rendered);
 
@@ -145,8 +140,6 @@ describe('renderWorkflowRuntime', () => {
     expect(rendered.querySelector('.workflow-runtime-metrics')?.textContent).toContain('AI Credits (last 24h)50.0');
     expect(rendered.querySelector('.workflow-runtime-metrics')?.textContent).not.toContain('50.0 AIC');
     expect(rendered.querySelector('.workflow-runtime-metrics')?.textContent).toContain('2 runs with AIC telemetry; 24-hour Actions run window');
-    expect(rendered.querySelector('.value-report-empty')?.textContent).toContain('No workflow observations yet');
-    expect(rendered.querySelector('.value-report-empty code')?.textContent).toBe('grader_results.json');
   });
 
   it('does not present missing partial AI Credit coverage as measured zero usage', () => {
@@ -165,102 +158,6 @@ describe('renderWorkflowRuntime', () => {
     expect(usageMetric?.querySelector('p')?.textContent).toBe('0 runs with AIC telemetry; 24-hour Actions run window');
   });
 
-  it('renders retained operational-value observations and evidence', () => {
-    const sources = context().sources;
-    sources['operational-graders'] = {
-      source: 'operational-graders',
-      metadata: completeMetadata,
-      rows: [
-        {
-          organization: 'githubnext',
-          repository: 'gh-aw-cao',
-          workflow: workflow.workflow,
-          run: '0',
-          'operational-grader': 40,
-          'operational-case': 'docs-run-1',
-          'maturity-status': 'matured',
-          'evaluator-digest': 'sha256:old',
-          'requested-evidence-at': '2026-08-31T17:00:00Z',
-          'observed-at': '2026-08-31T17:00:00Z'
-        },
-        {
-          organization: 'githubnext',
-          repository: 'gh-aw-cao',
-          workflow: workflow.workflow,
-          run: '1',
-          'operational-grader': 75,
-          'operational-case': 'docs-run-1',
-          'maturity-status': 'matured',
-          'evaluator-digest': 'sha256:abcdefghijk',
-          'requested-evidence-at': '2026-08-24T18:00:00Z',
-          'observed-at': '2026-09-01T18:00:00Z',
-          diagnostics: { 'repository-health': 40, 'oversized-file-share': 80, currentLines: 1907 },
-          'diagnostic-definitions': [
-            { id: 'repository-health', name: 'Repository health', direction: 'higher_is_better', aggregation: 'latest' },
-            { id: 'oversized-file-share', name: 'Oversized file share', direction: 'lower_is_better', aggregation: 'latest' }
-          ]
-        },
-        {
-          organization: 'githubnext',
-          repository: 'gh-aw-cao',
-          workflow: workflow.workflow,
-          run: '2',
-          'operational-grader': 80,
-          'operational-case': 'docs-run-1',
-          'maturity-status': 'matured',
-          'evaluator-digest': 'sha256:abcdefghijk',
-          'requested-evidence-at': '2026-08-31T18:00:00Z',
-          'observed-at': '2026-09-01T19:00:00Z',
-          diagnostics: { 'repository-health': 65, 'oversized-file-share': 50 },
-          'diagnostic-definitions': [
-            { id: 'repository-health', name: 'Repository health', direction: 'higher_is_better', aggregation: 'latest' },
-            { id: 'oversized-file-share', name: 'Oversized file share', direction: 'lower_is_better', aggregation: 'latest' }
-          ],
-          'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/2', label: 'Run 2' },
-          'evidence-link': { relation: 'evidence', href: 'https://github.com/githubnext/gh-aw-cao/issues/1', label: 'Evidence 1' }
-        }
-      ]
-    };
-    const rendered = renderWorkflowRuntime(context(sources));
-    selectWorkflow(rendered);
-
-    expect(rendered.querySelector('.value-report-empty')).toBeNull();
-    expect(rendered.querySelector('.value-score')?.textContent).toContain('80');
-    expect(rendered.querySelector('.value-chart')?.textContent).toContain('Observed average80');
-    expect(rendered.querySelector('.value-chart')?.textContent).toContain('Observations1');
-    expect(rendered.querySelector('.value-outcomes')?.textContent).toContain('Outcome change from first observation');
-    expect(rendered.querySelector('.value-outcomes')?.textContent).toContain('Repository health+25');
-    expect(rendered.querySelector('.value-outcomes')?.textContent).toContain('Oversized file share+30');
-    expect(rendered.querySelector('.value-outcomes')?.textContent).not.toContain('CurrentLines');
-    expect(rendered.querySelector('.value-diagnostic-legend i.chart-series-1[aria-hidden="true"]')).not.toBeNull();
-    expect(rendered.querySelector('.value-attainment')?.textContent).toContain('Weekly primary metric');
-    expect(rendered.querySelector('.value-attainment')?.textContent).toContain('4-week rolling mean');
-    expect(rendered.querySelector('.value-attainment .chart-axis')?.textContent).toBe('Aug 24Aug 31');
-    expect(rendered.querySelector('.value-attainment .primary-weekly')).not.toBeNull();
-    expect(rendered.querySelector('.value-attainment .primary-rolling')).not.toBeNull();
-    expect(rendered.querySelector('.value-details tbody')?.textContent).toContain('docs-run-1');
-    expect(rendered.querySelectorAll('.value-details tbody tr')).toHaveLength(1);
-    expect([...rendered.querySelectorAll('.value-details tbody a')].map((link) => link.getAttribute('href'))).toEqual([
-      'https://github.com/githubnext/gh-aw-cao/actions/runs/2',
-      'https://github.com/githubnext/gh-aw-cao/issues/1'
-    ]);
-  });
-
-  it('distinguishes unavailable operational-grader evidence from an observed empty result', () => {
-    const sources = context().sources;
-    sources['operational-graders'] = {
-      source: 'operational-graders',
-      metadata: { ...completeMetadata, availability: /** @type {'unavailable'} */ ('unavailable') },
-      rows: /** @type {Array<Record<string, unknown>>} */ ([])
-    };
-    const rendered = renderWorkflowRuntime(context(sources));
-    selectWorkflow(rendered);
-
-    expect(rendered.querySelector('.value-report-empty')?.textContent).toContain('Unavailable');
-    expect(rendered.querySelector('.value-report-empty')?.textContent).toContain('Operational-grader evidence unavailable');
-    expect(rendered.querySelector('.value-report-empty')?.textContent).not.toContain('No workflow observations yet');
-  });
-
   it('reallocates page chrome and fails closed for invalid or missing routes', () => {
     const host = document.createElement('div');
     const rendered = renderWorkflowRuntime(context());
@@ -273,7 +170,7 @@ describe('renderWorkflowRuntime', () => {
     selectWorkflow(rendered);
     expect(detail).toEqual({
       title: 'Multi-Device Docs Tester',
-      description: 'Run health, AI Credit usage, and operational grader results for .github/workflows/multi-device-docs-tester.md in githubnext/gh-aw-cao.',
+      description: 'Run health and AI Credit usage for .github/workflows/multi-device-docs-tester.md in githubnext/gh-aw-cao.',
       titleLink: {
         href: 'https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/multi-device-docs-tester.md',
         label: 'Open Multi-Device Docs Tester workflow on GitHub'

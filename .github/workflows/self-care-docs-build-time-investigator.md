@@ -68,10 +68,6 @@ timeout-minutes: 30
 tracker-id: self-care-docs-build-time-investigator
 run-name: "SelfCare docs build time · ${{ inputs.target_repo }} · ${{ inputs.safe_output_mode || 'review' }}"
 
-graders:
-  operational-value:
-    run: ./graders/self-care-docs-build-time-investigator-operational-value.sh
-
 concurrency:
   group: "${{ github.workflow }}-${{ inputs.target_repo }}"
   job-discriminator: ${{ github.run_id }}

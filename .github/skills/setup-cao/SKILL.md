@@ -108,12 +108,27 @@ Do not leave angle-bracket placeholders in authored files or pass placeholders t
     node .github/workflows/shared/setup-github-apps.mjs --repo <organization>/<control-repository>
     ```
 
-    The helper mirrors gh-aw's App manifest conversion flow without changing campaign delivery, keeps the root campaign manifest config-free, stores client IDs as repository variables, and sends private keys to repository secrets through standard input. Do not install the campaign over in-tree workflows in a source-managed control repository. After setup, verify these names exist in the control repository:
+    Prefer the installed CAO command. The helper mirrors gh-aw's App manifest conversion flow without changing campaign delivery:
+
+    ```bash
+    ./cao.sh setup-auth github-app --repo <organization>/<control-repository>
+    ```
+
+    For multiple organizations in one enterprise, GitHub App manifests cannot create enterprise-owned Apps. Require an enterprise owner to create the private read and write Apps manually and install them separately on selected repositories in each enrolled organization. Then configure their existing client IDs and enter each PEM only at the interactive secret prompt:
+
+    ```bash
+    ./cao.sh setup-auth enterprise-app \
+      --repo <organization>/<control-repository> \
+      --read-client-id <read-app-client-id> \
+      --write-client-id <write-app-client-id>
+    ```
+
+    The helper keeps the root campaign manifest config-free, stores client IDs as repository variables, and sends private keys to repository secrets through standard input. Do not install the campaign over in-tree workflows in a source-managed control repository. After setup, verify these names exist in the control repository:
 
     - variable `GH_AW_GITHUB_READ_APP_ID` and secret `GH_AW_GITHUB_READ_APP_PRIVATE_KEY`;
     - variable `GH_AW_GITHUB_WRITE_APP_ID` and secret `GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY`.
 
-    Existing complete credential pairs are left unchanged. Use `--dry-run` before creation when reviewing custom App names or permissions. The helper creates private Apps owned by the control repository organization; expand their installations only to approved repositories owned by that organization. Multi-organization enrollment requires an explicitly reviewed App publication and installation plan. Confirm the read App has no write permission and the write App is installed only on repositories approved for safe outputs.
+    Existing complete credential pairs are left unchanged. Use `--dry-run` before creation when reviewing custom App names or permissions. The helper creates private Apps only: organization-owned Apps for one organization, or enterprise-owned Apps installed separately on selected repositories in each enrolled organization. For a consented fine-grained PAT fallback, use `./cao.sh setup-auth token --repo <organization>/<control-repository> --acknowledge-token-risks`; enter the token only at the interactive prompt. Confirm the read App has no write permission and the write App is installed only on repositories approved for safe outputs.
 
     Verify every installed Copilot-backed source declares `copilot-requests: write`, every corresponding generated lock grants that permission and maps `COPILOT_GITHUB_TOKEN` to `${{ github.token }}`, and no generated lock declares `${{ secrets.COPILOT_GITHUB_TOKEN }}`. Confirm the campaign installed `control.mjs`, `policy.mjs`, and `setup-github-apps.mjs` under `.github/workflows/shared/`, and `.github/workflows/cao-activity.yml` plus `activity/cao.mjs` were installed. Installed operations that need recent workflow-run history should restore the schema-versioned activity cache first and download only evidence absent from its bounded, complete scope. Do not rewrite installed workflow authentication or edit generated `.lock.yml` files directly.
 

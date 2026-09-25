@@ -101,14 +101,6 @@ concurrency:
   job-discriminator: ${{ github.run_id }}
   cancel-in-progress: true
 
-graders:
-  operational-value:
-    name: Target-bound PR repair request
-    description: Whether the current run requested one bounded repair for an identified Repo Assist pull request
-    unit: proportion
-    direction: higher_is_better
-    run: ./graders/repo-assist-pr-upkeep-operational-value.sh
-
 tracker-id: repo-assist-pr-upkeep
 
 tools:

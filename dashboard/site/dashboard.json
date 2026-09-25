@@ -531,11 +531,6 @@
             "title": "# dispatches"
           },
           {
-            "field": "grader-result",
-            "title": "# grader",
-            "unit": "ops-grader"
-          },
-          {
             "field": "aic",
             "title": "# aic",
             "unit": "aic"
@@ -8086,25 +8081,6 @@
         }
       },
       {
-        "name": "repository-evaluated-workflow-totals",
-        "intent": "Summarize distinct workflows with operational-grader evaluations by repository.",
-        "description": "Distinct evaluated workflow totals for each repository.",
-        "from": "operational-graders",
-        "aggregate": {
-          "by": [
-            "organization",
-            "repository"
-          ],
-          "values": [
-            {
-              "field": "workflow",
-              "as": "evaluated-workflows",
-              "reducer": "distinct-count"
-            }
-          ]
-        }
-      },
-      {
         "name": "repository-run-totals",
         "intent": "Summarize distinct runs, failures, and approval-required runs by repository.",
         "description": "Distinct run and conclusion totals for each repository.",
@@ -8224,26 +8200,6 @@
               {
                 "field": "reports",
                 "as": "observed-reports"
-              }
-            ]
-          },
-          {
-            "source": "repository-evaluated-workflow-totals",
-            "type": "left",
-            "on": [
-              {
-                "left": "organization",
-                "right": "organization"
-              },
-              {
-                "left": "repository",
-                "right": "repository"
-              }
-            ],
-            "fields": [
-              {
-                "field": "evaluated-workflows",
-                "as": "observed-evaluated-workflows"
               }
             ]
           },
@@ -8479,13 +8435,13 @@
           },
           {
             "as": "outcomes-observed",
-            "function": "sum",
+            "function": "coalesce",
             "args": [
               {
                 "field": "observed-reports"
               },
               {
-                "field": "observed-evaluated-workflows"
+                "value": 0
               }
             ]
           },
@@ -8714,10 +8670,6 @@
             "as": "reports"
           },
           {
-            "field": "observed-evaluated-workflows",
-            "as": "evaluated-workflows"
-          },
-          {
             "field": "runs"
           },
           {
@@ -8756,224 +8708,6 @@
         ]
       },
       {
-        "name": "workflow-operational-grader-totals",
-        "intent": "Summarize operational-grader results for each evaluated workflow.",
-        "description": "Observed operational-grader totals grouped by producing workflow.",
-        "from": "operational-graders",
-        "aggregate": {
-          "by": [
-            "workflow"
-          ],
-          "values": [
-            {
-              "field": "operational-grader",
-              "as": "grader-result",
-              "reducer": "sum"
-            }
-          ]
-        }
-      },
-      {
-        "name": "campaign-operational-graders",
-        "intent": "Retain every operational-grader result and diagnostic for campaign-scoped temporal analysis.",
-        "description": "Operational-grader observations attributed to centrally managed campaigns by repository and workflow identity.",
-        "from": "operational-graders",
-        "order-by": [
-          {
-            "field": "observed-at",
-            "direction": "asc"
-          }
-        ],
-        "joins": [
-          {
-            "source": "workflows",
-            "type": "left",
-            "on": [
-              {
-                "left": "organization",
-                "right": "organization"
-              },
-              {
-                "left": "repository",
-                "right": "repository"
-              },
-              {
-                "left": "workflow",
-                "right": "workflow"
-              }
-            ],
-            "fields": [
-              {
-                "field": "campaign",
-                "as": "_workflow-campaign"
-              },
-              {
-                "field": "campaign-name",
-                "as": "_workflow-campaign-name"
-              }
-            ]
-          }
-        ],
-        "compute": [
-          {
-            "function": "coalesce",
-            "args": [
-              {
-                "field": "campaign"
-              },
-              {
-                "field": "_workflow-campaign"
-              }
-            ],
-            "as": "_campaign"
-          },
-          {
-            "function": "coalesce",
-            "args": [
-              {
-                "field": "campaign-name"
-              },
-              {
-                "field": "_workflow-campaign-name"
-              }
-            ],
-            "as": "_campaign-name"
-          }
-        ],
-        "select": [
-          {
-            "field": "organization"
-          },
-          {
-            "field": "repository"
-          },
-          {
-            "field": "repository-name"
-          },
-          {
-            "field": "_campaign",
-            "as": "campaign"
-          },
-          {
-            "field": "_campaign-name",
-            "as": "campaign-name"
-          },
-          {
-            "field": "campaign-icon"
-          },
-          {
-            "field": "workflow"
-          },
-          {
-            "field": "run"
-          },
-          {
-            "field": "run-attempt"
-          },
-          {
-            "field": "observation-id"
-          },
-          {
-            "field": "experiment"
-          },
-          {
-            "field": "operational-case"
-          },
-          {
-            "field": "evaluator-digest"
-          },
-          {
-            "field": "rollout-mode"
-          },
-          {
-            "field": "operational-grader"
-          },
-          {
-            "field": "operational-grader-definition"
-          },
-          {
-            "field": "operational-grader-unit"
-          },
-          {
-            "field": "operational-grader-direction"
-          },
-          {
-            "field": "requested-evidence-at"
-          },
-          {
-            "field": "evidence-cutoff"
-          },
-          {
-            "field": "maturity-at"
-          },
-          {
-            "field": "maturity-status"
-          },
-          {
-            "field": "baseline-value"
-          },
-          {
-            "field": "delta-from-baseline"
-          },
-          {
-            "field": "accepted-evidence-provenance"
-          },
-          {
-            "field": "diagnostics"
-          },
-          {
-            "field": "diagnostic-definitions"
-          },
-          {
-            "field": "observed-at"
-          },
-          {
-            "field": "evidence-link"
-          },
-          {
-            "field": "organization-link"
-          },
-          {
-            "field": "repository-link"
-          },
-          {
-            "field": "workflow-link"
-          },
-          {
-            "field": "run-link"
-          }
-        ]
-      },
-      {
-        "name": "campaign-operational-grader-series",
-        "intent": "Project campaign operational-grader measures and diagnostics into reusable temporal series.",
-        "description": "Tidy temporal metric rows for campaign operational-grader analysis.",
-        "from": "campaign-operational-graders",
-        "temporal-series": {
-          "time": "observed-at",
-          "series": "workflow",
-          "shape": "groups",
-          "carry": [
-            "campaign"
-          ],
-          "measures": [
-            {
-              "field": "operational-grader",
-              "key": "operational-grader-definition",
-              "kind": "primary"
-            }
-          ],
-          "maps": [
-            {
-              "field": "diagnostics",
-              "definitions": "diagnostic-definitions",
-              "group": "operational-grader-definition",
-              "kind": "diagnostic"
-            }
-          ]
-        }
-      },
-      {
         "name": "campaign-operational-value-primary-series",
         "intent": "Project repository-level campaign operational value into temporal series while preserving maturity status.",
         "description": "Repository operational-value history with interim observations kept visibly separate from matured evidence.",
@@ -9008,12 +8742,6 @@
         "from": "campaign-operational-value-primary-series"
       },
       {
-        "name": "campaign-operational-grader-plot-inventory",
-        "intent": "Describe each rendered operational-grader plot using the shared campaign Insights plot contract.",
-        "description": "One plot-inventory row for every operational-grader measure or diagnostic rendered on campaign Insights.",
-        "from": "campaign-operational-grader-series"
-      },
-      {
         "name": "campaign-audit-summary-plot-inventory",
         "intent": "Describe the rendered audit-summary chart using the shared campaign Insights plot contract.",
         "description": "One plot-inventory row per campaign when its high- and medium-severity audit summary chart has data.",
@@ -9037,7 +8765,6 @@
         "description": "One campaign row per rendered Insights plot, independent of the plot's data source or renderer.",
         "from": "campaign-operational-value-plot-inventory",
         "union": [
-          "campaign-operational-grader-plot-inventory",
           "campaign-audit-summary-plot-inventory"
         ]
       },
@@ -9091,57 +8818,6 @@
               "field": "campaign",
               "as": "items",
               "reducer": "count"
-            }
-          ]
-        }
-      },
-      {
-        "name": "campaign-operational-grader-totals",
-        "intent": "Summarize operational-grader results for each centrally managed campaign.",
-        "description": "Observed operational-grader totals attributed to centrally managed campaign workflows.",
-        "from": "workflow-inventory",
-        "joins": [
-          {
-            "source": "workflow-operational-grader-totals",
-            "type": "inner",
-            "on": [
-              {
-                "left": "workflow",
-                "right": "workflow"
-              }
-            ],
-            "fields": [
-              {
-                "field": "grader-result",
-                "as": "workflow-grader-result"
-              }
-            ]
-          }
-        ],
-        "filter": {
-          "predicates": [
-            {
-              "field": "workflow-role",
-              "in": [
-                "orchestrator",
-                "worker"
-              ]
-            },
-            {
-              "field": "workflow-active",
-              "equals": "true"
-            }
-          ]
-        },
-        "aggregate": {
-          "by": [
-            "campaign"
-          ],
-          "values": [
-            {
-              "field": "workflow-grader-result",
-              "as": "grader-result",
-              "reducer": "sum"
             }
           ]
         }
@@ -9505,22 +9181,6 @@
             ]
           },
           {
-            "source": "campaign-operational-grader-totals",
-            "type": "left",
-            "on": [
-              {
-                "left": "campaign",
-                "right": "campaign"
-              }
-            ],
-            "fields": [
-              {
-                "field": "grader-result",
-                "as": "grader-result"
-              }
-            ]
-          },
-          {
             "source": "campaign-repository-coverage",
             "type": "left",
             "on": [
@@ -9722,9 +9382,6 @@
           },
           {
             "field": "aic"
-          },
-          {
-            "field": "grader-result"
           }
         ],
         "order-by": [
@@ -11577,8 +11234,7 @@
               "sources": [
                 "workflows",
                 "runs",
-                "usage",
-                "operational-graders"
+                "usage"
               ]
             },
             "mark": "element",
@@ -11823,12 +11479,6 @@
                     "unit": "aic"
                   },
                   {
-                    "field": "grader-result",
-                    "type": "quantitative",
-                    "title": "Ops Grader",
-                    "unit": "ops-grader"
-                  },
-                  {
                     "field": "registration",
                     "type": "nominal",
                     "title": "Registration",
@@ -11899,25 +11549,6 @@
             "config": {
               "body": "insights"
             }
-          },
-          {
-            "id": "campaign-operational-grader-history",
-            "title": "Operational grader history",
-            "description": "Every retained operational-grader measure and diagnostic, separated by metric and workflow series.",
-            "data": {
-              "sources": [
-                "campaign-operational-grader-series"
-              ],
-              "arguments": [
-                {
-                  "name": "campaign",
-                  "field": "campaign"
-                }
-              ]
-            },
-            "mark": "element",
-            "element": "measure-history",
-            "layout": "full"
           },
           {
             "id": "campaign-audit-event-summary-buckets",
