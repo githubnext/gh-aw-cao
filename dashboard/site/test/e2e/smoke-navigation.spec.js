@@ -455,6 +455,7 @@ test('phone full-view lazy tables switch between table and card-list modes', asy
 
   const mobileViewModeToggle = page.locator('.mobile-view-mode-toggle');
   await expect(mobileViewModeToggle).toBeVisible();
+  await expect(mobileViewModeToggle).toHaveAttribute('aria-label', 'Switch to Cards view');
   await mobileViewModeToggle.click();
   await expect(table).toBeHidden();
   await expect(cards).toBeVisible();
