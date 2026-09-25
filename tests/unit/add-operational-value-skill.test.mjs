@@ -9,13 +9,31 @@ import { pathToFileURL } from "node:url";
 const root = path.resolve(import.meta.dirname, "../..");
 const scripts = path.join(root, ".github/skills/add-operational-value/scripts");
 
-test("campaign workflow listing returns only direct manifest workflows", () => {
+test("campaign workflow listing returns only direct manifest worker workflows", () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), "operational-value-campaign-list-"));
   mkdirSync(path.join(temporary, ".github/workflows"), { recursive: true });
   mkdirSync(path.join(temporary, "example"), { recursive: true });
-  for (const workflow of ["example", "example-worker", "unrelated"]) {
-    writeFileSync(path.join(temporary, ".github/workflows", `${workflow}.md`), `# ${workflow}\n`);
-  }
+  const workflow = (name, role) => `---
+name: ${name}
+imports:
+  - uses: shared/control.md
+    with:
+      role: ${role}
+---
+# ${name}
+`;
+  writeFileSync(
+    path.join(temporary, ".github/workflows/example.md"),
+    workflow("example", "orchestrator"),
+  );
+  writeFileSync(
+    path.join(temporary, ".github/workflows/example-worker.md"),
+    workflow("example-worker", "worker"),
+  );
+  writeFileSync(
+    path.join(temporary, ".github/workflows/unrelated.md"),
+    workflow("unrelated", "worker"),
+  );
   writeFileSync(path.join(temporary, "example/aw.yml"), `name: Example
 includes:
   - ../aw.yml
@@ -28,12 +46,17 @@ includes:
     [path.join(scripts, "list-workflows.mjs"), "--campaign", "example"],
     { cwd: temporary, encoding: "utf8" },
   );
-  assert.equal(output, "example\nexample-worker\n");
+  assert.equal(output, "example-worker\n");
   assert.equal(execFileSync(
     process.execPath,
     [path.join(scripts, "list-workflows.mjs"), "example-worker", "--campaign", "example"],
     { cwd: temporary, encoding: "utf8" },
   ), ".github/workflows/example-worker.md\n");
+  assert.throws(() => execFileSync(
+    process.execPath,
+    [path.join(scripts, "list-workflows.mjs"), "example", "--campaign", "example"],
+    { cwd: temporary, stdio: "pipe" },
+  ), /workflow not found: example/);
   assert.throws(() => execFileSync(
     process.execPath,
     [path.join(scripts, "list-workflows.mjs"), "unrelated", "--campaign", "example"],
