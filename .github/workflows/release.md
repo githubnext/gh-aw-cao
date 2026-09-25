@@ -2,7 +2,7 @@
 private: true
 emoji: "🚀"
 name: Release
-description: Prepare a validated draft release, then add human-friendly release highlights
+description: Prepare a validated release, then add human-friendly release highlights
 intent: Help maintainers publish trustworthy releases whose descriptions clearly explain user-facing changes.
 
 on:
@@ -72,7 +72,7 @@ jobs:
             if (bump !== requestedBump) {
               core.warning(`Unknown release bump "${requestedBump}"; defaulting to patch.`);
             }
-            core.info(`Processing draft release request from ${triggeringActor} with a ${bump} bump.`);
+            core.info(`Processing release request from ${triggeringActor} with a ${bump} bump.`);
             if (context.payload.repository.fork) {
               throw new Error('Releases cannot run from forks');
             }
@@ -170,7 +170,7 @@ jobs:
         run: npm run test:campaign-root
 
   prepare-release:
-    name: Prepare draft release
+    name: Prepare release
     needs: [resolve-version, validate-campaign]
     runs-on: ubuntu-latest
     permissions:
@@ -179,7 +179,7 @@ jobs:
       release_id: ${{ steps.release.outputs.release_id }}
       release_tag: ${{ steps.release.outputs.release_tag }}
     steps:
-      - name: Generate draft release notes without assets
+      - name: Generate release notes without assets
         id: release
         uses: actions/github-script@v9
         env:
@@ -188,7 +188,7 @@ jobs:
           github-token: ${{ github.token }}
           script: |
             const releaseTag = process.env.RELEASE_TAG;
-            core.info(`Creating draft release ${releaseTag}.`);
+            core.info(`Creating release ${releaseTag}.`);
             await github.rest.git.createRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -201,16 +201,16 @@ jobs:
               tag_name: releaseTag,
               target_commitish: context.sha,
               name: releaseTag,
-              draft: true,
+              draft: false,
               generate_release_notes: true,
             });
             core.setOutput('release_id', release.id);
             core.setOutput('release_tag', release.tag_name);
             core.summary
               .addHeading(`Prepared ${releaseTag}`)
-              .addRaw('The release highlights agent will update this draft. A maintainer must then review the complete notes, publish the draft, and mark it as the latest release from the GitHub website. Control repositories install or update this campaign only with gh aw add or gh aw update.')
+              .addRaw('The release is published. The release highlights agent will update its notes. Control repositories install or update this campaign only with gh aw add or gh aw update.')
               .addEOL()
-              .addLink('Review draft release', release.html_url);
+              .addLink('Review release', release.html_url);
             await core.summary.write();
       - name: Persist prepared release context
         env:
@@ -251,7 +251,8 @@ steps:
       test -s /tmp/gh-aw/agent/release-data/current_release.json
 
       gh api --paginate "/repos/$GITHUB_REPOSITORY/releases?per_page=100" |
-        jq --slurp '[add[] | select(.draft == false and .prerelease == false)][0] // {}' \
+        jq --arg release_tag "$RELEASE_TAG" --slurp \
+          '[add[] | select(.draft == false and .prerelease == false and .tag_name != $release_tag)][0] // {}' \
         > /tmp/gh-aw/agent/release-data/previous_release.json
 
       PREVIOUS_TAG=$(jq -r '.tag_name // empty' /tmp/gh-aw/agent/release-data/previous_release.json)
@@ -335,15 +336,15 @@ steps:
 
 # Release Highlights
 
-Update the newly created draft release identified by `current_release.json` with a concise, human-friendly summary.
+Update the newly created release identified by `current_release.json` with a concise, human-friendly summary.
 
-The release publishing job has already created the tag and draft release. Do not create, publish, or otherwise change the release state. Your only write is the release-description update through the safe output.
+The release publishing job has already created the tag and published release. Do not create or otherwise change the release state. Your only write is the release-description update through the safe output.
 
 ## Available evidence
 
 Read the files under `/tmp/gh-aw/agent/release-data/`:
 
-- `current_release.json`: the draft release, including GitHub-generated notes
+- `current_release.json`: the published release, including GitHub-generated notes
 - `previous_release.json`: the previous published stable release, or an empty object
 - `pull_requests.json`: pull requests merged in the release window
 - `release_adrs.md`: ADRs changed by those pull requests, if any
@@ -369,4 +370,4 @@ Call `safeoutputs/update_release` exactly once with:
 - `operation`: `prepend`
 - `body`: the complete Markdown highlights, beginning with `## Release highlights`
 
-If the evidence contains no user-facing changes, prepend a brief `## Maintenance release` summary instead. Do not call `noop`: every created draft release needs a human-friendly introductory summary.
+If the evidence contains no user-facing changes, prepend a brief `## Maintenance release` summary instead. Do not call `noop`: every created release needs a human-friendly introductory summary.

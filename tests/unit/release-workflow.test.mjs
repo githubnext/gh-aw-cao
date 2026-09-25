@@ -3,20 +3,20 @@ import test from "node:test";
 
 import { generatedJobs, stepBlock, workflow } from "./workflow-contract.helpers.mjs";
 
-test("tag and draft release exist before the agent job starts", () => {
+test("tag and published release exist before the agent job starts", () => {
   const source = workflow("release.md");
-  const prepareRelease = stepBlock(source, "Generate draft release notes without assets");
+  const prepareRelease = stepBlock(source, "Generate release notes without assets");
   const jobs = generatedJobs(workflow("release.lock.yml"));
 
   assert.match(prepareRelease, /github\.rest\.git\.createRef/);
   assert.match(prepareRelease, /ref: `refs\/tags\/\$\{releaseTag\}`/);
   assert.match(prepareRelease, /sha: context\.sha/);
   assert.match(prepareRelease, /github\.rest\.repos\.createRelease/);
-  assert.match(prepareRelease, /draft: true/);
+  assert.match(prepareRelease, /draft: false/);
   assert.match(prepareRelease, /core\.setOutput\('release_tag', release\.tag_name\)/);
   assert.ok(
     prepareRelease.indexOf("github.rest.git.createRef") < prepareRelease.indexOf("github.rest.repos.createRelease"),
-    "git tag must be created before the draft release",
+    "git tag must be created before the published release",
   );
   assert.ok(jobs.get("agent")?.needs.includes("prepare-release"));
 });
@@ -32,6 +32,12 @@ test("release context paginates before filtering complete API responses", () => 
   );
 });
 
+test("previous release context excludes the newly published release", () => {
+  const fetchReleaseContext = stepBlock(workflow("release.md"), "Fetch release context");
+
+  assert.match(fetchReleaseContext, /\.tag_name != \$release_tag/);
+});
+
 test("release context fetches tags before local git inspection", () => {
   const fetchReleaseContext = stepBlock(workflow("release.md"), "Fetch release context");
   const fetchPreviousTag = fetchReleaseContext.indexOf('fetch_release_tag "$PREVIOUS_TAG"');
@@ -41,12 +47,12 @@ test("release context fetches tags before local git inspection", () => {
 
   assert.match(fetchReleaseContext, /fetch --force origin "refs\/tags\/\$tag:refs\/tags\/\$tag"/);
   assert.ok(fetchPreviousTag !== -1, "previous release tag must be fetched when present");
-  assert.ok(fetchReleaseTag !== -1, "new draft release tag must be fetched");
+  assert.ok(fetchReleaseTag !== -1, "new published release tag must be fetched");
   assert.ok(fetchPreviousTag < verifyPreviousTag, "previous tag must be fetched before verification");
   assert.ok(fetchReleaseTag < verifyReleaseTag, "release tag must be fetched before verification");
 });
 
-test("agent consumes release tag from draft release job output", () => {
+test("agent consumes release tag from published release job output", () => {
   const source = workflow("release.md");
   const fetchReleaseContext = stepBlock(source, "Fetch release context");
 
