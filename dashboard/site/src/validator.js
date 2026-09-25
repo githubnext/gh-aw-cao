@@ -5121,7 +5121,7 @@ function validateEncoding(encodingNode, encoding, mark, chart, sourceName, data,
   }
   const displayForbiddenChannels = ['list', 'table'].includes(markValue ?? '')
     ? ['href']
-    : ['value', 'x', 'y', 'color', 'weight', 'reference', 'href'];
+    : ['value', 'x', 'y', 'color', 'section', 'weight', 'reference', 'href'];
   for (const channel of displayForbiddenChannels) {
     if (isPlainObject(encoding[channel]) && encoding[channel].display !== undefined) {
       errors.push(createError(
@@ -5133,7 +5133,7 @@ function validateEncoding(encodingNode, encoding, mark, chart, sourceName, data,
   }
   const filterForbiddenChannels = ['list', 'table'].includes(markValue ?? '')
     ? ['href']
-    : ['value', 'x', 'y', 'color', 'weight', 'reference', 'href'];
+    : ['value', 'x', 'y', 'color', 'section', 'weight', 'reference', 'href'];
   for (const channel of filterForbiddenChannels) {
     if (isPlainObject(encoding[channel]) && encoding[channel].filter !== undefined) {
       errors.push(createError(
@@ -5247,6 +5247,25 @@ function validateChartWidget(encoding, chart, viewPath, errors) {
         ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
         'horizontal-bar chart x encoding must be nominal or ordinal.',
         `${viewPath}.encoding.x.type`
+      ));
+    }
+  }
+  if (encoding.section !== undefined) {
+    if (chart !== 'horizontal-bar') {
+      errors.push(createError(
+        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        'section encoding is supported only by horizontal-bar charts.',
+        `${viewPath}.encoding.section`
+      ));
+    } else if (
+      isPlainObject(encoding.section)
+      && encoding.section.type !== undefined
+      && !['nominal', 'ordinal'].includes(String(encoding.section.type))
+    ) {
+      errors.push(createError(
+        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        'horizontal-bar chart section encoding must be nominal or ordinal when explicitly typed.',
+        `${viewPath}.encoding.section.type`
       ));
     }
   }
@@ -5474,6 +5493,10 @@ function validateChartEncoding(encodingNode, encoding, chart, sourceName, path, 
 
   if (encoding.color !== undefined) {
     validateFieldDefinition(getValueNodeByKey(encodingNode, 'color'), encoding.color, sourceName, `${path}.color`, aggregateOutputIds, errors);
+  }
+
+  if (encoding.section !== undefined) {
+    validateFieldDefinition(getValueNodeByKey(encodingNode, 'section'), encoding.section, sourceName, `${path}.section`, aggregateOutputIds, errors);
   }
 
   if (encoding.weight !== undefined) {

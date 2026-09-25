@@ -701,6 +701,10 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .heatmap-cell:focus-visible rect { stroke: var(--focus); stroke-width: 1; }
 .horizontal-bar-chart-widget { min-width: 0; max-height: 560px; place-items: stretch; overflow-y: auto; padding: 8px 4px; }
 .horizontal-bar-chart-list { display: grid; gap: 6px; width: 100%; margin: 0; padding: 0; list-style: none; }
+.horizontal-bar-chart-section { display: grid; gap: 6px; min-width: 0; list-style: none; }
+.horizontal-bar-chart-section + .horizontal-bar-chart-section { margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--border-muted); }
+.horizontal-bar-chart-section-title { margin: 0; color: var(--fg); font-size: .75rem; font-weight: 600; overflow-wrap: anywhere; }
+.horizontal-bar-chart-section-list { display: grid; gap: 6px; min-width: 0; margin: 0; padding: 0; list-style: none; }
 .horizontal-bar-chart-row { min-width: 0; display: grid; grid-template-columns: minmax(120px, 52%) minmax(48px, 1fr) auto; align-items: center; gap: 8px; }
 .horizontal-bar-chart-label { overflow: hidden; color: var(--fg); font-size: .75rem; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
 .horizontal-bar-chart-label-text { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

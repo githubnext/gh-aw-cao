@@ -7,7 +7,7 @@ import { formatString, stringOrFallback, toNumber } from '../view-formatters.js'
 import { findLink } from './link-content.js';
 
 /** @typedef {{ field: string, aggregate?: string, as?: string, direction?: string } & Record<string, unknown>} TableField */
-/** @typedef {{ key: string, x: string, y: number, weight?: number, category?: string, color: string | null, highlighted?: boolean | null, link: { href: string, label: string } | null, source?: Record<string, unknown> }} ChartPoint */
+/** @typedef {{ key: string, x: string, y: number, weight?: number, category?: string, color: string | null, section?: string | null, highlighted?: boolean | null, link: { href: string, label: string } | null, source?: Record<string, unknown> }} ChartPoint */
 
 /** @param {unknown} value */
 export function toViewText(value) {
@@ -96,8 +96,9 @@ function compareValues(left, right) {
  * @param {Record<string, any> | null} color
  * @param {string | null} hrefField
  * @param {Record<string, any> | null} [weight]
+ * @param {Record<string, any> | null} [section]
  */
-export function buildChartPoints(pageId, title, rows, x, y, color, hrefField, weight = null) {
+export function buildChartPoints(pageId, title, rows, x, y, color, hrefField, weight = null, section = null) {
   const aggregate = typeof y?.aggregate === 'string' ? y.aggregate : null;
   if (!aggregate || aggregate === 'none') {
     return rows.map((row, rowIndex) => ({
@@ -107,21 +108,24 @@ export function buildChartPoints(pageId, title, rows, x, y, color, hrefField, we
       weight: weight ? toNumber(row[weight.field]) : 1,
       category: y ? formatString(row[y.field], y.format) : 'unknown',
       color: color ? formatString(row[color.field], color.format) : null,
+      section: section ? formatString(row[section.field], section.format) : null,
       highlighted: typeof row['in-window'] === 'boolean' ? row['in-window'] : null,
       link: hrefField ? findLink(row, hrefField) : null,
       source: row
     }));
   }
 
-  /** @type {Map<string, { x: string, color: string | null, values: unknown[], links: Array<{ href: string, label: string }>, source: Record<string, unknown> }>} */
+  /** @type {Map<string, { x: string, color: string | null, section: string | null, values: unknown[], links: Array<{ href: string, label: string }>, source: Record<string, unknown> }>} */
   const groups = new Map();
   for (const row of rows) {
     const rawXValue = x ? toViewText(row[x.field]) : 'unknown';
     const rawColorValue = color ? toViewText(row[color.field]) : null;
-    const key = JSON.stringify([rawXValue, rawColorValue]);
+    const rawSectionValue = section ? toViewText(row[section.field]) : null;
+    const key = JSON.stringify([rawSectionValue, rawXValue, rawColorValue]);
     const group = groups.get(key) ?? {
       x: x ? formatString(row[x.field], x.format) : 'unknown',
       color: color ? formatString(row[color.field], color.format) : null,
+      section: section ? formatString(row[section.field], section.format) : null,
       values: [],
       links: [],
       source: row
@@ -150,6 +154,7 @@ export function buildChartPoints(pageId, title, rows, x, y, color, hrefField, we
       weight: weight ? toNumber(group.source[weight.field]) : 1,
       category: toViewText(group.values[0]),
       color: group.color,
+      section: group.section,
       highlighted: null,
       link: distinctLinks.size === 1 ? distinctLinks.values().next().value ?? null : null,
       source: group.source

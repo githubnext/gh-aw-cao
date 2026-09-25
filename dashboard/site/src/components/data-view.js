@@ -1221,6 +1221,9 @@ function renderChartView(context) {
     .filter((definition) => isPlainObject(definition) && typeof definition.field === 'string');
   const y = yDefinitions[0] ?? null;
   const color = isPlainObject(encoding?.color) && typeof encoding.color.field === 'string' ? encoding.color : null;
+  const chartSection = isPlainObject(encoding?.section) && typeof encoding.section.field === 'string'
+    ? encoding.section
+    : null;
   const weight = isPlainObject(encoding?.weight) && typeof encoding.weight.field === 'string' ? encoding.weight : null;
   const reference = isPlainObject(encoding?.reference) && typeof encoding.reference.field === 'string' ? encoding.reference : null;
   const href = isPlainObject(encoding?.href) && typeof encoding.href.field === 'string' ? encoding.href : null;
@@ -1231,8 +1234,8 @@ function renderChartView(context) {
   const pointsForRows = (chartRows) => {
     if (chartType === 'line' && yDefinitions.length > 1) {
       const points = yDefinitions.flatMap((definition) => (weight
-        ? buildChartPoints(pageId, title, chartRows, x, definition, null, href?.field ?? null, weight)
-        : buildChartPoints(pageId, title, chartRows, x, definition, null, href?.field ?? null)
+        ? buildChartPoints(pageId, title, chartRows, x, definition, null, href?.field ?? null, weight, chartSection)
+        : buildChartPoints(pageId, title, chartRows, x, definition, null, href?.field ?? null, null, chartSection)
       ).map((point) => ({
         ...point,
         key: `${point.key}-${definition.field}`,
@@ -1242,8 +1245,8 @@ function renderChartView(context) {
     }
     return prepareChartPoints(
       weight
-        ? buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null, weight)
-        : buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null),
+        ? buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null, weight, chartSection)
+        : buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null, null, chartSection),
       x,
       value,
       series,

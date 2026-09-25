@@ -9855,6 +9855,21 @@
         "from": "workflow-aic-totals",
         "compute": [
           {
+            "as": "repository-coordinate",
+            "function": "concat",
+            "args": [
+              {
+                "field": "organization"
+              },
+              {
+                "value": "/"
+              },
+              {
+                "field": "repository"
+              }
+            ]
+          },
+          {
             "as": "workflow-coordinate",
             "function": "concat",
             "args": [
@@ -9931,6 +9946,12 @@
           }
         ],
         "select": [
+          {
+            "field": "repository-coordinate"
+          },
+          {
+            "field": "workflow"
+          },
           {
             "field": "workflow-coordinate"
           },
@@ -10318,10 +10339,15 @@
             "empty-message": "No workflow steering warnings were observed in the selected horizon.",
             "encoding": {
               "x": {
-                "field": "workflow-coordinate",
+                "field": "workflow",
                 "type": "nominal",
                 "title": "Workflow",
                 "format": "workflow-identity-label"
+              },
+              "section": {
+                "field": "repository-coordinate",
+                "type": "nominal",
+                "title": "Repository"
               },
               "y": {
                 "field": "events",

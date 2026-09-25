@@ -126,7 +126,8 @@ describe('dashboard view query contracts', () => {
         mark: 'chart',
         chart: 'horizontal-bar',
         encoding: {
-          x: { field: 'workflow-coordinate' },
+          x: { field: 'workflow' },
+          section: { field: 'repository-coordinate' },
           y: { field: 'aic', unit: 'aic' }
         }
       }

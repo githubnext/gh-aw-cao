@@ -120,6 +120,7 @@ const SEMANTIC_SERIES_PHRASES = {
  *   highlighted?: boolean | null,
  *   key?: string,
  *   category?: string,
+ *   section?: string | null,
  *   link?: { href: string, label: string } | null,
  *   source?: Record<string, unknown>
  * }} ChartPointLike
@@ -604,43 +605,70 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
     }
     const maximum = Math.max(...points.map((point) => toNumber(point.y)).filter(Number.isFinite), 1);
     const seriesClassNames = new Map(series.map((item) => [item.name, item.className]));
+    /** @param {ChartPointLike} point @param {number} index */
+    const renderRow = (point, index) => {
+      const numericValue = toNumber(point.y);
+      const value = Number.isFinite(numericValue) ? numericValue : 0;
+      const barSize = Math.max(0, value);
+      const label = chartPointLabel(point, unit);
+      const category = formatCategory(point.x);
+      return h(
+        'li',
+        { className: 'horizontal-bar-chart-row' },
+        h('span', { className: 'horizontal-bar-chart-label', title: point.x },
+          renderSafeLink(
+            h('bdi', { className: 'horizontal-bar-chart-label-text', dir: 'ltr' }, category),
+            point.link ?? null
+          )
+        ),
+        h(
+          'span',
+          { className: 'horizontal-bar-chart-track', 'aria-hidden': 'true' },
+          h('span', {
+            className: `bar-chart-bar horizontal-bar-chart-bar ${seriesClassNames.get(point.color ?? 'value') ?? 'chart-series-1'}`,
+            style: `--chart-entry-index: ${index}; --horizontal-bar-size: ${(barSize / maximum) * 100}%`
+          })
+        ),
+        h('span', {
+          className: 'horizontal-bar-chart-value',
+          tabIndex: 0,
+          role: 'img',
+          'aria-label': label
+        }, formatNumber(value, unit))
+      );
+    };
+    const hasSections = points.some((point) => point.section);
+    /** @type {HTMLElement[]} */
+    let entries;
+    if (hasSections) {
+      /** @type {Map<string, Array<{ point: ChartPointLike, index: number }>>} */
+      const sections = new Map();
+      points.forEach((point, index) => {
+        const section = point.section || 'Other';
+        const sectionPoints = sections.get(section) ?? [];
+        sectionPoints.push({ point, index });
+        sections.set(section, sectionPoints);
+      });
+      entries = [...sections.entries()].map(([section, sectionPoints]) => h(
+        'li',
+        { className: 'horizontal-bar-chart-section' },
+        h('h4', { className: 'horizontal-bar-chart-section-title' }, section),
+        h(
+          'ul',
+          { className: 'horizontal-bar-chart-section-list', 'aria-label': section },
+          ...sectionPoints.map(({ point, index }) => renderRow(point, index))
+        )
+      ));
+    } else {
+      entries = points.map(renderRow);
+    }
     return renderChartWidgetShell(
       chartType,
       null,
       h(
         'ul',
         { className: 'horizontal-bar-chart-list', 'aria-label': `Horizontal bar chart with ${points.length} bars` },
-        ...points.map((point, index) => {
-          const numericValue = toNumber(point.y);
-          const value = Number.isFinite(numericValue) ? numericValue : 0;
-          const barSize = Math.max(0, value);
-          const label = chartPointLabel(point, unit);
-          const category = formatCategory(point.x);
-          return h(
-            'li',
-            { className: 'horizontal-bar-chart-row' },
-            h('span', { className: 'horizontal-bar-chart-label', title: point.x },
-              renderSafeLink(
-                h('bdi', { className: 'horizontal-bar-chart-label-text', dir: 'ltr' }, category),
-                point.link ?? null
-              )
-            ),
-            h(
-              'span',
-              { className: 'horizontal-bar-chart-track', 'aria-hidden': 'true' },
-              h('span', {
-                className: `bar-chart-bar horizontal-bar-chart-bar ${seriesClassNames.get(point.color ?? 'value') ?? 'chart-series-1'}`,
-                style: `--chart-entry-index: ${index}; --horizontal-bar-size: ${(barSize / maximum) * 100}%`
-              })
-            ),
-            h('span', {
-              className: 'horizontal-bar-chart-value',
-              tabIndex: 0,
-              role: 'img',
-              'aria-label': label
-            }, formatNumber(value, unit))
-          );
-        })
+        ...entries
       )
     );
   }
