@@ -189,6 +189,9 @@ describe('dashboard DOM provenance', () => {
 
     const rendered = renderDashboardView({ document, sources: {}, loadPageSources });
 
+    expect(loadSources).not.toHaveBeenCalled();
+    expect(rendered.querySelector('[data-nav-page-id="maintenance"]')?.getAttribute('aria-label'))
+      .toBe('Maintenance');
     await vi.waitFor(() => {
       expect(rendered.querySelector('[data-nav-page-id="maintenance"]')?.getAttribute('aria-label'))
         .toBe('Maintenance, updates available');

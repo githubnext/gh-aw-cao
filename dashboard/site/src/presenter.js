@@ -353,18 +353,27 @@ export function renderDashboard(input) {
 function enableNavigationIndicatorUpdates(root, pages, loadPageSources, signal) {
   const sourceNames = navigationIndicatorSourceNames(pages);
   if (!loadPageSources?.loadSources || sourceNames.length === 0) return;
-  // The loader resolves the first snapshot; later snapshots arrive through onUpdate.
-  void loadPageSources.loadSources(sourceNames, {
-    signal,
-    onUpdate: (sources) => syncDashboardNavigationIndicators(root, pages, sources)
-  })
-    .then((sources) => syncDashboardNavigationIndicators(root, pages, sources))
-    .catch((error) => {
-      if (signal.aborted || error?.name === 'AbortError') return;
-      debugNavigation('indicator update failed', {
-        error: error instanceof Error ? error.message : String(error)
+  const view = root.ownerDocument.defaultView;
+  const start = () => {
+    signal.removeEventListener('abort', abort);
+    if (signal.aborted) return;
+    // The loader resolves the first snapshot; later snapshots arrive through onUpdate.
+    void loadPageSources.loadSources?.(sourceNames, {
+      signal,
+      onUpdate: (sources) => syncDashboardNavigationIndicators(root, pages, sources)
+    })
+      .then((sources) => syncDashboardNavigationIndicators(root, pages, sources))
+      .catch((error) => {
+        if (signal.aborted || error?.name === 'AbortError') return;
+        debugNavigation('indicator update failed', {
+          error: error instanceof Error ? error.message : String(error)
+        });
       });
-    });
+  };
+  const timeout = view?.setTimeout(start, 0) ?? setTimeout(start, 0);
+  const clear = view?.clearTimeout.bind(view) ?? clearTimeout;
+  const abort = () => clear(timeout);
+  signal.addEventListener('abort', abort, { once: true });
 }
 
 /**
