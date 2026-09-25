@@ -133,13 +133,13 @@ pre-agent-steps:
         echo "Playwright preflight failed; agent will report the infrastructure blocker."
       fi
   - name: Build expected control-plane inventory
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' }}
     run: |
       mkdir -p /tmp/gh-aw/agent/self-care-dashboard-review
       REPORT_INVENTORY=/tmp/gh-aw/agent/self-care-dashboard-review/expected-inventory.json \
         node activity/inventory.mjs
   - name: Download and grade the live dashboard artifact
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' }}
     env:
       GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
     run: |
