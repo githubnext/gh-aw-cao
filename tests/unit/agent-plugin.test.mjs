@@ -18,6 +18,7 @@ test("Agent Plugins manifest exposes portable skills and Copilot namespace", asy
   assert.deepEqual(manifest.extensions, { "com.github.copilot": {} });
   for (const skillName of [
     "setup-cao",
+    "debug-cao",
     "add-cao-campaign",
     "create-cao-campaign",
     "analyze-cao",

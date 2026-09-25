@@ -27,6 +27,7 @@ const controlPlaneSkillFiles = [
   ".github/skills/analyze-cao/SKILL.md",
   ".github/skills/cao-cli/SKILL.md",
   ".github/skills/create-cao-campaign/SKILL.md",
+  ".github/skills/debug-cao/SKILL.md",
   ".github/skills/setup-cao/SKILL.md",
 ];
 function focusedCampaignSource(slug, source = campaignSource) {
