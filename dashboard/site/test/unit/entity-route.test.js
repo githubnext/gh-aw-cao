@@ -56,7 +56,7 @@ describe('entity route', () => {
       title: 'api.github.com',
       titleLink: {
         href: 'https://github.com/octo/repo/actions/runs/1',
-        label: '#api.github.com'
+        label: 'Open #api.github.com on GitHub'
       }
     });
   });

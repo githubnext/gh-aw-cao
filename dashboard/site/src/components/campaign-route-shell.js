@@ -188,7 +188,7 @@ function campaignFolderHref(repositoryHref, readmePath) {
     const url = new URL(repositoryHref);
     if (url.protocol !== 'https:' || url.pathname.split('/').filter(Boolean).length < 2) return '';
     const directory = readmePath.includes('/') ? readmePath.slice(0, readmePath.lastIndexOf('/')) : '';
-    if (!directory) return url.href;
+    if (!directory) return '';
     const encodedDirectory = directory.split('/').map(encodeURIComponent).join('/');
     url.pathname = `${url.pathname.replace(/\/$/, '')}/tree/HEAD/${encodedDirectory}`;
     return url.href;

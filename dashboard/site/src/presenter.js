@@ -2156,17 +2156,17 @@ function renderPageTitleLink(target, candidate) {
     target.replaceChildren();
     return;
   }
-  const label = link.label.includes('GitHub') ? link.label : `Open ${link.label} on GitHub`;
   target.hidden = false;
-  const attrs = externalAnchorAttrs(link.href, label);
+  const attrs = externalAnchorAttrs(link.href, link.label);
   for (const [name, value] of Object.entries(attrs)) {
     if (value === undefined) target.removeAttribute(name);
     else target.setAttribute(name, value);
   }
-  target.title = label;
+  target.removeAttribute('aria-label');
+  target.title = link.label;
   target.replaceChildren(
     octicon('mark-github'),
-    h('span', { className: 'sr-only' }, label)
+    h('span', { className: 'sr-only' }, link.label)
   );
 }
 

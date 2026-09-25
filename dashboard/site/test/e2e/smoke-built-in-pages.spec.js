@@ -1675,7 +1675,7 @@ test('outcome page template follows its JSON-declared hash query route in browse
   `);
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Parity verification sweep');
-  await expect(page.locator('[data-page-title-link]')).toHaveText('#403');
+  await expect(page.locator('[data-page-title-link]')).toHaveText('Open #403 on GitHub');
   await expect(page.locator('[data-page-title-link]')).toHaveAttribute('href', 'https://github.com/githubnext/gh-aw-cao/issues/403');
   await expect(page.locator('.overview-header [data-page-description]')).toHaveText('Daily review · Pull Request · Closed');
   await page.locator('.horizon-toggle').click();

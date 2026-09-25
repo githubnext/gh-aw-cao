@@ -211,7 +211,7 @@ export function resolveTitleLink(row, config) {
   if (!link || identifier.length === 0 || identifier.length > 100) return null;
   return {
     href: link.externalHref ?? link.href,
-    label: `#${identifier}`
+    label: `Open #${identifier} on GitHub`
   };
 }
 
