@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
-import { enableDashboardNavigation, renderDashboardNavigation, syncMobileViewModeToggle } from '../../src/components/dashboard-navigation.js';
+import { enableDashboardNavigation, renderDashboardNavigation, syncDashboardNavigationIndicators, syncMobileViewModeToggle } from '../../src/components/dashboard-navigation.js';
 import { buildChartPoints, prepareChartPoints, prepareTableRows } from '../../src/components/view-data.js';
 
 describe('dashboard sidebar', () => {
@@ -72,6 +72,61 @@ describe('dashboard sidebar', () => {
     expect([...bottomSection?.querySelectorAll('[data-nav-page-id]') ?? []].map((element) => element.textContent))
       .toEqual(['Maintenance', 'Settings']);
     expect(bottomSection?.hasAttribute('open')).toBe(true);
+  });
+
+  it('marks navigation items when their declared indicator source matches', () => {
+    const pages = [
+      { id: 'overview', title: 'Overview', icon: 'home' },
+      {
+        id: 'maintenance',
+        title: 'Maintenance',
+        icon: 'tools',
+        'navigation-indicator': {
+          label: 'updates available',
+          any: [
+            { source: 'campaigns', field: 'campaign-update-state', equals: 'update-available' },
+            { source: 'maintenance-repositories', field: 'upgrade-state', equals: 'update-available' }
+          ]
+        }
+      }
+    ];
+    const sidebar = renderDashboardNavigation(pages, 'Example', [
+      { label: 'Main', pages: ['overview'] },
+      { label: 'Maintenance', placement: 'bottom', pages: ['maintenance'] }
+    ]);
+
+    const maintenanceLink = sidebar.querySelector('[data-nav-page-id="maintenance"]');
+    const mobileMaintenanceLink = sidebar.querySelector('[data-mobile-nav-page-id="maintenance"]');
+    expect(maintenanceLink?.querySelector('[data-nav-indicator]')?.hasAttribute('hidden')).toBe(true);
+
+    syncDashboardNavigationIndicators(sidebar, pages, {
+      campaigns: {
+        rows: [{ 'campaign-update-state': 'update-available' }]
+      }
+    });
+
+    expect(maintenanceLink?.querySelector('[data-nav-indicator]')?.hasAttribute('hidden')).toBe(false);
+    expect(maintenanceLink?.getAttribute('aria-label')).toBe('Maintenance, updates available');
+    expect(mobileMaintenanceLink?.querySelector('[data-nav-indicator]')?.hasAttribute('hidden')).toBe(false);
+    expect(mobileMaintenanceLink?.getAttribute('aria-label')).toBe('Maintenance, updates available');
+
+    syncDashboardNavigationIndicators(sidebar, pages, {
+      campaigns: {
+        rows: [{ 'campaign-update-state': 'current' }]
+      }
+    });
+
+    expect(maintenanceLink?.querySelector('[data-nav-indicator]')?.hasAttribute('hidden')).toBe(true);
+    expect(maintenanceLink?.getAttribute('aria-label')).toBe('Maintenance');
+
+    syncDashboardNavigationIndicators(sidebar, pages, {
+      'maintenance-repositories': {
+        rows: [{ 'upgrade-state': 'update-available' }]
+      }
+    });
+
+    expect(maintenanceLink?.querySelector('[data-nav-indicator]')?.hasAttribute('hidden')).toBe(false);
+    expect(maintenanceLink?.getAttribute('aria-label')).toBe('Maintenance, updates available');
   });
 
   it('places the hosted user control at the bottom of the sidebar', () => {

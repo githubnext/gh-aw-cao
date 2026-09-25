@@ -1,3 +1,5 @@
+import { navigationIndicatorSourceNamesForPage } from './navigation-indicator.js';
+
 /**
  * Builds the dependency graph connecting rendered dashboard content to
  * declarative queries.
@@ -55,6 +57,13 @@ export function buildDashboardQueryUsageGraph(dashboard) {
   if (Array.isArray(dashboard.pages)) {
     dashboard.pages.forEach((page, pageIndex) => {
       if (!isRecord(page)) return;
+      const navigationIndicatorNames = navigationIndicatorSourceNamesForPage(page);
+      if (navigationIndicatorNames.length > 0) {
+        const node = addNode(`navigation-indicator:$.dashboard.pages[${pageIndex}].navigation-indicator`);
+        labels.set(node, `Navigation indicator: ${nodeLabel(page, pageIndex)}`);
+        roots.add(node);
+        addQueryEdges(node, navigationIndicatorNames);
+      }
       const definition = page.kind === 'built-in' && isRecord(page.definition)
         ? page.definition
         : page;

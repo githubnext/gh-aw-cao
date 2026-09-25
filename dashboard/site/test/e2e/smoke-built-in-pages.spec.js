@@ -586,7 +586,7 @@ test('DLS-PAGE-009 DLS-PAGE-014 built-in evals page renders distinguishable defi
   await expect(page.locator('[data-page-id="evals"]')).toContainText('claude-3.7');
 });
 
-test('DLS-SAFE-004 DLS-SAFE-007 DLS-SAFE-008 DLS-SAFE-010 built-in findings page exposes accessible names, labeled columns, textual data states, and only safe labeled external links in browser', async ({ page }) => {
+test('DLS-SAFE-004 DLS-SAFE-007 DLS-SAFE-008 DLS-SAFE-010 custom findings table exposes accessible names, labeled columns, textual data states, and only safe labeled external links in browser', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
 
   await page.setContent(`
@@ -602,7 +602,23 @@ test('DLS-SAFE-004 DLS-SAFE-007 DLS-SAFE-008 DLS-SAFE-010 built-in findings page
           title: 'Security Dashboard',
           repository: 'githubnext/gh-aw-cao',
           pages: [
-            ${JSON.stringify(builtInPage('findings', { id: 'findings', title: 'Findings' }))}
+            {
+              id: 'finding-review',
+              kind: 'custom',
+              title: 'Findings',
+              views: [{
+                id: 'finding-review-table',
+                data: { source: 'findings' },
+                mark: 'table',
+                encoding: {
+                  columns: [
+                    { field: 'finding-summary', type: 'nominal' },
+                    { field: 'issue-link', type: 'nominal' }
+                  ],
+                  href: { field: 'issue-link', type: 'nominal' }
+                }
+              }]
+            }
           ]
         }
       };
@@ -647,11 +663,11 @@ test('DLS-SAFE-004 DLS-SAFE-007 DLS-SAFE-008 DLS-SAFE-010 built-in findings page
   await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Findings', exact: true, level: 1 })).toBeVisible();
   await page.getByRole('button', { name: 'Table' }).click();
-  await page.locator('summary').filter({ hasText: 'Findings Source' }).click();
+  await expect(page.locator('[data-view-id="finding-review-table"] .custom-table')).toBeVisible();
   await expect(page.locator('.data-state-summary')).toBeHidden();
   await expect(page.getByRole('columnheader', { name: 'Issue Link' })).toBeVisible();
-  await expect(page.locator('[data-page-id="findings"] .custom-table tbody td').first()).toContainText('<img src=x onerror=alert(1)>');
-  await expect(page.locator('[data-page-id="findings"] .custom-table tbody img')).toHaveCount(0);
+  await expect(page.locator('[data-page-id="finding-review"] .custom-table tbody td').first()).toContainText('<img src=x onerror=alert(1)>');
+  await expect(page.locator('[data-page-id="finding-review"] .custom-table tbody img')).toHaveCount(0);
 
   const issueLink = page.getByRole('link', { name: 'Issue 1 label' });
   await expect(issueLink).toBeVisible();

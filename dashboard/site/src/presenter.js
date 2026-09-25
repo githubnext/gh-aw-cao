@@ -22,7 +22,7 @@ import { DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from './debug-events.
 import { dashboardViewAliasName } from './data/queries/view-payload-compiler.js';
 import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
 import { sourceContinuation } from './data/continuation.js';
-import { renderDashboardNavigation, enableDashboardNavigation, syncMobileViewModeToggle } from './components/dashboard-navigation.js';
+import { renderDashboardNavigation, enableDashboardNavigation, syncDashboardNavigationIndicators, syncMobileViewModeToggle } from './components/dashboard-navigation.js';
 import { renderDashboardHeader } from './components/dashboard-header.js';
 import { renderAccountMenu } from './components/account-menu.js';
 import { renderDashboardFooter } from './components/dashboard-footer.js';
@@ -32,10 +32,12 @@ import { buildChartPoints, prepareChartPoints, prepareTableRows, toViewText } fr
 import { enableDashboardKeyboardNavigation, updateWithViewTransition } from './components/dashboard-interactions.js';
 import { requestDashboardRefresh } from './dashboard-data-updates.js';
 import { createDebug } from './debug.js';
+import { navigationIndicatorSourceNames } from './navigation-indicator.js';
 
 export { enableDashboardKeyboardNavigation, updateWithViewTransition };
 
 const debugPerformance = createDebug('render:performance');
+const debugNavigation = createDebug('render:navigation');
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 import {
   dashboardPageLazySourceNames as collectDashboardPageLazySourceNames,
@@ -63,11 +65,11 @@ import {
  */
 
 /**
- * @typedef {{ id: string, kind: 'built-in', page: string, title?: string, ['navigation-label']?: string, description?: string, icon?: string, ['class-name']?: string, ['filter-bar']?: boolean, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], definition?: { views?: Array<unknown>, sections?: PresentablePageSection[], ['data-state']?: Record<string, boolean> } }} PresentableBuiltInPage
+ * @typedef {{ id: string, kind: 'built-in', page: string, title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, ['filter-bar']?: boolean, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], definition?: { views?: Array<unknown>, sections?: PresentablePageSection[], ['data-state']?: Record<string, boolean> } }} PresentableBuiltInPage
  */
 
 /**
- * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, description?: string, icon?: string, ['class-name']?: string, ['filter-bar']?: boolean, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string, ['title-format']?: 'title-case' }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
+ * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, ['filter-bar']?: boolean, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string, ['title-format']?: 'title-case' }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
  */
 
 /**
@@ -91,7 +93,7 @@ import {
  */
 
 /**
- * @typedef {((pageId: string, options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>>) & { prepare?: (pageId: string) => Promise<void> }} PageSourceLoader
+ * @typedef {((pageId: string, options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>>) & { prepare?: (pageId: string) => Promise<void>, loadSources?: (sourceNames: string[], options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>> }} PageSourceLoader
  */
 
 /**
@@ -240,6 +242,8 @@ export function renderDashboard(input) {
     root.dataset.domProvenanceError = String(error?.message ?? error);
   });
   enableDashboardNavigation(root);
+  syncDashboardNavigationIndicators(root, pages, sources);
+  enableNavigationIndicatorUpdates(root, pages, input.loadPageSources, dashboardOwner.signal);
   restoreDashboardTheme(root);
   enableThemeControl(root, dashboardAppearance);
   enableHorizonOutsideClickDismissal(root);
@@ -338,6 +342,38 @@ export function renderDashboard(input) {
     dashboardHorizon.dispose();
   });
   return root;
+}
+
+/**
+ * @param {HTMLElement} root
+ * @param {Array<PresentableBuiltInPage | PresentableCustomPage>} pages
+ * @param {PageSourceLoader | undefined} loadPageSources
+ * @param {AbortSignal} signal
+ */
+function enableNavigationIndicatorUpdates(root, pages, loadPageSources, signal) {
+  const sourceNames = navigationIndicatorSourceNames(pages);
+  if (!loadPageSources?.loadSources || sourceNames.length === 0) return;
+  const view = root.ownerDocument.defaultView;
+  const start = () => {
+    signal.removeEventListener('abort', abort);
+    if (signal.aborted) return;
+    // The loader resolves the first snapshot; later snapshots arrive through onUpdate.
+    void loadPageSources.loadSources?.(sourceNames, {
+      signal,
+      onUpdate: (sources) => syncDashboardNavigationIndicators(root, pages, sources)
+    })
+      .then((sources) => syncDashboardNavigationIndicators(root, pages, sources))
+      .catch((error) => {
+        if (signal.aborted || error?.name === 'AbortError') return;
+        debugNavigation('indicator update failed', {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      });
+  };
+  const timeout = view?.setTimeout(start, 0) ?? setTimeout(start, 0);
+  const clear = view?.clearTimeout.bind(view) ?? clearTimeout;
+  const abort = () => clear(timeout);
+  signal.addEventListener('abort', abort, { once: true });
 }
 
 /**

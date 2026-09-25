@@ -75,6 +75,29 @@ describe('dashboard document validation', () => {
     });
   });
 
+  it('validates page navigation indicator shape', () => {
+    const invalidPage = JSON.parse(authoritativeDashboardSource);
+    invalidPage.dashboard.pages
+      .find((/** @type {{ id?: string }} */ page) => page.id === 'maintenance')['navigation-indicator'] = {
+        label: '',
+        any: [{ source: 'maintenance-campaign-updates', field: 'campaign-update-state' }]
+      };
+
+    expect(validateDashboardDocument(JSON.stringify(invalidPage))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({
+          message: 'label must be a non-empty string.',
+          path: expect.stringMatching(/navigation-indicator\.label$/)
+        }),
+        expect.objectContaining({
+          message: 'navigation-indicator predicate equals is required.',
+          path: expect.stringMatching(/navigation-indicator\.any\[0\]\.equals$/)
+        })
+      ])
+    });
+  });
+
   it('validates bottom navigation placement vocabulary and labels', () => {
     const invalidPlacement = JSON.parse(authoritativeDashboardSource);
     invalidPlacement.dashboard.navigation = [{ label: 'Manage', placement: 'top', pages: ['overview'] }];
@@ -1476,6 +1499,54 @@ dashboard:
     const locked = source.replace(
       '        - id: supporting-table\n',
       '        - id: supporting-table\n          locked: true\n'
+    );
+    expect(validateDashboardDocument(locked).ok).toBe(true);
+  });
+
+  it('DLS-VIEW-039 rejects a page\u2019s only table being marked supplemental', () => {
+    const source = `language-version: "0.1.0"
+dashboard:
+  id: solo-table-disclosure
+  title: Solo table disclosure
+  pages:
+    - id: summary
+      kind: custom
+      views:
+        - id: overview-chart
+          title: Overview
+          data: { source: runs }
+          mark: chart
+          chart: pie
+          encoding:
+            x: { field: run, type: nominal }
+            y: { field: run, type: quantitative, aggregate: count }
+        - id: solo-table
+          disclosure: supplemental
+          disclosure-label: Runs
+          data: { source: runs }
+          mark: table
+          encoding:
+            columns: [{ field: run, type: nominal }]
+`;
+
+    const rejected = validateDashboardDocument(source);
+    expect(rejected.ok).toBe(false);
+    if (!rejected.ok) {
+      expect(rejected.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E013',
+        path: '$.dashboard.pages[0].views[1].disclosure'
+      }));
+    }
+
+    const essential = source.replace(
+      '          disclosure: supplemental\n          disclosure-label: Runs\n',
+      ''
+    );
+    expect(validateDashboardDocument(essential).ok).toBe(true);
+
+    const locked = source.replace(
+      '          disclosure: supplemental\n',
+      '          disclosure: supplemental\n          locked: true\n'
     );
     expect(validateDashboardDocument(locked).ok).toBe(true);
   });
