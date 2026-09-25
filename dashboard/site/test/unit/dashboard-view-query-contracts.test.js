@@ -387,6 +387,16 @@ describe('dashboard view query contracts', () => {
         chart: 'pie'
       },
       {
+        id: 'issues-by-status',
+        data: { source: 'issue-safe-outputs' },
+        mark: 'chart',
+        chart: 'pie',
+        encoding: {
+          x: { field: 'issue-status-detail' },
+          y: { field: 'entity-url', aggregate: 'count' }
+        }
+      },
+      {
         id: 'issues-source',
         data: {
           source: 'issue-safe-outputs',
@@ -426,6 +436,11 @@ describe('dashboard view query contracts', () => {
         'event-timestamp': '2026-09-20T12:00:00Z',
         'github-entity-type': 'issue',
         'is-pull-request': false,
+        'issue-state': 'CLOSED',
+        'issue-closed': true,
+        'issue-state-reason': 'COMPLETED',
+        'issue-closed-at': '2026-09-20T12:30:00Z',
+        'issue-status-observed-at': '2026-09-20T12:31:00Z',
         'safe-output-type': 'create_issue',
         'event-summary': 'Fix issue view',
         'correlation-id': 'https://github.com/githubnext/gh-aw-cao/issues/13439'
@@ -476,6 +491,9 @@ describe('dashboard view query contracts', () => {
       expect.objectContaining({
         'event-summary': 'Fix issue view',
         'entity-url': 'https://github.com/githubnext/gh-aw-cao/issues/13439',
+        'issue-status': 'Closed',
+        'issue-closing-status': 'Completed',
+        'issue-status-detail': 'Closed: Completed',
         repository: 'gh-aw-cao'
       })
     ]);

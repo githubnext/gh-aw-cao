@@ -416,6 +416,11 @@
       { "field": "safeOutputType", "as": "safe-output-type" },
       { "field": "githubEntityType", "as": "github-entity-type" },
       { "field": "isPullRequest", "as": "is-pull-request" },
+      { "field": "state", "as": "issue-state" },
+      { "field": "closed", "as": "issue-closed" },
+      { "field": "stateReason", "as": "issue-state-reason" },
+      { "field": "closedAt", "as": "issue-closed-at" },
+      { "field": "statusObservedAt", "as": "issue-status-observed-at" },
       { "field": "number" },
       { "field": "toolType", "as": "tool-type" },
       { "field": "isSkill", "as": "is-skill" },
@@ -559,6 +564,51 @@
         "as": "outcome-state",
         "function": "coalesce",
         "args": [{ "field": "event-status" }, { "value": "unknown" }]
+      },
+      {
+        "as": "_issue-state-open",
+        "function": "equals-any",
+        "args": [{ "field": "issue-state" }, { "value": "OPEN" }]
+      },
+      {
+        "as": "_issue-state-closed",
+        "function": "equals-any",
+        "args": [{ "field": "issue-state" }, { "value": "CLOSED" }]
+      },
+      {
+        "as": "_issue-open-status",
+        "function": "if",
+        "args": [{ "field": "_issue-state-open" }, { "value": "Open" }, { "value": "Unknown" }]
+      },
+      {
+        "as": "issue-status",
+        "function": "if",
+        "args": [{ "field": "_issue-state-closed" }, { "value": "Closed" }, { "field": "_issue-open-status" }]
+      },
+      {
+        "as": "_issue-closing-reason",
+        "function": "coalesce",
+        "args": [{ "field": "issue-state-reason" }, { "value": "unknown" }]
+      },
+      {
+        "as": "_issue-closing-reason-normalized",
+        "function": "lower",
+        "args": [{ "field": "_issue-closing-reason" }]
+      },
+      {
+        "as": "issue-closing-status",
+        "function": "title-case",
+        "args": [{ "field": "_issue-closing-reason-normalized" }]
+      },
+      {
+        "as": "_issue-closed-status-detail",
+        "function": "concat",
+        "args": [{ "value": "Closed: " }, { "field": "issue-closing-status" }]
+      },
+      {
+        "as": "issue-status-detail",
+        "function": "if",
+        "args": [{ "field": "_issue-state-closed" }, { "field": "_issue-closed-status-detail" }, { "field": "issue-status" }]
       }
     ],
     "select": [
@@ -581,6 +631,14 @@
       { "field": "outcome-category" },
       { "field": "outcome-status" },
       { "field": "outcome-state" },
+      { "field": "issue-state" },
+      { "field": "issue-closed" },
+      { "field": "issue-state-reason" },
+      { "field": "issue-status" },
+      { "field": "issue-closing-status" },
+      { "field": "issue-status-detail" },
+      { "field": "issue-closed-at" },
+      { "field": "issue-status-observed-at" },
       { "field": "outcome-warning" },
       { "field": "evidence-strength" },
       { "field": "rollout-mode" },
