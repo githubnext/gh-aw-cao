@@ -190,7 +190,10 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   await expect(view).toBeHidden();
   const mobileViewModeToggle = page.locator('.mobile-view-mode-toggle');
   await mobileViewModeToggle.click();
+  await expect(page.locator('.dashboard-page:not([hidden])')).toHaveAttribute('data-view-mode', 'card');
+  await expect(mobileViewModeToggle).toHaveAttribute('aria-label', 'Switch to Table view');
   await mobileViewModeToggle.click();
+  await expect(page.locator('.dashboard-page:not([hidden])')).toHaveAttribute('data-view-mode', 'table');
   await expect(view).toBeVisible();
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
   const mobileViewportHeight = await page.evaluate(() => innerHeight);

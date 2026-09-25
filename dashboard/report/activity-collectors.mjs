@@ -1,7 +1,6 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { collectAicUsage } from "./aic-usage.mjs";
-import { collectOperationalValues } from "./operational-values.mjs";
 import { writeDashboardRecords } from "./records.mjs";
 import { setActionsGlobals } from "../../activity/actions-context.mjs";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
@@ -33,7 +32,6 @@ export async function collectActivity() {
   let failed = false;
   const collectors = [
     ["aic-usage", collectAicUsage],
-    ["operational-values", collectOperationalValues],
     ["dashboard-records", writeDashboardRecords],
   ];
   log.info`Running ${collectors.length} activity collectors: ${collectors.map(([name]) => name).join(", ")}`;

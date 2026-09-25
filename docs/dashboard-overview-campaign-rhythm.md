@@ -1,9 +1,9 @@
 ---
-title: Factory rhythm
+title: Campaign rhythm
 description: Understand the seven-day successful-run comparison in Overview.
 ---
 
-Factory rhythm shows whether successful Actions activity is continuing through
+Campaign rhythm shows whether successful Actions activity is continuing through
 the week without reducing recent activity to a single total.
 
 ## How to read it
