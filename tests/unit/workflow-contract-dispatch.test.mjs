@@ -156,6 +156,7 @@ test("every worker uses the standard dispatch envelope and safe mode vocabulary"
     ["self-care-dashboard-language-refactor.md", "self-care", "dashboard-language-refactor"],
     ["self-care-dashboard-review.md", "self-care", "dashboard-review"],
     ["self-care-docs-build-time-investigator.md", "self-care", "docs-build-time-investigator"],
+    ["self-care-docs-maintainer.md", "self-care", "docs-maintainer"],
     ["self-care-glossary.md", "self-care", "glossary"],
     ["self-care-open-source-failures.md", "self-care", "open-source-failures"],
     ["self-care-pages-health.md", "self-care", "pages-health"],

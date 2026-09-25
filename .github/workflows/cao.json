@@ -216,6 +216,9 @@
           "docs-build-time-investigator": {
             "workflow": "self-care-docs-build-time-investigator"
           },
+          "docs-maintainer": {
+            "workflow": "self-care-docs-maintainer"
+          },
           "glossary": {
             "workflow": "self-care-glossary"
           },

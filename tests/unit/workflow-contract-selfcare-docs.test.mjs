@@ -74,7 +74,7 @@ test("SelfCare runs every 20 minutes", () => {
   assert.match(source, /schedule: every 20 minutes/);
   assert.match(source, /engine: copilot/);
   assert.doesNotMatch(source, /model: copilot\/gpt-5\.4/);
-  assert.match(source, /self-care-dashboard-data-schema` and `self-care-glossary`.*preceding 24 hours/);
+  assert.match(source, /self-care-dashboard-data-schema`, `self-care-docs-maintainer`, and `self-care-glossary`.*preceding 24 hours/);
   assert.match(source, /ten most recent runs of each workflow/);
   assert.match(source, /self-care-pages-health.*no run of that workflow is queued, in progress, or started during the preceding six hours/);
   assert.match(source, /at most the 20 most recent Pages Health workflow runs/);
@@ -133,10 +133,12 @@ test("docs diagram generator creates one validated theme-aware SVG pair", () => 
   assert.match(source, /Call `noop`/);
 });
 
-test("docs maintainer uses daily merged-change and ADR evidence", () => {
-  const source = workflow("docs-maintainer.md");
+test("SelfCare docs maintainer uses daily merged-change and ADR evidence", () => {
+  const source = workflow("self-care-docs-maintainer.md");
 
-  assert.match(source, /schedule: daily/);
+  assert.match(source, /^name: "SelfCare \/ Docs Maintainer"$/m);
+  assert.match(source, /campaign: self-care\n\s+role: worker\n\s+worker: docs-maintainer/);
+  assert.match(source, /safe_output_mode` is `live`/);
   assert.match(source, /cache-memory:\n\s+retention-days: 30/);
   assert.match(source, /evidence-watermark\.json/);
   assert.match(source, /at most 30 pull requests merged into the default branch/);
@@ -153,7 +155,7 @@ test("docs maintainer uses daily merged-change and ADR evidence", () => {
   assert.match(source, /ADR files under `adr\/` added or changed by direct pushes/);
   assert.match(source, /Advance each cursor only through fully inspected evidence/);
   assert.match(source, /safe-output failure will therefore be retried on the next run/);
-  assert.match(source, /Clear it when a merged, provenance-verified `docs-maintainer` pull request cites every pending/);
+  assert.match(source, /Clear it when a merged, provenance-verified `self-care-docs-maintainer` pull request cites every pending/);
   assert.match(source, /documentation was fixed independently or the correction is no longer necessary/);
   assert.match(source, /clear the pending evidence while retaining its advanced cursors/);
   assert.match(source, /allowed-files:\n\s+- "docs\/\*\.md"\n\s+- "docs\/\*\*\/\*\.md"/);
@@ -161,6 +163,7 @@ test("docs maintainer uses daily merged-change and ADR evidence", () => {
   assert.match(source, /npm run docs:build/);
   assert.match(source, /Call `create_pull_request` exactly once/);
   assert.match(source, /Call `noop` exactly once/);
+  assert.match(source, /\{\{#runtime-import\? \.github\/cao\/self-care\.md\}\}/);
   assert.doesNotMatch(source, /^\s+(contents|actions|pull-requests): write$/m);
 });
 
