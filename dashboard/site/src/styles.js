@@ -720,6 +720,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .chart-window-key span::before { border-color: var(--muted); opacity: .55; }
 .chart-point { cursor: crosshair; }
 .pie-chart-segment { animation: pie-chart-entry 420ms ease-out both; animation-delay: calc(var(--chart-entry-index, 0) * 45ms); }
+.area-chart-area { transform-box: fill-box; transform-origin: center bottom; animation: area-chart-entry 520ms ease-out both; animation-delay: calc(var(--chart-entry-index, 0) * 70ms); }
 .line-chart-series { animation: line-chart-entry 600ms ease-out both; animation-delay: calc(var(--chart-entry-index, 0) * 70ms); }
 .line-chart-series.line-chart-context { animation-name: line-chart-context-entry; }
 .line-chart-point, .dot-chart-point, .scatter-chart-point { transform-box: fill-box; transform-origin: center; animation: line-chart-point-entry 280ms ease-out both; animation-delay: calc(180ms + var(--chart-entry-index, 0) * 35ms); }
@@ -827,6 +828,9 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .chart-legend i.chart-series-semantic-neutral { border-color: var(--muted); color: var(--muted); }
 @keyframes pie-chart-entry {
   from { opacity: 0; }
+}
+@keyframes area-chart-entry {
+  from { opacity: 0; transform: translateY(3px); }
 }
 @keyframes line-chart-entry {
   from { opacity: 0; }
