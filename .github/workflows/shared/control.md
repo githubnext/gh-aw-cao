@@ -122,7 +122,6 @@ jobs:
               }
               core.setOutput('authorized', 'false');
               core.setOutput('reason', reason);
-              core.setOutput('monthly_credit_budget', '0');
               await core.summary
                 .addRaw(`<details>
             <summary><h3>Central Agentic Ops admission</h3></summary>

@@ -13,7 +13,6 @@ import { runEnable } from "./enable.mjs";
 import { runGh } from "./gh.mjs";
 import { runHashPayloads } from "./hash-payloads.mjs";
 import { runIngestJsonl } from "./ingest-jsonl.mjs";
-import { runIngest } from "./ingest.mjs";
 import { runInit } from "./init.mjs";
 import { runIssueStatus } from "./issue-status.mjs";
 import { runMode } from "./mode.mjs";
@@ -38,7 +37,6 @@ export const commandHandlers = new Map([
   ["enable", runEnable],
   ["gh", runGh],
   ["hash-payloads", runHashPayloads],
-  ["ingest", runIngest],
   ["ingest-jsonl", runIngestJsonl],
   ["init", runInit],
   ["issue-status", runIssueStatus],

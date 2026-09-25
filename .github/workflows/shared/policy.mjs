@@ -6,7 +6,7 @@ const CONTROL_KEYS = ["scope", "inventory", "web", "defaults", "campaigns", "pub
 const SCOPE_KEYS = ["allowed-owners", "allowed-repositories"];
 const INVENTORY_KEYS = ["max-scan-repositories", "cell-count", "cell-index", "batch-size", "batch-index"];
 const WEB_KEYS = ["experimental", "favicon"];
-const DEFAULT_KEYS = ["mode", "max-repositories", "rollout-percent", "monthly-ai-credit-budget"];
+const DEFAULT_KEYS = ["mode", "max-repositories", "rollout-percent"];
 const OCTICONS = [
   "mark-github", "code", "repo", "server", "issue", "pull-request", "play", "eye",
   "shield", "meter", "graph", "codescan", "dependabot", "key", "beaker", "rocket",
@@ -206,9 +206,6 @@ function validateDefaults(defaults, path) {
   if ("mode" in defaults) assertMode(defaults.mode, `${path}.mode`);
   if ("max-repositories" in defaults) assertInteger(defaults["max-repositories"], `${path}.max-repositories`, 1, 1000);
   if ("rollout-percent" in defaults) assertInteger(defaults["rollout-percent"], `${path}.rollout-percent`, 1, 100);
-  if ("monthly-ai-credit-budget" in defaults) {
-    assertInteger(defaults["monthly-ai-credit-budget"], `${path}.monthly-ai-credit-budget`, 0);
-  }
 }
 
 function validateCampaigns(campaigns) {
@@ -347,7 +344,6 @@ export function effectivePolicy(
     mode: "review",
     "max-repositories": 1,
     "rollout-percent": 100,
-    "monthly-ai-credit-budget": 0,
     ...(control.defaults ?? {}),
   };
   const effective = { ...defaults, ...pick(campaignPolicy, DEFAULT_KEYS) };
@@ -425,7 +421,6 @@ export function effectivePolicy(
     safe_output_mode: effective.mode,
     max_repositories: effective["max-repositories"],
     rollout_percent: effective["rollout-percent"],
-    monthly_ai_credit_budget: 0,
     target_policies: targetPolicies,
     worker_policies: workerPolicies,
     allowed_owners: allowedOwners,
@@ -446,7 +441,6 @@ export function controlSettings(document, controlRepository) {
     mode: "review",
     "max-repositories": 1,
     "rollout-percent": 100,
-    "monthly-ai-credit-budget": 0,
     ...(control.defaults ?? {}),
   };
   const campaigns = Object.fromEntries(Object.entries(control.campaigns ?? {}).map(([name, policy]) => [name, {

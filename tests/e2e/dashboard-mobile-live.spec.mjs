@@ -1,14 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { createWriteStream } from "node:fs";
-import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
 import { captureMobileDashboardScreenshot } from "./dashboard-screenshot.mjs";
-import {
-  deployedActivityShardEntries,
-  legacyPhaseJsonToJsonl,
-} from "./dashboard-deployed-refresh-helpers.mjs";
+import { deployedActivityShardEntries } from "./dashboard-deployed-refresh-helpers.mjs";
 import {
   summarizeAccessibilityTree,
   summarizeDomTree,
@@ -241,11 +238,7 @@ test.beforeAll(async () => {
         if (!response.body) throw new Error(`Deployed dashboard shard ${sourceName} has no body.`);
         const shardPath = join(destination, name);
         await mkdir(dirname(shardPath), { recursive: true });
-        if (sourceName.endsWith(".json")) {
-          await writeFile(shardPath, legacyPhaseJsonToJsonl(Buffer.from(await response.arrayBuffer())));
-        } else {
-          await pipeline(response.body, createWriteStream(shardPath));
-        }
+        await pipeline(response.body, createWriteStream(shardPath));
         activityBytes += (await stat(shardPath)).size;
       }
       const inventory = await stat(inventoryPath);

@@ -168,7 +168,6 @@
         "enabled": { "fields": ["campaign-enabled", "package-enabled"], "default": true, "notEquals": false },
         "maxRepositories": { "fields": ["campaign-max-repositories", "package-max-repositories"], "default": null },
         "rolloutPercent": { "fields": ["campaign-rollout-percent", "package-rollout-percent"], "default": null },
-        "monthlyAiCreditBudget": { "fields": ["campaign-monthly-ai-credit-budget", "package-monthly-ai-credit-budget"], "default": null },
         "aiCreditAllowance": { "fields": ["campaign-aic-allowance", "package-aic-allowance"], "default": null },
         "workerCount": { "fields": ["campaign-worker-count", "package-worker-count"], "default": 0 },
         "inventoryWarnings": { "fields": ["campaign-inventory-warnings", "package-inventory-warnings"], "default": 0 },

@@ -411,7 +411,6 @@ async function admit() {
   const outputs = {
     authorized: result.authorized,
     reason: result.reason,
-    monthly_credit_budget: 0,
   };
   if (result.github_api_capacity?.status !== "available" && result.github_api_capacity) {
     Object.assign(outputs, {
@@ -858,11 +857,6 @@ async function writeOrchestratorPrecompute(context) {
     effective_max_repos: effectiveMaximum,
     orchestrator_credits: context.orchestratorCredits,
     worker_credits_per_target: context.workerCreditsPerTarget,
-    monthly_credit_budget: 0,
-    monthly_ai_credits_spent: 0,
-    monthly_ai_credits_remaining: 0,
-    monthly_budget_error: "",
-    monthly_budget_target_cap: effectiveMaximum,
     safe_output_mode: context.mode,
     safe_output_repo: context.safeOutputRepository,
     repo_source: selected.source,

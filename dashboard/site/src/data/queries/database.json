@@ -25,7 +25,6 @@
       { "field": "campaign-registration" },
       { "field": "maxRepositories", "as": "campaign-max-repositories" },
       { "field": "rolloutPercent", "as": "campaign-rollout-percent" },
-      { "field": "monthlyAiCreditBudget", "as": "campaign-monthly-ai-credit-budget" },
       { "field": "aiCreditAllowance", "as": "campaign-aic-allowance" },
       { "field": "workerCount", "as": "campaign-worker-count" },
       { "field": "inventoryWarnings", "as": "campaign-inventory-warnings" },

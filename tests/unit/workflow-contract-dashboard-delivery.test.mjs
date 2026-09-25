@@ -268,7 +268,7 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(activityNotifyFailureJob, /GITHUB_WORKFLOW_SHA[\s\S]*?githubnext\/gh-aw-cao\/blob\/main\/skills\/debug-cao\/SKILL\.md/);
   assert.doesNotMatch(activityNotifyFailureJob, /cancelled/);
   assert.match(dashboardWorkflow, /key: cao-activity-v5-lookup-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
-  assert.match(activityWorkflow, /Restore legacy activity cache layout[\s\S]*?restore-keys: \|[\s\S]*?cao-activity-v3-/);
+  assert.doesNotMatch(activityWorkflow, /legacy activity cache|cao-activity-v3-/);
   assert.equal((activityWorkflow.match(/cao-activity-v3-/g) || []).length, 1);
   assert.doesNotMatch(dashboardWorkflow, /(?:key|restore-keys): cao-activity-(?!v5-)/);
   assert.match(dashboardWorkflow, /Restore collected activity data[\s\S]*?Resolve fallback activity run[\s\S]*?Download fallback activity data[\s\S]*?Upgrade fallback activity data[\s\S]*?Validate restored activity data[\s\S]*?Assemble Dashboard Language site/);
@@ -539,7 +539,7 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(mobileTest, /inventory-sources\.json/);
   assert.match(mobileTest, /process\.env\.MOBILE_BROWSER === "webkit"[\s\S]*?Math\.min\(requested \?\? maximumWebKitShardCount, maximumWebKitShardCount\)/);
   assert.match(mobileTest, /shards\.slice\(0, mobileDebugShardLimit\(\)\)/);
-  assert.match(mobileTest, /for \(const \{ name, sourceName \} of selectedShards\)[\s\S]*?legacyPhaseJsonToJsonl[\s\S]*?pipeline\(response\.body, createWriteStream\(shardPath\)\)/);
+  assert.match(mobileTest, /for \(const \{ name, sourceName \} of selectedShards\)[\s\S]*?pipeline\(response\.body, createWriteStream\(shardPath\)\)/);
   assert.match(mobileTest, /parameters\.set\("debug-shard-limit", String\(shardLimit\)\)/);
   assert.doesNotMatch(mobileTest, /fetch\(dataUrl\)/);
   assert.doesNotMatch(mobileTest, /logsResponse\.text\(\)/);

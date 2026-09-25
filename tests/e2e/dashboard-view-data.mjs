@@ -1,11 +1,8 @@
 import { createWriteStream } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { pipeline } from "node:stream/promises";
-import {
-  deployedActivityShardEntries,
-  legacyPhaseJsonToJsonl,
-} from "./dashboard-deployed-refresh-helpers.mjs";
+import { deployedActivityShardEntries } from "./dashboard-deployed-refresh-helpers.mjs";
 
 export async function downloadDeployedDashboardData(
   destination,
@@ -34,10 +31,6 @@ export async function downloadDeployedDashboardData(
     const response = await fetcher(new URL(sourceName, sourceUrl));
     if (!response.ok || !response.body) throw new Error(`Unable to download deployed dashboard shard: ${sourceName}.`);
     await mkdir(dirname(join(destination, name)), { recursive: true });
-    if (sourceName.endsWith(".json")) {
-      await writeFile(join(destination, name), legacyPhaseJsonToJsonl(Buffer.from(await response.arrayBuffer())));
-    } else {
-      await pipeline(response.body, createWriteStream(join(destination, name)));
-    }
+    await pipeline(response.body, createWriteStream(join(destination, name)));
   }
 }

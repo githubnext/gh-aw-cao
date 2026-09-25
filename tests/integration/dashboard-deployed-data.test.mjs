@@ -7,10 +7,7 @@ import {
   deleteCanonicalDatabase,
   readCollection,
 } from "../../dashboard/site/src/data/storage/indexeddb.js";
-import {
-  deployedActivityShardEntries,
-  legacyPhaseJsonToJsonl,
-} from "../e2e/dashboard-deployed-refresh-helpers.mjs";
+import { deployedActivityShardEntries } from "../e2e/dashboard-deployed-refresh-helpers.mjs";
 
 const deployedManifestUrl = process.env.DASHBOARD_DATA_URL
   || "https://githubnext.github.io/gh-aw-cao/cao/payload-hashes.json";
@@ -41,10 +38,7 @@ async function ingestDeployedShards() {
     const shard = await fetchDeployedData(shardUrl);
     assert.equal(shard.ok, true, `failed to download ${shardUrl}: ${shard.status}`);
     assert.ok(shard.body, `failed to stream ${shardUrl}`);
-    const chunks = sourceName.endsWith(".json")
-      ? new Response(legacyPhaseJsonToJsonl(Buffer.from(await shard.arrayBuffer()))).body
-      : shard.body;
-    await ingestNormalizedJsonl(indexedDB, chunks, {
+    await ingestNormalizedJsonl(indexedDB, shard.body, {
       payloadIdentity: hash,
       payloadScope: name,
       expectedPhase: name.startsWith("gh-aw-logs-runs/") ? "runs" : "records",

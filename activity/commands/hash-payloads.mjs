@@ -7,14 +7,13 @@ export async function runHashPayloads({
   option,
   rejectUnknownOptions,
 }) {
-  rejectUnknownOptions(options, ["database", "shard-dir", "normalized-dir", "runs-dir", "records-dir", "inventory", "output"]);
+  rejectUnknownOptions(options, ["database", "shard-dir", "runs-dir", "records-dir", "inventory", "output"]);
   const resolvedOption = (name) => option(options, name, false)
     ? path.resolve(option(options, name, false))
     : undefined;
   const hashes = await hashActivityPayloads({
     databasePath: resolvedOption("database"),
     shardDirectory: resolvedOption("shard-dir"),
-    normalizedDirectory: resolvedOption("normalized-dir"),
     runsDirectory: resolvedOption("runs-dir"),
     recordsDirectory: resolvedOption("records-dir"),
     inventoryPath: resolvedOption("inventory"),

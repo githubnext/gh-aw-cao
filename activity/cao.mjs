@@ -3,8 +3,7 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createReadStream, createWriteStream, realpathSync } from 'node:fs';
-import { readFile, readdir, mkdir, mkdtemp, rename, rm, stat, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { readFile, readdir, mkdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { createInterface } from 'node:readline';
 import path from 'node:path';
 import { Readable } from 'node:stream';
@@ -16,7 +15,6 @@ import { adaptCachedGhAwJsonlStream, createCachedJsonlPayloadHasher } from '../d
 import {
   finalizeNormalizedJsonlIngestion,
   ingestCachedGhAwJsonl,
-  ingestGhAwLogs,
   ingestNormalizedJsonl,
   isCachedGhAwJsonlCurrent,
   NORMALIZED_JSONL_INGESTION_VERSION
@@ -24,7 +22,6 @@ import {
 import { normalize } from '../dashboard/site/src/data/normalize/index.js';
 import { CANONICAL_SCHEMA_VERSION } from '../dashboard/site/src/data/model/schema.js';
 import { executeDashboardQuery, queryInputNames } from '../dashboard/site/src/data/queries/declarative.js';
-import { createCanonicalQueries } from '../dashboard/site/src/data/queries/index.js';
 import { readCollection, readRecord, readTransactions } from '../dashboard/site/src/data/storage/indexeddb.js';
 import { mergeActivityStructuralRecord } from '../dashboard/site/src/data/storage/retention.js';
 import { doctorSqliteDatabase } from '../dashboard/site/src/data/storage/sqlite-doctor.js';
@@ -93,7 +90,7 @@ const GH_AW_INSTALLER_COMMAND = 'curl --fail --silent --show-error --location ht
 const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json';
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
-const COMMANDS = new Set(['init', 'setup-auth', 'add', 'update', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'issue-status', 'query', 'computation', 'operational-value', 'cluster-problems', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
+const COMMANDS = new Set(['init', 'setup-auth', 'add', 'update', 'mode', 'enable', 'disable', 'discover-workflows', 'dashboard-complexity', 'prune-dashboard', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'issue-status', 'query', 'computation', 'operational-value', 'cluster-problems', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
 
 // Intentional CLI misuse that should print usage without an internal stack trace.
 class UsageError extends Error {}
@@ -112,7 +109,6 @@ const USAGE = `Usage:
   cao discover-workflows --control-settings FILE --inventory FILE --output FILE --repo OWNER/REPO [--root DIRECTORY]
   cao dashboard-complexity [QUERY_ID] --input FILE [--database FILE] [--format json|markdown] [--limit COUNT]
   cao prune-dashboard --input FILE [--output FILE]
-  cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY|--runs-dir DIRECTORY --records-dir DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input-dir SHARD_DIRECTORY]
   cao compact-jsonl --input-dir SHARD_DIRECTORY --group OWNER/REPOSITORY=SHARD_PREFIX [--group OWNER/REPOSITORY=SHARD_PREFIX...] [--max-bytes BYTES]
@@ -1558,14 +1554,6 @@ export async function downloadDeployedDashboardData({
   throw lastError;
 }
 
-export async function ingestGhAwLogDirectory(indexedDB, contextPath, logDirectory, options = {}) {
-  const context = JSON.parse(await readFile(contextPath, 'utf8'));
-  return ingestGhAwLogs(indexedDB, {
-    ...context,
-    files: await jsonlFiles(logDirectory)
-  }, options);
-}
-
 /**
  * Ingests every `--cached-jsonl` wildcard shard file in a directory one by
  * one, using a payload scope derived from each shard's file name so the
@@ -1845,7 +1833,6 @@ async function consolidatePhasePayloads(phase, cachePaths, outputDirectory, maxB
 async function hashActivityPayloads({
   databasePath,
   shardDirectory,
-  normalizedDirectory,
   runsDirectory,
   recordsDirectory,
   inventoryPath
@@ -1880,7 +1867,6 @@ async function hashActivityPayloads({
       .digest('hex')
       .slice(0, 16);
     const retainedPayloads = {
-      normalized: new Set(),
       runs: new Set(),
       records: new Set()
     };
@@ -1893,7 +1879,6 @@ async function hashActivityPayloads({
       runs: runsDirectory ? path.join(runsDirectory, PAYLOAD_CACHE_DIRECTORY) : null,
       records: recordsDirectory ? path.join(recordsDirectory, PAYLOAD_CACHE_DIRECTORY) : null
     };
-    if (normalizedDirectory) await mkdir(normalizedDirectory, { recursive: true });
     if (runsDirectory) await mkdir(cacheDirectories.runs, { recursive: true });
     if (recordsDirectory) await mkdir(cacheDirectories.records, { recursive: true });
     for (const name of shardNames) {
@@ -1905,11 +1890,10 @@ async function hashActivityPayloads({
       }
       const rawHash = await hashFile(shardPath);
       hashes[`${path.basename(shardDirectory)}/${name}`] = rawHash;
-      if (!normalizedDirectory && !runsDirectory && !recordsDirectory) continue;
+      if (!runsDirectory && !recordsDirectory) continue;
       const payloadName = `${rawHash}-${normalizationContext}.jsonl`;
       const phasedPayloadName = `${path.parse(name).name}-${payloadName}`;
       const outputPaths = [
-        normalizedDirectory ? ['normalized', path.join(normalizedDirectory, payloadName)] : null,
         runsDirectory ? ['runs', path.join(cacheDirectories.runs, phasedPayloadName)] : null,
         recordsDirectory ? ['records', path.join(cacheDirectories.records, phasedPayloadName)] : null
       ].filter(Boolean);
@@ -1934,7 +1918,6 @@ async function hashActivityPayloads({
           sourceRecords: adapted.records
         };
         const payloads = {
-          normalized: { ...metadata, batch },
           runs: {
             ...metadata,
             phase: 'runs',
@@ -1983,11 +1966,6 @@ async function hashActivityPayloads({
           debugHash('dropped empty %s shard %s', phase, outputPath);
           continue;
         }
-        if (phase === 'normalized') {
-          retainedPayloads.normalized.add(path.basename(outputPath));
-          hashes[`${path.basename(path.dirname(outputPath))}/${path.basename(outputPath)}`] = await hashFile(outputPath);
-          continue;
-        }
         retainedCachePayloads[phase].add(path.basename(outputPath));
         cachePaths[phase].push(outputPath);
       }
@@ -2013,7 +1991,6 @@ async function hashActivityPayloads({
       }
     }
     for (const [phase, directory] of [
-      ['normalized', normalizedDirectory],
       ['runs', runsDirectory],
       ['records', recordsDirectory]
     ].filter(([, directory]) => Boolean(directory))) {
@@ -2626,27 +2603,6 @@ async function createDatabase(databasePath) {
   return installSqliteIndexedDB(filename);
 }
 
-async function runLegacyIngestion(contextPath, logDirectory) {
-  const directory = await mkdtemp(path.join(tmpdir(), 'cao-dashboard-data-'));
-  try {
-    const indexedDB = await createDatabase(path.join(directory, 'dashboard.sqlite'));
-    const result = await ingestGhAwLogDirectory(
-      indexedDB,
-      path.resolve(contextPath),
-      path.resolve(logDirectory)
-    );
-    const queries = createCanonicalQueries(indexedDB);
-    const runs = await queries.runs.list();
-    const records = (await Promise.all(
-      ['domains', 'tools', 'audits', 'issues'].map((collection) =>
-        Promise.all(runs.map((run) => queries[collection].forRun(String(run.id)))))
-    )).flat(2);
-    return { result, runs, records };
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
-}
-
 export async function discoverWorkflows({
   root = ".",
   controlSettingsPath,
@@ -2738,9 +2694,6 @@ export async function analyzeDashboardComplexityFile({
 export async function runCli(arguments_, input = process.stdin, { signal } = {}) {
   const [command, ...rawOptionArguments] = arguments_;
   if (!command || command === '--help' || command === 'help') return USAGE;
-  if (!COMMANDS.has(command) && arguments_.length === 2) {
-    return runLegacyIngestion(command, rawOptionArguments[0]);
-  }
   const handler = commandHandlers.get(command);
   if (!handler) throw new UsageError(`Unknown command: ${command}`);
   if (['init', 'setup-auth', 'add', 'update', 'mode', 'enable', 'disable'].includes(command)) {
@@ -2808,7 +2761,6 @@ export async function runCli(arguments_, input = process.stdin, { signal } = {})
     queryComputation,
     runOperationalValue,
     operationalValueReserve,
-    ingestGhAwLogDirectory,
     ingestNormalizedShardDirectories,
     ingestJsonlFile,
     ingestJsonlShardDirectory,

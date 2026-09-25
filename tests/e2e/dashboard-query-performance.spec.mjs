@@ -5,7 +5,6 @@ import { extname, resolve, sep } from "node:path";
 import {
   deployedActivityShardEntries,
   deployedDashboardUrl,
-  legacyPhaseJsonToJsonl,
   shouldIgnoreRequestFailure,
 } from "./dashboard-deployed-refresh-helpers.mjs";
 import {
@@ -89,8 +88,6 @@ async function serveDashboard(request, response) {
     deployedShardSources.clear();
     for (const { name, sourceName } of entries) deployedShardSources.set(`/${name}`, `/${sourceName}`);
     body = Buffer.from(JSON.stringify(Object.fromEntries(entries.map(({ name, hash }) => [name, hash]))));
-  } else if (body && deployedShardSources.get(pathname)?.endsWith(".json")) {
-    body = Buffer.from(legacyPhaseJsonToJsonl(body));
   }
   const contentLength = request.method === "HEAD"
     ? deployedResponse.headers.get("content-length")

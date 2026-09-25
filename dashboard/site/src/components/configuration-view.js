@@ -38,7 +38,6 @@ const EXACT_EXPLANATIONS = {
   'control-plane.defaults.mode': 'Sets the inherited execution mode. Review proposes changes; live may write authorized outputs.',
   'control-plane.defaults.max-repositories': 'Caps repositories selected by each campaign.',
   'control-plane.defaults.rollout-percent': 'Deterministically limits the percentage of eligible repositories selected.',
-  'control-plane.defaults.monthly-ai-credit-budget': 'Deprecated compatibility field; it no longer gates monthly AI Credit usage.',
   'control-plane.campaigns': 'Declares installed operation campaigns and their permitted behavior.',
   'control-plane.publishing': 'Controls optional publishing of reviewed operation issues.',
   'control-plane.publishing.enabled': 'Enables or disables reviewed operation publishing.',
@@ -57,7 +56,7 @@ function explanation(path, value) {
   if (/^control-plane\.campaigns\.[^.]+$/.test(path)) return 'Configures one operation campaign; omitted limits inherit from control-plane.defaults.';
   if (/^control-plane\.campaigns\.[^.]+\.enabled$/.test(path)) return 'Controls whether this campaign may activate.';
   if (/^control-plane\.campaigns\.[^.]+\.mode$/.test(path)) return 'Sets this campaign to review-only proposals or authorized live output.';
-  if (/^control-plane\.campaigns\.[^.]+\.(max-repositories|rollout-percent|monthly-ai-credit-budget)$/.test(path)) {
+  if (/^control-plane\.campaigns\.[^.]+\.(max-repositories|rollout-percent)$/.test(path)) {
     return 'Overrides the matching control-plane default for this campaign.';
   }
   if (/^control-plane\.campaigns\.[^.]+\.icon$/.test(path)) return 'Selects the Octicon used to identify this campaign.';

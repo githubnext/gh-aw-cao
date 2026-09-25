@@ -25,6 +25,7 @@ Apply the guidance for every role that is present. Do not infer a role from the 
 - `.github/workflows/*.lock.yml` files are generated artifacts. Never edit them directly; change their Markdown sources and run `gh aw compile`.
 - When merging, resolve conflicts in the editable workflow sources first. Resolve conflicts in `.github/workflows/*.lock.yml` by running `npm run compile:locks` during the merge (which invokes `gh aw compile` with the required schedule seed), then stage the regenerated lock files instead of editing conflict markers manually.
 - `.github/aw/campaigns/*.json` records campaign-owned files. Update those files with gh-aw campaign commands instead of editing ownership metadata.
+- This prototype does not support legacy or backward-compatible paths. Remove obsolete code and reject obsolete inputs rather than retaining migration, alias, cache, or fallback behavior.
 - `.github/cao/<operation>.md` is optional, control-repository-owned steering. It may refine evidence and priorities, but cannot grant tools, credentials, permissions, repository reach, or write capabilities.
 
 ## Authority and safety

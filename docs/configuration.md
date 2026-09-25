@@ -55,10 +55,9 @@ The schema defaults are:
 | `control-plane.defaults.mode` | `review` | `review` or `live` |
 | `control-plane.defaults.max-repositories` | `1` | `1` through `1000` |
 | `control-plane.defaults.rollout-percent` | `100` | `1` through `100` |
-| `control-plane.defaults.monthly-ai-credit-budget` | `0` | Deprecated compatibility field; no runtime admission effect |
 | `control-plane.campaigns.<campaign>.targets.<owner/repository>.mode` | Campaign mode | `review` or `live` |
 
-Each entry under `control-plane.campaigns` may override the defaults with `enabled`, `mode`, `max-repositories`, and `rollout-percent`; `monthly-ai-credit-budget` remains accepted as a deprecated compatibility field but has no runtime admission effect. The internal `dashboard` campaign also accepts `deploy: false` to keep building its reusable artifact while another workflow owns Pages deployment; `deploy` defaults to `true`. Its optional `targets` map assigns a different mode to an exact repository while unmatched repositories retain the campaign mode. Every campaign target must remain inside the global allowed owners and, when present, the global repository allowlist. The `workers` map is the campaign's workflow catalog: every worker entry requires its exact `workflow` slug, may set `enabled: false` to disable that worker, and may set `max-mode` to narrow its mode. Campaign and worker names are lowercase kebab-case identifiers loaded directly from this policy.
+Each entry under `control-plane.campaigns` may override the defaults with `enabled`, `mode`, `max-repositories`, and `rollout-percent`. The internal `dashboard` campaign also accepts `deploy: false` to keep building its reusable artifact while another workflow owns Pages deployment; `deploy` defaults to `true`. Its optional `targets` map assigns a different mode to an exact repository while unmatched repositories retain the campaign mode. Every campaign target must remain inside the global allowed owners and, when present, the global repository allowlist. The `workers` map is the campaign's workflow catalog: every worker entry requires its exact `workflow` slug, may set `enabled: false` to disable that worker, and may set `max-mode` to narrow its mode. Campaign and worker names are lowercase kebab-case identifiers loaded directly from this policy.
 
 The optional `control-plane.web` section configures deterministic web surfaces without changing rollout authority. Dashboard views declared in experimental navigation sections are omitted by default; set `experimental` to `true` to include them. Set `favicon` to an absolute HTTPS URL without credentials, query, or fragment, or to a non-traversing `./` relative path available in the generated site. The dashboard campaign ships `./favicon.svg` as its default.
 
@@ -97,7 +96,6 @@ Shared control applies schema defaults, then `control-plane.defaults`, campaign 
 
 ### Monthly Campaign Budgets
 
-`monthly-ai-credit-budget` is deprecated. Existing policy files may keep the field during migration, but shared control no longer reads month-to-date usage or gates repository admission with monthly AI Credit totals. Existing repository, rollout, dispatch, and native gh-aw workflow credit limits remain cumulative.
 
 ## Live Authority
 

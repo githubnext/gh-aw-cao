@@ -611,7 +611,6 @@ function campaignRows(inventory, controlSettings, generatedAt, latestCampaignCom
       "campaign-enabled": policy.enabled !== false,
       "campaign-max-repositories": policy["max-repositories"] ?? null,
       "campaign-rollout-percent": policy["rollout-percent"] ?? null,
-      "campaign-monthly-ai-credit-budget": policy["monthly-ai-credit-budget"] ?? null,
       "campaign-aic-allowance": aiCreditAllowance || null,
       "campaign-worker-count": workers.length || inventoryWorkers.length,
       "campaign-inventory-warnings": inventoryWarnings,

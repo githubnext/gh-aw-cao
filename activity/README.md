@@ -221,10 +221,7 @@ Snapshots use the immutable key
 `cao-activity-v5-`. Dispatching consumers wait for the exact Activity run and
 reconstruct its immutable key from the returned run ID and attempt. Producers
 and consumers use this complete path list because GitHub includes paths in the
-cache version. When the current layout misses, Activity restores the preceding
-layout containing `gh-aw-logs-normalized/`; `hash-payloads` processes its
-retained JSONL shard directory to generate non-empty run and record shards.
-The cache is an evictable transport optimization, not durable
+cache version. The cache is an evictable transport optimization, not durable
 historical authority.
 
 The Drain3 weights are restored outside the `gh aw logs` output directory and

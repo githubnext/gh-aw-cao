@@ -55,10 +55,6 @@
       "minimum": 1,
       "maximum": 100
     },
-    "monthlyAiCreditBudget": {
-      "type": "integer",
-      "minimum": 0
-    },
     "octicon": {
       "type": "string",
       "enum": [
@@ -95,7 +91,6 @@
         "mode": { "$ref": "#/$defs/mode" },
         "max-repositories": { "$ref": "#/$defs/maxRepositories" },
         "rollout-percent": { "$ref": "#/$defs/rolloutPercent" },
-        "monthly-ai-credit-budget": { "$ref": "#/$defs/monthlyAiCreditBudget" },
         "icon": { "$ref": "#/$defs/octicon" },
         "deploy": { "type": "boolean" },
         "targets": {
@@ -169,8 +164,7 @@
       "properties": {
         "mode": { "$ref": "#/$defs/mode" },
         "max-repositories": { "$ref": "#/$defs/maxRepositories" },
-        "rollout-percent": { "$ref": "#/$defs/rolloutPercent" },
-        "monthly-ai-credit-budget": { "$ref": "#/$defs/monthlyAiCreditBudget" }
+        "rollout-percent": { "$ref": "#/$defs/rolloutPercent" }
       }
     },
     "publishing": {
