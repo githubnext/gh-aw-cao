@@ -116,7 +116,7 @@ test('notification filters and view controls are hidden on mobile', async ({ pag
   await expect(notifications.locator('.entity-card-list-status-danger .octicon-x-circle-fill')).toBeVisible();
 });
 
-test('the chart/cards view mode control is hidden on mobile for non-notification pages', async ({ page }) => {
+test('the desktop view mode chrome is fully hidden on mobile for non-notification pages', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(async ({ documentModel, presenterModuleUrl }) => {
     const { renderDashboard } = await import(presenterModuleUrl);
@@ -142,6 +142,7 @@ test('the chart/cards view mode control is hidden on mobile for non-notification
 
   const issuesPage = page.locator('[data-page-id="issues"]');
   await expect(issuesPage).not.toHaveClass(/notifications-page/);
+  await expect(issuesPage.locator(':scope > .page-chrome')).toBeHidden();
   await expect(issuesPage.locator('.view-mode-control')).toBeHidden();
   await expect(page.locator('.mobile-view-mode-toggle')).toBeVisible();
 });

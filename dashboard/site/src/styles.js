@@ -1958,6 +1958,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .dashboard-root.dashboard-full-view-scrolled .org-sidebar { display: none; }
 }
 @media (max-width: 700px) {
+  .dashboard-page > .page-chrome { display: none; }
   .dashboard-page.notifications-page > .page-chrome > .filter-bar { display: none; }
   .view-mode-control { display: none; }
   body, .dashboard-root { font-size: 1rem; }
