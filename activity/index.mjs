@@ -92,13 +92,14 @@ function runRecord(run, repository) {
   };
 }
 
-function failureLog(value) {
+export function failureLog(value) {
   if (typeof value !== "string") return {};
   const log = value.replace(/\r\n?/g, "\n").trim();
   if (!log) return {};
+  const retainedLength = MAX_FAILURE_LOG_CHARACTERS - FAILURE_LOG_TRUNCATION_MARKER.length;
   return {
     failureLog: log.length > MAX_FAILURE_LOG_CHARACTERS
-      ? `${FAILURE_LOG_TRUNCATION_MARKER}${log.slice(-MAX_FAILURE_LOG_CHARACTERS)}`
+      ? `${FAILURE_LOG_TRUNCATION_MARKER}${log.slice(-retainedLength)}`
       : log,
   };
 }

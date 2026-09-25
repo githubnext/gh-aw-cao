@@ -819,7 +819,7 @@ function runRows(deployed, usage) {
         ...(workflow.path ? {
           "workflow-link": link(
             "workflow",
-            `https://github.com/${workflow.repository}/actions/workflows/${workflow.path}`,
+            `https://github.com/${workflow.repository}/actions/workflows/${workflow.path.split("/").at(-1)}`,
             workflow.name || workflow.path,
           ),
         } : {}),

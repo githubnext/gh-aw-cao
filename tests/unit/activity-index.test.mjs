@@ -5,8 +5,21 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import test from "node:test";
+import { failureLog } from "../../activity/index.mjs";
 
 const execFileAsync = promisify(execFile);
+
+test("activity index retains normalized terminal failed-step output within its bound", () => {
+  assert.deepEqual(failureLog("  first\r\nlast  "), { failureLog: "first\nlast" });
+  assert.deepEqual(failureLog(""), {});
+
+  const oversized = "x".repeat(70_000);
+  const retained = failureLog(oversized).failureLog;
+  assert.equal(typeof retained, "string");
+  assert.equal(retained.length, 65_536);
+  assert.match(retained, /^\[… earlier failed-step output truncated …\]\n/);
+  assert.equal(retained.at(-1), "x");
+});
 
 test("activity index combines local inventory and gh aw logs without GitHub API access", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "activity-index-"));
