@@ -87,11 +87,12 @@ func TestParseEventFailsClosedOnUnusablePayload(t *testing.T) {
 }
 
 func TestNormalizeRepositoryRejectsUnsafeReferences(t *testing.T) {
-	valid := map[string]string{
-		"octo/api":   "octo/api",
-		" Octo/Api ": "octo/api",
+	valid := []struct{ input, want string }{
+		{"octo/api", "octo/api"},
+		{" Octo/Api ", "octo/api"},
 	}
-	for input, want := range valid {
+	for _, testCase := range valid {
+		input, want := testCase.input, testCase.want
 		got, err := NormalizeRepository(input)
 		if err != nil {
 			t.Fatalf("%q: %v", input, err)

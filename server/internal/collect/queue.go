@@ -277,6 +277,7 @@ func debounceKey(repository string) string {
 
 func backoff(attempt int) time.Duration {
 	base := time.Duration(1<<min(attempt, 6)) * time.Second
+	// #nosec G404 -- jitter only de-synchronizes retries; it is not a secret.
 	jitter := time.Duration(rand.Int64N(int64(base / 2)))
 	return base + jitter
 }

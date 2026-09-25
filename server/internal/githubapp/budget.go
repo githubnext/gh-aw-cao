@@ -64,6 +64,7 @@ func (b Budget) Park(ctx context.Context, installationID int64, until time.Time)
 	if err != nil {
 		return err
 	}
+	// #nosec G404 -- jitter only de-synchronizes worker resume; it is not a secret.
 	jitter := time.Duration(rand.Int64N(int64(5 * time.Second)))
 	state.ParkedTo = until.Add(jitter).UTC()
 	return b.write(ctx, installationID, state)

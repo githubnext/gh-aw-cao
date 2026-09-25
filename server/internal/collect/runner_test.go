@@ -23,6 +23,7 @@ func writeFakeBinary(t *testing.T, directory, name, body string) string {
 	t.Helper()
 	path := filepath.Join(directory, name)
 	script := "#!/bin/sh\n" + body + "\n"
+	// #nosec G306 -- the fake binary must be executable by the test process.
 	if err := os.WriteFile(path, []byte(script), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -33,10 +34,10 @@ func TestRunnerReproducesTheActionsCollectionCommand(t *testing.T) {
 	workspace := t.TempDir()
 	recordPath := filepath.Join(workspace, "gh-args")
 	catalogRoot := filepath.Join(workspace, "catalog")
-	if err := os.MkdirAll(filepath.Join(catalogRoot, "activity"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(catalogRoot, "activity"), 0o750); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(catalogRoot, "activity", "cao.mjs"), []byte("//"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(catalogRoot, "activity", "cao.mjs"), []byte("//"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	gh := writeFakeBinary(t, workspace, "gh",
@@ -56,7 +57,7 @@ func TestRunnerReproducesTheActionsCollectionCommand(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	recorded, err := os.ReadFile(recordPath)
+	recorded, err := os.ReadFile(recordPath) // #nosec G304 -- the path is built from the test's own temporary directory.
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -176,7 +176,7 @@ func WriteFileAtomic(path string, content []byte) error {
 	if err := temporary.Close(); err != nil {
 		return err
 	}
-	if err := os.Chmod(name, 0o640); err != nil {
+	if err := os.Chmod(name, 0o600); err != nil {
 		return err
 	}
 	return os.Rename(name, path)

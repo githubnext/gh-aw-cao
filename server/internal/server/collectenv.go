@@ -16,6 +16,8 @@ import (
 // It returns nil when CAO_COLLECT_APP_ID is unset, which selects the default
 // Actions profile. Secrets are read from the environment only; they are never
 // written to policy, logs, or status.
+//
+//nolint:nilnil // a nil config with a nil error is the documented "Actions profile selected" result.
 func CollectorConfigFromEnv() (*CollectorConfig, error) {
 	rawAppID := strings.TrimSpace(os.Getenv("CAO_COLLECT_APP_ID"))
 	if rawAppID == "" {
@@ -46,15 +48,15 @@ func CollectorConfigFromEnv() (*CollectorConfig, error) {
 		NodeBinary:            strings.TrimSpace(os.Getenv("CAO_COLLECT_NODE_BINARY")),
 		GitHubBinary:          strings.TrimSpace(os.Getenv("CAO_COLLECT_GH_BINARY")),
 		Consumer:              strings.TrimSpace(os.Getenv("CAO_COLLECT_CONSUMER")),
-		WindowDays:            envInt("CAO_COLLECT_WINDOW_DAYS", 0),
-		RunLimit:              envInt("CAO_COLLECT_RUN_LIMIT", 0),
-		MaxStorageMB:          envInt("CAO_COLLECT_MAX_STORAGE_MB", 0),
-		RequestTimeoutMinutes: envInt("CAO_COLLECT_REQUEST_TIMEOUT_MINUTES", 0),
-		RateLimitFloor:        envInt("CAO_COLLECT_RATE_LIMIT_FLOOR", 0),
-		Workers:               envInt("CAO_COLLECT_WORKERS", 0),
-		QueueMaxLength:        envInt("CAO_COLLECT_QUEUE_MAX_LENGTH", 0),
-		RetainGenerations:     envInt("CAO_COLLECT_RETAIN_GENERATIONS", 0),
-		InventoryLimit:        envInt("CAO_COLLECT_INVENTORY_LIMIT", 0),
+		WindowDays:            envInt("CAO_COLLECT_WINDOW_DAYS"),
+		RunLimit:              envInt("CAO_COLLECT_RUN_LIMIT"),
+		MaxStorageMB:          envInt("CAO_COLLECT_MAX_STORAGE_MB"),
+		RequestTimeoutMinutes: envInt("CAO_COLLECT_REQUEST_TIMEOUT_MINUTES"),
+		RateLimitFloor:        envInt("CAO_COLLECT_RATE_LIMIT_FLOOR"),
+		Workers:               envInt("CAO_COLLECT_WORKERS"),
+		QueueMaxLength:        envInt("CAO_COLLECT_QUEUE_MAX_LENGTH"),
+		RetainGenerations:     envInt("CAO_COLLECT_RETAIN_GENERATIONS"),
+		InventoryLimit:        envInt("CAO_COLLECT_INVENTORY_LIMIT"),
 		MinProjectionInterval: envDuration("CAO_COLLECT_PROJECTION_INTERVAL"),
 		CollectionTimeout:     envDuration("CAO_COLLECT_TIMEOUT"),
 		RecoverDeliveries:     envBool("CAO_COLLECT_RECOVER_DELIVERIES"),
@@ -70,6 +72,7 @@ func CollectorConfigFromEnv() (*CollectorConfig, error) {
 // key material in process environment listings.
 func collectorPrivateKey() ([]byte, error) {
 	if path := strings.TrimSpace(os.Getenv("CAO_COLLECT_PRIVATE_KEY_FILE")); path != "" {
+		// #nosec G304,G703 -- the operator explicitly configures the private-key file path.
 		content, err := os.ReadFile(path)
 		if err != nil {
 			return nil, fmt.Errorf("read CAO_COLLECT_PRIVATE_KEY_FILE: %w", err)
@@ -84,10 +87,10 @@ func collectorPrivateKey() ([]byte, error) {
 	return []byte(inline), nil
 }
 
-func envInt(name string, fallback int) int {
+func envInt(name string) int {
 	value, err := strconv.Atoi(strings.TrimSpace(os.Getenv(name)))
 	if err != nil {
-		return fallback
+		return 0
 	}
 	return value
 }

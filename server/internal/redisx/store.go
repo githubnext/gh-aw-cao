@@ -314,13 +314,6 @@ func (s *Store) sourceInfo(ctx context.Context, generation, name string) (model.
 	return metadata, nil
 }
 
-func parseScalar(value string) any {
-	if number, err := strconv.ParseFloat(value, 64); err == nil {
-		return number
-	}
-	return value
-}
-
 func rowID(row model.Row, fallback int) string {
 	for _, field := range []string{"id", "event", "run", "repository-coordinate"} {
 		if value := strings.TrimSpace(fmt.Sprint(row[field])); value != "" && value != "<nil>" {

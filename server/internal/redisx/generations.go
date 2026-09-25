@@ -62,7 +62,7 @@ func (s *Store) PruneGenerations(ctx context.Context, retain int) (int, error) {
 	}
 	entries, err := Strings(value)
 	if err != nil {
-		return 0, nil
+		return 0, fmt.Errorf("decode generations: %w", err)
 	}
 	type tracked struct {
 		name     string
@@ -159,7 +159,7 @@ func (s *Store) generationSources(ctx context.Context, generation string) ([]str
 	}
 	fields, err := Strings(value)
 	if err != nil {
-		return nil, nil
+		return nil, fmt.Errorf("decode generation fields: %w", err)
 	}
 	var sources []string
 	for _, name := range fields {

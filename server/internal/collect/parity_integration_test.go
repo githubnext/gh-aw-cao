@@ -177,17 +177,17 @@ func copyTree(t *testing.T, source, destination string) {
 		}
 		target := filepath.Join(destination, relative)
 		if entry.IsDir() {
-			return os.MkdirAll(target, 0o755)
+			return os.MkdirAll(target, 0o750)
 		}
-		reader, err := os.Open(path)
+		reader, err := os.Open(path) // #nosec G304,G122 -- path comes from walking the test's own fixture directory.
 		if err != nil {
 			return err
 		}
 		defer func() { _ = reader.Close() }()
-		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(target), 0o750); err != nil {
 			return err
 		}
-		writer, err := os.Create(target)
+		writer, err := os.Create(target) // #nosec G304 -- target is inside the test's temporary destination directory.
 		if err != nil {
 			return err
 		}

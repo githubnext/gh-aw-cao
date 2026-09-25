@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sort"
 	"time"
 
@@ -40,16 +41,15 @@ type Backfill struct {
 
 // BackfillState is the resumable checkpoint, published for status reporting.
 type BackfillState struct {
-	Phase              string    `json:"phase"`
-	StartedAt          string    `json:"startedAt,omitempty"`
-	CompletedAt        string    `json:"completedAt,omitempty"`
-	Installations      int       `json:"installations"`
-	Repositories       int       `json:"repositories"`
-	QueuedRepositories int       `json:"queuedRepositories"`
-	LakeReplayed       bool      `json:"lakeReplayed"`
-	Revision           int64     `json:"revision,omitempty"`
-	Error              string    `json:"error,omitempty"`
-	updated            time.Time `json:"-"`
+	Phase              string `json:"phase"`
+	StartedAt          string `json:"startedAt,omitempty"`
+	CompletedAt        string `json:"completedAt,omitempty"`
+	Installations      int    `json:"installations"`
+	Repositories       int    `json:"repositories"`
+	QueuedRepositories int    `json:"queuedRepositories"`
+	LakeReplayed       bool   `json:"lakeReplayed"`
+	Revision           int64  `json:"revision,omitempty"`
+	Error              string `json:"error,omitempty"`
 }
 
 // Run performs cold start: replay, enumerate, seed, and let workers collect.
@@ -208,7 +208,7 @@ func (b Backfill) State(ctx context.Context) (BackfillState, error) {
 	}
 	var state BackfillState
 	if err := json.Unmarshal(payload, &state); err != nil {
-		return BackfillState{Phase: "idle"}, nil
+		return BackfillState{Phase: "idle"}, fmt.Errorf("decode backfill state: %w", err)
 	}
 	return state, nil
 }

@@ -15,10 +15,10 @@ func TestWorkerCollectsAndProjects(t *testing.T) {
 	store, ctx := integrationStore(t)
 	workspace := t.TempDir()
 	catalogRoot := filepath.Join(workspace, "catalog")
-	if err := os.MkdirAll(filepath.Join(catalogRoot, "activity"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(catalogRoot, "activity"), 0o750); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(catalogRoot, "activity", "cao.mjs"), []byte("//"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(catalogRoot, "activity", "cao.mjs"), []byte("//"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	gh := writeFakeBinary(t, workspace, "gh", "exit 0")
@@ -113,10 +113,10 @@ func TestWorkerRetriesAFailedCollection(t *testing.T) {
 	store, ctx := integrationStore(t)
 	workspace := t.TempDir()
 	catalogRoot := filepath.Join(workspace, "catalog")
-	if err := os.MkdirAll(filepath.Join(catalogRoot, "activity"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(catalogRoot, "activity"), 0o750); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(catalogRoot, "activity", "cao.mjs"), []byte("//"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(catalogRoot, "activity", "cao.mjs"), []byte("//"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	gh := writeFakeBinary(t, workspace, "gh", `echo "rate limited" >&2; exit 1`)
