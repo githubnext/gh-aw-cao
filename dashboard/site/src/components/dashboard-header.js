@@ -24,7 +24,17 @@ export function renderDashboardHeader(options) {
           'div',
           { className: 'title-area' },
           h('h1', { id: 'page-title', tabIndex: -1, 'data-breadcrumb-page': '' }, options.title),
-          h('span', { className: 'experimental-page-label', 'data-page-experimental': '', hidden: options.experimental !== true }, 'Experimental'),
+          h(
+            'span',
+            {
+              className: 'experimental-page-label',
+              'data-page-experimental': '',
+              hidden: options.experimental !== true,
+              role: 'img',
+              'aria-label': 'Experimental'
+            },
+            octicon('beaker')
+          ),
           h('a', { className: 'title-link', 'data-page-title-link': '', hidden: true }),
           h('span', { className: 'mode-indicator', 'data-page-mode': '', hidden: true })
         ),
