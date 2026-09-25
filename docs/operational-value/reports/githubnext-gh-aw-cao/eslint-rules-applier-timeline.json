@@ -1,0 +1,396 @@
+{
+  "repository": "githubnext/gh-aw-cao",
+  "workflowName": "ESLint Factory / Applier",
+  "adoptionAt": "2026-09-15T14:26:14Z",
+  "evaluationMode": "attainment-only",
+  "window": {
+    "startAt": "2026-09-15T14:26:14Z",
+    "endAt": "2026-09-25T05:00:30Z"
+  },
+  "evidenceCoverage": {
+    "completeFromAdoption": true,
+    "hasPreAdoptionBaseline": false,
+    "baselineDescription": "No comparable pre-adoption baseline is available; observations begin at adoption.",
+    "reason": "Comparable historical outcome evidence cannot be reconstructed."
+  },
+  "runs": [],
+  "caveat": "The evidence measures post-adoption attainment only; without a comparable pre-adoption baseline it cannot establish improvement or causation.",
+  "schemaVersion": 2,
+  "definitionSchemaVersion": 3,
+  "generatedAt": "2026-09-25T05:00:30Z",
+  "workflowSlug": "eslint-rules-applier",
+  "sourcePath": ".github/workflows/eslint-rules-applier.md",
+  "valueFunction": {
+    "path": "eslint-rules/operational-value/eslint-rules-applier.mjs",
+    "sha256": "e6d0ce1211b57309144efc2b561b0d8a073e4bf1cc8c84f90851a96e0840a888",
+    "definition": {
+      "schemaVersion": 3,
+      "slug": "eslint-rules-applier",
+      "repository": "githubnext/gh-aw-cao",
+      "workflowName": "ESLint Factory / Applier",
+      "sourcePath": ".github/workflows/eslint-rules-applier.md",
+      "adoption": {
+        "commit": "5b53362284c6f4313fee469afc1b17cac600ec8e",
+        "adoptedAt": "2026-09-15T14:26:14Z",
+        "baselineCommit": "6ae7578945be96b0af82616a9a3b0fb9046899dc",
+        "baselineAt": "2026-09-15T14:24:33Z"
+      },
+      "evaluation": {
+        "mode": "attainment-only"
+      },
+      "evidence": {
+        "key": "eslint-rule-adoption",
+        "repositories": [
+          "github/gh-aw",
+          "github/gh-aw-actions",
+          "github/gh-aw-firewall",
+          "github/gh-aw-mcpg",
+          "github/gh-aw-threat-detection",
+          "githubnext/gh-aw-cao"
+        ],
+        "opportunity": "A unique ESLint Factory adoption request for a target repository and rule key.",
+        "filters": [
+          "The request is an immutable adoption-request transaction written by the applier to campaign memory.",
+          "The transaction identifies a supported target repository, rule key, issue number, and recording time during the observation window.",
+          "Matured observations include only requests with thirty days to mature before the immutable repository cutoff.",
+          "Duplicate requests for the same target repository and rule key count once."
+        ],
+        "collection": "Read one immutable campaign-memory archive and one immutable target-repository archive per cutoff, then inspect adoption-request transactions and repository state for the requested warning rule, dedicated npm script, and separate non-gating CI job.",
+        "window": {
+          "durationDays": 90,
+          "cadenceDays": 7,
+          "maturationDays": 30
+        },
+        "zeroRule": "One or more mature, valid requests with complete repository snapshots and no attained requested state records zero.",
+        "missingRule": "No eligible request, an unidentified target or rule, inaccessible or paginated issue evidence, or an unavailable repository snapshot records missing rather than zero."
+      },
+      "model": {
+        "architecture": "Direct opportunity-normalized outcome attainment with disaggregated repository-state diagnostics.",
+        "recommendation": "Use complete adoption share as primary and retain each required adoption dimension separately because partial adoption is operationally meaningful.",
+        "presentation": {
+          "label": "ESLint rule adoption",
+          "betterLabel": "More matured requests fully adopted"
+        }
+      },
+      "summary": {
+        "nativeLabel": "Share of matured ESLint adoption requests fully adopted"
+      },
+      "metrics": [
+        {
+          "id": "complete-adoption-share",
+          "name": "Complete adoption share",
+          "role": "primary",
+          "formula": "requests with warning-only rule, dedicated npm script, and separate non-gating CI job / eligible requests",
+          "direction": "increase",
+          "presentation": {
+            "name": "Complete adoption",
+            "legendLabel": "Complete adoption",
+            "transform": "identity"
+          }
+        },
+        {
+          "id": "warning-rule-share",
+          "name": "Warning-only rule share",
+          "role": "diagnostic",
+          "formula": "requests with the selected rule configured at warning severity / eligible requests",
+          "direction": "increase",
+          "presentation": {
+            "name": "Warning-only rule share",
+            "legendLabel": "Warning rule",
+            "transform": "identity"
+          }
+        },
+        {
+          "id": "dedicated-script-share",
+          "name": "Dedicated script share",
+          "role": "diagnostic",
+          "formula": "requests with a dedicated ESLint Factory npm script / eligible requests",
+          "direction": "increase",
+          "presentation": {
+            "name": "Dedicated script share",
+            "legendLabel": "Dedicated script",
+            "transform": "identity"
+          }
+        },
+        {
+          "id": "separate-ci-job-share",
+          "name": "Separate non-gating CI job share",
+          "role": "diagnostic",
+          "formula": "requests whose dedicated script runs in a separate non-gating CI job / eligible requests",
+          "direction": "increase",
+          "presentation": {
+            "name": "Separate non-gating CI job share",
+            "legendLabel": "Separate CI job",
+            "transform": "identity"
+          }
+        }
+      ],
+      "validationExamples": {
+        "targetAttained": {
+          "valid": true,
+          "opportunityCount": 1,
+          "completeCount": 1,
+          "warningRuleCount": 1,
+          "dedicatedScriptCount": 1,
+          "separateCiJobCount": 1
+        },
+        "targetMissed": {
+          "valid": true,
+          "opportunityCount": 1,
+          "completeCount": 0,
+          "warningRuleCount": 0,
+          "dedicatedScriptCount": 0,
+          "separateCiJobCount": 0
+        },
+        "missing": {
+          "valid": false,
+          "opportunityCount": 0
+        },
+        "malformed": {
+          "valid": true,
+          "opportunityCount": "one",
+          "completeCount": 1
+        }
+      }
+    }
+  },
+  "metricReview": {
+    "architecture": "Direct opportunity-normalized outcome attainment with disaggregated repository-state diagnostics.",
+    "recommendation": "Use complete adoption share as primary and retain each required adoption dimension separately because partial adoption is operationally meaningful.",
+    "presentation": {
+      "label": "ESLint rule adoption",
+      "betterLabel": "More matured requests fully adopted"
+    },
+    "metrics": [
+      {
+        "id": "complete-adoption-share",
+        "name": "Complete adoption share",
+        "role": "primary",
+        "formula": "requests with warning-only rule, dedicated npm script, and separate non-gating CI job / eligible requests",
+        "direction": "increase",
+        "presentation": {
+          "name": "Complete adoption",
+          "legendLabel": "Complete adoption",
+          "transform": "identity"
+        },
+        "status": "unevaluated",
+        "beforeValue": null,
+        "afterValue": null,
+        "attainmentValue": null,
+        "improvement": null
+      },
+      {
+        "id": "warning-rule-share",
+        "name": "Warning-only rule share",
+        "role": "diagnostic",
+        "formula": "requests with the selected rule configured at warning severity / eligible requests",
+        "direction": "increase",
+        "presentation": {
+          "name": "Warning-only rule share",
+          "legendLabel": "Warning rule",
+          "transform": "identity"
+        },
+        "status": "unevaluated",
+        "beforeValue": null,
+        "afterValue": null,
+        "attainmentValue": null,
+        "improvement": null
+      },
+      {
+        "id": "dedicated-script-share",
+        "name": "Dedicated script share",
+        "role": "diagnostic",
+        "formula": "requests with a dedicated ESLint Factory npm script / eligible requests",
+        "direction": "increase",
+        "presentation": {
+          "name": "Dedicated script share",
+          "legendLabel": "Dedicated script",
+          "transform": "identity"
+        },
+        "status": "unevaluated",
+        "beforeValue": null,
+        "afterValue": null,
+        "attainmentValue": null,
+        "improvement": null
+      },
+      {
+        "id": "separate-ci-job-share",
+        "name": "Separate non-gating CI job share",
+        "role": "diagnostic",
+        "formula": "requests whose dedicated script runs in a separate non-gating CI job / eligible requests",
+        "direction": "increase",
+        "presentation": {
+          "name": "Separate non-gating CI job share",
+          "legendLabel": "Separate CI job",
+          "transform": "identity"
+        },
+        "status": "unevaluated",
+        "beforeValue": null,
+        "afterValue": null,
+        "attainmentValue": null,
+        "improvement": null
+      }
+    ]
+  },
+  "summary": {
+    "nativeLabel": "Share of matured ESLint adoption requests fully adopted"
+  },
+  "snapshots": [
+    {
+      "observedAt": "2026-09-15T14:26:14Z",
+      "window": {
+        "startAt": "2026-05-18T14:26:14Z",
+        "endAt": "2026-08-16T14:26:14Z"
+      },
+      "evidence": {
+        "valid": false,
+        "opportunityCount": 0,
+        "completeCount": 0,
+        "warningRuleCount": 0,
+        "dedicatedScriptCount": 0,
+        "separateCiJobCount": 0,
+        "maturityStatus": "interim",
+        "dubious": true,
+        "key": "eslint-rule-adoption",
+        "repositories": [
+          "github/gh-aw",
+          "github/gh-aw-actions",
+          "github/gh-aw-firewall",
+          "github/gh-aw-mcpg",
+          "github/gh-aw-threat-detection",
+          "githubnext/gh-aw-cao"
+        ],
+        "opportunity": "A unique ESLint Factory adoption request for a target repository and rule key.",
+        "filters": [
+          "The request is an immutable adoption-request transaction written by the applier to campaign memory.",
+          "The transaction identifies a supported target repository, rule key, issue number, and recording time during the observation window.",
+          "Matured observations include only requests with thirty days to mature before the immutable repository cutoff.",
+          "Duplicate requests for the same target repository and rule key count once."
+        ],
+        "collection": "Read one immutable campaign-memory archive and one immutable target-repository archive per cutoff, then inspect adoption-request transactions and repository state for the requested warning rule, dedicated npm script, and separate non-gating CI job.",
+        "window": {
+          "durationDays": 90,
+          "cadenceDays": 7,
+          "maturationDays": 30
+        }
+      },
+      "provenance": [
+        {
+          "repository": "githubnext/gh-aw-cao",
+          "kind": "campaign-memory",
+          "ref": "memory/eslint-rules@2026-08-16T14:26:14Z"
+        }
+      ],
+      "metrics": {
+        "complete-adoption-share": null,
+        "warning-rule-share": null,
+        "dedicated-script-share": null,
+        "separate-ci-job-share": null
+      }
+    },
+    {
+      "observedAt": "2026-09-22T14:26:14Z",
+      "window": {
+        "startAt": "2026-05-25T14:26:14Z",
+        "endAt": "2026-08-23T14:26:14Z"
+      },
+      "evidence": {
+        "valid": false,
+        "opportunityCount": 0,
+        "completeCount": 0,
+        "warningRuleCount": 0,
+        "dedicatedScriptCount": 0,
+        "separateCiJobCount": 0,
+        "maturityStatus": "interim",
+        "dubious": true,
+        "key": "eslint-rule-adoption",
+        "repositories": [
+          "github/gh-aw",
+          "github/gh-aw-actions",
+          "github/gh-aw-firewall",
+          "github/gh-aw-mcpg",
+          "github/gh-aw-threat-detection",
+          "githubnext/gh-aw-cao"
+        ],
+        "opportunity": "A unique ESLint Factory adoption request for a target repository and rule key.",
+        "filters": [
+          "The request is an immutable adoption-request transaction written by the applier to campaign memory.",
+          "The transaction identifies a supported target repository, rule key, issue number, and recording time during the observation window.",
+          "Matured observations include only requests with thirty days to mature before the immutable repository cutoff.",
+          "Duplicate requests for the same target repository and rule key count once."
+        ],
+        "collection": "Read one immutable campaign-memory archive and one immutable target-repository archive per cutoff, then inspect adoption-request transactions and repository state for the requested warning rule, dedicated npm script, and separate non-gating CI job.",
+        "window": {
+          "durationDays": 90,
+          "cadenceDays": 7,
+          "maturationDays": 30
+        }
+      },
+      "provenance": [
+        {
+          "repository": "githubnext/gh-aw-cao",
+          "kind": "campaign-memory",
+          "ref": "memory/eslint-rules@2026-08-23T14:26:14Z"
+        }
+      ],
+      "metrics": {
+        "complete-adoption-share": null,
+        "warning-rule-share": null,
+        "dedicated-script-share": null,
+        "separate-ci-job-share": null
+      }
+    },
+    {
+      "observedAt": "2026-09-25T05:00:30Z",
+      "window": {
+        "startAt": "2026-05-28T05:00:30Z",
+        "endAt": "2026-08-26T05:00:30Z"
+      },
+      "evidence": {
+        "valid": false,
+        "opportunityCount": 0,
+        "completeCount": 0,
+        "warningRuleCount": 0,
+        "dedicatedScriptCount": 0,
+        "separateCiJobCount": 0,
+        "maturityStatus": "interim",
+        "dubious": true,
+        "key": "eslint-rule-adoption",
+        "repositories": [
+          "github/gh-aw",
+          "github/gh-aw-actions",
+          "github/gh-aw-firewall",
+          "github/gh-aw-mcpg",
+          "github/gh-aw-threat-detection",
+          "githubnext/gh-aw-cao"
+        ],
+        "opportunity": "A unique ESLint Factory adoption request for a target repository and rule key.",
+        "filters": [
+          "The request is an immutable adoption-request transaction written by the applier to campaign memory.",
+          "The transaction identifies a supported target repository, rule key, issue number, and recording time during the observation window.",
+          "Matured observations include only requests with thirty days to mature before the immutable repository cutoff.",
+          "Duplicate requests for the same target repository and rule key count once."
+        ],
+        "collection": "Read one immutable campaign-memory archive and one immutable target-repository archive per cutoff, then inspect adoption-request transactions and repository state for the requested warning rule, dedicated npm script, and separate non-gating CI job.",
+        "window": {
+          "durationDays": 90,
+          "cadenceDays": 7,
+          "maturationDays": 30
+        }
+      },
+      "provenance": [
+        {
+          "repository": "githubnext/gh-aw-cao",
+          "kind": "campaign-memory",
+          "ref": "memory/eslint-rules@2026-08-26T05:00:30Z"
+        }
+      ],
+      "metrics": {
+        "complete-adoption-share": null,
+        "warning-rule-share": null,
+        "dedicated-script-share": null,
+        "separate-ci-job-share": null
+      }
+    }
+  ]
+}

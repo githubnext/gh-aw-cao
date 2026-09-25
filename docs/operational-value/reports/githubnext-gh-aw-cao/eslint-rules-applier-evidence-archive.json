@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "repository": "githubnext/gh-aw-cao",
+  "workflowSlug": "eslint-rules-applier",
+  "functions": {
+    "e6d0ce1211b57309144efc2b561b0d8a073e4bf1cc8c84f90851a96e0840a888": {
+      "valueFunctionSha256": "e6d0ce1211b57309144efc2b561b0d8a073e4bf1cc8c84f90851a96e0840a888",
+      "snapshots": []
+    }
+  }
+}
