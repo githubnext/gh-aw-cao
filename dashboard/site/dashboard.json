@@ -8102,13 +8102,13 @@
             "function": "coalesce",
             "args": [
               {
-                "field": "error-signature-label"
+                "field": "failure-message"
               },
               {
                 "field": "status-detail"
               },
               {
-                "field": "failure-message"
+                "field": "error-signature-label"
               },
               {
                 "field": "workflow-name"
