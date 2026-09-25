@@ -38,6 +38,63 @@ describe('dashboard sidebar', () => {
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
   });
 
+  it('remembers which navigation sections are expanded', () => {
+    const renderSidebar = () => {
+      document.body.replaceChildren();
+      const sidebar = renderDashboardNavigation([
+        { id: 'overview', title: 'Overview' },
+        { id: 'runs', title: 'Runs' }
+      ], 'Example', [
+        { label: 'Main', pages: ['overview'] },
+        { label: 'Data', pages: ['runs'] }
+      ]);
+      const shell = document.createElement('div');
+      shell.className = 'app-shell';
+      shell.append(sidebar);
+      const root = document.createElement('div');
+      root.append(shell);
+      document.body.append(root);
+      enableDashboardNavigation(root);
+      return sidebar;
+    };
+
+    const sidebar = renderSidebar();
+    const dataSection = sidebar.querySelector('[data-nav-section="Data"]');
+    expect(dataSection).toBeInstanceOf(HTMLDetailsElement);
+    if (!(dataSection instanceof HTMLDetailsElement)) return;
+    expect(dataSection.open).toBe(false);
+
+    dataSection.open = true;
+    dataSection.dispatchEvent(new Event('toggle'));
+
+    const restored = renderSidebar().querySelector('[data-nav-section="Data"]');
+    expect(restored instanceof HTMLDetailsElement && restored.open).toBe(true);
+    const mainSection = document.querySelector('[data-nav-section="Main"]');
+    expect(mainSection instanceof HTMLDetailsElement && mainSection.open).toBe(true);
+  });
+
+  it('ignores malformed stored navigation section state', () => {
+    localStorage.setItem('central-agentic-ops.dashboard.nav-sections-open', '{ not json');
+    const sidebar = renderDashboardNavigation([
+      { id: 'overview', title: 'Overview' },
+      { id: 'runs', title: 'Runs' }
+    ], 'Example', [
+      { label: 'Main', pages: ['overview'] },
+      { label: 'Data', pages: ['runs'] }
+    ]);
+    const shell = document.createElement('div');
+    shell.className = 'app-shell';
+    shell.append(sidebar);
+    const root = document.createElement('div');
+    root.append(shell);
+    document.body.append(root);
+
+    enableDashboardNavigation(root);
+
+    const dataSection = sidebar.querySelector('[data-nav-section="Data"]');
+    expect(dataSection instanceof HTMLDetailsElement && dataSection.open).toBe(false);
+  });
+
   it('groups experimental pages in one explicit section', () => {
     const sidebar = renderDashboardNavigation([
       { id: 'overview', title: 'Overview' },

@@ -6,6 +6,7 @@ import { titleCase } from './count-formatters.js';
 import { enableDetailsMenuDismissal } from './ui-primitives.js';
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.sidebar-collapsed');
+const NAV_SECTIONS_OPEN_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.nav-sections-open');
 const VIEW_MODE_LABELS = { chart: 'Chart', table: 'Table', card: 'Cards' };
 const VIEW_MODE_ICONS = { chart: 'graph', table: 'table', card: 'stack' };
 
@@ -123,6 +124,7 @@ export function renderDashboardNavigation(pages, title, navigation, accountContr
               'details',
               {
                 className: `nav-section${section.placement === 'bottom' ? ' nav-section-bottom' : ''}`,
+                dataset: { navSection: section.label },
                 open: section.placement === 'bottom' || sectionIndex === mainSectionIndex || ['investigate', 'insights'].includes(section.label?.toLowerCase() ?? '')
               },
               h(
@@ -167,6 +169,7 @@ export function syncDashboardNavigationIndicators(root, pages, sources) {
 /** @param {HTMLElement} root */
 export function enableDashboardNavigation(root) {
   enableSidebarToggle(root);
+  enableNavSectionStatePersistence(root);
   enableMobileViewModeToggle(root);
   const menu = root.querySelector('.mobile-nav-menu');
   if (menu instanceof HTMLDetailsElement) {
@@ -321,4 +324,51 @@ function enableSidebarToggle(root) {
       // The display mode still works for the current page when storage is unavailable.
     }
   });
+}
+
+/**
+ * Persist which sidebar sections, such as "Data", are expanded so the sidebar
+ * keeps its shape across reloads alongside the other UI soft state.
+ * @param {HTMLElement} root
+ */
+function enableNavSectionStatePersistence(root) {
+  const sections = [...root.querySelectorAll('.nav-section[data-nav-section]')]
+    .filter((section) => section instanceof HTMLDetailsElement);
+  if (sections.length === 0) return;
+
+  const storedState = readNavSectionState();
+  for (const section of sections) {
+    const label = section.dataset.navSection;
+    if (label === undefined) continue;
+    const stored = storedState[label];
+    if (typeof stored === 'boolean') section.open = stored;
+  }
+
+  for (const section of sections) {
+    section.addEventListener('toggle', () => {
+      const label = section.dataset.navSection;
+      if (label === undefined) return;
+      const state = readNavSectionState();
+      state[label] = section.open;
+      try {
+        globalThis.window?.localStorage?.setItem(NAV_SECTIONS_OPEN_STORAGE_KEY, JSON.stringify(state));
+      } catch {
+        // Section state still applies to the current page when storage is unavailable.
+      }
+    });
+  }
+}
+
+/** @returns {Record<string, boolean>} */
+function readNavSectionState() {
+  try {
+    const raw = globalThis.window?.localStorage?.getItem(NAV_SECTIONS_OPEN_STORAGE_KEY);
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : null;
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed).filter(([, value]) => typeof value === 'boolean')
+    );
+  } catch {
+    return {};
+  }
 }
