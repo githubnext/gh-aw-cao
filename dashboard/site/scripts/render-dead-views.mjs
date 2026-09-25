@@ -113,6 +113,8 @@ export function deadDashboardPages(pages, references) {
   return pages.filter((page) => (
     typeof page.id === 'string'
     && !referenced.has(page.id)
+    // Routed pages are commonly reached through data-provided #page-* links
+    // that this static dashboard document pass cannot resolve.
     && !page.route
   ));
 }
