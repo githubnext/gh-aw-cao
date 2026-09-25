@@ -65,7 +65,6 @@ const activityExpectedFiles = [
   "activity/commands/hash-payloads.mjs",
   "activity/commands/index.mjs",
   "activity/commands/ingest-jsonl.mjs",
-  "activity/commands/ingest.mjs",
   "activity/commands/init.mjs",
   "activity/commands/issue-status.mjs",
   "activity/commands/mode.mjs",
