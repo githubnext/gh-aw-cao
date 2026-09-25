@@ -61,10 +61,6 @@ tools:
     toolsets: [repos, issues, pull_requests]
   web-fetch:
 
-graders:
-  operational-value:
-    run: ./graders/eu-cra-compliance-campaign-maintainer-operational-value.sh
-
 safe-outputs:
   create-pull-request:
     title-prefix: "[eu-cra:implementation-status] "

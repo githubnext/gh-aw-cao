@@ -40,7 +40,7 @@ Built-in pages carry renderer-defined semantic requirements and required source 
 | `evals` | Evaluation definitions and run-level results. |
 | `usage` | Token, AIC, estimated cost, model, engine, and scope usage. |
 | `engines-models` | Model and engine utilization plus run aggregates. |
-| `operational-value` | Campaign-specific, package-defined repository metrics. |
+| `operational-value` | Campaign-defined repository metrics. |
 | `operational-graders` | Ordered native gh-aw grader metrics with units, directions, and run provenance. |
 | `findings` | Linked security and quality findings with status and severity. |
 | `issues` | Reusable issue entity cards bound to safe-output queries with explicit drill behavior. |
@@ -85,7 +85,7 @@ Named elements own specialized DOM, accessibility, interaction, local state, and
 | `entity-route` | Allocates a route-selected entity title and native GitHub link. |
 | `configuration-policy` | Presents and edits checked-in CAO policy. |
 | `measure-history` | Presents reusable grouped temporal-measure history from declarative query results. |
-| `factory-header` | Presents factory status, retained-output context, work in motion, and weekly rhythm. |
+| `factory-header` | Presents campaign status, retained-output context, work in motion, and weekly rhythm. |
 | `factory-floor` | Presents linked repository, run, dispatch, and value stations. |
 | `link-button-list` | Presents one source as an inset grouped list of Octicon navigation rows with disclosure chevrons. |
 

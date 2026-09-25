@@ -230,7 +230,7 @@ Candidate persona and domain evidence may inform labels, filters, consequence co
 | Artifact | A durable output produced by work, including a report, issue, pull request, patch, measurement, or deployment record. |
 | Outcome | The observed disposition or real-world result of an artifact or work item, distinct from execution success. |
 | Operational grader | An ordered native metric result published by gh-aw's `operational-value` grader protocol for one workflow run. |
-| Operational value | A package-defined, timestamped repository metric linked to a campaign. |
+| Operational value | A campaign-defined, timestamped repository metric linked to a campaign. |
 | Usage observation | A measured resource quantity such as AI Credits, tokens, requests, compute, or estimated currency. |
 | Capacity observation | A measured ability to continue work, such as quota remaining or admitted budget. |
 
@@ -551,7 +551,7 @@ Examples of domain labels include:
 
 ### 10.2 Operational Value
 
-- **CAOD-OUT-006:** An operational grader **MUST** preserve the ordered metrics published by gh-aw, including each metric identifier, native finite numeric value or `null`, unit, direction, run, and observation time. Operational value **MUST** preserve its package-defined value ID, numeric value, repository, campaign, and timestamp.
+- **CAOD-OUT-006:** An operational grader **MUST** preserve the ordered metrics published by gh-aw, including each metric identifier, native finite numeric value or `null`, unit, direction, run, and observation time. Operational value **MUST** preserve its campaign-defined value ID, numeric value, repository, campaign, and timestamp.
 - **CAOD-OUT-007:** The presenter **MUST NOT** normalize, clamp, rescale, replay, mature, or infer a baseline for an operational-grader metric.
 - **CAOD-OUT-008:** Operational-grader observations using different metric identifiers, units, or directions **MUST NOT** be combined into one total or average.
 - **CAOD-OUT-009:** A null or missing metric **MUST** produce `unavailable`, not zero.

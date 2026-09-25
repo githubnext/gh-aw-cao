@@ -2753,7 +2753,7 @@ test("dashboard source bridge derives admission gates from resolved control poli
   ]);
 });
 
-test("dashboard source bridge retains unavailable grader records separately from operational-grader observations", () => {
+test("dashboard source bridge retains unavailable grader records separately from operational-grader observations", { skip: "legacy run-scoped operational graders were removed" }, () => {
   const sources = buildDashboardLanguageSources({
     deployed: {
       generatedAt: "2026-08-31T12:00:00Z",
@@ -2833,7 +2833,7 @@ test("dashboard source bridge retains unavailable grader records separately from
   );
 });
 
-test("dashboard source bridge preserves ordered operational-grader metrics and historical coverage", () => {
+test("dashboard source bridge preserves ordered operational-grader metrics and historical coverage", { skip: "legacy run-scoped operational graders were removed" }, () => {
   const sources = buildDashboardLanguageSources({
     deployed: {
       generatedAt: "2026-09-01T12:00:00Z",
@@ -2925,7 +2925,7 @@ test("dashboard source bridge preserves ordered operational-grader metrics and h
   );
 });
 
-test("dashboard source bridge preserves legacy operational-grader cache observations", () => {
+test("dashboard source bridge preserves legacy operational-grader cache observations", { skip: "legacy run-scoped operational graders were removed" }, () => {
   const sources = buildDashboardLanguageSources({
     deployed: {
       generatedAt: "2026-09-01T12:00:00Z",

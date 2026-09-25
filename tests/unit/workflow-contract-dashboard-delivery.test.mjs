@@ -219,8 +219,7 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   const activityCollector = readFileSync(join(root, "activity", "collect-logs.sh"), "utf8");
   const activityLogs = readFileSync(join(root, "activity", "logs.mjs"), "utf8");
   const activityRunner = readFileSync(join(root, "activity", "run-activity.mjs"), "utf8");
-  const operationalValues = readFileSync(join(root, "dashboard", "report", "operational-values.mjs"), "utf8");
-  const reportAssets = ["aic-usage.mjs", "activity-collectors.mjs", "bundle-dashboards.mjs", "compose-dashboard-documents.mjs", "configure-site.mjs", "dashboard-language-sources.mjs", "operational-value-records.mjs", "operational-values.mjs", "records.mjs", "text-utils.mjs"];
+  const reportAssets = ["aic-usage.mjs", "activity-collectors.mjs", "bundle-dashboards.mjs", "compose-dashboard-documents.mjs", "configure-site.mjs", "dashboard-language-sources.mjs", "records.mjs", "text-utils.mjs"];
   const activityEntrypoints = new Set(["activity-collectors.mjs"]);
   const buildEntrypoints = new Set(["bundle-dashboards.mjs", "configure-site.mjs"]);
   assert.ok(rootCampaign.includes.includes("dashboard/aw.yml"));
@@ -383,10 +382,6 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(deployedWorkflows, /run\.conclusion === "action_required"\) result\.actionRequired \+= 1/);
   assert.match(deployedWorkflows, /event: firstValue\(run\.event, run\.trigger, null\)/);
   assert.doesNotMatch(deployedWorkflows, /\["failure", "timed_out", "startup_failure", "action_required"\]/);
-  assert.match(operationalValues, /workflow\.operationalValue !== true/);
-  assert.match(operationalValues, /REPORT_GH_AW_LOGS_SHARDS is required/);
-  assert.match(operationalValues, /run\?\.graders\?\.results/);
-  assert.doesNotMatch(operationalValues, /runGhAw|gh run|gh aw logs|graders", "operational-value", "report"/);
   for (const assetName of ["data-operations.js", "data-processor.js", "data-worker.js"]) {
     assert.ok(existsSync(join(root, "dashboard", "site", "src", assetName)));
   }

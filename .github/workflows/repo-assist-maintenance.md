@@ -100,14 +100,6 @@ concurrency:
   job-discriminator: ${{ github.run_id }}
   cancel-in-progress: true
 
-graders:
-  operational-value:
-    name: Decision-ready maintenance patch
-    description: Whether the current run requested one target-bound maintenance patch with evidence and validation
-    unit: proportion
-    direction: higher_is_better
-    run: ./graders/repo-assist-maintenance-operational-value.sh
-
 tracker-id: repo-assist-maintenance
 
 tools:

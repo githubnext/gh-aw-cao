@@ -509,7 +509,8 @@ describe('dashboard DOM provenance', () => {
                   id: 'summary',
                   title: 'Summary',
                   mark: 'element',
-                  element: 'measure-history',
+                  element: 'link-button-list',
+                  config: { 'label-field': 'metric-name', 'link-field': 'metric-link' },
                   data: { source: 'summary' }
                 },
                 {
@@ -535,6 +536,7 @@ describe('dashboard DOM provenance', () => {
             rows: [{
               'metric-kind': 'primary',
               'metric-name': 'runs',
+              'metric-link': { href: '#page-trace', label: 'View runs' },
               points: [{ x: '2026-09-07T18:00:00Z', y: 2, color: 'Runs', key: 'runs-1' }]
             }],
             metadata: {
@@ -561,7 +563,7 @@ describe('dashboard DOM provenance', () => {
       expect(page?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0]');
       expect(section?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].sections[0]');
       expect(summary?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
-      expect(summary?.querySelector('h2')?.getAttribute('data-js-view')).toBe('measure-history');
+      expect(summary?.querySelector('h2')?.getAttribute('data-js-view')).toBe('link-button-list');
       expect(metric?.querySelector('.metric-value')?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[1]');
       await vi.waitFor(() => {
         expect([...rendered.querySelectorAll('*')].every((element) => element.hasAttribute('data-json-path'))).toBe(true);
@@ -571,7 +573,7 @@ describe('dashboard DOM provenance', () => {
       summary?.append(dynamicChild);
       await vi.waitFor(() => {
         expect(dynamicChild.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
-        expect(dynamicChild.getAttribute('data-js-view')).toBe('measure-history');
+        expect(dynamicChild.getAttribute('data-js-view')).toBe('link-button-list');
       });
 
       const replacementSection = rendered.ownerDocument.createElement('section');
@@ -585,7 +587,7 @@ describe('dashboard DOM provenance', () => {
       await vi.waitFor(() => {
         expect(replacementSection.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].sections[0]');
         expect(replacementView.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
-        expect(replacementView.querySelector('dt')?.getAttribute('data-js-view')).toBe('measure-history');
+        expect(replacementView.querySelector('dt')?.getAttribute('data-js-view')).toBe('link-button-list');
       });
     } finally {
       window.history.pushState(null, '', '/');

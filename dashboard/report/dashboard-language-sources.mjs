@@ -4,7 +4,6 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
 import { runId as canonicalRunId, sourceId } from "../site/src/data/model/ids.js";
-import { hasOperationalValueResult, operationalValueRecordTime } from "./operational-value-records.mjs";
 import { firstText } from "./text-utils.mjs";
 
 const sourceNames = [
@@ -39,7 +38,6 @@ const sourceNames = [
   "repository-coverage",
   "outcomes",
   "findings",
-  "operational-graders",
   "github-api-rate-limits",
   "github-api-collector-health",
   "github-api-call-stacks",
@@ -2460,123 +2458,6 @@ function evidenceRecordRows(outcomes, findings, workItems) {
   return [...outcomeRecords, ...findingRecords];
 }
 
-function operationalGraderDefinitionKey(record, evaluatorDigest = record.evaluatorDigest) {
-  return `${record.repository || ""}\0${record.workflowId || ""}\0${evaluatorDigest || ""}`;
-}
-
-function operationalGraderDefinitionLookup(values) {
-  const definitions = Array.isArray(values.definitions) ? values.definitions : [];
-  const byDigest = new Map();
-  const singleByWorkflow = new Map();
-  const definitionsByWorkflow = new Map();
-  for (const definition of definitions) {
-    byDigest.set(operationalGraderDefinitionKey(definition), definition);
-    const workflowKey = operationalGraderDefinitionKey(definition, "");
-    definitionsByWorkflow.set(workflowKey, [...(definitionsByWorkflow.get(workflowKey) ?? []), definition]);
-  }
-  for (const [workflowKey, workflowDefinitions] of definitionsByWorkflow) {
-    if (workflowDefinitions.length === 1) {
-      singleByWorkflow.set(workflowKey, workflowDefinitions[0]);
-    }
-  }
-  return { byDigest, singleByWorkflow };
-}
-
-function diagnosticValues(record) {
-  return record.diagnostics && typeof record.diagnostics === "object" && !Array.isArray(record.diagnostics)
-    ? record.diagnostics
-    : {};
-}
-
-function operationalGraderMetrics(definitions, record) {
-  if (Array.isArray(record.metrics)) return record.metrics;
-  // Legacy cache records predate metric arrays. Prefer an exact evaluator
-  // definition; if retained records no longer match the current digest, use the
-  // workflow-level fallback only when it is unambiguous. Otherwise group the
-  // primary value under the stable generic metric id.
-  const definition = definitions.byDigest.get(operationalGraderDefinitionKey(record))
-    ?? definitions.singleByWorkflow.get(operationalGraderDefinitionKey(record, ""))
-    ?? {};
-  const diagnostics = diagnosticValues(record);
-  const primary = typeof definition.operationalValue === "string"
-    ? definition.operationalValue
-    : definition.operationalValue?.metric;
-  const primaryId = primary || "operational-value";
-  const diagnosticNames = new Set([
-    ...(Array.isArray(definition.diagnosticMetrics) ? definition.diagnosticMetrics : []),
-    ...Object.keys(diagnostics),
-  ]);
-  diagnosticNames.delete(primaryId);
-  return [
-    { id: primaryId, value: record.value ?? diagnostics[primaryId] ?? null },
-    ...[...diagnosticNames].map((id) => ({ id, value: diagnostics[id] ?? null })),
-  ];
-}
-
-function operationalGraderRows(values) {
-  const definitions = operationalGraderDefinitionLookup(values);
-  return (values.records || []).filter(hasOperationalValueResult).map((record) => {
-    const repository = repositoryParts(record.repository);
-    const runAttempt = Number(record.runAttempt || record.run?.attempt || 1);
-    const metrics = operationalGraderMetrics(definitions, record);
-    const primary = metrics[0] || {};
-    const diagnostics = Object.fromEntries(metrics.slice(1).map((metric) => [metric.id, metric.value]));
-    const observedAt = operationalValueRecordTime(record);
-    return {
-      ...repository,
-      "repository-name": repository.repository,
-      workflow: record.workflowPath?.replace(/\.lock\.yml$/, ".md") || record.workflowId || "",
-      run: String(record.runId),
-      "run-attempt": runAttempt,
-      "observation-id": `${record.repository}:${record.workflowId}:${record.runId}:${runAttempt}`,
-      "rollout-mode": "unknown",
-      "operational-grader": metrics.length > 0 ? primary.value : record.value,
-      "operational-grader-definition": primary.id || record.workflowId || "operational-value",
-      "operational-grader-unit": record.unit,
-      "operational-grader-direction": record.direction,
-      diagnostics,
-      "diagnostic-definitions": metrics.slice(1).map((metric) => ({ id: metric.id, name: metric.id })),
-      "observed-at": observedAt,
-      "evidence-link": link("evidence", record.runUrl, `View run ${record.runId}`),
-      "run-link": link("run", record.runUrl, `Run ${record.runId}`),
-    };
-  });
-}
-
-function operationalGraderSource(name, rows, values, generatedAt, available) {
-  const complete = values.complete === true;
-  const retrievedAt = values.generatedAt || generatedAt;
-  const result = source(name, rows, retrievedAt, available, complete);
-  const coverageStart = values.window?.startAt || values.windowStart;
-  const coverageEnd = values.window?.endAt;
-  result.metadata["as-of"] = coverageEnd || retrievedAt;
-  if (coverageStart) result.metadata["coverage-start"] = coverageStart;
-  if (coverageEnd) result.metadata["coverage-end"] = coverageEnd;
-  return result;
-}
-
-function operationalValueGraderRows(values) {
-  return (values.records || []).map((record) => {
-    return {
-      ...repositoryParts(record.repository),
-      workflow: record.workflowPath?.replace(/\.lock\.yml$/, ".md") || record.workflowId || "",
-      run: record.runId == null ? "Unavailable" : String(record.runId),
-      grader: "operational-value",
-      "grader-name": record.graderName || "Operational grader",
-      status: record.status || "unavailable",
-      value: record.value,
-      unit: record.unit,
-      direction: record.direction,
-      "observed-at": record.observedAt || record.run?.createdAt,
-      "run-link": link(
-        "run",
-        record.runUrl || workflowRunUrl(record.repository, record.runId),
-        `Run ${record.runId}`,
-      ),
-    };
-  });
-}
-
 function configurationData(controlSettings) {
   const document = controlSettings.policy_document;
   const resolution = controlSettings.policy_resolution ?? {};
@@ -2727,16 +2608,12 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
   const agentAssignments = agentAssignmentRows(workflows, runs, workItems);
   const evidenceAvailable = workItemsAvailable || outcomes.length > 0 || findings.length > 0;
   const evidenceRecords = evidenceRecordRows(outcomes, findings, workItems);
-  const operationalGraders = operationalGraderRows(operationalValues);
   const experiments = experimentTelemetryRows(usage);
   const graders = graderTelemetryRows(usage);
   const evals = evalTelemetryRows(usage);
-  const graderObservations = [
-    ...operationalValueGraderRows(operationalValues),
-    ...graders.observations,
-  ];
+  const graderObservations = graders.observations;
   const repositories = new Map();
-  for (const row of [...workflows, ...runs, ...findings, ...operationalGraders]) {
+  for (const row of [...workflows, ...runs, ...findings]) {
     if (!row.organization || !row.repository) continue;
     repositories.set(`${row.organization}/${row.repository}`, {
       organization: row.organization,
@@ -2984,9 +2861,8 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
     graderObservations,
     generatedAt,
     valueAvailable || usageAvailable,
-    operationalValues.complete === true && usageComplete,
+    usageComplete,
   );
-  sources["operational-graders"] = operationalGraderSource("operational-graders", operationalGraders, operationalValues, generatedAt, valueAvailable);
   const githubAsOf = telemetryAsOf(githubTelemetry, generatedAt);
   const githubFreshness = telemetryFreshness(githubTelemetry, generatedAt);
   const githubRateLimitRows = githubTelemetryRows(githubTelemetry, generatedAt);
