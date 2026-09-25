@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 import config from "../playwright/configs/dashboard-query-performance.config.mjs";
 import {
@@ -15,6 +17,9 @@ import {
   summarizeQueryTiming,
 } from "../e2e/dashboard-query-performance-helpers.mjs";
 
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const deployedIntegrationWorkflowPath = resolve(root, ".github/workflows/dashboard-deployed-integration.yml");
+
 test("dashboard query benchmark runs serially with enough time for deployed data", () => {
   assert.equal(config.workers, 1);
   assert.equal(config.timeout, 1_800_000);
@@ -22,7 +27,7 @@ test("dashboard query benchmark runs serially with enough time for deployed data
 });
 
 test("deployed integration isolates query benchmark reporting from test permissions", () => {
-  const workflow = readFileSync(".github/workflows/dashboard-deployed-integration.yml", "utf8");
+  const workflow = readFileSync(deployedIntegrationWorkflowPath, "utf8");
   assert.match(workflow, /pull_request:\n\s+paths:/);
   assert.match(workflow, /group: dashboard-deployed-integration-\$\{\{[\s\S]*github\.event\.pull_request\.number/);
   assert.match(workflow, /tests\/e2e\/dashboard-deployed-refresh-helpers\.mjs/);
@@ -44,7 +49,7 @@ test("deployed integration isolates query benchmark reporting from test permissi
 });
 
 test("deployed integration pull request trigger only watches query benchmark inputs", () => {
-  const workflow = parse(readFileSync(".github/workflows/dashboard-deployed-integration.yml", "utf8"));
+  const workflow = parse(readFileSync(deployedIntegrationWorkflowPath, "utf8"));
   // The boolean-key lookup is a defensive fallback for YAML 1.1 core-schema behavior.
   const workflowTriggers = workflow[true] ?? workflow.on;
   assert.ok(workflowTriggers, "expected workflow trigger block");
@@ -80,6 +85,19 @@ test("deployed integration pull request trigger only watches query benchmark inp
   ]) {
     assert.ok(!paths.includes(path), `unexpected broad trigger path ${path}`);
   }
+  const allowedDashboardSiteWildcards = new Set([
+    "dashboard/site/dashboard-pages/**",
+    "dashboard/site/src/data/**",
+  ]);
+  assert.deepEqual(
+    paths.filter((path) =>
+      path.startsWith("dashboard/site/")
+      && path.endsWith("/**")
+      && !allowedDashboardSiteWildcards.has(path)
+    ),
+    [],
+    "unexpected broad dashboard site wildcard trigger paths",
+  );
 });
 
 test("deployed proxy targets remain under the trusted dashboard URL", () => {
