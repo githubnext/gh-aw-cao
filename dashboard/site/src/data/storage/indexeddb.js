@@ -1284,11 +1284,15 @@ export async function recordTransaction(indexedDB, transaction) {
     const done = transactionDone(write);
     const store = write.objectStore(TRANSACTION_STORE);
     store.put(transaction);
+    /** @param {Record<string, unknown> | undefined} candidate */
+    const persistentReceipt = (candidate) => candidate?.kind === 'ingest-normalized-jsonl'
+      && typeof candidate.payloadHash === 'string';
     if (typeof store.count !== 'function' || typeof store.index('byCreatedAt').openCursor !== 'function') {
       const records = await requestResult(store.index('byCreatedAt').getAll());
       let remaining = Math.max(0, records.length - MAX_TRANSACTION_RECORDS);
       for (const expired of records) {
         if (remaining === 0) break;
+        if (persistentReceipt(expired)) continue;
         store.delete(expired.id);
         remaining -= 1;
       }
@@ -1304,8 +1308,10 @@ export async function recordTransaction(indexedDB, transaction) {
             resolve(undefined);
             return;
           }
-          cursor.delete();
-          remaining -= 1;
+          if (!persistentReceipt(cursor.value)) {
+            cursor.delete();
+            remaining -= 1;
+          }
           cursor.continue();
         };
       });
