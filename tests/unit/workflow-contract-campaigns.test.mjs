@@ -272,13 +272,8 @@ test("root campaign provides default control-repository agent context", () => {
   const debugSkill = readFileSync(join(root, "skills", "debug-cao", "SKILL.md"), "utf8");
 
   assert.doesNotMatch(rootManifestSource, /source: AGENTS\.md|default-AGENTS\.md/);
-  assert.deepEqual(
-    rootManifest.resources.filter(({ destination }) => destination.startsWith(".github/skills/")),
-    [{
-      source: "skills/debug-cao/SKILL.md",
-      destination: ".github/skills/debug-cao/SKILL.md",
-    }],
-  );
+  assert.equal(rootManifest.resources.some(({ destination }) => destination.startsWith(".github/skills/")), false);
+  assert.deepEqual(rootManifest.skills, ["skills/debug-cao"]);
   assert.match(debugSkill, /^---\r?\nname: debug-cao\r?\n/);
   for (const skill of ["setup-cao", "add-cao-campaign", "create-cao-campaign", "analyze-cao", "cao-cli"]) {
     const portableSkill = join(root, "skills", skill);
