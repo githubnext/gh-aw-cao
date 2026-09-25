@@ -3190,6 +3190,34 @@ describe('presenter built-in and custom pages', () => {
     }
   });
 
+  it('does not navigate when the current route tab is clicked', () => {
+    const root = document.createElement('div');
+    root.innerHTML = `
+      <main class="dashboard-prototype">
+        <section class="dashboard-page" id="page-first" data-page-id="first">
+          <nav data-route-tabs aria-label="Ambient Context views">
+            <a data-nav-page-id="first" href="#page-first?campaign=ambient-context" aria-current="page">Overview</a>
+          </nav>
+        </section>
+      </main>
+    `;
+    document.body.append(root);
+    const renderPage = vi.fn(() => null);
+    try {
+      const disposeNavigation = enableDashboardPageNavigation(root, 'Dashboard', renderPage, 'first');
+      const currentTab = /** @type {HTMLAnchorElement} */ (root.querySelector('[aria-current="page"]'));
+      const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+      currentTab.dispatchEvent(click);
+
+      expect(click.defaultPrevented).toBe(true);
+      expect(renderPage).not.toHaveBeenCalled();
+      disposeNavigation();
+    } finally {
+      root.remove();
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
   it('animates query drills forward and browser back navigation backward', () => {
     /** @type {Array<string | undefined>} */
     const directions = [];

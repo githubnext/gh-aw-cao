@@ -2564,6 +2564,10 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await expect(campaignNavigation.getByRole('link', { name: 'Problems' })).toHaveAttribute('aria-current', 'page');
   expect(await campaignNavigation.locator('.count-badge').allTextContents()).toEqual(campaignTabBadges);
   await expect(page.locator('[data-page-id="campaign-problems"] [data-view-id="campaign-current-runtime-problems"]')).toBeVisible();
+  const currentCampaignUrl = page.url();
+  await campaignNavigation.getByRole('link', { name: 'Problems' }).click();
+  expect(page.url()).toBe(currentCampaignUrl);
+  await expect(page.locator('[data-page-id="campaign-problems"] [data-view-id="campaign-current-runtime-problems"]')).toBeVisible();
   await page.evaluate(() => {
     window.location.hash = '#page-campaign-workflows?campaign=ambient-context';
   });

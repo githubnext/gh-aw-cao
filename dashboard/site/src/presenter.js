@@ -1455,6 +1455,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const link = event.target.closest('[data-nav-page-id], [data-mobile-nav-page-id]');
     if (!(link instanceof HTMLAnchorElement)) return;
     event.preventDefault();
+    if (link.getAttribute('aria-current') === 'page' && link.closest('[data-route-tabs]')) return;
     pendingNavigationDirection = undefined;
     pendingNavigationHash = undefined;
     const pageId = getNavigationPageId(link);
