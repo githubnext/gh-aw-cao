@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   changedDashboardPageIds,
-  maximumSelectedDashboardPageIds,
+  maximumSelectedDashboardPageCount,
   rankDashboardPageIds,
   selectAffectedPageIds,
   sharedDashboardConfigurationChanged,
@@ -141,7 +141,7 @@ test("ranks and caps broad dashboard changes to five likely pages", () => {
     changedFiles: ["dashboard/site/src/components/measure-history.js"],
     baseRef: "unused",
   });
-  assert.equal(selected.length, maximumSelectedDashboardPageIds);
+  assert.equal(selected.length, maximumSelectedDashboardPageCount);
   assert.equal(selected[0], "operational-value");
   assert.deepEqual(selected, [
     "operational-value",

@@ -6,7 +6,7 @@ import { withoutIgnoredDashboardPageIds } from "./dashboard-view-assessment.mjs"
 
 const repositoryRoot = resolve(import.meta.dirname, "../..");
 const primaryDashboardPath = "dashboard/site/dashboard.json";
-export const maximumSelectedDashboardPageIds = 5;
+export const maximumSelectedDashboardPageCount = 5;
 const pageSelectionWeights = Object.freeze({
   pathIncludesPageId: 100,
   pageIdTerm: 30,
@@ -95,25 +95,31 @@ export function sharedDashboardConfigurationChanged(current, previous) {
   return JSON.stringify(shared(current)) !== JSON.stringify(shared(previous));
 }
 
-function pageSelectionScore(page, changedFiles) {
+function pageSelectionDescriptor(page, index) {
   const pageId = String(page.id ?? "");
-  const pageIdLower = pageId.toLowerCase();
-  const pageTerms = new Set(identifierTerms(pageId));
-  const titleTerms = new Set(identifierTerms(`${page.title ?? ""} ${page.page ?? ""}`));
-  const pageBodyTerms = new Set(identifierTerms(JSON.stringify(page)));
+  return {
+    index,
+    pageId,
+    pageIdLower: pageId.toLowerCase(),
+    pageTerms: new Set(identifierTerms(pageId)),
+    titleTerms: new Set(identifierTerms(`${page.title ?? ""} ${page.page ?? ""}`)),
+    pageBodyTerms: new Set(identifierTerms(JSON.stringify(page))),
+  };
+}
+
+function pageSelectionScore(page, changedFiles) {
   let score = 0;
 
-  for (const path of changedFiles) {
-    const normalizedPath = path.toLowerCase();
-    if (pageIdLower && normalizedPath.includes(pageIdLower)) {
+  for (const { normalizedPath, terms } of changedFiles) {
+    if (page.pageIdLower && normalizedPath.includes(page.pageIdLower)) {
       score += pageSelectionWeights.pathIncludesPageId;
     }
-    for (const term of identifierTerms(path)) {
-      if (pageTerms.has(term)) {
+    for (const term of terms) {
+      if (page.pageTerms.has(term)) {
         score += pageSelectionWeights.pageIdTerm;
-      } else if (titleTerms.has(term)) {
+      } else if (page.titleTerms.has(term)) {
         score += pageSelectionWeights.titleTerm;
-      } else if (pageBodyTerms.has(term)) {
+      } else if (page.pageBodyTerms.has(term)) {
         score += pageSelectionWeights.pageBodyTerm;
       }
     }
@@ -130,17 +136,24 @@ export function rankDashboardPageIds({
   dashboard,
   pageIds,
   changedFiles,
-  limit = maximumSelectedDashboardPageIds,
+  limit = maximumSelectedDashboardPageCount,
 }) {
   const pages = dashboard.dashboard.pages;
-  const pagesById = new Map(pages.map((page, index) => [page.id, { page, index }]));
+  const pagesById = new Map(pages.map((page, index) => [page.id, pageSelectionDescriptor(page, index)]));
+  const changedFileDescriptors = changedFiles.map((path) => ({
+    normalizedPath: path.toLowerCase(),
+    terms: identifierTerms(path),
+  }));
   return withoutIgnoredDashboardPageIds([...new Set(pageIds)])
-    .map((pageId) => pagesById.get(pageId))
-    .filter(Boolean)
-    .map(({ page, index }) => ({
-      pageId: page.id,
-      index,
-      score: pageSelectionScore(page, changedFiles),
+    .map((pageId) => {
+      const page = pagesById.get(pageId);
+      if (!page) throw new Error(`Dashboard page "${pageId}" is not declared.`);
+      return page;
+    })
+    .map((page) => ({
+      pageId: page.pageId,
+      index: page.index,
+      score: pageSelectionScore(page, changedFileDescriptors),
     }))
     .toSorted((left, right) => right.score - left.score || left.index - right.index)
     .slice(0, limit)
