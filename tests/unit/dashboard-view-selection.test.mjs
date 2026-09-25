@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   changedDashboardPageIds,
+  maximumSelectedDashboardPageCount,
+  rankDashboardPageIds,
   selectAffectedPageIds,
   sharedDashboardConfigurationChanged,
 } from "../e2e/dashboard-view-selection.mjs";
@@ -115,4 +117,101 @@ test("never selects ignored dashboard pages", () => {
     changedFiles: ["dashboard/site/src/components/link-button-list.js"],
     baseRef: "unused",
   }), []);
+});
+
+test("ranks and caps broad dashboard changes to five likely pages", () => {
+  const broadDashboard = {
+    dashboard: {
+      pages: [
+        { id: "overview", title: "Overview", views: [] },
+        { id: "cost", title: "Cost", views: [] },
+        { id: "campaigns", title: "Campaigns", views: [] },
+        { id: "repositories", title: "Repositories", views: [] },
+        { id: "workflow-runtime", title: "Workflow runtime", views: [] },
+        {
+          id: "operational-value",
+          title: "Operational Value",
+          views: [{ source: "operational-value-history" }],
+        },
+      ],
+    },
+  };
+  const selected = selectAffectedPageIds({
+    dashboard: broadDashboard,
+    changedFiles: ["dashboard/site/src/components/measure-history.js"],
+    baseRef: "unused",
+  });
+  assert.equal(selected.length, maximumSelectedDashboardPageCount);
+  assert.equal(selected[0], "operational-value");
+  assert.deepEqual(selected, [
+    "operational-value",
+    "overview",
+    "cost",
+    "campaigns",
+    "repositories",
+  ]);
+});
+
+test("ranks page ids by changed file terms while preserving dashboard order ties", () => {
+  const rankedDashboard = {
+    dashboard: {
+      pages: [
+        { id: "overview", title: "Overview", views: [] },
+        { id: "cost", title: "Cost", views: [] },
+        { id: "operational-value", title: "Operational Value", views: [] },
+        { id: "workflow-runtime", title: "Workflow runtime", views: [] },
+        { id: "repositories", title: "Repositories", views: [] },
+        { id: "campaigns", title: "Campaigns", views: [] },
+      ],
+    },
+  };
+  const pageIds = [
+    "overview",
+    "cost",
+    "operational-value",
+    "workflow-runtime",
+    "repositories",
+    "campaigns",
+  ];
+  assert.deepEqual(rankDashboardPageIds({
+    dashboard: rankedDashboard,
+    pageIds,
+    changedFiles: [
+      "dashboard/site/src/data/queries/operational-value.js",
+      "dashboard/site/src/components/workflow-runtime.js",
+    ],
+  }), [
+    "operational-value",
+    "workflow-runtime",
+    "overview",
+    "cost",
+    "repositories",
+  ]);
+  assert.deepEqual(rankDashboardPageIds({
+    dashboard: rankedDashboard,
+    pageIds,
+    changedFiles: [
+      "dashboard/site/src/data/queries/operational-value.js",
+      "dashboard/site/src/components/workflow-runtime.js",
+    ],
+    limit: 2,
+  }), ["operational-value", "workflow-runtime"]);
+  assert.deepEqual(rankDashboardPageIds({
+    dashboard: rankedDashboard,
+    pageIds: [
+      "overview",
+      "cost",
+      "operational-value",
+      "workflow-runtime",
+      "repositories",
+      "campaigns",
+    ],
+    changedFiles: ["unrelated/no-match.txt"],
+  }), [
+    "overview",
+    "cost",
+    "operational-value",
+    "workflow-runtime",
+    "repositories",
+  ]);
 });

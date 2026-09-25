@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -268,20 +268,19 @@ test("root campaign provides default control-repository agent context", () => {
   const rootManifestSource = readFileSync(join(root, "aw.yml"), "utf8");
   const rootManifest = parse(rootManifestSource);
   const agents = readFileSync(join(root, "AGENTS.md"), "utf8");
-  const setupSkill = readFileSync(join(root, ".github", "skills", "setup-cao", "SKILL.md"), "utf8");
+  const setupSkill = readFileSync(join(root, "skills", "setup-cao", "SKILL.md"), "utf8");
   const debugSkill = readFileSync(join(root, "skills", "debug-cao", "SKILL.md"), "utf8");
 
   assert.doesNotMatch(rootManifestSource, /source: AGENTS\.md|default-AGENTS\.md/);
   assert.equal(rootManifest.resources.some(({ destination }) => destination.startsWith(".github/skills/")), false);
-  assert.deepEqual(rootManifest.skills, ["skills/debug-cao"]);
+  assert.equal(rootManifest.skills, undefined);
   assert.match(debugSkill, /^---\r?\nname: debug-cao\r?\n/);
   for (const skill of ["setup-cao", "add-cao-campaign", "create-cao-campaign", "analyze-cao", "cao-cli"]) {
     const portableSkill = join(root, "skills", skill);
-    if (lstatSync(portableSkill).isSymbolicLink()) {
-      assert.equal(readlinkSync(portableSkill), `../.github/skills/${skill}`);
-    }
+    assert.equal(lstatSync(portableSkill).isDirectory(), true);
+    assert.equal(existsSync(join(root, ".github", "skills", skill)), false);
     assert.match(
-      readFileSync(join(root, ".github", "skills", skill, "SKILL.md"), "utf8"),
+      readFileSync(join(portableSkill, "SKILL.md"), "utf8"),
       new RegExp(`^---\\r?\\nname: ${skill}\\r?\\n`),
     );
   }
@@ -313,7 +312,7 @@ test("root campaign installs the CAO CLI helper", () => {
 
 test("root campaign resolves the single CAO bootstrap runtime", () => {
   const rootManifest = readFileSync(join(root, "aw.yml"), "utf8");
-  const setupSkill = readFileSync(join(root, ".github", "skills", "setup-cao", "SKILL.md"), "utf8");
+  const setupSkill = readFileSync(join(root, "skills", "setup-cao", "SKILL.md"), "utf8");
   const quickstart = readFileSync(join(root, "docs", "getting-started.md"), "utf8");
   const operations = readFileSync(join(root, "docs", "operations.md"), "utf8");
   const authentication = readFileSync(join(root, "docs", "authentication.md"), "utf8");
@@ -470,7 +469,7 @@ test("compiled workflow locks are not ignored", () => {
 test("Agent customizations preserve deterministic core campaign boundaries", () => {
   const agent = readFileSync(join(root, ".github", "agents", "agentic-workflows.md"), "utf8");
   const agenticWorkflowsSkill = readFileSync(join(root, ".github", "skills", "agentic-workflows", "SKILL.md"), "utf8");
-  const campaignSkill = readFileSync(join(root, ".github", "skills", "create-cao-campaign", "SKILL.md"), "utf8");
+  const campaignSkill = readFileSync(join(root, "skills", "create-cao-campaign", "SKILL.md"), "utf8");
   const repositoryInstructions = readFileSync(join(root, ".github", "cao", "instructions.md"), "utf8");
 
   assert.match(agent, /\.github\/aw\/instructions\.md/);
@@ -496,7 +495,7 @@ test("Agent customizations preserve deterministic core campaign boundaries", () 
 });
 
 test("campaign creation guidance defines optional package problem clustering", () => {
-  const campaignSkill = readFileSync(join(root, ".github", "skills", "create-cao-campaign", "SKILL.md"), "utf8");
+  const campaignSkill = readFileSync(join(root, "skills", "create-cao-campaign", "SKILL.md"), "utf8");
 
   assert.match(campaignSkill, /<campaign-slug>\/problem-clustering\.mjs/);
   assert.match(campaignSkill, /Emit a JSONL sequence: zero or more newline-delimited JSON objects/);
@@ -507,12 +506,12 @@ test("campaign creation guidance defines optional package problem clustering", (
 
 test("README routes zero-to-CAO requests to the setup skill", () => {
   const readme = readFileSync(join(root, "README.md"), "utf8");
-  const setupSkillPath = join(root, ".github", "skills", "setup-cao", "SKILL.md");
+  const setupSkillPath = join(root, "skills", "setup-cao", "SKILL.md");
   const setupSkill = readFileSync(setupSkillPath, "utf8");
-  const localCreateCampaignSkillPath = join(root, ".github", "skills", "create-cao-campaign", "SKILL.md");
+  const localCreateCampaignSkillPath = join(root, "skills", "create-cao-campaign", "SKILL.md");
   const localCreateCampaignSkill = readFileSync(localCreateCampaignSkillPath, "utf8");
-  const createCampaignSkill = readFileSync(join(root, ".github", "skills", "create-cao-campaign", "SKILL.md"), "utf8");
-  const readmeEntry = ".github/skills/setup-cao/SKILL.md";
+  const createCampaignSkill = readFileSync(join(root, "skills", "create-cao-campaign", "SKILL.md"), "utf8");
+  const readmeEntry = "skills/setup-cao/SKILL.md";
 
   assert.ok(readme.split("\n").slice(0, 20).some((line) => line.includes(readmeEntry)));
   assert.ok(existsSync(setupSkillPath));
@@ -524,11 +523,11 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /What do you want CAO to do with the catalog operations installed by the root campaign/);
   assert.match(setupSkill, /immutable root campaign installs its core catalog workflows as one unit/);
   assert.match(setupSkill, /Do you also want to create an operation campaign of your own/);
-  assert.match(setupSkill, /plan an explicit handoff to `.github\/skills\/create-cao-campaign\/SKILL\.md` after step 14/);
+  assert.match(setupSkill, /plan an explicit handoff to the `create-cao-campaign` skill after step 14/);
   assert.match(setupSkill, /Never silently default the campaign to Dependabot/);
   assert.match(setupSkill, /read the control repository's `.github\/workflows\/cao\.json` and the current dashboard state/);
   assert.match(setupSkill, /If the policy and the live dashboard disagree, raise the drift to the user on the dashboard/);
-  assert.match(createCampaignSkill, /When invoked from `.github\/skills\/setup-cao\/SKILL\.md`/);
+  assert.match(createCampaignSkill, /When invoked from the `setup-cao` skill/);
   assert.match(createCampaignSkill, /accept the recorded desired outcome and target-repository description/);
   assert.match(createCampaignSkill, /compare the intended campaign state with the current `.github\/workflows\/cao\.json` and the dashboard's live control-plane view/);
   assert.match(createCampaignSkill, /raise the mismatch to the user on the dashboard before proceeding/);

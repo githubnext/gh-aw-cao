@@ -6,10 +6,19 @@ import { fileURLToPath } from "node:url";
 
 const DAY_MS = 86_400_000;
 const ACTIVITY_CLI = fileURLToPath(new URL("../../activity/cao.mjs", import.meta.url));
-const COMPARISON_TYPES = new Set([
-  "optimization.comparison.observed",
-  "token_efficiency.comparison",
-]);
+const MINIMUM_COMPLETED_RUNS = 3;
+const TERMINAL_CONCLUSIONS = [
+  "success",
+  "failure",
+  "cancelled",
+  "timed_out",
+  "startup_failure",
+  "action_required",
+  "neutral",
+  "skipped",
+  "stale",
+];
+const FAILURE_CONCLUSIONS = ["failure", "timed_out", "startup_failure"];
 
 export const definition = {
   schemaVersion: 3,
@@ -20,10 +29,12 @@ export const definition = {
   adoption: {
     commit: "dc1e91886790cdac1bcfba3e8984186ad7f4a5e7",
     adoptedAt: "2026-09-15T23:30:36Z",
+    baselineCommit: "ad7be08097b5b69cc15a8bf17dbc5e0ad12865ab",
+    baselineAt: "2026-09-15T23:02:17Z",
   },
-  evaluation: { mode: "attainment-only" },
+  evaluation: { mode: "baseline-comparable" },
   evidence: {
-    key: "matured-token-efficiency-opportunity-cohort",
+    key: "target-repository-agentic-workflow-efficiency",
     repositories: [
       "github/gh-aw",
       "github/gh-aw-actions",
@@ -32,85 +43,121 @@ export const definition = {
       "github/gh-aw-threat-detection",
       "githubnext/gh-aw-cao",
     ],
-    opportunity: "An evidence-complete frozen token-efficiency assignment for an authorized target repository and workflow using one of the nine adoption-time opportunity kinds.",
+    opportunity: "A declared non-Optimization agentic workflow in the authorized target repository with at least three completed runs, at least one successful run, and complete successful-run AI Credit coverage in the observation window.",
     filters: [
-      "Include only immutable token-efficiency opportunities whose evidence state is complete.",
-      "Match interventions and comparisons by stable opportunity and intervention identities.",
-      "Use invocation-grain authoritative AI Credit and never combine it with run-aggregate AI Credit.",
-      "Require the same frozen experiment, workload comparison key, acceptance rule, and outcome-quality evaluator for control and optimized variants.",
-      "Treat an opportunity as attained only when net AI Credit per accepted outcome decreases, completed-run failure rate does not increase, outcome quality does not decrease, and the recommendation is applied.",
-      "Mature each opportunity for fourteen days after assignment before scoring it.",
+      "Measure runs in the authorized target repository, never the control repository as a proxy.",
+      "Include declared agentic workflow sources and exclude the Optimization campaign itself.",
+      "Require at least three completed runs and at least one successful run in the observation window.",
+      "Require authoritative AI Credit for every successful run in the observation window.",
+      "Measure native AI Credit per successful run, failed-run percentage, and cancelled-run percentage without normalizing them to a synthetic score.",
     ],
-    collection: "Read canonical token-efficiency opportunity, intervention, and comparison audits from the CAO Activity database once, derive every requested repository cohort locally, and retain a SHA-256 digest of the database as provenance. Before the first cohort matures, and whenever a matured cohort still has unresolved outcome evidence, emit a clearly marked interim lower bound for dashboard visibility. A matured complete non-improvement or authoritative non-applied disposition is zero; inaccessible or incomparable source evidence remains missing.",
-    window: { durationDays: 14, cadenceDays: 14, maturationDays: 14 },
+    collection: "Execute one bounded canonical Activity query over target-repository runs in the observation window, grouped by declared workflow. Apply the identical native formulas before and after adoption because AI Credit and run conclusions predate the Optimization workflow. Aggregate only eligible workflow rows into native repository measures. No eligible workflow or incomplete AI Credit evidence is missing.",
+    window: { durationDays: 7, cadenceDays: 1, maturationDays: 0 },
   },
   model: {
-    architecture: "Direct verified-attainment primary with separate uptake and guarded net-gain diagnostics.",
-    recommendation: "Use verified opportunity attainment as the primary measure. Retain recommendation acceptance and guarded net-gain magnitude as diagnostics because uptake, coverage, and realized efficiency can disagree.",
+    architecture: "Direct target-repository efficiency and reliability measurements in their native units.",
+    recommendation: "Track AI Credit per successful run as the primary efficiency measure and retain failure and cancellation percentages as separate reliability diagnostics. Lower is better for every measure.",
     presentation: {
-      label: "Verified token-efficiency attainment",
-      betterLabel: "Higher means more matured opportunities produced verified net AI Credit gains without reliability or outcome-quality regression.",
+      label: "Target-repository efficiency and reliability",
+      betterLabel: "Lower AI Credit per successful run, failure percentage, and cancellation percentage are better.",
     },
   },
-  summary: { nativeLabel: "Share of matured token-efficiency opportunities with verified net gain" },
+  summary: {
+    nativeLabel: "Native AI Credit and reliability measures for eligible target workflows",
+  },
   metrics: [
     {
-      id: "verified-opportunity-share",
-      name: "Verified opportunity share",
+      id: "aic-per-successful-run",
+      name: "AI Credit per successful run",
       role: "primary",
-      formula: "verifiedOpportunityCount / eligibleOpportunityCount when every matured eligible opportunity has complete outcome evidence",
-      direction: "increase",
-      presentation: { name: "Verified opportunity share", legendLabel: "Verified opportunities", transform: "identity" },
+      formula: "authoritative AI Credit consumed by successful runs / successful runs with complete AI Credit evidence",
+      direction: "decrease",
+      unit: "aic-per-run",
+      rollup: {
+        numeratorField: "successfulRunAicTotal",
+        denominatorField: "successfulRunCount",
+      },
+      presentation: {
+        name: "AI Credit per successful run",
+        legendLabel: "AIC / successful run",
+        transform: "identity",
+      },
     },
     {
-      id: "recommendation-acceptance-share",
-      name: "Recommendation acceptance share",
+      id: "failure-rate-percent",
+      name: "Failure rate",
       role: "diagnostic",
-      formula: "acceptedRecommendationCount / eligibleOpportunityCount when every matured eligible opportunity has an authoritative disposition",
-      direction: "increase",
-      presentation: { name: "Recommendation acceptance share", legendLabel: "Accepted recommendations", transform: "identity" },
+      formula: "failed completed runs * 100 / completed runs",
+      direction: "decrease",
+      unit: "percent",
+      rollup: {
+        numeratorField: "failedRunPercentagePointTotal",
+        denominatorField: "concludedRunCount",
+      },
+      presentation: {
+        name: "Failure rate",
+        legendLabel: "Failure rate",
+        transform: "identity",
+      },
     },
     {
-      id: "guarded-net-gain-magnitude",
-      name: "Guarded net-gain magnitude",
+      id: "cancellation-rate-percent",
+      name: "Cancellation rate",
       role: "diagnostic",
-      formula: "sum of clamped verified net gain ratios, with complete misses contributing zero, divided by eligibleOpportunityCount when every matured eligible opportunity has complete outcome evidence",
-      direction: "increase",
-      presentation: { name: "Guarded net-gain magnitude", legendLabel: "Net-gain magnitude", transform: "identity" },
+      formula: "cancelled completed runs * 100 / completed runs",
+      direction: "decrease",
+      unit: "percent",
+      rollup: {
+        numeratorField: "cancelledRunPercentagePointTotal",
+        denominatorField: "concludedRunCount",
+      },
+      presentation: {
+        name: "Cancellation rate",
+        legendLabel: "Cancellation rate",
+        transform: "identity",
+      },
     },
   ],
   validationExamples: {
     targetAttained: {
-      eligibleOpportunityCount: 2,
-      verifiedOpportunityCount: 2,
-      acceptedRecommendationCount: 2,
-      outcomeUnknownCount: 0,
-      dispositionUnknownCount: 0,
-      guardedNetGainRatioSum: 0.5,
+      eligibleWorkflowCount: 2,
+      successfulRunCount: 10,
+      successfulRunAicTotal: 40,
+      concludedRunCount: 12,
+      failedRunCount: 0,
+      cancelledRunCount: 0,
+      failedRunPercentagePointTotal: 0,
+      cancelledRunPercentagePointTotal: 0,
     },
     targetMissed: {
-      eligibleOpportunityCount: 2,
-      verifiedOpportunityCount: 0,
-      acceptedRecommendationCount: 0,
-      outcomeUnknownCount: 0,
-      dispositionUnknownCount: 0,
-      guardedNetGainRatioSum: 0,
+      eligibleWorkflowCount: 2,
+      successfulRunCount: 10,
+      successfulRunAicTotal: 100,
+      concludedRunCount: 12,
+      failedRunCount: 2,
+      cancelledRunCount: 1,
+      failedRunPercentagePointTotal: 200,
+      cancelledRunPercentagePointTotal: 100,
     },
     missing: {
-      eligibleOpportunityCount: 0,
-      verifiedOpportunityCount: 0,
-      acceptedRecommendationCount: 0,
-      outcomeUnknownCount: 0,
-      dispositionUnknownCount: 0,
-      guardedNetGainRatioSum: 0,
+      eligibleWorkflowCount: 0,
+      successfulRunCount: 0,
+      successfulRunAicTotal: 0,
+      concludedRunCount: 0,
+      failedRunCount: 0,
+      cancelledRunCount: 0,
+      failedRunPercentagePointTotal: 0,
+      cancelledRunPercentagePointTotal: 0,
     },
     malformed: {
-      eligibleOpportunityCount: "two",
-      verifiedOpportunityCount: -1,
-      acceptedRecommendationCount: null,
-      outcomeUnknownCount: "unknown",
-      dispositionUnknownCount: -1,
-      guardedNetGainRatioSum: "large",
+      eligibleWorkflowCount: "two",
+      successfulRunCount: -1,
+      successfulRunAicTotal: "large",
+      concludedRunCount: null,
+      failedRunCount: -1,
+      cancelledRunCount: "one",
+      failedRunPercentagePointTotal: null,
+      cancelledRunPercentagePointTotal: null,
     },
   },
 };
@@ -119,9 +166,10 @@ function fail(message) {
   throw new Error(message);
 }
 
-function run(command, args) {
+function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     encoding: "utf8",
+    input: options.input,
     maxBuffer: 1024 * 1024 * 1024,
   });
   if (result.status !== 0) fail(String(result.stderr || `${command} failed`).trim());
@@ -136,193 +184,204 @@ function validCount(value) {
   return Number.isInteger(value) && value >= 0;
 }
 
-export function scoreMetric(metricId, evidence) {
-  const eligible = evidence?.eligibleOpportunityCount;
-  if (!validCount(eligible)) return null;
-  if (eligible === 0) return evidence?.maturityStatus === "interim" ? 0 : null;
+function ratio(numerator, denominator) {
+  if (typeof numerator !== "number" || !Number.isFinite(numerator) || numerator < 0
+      || !validCount(denominator) || denominator === 0) return null;
+  return round(numerator / denominator);
+}
 
-  if (metricId === "verified-opportunity-share") {
-    if (!validCount(evidence.verifiedOpportunityCount)
-        || evidence.verifiedOpportunityCount > eligible
-        || !validCount(evidence.outcomeUnknownCount)
-        || evidence.outcomeUnknownCount > eligible) return null;
-    return round(evidence.verifiedOpportunityCount / eligible);
+export function scoreMetric(metricId, evidence) {
+  const eligible = evidence?.eligibleWorkflowCount;
+  if (!validCount(eligible) || eligible === 0) return null;
+
+  if (metricId === "aic-per-successful-run") {
+    return ratio(evidence.successfulRunAicTotal, evidence.successfulRunCount);
   }
-  if (metricId === "recommendation-acceptance-share") {
-    if (!validCount(evidence.acceptedRecommendationCount)
-        || evidence.acceptedRecommendationCount > eligible
-        || !validCount(evidence.dispositionUnknownCount)
-        || evidence.dispositionUnknownCount > eligible) return null;
-    return round(evidence.acceptedRecommendationCount / eligible);
+  if (metricId === "failure-rate-percent") {
+    return ratio(evidence.failedRunPercentagePointTotal, evidence.concludedRunCount);
   }
-  if (metricId === "guarded-net-gain-magnitude") {
-    if (typeof evidence.guardedNetGainRatioSum !== "number"
-        || !Number.isFinite(evidence.guardedNetGainRatioSum)
-        || evidence.guardedNetGainRatioSum < 0
-        || evidence.guardedNetGainRatioSum > eligible
-        || !validCount(evidence.outcomeUnknownCount)
-        || evidence.outcomeUnknownCount > eligible) return null;
-    return round(evidence.guardedNetGainRatioSum / eligible);
+  if (metricId === "cancellation-rate-percent") {
+    return ratio(evidence.cancelledRunPercentagePointTotal, evidence.concludedRunCount);
   }
   fail(`unknown metric: ${metricId}`);
 }
 
-function latestBy(records, key) {
-  const latest = new Map();
-  for (const record of records) {
-    const id = record?.[key];
-    if (typeof id !== "string" || id.length === 0) continue;
-    const prior = latest.get(id);
-    if (!prior || String(record.timestamp ?? "") > String(prior.timestamp ?? "")) latest.set(id, record);
-  }
-  return latest;
+function repositoryCoordinate(row) {
+  const owner = String(row?.owner ?? "").toLowerCase();
+  const repository = String(row?.repository ?? "").toLowerCase();
+  return owner && repository ? `${owner}/${repository}` : "";
 }
 
-function completeComparison(record, intervention) {
-  if (!record || record.evidenceState !== "complete"
-      || intervention?.recommendationDisposition !== "applied") return false;
-  return typeof record.verifiedNetGain === "number"
-    && Number.isFinite(record.verifiedNetGain)
-    && typeof record.baselineFailureRate === "number"
-    && typeof record.optimizedFailureRate === "number"
-    && record.optimizedFailureRate <= record.baselineFailureRate
-    && record.outcomeQualityPreserved === true;
+function isOptimizationWorkflow(workflowPath) {
+  return /\/optimization(?:-|\.md$)/.test(String(workflowPath ?? ""));
 }
 
-export function buildEvidence(records, request) {
-  const firstMatureAt = Date.parse(definition.adoption.adoptedAt)
-    + (definition.evidence.window.durationDays + definition.evidence.window.maturationDays) * DAY_MS;
-  const preMaturity = Date.parse(request.observedAt) < firstMatureAt;
-  const repository = request.repository?.toLowerCase();
-  const supportedRepositories = new Set(
+function validWindowRow(row) {
+  return typeof row?.declaredWorkflowPath === "string"
+    && validCount(row.concludedRuns)
+    && validCount(row.successfulRuns)
+    && validCount(row.successfulRunsWithAic)
+    && validCount(row.failedRuns)
+    && validCount(row.cancelledRuns)
+    && typeof row.aicPerSuccessfulRun === "number"
+    && Number.isFinite(row.aicPerSuccessfulRun)
+    && row.aicPerSuccessfulRun >= 0;
+}
+
+function eligibleRow(row) {
+  return validWindowRow(row)
+    && row.concludedRuns >= MINIMUM_COMPLETED_RUNS
+    && row.successfulRuns > 0
+    && row.successfulRunsWithAic === row.successfulRuns;
+}
+
+export function buildEvidence(rows, request) {
+  const repository = String(request.repository ?? "").toLowerCase();
+  const supported = new Set(
     definition.evidence.repositories.map((value) => value.toLowerCase()),
   );
-  const inRepository = (record) => {
-    const target = String(record?.targetRepo ?? "").toLowerCase();
-    return repository ? target === repository : supportedRepositories.has(target);
+  const inScope = (row) => {
+    const coordinate = repositoryCoordinate(row);
+    return repository ? coordinate === repository : supported.has(coordinate);
   };
-  const availableAtObservation = (record) =>
-    String(record?.timestamp ?? "") <= request.observedAt;
-  const opportunities = [...latestBy(records.filter((record) =>
-    record?.type === "token_efficiency.opportunity"
-    && record.evidenceState === "complete"
-    && inRepository(record)
-    && String(record.timestamp) >= request.windowStart
-    && String(record.timestamp) < request.windowEnd), "opportunityId").values()];
-  const interventionsById = latestBy(records.filter((record) =>
-    record?.type === "token_efficiency.intervention"
-    && inRepository(record)
-    && availableAtObservation(record)), "interventionId");
-  const comparisons = records.filter((record) =>
-    COMPARISON_TYPES.has(record?.type)
-    && inRepository(record)
-    && availableAtObservation(record));
+  let eligibleWorkflowCount = 0;
+  let successfulRunCount = 0;
+  let successfulRunAicTotal = 0;
+  let concludedRunCount = 0;
+  let failedRunCount = 0;
+  let cancelledRunCount = 0;
 
-  let verifiedOpportunityCount = 0;
-  let acceptedRecommendationCount = 0;
-  let outcomeUnknownCount = 0;
-  let dispositionUnknownCount = 0;
-  let guardedNetGainRatioSum = 0;
-
-  for (const opportunity of opportunities) {
-    const interventions = [...interventionsById.values()]
-      .filter((record) => record.opportunityId === opportunity.opportunityId)
-      .toSorted((left, right) => String(right.timestamp).localeCompare(String(left.timestamp)));
-    const intervention = interventions.find((record) =>
-      record.recommendationDisposition !== "superseded") ?? interventions[0];
-    if (!intervention) {
-      dispositionUnknownCount += 1;
-      outcomeUnknownCount += 1;
-      continue;
-    }
-
-    if (intervention.recommendationDisposition === "applied") {
-      acceptedRecommendationCount += 1;
-    } else if (typeof intervention.recommendationDisposition !== "string") {
-      dispositionUnknownCount += 1;
-    }
-
-    const comparison = comparisons
-      .filter((record) => record.opportunityId === opportunity.opportunityId
-        && (!intervention.interventionId || record.interventionId === intervention.interventionId))
-      .toSorted((left, right) => String(right.timestamp).localeCompare(String(left.timestamp)))[0];
-    if (completeComparison(comparison, intervention)) {
-      const ratio = Math.max(0, Math.min(1, comparison.verifiedNetGain));
-      guardedNetGainRatioSum += ratio;
-      if (ratio > 0 && intervention.interventionState === "verified") {
-        verifiedOpportunityCount += 1;
-      }
-      continue;
-    }
-
-    const disposition = intervention.recommendationDisposition;
-    const terminalMiss = ["rejected", "failed-start", "outdated", "duplicate", "unapplied"]
-      .includes(disposition)
-      || ["regressed", "inconclusive", "rejected"].includes(intervention.interventionState);
-    if (!terminalMiss) outcomeUnknownCount += 1;
+  for (const row of rows.filter(inScope).filter((candidate) => !isOptimizationWorkflow(candidate.declaredWorkflowPath))) {
+    if (!eligibleRow(row)) continue;
+    eligibleWorkflowCount += 1;
+    successfulRunCount += row.successfulRuns;
+    successfulRunAicTotal += row.aicPerSuccessfulRun * row.successfulRuns;
+    concludedRunCount += row.concludedRuns;
+    failedRunCount += row.failedRuns;
+    cancelledRunCount += row.cancelledRuns;
   }
 
+  const duration = Date.parse(request.windowEnd) - Date.parse(request.windowStart);
   return {
-    maturityStatus: preMaturity || outcomeUnknownCount > 0 || dispositionUnknownCount > 0
+    maturityStatus: duration < definition.evidence.window.durationDays * DAY_MS
       ? "interim"
       : "matured",
-    dubious: preMaturity || outcomeUnknownCount > 0 || dispositionUnknownCount > 0,
-    eligibleOpportunityCount: opportunities.length,
-    verifiedOpportunityCount,
-    acceptedRecommendationCount,
-    outcomeUnknownCount,
-    dispositionUnknownCount,
-    guardedNetGainRatioSum: round(guardedNetGainRatioSum),
+    dubious: duration < definition.evidence.window.durationDays * DAY_MS,
+    eligibleWorkflowCount,
+    successfulRunCount,
+    successfulRunAicTotal: round(successfulRunAicTotal),
+    concludedRunCount,
+    failedRunCount,
+    cancelledRunCount,
+    failedRunPercentagePointTotal: failedRunCount * 100,
+    cancelledRunPercentagePointTotal: cancelledRunCount * 100,
   };
 }
 
-function queryAudits(database) {
-  const types = [
-    "token_efficiency.opportunity",
-    "token_efficiency.intervention",
-    ...COMPARISON_TYPES,
-  ];
-  return types.flatMap((type) => {
-    const output = run(process.execPath, [
-      ACTIVITY_CLI,
-      "query",
-      "--database",
-      database,
-      "--collection",
-      "audits",
-      "--where",
-      `type=${type}`,
-      "--limit",
-      "10000",
-    ]);
-    const records = JSON.parse(output);
-    if (!Array.isArray(records)) fail(`Activity query returned invalid ${type} evidence`);
-    if (records.length === 10_000) fail(`Activity query exceeded the ${type} evidence limit`);
-    return records;
+export function efficiencyQuery(start, end) {
+  return {
+    name: "optimization-repository-efficiency",
+    from: "runs",
+    joins: [{
+      source: "workflows",
+      type: "inner",
+      on: [{ left: "workflowId", right: "id" }],
+      fields: [{ field: "path", as: "declaredWorkflowPath" }],
+    }],
+    filter: {
+      predicates: [
+        { field: "startedAt", gte: start },
+        { field: "startedAt", lt: end },
+        { field: "declaredWorkflowPath", includes: ".md" },
+      ],
+    },
+    aggregate: {
+      by: ["owner", "repository", "declaredWorkflowPath"],
+      values: [
+        {
+          field: "githubRunId",
+          as: "concludedRuns",
+          reducer: "count",
+          filter: {
+            predicates: [{ field: "conclusion", in: TERMINAL_CONCLUSIONS }],
+          },
+        },
+        {
+          field: "githubRunId",
+          as: "successfulRuns",
+          reducer: "count",
+          filter: {
+            predicates: [{ field: "conclusion", equals: "success" }],
+          },
+        },
+        {
+          field: "aicTotal",
+          as: "successfulRunsWithAic",
+          reducer: "count",
+          filter: {
+            predicates: [{ field: "conclusion", equals: "success" }],
+          },
+        },
+        {
+          field: "aicTotal",
+          as: "aicPerSuccessfulRun",
+          reducer: "mean",
+          filter: {
+            predicates: [{ field: "conclusion", equals: "success" }],
+          },
+        },
+        {
+          field: "githubRunId",
+          as: "failedRuns",
+          reducer: "count",
+          filter: {
+            predicates: [{ field: "conclusion", in: FAILURE_CONCLUSIONS }],
+          },
+        },
+        {
+          field: "githubRunId",
+          as: "cancelledRuns",
+          reducer: "count",
+          filter: {
+            predicates: [{ field: "conclusion", equals: "cancelled" }],
+          },
+        },
+      ],
+    },
+  };
+}
+
+function queryEfficiencyWindow(database, start, end) {
+  const output = run(process.execPath, [
+    ACTIVITY_CLI,
+    "query",
+    "--database",
+    database,
+    "--stdin",
+  ], {
+    input: `${JSON.stringify(efficiencyQuery(start, end))}\n`,
   });
+  const rows = JSON.parse(output);
+  if (!Array.isArray(rows)) fail("Activity query returned invalid efficiency evidence");
+  return rows;
 }
 
 export async function collectBatch(requests, context = {}) {
-  const firstMatureAt = Date.parse(definition.adoption.adoptedAt)
-    + (definition.evidence.window.durationDays + definition.evidence.window.maturationDays) * DAY_MS;
+  const supported = new Set(
+    definition.evidence.repositories.map((repository) => repository.toLowerCase()),
+  );
   const valid = Array.isArray(requests) && requests.length > 0
     && requests.every((request) => {
       const timestampsValid = ["windowStart", "windowEnd", "observedAt"]
         .every((key) => typeof request[key] === "string" && !Number.isNaN(Date.parse(request[key])));
       if (!timestampsValid) return false;
-      const observedAt = Date.parse(request.observedAt);
-      const windowStart = Date.parse(request.windowStart);
-      const windowEnd = Date.parse(request.windowEnd);
-      const interim = observedAt < firstMatureAt;
-      return (!request.repository || definition.evidence.repositories
-        .some((repository) => repository.toLowerCase() === request.repository.toLowerCase()))
-        && (interim
-          ? request.windowStart === definition.adoption.adoptedAt
-            && windowEnd === observedAt
-            && windowEnd >= windowStart
-            && windowEnd - windowStart <= 14 * DAY_MS
-          : windowEnd - windowStart === 14 * DAY_MS
-            && observedAt - windowEnd >= 14 * DAY_MS);
+      const duration = Date.parse(request.windowEnd) - Date.parse(request.windowStart);
+      return (request.repository === undefined
+          || (typeof request.repository === "string"
+            && supported.has(request.repository.toLowerCase())))
+        && duration > 0
+        && duration <= definition.evidence.window.durationDays * DAY_MS
+        && Date.parse(request.observedAt) >= Date.parse(request.windowEnd);
     });
   if (!valid) fail("invalid batch collection request");
   if (!existsSync(ACTIVITY_CLI)) fail("CAO Activity CLI is unavailable");
@@ -331,45 +390,85 @@ export async function collectBatch(requests, context = {}) {
   let database = context.database;
   try {
     if (!database) {
-      temporary = mkdtempSync(path.join(process.cwd(), ".aw-value-optimization-token-optimizer."));
-      run(process.execPath, [ACTIVITY_CLI, "download", "--output", temporary]);
-      database = path.join(temporary, "gh-aw-logs.sqlite");
+      const localDatabase = path.join(process.cwd(), ".cao", "gh-aw-logs.sqlite");
+      if (existsSync(localDatabase)) {
+        database = localDatabase;
+      } else {
+        temporary = mkdtempSync(path.join(process.cwd(), ".aw-value-optimization-token-optimizer."));
+        run(process.execPath, [ACTIVITY_CLI, "download", "--output", temporary]);
+        database = path.join(temporary, "collector.sqlite");
+        const runsDirectory = path.join(temporary, "gh-aw-logs-runs");
+        const recordsDirectory = path.join(temporary, "gh-aw-logs-records");
+        const shardsDirectory = path.join(temporary, "gh-aw-logs-shards");
+        if (existsSync(runsDirectory) && existsSync(recordsDirectory)) {
+          run(process.execPath, [
+            ACTIVITY_CLI,
+            "ingest-jsonl",
+            "--database",
+            database,
+            "--runs-dir",
+            runsDirectory,
+            "--records-dir",
+            recordsDirectory,
+            "--retention-days",
+            "all",
+            "--run-retention-days",
+            "all",
+          ]);
+        } else if (existsSync(shardsDirectory)) {
+          run(process.execPath, [
+            ACTIVITY_CLI,
+            "ingest-jsonl",
+            "--database",
+            database,
+            "--input-dir",
+            shardsDirectory,
+            "--retention-days",
+            "all",
+            "--run-retention-days",
+            "all",
+          ]);
+        } else {
+          fail("Downloaded CAO Activity data contains no canonical JSONL shards");
+        }
+      }
     }
-    if (!existsSync(database)) {
-      return requests.map(() => ({
+    if (!existsSync(database)) fail("CAO Activity database is unavailable");
+
+    const rowsByWindow = new Map();
+    const readWindow = (start, end) => {
+      const key = `${start}\0${end}`;
+      if (!rowsByWindow.has(key)) {
+        rowsByWindow.set(key, queryEfficiencyWindow(database, start, end));
+      }
+      return rowsByWindow.get(key);
+    };
+    const digest = createHash("sha256").update(readFileSync(database)).digest("hex");
+
+    return requests.map((request) => {
+      const rows = readWindow(request.windowStart, request.windowEnd);
+      return {
         evidence: {
           key: definition.evidence.key,
-          maturityStatus: "unavailable",
-          unavailableReason: "cao-activity-database-missing",
+          repositories: [request.repository],
+          opportunity: definition.evidence.opportunity,
+          filters: definition.evidence.filters,
+          collection: definition.evidence.collection,
+          window: {
+            start: request.windowStart,
+            end: request.windowEnd,
+            observedAt: request.observedAt,
+            ...definition.evidence.window,
+          },
+          ...buildEvidence(rows, request),
         },
-        provenance: [],
-      }));
-    }
-    const records = queryAudits(database);
-    const digest = createHash("sha256").update(readFileSync(database)).digest("hex");
-    return requests.map((request) => ({
-      evidence: {
-        key: definition.evidence.key,
-        repositories: request.repository
-          ? [request.repository]
-          : definition.evidence.repositories,
-        opportunity: definition.evidence.opportunity,
-        filters: definition.evidence.filters,
-        collection: definition.evidence.collection,
-        window: {
-          start: request.windowStart,
-          end: request.windowEnd,
-          observedAt: request.observedAt,
-          ...definition.evidence.window,
-        },
-        ...buildEvidence(records, request),
-      },
-      provenance: [{
-        repository: definition.repository,
-        kind: "cao-activity-sqlite-sha256",
-        ref: digest,
-      }],
-    }));
+        provenance: [{
+          repository: request.repository ?? definition.repository,
+          kind: "cao-canonical-query-sqlite-sha256",
+          ref: digest,
+        }],
+      };
+    });
   } finally {
     if (temporary) rmSync(temporary, { recursive: true, force: true });
   }

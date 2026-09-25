@@ -241,7 +241,7 @@ function summarizeInvalid(invalid) {
 /** @param {DoctorTransaction[]} transactions @param {number} horizon */
 function retainedTransactions(transactions, horizon) {
   return transactions.filter((transaction) => {
-    if (transaction.kind === 'ingest-normalized-json'
+    if (transaction.kind === 'ingest-normalized-jsonl'
         && typeof transaction.payloadHash === 'string') {
       return true;
     }

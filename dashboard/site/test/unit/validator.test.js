@@ -39,6 +39,32 @@ describe('dashboard document validation', () => {
     expect(accepted.ok).toBe(true);
   });
 
+  it('validates the optional page view-mode control', () => {
+    const accepted = JSON.parse(authoritativeDashboardSource);
+    const campaignInsights = accepted.dashboard.pages.find(
+      (/** @type {{ id?: string }} */ page) => page.id === 'campaign-insights'
+    );
+    campaignInsights['view-mode-control'] = false;
+    expect(validateDashboardDocument(JSON.stringify(accepted)).ok).toBe(true);
+
+    campaignInsights['view-mode-control'] = 'hidden';
+    expect(validateDashboardDocument(JSON.stringify(accepted))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([expect.objectContaining({
+        message: 'view-mode-control must be a Boolean when present.'
+      })])
+    });
+  });
+
+  it('marks Steering, Indexing, and Issues as experimental', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const experimentalPageIds = document.dashboard.pages
+      .filter((/** @type {{ experimental?: boolean }} */ page) => page.experimental === true)
+      .map((/** @type {{ id: string }} */ page) => page.id);
+
+    expect(experimentalPageIds).toEqual(expect.arrayContaining(['steering', 'indexing', 'issues']));
+  });
+
   it('DLS-VIEW-005 limits categorical section encodings to horizontal bar charts', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const costPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'cost');
@@ -207,6 +233,21 @@ describe('dashboard document validation', () => {
           path: expect.stringMatching(/navigation-indicator\.any\[0\]$/)
         })
       ])
+    });
+  });
+
+  it('accepts Boolean experimental page metadata and rejects other values', () => {
+    const experimentalPage = JSON.parse(authoritativeDashboardSource);
+    experimentalPage.dashboard.pages[0].experimental = true;
+    expect(validateDashboardDocument(JSON.stringify(experimentalPage)).ok).toBe(true);
+
+    experimentalPage.dashboard.pages[0].experimental = 'true';
+    expect(validateDashboardDocument(JSON.stringify(experimentalPage))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([expect.objectContaining({
+        message: 'experimental must be a Boolean when present.',
+        path: '$.dashboard.pages[0].experimental'
+      })])
     });
   });
 

@@ -72,11 +72,13 @@ test("repository-local SelfCare uses organization-billed Copilot authentication"
     "self-care-dashboard-language-refactor",
     "self-care-dashboard-review",
     "self-care-docs-build-time-investigator",
+    "self-care-docs-maintainer",
     "self-care-glossary",
     "self-care-open-source-failures",
     "self-care-pages-health",
     "self-care-primer-brand-checker",
     "self-care-reactive-ui-expert",
+    "self-care-server-go-logging",
     "self-care",
   ];
 
@@ -85,6 +87,7 @@ test("repository-local SelfCare uses organization-billed Copilot authentication"
   assert.match(selfCareManifest, /\.github\/workflows\/self-care\.md/);
   assert.match(selfCareManifest, /\.github\/workflows\/self-care-data-acquisition-audit\.md/);
   assert.match(selfCareManifest, /\.github\/workflows\/self-care-docs-build-time-investigator\.md/);
+  assert.match(selfCareManifest, /\.github\/workflows\/self-care-docs-maintainer\.md/);
   for (const workflowId of workflowIds) {
     const source = workflow(`${workflowId}.md`);
     const lock = workflow(`${workflowId}.lock.yml`);

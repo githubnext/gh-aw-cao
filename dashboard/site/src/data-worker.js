@@ -6,8 +6,7 @@ import {
   finalizeNormalizedJsonlIngestion,
   ingestDashboardSources,
   ingestNormalizedJsonl,
-  isNormalizedJsonCurrent,
-  NORMALIZED_JSONL_INGESTION_VERSION
+  isNormalizedJsonlCurrent
 } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
 import {
@@ -552,10 +551,9 @@ export function processDataRequest(request, signal) {
           for (const [index, shard] of shards.entries()) {
             if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
             const shardUrl = new URL(`./${shard.name}`, payloadHashesUrl);
-            const current = await isNormalizedJsonCurrent(indexedDB, {
-              payloadIdentity: shard.hash,
-              payloadScope: shardUrl.href
-            }, NORMALIZED_JSONL_INGESTION_VERSION);
+            const current = await isNormalizedJsonlCurrent(indexedDB, {
+              payloadIdentity: shard.hash
+            });
             shardStates.push({ index, shard, shardUrl, current, sizeBytes: undefined });
           }
           const pendingShards = shardStates.filter(({ current }) => !current);

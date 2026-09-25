@@ -67,14 +67,7 @@ The omitted fields default to an enabled campaign and worker and 100 percent rol
 
 ## Operational Value
 
-Each worker registers a deterministic one-shot operational grader through gh-aw's `operational-value` protocol:
-
-| Worker | Primary metric | Attained evidence |
-| --- | --- | --- |
-| Token Auditor | `actionable-token-audit` | One target-bound audit request includes its required cost, activity, reliability, and action fields. |
-| Token Optimizer | `actionable-optimization-recommendation` | One target- and workflow-bound recommendation includes a measured baseline, proposed change, safeguards, validation, and agent prompt. |
-
-The evaluators grade validated requests available in the current run. They do not treat a requested issue as applied, accepted, or merged. Missing target evidence and explicit no-op outcomes remain `null`; malformed, inconsistent, or off-target requests score `0`.
+Campaign Insights consumes the package-level repository evaluator in [`operational-value/`](./operational-value/). Its evidence contract evaluates the authorized target repository and counts an outcome regardless of whether the Optimization worker, a maintainer, or another system produced it. AI Credit per successful run, failure rate, and cancellation rate existed before campaign adoption, so the evaluator applies identical seven-day native formulas before and after adoption when retained evidence is available. A vertical adoption marker separates baseline and post-adoption observations; missing repository baselines remain missing rather than becoming zero. Worker-computed cost, reliability, and outcome-quality measurements are strong target-bound evidence candidates, but a proposed recommendation is not realized savings.
 
 ## Pause or Stop
 

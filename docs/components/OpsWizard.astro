@@ -202,7 +202,7 @@ const agents = [
   const CATALOG = "githubnext/gh-aw-cao";
   const CATALOG_REF = "main";
   const SETUP_SKILL_URL =
-    "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/skills/setup-cao/SKILL.md";
+    "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/skills/setup-cao/SKILL.md";
   function selected(form: HTMLFormElement, name: string): HTMLInputElement | null {
     return form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
   }
@@ -236,8 +236,8 @@ const agents = [
 
     const body = isCustom
       ? [
-          `4. Install the catalog campaigns and bundled skills: \`gh aw add ${CATALOG}@${CATALOG_REF}\`.`,
-          "5. Read `.github/skills/create-cao-campaign/SKILL.md` and follow it to design a new campaign for:",
+          `4. Install the catalog campaigns: \`gh aw add ${CATALOG}@${CATALOG_REF}\`.`,
+          `5. Read \`https://raw.githubusercontent.com/${CATALOG}/${CATALOG_REF}/skills/create-cao-campaign/SKILL.md\` and follow it to design a new campaign for:`,
           "",
           `   > ${idea}`,
           "",

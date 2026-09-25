@@ -28,7 +28,7 @@ test("campaign lifecycle matrix selects only campaigns owning changed files", ()
     ["Dependabot"],
   );
   assert.deepEqual(
-    names(["optimization/.github/graders/optimization-token-auditor-operational-value.sh"]),
+    names(["optimization/operational-value/optimization-token-optimizer.mjs"]),
     ["Optimization"],
   );
   assert.deepEqual(

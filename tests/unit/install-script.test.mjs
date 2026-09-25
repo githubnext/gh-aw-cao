@@ -22,7 +22,16 @@ if [[ "\${1:-} \${2:-}" == "aw version" ]]; then
   echo "gh aw version $(cat "$FAKE_GH_AW_INSTALLED")"
   exit 0
 fi
+if [[ "\${1:-} \${2:-} \${3:-}" == "extension upgrade gh-aw" ]]; then
+  echo "upgrade" >> "$FAKE_COMMAND_LOG"
+  printf '%s\\n' "v0.89.21" > "$FAKE_GH_AW_INSTALLED"
+  exit 0
+fi
 if [[ "\${1:-} \${2:-}" == "aw add" && "\${3:-}" == githubnext/gh-aw-cao* ]]; then
+  if [[ -n "\${FAKE_MANIFEST_MIN_VERSION:-}" && "$(cat "$FAKE_GH_AW_INSTALLED")" != "$FAKE_MANIFEST_MIN_VERSION" ]]; then
+    echo "✗ invalid Agentic Workflow manifest \\"aw.yml\\": min-version \\"$FAKE_MANIFEST_MIN_VERSION\\" requires gh-aw $FAKE_MANIFEST_MIN_VERSION or newer (current: $(cat "$FAKE_GH_AW_INSTALLED"))." >&2
+    exit 1
+  fi
   if [[ "\${4:-}" == "--force" ]]; then
     echo "add-force" >> "$FAKE_COMMAND_LOG"
   else
@@ -87,14 +96,80 @@ printf '%s\\n' '#!/usr/bin/env bash' 'printf "v0.89.20\\n" > "$FAKE_GH_AW_INSTAL
 
     if (process.platform !== "win32") {
       await writeFile(ghAwInstalled, "v0.88.0\n");
-      await executeFile("bash", [installScript], { cwd: root, env });
-      assert.equal(await readFile(log, "utf8"), "add\ninit\nadd-force\ncurl\n");
+      const declined = await executeFile("bash", [installScript, "githubnext/gh-aw-cao@v1.2.3"], { cwd: root, env });
+      assert.match(declined.stdout, /gh extension upgrade gh-aw.*rerun the CAO installer/);
+      assert.equal(await readFile(log, "utf8"), "add\ninit\nadd-force\n");
 
       await rm(ghAwInstalled);
       await executeFile("bash", [installScript], { cwd: root, env });
-      assert.equal(await readFile(log, "utf8"), "add\ninit\nadd-force\ncurl\ncurl\n");
+      assert.equal(await readFile(log, "utf8"), "add\ninit\nadd-force\ncurl\n");
     }
     assert.doesNotMatch(await readFile(installScript, "utf8"), /sort -V/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("install.sh offers a manifest-required upgrade, retries on approval, and stops cleanly on decline", { skip: process.platform === "win32" }, async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cao-install-upgrade-"));
+  const bin = path.join(root, "bin");
+  const log = path.join(root, "commands.log");
+  const installed = path.join(root, "gh-aw-installed");
+  await mkdir(bin);
+  await writeFile(installed, "v0.89.20\n");
+  await writeFile(path.join(bin, "gh"), `#!/usr/bin/env bash
+set -euo pipefail
+if [[ "\${1:-} \${2:-}" == "aw version" ]]; then
+  echo "gh aw version $(cat "$FAKE_GH_AW_INSTALLED")"
+elif [[ "\${1:-} \${2:-} \${3:-}" == "extension upgrade gh-aw" ]]; then
+  echo upgrade >> "$FAKE_COMMAND_LOG"
+  echo v0.89.21 > "$FAKE_GH_AW_INSTALLED"
+elif [[ "\${1:-} \${2:-}" == "aw add" ]]; then
+  echo add >> "$FAKE_COMMAND_LOG"
+  if [[ -n "\${FAKE_ADD_ERROR:-}" ]]; then
+    echo "unrelated installation failure" >&2
+    exit 1
+  fi
+  if [[ "$(cat "$FAKE_GH_AW_INSTALLED")" == v0.89.20 ]]; then
+    echo '✗ invalid Agentic Workflow manifest "aw.yml": min-version "v0.89.21" requires gh-aw v0.89.21 or newer (current: v0.89.20).' >&2
+    exit 1
+  fi
+  mkdir -p activity .github/workflows/shared .github/actions/setup-cao-runtime
+  touch activity/cao.mjs cao.sh .github/workflows/shared/control.mjs .github/workflows/shared/materialize-cao.mjs .github/actions/setup-cao-runtime/action.yml
+else
+  exit 2
+fi
+`);
+  await chmod(path.join(bin, "gh"), 0o755);
+  const env = {
+    ...process.env,
+    PATH: `${bin}:${process.env.PATH}`,
+    FAKE_COMMAND_LOG: log,
+    FAKE_GH_AW_INSTALLED: installed,
+  };
+  try {
+    await assert.rejects(
+      executeFile("bash", [installScript], { cwd: root, env: { ...env, FAKE_ADD_ERROR: "1" } }),
+      /unrelated installation failure/,
+    );
+    const declined = await executeFile("bash", [installScript], { cwd: root, env });
+    assert.match(declined.stdout, /gh extension upgrade gh-aw.*rerun the CAO installer/);
+    assert.equal(await readFile(log, "utf8"), "add\nadd\n");
+    assert.equal(await readFile(installed, "utf8"), "v0.89.20\n");
+
+    // script supplies a controlling terminal even when the installer is piped into bash.
+    const no = await executeFile("bash", ["-c",
+      `printf 'n\\n' | script -q -e -c 'cat "${installScript}" | bash' /dev/null`,
+    ], { cwd: root, env, timeout: 10_000 });
+    assert.match(no.stdout, /gh extension upgrade gh-aw.*rerun the CAO installer/);
+    assert.equal(await readFile(log, "utf8"), "add\nadd\nadd\n");
+
+    const { stdout } = await executeFile("bash", ["-c",
+      `printf 'y\\n' | script -q -e -c 'cat "${installScript}" | bash' /dev/null`,
+    ], { cwd: root, env, timeout: 10_000 });
+    assert.match(stdout, /Upgrade it now with gh extension upgrade gh-aw/);
+    assert.equal(await readFile(log, "utf8"), "add\nadd\nadd\nadd\nupgrade\nadd\n");
+    assert.equal(await readFile(installed, "utf8"), "v0.89.21\n");
   } finally {
     await rm(root, { recursive: true, force: true });
   }

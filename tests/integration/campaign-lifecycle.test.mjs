@@ -22,7 +22,7 @@ const controlRuntimeFiles = [
   ".github/workflows/shared/policy.mjs",
   ".github/workflows/shared/setup-github-apps.mjs",
 ];
-const controlPlaneSkillFiles = [
+const excludedControlPlaneSkillFiles = [
   ".github/skills/add-cao-campaign/SKILL.md",
   ".github/skills/analyze-cao/SKILL.md",
   ".github/skills/cao-cli/SKILL.md",
@@ -142,11 +142,13 @@ const selfCareExpectedFiles = [
   ".github/workflows/self-care-dashboard-language-refactor.md",
   ".github/workflows/self-care-dashboard-review.md",
   ".github/workflows/self-care-docs-build-time-investigator.md",
+  ".github/workflows/self-care-docs-maintainer.md",
   ".github/workflows/self-care-glossary.md",
   ".github/workflows/self-care-open-source-failures.md",
   ".github/workflows/self-care-pages-health.md",
   ".github/workflows/self-care-primer-brand-checker.md",
   ".github/workflows/self-care-reactive-ui-expert.md",
+  ".github/workflows/self-care-server-go-logging.md",
   ".github/workflows/self-care.md",
   ".github/workflows/shared/activity-cache.md",
   ".github/workflows/shared/control.md",
@@ -219,8 +221,8 @@ test("root campaign bootstraps an empty CAO and preserves resources during workf
     for (const relativePath of controlRuntimeFiles) {
       assert.ok(existsSync(join(consumer, relativePath)), `root campaign omitted control file ${relativePath}`);
     }
-    for (const relativePath of controlPlaneSkillFiles) {
-      assert.ok(existsSync(join(consumer, relativePath)), `root campaign omitted project skill ${relativePath}`);
+    for (const relativePath of excludedControlPlaneSkillFiles) {
+      assert.equal(existsSync(join(consumer, relativePath)), false, `root campaign retained project skill ${relativePath}`);
     }
     const policyPath = join(consumer, ".github", "workflows", "cao.json");
     const policy = `${JSON.stringify({

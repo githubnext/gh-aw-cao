@@ -10,7 +10,7 @@ Turn an operational idea into a complete campaign of GitHub Agentic Workflows. A
 
 ## Setup Handoff
 
-When invoked from `.github/skills/setup-cao/SKILL.md`, accept the recorded desired outcome and target-repository description as the starting campaign contract. Do not repeat the custom-campaign yes/no question or restart control-plane setup. Ask only for unresolved campaign decisions, work in a CAO campaign-authoring checkout, and keep campaign authoring separate from the already proven control-repository setup commit and run.
+When invoked from the `setup-cao` skill, accept the recorded desired outcome and target-repository description as the starting campaign contract. Do not repeat the custom-campaign yes/no question or restart control-plane setup. Ask only for unresolved campaign decisions, work in a CAO campaign-authoring checkout, and keep campaign authoring separate from the already proven control-repository setup commit and run.
 
 ## Engine Authentication Profile
 

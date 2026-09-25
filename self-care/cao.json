@@ -11,10 +11,12 @@
     "dashboard-language-refactor": "self-care-dashboard-language-refactor",
     "dashboard-review": "self-care-dashboard-review",
     "docs-build-time-investigator": "self-care-docs-build-time-investigator",
+    "docs-maintainer": "self-care-docs-maintainer",
     "glossary": "self-care-glossary",
     "open-source-failures": "self-care-open-source-failures",
     "pages-health": "self-care-pages-health",
     "primer-brand-checker": "self-care-primer-brand-checker",
-    "reactive-ui-expert": "self-care-reactive-ui-expert"
+    "reactive-ui-expert": "self-care-reactive-ui-expert",
+    "server-go-logging": "self-care-server-go-logging"
   }
 }

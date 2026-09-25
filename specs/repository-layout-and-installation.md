@@ -115,6 +115,11 @@ Focused Activity or Dashboard materialization owns the corresponding canonical
 directory. Operational campaign materialization owns its complete
 `<campaign>/` directory.
 
+Root materialization MUST remove CAO plugin skills installed under
+`.github/skills/`. It MUST preserve skills not owned by the CAO plugin. Portable
+CAO skills are distributed through compatible Agent Plugin installers, not
+through the CAO control-plane installer.
+
 For each selected owned destination, materialization MUST remove the existing
 destination and copy the complete selected source destination. This replacement
 rule ensures that a file removed by a newer selected revision cannot remain

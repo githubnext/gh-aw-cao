@@ -459,6 +459,13 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       payloadHash: 'stable',
       ingestionVersion: 2
     }));
+    insert.run(DATABASE_NAME, 'transactions', JSON.stringify('ingest-normalized-jsonl:sha256:stable:v3'), JSON.stringify({
+      id: 'ingest-normalized-jsonl:sha256:stable:v3',
+      kind: 'ingest-normalized-jsonl',
+      createdAt: '2020-01-01T00:00:00Z',
+      payloadHash: 'stable',
+      ingestionVersion: 3
+    }));
     const malformed = connection.prepare(`
       SELECT record_key FROM __idb_records
       WHERE database_name = ? AND store_name = 'audits' AND record_key != ?
@@ -484,7 +491,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       repairs: {
         invalidRecordsRemoved: 2,
         canonicalRecordsRemoved: 4,
-        transactionsRemoved: 1
+        transactionsRemoved: 2
       },
       after: {
         counts: { repositories: 2, workflows: 2, runs: 1, audits: 1 },

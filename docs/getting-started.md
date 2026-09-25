@@ -26,7 +26,7 @@ The bundled Dependabot workflows in this guide use Copilot inference. You need o
 
 :::tip[Start with the setup skill]
 From an empty control repository, ask your coding agent to load and follow the
-[`setup-cao` skill](https://github.com/githubnext/gh-aw-cao/blob/main/.github/skills/setup-cao/SKILL.md).
+[`setup-cao` skill](https://github.com/githubnext/gh-aw-cao/blob/main/skills/setup-cao/SKILL.md).
 The skill gathers the control repository, campaign, target, visibility, and authentication choices before it changes the repository, then proves the boundary with one review run. The manual steps below describe the same boundary for operators who need to inspect each action.
 :::
 
@@ -82,14 +82,16 @@ curl --fail --silent --show-error --location \
   bash
 ```
 
-The script installs `gh-aw` when needed, adds the latest published core CAO campaign, initializes the minimal control policy, and makes the repository-local `./cao.sh` CLI executable. Rerunning it after those files are installed makes no changes. Use the individual `gh aw` and CAO CLI commands when you intentionally need an older campaign release.
+The script installs `gh-aw` when needed, adds the latest published core CAO campaign, initializes the minimal control policy, and makes the repository-local `./cao.sh` CLI executable. If an installed `gh-aw` is too old for the campaign, the installer asks before running `gh extension upgrade gh-aw`. Declining or running without an interactive terminal stops setup without an error; run `gh extension upgrade gh-aw` and rerun the installer when ready. Rerunning it after those files are installed makes no changes. Use the individual `gh aw` and CAO CLI commands when you intentionally need an older campaign release.
 
 The root campaign installs:
 
 1. shared authentication, routing, and fail-closed controls;
 2. the activity and dashboard infrastructure;
-3. the `cao` CLI runtime under `activity/`; and
-4. CAO project skills under `.github/skills/` for Copilot discovery in the control repository.
+3. the `cao` CLI runtime under `activity/`.
+
+The installer does not deploy CAO skills under `.github/skills/`. Install the
+Agent Plugin separately when you want the portable CAO skills.
 
 Use the `add-cao-campaign` skill to discover and compare catalog campaigns when you do not already know which campaign fits. After explicit selection, it installs through CAO so the campaign declaration is merged automatically. For example, install Dependabot with:
 

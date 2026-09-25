@@ -4,7 +4,7 @@
 > **Research prototype:** Features and interfaces may change as the project evolves.
 
 > [!TIP]
-> **Agent setup router:** When asked to create, bootstrap, initialize, or set up a Central Agentic Ops control plane, load and follow [the setup skill](.github/skills/setup-cao/SKILL.md). Use a separate control repository by default; any repository may explicitly run workflows it maintains in-tree as a source-managed control plane, including a catalog dogfooding its own workflows.
+> **Agent setup router:** When asked to create, bootstrap, initialize, or set up a Central Agentic Ops control plane, load and follow [the setup skill](skills/setup-cao/SKILL.md). Use a separate control repository by default; any repository may explicitly run workflows it maintains in-tree as a source-managed control plane, including a catalog dogfooding its own workflows.
 
 > [!TIP]
 > **Agent debugging router:** When a CAO deployment, credential, Agentic Workflow, Activity collection, or dashboard build fails, load and follow [the `debug-cao` skill](skills/debug-cao/SKILL.md). Preserve the failing workflow commit and exact component versions before changing or rerunning the deployment.
@@ -19,7 +19,7 @@ curl --fail --silent --show-error --location \
   bash
 ```
 
-The installer adds gh-aw and the core CAO campaign, installs CAO project skills under `.github/skills/`, creates the minimal control policy, and makes the repository-local `./cao.sh` CLI executable. It makes no CAO changes when rerun after installation.
+The installer adds gh-aw and the core CAO campaign, creates the minimal control policy, and makes the repository-local `./cao.sh` CLI executable. It makes no CAO changes when rerun after installation. Install the Agent Plugin separately when you want the portable CAO skills.
 
 Central Agentic Ops provides persistent agentic campaigns that continuously pursue defined outcomes across explicit repository fleets without copying workflows into every repository.
 

@@ -69,12 +69,18 @@ const valid = definition.schemaVersion === 3
     && ["primary", "diagnostic"].includes(metric.role)
     && isString(metric.formula)
     && ["increase", "decrease", "maintain", "target"].includes(metric.direction)
+    && isString(metric.unit)
+    && (!["maintain", "target"].includes(metric.direction)
+      || (typeof metric.target === "number" && Number.isFinite(metric.target)))
     && isString(metric.presentation?.name)
     && isString(metric.presentation?.legendLabel)
     && metric.presentation.legendLabel.length <= 24
-    && ["identity", "complement"].includes(metric.presentation?.transform)
-    && (metric.direction !== "increase" || metric.presentation.transform === "identity")
-    && (metric.direction !== "decrease" || metric.presentation.transform === "complement"))
+    && metric.presentation?.transform === "identity"
+    && (metric.rollup === undefined || (
+      isString(metric.rollup?.numeratorField)
+      && isString(metric.rollup?.denominatorField)
+      && metric.rollup.numeratorField !== metric.rollup.denominatorField
+    )))
   && metrics.filter(({ role }) => role === "primary").length === 1
   && new Set(metrics.map(({ id }) => id)).size === metrics.length
   && ["targetAttained", "targetMissed", "missing", "malformed"].every((key) => Object.hasOwn(examples, key));
@@ -82,8 +88,8 @@ if (!valid) fail("value-function definition is invalid");
 
 const score = (metricId, evidence) => {
   const result = scoreMetric(metricId, evidence);
-  if (result !== null && (typeof result !== "number" || result < 0 || result > 1)) {
-    fail(`${metricId} returned an invalid score`);
+  if (result !== null && (typeof result !== "number" || !Number.isFinite(result))) {
+    fail(`${metricId} returned an invalid native value`);
   }
   return result;
 };
@@ -92,9 +98,13 @@ for (const metric of metrics) {
   const results = Object.fromEntries(
     Object.entries(examples).map(([name, evidence]) => [name, score(metric.id, evidence)]),
   );
-  if (results.targetAttained == null || results.targetMissed == null
-      || results.targetAttained <= results.targetMissed) {
-    fail(`${metric.id} must score targetAttained higher than targetMissed`);
+  const attainedIsBetter = metric.direction === "increase"
+    ? results.targetAttained > results.targetMissed
+    : metric.direction === "decrease"
+      ? results.targetAttained < results.targetMissed
+      : Math.abs(results.targetAttained - metric.target) < Math.abs(results.targetMissed - metric.target);
+  if (results.targetAttained == null || results.targetMissed == null || !attainedIsBetter) {
+    fail(`${metric.id} validation examples do not improve in the declared ${metric.direction} direction`);
   }
   if (metric.role === "primary" && (results.missing !== null || results.malformed !== null)) {
     fail(`primary metric ${metric.id} must return null for missing and malformed evidence`);
@@ -157,15 +167,25 @@ if (caoAdapter) {
   );
   const validRecords = records.length <= definition.evidence.repositories.length * metrics.length
     && new Set(recordKeys).size === recordKeys.length
-    && records.every((record) => record.timestamp === timestamp
-      && definition.evidence.repositories.some(
-        (repository) => repository.toLowerCase() === String(record.repository).toLowerCase(),
-      )
-      && expectedIds.has(record.valueId)
-      && typeof record.value === "number"
-      && Number.isFinite(record.value)
-      && record.value >= 0
-      && record.value <= 1);
+    && records.every((record) => {
+      const metric = metrics.find(({ id }) => record.valueId === `${definition.slug}.${id}`);
+      const hasValidRollup = Object.hasOwn(record, "rollupNumerator")
+        && typeof record.rollupNumerator === "number"
+        && Number.isFinite(record.rollupNumerator)
+        && record.rollupNumerator >= 0
+        && typeof record.rollupDenominator === "number"
+        && Number.isFinite(record.rollupDenominator)
+        && record.rollupDenominator > 0;
+      return record.timestamp === timestamp
+        && definition.evidence.repositories.some(
+          (repository) => repository.toLowerCase() === String(record.repository).toLowerCase(),
+        )
+        && expectedIds.has(record.valueId)
+        && typeof record.value === "number"
+        && Number.isFinite(record.value)
+        && record.metricUnit === metric?.unit
+        && (metric?.rollup ? hasValidRollup : !Object.hasOwn(record, "rollupNumerator") || hasValidRollup);
+    });
   if (!validRecords) fail("CAO adapter returned invalid repository metric JSONL");
 }
 

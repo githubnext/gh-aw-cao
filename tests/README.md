@@ -27,8 +27,8 @@ The integration suite creates disposable consumer repositories under the system 
 
 | Test result | Command | Checked behavior |
 | --- | --- | --- |
-| 🟢 Pass | `gh aw add` | Installs the core orchestrators and workers, shared imports, bundled skills and agent, and campaign manifest; focused UK AI Advisory and EU CRA campaigns are validated separately. |
-| 🟢 Pass | `gh aw update --force` | Replaces a locally modified campaign workflow and restores deleted workflow dependencies, skills, and agent files for a branch-tracked campaign. |
+| 🟢 Pass | `gh aw add` | Installs the core orchestrators and workers, shared imports, and campaign manifest without retaining CAO plugin skills; focused UK AI Advisory and EU CRA campaigns are validated separately. |
+| 🟢 Pass | `gh aw update --force` | Replaces a locally modified campaign workflow and restores deleted workflow dependencies for a branch-tracked campaign. |
 | 🟢 Pass | Dashboard `gh aw add` and `gh aw add --force` | Installs and restores the reusable builder, manual standalone publisher, and all deterministic report modules. |
 
 ## Enterprise Integration and Load

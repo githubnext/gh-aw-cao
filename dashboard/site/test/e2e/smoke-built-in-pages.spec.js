@@ -308,6 +308,9 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
               campaign: 'ambient-context', repository: 'gh-aw-cao', 'operational-value': 0.5,
               'operational-value-definition': 'ambient-context.repository-value',
               'operational-value-role': 'primary',
+              'operational-value-name': 'Repository value',
+              'rollup-numerator': 1,
+              'rollup-denominator': 2,
               'maturity-status': 'matured',
               'observed-at': '2026-09-14T14:00:00Z'
             }
@@ -461,17 +464,37 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   const campaignInsights = page.locator('[data-page-id="campaign-insights"]');
   await expect(campaignInsights).toBeVisible();
   await expect(campaignInsights).toHaveAttribute('data-view-mode', 'chart');
-  await expect(campaignInsights.locator('.view-mode-control')).toHaveCount(1);
+  await expect(campaignInsights.locator('.view-mode-control')).toHaveCount(0);
   await expect(campaignInsights.getByRole('navigation', { name: 'Ambient Context views' })).toBeVisible();
   await expect(campaignInsights.getByRole('navigation', { name: 'Ambient Context views' })).toHaveCSS('display', 'grid');
   const mobileBack = page.getByRole('button', { name: 'Go back' });
   await expect(mobileBack).toBeVisible();
   await expect(page.locator('.overview-header')).toContainText('Operational activity for the Ambient Context campaign.');
+  const performanceBaseline = campaignInsights.locator('[data-view-id="campaign-performance-baseline"]');
+  await expect(performanceBaseline).toBeHidden();
+  await expect(performanceBaseline).toContainText('Run success');
+  await expect(performanceBaseline).toContainText('Produced outputs');
+  await expect(performanceBaseline).toContainText('Average AIC / successful run');
   const operationalValueHistory = campaignInsights.getByRole('region', { name: 'Repository operational value' });
-  await expect(operationalValueHistory).toContainText('Goal measure');
-  await expect(operationalValueHistory).toContainText('Workflow runs');
-  await expect(operationalValueHistory.locator('.temporal-plot-axis-title')).toHaveCount(1);
-  await expect(operationalValueHistory.locator('.temporal-plot-runs-track')).toHaveCount(1);
+  await expect(operationalValueHistory).toContainText('Repository value');
+  await expect(operationalValueHistory).toContainText('Higher is better');
+  await expect(operationalValueHistory.locator('.temporal-metric-plot:visible')).toHaveCount(1);
+  const operationalValueScope = operationalValueHistory.getByRole(
+    'combobox',
+    { name: 'Operational value repository scope' }
+  );
+  await expect(operationalValueScope).toHaveValue('campaign-rollup');
+  await expect(operationalValueHistory).toContainText('1 repository · weighted by eligible evidence');
+  const campaignRollupPanel = operationalValueHistory.locator(
+    '[data-operational-value-scope="campaign-rollup"]'
+  );
+  await expect(campaignRollupPanel.locator('.temporal-metric-plot')).toHaveCount(1);
+  await operationalValueScope.selectOption('repository:gh-aw-cao');
+  await expect(campaignRollupPanel).toBeHidden();
+  await expect(operationalValueHistory.locator('[data-operational-value-scope="repository:gh-aw-cao"]')).toBeVisible();
+  await expect(operationalValueHistory).toContainText('gh-aw-cao');
+  await operationalValueScope.selectOption('campaign-rollup');
+  await expect(operationalValueHistory.locator('[data-operational-value-scope="campaign-rollup"]')).toBeVisible();
   await mobileBack.click();
   await expect(page).toHaveURL(/#page-campaign-detail\?campaign=ambient-context$/);
   await expect(page.locator('[data-page-id="campaign-detail"]')).toBeVisible();

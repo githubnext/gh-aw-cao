@@ -75,7 +75,7 @@ test("landing animations use SVG and CSS without a JavaScript player", () => {
 test("landing wizard prompt references the raw setup skill", () => {
   assert.match(
     wizard,
-    /https:\/\/raw\.githubusercontent\.com\/githubnext\/gh-aw-cao\/main\/\.github\/skills\/setup-cao\/SKILL\.md/,
+    /https:\/\/raw\.githubusercontent\.com\/githubnext\/gh-aw-cao\/main\/skills\/setup-cao\/SKILL\.md/,
   );
 });
 

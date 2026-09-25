@@ -839,11 +839,12 @@ describe('canonical IndexedDB', () => {
     keyScans.mockRestore();
   }, 45_000);
 
-  it('keeps only the newest 1,000 ingestion transactions', async () => {
+  it('keeps JSONL shard receipts while pruning old transactions', async () => {
     const existing = Array.from({ length: 1_000 }, (_, index) => ({
       id: `transaction:${String(index).padStart(4, '0')}`,
       kind: 'fixture',
-      createdAt: new Date(index).toISOString()
+      createdAt: new Date(index).toISOString(),
+      ...(index === 0 ? { kind: 'ingest-normalized-jsonl', payloadHash: 'stable' } : {})
     }));
     await writeRecords('transactions', existing);
 
@@ -855,7 +856,8 @@ describe('canonical IndexedDB', () => {
 
     const transactions = await readTransactions(indexedDB);
     expect(transactions).toHaveLength(1_000);
-    expect(transactions.some(({ id }) => id === 'transaction:0000')).toBe(false);
+    expect(transactions.some(({ id }) => id === 'transaction:0000')).toBe(true);
+    expect(transactions.some(({ id }) => id === 'transaction:0001')).toBe(false);
     expect(transactions.some(({ id }) => id === 'transaction:latest')).toBe(true);
   });
 

@@ -1022,6 +1022,22 @@ describe('presenter built-in and custom pages', () => {
           source: 'indexing-database-table-counts',
           rows: [{ table: 'ingestion transactions', records: 1 }],
           metadata
+        },
+        'indexing-daily-records': {
+          source: 'indexing-daily-records',
+          rows: [
+            { day: '2026-09-01', records: 8 },
+            { day: '2026-09-02', records: 10 }
+          ],
+          metadata
+        },
+        'indexing-daily-workflow-runs': {
+          source: 'indexing-daily-workflow-runs',
+          rows: [
+            { day: '2026-09-01', 'workflow-runs': 6 },
+            { day: '2026-09-02', 'workflow-runs': 8 }
+          ],
+          metadata
         }
       }
     });
@@ -1828,6 +1844,65 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('.mobile-view-mode-toggle')).not.toBeNull();
     /** @type {HTMLButtonElement} */ (modeButtons[1]).click();
     expect(contexts.at(-1)).toMatchObject({ pageId: 'runs', queryContext: { viewMode: 'card' } });
+  });
+
+  it('keeps the default presentation without view-mode controls when disabled', async () => {
+    const rendered = renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'fixed-view-mode-dashboard',
+          title: 'Fixed View Mode',
+          pages: [{
+            id: 'runs',
+            kind: /** @type {'custom'} */ ('custom'),
+            title: 'Runs',
+            'view-mode-control': false,
+            views: [
+              {
+                id: 'runs-chart',
+                title: 'Run trend',
+                data: { source: 'runs' },
+                mark: 'chart',
+                chart: 'line',
+                encoding: {
+                  x: { field: 'started-at', type: 'temporal' },
+                  y: { field: 'run-count', type: 'quantitative' }
+                }
+              },
+              {
+                id: 'runs-table',
+                title: 'Runs',
+                data: { source: 'runs' },
+                mark: 'table',
+                encoding: { columns: [{ field: 'run' }] }
+              }
+            ]
+          }]
+        }
+      },
+      sources: {
+        runs: {
+          source: 'runs',
+          rows: [{ run: '1', 'run-count': 1, 'started-at': '2026-09-16T10:00:00Z' }],
+          metadata: {
+            'source-id': 'runs-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-16T10:00:00Z',
+            'retrieved-at': '2026-09-16T10:00:00Z',
+            availability: 'available',
+            completeness: 'complete',
+            freshness: 'fresh'
+          }
+        }
+      }
+    });
+
+    const page = await activatePage(rendered, 'runs');
+    expect(page?.getAttribute('data-view-mode')).toBe('chart');
+    expect(page?.querySelector('.view-mode-control')).toBeNull();
+    expect(page?.querySelector('[data-view-id="runs-chart"]')?.getAttribute('data-view-mode-content')).toBe('chart');
+    expect(page?.querySelector('[data-view-id="runs-table"]')?.getAttribute('data-view-mode-content')).toBe('table');
   });
 
   it('omits page chrome when a page has only one card view mode', async () => {
@@ -3071,7 +3146,7 @@ describe('presenter built-in and custom pages', () => {
                 encoding: { value: { field: 'run', aggregate: 'count' } }
               }]
             },
-            { id: 'second', kind: /** @type {'custom'} */ ('custom'), title: 'Second', description: 'Second page description', views: [] }
+            { id: 'second', kind: /** @type {'custom'} */ ('custom'), title: 'Second', description: 'Second page description', experimental: true, views: [] }
           ]
         }
       },
@@ -3113,6 +3188,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('#page-title')?.textContent).toBe('First');
     expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('First');
     expect(rendered.querySelector('[data-page-description]')?.textContent).toBe('First page description');
+    expect(/** @type {HTMLElement} */ (rendered.querySelector('.title-area [data-page-experimental]')).hidden).toBe(true);
     expect(rendered.ownerDocument.title).toBe('First · Page Navigation');
     first.dispatchEvent(new CustomEvent('dashboard-route-allocation', {
       bubbles: true,
@@ -3153,6 +3229,10 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('#page-title')?.textContent).toBe('Canonical second');
     expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Canonical second');
     expect(rendered.querySelector('[data-page-description]')?.textContent).toBe('Canonical second description');
+    expect(/** @type {HTMLElement} */ (rendered.querySelector('.title-area [data-page-experimental]')).hidden).toBe(false);
+    const experimentalBadge = rendered.querySelector('.title-area [data-page-experimental]');
+    expect(experimentalBadge?.getAttribute('aria-label')).toBe('Experimental');
+    expect(experimentalBadge?.querySelector('.octicon-beaker')).not.toBeNull();
     expect(rendered.ownerDocument.title).toBe('Canonical second · Page Navigation');
     expect(titleLink.hidden).toBe(true);
     expect(titleLink.hasAttribute('href')).toBe(false);
@@ -3169,6 +3249,7 @@ describe('presenter built-in and custom pages', () => {
 
     pageScroller.scrollTop = 80;
     firstLink.click();
+    expect(/** @type {HTMLElement} */ (rendered.querySelector('.title-area [data-page-experimental]')).hidden).toBe(true);
 
     expect(renderedSecond.hasAttribute('data-page-pending')).toBe(true);
     expect(renderedSecond.childElementCount).toBe(0);
@@ -3180,6 +3261,28 @@ describe('presenter built-in and custom pages', () => {
     expect(/** @type {HTMLDetailsElement | null} */ (rehydratedFirst.querySelector('details'))?.open).toBe(true);
     expect(pageScroller.scrollTop).toBe(320);
     rendered.ownerDocument.defaultView?.history.replaceState(null, '', '/');
+  });
+
+  it('does not show the experimental badge when Overview is active', async () => {
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {}
+    });
+    rendered.ownerDocument.body.append(rendered);
+
+    try {
+      await activatePage(rendered, 'overview');
+
+      expect(rendered.querySelector('#page-title')?.textContent).toBe('Overview');
+      const experimentalBadge = /** @type {HTMLElement} */ (rendered.querySelector('.title-area [data-page-experimental]'));
+      expect(experimentalBadge.hidden).toBe(true);
+      const experimentalIcon = experimentalBadge.querySelector('.octicon-beaker');
+      if (!(experimentalIcon instanceof SVGElement)) throw new Error('Expected the experimental icon to render.');
+      expect(experimentalIcon.getAttribute('aria-hidden')).toBe('true');
+    } finally {
+      disposeDashboard(rendered);
+      rendered.remove();
+    }
   });
 
   it('replaces a failed asynchronous page render with an accessible error message', async () => {

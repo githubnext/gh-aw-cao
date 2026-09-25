@@ -49,7 +49,6 @@ if (!isIsoUtc(endAt)) fail("--end must use UTC ISO-8601 format: YYYY-MM-DDTHH:MM
 const repositoryKey = repository.toLowerCase().replace("/", "-");
 const reportDir = path.join(outputRoot, repositoryKey);
 const finalTimeline = path.join(reportDir, `${workflowSlug}-timeline.json`);
-const finalSvg = path.join(reportDir, `${workflowSlug}-timeline.svg`);
 const finalDefinitions = path.join(reportDir, `${workflowSlug}-definitions.md`);
 const evidenceArchive = path.join(reportDir, `${workflowSlug}-evidence-archive.json`);
 run(path.join(scriptDir, "verify-value-function.mjs"), [valueFunction]);
@@ -194,12 +193,10 @@ try {
       : "The evidence is observational and does not establish that workflow adoption caused an outcome change.",
   }));
   const timeline = path.join(work, `${workflowSlug}-timeline.json`);
-  const svg = path.join(work, `${workflowSlug}-timeline.svg`);
   const definitions = path.join(work, `${workflowSlug}-definitions.md`);
   run(path.join(scriptDir, "build-timeline.mjs"), [valueFunction, observations, timeline]);
-  run(path.join(scriptDir, "render-timeline-svg.mjs"), [timeline, svg]);
   run(path.join(scriptDir, "render-definitions.mjs"), [timeline, definitions]);
-  run(path.join(scriptDir, "validate-report-artifacts.mjs"), [timeline, svg, definitions]);
+  run(path.join(scriptDir, "validate-report-artifacts.mjs"), [timeline, definitions]);
   if (sha256File(valueFunction) !== initialSha) fail("value function changed during deterministic evaluation");
 
   const builtTimeline = readJson(timeline);
@@ -233,7 +230,6 @@ try {
   mkdirSync(reportDir, { recursive: true });
   for (const [source, destination] of [
     [timeline, finalTimeline],
-    [svg, finalSvg],
     [definitions, finalDefinitions],
     [archiveOutput, evidenceArchive],
   ]) {
@@ -242,8 +238,6 @@ try {
 } finally {
   rmSync(work, { recursive: true, force: true });
 }
-
 console.log(`Timeline: ${finalTimeline}`);
-console.log(`SVG: ${finalSvg}`);
 console.log(`Definitions: ${finalDefinitions}`);
 console.log(`Evidence archive: ${evidenceArchive}`);

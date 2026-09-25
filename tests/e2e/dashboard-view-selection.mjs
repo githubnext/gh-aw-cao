@@ -6,6 +6,42 @@ import { withoutIgnoredDashboardPageIds } from "./dashboard-view-assessment.mjs"
 
 const repositoryRoot = resolve(import.meta.dirname, "../..");
 const primaryDashboardPath = "dashboard/site/dashboard.json";
+// PR assessments are informational and run live-data browser checks; five pages
+// keeps the job fast while still sampling the most relevant affected surfaces.
+export const maximumSelectedDashboardPageCount = 5;
+// Cache descriptors per parsed dashboard object. Re-reading or re-parsing the
+// same file intentionally creates a fresh cache entry.
+const pageSelectionDescriptorsByDashboard = new WeakMap();
+const pageSelectionWeights = Object.freeze({
+  pathIncludesPageId: 100,
+  pageIdTerm: 30,
+  titleTerm: 15,
+  pageBodyTerm: 3,
+});
+
+const selectionStopWords = new Set([
+  "component",
+  "components",
+  "dashboard",
+  "data",
+  "e2e",
+  "json",
+  "site",
+  "src",
+  "test",
+  "tests",
+  "unit",
+  "view",
+  "views",
+]);
+
+function identifierTerms(value) {
+  return String(value ?? "")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((term) => term.length >= 3 && !selectionStopWords.has(term));
+}
 
 function dashboardPaths() {
   return [
@@ -64,10 +100,98 @@ export function sharedDashboardConfigurationChanged(current, previous) {
   return JSON.stringify(shared(current)) !== JSON.stringify(shared(previous));
 }
 
+function identifierKey(value) {
+  return identifierTerms(value).join("-");
+}
+
+function pageSelectionDescriptor(page, index) {
+  const pageId = String(page.id ?? "");
+  const pageJson = JSON.stringify(page);
+  const searchableBody = {
+    description: page.description,
+    definitionViews: page.definition?.views,
+    views: page.views,
+  };
+  return {
+    index,
+    pageId,
+    pageIdKey: identifierKey(pageId),
+    pageJson,
+    pageTerms: new Set(identifierTerms(pageId)),
+    titleTerms: new Set(identifierTerms(page.title)),
+    pageBodyTerms: new Set(identifierTerms(JSON.stringify(searchableBody))),
+  };
+}
+
+function pageSelectionDescriptors(dashboard) {
+  const cached = pageSelectionDescriptorsByDashboard.get(dashboard);
+  if (cached) return cached;
+  const descriptors = dashboard.dashboard.pages.map((page, index) =>
+    pageSelectionDescriptor(page, index)
+  );
+  pageSelectionDescriptorsByDashboard.set(dashboard, descriptors);
+  return descriptors;
+}
+
+function pageSelectionScore(page, changedFiles) {
+  let score = 0;
+
+  for (const { pathSegmentKeys, terms } of changedFiles) {
+    if (page.pageIdKey && pathSegmentKeys.has(page.pageIdKey)) {
+      score += pageSelectionWeights.pathIncludesPageId;
+    }
+    for (const term of terms) {
+      if (page.pageTerms.has(term)) {
+        score += pageSelectionWeights.pageIdTerm;
+      } else if (page.titleTerms.has(term)) {
+        score += pageSelectionWeights.titleTerm;
+      } else if (page.pageBodyTerms.has(term)) {
+        score += pageSelectionWeights.pageBodyTerm;
+      }
+    }
+  }
+  return score;
+}
+
+/**
+ * Rank candidate dashboard page IDs for PR assessment. Broad candidates,
+ * including shared dashboard configuration changes, are intentionally capped:
+ * the workflow assesses the highest-scoring views instead of every page.
+ * The result drops ignored assessment pages, deduplicates candidates, sorts by
+ * changed-file relevance with dashboard order as the stable tie-breaker, and
+ * truncates to the requested limit.
+ */
+export function rankDashboardPageIds({
+  dashboard,
+  pageIds,
+  changedFiles,
+  limit = maximumSelectedDashboardPageCount,
+}) {
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new Error("Dashboard page selection limit must be a positive integer.");
+  }
+  const pagesById = new Map(pageSelectionDescriptors(dashboard).map((page) => [page.pageId, page]));
+  const changedFileDescriptors = changedFiles.map((path) => ({
+    pathSegmentKeys: new Set(path.split(/[\\/]+/).map(identifierKey).filter(Boolean)),
+    terms: new Set(identifierTerms(path)),
+  }));
+  return withoutIgnoredDashboardPageIds([...new Set(pageIds)])
+    .map((pageId) => pagesById.get(pageId))
+    .filter(Boolean)
+    .map((page) => ({
+      pageId: page.pageId,
+      index: page.index,
+      score: pageSelectionScore(page, changedFileDescriptors),
+    }))
+    .toSorted((left, right) => right.score - left.score || left.index - right.index)
+    .slice(0, limit)
+    .map((entry) => entry.pageId);
+}
+
 function pagesUsingElement(dashboard, element) {
-  return dashboard.dashboard.pages
-    .filter((page) => JSON.stringify(page).includes(`"element":"${element}"`))
-    .map((page) => page.id);
+  return pageSelectionDescriptors(dashboard)
+    .filter((page) => page.pageJson.includes(`"element":"${element}"`))
+    .map((page) => page.pageId);
 }
 
 function canScopeComponent(path) {
@@ -102,12 +226,16 @@ export function selectAffectedPageIds({ dashboard, changedFiles, baseRef }) {
     dashboard.dashboard.pages.map((page) => page.id),
   );
   const selected = new Set();
+  const ranked = (pageIds, options = {}) =>
+    rankDashboardPageIds({ dashboard, pageIds, changedFiles, ...options });
 
   for (const path of changedFiles) {
     if (path.endsWith("/dashboard.json") || path === primaryDashboardPath) {
       const current = readDashboard(path);
       const previous = readDashboard(path, baseRef);
-      if (sharedDashboardConfigurationChanged(current, previous)) return allPageIds;
+      // Shared configuration can affect any page, but PR assessment remains
+      // bounded to the top-ranked sample to keep the live-data browser job fast.
+      if (sharedDashboardConfigurationChanged(current, previous)) return ranked(allPageIds);
       for (const pageId of changedDashboardPageIds(current, previous)) selected.add(pageId);
       continue;
     }
@@ -137,10 +265,10 @@ export function selectAffectedPageIds({ dashboard, changedFiles, baseRef }) {
       || path.startsWith("dashboard/site/src/")
       || path.startsWith("dashboard/report/")
     ) {
-      return allPageIds;
+      return ranked(allPageIds);
     }
   }
-  return allPageIds.filter((pageId) => selected.has(pageId));
+  return withoutIgnoredDashboardPageIds(allPageIds.filter((pageId) => selected.has(pageId)));
 }
 
 function main() {
