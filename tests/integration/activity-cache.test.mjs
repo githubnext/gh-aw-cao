@@ -43,10 +43,12 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   const workflow = await readFile(".github/workflows/cao-activity.yml", "utf8");
   const collector = await readFile("activity/collect-logs.sh", "utf8");
   const indexJob = workflow.match(/\n  index:\n([\s\S]*?)\n  cache:\n/)?.[1];
-  const cacheJob = workflow.match(/\n  cache:\n([\s\S]*)/)?.[1];
+  const cacheJob = workflow.match(/\n  cache:\n([\s\S]*?)\n  notify-failure:\n/)?.[1];
+  const notifyFailureJob = workflow.match(/\n  notify-failure:\n([\s\S]*)/)?.[1];
 
   assert.ok(indexJob);
   assert.ok(cacheJob);
+  assert.ok(notifyFailureJob);
   assert.match(indexJob, /permissions:\n\s+actions: read\n\s+contents: read\n\s+issues: read/);
   assert.match(
     indexJob,
@@ -63,6 +65,10 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
     cacheJob,
     /Download activity snapshot[\s\S]*?actions\/download-artifact@[0-9a-f]{40}[\s\S]*?name: cao-activity-index[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity[\s\S]*?Verify activity snapshot[\s\S]*?Save activity cache/,
   );
+  assert.match(notifyFailureJob, /needs: \[index, cache\]/);
+  assert.match(notifyFailureJob, /permissions:\n\s+issues: write/);
+  assert.match(notifyFailureJob, /CAO_ACTIVITY_INDEX_FAILED[\s\S]*?CAO_ACTIVITY_CACHE_FAILED/);
+  assert.match(notifyFailureJob, /Assign this issue to an agent/);
   assert.match(
     cacheJob,
     /Verify activity snapshot[\s\S]*?for file in gh-aw-logs\.sqlite payload-hashes\.json control-settings\.json inventory-sources\.json drain3_weights\.json[\s\S]*?-s "\$snapshot_root\/\$file"[\s\S]*?Activity snapshot contains no JSONL shards[\s\S]*?exit 1/,
