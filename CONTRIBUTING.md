@@ -82,9 +82,9 @@ If you have write access but are not yet a core team member:
 
 1. Open your pull request in draft mode and continue working there.
 2. When the change is complete and validated, mark the pull request ready for
-   review and assign Mara and Peli.
-3. Mara and Peli will either approve and merge it immediately or return it with
-   comments for follow-up.
+   review and assign the maintainers.
+3. The maintainers will either approve and merge it immediately or return it
+   with comments for follow-up.
 
 ## Core team implementation reference
 
