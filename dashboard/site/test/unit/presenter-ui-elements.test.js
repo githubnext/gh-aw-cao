@@ -145,11 +145,20 @@ describe('dashboard sidebar', () => {
             'maintenance-repositories'
           ]
         }
+      },
+      {
+        id: 'reports',
+        title: 'Reports',
+        icon: 'graph',
+        'navigation-indicator': {
+          label: 'reports need review',
+          any: ['reports-needing-review']
+        }
       }
     ];
     const sidebar = renderDashboardNavigation(pages, 'Example', [
       { label: 'Main', pages: ['overview'] },
-      { label: 'Updates', placement: 'bottom', pages: ['maintenance'] }
+      { label: 'Updates', placement: 'bottom', pages: ['maintenance', 'reports'] }
     ]);
 
     const updatesLink = sidebar.querySelector('[data-nav-page-id="maintenance"]');
@@ -191,6 +200,17 @@ describe('dashboard sidebar', () => {
     expect(updatesLink?.querySelector('[data-nav-indicator]')?.hasAttribute('hidden')).toBe(false);
     expect(updatesLink?.getAttribute('aria-label')).toBe('Updates, updates available');
     expect(mobileMenuSummary?.querySelector('[data-mobile-nav-menu-indicator]')?.hasAttribute('hidden')).toBe(false);
+
+    syncDashboardNavigationIndicators(sidebar, pages, {
+      campaigns: {
+        rows: [{ 'campaign-update-state': 'update-available' }]
+      },
+      'reports-needing-review': {
+        rows: [{}]
+      }
+    });
+
+    expect(mobileMenuSummary?.getAttribute('aria-label')).toBe('Select view, updates available');
   });
 
   it('places the hosted user control at the bottom of the sidebar', () => {
