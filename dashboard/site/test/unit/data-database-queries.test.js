@@ -72,7 +72,8 @@ const sources = {  campaigns: {
     rows: [{
       organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
       run: '42', 'run-attempt': 2, 'run-status': 'completed', 'run-conclusion': 'failure',
-      'started-at': '2026-09-09T04:00:00Z', 'failure-detail': 'Build failed',
+      'started-at': '2026-09-09T04:00:00Z', 'failure-message': 'Build failed',
+      'failure-detail': 'Build failed', 'target-repository': 'github/gh-aw',
       'admission-status': 'admitted', resource: 'actions', 'resource-wait-hours': 2,
       'rollout-mode': 'review', engine: 'copilot', 'engine-version': '1.2.3',
       'gh-aw-version': 'v0.89.4',
@@ -670,10 +671,18 @@ describe('canonical view sources', () => {
   it('projects failed-run evidence from the active canonical generation', async () => {
     const projected = await loadCanonicalViewSources(indexedDB, sources, {
       ingest: true,
-      sourceNames: ['failed-runs', 'runs', 'repositories', 'workflows'],
+      sourceNames: ['campaign-problem-items', 'failed-runs', 'runs', 'repositories', 'workflows'],
       queries: dashboardQueries
     });
 
+    expect(projected['campaign-problem-items']).toMatchObject({
+      source: 'campaign-problem-items',
+      rows: [{
+        'problem-title': 'Build failed',
+        'failure-message': 'Build failed',
+        'status-detail': 'Build failed'
+      }]
+    });
     expect(projected['failed-runs']).toMatchObject({
       source: 'failed-runs',
       rows: [{ repository: 'gh-aw-cao', run: '42', 'run-attempt': 2, 'run-conclusion': 'failure', 'failure-detail': 'Build failed' }],
