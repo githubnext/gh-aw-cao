@@ -1959,7 +1959,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
 }
 @media (max-width: 700px) {
   .dashboard-page.notifications-page > .page-chrome > .filter-bar { display: none; }
-  .dashboard-page.notifications-page .view-mode-control { display: none; }
+  .view-mode-control { display: none; }
   body, .dashboard-root { font-size: 1rem; }
   .campaign-tabs { min-height: 0; display: grid; gap: 0; padding-top: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
   .campaign-tabs a { min-height: 44px; padding: 10px 12px; border-radius: 0; background: transparent; font-size: .875rem; }
@@ -2064,8 +2064,6 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .toolbar { align-items: stretch; flex-wrap: wrap; }
   .dashboard-page > .page-chrome > .filter-bar { display: none; }
   .dashboard-page > .page-chrome > .filter-bar .filter-tuning-controls { display: grid; grid-template-columns: minmax(0, 1fr); }
-  .view-mode-control { width: 100%; }
-  .view-mode-option { min-height: 44px; flex: 1; justify-content: center; }
   .filter-control { min-width: 0; flex-basis: 100%; }
   .filter-toggle[aria-expanded="true"] { background: var(--neutral-muted); }
   .scope-period { min-height: 44px; }
