@@ -306,3 +306,35 @@ func TestAdmitterErasesEvidenceWhenScopeIsWithdrawn(t *testing.T) {
 		t.Fatal("erasure did not request a projection, so the database keeps the rows")
 	}
 }
+
+// An admission-only process has no evidence lake, so withdrawing consent must
+// queue erasure for a worker that does rather than silently retain evidence.
+func TestAdmitterQueuesErasureWithoutALake(t *testing.T) {
+	store, ctx := integrationStore(t)
+	enrollment := Enrollment{Store: store}
+	queue := Queue{Store: store}
+	if err := queue.Ensure(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := enrollment.AddRepositories(ctx, 12, []string{"acme/withdrawn"}); err != nil {
+		t.Fatal(err)
+	}
+	admitter := Admitter{Enrollment: enrollment, Queue: queue}
+	payload := []byte(`{"action":"deleted","installation":{"id":12}}`)
+	if _, err := admitter.Admit(ctx, "installation", payload); err != nil {
+		t.Fatal(err)
+	}
+	leases, err := queue.Lease(ctx, "erasure-test", 10, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(leases) != 1 {
+		t.Fatalf("leased %d tasks, want 1", len(leases))
+	}
+	if !leases[0].Task.Erase {
+		t.Fatal("queued task does not request erasure")
+	}
+	if leases[0].Task.Repository != "acme/withdrawn" {
+		t.Fatalf("queued erasure for %q", leases[0].Task.Repository)
+	}
+}

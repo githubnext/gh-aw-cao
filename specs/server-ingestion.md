@@ -211,6 +211,10 @@ per installation.
 - The App private key, webhook secret, and Redis URL MUST be resolved from a
   platform secret manager and MUST NOT appear in configuration files, workflow
   inputs, commits, logs, telemetry, or chat.
+- A process that only admits deliveries MUST NOT be given the App private key.
+  An implementation MUST support admitting deliveries without collection
+  credentials, and MUST refuse a private key, workers, or delivery replay in
+  that mode rather than accept an unusable credential.
 - Prompts, tokens, and secrets MUST NOT be written to the evidence lake, the
   canonical database, or telemetry.
 - Missing credentials, missing installation access, an exhausted rate limit, or a
@@ -229,7 +233,8 @@ governed property and not an accident of disk usage.
   MUST delete that repository's shards from the evidence lake and MUST request a
   projection so the canonical database stops reporting it.
 - Erasure MUST be driven by the same webhook admission path as enrollment, so
-  withdrawing consent takes effect without operator action.
+  withdrawing consent takes effect without operator action. A process without an
+  evidence lake MUST queue erasure rather than skip it.
 - An erasure failure MUST fail the delivery rather than report it complete, so
   the delivery is retried instead of silently retaining evidence.
 - The task and dead-letter queues MUST be bounded. Acknowledged entries persist
@@ -267,4 +272,6 @@ A conforming implementation:
 9. governs GitHub budget per installation and fails closed;
 10. passes a profile equivalence test against an Actions-published directory;
 11. erases retained evidence for repositories that leave ingestion scope, and
-    bounds its queues.
+    bounds its queues;
+12. admits deliveries without collection credentials, and fails closed when an
+    admission-only process is asked to collect or project.

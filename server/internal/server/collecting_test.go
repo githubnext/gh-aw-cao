@@ -118,3 +118,25 @@ func TestCollectorPrivateKeyPrefersAFileReference(t *testing.T) {
 		t.Fatalf("unexpected key material: %q", key)
 	}
 }
+
+// An admission-only front end verifies deliveries and enqueues work. Giving it
+// the App private key would place a credential it cannot use in the
+// internet-facing process.
+func TestAdmitOnlyRefusesCollectionCredentials(t *testing.T) {
+	config := CollectorConfig{AppID: 42, AdmitOnly: true}
+	if err := config.Validate(); err != nil {
+		t.Fatalf("admission-only configuration was rejected: %v", err)
+	}
+	withKey := CollectorConfig{AppID: 42, AdmitOnly: true, PrivateKeyPEM: []byte("key")}
+	if err := withKey.Validate(); err == nil {
+		t.Fatal("admission-only accepted the App private key")
+	}
+	withWorkers := CollectorConfig{AppID: 42, AdmitOnly: true, Workers: 1}
+	if err := withWorkers.Validate(); err == nil {
+		t.Fatal("admission-only accepted collection workers")
+	}
+	collecting := CollectorConfig{AppID: 42}
+	if err := collecting.Validate(); err == nil {
+		t.Fatal("the collection profile was accepted without a private key")
+	}
+}

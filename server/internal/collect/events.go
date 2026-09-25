@@ -239,11 +239,24 @@ func (a Admitter) Admit(ctx context.Context, event string, payload []byte) (Admi
 // Erasure is best-effort per repository but never silent: the first failure is
 // returned so the delivery is retried rather than reported as complete.
 func (a Admitter) erase(ctx context.Context, repositories []string) (int, error) {
-	if a.Lake == nil || len(repositories) == 0 {
+	if len(repositories) == 0 {
 		return 0, nil
 	}
 	erased := 0
 	for _, repository := range repositories {
+		if a.Lake == nil {
+			// An admission-only process holds no evidence lake, so erasure is
+			// queued for a worker that does rather than skipped.
+			if _, err := a.Queue.Enqueue(ctx, Task{
+				Repository: repository,
+				Reason:     "scope-withdrawn",
+				Erase:      true,
+			}); err != nil {
+				return erased, err
+			}
+			erased++
+			continue
+		}
 		if err := a.Lake.Forget(repository); err != nil {
 			return erased, err
 		}

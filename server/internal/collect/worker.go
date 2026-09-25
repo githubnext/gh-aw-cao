@@ -168,6 +168,20 @@ func (w Worker) process(ctx context.Context, lease Lease) bool {
 	if err := w.Queue.Admit(ctx, task); err != nil {
 		workerLog.Printf("debounce clear failed")
 	}
+	if task.Erase {
+		if err := w.Runner.Lake.Forget(task.Repository); err != nil {
+			workerLog.Printf("evidence erasure failed repository=%s", task.Repository)
+			if retryErr := w.Queue.Retry(ctx, lease, err); retryErr != nil {
+				workerLog.Printf("task retry failed repository=%s", task.Repository)
+			}
+			return false
+		}
+		if err := w.Queue.Complete(ctx, lease); err != nil {
+			workerLog.Printf("task acknowledgement failed repository=%s", task.Repository)
+		}
+		workerLog.Printf("erased retained evidence repository=%s", task.Repository)
+		return true
+	}
 	if err := w.Runner.Collect(ctx, task); err != nil {
 		workerLog.Printf("collection failed attempt=%d", task.Attempt)
 		if retryErr := w.Queue.Retry(ctx, lease, err); retryErr != nil {

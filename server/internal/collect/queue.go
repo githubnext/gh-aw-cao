@@ -30,6 +30,10 @@ type Task struct {
 	// NotBefore delays a retried task. Redis streams have no delayed
 	// delivery, so a worker that leases an early task returns it unchanged.
 	NotBefore time.Time `json:"notBefore,omitempty"`
+	// Erase requests deletion of the repository's retained evidence instead of
+	// collection. An admission-only process has no evidence lake, so
+	// withdrawing consent is queued for a worker that does.
+	Erase bool `json:"erase,omitempty"`
 }
 
 // Lease is a task delivered to one consumer and not yet acknowledged.
@@ -94,7 +98,9 @@ func (q Queue) Enqueue(ctx context.Context, task Task) (bool, error) {
 	if task.EnqueuedAt.IsZero() {
 		task.EnqueuedAt = time.Now().UTC()
 	}
-	if task.Attempt == 0 {
+	// Erasure is never debounced: collapsing it into a nearby collection would
+	// silently retain evidence after consent was withdrawn.
+	if task.Attempt == 0 && !task.Erase {
 		fresh, err := q.Store.MarkOnce(ctx, debounceKey(repository), q.debounce())
 		if err != nil {
 			return false, err

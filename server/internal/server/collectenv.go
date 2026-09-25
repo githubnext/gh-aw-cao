@@ -25,12 +25,18 @@ func CollectorConfigFromEnv() (*CollectorConfig, error) {
 	if err != nil || appID <= 0 {
 		return nil, errors.New("CAO_COLLECT_APP_ID must be a positive GitHub App identifier")
 	}
-	privateKey, err := collectorPrivateKey()
-	if err != nil {
-		return nil, err
+	admitOnly := envBool("CAO_COLLECT_ADMIT_ONLY")
+	var privateKey []byte
+	if !admitOnly {
+		key, err := collectorPrivateKey()
+		if err != nil {
+			return nil, err
+		}
+		privateKey = key
 	}
 	config := &CollectorConfig{
 		AppID:                 appID,
+		AdmitOnly:             admitOnly,
 		PrivateKeyPEM:         privateKey,
 		BaseURL:               strings.TrimSpace(os.Getenv("CAO_COLLECT_GITHUB_API_URL")),
 		UploadURL:             strings.TrimSpace(os.Getenv("CAO_COLLECT_GITHUB_UPLOAD_URL")),
@@ -110,6 +116,11 @@ func NewCollectorFromEnv(ctx context.Context, databaseQueriesPath string) (*Coll
 	}
 	if config == nil {
 		return nil, errors.New("collection is not configured; CAO_COLLECT_APP_ID is required")
+	}
+	if config.AdmitOnly {
+		return nil, errors.New(
+			"the collect and backfill roles require collection credentials; " +
+				"unset CAO_COLLECT_ADMIT_ONLY")
 	}
 	if strings.TrimSpace(os.Getenv("CAO_SOURCE_DIRECTORY")) != "" {
 		return nil, errors.New(

@@ -374,27 +374,16 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
           value: collectorGithubAppId
         }
         {
-          name: 'CAO_COLLECT_PRIVATE_KEY'
-          value: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/cao-collect-private-key)'
-        }
-        {
-          // The Function App admits deliveries and never collects or projects,
-          // so it has no evidence-lake mount. It still needs a writable path
-          // because collection configuration is validated at startup.
-          name: 'CAO_COLLECT_LAKE_DIRECTORY'
-          value: '/tmp/cao-evidence'
-        }
-        {
-          name: 'CAO_COLLECT_CATALOG_ROOT'
-          value: '/app'
+          // The Function App verifies deliveries and enqueues work. It never
+          // calls GitHub and never projects, so it is given no App private key
+          // and no evidence lake: the internet-facing front end holds no
+          // credential it cannot use.
+          name: 'CAO_COLLECT_ADMIT_ONLY'
+          value: 'true'
         }
         {
           name: 'CAO_COLLECT_CONTROL_REPOSITORY'
           value: collectorControlRepository
-        }
-        {
-          name: 'CAO_COLLECT_WORKERS'
-          value: '0'
         }
       ])
     }

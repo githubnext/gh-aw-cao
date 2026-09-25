@@ -60,6 +60,11 @@ type CollectorConfig struct {
 	// QueueMaxLength bounds the task and dead-letter streams so an unattended
 	// queue cannot grow Redis without bound.
 	QueueMaxLength int
+	// AdmitOnly runs the admission half of the profile alone: the process
+	// verifies deliveries and enqueues work, and never collects or projects.
+	// It therefore needs no App private key and no evidence lake, which keeps
+	// the internet-facing front end from holding credentials it cannot use.
+	AdmitOnly bool
 }
 
 // Validate reports whether the collector can be constructed.
@@ -67,14 +72,34 @@ func (config *CollectorConfig) Validate() error {
 	if config == nil {
 		return nil
 	}
-	if config.AppID <= 0 || len(config.PrivateKeyPEM) == 0 {
-		return errors.New("collection requires a GitHub App identifier and private key")
+	if config.AppID <= 0 {
+		return errors.New("collection requires a GitHub App identifier")
 	}
-	if strings.TrimSpace(config.LakeDirectory) == "" {
-		return errors.New("collection requires an evidence lake directory")
-	}
-	if strings.TrimSpace(config.CatalogRoot) == "" {
-		return errors.New("collection requires the catalog root containing activity/cao.mjs")
+	if config.AdmitOnly {
+		// Admission verifies deliveries against the webhook secret and writes
+		// to Redis. Requiring collection credentials here would place the App
+		// private key in a process that never calls GitHub.
+		if len(config.PrivateKeyPEM) > 0 {
+			return errors.New(
+				"admission-only collection must not be given the App private key; " +
+					"it never calls GitHub")
+		}
+		if config.Workers > 0 {
+			return errors.New("admission-only collection cannot run workers")
+		}
+		if config.RecoverDeliveries {
+			return errors.New("admission-only collection cannot replay deliveries")
+		}
+	} else {
+		if len(config.PrivateKeyPEM) == 0 {
+			return errors.New("collection requires a GitHub App private key")
+		}
+		if strings.TrimSpace(config.LakeDirectory) == "" {
+			return errors.New("collection requires an evidence lake directory")
+		}
+		if strings.TrimSpace(config.CatalogRoot) == "" {
+			return errors.New("collection requires the catalog root containing activity/cao.mjs")
+		}
 	}
 	if config.QueueMaxLength <= 0 {
 		config.QueueMaxLength = defaultQueueMaxLength
@@ -111,6 +136,21 @@ func NewCollector(store *redisx.Store, config CollectorConfig, databaseQueriesPa
 	if store == nil {
 		return nil, errors.New("collection requires Redis")
 	}
+	enrollment := collect.Enrollment{Store: store}
+	queue := collect.Queue{Store: store, MaxLength: int64(config.QueueMaxLength)}
+	if config.AdmitOnly {
+		// Erasure is enqueued rather than performed, because this process has
+		// no evidence lake to erase from.
+		return &Collector{
+			config:     config,
+			enrollment: enrollment,
+			queue:      queue,
+			admitter:   collect.Admitter{Enrollment: enrollment, Queue: queue},
+			reporter: collect.Reporter{
+				Enrollment: enrollment, Queue: queue, Store: store,
+			},
+		}, nil
+	}
 	client, err := githubapp.New(githubapp.Config{
 		AppID:         config.AppID,
 		PrivateKeyPEM: config.PrivateKeyPEM,
@@ -124,8 +164,6 @@ func NewCollector(store *redisx.Store, config CollectorConfig, databaseQueriesPa
 	if err := lake.Prepare(); err != nil {
 		return nil, err
 	}
-	enrollment := collect.Enrollment{Store: store}
-	queue := collect.Queue{Store: store, MaxLength: int64(config.QueueMaxLength)}
 	budget := &githubapp.Budget{Store: store, Floor: config.RateLimitFloor}
 	runner := collect.Runner{
 		Lake:                  lake,
@@ -183,6 +221,9 @@ func NewCollector(store *redisx.Store, config CollectorConfig, databaseQueriesPa
 // Rebuild reprojects the evidence lake. Cold start and recovery both reuse the
 // existing administrative rebuild endpoint through this method.
 func (c *Collector) Rebuild(ctx context.Context) (ingest.Result, error) {
+	if c.config.AdmitOnly {
+		return ingest.Result{}, ErrAdmitOnly
+	}
 	populated, err := c.lake.Populated()
 	if err != nil {
 		return ingest.Result{}, err
@@ -207,6 +248,10 @@ func (c *Collector) Reconcile(ctx context.Context, event GitHubWebhook) (ingest.
 		}
 		return ingest.Result{}, err
 	}
+	if c.config.AdmitOnly {
+		// Admission is complete; a collection worker projects.
+		return ingest.Result{}, nil
+	}
 	return c.projector.Project(ctx)
 }
 
@@ -228,6 +273,10 @@ func (c *Collector) Admit(ctx context.Context, event GitHubWebhook) (map[string]
 func (c *Collector) Start(ctx context.Context, onProjection func(revision int64)) error {
 	if err := c.queue.Ensure(ctx); err != nil {
 		return err
+	}
+	if c.config.AdmitOnly {
+		// Nothing to start: this process only admits deliveries.
+		return nil
 	}
 	go func() {
 		if _, err := c.backfill.Run(ctx); err != nil && ctx.Err() == nil {
@@ -276,6 +325,11 @@ func (c *Collector) recoverDeliveries(ctx context.Context) {
 		}
 	}
 }
+
+// ErrAdmitOnly reports an operation that requires collection credentials and
+// an evidence lake on a process configured to admit deliveries only.
+var ErrAdmitOnly = errors.New(
+	"this process admits deliveries only; run the collect or backfill role")
 
 // Worker builds a standalone collection worker for the collect role.
 func (c *Collector) Worker(consumer string) collect.Worker {

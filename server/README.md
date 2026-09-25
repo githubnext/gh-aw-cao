@@ -338,6 +338,19 @@ failing.
 | `CAO_COLLECT_PROJECTION_INTERVAL` | minimum interval between projections |
 | `CAO_COLLECT_RECOVER_DELIVERIES` | replay failed webhook deliveries to close gaps |
 | `CAO_COLLECT_QUEUE_MAX_LENGTH` | bound on the task and dead-letter streams (default 200 000) |
+| `CAO_COLLECT_ADMIT_ONLY` | admit deliveries without collecting; requires no private key |
+
+### Admission-only front ends
+
+A process that only receives webhooks does not need collection credentials.
+Setting `CAO_COLLECT_ADMIT_ONLY` verifies deliveries and enqueues work while
+refusing an App private key, workers, and delivery replay, so the
+internet-facing front end holds no credential it cannot use. The Azure Function
+App is deployed this way; the collection workers hold the key.
+
+Withdrawing scope still takes effect: an admission-only process queues erasure
+for a worker that has the evidence lake, and administrative rebuild fails
+closed with an instruction to run the `collect` or `backfill` role.
 
 ### Retention and erasure
 
