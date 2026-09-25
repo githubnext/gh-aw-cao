@@ -331,7 +331,7 @@ export async function isCachedGhAwJsonlCurrent(indexedDB, options) {
 
 /**
  * @param {IDBFactory} indexedDB
- * @param {{ payloadIdentity: string, payloadScope: string }} options
+ * @param {{ payloadIdentity: string, payloadScope: string, expectedPhase?: 'runs' | 'records' }} options
  * @param {number} [ingestionVersion]
  */
 export async function isNormalizedJsonCurrent(
@@ -343,6 +343,7 @@ export async function isNormalizedJsonCurrent(
   const receipt = await readTransaction(indexedDB, receiptId);
   if (receipt?.payloadHash === options.payloadIdentity
       && receipt.ingestionVersion === ingestionVersion) {
+    if (options.expectedPhase === 'runs' && !Number.isSafeInteger(receipt.rawRuns)) return false;
     return true;
   }
   const legacyReceipt = await readCurrentIngestion(indexedDB, 'ingest-normalized-json', options.payloadScope);
@@ -807,6 +808,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
       let bufferedRecords = 0;
       let committedBatches = 0;
       let committedRecords = 0;
+      let rawRuns = 0;
       const flush = async () => {
         if (bufferedRecords === 0) return;
         phase = 'writing';
@@ -892,6 +894,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
         if (excluded.includes(collection)) {
           throw new TypeError(`Normalized ${header.phase} payload must not include ${collection}`);
         }
+        if (collection === 'runs') rawRuns += 1;
         batch[collection].push(/** @type {never} */ (envelope.record));
         bufferedRecords += 1;
         if (bufferedRecords >= NORMALIZED_JSONL_WRITE_BATCH_SIZE) await flush();
@@ -930,6 +933,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
         ingestionVersion: NORMALIZED_JSONL_INGESTION_VERSION,
         records: Number(metadata.sourceRecords ?? 0),
         committedRecords,
+        rawRuns,
         ...(retained === null ? { maintenanceDeferred: true } : { storage: retained })
       });
       return { ...result, records: Number(metadata.sourceRecords ?? 0) };
