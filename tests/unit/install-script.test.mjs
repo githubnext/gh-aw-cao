@@ -15,6 +15,7 @@ test("install.sh installs gh-aw, adds the core campaign, and is idempotent", asy
   const log = path.join(root, "commands.log");
   const ghAwInstalled = path.join(root, "gh-aw-installed");
   await mkdir(bin);
+  await writeFile(path.join(root, "aw.yml"), "min-version: v0.89.21\n");
   await writeFile(path.join(bin, "gh"), `#!/usr/bin/env bash
 set -euo pipefail
 if [[ "\${1:-} \${2:-}" == "aw version" ]]; then
@@ -60,14 +61,14 @@ exit 2
 `);
   const fakeCurl = `#!/usr/bin/env bash
 echo "curl" >> "$FAKE_COMMAND_LOG"
-printf '%s\\n' '#!/usr/bin/env bash' 'printf "v0.89.20\\n" > "$FAKE_GH_AW_INSTALLED"'
+printf '%s\\n' '#!/usr/bin/env bash' 'printf "v0.89.21\\n" > "$FAKE_GH_AW_INSTALLED"'
 `;
   await writeFile(path.join(bin, "curl"), fakeCurl);
   await writeFile(path.join(bin, "curl.exe"), fakeCurl);
   await chmod(path.join(bin, "gh"), 0o755);
   await chmod(path.join(bin, "curl"), 0o755);
   await chmod(path.join(bin, "curl.exe"), 0o755);
-  await writeFile(ghAwInstalled, "v0.89.20\n");
+  await writeFile(ghAwInstalled, "v0.89.21\n");
 
   const env = {
     ...process.env,
@@ -94,15 +95,16 @@ printf '%s\\n' '#!/usr/bin/env bash' 'printf "v0.89.20\\n" > "$FAKE_GH_AW_INSTAL
     await executeFile("bash", [installScript], { cwd: root, env });
     assert.equal(await readFile(log, "utf8"), "add\ninit\nadd-force\n");
 
-    await writeFile(ghAwInstalled, "v0.89.21-rc.1\n");
+    await writeFile(ghAwInstalled, "v0.89.22-rc.1\n");
     await executeFile("bash", [installScript], { cwd: root, env });
-    assert.equal(await readFile(ghAwInstalled, "utf8"), "v0.89.21-rc.1\n");
+    assert.equal(await readFile(ghAwInstalled, "utf8"), "v0.89.22-rc.1\n");
     assert.equal(await readFile(log, "utf8"), "add\ninit\nadd-force\n");
 
     if (process.platform !== "win32") {
       await writeFile(ghAwInstalled, "v0.88.0\n");
       const declined = await executeFile("bash", [installScript, "githubnext/gh-aw-cao@v1.2.3"], { cwd: root, env });
-      assert.match(declined.stdout, /gh aw upgrade --pre-releases.*rerun the CAO installer/);
+      assert.match(declined.stdout, /gh aw upgrade.*rerun the CAO installer/);
+      assert.doesNotMatch(declined.stdout, /--pre-releases/);
       assert.equal(await readFile(log, "utf8"), "add\ninit\nadd-force\n");
 
       await rm(ghAwInstalled);
@@ -115,22 +117,32 @@ printf '%s\\n' '#!/usr/bin/env bash' 'printf "v0.89.20\\n" > "$FAKE_GH_AW_INSTAL
   }
 });
 
-test("install.sh offers a manifest-required upgrade, retries on approval, and stops cleanly on decline", { skip: process.platform === "win32" }, async () => {
+test("install.sh selects stable or prerelease upgrades from the campaign manifest", { skip: process.platform === "win32" }, async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-install-upgrade-"));
   const bin = path.join(root, "bin");
   const log = path.join(root, "commands.log");
   const installed = path.join(root, "gh-aw-installed");
   await mkdir(bin);
-  await writeFile(installed, "v0.89.20\n");
+  await writeFile(path.join(root, "aw.yml"), "min-version: v0.89.21\n");
+  await writeFile(installed, "v0.89.21\n");
   await writeFile(path.join(bin, "gh"), `#!/usr/bin/env bash
 set -euo pipefail
 if [[ "\${1:-} \${2:-}" == "aw version" ]]; then
   echo "gh aw version $(cat "$FAKE_GH_AW_INSTALLED")" >&2
-elif [[ "\${1:-} \${2:-} \${3:-}" == "aw upgrade --pre-releases" ]]; then
-  echo "upgrade --pre-releases" >> "$FAKE_COMMAND_LOG"
-  echo v0.89.21 > "$FAKE_GH_AW_INSTALLED"
+elif [[ "\${1:-} \${2:-}" == "aw upgrade" ]]; then
+  if [[ "\${3:-}" == "--pre-releases" ]]; then
+    echo "upgrade --pre-releases" >> "$FAKE_COMMAND_LOG"
+    echo v0.89.22-rc.1 > "$FAKE_GH_AW_INSTALLED"
+  else
+    echo upgrade >> "$FAKE_COMMAND_LOG"
+    echo v0.89.21 > "$FAKE_GH_AW_INSTALLED"
+  fi
 elif [[ "\${1:-} \${2:-}" == "aw add" ]]; then
-  echo add >> "$FAKE_COMMAND_LOG"
+  if [[ "\${4:-}" == "--force" ]]; then
+    echo add-force >> "$FAKE_COMMAND_LOG"
+  else
+    echo add >> "$FAKE_COMMAND_LOG"
+  fi
   if [[ -n "\${FAKE_ADD_ERROR:-}" ]]; then
     echo "unrelated installation failure" >&2
     exit 1
@@ -157,24 +169,37 @@ fi
       executeFile("bash", [installScript], { cwd: root, env: { ...env, FAKE_ADD_ERROR: "1" } }),
       /unrelated installation failure/,
     );
+    await writeFile(installed, "v0.89.20\n");
     const declined = await executeFile("bash", [installScript], { cwd: root, env });
-    assert.match(declined.stdout, /gh aw upgrade --pre-releases.*rerun the CAO installer/);
-    assert.equal(await readFile(log, "utf8"), "add\nadd\n");
+    assert.match(declined.stdout, /gh aw upgrade.*rerun the CAO installer/);
+    assert.doesNotMatch(declined.stdout, /--pre-releases/);
+    assert.equal(await readFile(log, "utf8"), "add\n");
     assert.equal(await readFile(installed, "utf8"), "v0.89.20\n");
 
     // script supplies a controlling terminal even when the installer is piped into bash.
     const no = await executeFile("bash", ["-c",
       `printf 'n\\n' | script -q -e -c 'cat "${installScript}" | bash' /dev/null`,
     ], { cwd: root, env, timeout: 10_000 });
-    assert.match(no.stdout, /gh aw upgrade --pre-releases.*rerun the CAO installer/);
-    assert.equal(await readFile(log, "utf8"), "add\nadd\nadd\n");
+    assert.match(no.stdout, /gh aw upgrade.*rerun the CAO installer/);
+    assert.doesNotMatch(no.stdout, /--pre-releases/);
+    assert.equal(await readFile(log, "utf8"), "add\n");
 
     const { stdout } = await executeFile("bash", ["-c",
       `printf 'y\\n' | script -q -e -c 'cat "${installScript}" | bash' /dev/null`,
     ], { cwd: root, env, timeout: 10_000 });
-    assert.match(stdout, /Upgrade it now with gh aw upgrade --pre-releases/);
-    assert.equal(await readFile(log, "utf8"), "add\nadd\nadd\nadd\nupgrade --pre-releases\nadd\n");
+    assert.match(stdout, /Upgrade it now with gh aw upgrade\?/);
+    assert.doesNotMatch(stdout, /--pre-releases/);
+    assert.equal(await readFile(log, "utf8"), "add\nupgrade\nadd\n");
     assert.equal(await readFile(installed, "utf8"), "v0.89.21\n");
+
+    await writeFile(path.join(root, "aw.yml"), "min-version: v0.89.22-rc.1\n");
+    await writeFile(installed, "v0.89.21\n");
+    const prerelease = await executeFile("bash", ["-c",
+      `printf 'y\\n' | script -q -e -c 'cat "${installScript}" | bash -s' /dev/null`,
+    ], { cwd: root, env, timeout: 10_000 });
+    assert.match(prerelease.stdout, /Upgrade it now with gh aw upgrade --pre-releases/);
+    assert.equal(await readFile(log, "utf8"), "add\nupgrade\nadd\nupgrade --pre-releases\n");
+    assert.equal(await readFile(installed, "utf8"), "v0.89.22-rc.1\n");
   } finally {
     await rm(root, { recursive: true, force: true });
   }

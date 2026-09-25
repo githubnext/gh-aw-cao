@@ -8,8 +8,15 @@ cao_command="./cao.sh"
 control_runtime=".github/workflows/shared/control.mjs"
 materializer=".github/workflows/shared/materialize-cao.mjs"
 runtime_action=".github/actions/setup-cao-runtime/action.yml"
-required_gh_aw="v0.89.20"
+required_gh_aw="v0.89.21"
 catalog_source="${1:-githubnext/gh-aw-cao}"
+
+if [[ "$catalog_source" == "githubnext/gh-aw-cao" && -f aw.yml ]]; then
+  manifest_required_gh_aw="$(awk '$1 == "min-version:" { print $2; exit }' aw.yml)"
+  if [[ -n "$manifest_required_gh_aw" ]]; then
+    required_gh_aw="$manifest_required_gh_aw"
+  fi
+fi
 
 version_at_least() {
   node -e '
@@ -31,14 +38,20 @@ process.exit(1);
 
 upgrade_gh_aw() {
   local answer
+  local upgrade_command="gh aw upgrade"
+  local -a upgrade_options=()
+  if [[ "$required_gh_aw" == *-* ]]; then
+    upgrade_command+=" --pre-releases"
+    upgrade_options+=(--pre-releases)
+  fi
   if [[ -r /dev/tty ]]; then
-    printf 'The installed gh-aw is too old for this CAO campaign. Upgrade it now with gh aw upgrade --pre-releases? [y/N] ' > /dev/tty
+    printf 'The installed gh-aw is too old for this CAO campaign. Upgrade it now with %s? [y/N] ' "$upgrade_command" > /dev/tty
     if IFS= read -r answer < /dev/tty && [[ "$answer" =~ ^[Yy]$ ]]; then
-      gh aw upgrade --pre-releases
+      gh aw upgrade "${upgrade_options[@]}"
       return
     fi
   fi
-  printf 'gh-aw was not upgraded. Run `gh aw upgrade --pre-releases`, then rerun the CAO installer.\n'
+  printf 'gh-aw was not upgraded. Run `%s`, then rerun the CAO installer.\n' "$upgrade_command"
   return 1
 }
 
@@ -52,22 +65,7 @@ elif ! version_at_least "$current_gh_aw" "$required_gh_aw"; then
 fi
 
 add_campaign() {
-  local add_error
-  add_error="$(mktemp)"
-  if gh aw add "$catalog_source" "$@" 2>"$add_error"; then
-    rm -f "$add_error"
-    return 0
-  fi
-  if grep -Eq 'min-version "v[0-9]+\.[0-9]+\.[0-9]+" requires gh-aw' "$add_error"; then
-    cat "$add_error" >&2
-    rm -f "$add_error"
-    upgrade_gh_aw || exit 0
-    gh aw add "$catalog_source" "$@"
-  else
-    cat "$add_error" >&2
-    rm -f "$add_error"
-    return 1
-  fi
+  gh aw add "$catalog_source" "$@"
 }
 
 if [[ ! -f "$cao_cli" || ! -f "$cao_command" || ! -f "$control_runtime" || ! -f "$materializer" || ! -f "$runtime_action" ]]; then
