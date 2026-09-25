@@ -768,8 +768,8 @@ test('data worker returns the Models & agents run distribution on initial and na
       context
     );
     const navigated = await loadCanonicalDashboardPage(['engines-models-usage'], context);
-    const pageDefinition = context.pages.find((candidate) => candidate.id === 'engines-models');
-    const supplementalView = pageDefinition.views.find((view) => view.id === 'engines-models-aic-insights');
+    const pageDefinition = context.pages.find((/** @type {any} */ candidate) => candidate.id === 'engines-models');
+    const supplementalView = pageDefinition.views.find((/** @type {any} */ view) => view.id === 'engines-models-aic-insights');
     const supplementalAlias = dashboardViewAliasName(
       pageDefinition.id,
       supplementalView,
