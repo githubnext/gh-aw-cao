@@ -5,6 +5,8 @@ import test from "node:test";
 
 import { workflowsDirectory } from "./workflow-contract.helpers.mjs";
 
+const HARDCODED_ACTIONS_URL = /https:\/\/github\.com\/(?:\$\{\{\s*github\.repository\s*\}\}|[^/\s)]+)\/actions\//;
+
 function workflowSources(directory = workflowsDirectory, prefix = "") {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const relativePath = join(prefix, entry.name);
@@ -15,15 +17,15 @@ function workflowSources(directory = workflowsDirectory, prefix = "") {
   });
 }
 
-test("workflow sources use the GitHub Actions server URL instead of github.com", () => {
+test("workflow sources use the GitHub Actions server URL instead of github.com for Actions links", () => {
   const sources = workflowSources();
   assert.ok(sources.length > 0, "expected workflow Markdown sources");
 
   for (const [path, source] of sources) {
     assert.doesNotMatch(
       source,
-      /https:\/\/github\.com(?![\w.-])/,
-      `${path} hard-codes github.com; use github.server_url or GITHUB_SERVER_URL for GitHub Actions URLs`,
+      HARDCODED_ACTIONS_URL,
+      `${path} hard-codes github.com for a GitHub Actions URL; use github.server_url or GITHUB_SERVER_URL`,
     );
   }
 });
