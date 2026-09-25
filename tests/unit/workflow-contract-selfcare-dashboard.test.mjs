@@ -100,6 +100,7 @@ test("SelfCare reactive UI expert applies the local reactive framework skill", (
   assert.match(source, /\.github\/skills\/migrate-dashboard-view/);
   assert.match(source, /safe_output_mode` is `live`/);
   assert.match(source, /\.github\/skills\/reactive-ui\/SKILL\.md/);
+  assert.match(source, /allowed-files:\n\s+- "\.github\/skills\/reactive-ui\/SKILL\.md"\n\s+- "\.github\/skills\/migrate-dashboard-view\/SKILL\.md"/);
   assert.match(source, /dashboard\/site\/src\/reactive\.js/);
   assert.match(source, /stable keyed rendering/);
   assert.match(source, /state`, `derived`, `effect`, `batch`, `onCleanup`/);
@@ -119,6 +120,7 @@ test("SelfCare reactive UI expert applies the local reactive framework skill", (
   assert.match(source, /draft: true/);
   assert.match(compiled, /self-care-reactive-ui-expert/);
   assert.match(compiled, /\.github\/skills\/reactive-ui/);
+  assert.match(compiled, /\.github\/skills\/migrate-dashboard-view\/SKILL\.md/);
 });
 
 test("SelfCare dashboard debug logging worker preserves the logging privacy boundary", () => {
