@@ -152,9 +152,9 @@ describe('dashboard sidebar', () => {
       { label: 'Updates', placement: 'bottom', pages: ['maintenance'] }
     ]);
 
-    const maintenanceLink = sidebar.querySelector('[data-nav-page-id="maintenance"]');
-    const mobileMaintenanceLink = sidebar.querySelector('[data-mobile-nav-page-id="maintenance"]');
-    expect(maintenanceLink?.querySelector('[data-nav-indicator]')?.hasAttribute('hidden')).toBe(true);
+    const updatesLink = sidebar.querySelector('[data-nav-page-id="maintenance"]');
+    const mobileUpdatesLink = sidebar.querySelector('[data-mobile-nav-page-id="maintenance"]');
+    expect(updatesLink?.querySelector('[data-nav-indicator]')?.hasAttribute('hidden')).toBe(true);
 
     syncDashboardNavigationIndicators(sidebar, pages, {
       campaigns: {
@@ -162,10 +162,10 @@ describe('dashboard sidebar', () => {
       }
     });
 
-    expect(maintenanceLink?.querySelector('[data-nav-indicator]')?.hasAttribute('hidden')).toBe(false);
-    expect(maintenanceLink?.getAttribute('aria-label')).toBe('Updates, updates available');
-    expect(mobileMaintenanceLink?.querySelector('[data-nav-indicator]')?.hasAttribute('hidden')).toBe(false);
-    expect(mobileMaintenanceLink?.getAttribute('aria-label')).toBe('Updates, updates available');
+    expect(updatesLink?.querySelector('[data-nav-indicator]')?.hasAttribute('hidden')).toBe(false);
+    expect(updatesLink?.getAttribute('aria-label')).toBe('Updates, updates available');
+    expect(mobileUpdatesLink?.querySelector('[data-nav-indicator]')?.hasAttribute('hidden')).toBe(false);
+    expect(mobileUpdatesLink?.getAttribute('aria-label')).toBe('Updates, updates available');
 
     syncDashboardNavigationIndicators(sidebar, pages, {
       campaigns: {
@@ -173,8 +173,8 @@ describe('dashboard sidebar', () => {
       }
     });
 
-    expect(maintenanceLink?.querySelector('[data-nav-indicator]')?.hasAttribute('hidden')).toBe(true);
-    expect(maintenanceLink?.getAttribute('aria-label')).toBe('Updates');
+    expect(updatesLink?.querySelector('[data-nav-indicator]')?.hasAttribute('hidden')).toBe(true);
+    expect(updatesLink?.getAttribute('aria-label')).toBe('Updates');
 
     syncDashboardNavigationIndicators(sidebar, pages, {
       'maintenance-repositories': {
@@ -182,8 +182,8 @@ describe('dashboard sidebar', () => {
       }
     });
 
-    expect(maintenanceLink?.querySelector('[data-nav-indicator]')?.hasAttribute('hidden')).toBe(false);
-    expect(maintenanceLink?.getAttribute('aria-label')).toBe('Updates, updates available');
+    expect(updatesLink?.querySelector('[data-nav-indicator]')?.hasAttribute('hidden')).toBe(false);
+    expect(updatesLink?.getAttribute('aria-label')).toBe('Updates, updates available');
   });
 
   it('places the hosted user control at the bottom of the sidebar', () => {
