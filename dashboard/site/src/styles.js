@@ -494,6 +494,19 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .page-chrome { min-height: 44px; display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
 .page-chrome > .filter-bar { min-width: 0; flex: 1; justify-content: flex-end; margin-bottom: 0; }
 .page-chrome > .filter-bar .filter-tuning-controls { min-width: 0; display: flex; flex: 1; align-items: center; gap: 8px; }
+.dashboard-parameter-form { display: grid; gap: 12px; margin: 0 0 16px; padding: 16px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); }
+.dashboard-parameter-form-header { display: grid; gap: 4px; }
+.dashboard-parameter-form-header :is(h2, p) { margin: 0; }
+.dashboard-parameter-form-header h2 { font-size: 16px; }
+.dashboard-parameter-form-header p, .dashboard-parameter-description { color: var(--fg-muted); font-size: 12px; }
+.dashboard-parameter-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px 16px; align-items: start; }
+.dashboard-parameter-field { min-width: 0; display: grid; gap: 6px; }
+.dashboard-parameter-label { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; }
+.dashboard-parameter-slider input[type="range"] { width: 100%; }
+.dashboard-parameter-checkbox label, .dashboard-parameter-radio-options label { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; }
+.dashboard-parameter-radio { margin: 0; padding: 0; border: 0; }
+.dashboard-parameter-radio legend { padding: 0; font-weight: 600; }
+.dashboard-parameter-radio-options { display: flex; flex-wrap: wrap; gap: 4px 16px; }
 .view-mode-control { display: inline-flex; flex: none; align-items: stretch; overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
 .view-mode-option { min-height: 32px; display: inline-flex; align-items: center; gap: 7px; padding: 5px 10px; border: 0; border-right: 1px solid var(--border); background: transparent; color: var(--fg); font: inherit; font-size: .8125rem; font-weight: 500; cursor: pointer; }
 .view-mode-option:last-child { border-right: 0; }

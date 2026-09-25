@@ -71,6 +71,57 @@ templates, callbacks, or network requests. This keeps results deterministic,
 reviewable, and executable in the dashboard data worker. It also keeps data
 selection and business calculations out of UI components.
 
+## Build an interactive simulator
+
+A page can declare a typed `form` whose values feed query `parameters`.
+Use a `slider` for a bounded numeric assumption, a `checkbox` for one Boolean
+choice, and a `radio` field for one choice from a short ordered set. The
+presenter lays fields out automatically and keeps their values in page memory.
+
+```yaml
+queries:
+  - name: simulated-usage
+    intent: Estimate AIC under an operator-selected multiplier.
+    parameters:
+      - { name: multiplier, type: number }
+    from: usage
+    compute:
+      - as: simulated-aic
+        function: product
+        args:
+          - { field: aic }
+          - { parameter: multiplier }
+
+pages:
+  - id: simulator
+    kind: custom
+    title: Performance simulator
+    form:
+      title: Scenario
+      update: { strategy: debounce, delay-ms: 250 }
+      fields:
+        - id: multiplier
+          label: AIC multiplier
+          control: slider
+          default: 1
+          min: 0
+          max: 4
+          step: 0.25
+    views:
+      - id: simulated-aic
+        data: { source: simulated-usage }
+        mark: chart
+        chart: line
+        encoding:
+          x: { field: observed-at, type: temporal }
+          y: { field: simulated-aic, type: quantitative }
+```
+
+Use `debounce` for sliders that should settle before execution or `throttle`
+for continuously sampled feedback. The runtime aborts superseded page
+projections and only renders the newest complete result. Form components never
+filter or compute data themselves.
+
 ## Present the result
 
 Views turn query results into a small set of standard marks:

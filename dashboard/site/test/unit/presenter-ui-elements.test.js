@@ -84,8 +84,8 @@ describe('dashboard sidebar', () => {
         'navigation-indicator': {
           label: 'updates available',
           any: [
-            { source: 'campaigns', field: 'campaign-update-state', equals: 'update-available' },
-            { source: 'maintenance-repositories', field: 'upgrade-state', equals: 'update-available' }
+            'campaigns',
+            'maintenance-repositories'
           ]
         }
       }
@@ -112,7 +112,7 @@ describe('dashboard sidebar', () => {
 
     syncDashboardNavigationIndicators(sidebar, pages, {
       campaigns: {
-        rows: [{ 'campaign-update-state': 'current' }]
+        rows: []
       }
     });
 
@@ -121,7 +121,7 @@ describe('dashboard sidebar', () => {
 
     syncDashboardNavigationIndicators(sidebar, pages, {
       'maintenance-repositories': {
-        rows: [{ 'upgrade-state': 'update-available' }]
+        rows: [{}]
       }
     });
 

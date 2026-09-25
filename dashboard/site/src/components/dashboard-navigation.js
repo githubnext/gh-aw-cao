@@ -271,14 +271,11 @@ function renderMobileNavItem(page, isActive) {
   );
 }
 
-/** @param {{ predicates: Array<Record<string, unknown>> }} indicator @param {Record<string, { rows?: Array<Record<string, unknown>> } | undefined>} sources */
+/** @param {{ sources: string[] }} indicator @param {Record<string, { rows?: Array<Record<string, unknown>> } | undefined>} sources */
 function indicatorMatches(indicator, sources) {
-  return indicator.predicates.some((test) => {
-    if (typeof test.source !== 'string' || typeof test.field !== 'string') return false;
-    const sourceName = test.source;
-    const fieldName = test.field;
+  return indicator.sources.some((sourceName) => {
     const rows = sources[sourceName]?.rows;
-    return Array.isArray(rows) && rows.some((row) => row[fieldName] === test.equals);
+    return Array.isArray(rows) && rows.length > 0;
   });
 }
 

@@ -30,6 +30,8 @@ import {
   QUERY_JOIN_ON_KEYS,
   QUERY_JOIN_TYPE_VALUES,
   QUERY_KEYS,
+  QUERY_PARAMETER_KEYS,
+  QUERY_PARAMETER_TYPE_VALUES,
   QUERY_MAX_JOINS,
   QUERY_PREDICATE_KEYS,
   QUERY_PREDICT_KEYS,
@@ -76,7 +78,6 @@ import {
   MAX_CLI_ACTION_ARGUMENTS,
   MAX_CLI_ACTION_COMMAND_LENGTH,
   NAVIGATION_INDICATOR_KEYS,
-  NAVIGATION_INDICATOR_PREDICATE_KEYS,
   NAVIGATION_SECTION_KEYS,
   NON_ADDITIVE_MEASURE_FIELDS,
   ORDER_BY_KEYS,
@@ -86,6 +87,14 @@ import {
   PAGE_ROUTE_TITLE_FORMAT_VALUES,
   PAGE_ROUTE_TAB_KEYS,
   MAX_PAGE_ROUTE_TABS,
+  PAGE_FORM_KEYS,
+  PAGE_FORM_UPDATE_KEYS,
+  PAGE_FORM_UPDATE_STRATEGY_VALUES,
+  PAGE_FORM_FIELD_KEYS,
+  PAGE_FORM_CONTROL_VALUES,
+  PAGE_FORM_OPTION_KEYS,
+  PAGE_FORM_MIN_DELAY_MS,
+  PAGE_FORM_MAX_DELAY_MS,
   PAGE_ICON_VALUES,
   PAGE_KIND_VALUES,
   PAGE_SECTION_KEYS,
@@ -272,6 +281,8 @@ function validWorkflowDispatchArguments(args) {
  * @type {Map<string, string[] | undefined>}
  */
 let declaredQueries = new Map();
+/** @type {Map<string, Map<string, string>>} */
+let declaredQueryParameters = new Map();
 /** @type {Set<string>} */
 let declaredCardTemplates = new Set();
 /** @type {Map<string, Record<string, unknown>>} */
@@ -329,6 +340,7 @@ export function validateDashboardDocument(source) {
     declaredQueries = new Map();
     declaredCardTemplates = new Set();
     declaredQueryTables = new Map();
+    declaredQueryParameters = new Map();
     declaredCliActions = new Map();
   }
 
@@ -1625,6 +1637,7 @@ function validatePage(page, pageNode, path, pageIds, errors) {
       `${path}.filter-bar`
     ));
   }
+  validatePageForm(page.form, getValueNodeByKey(pageNode, 'form'), `${path}.form`, errors);
   if (page.icon !== undefined) {
     validateStringField(page.icon, `${path}.icon`, true, errors);
     if (typeof page.icon === 'string' && !PAGE_ICON_VALUES.includes(page.icon)) {
@@ -1668,21 +1681,8 @@ function validateNavigationIndicator(indicator, indicatorNode, path, errors) {
     errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'navigation-indicator any must be a non-empty sequence.', `${path}.any`));
     return;
   }
-  indicator.any.forEach((predicate, index) => {
-    const predicatePath = `${path}.any[${index}]`;
-    const predicateNode = getSequenceItemNode(getValueNodeByKey(indicatorNode, 'any'), index);
-    if (!isPlainObject(predicate)) {
-      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'navigation-indicator predicate must be a mapping.', predicatePath));
-      return;
-    }
-    validateObjectKeys(predicateNode, NAVIGATION_INDICATOR_PREDICATE_KEYS, predicatePath, errors);
-    validateStringField(predicate.source, `${predicatePath}.source`, true, errors);
-    validateStringField(predicate.field, `${predicatePath}.field`, true, errors);
-    if (!Object.hasOwn(predicate, 'equals')) {
-      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'navigation-indicator predicate equals is required.', `${predicatePath}.equals`));
-    } else if (!['string', 'number', 'boolean'].includes(typeof predicate.equals)) {
-      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'navigation-indicator predicate equals must be a scalar.', `${predicatePath}.equals`));
-    }
+  indicator.any.forEach((source, index) => {
+    validateStringField(source, `${path}.any[${index}]`, true, errors);
   });
 }
 
@@ -3642,6 +3642,216 @@ function validateDisclosureValue(disclosure, path, errors) {
 }
 
 /**
+ * @param {unknown} parameters
+ * @param {unknown} parametersNode
+ * @param {string} path
+ * @param {ValidationError[]} errors
+ * @returns {Map<string, string>}
+ */
+function validateQueryParameters(parameters, parametersNode, path, errors) {
+  const declared = new Map();
+  if (parameters === undefined) return declared;
+  if (!Array.isArray(parameters) || parameters.length === 0) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'query parameters must be a non-empty sequence.', path));
+    return declared;
+  }
+  parameters.forEach((parameter, index) => {
+    const parameterPath = `${path}[${index}]`;
+    if (!isPlainObject(parameter)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'query parameter must be a mapping.', parameterPath));
+      return;
+    }
+    validateObjectKeys(getSequenceItemNode(parametersNode, index), QUERY_PARAMETER_KEYS, parameterPath, errors);
+    validateRequiredIdentifier(parameter.name, `${parameterPath}.name`, 'query parameter name', errors);
+    if (typeof parameter.type !== 'string' || !QUERY_PARAMETER_TYPE_VALUES.includes(parameter.type)) {
+      errors.push(createError(
+        ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+        `query parameter type must be one of ${QUERY_PARAMETER_TYPE_VALUES.join(', ')}.`,
+        `${parameterPath}.type`
+      ));
+    }
+    if (typeof parameter.name === 'string') {
+      if (declared.has(parameter.name)) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'query parameter names must be unique.', `${parameterPath}.name`));
+      } else if (typeof parameter.type === 'string') {
+        declared.set(parameter.name, parameter.type);
+      }
+    }
+  });
+  return declared;
+}
+
+/**
+ * @param {Record<string, unknown>} reference
+ * @param {string} path
+ * @param {Map<string, string>} parameters
+ * @param {ValidationError[]} errors
+ */
+function validateParameterReference(reference, path, parameters, errors) {
+  if (Object.keys(reference).length !== 1 || typeof reference.parameter !== 'string') {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'parameter reference must contain exactly one parameter name.', path));
+    return;
+  }
+  if (!parameters.has(reference.parameter)) {
+    errors.push(createError(
+      ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+      `parameter reference "${reference.parameter}" must name a parameter declared by this query.`,
+      `${path}.parameter`
+    ));
+  }
+}
+
+/**
+ * @param {unknown} form
+ * @param {unknown} formNode
+ * @param {string} path
+ * @param {ValidationError[]} errors
+ */
+function validatePageForm(form, formNode, path, errors) {
+  if (form === undefined) return;
+  if (!isPlainObject(form)) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'page form must be a mapping.', path));
+    return;
+  }
+  validateObjectKeys(formNode, PAGE_FORM_KEYS, path, errors);
+  validateOptionalStringField(form.title, `${path}.title`, errors);
+  validateOptionalStringField(form.description, `${path}.description`, errors);
+  if (form.update !== undefined) {
+    if (!isPlainObject(form.update)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'form update must be a mapping.', `${path}.update`));
+    } else {
+      validateObjectKeys(getValueNodeByKey(formNode, 'update'), PAGE_FORM_UPDATE_KEYS, `${path}.update`, errors);
+      if (typeof form.update.strategy !== 'string' || !PAGE_FORM_UPDATE_STRATEGY_VALUES.includes(form.update.strategy)) {
+        errors.push(createError(
+          ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+          `form update strategy must be one of ${PAGE_FORM_UPDATE_STRATEGY_VALUES.join(', ')}.`,
+          `${path}.update.strategy`
+        ));
+      }
+      const delay = form.update['delay-ms'];
+      if (typeof delay !== 'number' || !Number.isInteger(delay) || delay < PAGE_FORM_MIN_DELAY_MS || delay > PAGE_FORM_MAX_DELAY_MS) {
+        errors.push(createError(
+          ERROR_CODES.missingOrInvalidRequiredField,
+          `form update delay-ms must be an integer from ${PAGE_FORM_MIN_DELAY_MS} to ${PAGE_FORM_MAX_DELAY_MS}.`,
+          `${path}.update.delay-ms`
+        ));
+      }
+    }
+  }
+  if (!Array.isArray(form.fields) || form.fields.length === 0) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'page form fields must be a non-empty sequence.', `${path}.fields`));
+    return;
+  }
+  const ids = new Set();
+  for (const [index, field] of form.fields.entries()) {
+    const fieldPath = `${path}.fields[${index}]`;
+    if (!isPlainObject(field)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'form field must be a mapping.', fieldPath));
+      continue;
+    }
+    validateObjectKeys(
+      getSequenceItemNode(getValueNodeByKey(formNode, 'fields'), index),
+      PAGE_FORM_FIELD_KEYS,
+      fieldPath,
+      errors
+    );
+    validateRequiredIdentifier(field.id, `${fieldPath}.id`, 'form field id', errors);
+    validateStringField(field.label, `${fieldPath}.label`, true, errors);
+    validateOptionalStringField(field.description, `${fieldPath}.description`, errors);
+    if (typeof field.id === 'string') {
+      const fieldId = field.id;
+      if (ids.has(fieldId)) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'form field ids must be unique.', `${fieldPath}.id`));
+      }
+      ids.add(fieldId);
+      const matchingTypes = [...declaredQueryParameters.values()]
+        .flatMap((parameters) => parameters.has(fieldId) ? [parameters.get(fieldId)] : [])
+        .filter((type) => typeof type === 'string');
+      if (matchingTypes.length === 0) {
+        errors.push(createError(ERROR_CODES.unusedQuery, `form field "${fieldId}" is not declared by any dashboard query.`, `${fieldPath}.id`));
+      }
+      const expectedType = field.control === 'slider' ? 'number'
+        : field.control === 'checkbox' ? 'boolean'
+          : typeof field.default;
+      if (matchingTypes.some((type) => type !== expectedType)) {
+        errors.push(createError(
+          ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
+          `form field "${fieldId}" type must match every query parameter with that name.`,
+          fieldPath
+        ));
+      }
+    }
+    if (typeof field.control !== 'string' || !PAGE_FORM_CONTROL_VALUES.includes(field.control)) {
+      errors.push(createError(
+        ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+        `form field control must be one of ${PAGE_FORM_CONTROL_VALUES.join(', ')}.`,
+        `${fieldPath}.control`
+      ));
+      continue;
+    }
+    if (field.control === 'slider') {
+      const defaultValue = typeof field.default === 'number' ? field.default : NaN;
+      const min = typeof field.min === 'number' ? field.min : NaN;
+      const max = typeof field.max === 'number' ? field.max : NaN;
+      const step = typeof field.step === 'number' ? field.step : NaN;
+      if (![defaultValue, min, max, step].every(Number.isFinite)
+          || min >= max || step <= 0 || defaultValue < min || defaultValue > max) {
+        errors.push(createError(
+          ERROR_CODES.missingOrInvalidRequiredField,
+          'slider requires finite min, max, step, and default values with min < max, step > 0, and default inside the range.',
+          fieldPath
+        ));
+      }
+    } else if (field.control === 'checkbox') {
+      if (typeof field.default !== 'boolean') {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'checkbox default must be Boolean.', `${fieldPath}.default`));
+      }
+    } else if (field.control === 'radio') {
+      validateRadioField(field, getSequenceItemNode(getValueNodeByKey(formNode, 'fields'), index), fieldPath, errors);
+    }
+  }
+}
+
+/** @param {Record<string, unknown>} field @param {unknown} fieldNode @param {string} fieldPath @param {ValidationError[]} errors */
+function validateRadioField(field, fieldNode, fieldPath, errors) {
+  if (!['string', 'number', 'boolean'].includes(typeof field.default)
+      || !Array.isArray(field.options) || field.options.length < 2 || field.options.length > 12) {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      'radio fields require a scalar default and between 2 and 12 options.',
+      fieldPath
+    ));
+    return;
+  }
+  /** @type {unknown[]} */
+  const values = [];
+  field.options.forEach((option, optionIndex) => {
+    const optionPath = `${fieldPath}.options[${optionIndex}]`;
+    if (!isPlainObject(option)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'radio option must be a mapping.', optionPath));
+      return;
+    }
+    validateObjectKeys(
+      getSequenceItemNode(getValueNodeByKey(fieldNode, 'options'), optionIndex),
+      PAGE_FORM_OPTION_KEYS,
+      optionPath,
+      errors
+    );
+    validateStringField(option.label, `${optionPath}.label`, true, errors);
+    if (!['string', 'number', 'boolean'].includes(typeof option.value) || typeof option.value !== typeof field.default) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'radio option values must be scalar and match the default type.', `${optionPath}.value`));
+    }
+    values.push(option.value);
+  });
+  if (!values.some((value) => value === field.default)) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'radio default must match one declared option value.', `${fieldPath}.default`));
+  }
+  if (new Set(values.map((value) => `${typeof value}:${String(value)}`)).size !== values.length) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'radio option values must be unique.', `${fieldPath}.options`));
+  }
+}
+
+/**
  * Validates declarative query definitions and derives each query's static
  * output field schema so view encodings, filters, and order-by references can
  * be checked before execution.
@@ -3675,6 +3885,12 @@ function validateQueries(queries, queriesNode, errors) {
     validateRequiredIdentifier(query.name, `${path}.name`, 'query name', errors);
     validateStringField(query.intent, `${path}.intent`, true, errors);
     validateOptionalStringField(query.description, `${path}.description`, errors);
+    const parameters = validateQueryParameters(
+      query.parameters,
+      getValueNodeByKey(queryNode, 'parameters'),
+      `${path}.parameters`,
+      errors
+    );
     if (query.time !== undefined) {
       validateTime(getValueNodeByKey(queryNode, 'time'), query.time, `${path}.time`, errors);
     }
@@ -3689,6 +3905,7 @@ function validateQueries(queries, queriesNode, errors) {
     const fields = validateQueryClauses(query, queryNode, path, declared, errors);
     if (name) {
       declared.set(name, fields);
+      declaredQueryParameters.set(name, parameters);
       const inputs = [
         query.from,
         ...(Array.isArray(query.union) ? query.union : []),
@@ -3715,6 +3932,15 @@ function validateQueries(queries, queriesNode, errors) {
  * @returns {string[] | undefined}
  */
 function validateQueryClauses(query, queryNode, path, declared, errors) {
+  const parameters = new Map(Array.isArray(query.parameters)
+    ? query.parameters.flatMap((parameter) => (
+        isPlainObject(parameter)
+          && typeof parameter.name === 'string'
+          && typeof parameter.type === 'string'
+          ? [[parameter.name, parameter.type]]
+          : []
+      ))
+    : []);
   /** @param {unknown} source @param {string} sourcePath */
   const inputFields = (source, sourcePath) => {
     validateStringField(source, sourcePath, true, errors);
@@ -3930,12 +4156,22 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
           validateStringField(predicate.field, `${predicatePath}.field`, true, errors);
           requireField(predicate.field, `${predicatePath}.field`);
           requireSchemaType(predicate.field, `${predicatePath}.field`, 'scalar');
-          if (predicate.equals === undefined && predicate.in === undefined && predicate.includes === undefined) {
+          const hasEquality = predicate.equals !== undefined;
+          const hasSet = predicate.in !== undefined;
+          const hasIncludes = predicate.includes !== undefined;
+          const hasBounds = predicate.gte !== undefined || predicate.lt !== undefined;
+          if (Number(hasEquality) + Number(hasSet) + Number(hasIncludes) + Number(hasBounds) !== 1) {
             errors.push(createError(
               ERROR_CODES.missingOrInvalidRequiredField,
-              'predicate must declare exactly one of equals, in, or includes.',
+              'predicate must declare exactly one of equals, in, includes, or comparable bounds.',
               predicatePath
             ));
+          }
+          for (const key of ['equals', 'gte', 'lt']) {
+            const operand = predicate[key];
+            if (isPlainObject(operand)) {
+              validateParameterReference(operand, `${predicatePath}.${key}`, parameters, errors);
+            }
           }
         }
       }
@@ -3993,10 +4229,11 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
             const hasField = argument.field !== undefined;
             const hasValue = argument.value !== undefined;
             const hasContext = argument.context !== undefined;
-            if (Number(hasField) + Number(hasValue) + Number(hasContext) !== 1) {
+            const hasParameter = argument.parameter !== undefined;
+            if (Number(hasField) + Number(hasValue) + Number(hasContext) + Number(hasParameter) !== 1) {
               errors.push(createError(
                 ERROR_CODES.missingOrInvalidRequiredField,
-                'computed argument must declare exactly one of field, value, or context.',
+                'computed argument must declare exactly one of field, value, context, or parameter.',
                 argumentPath
               ));
               continue;
@@ -4017,6 +4254,8 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
                 'computed argument context must be time-end.',
                 `${argumentPath}.context`
               ));
+            } else if (hasParameter) {
+              validateParameterReference(argument, argumentPath, parameters, errors);
             } else if (hasValue && !['string', 'number', 'boolean'].includes(typeof argument.value)) {
               errors.push(createError(
                 ERROR_CODES.missingOrInvalidRequiredField,
@@ -4024,6 +4263,7 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
                 `${argumentPath}.value`
               ));
             }
+
           }
         }
         declareField(computed.as, `${computePath}.as`);

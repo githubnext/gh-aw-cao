@@ -13,6 +13,7 @@ import { externalAnchorAttrs, findLink } from './components/link-content.js';
 import { elementHandlesEmptyRows, elementHandlesUnavailableSource, elementLoadsSourcesAsync, renderUiElement } from './components/ui-elements.js';
 import { renderDataView, supportsIncrementalChartContinuation } from './components/data-view.js';
 import { enableHorizonOutsideClickDismissal, renderFilterBar, renderViewModeControl, setTimeWindowFilter, setTimeWindowRange } from './components/filter-bar.js';
+import { renderDashboardForm } from './components/dashboard-form.js';
 import { renderSiteCallouts } from './components/site-callout.js';
 import { renderDashboardHorizon } from './components/dashboard-horizon.js';
 import { enableThemeControl, renderThemeControl, restoreDashboardTheme } from './components/theme-settings.js';
@@ -65,11 +66,11 @@ import {
  */
 
 /**
- * @typedef {{ id: string, kind: 'built-in', page: string, title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, ['filter-bar']?: boolean, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], definition?: { views?: Array<unknown>, sections?: PresentablePageSection[], ['data-state']?: Record<string, boolean> } }} PresentableBuiltInPage
+ * @typedef {{ id: string, kind: 'built-in', page: string, title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, ['filter-bar']?: boolean, form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], definition?: { views?: Array<unknown>, sections?: PresentablePageSection[], ['data-state']?: Record<string, boolean> } }} PresentableBuiltInPage
  */
 
 /**
- * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, ['filter-bar']?: boolean, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string, ['title-format']?: 'title-case' }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
+ * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, ['filter-bar']?: boolean, form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string, ['title-format']?: 'title-case' }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
  */
 
 /**
@@ -89,7 +90,7 @@ import {
  */
 
 /**
- * @typedef {{ signal: AbortSignal, onUpdate: (sources: Record<string, LogicalSourceInput>) => void, syncPageChrome?: () => void, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' } }} PageSourceLoadOptions
+ * @typedef {{ signal: AbortSignal, onUpdate: (sources: Record<string, LogicalSourceInput>) => void, syncPageChrome?: () => void, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card', formValues?: Record<string, string|number|boolean> } }} PageSourceLoadOptions
  */
 
 /**
@@ -354,6 +355,8 @@ function enableNavigationIndicatorUpdates(root, pages, loadPageSources, signal) 
   const sourceNames = navigationIndicatorSourceNames(pages);
   if (!loadPageSources?.loadSources || sourceNames.length === 0) return;
   const view = root.ownerDocument.defaultView;
+  const clear = view?.clearTimeout.bind(view) ?? clearTimeout;
+  const abort = () => clear(timeout);
   const start = () => {
     signal.removeEventListener('abort', abort);
     if (signal.aborted) return;
@@ -371,8 +374,6 @@ function enableNavigationIndicatorUpdates(root, pages, loadPageSources, signal) 
       });
   };
   const timeout = view?.setTimeout(start, 0) ?? setTimeout(start, 0);
-  const clear = view?.clearTimeout.bind(view) ?? clearTimeout;
-  const abort = () => clear(timeout);
   signal.addEventListener('abort', abort, { once: true });
 }
 
@@ -893,7 +894,8 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
             ...(page.id === 'readiness' || !timeWindow
               ? {}
               : { timeWindow: { start: timeWindow.start, end: timeWindow.end } }),
-            ...(viewMode ? { viewMode } : {})
+            ...(viewMode ? { viewMode } : {}),
+            ...(queryContext?.formValues ? { formValues: queryContext.formValues } : {})
           }
         }
       }));
@@ -922,6 +924,20 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
   const pageChrome = filterBar || viewModeControl
     ? h('div', { className: 'page-chrome' }, filterBar, viewModeControl)
     : null;
+  const parameterForm = isPlainObject(page.form)
+    ? renderDashboardForm(page.form, queryContext?.formValues, (formValues) => {
+        root.dispatchEvent(new CustomEvent('dashboard-query-context-change', {
+          bubbles: true,
+          detail: {
+            pageId: page.id,
+            queryContext: {
+              ...queryContext,
+              formValues
+            }
+          }
+        }));
+      }, page.id)
+    : null;
   root = h(
     'section',
     {
@@ -939,6 +955,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
     },
     renderedRouteTabs,
     pageChrome,
+    parameterForm,
     ...(renderedViews.length > 0
       ? [renderHiddenDataStateMetrics(summarizeDataState(pageSources)), renderedContent]
       : [h('p', null, 'No custom views available.')])
@@ -1822,12 +1839,19 @@ function normalizeDashboardQueryContext(value) {
   const viewMode = value.viewMode === 'chart' || value.viewMode === 'table' || value.viewMode === 'card'
     ? value.viewMode
     : undefined;
+  const formValues = isPlainObject(value.formValues)
+    ? Object.fromEntries(Object.entries(value.formValues).filter(([, entry]) => (
+        ['string', 'number', 'boolean'].includes(typeof entry)
+        && (typeof entry !== 'number' || Number.isFinite(entry))
+      )))
+    : undefined;
   return {
     ...(filters && Object.keys(filters).length > 0 ? { filters } : {}),
     ...(search && search.fields.length > 0 && search.query ? { search } : {}),
     ...(orderBy.length > 0 ? { orderBy } : {}),
     ...(timeWindow?.start || timeWindow?.end ? { timeWindow } : {}),
-    ...(viewMode ? { viewMode } : {})
+    ...(viewMode ? { viewMode } : {}),
+    ...(formValues && Object.keys(formValues).length > 0 ? { formValues } : {})
   };
 }
 
