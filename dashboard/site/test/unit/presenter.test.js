@@ -3263,7 +3263,7 @@ describe('presenter built-in and custom pages', () => {
     rendered.ownerDocument.defaultView?.history.replaceState(null, '', '/');
   });
 
-  it('hides the experimental badge on the initially activated page', () => {
+  it('hides the experimental badge before any navigation occurs', () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {}
