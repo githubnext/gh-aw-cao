@@ -1372,6 +1372,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .dashboard-overview-page .custom-view[data-view-layout="half"].chart-view-pie .pie-chart-card > :is(.view-source, .view-metadata, .view-context) { grid-column: 1; }
 .dashboard-overview-page > .custom-view-grid { display: block; background: transparent; }
 .dashboard-overview-page .custom-view { margin: 0; }
+/* "overview-header" and "overview-floor" are two view IDs styled as one joined card (shared border, no seam between them); keep both selectors in sync when editing either. */
 .dashboard-overview-page > .custom-view-grid > .custom-view[data-view-id="overview-header"] { overflow: hidden; border: 1px solid var(--border); border-bottom: 0; border-top-left-radius: 4px; border-top-right-radius: 4px; background: var(--canvas); }
 .dashboard-overview-page > .custom-view-grid > .custom-view[data-view-id="overview-floor"] { overflow: hidden; border: 1px solid var(--border); border-bottom-left-radius: 4px; border-bottom-right-radius: 4px; background: var(--canvas); margin-bottom: 16px; }
 .dashboard-overview-page > .custom-view-grid > .custom-view[data-view-id="overview-campaigns"] { overflow: hidden; border: 1px solid var(--border); border-radius: 4px; background: var(--canvas); }
