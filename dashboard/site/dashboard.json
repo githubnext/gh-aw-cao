@@ -531,11 +531,6 @@
             "title": "# dispatches"
           },
           {
-            "field": "grader-result",
-            "title": "# grader",
-            "unit": "ops-grader"
-          },
-          {
             "field": "aic",
             "title": "# aic",
             "unit": "aic"
@@ -8209,26 +8204,6 @@
             ]
           },
           {
-            "source": "repository-evaluated-workflow-totals",
-            "type": "left",
-            "on": [
-              {
-                "left": "organization",
-                "right": "organization"
-              },
-              {
-                "left": "repository",
-                "right": "repository"
-              }
-            ],
-            "fields": [
-              {
-                "field": "evaluated-workflows",
-                "as": "observed-evaluated-workflows"
-              }
-            ]
-          },
-          {
             "source": "repository-run-totals",
             "type": "left",
             "on": [
@@ -8460,13 +8435,13 @@
           },
           {
             "as": "outcomes-observed",
-            "function": "sum",
+            "function": "coalesce",
             "args": [
               {
                 "field": "observed-reports"
               },
               {
-                "field": "observed-evaluated-workflows"
+                "value": 0
               }
             ]
           },
@@ -8693,10 +8668,6 @@
           {
             "field": "observed-reports",
             "as": "reports"
-          },
-          {
-            "field": "observed-evaluated-workflows",
-            "as": "evaluated-workflows"
           },
           {
             "field": "runs"
@@ -9411,9 +9382,6 @@
           },
           {
             "field": "aic"
-          },
-          {
-            "field": "grader-result"
           }
         ],
         "order-by": [
@@ -11509,12 +11477,6 @@
                     "type": "quantitative",
                     "title": "AIC",
                     "unit": "aic"
-                  },
-                  {
-                    "field": "grader-result",
-                    "type": "quantitative",
-                    "title": "Ops Grader",
-                    "unit": "ops-grader"
                   },
                   {
                     "field": "registration",

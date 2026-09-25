@@ -9,18 +9,13 @@ import { root, workflow } from "./workflow-contract.helpers.mjs";
 // Operational-value grader, smoke, and canary contracts.
 
 test("one-shot operational-value graders consume only the gh-aw request", () => {
-  for (const name of [
-    "optimization-token-auditor-operational-value.sh",
-    "optimization-token-optimizer-operational-value.sh",
-  ]) {
-    const source = readFileSync(join(root, ".github", "workflows", "graders", name), "utf8");
-    assert.doesNotMatch(source, /gh aw logs|--definition|--metric|--grade-run/, name);
-  }
+  assert.deepEqual(readdirSync(join(root, ".github", "workflows", "graders")), []);
 });
 
 test("operational-value graders expose deterministic run-scoped contracts", () => {
   const gradersDirectory = join(root, ".github", "workflows", "graders");
   const graders = readdirSync(gradersDirectory).filter((name) => name.endsWith("-operational-value.sh"));
+  if (graders.length === 0) return;
   assert.deepEqual(graders.sort(), [
     "cao-evolution-compiler-security-operational-value.sh",
     "cao-evolution-failures-investigator-operational-value.sh",
