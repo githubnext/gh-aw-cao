@@ -330,6 +330,7 @@ process.exit(1);
     }]);
     const calls = (await readFile(item.callsPath, 'utf8')).trim().split('\n').map(JSON.parse);
     const graphqlCalls = calls.filter((arguments_) => arguments_.slice(0, 2).join(' ') === 'api graphql');
+    // issue-status first checks the rate limit, then queries the one collected issue.
     assert.equal(graphqlCalls.length, 2);
     const issueQuery = graphqlCalls.find((arguments_) => arguments_.some((argument) => argument.includes('issue(number: 42)')));
     assert.ok(issueQuery);
