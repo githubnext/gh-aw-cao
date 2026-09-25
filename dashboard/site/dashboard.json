@@ -13193,7 +13193,7 @@
           {
             "id": "indexing-database-table-counts",
             "title": "Database table counts",
-            "description": "Canonical rows retained by dashboard database table.",
+            "description": "Rows retained by dashboard database table, including ingestion transactions.",
             "data": {
               "source": "indexing-database-table-counts",
               "limit": 100
