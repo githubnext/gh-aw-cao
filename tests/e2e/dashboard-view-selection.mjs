@@ -144,7 +144,7 @@ function pageSelectionScore(page, changedFiles) {
  * Rank candidate dashboard page IDs for PR assessment. Broad candidates,
  * including shared dashboard configuration changes, are intentionally capped:
  * the workflow assesses the highest-scoring views instead of every page.
- * The result ignores preserved pages, deduplicates candidates, sorts by
+ * The result drops ignored assessment pages, deduplicates candidates, sorts by
  * changed-file relevance with dashboard order as the stable tie-breaker, and
  * truncates to the requested limit.
  */
@@ -157,7 +157,7 @@ export function rankDashboardPageIds({
   const pagesById = pageSelectionDescriptors(dashboard);
   const changedFileDescriptors = changedFiles.map((path) => ({
     pathSegments: new Set(path.toLowerCase().split(/[^a-z0-9-]+/).filter(Boolean)),
-    terms: identifierTerms(path),
+    terms: new Set(identifierTerms(path)),
   }));
   return withoutIgnoredDashboardPageIds([...new Set(pageIds)])
     .map((pageId) => {
