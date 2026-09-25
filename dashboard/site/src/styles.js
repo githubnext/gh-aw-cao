@@ -1911,11 +1911,11 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
 .source-refresh-dismiss:hover { background: var(--neutral-muted); color: var(--fg); }
 .source-loading-warning { color: var(--attention); }
 .dashboard-lazy-view { min-height: var(--dashboard-lazy-view-min-height); display: grid; align-content: stretch; }
-.dashboard-lazy-view-skeleton { min-height: inherit; display: grid; align-content: start; gap: 12px; padding: 16px; border: 1px solid var(--border-muted); border-radius: 6px; background: var(--canvas); }
+.dashboard-lazy-view-skeleton { min-height: inherit; display: grid; align-content: start; gap: 12px; padding: 16px; border-radius: 6px; background: var(--canvas); }
 .dashboard-lazy-view-skeleton > span { height: 16px; border-radius: 4px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite; }
 .dashboard-lazy-view-skeleton > span:first-child { width: 38%; height: 20px; }
 .dashboard-lazy-view-skeleton > span:last-child { width: 72%; }
-.dashboard-view-skeleton { min-height: 280px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); align-content: start; gap: 14px; padding: 20px; border: 1px solid var(--border); border-radius: 12px; background: var(--canvas); }
+.dashboard-view-skeleton { min-height: 280px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); align-content: start; gap: 14px; padding: 20px; border-radius: 12px; background: var(--canvas); }
 .dashboard-view-skeleton-block { grid-column: span var(--dashboard-view-skeleton-span, 12); height: var(--dashboard-view-skeleton-height, 64px); border-radius: 8px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; opacity: 0; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite, dashboard-skeleton-enter .5s ease-out forwards; animation-delay: 0s, var(--dashboard-view-skeleton-delay, 0ms); }
 .skeleton-card { min-height: 104px; }
 .skeleton-panel { min-height: 280px; grid-column: 1 / -1; }
