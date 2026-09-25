@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
-import { root, workflow } from "./workflow-contract.helpers.mjs";
+import { root, stepBlock, workflow } from "./workflow-contract.helpers.mjs";
 
 // SelfCare workers that audit and improve the dashboard.
 
@@ -198,14 +198,11 @@ test("SelfCare dashboard reviewer checks deployments through stakeholder persona
   assert.match(source, /title-prefix: "\[self-care:dashboard-review\] "/);
   assert.match(source, /close-older-key: self-care-dashboard-review/);
   assert.match(source, /labels: \[self-care, self-care:dashboard-review\]/);
-  assert.match(
-    source,
-    /name: Build expected control-plane inventory\n\s+if: \$\{\{ inputs\.target_repo == 'githubnext\/gh-aw-cao' \}\}\n\s+run:/,
-  );
-  assert.match(
-    source,
-    /name: Download and grade the live dashboard artifact\n\s+if: \$\{\{ inputs\.target_repo == 'githubnext\/gh-aw-cao' \}\}\n\s+env:/,
-  );
+  const expectedInventory = stepBlock(source, "Build expected control-plane inventory");
+  const dashboardArtifact = stepBlock(source, "Download and grade the live dashboard artifact");
+  const targetGuard = /^\s+if: \$\{\{ inputs\.target_repo == 'githubnext\/gh-aw-cao' \}\}$/m;
+  assert.match(expectedInventory, targetGuard);
+  assert.match(dashboardArtifact, targetGuard);
   assert.match(source, /central-agentic-ops-dashboard/);
   assert.match(source, /view-grader\.mjs/);
   assert.match(source, /dashboard-artifact/);
