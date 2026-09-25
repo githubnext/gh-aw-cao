@@ -184,6 +184,24 @@ describe('splitDashboardDocument / resolveDashboardDocument round-trip', () => {
     expect(factoryChunk?.queries.map((query) => query.name).toSorted()).toEqual(['callout-source', 'factory-summary']);
   });
 
+  it('bundles navigation-indicator sources into every page chunk even when no view uses them', () => {
+    const document = sampleDocument();
+    document.dashboard.queries?.push({ name: 'indicator-source', source: 'indicator' });
+    document.dashboard.pages.push({
+      id: 'maintenance-page',
+      kind: 'custom',
+      title: 'Maintenance',
+      views: [],
+      'navigation-indicator': { label: 'updates available', any: ['indicator-source'] },
+    });
+
+    const { pageChunks } = splitDashboardDocument(document);
+    for (const pageId of ['alpha-page', 'beta-page', 'templated-page', 'factory-page', 'maintenance-page']) {
+      const chunk = pageChunks.get(pageId);
+      expect(chunk?.queries.map((query) => query.name)).toContain('indicator-source');
+    }
+  });
+
   it('reconstructs a fully-loaded document equivalent to the original once every chunk is resolved', () => {
     const original = sampleDocument();
     const { core, pageChunks } = splitDashboardDocument(original);
