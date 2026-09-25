@@ -42,8 +42,8 @@ curl --fail --silent --show-error --location \
 ```
 
 Direct `gh aw add` of the component `activity/` or `dashboard/` manifests is not
-a complete installation: the component manifests cannot run the required post-install
-materialization step, and those manifests intentionally contain no duplicate
+a complete installation: gh-aw cannot run the required post-install materialization step
+for component manifests, and those manifests intentionally contain no duplicate
 runtime resources. The root installation adds the deterministic dashboard
 automation without an additional enable variable. The standalone publisher
 remains manual-only and cannot enable Pages for the repository.

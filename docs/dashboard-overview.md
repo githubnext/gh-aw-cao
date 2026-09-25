@@ -10,7 +10,7 @@ questions without requiring you to inspect raw workflow activity:
 2. What activity and evidence have been retained?
 3. Where should I investigate next?
 
-The page presents current campaign activity. Its status header and weekly
+The page presents campaign activity. Its status header and weekly
 rhythm summarize current activity, while four metrics connect that activity to
 repository scope, runs, dispatches, and value evidence. These are related
 operational signals, not stages in a conversion funnel.
