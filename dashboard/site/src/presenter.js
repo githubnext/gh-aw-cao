@@ -1042,6 +1042,8 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   let activationRevision = 0;
   let pageOwner = new AbortController();
   const navigationOwner = new AbortController();
+  /** @type {number | undefined} */
+  let pendingScrollTop;
   const disposeNavigation = () => {
     activationRevision += 1;
     navigationOwner.abort();
@@ -1210,6 +1212,8 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   ) => {
      if (navigationOwner.signal.aborted) return;
      const revision = ++activationRevision;
+    const requestedScrollTop = pendingScrollTop ?? savedScrollTop();
+    pendingScrollTop = undefined;
     pageOwner.abort();
     pageOwner = new AbortController();
     let pagePopulated = false;
@@ -1222,7 +1226,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       if (section && page?.contains(section)) {
         section.scrollIntoView?.();
       } else {
-        const savedTop = savedScrollTop() ?? pageState.get(pageId)?.scrollTop;
+        const savedTop = requestedScrollTop ?? savedScrollTop() ?? pageState.get(pageId)?.scrollTop;
         if (savedTop === undefined) return;
         const scrollingElement = pageScroller instanceof HTMLElement
           ? pageScroller
@@ -1284,7 +1288,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
           if (deferPopulation) {
             restoreScroll(renderedPage);
           }
-          if (savedScrollTop() !== undefined) {
+          if (requestedScrollTop !== undefined || savedScrollTop() !== undefined) {
             restoreScroll(renderedPage);
             root.ownerDocument.defaultView?.requestAnimationFrame(() => {
               if (revision === activationRevision && activePageId === pageId) restoreScroll(renderedPage);
@@ -1528,6 +1532,10 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
         ? 'forward'
         : undefined;
     pendingNavigationHash = defaultView?.location.hash;
+    const savedTop = event.state?.[SCROLL_TOP_STATE_KEY];
+    pendingScrollTop = typeof savedTop === 'number' && Number.isFinite(savedTop) && savedTop >= 0
+      ? savedTop
+      : undefined;
     navigationIndex = nextNavigationIndex;
     syncHistoryBack();
   };
