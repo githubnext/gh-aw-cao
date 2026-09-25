@@ -261,6 +261,10 @@ describe('campaign detail route', () => {
     expect(allocation).toEqual({
       title: 'Ambient Context',
       description: 'Operational activity for the Ambient Context campaign.',
+      titleLink: {
+        href: 'https://ghe.example/githubnext/gh-aw-cao/tree/HEAD/ambient-context',
+        label: 'Open Ambient Context campaign source on GitHub'
+      },
       navigationPage: 'campaigns'
     });
   });

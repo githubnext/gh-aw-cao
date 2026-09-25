@@ -131,6 +131,7 @@
       { "field": "campaign" },
       { "field": "campaignName", "as": "campaign-name" },
       { "field": "campaignIcon", "as": "campaign-icon" },
+      { "field": "campaignReadmePath", "as": "campaign-readme-path" },
       { "field": "role", "as": "workflow-role" },
       { "field": "rolloutMode", "as": "rollout-mode" },
       { "field": "maxAiCredits", "as": "max-ai-credits" },

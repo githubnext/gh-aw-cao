@@ -136,6 +136,14 @@ describe('workflow detail route', () => {
       '#page-campaign-insights?campaign=ambient-context',
       '#page-campaign-insights?campaign=central-agentic-ops'
     ]);
+    expect(allocation.mock.calls.at(-1)?.[0]).toMatchObject({
+      detail: {
+        titleLink: {
+          href: 'https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/ambient-context.md',
+          label: 'Open Ambient Context workflow on GitHub'
+        }
+      }
+    });
     expect(rendered.querySelector('.workflow-identity > a')?.getAttribute('href')).toBe(
       'https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/ambient-context.md'
     );
