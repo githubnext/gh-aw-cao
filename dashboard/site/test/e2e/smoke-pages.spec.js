@@ -111,9 +111,20 @@ test('Indexing shows CAO Activity status, size trend, and retained transactions'
       }));
       const sources = {
         transactions: { source: 'transactions', rows, metadata },
-        'indexing-daily-ingestion': {
-          source: 'indexing-daily-ingestion',
-          rows: [{ day: '2026-09-12', records: 7950, 'workflow-runs': 6950 }],
+        'indexing-daily-records': {
+          source: 'indexing-daily-records',
+          rows: [
+            { day: '2026-09-11', records: 7050 },
+            { day: '2026-09-12', records: 7950 }
+          ],
+          metadata
+        },
+        'indexing-daily-workflow-runs': {
+          source: 'indexing-daily-workflow-runs',
+          rows: [
+            { day: '2026-09-11', 'workflow-runs': 6050 },
+            { day: '2026-09-12', 'workflow-runs': 6950 }
+          ],
           metadata
         },
         'indexing-database-table-counts': {

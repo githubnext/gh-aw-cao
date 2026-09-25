@@ -1022,6 +1022,22 @@ describe('presenter built-in and custom pages', () => {
           source: 'indexing-database-table-counts',
           rows: [{ table: 'ingestion transactions', records: 1 }],
           metadata
+        },
+        'indexing-daily-records': {
+          source: 'indexing-daily-records',
+          rows: [
+            { day: '2026-09-01', records: 8 },
+            { day: '2026-09-02', records: 10 }
+          ],
+          metadata
+        },
+        'indexing-daily-workflow-runs': {
+          source: 'indexing-daily-workflow-runs',
+          rows: [
+            { day: '2026-09-01', 'workflow-runs': 6 },
+            { day: '2026-09-02', 'workflow-runs': 8 }
+          ],
+          metadata
         }
       }
     });

@@ -1613,28 +1613,16 @@
     },
     "queries": [
       {
-        "name": "indexing-daily-ingestion",
-        "intent": "Aggregate new workflow runs and records ingested from CAO Activity by UTC day.",
-        "from": "transactions",
-        "filter": {
-          "predicates": [
-            {
-              "field": "kind",
-              "in": [
-                "ingest-jsonl",
-                "ingest-normalized-json",
-                "ingest-normalized-jsonl"
-              ]
-            }
-          ]
-        },
+        "name": "indexing-daily-records",
+        "intent": "Count retained CAO Activity records by their observed UTC day.",
+        "from": "event-base",
         "compute": [
           {
             "as": "day",
             "function": "date-day",
             "args": [
               {
-                "field": "createdAt"
+                "field": "event-timestamp"
               }
             ]
           }
@@ -1645,14 +1633,43 @@
           ],
           "values": [
             {
-              "field": "rawRuns",
-              "as": "workflow-runs",
-              "reducer": "sum"
-            },
-            {
-              "field": "records",
+              "field": "event",
               "as": "records",
-              "reducer": "sum"
+              "reducer": "count"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "day",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
+        "name": "indexing-daily-workflow-runs",
+        "intent": "Count retained workflow runs by their creation UTC day.",
+        "from": "runs",
+        "compute": [
+          {
+            "as": "day",
+            "function": "date-day",
+            "args": [
+              {
+                "field": "created-at"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "day"
+          ],
+          "values": [
+            {
+              "field": "run",
+              "as": "workflow-runs",
+              "reducer": "count"
             }
           ]
         },
@@ -13472,7 +13489,7 @@
             "title": "Indexed data over time",
             "description": "New workflow runs and records retained from CAO Activity each day.",
             "data": {
-              "source": "indexing-daily-ingestion"
+              "source": "indexing-daily-records"
             },
             "mark": "chart",
             "chart": "bar",
@@ -13496,7 +13513,7 @@
             "title": "Workflow runs indexed",
             "description": "New workflow runs retained from CAO Activity each day.",
             "data": {
-              "source": "indexing-daily-ingestion"
+              "source": "indexing-daily-workflow-runs"
             },
             "mark": "chart",
             "chart": "bar",

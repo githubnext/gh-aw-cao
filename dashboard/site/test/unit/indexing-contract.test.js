@@ -16,7 +16,7 @@ const metadata = {
 };
 
 describe('indexing dashboard', () => {
-  it('projects normalized ingestion transactions into non-empty insights', () => {
+  it('projects retained records and workflow runs into daily insights', () => {
     const results = executeDashboardQueries(
       dashboard.queries,
       {
@@ -47,21 +47,57 @@ describe('indexing dashboard', () => {
           ],
           metadata
         },
+        audits: {
+          source: 'audits',
+          rows: [
+            { event: 'audit:one', 'event-timestamp': '2026-09-23T23:00:00Z' },
+            { event: 'audit:two', 'event-timestamp': '2026-09-24T01:00:00Z' }
+          ],
+          metadata
+        },
+        domains: {
+          source: 'domains',
+          rows: [{ event: 'domain:one', 'event-timestamp': '2026-09-24T02:00:00Z' }],
+          metadata
+        },
+        tools: {
+          source: 'tools',
+          rows: [{ event: 'tool:one', 'event-timestamp': '2026-09-24T03:00:00Z' }],
+          metadata
+        },
+        issues: {
+          source: 'issues',
+          rows: [{ event: 'issue:one', 'event-timestamp': '2026-09-23T22:00:00Z' }],
+          metadata
+        },
         campaigns: { source: 'campaigns', rows: [{ campaign: 'one' }], metadata },
         repositories: { source: 'repositories', rows: [{ repository: 'one' }], metadata },
         workflows: { source: 'workflows', rows: [{ workflow: 'one' }, { workflow: 'two' }], metadata },
-        runs: { source: 'runs', rows: [{ run: 'one' }, { run: 'two' }, { run: 'three' }], metadata },
-        domains: { source: 'domains', rows: [], metadata },
-        tools: { source: 'tools', rows: [{ event: 'tool:one' }], metadata },
-        audits: { source: 'audits', rows: [{ event: 'audit:one' }, { event: 'audit:two' }], metadata },
-        issues: { source: 'issues', rows: [{ event: 'issue:one' }], metadata },
+        runs: {
+          source: 'runs',
+          rows: [
+            { run: 'one', 'created-at': '2026-09-23T20:00:00Z' },
+            { run: 'two', 'created-at': '2026-09-24T20:00:00Z' },
+            { run: 'three', 'created-at': '2026-09-24T21:00:00Z' }
+          ],
+          metadata
+        },
         'operational-values': { source: 'operational-values', rows: [], metadata }
       },
-      ['indexing-daily-ingestion', 'indexing-database-table-counts']
+      [
+        'indexing-daily-records',
+        'indexing-daily-workflow-runs',
+        'indexing-database-table-counts'
+      ]
     );
 
-    expect(results['indexing-daily-ingestion'].rows).toEqual([
-      { day: '2026-09-24', records: 20, 'workflow-runs': 5 }
+    expect(results['indexing-daily-records'].rows).toEqual([
+      { day: '2026-09-23', records: 2 },
+      { day: '2026-09-24', records: 3 }
+    ]);
+    expect(results['indexing-daily-workflow-runs'].rows).toEqual([
+      { day: '2026-09-23', 'workflow-runs': 1 },
+      { day: '2026-09-24', 'workflow-runs': 2 }
     ]);
     expect(results['indexing-database-table-counts'].rows).toEqual([
       { table: 'ingestion transactions', records: 3 },
