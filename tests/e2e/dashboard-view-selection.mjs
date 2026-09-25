@@ -105,7 +105,7 @@ function pageSelectionDescriptor(page, index) {
     pageId,
     pageIdLower: pageId.toLowerCase(),
     pageTerms: new Set(identifierTerms(pageId)),
-    titleTerms: new Set(identifierTerms(`${page.title ?? ""} ${page.page ?? ""}`)),
+    titleTerms: new Set(identifierTerms(page.title)),
     pageBodyTerms: new Set(identifierTerms(JSON.stringify(page))),
   };
 }
@@ -123,8 +123,8 @@ function pageSelectionDescriptors(dashboard) {
 function pageSelectionScore(page, changedFiles) {
   let score = 0;
 
-  for (const { normalizedPath, terms } of changedFiles) {
-    if (page.pageIdLower && normalizedPath.includes(page.pageIdLower)) {
+  for (const { pathSegments, terms } of changedFiles) {
+    if (page.pageIdLower && pathSegments.has(page.pageIdLower)) {
       score += pageSelectionWeights.pathIncludesPageId;
     }
     for (const term of terms) {
@@ -141,9 +141,12 @@ function pageSelectionScore(page, changedFiles) {
 }
 
 /**
- * Rank candidate dashboard page IDs for PR assessment, ignoring preserved pages,
- * deduplicating candidates, sorting by changed-file relevance with dashboard
- * order as the stable tie-breaker, and truncating to the requested limit.
+ * Rank candidate dashboard page IDs for PR assessment. Broad candidates,
+ * including shared dashboard configuration changes, are intentionally capped:
+ * the workflow assesses the highest-scoring views instead of every page.
+ * The result ignores preserved pages, deduplicates candidates, sorts by
+ * changed-file relevance with dashboard order as the stable tie-breaker, and
+ * truncates to the requested limit.
  */
 export function rankDashboardPageIds({
   dashboard,
@@ -153,7 +156,7 @@ export function rankDashboardPageIds({
 }) {
   const pagesById = pageSelectionDescriptors(dashboard);
   const changedFileDescriptors = changedFiles.map((path) => ({
-    normalizedPath: path.toLowerCase(),
+    pathSegments: new Set(path.toLowerCase().split(/[^a-z0-9-]+/).filter(Boolean)),
     terms: identifierTerms(path),
   }));
   return withoutIgnoredDashboardPageIds([...new Set(pageIds)])
@@ -220,6 +223,8 @@ export function selectAffectedPageIds({ dashboard, changedFiles, baseRef }) {
     if (path.endsWith("/dashboard.json") || path === primaryDashboardPath) {
       const current = readDashboard(path);
       const previous = readDashboard(path, baseRef);
+      // Shared configuration can affect any page, but PR assessment remains
+      // bounded to the top-ranked sample to keep the live-data browser job fast.
       if (sharedDashboardConfigurationChanged(current, previous)) return ranked(allPageIds);
       for (const pageId of changedDashboardPageIds(current, previous)) selected.add(pageId);
       continue;

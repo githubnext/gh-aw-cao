@@ -175,7 +175,7 @@ test("ranks page ids by changed file terms while preserving dashboard order ties
       "campaigns",
     ],
     changedFiles: [
-      "dashboard/site/src/data/queries/operational-value-history.js",
+      "dashboard/site/src/data/queries/operational-value.js",
       "dashboard/site/src/components/workflow-runtime.js",
     ],
   }), [
