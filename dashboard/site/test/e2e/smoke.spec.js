@@ -769,7 +769,7 @@ test('Runs renders a last-week stacked area graph above its responsive table and
 
   await page.setViewportSize({ width: 390, height: 844 });
   const mobileViewModeToggle = page.locator('.mobile-view-mode-toggle');
-  await expect(runsPage.locator(':scope > .page-chrome > .filter-bar')).toBeHidden();
+  await expect(runsPage.locator(':scope > .page-chrome > .filter-bar')).toHaveCount(0);
   await expect(areaGraph).toBeVisible();
   await expect(table).toBeHidden();
   await expect(mobileViewModeToggle).toHaveAttribute('aria-label', 'Switch to Cards view');
