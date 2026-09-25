@@ -1770,6 +1770,22 @@ function createCachedGhAwJsonlAccumulator(options) {
     emitAuditEvents('noops', 'audit.noop', 'message', 'status');
     emitAuditEvents('mcp_failures', 'audit.mcp_failure', 'server_name', 'status');
     emitAuditEvents('skill_activations', 'audit.skill_activation', 'name', 'status');
+    const steeringEventsValue = run.gateway_steering_events ?? audit.gateway_steering_events;
+    const steeringEvents = Array.isArray(steeringEventsValue) ? steeringEventsValue : [];
+    steeringEvents.forEach((entry, index) => {
+      const record = entry && typeof entry === 'object' && !Array.isArray(entry)
+        ? /** @type {Record<string, unknown>} */ (entry)
+        : {};
+      const steeringType = optionalString(record.type);
+      emitEvent(
+        'audit.gateway_steering',
+        timestamp(record.timestamp) ?? completedAt ?? enriched.observedAt,
+        optionalString(record.message) ?? steeringType ?? 'gateway steering',
+        steeringType,
+        { type: 'audit.gateway_steering', index, steeringType, message: record.message },
+        { source: 'audit', code: steeringType }
+      );
+    });
     const firewallAnalysisValue = run.firewall_analysis ?? audit.firewall_analysis;
     const firewallAnalysis = firewallAnalysisValue && typeof firewallAnalysisValue === 'object'
       && !Array.isArray(firewallAnalysisValue)
