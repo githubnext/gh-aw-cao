@@ -480,7 +480,7 @@ test('hash-payloads excludes info-level audits from record shards', async () => 
   assert.deepEqual(findings.map((audit) => audit.summary), ['Actionable finding']);
 });
 
-test('hash-payloads drops empty phased shards from files and hashes', async () => {
+test('hash-payloads drops empty source payloads and publishes one header-only shard per empty phase', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'activity-empty-phased-shards-'));
   const shardDirectory = path.join(root, 'gh-aw-logs-shards');
   const runsDirectory = path.join(root, 'gh-aw-logs-runs');
@@ -505,10 +505,14 @@ test('hash-payloads drops empty phased shards from files and hashes', async () =
   ]);
 
   const hashes = JSON.parse(stdout);
-  assert.deepEqual(await readShardNames(runsDirectory), []);
-  assert.deepEqual(await readShardNames(recordsDirectory), []);
-  assert.equal(Object.keys(hashes).filter((name) => name.startsWith('gh-aw-logs-runs/')).length, 0);
-  assert.equal(Object.keys(hashes).filter((name) => name.startsWith('gh-aw-logs-records/')).length, 0);
+  for (const [phase, directory] of [['runs', runsDirectory], ['records', recordsDirectory]]) {
+    const names = await readShardNames(directory);
+    assert.equal(names.length, 1);
+    const lines = (await readFile(path.join(directory, names[0]), 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+    assert.deepEqual(lines.map(({ kind, phase: linePhase, records }) => [kind, linePhase, records]), [['metadata', phase, 0]]);
+    assert.deepEqual(Object.keys(hashes).filter((name) => name.startsWith(`gh-aw-logs-${phase}/`)), [`gh-aw-logs-${phase}/${names[0]}`]);
+    assert.deepEqual(await readdir(path.join(directory, '.payloads')), []);
+  }
   assert.equal(Object.hasOwn(hashes, 'gh-aw-logs-shards/empty.jsonl'), false);
   await assert.rejects(readFile(emptySourcePath), { code: 'ENOENT' });
 });

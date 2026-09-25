@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { createWriteStream } from "node:fs";
-import { mkdir, readFile, readdir, stat } from "node:fs/promises";
+import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";

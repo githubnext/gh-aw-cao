@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
-import { root, workflow } from "./workflow-contract.helpers.mjs";
+import { root, stepBlock, workflow } from "./workflow-contract.helpers.mjs";
 
 // SelfCare workers that audit and improve the dashboard.
 
@@ -100,6 +100,7 @@ test("SelfCare reactive UI expert applies the local reactive framework skill", (
   assert.match(source, /\.github\/skills\/migrate-dashboard-view/);
   assert.match(source, /safe_output_mode` is `live`/);
   assert.match(source, /\.github\/skills\/reactive-ui\/SKILL\.md/);
+  assert.match(source, /"\.github\/skills\/migrate-dashboard-view\/SKILL\.md"/);
   assert.match(source, /dashboard\/site\/src\/reactive\.js/);
   assert.match(source, /stable keyed rendering/);
   assert.match(source, /state`, `derived`, `effect`, `batch`, `onCleanup`/);
@@ -119,6 +120,7 @@ test("SelfCare reactive UI expert applies the local reactive framework skill", (
   assert.match(source, /draft: true/);
   assert.match(compiled, /self-care-reactive-ui-expert/);
   assert.match(compiled, /\.github\/skills\/reactive-ui/);
+  assert.match(compiled, /\.github\/skills\/migrate-dashboard-view\/SKILL\.md/);
 });
 
 test("SelfCare dashboard debug logging worker preserves the logging privacy boundary", () => {
@@ -198,6 +200,11 @@ test("SelfCare dashboard reviewer checks deployments through stakeholder persona
   assert.match(source, /title-prefix: "\[self-care:dashboard-review\] "/);
   assert.match(source, /close-older-key: self-care-dashboard-review/);
   assert.match(source, /labels: \[self-care, self-care:dashboard-review\]/);
+  const expectedInventory = stepBlock(source, "Build expected control-plane inventory");
+  const dashboardArtifact = stepBlock(source, "Download and grade the live dashboard artifact");
+  const targetGuard = /^\s+if: \$\{\{ inputs\.target_repo == 'githubnext\/gh-aw-cao' \}\}$/m;
+  assert.match(expectedInventory, targetGuard);
+  assert.match(dashboardArtifact, targetGuard);
   assert.match(source, /central-agentic-ops-dashboard/);
   assert.match(source, /view-grader\.mjs/);
   assert.match(source, /dashboard-artifact/);
