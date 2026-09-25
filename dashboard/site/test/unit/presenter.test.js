@@ -3274,12 +3274,20 @@ describe('presenter built-in and custom pages', () => {
       reloadedScroller.scrollTop = 80;
       reloadedScroller.dispatchEvent(new Event('scroll'));
       window.history.replaceState(
-        { centralAgenticOpsNavigationIndex: 0, centralAgenticOpsScrollTop: 240 },
+        {
+          centralAgenticOpsNavigationIndex: 0,
+          centralAgenticOpsScrollPageId: 'first',
+          centralAgenticOpsScrollTop: 240
+        },
         '',
         '/#page-first'
       );
       window.dispatchEvent(new PopStateEvent('popstate', {
-        state: { centralAgenticOpsNavigationIndex: 0, centralAgenticOpsScrollTop: 240 }
+        state: {
+          centralAgenticOpsNavigationIndex: 0,
+          centralAgenticOpsScrollPageId: 'first',
+          centralAgenticOpsScrollTop: 240
+        }
       }));
       window.dispatchEvent(new HashChangeEvent('hashchange'));
       expect(reloadedScroller.scrollTop).toBe(240);

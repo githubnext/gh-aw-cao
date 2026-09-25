@@ -106,8 +106,14 @@ const DEFAULT_GITHUB_URL_BASE = 'https://github.com';
 const TABLE_ROW_LIMIT = Symbol('table-row-limit');
 const NAVIGATION_INDEX_STATE_KEY = 'centralAgenticOpsNavigationIndex';
 const SCROLL_TOP_STATE_KEY = 'centralAgenticOpsScrollTop';
+const SCROLL_PAGE_ID_STATE_KEY = 'centralAgenticOpsScrollPageId';
 /** @type {WeakMap<HTMLElement, () => void>} */
 const dashboardDisposals = new WeakMap();
+
+/** @param {unknown} value */
+function normalizeScrollTop(value) {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
+}
 /**
  * @param {PresentableBuiltInPage | PresentableCustomPage} page
  * @param {Array<Record<string, unknown>>} [reusableViews]
@@ -1044,12 +1050,16 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   const navigationOwner = new AbortController();
   /** @type {number | undefined} */
   let pendingScrollTop;
+  /** @type {string | undefined} */
+  let pendingScrollPageId;
   /** @type {number | null} */
   let scrollPersistenceFrame = null;
+  let cancelPendingScrollPersistence = () => {};
   const disposeNavigation = () => {
     activationRevision += 1;
     navigationOwner.abort();
     pageOwner.abort();
+    cancelPendingScrollPersistence();
   };
   /** @type {Map<string, NonNullable<PageSourceLoadOptions['queryContext']>>} */
   const pageQueryContext = new Map();
@@ -1067,11 +1077,14 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   const scrollTop = () => pageScroller instanceof HTMLElement
     ? pageScroller.scrollTop
     : root.ownerDocument.scrollingElement?.scrollTop ?? root.ownerDocument.documentElement.scrollTop;
-  const savedScrollTop = () => {
-    const value = root.ownerDocument.defaultView?.history.state?.[SCROLL_TOP_STATE_KEY];
-    return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
+  /** @param {string} pageId */
+  const savedScrollTop = (pageId) => {
+    const state = root.ownerDocument.defaultView?.history.state;
+    return state?.[SCROLL_PAGE_ID_STATE_KEY] === pageId
+      ? normalizeScrollTop(state[SCROLL_TOP_STATE_KEY])
+      : undefined;
   };
-  const cancelPendingScrollPersistence = () => {
+  cancelPendingScrollPersistence = () => {
     const view = root.ownerDocument.defaultView;
     if (scrollPersistenceFrame !== null) view?.cancelAnimationFrame?.(scrollPersistenceFrame);
     scrollPersistenceFrame = null;
@@ -1081,7 +1094,11 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const view = root.ownerDocument.defaultView;
     if (!view) return;
     const state = view.history.state && typeof view.history.state === 'object' ? view.history.state : {};
-    view.history.replaceState({ ...state, [SCROLL_TOP_STATE_KEY]: scrollTop() }, '', view.location.href);
+    view.history.replaceState({
+      ...state,
+      [SCROLL_PAGE_ID_STATE_KEY]: activePageId,
+      [SCROLL_TOP_STATE_KEY]: scrollTop()
+    }, '', view.location.href);
   };
   const persistScrollTop = () => {
     const view = root.ownerDocument.defaultView;
@@ -1229,8 +1246,11 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   ) => {
      if (navigationOwner.signal.aborted) return;
      const revision = ++activationRevision;
-    const requestedScrollTop = pendingScrollTop ?? savedScrollTop();
+    const requestedScrollTop = pendingScrollPageId === pageId
+      ? pendingScrollTop
+      : savedScrollTop(pageId);
     pendingScrollTop = undefined;
+    pendingScrollPageId = undefined;
     pageOwner.abort();
     pageOwner = new AbortController();
     let pagePopulated = false;
@@ -1243,7 +1263,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       if (section && page?.contains(section)) {
         section.scrollIntoView?.();
       } else {
-        const savedTop = requestedScrollTop ?? pageState.get(pageId)?.scrollTop ?? savedScrollTop();
+        const savedTop = requestedScrollTop ?? pageState.get(pageId)?.scrollTop ?? savedScrollTop(pageId);
         if (savedTop === undefined) return;
         const scrollingElement = pageScroller instanceof HTMLElement
           ? pageScroller
@@ -1301,14 +1321,16 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
           if (routeInitialized) {
             dispatchPageRoute(renderedPage, renderedPage.dataset.routeParameter ?? '', renderedPage.dataset.routeValue);
           }
-          if (deferPopulation) {
+          const shouldRestoreScroll = deferPopulation
+            || requestedScrollTop !== undefined
+            || savedScrollTop(pageId) !== undefined;
+          if (shouldRestoreScroll) {
             restoreScroll(renderedPage);
-          }
-          if (requestedScrollTop !== undefined || savedScrollTop() !== undefined) {
-            restoreScroll(renderedPage);
-            root.ownerDocument.defaultView?.requestAnimationFrame(() => {
-              if (revision === activationRevision && activePageId === pageId) restoreScroll(renderedPage);
-            });
+            if (requestedScrollTop !== undefined || savedScrollTop(pageId) !== undefined) {
+              root.ownerDocument.defaultView?.requestAnimationFrame(() => {
+                if (revision === activationRevision && activePageId === pageId) restoreScroll(renderedPage);
+              });
+            }
           }
         };
         const rendered = renderPageById?.(pageId, {
@@ -1550,9 +1572,9 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
         ? 'forward'
         : undefined;
     pendingNavigationHash = defaultView?.location.hash;
-    const savedTop = event.state?.[SCROLL_TOP_STATE_KEY];
-    pendingScrollTop = typeof savedTop === 'number' && Number.isFinite(savedTop) && savedTop >= 0
-      ? savedTop
+    pendingScrollTop = normalizeScrollTop(event.state?.[SCROLL_TOP_STATE_KEY]);
+    pendingScrollPageId = typeof event.state?.[SCROLL_PAGE_ID_STATE_KEY] === 'string'
+      ? event.state[SCROLL_PAGE_ID_STATE_KEY]
       : undefined;
     navigationIndex = nextNavigationIndex;
     syncHistoryBack();
@@ -1572,7 +1594,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     pendingNavigationDirection = undefined;
     pendingNavigationHash = undefined;
     primePageChrome(route?.pageId ?? initialPageId);
-    const historyScrollTop = pendingScrollTop;
+    const historyScrollTop = pendingScrollPageId === route?.pageId ? pendingScrollTop : undefined;
     updateWithViewTransition(root.ownerDocument, () => activate(
       route?.pageId ?? initialPageId,
       route?.parameters,
