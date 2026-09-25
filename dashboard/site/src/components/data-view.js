@@ -94,8 +94,8 @@ function resolveGithubEntityLink(row, field, fallbackLabel) {
  *   rowLimit?: number,
  *   units?: Record<string, { name: string, symbol: string, significant: number }>,
  *   prepareTableRows: (rows: Array<Record<string, unknown>>, columns: TableField[], data: unknown) => Array<Record<string, unknown>>,
- *   buildChartPoints: (pageId: string, title: string, rows: Array<Record<string, unknown>>, x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, hrefField: string | null, weight?: Record<string, any> | null) => ChartPoint[],
- *   prepareChartPoints: (points: ChartPoint[], x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, data: unknown) => ChartPoint[],
+ *   buildChartPoints: (pageId: string, title: string, rows: Array<Record<string, unknown>>, x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, hrefField: string | null, weight?: Record<string, any> | null, section?: Record<string, any> | null) => ChartPoint[],
+ *   prepareChartPoints: (points: ChartPoint[], x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, data: unknown, section?: Record<string, any> | null) => ChartPoint[],
  *   toText: (value: unknown) => string,
  *   cardTemplates?: Record<string, { icon: string, 'icon-field'?: string, status?: { field: string, 'fallback-field'?: string, title?: string }, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], 'detail-labels'?: string, metrics?: TableField[], timing?: Array<TableField & { icon: string }>, actions?: Array<{ action: string, context: string[], when?: { field: string, equals: unknown } }>, drill?: Record<string, unknown> }>,
  *   continuation?: { token: string, totalRows: number, load: (token: string) => Promise<{ rows: Array<Record<string, unknown>>, continuationToken?: string }> }
@@ -1234,25 +1234,23 @@ function renderChartView(context) {
   const pointsForRows = (chartRows) => {
     if (chartType === 'line' && yDefinitions.length > 1) {
       const points = yDefinitions.flatMap((definition) => (weight
-        ? buildChartPoints(pageId, title, chartRows, x, definition, null, href?.field ?? null, weight, chartSection)
-        : buildChartPoints(pageId, title, chartRows, x, definition, null, href?.field ?? null, null, chartSection)
+        ? buildChartPoints(pageId, title, chartRows, x, definition, null, href?.field ?? null, weight)
+        : buildChartPoints(pageId, title, chartRows, x, definition, null, href?.field ?? null)
       ).map((point) => ({
         ...point,
         key: `${point.key}-${definition.field}`,
         color: fieldTitle(definition)
       })));
-      return prepareChartPoints(points, x, y, null, view.data, chartSection);
+      return prepareChartPoints(points, x, y, null, view.data);
     }
-    return prepareChartPoints(
-      weight
-        ? buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null, weight, chartSection)
-        : buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null, null, chartSection),
-      x,
-      value,
-      series,
-      view.data,
-      chartSection
-    );
+    const chartPoints = chartSection
+      ? buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null, weight, chartSection)
+      : weight
+        ? buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null, weight)
+        : buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null);
+    return chartSection
+      ? prepareChartPoints(chartPoints, x, value, series, view.data, chartSection)
+      : prepareChartPoints(chartPoints, x, value, series, view.data);
   };
   const points = pointsForRows(rows);
   const description = typeof view.description === 'string' && view.description.length > 0

@@ -228,7 +228,10 @@ test('full-view content keeps a responsive horizontal inset', async ({ page }) =
 const horizontalBarFixtureLabel = '.github/workflows/extremely-long-dependabot-update-planner.md';
 const horizontalBarFixtureSuffix = 'planner.md';
 
-/** @param {import('@playwright/test').Page} page */
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {{ labels?: string[], sections?: string[], stageWidth?: number }} [options]
+ */
 async function renderHorizontalBarFixture(page, {
   labels = [horizontalBarFixtureLabel],
   sections = [],
