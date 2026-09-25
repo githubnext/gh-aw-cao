@@ -1650,4 +1650,4 @@ Invalid because operational value is non-additive and cannot use `sum`.
 | Operational grader | What native metric value did gh-aw publish for one run under the `operational-value` protocol? | Repository operational value, AIC, outcome, normalized score, or causal impact |
 | Operational value | What campaign-defined metric was observed for one repository and campaign? | Run-scoped operational grader, AIC, outcome, or causal impact |
 
----
+----
