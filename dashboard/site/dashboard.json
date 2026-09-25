@@ -5835,6 +5835,9 @@
             "field": "failure-step"
           },
           {
+            "field": "failure-log"
+          },
+          {
             "field": "rollout-mode"
           },
           {
@@ -6819,6 +6822,9 @@
           },
           {
             "field": "failure-step"
+          },
+          {
+            "field": "failure-log"
           },
           {
             "field": "engine"
@@ -8146,6 +8152,18 @@
             ]
           },
           {
+            "as": "_target-repository-href",
+            "function": "concat",
+            "args": [
+              {
+                "value": "#page-repository-detail?repository="
+              },
+              {
+                "field": "_target-repository-encoded"
+              }
+            ]
+          },
+          {
             "as": "target-repository-link",
             "function": "dashboard-link",
             "args": [
@@ -8153,15 +8171,7 @@
                 "field": "target-repository"
               },
               {
-                "function": "concat",
-                "args": [
-                  {
-                    "value": "#page-repository-detail?repository="
-                  },
-                  {
-                    "field": "_target-repository-encoded"
-                  }
-                ]
+                "field": "_target-repository-href"
               },
               {
                 "field": "target-repository"
