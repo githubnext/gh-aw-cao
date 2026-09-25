@@ -8,8 +8,15 @@ cao_command="./cao.sh"
 control_runtime=".github/workflows/shared/control.mjs"
 materializer=".github/workflows/shared/materialize-cao.mjs"
 runtime_action=".github/actions/setup-cao-runtime/action.yml"
-required_gh_aw="v0.89.20"
+required_gh_aw="v0.89.21"
 catalog_source="${1:-githubnext/gh-aw-cao}"
+
+if [[ "$catalog_source" == "githubnext/gh-aw-cao" && -f aw.yml ]]; then
+  manifest_required_gh_aw="$(awk '$1 == "min-version:" { print $2; exit }' aw.yml)"
+  if [[ -n "$manifest_required_gh_aw" ]]; then
+    required_gh_aw="$manifest_required_gh_aw"
+  fi
+fi
 
 version_at_least() {
   node -e '
@@ -29,45 +36,65 @@ process.exit(1);
 ' "$1" "$2"
 }
 
-upgrade_gh_aw() {
-  local answer
-  if [[ -r /dev/tty ]]; then
-    printf 'The installed gh-aw is too old for this CAO campaign. Upgrade it now with gh extension upgrade gh-aw? [y/N] ' > /dev/tty
-    if IFS= read -r answer < /dev/tty && [[ "$answer" =~ ^[Yy]$ ]]; then
-      gh extension upgrade gh-aw
-      return
-    fi
-  fi
-  printf 'gh-aw was not upgraded. Run `gh extension upgrade gh-aw`, then rerun the CAO installer.\n'
-  return 1
-}
-
-current_gh_aw="$(gh aw version 2>/dev/null | awk '{print $NF}' || true)"
-if [[ -z "$current_gh_aw" ]]; then
+install_gh_aw() {
   curl --fail --silent --show-error --location \
     https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh |
     bash -s -- "$required_gh_aw"
+}
+
+get_gh_aw_version() {
+  gh aw version 2>/dev/null |
+    awk 'match($0, /v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?/) {
+      print substr($0, RSTART, RLENGTH)
+      exit
+    }' || true
+}
+
+verify_gh_aw_version() {
+  local current_version
+  current_version="$(get_gh_aw_version)"
+  if [[ -z "$current_version" ]] || ! version_at_least "$current_version" "$required_gh_aw"; then
+    printf 'Failed to verify gh-aw installation: expected at least %s, got %s.\n' \
+      "$required_gh_aw" "${current_version:-no version}" >&2
+    return 1
+  fi
+}
+
+upgrade_gh_aw() {
+  local answer
+  local upgrade_command="curl -sL https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- $required_gh_aw"
+  if [[ -r /dev/tty ]]; then
+    printf 'The installed gh-aw is too old for this CAO campaign. Upgrade it now with %s? [y/N] ' "$upgrade_command" > /dev/tty
+    if IFS= read -r answer < /dev/tty && [[ "$answer" =~ ^[Yy]$ ]]; then
+      if install_gh_aw; then
+        return 0
+      fi
+      printf 'Failed to install gh-aw %s.\n' "$required_gh_aw" >&2
+      return 1
+    fi
+  fi
+  printf 'gh-aw was not upgraded. Run `%s`, then rerun the CAO installer.\n' "$upgrade_command"
+  return 2
+}
+
+current_gh_aw="$(get_gh_aw_version)"
+if [[ -z "$current_gh_aw" ]]; then
+  install_gh_aw
+  verify_gh_aw_version
 elif ! version_at_least "$current_gh_aw" "$required_gh_aw"; then
-  upgrade_gh_aw || exit 0
+  if upgrade_gh_aw; then
+    verify_gh_aw_version
+  else
+    upgrade_status=$?
+    if [[ "$upgrade_status" -eq 2 ]]; then
+      exit 0
+    fi
+    exit "$upgrade_status"
+  fi
 fi
 
 add_campaign() {
-  local add_error
-  add_error="$(mktemp)"
-  if gh aw add "$catalog_source" "$@" 2>"$add_error"; then
-    rm -f "$add_error"
-    return 0
-  fi
-  if grep -Eq 'min-version "v[0-9]+\.[0-9]+\.[0-9]+" requires gh-aw' "$add_error"; then
-    cat "$add_error" >&2
-    rm -f "$add_error"
-    upgrade_gh_aw || exit 0
-    gh aw add "$catalog_source" "$@"
-  else
-    cat "$add_error" >&2
-    rm -f "$add_error"
-    return 1
-  fi
+  gh aw add "$catalog_source" "$@"
 }
 
 if [[ ! -f "$cao_cli" || ! -f "$cao_command" || ! -f "$control_runtime" || ! -f "$materializer" || ! -f "$runtime_action" ]]; then

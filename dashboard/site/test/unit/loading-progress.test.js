@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setLoadingProgressState } from '../../src/loading-progress.js';
 
 afterEach(() => {
@@ -67,5 +67,76 @@ describe('loading progress', () => {
     vi.advanceTimersByTime(240);
     expect(document.querySelectorAll('.loading-progress')).toHaveLength(0);
     expect(document.querySelectorAll('style[data-loading-progress-styles]')).toHaveLength(1);
+  });
+
+  describe('debug logging', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    it('is disabled by default (no debug output) when the debug query is absent', async () => {
+      const output = { debug: vi.fn() };
+      vi.doMock('../../src/debug.js', async () => {
+        const actual = /** @type {typeof import('../../src/debug.js')} */ (
+          await vi.importActual('../../src/debug.js')
+        );
+        return {
+          ...actual,
+          createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '', output })
+        };
+      });
+      vi.resetModules();
+      const { setLoadingProgressState: setLoadingProgressStateWithDebug } = await import('../../src/loading-progress.js');
+
+      setLoadingProgressStateWithDebug(document, { id: 'ingestion-1', phase: 'start' });
+      setLoadingProgressStateWithDebug(document, { id: 'ingestion-2', phase: 'start' });
+      setLoadingProgressStateWithDebug(document, { id: 'ingestion-1', phase: 'complete' });
+      setLoadingProgressStateWithDebug(document, { id: 'ingestion-2', phase: 'complete' });
+
+      expect(output.debug).not.toHaveBeenCalled();
+
+      vi.doUnmock('../../src/debug.js');
+      vi.resetModules();
+    });
+
+    it('logs only scalar metadata under its predictable category when enabled', async () => {
+      const output = { debug: vi.fn() };
+      vi.doMock('../../src/debug.js', async () => {
+        const actual = /** @type {typeof import('../../src/debug.js')} */ (
+          await vi.importActual('../../src/debug.js')
+        );
+        return {
+          ...actual,
+          createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '?debug=loading-progress', output })
+        };
+      });
+      vi.resetModules();
+      const { setLoadingProgressState: setLoadingProgressStateWithDebug } = await import('../../src/loading-progress.js');
+
+      setLoadingProgressStateWithDebug(document, { id: 'ingestion-1', phase: 'start' });
+      expect(output.debug).toHaveBeenCalledWith('[cao:loading-progress]', { event: 'bar-created', id: 'ingestion-1' });
+
+      setLoadingProgressStateWithDebug(document, { id: 'ingestion-2', phase: 'start' });
+      expect(output.debug).toHaveBeenCalledWith('[cao:loading-progress]', {
+        event: 'concurrent-operation-started',
+        id: 'ingestion-2',
+        activeCount: 2
+      });
+
+      setLoadingProgressStateWithDebug(document, { id: 'ingestion-1', phase: 'complete' });
+      setLoadingProgressStateWithDebug(document, { id: 'ingestion-2', phase: 'complete' });
+      expect(output.debug).toHaveBeenCalledWith('[cao:loading-progress]', {
+        event: 'all-operations-complete',
+        id: 'ingestion-2'
+      });
+
+      for (const call of output.debug.mock.calls) {
+        const metadata = call[1];
+        expect(Object.values(metadata).every((value) => typeof value !== 'object')).toBe(true);
+      }
+
+      vi.doUnmock('../../src/debug.js');
+      vi.resetModules();
+    });
   });
 });
