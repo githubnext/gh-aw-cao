@@ -193,7 +193,11 @@ function inspectSnapshot(files, ruleKey) {
     let jobEnd = runIndex + 1;
     while (jobEnd < lines.length && !/^  [A-Za-z0-9_-]+:\s*$/.test(lines[jobEnd])) jobEnd += 1;
     const block = lines.slice(jobStart, jobEnd).join("\n");
-    return /continue-on-error:\s*true/i.test(block);
+    const jobIdentity = `${lines[jobStart]}\n${block.match(/^\s+name:\s*(.+)$/im)?.[1] ?? ""}`;
+    const runSteps = block.match(/^\s+(?:-\s+)?run:/gm) ?? [];
+    return /eslint[- :]?factory/i.test(jobIdentity)
+      && runSteps.length === 1
+      && /continue-on-error:\s*true/i.test(block);
   }));
   return {
     warningRule,
@@ -333,22 +337,33 @@ export async function collectBatch(requests) {
     for (const repository of new Set([...candidates.values()].map(({ repository }) => repository))) {
       const snapshotKey = `${repository.toLowerCase()}:${request.windowEnd}`;
       if (!snapshots.has(snapshotKey)) {
-        const commit = resolveCommit(repository, request.windowEnd);
-        snapshots.set(snapshotKey, { commit, files: collectSnapshot(repository, commit) });
+        try {
+          const commit = resolveCommit(repository, request.windowEnd);
+          snapshots.set(snapshotKey, { commit, files: collectSnapshot(repository, commit) });
+        } catch (error) {
+          snapshots.set(snapshotKey, {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
       }
     }
 
-    const outcomes = [...candidates.values()].map((candidate) => ({
-      candidate,
-      outcome: inspectSnapshot(
-        snapshots.get(`${candidate.repository.toLowerCase()}:${request.windowEnd}`).files,
-        candidate.ruleKey,
-      ),
-    }));
+    const unavailableRepositories = new Set();
+    const outcomes = [...candidates.values()].flatMap((candidate) => {
+      const snapshot = snapshots.get(`${candidate.repository.toLowerCase()}:${request.windowEnd}`);
+      if (snapshot.error) {
+        unavailableRepositories.add(candidate.repository);
+        return [];
+      }
+      return [{
+        candidate,
+        outcome: inspectSnapshot(snapshot.files, candidate.ruleKey),
+      }];
+    });
     const count = (field) => outcomes.filter(({ outcome }) => outcome[field]).length;
     request.collection = {
       evidence: {
-        valid: memory.commit !== null,
+        valid: memory.commit !== null && unavailableRepositories.size === 0,
         opportunityCount: outcomes.length,
         completeCount: count("complete"),
         warningRuleCount: count("warningRule"),
@@ -379,8 +394,13 @@ export async function collectBatch(requests) {
           kind: "git-commit",
           ref: snapshots.get(`${repository.toLowerCase()}:${request.windowEnd}`).commit,
         })),
+        ...[...unavailableRepositories].map((repository) => ({
+          repository,
+          kind: "git-commit-unavailable",
+          ref: request.windowEnd,
+        })),
       ],
-      ...(request.repository && candidates.size > 0 ? {
+      ...(request.repository && candidates.size > 0 && unavailableRepositories.size === 0 ? {
         commit: snapshots.get(`${request.repository.toLowerCase()}:${request.windowEnd}`).commit,
       } : {}),
     };
