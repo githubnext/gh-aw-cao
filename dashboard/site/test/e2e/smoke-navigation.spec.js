@@ -461,6 +461,7 @@ test('phone full-view lazy tables switch between table and card-list modes', asy
   await expect(cards.locator('.entity-card-list-card')).toContainText('githubnext/gh-aw-cao');
   await expect(root).toHaveClass(/dashboard-full-view/);
   await expect(page.getByRole('heading', { name: 'Repositories', level: 3 })).toBeHidden();
+  await expect(mobileViewModeToggle).toHaveAttribute('aria-label', 'Switch to Table view');
 
   await mobileViewModeToggle.click();
   await expect(table).toBeVisible();
