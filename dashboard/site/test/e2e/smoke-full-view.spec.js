@@ -188,8 +188,11 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
   await expect(page.locator('.org-sidebar')).toBeVisible();
   await expect(view).toBeHidden();
-  await page.locator('.mobile-view-mode-toggle').click();
-  await page.locator('.mobile-view-mode-toggle').click();
+  const mobileViewModeToggle = page.locator('.mobile-view-mode-toggle');
+  await expect(mobileViewModeToggle).toBeVisible();
+  await mobileViewModeToggle.click();
+  await expect(view.locator('[data-mobile-card-list]')).toBeVisible();
+  await mobileViewModeToggle.click();
   await expect(view).toBeVisible();
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
   const mobileViewportHeight = await page.evaluate(() => innerHeight);
