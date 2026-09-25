@@ -213,14 +213,18 @@ describe('dashboard view query contracts', () => {
     for (const [pageId, body] of Object.entries(primaryPages)) {
       const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === pageId);
       const firstView = viewsOf(page)[0];
+      const sources = [
+        'workflows',
+        'campaign-insight-tab-counts',
+        'campaign-problem-tab-counts',
+        'campaign-issue-tab-counts',
+        ...(pageId === 'campaign-insights'
+          ? ['campaign-operational-value-primary-series', 'campaign-runs']
+          : [])
+      ];
       expect(firstView).toMatchObject({
         data: {
-          sources: [
-            'workflows',
-            'campaign-insight-tab-counts',
-            'campaign-problem-tab-counts',
-            'campaign-issue-tab-counts'
-          ],
+          sources,
           arguments: [{ name: 'campaign', field: 'campaign' }]
         },
         mark: 'element',
@@ -275,17 +279,24 @@ describe('dashboard view query contracts', () => {
     const problems = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-problems');
     const runs = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-runs');
 
-    expect(viewsOf(insights)[1]).toMatchObject({
+    expect(viewsOf(insights)[0]).toMatchObject({
       data: {
-        sources: ['campaign-operational-value-primary-series', 'campaign-runs'],
+        sources: [
+          'workflows',
+          'campaign-insight-tab-counts',
+          'campaign-problem-tab-counts',
+          'campaign-issue-tab-counts',
+          'campaign-operational-value-primary-series',
+          'campaign-runs'
+        ],
         arguments: [{ name: 'campaign', field: 'campaign' }]
       },
       mark: 'element',
-      element: 'measure-history',
-      config: { 'measure-source': 'operational-value' }
+      element: 'campaign-route',
+      config: { body: 'insights' }
     });
 
-    expect(viewsOf(insights)[2]).toMatchObject({
+    expect(viewsOf(insights)[1]).toMatchObject({
       data: {
         sources: ['campaign-operational-grader-series'],
         arguments: [{ name: 'campaign', field: 'campaign' }]
