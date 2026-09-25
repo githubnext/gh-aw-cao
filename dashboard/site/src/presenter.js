@@ -1125,7 +1125,11 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   const breadcrumbDashboard = root.querySelector('[data-breadcrumb-dashboard]');
   const pageTitle = root.querySelector('#page-title');
   const pageTitleLink = root.querySelector('[data-page-title-link]');
-  const pageExperimental = root.querySelector('[data-page-experimental]');
+  const pageExperimental = root.querySelector('.title-area [data-page-experimental]');
+  /** @param {HTMLElement | undefined} page */
+  const syncPageExperimental = (page) => {
+    if (pageExperimental instanceof HTMLElement) pageExperimental.hidden = page?.dataset.pageExperimental !== 'true';
+  };
   const pageDescription = root.querySelector('.overview-header [data-page-description]');
   const pageMode = root.querySelector('[data-page-mode]');
   const pageScroller = root.querySelector('main.dashboard-prototype');
@@ -1192,7 +1196,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const description = routeDescription.trim() || page?.dataset.pageDescription || '';
     if (breadcrumbPage) breadcrumbPage.textContent = title;
     if (pageTitle) pageTitle.textContent = title;
-    if (pageExperimental instanceof HTMLElement) pageExperimental.hidden = page?.dataset.pageExperimental !== 'true';
+    syncPageExperimental(page);
     updateDocumentTitle(root.ownerDocument, title, dashboardTitle);
     renderPageTitleLink(pageTitleLink, null);
     if (pageDescription) {
@@ -1476,6 +1480,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const description = provisionalDescription.trim() || page?.dataset.pageDescription || '';
     if (breadcrumbPage) breadcrumbPage.textContent = title;
     if (pageTitle) pageTitle.textContent = title;
+    syncPageExperimental(page);
     updateDocumentTitle(root.ownerDocument, title, dashboardTitle);
     renderPageTitleLink(pageTitleLink, null);
     if (pageDescription) {

@@ -118,8 +118,10 @@ describe('dashboard sidebar', () => {
 
     const desktopLink = sidebar.querySelector('[data-nav-page-id="preview"]');
     const mobileLink = sidebar.querySelector('[data-mobile-nav-page-id="preview"]');
-    expect(desktopLink?.querySelector('.experimental-page-label')?.textContent).toBe('Experimental');
-    expect(mobileLink?.querySelector('.experimental-page-label')?.textContent).toBe('Experimental');
+    expect(desktopLink?.querySelector('.experimental-page-label .octicon-beaker')).not.toBeNull();
+    expect(mobileLink?.querySelector('.experimental-page-label .octicon-beaker')).not.toBeNull();
+    expect(desktopLink?.querySelector('.experimental-page-label')?.getAttribute('title')).toBe('Experimental');
+    expect(mobileLink?.querySelector('.experimental-page-label')?.getAttribute('title')).toBe('Experimental');
     expect(desktopLink?.getAttribute('aria-label')).toBe('Preview, Experimental');
     expect(mobileLink?.getAttribute('aria-label')).toBe('Preview, Experimental');
   });
