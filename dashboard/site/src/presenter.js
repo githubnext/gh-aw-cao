@@ -1044,6 +1044,8 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   const navigationOwner = new AbortController();
   /** @type {number | undefined} */
   let pendingScrollTop;
+  /** @type {number | null} */
+  let scrollPersistenceFrame = null;
   const disposeNavigation = () => {
     activationRevision += 1;
     navigationOwner.abort();
@@ -1069,11 +1071,26 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const value = root.ownerDocument.defaultView?.history.state?.[SCROLL_TOP_STATE_KEY];
     return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
   };
-  const persistScrollTop = () => {
+  const cancelPendingScrollPersistence = () => {
+    const view = root.ownerDocument.defaultView;
+    if (scrollPersistenceFrame !== null) view?.cancelAnimationFrame?.(scrollPersistenceFrame);
+    scrollPersistenceFrame = null;
+  };
+  const commitScrollTop = () => {
+    cancelPendingScrollPersistence();
     const view = root.ownerDocument.defaultView;
     if (!view) return;
     const state = view.history.state && typeof view.history.state === 'object' ? view.history.state : {};
     view.history.replaceState({ ...state, [SCROLL_TOP_STATE_KEY]: scrollTop() }, '', view.location.href);
+  };
+  const persistScrollTop = () => {
+    const view = root.ownerDocument.defaultView;
+    if (!view || scrollPersistenceFrame !== null) return;
+    if (typeof view.requestAnimationFrame !== 'function') return commitScrollTop();
+    scrollPersistenceFrame = view.requestAnimationFrame(() => {
+      scrollPersistenceFrame = null;
+      if (!navigationOwner.signal.aborted) commitScrollTop();
+    });
   };
   if (pageScroller instanceof HTMLElement) {
     pageScroller.addEventListener('scroll', persistScrollTop, { passive: true, signal: navigationOwner.signal });
@@ -1245,7 +1262,6 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
           details: [...activePage.querySelectorAll('details')].map((details) => details.open),
           scrollTop: scrollTop()
         });
-        persistScrollTop();
         disconnectLazyViews(activePage);
         activePage.replaceChildren();
         activePage.removeAttribute('aria-busy');
@@ -1463,7 +1479,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       defaultView?.history.back();
       return;
     }
-    persistScrollTop();
+    commitScrollTop();
     navigationIndex += 1;
     defaultView?.history.pushState(
       { [NAVIGATION_INDEX_STATE_KEY]: navigationIndex },
@@ -1489,7 +1505,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     if (!pageId || !availableIds.has(pageId)) return;
     const provisionalTitle = link.dataset.routeTitle ?? '';
     const provisionalDescription = link.dataset.routeDescription ?? '';
-    persistScrollTop();
+    commitScrollTop();
     navigationIndex += 1;
     defaultView?.history.pushState({ [NAVIGATION_INDEX_STATE_KEY]: navigationIndex }, '', link.href);
     syncHistoryBack();

@@ -3256,7 +3256,9 @@ describe('presenter built-in and custom pages', () => {
       const firstScroller = /** @type {HTMLElement} */ (firstRoot.querySelector('main.dashboard-prototype'));
       firstScroller.scrollTop = 240;
       firstScroller.dispatchEvent(new Event('scroll'));
-      expect(window.history.state?.centralAgenticOpsScrollTop).toBe(240);
+      await vi.waitFor(() => {
+        expect(window.history.state?.centralAgenticOpsScrollTop).toBe(240);
+      });
       disposeFirstNavigation();
       firstRoot.remove();
 
