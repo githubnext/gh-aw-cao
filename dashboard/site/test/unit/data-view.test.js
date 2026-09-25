@@ -2290,6 +2290,7 @@ describe('data view renderer', () => {
             { field: 'entity-url', type: 'nominal', title: 'Entity URL' },
             { field: 'run-href', type: 'nominal', title: 'Run link', as: 'run-link-value' },
             { field: 'unsafe-link', type: 'nominal', title: 'Unsafe link' },
+            { field: 'curl-command', type: 'nominal', title: 'cURL command' },
             { field: 'status-url', type: 'nominal', title: 'Status URL', display: 'status' }
           ]
         }
@@ -2299,6 +2300,7 @@ describe('data view renderer', () => {
         'entity-url': 'https://github.com/githubnext/gh-aw-cao/issues/13772',
         'run-link-value': 'https://github.com/githubnext/gh-aw-cao/actions/runs/36048728401',
         'unsafe-link': 'http://example.test/not-linked',
+        'curl-command': 'https://example.test/from-curl',
         'status-url': 'success'
       }],
       metadata,
@@ -2319,6 +2321,8 @@ describe('data view renderer', () => {
     expect(links?.[1]?.textContent).toContain('https://github.com/githubnext/gh-aw-cao/actions/runs/36048728401');
     expect(links?.[1]?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/36048728401');
     expect(rendered?.querySelector('[data-field="unsafe-link"]')?.textContent).toBe('http://example.test/not-linked');
+    expect(rendered?.querySelector('[data-field="curl-command"] a')).toBeNull();
+    expect(rendered?.querySelector('[data-field="curl-command"]')?.textContent).toBe('https://example.test/from-curl');
     expect(rendered?.querySelector('[data-field="status-url"] a')).toBeNull();
     expect(rendered?.querySelector('[data-field="status-url"] .status')?.textContent).toBe('success');
   });

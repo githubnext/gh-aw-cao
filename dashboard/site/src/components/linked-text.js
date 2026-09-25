@@ -61,7 +61,16 @@ export function createEntityAwareCellRenderer(entityLinkFields, findLink, render
  */
 function isExternalLinkField(column) {
   return [column.field, column.as, column.title]
-    .some((candidate) => typeof candidate === 'string' && /(?:url|link)/i.test(candidate));
+    .some((candidate) => typeof candidate === 'string' && hasExternalLinkToken(candidate));
+}
+
+/**
+ * @param {string} value
+ * @returns {boolean}
+ */
+function hasExternalLinkToken(value) {
+  const tokenized = value.replace(/([a-z0-9])([A-Z][a-z])/g, '$1 $2');
+  return /(?:^|[^a-z0-9])(?:url|link)(?:$|[^a-z0-9])/i.test(tokenized);
 }
 
 /**
