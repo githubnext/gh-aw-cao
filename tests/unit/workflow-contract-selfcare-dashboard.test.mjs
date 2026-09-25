@@ -152,6 +152,26 @@ test("SelfCare dashboard debug logging worker preserves the logging privacy boun
   assert.match(compiled, /cache-memory/);
 });
 
+test("SelfCare server Go logging worker adds real tests without mocks", () => {
+  const source = workflow("self-care-server-go-logging.md");
+  const compiled = workflow("self-care-server-go-logging.lock.yml");
+
+  assert.match(source, /^name: "SelfCare \/ Server Go Logging"$/m);
+  assert.match(source, /campaign: self-care\n\s+role: worker\n\s+worker: server-go-logging/);
+  assert.match(source, /safe_output_mode` is `live`/);
+  assert.match(source, /all-you-can-eat feature grower/);
+  assert.match(source, /skip-if-match: 'is:pr is:open "gh-aw-workflow-id: self-care-server-go-logging" in:body'/);
+  assert.match(source, /server-go-logging-rotation\.json/);
+  assert.match(source, /github\.com\/githubnext\/gh-aw-cao\/server\/internal\/logger/);
+  assert.match(source, /Do not use mock frameworks, generated mocks, hand-written mocks, fakes, stubs/);
+  assert.match(source, /allowed-files:\n\s+- "server\/\*\*\/\*\.go"/);
+  assert.match(source, /go -C server vet \.\/\.\.\./);
+  assert.match(source, /go -C server test \.\/\.\.\./);
+  assert.match(source, /draft: true/);
+  assert.match(compiled, /self-care-server-go-logging/);
+  assert.match(compiled, /actions\/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32/);
+});
+
 test("SelfCare dashboard reviewer checks deployments through stakeholder personas", () => {
   const source = workflow("self-care-dashboard-review.md");
   const compiled = workflow("self-care-dashboard-review.lock.yml");

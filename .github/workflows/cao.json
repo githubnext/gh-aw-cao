@@ -230,6 +230,9 @@
           },
           "reactive-ui-expert": {
             "workflow": "self-care-reactive-ui-expert"
+          },
+          "server-go-logging": {
+            "workflow": "self-care-server-go-logging"
           }
         }
       }

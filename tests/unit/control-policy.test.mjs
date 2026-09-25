@@ -201,6 +201,10 @@ test("checked-in control policy keeps Dependabot scoped with live gh-aw target a
     policy["control-plane"].campaigns["self-care"].workers["reactive-ui-expert"].workflow,
     "self-care-reactive-ui-expert",
   );
+  assert.equal(
+    policy["control-plane"].campaigns["self-care"].workers["server-go-logging"].workflow,
+    "self-care-server-go-logging",
+  );
   assert.equal(policy["target-authority"].campaigns["self-care"].authority, "githubnext/gh-aw-cao");
 });
 
