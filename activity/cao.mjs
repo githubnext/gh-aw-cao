@@ -182,7 +182,8 @@ Operational value scripts:
 Problem clustering scripts:
   cao cluster-problems discovers <package>/problem-clustering.mjs below --root.
   Each script receives one JSON request on stdin and emits bounded JSONL problem
-  records. Successful output replaces that package's rows in cao_problems.
+  records with actionable fixPrompt fields. Successful output replaces that
+  package's rows in cao_problems.
 
 `;
 

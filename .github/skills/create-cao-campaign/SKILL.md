@@ -79,8 +79,9 @@ The same snapshot path is available as `CAO_DATABASE`. Read it without acquiring
 new evidence or mutating authoritative inputs.
 
 Emit a JSONL sequence: zero or more newline-delimited JSON objects, one problem
-per line. Every problem requires stable lowercase `id` and non-empty `title`
-fields. It may include `observedAt`, `severity`, `summary`, `campaign`,
+per line. Every problem requires stable lowercase `id`, non-empty `title`, and
+an actionable `fixPrompt` that an agent can follow to resolve the problem.
+It may include `observedAt`, `severity`, `summary`, `campaign`,
 `repository`, `workflow`, `targetRepository`, and object-valued `evidence`.
 `severity` defaults to `medium` and accepts `critical`, `high`, `medium`, `low`,
 or `info`. Use stable IDs for the same unresolved problem across runs. Do not
@@ -239,6 +240,6 @@ Before finishing:
 15. Confirm every worker that creates an issue, pull request, comment, or review applies the complete report contract to its output body: the visible report is delightful, precise, terse, and compact enough for a single screen; it starts directly with a concise executive-summary paragraph and no heading before it; one clear `**Action:**` follows it; critical information stays visible; non-essential background and supporting detail use `<details><summary><b>...</b></summary>...</details>` sections; every table is inside `<details>`; headings use only `###`; and callouts use `> [!NOTE]`, `> [!WARNING]`, or `> [!CAUTION]` instead of emoji severity markers.
 16. For workflows that consume recent run history, confirm they prefer a valid activity cache, preserve a bounded API fallback for cache misses or incomplete coverage, and do not publish or mutate the shared cache themselves.
 17. Confirm orchestrator concurrency is campaign-singleton, dispatch tuples are unique per run, worker concurrency is repository-scoped, and output-specific idempotency prevents retries or later runs from creating equivalent repository items. Confirm expiration is used only for cleanup and grouping is not treated as duplicate prevention.
-18. When the campaign contributes `problem-clustering.mjs`, run it against a representative Activity SQLite fixture and verify zero-, one-, and multiple-record JSONL sequences, stable IDs, bounded evidence, deterministic ordering, an empty result, malformed output, failure, and timeout behavior. Confirm the campaign manifest installs the script at `<campaign-slug>/problem-clustering.mjs`.
+18. When the campaign contributes `problem-clustering.mjs`, run it against a representative Activity SQLite fixture and verify zero-, one-, and multiple-record JSONL sequences, stable IDs, required actionable fix prompts, bounded evidence, deterministic ordering, an empty result, malformed output, failure, and timeout behavior. Confirm the campaign manifest installs the script at `<campaign-slug>/problem-clustering.mjs`.
 
 Report the created campaign, worker responsibilities, shared imports, checked-in policy fields, per-worker operational-grader metric or not-measurable conclusion, and validation results.

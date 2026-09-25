@@ -272,7 +272,7 @@ invariants:
   - "Runtime computations MUST evaluate Campaign orchestrators before enumerating worker-target partitions; a failing, unknown, or unobserved orchestrator gates worker evaluation without converting skipped workers into healthy, failed, or not-observed results."
   - "The cao computation namespace exposes production measures; runtime-health selection, joins, and ordering execute through Dashboard Language queries before versioned measure evaluation."
   - "Failure of a downstream computation MUST NOT invalidate a compatible upstream result."
-  - "Package problem clustering MUST use bounded, timed, cancelable subprocesses over a private Activity snapshot; validate emitted records; atomically replace only the producer's cao_problems rows; retain prior rows when that producer fails; and remove rows for uninstalled producers."
+  - "Package problem clustering MUST use bounded, timed, cancelable subprocesses over a private Activity snapshot; require each emitted problem to include an actionable fix prompt; atomically replace only the producer's cao_problems rows; retain prior rows when that producer fails; and remove rows for uninstalled producers."
   - "Dashboard UI effects and components MUST NOT query source data or reconstruct business relationships."
   - "ADRs are durable decision history; current requirements and conformance rules live in specs/ or specification-style documentation."
   - "Generated workflow lock files MUST NOT be edited directly."

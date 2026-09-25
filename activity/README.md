@@ -99,9 +99,10 @@ Each script receives one JSON request on standard input:
 
 The same isolated snapshot path is available as `CAO_DATABASE`. Scripts emit a
 JSONL sequence containing zero or more problem objects, one object per line,
-with required `id` and `title` fields. Optional fields
-are `observedAt`, `severity`, `summary`, `campaign`, `repository`, `workflow`,
-`targetRepository`, and an object-valued `evidence`. Severity is one of
+with required `id`, `title`, and `fixPrompt` fields. `fixPrompt` is a bounded,
+actionable prompt that an agent can follow to resolve the reported problem.
+Optional fields are `observedAt`, `severity`, `summary`, `campaign`,
+`repository`, `workflow`, `targetRepository`, and an object-valued `evidence`. Severity is one of
 `critical`, `high`, `medium`, `low`, or `info`.
 
 Activity validates and bounds the output, then atomically replaces only that

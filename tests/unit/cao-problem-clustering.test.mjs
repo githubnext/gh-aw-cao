@@ -28,12 +28,14 @@ test('package clustering scripts replace only their validated problem rows', asy
         severity: 'high',
         repository: 'githubnext/gh-aw-cao',
         workflow: 'example',
+        fixPrompt: 'Update the workflow evidence and verify the next run is current.',
         evidence: { source: 'test' }
       }));
       console.log(JSON.stringify({
         id: 'missing-owner',
         title: 'Workflow has no owner',
-        severity: 'medium'
+        severity: 'medium',
+        fixPrompt: 'Assign an owner to the workflow and document the ownership boundary.'
       }));
     `);
     await writeFile(path.join(failing, 'problem-clustering.mjs'), 'process.exit(1);\n');
@@ -59,6 +61,7 @@ test('package clustering scripts replace only their validated problem rows', asy
       assert.equal(row.problem_id, 'stale-workflow');
       assert.equal(row.observed_at, timestamp);
       assert.equal(row.severity, 'high');
+      assert.equal(row.fix_prompt, 'Update the workflow evidence and verify the next run is current.');
       assert.deepEqual(JSON.parse(row.evidence), { source: 'test' });
       assert.equal(rows[1].problem_id, 'missing-owner');
       assert.equal(rows[1].severity, 'medium');
@@ -125,7 +128,7 @@ test('invalid package output leaves existing rows intact', async () => {
     `);
     database.close();
     await writeFile(path.join(packageDirectory, 'problem-clustering.mjs'), `
-      console.log(JSON.stringify({ id: 'INVALID ID', title: 'Invalid' }));
+      console.log(JSON.stringify({ id: 'missing-fix', title: 'Missing fix prompt' }));
     `);
 
     const result = await runProblemClustering({
@@ -134,12 +137,13 @@ test('invalid package output leaves existing rows intact', async () => {
       timestamp: '2026-09-24T23:05:09.441Z'
     });
     assert.equal(result.warnings.length, 1);
+    assert.match(result.warnings[0].message, /\.fixPrompt is required/);
     const verify = new DatabaseSync(databasePath);
     try {
       assert.deepEqual(
-        verify.prepare('SELECT producer, problem_id FROM cao_problems').all()
+        verify.prepare('SELECT producer, problem_id, fix_prompt FROM cao_problems').all()
           .map((row) => ({ ...row })),
-        [{ producer: 'alpha', problem_id: 'existing' }]
+        [{ producer: 'alpha', problem_id: 'existing', fix_prompt: '' }]
       );
     } finally {
       verify.close();
@@ -176,7 +180,11 @@ test('timed-out workers retain their rows and do not block other packages', asyn
       'setInterval(() => {}, 1_000);\n'
     );
     await writeFile(path.join(packageRoot, 'healthy', 'problem-clustering.mjs'), `
-      console.log(JSON.stringify({ id: 'fresh', title: 'Fresh problem' }));
+      console.log(JSON.stringify({
+        id: 'fresh',
+        title: 'Fresh problem',
+        fixPrompt: 'Refresh the problem evidence.'
+      }));
     `);
 
     const result = await runProblemClustering({
@@ -215,14 +223,22 @@ test('cancellation terminates the active worker and stops package processing', a
     await mkdir(path.join(packageRoot, 'z-unreached'), { recursive: true });
     new DatabaseSync(databasePath).close();
     await writeFile(path.join(packageRoot, 'a-healthy', 'problem-clustering.mjs'), `
-      console.log(JSON.stringify({ id: 'completed', title: 'Completed problem' }));
+      console.log(JSON.stringify({
+        id: 'completed',
+        title: 'Completed problem',
+        fixPrompt: 'Complete the required remediation.'
+      }));
     `);
     await writeFile(
       path.join(packageRoot, 'b-hanging', 'problem-clustering.mjs'),
       'setInterval(() => {}, 1_000);\n'
     );
     await writeFile(path.join(packageRoot, 'z-unreached', 'problem-clustering.mjs'), `
-      console.log(JSON.stringify({ id: 'unexpected', title: 'Unexpected problem' }));
+      console.log(JSON.stringify({
+        id: 'unexpected',
+        title: 'Unexpected problem',
+        fixPrompt: 'Resolve the unexpected problem.'
+      }));
     `);
     setTimeout(() => controller.abort(new Error('clustering cancelled')), 500).unref();
 
@@ -263,6 +279,7 @@ test('debug logging reports lifecycle metadata without problem evidence', async 
       console.log(JSON.stringify({
         id: 'debug-problem',
         title: 'Debug problem',
+        fixPrompt: 'Resolve the debug problem without exposing evidence.',
         evidence: { detail: '${sensitiveEvidence}' }
       }));
     `);

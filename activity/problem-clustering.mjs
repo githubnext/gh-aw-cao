@@ -11,6 +11,7 @@ const PROBLEM_ID = /^[a-z0-9]+(?:[._:-][a-z0-9]+)*$/;
 const SEVERITIES = new Set(['critical', 'high', 'medium', 'low', 'info']);
 const SCRIPT_NAME = 'problem-clustering.mjs';
 const MAX_PROBLEMS_PER_PACKAGE = 1_000;
+const MAX_FIX_PROMPT_CHARACTERS = 8_000;
 const MAX_EVIDENCE_BYTES = 128 * 1_024;
 const MAX_WORKER_OUTPUT_BYTES = 16 * 1_024 * 1_024;
 const WORKER_TIMEOUT_MS = 2 * 60 * 1_000;
@@ -41,6 +42,7 @@ const PROBLEMS_SCHEMA = `
     repository TEXT NOT NULL,
     workflow TEXT NOT NULL,
     target_repository TEXT NOT NULL,
+    fix_prompt TEXT NOT NULL DEFAULT '',
     evidence TEXT NOT NULL,
     PRIMARY KEY (producer, problem_id)
   ) STRICT;
@@ -49,6 +51,14 @@ const PROBLEMS_SCHEMA = `
   CREATE INDEX IF NOT EXISTS cao_problems_repository
     ON cao_problems (repository, severity, observed_at DESC);
 `;
+
+function ensureProblemsSchema(database) {
+  database.exec(PROBLEMS_SCHEMA);
+  const columns = database.prepare('PRAGMA table_info(cao_problems)').all();
+  if (!columns.some((column) => column.name === 'fix_prompt')) {
+    database.exec("ALTER TABLE cao_problems ADD COLUMN fix_prompt TEXT NOT NULL DEFAULT ''");
+  }
+}
 
 function text(value, field, source, { required = false, maximum = 1_000 } = {}) {
   if (value === undefined || value === null || value === '') {
@@ -209,6 +219,10 @@ function parseOutput(content, entry, defaultTimestamp) {
       repository,
       workflow: text(record.workflow, 'workflow', source, { maximum: 500 }),
       targetRepository,
+      fixPrompt: text(record.fixPrompt, 'fixPrompt', source, {
+        required: true,
+        maximum: MAX_FIX_PROMPT_CHARACTERS
+      }),
       evidence: encodedEvidence
     }];
   });
@@ -227,13 +241,13 @@ function replaceProblems(databasePath, producer, problems) {
   const database = new DatabaseSync(databasePath);
   try {
     database.exec('PRAGMA busy_timeout = 5000');
-    database.exec(PROBLEMS_SCHEMA);
+    ensureProblemsSchema(database);
     const remove = database.prepare('DELETE FROM cao_problems WHERE producer = ?');
     const insert = database.prepare(`
       INSERT INTO cao_problems (
         producer, problem_id, observed_at, severity, title, summary,
-        campaign, repository, workflow, target_repository, evidence
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        campaign, repository, workflow, target_repository, fix_prompt, evidence
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     database.exec('BEGIN IMMEDIATE');
     try {
@@ -250,6 +264,7 @@ function replaceProblems(databasePath, producer, problems) {
           problem.repository,
           problem.workflow,
           problem.targetRepository,
+          problem.fixPrompt,
           problem.evidence
         );
       }
@@ -268,7 +283,7 @@ function removeUninstalledProducerProblems(databasePath, producers) {
   const database = new DatabaseSync(databasePath);
   try {
     database.exec('PRAGMA busy_timeout = 5000');
-    database.exec(PROBLEMS_SCHEMA);
+    ensureProblemsSchema(database);
     if (producers.length === 0) {
       const removed = database.prepare('DELETE FROM cao_problems').run().changes;
       debug('uninstalled producer cleanup active_producers=0 removed=%d', removed);

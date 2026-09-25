@@ -497,6 +497,7 @@ test("campaign creation guidance defines optional package problem clustering", (
 
   assert.match(campaignSkill, /<campaign-slug>\/problem-clustering\.mjs/);
   assert.match(campaignSkill, /Emit a JSONL sequence: zero or more newline-delimited JSON objects/);
+  assert.match(campaignSkill, /an actionable `fixPrompt` that an agent can follow/);
   assert.match(campaignSkill, /do not add campaign-specific clustering steps to the Activity workflow/);
   assert.match(campaignSkill, /fault-isolated, timed, cancelable subprocess/);
 });

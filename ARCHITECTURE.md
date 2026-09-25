@@ -136,7 +136,8 @@ records through `cao operational-value`. Activity appends those timestamped
 records to authoritative JSONL before the canonical Operational Value collection
 is rebuilt in SQLite, IndexedDB, and the local Redis projection.
 Package-level `problem-clustering.mjs` programs read a private Activity SQLite
-snapshot and emit bounded problem records through `cao cluster-problems`.
+snapshot and emit bounded problem records with actionable fix prompts through
+`cao cluster-problems`.
 Activity validates their output and atomically replaces only the contributing
 package's rows in the disposable `cao_problems` SQLite projection; a failed
 package computation retains its prior rows and cannot mutate canonical evidence,
