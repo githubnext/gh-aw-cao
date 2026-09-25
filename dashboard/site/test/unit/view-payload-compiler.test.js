@@ -38,6 +38,72 @@ it('compiles distinct aliases when two views filter the same source differently'
   expect(results[dashboardViewAliasName('operations', page.views[1], 1, 'runs')].rows).toEqual([sources.runs.rows[1]]);
 });
 
+it('resolves page form defaults and runtime values into typed query parameters', () => {
+  const page = {
+    form: {
+      fields: [
+        { id: 'minimum-aic', default: 10 },
+        { id: 'multiplier', default: 2 },
+        { id: 'include-live', default: true }
+      ]
+    },
+    views: [{ id: 'simulation', data: { source: 'simulated-usage' } }]
+  };
+  const definitions = [{
+    name: 'simulated-usage',
+    parameters: [
+      { name: 'minimum-aic', type: 'number' },
+      { name: 'multiplier', type: 'number' },
+      { name: 'include-live', type: 'boolean' }
+    ],
+    from: 'usage',
+    filter: {
+      predicates: [
+        { field: 'aic', gte: { parameter: 'minimum-aic' } },
+        { field: 'is-live', equals: { parameter: 'include-live' } }
+      ]
+    },
+    compute: [{
+      as: 'simulated-aic',
+      function: 'product',
+      args: [{ field: 'aic' }, { parameter: 'multiplier' }]
+    }]
+  }];
+  const payload = compileDashboardViewPayloadQueries(page, 'simulator', {
+    queries: definitions,
+    queryContext: { formValues: { multiplier: 3 } }
+  });
+
+  expect(payload.queries[0]).toMatchObject({
+    filter: {
+      predicates: [
+        { field: 'aic', gte: 10 },
+        { field: 'is-live', equals: true }
+      ]
+    },
+    compute: [{
+      args: [{ field: 'aic' }, { value: 3 }]
+    }]
+  });
+});
+
+it('fails closed when a required form parameter has no default or runtime value', () => {
+  expect(() => compileDashboardViewPayloadQueries({
+    views: [{ id: 'simulation', data: { source: 'simulated-usage' } }]
+  }, 'simulator', {
+    queries: [{
+      name: 'simulated-usage',
+      parameters: [{ name: 'multiplier', type: 'number' }],
+      from: 'usage',
+      compute: [{
+        as: 'simulated-aic',
+        function: 'product',
+        args: [{ field: 'aic' }, { parameter: 'multiplier' }]
+      }]
+    }]
+  })).toThrow('requires form parameter "multiplier"');
+});
+
 it('compiles only the independently requested view payload', () => {
   const page = {
     views: [

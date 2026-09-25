@@ -9,7 +9,8 @@
  *   search?: { fields: string[], query: string },
  *   orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>,
  *   timeWindow?: { start?: string, end?: string },
- *   viewMode?: 'chart'|'table'|'card'
+ *   viewMode?: 'chart'|'table'|'card',
+ *   formValues?: Record<string, string|number|boolean>
  * }} GlobalQueryContext
  */
 
@@ -40,6 +41,11 @@ export function dashboardViewAliasName(pageId, view, viewIndex, sourceName, sour
  */
 export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
   const payload = pagePayload(page, options.views);
+  const formValues = {
+    ...dashboardFormDefaultValues(payload.form),
+    ...(options.queryContext?.formValues ?? {})
+  };
+  const resolvedQueries = resolveDashboardQueryParameters(options.queries, formValues);
   const views = Array.isArray(payload.views) ? payload.views : [];
   const routeParameterName = typeof payload.route?.['hash-query-parameter'] === 'string'
     ? payload.route['hash-query-parameter']
@@ -79,16 +85,68 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
         ...compileTimePredicates(options.queryContext?.timeWindow),
         ...compileRoutePredicates(routeField, routeValue)
       ];
-      if (usesNativeSource(view, sourceName, predicates, options.queryContext, options.queries)) return;
+      if (usesNativeSource(view, sourceName, predicates, options.queryContext, resolvedQueries)) return;
       const alias = dashboardViewAliasName(pageId, view, viewIndex, sourceName, sourceIndex);
       aliases.push(alias);
-      const compiled = compileAliasedQuery(sourceName, alias, predicates, options.queryContext?.search, options.queryContext?.orderBy, options.evaluatedAt, options.queries);
+      const compiled = compileAliasedQuery(sourceName, alias, predicates, options.queryContext?.search, options.queryContext?.orderBy, options.evaluatedAt, resolvedQueries);
       queries.push(...compiled.dependencies, compiled.query);
       if (compiled.replacesSource) replacedSources.add(sourceName);
     });
   });
 
   return { aliases, queries, replacedSources: [...replacedSources] };
+}
+
+/** @param {unknown} form */
+export function dashboardFormDefaultValues(form) {
+  if (!isPlainObject(form) || !Array.isArray(form.fields)) return {};
+  /** @type {Array<[string, string|number|boolean]>} */
+  const entries = form.fields.flatMap((field) => {
+    if (!isPlainObject(field) || typeof field.id !== 'string') return [];
+    const value = field.default;
+    return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
+      ? [[field.id, value]]
+      : [];
+  });
+  return Object.fromEntries(entries);
+}
+
+/**
+ * Resolves inert parameter references before query graph compilation. Query
+ * structure remains authored and static; only scalar operands are substituted.
+ * @param {unknown} definitions
+ * @param {Record<string, string|number|boolean>} values
+ */
+export function resolveDashboardQueryParameters(definitions, values) {
+  if (!Array.isArray(definitions)) return definitions;
+  return definitions.map((definition) => {
+    if (!isPlainObject(definition)) return definition;
+    const declared = new Map(Array.isArray(definition.parameters)
+      ? definition.parameters.flatMap((parameter) => (
+          isPlainObject(parameter) && typeof parameter.name === 'string' && typeof parameter.type === 'string'
+            ? [[parameter.name, parameter.type]]
+            : []
+        ))
+      : []);
+    /** @param {unknown} value @param {string} [containerKey] @returns {unknown} */
+    const resolve = (value, containerKey) => {
+      if (Array.isArray(value)) return value.map((item) => resolve(item, containerKey));
+      if (!isPlainObject(value)) return value;
+      if (Object.keys(value).length === 1 && typeof value.parameter === 'string') {
+        const type = declared.get(value.parameter);
+        if (!type) {
+          throw new TypeError(`Query "${String(definition.name)}" references undeclared parameter "${value.parameter}".`);
+        }
+        const resolved = values[value.parameter];
+        if (typeof resolved !== type || (type === 'number' && !Number.isFinite(resolved))) {
+          throw new TypeError(`Query "${String(definition.name)}" requires form parameter "${value.parameter}".`);
+        }
+        return containerKey === 'args' ? { value: resolved } : resolved;
+      }
+      return Object.fromEntries(Object.entries(value).map(([key, nested]) => [key, resolve(nested, key)]));
+    };
+    return resolve(definition);
+  });
 }
 
 /**
@@ -566,7 +624,8 @@ function pagePayload(page, reusableViews) {
   );
   return {
     views: views.map((view) => typeof view === 'string' ? viewsById.get(view) ?? view : view),
-    route: isPlainObject(configured.route) ? configured.route : null
+    route: isPlainObject(configured.route) ? configured.route : null,
+    form: isPlainObject(configured.form) ? configured.form : null
   };
 }
 

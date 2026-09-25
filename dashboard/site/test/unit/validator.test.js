@@ -39,6 +39,80 @@ describe('dashboard document validation', () => {
     expect(accepted.ok).toBe(true);
   });
 
+  it('validates page forms and typed query parameter references', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    document.dashboard.queries.push({
+      name: 'simulated-usage',
+      intent: 'Simulate AIC under operator-selected assumptions.',
+      parameters: [
+        { name: 'multiplier', type: 'number' },
+        { name: 'enabled', type: 'boolean' },
+        { name: 'profile', type: 'string' }
+      ],
+      from: 'usage',
+      compute: [
+        {
+          as: 'simulated-aic',
+          function: 'product',
+          args: [{ field: 'aic' }, { parameter: 'multiplier' }]
+        },
+        {
+          as: 'enabled-aic',
+          function: 'if',
+          args: [{ parameter: 'enabled' }, { field: 'simulated-aic' }, { value: 0 }]
+        },
+        {
+          as: 'profile-label',
+          function: 'coalesce',
+          args: [{ parameter: 'profile' }, { value: 'balanced' }]
+        }
+      ]
+    });
+    document.dashboard.pages.push({
+      id: 'simulator',
+      kind: 'custom',
+      title: 'Simulator',
+      form: {
+        title: 'Scenario',
+        update: { strategy: 'debounce', 'delay-ms': 250 },
+        fields: [
+          { id: 'multiplier', label: 'Multiplier', control: 'slider', default: 1, min: 0, max: 4, step: 0.25 },
+          { id: 'enabled', label: 'Enabled', control: 'checkbox', default: true },
+          {
+            id: 'profile',
+            label: 'Profile',
+            control: 'radio',
+            default: 'balanced',
+            options: [
+              { value: 'balanced', label: 'Balanced' },
+              { value: 'fast', label: 'Fast' }
+            ]
+          }
+        ]
+      },
+      views: [{
+        id: 'simulated-aic',
+        data: { source: 'simulated-usage' },
+        mark: 'chart',
+        chart: 'line',
+        encoding: {
+          x: { field: 'observed-at', type: 'temporal', 'time-unit': 'day' },
+          y: { field: 'enabled-aic', type: 'quantitative' }
+        }
+      }]
+    });
+
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+
+    document.dashboard.pages.at(-1).form.fields[0].id = 'missing-parameter';
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([expect.objectContaining({
+        message: 'form field "missing-parameter" is not declared by any dashboard query.'
+      })])
+    });
+  });
+
   it('validates card template drill references and destination bindings', () => {
     const invalidPage = JSON.parse(authoritativeDashboardSource);
     const domainTemplate = invalidPage.dashboard['card-templates']
