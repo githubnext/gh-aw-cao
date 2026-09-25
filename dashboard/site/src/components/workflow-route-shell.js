@@ -6,6 +6,7 @@ import { h } from '../dom.js';
 import { text } from './count-formatters.js';
 import { renderWorkflowIdentity } from './workflow-identity.js';
 import { createRoutePageShell } from './route-page-shell.js';
+import { findLink } from './link-content.js';
 import { rowsFor } from './source-rows.js';
 import { parseWorkflowRoute, workflowRouteValue } from './workflow-route.js';
 
@@ -75,11 +76,13 @@ export function renderWorkflowRouteShell(context, config) {
  * @param {string} title
  */
 function workflowRouteAllocation(config, route, workflow, title) {
+  const workflowLink = routeTitleLink(workflow, `${title} workflow`);
   return {
     title,
     description: config.description
       .replace('{workflow}', text(workflow.workflow))
       .replace('{repository}', route.repository),
+    ...(workflowLink ? { titleLink: workflowLink } : {}),
     ...(['review', 'live'].includes(text(workflow['rollout-mode']))
       ? { mode: text(workflow['rollout-mode']) }
       : {}),
@@ -93,6 +96,19 @@ function workflowRouteAllocation(config, route, workflow, title) {
         }
       : {})
   };
+}
+
+/**
+ * @param {Record<string, unknown>} row
+ * @param {string} label
+ * @returns {{ href: string, label: string } | null}
+ */
+function routeTitleLink(row, label) {
+  const link = findLink(row, 'workflow-link');
+  const href = link?.externalHref ?? link?.href;
+  return href && !href.startsWith('#')
+    ? { href, label: `Open ${label} on GitHub` }
+    : null;
 }
 
 /**

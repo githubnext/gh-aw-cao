@@ -6,6 +6,8 @@ import { createRoutePageShell } from './route-page-shell.js';
 import { normalizeCampaignRoute, campaignNameForRoute } from './campaign-route-composition.js';
 import { CAMPAIGN_ROUTE_TABS } from './route-body-specification.js';
 import { renderEmptyMessage } from './ui-primitives.js';
+import { text } from './count-formatters.js';
+import { findLink } from './link-content.js';
 import { bindFactorySources, createFactoryScope } from './factory-elements.js';
 import { effect } from '../reactive.js';
 
@@ -122,10 +124,12 @@ export function renderCampaignRouteShell(context, config) {
         return null;
       }
       const campaignName = campaignNameForRoute(campaignId, workflows);
+      const titleLink = campaignTitleLink(campaignName, workflows);
       return {
         allocation: {
           title: campaignName,
           description: config.description.replace('{campaignName}', campaignName),
+          ...(titleLink ? { titleLink } : {}),
           navigationPage: 'campaigns'
         },
         content: config.bodyRenderer?.({ context, campaignId, campaignName, workflows }) ?? null
@@ -150,6 +154,52 @@ export function renderCampaignRouteShell(context, config) {
   }, { signal: scope.signal });
   scope.bind(root);
   return root;
+}
+
+/**
+ * @param {string} campaignName
+ * @param {Array<Record<string, unknown>>} workflows
+ * @returns {{ href: string, label: string } | null}
+ */
+function campaignTitleLink(campaignName, workflows) {
+  for (const workflow of workflows) {
+    const repositoryLink = findLink(workflow, 'repository-link');
+    const repositoryHref = repositoryLink?.externalHref ?? repositoryLink?.href;
+    if (!repositoryHref || repositoryHref.startsWith('#')) continue;
+    const href = campaignFolderHref(repositoryHref, text(workflow['campaign-readme-path']));
+    if (href) {
+      return {
+        href,
+        label: `Open ${campaignName} campaign source on GitHub`
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * Resolves the source folder that contains a campaign aw.yml by assuming it
+ * lives beside the campaign README path supplied by inventory. Returns an
+ * empty string when the repository URL is not an owner/repo root or the README
+ * path does not identify a campaign folder.
+ * @param {string} repositoryHref
+ * @param {string} readmePath
+ * @returns {string}
+ */
+function campaignFolderHref(repositoryHref, readmePath) {
+  try {
+    const url = new URL(repositoryHref);
+    if (url.protocol !== 'https:') return '';
+    const repositorySegments = url.pathname.split('/').filter(Boolean);
+    if (repositorySegments.length !== 2) return '';
+    const directory = readmePath.includes('/') ? readmePath.slice(0, readmePath.lastIndexOf('/')) : '';
+    if (!directory) return '';
+    const encodedDirectory = directory.split('/').map(encodeURIComponent).join('/');
+    url.pathname = `${url.pathname.replace(/\/$/, '')}/tree/HEAD/${encodedDirectory}`;
+    return url.href;
+  } catch {
+    return '';
+  }
 }
 
 /**

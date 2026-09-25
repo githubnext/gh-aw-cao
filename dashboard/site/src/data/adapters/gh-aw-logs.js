@@ -187,6 +187,15 @@ function runMetadata(run) {
     })
     .sort((left, right) => right.aic - left.aic || left.model.localeCompare(right.model))[0]?.model;
   const aicTotal = finiteNumber(summary.total_aic) ?? finiteNumber(run.aic);
+  /** @type {number|null} */
+  let reasoningTokens = null;
+  for (const usage of Object.values(byModel)) {
+    const record = usage && typeof usage === 'object' && !Array.isArray(usage)
+      ? /** @type {Record<string, unknown>} */ (usage)
+      : {};
+    const count = finiteNumber(record.reasoning_tokens);
+    if (count !== null) reasoningTokens = (reasoningTokens ?? 0) + count;
+  }
   return {
     agentId: normalizedId('copilot', run.agent_id, run.agent, run.engine_id, awInfo.engine_id),
     agentVersion: firstOptionalString(
@@ -223,6 +232,11 @@ function runMetadata(run) {
     firewallVersion: firstOptionalString(run.firewall_version, awInfo.firewall_version, awInfo.awf_version),
     gatewayVersion: firstOptionalString(run.gateway_version, awInfo.awmg_version),
     aicTotal,
+    inputTokens: finiteNumber(summary.total_input_tokens),
+    outputTokens: finiteNumber(summary.total_output_tokens),
+    cacheReadTokens: finiteNumber(summary.total_cache_read_tokens),
+    cacheWriteTokens: finiteNumber(summary.total_cache_write_tokens),
+    reasoningTokens,
     tokenUsage
   };
 }
@@ -1121,6 +1135,10 @@ function createCachedGhAwJsonlAccumulator(options) {
         'operational-value-name': optionalString(value.metric_name) ?? valueId,
         'operational-value-direction': optionalString(value.metric_direction) ?? 'increase',
         'maturity-status': optionalString(value.maturity_status) ?? 'matured',
+        'adoption-at': optionalString(value.adoption_at),
+        'evaluation-mode': optionalString(value.evaluation_mode),
+        'workflow-slug': optionalString(value.workflow_slug),
+        'workflow-name': optionalString(value.workflow_name),
         timestamp: observedAt
       }
     });
@@ -1263,6 +1281,11 @@ function createCachedGhAwJsonlAccumulator(options) {
         gatewayVersion: metadata.gatewayVersion,
         aic: metadata.aicTotal,
         aicTotal: metadata.aicTotal,
+        inputTokens: metadata.inputTokens,
+        outputTokens: metadata.outputTokens,
+        cacheReadTokens: metadata.cacheReadTokens,
+        cacheWriteTokens: metadata.cacheWriteTokens,
+        reasoningTokens: metadata.reasoningTokens,
         tokenUsage: metadata.tokenUsage,
         ambientContext: enrichedValue.ambient_context,
         workingSet: enrichedValue.working_set,
@@ -1770,6 +1793,22 @@ function createCachedGhAwJsonlAccumulator(options) {
     emitAuditEvents('noops', 'audit.noop', 'message', 'status');
     emitAuditEvents('mcp_failures', 'audit.mcp_failure', 'server_name', 'status');
     emitAuditEvents('skill_activations', 'audit.skill_activation', 'name', 'status');
+    const steeringEventsValue = run.gateway_steering_events ?? audit.gateway_steering_events;
+    const steeringEvents = Array.isArray(steeringEventsValue) ? steeringEventsValue : [];
+    steeringEvents.forEach((entry, index) => {
+      const record = entry && typeof entry === 'object' && !Array.isArray(entry)
+        ? /** @type {Record<string, unknown>} */ (entry)
+        : {};
+      const steeringType = optionalString(record.type);
+      emitEvent(
+        'audit.gateway_steering',
+        timestamp(record.timestamp) ?? completedAt ?? enriched.observedAt,
+        optionalString(record.message) ?? steeringType ?? 'gateway steering',
+        steeringType,
+        { type: 'audit.gateway_steering', index, steeringType, message: record.message },
+        { source: 'audit', code: steeringType }
+      );
+    });
     const firewallAnalysisValue = run.firewall_analysis ?? audit.firewall_analysis;
     const firewallAnalysis = firewallAnalysisValue && typeof firewallAnalysisValue === 'object'
       && !Array.isArray(firewallAnalysisValue)

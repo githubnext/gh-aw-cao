@@ -1,5 +1,5 @@
 /**
- * Route-aware workflow runtime and operational-grader view.
+ * Route-aware workflow runtime view.
  */
 
 import { h } from '../dom.js';
@@ -40,8 +40,7 @@ export function renderWorkflowRuntimeBody(context, workflow) {
   return h(
     'div',
     null,
-    renderRuntimeMetrics(context, workflow, runs, usage),
-    renderWorkflowValueReport(context, workflow)
+    renderRuntimeMetrics(context, workflow, runs, usage)
   );
 }
 

@@ -9,13 +9,31 @@ import { pathToFileURL } from "node:url";
 const root = path.resolve(import.meta.dirname, "../..");
 const scripts = path.join(root, ".github/skills/add-operational-value/scripts");
 
-test("campaign workflow listing returns only direct manifest workflows", () => {
+test("campaign workflow listing returns only direct manifest worker workflows", () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), "operational-value-campaign-list-"));
   mkdirSync(path.join(temporary, ".github/workflows"), { recursive: true });
   mkdirSync(path.join(temporary, "example"), { recursive: true });
-  for (const workflow of ["example", "example-worker", "unrelated"]) {
-    writeFileSync(path.join(temporary, ".github/workflows", `${workflow}.md`), `# ${workflow}\n`);
-  }
+  const workflow = (name, role) => `---
+name: ${name}
+imports:
+  - uses: shared/control.md
+    with:
+      role: ${role}
+---
+# ${name}
+`;
+  writeFileSync(
+    path.join(temporary, ".github/workflows/example.md"),
+    workflow("example", "orchestrator"),
+  );
+  writeFileSync(
+    path.join(temporary, ".github/workflows/example-worker.md"),
+    workflow("example-worker", "worker"),
+  );
+  writeFileSync(
+    path.join(temporary, ".github/workflows/unrelated.md"),
+    workflow("unrelated", "worker"),
+  );
   writeFileSync(path.join(temporary, "example/aw.yml"), `name: Example
 includes:
   - ../aw.yml
@@ -28,12 +46,17 @@ includes:
     [path.join(scripts, "list-workflows.mjs"), "--campaign", "example"],
     { cwd: temporary, encoding: "utf8" },
   );
-  assert.equal(output, "example\nexample-worker\n");
+  assert.equal(output, "example-worker\n");
   assert.equal(execFileSync(
     process.execPath,
     [path.join(scripts, "list-workflows.mjs"), "example-worker", "--campaign", "example"],
     { cwd: temporary, encoding: "utf8" },
   ), ".github/workflows/example-worker.md\n");
+  assert.throws(() => execFileSync(
+    process.execPath,
+    [path.join(scripts, "list-workflows.mjs"), "example", "--campaign", "example"],
+    { cwd: temporary, stdio: "pipe" },
+  ), /workflow not found: example/);
   assert.throws(() => execFileSync(
     process.execPath,
     [path.join(scripts, "list-workflows.mjs"), "unrelated", "--campaign", "example"],
@@ -126,10 +149,11 @@ for (const repository of request.repositories) {
   assert.equal(output, `verified ${valueModule}\n`);
 });
 
-test("attainment evaluation waits for one full post-adoption matured window", () => {
+test("attainment evaluation includes dubious observations from adoption", () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), "operational-value-maturation-"));
   const source = path.join(root, "optimization/operational-value/optimization-token-optimizer.mjs");
   const valueModule = path.join(temporary, "maturation-test.mjs");
+  const reports = path.join(temporary, "reports");
   writeFileSync(valueModule, `
 import * as original from ${JSON.stringify(pathToFileURL(source).href)};
 export const definition = {
@@ -137,27 +161,47 @@ export const definition = {
   slug: "maturation-test",
   sourcePath: ".github/workflows/maturation-test.md"
 };
-export const collectBatch = original.collectBatch;
+export const collectBatch = (requests) => requests.map(() => ({
+  evidence: {
+    maturityStatus: "interim",
+    dubious: true,
+    eligibleOpportunityCount: 0,
+    verifiedOpportunityCount: 0,
+    acceptedRecommendationCount: 0,
+    outcomeUnknownCount: 0,
+    dispositionUnknownCount: 0,
+    guardedNetGainRatioSum: 0
+  },
+  provenance: [{ repository: definition.repository, kind: "test-fixture", ref: definition.adoption.commit }]
+}));
 export const scoreMetric = original.scoreMetric;
 `);
 
-  assert.throws(
-    () => execFileSync(
-      process.execPath,
-      [
-        path.join(scripts, "evaluate.mjs"),
-        "--function",
-        valueModule,
-        "--end",
-        "2026-09-24T20:48:02Z",
-        "--output-dir",
-        path.join(temporary, "reports"),
-        "--no-runs",
-        "githubnext/gh-aw-cao",
-        "maturation-test",
-      ],
-      { cwd: root, stdio: "pipe" },
-    ),
-    /evaluation end must follow 2026-10-13T23:30:36Z/,
+  execFileSync(
+    process.execPath,
+    [
+      path.join(scripts, "evaluate.mjs"),
+      "--function",
+      valueModule,
+      "--end",
+      "2026-09-24T20:48:02Z",
+      "--output-dir",
+      reports,
+      "--no-runs",
+      "githubnext/gh-aw-cao",
+      "maturation-test",
+    ],
+    { cwd: root, stdio: "pipe" },
   );
+  const timeline = JSON.parse(readFileSync(
+    path.join(reports, "githubnext-gh-aw-cao/maturation-test-timeline.json"),
+    "utf8",
+  ));
+  assert.equal(
+    timeline.snapshots[0].observedAt,
+    timeline.valueFunction.definition.adoption.adoptedAt,
+  );
+  assert.equal(timeline.snapshots[0].evidence.maturityStatus, "interim");
+  assert.equal(timeline.snapshots[0].evidence.dubious, true);
+  assert.equal(timeline.snapshots[0].metrics["verified-opportunity-share"], 0);
 });

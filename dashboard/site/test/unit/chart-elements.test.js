@@ -247,6 +247,23 @@ describe('chart element helpers', () => {
       .toContain('Alpha repository: 40');
   });
 
+  it('groups horizontal bars under section headings in first-appearance order', () => {
+    const points = [
+      { x: 'deploy.md', y: 40, color: null, section: 'octo/app' },
+      { x: 'release.md', y: 30, color: null, section: 'octo/tools' },
+      { x: 'test.md', y: 20, color: null, section: 'octo/app' }
+    ];
+    const chart = renderChartWidget('horizontal-bar', points, listChartSeries(points));
+
+    expect([...chart.querySelectorAll('.horizontal-bar-chart-section-title')].map((heading) => heading.textContent))
+      .toEqual(['octo/app', 'octo/tools']);
+    expect([...chart.querySelectorAll('.horizontal-bar-chart-section-list')].map((list) => list.getAttribute('aria-label')))
+      .toEqual(['octo/app', 'octo/tools']);
+    expect([...chart.querySelectorAll('.horizontal-bar-chart-section:first-child .horizontal-bar-chart-label')]
+      .map((label) => label.textContent))
+      .toEqual(['deploy.md', 'test.md']);
+  });
+
   it('formats linked horizontal bar categories without changing their destinations', () => {
     const points = [{
       x: 'githubnext/gh-aw-cao:.github/workflows/optimization-agents-and-curator.md',

@@ -139,7 +139,6 @@ test("EU CRA workflows preserve advisory and human-review boundaries", () => {
     assert.match(source, /Never output `CRA COMPLIANT`, `LEGALLY COMPLIANT`, `CERTIFIED`, or `CE APPROVED`/);
     assert.match(source, /Never (?:submit|notify)/i);
     assert.match(source, /Do not put secrets, personal data, exploit details/);
-    assert.match(source, /^graders:\n\s+operational-value:\n\s+run: \.\/graders\/eu-cra-compliance-.+-operational-value\.sh$/m);
     assert.match(source, /<!-- operational-value: domain=[a-z0-9-]+ target=OWNER\/REPO target-sha=40_HEX_SHA -->/);
     assert.match(source, /### Human Acceptance/);
     assert.match(source, /max-ai-credits: 100/);
@@ -163,7 +162,6 @@ test("EU CRA workflows preserve advisory and human-review boundaries", () => {
   assert.match(maintainer, /draft: true/);
   assert.match(maintainer, /create-issue:[\s\S]*?max: 1/);
   assert.match(maintainer, /deduplicate-by-title: true/);
-  assert.match(maintainer, /graders:\n\s+operational-value:\n\s+run: \.\/graders\/eu-cra-compliance-campaign-maintainer-operational-value\.sh/);
   assert.doesNotMatch(maintainer, /shared\/control\.md/);
 
   const ledger = readFileSync(join(root, "eu-cra-compliance", "implementation-status.md"), "utf8");
@@ -237,7 +235,6 @@ test("Dev Practices preserves evidence and advisory boundaries", () => {
     assert.match(worker, /analyzed commit SHA/);
     assert.match(worker, /create-issue:[\s\S]*?close-older-issues: true[\s\S]*?close-older-key:.*inputs\.target_repo[\s\S]*?max: 1/);
     assert.match(worker, /^\s+web-fetch:$/m);
-    assert.match(worker, /^graders:\n\s+operational-value:\n\s+run: \.\/graders\/software-development-practices-.+-operational-value\.sh$/m);
     assert.match(worker, /<!-- operational-value: framework=[a-z0-9-]+ target=OWNER\/REPO target-sha=40_HEX_SHA -->/);
   }
   assert.match(readme, /Operational value is attainment-only/);

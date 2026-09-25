@@ -10,6 +10,7 @@ import {
   initializeCaoPolicy,
   setCaoCampaignMode,
   setCaoCampaignWorkflowsEnabled,
+  setupCaoAuthentication,
   updateCaoCampaigns,
 } from "../../activity/cao.mjs";
 
@@ -75,6 +76,131 @@ test("cao init supports a repository without installed package records", async (
     process.chdir(previousDirectory);
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("cao setup-auth delegates private GitHub App setup options", () => {
+  const calls = [];
+  const result = setupCaoAuthentication("github-app", [
+    "--repo", "acme/control",
+    "--dry-run",
+  ], {
+    execute(command, arguments_, options) {
+      calls.push([command, arguments_, options]);
+      return { status: 0 };
+    },
+  });
+
+  assert.deepEqual(calls, [[
+    process.execPath,
+    [
+      path.join(".github", "workflows", "shared", "setup-github-apps.mjs"),
+      "--repo", "acme/control",
+      "--dry-run",
+    ],
+    { stdio: "inherit" },
+  ]]);
+  assert.deepEqual(result, { command: "setup-auth", profile: "github-app" });
+});
+
+test("cao setup-auth configures a consented fine-grained token through stdin", () => {
+  const calls = [];
+  const result = setupCaoAuthentication("token", [
+    "--repo", "acme/control",
+    "--acknowledge-token-risks",
+  ], {
+    execute(command, arguments_, options) {
+      calls.push([command, arguments_, options]);
+      return { status: 0, stdout: "", stderr: "" };
+    },
+  });
+
+  assert.deepEqual(calls, [
+    ["gh", ["auth", "status"], { encoding: "utf8" }],
+    ["gh", ["secret", "set", "GH_AW_GITHUB_TOKEN", "--repo", "acme/control"], { stdio: "inherit" }],
+  ]);
+  assert.deepEqual(result, {
+    command: "setup-auth",
+    profile: "fine-grained-token",
+    secret: "GH_AW_GITHUB_TOKEN",
+    repo: "acme/control",
+  });
+});
+
+test("cao setup-auth configures existing enterprise Apps without key arguments", () => {
+  const calls = [];
+  const result = setupCaoAuthentication("enterprise-app", [
+    "--repo", "acme/control",
+    "--read-client-id", "Iv1.read",
+    "--write-client-id", "Iv1.write",
+  ], {
+    execute(command, arguments_, options) {
+      calls.push([command, arguments_, options]);
+      return { status: 0, stdout: "", stderr: "" };
+    },
+  });
+
+  assert.deepEqual(calls, [
+    ["gh", ["auth", "status"], { encoding: "utf8" }],
+    ["gh", ["variable", "set", "GH_AW_GITHUB_READ_APP_ID", "--repo", "acme/control", "--body", "Iv1.read"], { encoding: "utf8" }],
+    ["gh", ["secret", "set", "GH_AW_GITHUB_READ_APP_PRIVATE_KEY", "--repo", "acme/control"], { stdio: "inherit" }],
+    ["gh", ["variable", "set", "GH_AW_GITHUB_WRITE_APP_ID", "--repo", "acme/control", "--body", "Iv1.write"], { encoding: "utf8" }],
+    ["gh", ["secret", "set", "GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY", "--repo", "acme/control"], { stdio: "inherit" }],
+  ]);
+  assert.deepEqual(result, {
+    command: "setup-auth",
+    profile: "enterprise-app",
+    repo: "acme/control",
+  });
+  assert.equal(calls.flatMap(([, arguments_]) => arguments_).some((value) => /PRIVATE KEY/.test(value)), false);
+});
+
+test("cao setup-auth previews enterprise App credential configuration without GitHub calls", () => {
+  const result = setupCaoAuthentication("enterprise-app", [
+    "--repo", "acme/control",
+    "--read-client-id", "Iv1.read",
+    "--write-client-id", "Iv1.write",
+    "--dry-run",
+  ], {
+    execute() {
+      assert.fail("dry-run must not execute GitHub commands");
+    },
+  });
+
+  assert.deepEqual(result, {
+    command: "setup-auth",
+    profile: "enterprise-app",
+    repo: "acme/control",
+    credentials: [
+      {
+        role: "read",
+        clientId: "Iv1.read",
+        variable: "GH_AW_GITHUB_READ_APP_ID",
+        secret: "GH_AW_GITHUB_READ_APP_PRIVATE_KEY",
+      },
+      {
+        role: "write",
+        clientId: "Iv1.write",
+        variable: "GH_AW_GITHUB_WRITE_APP_ID",
+        secret: "GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY",
+      },
+    ],
+  });
+});
+
+test("cao setup-auth requires explicit token risk acknowledgement", () => {
+  assert.throws(
+    () => setupCaoAuthentication("token", ["--repo", "acme/control"]),
+    /requires --acknowledge-token-risks/,
+  );
+});
+
+test("cao setup-auth accepts the bounded workflow-token profile without secrets", () => {
+  assert.deepEqual(setupCaoAuthentication("workflow-token"), {
+    command: "setup-auth",
+    profile: "workflow-token",
+    configured: true,
+    limitation: "Use only for control-repository work or bounded public-target review.",
+  });
 });
 
 test("cao mode changes configured campaigns between live and preview atomically", async () => {

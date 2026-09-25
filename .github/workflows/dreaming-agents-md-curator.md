@@ -87,14 +87,6 @@ concurrency:
   job-discriminator: ${{ github.run_id }}
   cancel-in-progress: true
 
-graders:
-  operational-value:
-    name: AGENTS.md Optimization Request Conformance
-    description: Whether the run requested a target-bound, evidence-complete AGENTS.md optimization issue
-    unit: ratio
-    direction: higher_is_better
-    run: ./graders/dreaming-agents-md-curator-operational-value.sh
-
 tracker-id: dreaming-agents-md-curator
 
 tools:

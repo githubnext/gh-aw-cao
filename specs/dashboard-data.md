@@ -304,8 +304,8 @@ The implementation profile defined by this specification is:
 
 | Layer | Version | Physical structure |
 | --- | ---: | --- |
-| Canonical model | 15 | Campaign, Repository, Workflow, Run, Domain, Tool, Audit, Issue, and Operational Value records |
-| Browser IndexedDB | 23 | Nine canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
+| Canonical model | 17 | Campaign, Repository, Workflow, Run, Domain, Tool, Audit, Issue, and Operational Value records |
+| Browser IndexedDB | 25 | Nine canonical entity stores, `transactions`, `dailyOverviewAggregates`, and `overviewAggregateMetadata` |
 | Local SQLite projection | IndexedDB 22 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records`, containing the same logical stores and JSON records as IndexedDB |
 | Local Redis server projection | Canonical model 14 | Immutable active generation of logical-source row sets, queried only through the loopback Go HTTP(S) server |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
@@ -543,7 +543,7 @@ following source contract:
 | Recommendation disposition | Safe-output lifecycle, explicit supersession relation, implementation Run or pull request, and authoritative GitHub disposition; one optimizer recommendation | Preserve `applied`, `superseded`, `outdated`, `duplicate`, `unapplied`, `failed-start`, or `rejected`. A generated issue, assignment attempt, or open state alone does not establish acceptance or implementation. |
 | Optimization overhead | Invocation or non-overlapping Run-aggregate AIC for auditor, optimizer, verifier, and replacement recommendations attributable to one frozen opportunity and intervention lineage | Deduplicate by Run attempt, preserve cost grain, and exclude unrelated repositories, workflows, opportunities, and portfolio dispatches. |
 | Outcome quality | Frozen grader or eval observation with evaluator digest; one outcome or stable opportunity | Compare only observations produced by the same definition and evaluator digest. Missing quality evidence is unknown. |
-| Operational grader | Current gh-aw `operational-value` grader result; one ordered metric array per Run | Preserve metric IDs, order, native finite values or `null`, unit, and direction without normalization, clamping, replay, inferred maturity, or local baselines. This run-scoped evidence is distinct from package-defined, repository-scoped Operational Value records. |
+| Operational grader | Current gh-aw `operational-value` grader result; one ordered metric array per Run | Preserve metric IDs, order, native finite values or `null`, unit, and direction without normalization, clamping, replay, inferred maturity, or local baselines. This run-scoped evidence is distinct from campaign-defined, repository-scoped Operational Value records. |
 | Workflow declaration | Workflow inventory at the exact reviewed source revision | Supply configured tools, model, trigger, budget, and campaign classification. Static declarations MUST NOT prove runtime use. |
 
 Source provenance for every observation SHALL include collection scope, source
@@ -1741,7 +1741,7 @@ The canonical browser database SHALL use:
 
 ```js
 const DATABASE_NAME = "gh-aw-cao-dashboard-data";
-const DATABASE_VERSION = 23;
+const DATABASE_VERSION = 25;
 ```
 
 The name MAY be scoped by deployment path to prevent unrelated dashboard
@@ -1753,7 +1753,7 @@ rows.
 
 # 27. Object Stores
 
-IndexedDB version 23 SHALL define:
+IndexedDB version 25 SHALL define:
 
 ```text
 campaigns
@@ -1808,7 +1808,7 @@ conclusion
 
 The generation-ordered runtime-computation indexes described by Section 73 are
 reserved for the physical version that implements the computation projection.
-They are not part of IndexedDB version 23. That implementation MUST increment
+They are not part of IndexedDB version 25. That implementation MUST increment
 the physical version and update Section 5.1 before relying on those indexes.
 
 ### run-linked tables

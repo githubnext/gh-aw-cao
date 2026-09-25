@@ -156,6 +156,15 @@ export function compileDashboardQueryTypes(definitions) {
  */
 function compileQuery(query, index, symbols, compiled, errors) {
   const path = `$.dashboard.queries[${index}]`;
+  const parameters = new Map(Array.isArray(query.parameters)
+    ? query.parameters.flatMap((parameter) => (
+        isRecord(parameter)
+          && typeof parameter.name === 'string'
+          && typeof parameter.type === 'string'
+          ? [[parameter.name, parameter.type]]
+          : []
+      ))
+    : []);
   const input = resolveInput(query.from, symbols, compiled);
   /** @type {Map<string, FieldType> | undefined} */
   let fields = input?.fields ? new Map(input.fields) : undefined;
@@ -247,6 +256,12 @@ function compileQuery(query, index, symbols, compiled, errors) {
       const fieldPath = `${path}.filter.predicates[${predicateIndex}].field`;
       requireField(predicate.field, fieldPath, 'scalar');
       validateBranchSpecificFilter(predicate.field, rowInputTables, fieldPath, errors);
+      for (const key of ['equals', 'gte', 'lt']) {
+        const operand = predicate[key];
+        if (isRecord(operand) && typeof operand.parameter === 'string') {
+          requireParameter(parameters, operand.parameter, `${path}.filter.predicates[${predicateIndex}].${key}.parameter`, 'scalar', errors);
+        }
+      }
     });
   }
 
@@ -256,17 +271,18 @@ function compileQuery(query, index, symbols, compiled, errors) {
       const computePath = `${path}.compute[${computeIndex}]`;
       if (Array.isArray(computed.args)) {
         for (const [argumentIndex, argument] of computed.args.entries()) {
-          if (!isRecord(argument) || argument.field === undefined) continue;
-          requireField(
-            argument.field,
-            `${computePath}.args[${argumentIndex}].field`,
-            computeArgumentUsage(computed.function, argumentIndex)
-          );
+          if (!isRecord(argument)) continue;
+          const usage = computeArgumentUsage(computed.function, argumentIndex);
+          if (argument.field !== undefined) {
+            requireField(argument.field, `${computePath}.args[${argumentIndex}].field`, usage);
+          } else if (typeof argument.parameter === 'string') {
+            requireParameter(parameters, argument.parameter, `${computePath}.args[${argumentIndex}].parameter`, usage, errors);
+          }
         }
       }
       declareField(
         computed.as,
-        inferComputeType(computed, fields),
+        inferComputeType(computed, fields, parameters),
         `${computePath}.as`
       );
     }
@@ -511,15 +527,15 @@ function computeArgumentUsage(functionName, argumentIndex) {
  * @param {Map<string, FieldType> | undefined} fields
  * @returns {FieldType}
  */
-function inferComputeType(computed, fields) {
+function inferComputeType(computed, fields, parameters = new Map()) {
   const functionName = computed.function;
   if (functionName === 'dashboard-link') return 'link';
   if (typeof functionName === 'string' && NUMERIC_COMPUTE_FUNCTIONS.includes(functionName)) return 'numeric';
   if (typeof functionName === 'string' && TEXT_COMPUTE_FUNCTIONS.includes(functionName)) return 'text';
   if (functionName === 'equals-any' || functionName === 'greater-than') return 'boolean';
   if (!Array.isArray(computed.args)) return 'unknown';
-  if (functionName === 'coalesce') return commonType(computed.args, fields);
-  if (functionName === 'if') return commonType(computed.args.slice(1), fields);
+  if (functionName === 'coalesce') return commonType(computed.args, fields, parameters);
+  if (functionName === 'if') return commonType(computed.args.slice(1), fields, parameters);
   return 'unknown';
 }
 
@@ -528,8 +544,8 @@ function inferComputeType(computed, fields) {
  * @param {Map<string, FieldType> | undefined} fields
  * @returns {FieldType}
  */
-function commonType(args, fields) {
-  const types = args.map((argument) => argumentType(argument, fields)).filter((type) => type !== 'unknown');
+function commonType(args, fields, parameters = new Map()) {
+  const types = args.map((argument) => argumentType(argument, fields, parameters)).filter((type) => type !== 'unknown');
   return types.length > 0 && types.every((type) => type === types[0]) ? types[0] : 'unknown';
 }
 
@@ -538,13 +554,36 @@ function commonType(args, fields) {
  * @param {Map<string, FieldType> | undefined} fields
  * @returns {FieldType}
  */
-function argumentType(argument, fields) {
+function argumentType(argument, fields, parameters = new Map()) {
   if (!isRecord(argument)) return 'unknown';
   if (typeof argument.field === 'string') return fields?.get(argument.field) ?? intrinsicType(argument.field);
+  if (typeof argument.parameter === 'string') return parameterFieldType(parameters.get(argument.parameter));
   if (!Object.hasOwn(argument, 'value') || argument.value === null) return 'unknown';
   if (typeof argument.value === 'number') return 'numeric';
   if (typeof argument.value === 'boolean') return 'boolean';
   if (typeof argument.value === 'string') return 'text';
+  return 'unknown';
+}
+
+/** @param {Map<string, string>} parameters @param {string} name @param {string} path @param {'read'|'scalar'|'numeric'} usage @param {ValidationError[]} errors */
+function requireParameter(parameters, name, path, usage, errors) {
+  const type = parameterFieldType(parameters.get(name));
+  if (type === 'unknown') {
+    errors.push(error(
+      ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+      `parameter "${name}" is not declared by this query.`,
+      path
+    ));
+    return;
+  }
+  validateUsage(name, type, usage, path, errors);
+}
+
+/** @param {string | undefined} type @returns {FieldType} */
+function parameterFieldType(type) {
+  if (type === 'number') return 'numeric';
+  if (type === 'string') return 'text';
+  if (type === 'boolean') return 'boolean';
   return 'unknown';
 }
 

@@ -120,6 +120,7 @@ const SEMANTIC_SERIES_PHRASES = {
  *   highlighted?: boolean | null,
  *   key?: string,
  *   category?: string,
+ *   section?: string | null,
  *   link?: { href: string, label: string } | null,
  *   source?: Record<string, unknown>
  * }} ChartPointLike
@@ -441,9 +442,10 @@ function renderInteractiveChartMark({ className, entryIndex, label, shape, toolt
  * @param {Record<string, unknown> | null} [timeRange]
  * @param {string | null} [referenceField]
  * @param {(label: string) => string} [formatCategory]
+ * @param {{ at: string, label: string } | null} [temporalMarker]
  * @returns {HTMLElement}
  */
-export function renderChartWidget(chartType, points, series, pieSummary = null, totalLabel = 'Total', unit = null, timeRange = null, referenceField = null, formatCategory = (label) => label) {
+export function renderChartWidget(chartType, points, series, pieSummary = null, totalLabel = 'Total', unit = null, timeRange = null, referenceField = null, formatCategory = (label) => label, temporalMarker = null) {
   const pieData = chartType === 'pie' ? pieSummary ?? pieChartEntries(points) : null;
   const entryCount = pieData ? pieData.entries.length : points.length;
   const minimumEntries = ['heatmap', 'horizontal-bar', 'pie', 'scatter'].includes(chartType) ? 1 : 2;
@@ -603,43 +605,70 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
     }
     const maximum = Math.max(...points.map((point) => toNumber(point.y)).filter(Number.isFinite), 1);
     const seriesClassNames = new Map(series.map((item) => [item.name, item.className]));
+    /** @param {ChartPointLike} point @param {number} index */
+    const renderRow = (point, index) => {
+      const numericValue = toNumber(point.y);
+      const value = Number.isFinite(numericValue) ? numericValue : 0;
+      const barSize = Math.max(0, value);
+      const label = chartPointLabel(point, unit);
+      const category = formatCategory(point.x);
+      return h(
+        'li',
+        { className: 'horizontal-bar-chart-row' },
+        h('span', { className: 'horizontal-bar-chart-label', title: point.x },
+          renderSafeLink(
+            h('bdi', { className: 'horizontal-bar-chart-label-text', dir: 'ltr' }, category),
+            point.link ?? null
+          )
+        ),
+        h(
+          'span',
+          { className: 'horizontal-bar-chart-track', 'aria-hidden': 'true' },
+          h('span', {
+            className: `bar-chart-bar horizontal-bar-chart-bar ${seriesClassNames.get(point.color ?? 'value') ?? 'chart-series-1'}`,
+            style: `--chart-entry-index: ${index}; --horizontal-bar-size: ${(barSize / maximum) * 100}%`
+          })
+        ),
+        h('span', {
+          className: 'horizontal-bar-chart-value',
+          tabIndex: 0,
+          role: 'img',
+          'aria-label': label
+        }, formatNumber(value, unit))
+      );
+    };
+    const hasSections = points.some((point) => point.section);
+    /** @type {HTMLElement[]} */
+    let entries;
+    if (hasSections) {
+      /** @type {Map<string, Array<{ point: ChartPointLike, index: number }>>} */
+      const sections = new Map();
+      points.forEach((point, index) => {
+        const section = point.section || 'Other';
+        const sectionPoints = sections.get(section) ?? [];
+        sectionPoints.push({ point, index });
+        sections.set(section, sectionPoints);
+      });
+      entries = [...sections.entries()].map(([section, sectionPoints]) => h(
+        'li',
+        { className: 'horizontal-bar-chart-section' },
+        h('h4', { className: 'horizontal-bar-chart-section-title' }, section),
+        h(
+          'ul',
+          { className: 'horizontal-bar-chart-section-list', 'aria-label': section },
+          ...sectionPoints.map(({ point, index }) => renderRow(point, index))
+        )
+      ));
+    } else {
+      entries = points.map(renderRow);
+    }
     return renderChartWidgetShell(
       chartType,
       null,
       h(
         'ul',
         { className: 'horizontal-bar-chart-list', 'aria-label': `Horizontal bar chart with ${points.length} bars` },
-        ...points.map((point, index) => {
-          const numericValue = toNumber(point.y);
-          const value = Number.isFinite(numericValue) ? numericValue : 0;
-          const barSize = Math.max(0, value);
-          const label = chartPointLabel(point, unit);
-          const category = formatCategory(point.x);
-          return h(
-            'li',
-            { className: 'horizontal-bar-chart-row' },
-            h('span', { className: 'horizontal-bar-chart-label', title: point.x },
-              renderSafeLink(
-                h('bdi', { className: 'horizontal-bar-chart-label-text', dir: 'ltr' }, category),
-                point.link ?? null
-              )
-            ),
-            h(
-              'span',
-              { className: 'horizontal-bar-chart-track', 'aria-hidden': 'true' },
-              h('span', {
-                className: `bar-chart-bar horizontal-bar-chart-bar ${seriesClassNames.get(point.color ?? 'value') ?? 'chart-series-1'}`,
-                style: `--chart-entry-index: ${index}; --horizontal-bar-size: ${(barSize / maximum) * 100}%`
-              })
-            ),
-            h('span', {
-              className: 'horizontal-bar-chart-value',
-              tabIndex: 0,
-              role: 'img',
-              'aria-label': label
-            }, formatNumber(value, unit))
-          );
-        })
+        ...entries
       )
     );
   }
@@ -715,6 +744,15 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
       )
     );
     const plotWidth = LINE_CHART_RIGHT - lineChartLeft;
+    const markerTime = Date.parse(temporalMarker?.at ?? '');
+    const pointTimes = xValues.map((value) => Date.parse(value)).filter(Number.isFinite);
+    const markerX = temporalMarker && Number.isFinite(markerTime) && pointTimes.length > 0
+      ? lineChartLeft + (
+        Math.max(0, Math.min(1, (markerTime - Math.min(...pointTimes))
+          / Math.max(1, Math.max(...pointTimes) - Math.min(...pointTimes))))
+        * plotWidth
+      )
+      : null;
     for (const coordinates of areaCoordinates.values()) {
       for (const coordinate of coordinates) coordinate.x = lineChartLeft + (coordinate.x * plotWidth);
     }
@@ -756,7 +794,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
             ? `${series.length > 1 ? 'Stacked area' : 'Area'} chart with ${points.length} points`
             : isPointChart
             ? `${isScatterChart ? 'Scatter' : 'Dot'} chart with ${points.length} points${isDotChart ? ` and ${referenceLines.length} reference lines` : ''}`
-            : `Line chart with ${points.length} points`
+            : `Line chart with ${points.length} points${markerX === null ? '' : ` and ${temporalMarker?.label ?? 'one temporal marker'}`}`
         },
         windowBand ? h('rect', {
           className: 'line-chart-window-band',
@@ -791,6 +829,22 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
           x2: LINE_CHART_RIGHT,
           y2: LINE_CHART_BOTTOM
         }),
+        markerX === null ? null : h('g', {
+          className: 'line-chart-temporal-marker',
+          'data-chart-temporal-marker': temporalMarker?.at,
+          'aria-hidden': 'true'
+        },
+        h('line', {
+          x1: markerX,
+          y1: LINE_CHART_BOTTOM - LINE_CHART_HEIGHT,
+          x2: markerX,
+          y2: LINE_CHART_BOTTOM
+        }),
+        h('text', {
+          x: Math.min(markerX + 1.5, LINE_CHART_RIGHT - 1),
+          y: LINE_CHART_BOTTOM - LINE_CHART_HEIGHT + 2.5,
+          'text-anchor': markerX > LINE_CHART_RIGHT - 18 ? 'end' : 'start'
+        }, temporalMarker?.label ?? 'Marker')),
         ...referenceLines.map(({ seriesName, value }) => h('line', {
           className: `dot-chart-reference ${seriesClassNames.get(seriesName) ?? 'chart-series-1'}`,
           x1: lineChartLeft,

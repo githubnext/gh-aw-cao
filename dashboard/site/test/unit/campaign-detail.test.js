@@ -149,7 +149,29 @@ function context() {
     sources: {
       workflows: { source: 'workflows', metadata, rows: workflows },
       outcomes: { source: 'outcomes', metadata, rows: outcomes },
-      'operational-graders': { source: 'operational-graders', metadata, rows: operationalGraders }
+      'operational-graders': { source: 'operational-graders', metadata, rows: operationalGraders },
+      'campaign-operational-value-primary-series': {
+        source: 'campaign-operational-value-primary-series',
+        metadata,
+        rows: [{
+          campaign: 'ambient-context',
+          metric: 'ambient-context.guidance-freshness',
+          'operational-value-name': 'Guidance freshness',
+          'maturity-status': 'matured',
+          'adoption-at': '2026-08-01T18:00:00Z',
+          'evaluation-mode': 'baseline-comparable',
+          'workflow-name': 'Ambient Context',
+          points: [
+            { x: '2026-08-01T18:00:00Z', y: 0.25, color: 'gh-aw-cao', key: 'value:0' },
+            { x: '2026-08-31T18:00:00Z', y: 0.75, color: 'gh-aw-cao', key: 'value:1' }
+          ]
+        }]
+      },
+      'campaign-runs': {
+        source: 'campaign-runs',
+        metadata,
+        rows: [{ campaign: 'ambient-context', 'started-at': '2026-08-24T18:00:00Z', status: 'success' }]
+      }
     }
   };
 }
@@ -169,7 +191,8 @@ describe('campaign detail route', () => {
     }));
 
     expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.textContent).toBe('Insights');
-    expect(rendered.querySelector('.measure-history')).toBeNull();
+    expect(rendered.querySelector('.measure-history')).not.toBeNull();
+    expect(rendered.querySelector('.temporal-plot-title')?.textContent).toBe('Ambient Context value over time');
   });
 
   it('keeps the compatibility Info route outside the reusable campaign tabs', () => {
@@ -191,21 +214,7 @@ describe('campaign detail route', () => {
       'campaign-problems',
       'campaign-issues'
     ]);
-    expect(rendered.querySelector('.campaign-readme h1')?.textContent).toBe('Ambient Context');
-    expect(rendered.querySelector('.campaign-readme h2')?.textContent).toBe('Capabilities');
-    expect(rendered.querySelectorAll('.campaign-readme li')).toHaveLength(2);
-    expect(rendered.querySelector('.campaign-readme-about')?.textContent).toContain('Keeps repository guidance current.');
-    expect(rendered.querySelector('.campaign-marketplace-detail')?.getAttribute('data-campaign')).toBe('ambient-context');
-    expect(rendered.querySelector('.campaign-marketplace-title')?.textContent).toBe('Ambient ContextCampaign');
-    expect(rendered.querySelector('.campaign-rollout')?.textContent).toBe('review');
-    expect(rendered.querySelector('.campaign-marketplace-actions a')?.getAttribute('href')).toBe('https://ghe.example/githubnext/gh-aw-cao/blob/HEAD/ambient-context/README.md');
-    expect([...rendered.querySelectorAll('.campaign-readme a')].find((link) => link.textContent === 'guide')?.getAttribute('href')).toBe('https://ghe.example/githubnext/gh-aw-cao/blob/HEAD/ambient-context/docs/guide.md');
-    const resources = /** @type {HTMLDetailsElement} */ (rendered.querySelector('.campaign-readme-resources'));
-    expect(resources.open).toBe(false);
-    expect(resources.querySelector('summary')?.textContent).toBe('ResourcesShow details');
-    resources.open = true;
-    expect(resources.textContent).toContain('Source repository');
-    expect([...resources.querySelectorAll('a')].at(-1)?.getAttribute('href')).toBe('https://ghe.example/githubnext/gh-aw-cao');
+    expect(rendered.querySelector('.campaign-readme')).toBeNull();
     expect(rendered.textContent).not.toContain('Other');
   });
 
@@ -261,6 +270,10 @@ describe('campaign detail route', () => {
     expect(allocation).toEqual({
       title: 'Ambient Context',
       description: 'Operational activity for the Ambient Context campaign.',
+      titleLink: {
+        href: 'https://ghe.example/githubnext/gh-aw-cao/tree/HEAD/ambient-context',
+        label: 'Open Ambient Context campaign source on GitHub'
+      },
       navigationPage: 'campaigns'
     });
   });
@@ -382,6 +395,10 @@ describe('campaign detail route', () => {
       expect(detail).toEqual({
         title: 'Ambient Context',
         description: 'Operational activity for the Ambient Context campaign.',
+        titleLink: {
+          href: 'https://ghe.example/githubnext/gh-aw-cao/tree/HEAD/ambient-context',
+          label: 'Open Ambient Context campaign source on GitHub'
+        },
         navigationPage: 'campaigns'
       });
     });
@@ -425,6 +442,10 @@ describe('campaign detail route', () => {
     expect(detail).toEqual({
       title: 'Ambient Context',
       description: 'Operational activity for the Ambient Context campaign.',
+      titleLink: {
+        href: 'https://ghe.example/githubnext/gh-aw-cao/tree/HEAD/ambient-context',
+        label: 'Open Ambient Context campaign source on GitHub'
+      },
       navigationPage: 'campaigns'
     });
   });
@@ -455,6 +476,10 @@ describe('campaign detail route', () => {
       expect(detail).toEqual({
         title: 'Ambient Context',
         description: 'Operational activity for the Ambient Context campaign.',
+        titleLink: {
+          href: 'https://ghe.example/githubnext/gh-aw-cao/tree/HEAD/ambient-context',
+          label: 'Open Ambient Context campaign source on GitHub'
+        },
         navigationPage: 'campaigns'
       });
 

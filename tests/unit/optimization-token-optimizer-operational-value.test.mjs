@@ -138,6 +138,49 @@ test("token optimizer publishes a dubious zero before the first cohort matures",
   for (const metric of definition.metrics) assert.equal(scoreMetric(metric.id, evidence), 0);
 });
 
+test("token optimizer publishes available pre-maturity attainment as dubious", () => {
+  const evidence = buildEvidence([
+    {
+      type: "token_efficiency.opportunity",
+      timestamp: "2026-09-18T00:00:00Z",
+      targetRepo: "github/gh-aw",
+      opportunityId: "early-opportunity",
+      evidenceState: "complete",
+    },
+    {
+      type: "token_efficiency.intervention",
+      timestamp: "2026-09-20T00:00:00Z",
+      targetRepo: "github/gh-aw",
+      opportunityId: "early-opportunity",
+      interventionId: "early-intervention",
+      interventionState: "verified",
+      recommendationDisposition: "applied",
+    },
+    {
+      type: "optimization.comparison.observed",
+      timestamp: "2026-09-24T00:00:00Z",
+      targetRepo: "github/gh-aw",
+      opportunityId: "early-opportunity",
+      interventionId: "early-intervention",
+      evidenceState: "complete",
+      verifiedNetGain: 0.2,
+      baselineFailureRate: 0.1,
+      optimizedFailureRate: 0.1,
+      outcomeQualityPreserved: true,
+    },
+  ], {
+    repository: "github/gh-aw",
+    windowStart: definition.adoption.adoptedAt,
+    windowEnd: "2026-09-24T20:56:21Z",
+    observedAt: "2026-09-24T20:56:21Z",
+  });
+  assert.equal(evidence.maturityStatus, "interim");
+  assert.equal(evidence.dubious, true);
+  assert.equal(scoreMetric("verified-opportunity-share", evidence), 1);
+  assert.equal(scoreMetric("recommendation-acceptance-share", evidence), 1);
+  assert.equal(scoreMetric("guarded-net-gain-magnitude", evidence), 0.2);
+});
+
 test("token optimizer definition validation examples preserve metric ordering", () => {
   for (const metric of definition.metrics) {
     assert.ok(

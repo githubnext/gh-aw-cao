@@ -25,7 +25,7 @@ For several organizations without GitHub Enterprise, keep credentials, target in
 If every target belongs to one organization, use one organization-owned control repository. Add an enterprise runtime only when governance and credential reach genuinely cross organization boundaries.
 :::
 
-A single control repository can address an explicitly named repository in another organization only when that owner is allowlisted and a credential authorized by that organization can perform the operation. The current runtime does not automatically discover across owners or mint and reconcile credentials across multiple organization installations, so do not treat ownership of several organizations or an enterprise account as an implicit cross-organization credential or inventory.
+A single control repository can address an explicitly named repository in another organization only when that owner is allowlisted and a credential authorized by that organization can perform the operation. Enterprise-owned private Apps must be installed separately on every enrolled organization; an enterprise installation alone grants no repository access. CAO can configure existing enterprise App credentials but does not create enterprise-owned Apps or treat enterprise ownership as implicit cross-organization credential reach or inventory.
 
 ### Workflow Sources
 

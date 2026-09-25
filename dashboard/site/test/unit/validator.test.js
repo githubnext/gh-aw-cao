@@ -39,6 +39,118 @@ describe('dashboard document validation', () => {
     expect(accepted.ok).toBe(true);
   });
 
+  it('DLS-VIEW-005 limits categorical section encodings to horizontal bar charts', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const costPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'cost');
+    const workflowCost = costPage.views.find(
+      (/** @type {{ id: string }} */ view) => view.id === 'cost-by-workflow'
+    );
+
+    expect(workflowCost.encoding.section).toMatchObject({
+      field: 'repository-coordinate',
+      type: 'nominal'
+    });
+
+    workflowCost.chart = 'bar';
+    const wrongChart = validateDashboardDocument(JSON.stringify(document));
+    expect(wrongChart.ok).toBe(false);
+    if (!wrongChart.ok) {
+      expect(wrongChart.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          code: 'DLS-E010',
+          path: '$.dashboard.pages[36].views[2].encoding.section'
+        })
+      ]));
+    }
+
+    workflowCost.chart = 'horizontal-bar';
+    workflowCost.encoding.section.type = 'quantitative';
+    const wrongType = validateDashboardDocument(JSON.stringify(document));
+    expect(wrongType.ok).toBe(false);
+    if (!wrongType.ok) {
+      expect(wrongType.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          code: 'DLS-E010',
+          path: '$.dashboard.pages[36].views[2].encoding.section.type'
+        })
+      ]));
+    }
+  });
+
+  it('validates page forms and typed query parameter references', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    document.dashboard.queries.push({
+      name: 'simulated-usage',
+      intent: 'Simulate AIC under operator-selected assumptions.',
+      parameters: [
+        { name: 'multiplier', type: 'number' },
+        { name: 'enabled', type: 'boolean' },
+        { name: 'profile', type: 'string' }
+      ],
+      from: 'usage',
+      compute: [
+        {
+          as: 'simulated-aic',
+          function: 'product',
+          args: [{ field: 'aic' }, { parameter: 'multiplier' }]
+        },
+        {
+          as: 'enabled-aic',
+          function: 'if',
+          args: [{ parameter: 'enabled' }, { field: 'simulated-aic' }, { value: 0 }]
+        },
+        {
+          as: 'profile-label',
+          function: 'coalesce',
+          args: [{ parameter: 'profile' }, { value: 'balanced' }]
+        }
+      ]
+    });
+    document.dashboard.pages.push({
+      id: 'simulator',
+      kind: 'custom',
+      title: 'Simulator',
+      form: {
+        title: 'Scenario',
+        update: { strategy: 'debounce', 'delay-ms': 250 },
+        fields: [
+          { id: 'multiplier', label: 'Multiplier', control: 'slider', default: 1, min: 0, max: 4, step: 0.25 },
+          { id: 'enabled', label: 'Enabled', control: 'checkbox', default: true },
+          {
+            id: 'profile',
+            label: 'Profile',
+            control: 'radio',
+            default: 'balanced',
+            options: [
+              { value: 'balanced', label: 'Balanced' },
+              { value: 'fast', label: 'Fast' }
+            ]
+          }
+        ]
+      },
+      views: [{
+        id: 'simulated-aic',
+        data: { source: 'simulated-usage' },
+        mark: 'chart',
+        chart: 'line',
+        encoding: {
+          x: { field: 'observed-at', type: 'temporal', 'time-unit': 'day' },
+          y: { field: 'enabled-aic', type: 'quantitative' }
+        }
+      }]
+    });
+
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+
+    document.dashboard.pages.at(-1).form.fields[0].id = 'missing-parameter';
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([expect.objectContaining({
+        message: 'form field "missing-parameter" is not declared by any dashboard query.'
+      })])
+    });
+  });
+
   it('validates card template drill references and destination bindings', () => {
     const invalidPage = JSON.parse(authoritativeDashboardSource);
     const domainTemplate = invalidPage.dashboard['card-templates']
@@ -80,7 +192,7 @@ describe('dashboard document validation', () => {
     invalidPage.dashboard.pages
       .find((/** @type {{ id?: string }} */ page) => page.id === 'maintenance')['navigation-indicator'] = {
         label: '',
-        any: [{ source: 'maintenance-campaign-updates', field: 'campaign-update-state' }]
+        any: [{}]
       };
 
     expect(validateDashboardDocument(JSON.stringify(invalidPage))).toMatchObject({
@@ -91,8 +203,8 @@ describe('dashboard document validation', () => {
           path: expect.stringMatching(/navigation-indicator\.label$/)
         }),
         expect.objectContaining({
-          message: 'navigation-indicator predicate equals is required.',
-          path: expect.stringMatching(/navigation-indicator\.any\[0\]\.equals$/)
+          message: 'any[0] must be a non-empty string.',
+          path: expect.stringMatching(/navigation-indicator\.any\[0\]$/)
         })
       ])
     });
@@ -236,6 +348,37 @@ describe('dashboard document validation', () => {
     const links = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'link-button-list');
     links.config.sources = { status: 'overview-factory-status' };
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+  });
+
+  it('validates generic markdown element configuration', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const campaign = document.dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'campaign-detail');
+    const markdown = campaign.views.find((/** @type {{ element?: string }} */ view) => view.element === 'markdown');
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+
+    const config = markdown.config;
+    delete markdown.config;
+    expect(validateDashboardDocument(JSON.stringify(document)).errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: expect.stringContaining('.config'), message: 'markdown requires config.' })
+    ]));
+
+    markdown.config = { ...config };
+    delete markdown.config['content-field'];
+    expect(validateDashboardDocument(JSON.stringify(document)).errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: expect.stringContaining('.config.content-field'),
+        message: 'markdown requires config.content-field.'
+      })
+    ]));
+
+    const navigation = campaign.views.find((/** @type {{ element?: string }} */ view) => view.element === 'campaign-route');
+    navigation.config['content-field'] = 'campaign-readme';
+    expect(validateDashboardDocument(JSON.stringify(document)).errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: expect.stringContaining('.config.content-field'),
+        message: 'config.content-field is supported only for the markdown element.'
+      })
+    ]));
   });
 
   it('accepts supported dashboard CLI actions', () => {

@@ -30,15 +30,28 @@ if (campaign) {
   } catch (error) {
     fail(`campaign manifest is invalid: ${error.message}`);
   }
-  names = [...new Set((parsed?.includes ?? []).flatMap((include) => {
+  const includedNames = [...new Set((parsed?.includes ?? []).flatMap((include) => {
     const match = String(include).match(/^\.github\/workflows\/([a-z0-9]+(?:-[a-z0-9]+)*)\.md$/);
     return match ? [match[1]] : [];
   }))].sort();
-  for (const name of names) {
-    if (!existsSync(path.join(workflowDir, `${name}.md`))) {
+  names = includedNames.filter((name) => {
+    const workflowPath = path.join(workflowDir, `${name}.md`);
+    if (!existsSync(workflowPath)) {
       fail(`campaign workflow not found: .github/workflows/${name}.md`);
     }
-  }
+    const source = readFileSync(workflowPath, "utf8");
+    const frontmatter = source.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+    if (!frontmatter) return false;
+    let workflow;
+    try {
+      workflow = parse(frontmatter[1]);
+    } catch (error) {
+      fail(`campaign workflow is invalid: .github/workflows/${name}.md: ${error.message}`);
+    }
+    return (workflow?.imports ?? []).some(
+      (entry) => entry?.uses === "shared/control.md" && entry?.with?.role === "worker",
+    );
+  });
 } else {
   names = readdirSync(workflowDir)
     .filter((name) => name.endsWith(".md"))

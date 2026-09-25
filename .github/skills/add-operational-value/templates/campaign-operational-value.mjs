@@ -68,11 +68,14 @@ for (const moduleFile of moduleFiles) {
 
   const { durationDays, maturationDays } = definition.evidence.window;
   const observedAt = request.timestamp;
-  const windowEnd = shiftDays(observedAt, -maturationDays);
+  const firstMatureAt = shiftDays(definition.adoption.adoptedAt, durationDays + maturationDays);
+  const interim = definition.evaluation?.mode === "attainment-only"
+    && Date.parse(observedAt) < Date.parse(firstMatureAt);
+  const windowEnd = interim ? observedAt : shiftDays(observedAt, -maturationDays);
   const windows = repositories.map((repository) => ({
     repository,
     observedAt,
-    windowStart: shiftDays(windowEnd, -durationDays),
+    windowStart: interim ? definition.adoption.adoptedAt : shiftDays(windowEnd, -durationDays),
     windowEnd,
   }));
 
@@ -102,6 +105,10 @@ for (const moduleFile of moduleFiles) {
         metricName: metric.name,
         metricDirection: metric.direction,
         maturityStatus: collections[index].evidence?.maturityStatus ?? "matured",
+        adoptionAt: definition.adoption.adoptedAt,
+        evaluationMode: definition.evaluation?.mode ?? "baseline-comparable",
+        workflowSlug: definition.slug,
+        workflowName: definition.workflowName,
       }));
     }
   }

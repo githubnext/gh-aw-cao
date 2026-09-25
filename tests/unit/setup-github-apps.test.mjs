@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
 import {
   APP_PROFILES,
+  appRegistrationUrl,
   buildGitHubAppManifest,
   deriveAppName,
   deriveInstallationTargets,
@@ -60,7 +61,7 @@ test("GitHub App manifests are private and disable webhooks and OAuth", () => {
   assert.deepEqual(manifest.default_permissions, { contents: "read" });
 });
 
-test("GitHub App manifests can allow reviewed cross-organization installations", () => {
+test("GitHub App manifests remain private even if a public value is supplied", () => {
   const manifest = buildGitHubAppManifest({
     name: "octo-control-read",
     homepageUrl: "https://github.com/octo/control",
@@ -70,7 +71,14 @@ test("GitHub App manifests can allow reviewed cross-organization installations",
     public: true,
   });
 
-  assert.equal(manifest.public, true);
+  assert.equal(manifest.public, false);
+});
+
+test("App registration targets organization ownership", () => {
+  assert.equal(
+    appRegistrationUrl("octo", "state"),
+    "https://github.com/organizations/octo/settings/apps/new?state=state",
+  );
 });
 
 test("App setup derives selected-repository installations from CAO policy", () => {
@@ -112,14 +120,30 @@ test("repository credentials keep the private key out of command arguments", () 
   assert.equal(calls.flatMap((call) => call.args).includes(pem), false);
 });
 
-test("dry run emits both exact manifests without requiring GitHub access", () => {
-  const result = spawnSync(script, ["--repo", "githubnext/gh-aw-cao", "--dry-run"], {
+test("organization dry run emits private manifests without requiring GitHub access", (t) => {
+  const directory = mkdtempSync(join(tmpdir(), "cao-setup-policy-"));
+  const policy = join(directory, "cao.json");
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  writeFileSync(policy, JSON.stringify({
+    version: 1,
+    "gh-aw-version": "v0.89.21",
+    "control-plane": {
+      scope: { "allowed-repositories": ["githubnext/gh-aw-cao"] },
+      campaigns: {},
+    },
+  }));
+  const result = spawnSync(script, [
+    "--repo", "githubnext/gh-aw-cao",
+    "--policy", policy,
+    "--dry-run",
+  ], {
     encoding: "utf8",
   });
 
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
   assert.equal(output.repo, "githubnext/gh-aw-cao");
+  assert.ok(output.apps.every((app) => app.manifest.public === false));
   assert.deepEqual(output.apps.map((app) => app.manifest.name), [
     "cao-githubnext-gh-aw-cao-read",
     "cao-githubnext-gh-aw-cao-write",
@@ -128,6 +152,16 @@ test("dry run emits both exact manifests without requiring GitHub access", () =>
     "http://127.0.0.1:0/callback",
     "http://127.0.0.1:0/callback",
   ]);
+});
+
+test("organization App setup rejects cross-organization policy scope", () => {
+  const result = spawnSync(script, ["--repo", "githubnext/gh-aw-cao", "--dry-run"], {
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /private organization-owned Apps cannot be installed on github/);
+  assert.match(result.stderr, /configure existing enterprise-owned Apps/);
 });
 
 test("cao-setup is exposed as an executable Node CLI", (t) => {

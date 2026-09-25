@@ -1,4 +1,8 @@
-import { compileDashboardViewPayloadQueries } from "./data/queries/view-payload-compiler.js";
+import {
+  compileDashboardViewPayloadQueries,
+  dashboardFormDefaultValues,
+  resolveDashboardQueryParameters
+} from "./data/queries/view-payload-compiler.js";
 
 const BACKEND_META_NAME = "dashboard-data-backend";
 const REMOTE_BACKEND = "redis-http";
@@ -14,7 +18,8 @@ let observedEvaluatedAt;
  *   search?: { fields: string[], query: string },
  *   orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>,
  *   timeWindow?: { start?: string, end?: string },
- *   viewMode?: 'chart'|'table'|'card'
+ *   viewMode?: 'chart'|'table'|'card',
+ *   formValues?: Record<string, string|number|boolean>
  * }} RemoteQueryContext
  */
 
@@ -110,9 +115,16 @@ function remoteQueryPayload(sourceNames, context, pagination, options = {}) {
         sourceNames,
       })
     : { aliases: [], queries: [], replacedSources: [] };
+  const pageForm = page && typeof page === "object" && !Array.isArray(page)
+    ? /** @type {Record<string, unknown>} */ (page).form
+    : undefined;
+  const formValues = {
+    ...dashboardFormDefaultValues(pageForm),
+    ...(options.queryContext?.formValues ?? {})
+  };
   return {
     sourceNames,
-    queries: context.queries ?? [],
+    queries: resolveDashboardQueryParameters(context.queries ?? [], formValues),
     compiledQueries: viewPayload.queries,
     aliases: viewPayload.aliases,
     replacedSources: viewPayload.replacedSources,

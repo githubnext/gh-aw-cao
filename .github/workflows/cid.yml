@@ -5,6 +5,7 @@ on:
     paths:
       - .github/workflows/cid.yml
       - activity/cao.mjs
+      - activity/commands/**
       - activity/dashboard-complexity.mjs
       - dashboard/site/**
       - tests/unit/cao-dashboard-complexity.test.mjs
@@ -16,6 +17,7 @@ on:
     paths:
       - .github/workflows/cid.yml
       - activity/cao.mjs
+      - activity/commands/**
       - activity/dashboard-complexity.mjs
       - dashboard/site/**
       - tests/unit/cao-dashboard-complexity.test.mjs

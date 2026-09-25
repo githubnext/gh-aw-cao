@@ -301,25 +301,6 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
           ],
           metadata
         },
-        'operational-graders': {
-          source: 'operational-graders',
-          rows: [
-            {
-              organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/ambient-context-worker.md', run: '3',
-              'observed-at': '2026-09-13T14:00:00Z', 'operational-grader': 0.5, 'operational-grader-definition': 'repository-readiness',
-              diagnostics: { quality: 0.6, efficiency: 0.8 },
-              'diagnostic-definitions': [{ id: 'quality', name: 'Quality' }, { id: 'efficiency', name: 'Efficiency' }]
-            },
-            {
-              organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/ambient-context-worker.md', run: '4',
-              'observed-at': '2026-09-14T14:00:00Z', 'operational-grader': 0.75, 'operational-grader-definition': 'repository-readiness',
-              diagnostics: { quality: 0.85, efficiency: 0.7 },
-              'diagnostic-definitions': [{ id: 'quality', name: 'Quality' }, { id: 'efficiency', name: 'Efficiency' }]
-            },
-            { workflow: '.github/workflows/aw-doctor.md', run: '1', 'operational-grader': 0.25 }
-          ],
-          metadata
-        },
         'operational-values': {
           source: 'operational-values',
           rows: [
@@ -369,13 +350,11 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
     'Runs',
     'Dispatches',
     'AIC',
-    'Ops Grader',
     'Registration'
   ]);
   const awDoctorSummary = campaignRows.filter({ hasText: 'AW Doctor' });
   await expect(awDoctorSummary).toContainText('AW Doctor');
   await expect(awDoctorSummary).toContainText('23.9');
-  await expect(awDoctorSummary.locator('[data-field="grader-result"]')).toHaveText('0.25');
   await expect(awDoctorSummary.getByRole('button', { name: 'Update campaign' })).toHaveCount(0);
   await expect(awDoctorSummary.getByRole('link', { name: 'View AW Doctor campaign dashboard' })).toHaveAttribute('href', '#page-campaign-insights?campaign=aw-doctor');
   await expect(awDoctorSummary.locator('[data-field="modes"] .mode-badge')).toHaveText('review');
@@ -397,7 +376,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await expect(campaignNavigation).toHaveCSS('display', 'flex');
   await expect(campaignNavigation).toHaveCSS('border-bottom-style', 'solid');
   await expect(campaignNavigation.locator('[aria-current="page"]')).toHaveCount(0);
-  await expect(campaignNavigation.locator('.count-badge')).toHaveText(['4', '1']);
+  await expect(campaignNavigation.locator('.count-badge')).toHaveText(['1', '1']);
   const campaignTabBadges = await campaignNavigation.locator('.count-badge').allTextContents();
   await expect(page.getByRole('heading', { name: 'Orchestrator and workers', level: 3 })).toHaveCount(0);
   await campaignNavigation.getByRole('link', { name: 'Problems' }).click();
@@ -488,103 +467,17 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   const mobileBack = page.getByRole('button', { name: 'Go back' });
   await expect(mobileBack).toBeVisible();
   await expect(page.locator('.overview-header')).toContainText('Operational activity for the Ambient Context campaign.');
-  await expect(campaignInsights.locator('.measure-history [data-chart-widget="line"]')).toHaveCount(4);
-  await expect(campaignInsights.locator('.measure-history .chart-point')).toHaveCount(6);
   const operationalValueHistory = campaignInsights.getByRole('region', { name: 'Repository operational value' });
-  const graderHistory = campaignInsights.getByRole('region', { name: 'Operational grader history' });
-  await expect(operationalValueHistory).toContainText('Ambient context repository value');
-  await expect(graderHistory).toContainText('Repository readiness');
-  await expect(graderHistory).toContainText('Quality');
-  await expect(graderHistory).toContainText('Efficiency');
-  await expect(campaignInsights.locator('.insights-measure-rows > .insights-measure-row')).toHaveCount(4);
-  await expect(graderHistory.locator('.insights-measure-row').first().locator('.insights-axis-x')).toHaveText('Observation time (UTC)');
-  const measureReadout = graderHistory.locator('.insights-measure-row').first().locator('.insights-point-readout');
-  await expect(measureReadout).toHaveText('Select a point to inspect that observation.');
-  const measurePoint = graderHistory.locator('.insights-measure-row').first().locator('.chart-point[data-chart-point-key]').first();
-  await measurePoint.dispatchEvent('click');
-  await expect(measureReadout).not.toHaveText('Select a point to inspect that observation.');
-  await expect(campaignInsights.locator('.insights-measure-row .chart-point[aria-pressed="true"]')).toHaveCount(1);
-  await measurePoint.dispatchEvent('keydown', { key: 'Enter', bubbles: true });
-  await expect(measureReadout).toHaveText('Select a point to inspect that observation.');
+  await expect(operationalValueHistory).toContainText('Goal measure');
+  await expect(operationalValueHistory).toContainText('Workflow runs');
+  await expect(operationalValueHistory.locator('.temporal-plot-axis-title')).toHaveCount(1);
+  await expect(operationalValueHistory.locator('.temporal-plot-runs-track')).toHaveCount(1);
   await mobileBack.click();
   await expect(page).toHaveURL(/#page-campaign-detail\?campaign=ambient-context$/);
   await expect(page.locator('[data-page-id="campaign-detail"]')).toBeVisible();
   await expect(campaignNavigation).toBeVisible();
 });
 
-
-test('DLS-PAGE-009 DLS-PAGE-014 built-in evals page renders distinguishable definitions and observations, observed subject, YES/NO/UNKNOWN result, evaluation model when available, time, provenance, and independent data state in browser', async ({ page }) => {
-  const presenterModuleUrl = buildPresenterModuleUrl();
-
-  await page.setContent(`
-    <div id="root"></div>
-    <script type="module">
-      import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
-
-      const dashboardDocument = {
-        languageVersion: '0.1.0',
-        dashboard: {
-          id: 'built-in-evals-render',
-          title: 'Built In Evals Render',
-          pages: [
-            ${JSON.stringify(builtInPage('evals', { id: 'evals', title: 'Evals' }))}
-          ]
-        }
-      };
-
-      const sources = {
-        evals: {
-          source: 'evals',
-          rows: [
-            { eval: 'release-risk', 'eval-name': 'Release Risk', 'eval-question': 'Is the release risky?', 'requested-model': 'gpt-4o', 'observed-at': '2026-08-29T09:00:00Z' },
-            { eval: 'doc-quality', 'eval-name': 'Documentation Quality', 'eval-question': 'Is the documentation complete?', 'requested-model': 'claude-3.5', 'observed-at': '2026-08-29T09:05:00Z' }
-          ],
-          metadata: {
-            'source-id': 'evals-fixture',
-            'source-kind': 'fixture',
-            'as-of': '2026-08-29T20:00:00Z',
-            'retrieved-at': '2026-08-29T20:01:00Z',
-            completeness: 'partial',
-            freshness: 'stale',
-            availability: 'available'
-          }
-        },
-        'eval-observations': {
-          source: 'eval-observations',
-          rows: [
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/daily.yml', run: '1001', eval: 'release-risk', 'eval-result': 'YES', 'requested-model': 'gpt-4o', 'resolved-model': 'gpt-4.1', 'rollout-mode': 'live', 'observed-at': '2026-08-29T10:00:00Z' },
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/daily.yml', run: '1002', eval: 'release-risk', 'eval-result': 'UNKNOWN', 'requested-model': 'gpt-4o', 'resolved-model': '', 'rollout-mode': 'live', 'observed-at': '2026-08-29T10:10:00Z' },
-            { organization: 'octo-org', repository: 'octo-repo', workflow: '.github/workflows/nightly.yml', run: '2001', eval: 'doc-quality', 'eval-result': 'NO', 'requested-model': 'claude-3.5', 'resolved-model': 'claude-3.7', 'rollout-mode': 'review', 'observed-at': '2026-08-29T10:20:00Z' }
-          ],
-          metadata: {
-            'source-id': 'eval-observations-fixture',
-            'source-kind': 'fixture',
-            'as-of': '2026-08-29T20:00:00Z',
-            'retrieved-at': '2026-08-29T20:01:00Z',
-            completeness: 'complete',
-            freshness: 'fresh',
-            availability: 'available'
-          }
-        }
-      };
-
-      document.querySelector('#root').append(renderDashboard({ document: dashboardDocument, sources }));
-    </script>
-  `);
-
-  await expect(page.getByRole('heading', { name: 'Evals', exact: true, level: 1 })).toBeVisible();
-  await page.getByRole('button', { name: 'Table' }).click();
-  await page.locator('summary').filter({ hasText: 'Evals Evals Source' }).click();
-  await expect(page.getByRole('region', { name: 'Evals Evals Source', exact: true })).toBeVisible();
-  await page.locator('summary').filter({ hasText: 'Evals Observations Source' }).click();
-  await expect(page.getByRole('region', { name: 'Evals Observations Source', exact: true })).toBeVisible();
-  await expect(page.locator('.data-state-summary')).toBeHidden();
-  await expect(page.locator('[data-page-id="evals"] .custom-table').nth(0).locator('tbody tr')).toHaveCount(2);
-  await expect(page.locator('[data-page-id="evals"] .custom-table').nth(1).locator('tbody tr')).toHaveCount(3);
-  await expect(page.locator('[data-page-id="evals"]')).toContainText('release-risk');
-  await expect(page.locator('[data-page-id="evals"]')).toContainText('UNKNOWN');
-  await expect(page.locator('[data-page-id="evals"]')).toContainText('claude-3.7');
-});
 
 test('DLS-SAFE-004 DLS-SAFE-007 DLS-SAFE-008 DLS-SAFE-010 custom findings table exposes accessible names, labeled columns, textual data states, and only safe labeled external links in browser', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
@@ -1095,8 +988,7 @@ test('repository page template follows its JSON-declared hash query route in bro
         },
         runs: { source: 'runs', metadata, rows: [] },
         outcomes: { source: 'outcomes', metadata, rows: [] },
-        audits: { source: 'audits', metadata, rows: [] },
-        'operational-graders': { source: 'operational-graders', metadata, rows: [] }
+        audits: { source: 'audits', metadata, rows: [] }
       };
       const loadPageSources = (pageId, options) => prepareDashboardViewSources(
         dashboardDocument,
@@ -1580,7 +1472,7 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
             views: [{
               id: 'workflow-runtime-route',
               title: 'Workflow runtime',
-              data: { sources: ['workflows', 'runs', 'usage', 'operational-graders'] },
+              data: { sources: ['workflows', 'runs', 'usage'] },
               mark: 'element',
               element: 'workflow-route-page',
               config: { body: 'insights' }
@@ -1636,11 +1528,6 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
             aic: 962.7
           }]
         },
-        'operational-graders': {
-          source: 'operational-graders',
-          metadata,
-          rows: []
-        }
       };
       const routeParameters = {
         workflow: 'githubnext/gh-aw-cao:.github/workflows/multi-device-docs-tester.md'
@@ -1672,7 +1559,6 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
   );
   await expect(page.locator('.workflow-runtime-metrics')).toContainText('1');
   await expect(page.locator('.workflow-runtime-metrics')).toContainText('962.7');
-  await expect(page.getByRole('heading', { name: 'No workflow observations yet' })).toBeVisible();
 });
 
 test('outcome page template follows its JSON-declared hash query route in browser', async ({ page }) => {
@@ -1744,7 +1630,7 @@ test('outcome page template follows its JSON-declared hash query route in browse
   `);
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Parity verification sweep');
-  await expect(page.locator('[data-page-title-link]')).toHaveText('#403');
+  await expect(page.locator('[data-page-title-link]')).toHaveText('Open #403 on GitHub');
   await expect(page.locator('[data-page-title-link]')).toHaveAttribute('href', 'https://github.com/githubnext/gh-aw-cao/issues/403');
   await expect(page.locator('.overview-header [data-page-description]')).toHaveText('Daily review · Pull Request · Closed');
   await page.locator('.horizon-toggle').click();

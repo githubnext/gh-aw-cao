@@ -119,7 +119,7 @@ func Validate(definitions []Definition) error {
 
 func computeArity(function string) (int, int, bool) {
 	arities := map[string][2]int{
-		"coalesce": {2, 8}, "concat": {2, 8}, "lower": {1, 1}, "upper": {1, 1},
+		"literal": {1, 1}, "coalesce": {2, 8}, "concat": {2, 8}, "lower": {1, 1}, "upper": {1, 1},
 		"title-case": {1, 1}, "trim": {1, 1}, "replace-suffix": {3, 3}, "url-encode": {1, 1},
 		"date-day": {1, 1}, "calendar-week-point": {3, 3}, "dashboard-link": {3, 4}, "link-href": {1, 1},
 		"equals-any": {2, 8}, "greater-than": {2, 2}, "if": {3, 3}, "format-count": {1, 1},
@@ -337,11 +337,17 @@ func ExecuteDefinition(definition Definition, sources map[string]model.Source, r
 	if !ok {
 		return model.Source{}, 0, nil, fmt.Errorf("input source %q is unavailable", definition.From)
 	}
+	if sourceUnavailable(base) {
+		return unavailableResult(definition), 0, nil, nil
+	}
 	rows := cloneRows(base.Rows)
 	for _, union := range definition.Union {
 		source, exists := sources[union]
 		if !exists {
 			return model.Source{}, 0, nil, fmt.Errorf("union source %q is unavailable", union)
+		}
+		if sourceUnavailable(source) {
+			return unavailableResult(definition), 0, nil, nil
 		}
 		rows = append(rows, cloneRows(source.Rows)...)
 	}
@@ -422,6 +428,18 @@ func ExecuteDefinition(definition Definition, sources map[string]model.Source, r
 	}
 	metadata["row-count"] = len(rows)
 	return model.Source{Source: definition.Name, Rows: rows, Metadata: metadata}, operations, fallback, nil
+}
+
+func sourceUnavailable(source model.Source) bool {
+	return source.Metadata["availability"] == "unavailable"
+}
+
+func unavailableResult(definition Definition) model.Source {
+	return model.Source{
+		Source:   definition.Name,
+		Rows:     []model.Row{},
+		Metadata: model.Metadata{"availability": "unavailable", "row-count": 0},
+	}
 }
 
 func cloneRows(input []model.Row) []model.Row {
@@ -617,6 +635,8 @@ func computeValue(row model.Row, definition ComputedField) (any, error) {
 		}
 	}
 	switch definition.Function {
+	case "literal":
+		return scalarValue(values[0]), nil
 	case "coalesce":
 		for _, value := range values {
 			if !empty(value) && scalar(value) {

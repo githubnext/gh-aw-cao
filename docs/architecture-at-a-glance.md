@@ -1,6 +1,6 @@
 ---
 title: What Is Central Agentic Ops?
-description: Package engineering expertise once, run campaigns across repositories, and prove the outcome.
+description: Encode engineering expertise once, run campaigns across repositories, and prove the outcome.
 ---
 
 Central Agentic Ops brings **agentic campaigns as code** to GitHub.
@@ -11,9 +11,9 @@ Turn engineering expertise into a reusable campaign. Choose a ready
 campaign or build your own, customize it once, run it safely across any set of
 repositories, and prove the value it delivers.
 
-:::note[More than an agent factory or control plane]
-An agent factory builds agents. A control plane governs them. CAO turns a
-successful agent task into a reusable organizational capability.
+:::note[Persistent work toward an outcome]
+CAO turns a successful agent task into a persistent body of agentic work that
+continuously pursues a defined outcome across a set of targets.
 :::
 
 ## All You Need
@@ -61,7 +61,7 @@ maintainers review that change and choose its rollout.
 
 ## Why It Is Different
 
-- **Campaigns as code:** package a desired repository outcome, not only a
+- **Campaigns as code:** encode a desired repository outcome, not only a
   prompt or agent persona.
 - **Ready or custom:** adopt a proven campaign or create one unique to your
   organization.

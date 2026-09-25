@@ -32,7 +32,9 @@ export const MAX_CLI_ACTIONS = 20;
 export const MAX_CLI_ACTION_ARGUMENTS = 10;
 export const MAX_CLI_ACTION_COMMAND_LENGTH = 1000;
 
-export const QUERY_KEYS = ['name', 'intent', 'description', 'from', 'union', 'time', 'joins', 'filter', 'compute', 'temporal-series', 'aggregate', 'predict', 'select', 'order-by', 'limit'];
+export const QUERY_KEYS = ['name', 'intent', 'description', 'parameters', 'from', 'union', 'time', 'joins', 'filter', 'compute', 'temporal-series', 'aggregate', 'predict', 'select', 'order-by', 'limit'];
+export const QUERY_PARAMETER_KEYS = ['name', 'type'];
+export const QUERY_PARAMETER_TYPE_VALUES = ['number', 'string', 'boolean'];
 export const QUERY_JOIN_KEYS = ['source', 'type', 'on', 'fields'];
 export const QUERY_JOIN_TYPE_VALUES = ['inner', 'left'];
 export const QUERY_JOIN_ON_KEYS = ['left', 'right'];
@@ -40,7 +42,7 @@ export const QUERY_JOIN_FIELD_KEYS = ['field', 'as'];
 export const QUERY_FILTER_KEYS = ['predicates'];
 export const QUERY_PREDICATE_KEYS = ['field', 'equals', 'in', 'includes', 'gte', 'lt', 'optional'];
 export const QUERY_COMPUTE_KEYS = ['as', 'function', 'args'];
-export const QUERY_COMPUTE_ARGUMENT_KEYS = ['field', 'value', 'context'];
+export const QUERY_COMPUTE_ARGUMENT_KEYS = ['field', 'value', 'context', 'parameter'];
 export const QUERY_TEMPORAL_SERIES_KEYS = ['time', 'series', 'shape', 'carry', 'measures', 'maps'];
 export const QUERY_TEMPORAL_SERIES_MEASURE_KEYS = ['field', 'key', 'kind'];
 export const QUERY_TEMPORAL_SERIES_MAP_KEYS = ['field', 'definitions', 'group', 'kind'];
@@ -63,9 +65,16 @@ export const UNIT_DEFINITION_KEYS = ['name', 'symbol', 'significant', 'format'];
 export const UNIT_FORMAT_VALUES = ['aicc', 'duration', 'number', 'usd'];
 export const NAVIGATION_SECTION_KEYS = ['label', 'pages', 'experimental', 'placement'];
 export const NAVIGATION_INDICATOR_KEYS = ['label', 'any'];
-export const NAVIGATION_INDICATOR_PREDICATE_KEYS = ['source', 'field', 'equals'];
-export const BUILT_IN_PAGE_KEYS = ['id', 'kind', 'page', 'title', 'navigation-label', 'navigation-indicator', 'description', 'icon', 'class-name', 'filter-bar', 'definition'];
-export const CUSTOM_PAGE_KEYS = ['id', 'kind', 'title', 'navigation-label', 'navigation-indicator', 'description', 'icon', 'class-name', 'filter-bar', 'route', 'views', 'sections'];
+export const BUILT_IN_PAGE_KEYS = ['id', 'kind', 'page', 'title', 'navigation-label', 'navigation-indicator', 'description', 'icon', 'class-name', 'filter-bar', 'form', 'definition'];
+export const CUSTOM_PAGE_KEYS = ['id', 'kind', 'title', 'navigation-label', 'navigation-indicator', 'description', 'icon', 'class-name', 'filter-bar', 'form', 'route', 'views', 'sections'];
+export const PAGE_FORM_KEYS = ['title', 'description', 'update', 'fields'];
+export const PAGE_FORM_UPDATE_KEYS = ['strategy', 'delay-ms'];
+export const PAGE_FORM_UPDATE_STRATEGY_VALUES = ['debounce', 'throttle'];
+export const PAGE_FORM_FIELD_KEYS = ['id', 'label', 'description', 'control', 'default', 'min', 'max', 'step', 'options'];
+export const PAGE_FORM_CONTROL_VALUES = ['slider', 'checkbox', 'radio'];
+export const PAGE_FORM_OPTION_KEYS = ['value', 'label'];
+export const PAGE_FORM_MIN_DELAY_MS = 50;
+export const PAGE_FORM_MAX_DELAY_MS = 2000;
 export const PAGE_ROUTE_KEYS = ['hash-query-parameter', 'navigation-page', 'title-format', 'tabs-class-name', 'tab', 'tabs'];
 export const PAGE_ROUTE_TITLE_FORMAT_VALUES = ['title-case'];
 export const PAGE_ROUTE_TAB_KEYS = ['id', 'label', 'icon', 'page'];
@@ -74,7 +83,7 @@ export const MAX_PAGE_ROUTE_TABS = 8;
 export const VIEW_KEYS = ['id', 'title', 'description', 'intent', 'locked', 'data', 'mark', 'element', 'config', 'callout', 'chart', 'metric', 'list', 'card-drill', 'tree', 'layout', 'disclosure', 'disclosure-label', 'controls', 'lazy-list', 'column-summaries', 'empty-message', 'title-link', 'encoding'];
 export const VIEW_DATA_KEYS = ['source', 'sources', 'scope', 'time', 'filters', 'arguments', 'route-field', 'limit', 'order-by', 'source-metadata'];
 export const VIEW_DATA_ARGUMENT_KEYS = ['name', 'field'];
-export const VIEW_ELEMENT_CONFIG_KEYS = ['body', 'sections', 'stations', 'labels', 'animate', 'sources', 'view-all-page', 'view-all-label', 'label-field', 'link-field', 'icon-field', 'fallback-icon', 'indicator-field', 'indicator-label-field', 'empty-message', 'measure-source'];
+export const VIEW_ELEMENT_CONFIG_KEYS = ['body', 'sections', 'stations', 'labels', 'animate', 'sources', 'view-all-page', 'view-all-label', 'label-field', 'link-field', 'icon-field', 'fallback-icon', 'indicator-field', 'indicator-label-field', 'empty-message', 'measure-source', 'content-field', 'path-field', 'base-link-field'];
 export const FACTORY_HEADER_SOURCE_ROLES = ['presentation', 'rhythm'];
 export const FACTORY_FLOOR_SOURCE_ROLES = ['campaigns', 'repositories'];
 export const VIEW_ELEMENT_ANIMATION_VALUES = ['number'];
@@ -95,7 +104,8 @@ export const VIEW_ELEMENT_VALUES = [
   'measure-history',
   'factory-header',
   'factory-floor',
-  'link-button-list'
+  'link-button-list',
+  'markdown'
 ];
 export const VIEW_CHART_VALUES = ['area', 'bar', 'dot', 'heatmap', 'histogram', 'horizontal-bar', 'line', 'pie', 'scatter', 'swimlane'];
 export const VIEW_METRIC_KEYS = ['style', 'icon', 'tone', 'navigation-page', 'animate'];
@@ -128,7 +138,7 @@ export const GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS = new Set([
   'evidence',
   'insights'
 ]);
-export const VIEW_ENCODING_KEYS = ['value', 'columns', 'x', 'y', 'color', 'weight', 'reference', 'href', 'actions'];
+export const VIEW_ENCODING_KEYS = ['value', 'columns', 'x', 'y', 'color', 'section', 'weight', 'reference', 'href', 'actions'];
 export const TABLE_ACTION_KEYS = ['intent', 'action', 'presentation', 'icon', 'label', 'context', 'when'];
 export const TABLE_ACTION_PRESENTATION_VALUES = ['copy-prompt', 'cli-action', 'external-link'];
 export const TABLE_ACTION_WHEN_KEYS = ['field', 'equals'];
@@ -434,8 +444,8 @@ export const TABLE_FIELDS = {
   organizations: ['organization', 'organization-name', 'observed-at', 'organization-link'],
   campaigns: ['id', 'campaign', 'campaign-name', 'campaign-description', 'campaign-icon', 'campaign-mode', 'campaign-enabled', 'campaign-registration', 'campaign-max-repositories', 'campaign-rollout-percent', 'campaign-monthly-ai-credit-budget', 'campaign-aic-allowance', 'campaign-worker-count', 'campaign-inventory-warnings', 'campaign-workers', 'campaign-targets', 'campaign-min-version', 'campaign-version', 'campaign-current-version', 'campaign-update-state', 'campaign-experimental', 'campaign-readme-path', 'campaign-readme', 'observed-at', 'campaign-link'],
   repositories: ['id', 'organization', 'repository', 'repository-name', 'repository-coordinate', 'rollout-mode', 'observed-at', 'organization-link', 'repository-link'],
-  workflows: ['id', 'organization', 'repository', 'campaign', 'campaign-name', 'campaign-icon', 'workflow', 'workflow-id', 'workflow-name', 'workflow-role', 'workflow-active', 'workflow-registry-state', 'admission-status', 'admission-reason', 'gh-aw-version', 'gh-aw-current-version', 'gh-aw-version-label', 'gh-aw-update-state', 'gh-aw-metadata', 'gh-aw-manifest', 'rollout-mode', 'max-ai-credits', 'campaign-aic-allowance', 'campaign-worker-count', 'campaign-inventory-warnings', 'inventory-ready', 'created-at', 'updated-at', 'observed-at', 'organization-link', 'repository-link', 'workflow-link', 'external-link'],
-  runs: ['id', 'organization', 'repository', 'workflow', 'run', 'run-attempt', 'run-title', 'target-repository', 'event', 'branch', 'head-sha', 'created-at', 'started-at', 'ended-at', 'updated-at', 'run-status', 'run-conclusion', 'classification', 'failure-kind', 'terminal-outcome', 'terminal-outcome-detail', 'duration', 'action-minutes', 'github-api-calls', 'safe-items-count', 'error-count', 'admission-status', 'admission-reason', 'failure-job', 'failure-message', 'failure-step', 'failure-detail', 'resource', 'resource-reset-at', 'resource-wait-hours', 'rollout-mode', 'agent-id', 'agent-version', 'model-id', 'gh-aw-version', 'aic-total', 'engine', 'engine-id', 'engine-version', 'requested-model', 'resolved-model', 'agent-runtime', 'firewall-version', 'gateway-version', 'data', 'logs-payload', 'organization-link', 'repository-link', 'workflow-link', 'run-link'],
+  workflows: ['id', 'organization', 'repository', 'campaign', 'campaign-name', 'campaign-icon', 'campaign-readme-path', 'workflow', 'workflow-id', 'workflow-name', 'workflow-role', 'workflow-active', 'workflow-registry-state', 'admission-status', 'admission-reason', 'gh-aw-version', 'gh-aw-current-version', 'gh-aw-version-label', 'gh-aw-update-state', 'gh-aw-metadata', 'gh-aw-manifest', 'rollout-mode', 'max-ai-credits', 'campaign-aic-allowance', 'campaign-worker-count', 'campaign-inventory-warnings', 'inventory-ready', 'created-at', 'updated-at', 'observed-at', 'organization-link', 'repository-link', 'workflow-link', 'external-link'],
+  runs: ['id', 'organization', 'repository', 'workflow', 'run', 'run-attempt', 'run-title', 'target-repository', 'event', 'branch', 'head-sha', 'created-at', 'started-at', 'ended-at', 'updated-at', 'run-status', 'run-conclusion', 'classification', 'failure-kind', 'terminal-outcome', 'terminal-outcome-detail', 'duration', 'action-minutes', 'github-api-calls', 'safe-items-count', 'error-count', 'admission-status', 'admission-reason', 'failure-job', 'failure-message', 'failure-step', 'failure-detail', 'resource', 'resource-reset-at', 'resource-wait-hours', 'rollout-mode', 'agent-id', 'agent-version', 'model-id', 'gh-aw-version', 'aic-total', 'input-tokens', 'output-tokens', 'cache-read-tokens', 'cache-write-tokens', 'reasoning-tokens', 'engine', 'engine-id', 'engine-version', 'requested-model', 'resolved-model', 'agent-runtime', 'firewall-version', 'gateway-version', 'data', 'logs-payload', 'organization-link', 'repository-link', 'workflow-link', 'run-link'],
   domains: [...RUN_RECORD_FIELDS, 'domain', 'decision'],
   tools: [...RUN_RECORD_FIELDS, 'tool-type', 'is-skill', 'name'],
   audits: RUN_RECORD_FIELDS,
@@ -469,7 +479,7 @@ export const TABLE_FIELDS = {
   outcomes: ['organization', 'repository', 'campaign', 'runtime-repository', 'workflow', 'workflow-name', 'run', 'run-conclusion', 'safe-output', 'safe-output-kind', 'outcome-number', 'outcome-title', 'outcome-summary', 'outcome-body-html', 'outcome-category', 'outcome-status', 'outcome-state', 'issue-state', 'issue-closed', 'issue-state-reason', 'issue-status', 'issue-closing-status', 'issue-status-detail', 'issue-closed-at', 'issue-status-observed-at', 'outcome-warning', 'evidence-strength', 'rollout-mode', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'published-at', 'observed-at', 'issue-link', 'pull-request-link', 'run-link', 'external-link', 'organization-link', 'repository-link', 'workflow-link'],
   'safe-output-performance': ['organization', 'repository', 'workflow', 'run', 'run-conclusion', 'rollout-mode', 'safe-output-kind', 'safe-output-label', 'safe-output-status', 'safe-output-count', 'observed-at', 'run-link'],
   findings: ['organization', 'repository', 'workflow', 'run', 'safe-output', 'code', 'finding-kind', 'finding-severity', 'finding-status', 'finding-summary', 'observed-at', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'issue-link', 'pull-request-link', 'run-link', 'external-link', 'organization-link', 'repository-link', 'workflow-link'],
-  'operational-values': ['organization', 'repository', 'repository-name', 'campaign', 'campaign-name', 'campaign-icon', 'operational-value', 'operational-value-definition', 'operational-value-role', 'operational-value-name', 'operational-value-direction', 'maturity-status', 'observed-at', 'organization-link', 'repository-link', 'campaign-link'],
+  'operational-values': ['id', 'organization', 'repository', 'repository-name', 'campaign', 'campaign-name', 'campaign-icon', 'operational-value', 'operational-value-definition', 'operational-value-role', 'operational-value-name', 'operational-value-direction', 'maturity-status', 'adoption-at', 'evaluation-mode', 'workflow-slug', 'workflow-name', 'observed-at', 'organization-link', 'repository-link', 'campaign-link'],
   'operational-graders': ['organization', 'repository', 'repository-name', 'campaign', 'campaign-name', 'campaign-icon', 'workflow', 'run', 'run-attempt', 'observation-id', 'experiment', 'operational-case', 'evaluator-digest', 'rollout-mode', 'operational-grader', 'operational-grader-definition', 'operational-grader-unit', 'operational-grader-direction', 'requested-evidence-at', 'evidence-cutoff', 'maturity-at', 'maturity-status', 'baseline-value', 'delta-from-baseline', 'accepted-evidence-provenance', 'diagnostics', 'diagnostic-definitions', 'observed-at', 'evidence-link', 'organization-link', 'repository-link', 'campaign-link', 'workflow-link', 'run-link'],
   'github-api-rate-limits': ['observation-id', 'operation-execution-id', 'observed-at', 'phase', 'operation', 'outcome', 'credential', 'credential-type', 'resource', 'bucket', 'maximum-lane', 'history-series', 'has-history', 'limit', 'used', 'remaining', 'remaining-percent', 'reset-at', 'minutes-to-reset', 'consumed-since-previous', 'burn-rate-per-minute', 'projected-remaining-at-reset', 'projected-exhaustion-at', 'runway-ratio', 'risk-status', 'risk-order', 'is-unhealthy', 'is-current', 'attribution-status', 'operation-consumed', 'run-link'],
   'github-api-collector-health': ['observed-at', 'operation-execution-id', 'phase', 'operation', 'outcome', 'credential', 'cache-hydrated', 'cache-bytes', 'cache-entries', 'cache-folders', 'rate-limit-error'],

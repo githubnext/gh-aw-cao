@@ -116,6 +116,37 @@ test('notification filters and view controls are hidden on mobile', async ({ pag
   await expect(notifications.locator('.entity-card-list-status-danger .octicon-x-circle-fill')).toBeVisible();
 });
 
+test('the desktop view mode chrome is fully hidden on mobile for non-notification pages', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(async ({ documentModel, presenterModuleUrl }) => {
+    const { renderDashboard } = await import(presenterModuleUrl);
+    document.querySelector('#root')?.append(renderDashboard({
+      document: documentModel,
+      sources: {}
+    }));
+  }, {
+    documentModel: {
+      'language-version': dashboardDocument['language-version'],
+      dashboard: {
+        id: 'issues-mobile',
+        title: 'Issues',
+        'card-templates': dashboardDocument.dashboard['card-templates'],
+        pages: [dashboardDocument.dashboard.pages.find(
+          /** @param {{ id?: string }} page */
+          (page) => page.id === 'issues'
+        )]
+      }
+    },
+    presenterModuleUrl: 'http://dashboard.test/src/presenter.js'
+  });
+
+  const issuesPage = page.locator('[data-page-id="issues"]');
+  await expect(issuesPage).not.toHaveClass(/notifications-page/);
+  await expect(issuesPage.locator(':scope > .page-chrome')).toBeHidden();
+  await expect(issuesPage.locator('.view-mode-control')).toBeHidden();
+  await expect(page.locator('.mobile-view-mode-toggle')).toBeVisible();
+});
+
 test('notifications move in at the lower right and center on mobile', async ({ page }) => {
   await page.setContent(`
     <style id="notification-styles"></style>
@@ -195,12 +226,52 @@ test('full-view content keeps a responsive horizontal inset', async ({ page }) =
   });
 });
 
+test('full-view chart, card, and table content share the page inset', async ({ page }) => {
+  const styles = await page.evaluate(async (stylesUrl) => {
+    const { getPrimerStyles } = await import(stylesUrl);
+    return getPrimerStyles();
+  }, 'http://dashboard.test/src/styles.js');
+  await page.setContent(`
+    <style>${styles}</style>
+    <div class="dashboard-root dashboard-full-view">
+      <div class="app-shell">
+        <aside class="org-sidebar"></aside>
+        <div class="app-main">
+          <main class="dashboard-prototype">
+            <div class="custom-view-grid">
+              <section class="custom-view chart-view-swimlane"><div data-view-content>Chart</div></section>
+              <section class="custom-view"><div data-view-content>Cards</div></section>
+              <section class="custom-view" data-view-layout="full-view"><div class="table-region"><div data-view-content>Table</div></div></section>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+  `);
+
+  const [contentInsets, expectedInset] = await Promise.all([
+    page.locator('[data-view-content]').evaluateAll((elements) => (
+      elements.map((element) => element.getBoundingClientRect().x)
+    )),
+    page.locator('main.dashboard-prototype').evaluate((main) => {
+      const pageInset = Number.parseFloat(getComputedStyle(main).getPropertyValue('--dashboard-page-padding-inline'));
+      return main.getBoundingClientRect().x + (pageInset * 2);
+    })
+  ]);
+
+  expect(contentInsets).toEqual([expectedInset, expectedInset, expectedInset]);
+});
+
 const horizontalBarFixtureLabel = '.github/workflows/extremely-long-dependabot-update-planner.md';
 const horizontalBarFixtureSuffix = 'planner.md';
 
-/** @param {import('@playwright/test').Page} page */
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {{ labels?: string[], sections?: string[], stageWidth?: number }} [options]
+ */
 async function renderHorizontalBarFixture(page, {
   labels = [horizontalBarFixtureLabel],
+  sections = [],
   stageWidth = 220
 } = {}) {
   await page.setContent(`
@@ -211,9 +282,10 @@ async function renderHorizontalBarFixture(page, {
       import { renderChartWidget } from 'http://dashboard.test/src/components/chart-elements.js';
       document.querySelector('#dashboard-styles').textContent = getPrimerStyles();
       const labels = ${JSON.stringify(labels)};
+      const sections = ${JSON.stringify(sections)};
       document.querySelector('.chart-stage').append(renderChartWidget(
         'horizontal-bar',
-        labels.map((label, index) => ({ x: label, y: 27 - index })),
+        labels.map((label, index) => ({ x: label, y: 27 - index, section: sections[index] })),
         [{ name: 'value', className: 'chart-series-1' }]
       ));
     </script>
@@ -305,6 +377,22 @@ test('mobile horizontal bar labels preserve readable suffixes', async ({ page })
     .toBeGreaterThan(labelRendering.overflowAmount / firstCharClipOverflowDivisor);
   expect(labelRendering.suffixLeft).toBeGreaterThanOrEqual(labelRendering.labelLeft);
   expect(labelRendering.suffixRight).toBeLessThanOrEqual(labelRendering.labelRight);
+});
+
+test('mobile horizontal bar sections keep repository context outside concise workflow labels', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await renderHorizontalBarFixture(page, {
+    labels: ['dependabot-update-planner.md', 'dependabot-update-worker.md', 'deploy.md'],
+    sections: ['githubnext/gh-aw-cao', 'githubnext/gh-aw-cao', 'octo/app']
+  });
+
+  await expect(page.locator('.horizontal-bar-chart-section-title'))
+    .toHaveText(['githubnext/gh-aw-cao', 'octo/app']);
+  await expect(page.locator('.horizontal-bar-chart-label-text'))
+    .toHaveText(['dependabot-update-planner.md', 'dependabot-update-worker.md', 'deploy.md']);
+  await expect.poll(() => page.locator('.horizontal-bar-chart-label-text').evaluateAll((elements) => (
+    elements.every((element) => element.scrollWidth <= element.clientWidth)
+  ))).toBe(true);
 });
 
 test('desktop horizontal bar labels keep standard end truncation', async ({ page }) => {
