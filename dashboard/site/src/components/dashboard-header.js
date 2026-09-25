@@ -31,8 +31,7 @@ export function renderDashboardHeader(options) {
               'data-page-experimental': '',
               hidden: options.experimental !== true,
               role: 'img',
-              'aria-label': 'Experimental',
-              title: 'Experimental'
+              'aria-label': 'Experimental'
             },
             octicon('beaker')
           ),
