@@ -220,7 +220,6 @@ test("control policy applies schema defaults and campaign values", () => {
   assert.equal(result.output.safe_output_mode, "live");
   assert.equal(result.output.max_repositories, 8);
   assert.equal(result.output.rollout_percent, 100);
-  assert.equal(result.output.monthly_ai_credit_budget, 0);
   assert.deepEqual(result.output.worker_policies, {
     "dependabot-update-planner": {
       worker: "update-planner",
@@ -245,7 +244,6 @@ test("control policy exposes scope and publishing defaults to deterministic add-
         mode: "live",
         "max-repositories": 8,
         "rollout-percent": 100,
-        "monthly-ai-credit-budget": 0,
         icon: null,
         deploy: true,
         worker_policies: {

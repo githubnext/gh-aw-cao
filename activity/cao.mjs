@@ -3,7 +3,8 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createReadStream, createWriteStream, realpathSync } from 'node:fs';
-import { readFile, readdir, mkdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { readFile, readdir, mkdir, mkdtemp, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { createInterface } from 'node:readline';
 import path from 'node:path';
 import { Readable } from 'node:stream';

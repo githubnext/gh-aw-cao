@@ -102,7 +102,7 @@ test("CAO admission authorizes a declared campaign before activation", () => {
     "[CAO policy] Resolving effective policy.",
     "",
   ].join("\n"));
-  assert.deepEqual(output, { authorized: "true", reason: "authorized", monthly_credit_budget: "0" });
+  assert.deepEqual(output, { authorized: "true", reason: "authorized" });
   assert.match(summary, /<details>\n<summary><h3>Central Agentic Ops admission<\/h3><\/summary>\n\nAuthorized campaign `dependabot` as `orchestrator`/);
   assert.match(summary, /- ✅ Runtime revision — The control and policy modules/);
   assert.match(summary, /- ✅ Run limits — Any supplied `max_repos`/);
@@ -134,22 +134,13 @@ test("CAO admission emits plain logs outside GitHub Actions", () => {
   ].join("\n"));
 });
 
-test("CAO admission ignores deprecated monthly campaign budgets", () => {
-  const { result, output } = runAdmission({
-    policy: controlPolicy({ campaignPolicy: { "monthly-ai-credit-budget": 1200 } }),
-  });
-
-  assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(output, { authorized: "true", reason: "authorized", monthly_credit_budget: "0" });
-});
-
 test("CAO admission denies a disabled campaign without failing the workflow", () => {
   const { result, admission, output, summary } = runAdmission({
     policy: controlPolicy({ campaignPolicy: { enabled: false } }),
   });
 
   assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(output, { authorized: "false", reason: "campaign-disabled", monthly_credit_budget: "0" });
+  assert.deepEqual(output, { authorized: "false", reason: "campaign-disabled" });
   assert.match(summary, /Skipped campaign `dependabot` as `orchestrator`: campaign-disabled/);
   assert.match(summary, /- ✅ Workflow identity —/);
   assert.match(summary, /- ❌ Campaign —/);
@@ -171,7 +162,6 @@ test("CAO admission denies a requested mode that exceeds checked-in policy and m
   assert.deepEqual(output, {
     authorized: "false",
     reason: "safe_output_mode exceeds checked-in policy",
-    monthly_credit_budget: "0",
   });
   assert.match(summary, /Skipped campaign `dependabot` as `orchestrator`: safe_output_mode exceeds checked-in policy/);
   assert.match(summary, /- ✅ Campaign —/);
@@ -189,7 +179,6 @@ test("CAO admission fails closed when policy validation fails", () => {
   assert.deepEqual(output, {
     authorized: "false",
     reason: "control policy validation failed",
-    monthly_credit_budget: "0",
   });
 });
 
@@ -200,7 +189,6 @@ test("CAO admission fails closed when the authoritative policy cannot be read", 
   assert.deepEqual(output, {
     authorized: "false",
     reason: "cannot read .github/workflows/cao.json at github.workflow_sha",
-    monthly_credit_budget: "0",
   });
 });
 
@@ -212,7 +200,6 @@ test("CAO admission blocks exhausted GitHub API capacity with reset and remediat
   assert.deepEqual(output, {
     authorized: "false",
     reason: "github-api-capacity-insufficient",
-    monthly_credit_budget: "0",
     github_api_status: "limited",
     github_api_limit: "5000",
     github_api_remaining: "0",

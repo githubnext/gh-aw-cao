@@ -243,9 +243,9 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(dashboardWorkflow, /Restore collected activity data[\s\S]*?path: \|[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?gh-aw-logs-shards[\s\S]*?gh-aw-logs-runs[\s\S]*?gh-aw-logs-records[\s\S]*?payload-hashes\.json[\s\S]*?control-settings\.json[\s\S]*?inventory-sources\.json/);
   assert.match(dashboardWorkflow, /Resolve fallback activity run[\s\S]*?if: steps\.activity-cache\.outputs\.cache-matched-key == ''[\s\S]*?listWorkflowRuns\(\{[\s\S]*?workflow_id: 'cao-activity\.yml'[\s\S]*?branch: context\.payload\.repository\.default_branch[\s\S]*?status: 'success'[\s\S]*?per_page: 1[\s\S]*?core\.setOutput\('run-id', String\(run\.id\)\)/);
   assert.match(dashboardWorkflow, /Download fallback activity data[\s\S]*?if: steps\.activity-cache\.outputs\.cache-matched-key == ''[\s\S]*?actions\/download-artifact@[0-9a-f]{40}[\s\S]*?name: cao-activity-index[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity[\s\S]*?repository: \$\{\{ github\.repository \}\}[\s\S]*?github-token: \$\{\{ github\.token \}\}[\s\S]*?run-id: \$\{\{ steps\.activity-artifact-run\.outputs\.run-id \}\}/);
-  assert.match(dashboardWorkflow, /Upgrade fallback activity data[\s\S]*?actions\/github-script@[0-9a-f]{40}[\s\S]*?'hash-payloads'[\s\S]*?'--normalized-dir'[\s\S]*?'ingest-jsonl'[\s\S]*?'--runs-dir'[\s\S]*?'--records-dir'[\s\S]*?'hash-payloads'[\s\S]*?'--output', process\.env\.REPORT_PAYLOAD_HASHES/);
-  assert.match(dashboardWorkflow, /Upgrade fallback activity data[\s\S]*?NODE_DEBUG: cao:ingest[\s\S]*?'--retention-days', '30'[\s\S]*?'--run-retention-days', '30'/);
-  assert.doesNotMatch(dashboardWorkflow, /Upgrade fallback activity data\n\s+if:/);
+  assert.match(dashboardWorkflow, /Generate activity data[\s\S]*?actions\/github-script@[0-9a-f]{40}[\s\S]*?'hash-payloads'[\s\S]*?'ingest-jsonl'[\s\S]*?'--runs-dir'[\s\S]*?'--records-dir'[\s\S]*?'hash-payloads'[\s\S]*?'--output', process\.env\.REPORT_PAYLOAD_HASHES/);
+  assert.match(dashboardWorkflow, /Generate activity data[\s\S]*?NODE_DEBUG: cao:ingest[\s\S]*?'--retention-days', '30'[\s\S]*?'--run-retention-days', '30'/);
+  assert.doesNotMatch(dashboardWorkflow, /Generate activity data\n\s+if:/);
   assert.doesNotMatch(activityWorkflow, /workflow_call:/);
   assert.match(activityWorkflow, /workflow_dispatch:[\s\S]*?request-id:/);
   assert.match(activityWorkflow, /push:\n\s+branches: \[main\]\n\s+paths:\n\s+- \.github\/workflows\/cao\.json\n\s+- \.github\/workflows\/cao-activity\.yml/);
@@ -269,9 +269,9 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.doesNotMatch(activityNotifyFailureJob, /cancelled/);
   assert.match(dashboardWorkflow, /key: cao-activity-v5-lookup-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
   assert.doesNotMatch(activityWorkflow, /legacy activity cache|cao-activity-v3-/);
-  assert.equal((activityWorkflow.match(/cao-activity-v3-/g) || []).length, 1);
+  assert.equal((activityWorkflow.match(/cao-activity-v3-/g) || []).length, 0);
   assert.doesNotMatch(dashboardWorkflow, /(?:key|restore-keys): cao-activity-(?!v5-)/);
-  assert.match(dashboardWorkflow, /Restore collected activity data[\s\S]*?Resolve fallback activity run[\s\S]*?Download fallback activity data[\s\S]*?Upgrade fallback activity data[\s\S]*?Validate restored activity data[\s\S]*?Assemble Dashboard Language site/);
+  assert.match(dashboardWorkflow, /Restore collected activity data[\s\S]*?Resolve fallback activity run[\s\S]*?Download fallback activity data[\s\S]*?Generate activity data[\s\S]*?Validate restored activity data[\s\S]*?Assemble Dashboard Language site/);
   assert.match(dashboardWorkflow, /Validate restored activity data[\s\S]*?ACTIVITY_DATABASE: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite[\s\S]*?REPORT_GH_AW_LOGS_SHARDS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-shards[\s\S]*?REPORT_PAYLOAD_HASHES: \$\{\{ runner\.temp \}\}\/cao-activity\/payload-hashes\.json[\s\S]*?REPORT_CONTROL_SETTINGS: \$\{\{ runner\.temp \}\}\/cao-activity\/control-settings\.json[\s\S]*?REPORT_INVENTORY_SOURCES: \$\{\{ runner\.temp \}\}\/cao-activity\/inventory-sources\.json[\s\S]*?const activityFiles = \[[\s\S]*?process\.env\.ACTIVITY_DATABASE[\s\S]*?process\.env\.REPORT_PAYLOAD_HASHES[\s\S]*?process\.env\.REPORT_CONTROL_SETTINGS[\s\S]*?process\.env\.REPORT_INVENTORY_SOURCES[\s\S]*?process\.env\.REPORT_GH_AW_LOGS_SHARDS/);
   assert.match(dashboardWorkflow, /Required activity data file is missing[\s\S]*?fs\.statSync[\s\S]*?Required activity data file is empty[\s\S]*?Restored activity cache directory contents/);
   assert.match(dashboardWorkflow, /const formatFileSize = \(bytes\) => \{[\s\S]*?\['bytes', 'KiB', 'MiB', 'GiB'\]/);
@@ -362,7 +362,7 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.doesNotMatch(activityWorkflow, /Install SQLite|apt-get install.*sqlite3/);
   assert.match(activityWorkflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl[\s\S]*?--runs-dir "\$REPORT_GH_AW_LOGS_RUNS"[\s\S]*?--records-dir "\$REPORT_GH_AW_LOGS_RECORDS"/);
   assert.match(activityWorkflow, /Hash activity payloads[\s\S]*?hash-payloads[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--shard-dir "\$REPORT_GH_AW_LOGS_SHARDS"[\s\S]*?--runs-dir "\$REPORT_GH_AW_LOGS_RUNS"[\s\S]*?--records-dir "\$REPORT_GH_AW_LOGS_RECORDS"[\s\S]*?--inventory "\$RUNNER_TEMP\/cao-activity\/inventory-sources\.json"[\s\S]*?--output "\$RUNNER_TEMP\/cao-activity\/payload-hashes\.json"/);
-  assert.equal((activityWorkflow.match(/path: \|[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-shards/g) || []).length, 4);
+  assert.equal((activityWorkflow.match(/path: \|[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-shards/g) || []).length, 3);
   assert.doesNotMatch(activityCacheJob, /Save activity cache[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/m);
   assert.doesNotMatch(activityManifest, /^resources:/m);
   assert.match(activityWorkflow, /uses: \.\/\.github\/actions\/setup-cao-runtime[\s\S]*?bundle: activity/);
@@ -425,7 +425,7 @@ test("Activity campaign owns the shared collected-data cache contract", () => {
   assert.match(workflow, /concurrency:[\s\S]*?cancel-in-progress: false/);
   assert.match(workflow, /actions\/cache\/restore@[0-9a-f]{40}/);
   assert.match(workflow, /actions\/cache\/save@[0-9a-f]{40}/);
-  assert.equal((workflow.match(/path: \|[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-shards/g) || []).length, 4);
+  assert.equal((workflow.match(/path: \|[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-shards/g) || []).length, 3);
   assert.equal((workflow.match(/\$\{\{ runner\.temp \}\}\/cao-activity\/drain3_weights\.json/g) || []).length, 5);
   assert.match(activityCollector, /--drain3-weights "\$drain3_weights_path"/);
   assert.match(activityCollector, /mv "\$generated_weights" "\$drain3_weights_path"/);
@@ -548,7 +548,7 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(mobileTest, /horizontal page scrolling/);
   assert.match(workflow, /Peak process PSS \| Peak JS heap \| Retained JS heap \| Source payload/);
   const deployedDataTest = readFileSync(join(root, "tests", "integration", "dashboard-deployed-data.test.mjs"), "utf8");
-  assert.match(deployedDataTest, /deployedActivityShardEntries\(manifest\)[\s\S]*?ingestNormalizedJsonl\(indexedDB, chunks/);
+  assert.match(deployedDataTest, /deployedActivityShardEntries\(manifest\)[\s\S]*?ingestNormalizedJsonl\(indexedDB, shard\.body/);
   assert.match(deployedDataTest, /expectedPhase: name\.startsWith\("gh-aw-logs-runs\/"\) \? "runs" : "records"/);
   assert.doesNotMatch(deployedDataTest, /gh-aw-logs-shards/);
   assert.doesNotMatch(deployedDataTest, /response\.text\(\)/);

@@ -34,7 +34,6 @@ function policy() {
         mode: "review",
         "max-repositories": 10,
         "rollout-percent": 75,
-        "monthly-ai-credit-budget": 1000,
       },
       campaigns: {
         operations: {
@@ -42,7 +41,6 @@ function policy() {
           mode: "review",
           "max-repositories": 8,
           "rollout-percent": 50,
-          "monthly-ai-credit-budget": 500,
           icon: "code",
           targets: {
             "acme/target": { mode: "live" },
@@ -238,9 +236,9 @@ const policyViolations = [
   ["invalid default rollout percentages", (value) => {
     value["control-plane"].defaults["rollout-percent"] = 101;
   }, "control-plane.defaults.rollout-percent must be an integer in 1..100"],
-  ["negative default budgets", (value) => {
+  ["legacy default budgets", (value) => {
     value["control-plane"].defaults["monthly-ai-credit-budget"] = -1;
-  }, "control-plane.defaults.monthly-ai-credit-budget must be an integer in >= 0"],
+  }, "unknown key control-plane.defaults.monthly-ai-credit-budget"],
   ["non-mapping campaigns", (value) => { value["control-plane"].campaigns = []; }, "control-plane.campaigns must be a mapping"],
   ["malformed campaign slugs", (value) => {
     value["control-plane"].campaigns["Not Valid"] = {};
@@ -266,9 +264,9 @@ const policyViolations = [
   ["invalid campaign rollout percentages", (value) => {
     value["control-plane"].campaigns.operations["rollout-percent"] = 0;
   }, "control-plane.campaigns.operations.rollout-percent must be an integer in 1..100"],
-  ["negative campaign budgets", (value) => {
+  ["legacy campaign budgets", (value) => {
     value["control-plane"].campaigns.operations["monthly-ai-credit-budget"] = -1;
-  }, "control-plane.campaigns.operations.monthly-ai-credit-budget must be an integer in >= 0"],
+  }, "unknown key control-plane.campaigns.operations.monthly-ai-credit-budget"],
   ["non-mapping campaign targets", (value) => {
     value["control-plane"].campaigns.operations.targets = [];
   }, "control-plane.campaigns.operations.targets must be a mapping"],

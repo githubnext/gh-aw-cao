@@ -118,7 +118,6 @@ test("builds deployable campaign and workflow inventory sources", () => {
     "campaign-enabled": true,
     "campaign-max-repositories": null,
     "campaign-rollout-percent": 25,
-    "campaign-monthly-ai-credit-budget": null,
     "campaign-aic-allowance": 300,
     "campaign-worker-count": 1,
     "campaign-inventory-warnings": 0,
@@ -2076,7 +2075,6 @@ test("dashboard source bridge carries campaign memberships, allowance, and inven
           icon: "workflow",
           "max-repositories": 4,
           "rollout-percent": 50,
-          "monthly-ai-credit-budget": 1000,
           worker_policies: {
             "ambient-context-curator": {
               worker: "curator",
@@ -2140,7 +2138,6 @@ test("dashboard source bridge carries campaign memberships, allowance, and inven
     "campaign-enabled": true,
     "campaign-max-repositories": 4,
     "campaign-rollout-percent": 50,
-    "campaign-monthly-ai-credit-budget": 1000,
     "campaign-aic-allowance": 500,
     "campaign-worker-count": 1,
     "campaign-inventory-warnings": 0,

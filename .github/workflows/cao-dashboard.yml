@@ -116,13 +116,12 @@ jobs:
           github-token: ${{ github.token }}
           run-id: ${{ steps.activity-artifact-run.outputs.run-id }}
 
-      - name: Upgrade fallback activity data
+      - name: Generate activity data
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           NODE_DEBUG: cao:ingest
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
-          REPORT_GH_AW_LOGS_NORMALIZED: ${{ runner.temp }}/cao-activity/gh-aw-logs-normalized
           REPORT_GH_AW_LOGS_RUNS: ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
           REPORT_GH_AW_LOGS_RECORDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-records
           REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity/inventory-sources.json
@@ -133,7 +132,6 @@ jobs:
               'activity/cao.mjs',
               'hash-payloads',
               '--shard-dir', process.env.REPORT_GH_AW_LOGS_SHARDS,
-              '--normalized-dir', process.env.REPORT_GH_AW_LOGS_NORMALIZED,
               '--runs-dir', process.env.REPORT_GH_AW_LOGS_RUNS,
               '--records-dir', process.env.REPORT_GH_AW_LOGS_RECORDS,
               '--inventory', process.env.REPORT_INVENTORY_SOURCES,
