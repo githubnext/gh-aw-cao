@@ -62,7 +62,7 @@ export const COMPUTE_FUNCTION_ARITY = {
 
 /** Computed-field functions whose result is always text or null. */
 export const TEXT_COMPUTE_FUNCTIONS = [
-  'concat', 'literal', 'lower', 'upper', 'title-case', 'trim', 'replace-suffix', 'url-encode', 'date-day', 'calendar-week-point', 'format-count', 'format-percent', 'failure-streak-point', 'link-href'
+  'concat', 'lower', 'upper', 'title-case', 'trim', 'replace-suffix', 'url-encode', 'date-day', 'calendar-week-point', 'format-count', 'format-percent', 'failure-streak-point', 'link-href'
 ];
 
 /** Computed-field functions whose result is always a finite number or null. */
