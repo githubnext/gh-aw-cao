@@ -16,6 +16,12 @@ test("GitHub Actions URL lint recognizes literal and interpolated repository pat
   ]) {
     assert.match(url, HARDCODED_ACTIONS_URL);
   }
+  for (const url of [
+    "${{ github.server_url }}/${{ github.repository }}/actions/runs/1",
+    "https://github.com/octo/repository/blob/main/README.md",
+  ]) {
+    assert.doesNotMatch(url, HARDCODED_ACTIONS_URL);
+  }
 });
 
 function workflowSources(directory = workflowsDirectory, prefix = "") {
