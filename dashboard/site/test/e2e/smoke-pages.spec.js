@@ -146,7 +146,9 @@ test('Indexing shows CAO Activity status, size trend, and retained transactions'
     </script>
   `);
 
-  const maintenanceNavigation = page.locator('.nav-section').filter({ hasText: 'Updates' });
+  const maintenanceNavigation = page.locator('.nav-section').filter({
+    has: page.locator('summary', { hasText: /^Updates$/ })
+  });
   await maintenanceNavigation.getByRole('link', { name: 'Indexing' }).click();
 
   const root = page.locator('.dashboard-root');
@@ -974,7 +976,9 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
 
   const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
   const data = page.locator('.nav-section').filter({ hasText: 'Data' });
-  const maintenance = page.locator('.nav-section').filter({ hasText: 'Updates' });
+  const maintenance = page.locator('.nav-section').filter({
+    has: page.locator('summary', { hasText: /^Updates$/ })
+  });
   await expect(cleanNavigation).toHaveText(['Overview']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
