@@ -169,7 +169,8 @@ it('compiles only views selected by the page view mode', () => {
     views: [
       { id: 'trend', mark: 'chart', data: { source: 'run-trend' } },
       { id: 'runs', mark: 'table', data: { source: 'runs' } },
-      { id: 'notices', mark: 'list', data: { source: 'notices' } }
+      { id: 'notices', mark: 'list', data: { source: 'notices' } },
+      { id: 'details', mark: 'table', disclosure: 'supplemental', data: { source: 'run-details' } }
     ]
   };
 
@@ -177,10 +178,17 @@ it('compiles only views selected by the page view mode', () => {
   const table = compileDashboardViewPayloadQueries(page, 'runs', { queryContext: { viewMode: 'table' } });
   const card = compileDashboardViewPayloadQueries(page, 'runs', { queryContext: { viewMode: 'card' } });
 
-  expect(chart.aliases).toEqual([dashboardViewAliasName('runs', page.views[0], 0, 'run-trend')]);
-  expect(table.aliases).toEqual([dashboardViewAliasName('runs', page.views[1], 1, 'runs')]);
+  expect(chart.aliases).toEqual([
+    dashboardViewAliasName('runs', page.views[0], 0, 'run-trend'),
+    dashboardViewAliasName('runs', page.views[3], 3, 'run-details')
+  ]);
+  expect(table.aliases).toEqual([
+    dashboardViewAliasName('runs', page.views[1], 1, 'runs'),
+    dashboardViewAliasName('runs', page.views[3], 3, 'run-details')
+  ]);
   expect(card.aliases).toEqual([
-    dashboardViewAliasName('runs', page.views[1], 1, 'runs')
+    dashboardViewAliasName('runs', page.views[1], 1, 'runs'),
+    dashboardViewAliasName('runs', page.views[3], 3, 'run-details')
   ]);
 });
 
