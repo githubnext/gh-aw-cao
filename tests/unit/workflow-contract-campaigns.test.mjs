@@ -269,10 +269,18 @@ test("root campaign provides default control-repository agent context", () => {
   const rootManifest = parse(rootManifestSource);
   const agents = readFileSync(join(root, "AGENTS.md"), "utf8");
   const setupSkill = readFileSync(join(root, ".github", "skills", "setup-cao", "SKILL.md"), "utf8");
+  const debugSkill = readFileSync(join(root, "skills", "debug-cao", "SKILL.md"), "utf8");
 
   assert.doesNotMatch(rootManifestSource, /source: AGENTS\.md|default-AGENTS\.md/);
-  assert.equal(rootManifest.resources.some(({ destination }) => destination.startsWith(".github/skills/")), false);
-  for (const skill of ["setup-cao", "debug-cao", "add-cao-campaign", "create-cao-campaign", "analyze-cao", "cao-cli"]) {
+  assert.deepEqual(
+    rootManifest.resources.filter(({ destination }) => destination.startsWith(".github/skills/")),
+    [{
+      source: "skills/debug-cao/SKILL.md",
+      destination: ".github/skills/debug-cao/SKILL.md",
+    }],
+  );
+  assert.match(debugSkill, /^---\r?\nname: debug-cao\r?\n/);
+  for (const skill of ["setup-cao", "add-cao-campaign", "create-cao-campaign", "analyze-cao", "cao-cli"]) {
     const portableSkill = join(root, "skills", skill);
     if (lstatSync(portableSkill).isSymbolicLink()) {
       assert.equal(readlinkSync(portableSkill), `../.github/skills/${skill}`);
@@ -577,10 +585,10 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
 
 test("README routes CAO failures to the debug skill", () => {
   const readme = readFileSync(join(root, "README.md"), "utf8");
-  const skill = readFileSync(join(root, ".github", "skills", "debug-cao", "SKILL.md"), "utf8");
+  const skill = readFileSync(join(root, "skills", "debug-cao", "SKILL.md"), "utf8");
 
   assert.ok(readme.split("\n").slice(0, 20).some((line) =>
-    line.includes(".github/skills/debug-cao/SKILL.md")
+    line.includes("skills/debug-cao/SKILL.md")
   ));
   assert.match(skill, /^---\r?\nname: debug-cao\r?\n/);
   assert.match(skill, /resolvedCommit/);
