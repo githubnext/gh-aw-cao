@@ -822,7 +822,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       if (isPlainObject(view) && view['lazy-list'] === true) {
         rendered.setAttribute('data-view-lazy-list', '');
       }
-      if (!isNavigationCompositeView) rendered.dataset.viewModeContent = viewModeForView(view);
+      if (!isNavigationCompositeView && disclosure === 'essential') rendered.dataset.viewModeContent = viewModeForView(view);
       return rendered;
     };
     const rendered = isRouteView
@@ -844,7 +844,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
     if (isPlainObject(view) && view['lazy-list'] === true) {
       rendered.setAttribute('data-view-lazy-list', '');
     }
-    if (!isNavigationCompositeView) rendered.dataset.viewModeContent = viewModeForView(view);
+    if (!isNavigationCompositeView && disclosure === 'essential') rendered.dataset.viewModeContent = viewModeForView(view);
     if (disclosure === 'essential') {
       return rendered;
     }
@@ -966,12 +966,17 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
 /**
  * A `mark: element` view is navigation/composite chrome (for example the `campaign-route`
  * summary), not a chart/table/card representation of page content, so it must not create a
- * phantom "chart" mode or gate data loading for the page's actual content views.
+ * phantom "chart" mode or gate data loading for the page's actual content views. A
+ * `disclosure: supplemental` view is an independently-collapsible detail panel toggled by its
+ * own `<details>` summary, not part of the page's primary chart/table/card content, so it must
+ * not gate which modes are offered either.
  * @param {Array<unknown>} views
  * @returns {Array<unknown>}
  */
 function contentViewsForModeSelection(views) {
-  return views.filter((view) => !(isPlainObject(view) && view.mark === 'element'));
+  return views.filter((view) => (
+    !(isPlainObject(view) && (view.mark === 'element' || view.disclosure === 'supplemental'))
+  ));
 }
 
 /** @param {Array<unknown>} views @returns {Array<'chart'|'table'|'card'>} */

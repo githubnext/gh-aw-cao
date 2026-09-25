@@ -966,6 +966,15 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.textContent).not.toContain('Agent event');
     expect(page?.textContent).not.toContain('Summary');
     expect(page?.querySelectorAll('tbody tr')).toHaveLength(4);
+    // Regression: the "AIC per observed run" supplemental disclosure must stay visible
+    // when the page defaults to chart mode. A `disclosure: supplemental` table is an
+    // independently-collapsible detail panel, not the page's primary mode-switchable
+    // content, so it must not carry `data-view-mode-content` (which the chart/table/card
+    // view-mode CSS uses to hide non-matching content) or it renders empty once expanded.
+    expect(page?.getAttribute('data-view-mode')).toBe('chart');
+    const aicInsights = page?.querySelector('[data-view-id="engines-models-aic-insights"]');
+    expect(aicInsights?.hasAttribute('data-view-mode-content')).toBe(false);
+    expect(aicInsights?.querySelector('table')).not.toBeNull();
   });
 
 
