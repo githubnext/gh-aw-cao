@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
+import { gunzipSync } from "node:zlib";
 
 const DAY_MS = 86_400_000;
 const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/;
@@ -33,12 +34,12 @@ export const definition = {
     ],
     opportunity: "A unique ESLint Factory adoption request for a target repository and rule key.",
     filters: [
-      "The request is a non-pull-request issue labelled eslint-rules and eslint-rules:applier in the target or control repository.",
-      "The request identifies both the target repository and rule key and was created during the observation window.",
+      "The request is an immutable adoption-request transaction written by the applier to campaign memory.",
+      "The transaction identifies a supported target repository, rule key, issue number, and recording time during the observation window.",
       "Matured observations include only requests with thirty days to mature before the immutable repository cutoff.",
       "Duplicate requests for the same target repository and rule key count once.",
     ],
-    collection: "List bounded adoption issues once per evidence repository, resolve the last target-repository commit at each immutable cutoff, and inspect one archive per repository and cutoff for the requested warning rule, dedicated npm script, and separate non-gating CI job.",
+    collection: "Read one immutable campaign-memory archive and one immutable target-repository archive per cutoff, then inspect adoption-request transactions and repository state for the requested warning rule, dedicated npm script, and separate non-gating CI job.",
     window: {
       durationDays: 90,
       cadenceDays: 7,
@@ -134,21 +135,6 @@ function api(endpoint, fields = [], encoding = "utf8") {
   });
 }
 
-function paginated(endpoint, fields = []) {
-  const pages = JSON.parse(execFileSync("gh", [
-    "api", "--method", "GET", "--paginate", "--slurp", endpoint,
-    ...fields.flatMap(([name, value]) => ["-f", `${name}=${value}`]),
-  ], {
-    encoding: "utf8",
-    maxBuffer: 64 * 1024 * 1024,
-    env: process.env,
-  }));
-  if (!Array.isArray(pages) || pages.some((page) => !Array.isArray(page))) {
-    throw new Error(`GitHub API returned malformed paginated evidence for ${endpoint}`);
-  }
-  return pages.flat();
-}
-
 function parseTime(value) {
   const timestamp = Date.parse(value);
   return Number.isFinite(timestamp) ? timestamp : null;
@@ -165,13 +151,6 @@ function validRequest(request) {
     && parseTime(request.windowStart) < parseTime(request.windowEnd);
 }
 
-function issueIdentity(issue, repository) {
-  const text = `${issue.title ?? ""}\n${issue.body ?? ""}`;
-  if (!new RegExp(`\\b${repository.replace("/", "\\/")}\\b`, "i").test(text)) return null;
-  const ruleKey = text.match(/(?:rule[_ ]key|rule key)[\s`"']*[:=]\s*[`"']?([@A-Za-z0-9][@A-Za-z0-9._/-]*)/i)?.[1];
-  return ruleKey ? { repository, ruleKey } : null;
-}
-
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -180,7 +159,10 @@ function inspectSnapshot(files, ruleKey) {
   const configFiles = files.filter((file) => (
     /(?:^|\/)(?:eslint\.config\.[cm]?[jt]s|\.eslintrc(?:\.[A-Za-z]+)?)$/.test(file.path)
   ));
-  const rulePattern = new RegExp(`${escapeRegExp(ruleKey)}[\\s\\S]{0,160}?(?:["']warn["']|\\b1\\b)`, "i");
+  const rulePattern = new RegExp(
+    `["']${escapeRegExp(ruleKey)}["']\\s*:\\s*(?:["']warn["']|1\\b|\\[\\s*(?:["']warn["']|1\\b))`,
+    "i",
+  );
   const warningRule = configFiles.some((file) => rulePattern.test(file.content));
 
   const scripts = [];
@@ -221,8 +203,10 @@ function inspectSnapshot(files, ruleKey) {
   };
 }
 
-function resolveCommit(repository, cutoff) {
-  const commits = JSON.parse(api(`repos/${repository}/commits`, [["until", cutoff], ["per_page", "1"]]));
+function resolveCommit(repository, cutoff, ref) {
+  const fields = [["until", cutoff], ["per_page", "1"]];
+  if (ref) fields.push(["sha", ref]);
+  const commits = JSON.parse(api(`repos/${repository}/commits`, fields));
   const commit = commits[0]?.sha;
   if (!/^[0-9a-f]{40}$/i.test(commit ?? "")) {
     throw new Error(`No immutable commit found for ${repository} at ${cutoff}`);
@@ -230,24 +214,74 @@ function resolveCommit(repository, cutoff) {
   return commit;
 }
 
-function collectSnapshot(repository, commit) {
-  const tree = JSON.parse(api(`repos/${repository}/git/trees/${commit}`, [["recursive", "1"]]));
-  if (tree.truncated === true || !Array.isArray(tree.tree)) {
-    throw new Error(`Repository tree is incomplete for ${repository} at ${commit}`);
-  }
-  const relevant = tree.tree.filter((entry) => entry.type === "blob" && (
-    /(?:^|\/)(?:eslint\.config\.[cm]?[jt]s|\.eslintrc(?:\.[A-Za-z]+)?)$/.test(entry.path)
-    || entry.path === "package.json"
-    || entry.path.endsWith("/package.json")
-    || /(?:^|\/)\.github\/workflows\/[^/]+\.(?:ya?ml)$/.test(entry.path)
-  ));
-  return relevant.map((entry) => {
-    const blob = JSON.parse(api(`repos/${repository}/git/blobs/${entry.sha}`));
-    if (blob.encoding !== "base64" || typeof blob.content !== "string") {
-      throw new Error(`Repository blob is unavailable for ${repository}:${entry.path}`);
+function archiveFiles(repository, commit, include) {
+  const archive = gunzipSync(api(`repos/${repository}/tarball/${commit}`, [], null));
+  const files = [];
+  let offset = 0;
+  while (offset + 512 <= archive.length) {
+    const header = archive.subarray(offset, offset + 512);
+    if (header.every((byte) => byte === 0)) break;
+    const name = header.subarray(0, 100).toString("utf8").replace(/\0.*$/, "");
+    const prefix = header.subarray(345, 500).toString("utf8").replace(/\0.*$/, "");
+    const sizeText = header.subarray(124, 136).toString("ascii").replace(/\0.*$/, "").trim();
+    const size = Number.parseInt(sizeText || "0", 8);
+    if (!Number.isFinite(size) || size < 0) throw new Error(`Malformed archive for ${repository} at ${commit}`);
+    const fullName = prefix ? `${prefix}/${name}` : name;
+    const relative = fullName.includes("/") ? fullName.slice(fullName.indexOf("/") + 1) : fullName;
+    const type = String.fromCharCode(header[156] || 48);
+    const contentStart = offset + 512;
+    if ((type === "0" || type === "\0") && include(relative)) {
+      files.push({
+        path: relative,
+        content: archive.subarray(contentStart, contentStart + size).toString("utf8"),
+      });
     }
-    return { path: entry.path, content: Buffer.from(blob.content, "base64").toString("utf8") };
-  });
+    offset = contentStart + Math.ceil(size / 512) * 512;
+  }
+  return files;
+}
+
+function collectSnapshot(repository, commit) {
+  return archiveFiles(repository, commit, (file) => (
+    /(?:^|\/)(?:eslint\.config\.[cm]?[jt]s|\.eslintrc(?:\.[A-Za-z]+)?)$/.test(file)
+    || file === "package.json"
+    || file.endsWith("/package.json")
+    || /(?:^|\/)\.github\/workflows\/[^/]+\.(?:ya?ml)$/.test(file)
+  ));
+}
+
+function collectTransactions(commit) {
+  const files = archiveFiles(CONTROL_REPOSITORY, commit, (file) => (
+    /(?:^|\/)transactions\/applier__[a-z0-9_.-]+__[a-z0-9_.-]+\.jsonl$/.test(file)
+  ));
+  return files.flatMap((file) => file.content.split(/\r?\n/).filter(Boolean).map((line, index) => {
+    let transaction;
+    try {
+      transaction = JSON.parse(line);
+    } catch {
+      throw new Error(`Malformed campaign-memory transaction at ${file.path}:${index + 1}`);
+    }
+    return transaction;
+  })).filter((transaction) => transaction?.schema === "cao.eslint-rules.transaction"
+    && transaction.schema_version === 1
+    && transaction.worker === "applier"
+    && transaction.kind === "adoption-request");
+}
+
+function transactionIdentity(transaction) {
+  const repository = transaction?.target_repo;
+  const ruleKey = transaction?.rule_key;
+  const issueUrlNumber = String(transaction?.payload?.issue_url ?? transaction?.payload?.issue?.url ?? "")
+    .match(/\/issues\/(\d+)(?:$|[?#])/)?.[1];
+  const issueNumber = transaction?.payload?.issue_number
+    ?? transaction?.payload?.issue?.number
+    ?? transaction?.payload?.number
+    ?? (issueUrlNumber ? Number(issueUrlNumber) : null);
+  if (!REPOSITORY.test(repository ?? "")
+      || typeof ruleKey !== "string" || ruleKey.length === 0
+      || !Number.isInteger(issueNumber) || issueNumber < 1
+      || parseTime(transaction.recorded_at) === null) return null;
+  return { repository, ruleKey, issueNumber, recordedAt: transaction.recorded_at };
 }
 
 export async function collectBatch(requests) {
@@ -256,33 +290,15 @@ export async function collectBatch(requests) {
   }
   const supported = new Set(definition.evidence.repositories.map((repository) => repository.toLowerCase()));
   const normalized = requests.map((request) => {
-    const repository = request.repository ?? definition.evidence.repositories[0];
-    if (!REPOSITORY.test(repository) || !supported.has(repository.toLowerCase())) {
+    const repository = request.repository ?? null;
+    if (repository !== null && (!REPOSITORY.test(repository) || !supported.has(repository.toLowerCase()))) {
       throw new Error(`Unsupported evidence repository: ${repository}`);
     }
     return { ...request, repository };
   });
 
-  const earliest = normalized.map(({ windowStart }) => windowStart).sort()[0];
-  const evidenceRepositories = new Set([
-    CONTROL_REPOSITORY,
-    ...normalized.map(({ repository }) => repository),
-  ]);
-  const issues = [];
-  for (const evidenceRepository of evidenceRepositories) {
-    const found = paginated(`repos/${evidenceRepository}/issues`, [
-      ["state", "all"],
-      ["labels", "eslint-rules,eslint-rules:applier"],
-      ["since", earliest],
-      ["per_page", "100"],
-    ]);
-    issues.push(...found.filter((issue) => !issue.pull_request).map((issue) => ({
-      ...issue,
-      evidenceRepository,
-    })));
-  }
-
   const snapshots = new Map();
+  const transactionsByCutoff = new Map();
   for (const request of normalized) {
     const cutoff = parseTime(request.windowEnd);
     const interim = parseTime(request.observedAt)
@@ -291,36 +307,48 @@ export async function collectBatch(requests) {
     const latestCreation = interim
       ? cutoff
       : cutoff - definition.evidence.window.maturationDays * DAY_MS;
+    let memory = transactionsByCutoff.get(request.windowEnd);
+    if (!memory) {
+      try {
+        const commit = resolveCommit(CONTROL_REPOSITORY, request.windowEnd, "memory/eslint-rules");
+        memory = { commit, transactions: collectTransactions(commit) };
+      } catch {
+        memory = { commit: null, transactions: [] };
+      }
+      transactionsByCutoff.set(request.windowEnd, memory);
+    }
+    const targets = request.repository ? [request.repository] : definition.evidence.repositories;
     const candidates = new Map();
-    for (const issue of issues) {
-      const createdAt = parseTime(issue.created_at);
-      const identity = issueIdentity(issue, request.repository);
-      if (createdAt === null || !identity
-          || createdAt < parseTime(request.windowStart) || createdAt >= latestCreation) continue;
-      const key = `${request.repository.toLowerCase()}:${identity.ruleKey.toLowerCase()}`;
+    for (const transaction of memory.transactions) {
+      const identity = transactionIdentity(transaction);
+      const recordedAt = parseTime(identity?.recordedAt);
+      if (!identity || !targets.some((target) => target.toLowerCase() === identity.repository.toLowerCase())
+          || !supported.has(identity.repository.toLowerCase())
+          || recordedAt < parseTime(request.windowStart) || recordedAt >= latestCreation) continue;
+      const key = `${identity.repository.toLowerCase()}:${identity.ruleKey.toLowerCase()}`;
       const existing = candidates.get(key);
-      if (!existing || createdAt < parseTime(existing.created_at)) candidates.set(key, { ...issue, ...identity });
+      if (!existing || recordedAt < parseTime(existing.recordedAt)) candidates.set(key, identity);
     }
 
-    let snapshot;
-    if (candidates.size > 0) {
-      const snapshotKey = `${request.repository.toLowerCase()}:${request.windowEnd}`;
-      snapshot = snapshots.get(snapshotKey);
-      if (!snapshot) {
-        const commit = resolveCommit(request.repository, request.windowEnd);
-        snapshot = { commit, files: collectSnapshot(request.repository, commit) };
-        snapshots.set(snapshotKey, snapshot);
+    for (const repository of new Set([...candidates.values()].map(({ repository }) => repository))) {
+      const snapshotKey = `${repository.toLowerCase()}:${request.windowEnd}`;
+      if (!snapshots.has(snapshotKey)) {
+        const commit = resolveCommit(repository, request.windowEnd);
+        snapshots.set(snapshotKey, { commit, files: collectSnapshot(repository, commit) });
       }
     }
 
     const outcomes = [...candidates.values()].map((candidate) => ({
       candidate,
-      outcome: inspectSnapshot(snapshot.files, candidate.ruleKey),
+      outcome: inspectSnapshot(
+        snapshots.get(`${candidate.repository.toLowerCase()}:${request.windowEnd}`).files,
+        candidate.ruleKey,
+      ),
     }));
     const count = (field) => outcomes.filter(({ outcome }) => outcome[field]).length;
     request.collection = {
       evidence: {
-        valid: true,
+        valid: memory.commit !== null,
         opportunityCount: outcomes.length,
         completeCount: count("complete"),
         warningRuleCount: count("warningRule"),
@@ -329,30 +357,32 @@ export async function collectBatch(requests) {
         maturityStatus: interim ? "interim" : "matured",
         dubious: interim,
         key: definition.evidence.key,
-        repositories: [request.repository],
+        repositories: targets,
         opportunity: definition.evidence.opportunity,
         filters: definition.evidence.filters,
         collection: definition.evidence.collection,
         window: definition.evidence.window,
       },
       provenance: [
-        ...[...evidenceRepositories].map((repository) => ({
-          repository,
-          kind: "github-issues",
-          ref: `${request.windowStart}/${request.windowEnd}`,
-        })),
+        {
+          repository: CONTROL_REPOSITORY,
+          kind: "campaign-memory",
+          ref: memory.commit ?? `memory/eslint-rules@${request.windowEnd}`,
+        },
         ...outcomes.map(({ candidate }) => ({
-          repository: candidate.evidenceRepository,
+          repository: CONTROL_REPOSITORY,
           kind: "eslint-adoption-issue",
-          ref: String(candidate.number),
+          ref: String(candidate.issueNumber),
         })),
-        ...(snapshot ? [{
-          repository: request.repository,
+        ...[...new Set(outcomes.map(({ candidate }) => candidate.repository))].map((repository) => ({
+          repository,
           kind: "git-commit",
-          ref: snapshot.commit,
-        }] : []),
+          ref: snapshots.get(`${repository.toLowerCase()}:${request.windowEnd}`).commit,
+        })),
       ],
-      ...(snapshot ? { commit: snapshot.commit } : {}),
+      ...(request.repository && candidates.size > 0 ? {
+        commit: snapshots.get(`${request.repository.toLowerCase()}:${request.windowEnd}`).commit,
+      } : {}),
     };
   }
   return normalized.map(({ collection }) => collection);
