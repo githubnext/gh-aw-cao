@@ -7,8 +7,12 @@
  * pages such as Runs and Cost behave consistently.
  */
 
+import { createDebug } from '../debug.js';
+
 const FULL_VIEW_SELECTOR = '.custom-view[data-view-layout="full-view"]';
 const CHART_SIBLING_SELECTOR = '.chart-widget';
+
+const debugFullViewScroll = createDebug('full-view-scroll');
 
 /**
  * Toggles `dashboard-full-view` on the dashboard root, scoped to pages where the
@@ -32,8 +36,10 @@ export function syncFullViewMode(root, page) {
     selectedFullViewMode
     || precedingViews.every((view) => !view.querySelector(CHART_SIBLING_SELECTOR))
   );
+  const wasPinned = root.classList.contains('dashboard-full-view');
   root.classList.toggle('dashboard-full-view', canPin);
   if (!canPin) root.classList.remove('dashboard-full-view-scrolled');
+  if (canPin !== wasPinned) debugFullViewScroll({ event: 'pin-changed', pinned: canPin, selectedFullViewMode });
 }
 
 /**
@@ -129,7 +135,9 @@ export function enableFullViewScrollForwarding(root, defaultView) {
       }
       const wasScrolled = root.classList.contains('dashboard-full-view-scrolled');
       const threshold = wasScrolled ? FULL_VIEW_SCROLL_EXIT : FULL_VIEW_SCROLL_ENTER;
-      root.classList.toggle('dashboard-full-view-scrolled', scroll.scrollTop > threshold);
+      const isScrolled = scroll.scrollTop > threshold;
+      root.classList.toggle('dashboard-full-view-scrolled', isScrolled);
+      if (isScrolled !== wasScrolled) debugFullViewScroll({ event: 'chrome-hidden-changed', hidden: isScrolled });
     };
     if (defaultView?.requestAnimationFrame) {
       if (fullViewScrollFrame) defaultView.cancelAnimationFrame(fullViewScrollFrame);
@@ -150,5 +158,6 @@ export function enableFullViewScrollForwarding(root, defaultView) {
     if (fullViewScrollFrame && defaultView?.cancelAnimationFrame) {
       defaultView.cancelAnimationFrame(fullViewScrollFrame);
     }
+    debugFullViewScroll({ event: 'forwarding-disposed' });
   };
 }
