@@ -77,10 +77,20 @@ Run:
 
 ```bash
 ./cao.sh setup-auth token \
-  --repo acme/central-agentic-ops
+  --repo acme/central-agentic-ops \
+  --write-repository acme/approved-output-repository
 ```
 
 The command creates separate `GH_AW_GITHUB_READ_PAT` and `GH_AW_GITHUB_WRITE_PAT` secrets. It reads `.github/workflows/cao.json`, opens host-aware fine-grained-token forms with the resource owner, a 30-day expiration, and role-specific permissions prefilled, and prints the exact repositories to select for each token. GitHub does not support preselecting repository names through token-template URLs, so choose **Only select repositories** and select every repository printed for that role. After generating each token, return to the terminal and enter it only at the corresponding interactive `gh secret set` prompt. CAO never accepts tokens as command arguments. Use `--write-repository OWNER/REPO` one or more times to replace the default write scope of the control repository, `--no-open` to print URLs without opening a browser, `--expires-in DAYS` to choose a shorter approved lifetime, or `--policy PATH` for a non-default policy path.
+
+The two tokens intentionally have different repository selections:
+
+| Token | Select these repositories |
+| --- | --- |
+| Read PAT | The control repository and every exact repository allowed by `.github/workflows/cao.json` |
+| Write PAT | Only repositories explicitly passed with `--write-repository`; otherwise only the control repository |
+
+Do not add a target to the write PAT merely because the read PAT covers it. The write PAT is used only by trusted safe-output processing and should remain narrower than the read PAT whenever review outputs stay in the control repository or writes are approved for only a subset of targets.
 
 The credential is user-bound, longer-lived than an App installation token, normally limited to one resource owner, manually rotated, and potentially incompatible with required APIs. It does not bypass organization approval or repository permissions. Never substitute a classic PAT.
 
@@ -102,6 +112,8 @@ This creates no secret. Keep outputs in the control repository and treat unavail
 - Confirm the read App has no write permissions.
 - Install the write App only where approved safe outputs require writes.
 - Confirm PAT approval, expiration, resource owner, and API compatibility when using a token.
+- For a PAT profile, prove independently that the read PAT can read every enrolled repository but cannot perform the selected reversible write probe, then prove that the write PAT can perform and clean up that probe only in an approved output repository.
+- When migrating from `GH_AW_GITHUB_TOKEN`, rerun the same proof after deleting the legacy secret so a successful run cannot be using the compatibility fallback.
 - Run the first campaign with `max_repos=1`, `rollout_percent=100`, and `safe_output_mode=review`.
 - Reassess authentication whenever target scope, campaign API requirements, mode, or review destination changes.
 
