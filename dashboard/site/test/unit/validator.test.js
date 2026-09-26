@@ -71,13 +71,13 @@ describe('dashboard document validation', () => {
     ]));
   });
 
-  it('defines the all-campaign Memory page with reusable declarative navigation', () => {
+  it('defines the all-campaign Memory page with an in-place repository-memory browser', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const page = document.dashboard.pages.find(
       (/** @type {{ id?: string }} */ candidate) => candidate.id === 'memory'
     );
     const query = document.dashboard.queries.find(
-      (/** @type {{ name?: string }} */ candidate) => candidate.name === 'campaign-memory-links'
+      (/** @type {{ name?: string }} */ candidate) => candidate.name === 'campaign-memory-campaigns'
     );
 
     expect(page).toMatchObject({
@@ -85,25 +85,18 @@ describe('dashboard document validation', () => {
       title: 'Memory',
       experimental: true,
       views: [{
-        id: 'campaign-memory-links',
-        data: { sources: ['campaign-memory-links'] },
+        id: 'campaign-memory-browser',
+        data: { sources: ['campaign-memory-campaigns'] },
         mark: 'element',
-        element: 'link-button-list',
-        config: {
-          'label-field': 'campaign-name',
-          'link-field': 'campaign-memory-link',
-          'icon-field': 'campaign-icon',
-          'fallback-icon': 'archive',
-          'empty-message': 'No campaigns are registered.'
-        },
+        element: 'all-campaign-memory',
         layout: 'full'
       }]
     });
     expect(query).toMatchObject({
       from: 'campaigns',
       select: expect.arrayContaining([
-        { field: 'campaign-name' },
-        { field: 'campaign-memory-link' }
+        { field: 'campaign' },
+        { field: 'campaign-name' }
       ]),
       'order-by': [{ field: 'campaign-name', direction: 'asc' }]
     });

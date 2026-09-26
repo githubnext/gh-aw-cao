@@ -105,6 +105,7 @@ export const VIEW_ELEMENT_VALUES = [
   'measure-history',
   'factory-header',
   'factory-floor',
+  'all-campaign-memory',
   'link-button-list',
   'markdown'
 ];

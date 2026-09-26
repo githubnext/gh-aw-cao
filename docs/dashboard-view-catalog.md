@@ -87,6 +87,7 @@ Named elements own specialized DOM, accessibility, interaction, local state, and
 | `measure-history` | Presents reusable grouped temporal-measure history from declarative query results. |
 | `factory-header` | Presents campaign status, retained-output context, work in motion, and weekly rhythm. |
 | `factory-floor` | Presents linked repository, run, dispatch, and value stations. |
+| `all-campaign-memory` | Browses every campaign repository-memory branch in place without route navigation. |
 | `link-button-list` | Presents one source as an inset grouped list of Octicon navigation rows with disclosure chevrons. |
 | `markdown` | Presents retained Markdown from a declared source field with safe repository-relative links. |
 

@@ -2,6 +2,7 @@
  * Registry for JSON-selected dashboard UI elements.
  */
 
+import { renderAllCampaignMemory } from './campaign-memory.js';
 import { renderCampaignRouteView } from './campaign-route-view.js';
 import { text as stringValue } from './count-formatters.js';
 import { renderConfigurationView } from './configuration-view.js';
@@ -49,12 +50,13 @@ const ELEMENT_RENDERERS = new Map([
   ['entity-route', renderEntityRoute],
   ['factory-header', renderFactoryHeaderElement],
   ['factory-floor', renderFactoryFloorElement],
+  ['all-campaign-memory', renderAllCampaignMemory],
   ['link-button-list', renderLinkButtonList],
   ['markdown', renderMarkdownElement]
 ]);
 
 /** Elements that load declared sources independently of the active page subscription. */
-const ASYNC_SOURCE_ELEMENTS = new Set(['factory-header', 'factory-floor', 'link-button-list']);
+const ASYNC_SOURCE_ELEMENTS = new Set(['factory-header', 'factory-floor', 'all-campaign-memory', 'link-button-list']);
 
 /**
  * Reports whether an element loads its declared sources on its own.
@@ -75,6 +77,7 @@ const EMPTY_AWARE_ELEMENTS = new Set([
   'entity-route',
   'factory-header',
   'factory-floor',
+  'all-campaign-memory',
   'link-button-list',
   'markdown'
 ]);
