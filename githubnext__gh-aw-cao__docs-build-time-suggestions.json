@@ -1,6 +1,6 @@
 {
-  "source_sha": "405ab8946f9429b7680699f5c2f056102490bd04",
-  "next_category": "dependency installation and caching",
+  "source_sha": "4e86757c51012b61c90247d3380e906b452e5fb0",
+  "next_category": "Astro documentation generation",
   "evaluations": [
     {
       "evaluated_at": "2026-09-26T12:36:00Z",
@@ -177,6 +177,21 @@
       ],
       "outcome": "suggestion: evidence window 2026-09-26T13:41:02Z to 2026-09-26T15:49:54Z. Analyzed 12 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 5 action_required and 3 skipped docs.yml runs excluded from timing metrics. Median workflow execution was 48.0s (p90 58.4s), build median 29.5s (p90 33.7s), deploy median 10.0s (p90 12.0s), and queue median 3.0s (p90 13.9s). Trusted metadata confirmed node_modules install/save skipped on 12/12 and CAO Dashboard lookup/mount skipped on 12/12 because caches were hot. The actionable repeated cost was one same-SHA duplicate publish pair at c9d775724a586efa318e3ba163442e3d5237c28f: workflow_run success 36251921157 was followed by schedule success 36252283846 six minutes later, adding about 47s of avoidable workflow time with unchanged content. Recommended adding a schedule-only freshness gate in docs.yml to skip when the latest successful CAO Dashboard run already built the current default-branch SHA and that SHA already has a recent successful docs workflow_run publish.",
       "suggestion_fingerprint": "d4624c545a9a8f39ca9f"
+    },
+    {
+      "evaluated_at": "2026-09-26T16:26:00Z",
+      "worker_run_id": 36255305250,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        36255341668,
+        36254892662,
+        36254856438,
+        36254009833,
+        36253955010,
+        36253584636
+      ],
+      "outcome": "suggestion: evidence window 2026-09-26T15:54:53Z to 2026-09-26T16:24:29Z. Analyzed 6 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 10 non-comparable completed outliers excluded from timing metrics (8 action_required workflow_run runs and 2 skipped workflow_run runs). Evaluated category dependency installation and caching. Median workflow execution was 44.5s (p90 50.0s), build median 25.5s (p90 33.0s), deploy median 9.5s (p90 11.0s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed the explicit node_modules cache hit on 6/6 sampled docs runs, with Install dependencies and Save node_modules skipped on 6/6, and docs-side dashboard cache hits on 6/6 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 6/6. The repeated remaining dependency cost is split across Set up Node.js median 3.0s and Restore node_modules median 5.5s in docs.yml, but the materially larger caching cost is in cao-dashboard.yml where every successful dashboard rebuild still runs Install dashboard build dependencies for about 6s and the follow-on docs run then spends another median 8.5s on Node setup plus node_modules restore before an 8s docs build. Because docs.yml only needs npm run docs:build and a cached dist/cao payload, replacing the explicit node_modules cache/restore path with setup-node npm caching plus npm ci --prefer-offline in docs.yml would simplify the workflow but would not meet threshold alone. The actionable optimization is to add a built dashboard/site dependency cache in cao-dashboard.yml and stop rebuilding that dependency tree on every dashboard push, which is expected to save about 6s in dashboard plus avoid repeated downstream wait before workflow_run-triggered docs publishes; combined with the paired docs-side dependency restore tax this removes about 14.5s from the push+workflow_run publish path for the same revision, roughly 19% of the combined median execution time of the two workflows without weakening freshness or correctness.",
+      "suggestion_fingerprint": "9fd90d8330c0d4574c8f"
     }
   ]
 }
