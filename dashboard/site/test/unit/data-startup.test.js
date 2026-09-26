@@ -113,6 +113,37 @@ describe("dashboard data startup", () => {
     expect(loadedOutcomes).toBe(outcomes);
   });
 
+  it("loads source requests from different views on the same page in one worker query", async () => {
+    const status = { source: "status", rows: [{ status: "healthy" }] };
+    const campaigns = { source: "campaigns", rows: [{ campaign: "doctor" }] };
+    const statusAlias = dashboardViewAliasName("overview", { id: "overview-header" }, 0, "status", 0);
+    const campaignsAlias = dashboardViewAliasName("overview", { id: "overview-campaigns" }, 0, "campaigns", 0);
+    dataProcessor.loadCanonicalDashboardPage.mockResolvedValue({
+      [statusAlias]: status,
+      [campaignsAlias]: campaigns,
+    });
+    const loader = createBatchedSourceLoader({ pages: [], queries: [] });
+
+    const [loadedStatus, loadedCampaigns] = await Promise.all([
+      loader("status", { pageId: "overview", viewId: "overview-header", sourceIndex: 0 }),
+      loader("campaigns", { pageId: "overview", viewId: "overview-campaigns", sourceIndex: 0 }),
+    ]);
+
+    expect(dataProcessor.loadCanonicalDashboardPage).toHaveBeenCalledOnce();
+    expect(dataProcessor.loadCanonicalDashboardPage).toHaveBeenCalledWith(
+      ["status", "campaigns"],
+      { pages: [], queries: [] },
+      undefined,
+      {
+        pageId: "overview",
+        viewId: undefined,
+        queryContext: undefined,
+      },
+    );
+    expect(loadedStatus).toBe(status);
+    expect(loadedCampaigns).toBe(campaigns);
+  });
+
   it("rejects every request when a batch cannot be grouped", async () => {
     const loader = createBatchedSourceLoader({ pages: [], queries: [] });
     const circularContext = {};
