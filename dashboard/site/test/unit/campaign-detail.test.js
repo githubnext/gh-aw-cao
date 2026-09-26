@@ -208,7 +208,7 @@ describe('campaign detail route', () => {
       detail: { parameter: 'campaign', value: 'ambient-context' }
     }));
 
-    expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.textContent).toBe('Insights');
+    expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.textContent).toBe('Operational Value');
     expect(rendered.querySelector('.measure-history')).not.toBeNull();
     expect(rendered.querySelector('.temporal-plot-heading h3')?.textContent).toBe('Guidance freshness');
   });
@@ -220,7 +220,7 @@ describe('campaign detail route', () => {
     }));
 
     expect(rendered.dataset.campaign).toBe('ambient-context');
-    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('InsightsFailuresIssuesMemory');
+    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('Operational ValueFailuresIssuesMemory');
     expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')).toBeNull();
     expect([...rendered.querySelectorAll('.campaign-tabs a')].map((link) => link.getAttribute('href'))).toEqual([
       '#page-campaign-insights?campaign=ambient-context',
@@ -283,7 +283,7 @@ describe('campaign detail route', () => {
       label: link.querySelector('span')?.textContent,
       count: link.querySelector('.count-badge')?.textContent
     }))).toEqual([
-      { label: 'Insights', count: '4' },
+      { label: 'Operational Value', count: '4' },
       { label: 'Failures', count: '2' },
       { label: 'Issues', count: '1' },
       { label: 'Memory', count: undefined }
@@ -397,7 +397,7 @@ describe('campaign detail route', () => {
     }));
 
     expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')).toBeNull();
-    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('InsightsFailuresIssuesMemory');
+    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('Operational ValueFailuresIssuesMemory');
   });
 
   describe('workflow run navigation', () => {

@@ -471,10 +471,11 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   expect(mobileLinkBoxes.every((box) => box.height >= 44)).toBe(true);
   expect(mobileLinkBoxes.every((box, index) => index === 0 || box.top > mobileLinkBoxes[index - 1].top)).toBe(true);
 
-  await campaignNavigation.getByRole('link', { name: 'Insights' }).click();
+  await campaignNavigation.getByRole('link', { name: 'Operational Value' }).click();
   const campaignInsights = page.locator('[data-page-id="campaign-insights"]');
   await expect(campaignInsights).toBeVisible();
-  await expect(campaignInsights).toHaveAttribute('data-view-mode', 'chart');
+  await expect(campaignInsights.locator('[data-view-id="campaign-audit-event-summary-buckets"]')).toHaveCount(0);
+  await expect(campaignInsights).toHaveAttribute('data-view-mode', 'table');
   await expect(campaignInsights.locator('.view-mode-control')).toHaveCount(0);
   await expect(campaignInsights.getByRole('navigation', { name: 'Ambient Context views' })).toBeVisible();
   await expect(campaignInsights.getByRole('navigation', { name: 'Ambient Context views' })).toHaveCSS('display', 'grid');
@@ -482,7 +483,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await expect(mobileBack).toBeVisible();
   await expect(page.locator('.overview-header')).toContainText('Operational activity for the Ambient Context campaign.');
   const performanceBaseline = campaignInsights.locator('[data-view-id="campaign-performance-baseline"]');
-  await expect(performanceBaseline).toBeHidden();
+  await expect(performanceBaseline).toBeVisible();
   await expect(performanceBaseline).toContainText('Run success');
   await expect(performanceBaseline).toContainText('Produced outputs');
   await expect(performanceBaseline).toContainText('Average AIC / successful run');

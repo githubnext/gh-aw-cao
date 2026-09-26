@@ -22,7 +22,6 @@ describe('Audit dashboard view', () => {
     expect(insights.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual([
       'campaign-insights-navigation',
       'campaign-performance-baseline',
-      'campaign-audit-event-summary-buckets',
       'campaign-audit-event-table'
     ]);
     expect(insights.views[0].data).toMatchObject({
@@ -39,29 +38,17 @@ describe('Audit dashboard view', () => {
       ],
       arguments: [{ name: 'campaign', field: 'campaign' }]
     });
-    expect(insights.views.slice(2).map((/** @type {{ data: Record<string, string> }} */ view) => view.data)).toEqual([
-      expect.objectContaining({ source: 'audit-event-summary-buckets', 'route-field': 'campaign' }),
-      expect.objectContaining({ source: 'audit-event-summary-buckets', 'route-field': 'campaign' })
-    ]);
+    expect(insights.views.find((/** @type {{ id: string }} */ view) => view.id === 'campaign-audit-event-table'))
+      .toMatchObject({
+        id: 'campaign-audit-event-table',
+        data: {
+          source: 'audit-event-summary-buckets',
+          'route-field': 'campaign'
+        }
+      });
     expect(insights.views.filter((/** @type {{ mark: string }} */ view) => view.mark !== 'element')
       .map((/** @type {{ mark: string }} */ view) => view.mark))
-      .toEqual(['table', 'chart', 'list']);
-    expect(insights.views[2]).toMatchObject({
-      title: 'Severity audit events',
-      chart: 'horizontal-bar',
-      data: {
-        limit: 20,
-        'order-by': [
-          { field: 'event-status', direction: 'asc' },
-          { field: 'events', direction: 'desc' }
-        ]
-      },
-      encoding: {
-        x: { field: 'workflow', format: 'workflow-relative-path' },
-        y: { field: 'events' },
-        color: { field: 'event-status', title: 'Severity' }
-      }
-    });
+      .toEqual(['table', 'list']);
     expect(issues.views
       .filter((/** @type {{ data?: { source?: string } }} */ view) => view.data?.source === 'campaign-worker-issues')
       .map((/** @type {{ data: Record<string, string> }} */ view) => view.data['route-field'])).toEqual([
