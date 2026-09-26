@@ -1,10 +1,13 @@
 import { h } from '../dom.js';
+import { createDebug } from '../debug.js';
 import { debounce } from '../debounce.js';
 import { dashboardHorizonHours, formatDashboardHorizon } from '../horizon.js';
 import { octicon } from '../octicons.js';
 import { effect, state } from '../reactive.js';
 import { scopedStorageKey } from '../storage-scope.js';
 import { renderCountBadge, renderLabeledControl } from './ui-primitives.js';
+
+const debug = createDebug('filter-bar');
 
 /** @typedef {{ range: string, start: string, end: string }} TimeWindow */
 const FILTER_DEBOUNCE_MS = 500;
@@ -254,8 +257,9 @@ function renderHorizonControl(defaultRange, referenceEnd, onChange) {
     }
     try {
       globalThis.window?.localStorage?.setItem(HORIZON_FILTER_STORAGE_KEY, JSON.stringify(settings));
-    } catch {
+    } catch (error) {
       // The filters still work for the current page when storage is unavailable.
+      debug({ event: 'persist-failed', reason: error instanceof Error ? error.name : 'unknown' });
     }
   };
   const updateValidity = () => {
@@ -272,6 +276,7 @@ function renderHorizonControl(defaultRange, referenceEnd, onChange) {
     }
     updateValidity();
     persist();
+    debug({ event: 'range-applied', range: select.value });
     onChange();
   });
   for (const input of [start, end]) {
@@ -330,7 +335,8 @@ function readHorizonSettings() {
   try {
     const value = JSON.parse(globalThis.window?.localStorage?.getItem(HORIZON_FILTER_STORAGE_KEY) ?? 'null');
     return value && typeof value === 'object' ? value : {};
-  } catch {
+  } catch (error) {
+    debug({ event: 'read-settings-failed', reason: error instanceof Error ? error.name : 'unknown' });
     return {};
   }
 }
