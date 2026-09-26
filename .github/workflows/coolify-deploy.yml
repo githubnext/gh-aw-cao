@@ -1,14 +1,8 @@
 name: Coolify dashboard image
 
 on:
-  pull_request_target:
-    types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - .github/workflows/coolify-deploy.yml
-      - .dockerignore
-      - dashboard/site/**
-      - server/**
-      - tests/unit/coolify-deployment-contract.test.mjs
+  repository_dispatch:
+    types: [coolify-preview]
   push:
     branches: [main]
     paths:
@@ -24,7 +18,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: coolify-delivery-${{ github.event_name }}-${{ github.event.pull_request.number || github.event.release.tag_name || github.ref }}
+  group: coolify-delivery-${{ github.event_name }}-${{ github.event.client_payload.preview_pr || github.event.release.tag_name || github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -67,6 +61,31 @@ jobs:
               throw new Error('Published release tag does not resolve to an immutable commit SHA');
             }
             core.setOutput('sha', object.sha);
+      - id: preview-source
+        name: Resolve eligible preview pull request
+        if: github.event_name == 'repository_dispatch'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          PREVIEW_PR: ${{ github.event.client_payload.preview_pr }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const number = Number(process.env.PREVIEW_PR);
+            if (!Number.isSafeInteger(number) || number < 1) {
+              throw new Error('preview_pr must identify an open pull request');
+            }
+            const { data: pull } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: number,
+            });
+            if (pull.state !== 'open' || pull.draft ||
+                pull.head.repo?.full_name !== `${context.repo.owner}/${context.repo.repo}` ||
+                !/^[0-9a-f]{40}$/.test(pull.head.sha)) {
+              throw new Error('Preview requires an open, non-draft same-repository pull request');
+            }
+            core.setOutput('number', String(number));
+            core.setOutput('sha', pull.head.sha);
       - id: tier
         name: Classify event without promotion
         env:
@@ -75,11 +94,8 @@ jobs:
           RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
           RELEASE_SOURCE_SHA: ${{ steps.release-source.outputs.sha }}
-          PR_DRAFT: ${{ github.event.pull_request.draft }}
-          PR_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          REPOSITORY: ${{ github.repository }}
+          PREVIEW_PR: ${{ steps.preview-source.outputs.number }}
+          PREVIEW_SHA: ${{ steps.preview-source.outputs.sha }}
           REF: ${{ github.ref }}
           SHA: ${{ github.sha }}
         run: |
@@ -143,21 +159,19 @@ jobs:
               expected_sha="${SHA}"
               eligible=true
               ;;
-            pull_request_target)
-              if [[ "${PR_DRAFT}" != "true" && "${PR_HEAD_REPOSITORY}" == "${REPOSITORY}" ]]; then
-                if [[ ! "${PR_NUMBER}" =~ ^[1-9][0-9]*$ || ! "${PR_HEAD_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
-                  echo "preview requires an exact pull request head commit" >&2
-                  exit 1
-                fi
-                tier=preview
-                environment=coolify-preview
-                version="0.0.0-preview.${PR_NUMBER}.${PR_HEAD_SHA:0:12}"
-                identity="pr-${PR_NUMBER}-sha-${PR_HEAD_SHA}"
-                source_ref="${PR_HEAD_SHA}"
-                expected_sha="${PR_HEAD_SHA}"
-                pr_number="${PR_NUMBER}"
-                eligible=true
+            repository_dispatch)
+              if [[ ! "${PREVIEW_PR}" =~ ^[1-9][0-9]*$ || ! "${PREVIEW_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
+                echo "preview requires an exact eligible pull request head commit" >&2
+                exit 1
               fi
+              tier=preview
+              environment=coolify-preview
+              version="0.0.0-preview.${PREVIEW_PR}.${PREVIEW_SHA:0:12}"
+              identity="pr-${PREVIEW_PR}-sha-${PREVIEW_SHA}"
+              source_ref="${PREVIEW_SHA}"
+              expected_sha="${PREVIEW_SHA}"
+              pr_number="${PREVIEW_PR}"
+              eligible=true
               ;;
           esac
           {

@@ -21,11 +21,8 @@ function classify(script, values) {
       RELEASE_PRERELEASE: "",
       RELEASE_TAG: "",
       RELEASE_SOURCE_SHA: "",
-      PR_DRAFT: "",
-      PR_HEAD_REPOSITORY: "",
-      PR_HEAD_SHA: "",
-      PR_NUMBER: "",
-      REPOSITORY: "githubnext/gh-aw-cao",
+      PREVIEW_PR: "",
+      PREVIEW_SHA: "",
       REF: "",
       SHA: "",
       ...values,
@@ -81,13 +78,10 @@ test("Coolify Compose contains no credentials and requires immutable image input
 test("deployment workflow publishes no mutable channel and gates every Coolify tier", async () => {
   const source = await text(".github/workflows/coolify-deploy.yml");
   const workflow = parse(source);
-  assert.deepEqual(workflow.on.pull_request_target.types, [
-    "opened",
-    "synchronize",
-    "reopened",
-    "ready_for_review",
-  ]);
+  assert.equal(workflow.on.pull_request_target, undefined);
   assert.equal(workflow.on.pull_request, undefined);
+  assert.deepEqual(workflow.on.repository_dispatch.types, ["coolify-preview"]);
+  assert.equal(workflow.on.workflow_dispatch, undefined);
   assert.deepEqual(workflow.on.release.types, ["published"]);
   assert.deepEqual(workflow.on.push.branches, ["main"]);
   assert.equal(workflow.concurrency["cancel-in-progress"], false);
@@ -102,12 +96,16 @@ test("deployment workflow publishes no mutable channel and gates every Coolify t
   assert.equal(workflow.jobs.image.permissions, undefined);
   assert.equal(workflow.jobs.publish.permissions.packages, "write");
   assert.equal(workflow.jobs.deploy.needs[1], "publish");
-  assert.match(source, /PR_HEAD_REPOSITORY.*REPOSITORY/);
+  assert.match(source, /Resolve eligible preview pull request/);
+  assert.match(source, /pull\.head\.repo\?\.full_name !== `\$\{context\.repo\.owner\}\/\$\{context\.repo\.repo\}`/);
+  assert.match(source, /PREVIEW_PR: \$\{\{ steps\.preview-source\.outputs\.number \}\}/);
+  assert.match(source, /PREVIEW_SHA: \$\{\{ steps\.preview-source\.outputs\.sha \}\}/);
   assert.match(source, /environment=coolify-(stable|beta)/);
   assert.match(source, /environment=coolify-alpha/);
   assert.match(source, /environment=coolify-preview/);
   assert.match(source, /identity="sha-\$\{SHA\}"/);
-  assert.match(source, /identity="pr-\$\{PR_NUMBER\}-sha-\$\{PR_HEAD_SHA\}"/);
+  assert.match(source, /identity="pr-\$\{PREVIEW_PR\}-sha-\$\{PREVIEW_SHA\}"/);
+  assert.doesNotMatch(source, /pull_request_target/);
   assert.match(source, /candidate_identity="candidate-\$\{RUN_ID\}-\$\{RUN_ATTEMPT\}"/);
   assert.match(source, /candidate identity is not unique or is a channel alias/);
   assert.match(source, /ref: \$\{\{ needs\.classify\.outputs\.source_ref \}\}/);
@@ -197,11 +195,9 @@ test("deployment channels map to exact source refs and immutable identities", as
 
   const headSha = "b".repeat(40);
   const preview = classify(script, {
-    EVENT_NAME: "pull_request_target",
-    PR_DRAFT: "false",
-    PR_HEAD_REPOSITORY: "githubnext/gh-aw-cao",
-    PR_HEAD_SHA: headSha,
-    PR_NUMBER: "42",
+    EVENT_NAME: "repository_dispatch",
+    PREVIEW_SHA: headSha,
+    PREVIEW_PR: "42",
     SHA: "c".repeat(40),
   });
   assert.equal(preview.status, 0, preview.stderr);
@@ -243,11 +239,9 @@ test("deployment classification fails closed on invalid release versions and sou
   assert.notEqual(wrongBranch.status, 0);
 
   const invalidHead = classify(script, {
-    EVENT_NAME: "pull_request_target",
-    PR_DRAFT: "false",
-    PR_HEAD_REPOSITORY: "githubnext/gh-aw-cao",
-    PR_HEAD_SHA: "not-a-sha",
-    PR_NUMBER: "7",
+    EVENT_NAME: "repository_dispatch",
+    PREVIEW_SHA: "not-a-sha",
+    PREVIEW_PR: "7",
   });
   assert.notEqual(invalidHead.status, 0);
 
@@ -260,13 +254,8 @@ test("deployment classification fails closed on invalid release versions and sou
   });
   assert.notEqual(mutableReleaseTarget.status, 0);
 
-  const fork = classify(script, {
-    EVENT_NAME: "pull_request_target",
-    PR_DRAFT: "false",
-    PR_HEAD_REPOSITORY: "someone/fork",
-    PR_HEAD_SHA: "b".repeat(40),
-    PR_NUMBER: "7",
+  const missingPreview = classify(script, {
+    EVENT_NAME: "repository_dispatch",
   });
-  assert.equal(fork.status, 0, fork.stderr);
-  assert.equal(fork.outputs.eligible, "false");
+  assert.notEqual(missingPreview.status, 0);
 });

@@ -160,20 +160,20 @@ name or private IP. The opt-in does not affect Azure: Azure Functions continues
 to require `rediss://`.
 
 The conventional `.github/workflows/coolify-deploy.yml` resolves published
-release tags to exact commits and checks out the exact event source.
-Same-repository previews use `pull_request_target`, so
-the privileged workflow always comes from the default branch while test and
-image jobs check out the exact pull request head. Fork and draft pull requests
-are ineligible. Pull request code runs only in secretless test/build jobs; GHCR
-publication and the protected deployment job use the fixed base workflow in
-separate jobs.
+release tags to exact commits and checks out the exact event source. Preview
+deployment is an explicit `coolify-preview` repository dispatch with a pull
+request number. GitHub loads repository-dispatch workflows from the trusted
+default branch. The workflow resolves and rechecks the exact head of an open,
+non-draft same-repository pull request; forks are ineligible. No
+pull-request-triggered workflow receives GHCR write access or deployment
+credentials.
 
 | Event | Immutable GHCR identity | GitHub environment |
 | --- | --- | --- |
 | Published non-prerelease `vX.Y.Z` release | tag resolved and repeatedly verified at its exact commit (`vX.Y.Z`) | `coolify-stable` |
 | Published SemVer prerelease | tag resolved and repeatedly verified at its exact commit (`vX.Y.Z-<prerelease>`) | `coolify-beta` |
 | Push to `main` | `sha-<full-main-commit>` | `coolify-alpha` |
-| Non-draft same-repository pull request | `pr-<number>-sha-<full-head-commit>` | `coolify-preview` |
+| `coolify-preview` repository dispatch for a non-draft same-repository pull request | `pr-<number>-sha-<full-head-commit>` | `coolify-preview` |
 
 Configure `COOLIFY_DEPLOY_ENDPOINT` and `COOLIFY_DEPLOY_TOKEN` as secrets on each
 environment. The HTTPS endpoint is the deployment adapter for that Coolify

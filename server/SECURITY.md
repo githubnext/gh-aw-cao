@@ -174,10 +174,11 @@ explicit plaintext opt-in. Network isolation and Redis authentication remain
 operator responsibilities. Azure Functions ignores this hosted opt-in and
 continues to require `rediss://` to Azure Managed Redis.
 
-Deployment uses a protected GitHub environment and an exact GHCR digest. The
-privileged preview workflow is loaded from the default branch through
-`pull_request_target`; only non-draft same-repository heads are eligible, and
-pull request code executes only in secretless test/build jobs. A uniquely
+Deployment uses a protected GitHub environment and an exact GHCR digest.
+Preview deployment requires an explicit `coolify-preview` repository dispatch,
+which GitHub resolves from the trusted default branch; only open, non-draft
+same-repository heads are eligible. No pull-request-triggered workflow receives package-write or
+deployment authority. A uniquely
 tagged candidate is scanned locally before publication. Existing canonical
 source tags are accepted only when their digest exactly equals that candidate;
 registry labels are not authority.
