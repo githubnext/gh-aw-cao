@@ -82,8 +82,9 @@ safe-outputs:
             fi
 
             if [ ! -d "$SOURCE_DIR" ]; then
-              echo "review bundle was not persisted in the agent artifact: $SOURCE_DIR_RAW" >&2
-              exit 1
+              echo "::warning::Review bundle was not persisted in the agent artifact; skipping publish: $SOURCE_DIR_RAW"
+              echo "skip_upload=true" >> "$GITHUB_OUTPUT"
+              exit 0
             fi
 
             SAFE_REPO=$(printf '%s' "$TARGET_REPO" | tr '/:' '-' | tr -cs 'A-Za-z0-9._-' '-')
