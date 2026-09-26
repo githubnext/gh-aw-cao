@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"io"
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
 func TestResolveRedisEndpoint(t *testing.T) {
@@ -282,6 +285,72 @@ func TestRootCommandReportsUsageErrorWithNoSubcommand(t *testing.T) {
 	if !strings.Contains(err.Error(), "usage: cao-dashboard") {
 		t.Fatalf("Execute() error = %q, want to contain %q", err.Error(), "usage: cao-dashboard")
 	}
+}
+
+func TestSetupTelemetryPropagatesSetupError(t *testing.T) {
+	setupErr := errors.New("exporter unavailable")
+	fakeSetup := func(context.Context, string) (telemetry.Shutdown, error) {
+		return nil, setupErr
+	}
+
+	closeFn, err := setupTelemetry(context.Background(), "dev", fakeSetup)
+	if err == nil {
+		t.Fatal("setupTelemetry() error = nil, want non-nil")
+	}
+	if !errors.Is(err, setupErr) {
+		t.Errorf("setupTelemetry() error = %v, want to wrap %v", err, setupErr)
+	}
+	if closeFn != nil {
+		t.Error("setupTelemetry() close = non-nil, want nil on setup error")
+	}
+}
+
+func TestSetupTelemetryCallsShutdownOnClose(t *testing.T) {
+	var shutdownCalled bool
+	var shutdownCtxErr error
+	fakeSetup := func(context.Context, string) (telemetry.Shutdown, error) {
+		return func(ctx context.Context) error {
+			shutdownCalled = true
+			// Capture Err() while shutdownCtx is still live: its own
+			// bounding timeout is cancelled by setupTelemetry's deferred
+			// cancel() as soon as this callback returns.
+			shutdownCtxErr = ctx.Err()
+			return nil
+		}, nil
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	closeFn, err := setupTelemetry(ctx, "dev", fakeSetup)
+	if err != nil {
+		t.Fatalf("setupTelemetry() error = %v, want nil", err)
+	}
+	// The close function must still flush after the parent context is
+	// cancelled, because it normally runs during signal-triggered shutdown.
+	cancel()
+	closeFn()
+
+	if !shutdownCalled {
+		t.Fatal("setupTelemetry() close did not invoke the underlying shutdown")
+	}
+	if shutdownCtxErr != nil {
+		t.Errorf("setupTelemetry() close ran shutdown with a cancelled context, want a live one; err = %v", shutdownCtxErr)
+	}
+}
+
+func TestSetupTelemetryCloseSurvivesShutdownError(t *testing.T) {
+	fakeSetup := func(context.Context, string) (telemetry.Shutdown, error) {
+		return func(context.Context) error {
+			return errors.New("flush failed")
+		}, nil
+	}
+
+	closeFn, err := setupTelemetry(context.Background(), "dev", fakeSetup)
+	if err != nil {
+		t.Fatalf("setupTelemetry() error = %v, want nil", err)
+	}
+	// A shutdown failure must not panic or otherwise disrupt the
+	// subcommand's own return path.
+	closeFn()
 }
 
 func TestRootCommandParsesKnownSubcommandFlags(t *testing.T) {
