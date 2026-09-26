@@ -222,10 +222,11 @@ func (d Doctor) checkRedisPersistence(ctx context.Context) Check {
 	if skip, ok := d.storeUnavailable(id, areaRedis, title); ok {
 		return skip
 	}
-	fields, err := d.redisInfo(ctx, "persistence")
+	value, err := d.Store.Client.Do(ctx, "INFO", "persistence")
 	if err != nil {
 		return failed(id, areaRedis, title, err)
 	}
+	fields := parseInfoReply(fmt.Sprint(value))
 	if len(fields) == 0 {
 		return Check{
 			ID: id, Area: areaRedis, Title: title, Status: StatusWarn,
