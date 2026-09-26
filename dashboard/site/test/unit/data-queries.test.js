@@ -1080,19 +1080,19 @@ describe('declarative dashboard queries', () => {
       source: 'tools',
       rows: [
         {
-          id: 'skill-1', organization: 'githubnext', repository: 'gh-aw-cao',
+          event: 'skill-1', organization: 'githubnext', repository: 'gh-aw-cao',
           workflow: '.github/workflows/a.md', name: 'reactive-ui', 'is-skill': true
         },
         {
-          id: 'skill-2', organization: 'githubnext', repository: 'gh-aw-cao',
+          event: 'skill-2', organization: 'githubnext', repository: 'gh-aw-cao',
           workflow: '.github/workflows/a.md', name: 'reactive-ui', 'is-skill': true
         },
         {
-          id: 'skill-3', organization: 'githubnext', repository: 'gh-aw-cao',
+          event: 'skill-3', organization: 'githubnext', repository: 'gh-aw-cao',
           workflow: '.github/workflows/b.md', name: 'dashboard-authoring', 'is-skill': true
         },
         {
-          id: 'tool-1', organization: 'githubnext', repository: 'gh-aw-cao',
+          event: 'tool-1', organization: 'githubnext', repository: 'gh-aw-cao',
           workflow: '.github/workflows/a.md', name: 'bash', 'is-skill': false
         }
       ],

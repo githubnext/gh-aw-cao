@@ -127,6 +127,14 @@ function databaseTables(generation = 'browser-generation', run = '12345') {
           'event-timestamp': '2026-09-09T04:02:01Z', 'event-source': 'mcp',
           'event-type': 'tool.result', 'event-status': 'success', 'correlation-id': `call-${run}`,
           'observed-at': '2026-09-09T05:00:00Z'
+        },
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
+          'run-attempt': 2, session: `session-${run}`, event: `skill-${run}`,
+          'event-timestamp': '2026-09-09T04:02:02Z', 'event-source': 'agent',
+          'event-type': 'audit.skill_activation', 'event-summary': 'reactive-ui',
+          'tool-type': 'skill', 'is-skill': true, name: 'reactive-ui',
+          'observed-at': '2026-09-09T05:00:00Z'
         }
       ],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
@@ -853,6 +861,47 @@ test('data worker returns MCP tool totals without safe outputs calls on initial 
       source: 'mcp-top-tools',
       rows: [{ 'mcp-tool-label': 'github/search_issues', 'mcp-tool': 'search_issues', 'mcp-server': 'github', calls: 2, workflows: 1 }],
       metadata: { 'source-kind': 'derived', 'query-name': 'mcp-top-tools' }
+    });
+  }
+});
+
+test('data worker returns skill invocation rankings on initial and navigated requests', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const processorUrl = `${location.origin}/src/data-processor.js`;
+    const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
+    const dashboard = await fetch(`${location.origin}/dashboard.json`).then((response) => response.json());
+    const context = {
+      githubUrlBase: 'https://github.com',
+      pages: dashboard.dashboard.pages,
+      queries: dashboard.dashboard.queries
+    };
+    const sourceNames = ['skill-invocations-by-skill', 'skill-invocations-by-workflow'];
+    const initial = await loadCanonicalDashboardSources(
+      `${location.origin}/payload-hashes.json`,
+      sourceNames,
+      context
+    );
+    const navigated = await loadCanonicalDashboardPage(sourceNames, context);
+    return { initial, navigated };
+  });
+
+  for (const payload of [result.initial, result.navigated]) {
+    expect(Object.keys(payload)).toEqual([
+      'skill-invocations-by-skill',
+      'skill-invocations-by-workflow'
+    ]);
+    expect(payload['skill-invocations-by-skill']).toMatchObject({
+      source: 'skill-invocations-by-skill',
+      rows: [{ skill: 'reactive-ui', invocations: 1 }],
+      metadata: { 'source-kind': 'derived', 'query-name': 'skill-invocations-by-skill' }
+    });
+    expect(payload['skill-invocations-by-workflow']).toMatchObject({
+      source: 'skill-invocations-by-workflow',
+      rows: [{
+        'workflow-coordinate': 'githubnext/gh-aw-cao:.github/workflows/dashboard.md',
+        invocations: 1
+      }],
+      metadata: { 'source-kind': 'derived', 'query-name': 'skill-invocations-by-workflow' }
     });
   }
 });

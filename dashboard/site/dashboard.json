@@ -2014,7 +2014,8 @@
         "from": "transactions",
         "select": [
           {
-            "field": "id"
+            "field": "event",
+            "as": "id"
           },
           {
             "field": "kind"
