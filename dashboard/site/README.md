@@ -37,7 +37,7 @@ The [Overview component model](../../docs/dashboard-overview-components.md) docu
 
 ## WebMCP adapter
 
-Dashboard pages define the semantic capabilities of the dashboard. Human rendering and WebMCP are generated adapters over the same page definitions and the same query execution path, so there is no second tool catalog to maintain.
+Dashboard pages define the semantic capabilities of the dashboard. Human rendering and WebMCP are generated adapters over the same page definitions and the same query execution path, so there is no second tool catalog to maintain. See the [WebMCP documentation](../../docs/dashboard-webmcp.md) for the operator-facing guide.
 
 - `src/webmcp/manifest.js` is a pure generator. It derives one read-only tool descriptor per agent-facing page: `page.id` becomes the `cao_<page_id>` tool name, `title` becomes the tool title, `description` or `intent` becomes the tool description, a `route.hash-query-parameter` becomes a required string property, and `form.fields` controls map to JSON Schema properties (`slider` to a bounded number, `checkbox` to a boolean, `radio` and `select` to an enum, `text` to a string). A page is agent facing when it appears in the declared navigation or is addressed by one route parameter.
 - `src/webmcp/runtime.js` registers those descriptors with `document.modelContext` and executes them. Execution validates the declared arguments, navigates the dashboard to the page route, and reads the page projection through the same page source loader and data-worker boundary the rendered page uses. Registration passes an `AbortSignal` so tools unregister by aborting it, and the execute callback forwards the agent's cancellation signal to the query.

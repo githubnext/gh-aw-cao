@@ -69,3 +69,4 @@ its reviewed workflows and policy.
 - Build views with the [Dashboard Language guide](dashboard-language.md), then
 	consult the [language specification](dashboard-language-specification.md) and
 	[view catalog](dashboard-view-catalog.md) for complete reference material.
+- Let browser agents read the same pages through [WebMCP](dashboard-webmcp.md).

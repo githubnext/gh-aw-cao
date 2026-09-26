@@ -173,6 +173,7 @@ export default defineConfig({
             { label: "Language", link: "/dashboard-language/" },
             { label: "Language specification", link: "/dashboard-language-specification/" },
             { label: "View catalog", link: "/dashboard-view-catalog/" },
+            { label: "WebMCP", link: "/dashboard-webmcp/" },
             {
               label: "Views",
               items: [
