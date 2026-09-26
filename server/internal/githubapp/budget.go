@@ -27,6 +27,7 @@ type Budget struct {
 type BudgetStore interface {
 	HashGet(ctx context.Context, key, field string) (string, error)
 	HashSet(ctx context.Context, key, field, value string) error
+	ReserveRateLimit(ctx context.Context, key, field string, floor, cost int, now int64) (int, error)
 }
 
 const budgetKey = "collect:rate-limit"
@@ -74,19 +75,8 @@ func (b Budget) Park(ctx context.Context, installationID int64, until time.Time)
 // the collection subprocess so the subprocess itself stops before exhausting
 // the installation.
 func (b Budget) Reserve(ctx context.Context, installationID int64) (int, error) {
-	state, err := b.read(ctx, installationID)
-	if err != nil {
-		return 0, err
-	}
-	now := time.Now().UTC()
-	if !state.ParkedTo.IsZero() && state.ParkedTo.After(now) {
-		return 0, fmt.Errorf("%w until %s", ErrInstallationParked, state.ParkedTo.Format(time.RFC3339))
-	}
-	if !state.Reset.IsZero() && state.Reset.Before(now) {
-		// The window rolled over; headroom is unknown again until the next
-		// observation, and the caller is expected to observe before spending.
-		state.Remaining = 0
-		state.Reset = time.Time{}
+	if b.Store == nil {
+		return 0, errors.New("rate-limit governor requires a store")
 	}
 	floor := b.Floor
 	if floor <= 0 {
@@ -96,12 +86,19 @@ func (b Budget) Reserve(ctx context.Context, installationID int64) (int, error) 
 	if cost <= 0 {
 		cost = 500
 	}
-	if state.Remaining > 0 && state.Remaining <= floor {
-		return 0, fmt.Errorf("%w: %d remaining at floor %d", ErrBudgetExhausted, state.Remaining, floor)
-	}
-	state.Remaining = max(state.Remaining-cost, 0)
-	if err := b.write(ctx, installationID, state); err != nil {
+	result, err := b.Store.ReserveRateLimit(
+		ctx, budgetKey, strconv.FormatInt(installationID, 10), floor, cost, time.Now().UTC().Unix())
+	if err != nil {
 		return 0, err
+	}
+	switch result {
+	case 1:
+		return 0, ErrInstallationParked
+	case 2:
+		return 0, ErrBudgetExhausted
+	case 0:
+	default:
+		return 0, errors.New("rate-limit governor returned an invalid reservation result")
 	}
 	return floor, nil
 }

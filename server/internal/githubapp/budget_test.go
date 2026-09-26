@@ -3,12 +3,16 @@ package githubapp
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strconv"
+	"sync"
 	"testing"
 	"time"
 )
 
 type memoryBudgetStore struct {
 	values map[string]string
+	mutex  sync.Mutex
 }
 
 func newMemoryBudgetStore() *memoryBudgetStore {
@@ -16,12 +20,40 @@ func newMemoryBudgetStore() *memoryBudgetStore {
 }
 
 func (s *memoryBudgetStore) HashGet(_ context.Context, key, field string) (string, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	return s.values[key+"/"+field], nil
 }
 
 func (s *memoryBudgetStore) HashSet(_ context.Context, key, field, value string) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	s.values[key+"/"+field] = value
 	return nil
+}
+
+func (s *memoryBudgetStore) ReserveRateLimit(
+	_ context.Context, key, field string, floor, cost int, now int64,
+) (int, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	state := parseBudgetState(s.values[key+"/"+field])
+	if state.ParkedTo.Unix() > now {
+		return 1, nil
+	}
+	if state.Reset.Unix() > 0 && state.Reset.Unix() < now {
+		state.Remaining = 0
+		state.Reset = time.Time{}
+	}
+	if state.Remaining > 0 && state.Remaining <= floor {
+		return 2, nil
+	}
+	state.Remaining = max(state.Remaining-cost, 0)
+	s.values[key+"/"+field] = fmt.Sprintf(
+		"%d|%s|%s", state.Remaining,
+		strconv.FormatInt(unixOrZero(state.Reset), 10),
+		strconv.FormatInt(unixOrZero(state.ParkedTo), 10))
+	return 0, nil
 }
 
 func TestBudgetRefusesToSpendBelowTheFloor(t *testing.T) {
@@ -104,6 +136,34 @@ func TestBudgetIsolatesInstallations(t *testing.T) {
 func TestBudgetRequiresAStore(t *testing.T) {
 	if _, err := (Budget{}).Reserve(context.Background(), 1); err == nil {
 		t.Fatal("expected the governor to fail closed without a store")
+	}
+}
+
+func TestBudgetReservationsAreSerialized(t *testing.T) {
+	store := newMemoryBudgetStore()
+	budget := Budget{Store: store, Floor: 100, Cost: 10}
+	if err := budget.Observe(context.Background(), 9, 120, time.Now().Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	const workers = 20
+	results := make(chan error, workers)
+	for range workers {
+		go func() {
+			_, err := budget.Reserve(context.Background(), 9)
+			results <- err
+		}()
+	}
+	successes := 0
+	for range workers {
+		err := <-results
+		if err == nil {
+			successes++
+		} else if !errors.Is(err, ErrBudgetExhausted) {
+			t.Fatalf("unexpected reservation error: %v", err)
+		}
+	}
+	if successes != 2 {
+		t.Fatalf("successful reservations = %d, want 2", successes)
 	}
 }
 

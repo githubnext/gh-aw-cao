@@ -19,7 +19,7 @@ import (
 const (
 	remoteCampaignTTL = 5 * time.Minute
 	remoteFileTTL     = time.Hour
-	remoteLockTTL     = time.Minute
+	remoteLockTTL     = 2 * time.Minute
 )
 
 var ErrNotFound = errors.New("repository memory was not found")
@@ -85,7 +85,7 @@ func (r *RemoteResolver) Campaign(ctx context.Context, campaignID string) (*Camp
 	if err != nil {
 		return nil, err
 	}
-	lockName := "repository-memory:" + campaignID
+	lockName := remoteLockName("campaign", campaignID)
 	acquired, err := r.Cache.TryLock(ctx, lockName, token, remoteLockTTL)
 	if err != nil {
 		return nil, err
@@ -154,7 +154,7 @@ func (r *RemoteResolver) Content(ctx context.Context, campaignID, filePath strin
 	if err != nil {
 		return nil, err
 	}
-	lockName := "repository-memory-file:" + campaignID + ":" + campaign.Commit + ":" + filePath
+	lockName := remoteLockName("file", campaignID, campaign.Commit, filePath)
 	acquired, err := r.Cache.TryLock(ctx, lockName, token, remoteLockTTL)
 	if err != nil {
 		return nil, err
@@ -217,7 +217,14 @@ func (r *RemoteResolver) cacheCampaign(ctx context.Context, campaignID string, c
 
 func (r *RemoteResolver) reserve(ctx context.Context, installationID int64) error {
 	if _, err := r.Governor.Reserve(ctx, installationID); err != nil {
-		_, parkedTo, _ := r.Governor.Headroom(ctx, installationID)
+		if !errors.Is(err, githubapp.ErrBudgetExhausted) &&
+			!errors.Is(err, githubapp.ErrInstallationParked) {
+			return err
+		}
+		_, parkedTo, headroomErr := r.Governor.Headroom(ctx, installationID)
+		if headroomErr != nil {
+			return headroomErr
+		}
 		retryAfter := time.Minute
 		if delay := time.Until(parkedTo); delay > 0 {
 			retryAfter = delay
@@ -248,7 +255,9 @@ func (r *RemoteResolver) observe(
 		if err := r.Governor.Park(ctx, installationID, retryAt); err != nil {
 			return err
 		}
-		return &ThrottledError{RetryAfter: max(time.Until(retryAt), time.Second)}
+		if requestErr != nil {
+			return &ThrottledError{RetryAfter: max(time.Until(retryAt), time.Second)}
+		}
 	}
 	return requestErr
 }
@@ -329,6 +338,11 @@ func randomToken() (string, error) {
 		return "", fmt.Errorf("generate repository-memory lock token: %w", err)
 	}
 	return hex.EncodeToString(value), nil
+}
+
+func remoteLockName(parts ...string) string {
+	sum := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
+	return "repository-memory:" + hex.EncodeToString(sum[:])
 }
 
 // RetryAfterSeconds returns a bounded HTTP Retry-After value.

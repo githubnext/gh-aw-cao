@@ -2,6 +2,7 @@ package repositorymemory
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -91,6 +92,35 @@ func TestRemoteResolverReturnsThrottleWithoutCallingGitHub(t *testing.T) {
 	}
 	if source.refCalls != 0 {
 		t.Fatal("GitHub was called after the governor rejected the request")
+	}
+}
+
+func TestRemoteResolverPreservesInfrastructureErrors(t *testing.T) {
+	cache := newRemoteCache()
+	source := &remoteSource{}
+	infrastructureErr := errors.New("redis unavailable")
+	resolver := newRemoteResolver(cache, source, &remoteGovernor{reserveErr: infrastructureErr})
+
+	_, err := resolver.Campaign(context.Background(), "example")
+	if !errors.Is(err, infrastructureErr) {
+		t.Fatalf("expected infrastructure error, got %v", err)
+	}
+	if _, throttled := RetryAfterSeconds(err); throttled {
+		t.Fatal("infrastructure error was mislabeled as throttling")
+	}
+}
+
+func TestRemoteResolverKeepsSuccessfulLastResponse(t *testing.T) {
+	cache := newRemoteCache()
+	source := &remoteSource{
+		commit:   testOID,
+		response: githubapp.APIResponse{Remaining: 0, Reset: time.Now().Add(time.Minute)},
+	}
+	resolver := newRemoteResolver(cache, source, &remoteGovernor{})
+
+	campaign, err := resolver.Campaign(context.Background(), "example")
+	if err != nil || campaign == nil {
+		t.Fatalf("successful response was discarded: %#v, %v", campaign, err)
 	}
 }
 

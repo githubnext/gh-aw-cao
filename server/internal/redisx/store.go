@@ -85,6 +85,41 @@ func (s *Store) LockHeld(ctx context.Context, name string) (bool, error) {
 	return value != nil, nil
 }
 
+// ReserveRateLimit atomically checks and decrements one serialized rate-limit
+// state. It returns 1 for a parked installation and 2 for exhausted headroom.
+func (s *Store) ReserveRateLimit(
+	ctx context.Context, key, field string, floor, cost int, now int64,
+) (int, error) {
+	script := `
+local value = redis.call("HGET", KEYS[1], ARGV[1]) or ""
+local remaining, reset, parked = string.match(value, "^(-?%d+)|(-?%d+)|(-?%d+)$")
+remaining = tonumber(remaining) or 0
+reset = tonumber(reset) or 0
+parked = tonumber(parked) or 0
+local now = tonumber(ARGV[4])
+if parked > now then return 1 end
+if reset > 0 and reset < now then
+  remaining = 0
+  reset = 0
+end
+local floor = tonumber(ARGV[2])
+if remaining > 0 and remaining <= floor then return 2 end
+remaining = math.max(remaining - tonumber(ARGV[3]), 0)
+redis.call("HSET", KEYS[1], ARGV[1], remaining .. "|" .. reset .. "|" .. parked)
+return 0`
+	value, err := s.Client.Do(
+		ctx, "EVAL", script, "1", s.Key(key), field,
+		strconv.Itoa(floor), strconv.Itoa(cost), strconv.FormatInt(now, 10))
+	if err != nil {
+		return 0, err
+	}
+	result, err := strconv.Atoi(fmt.Sprint(value))
+	if err != nil {
+		return 0, errors.New("invalid rate-limit reservation response")
+	}
+	return result, nil
+}
+
 func (s *Store) RememberDelivery(ctx context.Context, delivery string, ttl time.Duration) (bool, error) {
 	sum := sha256.Sum256([]byte(delivery))
 	key := s.Key("github-delivery:" + hex.EncodeToString(sum[:]))
