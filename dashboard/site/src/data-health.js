@@ -2,10 +2,14 @@
  * Deterministic evidence-confidence diagnostics for the dashboard.
  */
 
+import { createDebug } from './debug.js';
+
 /**
  * @typedef {import('./presenter.js').LogicalSourceInput} LogicalSourceInput
  * @typedef {import('./presenter.js').SourceMetadata} SourceMetadata
  */
+
+const debugDataHealth = createDebug('data-health');
 
 const COVERAGE_CONTRACTS = Object.freeze([
   { area: 'Repositories', source: 'repositories', denominator: 'metadata' },
@@ -53,6 +57,14 @@ export function deriveDataHealthCalloutSources(sources) {
   const reconciliationRows = RECONCILIATION_CONTRACTS.map((contract) => reconcile(contract, sources));
   const coverageRows = COVERAGE_CONTRACTS.map((contract) => coverageDiagnostic(contract, sources, reconciliationRows));
   const metadata = combineSourceMetadata(Object.values(sources));
+  debugDataHealth({
+    event: 'derived',
+    sourceCount: Object.keys(sources).length,
+    reconciliationCount: reconciliationRows.length,
+    incompleteReconciliations: reconciliationRows.filter((row) => row.state !== 'complete').length,
+    incompleteCoverage: coverageRows.filter((row) => row.state !== 'complete').length,
+    availability: metadata.availability
+  });
   return {
     'data-health-collections': healthSource(
       'data-health-collections',
@@ -238,13 +250,17 @@ function coverageDiagnostic(contract, sources, reconciliationRows) {
   const horizonComplete = requestedStart && requestedEnd
     ? Boolean(observedStart && observedEnd && Date.parse(observedStart) <= Date.parse(requestedStart) && Date.parse(observedEnd) >= Date.parse(requestedEnd))
     : null;
+  const state = expected === null || horizonComplete === false ? 'unknown' : coverage === 100 ? 'complete' : 'partial';
+  if (state !== 'complete') {
+    debugDataHealth({ event: 'coverage-gap', area: contract.area, state, expected, observed, coverage });
+  }
   return {
     area: contract.area,
     expected: expected ?? 'Unknown',
     observed: observed ?? 'Unknown',
     missing: expected === null || observed === null ? 'Unknown' : Math.max(0, expected - observed),
     'coverage-percent': coverage === null ? 'Unknown' : `${coverage}%`,
-    state: expected === null || horizonComplete === false ? 'unknown' : coverage === 100 ? 'complete' : 'partial',
+    state,
     reason: expected === null
       ? 'No authoritative denominator is available.'
       : horizonComplete === false
@@ -320,6 +336,9 @@ function reconcile(contract, sources) {
   const state = childSource.metadata?.availability === 'unavailable'
     ? 'missing'
     : observed === expected ? 'complete' : 'partial';
+  if (state !== 'complete') {
+    debugDataHealth({ event: 'reconciliation-gap', relationship: contract.relationship, state, expected, observed });
+  }
   return reconciliationRow(
     contract,
     expected,
