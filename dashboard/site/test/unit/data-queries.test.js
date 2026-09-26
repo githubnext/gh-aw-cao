@@ -181,7 +181,11 @@ describe('declarative dashboard queries', () => {
       campaign: 'dashboard',
       'campaign-name': 'CAO Dashboard',
       'workflow-name': 'Dashboard',
-      'workflow-role': 'worker'
+      'workflow-role': 'worker',
+      'workflow-link': {
+        relation: 'workflow',
+        href: 'https://github.com/githubnext/gh-aw-cao/actions/workflows/501'
+      }
     }];
     const runRows = [{
       organization: 'githubnext',
@@ -192,10 +196,16 @@ describe('declarative dashboard queries', () => {
       'run-status': 'completed',
       'run-conclusion': 'failure',
       'started-at': '2026-09-09T04:00:00Z',
-      'failure-message': 'Dependency update failed',
-      'failure-detail': 'Dependency update failed',
+      'failure-kind': 'driver_exit',
+      'failure-message': 'Agent process exited with code 1.',
+      'failure-detail': 'Agent process exited with code 1.',
+      'failure-log': '##[error]Agent process exited with code 1.',
       'target-repository': 'github/gh-aw',
-      'rollout-mode': 'review'
+      'rollout-mode': 'review',
+      'run-link': {
+        relation: 'run',
+        href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/42'
+      }
     }];
     const result = executeDashboardQueries(
       dashboardQueries,
@@ -217,9 +227,20 @@ describe('declarative dashboard queries', () => {
 
     expect(result['campaign-problem-items'].rows).toEqual([
       expect.objectContaining({
-        'problem-title': 'Dependency update failed',
-        'failure-message': 'Dependency update failed',
-        'status-detail': 'Dependency update failed',
+        'problem-title': 'Agent process exited with code 1.',
+        'error-signature-label': 'Agent process exited unexpectedly',
+        'failure-message': 'Agent process exited with code 1.',
+        'failure-log': '##[error]Agent process exited with code 1.',
+        'status-detail': 'Agent process exited with code 1.',
+        'run-link': expect.objectContaining({
+          href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/42'
+        }),
+        'workflow-link': expect.objectContaining({
+          'dashboard-href': expect.stringContaining('#page-workflow-runtime')
+        }),
+        'workflow-source-link': expect.objectContaining({
+          href: 'https://github.com/githubnext/gh-aw-cao/actions/workflows/501'
+        }),
         'runtime-repository-link': expect.objectContaining({
           'dashboard-href': '#page-repository-detail?repository=githubnext%2Fgh-aw-cao',
           'dashboard-label': 'githubnext/gh-aw-cao'

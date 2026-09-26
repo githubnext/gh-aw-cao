@@ -84,9 +84,14 @@ function runRecord(run, repository) {
     startedAt: firstValue(run.started_at, run.created_at, null),
     updatedAt: firstValue(run.updated_at, run.completed_at, null),
     displayTitle: firstValue(run.display_title, run.title, null),
+    ...(run.url ? { runUrl: String(run.url) } : {}),
+    ...(run.classification ? { classification: String(run.classification) } : {}),
+    ...(run.failure_kind ? { failureKind: String(run.failure_kind) } : {}),
     ...(run.failure_job ? { failureJob: String(run.failure_job) } : {}),
     ...(run.failure_step ? { failureStep: String(run.failure_step) } : {}),
-    ...(run.failure_message ? { failureMessage: String(run.failure_message) } : {}),
+    ...(firstValue(run.failure_message, run.failure_detail)
+      ? { failureMessage: String(firstValue(run.failure_message, run.failure_detail)) }
+      : {}),
     ...(failureLog(run.failure_log ?? run.failureLog ?? run.failed_step_log ?? run.failedStepLog)),
     ...(Array.isArray(run.jobs) ? { jobs: run.jobs.map(performanceJobRecord) } : {}),
   };
