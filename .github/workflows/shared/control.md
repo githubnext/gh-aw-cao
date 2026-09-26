@@ -376,8 +376,8 @@ jobs:
             outcome: credential,
           })}`);
           console.log(`[CAO activation] ${JSON.stringify({
-            decision: "activation",
-            authorized: process.env.CAO_ADMISSION_AUTHORIZED === "true"
+            decision: "control-handoff",
+            ready: process.env.CAO_ADMISSION_AUTHORIZED === "true"
               && process.env.CAO_PRECOMPUTE_AUTHORIZED === "true"
               && steps.precompute === "success"
               && steps.precompute_validation === "success"
