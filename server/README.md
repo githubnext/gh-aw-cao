@@ -79,6 +79,22 @@ flowchart LR
 | Local Redis | `docker-compose.yml` | Runs plain Redis on `127.0.0.1:6379`. |
 | Coolify container profile | `Dockerfile`, `coolify/compose.yml` | Builds the dashboard and Go service into a non-root image and runs `serve-hosted` behind an explicitly trusted Coolify TLS proxy. |
 
+### Host capability profiles
+
+`internal/server/host_profile.go` separates server capabilities from provider
+names. A profile declares authentication, process-owned or platform-owned
+listening, HTTPS and trusted-proxy handling, Redis connection semantics,
+per-process namespace isolation, replica constraints, and server-side collection
+support. Local serving, host-neutral containers, Azure Functions, and Upstash
+select profiles and then use the same validation and request handling.
+
+New hosting adapters should construct a `HostProfile` and let `server.New`
+validate it. Do not add provider-name branches to shared authentication, proxy,
+ingestion, or Redis enforcement. Startup rejects unsupported capability
+combinations, a serialized profile backed by a pooled Redis client, collection
+on an artifact-only profile, and process-listener settings on a
+platform-listener profile.
+
 ## Hosted service profile
 
 `serve-hosted` runs the same stateless Go service on a container, VM,
@@ -776,8 +792,8 @@ deployment. The capability authorizes its holder to read the full active
 dashboard generation; it provides no user identity or per-source authorization.
 
 The Azure Functions profile is the experimental remote profile. It is
-enabled only by constructing the app with `HostingModeAzureFunctions` or by
-calling `NewAzureFunctionsHandlerFromEnv`; `serve` does not enable it. Azure
+enabled by calling `NewAzureFunctionsHandlerFromEnv`, which selects the
+platform-listener GitHub-OAuth host profile; `serve` does not enable it. Azure
 mode fails closed unless all of the following are configured:
 
 - `CAO_REDIS_URL` with a `rediss://` URL;

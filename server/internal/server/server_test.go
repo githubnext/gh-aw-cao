@@ -71,21 +71,21 @@ func TestHostedRedisRequiresTLSUnlessPrivatePlaintextIsExplicit(t *testing.T) {
 func TestHostedUpstashModeRequiresProviderTLS(t *testing.T) {
 	upstashURL := "rediss://" + "default:test-token" + "@us1-example.upstash.io:6379"
 	otherURL := "rediss://" + "default:test-token" + "@redis.example.com:6379"
-	if enabled, err := hostedUpstashMode("upstash", upstashURL, false); err != nil || !enabled {
-		t.Fatalf("Upstash TLS endpoint rejected: enabled=%t err=%v", enabled, err)
+	if profile, err := hostedProfile("upstash", upstashURL, false); err != nil || profile.RedisSession != HostRedisSerialized {
+		t.Fatalf("Upstash TLS endpoint rejected: profile=%+v err=%v", profile, err)
 	}
 	for _, endpoint := range []string{
 		"redis://us1-example.upstash.io:6379",
 		otherURL,
 	} {
-		if _, err := hostedUpstashMode("upstash", endpoint, false); err == nil {
+		if _, err := hostedProfile("upstash", endpoint, false); err == nil {
 			t.Errorf("Upstash mode accepted unsupported endpoint %q", endpoint)
 		}
 	}
-	if _, err := hostedUpstashMode("upstash", upstashURL, true); err == nil {
+	if _, err := hostedProfile("upstash", upstashURL, true); err == nil {
 		t.Fatal("Upstash mode accepted the private plaintext opt-in")
 	}
-	if _, err := hostedUpstashMode("unknown", "rediss://redis.example.com:6379", false); err == nil {
+	if _, err := hostedProfile("unknown", "rediss://redis.example.com:6379", false); err == nil {
 		t.Fatal("unknown Redis mode was accepted")
 	}
 }
@@ -148,14 +148,14 @@ func TestUpstashSingleReplicaAcknowledgementIsExact(t *testing.T) {
 		if exactTrue(value) {
 			t.Errorf("single-replica acknowledgement %q was accepted", value)
 		}
-		if err := validateUpstashSingleReplica(true, value); err == nil {
+		if err := validateSingleReplica(upstashHostProfile(), value); err == nil {
 			t.Errorf("Upstash startup accepted acknowledgement %q", value)
 		}
 	}
-	if err := validateUpstashSingleReplica(true, "true"); err != nil {
+	if err := validateSingleReplica(upstashHostProfile(), "true"); err != nil {
 		t.Fatalf("Upstash startup rejected exact acknowledgement: %v", err)
 	}
-	if err := validateUpstashSingleReplica(false, ""); err != nil {
+	if err := validateSingleReplica(hostedHostProfile(), ""); err != nil {
 		t.Fatalf("standard mode required an Upstash acknowledgement: %v", err)
 	}
 }
@@ -230,7 +230,7 @@ func TestHostedProxyHeadersAreTrustedOnlyOnLoopbackBoundary(t *testing.T) {
 	request.Header.Set("X-Forwarded-Proto", "https")
 
 	direct := ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true}
-	if validAzureProxyRequest(request, direct) {
+	if validProxyRequest(request, direct) {
 		t.Fatal("direct hosted listener trusted caller-supplied forwarded headers")
 	}
 
@@ -238,11 +238,11 @@ func TestHostedProxyHeadersAreTrustedOnlyOnLoopbackBoundary(t *testing.T) {
 	loopbackProxy.TrustForwarded = true
 	loopbackProxy.TrustedProxyPrefixes = loopbackProxyPrefixes()
 	request.RemoteAddr = "127.0.0.1:12345"
-	if !validAzureProxyRequest(request, loopbackProxy) {
+	if !validProxyRequest(request, loopbackProxy) {
 		t.Fatal("loopback proxy boundary rejected trusted forwarded headers")
 	}
 	request.RemoteAddr = "203.0.113.10:12345"
-	if validAzureProxyRequest(request, loopbackProxy) {
+	if validProxyRequest(request, loopbackProxy) {
 		t.Fatal("hosted boundary trusted forwarded headers from an untrusted peer")
 	}
 }
@@ -280,7 +280,7 @@ func TestPrivatePlaintextRedisOptInIsExplicit(t *testing.T) {
 
 func TestHostedModesCannotDisableHTTPS(t *testing.T) {
 	config := Config{
-		HostingMode: HostingModeHosted,
+		HostProfile: hostedHostProfile(),
 		Listen:      "127.0.0.1:8080",
 		Proxy:       ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}},
 		GitHubOAuth: validOAuthConfig("https://github.test"),
@@ -289,9 +289,9 @@ func TestHostedModesCannotDisableHTTPS(t *testing.T) {
 		t.Fatal("hosted mode accepted disabled HTTPS enforcement")
 	}
 
-	config.HostingMode = HostingModeAzureFunctions
+	config.HostProfile = azureFunctionsHostProfile(false)
 	config.Listen = ""
-	config.AzureProxy = AzureProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}}
+	config.Proxy = ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}}
 	if err := validateHostedMode(&redisx.Store{}, &config); err == nil {
 		t.Fatal("Azure Functions mode accepted disabled HTTPS enforcement")
 	}

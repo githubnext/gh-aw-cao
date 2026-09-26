@@ -40,24 +40,23 @@ import (
 var serverLog = logger.New("cao:server")
 
 type Config struct {
-	Listen               string
-	SiteDirectory        string
-	CertFile             string
-	KeyFile              string
-	AccessToken          string
-	HostingMode          HostingMode
-	Proxy                ProxyPolicy
-	AzureProxy           AzureProxyPolicy
-	AzureLocalSimulation bool
-	GitHubOAuth          *GitHubOAuthConfig
-	DatabaseQueriesPath  string
-	DashboardQueries     []query.Definition
-	SourceDirectory      string
-	Reconciler           Reconciler
-	Collector            *CollectorConfig
-	WebhookSecret        string
-	AdminUsers           []string
-	Logger               *log.Logger
+	Listen                 string
+	SiteDirectory          string
+	CertFile               string
+	KeyFile                string
+	AccessToken            string
+	HostProfile            HostProfile
+	SingleReplicaConfirmed bool
+	Proxy                  ProxyPolicy
+	GitHubOAuth            *GitHubOAuthConfig
+	DatabaseQueriesPath    string
+	DashboardQueries       []query.Definition
+	SourceDirectory        string
+	Reconciler             Reconciler
+	Collector              *CollectorConfig
+	WebhookSecret          string
+	AdminUsers             []string
+	Logger                 *log.Logger
 }
 
 type App struct {
@@ -73,19 +72,11 @@ type App struct {
 }
 
 func New(store *redisx.Store, config Config) (*App, error) {
-	serverLog.Printf("initializing hosting_mode=%s", config.HostingMode)
-	mode := config.HostingMode
-	if mode == "" {
-		mode = HostingModeLocal
-		config.HostingMode = mode
+	if err := validateHostProfile(store, &config); err != nil {
+		return nil, err
 	}
-	if mode == HostingModeLocal {
-		if err := ValidateListen(config.Listen, config.CertFile, config.KeyFile); err != nil {
-			return nil, err
-		}
-	} else if mode != HostingModeAzureFunctions && mode != HostingModeHosted {
-		return nil, fmt.Errorf("unsupported hosting mode %q", mode)
-	}
+	profile := config.HostProfile
+	serverLog.Printf("initializing host_profile=%s", profile.Name)
 	if err := validateHostedMode(store, &config); err != nil {
 		return nil, err
 	}
@@ -98,7 +89,7 @@ func New(store *redisx.Store, config Config) (*App, error) {
 	}
 	var oauth *githubOAuth
 	var accessToken string
-	if mode == HostingModeAzureFunctions || mode == HostingModeHosted {
+	if profile.Authentication == HostAuthenticationOAuth {
 		oauth = newGitHubOAuth(*config.GitHubOAuth, store)
 	} else {
 		accessToken = strings.TrimSpace(config.AccessToken)
@@ -141,7 +132,7 @@ func New(store *redisx.Store, config Config) (*App, error) {
 			DatabaseQueriesPath: config.DatabaseQueriesPath,
 		}
 	}
-	serverLog.Printf("initialized hosting_mode=%s oauth=%t source_ingestion=%t", mode, oauth != nil, config.SourceDirectory != "")
+	serverLog.Printf("initialized host_profile=%s oauth=%t source_ingestion=%t", profile.Name, oauth != nil, config.SourceDirectory != "")
 	return &App{
 		store: store, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub(),
 		canonical: canonicalService{store: store}, reconciler: reconciler, memory: memoryResolver,
@@ -360,7 +351,7 @@ func (a *App) authorized(request *http.Request) bool {
 
 func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		if !validAzureProxyRequest(request, a.proxyPolicy()) {
+		if !validProxyRequest(request, a.proxyPolicy()) {
 			a.logAuthBranch("access.proxy_rejected")
 			http.Error(response, "invalid forwarded request host", http.StatusMisdirectedRequest)
 			return
@@ -410,10 +401,7 @@ func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 }
 
 func (a *App) proxyPolicy() ProxyPolicy {
-	if len(a.config.Proxy.AllowedHosts) > 0 {
-		return a.config.Proxy
-	}
-	return a.config.AzureProxy
+	return a.config.Proxy
 }
 
 type oauthSessionContextKey struct{}

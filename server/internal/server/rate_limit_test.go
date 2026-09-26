@@ -245,7 +245,7 @@ func TestForwardedBoundaryUsesTrustedFinalHeaderValues(t *testing.T) {
 		TrustForwarded: true,
 	}
 
-	if !validAzureProxyRequest(request, policy) {
+	if !validProxyRequest(request, policy) {
 		t.Fatal("trusted final forwarded header values were not selected")
 	}
 }

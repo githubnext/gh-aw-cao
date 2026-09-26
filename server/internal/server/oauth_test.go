@@ -30,10 +30,10 @@ func TestAzureModeRequiresCompleteGitHubOAuthPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = New(redisx.NewStore(client, "test"), Config{
-		HostingMode:   HostingModeAzureFunctions,
+		HostProfile:   azureFunctionsHostProfile(false),
 		SiteDirectory: site,
 		AccessToken:   testAccessToken,
-		AzureProxy:    AzureProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
+		Proxy:         ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
 		GitHubOAuth:   validOAuthConfig("https://github.test"),
 	})
 	if err == nil || !strings.Contains(err.Error(), "does not support local bearer") {
@@ -41,9 +41,9 @@ func TestAzureModeRequiresCompleteGitHubOAuthPolicy(t *testing.T) {
 	}
 
 	_, err = New(redisx.NewStore(client, "test"), Config{
-		HostingMode:   HostingModeAzureFunctions,
+		HostProfile:   azureFunctionsHostProfile(false),
 		SiteDirectory: site,
-		AzureProxy:    AzureProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
+		Proxy:         ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
 		GitHubOAuth: &GitHubOAuthConfig{
 			ClientID:      "client",
 			ClientSecret:  "secret",
@@ -630,9 +630,9 @@ func newAzureTestApp(t *testing.T, githubURL string) *App {
 		t.Fatal(err)
 	}
 	config := Config{
-		HostingMode:   HostingModeAzureFunctions,
+		HostProfile:   azureFunctionsHostProfile(false),
 		SiteDirectory: site,
-		AzureProxy:    AzureProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
+		Proxy:         ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
 		GitHubOAuth:   validOAuthConfig(githubURL),
 	}
 	app, err := New(redisx.NewStore(client, "test"), config)

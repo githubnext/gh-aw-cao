@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"net/netip"
@@ -37,25 +38,25 @@ func NewHostedAppFromEnv(
 	if err := validateHostedRedisURL(redisURL, allowPrivatePlaintext); err != nil {
 		return nil, err
 	}
-	upstashMode, err := hostedUpstashMode(os.Getenv("CAO_REDIS_MODE"), redisURL, allowPrivatePlaintext)
+	profile, err := hostedProfile(os.Getenv("CAO_REDIS_MODE"), redisURL, allowPrivatePlaintext)
 	if err != nil {
 		return nil, err
 	}
-	if err := validateUpstashSingleReplica(upstashMode, os.Getenv("CAO_UPSTASH_SINGLE_REPLICA")); err != nil {
+	if err := validateSingleReplica(profile, os.Getenv("CAO_UPSTASH_SINGLE_REPLICA")); err != nil {
 		return nil, err
 	}
-	revocationKeyPrefix, err := upstashRevocationKeyPrefix(upstashMode, os.Getenv("CAO_REDIS_NAMESPACE"))
+	revocationKeyPrefix, err := upstashRevocationKeyPrefix(profile.SingleReplica, os.Getenv("CAO_REDIS_NAMESPACE"))
 	if err != nil {
 		return nil, err
 	}
 	client, err := redisx.NewWithOptions(redisURL, redisx.Options{
 		AllowPrivatePlaintext: allowPrivatePlaintext,
-		SingleSession:         upstashMode,
+		SingleSession:         profile.RedisSession == HostRedisSerialized,
 	})
 	if err != nil {
 		return nil, err
 	}
-	store, err := storeFromClient(ctx, client, upstashMode)
+	store, err := storeFromClient(ctx, client, profile.IsolateProcessNamespace)
 	if err != nil {
 		return nil, err
 	}
@@ -70,9 +71,6 @@ func NewHostedAppFromEnv(
 	}
 	if collector == nil && sourceDirectory == "" {
 		return nil, errors.New("CAO_SOURCE_DIRECTORY is required")
-	}
-	if upstashMode && collector != nil {
-		return nil, errors.New("upstash mode supports artifact ingestion only, not server-side collection")
 	}
 	webhookSecret := os.Getenv("CAO_GITHUB_WEBHOOK_SECRET")
 	if len(webhookSecret) < 32 {
@@ -91,17 +89,18 @@ func NewHostedAppFromEnv(
 		trustedProxyPrefixes = append(trustedProxyPrefixes, loopbackProxyPrefixes()...)
 	}
 	config := Config{
-		HostingMode:         HostingModeHosted,
-		Listen:              listen,
-		CertFile:            certFile,
-		KeyFile:             keyFile,
-		SiteDirectory:       siteDirectory,
-		DashboardQueries:    definitions,
-		DatabaseQueriesPath: databaseQueriesPath,
-		SourceDirectory:     sourceDirectory,
-		Collector:           collector,
-		WebhookSecret:       webhookSecret,
-		AdminUsers:          adminUsers,
+		HostProfile:            profile,
+		SingleReplicaConfirmed: !profile.SingleReplica || exactTrue(os.Getenv("CAO_UPSTASH_SINGLE_REPLICA")),
+		Listen:                 listen,
+		CertFile:               certFile,
+		KeyFile:                keyFile,
+		SiteDirectory:          siteDirectory,
+		DashboardQueries:       definitions,
+		DatabaseQueriesPath:    databaseQueriesPath,
+		SourceDirectory:        sourceDirectory,
+		Collector:              collector,
+		WebhookSecret:          webhookSecret,
+		AdminUsers:             adminUsers,
 		Proxy: ProxyPolicy{
 			AllowedHosts:         splitCSV(os.Getenv("CAO_ALLOWED_HOSTS")),
 			RequireHTTPS:         true,
@@ -151,26 +150,26 @@ func privatePlaintextRedisOptIn(value string) (bool, error) {
 	}
 }
 
-func hostedUpstashMode(value, redisURL string, allowPrivatePlaintext bool) (bool, error) {
+func hostedProfile(value, redisURL string, allowPrivatePlaintext bool) (HostProfile, error) {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "", "standard":
-		return false, nil
+		return hostedHostProfile(), nil
 	case "upstash":
 		parsed, err := url.Parse(strings.TrimSpace(redisURL))
 		if err != nil || !strings.EqualFold(parsed.Scheme, "rediss") {
-			return false, errors.New("upstash mode requires a rediss:// Redis URL")
+			return HostProfile{}, errors.New("upstash mode requires a rediss:// Redis URL")
 		}
 
 		if allowPrivatePlaintext {
-			return false, errors.New("upstash mode does not allow private plaintext Redis")
+			return HostProfile{}, errors.New("upstash mode does not allow private plaintext Redis")
 		}
 		hostname := strings.ToLower(parsed.Hostname())
 		if hostname != "upstash.io" && !strings.HasSuffix(hostname, ".upstash.io") {
-			return false, errors.New("upstash mode requires an Upstash Redis endpoint")
+			return HostProfile{}, errors.New("upstash mode requires an Upstash Redis endpoint")
 		}
-		return true, nil
+		return upstashHostProfile(), nil
 	default:
-		return false, errors.New("CAO_REDIS_MODE must be standard, upstash, or unset")
+		return HostProfile{}, errors.New("CAO_REDIS_MODE must be standard, upstash, or unset")
 	}
 }
 
@@ -178,9 +177,9 @@ func exactTrue(value string) bool {
 	return strings.EqualFold(strings.TrimSpace(value), "true")
 }
 
-func validateUpstashSingleReplica(upstashMode bool, value string) error {
-	if upstashMode && !exactTrue(value) {
-		return errors.New("upstash mode requires CAO_UPSTASH_SINGLE_REPLICA=true")
+func validateSingleReplica(profile HostProfile, value string) error {
+	if profile.SingleReplica && !exactTrue(value) {
+		return fmt.Errorf("host profile %q requires CAO_UPSTASH_SINGLE_REPLICA=true", profile.Name)
 	}
 	return nil
 }
@@ -245,11 +244,11 @@ func StoreFromEnv(ctx context.Context) (*redisx.Store, error) {
 	if err := validateHostedRedisURL(redisURL, allowPrivatePlaintext); err != nil {
 		return nil, err
 	}
-	upstashMode, err := hostedUpstashMode(os.Getenv("CAO_REDIS_MODE"), redisURL, allowPrivatePlaintext)
+	profile, err := hostedProfile(os.Getenv("CAO_REDIS_MODE"), redisURL, allowPrivatePlaintext)
 	if err != nil {
 		return nil, err
 	}
-	if upstashMode {
+	if profile.RedisSession == HostRedisSerialized {
 		return nil, errors.New("upstash mode is not supported by standalone collection roles")
 	}
 	client, err := redisx.NewWithOptions(redisURL, redisx.Options{AllowPrivatePlaintext: allowPrivatePlaintext})
@@ -274,7 +273,12 @@ func storeFromClient(ctx context.Context, client *redisx.Client, isolateSession 
 			return nil, err
 		}
 	}
-	store := redisx.NewStore(client, namespace)
+	var store *redisx.Store
+	if isolateSession {
+		store = redisx.NewProcessIsolatedStore(client, namespace)
+	} else {
+		store = redisx.NewStore(client, namespace)
+	}
 	if err := store.Ping(ctx); err != nil {
 		return nil, errors.New("redis is unavailable")
 	}

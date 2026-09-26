@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -16,14 +17,6 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
-type HostingMode string
-
-const (
-	HostingModeLocal          HostingMode = "local"
-	HostingModeHosted         HostingMode = "hosted"
-	HostingModeAzureFunctions HostingMode = "azure-functions"
-)
-
 type ProxyPolicy struct {
 	AllowedHosts         []string
 	RequireHTTPS         bool
@@ -31,18 +24,18 @@ type ProxyPolicy struct {
 	TrustedProxyPrefixes []netip.Prefix
 }
 
-type AzureProxyPolicy = ProxyPolicy
-
 func validateHostedMode(store *redisx.Store, config *Config) error {
-	if config.HostingMode != HostingModeAzureFunctions && config.HostingMode != HostingModeHosted {
+	profile := config.HostProfile
+	if profile.Authentication != HostAuthenticationOAuth {
+		if profile.Listener == HostListenerProcess {
+			if err := ValidateListen(config.Listen, config.CertFile, config.KeyFile); err != nil {
+				return err
+			}
+			if profile.RequiresHTTPS && (config.CertFile == "" || config.KeyFile == "") {
+				return fmt.Errorf("host profile %q requires HTTPS", profile.Name)
+			}
+		}
 		return nil
-	}
-	if config.HostingMode == HostingModeAzureFunctions &&
-		(strings.TrimSpace(config.Listen) != "" || config.CertFile != "" || config.KeyFile != "") {
-		return errors.New("azure Functions mode must not configure a listener or TLS files")
-	}
-	if config.HostingMode == HostingModeAzureFunctions {
-		config.AzureProxy.TrustForwarded = true
 	}
 	if strings.TrimSpace(config.AccessToken) != "" {
 		return errors.New("hosted mode does not support local bearer capabilities")
@@ -50,17 +43,14 @@ func validateHostedMode(store *redisx.Store, config *Config) error {
 	if store == nil {
 		return errors.New("hosted mode requires Redis")
 	}
-	if len(config.Proxy.AllowedHosts) == 0 && len(config.AzureProxy.AllowedHosts) == 0 {
+	if len(config.Proxy.AllowedHosts) == 0 {
 		return errors.New("hosted mode requires an explicit trusted proxy host policy")
 	}
 	policy := config.Proxy
-	if config.HostingMode == HostingModeAzureFunctions {
-		policy = config.AzureProxy
-	}
-	if !policy.RequireHTTPS && !config.AzureLocalSimulation {
+	if profile.RequiresHTTPS && !policy.RequireHTTPS {
 		return errors.New("hosted mode requires HTTPS")
 	}
-	if config.HostingMode == HostingModeHosted {
+	if profile.Listener == HostListenerProcess {
 		if isLoopbackListen(config.Listen) && !config.Proxy.TrustForwarded {
 			config.Proxy.TrustForwarded = true
 			config.Proxy.TrustedProxyPrefixes = loopbackProxyPrefixes()
@@ -83,7 +73,7 @@ func validateHostedMode(store *redisx.Store, config *Config) error {
 	return nil
 }
 
-func validAzureProxyRequest(request *http.Request, policy AzureProxyPolicy) bool {
+func validProxyRequest(request *http.Request, policy ProxyPolicy) bool {
 	host := request.Host
 	secure := request.TLS != nil
 	if policy.TrustForwarded {
@@ -237,14 +227,13 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 		return nil, err
 	}
 	app, err := New(store, Config{
-		HostingMode:          HostingModeAzureFunctions,
-		AzureLocalSimulation: localSimulation,
-		SiteDirectory:        siteDirectory,
-		DashboardQueries:     definitions,
-		Collector:            collector,
-		WebhookSecret:        os.Getenv("CAO_GITHUB_WEBHOOK_SECRET"),
-		AdminUsers:           splitCSV(os.Getenv("CAO_GITHUB_ADMIN_USERS")),
-		AzureProxy: AzureProxyPolicy{
+		HostProfile:      azureFunctionsHostProfile(localSimulation),
+		SiteDirectory:    siteDirectory,
+		DashboardQueries: definitions,
+		Collector:        collector,
+		WebhookSecret:    os.Getenv("CAO_GITHUB_WEBHOOK_SECRET"),
+		AdminUsers:       splitCSV(os.Getenv("CAO_GITHUB_ADMIN_USERS")),
+		Proxy: ProxyPolicy{
 			AllowedHosts:   allowedHosts,
 			RequireHTTPS:   !localSimulation,
 			TrustForwarded: true,

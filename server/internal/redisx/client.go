@@ -49,6 +49,10 @@ type Options struct {
 	SingleSession         bool
 }
 
+func (c *Client) SingleSession() bool {
+	return c.singleSession
+}
+
 func (err redisResponseError) Error() string {
 	return err.message
 }

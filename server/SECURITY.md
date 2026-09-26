@@ -226,11 +226,11 @@ coordination service and must not be used to justify additional replicas.
 > compliance, privacy, network, monitoring, incident-response, and rollback
 > reviews.
 
-Azure Functions mode is enabled only by constructing the app with
-`HostingModeAzureFunctions` or by using `NewAzureFunctionsHandlerFromEnv`. It
-does not start its own listener, does not accept `--access-token`, and does not
-support PATs. Requests are handled by the Azure Functions HTTP runtime and the
-same Go dashboard HTTP handler.
+Azure Functions mode is enabled by using
+`NewAzureFunctionsHandlerFromEnv`, which selects the platform-listener,
+GitHub-OAuth host capability profile. It does not start its own listener, does
+not accept `--access-token`, and does not support PATs. Requests are handled by
+the Azure Functions HTTP runtime and the same Go dashboard HTTP handler.
 
 Azure mode fails closed unless configuration includes:
 

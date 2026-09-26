@@ -58,7 +58,7 @@ func (a *App) preAuthRateLimit(next http.Handler) http.Handler {
 // from reaching Redis before the access middleware rejects it. It also ensures
 // clientIP only sees forwarding headers after the trusted boundary is verified.
 func (a *App) validRateLimitBoundary(request *http.Request) bool {
-	return validAzureProxyRequest(request, a.proxyPolicy())
+	return validProxyRequest(request, a.proxyPolicy())
 }
 
 func (a *App) enforceRateLimit(

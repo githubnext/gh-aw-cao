@@ -22,8 +22,9 @@ const redisWriteBatchSize = 100
 var ErrSourceUnavailable = errors.New("redis source is unavailable")
 
 type Store struct {
-	Client    CommandClient
-	namespace string
+	Client          CommandClient
+	namespace       string
+	processIsolated bool
 }
 
 type CommandClient interface {
@@ -50,6 +51,16 @@ func NewStore(client CommandClient, namespaces ...string) *Store {
 		panic(err)
 	}
 	return &Store{Client: client, namespace: normalized}
+}
+
+func NewProcessIsolatedStore(client CommandClient, namespace string) *Store {
+	store := NewStore(client, namespace)
+	store.processIsolated = true
+	return store
+}
+
+func (s *Store) ProcessIsolated() bool {
+	return s != nil && s.processIsolated
 }
 
 func (s *Store) Ping(ctx context.Context) error {

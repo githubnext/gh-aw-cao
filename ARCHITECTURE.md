@@ -129,6 +129,15 @@ produces the same stable check identifiers and observations as human-readable
 text or versioned JSON, never contacts GitHub or mutates Redis, and requires an
 explicit deep mode before reading every active row.
 
+Server construction resolves a provider-agnostic host capability profile before
+configuring authentication or ingestion. The profile declares authentication,
+listener ownership, HTTPS and trusted-proxy requirements, Redis session
+semantics, process namespace isolation, replica constraints, and collection
+support. Local, host-neutral container, Azure Functions, and Upstash adapters
+select profiles rather than adding provider checks to shared request handling.
+Startup rejects configurations or Redis clients that do not satisfy the
+selected capabilities.
+
 The host-neutral server also has a constrained Upstash profile for a provider
 that guarantees causal ordering only within one TCP session. That profile runs
 exactly one application replica, serializes all Redis operations through one

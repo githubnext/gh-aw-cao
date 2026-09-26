@@ -138,7 +138,7 @@ components:
     responsibility: disposable generation-scoped dashboard projection using core Redis row sets
   dashboard_https_server:
     path: server/
-    responsibility: ingest deployed dashboard artifacts, execute Dashboard Language queries server-side, and serve bounded canonical results locally or through an authenticated host-neutral profile
+    responsibility: enforce provider-agnostic host capabilities, ingest deployed dashboard artifacts, execute Dashboard Language queries server-side, and serve bounded canonical results locally or through an authenticated host-neutral profile
   dashboard_coolify_deployment:
     path: server/coolify/
     responsibility: build and run the non-root serve-hosted container behind a fail-closed Coolify TLS proxy with a managed Redis connection and an atomically populated external read-only artifact volume
@@ -335,6 +335,7 @@ invariants:
   - "The repository-layout and installation specification defines canonical runtime ownership, immutable materialization, and fail-closed installation lifecycle requirements."
   - "Policy and workflow changes MUST be committed together."
   - "Upstash mode MUST run exactly one application replica, serialize every Redis operation through one TCP session, fail closed after transport loss, isolate every process start in a fresh namespace except for its stable encrypted pending-revocation queue, and use artifact ingestion rather than server-side collection."
+  - "Every server host integration MUST select a validated provider-agnostic capability profile covering authentication, listener ownership, HTTPS and proxy trust, Redis session semantics, namespace isolation, replica constraints, and collection support; startup MUST reject a configuration or Redis client that violates the selected profile."
   - "Marketplace registry order defines precedence; the official registry is removable configuration rather than hard-coded resolver behavior."
   - "Marketplace registry authentication MUST reference secrets, remain registry-scoped in trusted Activity or hosted resolvers, and MUST NOT enter manifests, canonical package records, IndexedDB, query payloads, or UI state."
   - "Static and hosted marketplace resolvers MUST produce the same normalized package contract; failure of one registry MUST NOT make other registries unavailable."
