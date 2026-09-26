@@ -127,14 +127,6 @@ function databaseTables(generation = 'browser-generation', run = '12345') {
           'event-timestamp': '2026-09-09T04:02:01Z', 'event-source': 'mcp',
           'event-type': 'tool.result', 'event-status': 'success', 'correlation-id': `call-${run}`,
           'observed-at': '2026-09-09T05:00:00Z'
-        },
-        {
-          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
-          'run-attempt': 2, session: `session-${run}`, event: `skill-${run}`,
-          'event-timestamp': '2026-09-09T04:02:02Z', 'event-source': 'agent',
-          'event-type': 'audit.skill_activation', 'event-summary': 'reactive-ui',
-          'tool-type': 'skill', 'is-skill': true, name: 'reactive-ui',
-          'observed-at': '2026-09-09T05:00:00Z'
         }
       ],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
@@ -390,6 +382,11 @@ test.beforeEach(async ({ context, page }) => {
                 }
               ]
             },
+            skill_activations: [{
+              name: 'reactive-ui',
+              status: 'success',
+              timestamp: '2026-09-09T04:04:30Z'
+            }],
             firewall_analysis: {
               requests_by_domain: {
                 'api.github.com:443': { allowed: 4, blocked: 2 },

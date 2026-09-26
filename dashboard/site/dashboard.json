@@ -2014,8 +2014,7 @@
         "from": "transactions",
         "select": [
           {
-            "field": "event",
-            "as": "id"
+            "field": "id"
           },
           {
             "field": "kind"
@@ -11000,7 +10999,8 @@
         },
         "select": [
           {
-            "field": "id"
+            "field": "event",
+            "as": "id"
           },
           {
             "field": "name",
