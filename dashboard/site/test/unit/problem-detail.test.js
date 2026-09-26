@@ -66,7 +66,7 @@ function problem() {
       'dashboard-href': '#page-repository-detail?repository=githubnext%2Fgh-aw-cao',
       'dashboard-label': 'githubnext/gh-aw-cao'
     },
-    'workflow-link': {
+    'workflow-source-link': {
       relation: 'workflow',
       href: 'https://github.com/github/gh-aw/actions/workflows/dependabot.lock.yml',
       label: 'Dependabot / Update Planner'

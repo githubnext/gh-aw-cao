@@ -126,7 +126,7 @@ for (const role of ["orchestrator", "worker"]) {
       assert.equal(result.status, 0, result.stderr);
       assert.equal(result.stdout, [
         "::group::Central Agentic Ops precompute",
-        "[CAO] Precompute skipped because admission was denied.",
+        '[cao] {"decision":"precompute","outcome":"skipped","reason":"campaign-disabled"}',
         "::endgroup::",
         "",
       ].join("\n"));
@@ -203,6 +203,9 @@ test("control precompute writes a complete review worker envelope", () => {
       sha: "1111111111111111111111111111111111111111",
     },
   });
+  assert.match(result.stdout, /\[cao] {"decision":"safe-output-destination","outcome":"accepted","mode":"review","validation":"central-review-shortcut"}/);
+  assert.match(result.stdout, /\[cao] {"decision":"worker-dispatch-envelope","outcome":"accepted","mode":"review","worker_max_mode":"review"}/);
+  assert.match(result.stdout, /\[cao] {"decision":"precompute","outcome":"prepared","role":"worker","candidate_count":0}/);
 });
 
 test("control precompute rejects an inaccessible review destination", () => {
@@ -340,6 +343,10 @@ esac
   );
 
   assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /\[cao] {"decision":"repository-inventory","outcome":"selected","source":"allowed_repos","repository_count":2}/);
+  assert.match(result.stdout, /\[cao] {"decision":"inventory-partition","outcome":"selected","input_count":2,"unique_count":1,"configured_cell_count":1,"cell_repository_count":1,"configured_batch_size":100000,"batch_count":1,"batch_index":0,"candidate_count":1/);
+  assert.match(result.stdout, /\[cao] {"decision":"worker-workflow","outcome":"eligible","workflow":"dependabot-update-planner"/);
+  assert.match(result.stdout, /\[cao] {"decision":"repository-cap","outcome":"resolved","candidates":1,"eligible_workers":1/);
   const precompute = JSON.parse(readFileSync("/tmp/gh-aw/agent/control-precompute.json", "utf8"));
   assert.deepEqual(precompute.candidate_repositories.map(({ full_name }) => full_name), ["acme/target"]);
   assert.equal(precompute.inventory_repository_count, 1);

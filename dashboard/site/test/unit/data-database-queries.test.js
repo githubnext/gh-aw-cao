@@ -73,7 +73,8 @@ const sources = {  campaigns: {
       organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
       run: '42', 'run-attempt': 2, 'run-status': 'completed', 'run-conclusion': 'failure',
       'started-at': '2026-09-09T04:00:00Z', 'failure-message': 'Build failed',
-      'failure-detail': 'Build failed', 'target-repository': 'github/gh-aw',
+      'failure-detail': 'Build failed', 'failure-log': '##[error]Build failed',
+      'failure-kind': 'driver_exit', 'target-repository': 'github/gh-aw',
       'admission-status': 'admitted', resource: 'actions', 'resource-wait-hours': 2,
       'rollout-mode': 'review', engine: 'copilot', 'engine-version': '1.2.3',
       'gh-aw-version': 'v0.89.4',
@@ -679,7 +680,11 @@ describe('canonical view sources', () => {
       source: 'campaign-problem-items',
       rows: [{
         'problem-title': 'Build failed',
+        'error-signature-label': 'Agent process exited unexpectedly',
         'failure-message': 'Build failed',
+        'failure-log': '##[error]Build failed',
+        'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/42', label: 'Run 42' },
+        'workflow-source-link': { relation: 'workflow', href: 'https://github.com/githubnext/gh-aw-cao/actions/workflows/501' },
         'status-detail': 'Build failed'
       }]
     });

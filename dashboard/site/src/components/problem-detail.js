@@ -58,7 +58,7 @@ const DETAIL_GROUPS = [
     title: 'Scope',
     fields: [
       { label: 'Campaign', field: 'campaign-name', fallback: 'campaign' },
-      { label: 'Workflow', field: 'workflow-name', fallback: 'workflow', linkField: 'workflow-link' },
+      { label: 'Workflow', field: 'workflow-name', fallback: 'workflow', linkField: 'workflow-source-link' },
       { label: 'Workflow role', field: 'workflow-role' },
       { label: 'Runtime repository', field: 'runtime-repository', linkField: 'runtime-repository-link' },
       { label: 'Target repository', field: 'target-repository', linkField: 'target-repository-link' }
