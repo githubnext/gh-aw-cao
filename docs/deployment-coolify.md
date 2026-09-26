@@ -112,11 +112,12 @@ The `server/coolify/compose.yml` file reads the following variables.
 | --- | --- | --- | --- |
 | `CAO_IMAGE` | Yes | No | Image reference by digest, in the form `ghcr.io/...@sha256:DIGEST`. |
 | `CAO_ARTIFACT_VOLUME` | Yes | No | Existing Coolify volume that contains the verified payload. It is mounted read-only at `/app/source`. |
-| `CAO_REDIS_URL` | Yes | Yes | Redis URL. Use `rediss://` when possible. |
-| `CAO_REDIS_MODE` | No. Defaults to `standard`. | No | Use `upstash` only with the constrained single-session Upstash profile. |
-| `CAO_UPSTASH_SINGLE_REPLICA` | Required in Upstash mode. | No | Must be `true` and the Coolify resource must run exactly one replica. |
+| `REDIS_URL` | Yes | Yes | Generic Redis URL. Use `rediss://` when possible. Existing `CAO_REDIS_URL` deployments remain supported. |
+| `CAO_REDIS_MODE` | Legacy only. Defaults to `standard`. | No | Compatibility selector used only when `cao.json` has no host profile. |
+| `CAO_UPSTASH_SINGLE_REPLICA` | Legacy Upstash mode only. | No | Compatibility acknowledgment used only when `cao.json` has no host profile. |
 | `CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS` | No. Defaults to `false`. | No | Set to `true` to allow `redis://` to a private IP address or a single-label service name on the private network. |
-| `CAO_REDIS_NAMESPACE` | No. Defaults to `coolify-dashboard`. | No | Prefix for Redis keys. |
+| `REDIS_NAMESPACE` | No. Defaults to `coolify-dashboard`. | No | Prefix for Redis keys. Existing `CAO_REDIS_NAMESPACE` values remain supported. |
+| `CAO_POLICY_PATH` | Set by Compose. | No | Points at the read-only `cao.json` bind mount. |
 | `CAO_ALLOWED_HOSTS` | Yes | No | Comma-separated list of public host names. |
 | `CAO_TRUSTED_PROXY_CIDRS` | Yes | No | Exact private CIDR of the Coolify proxy network. |
 | `CAO_GITHUB_CLIENT_ID` | Yes | No | Client ID of the OAuth app. |
@@ -165,7 +166,7 @@ Container output appears in the Coolify log view. To turn on debug logs, set `DE
 
 ### Diagnostics
 
-To check Redis, dashboard data, and queries without changing anything, run the following command in the container. `CAO_REDIS_URL` must be set in the container's environment.
+To check Redis, dashboard data, and queries without changing anything, run the following command in the container. `REDIS_URL` must be set in the container's environment.
 
 ```bash
 /app/cao-dashboard doctor --redis-namespace coolify-dashboard

@@ -153,6 +153,7 @@
       "additionalProperties": false,
       "properties": {
         "experimental": { "type": "boolean" },
+        "host": { "$ref": "#/$defs/host" },
         "favicon": {
           "type": "string",
           "maxLength": 2048,
@@ -161,6 +162,57 @@
             { "pattern": "^(?!.*(?:^|/)\\.\\.(?:/|$))\\./[A-Za-z0-9][A-Za-z0-9._/-]*$" }
           ]
         }
+      }
+    },
+    "environmentVariable": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+    },
+    "redisTLS": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": { "type": "string", "enum": ["auto", "required", "disabled"] },
+        "server-name-env": { "$ref": "#/$defs/environmentVariable" },
+        "ca-certificate-env": { "$ref": "#/$defs/environmentVariable" }
+      }
+    },
+    "redisConnection": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "preset": {
+          "type": "string",
+          "enum": [
+            "generic", "aws-elasticache", "redis-cloud", "gcp-memorystore",
+            "railway", "render", "digitalocean"
+          ]
+        },
+        "url-env": { "$ref": "#/$defs/environmentVariable" },
+        "host-env": { "$ref": "#/$defs/environmentVariable" },
+        "port-env": { "$ref": "#/$defs/environmentVariable" },
+        "username-env": { "$ref": "#/$defs/environmentVariable" },
+        "password-env": { "$ref": "#/$defs/environmentVariable" },
+        "namespace-env": { "$ref": "#/$defs/environmentVariable" },
+        "session": { "type": "string", "enum": ["pooled", "serialized"] },
+        "isolate-process-namespace": { "type": "boolean" },
+        "allow-private-plaintext": { "type": "boolean" },
+        "tls": { "$ref": "#/$defs/redisTLS" }
+      }
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authentication", "listener", "redis"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "authentication": { "type": "string", "enum": ["bearer", "github-oauth"] },
+        "listener": { "type": "string", "enum": ["process", "platform"] },
+        "require-https": { "type": "boolean" },
+        "trust-platform-proxy": { "type": "boolean" },
+        "single-replica": { "type": "boolean" },
+        "supports-collection": { "type": "boolean" },
+        "redis": { "$ref": "#/$defs/redisConnection" }
       }
     },
     "defaults": {

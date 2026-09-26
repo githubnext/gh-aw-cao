@@ -5,7 +5,21 @@ const ROOT_KEYS = ["$schema", "version", "gh-aw-version", "control-plane", "targ
 const CONTROL_KEYS = ["scope", "inventory", "web", "defaults", "campaigns", "publishing", "marketplace"];
 const SCOPE_KEYS = ["allowed-owners", "allowed-repositories"];
 const INVENTORY_KEYS = ["max-scan-repositories", "cell-count", "cell-index", "batch-size", "batch-index"];
-const WEB_KEYS = ["experimental", "favicon"];
+const WEB_KEYS = ["experimental", "favicon", "host"];
+const HOST_KEYS = [
+  "name", "authentication", "listener", "require-https", "trust-platform-proxy",
+  "single-replica", "supports-collection", "redis",
+];
+const REDIS_KEYS = [
+  "preset", "url-env", "host-env", "port-env", "username-env", "password-env",
+  "namespace-env", "session", "isolate-process-namespace",
+  "allow-private-plaintext", "tls",
+];
+const REDIS_TLS_KEYS = ["mode", "server-name-env", "ca-certificate-env"];
+const REDIS_PRESETS = [
+  "generic", "aws-elasticache", "redis-cloud", "gcp-memorystore",
+  "railway", "render", "digitalocean",
+];
 const DEFAULT_KEYS = ["mode", "max-repositories", "rollout-percent", "monthly-ai-credit-budget"];
 const OCTICONS = [
   "mark-github", "code", "repo", "server", "issue", "pull-request", "play", "eye",
@@ -255,6 +269,55 @@ function validateWeb(web) {
   assertKeys(web, WEB_KEYS, path);
   if ("experimental" in web) assertBoolean(web.experimental, `${path}.experimental`);
   if ("favicon" in web) assertFavicon(web.favicon, `${path}.favicon`);
+  if ("host" in web) validateHost(web.host, `${path}.host`);
+}
+
+function validateHost(host, path) {
+  assertMapping(host, path);
+  assertKeys(host, HOST_KEYS, path);
+  for (const key of ["authentication", "listener", "redis"]) {
+    if (!(key in host)) throw new PolicyError(`${path}.${key} is required`);
+  }
+  if ("name" in host) assertString(host.name, `${path}.name`, SLUG_PATTERN);
+  assertOneOf(host.authentication, `${path}.authentication`, ["bearer", "github-oauth"]);
+  assertOneOf(host.listener, `${path}.listener`, ["process", "platform"]);
+  for (const key of ["require-https", "trust-platform-proxy", "single-replica", "supports-collection"]) {
+    if (key in host) assertBoolean(host[key], `${path}.${key}`);
+  }
+  validateRedis(host.redis, `${path}.redis`);
+  if (host.listener === "platform" && host.authentication !== "github-oauth") {
+    throw new PolicyError(`${path} platform listeners require github-oauth authentication`);
+  }
+  if (host["trust-platform-proxy"] === true && host.listener !== "platform") {
+    throw new PolicyError(`${path}.trust-platform-proxy requires a platform listener`);
+  }
+  if (host["single-replica"] === true && host.redis.session !== "serialized") {
+    throw new PolicyError(`${path}.single-replica requires a serialized Redis session`);
+  }
+  if (host.redis["isolate-process-namespace"] === true && host.redis.session !== "serialized") {
+    throw new PolicyError(`${path}.redis.isolate-process-namespace requires a serialized session`);
+  }
+}
+
+function validateRedis(redis, path) {
+  assertMapping(redis, path);
+  assertKeys(redis, REDIS_KEYS, path);
+  if ("preset" in redis) assertOneOf(redis.preset, `${path}.preset`, REDIS_PRESETS);
+  for (const key of ["url-env", "host-env", "port-env", "username-env", "password-env", "namespace-env"]) {
+    if (key in redis) assertString(redis[key], `${path}.${key}`, SECRET_REFERENCE_PATTERN);
+  }
+  if ("session" in redis) assertOneOf(redis.session, `${path}.session`, ["pooled", "serialized"]);
+  for (const key of ["isolate-process-namespace", "allow-private-plaintext"]) {
+    if (key in redis) assertBoolean(redis[key], `${path}.${key}`);
+  }
+  if ("tls" in redis) {
+    assertMapping(redis.tls, `${path}.tls`);
+    assertKeys(redis.tls, REDIS_TLS_KEYS, `${path}.tls`);
+    if ("mode" in redis.tls) assertOneOf(redis.tls.mode, `${path}.tls.mode`, ["auto", "required", "disabled"]);
+    for (const key of ["server-name-env", "ca-certificate-env"]) {
+      if (key in redis.tls) assertString(redis.tls[key], `${path}.tls.${key}`, SECRET_REFERENCE_PATTERN);
+    }
+  }
 }
 
 function validateDefaults(defaults, path) {
@@ -531,6 +594,7 @@ export function controlSettings(document, controlRepository) {
     web: {
       experimental: web.experimental ?? false,
       favicon: web.favicon ?? "./favicon.svg",
+      ...(web.host ? { host: web.host } : {}),
     },
     marketplace: control.marketplace ?? { registries: [] },
     campaigns,
@@ -612,6 +676,10 @@ function assertInteger(value, path, minimum, maximum = undefined) {
 
 function assertMode(value, path) {
   if (!MODES.includes(value)) throw new PolicyError(`${path} must be review or live`);
+}
+
+function assertOneOf(value, path, allowed) {
+  if (!allowed.includes(value)) throw new PolicyError(`${path} has an invalid value`);
 }
 
 function assertString(value, path, pattern) {

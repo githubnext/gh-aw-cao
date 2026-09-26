@@ -88,12 +88,16 @@ per-process namespace isolation, replica constraints, and server-side collection
 support. Local serving, host-neutral containers, Azure Functions, and Upstash
 select profiles and then use the same validation and request handling.
 
-New hosting adapters should construct a `HostProfile` and let `server.New`
-validate it. Do not add provider-name branches to shared authentication, proxy,
-ingestion, or Redis enforcement. Startup rejects unsupported capability
-combinations, a serialized profile backed by a pooled Redis client, collection
-on an artifact-only profile, and process-listener settings on a
-platform-listener profile.
+Hosted deployments normally declare these capabilities under
+`control-plane.web.host` in `.github/workflows/cao.json`. The declaration names
+environment variables for Redis connection and verified TLS inputs; secret
+values remain in the deployment environment. New hosting adapters should map
+their environment into this generic policy and let `server.New` validate it.
+Do not add provider-name branches to shared authentication, proxy, ingestion,
+or Redis enforcement. Startup rejects unsupported capability combinations, a
+serialized profile backed by a pooled Redis client, collection on an
+artifact-only profile, and process-listener settings on a platform-listener
+profile.
 
 ## Hosted service profile
 
@@ -102,11 +106,17 @@ Kubernetes workload, or comparable host. It defaults to
 `127.0.0.1:8080`, where a same-host or same-pod HTTPS proxy may forward requests.
 A non-loopback listener is accepted only when `--cert` and `--key` configure
 TLS at the CAO service itself. It is not coupled to a Redis provider or cloud
-SDK. Configuration is supplied through:
+SDK. Set `CAO_POLICY_PATH` only when the policy is mounted somewhere other than
+`.github/workflows/cao.json`. See
+[`docs/deployment-managed-redis.md`](../docs/deployment-managed-redis.md) for
+the generic `REDIS_URL` and TLS contract and provider presets.
+
+The following environment variables remain the compatibility path when
+`control-plane.web.host` is absent:
 
 | Variable | Purpose |
 | --- | --- |
-| `CAO_REDIS_URL` | Redis endpoint. `rediss://` is the hosted default and is always mandatory for Azure. |
+| `REDIS_URL` or `CAO_REDIS_URL` | Redis endpoint. `rediss://` is the hosted default and is always mandatory for Azure. |
 | `CAO_REDIS_MODE` | Optional Redis consistency profile; defaults to `standard`. Use `upstash` only for the constrained single-session profile below. |
 | `CAO_UPSTASH_SINGLE_REPLICA` | Required exact `true` acknowledgement in Upstash mode. The application deployment must run exactly one replica. |
 | `CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS` | Optional exact `true` opt-in for `redis://` to a private IP or single-label service name. Intended only for a Coolify-managed Redis connection on the private service network. |

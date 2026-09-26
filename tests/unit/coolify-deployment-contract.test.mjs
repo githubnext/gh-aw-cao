@@ -63,13 +63,18 @@ test("Coolify Compose contains no credentials and requires immutable image input
   const dashboard = compose.services.dashboard;
   assert.match(dashboard.image, /\$\{CAO_IMAGE:\?.*immutable/);
   assert.equal(dashboard.environment.CAO_SOURCE_DIRECTORY, "/app/source");
-  assert.match(dashboard.environment.CAO_REDIS_URL, /^\$\{CAO_REDIS_URL:\?/);
+  assert.equal(dashboard.environment.REDIS_URL, "${REDIS_URL:-}");
+  assert.equal(dashboard.environment.CAO_REDIS_URL, "${CAO_REDIS_URL:-}");
+  assert.equal(dashboard.environment.CAO_POLICY_PATH, "/app/config/cao.json");
   assert.equal(dashboard.environment.CAO_REDIS_MODE, "${CAO_REDIS_MODE:-standard}");
   assert.equal(dashboard.environment.CAO_UPSTASH_SINGLE_REPLICA, "${CAO_UPSTASH_SINGLE_REPLICA:-false}");
   assert.match(dashboard.environment.CAO_TRUSTED_PROXY_CIDRS, /^\$\{CAO_TRUSTED_PROXY_CIDRS:\?/);
   assert.equal(dashboard.ports, undefined);
   assert.deepEqual(dashboard.cap_drop, ["ALL"]);
-  assert.deepEqual(dashboard.volumes, ["cao-dashboard-artifact:/app/source:ro"]);
+  assert.deepEqual(dashboard.volumes, [
+    "cao-dashboard-artifact:/app/source:ro",
+    "../../.github/workflows/cao.json:/app/config/cao.json:ro",
+  ]);
   assert.equal(compose.volumes["cao-dashboard-artifact"].external, true);
   assert.match(compose.volumes["cao-dashboard-artifact"].name, /^\$\{CAO_ARTIFACT_VOLUME:\?/);
   assert.doesNotMatch(source, /\.\/artifact:/);

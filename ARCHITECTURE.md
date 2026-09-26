@@ -138,6 +138,15 @@ select profiles rather than adding provider checks to shared request handling.
 Startup rejects configurations or Redis clients that do not satisfy the
 selected capabilities.
 
+Hosted startup may compile that profile and its generic Redis connection from
+the non-secret `control-plane.web.host` section of
+`.github/workflows/cao.json`. The policy names environment variables rather
+than storing connection URLs, credentials, server-name overrides, or CA
+certificates. Managed-provider presets map provider conventions into the same
+generic URL and verified-TLS configuration; they do not create provider-specific
+runtime paths. When no host section exists, legacy environment configuration is
+retained for existing deployments.
+
 The host-neutral server also has a constrained Upstash profile for a provider
 that guarantees causal ordering only within one TCP session. That profile runs
 exactly one application replica, serializes all Redis operations through one

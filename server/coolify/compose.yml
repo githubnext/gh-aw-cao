@@ -12,8 +12,11 @@ services:
       - --database-queries
       - /app/queries/database.json
     environment:
-      CAO_REDIS_URL: ${CAO_REDIS_URL:?Configure the Coolify-managed Redis connection}
-      CAO_REDIS_NAMESPACE: ${CAO_REDIS_NAMESPACE:-coolify-dashboard}
+      REDIS_URL: ${REDIS_URL:-}
+      CAO_REDIS_URL: ${CAO_REDIS_URL:-}
+      REDIS_NAMESPACE: ${REDIS_NAMESPACE:-coolify-dashboard}
+      CAO_REDIS_NAMESPACE: ${CAO_REDIS_NAMESPACE:-}
+      CAO_POLICY_PATH: /app/config/cao.json
       CAO_REDIS_MODE: ${CAO_REDIS_MODE:-standard}
       CAO_UPSTASH_SINGLE_REPLICA: ${CAO_UPSTASH_SINGLE_REPLICA:-false}
       CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS: ${CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS:-false}
@@ -34,6 +37,7 @@ services:
       - "8080"
     volumes:
       - cao-dashboard-artifact:/app/source:ro
+      - ../../.github/workflows/cao.json:/app/config/cao.json:ro
     init: true
     read_only: true
     tmpfs:

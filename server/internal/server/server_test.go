@@ -54,16 +54,16 @@ func TestValidateHostedListenRequiresTLSOutsideLoopback(t *testing.T) {
 }
 
 func TestHostedRedisRequiresTLSUnlessPrivatePlaintextIsExplicit(t *testing.T) {
-	if err := validateHostedRedisURL("redis://redis:6379/0", false); err == nil {
+	if err := validateHostedRedisURL("redis://redis:6379/0", false, false); err == nil {
 		t.Fatal("hosted mode accepted plaintext Redis without opt-in")
 	}
-	if err := validateHostedRedisURL("redis://redis:6379/0", true); err != nil {
+	if err := validateHostedRedisURL("redis://redis:6379/0", true, false); err != nil {
 		t.Fatalf("hosted mode rejected explicitly allowed private Redis: %v", err)
 	}
-	if err := validateHostedRedisURL("redis://redis.example.com:6379/0", true); err == nil {
+	if err := validateHostedRedisURL("redis://redis.example.com:6379/0", true, false); err == nil {
 		t.Fatal("hosted mode accepted a public plaintext Redis hostname")
 	}
-	if err := validateHostedRedisURL("rediss://redis.example.com:6380/0", false); err != nil {
+	if err := validateHostedRedisURL("rediss://redis.example.com:6380/0", false, false); err != nil {
 		t.Fatalf("hosted mode rejected TLS Redis: %v", err)
 	}
 }
@@ -91,25 +91,25 @@ func TestHostedUpstashModeRequiresProviderTLS(t *testing.T) {
 }
 
 func TestUpstashRevocationKeyPrefixIsStableAndModeSpecific(t *testing.T) {
-	first, err := upstashRevocationKeyPrefix(true, "dashboard")
+	first, err := durableRevocationKeyPrefix(true, "dashboard")
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := upstashRevocationKeyPrefix(true, " cao:DASHBOARD ")
+	second, err := durableRevocationKeyPrefix(true, " cao:DASHBOARD ")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if first == "" || first != second {
 		t.Fatalf("upstash revocation prefix must be stable: %q, %q", first, second)
 	}
-	other, err := upstashRevocationKeyPrefix(true, "other")
+	other, err := durableRevocationKeyPrefix(true, "other")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if first == other {
 		t.Fatal("different configured namespaces shared an Upstash revocation prefix")
 	}
-	if value, err := upstashRevocationKeyPrefix(false, "invalid namespace!"); err != nil || value != "" {
+	if value, err := durableRevocationKeyPrefix(false, "invalid namespace!"); err != nil || value != "" {
 		t.Fatalf("standard mode unexpectedly received a revocation prefix: %q", value)
 	}
 }

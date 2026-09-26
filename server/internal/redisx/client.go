@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
@@ -47,6 +48,10 @@ type redisResponseError struct {
 type Options struct {
 	AllowPrivatePlaintext bool
 	SingleSession         bool
+	ForceTLS              bool
+	DisableTLS            bool
+	TLSServerName         string
+	TLSCACertificatePEM   string
 }
 
 func (c *Client) SingleSession() bool {
@@ -69,11 +74,18 @@ func NewWithOptions(rawURL string, options Options) (*Client, error) {
 	if parsed.Scheme != "redis" && parsed.Scheme != "rediss" {
 		return nil, errors.New("redis URL must use redis:// or rediss://")
 	}
+	if options.ForceTLS && options.DisableTLS {
+		return nil, errors.New("redis TLS cannot be both required and disabled")
+	}
+	if options.DisableTLS && parsed.Scheme == "rediss" {
+		return nil, errors.New("redis TLS is disabled but URL uses rediss://")
+	}
 	if parsed.Hostname() == "" {
 		return nil, errors.New("redis URL must include a host")
 	}
 	hostname := parsed.Hostname()
-	if parsed.Scheme == "redis" && !isLoopbackHost(hostname) &&
+	useTLS := parsed.Scheme == "rediss" || options.ForceTLS
+	if !useTLS && parsed.Scheme == "redis" && !isLoopbackHost(hostname) &&
 		(!options.AllowPrivatePlaintext || !isPrivateRedisHost(hostname)) {
 		return nil, errors.New("plaintext redis URL must use localhost or an explicitly allowed private host")
 	}
@@ -95,10 +107,24 @@ func NewWithOptions(rawURL string, options Options) (*Client, error) {
 	password, _ := parsed.User.Password()
 	username := parsed.User.Username()
 	var tlsConfig *tls.Config
-	if parsed.Scheme == "rediss" {
+	if useTLS {
+		serverName := strings.TrimSpace(options.TLSServerName)
+		if serverName == "" {
+			serverName = hostname
+		}
 		tlsConfig = &tls.Config{
 			MinVersion: tls.VersionTLS12,
-			ServerName: hostname,
+			ServerName: serverName,
+		}
+		if certificate := strings.TrimSpace(options.TLSCACertificatePEM); certificate != "" {
+			roots, err := x509.SystemCertPool()
+			if err != nil {
+				return nil, errors.New("load system Redis TLS certificate pool")
+			}
+			if !roots.AppendCertsFromPEM([]byte(certificate)) {
+				return nil, errors.New("Redis TLS CA certificate is invalid")
+			}
+			tlsConfig.RootCAs = roots
 		}
 	}
 	poolSize := 8

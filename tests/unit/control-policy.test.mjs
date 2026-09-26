@@ -108,6 +108,52 @@ test("control policy schema accepts config-defined campaign and worker catalogs"
   assert.equal(validate(JSON.stringify(policy)).status, 0);
 });
 
+test("control policy validates provider-neutral host and Redis configuration", () => {
+  const policy = JSON.parse(minimalPolicy);
+  policy["control-plane"].web = {
+    host: {
+      name: "managed-redis",
+      authentication: "github-oauth",
+      listener: "process",
+      "require-https": true,
+      "supports-collection": false,
+      redis: {
+        preset: "redis-cloud",
+        "url-env": "REDIS_URL",
+        session: "pooled",
+        tls: {
+          mode: "required",
+          "server-name-env": "REDIS_TLS_SERVER_NAME",
+          "ca-certificate-env": "REDIS_TLS_CA_CERT",
+        },
+      },
+    },
+  };
+
+  const source = JSON.stringify(policy);
+  assert.equal(validate(source).status, 0);
+  assert.deepEqual(
+    controlSettings(parsePolicy(source), "acme/control").web.host,
+    policy["control-plane"].web.host,
+  );
+});
+
+test("control policy rejects inconsistent host capabilities", () => {
+  const policy = JSON.parse(minimalPolicy);
+  policy["control-plane"].web = {
+    host: {
+      authentication: "bearer",
+      listener: "platform",
+      "single-replica": true,
+      redis: { preset: "generic", session: "pooled" },
+    },
+  };
+
+  const result = validate(JSON.stringify(policy));
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /platform listeners require github-oauth|single-replica requires/);
+});
+
 test("control policy rejects malformed gh-aw compiler versions", () => {
   const policy = JSON.parse(minimalPolicy);
   policy["gh-aw-version"] = "latest";

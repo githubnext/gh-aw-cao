@@ -34,6 +34,11 @@ You can host the dashboard in three ways. The GitHub Actions only option has two
 
 Azure and Coolify run the same Go service from the `server/` directory, with the same authentication, authorization, cross-site request forgery (CSRF), webhook, rate-limit, and logging protections. They differ in platform, secret management, ingress, and delivery.
 
+Use the [one-minute managed Redis guide](deployment-managed-redis.md) to connect
+AWS ElastiCache, Redis Cloud, GCP Memorystore, Railway, Render, or DigitalOcean.
+The same provider-neutral `cao.json` host contract also defines the local Redis,
+Azure, Coolify, and Upstash examples.
+
 ### Using Upstash Redis
 
 [Upstash Redis](deployment-upstash.md) is a managed Redis option for the host-neutral Go server. Upstash doesn't host the CAO application. Run the container on Coolify or another application platform, provide its verified artifact there, and configure the server to use the Upstash TLS Redis endpoint.

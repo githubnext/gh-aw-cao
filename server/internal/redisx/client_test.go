@@ -78,6 +78,25 @@ func TestNewAcceptsRemoteRedisOnlyWithTLS(t *testing.T) {
 	}
 }
 
+func TestNewWithOptionsCanRequireVerifiedTLSForRedisURL(t *testing.T) {
+	client, err := NewWithOptions(
+		"redis://cache.internal:6379",
+		Options{ForceTLS: true, TLSServerName: "cache.example.com"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if client.tlsConfig == nil || client.tlsConfig.ServerName != "cache.example.com" {
+		t.Fatalf("forced TLS configuration is invalid: %#v", client.tlsConfig)
+	}
+	if _, err := NewWithOptions(
+		"rediss://cache.example.com:6379",
+		Options{DisableTLS: true},
+	); err == nil {
+		t.Fatal("TLS-disabled client accepted a rediss URL")
+	}
+}
+
 func TestRedisURLErrorsDoNotExposeCredentials(t *testing.T) {
 	value := strings.Repeat("x", 24)
 	_, err := New("redis://user:" + value + "@example.com:6379")

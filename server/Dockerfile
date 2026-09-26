@@ -49,6 +49,7 @@ COPY --from=server-build --chown=cao:cao /out/cao-dashboard /app/cao-dashboard
 COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/dist/ /app/site/
 COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/dashboard.json /app/dashboard.json
 COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/src/data/queries/database.json /app/queries/database.json
+COPY --from=dashboard-build --chown=cao:cao /workspace/.github/workflows/cao.json /app/.github/workflows/cao.json
 
 WORKDIR /app
 USER 65532:65532

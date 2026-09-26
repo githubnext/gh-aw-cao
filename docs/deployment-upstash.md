@@ -15,7 +15,7 @@ The deployment uses the existing host-neutral `serve-hosted` profile:
 - The CAO server connects to Upstash over the Redis TCP protocol with TLS.
 - The browser connects only to the CAO server. It never receives the Upstash endpoint or credentials.
 - The server uses core Redis commands and Lua scripts. It doesn't use the Upstash REST API or require Redis modules.
-- `CAO_REDIS_MODE=upstash` serializes every Redis operation through one TCP session. If that session is lost, the client fails closed until the process restarts.
+- The Upstash `cao.json` example serializes every Redis operation through one TCP session. If that session is lost, the client fails closed until the process restarts.
 - Each process start uses a fresh internal Redis namespace, so active session and projection state from an earlier TCP session can't reappear after a restart. The encrypted pending-revocation queue uses a stable deployment-scoped prefix so failed GitHub token revocations remain retryable after restart.
 - Upstash stores a disposable projection of the dashboard data, server-side sessions, rate limits, webhook delivery markers, and rebuild coordination state.
 
@@ -45,19 +45,41 @@ The application host needs outbound access to the Upstash Redis endpoint and to 
 1. Create a dedicated Redis database in the [Upstash console](https://console.upstash.com/).
 1. Disable eviction for the database.
 1. Copy the database's TLS Redis connection string. Use the `rediss://` connection string for the Redis TCP endpoint, not the REST URL or REST token.
-1. Store the complete connection string as the secret `CAO_REDIS_URL` on your application host.
+1. Store the complete connection string as the secret `REDIS_URL` on your application host.
 
    > [!CAUTION]
    > The connection string contains a credential. Don't commit it, pass it as a command-line argument, include it in a URL shown to users, or write it to logs.
 
-1. Set `CAO_REDIS_NAMESPACE` to a unique value, such as `upstash-dashboard`.
-1. Set `CAO_REDIS_MODE=upstash`.
-1. Set `CAO_UPSTASH_SINGLE_REPLICA=true` to acknowledge that the application host runs exactly one replica.
-1. Leave `CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS` unset or set it to `false`. Upstash connections must use TLS.
+1. Add this non-secret host example under `control-plane.web` in
+   `.github/workflows/cao.json`:
+
+   ```json
+   {
+     "host": {
+       "name": "upstash",
+       "authentication": "github-oauth",
+       "listener": "process",
+       "require-https": true,
+       "single-replica": true,
+       "supports-collection": false,
+       "redis": {
+         "preset": "generic",
+         "url-env": "REDIS_URL",
+         "namespace-env": "REDIS_NAMESPACE",
+         "session": "serialized",
+         "isolate-process-namespace": true,
+         "tls": { "mode": "required" }
+       }
+     }
+   }
+   ```
+
+1. Set `REDIS_NAMESPACE` to a unique value, such as `upstash-dashboard`, and
+   configure the application host to run exactly one replica.
 1. Configure the remaining `serve-hosted` settings, including the allowed host, trusted proxy boundary, GitHub OAuth app, authorization policy, session secret, administrators, webhook secret, and source directory. For the complete list, see the [hosted service profile](https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md#hosted-service-profile).
 1. Build or select the CAO container image and provide the verified dashboard artifact to the container as read-only input.
 
-   To deploy with Coolify, use `server/coolify/compose.yml` and follow [Deploying the dashboard to Coolify](deployment-coolify.md#deploying-the-dashboard). Set its `CAO_REDIS_URL` secret to the Upstash TLS Redis connection string, select Upstash mode, and keep the resource at one replica.
+   To deploy with Coolify, use `server/coolify/compose.yml` and follow [Deploying the dashboard to Coolify](deployment-coolify.md#deploying-the-dashboard). Set its `REDIS_URL` secret to the Upstash TLS Redis connection string and keep the resource at one replica.
 
 1. Start the container. On startup, `serve-hosted` verifies the artifact, prepares a Redis generation, and atomically makes the complete generation active.
 1. Verify the deployment.
@@ -74,11 +96,9 @@ The Upstash-specific settings are:
 
 | Variable | Required | Secret | Description |
 | --- | --- | --- | --- |
-| `CAO_REDIS_URL` | Yes | Yes | The Upstash Redis TCP connection string. It must use `rediss://`. Don't use the REST URL or token. |
-| `CAO_REDIS_MODE` | Yes | No | Must be `upstash`. Selects the serialized, fail-closed Redis session. |
-| `CAO_UPSTASH_SINGLE_REPLICA` | Yes | No | Must be `true`. Records the required single-replica deployment constraint. |
-| `CAO_REDIS_NAMESPACE` | No | No | Stable deployment identity used to derive a fresh internal namespace at every process start and the durable pending-revocation prefix. Defaults to `hosted-dashboard`. |
-| `CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS` | No | No | Leave unset or `false`. This exception is only for a private deployment-managed Redis network and must not be used with Upstash. |
+| `REDIS_URL` | Yes | Yes | The Upstash Redis TCP connection string. It must use `rediss://`. Don't use the REST URL or token. |
+| `REDIS_NAMESPACE` | No | No | Stable deployment identity used to derive a fresh internal namespace at every process start and the durable pending-revocation prefix. Defaults to `hosted-dashboard`. |
+| `CAO_POLICY_PATH` | No | No | Mounted `cao.json` location when it is not `.github/workflows/cao.json`. |
 
 Upstash provides causal consistency only within one TCP connection. Upstash mode therefore serializes all commands through one connection, disables connection recycling and retries, and permanently fails that client after transport loss. Restarting creates an isolated namespace and re-ingests the verified artifact. Server-side collection and standalone collection roles aren't supported in this mode.
 
@@ -105,7 +125,7 @@ The server exports vendor-neutral OpenTelemetry traces when standard `OTEL_*` en
 ## Rotating the Upstash credential
 
 1. Create or obtain the replacement Upstash credential.
-1. Update the `CAO_REDIS_URL` secret on the application host without logging its value.
+1. Update the `REDIS_URL` secret on the application host without logging its value.
 1. Restart or redeploy the single CAO server replica. The new process creates an isolated namespace and invalidates every existing CAO session.
 1. Confirm readiness, OAuth sign-in, a bounded query, webhook verification, and rate-limit behavior.
 1. Revoke the previous credential after every replica uses the replacement.
