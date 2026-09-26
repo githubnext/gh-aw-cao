@@ -11,6 +11,7 @@ const metadata = {
   availability: /** @type {'available'} */ ('available')
 };
 
+/** @param {Record<string, unknown>[]} rows */
 function context(rows = [problem()]) {
   return {
     pageId: 'campaign-problem-detail',
@@ -117,16 +118,16 @@ describe('problem detail', () => {
   });
 
   it('omits unavailable fields from sparse driver-exit evidence', () => {
-    const sparseProblem = {
-      ...problem(),
-      'failure-message': undefined,
-      'failure-job': undefined,
-      'failure-step': undefined,
-      'failure-log': undefined,
-      'engine-version': undefined,
-      'requested-model': undefined,
-      'resolved-model': undefined
-    };
+    const sparseProblem = /** @type {Record<string, unknown>} */ ({ ...problem() });
+    for (const field of [
+      'failure-message',
+      'failure-job',
+      'failure-step',
+      'failure-log',
+      'engine-version',
+      'requested-model',
+      'resolved-model'
+    ]) delete sparseProblem[field];
     const rendered = renderProblemDetail(context([sparseProblem]));
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
       detail: { parameter: 'target-repository', value: 'github/gh-aw' }
