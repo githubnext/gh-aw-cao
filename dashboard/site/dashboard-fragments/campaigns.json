@@ -1,0 +1,1470 @@
+{
+  "queries": [
+    {
+      "name": "audit-event-summary-buckets",
+      "intent": "Aggregate high- and medium-severity audit events with the same severity and summary by workflow.",
+      "description": "High- and medium-severity audit event counts grouped by severity, workflow, and shared summary.",
+      "from": "audits",
+      "union": [
+        "tools"
+      ],
+      "filter": {
+        "predicates": [
+          {
+            "field": "event-type",
+            "in": [
+              "audit.finding",
+              "audit.observability",
+              "audit.recommendation",
+              "audit.missing_tool",
+              "audit.missing_data",
+              "audit.noop",
+              "audit.mcp_failure",
+              "audit.skill_activation"
+            ]
+          },
+          {
+            "field": "event-status",
+            "in": [
+              "high",
+              "medium"
+            ]
+          }
+        ]
+      },
+      "joins": [
+        {
+          "source": "workflows",
+          "type": "left",
+          "on": [
+            {
+              "left": "organization",
+              "right": "organization"
+            },
+            {
+              "left": "repository",
+              "right": "repository"
+            },
+            {
+              "left": "workflow",
+              "right": "workflow"
+            }
+          ],
+          "fields": [
+            {
+              "field": "campaign",
+              "as": "campaign"
+            }
+          ]
+        }
+      ],
+      "aggregate": {
+        "by": [
+          "campaign",
+          "event-status",
+          "workflow",
+          "event-summary"
+        ],
+        "values": [
+          {
+            "field": "event",
+            "as": "events",
+            "reducer": "count"
+          }
+        ]
+      },
+      "select": [
+        {
+          "field": "campaign"
+        },
+        {
+          "field": "event-status"
+        },
+        {
+          "field": "workflow"
+        },
+        {
+          "field": "event-summary"
+        },
+        {
+          "field": "events"
+        }
+      ],
+      "order-by": [
+        {
+          "field": "event-status",
+          "direction": "asc"
+        },
+        {
+          "field": "events",
+          "direction": "desc"
+        },
+        {
+          "field": "workflow",
+          "direction": "asc"
+        },
+        {
+          "field": "event-summary",
+          "direction": "asc"
+        }
+      ]
+    },
+    {
+      "name": "campaign-workflows",
+      "intent": "List campaign-owned orchestrator and worker workflows with database-backed execution totals.",
+      "description": "Campaign workflows projected from the canonical workflow inventory.",
+      "from": "workflow-inventory",
+      "filter": {
+        "predicates": [
+          {
+            "field": "workflow-role",
+            "in": [
+              "orchestrator",
+              "worker"
+            ]
+          },
+          {
+            "field": "workflow-active",
+            "equals": "true"
+          }
+        ]
+      },
+      "select": [
+        {
+          "field": "campaign"
+        },
+        {
+          "field": "campaign-name"
+        },
+        {
+          "field": "organization"
+        },
+        {
+          "field": "repository"
+        },
+        {
+          "field": "workflow"
+        },
+        {
+          "field": "workflow-name"
+        },
+        {
+          "field": "workflow-role"
+        },
+        {
+          "field": "rollout-mode"
+        },
+        {
+          "field": "workflow-active"
+        },
+        {
+          "field": "runs"
+        },
+        {
+          "field": "aic"
+        },
+        {
+          "field": "repository-link"
+        },
+        {
+          "field": "workflow-link"
+        }
+      ],
+      "order-by": [
+        {
+          "field": "campaign-name",
+          "direction": "asc"
+        },
+        {
+          "field": "workflow-role",
+          "direction": "asc"
+        },
+        {
+          "field": "workflow-name",
+          "direction": "asc"
+        }
+      ]
+    },
+    {
+      "name": "campaign-reports",
+      "intent": "Project retained outcomes into campaign-addressable report evidence.",
+      "description": "Campaign outcome reports with database-backed disposition fields.",
+      "from": "outcomes",
+      "compute": [
+        {
+          "as": "report-status",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "outcome-status"
+            },
+            {
+              "field": "outcome-state"
+            },
+            {
+              "value": "unknown"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "campaign"
+        },
+        {
+          "field": "safe-output"
+        },
+        {
+          "field": "outcome-title"
+        },
+        {
+          "field": "outcome-summary"
+        },
+        {
+          "field": "report-status",
+          "as": "outcome-status"
+        },
+        {
+          "field": "rollout-mode"
+        },
+        {
+          "field": "engine"
+        },
+        {
+          "field": "engine-version"
+        },
+        {
+          "field": "requested-model"
+        },
+        {
+          "field": "resolved-model"
+        },
+        {
+          "field": "outcome-category"
+        },
+        {
+          "field": "observed-at"
+        },
+        {
+          "field": "external-link"
+        }
+      ],
+      "order-by": [
+        {
+          "field": "observed-at",
+          "direction": "desc"
+        },
+        {
+          "field": "outcome-title",
+          "direction": "asc"
+        }
+      ]
+    },
+    {
+      "name": "campaign-worker-issues",
+      "intent": "Project issue outcomes created by campaign worker workflows.",
+      "description": "Campaign-addressable issue outcomes restricted to declared worker workflows.",
+      "from": "outcomes",
+      "joins": [
+        {
+          "source": "workflows",
+          "type": "inner",
+          "on": [
+            {
+              "left": "organization",
+              "right": "organization"
+            },
+            {
+              "left": "repository",
+              "right": "repository"
+            },
+            {
+              "left": "workflow",
+              "right": "workflow"
+            }
+          ],
+          "fields": [
+            {
+              "field": "workflow-role",
+              "as": "declared-workflow-role"
+            }
+          ]
+        }
+      ],
+      "filter": {
+        "predicates": [
+          {
+            "field": "outcome-category",
+            "equals": "issue"
+          },
+          {
+            "field": "declared-workflow-role",
+            "equals": "worker"
+          }
+        ]
+      },
+      "select": [
+        {
+          "field": "campaign"
+        },
+        {
+          "field": "organization"
+        },
+        {
+          "field": "repository"
+        },
+        {
+          "field": "safe-output"
+        },
+        {
+          "field": "outcome-number"
+        },
+        {
+          "field": "outcome-title",
+          "as": "event-summary"
+        },
+        {
+          "field": "outcome-title"
+        },
+        {
+          "field": "outcome-summary"
+        },
+        {
+          "field": "outcome-status"
+        },
+        {
+          "field": "outcome-state"
+        },
+        {
+          "field": "issue-state"
+        },
+        {
+          "field": "issue-closed"
+        },
+        {
+          "field": "issue-state-reason"
+        },
+        {
+          "field": "issue-status"
+        },
+        {
+          "field": "issue-closing-status"
+        },
+        {
+          "field": "issue-status-detail"
+        },
+        {
+          "field": "issue-closed-at"
+        },
+        {
+          "field": "issue-status-observed-at"
+        },
+        {
+          "field": "outcome-category",
+          "as": "safe-output-type"
+        },
+        {
+          "field": "workflow"
+        },
+        {
+          "field": "workflow-name"
+        },
+        {
+          "field": "run"
+        },
+        {
+          "field": "observed-at"
+        },
+        {
+          "field": "issue-link"
+        },
+        {
+          "field": "external-link"
+        },
+        {
+          "field": "run-link"
+        }
+      ],
+      "order-by": [
+        {
+          "field": "observed-at",
+          "direction": "desc"
+        }
+      ]
+    },
+    {
+      "name": "campaign-issue-tab-counts",
+      "intent": "Count the retained worker issues available for each campaign Reports tab.",
+      "description": "One campaign row with the number of retained issue outcomes produced by campaign workers.",
+      "from": "campaign-worker-issues",
+      "aggregate": {
+        "by": [
+          "campaign"
+        ],
+        "values": [
+          {
+            "field": "campaign",
+            "as": "items",
+            "reducer": "count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "campaign-readme-orchestrators",
+      "intent": "Resolve one repository link for each campaign README from its declared orchestrator workflow.",
+      "from": "workflows",
+      "filter": {
+        "predicates": [
+          {
+            "field": "workflow-role",
+            "equals": "orchestrator"
+          }
+        ]
+      },
+      "select": [
+        {
+          "field": "campaign"
+        },
+        {
+          "field": "repository-link"
+        }
+      ]
+    },
+    {
+      "name": "campaign-readme-details",
+      "intent": "Present retained campaign README content with its repository-relative link context.",
+      "from": "campaigns",
+      "joins": [
+        {
+          "source": "campaign-readme-orchestrators",
+          "type": "left",
+          "on": [
+            {
+              "left": "campaign",
+              "right": "campaign"
+            }
+          ],
+          "fields": [
+            {
+              "field": "repository-link",
+              "as": "repository-link"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "campaign"
+        },
+        {
+          "field": "campaign-readme"
+        },
+        {
+          "field": "campaign-readme-path"
+        },
+        {
+          "field": "repository-link"
+        }
+      ]
+    },
+    {
+      "name": "campaign-memory-campaigns",
+      "intent": "Provide the registered campaigns whose repository memory can be browsed together.",
+      "description": "Registered campaigns ordered for the all-campaign repository-memory browser.",
+      "from": "campaigns",
+      "select": [
+        {
+          "field": "campaign"
+        },
+        {
+          "field": "campaign-name"
+        }
+      ],
+      "order-by": [
+        {
+          "field": "campaign-name",
+          "direction": "asc"
+        }
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "id": "campaigns",
+      "kind": "built-in",
+      "page": "campaigns",
+      "title": "Campaigns",
+      "icon": "goal",
+      "class-name": "campaigns-page",
+      "description": "Activity from centrally managed campaigns.",
+      "definition": {
+        "data-state": {
+          "availability": true
+        },
+        "views": [
+          {
+            "id": "campaigns-dispatches",
+            "title": "Dispatches by campaign",
+            "description": "The share of observed dispatches handled by each centrally managed campaign.",
+            "data": {
+              "source": "campaign-inventory"
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "layout": "horizontal",
+            "empty-message": "No campaign dispatches were observed in the selected horizon.",
+            "encoding": {
+              "x": {
+                "field": "campaign-name",
+                "type": "nominal",
+                "title": "Campaign"
+              },
+              "y": {
+                "field": "dispatches",
+                "type": "quantitative",
+                "aggregate": "sum",
+                "as": "total-dispatches",
+                "title": "Dispatches"
+              },
+              "href": {
+                "field": "campaign-dashboard-link",
+                "type": "nominal"
+              }
+            }
+          },
+          {
+            "id": "campaigns-repository-coverage",
+            "title": "Repository coverage by campaign",
+            "description": "Distinct registered repositories reached by successful worker dispatches in the selected horizon.",
+            "data": {
+              "source": "campaign-inventory",
+              "order-by": [
+                {
+                  "field": "covered-repositories",
+                  "direction": "desc"
+                },
+                {
+                  "field": "campaign-name",
+                  "direction": "asc"
+                }
+              ],
+              "limit": 100
+            },
+            "mark": "chart",
+            "chart": "horizontal-bar",
+            "layout": "full",
+            "empty-message": "No campaign repository coverage was observed in the selected horizon.",
+            "encoding": {
+              "x": {
+                "field": "campaign-name",
+                "type": "nominal",
+                "title": "Campaign"
+              },
+              "y": {
+                "field": "covered-repositories",
+                "type": "quantitative",
+                "title": "Covered repositories"
+              }
+            }
+          },
+          {
+            "id": "campaigns-inventory",
+            "title": "Campaigns",
+            "description": "Centrally managed campaign inventory and observed execution totals.",
+            "data": {
+              "source": "campaign-inventory"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "column-summaries": true,
+            "layout": "full-view",
+            "empty-message": "No campaigns discovered.",
+            "encoding": {
+              "href": {
+                "field": "campaign-dashboard-link",
+                "type": "nominal"
+              },
+              "columns": [
+                {
+                  "field": "campaign-name",
+                  "type": "nominal",
+                  "title": "Campaign"
+                },
+                {
+                  "field": "workflows",
+                  "type": "quantitative",
+                  "title": "Workflows"
+                },
+                {
+                  "field": "roles",
+                  "type": "nominal",
+                  "title": "Roles"
+                },
+                {
+                  "field": "modes",
+                  "type": "nominal",
+                  "title": "Modes",
+                  "display": "mode"
+                },
+                {
+                  "field": "runs",
+                  "type": "quantitative",
+                  "title": "Runs"
+                },
+                {
+                  "field": "dispatches",
+                  "type": "quantitative",
+                  "title": "Dispatches"
+                },
+                {
+                  "field": "aic",
+                  "type": "quantitative",
+                  "title": "AIC",
+                  "unit": "aic"
+                },
+                {
+                  "field": "registration",
+                  "type": "nominal",
+                  "title": "Registration",
+                  "display": "active-state"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "memory",
+      "kind": "custom",
+      "title": "Memory",
+      "navigation-label": "Memory",
+      "icon": "archive",
+      "experimental": true,
+      "class-name": "memory-page",
+      "description": "Browse repository memory published by centrally managed campaigns.",
+      "views": [
+        {
+          "id": "campaign-memory-browser",
+          "title": "Campaign memory",
+          "intent": "Let operators browse published repository memory from every registered campaign without leaving this page.",
+          "data": {
+            "sources": [
+              "campaign-memory-campaigns"
+            ]
+          },
+          "mark": "element",
+          "element": "all-campaign-memory",
+          "layout": "full"
+        }
+      ]
+    },
+    {
+      "id": "campaign-detail",
+      "kind": "custom",
+      "title": "Campaign",
+      "description": "Operational activity for this campaign.",
+      "icon": "goal",
+      "class-name": "campaign-detail-page",
+      "route": {
+        "hash-query-parameter": "campaign",
+        "title-format": "title-case",
+        "tabs-class-name": "campaign-tabs",
+        "tabs": [
+          {
+            "id": "insights",
+            "label": "Operational Value",
+            "icon": "graph",
+            "page": "campaign-insights"
+          },
+          {
+            "id": "problems",
+            "label": "Failures",
+            "icon": "alert",
+            "page": "campaign-problems"
+          },
+          {
+            "id": "issues",
+            "label": "Reports",
+            "icon": "issue-opened",
+            "page": "campaign-issues"
+          },
+          {
+            "id": "memory",
+            "label": "Memory",
+            "icon": "archive",
+            "page": "campaign-memory"
+          }
+        ]
+      },
+      "views": [
+        {
+          "id": "campaign-overview-navigation",
+          "title": "Campaign overview",
+          "data": {
+            "sources": [
+              "workflows",
+              "campaign-insight-tab-counts",
+              "campaign-problem-tab-counts",
+              "campaign-issue-tab-counts"
+            ],
+            "arguments": [
+              {
+                "name": "campaign",
+                "field": "campaign"
+              }
+            ]
+          },
+          "mark": "element",
+          "element": "campaign-route",
+          "layout": "full",
+          "config": {
+            "body": "overview"
+          }
+        },
+        {
+          "id": "campaign-readme",
+          "title": "README",
+          "data": {
+            "sources": [
+              "campaign-readme-details"
+            ],
+            "arguments": [
+              {
+                "name": "campaign",
+                "field": "campaign"
+              }
+            ]
+          },
+          "mark": "element",
+          "element": "markdown",
+          "config": {
+            "content-field": "campaign-readme",
+            "path-field": "campaign-readme-path",
+            "base-link-field": "repository-link",
+            "empty-message": "Campaign README content is unavailable in this inventory."
+          },
+          "layout": "full"
+        },
+        {
+          "id": "campaign-settings",
+          "title": "Settings",
+          "data": {
+            "source": "campaigns",
+            "arguments": [
+              {
+                "name": "campaign",
+                "field": "campaign"
+              }
+            ]
+          },
+          "mark": "table",
+          "encoding": {
+            "columns": [
+              {
+                "field": "campaign-description",
+                "type": "nominal",
+                "title": "Description"
+              },
+              {
+                "field": "campaign-enabled",
+                "type": "nominal",
+                "title": "State",
+                "display": "active-state"
+              },
+              {
+                "field": "campaign-mode",
+                "type": "nominal",
+                "title": "Rollout",
+                "display": "mode"
+              },
+              {
+                "field": "campaign-worker-count",
+                "type": "quantitative",
+                "title": "Workers"
+              }
+            ],
+            "actions": [
+              {
+                "action": "set-campaign-preview",
+                "presentation": "cli-action",
+                "icon": "eye",
+                "label": "Switch to preview",
+                "context": [
+                  "campaign"
+                ],
+                "when": {
+                  "field": "campaign-mode",
+                  "equals": "live"
+                }
+              },
+              {
+                "action": "set-campaign-live",
+                "presentation": "cli-action",
+                "icon": "play",
+                "label": "Switch to live",
+                "context": [
+                  "campaign"
+                ],
+                "when": {
+                  "field": "campaign-mode",
+                  "equals": "review"
+                }
+              },
+              {
+                "action": "disable-campaign",
+                "presentation": "cli-action",
+                "icon": "pause",
+                "label": "Pause campaign",
+                "context": [
+                  "campaign"
+                ],
+                "when": {
+                  "field": "campaign-enabled",
+                  "equals": true
+                }
+              },
+              {
+                "action": "enable-campaign",
+                "presentation": "cli-action",
+                "icon": "play",
+                "label": "Enable campaign",
+                "context": [
+                  "campaign"
+                ],
+                "when": {
+                  "field": "campaign-enabled",
+                  "equals": false
+                }
+              }
+            ]
+          },
+          "layout": "full"
+        }
+      ]
+    },
+    {
+      "id": "campaign-workflows",
+      "kind": "custom",
+      "title": "Campaign",
+      "description": "Operational activity for this campaign.",
+      "icon": "workflow",
+      "class-name": "campaign-workflows-page",
+      "route": {
+        "hash-query-parameter": "campaign",
+        "title-format": "title-case",
+        "tabs-class-name": "campaign-tabs",
+        "tabs": [
+          {
+            "id": "insights",
+            "label": "Operational Value",
+            "icon": "graph",
+            "page": "campaign-insights"
+          },
+          {
+            "id": "problems",
+            "label": "Failures",
+            "icon": "alert",
+            "page": "campaign-problems"
+          },
+          {
+            "id": "issues",
+            "label": "Reports",
+            "icon": "issue-opened",
+            "page": "campaign-issues"
+          },
+          {
+            "id": "memory",
+            "label": "Memory",
+            "icon": "archive",
+            "page": "campaign-memory"
+          }
+        ]
+      },
+      "views": [
+        {
+          "id": "campaign-workflow-navigation",
+          "title": "Campaign workflows",
+          "data": {
+            "sources": [
+              "workflows"
+            ]
+          },
+          "mark": "element",
+          "element": "campaign-route",
+          "layout": "full",
+          "config": {
+            "body": "workflows"
+          }
+        },
+        {
+          "id": "campaign-workflow-table",
+          "data": {
+            "source": "campaign-workflows",
+            "route-field": "campaign"
+          },
+          "mark": "table",
+          "controls": "interactive",
+          "empty-message": "No orchestrator or worker workflows are configured for this campaign.",
+          "encoding": {
+            "href": {
+              "field": "workflow-link",
+              "type": "nominal"
+            },
+            "columns": [
+              {
+                "field": "workflow-name",
+                "type": "nominal",
+                "format": "workflow-relative-path",
+                "title": "Workflow"
+              },
+              {
+                "field": "workflow-role",
+                "type": "ordinal",
+                "title": "Role",
+                "display": "label"
+              },
+              {
+                "field": "workflow",
+                "type": "nominal",
+                "title": "Definition"
+              },
+              {
+                "field": "rollout-mode",
+                "type": "nominal",
+                "title": "Mode",
+                "display": "mode"
+              },
+              {
+                "field": "runs",
+                "type": "quantitative",
+                "title": "Runs"
+              },
+              {
+                "field": "aic",
+                "type": "quantitative",
+                "title": "Total AIC",
+                "unit": "aic"
+              },
+              {
+                "field": "workflow-active",
+                "type": "nominal",
+                "title": "Registration",
+                "display": "active-state"
+              }
+            ],
+            "actions": [
+              {
+                "intent": "Open the precise authored workflow on GitHub without running or disabling it.",
+                "presentation": "external-link",
+                "icon": "mark-github",
+                "label": "Open workflow on GitHub",
+                "context": [
+                  "workflow-link"
+                ]
+              }
+            ]
+          },
+          "layout": "full"
+        }
+      ]
+    },
+    {
+      "id": "campaign-issues",
+      "kind": "custom",
+      "title": "Campaign",
+      "description": "Operational activity for this campaign.",
+      "icon": "issue-opened",
+      "class-name": "campaign-issues-page",
+      "route": {
+        "hash-query-parameter": "campaign",
+        "title-format": "title-case",
+        "tabs-class-name": "campaign-tabs",
+        "tab": "issues",
+        "tabs": [
+          {
+            "id": "insights",
+            "label": "Operational Value",
+            "icon": "graph",
+            "page": "campaign-insights"
+          },
+          {
+            "id": "problems",
+            "label": "Failures",
+            "icon": "alert",
+            "page": "campaign-problems"
+          },
+          {
+            "id": "issues",
+            "label": "Reports",
+            "icon": "issue-opened",
+            "page": "campaign-issues"
+          },
+          {
+            "id": "memory",
+            "label": "Memory",
+            "icon": "archive",
+            "page": "campaign-memory"
+          }
+        ]
+      },
+      "views": [
+        {
+          "id": "campaign-issue-navigation",
+          "title": "Campaign issues",
+          "data": {
+            "sources": [
+              "workflows",
+              "campaign-insight-tab-counts",
+              "campaign-problem-tab-counts",
+              "campaign-issue-tab-counts"
+            ],
+            "arguments": [
+              {
+                "name": "campaign",
+                "field": "campaign"
+              }
+            ]
+          },
+          "mark": "element",
+          "element": "campaign-route",
+          "layout": "full",
+          "config": {
+            "body": "issues"
+          }
+        },
+        {
+          "id": "campaign-issue-status",
+          "title": "Generated issue status",
+          "description": "Current split of retained issue outcomes generated by this campaign by open state or closing reason.",
+          "data": {
+            "source": "campaign-worker-issues",
+            "route-field": "campaign"
+          },
+          "mark": "chart",
+          "chart": "pie",
+          "layout": "full",
+          "encoding": {
+            "x": {
+              "field": "issue-status-detail",
+              "type": "nominal",
+              "title": "Current status"
+            },
+            "y": {
+              "field": "safe-output",
+              "type": "quantitative",
+              "aggregate": "count",
+              "title": "Issues"
+            }
+          }
+        },
+        {
+          "id": "campaign-issue-table",
+          "title": "Generated issues",
+          "data": {
+            "source": "campaign-worker-issues",
+            "route-field": "campaign",
+            "order-by": [
+              {
+                "field": "observed-at",
+                "direction": "desc"
+              }
+            ]
+          },
+          "mark": "list",
+          "list": {
+            "style": "entity-cards",
+            "card": "issue",
+            "icon": "issue-opened",
+            "drill": {
+              "type": "external",
+              "field": "issue-link"
+            }
+          },
+          "empty-message": "No generated issues have been attributed to this campaign.",
+          "encoding": {
+            "href": {
+              "field": "issue-link"
+            },
+            "columns": [
+              {
+                "field": "outcome-title",
+                "type": "nominal",
+                "title": "Issue"
+              },
+              {
+                "field": "issue-status-detail",
+                "type": "nominal",
+                "title": "Current status",
+                "display": "status"
+              },
+              {
+                "field": "issue-closing-status",
+                "type": "nominal",
+                "title": "Closing status"
+              },
+              {
+                "field": "issue-closed-at",
+                "type": "temporal",
+                "format": "human-friendly-timestamp",
+                "title": "Closed"
+              },
+              {
+                "field": "issue-status-observed-at",
+                "type": "temporal",
+                "format": "human-friendly-timestamp",
+                "title": "Status observed"
+              },
+              {
+                "field": "workflow-name",
+                "type": "nominal",
+                "title": "Workflow"
+              },
+              {
+                "field": "observed-at",
+                "type": "temporal",
+                "format": "human-friendly-timestamp",
+                "title": "Observed"
+              }
+            ]
+          },
+          "layout": "full"
+        }
+      ]
+    },
+    {
+      "id": "campaign-repositories",
+      "kind": "custom",
+      "title": "Campaign",
+      "description": "Operational activity for this campaign.",
+      "icon": "repo",
+      "class-name": "campaign-repositories-page",
+      "route": {
+        "hash-query-parameter": "campaign",
+        "title-format": "title-case",
+        "tabs-class-name": "campaign-tabs",
+        "tabs": [
+          {
+            "id": "insights",
+            "label": "Operational Value",
+            "icon": "graph",
+            "page": "campaign-insights"
+          },
+          {
+            "id": "problems",
+            "label": "Failures",
+            "icon": "alert",
+            "page": "campaign-problems"
+          },
+          {
+            "id": "issues",
+            "label": "Reports",
+            "icon": "issue-opened",
+            "page": "campaign-issues"
+          },
+          {
+            "id": "memory",
+            "label": "Memory",
+            "icon": "archive",
+            "page": "campaign-memory"
+          }
+        ]
+      },
+      "views": [
+        {
+          "id": "campaign-repository-workflows",
+          "title": "Workflows by repository",
+          "description": "Distribution of campaign workflows across associated repositories.",
+          "data": {
+            "source": "campaign-workflows",
+            "route-field": "campaign"
+          },
+          "mark": "chart",
+          "chart": "pie",
+          "layout": "full",
+          "encoding": {
+            "x": {
+              "field": "repository",
+              "type": "nominal",
+              "title": "Repository"
+            },
+            "y": {
+              "field": "workflow",
+              "type": "quantitative",
+              "aggregate": "distinct-count",
+              "title": "Workflows"
+            },
+            "href": {
+              "field": "repository-link",
+              "type": "nominal"
+            }
+          }
+        },
+        {
+          "id": "campaign-repository-navigation",
+          "title": "Campaign repositories",
+          "data": {
+            "sources": [
+              "workflows"
+            ]
+          },
+          "mark": "element",
+          "element": "campaign-route",
+          "layout": "full",
+          "config": {
+            "body": "repositories"
+          }
+        },
+        {
+          "id": "campaign-repository-table",
+          "title": "Associated repositories",
+          "data": {
+            "source": "campaign-workflows",
+            "route-field": "campaign",
+            "order-by": [
+              {
+                "field": "repository",
+                "direction": "asc"
+              },
+              {
+                "field": "workflow-name",
+                "direction": "asc"
+              }
+            ]
+          },
+          "mark": "table",
+          "controls": "interactive",
+          "empty-message": "No repositories are associated with this campaign.",
+          "encoding": {
+            "href": {
+              "field": "repository-link",
+              "type": "nominal"
+            },
+            "columns": [
+              {
+                "field": "repository",
+                "type": "nominal",
+                "title": "Repository",
+                "display": "repository-link"
+              },
+              {
+                "field": "workflow-name",
+                "type": "nominal",
+                "title": "Workflow"
+              },
+              {
+                "field": "workflow-role",
+                "type": "ordinal",
+                "title": "Role",
+                "display": "label"
+              },
+              {
+                "field": "rollout-mode",
+                "type": "nominal",
+                "title": "Mode",
+                "display": "mode"
+              }
+            ]
+          },
+          "layout": "full"
+        }
+      ]
+    },
+    {
+      "id": "campaign-reports",
+      "kind": "custom",
+      "title": "Campaign",
+      "description": "Operational activity for this campaign.",
+      "icon": "goal",
+      "class-name": "campaign-reports-page",
+      "route": {
+        "hash-query-parameter": "campaign",
+        "title-format": "title-case",
+        "tabs-class-name": "campaign-tabs",
+        "tabs": [
+          {
+            "id": "insights",
+            "label": "Operational Value",
+            "icon": "graph",
+            "page": "campaign-insights"
+          },
+          {
+            "id": "problems",
+            "label": "Failures",
+            "icon": "alert",
+            "page": "campaign-problems"
+          },
+          {
+            "id": "issues",
+            "label": "Reports",
+            "icon": "issue-opened",
+            "page": "campaign-issues"
+          },
+          {
+            "id": "memory",
+            "label": "Memory",
+            "icon": "archive",
+            "page": "campaign-memory"
+          }
+        ]
+      },
+      "views": [
+        {
+          "id": "campaign-report-status",
+          "title": "Report status",
+          "description": "The disposition of durable outputs is the leading outcome signal for this campaign.",
+          "data": {
+            "source": "campaign-reports",
+            "route-field": "campaign"
+          },
+          "mark": "chart",
+          "chart": "pie",
+          "layout": "full",
+          "encoding": {
+            "x": {
+              "field": "outcome-status",
+              "type": "nominal",
+              "title": "Status"
+            },
+            "y": {
+              "field": "safe-output",
+              "type": "quantitative",
+              "aggregate": "count",
+              "title": "Reports"
+            }
+          }
+        },
+        {
+          "id": "campaign-report-navigation",
+          "title": "Campaign reports",
+          "data": {
+            "sources": [
+              "workflows"
+            ]
+          },
+          "mark": "element",
+          "element": "campaign-route",
+          "layout": "full",
+          "config": {
+            "body": "reports"
+          }
+        },
+        {
+          "id": "campaign-report-table",
+          "data": {
+            "source": "campaign-reports",
+            "route-field": "campaign"
+          },
+          "mark": "table",
+          "controls": "interactive",
+          "empty-message": "No reports have been attributed to this campaign.",
+          "encoding": {
+            "columns": [
+              {
+                "field": "outcome-title",
+                "type": "nominal",
+                "title": "Report",
+                "display": "outcome-link"
+              },
+              {
+                "field": "outcome-status",
+                "type": "nominal",
+                "title": "Status",
+                "display": "status"
+              },
+              {
+                "field": "rollout-mode",
+                "type": "nominal",
+                "title": "Mode",
+                "display": "mode"
+              },
+              {
+                "field": "outcome-category",
+                "type": "nominal",
+                "title": "Type"
+              },
+              {
+                "field": "observed-at",
+                "type": "temporal",
+                "format": "human-friendly-timestamp",
+                "title": "Updated"
+              }
+            ]
+          },
+          "layout": "full"
+        }
+      ]
+    },
+    {
+      "id": "campaign-memory",
+      "kind": "custom",
+      "title": "Campaign",
+      "description": "Repository memory published for this campaign.",
+      "icon": "archive",
+      "experimental": true,
+      "class-name": "campaign-memory-page",
+      "view-mode-control": false,
+      "route": {
+        "hash-query-parameter": "campaign",
+        "title-format": "title-case",
+        "tabs-class-name": "campaign-tabs",
+        "tab": "memory",
+        "tabs": [
+          {
+            "id": "insights",
+            "label": "Operational Value",
+            "icon": "graph",
+            "page": "campaign-insights"
+          },
+          {
+            "id": "problems",
+            "label": "Failures",
+            "icon": "alert",
+            "page": "campaign-problems"
+          },
+          {
+            "id": "issues",
+            "label": "Reports",
+            "icon": "issue-opened",
+            "page": "campaign-issues"
+          },
+          {
+            "id": "memory",
+            "label": "Memory",
+            "icon": "archive",
+            "page": "campaign-memory"
+          }
+        ]
+      },
+      "views": [
+        {
+          "id": "campaign-memory-browser",
+          "title": "Repository memory",
+          "description": "Browse files published from this campaign's repository-memory branch.",
+          "data": {
+            "sources": [
+              "workflows",
+              "campaign-insight-tab-counts",
+              "campaign-problem-tab-counts",
+              "campaign-issue-tab-counts"
+            ],
+            "arguments": [
+              {
+                "name": "campaign",
+                "field": "campaign"
+              }
+            ]
+          },
+          "mark": "element",
+          "element": "campaign-route",
+          "layout": "full",
+          "config": {
+            "body": "memory"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -11,10 +11,7 @@ import {
   dashboardQueryCostMarkdown,
   readSnapshotDatabaseVersion,
 } from "../helpers/dashboard-query-cost.mjs";
-
-const dashboardDocument = JSON.parse(
-  await readFile("dashboard/site/dashboard.json", "utf8"),
-);
+import { authoritativeDashboard as dashboardDocument } from "../helpers/authoritative-dashboard.mjs";
 
 /** Builds a small canonical SQLite snapshot with the shipped ingestion path. */
 async function syntheticSnapshot() {

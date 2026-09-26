@@ -236,6 +236,57 @@ func TestResolveIngestSource(t *testing.T) {
 	}
 }
 
+func TestNewRedisStoreSucceedsWithValidURLAndNamespace(t *testing.T) {
+	store, err := newRedisStore("redis://127.0.0.1:6379/0", "checkout-abc123")
+	if err != nil {
+		t.Fatalf("newRedisStore() error = %v, want nil", err)
+	}
+	if store == nil {
+		t.Fatal("newRedisStore() store = nil, want non-nil")
+	}
+}
+
+func TestNewRedisStoreFailsOnInvalidURL(t *testing.T) {
+	_, err := newRedisStore("not-a-url", "checkout-abc123")
+	if err == nil {
+		t.Fatal("newRedisStore() error = nil, want non-nil for an invalid URL")
+	}
+}
+
+func TestNewRedisStoreFailsOnInvalidNamespace(t *testing.T) {
+	_, err := newRedisStore("redis://127.0.0.1:6379/0", "")
+	if err == nil {
+		t.Fatal("newRedisStore() error = nil, want non-nil for an invalid namespace")
+	}
+}
+
+func TestResolveBackfillMode(t *testing.T) {
+	tests := []struct {
+		name       string
+		replayOnly bool
+		want       backfillMode
+	}{
+		{
+			name:       "replay-only flag selects replay-only mode",
+			replayOnly: true,
+			want:       backfillModeReplayOnly,
+		},
+		{
+			name:       "unset flag selects full mode",
+			replayOnly: false,
+			want:       backfillModeFull,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := resolveBackfillMode(tt.replayOnly); got != tt.want {
+				t.Errorf("resolveBackfillMode(%v) = %q, want %q", tt.replayOnly, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestRootCommandRegistersEverySubcommand(t *testing.T) {
 	want := []string{"backfill", "collect", "doctor", "ingest", "serve", "serve-hosted"}
 	root := newRootCommand()

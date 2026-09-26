@@ -1,9 +1,9 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { executeDashboardQueries } from '../../src/data/queries/declarative.js';
+import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
 const dashboard = /** @type {Record<string, any>} */ (
-  JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8')).dashboard
+  authoritativeDashboard.dashboard
 );
 const metadata = {
   'source-id': 'indexing-contract',

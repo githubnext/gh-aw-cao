@@ -162,4 +162,78 @@ describe("remote dashboard data backend", () => {
       headers: expect.objectContaining({ Authorization: "Bearer stream-access-token" }),
     }));
   });
+
+  it("stays silent by default and logs only scalar metadata under its predictable category", async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock("../../src/debug.js", async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual("../../src/debug.js")
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => "?debug=remote-data-backend", output }),
+      };
+    });
+    vi.resetModules();
+    const { refreshRemoteDashboard: refreshRemoteDashboardWithDebug } = await import("../../src/remote-data-backend.js");
+
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ revision: 1, evaluatedAt: "2026-09-23T00:00:00.000Z" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: "not-found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(refreshRemoteDashboardWithDebug([], { pages: [], queries: [], views: [] }))
+      .rejects.toThrow();
+
+    expect(output.debug).toHaveBeenCalledWith("[cao:remote-data-backend]", { event: "refresh-checked", changed: false });
+    expect(output.debug).toHaveBeenCalledWith("[cao:remote-data-backend]", { event: "request-failed", path: "/api/v1/query", status: 404 });
+
+    for (const call of output.debug.mock.calls) {
+      const metadata = call[1];
+      expect(Object.values(metadata).every((value) => typeof value !== "object")).toBe(true);
+    }
+    expect(JSON.stringify(output.debug.mock.calls)).not.toMatch(/authorization|token|redis/i);
+
+    vi.doUnmock("../../src/debug.js");
+    vi.resetModules();
+  });
+
+  it("is disabled by default (no debug output) when the debug query is absent", async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock("../../src/debug.js", async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual("../../src/debug.js")
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => "", output }),
+      };
+    });
+    vi.resetModules();
+    const { refreshRemoteDashboard: refreshRemoteDashboardWithoutDebug } = await import("../../src/remote-data-backend.js");
+
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ revision: 1, evaluatedAt: "2026-09-23T00:00:00.000Z" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ revision: 1, sources: {} }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await refreshRemoteDashboardWithoutDebug([], { pages: [], queries: [], views: [] });
+
+    expect(output.debug).not.toHaveBeenCalled();
+
+    vi.doUnmock("../../src/debug.js");
+    vi.resetModules();
+  });
 });

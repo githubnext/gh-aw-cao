@@ -5,7 +5,7 @@ import { dashboardHorizonHours, formatDashboardHorizon } from '../horizon.js';
 import { octicon } from '../octicons.js';
 import { effect, state } from '../reactive.js';
 import { scopedStorageKey } from '../storage-scope.js';
-import { renderCountBadge, renderLabeledControl } from './ui-primitives.js';
+import { renderCountBadge, renderLabeledControl, renderIconSpan } from './ui-primitives.js';
 
 const debug = createDebug('filter-bar');
 
@@ -55,7 +55,7 @@ export function renderFilterBar(onChange, options = {}) {
         'div',
         { className: 'filter-control' },
         filters,
-        h('span', { className: 'search-control', 'aria-hidden': 'true' }, octicon('eye')),
+        renderIconSpan('search-control', 'eye', { ariaHidden: true }),
         count
       ),
       horizonControl.element

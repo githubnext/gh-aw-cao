@@ -3,10 +3,9 @@
  */
 
 import { h } from '../dom.js';
-import { octicon } from '../octicons.js';
 import { renderModeBadge, renderStatusBadge } from './badge.js';
 import { findLink, renderExternalLinkOrFallback } from './link-content.js';
-import { formatUtcDateTime, isPlainObject, isSafeHttpsUrl } from './ui-primitives.js';
+import { formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderIconSpan } from './ui-primitives.js';
 import { text, titleCase } from './count-formatters.js';
 import { renderMetadataSection } from './view-chrome.js';
 
@@ -42,7 +41,7 @@ function renderOutcomeDiscussionSection(outcome) {
     h(
       'header',
       null,
-      h('div', { className: 'post-avatar', 'aria-hidden': 'true' }, octicon('mark-github')),
+      renderIconSpan('post-avatar', 'mark-github', { ariaHidden: true, tag: 'div' }),
       h(
         'div',
         null,

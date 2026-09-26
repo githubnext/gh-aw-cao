@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createReadStream, createWriteStream, readFileSync, realpathSync } from 'node:fs';
@@ -29,6 +28,7 @@ import { readCollection, readRecord, readTransactions } from '../dashboard/site/
 import { mergeActivityStructuralRecord } from '../dashboard/site/src/data/storage/retention.js';
 import { doctorSqliteDatabase } from '../dashboard/site/src/data/storage/sqlite-doctor.js';
 import { installSqliteIndexedDB } from '../dashboard/site/src/data/storage/sqlite-indexeddb.js';
+import { loadDashboardSource } from '../dashboard/report/bundle-dashboards.mjs';
 import {
   operationalValueReserve,
   REPOSITORY_COORDINATE,
@@ -2817,7 +2817,7 @@ export async function discoverWorkflows({
 export async function pruneDashboardFile({ inputPath, outputPath } = {}) {
   let document;
   try {
-    document = JSON.parse(await readFile(path.resolve(inputPath), 'utf8'));
+    document = (await loadDashboardSource(path.resolve(inputPath))).document;
   } catch (error) {
     if (error instanceof SyntaxError) {
       throw new Error(`${inputPath} contains invalid JSON: ${error.message}`);
@@ -2843,7 +2843,7 @@ export async function analyzeDashboardComplexityFile({
 } = {}) {
   let document;
   try {
-    document = JSON.parse(await readFile(path.resolve(inputPath), 'utf8'));
+    document = (await loadDashboardSource(path.resolve(inputPath))).document;
   } catch (error) {
     if (error instanceof SyntaxError) {
       throw new Error(`${inputPath} contains invalid JSON: ${error.message}`);

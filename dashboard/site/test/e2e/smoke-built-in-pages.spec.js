@@ -1,10 +1,10 @@
-import { assert, authoritativeDashboard, buildPresenterModuleUrl, builtInPage, expect, hydrateView, readFileSync, registerSmokeRoutes, test } from './helpers/smoke-fixtures.js';
+import { assert, authoritativeDashboard, buildPresenterModuleUrl, builtInPage, expect, hydrateView, registerSmokeRoutes, test } from './helpers/smoke-fixtures.js';
 
 registerSmokeRoutes();
 
 test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inventory, and campaign activity in browser', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
-  const queryDefinitions = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8')).dashboard.queries;
+  const queryDefinitions = authoritativeDashboard.dashboard.queries;
   const campaignInsightsPage = authoritativeDashboard.dashboard.pages.find(
     (/** @type {{ id?: string }} */ candidate) => candidate.id === 'campaign-insights'
   );
@@ -435,8 +435,8 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await page.getByRole('button', { name: 'Table' }).click();
   await expect(campaignRunsPage.locator('[data-view-id="campaign-run-table"] tbody tr')).toHaveCount(5);
   await page.getByRole('button', { name: 'Chart' }).click();
-  await campaignNavigation.getByRole('link', { name: 'Issues' }).click();
-  await expect(campaignNavigation.getByRole('link', { name: 'Issues' })).toHaveAttribute('aria-current', 'page');
+  await campaignNavigation.getByRole('link', { name: 'Reports' }).click();
+  await expect(campaignNavigation.getByRole('link', { name: 'Reports' })).toHaveAttribute('aria-current', 'page');
   await page.getByRole('button', { name: 'Cards' }).click();
   const campaignIssueView = page.locator('[data-page-id="campaign-issues"] [data-view-id="campaign-issue-table"]');
   await expect(campaignIssueView).toBeVisible();
@@ -986,7 +986,7 @@ test('DLS-SAFE-007 DLS-SAFE-008 keyboard navigation moves across labeled page se
 
 test('repository page template follows its JSON-declared hash query route in browser', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
-  const dashboardDocument = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  const dashboardDocument = authoritativeDashboard;
   await page.goto('http://dashboard.test/#page-repository-workflow-inventory?repository=octo-org%2Focto-repo');
   await page.setContent(`
     <div id="root"></div>

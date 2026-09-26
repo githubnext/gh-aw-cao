@@ -24,6 +24,7 @@ import {
 import {
   installSqliteIndexedDB,
 } from "../../dashboard/site/src/data/storage/sqlite-indexeddb.js";
+import { loadDashboardSourceSync } from "../../dashboard/report/bundle-dashboards.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "../..");
 const siteRoot = join(repositoryRoot, "dashboard/site");
@@ -208,7 +209,7 @@ function representativeSources() {
 }
 
 function dashboardQueries() {
-  const document = JSON.parse(readFileSync(dashboardPath, "utf8"));
+  const { document } = loadDashboardSourceSync(dashboardPath);
   const resolveContext = (value) => {
     if (Array.isArray(value)) return value.map(resolveContext);
     if (!value || typeof value !== "object") return value;

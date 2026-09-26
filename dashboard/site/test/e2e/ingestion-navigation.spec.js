@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { normalizedRunShard } from './normalized-shard.js';
+import { authoritativeDashboard as dashboard } from '../authoritative-dashboard.js';
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
 const origin = 'http://ingestion-navigation.dashboard.test';
@@ -13,7 +14,6 @@ const pageDefinitions = [
   ['repositories', 'Repositories', 'repositories', 'repository'],
   ['workflows', 'Workflows', 'workflows', 'workflow-name']
 ];
-const dashboard = JSON.parse(readFileSync(join(siteRoot, 'dashboard.json'), 'utf8'));
 const inventory = {
   repositories: {
     rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }],

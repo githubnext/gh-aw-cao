@@ -59,45 +59,6 @@ const workflows = [
   }
 ];
 
-const operationalGraders = [
-  {
-    organization: 'githubnext',
-    repository: 'gh-aw-cao',
-    workflow: '.github/workflows/ambient-context-agents-md-curator.md',
-    run: '100',
-    'operational-grader': 0.5,
-    'operational-case': 'repository:github/example',
-    'evaluator-digest': 'sha256:current',
-    'requested-evidence-at': '2026-08-17T18:00:00Z',
-    'observed-at': '2026-08-24T18:00:00Z',
-    'maturity-status': 'matured'
-  },
-  {
-    organization: 'githubnext',
-    repository: 'gh-aw-cao',
-    workflow: '.github/workflows/ambient-context-agents-md-curator.md',
-    run: '101',
-    'operational-grader': 0.75,
-    'operational-case': 'repository:github/example-2',
-    'evaluator-digest': 'sha256:current',
-    'requested-evidence-at': '2026-08-24T18:00:00Z',
-    'observed-at': '2026-08-31T18:00:00Z',
-    'maturity-status': 'matured'
-  },
-  {
-    organization: 'githubnext',
-    repository: 'gh-aw-cao',
-    workflow: '.github/workflows/other.md',
-    run: '102',
-    'operational-grader': 1,
-    'operational-case': 'repository:github/other',
-    'evaluator-digest': 'sha256:other',
-    'requested-evidence-at': '2026-08-24T18:00:00Z',
-    'observed-at': '2026-08-31T18:00:00Z',
-    'maturity-status': 'matured'
-  }
-];
-
 const outcomes = [
   {
     campaign: 'ambient-context',
@@ -149,7 +110,6 @@ function context() {
     sources: {
       workflows: { source: 'workflows', metadata, rows: workflows },
       outcomes: { source: 'outcomes', metadata, rows: outcomes },
-      'operational-graders': { source: 'operational-graders', metadata, rows: operationalGraders },
       'campaign-operational-value-primary-series': {
         source: 'campaign-operational-value-primary-series',
         metadata,
@@ -220,7 +180,7 @@ describe('campaign detail route', () => {
     }));
 
     expect(rendered.dataset.campaign).toBe('ambient-context');
-    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('Operational ValueFailuresIssuesMemory');
+    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('Operational ValueFailuresReportsMemory');
     expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')).toBeNull();
     expect([...rendered.querySelectorAll('.campaign-tabs a')].map((link) => link.getAttribute('href'))).toEqual([
       '#page-campaign-insights?campaign=ambient-context',
@@ -285,7 +245,7 @@ describe('campaign detail route', () => {
     }))).toEqual([
       { label: 'Operational Value', count: '4' },
       { label: 'Failures', count: '2' },
-      { label: 'Issues', count: '1' },
+      { label: 'Reports', count: '1' },
       { label: 'Memory', count: undefined }
     ]);
     expect(allocation).toEqual({
@@ -397,7 +357,7 @@ describe('campaign detail route', () => {
     }));
 
     expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')).toBeNull();
-    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('Operational ValueFailuresIssuesMemory');
+    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('Operational ValueFailuresReportsMemory');
   });
 
   describe('workflow run navigation', () => {

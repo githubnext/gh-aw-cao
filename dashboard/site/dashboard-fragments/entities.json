@@ -1,0 +1,650 @@
+{
+  "queries": [
+    {
+      "name": "domain-entity-insights",
+      "intent": "Summarize one domain entity for its dedicated Insights view.",
+      "from": "domains",
+      "aggregate": {
+        "by": [
+          "domain",
+          "decision"
+        ],
+        "values": [
+          {
+            "field": "request-count",
+            "as": "requests",
+            "reducer": "sum"
+          }
+        ]
+      },
+      "order-by": [
+        {
+          "field": "requests",
+          "direction": "desc"
+        },
+        {
+          "field": "decision",
+          "direction": "asc"
+        }
+      ]
+    },
+    {
+      "name": "tool-entity-insights",
+      "intent": "Summarize one tool entity for its dedicated Insights view.",
+      "from": "mcp-tool-calls",
+      "aggregate": {
+        "by": [
+          "mcp-tool-label",
+          "mcp-server",
+          "mcp-tool",
+          "mcp-status"
+        ],
+        "values": [
+          {
+            "field": "mcp-observation",
+            "as": "observations",
+            "reducer": "count"
+          }
+        ]
+      },
+      "order-by": [
+        {
+          "field": "observations",
+          "direction": "desc"
+        },
+        {
+          "field": "mcp-status",
+          "direction": "asc"
+        }
+      ]
+    },
+    {
+      "name": "audit-entity-insights",
+      "intent": "Summarize one audit event entity for its dedicated Insights view.",
+      "from": "audits",
+      "aggregate": {
+        "by": [
+          "event-summary",
+          "event-status"
+        ],
+        "values": [
+          {
+            "field": "id",
+            "as": "observations",
+            "reducer": "count"
+          }
+        ]
+      },
+      "order-by": [
+        {
+          "field": "observations",
+          "direction": "desc"
+        },
+        {
+          "field": "event-status",
+          "direction": "asc"
+        }
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "id": "domain-insights",
+      "kind": "custom",
+      "title": "Domain",
+      "icon": "graph",
+      "description": "Insights for the selected domain entity.",
+      "route": {
+        "hash-query-parameter": "domain",
+        "navigation-page": "firewall",
+        "tab": "insights",
+        "tabs": [
+          {
+            "id": "insights",
+            "label": "Insights",
+            "icon": "graph",
+            "page": "domain-insights"
+          },
+          {
+            "id": "runs",
+            "label": "Runs",
+            "icon": "play",
+            "page": "domain-runs"
+          }
+        ]
+      },
+      "views": [
+        {
+          "id": "domain-route-chrome",
+          "title": "Domain insights",
+          "data": {
+            "sources": [
+              "domains"
+            ],
+            "arguments": [
+              {
+                "name": "domain",
+                "field": "domain"
+              }
+            ]
+          },
+          "mark": "element",
+          "element": "entity-route",
+          "layout": "full",
+          "title-link": {
+            "href-field": "run-link",
+            "identifier-field": "domain"
+          }
+        },
+        {
+          "id": "domain-insights-chart",
+          "title": "Requests by firewall decision",
+          "data": {
+            "source": "domain-entity-insights",
+            "arguments": [
+              {
+                "name": "domain",
+                "field": "domain"
+              }
+            ]
+          },
+          "mark": "chart",
+          "chart": "bar",
+          "layout": "full",
+          "encoding": {
+            "x": {
+              "field": "decision",
+              "type": "nominal",
+              "title": "Decision"
+            },
+            "y": {
+              "field": "requests",
+              "type": "quantitative",
+              "title": "Requests"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "domain-runs",
+      "kind": "custom",
+      "title": "Domain",
+      "icon": "play",
+      "description": "Runs related to the selected domain entity.",
+      "route": {
+        "hash-query-parameter": "domain",
+        "navigation-page": "firewall",
+        "tab": "runs",
+        "tabs": [
+          {
+            "id": "insights",
+            "label": "Insights",
+            "icon": "graph",
+            "page": "domain-insights"
+          },
+          {
+            "id": "runs",
+            "label": "Runs",
+            "icon": "play",
+            "page": "domain-runs"
+          }
+        ]
+      },
+      "views": [
+        {
+          "id": "domain-runs-route-chrome",
+          "title": "Domain runs",
+          "data": {
+            "sources": [
+              "domains"
+            ],
+            "arguments": [
+              {
+                "name": "domain",
+                "field": "domain"
+              }
+            ]
+          },
+          "mark": "element",
+          "element": "entity-route",
+          "layout": "full",
+          "title-link": {
+            "href-field": "run-link",
+            "identifier-field": "domain"
+          }
+        },
+        {
+          "id": "domain-runs-table",
+          "title": "Related runs",
+          "description": "Run records related to this domain.",
+          "data": {
+            "source": "domains",
+            "arguments": [
+              {
+                "name": "domain",
+                "field": "domain"
+              }
+            ],
+            "order-by": [
+              {
+                "field": "observed-at",
+                "direction": "desc"
+              }
+            ]
+          },
+          "mark": "table",
+          "controls": "interactive",
+          "lazy-list": true,
+          "column-summaries": true,
+          "layout": "full-view",
+          "empty-message": "No related runs are available.",
+          "encoding": {
+            "columns": [
+              {
+                "field": "run",
+                "type": "nominal",
+                "title": "Run",
+                "display": "run-link"
+              },
+              {
+                "field": "repository",
+                "type": "nominal",
+                "title": "Repository"
+              },
+              {
+                "field": "workflow",
+                "type": "nominal",
+                "title": "Workflow"
+              },
+              {
+                "field": "decision",
+                "type": "nominal",
+                "title": "Decision",
+                "display": "status"
+              },
+              {
+                "field": "observed-at",
+                "type": "temporal",
+                "title": "Observed",
+                "format": "human-friendly-timestamp"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "tool-insights",
+      "kind": "custom",
+      "title": "Tool",
+      "icon": "graph",
+      "description": "Insights for the selected tool entity.",
+      "route": {
+        "hash-query-parameter": "tool",
+        "navigation-page": "mcps",
+        "tab": "insights",
+        "tabs": [
+          {
+            "id": "insights",
+            "label": "Insights",
+            "icon": "graph",
+            "page": "tool-insights"
+          },
+          {
+            "id": "runs",
+            "label": "Runs",
+            "icon": "play",
+            "page": "tool-runs"
+          }
+        ]
+      },
+      "views": [
+        {
+          "id": "tool-route-chrome",
+          "title": "Tool insights",
+          "data": {
+            "sources": [
+              "mcp-tool-calls"
+            ],
+            "arguments": [
+              {
+                "name": "tool",
+                "field": "mcp-tool-label"
+              }
+            ]
+          },
+          "mark": "element",
+          "element": "entity-route",
+          "layout": "full",
+          "title-link": {
+            "href-field": "run-link",
+            "identifier-field": "mcp-tool-label"
+          }
+        },
+        {
+          "id": "tool-insights-chart",
+          "title": "Calls by status",
+          "data": {
+            "source": "tool-entity-insights",
+            "arguments": [
+              {
+                "name": "tool",
+                "field": "mcp-tool-label"
+              }
+            ]
+          },
+          "mark": "chart",
+          "chart": "bar",
+          "layout": "full",
+          "encoding": {
+            "x": {
+              "field": "mcp-status",
+              "type": "nominal",
+              "title": "Status"
+            },
+            "y": {
+              "field": "observations",
+              "type": "quantitative",
+              "title": "Observations"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "tool-runs",
+      "kind": "custom",
+      "title": "Tool",
+      "icon": "play",
+      "description": "Runs related to the selected tool entity.",
+      "route": {
+        "hash-query-parameter": "tool",
+        "navigation-page": "mcps",
+        "tab": "runs",
+        "tabs": [
+          {
+            "id": "insights",
+            "label": "Insights",
+            "icon": "graph",
+            "page": "tool-insights"
+          },
+          {
+            "id": "runs",
+            "label": "Runs",
+            "icon": "play",
+            "page": "tool-runs"
+          }
+        ]
+      },
+      "views": [
+        {
+          "id": "tool-runs-route-chrome",
+          "title": "Tool runs",
+          "data": {
+            "sources": [
+              "mcp-tool-calls"
+            ],
+            "arguments": [
+              {
+                "name": "tool",
+                "field": "mcp-tool-label"
+              }
+            ]
+          },
+          "mark": "element",
+          "element": "entity-route",
+          "layout": "full",
+          "title-link": {
+            "href-field": "run-link",
+            "identifier-field": "mcp-tool-label"
+          }
+        },
+        {
+          "id": "tool-runs-table",
+          "title": "Related runs",
+          "description": "Run records related to this tool.",
+          "data": {
+            "source": "mcp-tool-calls",
+            "arguments": [
+              {
+                "name": "tool",
+                "field": "mcp-tool-label"
+              }
+            ],
+            "order-by": [
+              {
+                "field": "observed-at",
+                "direction": "desc"
+              }
+            ]
+          },
+          "mark": "table",
+          "controls": "interactive",
+          "lazy-list": true,
+          "column-summaries": true,
+          "layout": "full-view",
+          "empty-message": "No related runs are available.",
+          "encoding": {
+            "columns": [
+              {
+                "field": "run",
+                "type": "nominal",
+                "title": "Run",
+                "display": "run-link"
+              },
+              {
+                "field": "repository",
+                "type": "nominal",
+                "title": "Repository"
+              },
+              {
+                "field": "workflow",
+                "type": "nominal",
+                "title": "Workflow"
+              },
+              {
+                "field": "mcp-status",
+                "type": "nominal",
+                "title": "Status",
+                "display": "status"
+              },
+              {
+                "field": "observed-at",
+                "type": "temporal",
+                "title": "Observed",
+                "format": "human-friendly-timestamp"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "audit-insights",
+      "kind": "custom",
+      "title": "Audit event",
+      "icon": "graph",
+      "description": "Insights for the selected audit event entity.",
+      "route": {
+        "hash-query-parameter": "audit",
+        "navigation-page": "runs",
+        "tab": "insights",
+        "tabs": [
+          {
+            "id": "insights",
+            "label": "Insights",
+            "icon": "graph",
+            "page": "audit-insights"
+          },
+          {
+            "id": "runs",
+            "label": "Runs",
+            "icon": "play",
+            "page": "audit-runs"
+          }
+        ]
+      },
+      "views": [
+        {
+          "id": "audit-route-chrome",
+          "title": "Audit event insights",
+          "data": {
+            "sources": [
+              "audits"
+            ],
+            "arguments": [
+              {
+                "name": "audit",
+                "field": "event-summary"
+              }
+            ]
+          },
+          "mark": "element",
+          "element": "entity-route",
+          "layout": "full",
+          "title-link": {
+            "href-field": "run-link",
+            "identifier-field": "event-summary"
+          }
+        },
+        {
+          "id": "audit-insights-chart",
+          "title": "Observations by status",
+          "data": {
+            "source": "audit-entity-insights",
+            "arguments": [
+              {
+                "name": "audit",
+                "field": "event-summary"
+              }
+            ]
+          },
+          "mark": "chart",
+          "chart": "bar",
+          "layout": "full",
+          "encoding": {
+            "x": {
+              "field": "event-status",
+              "type": "nominal",
+              "title": "Status"
+            },
+            "y": {
+              "field": "observations",
+              "type": "quantitative",
+              "title": "Observations"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "audit-runs",
+      "kind": "custom",
+      "title": "Audit event",
+      "icon": "play",
+      "description": "Runs related to the selected audit event entity.",
+      "route": {
+        "hash-query-parameter": "audit",
+        "navigation-page": "runs",
+        "tab": "runs",
+        "tabs": [
+          {
+            "id": "insights",
+            "label": "Insights",
+            "icon": "graph",
+            "page": "audit-insights"
+          },
+          {
+            "id": "runs",
+            "label": "Runs",
+            "icon": "play",
+            "page": "audit-runs"
+          }
+        ]
+      },
+      "views": [
+        {
+          "id": "audit-runs-route-chrome",
+          "title": "Audit event runs",
+          "data": {
+            "sources": [
+              "audits"
+            ],
+            "arguments": [
+              {
+                "name": "audit",
+                "field": "event-summary"
+              }
+            ]
+          },
+          "mark": "element",
+          "element": "entity-route",
+          "layout": "full",
+          "title-link": {
+            "href-field": "run-link",
+            "identifier-field": "event-summary"
+          }
+        },
+        {
+          "id": "audit-runs-table",
+          "title": "Related runs",
+          "description": "Run records related to this audit event.",
+          "data": {
+            "source": "audits",
+            "arguments": [
+              {
+                "name": "audit",
+                "field": "event-summary"
+              }
+            ],
+            "order-by": [
+              {
+                "field": "observed-at",
+                "direction": "desc"
+              }
+            ]
+          },
+          "mark": "table",
+          "controls": "interactive",
+          "lazy-list": true,
+          "column-summaries": true,
+          "layout": "full-view",
+          "empty-message": "No related runs are available.",
+          "encoding": {
+            "columns": [
+              {
+                "field": "run",
+                "type": "nominal",
+                "title": "Run",
+                "display": "run-link"
+              },
+              {
+                "field": "repository",
+                "type": "nominal",
+                "title": "Repository"
+              },
+              {
+                "field": "workflow",
+                "type": "nominal",
+                "title": "Workflow"
+              },
+              {
+                "field": "event-status",
+                "type": "nominal",
+                "title": "Status",
+                "display": "status"
+              },
+              {
+                "field": "observed-at",
+                "type": "temporal",
+                "title": "Observed",
+                "format": "human-friendly-timestamp"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

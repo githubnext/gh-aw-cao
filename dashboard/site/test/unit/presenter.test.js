@@ -1,8 +1,5 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
 import { renderDashboard as renderDashboardView, disposeDashboard, enableDashboardKeyboardNavigation, enableDashboardPageNavigation, dashboardPageLazySourceNames, resolveQueryDrillPageTitle } from '../../src/presenter.js';
 import { processDataRequest } from '../../src/data-worker.js';
 import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
@@ -12,11 +9,8 @@ import { composeDashboardDocuments } from '../../../report/compose-dashboard-doc
 import { campaignDashboardSources } from '../campaign-dashboard-documents.js';
 import { applyDashboardQueries } from '../workflow-inventory-query.js';
 import { resolveBuiltInPages } from '../../src/dashboard-chunks.js';
+import { authoritativeDashboard as builtInDashboardDocument } from '../authoritative-dashboard.js';
 
-const fixtureDirectory = dirname(fileURLToPath(import.meta.url));
-const builtInDashboardDocument = JSON.parse(
-  readFileSync(resolve(fixtureDirectory, '../../dashboard.json'), 'utf8')
-);
 const campaignDashboardDocuments = campaignDashboardSources.map((source) => JSON.parse(source));
 const authoritativeDashboardDocument = composeDashboardDocuments(
   builtInDashboardDocument,
@@ -1655,7 +1649,6 @@ describe('presenter built-in and custom pages', () => {
         },
         outcomes: { source: 'outcomes', rows: [], metadata },
         'safe-output-performance': { source: 'safe-output-performance', rows: [], metadata },
-        'operational-graders': { source: 'operational-graders', rows: [], metadata },
         usage: { source: 'usage', rows: [], metadata },
         runs: { source: 'runs', rows: [], metadata },
         'overview-runs': { source: 'overview-runs', rows: [], metadata },

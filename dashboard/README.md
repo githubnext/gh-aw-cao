@@ -89,7 +89,7 @@ webhooks, and remote exposure are future work. See
 [`../server/README.md`](../server/README.md) for the exact Docker, ingest,
 serve, and verification commands.
 
-The preview composes `dashboard/site/dashboard.json` with every installed `<campaign>/dashboard.json` document. It watches those files, serves a split core `dashboard.json` plus per-page `dashboard-pages/*.json` chunks, and sends the updated core document over a capability-protected WebSocket after a valid update. The browser re-renders that shell without reloading the page while continuing to use the downloaded report data. Invalid dashboard JSON is reported in the terminal while the last valid preview remains available.
+The preview composes `dashboard/site/dashboard.json` with every installed `<campaign>/dashboard.json` document. Those authoring documents may list feature-oriented JSON fragments through their top-level `fragments` array; the preview watches both roots and fragments. It serves a split core `dashboard.json` plus per-page `dashboard-pages/*.json` chunks, and sends the updated core document over a capability-protected WebSocket after a valid update. The browser re-renders that shell without reloading the page while continuing to use the downloaded report data. Invalid dashboard JSON is reported in the terminal while the last valid preview remains available.
 
 ### Canvas CLI actions
 

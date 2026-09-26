@@ -4,9 +4,10 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test, expect, devices } from '@playwright/test';
 import { DATABASE_NAME } from '../../../src/data/storage/indexeddb.js';
+import { authoritativeDashboard } from '../../authoritative-dashboard.js';
 
 const siteRoot = fileURLToPath(new URL('../../..', import.meta.url));
-export const authoritativeDashboard = JSON.parse(readFileSync(new URL('../../../dashboard.json', import.meta.url), 'utf8'));
+export { authoritativeDashboard };
 
 export function registerSmokeRoutes() {
   test.beforeEach(async ({ page, context }) => {
