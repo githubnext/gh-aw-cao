@@ -4352,7 +4352,8 @@
         ],
         "select": [
           {
-            "field": "id"
+            "field": "event",
+            "as": "id"
           },
           {
             "field": "organization"
@@ -11383,7 +11384,7 @@
           ],
           "values": [
             {
-              "field": "id",
+              "field": "event",
               "as": "observations",
               "reducer": "count"
             }
