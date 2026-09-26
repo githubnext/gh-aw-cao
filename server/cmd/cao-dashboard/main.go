@@ -135,18 +135,25 @@ func resolveIngestSource(flagValue string, positionalArgs []string) (string, ing
 }
 
 // registerRedisNamespaceFlag registers a --redis-namespace flag whose default
-// is the current checkout's namespace, optionally overridden by
-// CAO_REDIS_NAMESPACE when applyEnvOverride is true. A namespace-detection
-// failure is returned rather than applied immediately, so every other flag on
-// cmd is still registered; callers must check the returned error inside RunE,
-// so a user-supplied flag value never masks the original error behind an
+// is the current checkout's namespace. A namespace-detection failure is
+// returned rather than applied immediately, so every other flag on cmd is
+// still registered; callers must check the returned error inside RunE, so a
+// user-supplied flag value never masks the original error behind an
 // "unknown flag" one.
-func registerRedisNamespaceFlag(cmd *cobra.Command, usage string, applyEnvOverride bool) (namespace *string, source namespaceDefaultSource, namespaceErr error) {
+func registerRedisNamespaceFlag(cmd *cobra.Command, usage string) (namespace *string, namespaceErr error) {
 	checkoutNamespace, err := redisx.DefaultNamespace(".")
-	defaultNamespace, defaultSource := checkoutNamespace, namespaceDefaultSourceCheckout
-	if applyEnvOverride {
-		defaultNamespace, defaultSource = resolveNamespaceDefault(os.Getenv("CAO_REDIS_NAMESPACE"), checkoutNamespace)
-	}
+	namespace = cmd.Flags().String("redis-namespace", checkoutNamespace, usage)
+	return namespace, err
+}
+
+// registerRedisNamespaceFlagWithEnvOverride behaves like
+// registerRedisNamespaceFlag, but the default is additionally overridable by
+// the CAO_REDIS_NAMESPACE environment variable. It also returns which input
+// supplied that default, so callers can log the source without exposing the
+// namespace value.
+func registerRedisNamespaceFlagWithEnvOverride(cmd *cobra.Command, usage string) (namespace *string, source namespaceDefaultSource, namespaceErr error) {
+	checkoutNamespace, err := redisx.DefaultNamespace(".")
+	defaultNamespace, defaultSource := resolveNamespaceDefault(os.Getenv("CAO_REDIS_NAMESPACE"), checkoutNamespace)
 	namespace = cmd.Flags().String("redis-namespace", defaultNamespace, usage)
 	return namespace, defaultSource, err
 }
@@ -173,6 +180,16 @@ func newRootCommand() *cobra.Command {
 		Short:         "cao-dashboard serves, ingests, and collects dashboard data",
 		SilenceUsage:  true,
 		SilenceErrors: true,
+		// A bare invocation with no subcommand is a usage error, not
+		// success, so cao-dashboard exits non-zero the same way it did
+		// before this file used cobra.
+		RunE: func(cmd *cobra.Command, args []string) error {
+			names := make([]string, 0, len(cmd.Commands()))
+			for _, sub := range cmd.Commands() {
+				names = append(names, sub.Name())
+			}
+			return fmt.Errorf("usage: cao-dashboard <%s> [flags]", strings.Join(names, "|"))
+		},
 	}
 	// The shell-completion subcommand isn't part of cao-dashboard's
 	// documented interface, so keep the command surface as-is.
@@ -208,7 +225,7 @@ func newDoctorCommand() *cobra.Command {
 		Short: "run a read-only check-up of Redis, canonical data, queries, and collection",
 	}
 	redisURL := cmd.Flags().String("redis-url", "", "server-side Redis URL; defaults to CAO_REDIS_URL then "+defaultRedisURL)
-	redisNamespace, namespaceDefaultSource, namespaceErr := registerRedisNamespaceFlag(cmd, "Redis key namespace", true)
+	redisNamespace, namespaceDefaultSource, namespaceErr := registerRedisNamespaceFlagWithEnvOverride(cmd, "Redis key namespace")
 	databaseQueries := cmd.Flags().String("database-queries",
 		"../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
 	format := cmd.Flags().String("format", "text", "report format: text or json")
@@ -299,7 +316,7 @@ func newServeCommand() *cobra.Command {
 		Short: "serve the dashboard from Redis",
 	}
 	redisURL := cmd.Flags().String("redis-url", defaultRedisURL, "server-side Redis URL")
-	redisNamespace, _, namespaceErr := registerRedisNamespaceFlag(cmd, "Redis key and index namespace", false)
+	redisNamespace, namespaceErr := registerRedisNamespaceFlag(cmd, "Redis key and index namespace")
 	siteDirectory := cmd.Flags().String("site", "../dashboard/site/dist", "built dashboard site directory")
 	listen := cmd.Flags().String("listen", "127.0.0.1:8443", "HTTPS listen address")
 	cert := cmd.Flags().String("cert", "", "optional TLS certificate PEM file")
@@ -361,7 +378,7 @@ func newIngestCommand() *cobra.Command {
 		Short: "ingest a deployed dashboard directory into Redis",
 	}
 	redisURL := cmd.Flags().String("redis-url", defaultRedisURL, "server-side Redis URL")
-	redisNamespace, _, namespaceErr := registerRedisNamespaceFlag(cmd, "Redis key and index namespace", false)
+	redisNamespace, namespaceErr := registerRedisNamespaceFlag(cmd, "Redis key and index namespace")
 	source := cmd.Flags().String("source", "", "deployed dashboard directory")
 	databaseQueries := cmd.Flags().String("database-queries", "../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
 	cmd.RunE = func(_ *cobra.Command, args []string) error {

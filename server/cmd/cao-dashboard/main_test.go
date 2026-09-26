@@ -269,6 +269,21 @@ func TestRootCommandRejectsUnknownSubcommand(t *testing.T) {
 	}
 }
 
+func TestRootCommandReportsUsageErrorWithNoSubcommand(t *testing.T) {
+	root := newRootCommand()
+	root.SetArgs(nil)
+	root.SetOut(io.Discard)
+	root.SetErr(io.Discard)
+
+	err := root.Execute()
+	if err == nil {
+		t.Fatal("Execute() error = nil, want non-nil")
+	}
+	if !strings.Contains(err.Error(), "usage: cao-dashboard") {
+		t.Fatalf("Execute() error = %q, want to contain %q", err.Error(), "usage: cao-dashboard")
+	}
+}
+
 func TestRootCommandParsesKnownSubcommandFlags(t *testing.T) {
 	root := newRootCommand()
 
