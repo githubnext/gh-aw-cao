@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -134,6 +135,7 @@ func TestLoadRejectsSymlinkedMemoryPath(t *testing.T) {
 			Files:    []File{{Path: "notes/context.txt", Size: int64(len(content))}},
 		}},
 	}
+
 	writeFixture(t, root, manifest, "campaign/unused.txt", content)
 	if err := os.WriteFile(filepath.Join(outside, "context.txt"), content, 0o600); err != nil {
 		t.Fatal(err)
@@ -144,6 +146,41 @@ func TestLoadRejectsSymlinkedMemoryPath(t *testing.T) {
 
 	if _, err := Load(root); err == nil || !strings.Contains(err.Error(), "unavailable") {
 		t.Fatalf("error = %v, want unavailable symlink path", err)
+	}
+}
+
+func TestLoadRejectsMemoryOverTotalSizeLimit(t *testing.T) {
+	root := t.TempDir()
+	files := make([]File, MaxFileCount)
+	for index := range files {
+		files[index] = File{
+			Path: fmt.Sprintf("file-%03d.txt", index),
+			OID:  strings.Repeat("b", 40),
+			Size: MaxFileSize,
+		}
+	}
+	manifest := Manifest{
+		Version: 1,
+		Campaigns: []Campaign{{
+			Campaign: "campaign",
+			Branch:   "memory/campaign",
+			Commit:   strings.Repeat("a", 40),
+			Files:    files,
+		}},
+	}
+	data, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "memory"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "memory", "manifest.json"), data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := Load(root); err == nil || !strings.Contains(err.Error(), "total size limit") {
+		t.Fatalf("error = %v, want total size limit", err)
 	}
 }
 

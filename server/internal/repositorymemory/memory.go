@@ -18,6 +18,7 @@ const (
 	MaxFileCount = 400
 	MaxFileSize  = 1024 * 1024
 	MaxNesting   = 10
+	MaxTotalSize = 64 * 1024 * 1024
 )
 
 var campaignPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,99}$`)
@@ -114,6 +115,17 @@ func Load(directory string) (Snapshot, error) {
 	}
 	if manifest.Version != 1 || manifest.Campaigns == nil {
 		return Snapshot{}, errors.New("repository-memory manifest is invalid")
+	}
+	var totalSize int64
+	for _, campaign := range manifest.Campaigns {
+		for _, file := range campaign.Files {
+			if file.Size >= 0 && file.Size <= MaxFileSize {
+				if file.Size > MaxTotalSize-totalSize {
+					return Snapshot{}, errors.New("repository-memory files exceed the total size limit")
+				}
+				totalSize += file.Size
+			}
+		}
 	}
 	files := make(map[string][]byte)
 	seenCampaigns := make(map[string]struct{})

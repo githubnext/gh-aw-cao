@@ -14,6 +14,7 @@ export const REPOSITORY_MEMORY_LIMITS = Object.freeze({
   maxFileCount: 400,
   maxFileSize: 1024 * 1024,
   maxNesting: 10,
+  maxTotalSize: 64 * 1024 * 1024,
 });
 const ALLOWED_EXTENSIONS = new Set(REPOSITORY_MEMORY_LIMITS.allowedExtensions);
 
@@ -135,15 +136,34 @@ async function writeBlob(repository, oid, destination) {
     child.once("close", resolve);
   });
   const hash = createHash("sha256");
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  let validUtf8 = true;
   const hasher = new Transform({
     transform(chunk, encoding, callback) {
       hash.update(chunk);
+      try {
+        decoder.decode(chunk, { stream: true });
+      } catch {
+        validUtf8 = false;
+      }
       callback(null, chunk);
+    },
+    flush(callback) {
+      try {
+        decoder.decode();
+      } catch {
+        validUtf8 = false;
+      }
+      callback();
     },
   });
   await pipeline(child.stdout, hasher, createWriteStream(destination, { mode: 0o644 }));
   const status = await completion;
   if (status !== 0) throw new Error(stderr.trim() || `Unable to extract repository-memory blob ${oid}`);
+  if (!validUtf8) {
+    await rm(destination, { force: true });
+    return null;
+  }
   return hash.digest("hex");
 }
 
@@ -154,20 +174,32 @@ export async function publishRepositoryMemory({ repository, inventory, output, g
   await mkdir(outputRoot, { recursive: true });
 
   const campaigns = [];
+  let totalSize = 0;
   for (const branch of memoryRefs(repositoryRoot, campaignIds(inventory))) {
     const { files, omitted } = await memoryFiles(repositoryRoot, branch.ref);
+    const publishedFiles = [];
     for (const file of files) {
+      if (totalSize + file.size > REPOSITORY_MEMORY_LIMITS.maxTotalSize) {
+        omitted.fileSize += 1;
+        continue;
+      }
       const destination = path.resolve(outputRoot, branch.campaign, ...file.path.split("/"));
       if (!destination.startsWith(`${path.join(outputRoot, branch.campaign)}${path.sep}`)) {
         throw new Error(`Repository-memory path escapes its campaign directory: ${file.path}`);
       }
-      file.sha256 = await writeBlob(repositoryRoot, file.oid, destination);
+      const sha256 = await writeBlob(repositoryRoot, file.oid, destination);
+      if (!sha256) {
+        omitted.unsupportedType += 1;
+        continue;
+      }
+      totalSize += file.size;
+      publishedFiles.push({ ...file, sha256 });
     }
     campaigns.push({
       campaign: branch.campaign,
       branch: `memory/${branch.campaign}`,
       commit: branch.commit,
-      files,
+      files: publishedFiles,
       omitted,
     });
   }

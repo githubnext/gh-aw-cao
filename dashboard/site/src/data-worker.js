@@ -93,6 +93,7 @@ const REPOSITORY_MEMORY_EXTENSIONS = new Set(['.json', '.jsonl', '.md', '.txt', 
 const REPOSITORY_MEMORY_MAX_FILES = 400;
 const REPOSITORY_MEMORY_MAX_FILE_SIZE = 1024 * 1024;
 const REPOSITORY_MEMORY_MAX_NESTING = 10;
+const REPOSITORY_MEMORY_MAX_TOTAL_SIZE = 64 * 1024 * 1024;
 /** @type {ReturnType<typeof setTimeout> | null} */
 let subscriptionFlushTimer = null;
 let subscriptionFlushRunning = false;
@@ -182,6 +183,10 @@ function repositoryMemoryCampaign(value, campaign) {
       || !/^[0-9a-f]{40,64}$/i.test(file.oid)
       || (file.sha256 !== undefined && !/^[0-9a-f]{64}$/i.test(file.sha256)))) {
     throw new Error('Campaign repository-memory file metadata is invalid.');
+  }
+  const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+  if (!Number.isSafeInteger(totalSize) || totalSize > REPOSITORY_MEMORY_MAX_TOTAL_SIZE) {
+    throw new Error('Campaign repository-memory files exceed the total size limit.');
   }
   return {
     branch: String(entry.branch),

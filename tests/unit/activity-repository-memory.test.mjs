@@ -28,6 +28,7 @@ test("publishes installed campaign memory from remote refs without checking them
     git(repository, "rm", "-rf", ".");
     writeFileSync(join(repository, "notes.json"), '{"answer":42}\n');
     writeFileSync(join(repository, ".state.json"), '{"cursor":1}\n');
+    writeFileSync(join(repository, "binary.txt"), Buffer.from([0xff]));
     writeFileSync(join(repository, "unsupported.js"), "throw new Error();\n");
     writeFileSync(join(repository, "oversized.txt"), "x".repeat(REPOSITORY_MEMORY_LIMITS.maxFileSize + 1));
     const deepDirectory = join(repository, ...Array.from({ length: REPOSITORY_MEMORY_LIMITS.maxNesting + 1 }, (_, index) => `d${index}`));
@@ -85,13 +86,14 @@ test("publishes installed campaign memory from remote refs without checking them
           extension: 1,
           nesting: 1,
           unsafePath: 0,
-          unsupportedType: 1,
+          unsupportedType: 2,
         },
       }],
     });
     assert.deepEqual(JSON.parse(readFileSync(join(output, "manifest.json"), "utf8")), manifest);
     assert.throws(() => readFileSync(join(output, "ambient-context", "outside")));
     assert.throws(() => readFileSync(join(output, "ambient-context", "unsupported.js")));
+    assert.throws(() => readFileSync(join(output, "ambient-context", "binary.txt")));
     assert.throws(() => readFileSync(join(output, "ambient-context", "oversized.txt")));
     assert.throws(() => readFileSync(join(output, "ambient-context", ...Array.from(
       { length: REPOSITORY_MEMORY_LIMITS.maxNesting + 1 },

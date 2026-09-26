@@ -72,4 +72,28 @@ describe('repository-memory worker protocol', () => {
       path: 'not-listed.md',
     })).rejects.toThrow('Memory file path is invalid.');
   });
+
+  it('rejects campaign memory over the total size limit', async () => {
+    const files = Array.from({ length: 65 }, (_, index) => ({
+      path: `file-${index}.txt`,
+      oid: 'b'.repeat(40),
+      size: 1024 * 1024,
+    }));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      version: 1,
+      campaigns: [{
+        campaign: 'ambient-context',
+        branch: 'memory/ambient-context',
+        commit: 'a'.repeat(40),
+        files,
+      }],
+    }))));
+
+    await expect(processDataRequest({
+      operation: 'query-repository-memory',
+      action: 'list',
+      campaign: 'ambient-context',
+      memoryRoot: 'http://localhost:3000/memory/',
+    })).rejects.toThrow('files exceed the total size limit');
+  });
 });
