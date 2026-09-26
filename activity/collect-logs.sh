@@ -100,7 +100,7 @@ if [[ $exit_code -eq 0 ]]; then
       --retention-days "$window_days" \
       --run-retention-days "$window_days" || exit_code=$?
   fi
-  if [[ $exit_code -eq 0 && -n "$activity_database" ]]; then
+  if [[ $exit_code -eq 0 && -n "$activity_database" && "${REPORT_DEFER_ISSUE_STATUS:-0}" != "1" ]]; then
     node "$cao_script" issue-status \
       --database "$activity_database" \
       --input-dir "$shard_directory" \

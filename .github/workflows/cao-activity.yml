@@ -194,10 +194,9 @@ jobs:
           REPORT_DRAIN3_WEIGHTS: ${{ runner.temp }}/cao-activity/drain3_weights.json
           REPORT_GH_AW_LOGS_EXIT_CODE: ${{ runner.temp }}/cao-activity/gh-aw-logs-exit-code
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
+          REPORT_DEFER_ISSUE_STATUS: "1"
           REPORT_LOG_TIMEOUT: "15"
           REPORT_MAX_GITHUB_API_RATE_LIMIT: "-4000"
-          REPORT_ISSUE_STATUS_GRAPHQL_COST_BUDGET: "25"
-          REPORT_ISSUE_STATUS_GRAPHQL_MIN_REMAINING: "500"
           REPORT_MAX_STORAGE: "1200"
           REPORT_RUN_LIMIT: "10000"
           REPORT_RUN_WINDOW_DAYS: "30"
@@ -208,6 +207,32 @@ jobs:
             echo "One or more repository log collections failed" >&2
             exit "$collection_exit_code"
           fi
+
+      - name: Refresh GitHub App token for issue status
+        id: issue-status-app-token
+        env:
+          GH_AW_IGNORE_IF_MISSING_PRIVATE_KEY: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
+        if: ${{ vars.GH_AW_GITHUB_READ_APP_ID != '' && env.GH_AW_IGNORE_IF_MISSING_PRIVATE_KEY != '' }}
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.GH_AW_GITHUB_READ_APP_ID }}
+          private-key: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ steps.activity-settings.outputs.repositories }}
+          github-api-url: ${{ github.api_url }}
+          permission-issues: read
+
+      - name: Enrich issue statuses
+        env:
+          ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
+          GH_TOKEN: ${{ steps.issue-status-app-token.outputs.token || secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || github.token }}
+          REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
+        run: |
+          node activity/cao.mjs issue-status \
+            --database "$ACTIVITY_DATABASE" \
+            --input-dir "$REPORT_GH_AW_LOGS_SHARDS" \
+            --graphql-cost-budget 25 \
+            --graphql-min-remaining 500
 
       - name: Generate phased activity shards
         env:

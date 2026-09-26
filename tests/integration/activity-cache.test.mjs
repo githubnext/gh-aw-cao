@@ -88,9 +88,18 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
     workflow,
     /Download agentic workflow logs[\s\S]*?REPORT_CONTROL_SETTINGS:[\s\S]*?bash activity\/collect-logs\.sh/,
   );
+  assert.match(
+    workflow,
+    /Download agentic workflow logs[\s\S]*?REPORT_DEFER_ISSUE_STATUS: "1"[\s\S]*?Refresh GitHub App token for issue status[\s\S]*?Enrich issue statuses[\s\S]*?cao\.mjs issue-status[\s\S]*?Generate phased activity shards/,
+  );
+  assert.match(
+    workflow,
+    /Enrich issue statuses[\s\S]*?GH_TOKEN: \$\{\{ steps\.issue-status-app-token\.outputs\.token \|\| secrets\.GH_AW_GITHUB_READ_PAT \|\| secrets\.GH_AW_GITHUB_TOKEN \|\| github\.token \}\}/,
+  );
   assert.match(collector, /jq -r '\.allowed_repositories\[\]\?'/);
   assert.match(collector, /--repo "\$target_repository"/);
   assert.match(collector, /--cached-jsonl "\$\{shard_prefix\}\*"/);
+  assert.match(collector, /REPORT_DEFER_ISSUE_STATUS/);
   assert.doesNotMatch(
     indexJob,
     /Download agentic workflow logs\n\s+continue-on-error:/,
