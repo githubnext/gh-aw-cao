@@ -10,8 +10,9 @@ RUNTIME_JSON="$STATE_DIR/runtime.json"
 HARNESS_VERSION=1
 CORE_TOOLS_VERSION=4.15.1
 CORE_TOOLS_SHA256=9b982efb4047c717c9b1c26beb2269c2ac41b29bf8d21f4df1130c1586cc81cd
-REDIS_IMAGE=redis:7.4.7-alpine
-AZURITE_IMAGE=mcr.microsoft.com/azure-storage/azurite:3.37.0
+REDIS_IMAGE=redis:7.4.7-alpine@sha256:02f2cc4882f8bf87c79a220ac958f58c700bdec0dfb9b9ea61b62fb0e8f1bfcf
+AZURITE_IMAGE=mcr.microsoft.com/azure-storage/azurite:3.37.0@sha256:830430c1da1a2d537e08f3e6764dd1f5ae00cf0346bcaf625b968ec3f0971fd5
+AZURITE_ACCOUNT=caoazurelocal
 WAIT_TIMEOUT="${AZURE_LOCAL_WAIT_TIMEOUT:-120}"
 
 fail() {
@@ -25,7 +26,7 @@ require_linux() {
 
 require_commands() {
   local command
-  for command in curl docker go node npm python3 setsid sha256sum unzip; do
+  for command in curl docker flock go node python3 setsid sha256sum unzip; do
     command -v "$command" >/dev/null 2>&1 || fail "required command not found: $command"
   done
   docker info >/dev/null 2>&1 || fail "Docker is not available"
@@ -55,23 +56,41 @@ container_port() {
 }
 
 install_core_tools() {
-  local tools_dir archive
-  tools_dir="$ROOT/.tmp/azure-local/tools/core-tools-$CORE_TOOLS_VERSION"
+  local tools_root tools_dir archive temp_dir lock_fd
+  tools_root="$ROOT/.tmp/azure-local/tools"
+  tools_dir="$tools_root/core-tools-$CORE_TOOLS_VERSION"
   if [[ -x "$tools_dir/func" ]]; then
     FUNC_BIN="$tools_dir/func"
     return
   fi
-  mkdir -p "$tools_dir"
-  archive="$tools_dir/core-tools.zip"
+  mkdir -p "$tools_root"
+  exec {lock_fd}>"$tools_root/core-tools-$CORE_TOOLS_VERSION.lock"
+  flock "$lock_fd"
+  if [[ -x "$tools_dir/func" ]]; then
+    FUNC_BIN="$tools_dir/func"
+    exec {lock_fd}>&-
+    return
+  fi
+  temp_dir="$(mktemp -d "$tools_root/.install.XXXXXX")"
+  archive="$temp_dir/core-tools.zip"
   curl -fsSL \
     "https://github.com/Azure/azure-functions-core-tools/releases/download/$CORE_TOOLS_VERSION/Azure.Functions.Cli.linux-x64.$CORE_TOOLS_VERSION.zip" \
-    -o "$archive"
+    -o "$archive" || {
+      rm -rf "$temp_dir"
+      fail "Azure Functions Core Tools download failed"
+    }
   printf '%s  %s\n' "$CORE_TOOLS_SHA256" "$archive" | sha256sum --check --status ||
-    fail "Azure Functions Core Tools checksum verification failed"
-  unzip -q -o "$archive" -d "$tools_dir"
-  chmod +x "$tools_dir/func"
+    {
+      rm -rf "$temp_dir"
+      fail "Azure Functions Core Tools checksum verification failed"
+    }
+  unzip -q "$archive" -d "$temp_dir"
+  chmod +x "$temp_dir/func"
   rm -f "$archive"
+  rm -rf "$tools_dir"
+  mv "$temp_dir" "$tools_dir"
   FUNC_BIN="$tools_dir/func"
+  exec {lock_fd}>&-
 }
 
 capture_container_logs() {
@@ -133,17 +152,16 @@ stop_internal() {
   [[ -z "${AZURITE_CONTAINER_ID:-}" ]] || docker rm -f "$AZURITE_CONTAINER_ID" >/dev/null 2>&1 || true
   [[ -z "${REDIS_CONTAINER_ID:-}" ]] || docker rm -f "$REDIS_CONTAINER_ID" >/dev/null 2>&1 || true
   rm -rf "$APP_DIR"
-  rm -f "$RUNTIME_ENV" "$RUNTIME_JSON" \
-    "$STATE_DIR/functions.pid" "$STATE_DIR/azurite.container" "$STATE_DIR/redis.container"
+  rm -f "$RUNTIME_ENV" "$RUNTIME_JSON"
 }
 
 poll() {
-  local label command_text deadline
+  local label deadline
   label="$1"
-  command_text="$2"
+  shift
   deadline=$((SECONDS + WAIT_TIMEOUT))
   while (( SECONDS < deadline )); do
-    if eval "$command_text" >/dev/null 2>&1; then
+    if "$@" >/dev/null 2>&1; then
       return 0
     fi
     sleep 1
@@ -153,13 +171,23 @@ poll() {
   return 1
 }
 
+redis_ready() {
+  docker exec "$1" redis-cli ping | grep -qx PONG
+}
+
+azurite_ready() {
+  local status
+  status="$(curl -sS -o /dev/null -w '%{http_code}' "$1")" || return 1
+  [[ "$status" -lt 500 ]]
+}
+
+functions_ready() {
+  curl -fsS "$1/api/readiness"
+}
+
 prepare_application() {
   mkdir -p "$APP_DIR/site" "$LOG_DIR"
-  if [[ ! -d "$ROOT/dashboard/site/node_modules" ]]; then
-    npm --prefix "$ROOT/dashboard/site" ci >"$LOG_DIR/npm-install.log" 2>&1
-  fi
-  node "$ROOT/dashboard/site/scripts/build.mjs" \
-    "$APP_DIR/site" "$ROOT/.github/workflows/cao.json" >"$LOG_DIR/dashboard-build.log" 2>&1
+  printf '<!doctype html><title>CAO local Azure simulation</title>\n' >"$APP_DIR/site/index.html"
   go -C "$ROOT/server" build -o "$APP_DIR/cao-functions" ./cmd/cao-functions \
     >"$LOG_DIR/functions-build.log" 2>&1
   go -C "$ROOT/server" build -o "$APP_DIR/cao-dashboard" ./cmd/cao-dashboard \
@@ -223,7 +251,7 @@ start() {
   previous_exit_trap="$(trap -p EXIT || true)"
   trap 'stop_internal' EXIT
   local run_id path_hash redis_name azurite_name function_port redis_port blob_port queue_port table_port namespace
-  local azurite_account azurite_key
+  local azurite_key
   run_id="$(basename "$STATE_DIR" | tr -cd 'a-zA-Z0-9_.-' | cut -c1-40)"
   [[ -n "$run_id" ]] || run_id="run-$$"
   path_hash="$(printf '%s' "$STATE_DIR" | sha256sum | cut -c1-12)"
@@ -231,22 +259,19 @@ start() {
   redis_name="cao-azure-local-$run_id-redis"
   azurite_name="cao-azure-local-$run_id-azurite"
   namespace="azure-local-$path_hash"
-  azurite_account="caoazurelocal"
   azurite_key="$(python3 -c 'import base64,hashlib; print(base64.b64encode(hashlib.sha256(b"cao-azure-local").digest()).decode())')"
 
   REDIS_CONTAINER_ID="$(docker run -d --name "$redis_name" -p 127.0.0.1::6379 "$REDIS_IMAGE")"
   write_env_value STATE_HARNESS_VERSION "$HARNESS_VERSION"
   write_env_value REDIS_CONTAINER_ID "$REDIS_CONTAINER_ID"
-  printf '%s\n' "$REDIS_CONTAINER_ID" >"$STATE_DIR/redis.container"
   redis_port="$(container_port "$REDIS_CONTAINER_ID" 6379)"
 
   AZURITE_CONTAINER_ID="$(docker run -d --name "$azurite_name" \
     -p 127.0.0.1::10000 -p 127.0.0.1::10001 -p 127.0.0.1::10002 \
-    -e "AZURITE_ACCOUNTS=$azurite_account:$azurite_key" \
+    -e "AZURITE_ACCOUNTS=$AZURITE_ACCOUNT:$azurite_key" \
     "$AZURITE_IMAGE" azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 \
     --tableHost 0.0.0.0 --location /data --debug /data/debug.log)"
   write_env_value AZURITE_CONTAINER_ID "$AZURITE_CONTAINER_ID"
-  printf '%s\n' "$AZURITE_CONTAINER_ID" >"$STATE_DIR/azurite.container"
   blob_port="$(container_port "$AZURITE_CONTAINER_ID" 10000)"
   queue_port="$(container_port "$AZURITE_CONTAINER_ID" 10001)"
   table_port="$(container_port "$AZURITE_CONTAINER_ID" 10002)"
@@ -262,8 +287,8 @@ start() {
   prepare_application
   install_core_tools
   write_env_value FUNC_BIN "$FUNC_BIN"
-  poll Redis "docker exec '$REDIS_CONTAINER_ID' redis-cli ping | grep -qx PONG"
-  poll Azurite "status=\$(curl -sS -o /dev/null -w '%{http_code}' 'http://127.0.0.1:$blob_port/$azurite_account?comp=list'); [[ \$status -lt 500 ]]"
+  poll Redis redis_ready "$REDIS_CONTAINER_ID"
+  poll Azurite azurite_ready "http://127.0.0.1:$blob_port/$AZURITE_ACCOUNT?comp=list"
 
   "$APP_DIR/cao-dashboard" ingest \
     --source "$ROOT/server/testdata/deployed-subset" \
@@ -273,7 +298,7 @@ start() {
     >"$LOG_DIR/ingest.log" 2>&1
 
   local storage_connection
-  storage_connection="DefaultEndpointsProtocol=http;AccountName=$azurite_account;AccountKey=$azurite_key;BlobEndpoint=http://127.0.0.1:$blob_port/$azurite_account;QueueEndpoint=http://127.0.0.1:$queue_port/$azurite_account;TableEndpoint=http://127.0.0.1:$table_port/$azurite_account;"
+  storage_connection="DefaultEndpointsProtocol=http;AccountName=$AZURITE_ACCOUNT;AccountKey=$azurite_key;BlobEndpoint=http://127.0.0.1:$blob_port/$AZURITE_ACCOUNT;QueueEndpoint=http://127.0.0.1:$queue_port/$AZURITE_ACCOUNT;TableEndpoint=http://127.0.0.1:$table_port/$AZURITE_ACCOUNT;"
   cat >"$APP_DIR/local.settings.json" <<JSON
 {
   "IsEncrypted": false,
@@ -281,6 +306,7 @@ start() {
     "FUNCTIONS_WORKER_RUNTIME": "custom",
     "AzureWebJobsStorage": "$storage_connection",
     "CAO_AZURE_ALLOWED_HOSTS": "127.0.0.1,localhost",
+    "CAO_AZURE_DASHBOARD_QUERIES": "$ROOT/dashboard/site/dashboard.json",
     "CAO_AZURE_LOCAL_SIMULATION": "1",
     "CAO_GITHUB_ALLOWED_ORGS": "example",
     "CAO_GITHUB_CLIENT_ID": "local-client",
@@ -305,11 +331,11 @@ JSON
 
   (
     cd "$APP_DIR"
+    # setsid makes Core Tools the process-group leader tracked for exact teardown.
     setsid "$FUNC_BIN" start --port "$function_port" --verbose >"$LOG_DIR/functions.log" 2>&1 &
     FUNCTIONS_PID=$!
     FUNCTIONS_START_TIME="$(awk '{print $22}' "/proc/$FUNCTIONS_PID/stat")"
     FUNCTIONS_PGID="$(ps -o pgid= -p "$FUNCTIONS_PID" | tr -d ' ')"
-    printf '%s\n' "$FUNCTIONS_PID" >"$STATE_DIR/functions.pid"
     write_env_value FUNCTIONS_PID "$FUNCTIONS_PID"
     write_env_value FUNCTIONS_START_TIME "$FUNCTIONS_START_TIME"
     write_env_value FUNCTIONS_PGID "$FUNCTIONS_PGID"
@@ -324,9 +350,9 @@ JSON
 
 wait_for_stack() {
   load_runtime
-  poll Redis "docker exec '$REDIS_CONTAINER_ID' redis-cli ping | grep -qx PONG"
-  poll Azurite "status=\$(curl -sS -o /dev/null -w '%{http_code}' 'http://127.0.0.1:$AZURITE_BLOB_PORT/'); [[ \$status -lt 500 ]]"
-  poll "Azure Functions host" "curl -fsS 'http://127.0.0.1:$FUNCTIONS_PORT/api/readiness'"
+  poll Redis redis_ready "$REDIS_CONTAINER_ID"
+  poll Azurite azurite_ready "http://127.0.0.1:$AZURITE_BLOB_PORT/$AZURITE_ACCOUNT?comp=list"
+  poll "Azure Functions host" functions_ready "http://127.0.0.1:$FUNCTIONS_PORT"
   printf 'azure-local: stack is ready\n'
 }
 

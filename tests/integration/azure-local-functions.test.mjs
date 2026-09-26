@@ -46,11 +46,10 @@ test("Azure Functions routes requests through shared CAO logic and Redis", async
   assert.equal(secondRemaining, firstRemaining - 1);
 
   assert.equal(redis("GET", `cao:${isolatedNamespace}:sentinel`), "unchanged");
-  assert.ok(Number(redis("EVAL", "return #redis.call('keys', ARGV[1])", "0", `cao:${runtime.redisNamespace}:*`)) > 0);
-  assert.equal(
-    redis("EVAL", "return #redis.call('keys', ARGV[1])", "0", `cao:${isolatedNamespace}:*`),
-    "1",
-  );
+  const activeKeys = redis("--scan", "--pattern", `cao:${runtime.redisNamespace}:*`).split("\n").filter(Boolean);
+  const isolatedKeys = redis("--scan", "--pattern", `cao:${isolatedNamespace}:*`).split("\n").filter(Boolean);
+  assert.ok(activeKeys.length > 0);
+  assert.deepEqual(isolatedKeys, [`cao:${isolatedNamespace}:sentinel`]);
 });
 
 test("missing local configuration fails predictably", () => {

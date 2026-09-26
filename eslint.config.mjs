@@ -4,7 +4,6 @@ export default [
   {
     ignores: [
       "dashboard/site/**",
-      ".tmp/**",
       "node_modules/**",
       "test-results/**",
       "tests/**",

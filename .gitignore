@@ -12,7 +12,6 @@ public/cao/
 /.cao-dashboard-e2e-*/
 /.cao-dashboard-traces/
 /.cao-dashboard-dev-server.json
-/.tmp/azure-local/
 
 # SelfCare dashboard performance worker evidence (workspace-relative for upload_artifact)
 /self-care-dashboard-performance-evidence/

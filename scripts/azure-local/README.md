@@ -8,13 +8,13 @@ or Azure Managed Redis TLS; those remain real-Azure smoke-test concerns.
 
 ## Prerequisites
 
-- Linux with Bash, Docker, Go, Node.js, npm, Python 3, curl, unzip, and `setsid`
+- Linux with Bash, Docker, Go, Node.js, Python 3, curl, `flock`, unzip, and
+  `setsid`
 - A running Docker daemon
 
 Azure Functions Core Tools 4.15.1 is downloaded on first use from its official
-GitHub release and verified by SHA-256. Redis 7.4.7 and Azurite 3.37.0 container
-tags are pinned. Dashboard npm dependencies are installed automatically when
-missing.
+GitHub release and verified by SHA-256. Redis 7.4.7 and Azurite 3.37.0 images
+are pinned by tag and digest.
 
 Run the complete suite:
 
