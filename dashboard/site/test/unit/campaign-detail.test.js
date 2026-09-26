@@ -220,7 +220,7 @@ describe('campaign detail route', () => {
     }));
 
     expect(rendered.dataset.campaign).toBe('ambient-context');
-    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('Operational ValueFailuresIssuesMemory');
+    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('Operational ValueFailuresReportsMemory');
     expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')).toBeNull();
     expect([...rendered.querySelectorAll('.campaign-tabs a')].map((link) => link.getAttribute('href'))).toEqual([
       '#page-campaign-insights?campaign=ambient-context',
@@ -285,7 +285,7 @@ describe('campaign detail route', () => {
     }))).toEqual([
       { label: 'Operational Value', count: '4' },
       { label: 'Failures', count: '2' },
-      { label: 'Issues', count: '1' },
+      { label: 'Reports', count: '1' },
       { label: 'Memory', count: undefined }
     ]);
     expect(allocation).toEqual({
@@ -397,7 +397,7 @@ describe('campaign detail route', () => {
     }));
 
     expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')).toBeNull();
-    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('Operational ValueFailuresIssuesMemory');
+    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('Operational ValueFailuresReportsMemory');
   });
 
   describe('workflow run navigation', () => {
