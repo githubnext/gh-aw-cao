@@ -16,6 +16,9 @@ import { isOutcomeDetailSectionConfig, renderOutcomeDetailSection } from './outc
 import { renderProblemDetail } from './problem-detail.js';
 import { rowsFor as rowsForSource } from './source-rows.js';
 import { renderWorkflowRoutePage } from './workflow-route-page.js';
+import { createDebug } from '../debug.js';
+
+const debugUiElements = createDebug('ui-elements');
 
 /**
  * @typedef {{
@@ -114,7 +117,12 @@ const LAZY_ELEMENT_RENDERERS = new Map([
  * @returns {HTMLElement | null}
  */
 export function renderUiElement(name, context) {
-  return ELEMENT_RENDERERS.get(name)?.({ ...context, element: name }) ?? null;
+  const renderer = ELEMENT_RENDERERS.get(name);
+  if (!renderer) {
+    debugUiElements({ event: 'unregistered-element', name });
+    return null;
+  }
+  return renderer({ ...context, element: name }) ?? null;
 }
 
 /**
@@ -124,7 +132,14 @@ export function renderUiElement(name, context) {
  */
 export async function renderUiElementAsync(name, context) {
   const lazyRenderer = LAZY_ELEMENT_RENDERERS.get(`${name}-lazy`);
-  if (lazyRenderer) return lazyRenderer({ ...context, element: name });
+  if (lazyRenderer) {
+    debugUiElements({ event: 'lazy-render-started', name });
+    const started = globalThis.performance?.now() ?? Date.now();
+    const element = await lazyRenderer({ ...context, element: name });
+    const durationMs = Math.round((globalThis.performance?.now() ?? Date.now()) - started);
+    debugUiElements({ event: 'lazy-render-completed', name, durationMs, rendered: element != null });
+    return element;
+  }
   return renderUiElement(name, context);
 }
 
