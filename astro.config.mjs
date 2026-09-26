@@ -154,6 +154,15 @@ export default defineConfig({
           ],
         },
         {
+          label: "Deploy",
+          items: [
+            { label: "Deployment options", link: "/deployment/" },
+            { label: "GitHub Actions only", link: "/deployment-actions/" },
+            { label: "Azure", link: "/deployment-azure/" },
+            { label: "Coolify", link: "/deployment-coolify/" },
+          ],
+        },
+        {
           label: "Dashboard",
           items: [
             { label: "At a glance", link: "/dashboard/" },
