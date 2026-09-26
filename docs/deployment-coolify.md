@@ -3,15 +3,14 @@ title: Coolify
 description: Deploy the Central Agentic Ops dashboard server as a hardened container on a self-hosted Coolify instance.
 ---
 
-:::danger[Experimental]
-The Coolify deployment is experimental. The container image, Compose file, deployment workflow, adapter contract, and environment variables may change between releases. It has not been certified for production use; complete your own security, network, backup, monitoring, and rollback review before exposing it to users.
-:::
+> [!WARNING]
+> **Experimental:** The Coolify deployment is experimental. The container image, Compose file, deployment workflow, adapter contract, and environment variables may change between releases. It has not been certified for production use; complete your own security, network, backup, monitoring, and rollback review before exposing it to users.
 
 The Coolify option runs the same Go dashboard server as the [Azure](deployment-azure.md) option, packaged as a non-root container image and started with `serve-hosted`. Coolify's proxy terminates public TLS and is the only ingress. The container reads a pre-populated, hash-verified dashboard artifact from a read-only volume, projects it into Redis, and serves the dashboard to users authenticated with GitHub OAuth and authorized by explicit organization or team membership.
 
 Coolify is a peer of the Azure profile. It does not replace, modify, or weaken it.
 
-## Service requirements
+## Prerequisites
 
 | Requirement | Detail |
 | --- | --- |
@@ -26,9 +25,9 @@ Coolify is a peer of the Azure profile. It does not replace, modify, or weaken i
 
 The runtime container needs no outbound access other than Redis and the GitHub OAuth and API endpoints.
 
-## Deploy
+## Deploying the dashboard
 
-1. **Build or select an image.** Build from the repository root:
+1. Build or select an image. To build the image, run the following command from the repository root.
 
    ```bash
    docker build -f server/Dockerfile \
@@ -39,18 +38,23 @@ The runtime container needs no outbound access other than Redis and the GitHub O
    ```
 
    For hosted use, prefer the image published by `coolify-deploy.yml`, and always reference it as `name@sha256:<digest>`.
-2. **Register the OAuth App** with callback `https://<public-host>/auth/callback`.
-3. **Provision Redis** in Coolify on the same private network as the dashboard, or use an external `rediss://` endpoint.
-4. **Stage the artifact volume.** Create a new, unattached volume, copy in a complete `payload-hashes.json` and every inventory, run, and record file it references from a trusted `cao-dashboard.yml` artifact, and verify every hash. Never copy files into a volume attached to a running service.
-5. **Create a Docker Compose resource** in Coolify from `server/coolify/compose.yml`. The file publishes no host port; attach the public domain through Coolify's proxy to container port `8080`.
-6. **Set variables and secrets** as listed in [Configuration](#configuration). Store every credential as a Coolify secret.
-7. **Find the proxy CIDR.** Set `CAO_TRUSTED_PROXY_CIDRS` to the exact private subnet Coolify assigns to its proxy network. Do not use `0.0.0.0/0` or a whole RFC 1918 range; startup rejects public, malformed, or missing CIDRs.
-8. **Deploy.** On start, `serve-hosted` ingests `CAO_SOURCE_DIRECTORY` (`/app/source`), stages a generation, and activates it.
-9. **Verify** `https://<public-host>/api/readiness` returns `200`, sign in with an authorized account, confirm an unauthorized account is refused, run a bounded query, and, if used, send a signed test webhook.
+1. Register a GitHub OAuth App and set its **Authorization callback URL** to `https://<public-host>/auth/callback`. For more information, see [Creating an OAuth app](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app) in the GitHub documentation.
+1. Provision Redis in Coolify on the same private network as the dashboard, or use an external `rediss://` endpoint.
+1. Stage the artifact volume. Create a new, unattached volume, copy in a complete `payload-hashes.json` and every inventory, run, and record file it references from a trusted `cao-dashboard.yml` artifact, and verify every hash. Never copy files into a volume attached to a running service.
+1. In Coolify, create a Docker Compose resource from `server/coolify/compose.yml`. The file publishes no host port, so attach the public domain through the Coolify proxy to container port `8080`.
+1. Set the variables and secrets listed in [Configuration reference](#configuration-reference). Store every credential as a Coolify secret.
+1. Set `CAO_TRUSTED_PROXY_CIDRS` to the exact private subnet Coolify assigns to its proxy network. Do not use `0.0.0.0/0` or a whole RFC 1918 range; startup rejects public, malformed, or missing CIDRs.
+1. Deploy the resource. On start, `serve-hosted` ingests `CAO_SOURCE_DIRECTORY` (`/app/source`), stages a generation, and activates it.
+1. Verify the deployment.
+
+   - Confirm that `https://<public-host>/api/readiness` returns `200`.
+   - Sign in with an authorized account and run a bounded query.
+   - Confirm that an unauthorized account is refused.
+   - If you use webhooks, send a signed test delivery.
 
 To update data, stage a new volume the same way, set `CAO_ARTIFACT_VOLUME` to it, and redeploy. An administrator listed in `CAO_GITHUB_ADMIN_USERS` can also force a staged rebuild with `POST /api/admin/rebuild`.
 
-### Automated delivery
+### Automating delivery
 
 `.github/workflows/coolify-deploy.yml` builds, scans (Trivy, failing on critical and high findings), publishes, and deploys immutable images:
 
@@ -63,7 +67,7 @@ To update data, stage a new volume the same way, set `CAO_ARTIFACT_VOLUME` to it
 
 Fork payloads are refused. Before calling the adapter the workflow rechecks that the source is still current for its channel. The adapter must record the previous digest, set `CAO_IMAGE` to the requested digest, trigger Coolify, poll to a terminal state, and verify `/api/readiness`. On failure it must redeploy and verify the previous digest before returning an error. Success is only a bounded JSON body `{"status":"ready","image":"...@sha256:...","digest":"sha256:..."}` that echoes the requested identity; queued or accepted responses are failures. Use environment protection rules for approvals.
 
-## Configuration
+## Configuration reference
 
 Variables consumed by `server/coolify/compose.yml`:
 
@@ -88,16 +92,16 @@ Variables consumed by `server/coolify/compose.yml`:
 
 The Compose service also runs with `read_only: true`, a 64 MiB `noexec` `/tmp`, all Linux capabilities dropped, `no-new-privileges`, `init`, and user `65532:65532`. Keep these settings.
 
-## Telemetry and observability
+## Monitoring the deployment
 
 - **Container health.** The image's `HEALTHCHECK` calls `/api/readiness` every 30 seconds through the trusted-host path. Coolify shows its status and restarts the service according to `restart: unless-stopped`.
 - **OpenTelemetry traces.** The server emits `otelhttp` request spans plus `cao_dashboard.query.execute` and `cao_dashboard.ingest.run` spans with non-secret attributes only. The checked-in `compose.yml` does not pass any `OTEL_*` variables, so tracing is off by default. To enable it, add `OTEL_EXPORTER_OTLP_ENDPOINT` (or `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`), optional `OTEL_EXPORTER_OTLP_HEADERS` as a Coolify secret, and optional `OTEL_SERVICE_NAME` to the service environment in your Coolify resource, pointing at an OTLP/HTTP collector you operate. `OTEL_SDK_DISABLED=true` forces tracing off. Responses carry `X-Trace-Id` and `X-Span-Id`, and incoming `traceparent` headers are honored.
 - **Logs.** Container stdout and stderr appear in Coolify's log view. Add `DEBUG=cao:*` (or a narrower pattern such as `cao:server,cao:query`) to enable debug namespaces; logs never contain tokens, credentials, query payloads, or source records.
 - **Diagnostics.** Run `/app/cao-dashboard doctor --redis-namespace coolify-dashboard` in the container with `CAO_REDIS_URL` in its environment for a read-only check of Redis, canonical data, and queries. Add `--deep`, `--format json`, or `--strict` as needed.
 - **Delivery history.** GitHub deployment history for each `coolify-*` environment records every rolled-out digest.
-- **Agentic workflow traces** are configured in the control repository. See [Optional observability](configuration.md#optional-observability).
+- **Agentic workflow traces** are configured in the control repository. For more information, see [Optional observability](configuration.md#optional-observability).
 
-## Guarantees
+## What this deployment guarantees
 
 - The same `serve-hosted` controls as Azure apply: GitHub OAuth, explicit organization or team authorization, encrypted server-side sessions, CSRF protection, webhook signature verification and deduplication, Redis-backed rate limits that fail closed, and secret-redacting logs. PATs and local bearer capabilities are rejected.
 - Forwarded headers are trusted only from `CAO_TRUSTED_PROXY_CIDRS`, the forwarded protocol must be `https`, and the host must match `CAO_ALLOWED_HOSTS` exactly.
@@ -106,7 +110,7 @@ The Compose service also runs with `read_only: true`, a 64 MiB `noexec` `/tmp`, 
 - A failed adapter deployment rolls back to and verifies the previous digest before reporting failure.
 - Ingestion and rebuilds activate only complete generations; a failure leaves the previous generation active.
 
-## Non-guarantees
+## What this deployment does not guarantee
 
 - **Platform.** Coolify, the host, Docker, TLS certificates, and the proxy network are operator-managed. CAO provides no SLA and does not harden the host.
 - **Redis operations.** Redis authentication, ACLs, persistence, memory sizing, and network isolation are your responsibility. Redis is disposable and not backed up by CAO.
@@ -116,8 +120,15 @@ The Compose service also runs with `read_only: true`, a 64 MiB `noexec` `/tmp`, 
 - **Per-repository authorization.** Authorized users can read the full active generation.
 - **Secret rollback.** Rolling back an image does not roll back OAuth, webhook, or session secrets.
 
-## Roll back
+## Rolling back the deployment
 
 Record the last known-good `name@sha256:...` from the GitHub deployment history before every rollout. To roll back, use the same protected environment's adapter to set `CAO_IMAGE` to that exact prior digest and redeploy; do not retag images. Confirm readiness, OAuth login and authorization, a bounded query, webhook signature handling, and rate limits. If the new binary wrote an unusable projection, clear only the deployment's Redis namespace and let the service re-ingest the retained artifact.
 
-See [`server/README.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md#coolify-container-profile) and [`server/SECURITY.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/SECURITY.md#coolify-profile) for the detailed reference.
+For the detailed reference, see [`server/README.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md#coolify-container-profile) and [`server/SECURITY.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/SECURITY.md#coolify-profile).
+
+## Further reading
+
+- [Deployment options](deployment.md)
+- [Azure](deployment-azure.md)
+- [`server/README.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md)
+- [`server/SECURITY.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/SECURITY.md)

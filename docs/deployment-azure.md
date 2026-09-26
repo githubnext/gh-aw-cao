@@ -3,9 +3,8 @@ title: Azure
 description: Deploy the Central Agentic Ops dashboard server to Azure Functions with Azure Managed Redis, Key Vault, and Application Insights.
 ---
 
-:::danger[Experimental]
-The Azure deployment is an experimental production-readiness profile, not a turnkey or certified production service. Treat `server/azure/main.bicep`, the OAuth policy, the Redis topology, and the Key Vault access model as a reviewed baseline. Keep it out of live use until your tenant has completed security, compliance, privacy, network-access, load and cost, monitoring, incident-response, and backup and rollback reviews. Parameters, app settings, and resource shapes may change between releases.
-:::
+> [!WARNING]
+> **Experimental:** The Azure deployment is an experimental production-readiness profile, not a turnkey or certified production service. Treat `server/azure/main.bicep`, the OAuth policy, the Redis topology, and the Key Vault access model as a reviewed baseline. Keep it out of live use until your tenant has completed security, compliance, privacy, network-access, load and cost, monitoring, incident-response, and backup and rollback reviews. Parameters, app settings, and resource shapes may change between releases.
 
 The Azure option runs the Go dashboard server (`server/`) as an Azure Functions custom handler. The browser talks only to the Function App over same-origin HTTPS. The Function App authenticates users with GitHub OAuth, authorizes them by explicit GitHub organization or team membership, reads secrets through Key Vault references, and executes bounded Dashboard Language queries against a disposable projection in Azure Managed Redis.
 
@@ -18,7 +17,7 @@ flowchart LR
   Function -->|"non-secret telemetry"| Insights["Application Insights"]
 ```
 
-## Service requirements
+## Prerequisites
 
 `server/azure/main.bicep` provisions the following resources in one resource group:
 
@@ -31,23 +30,23 @@ flowchart LR
 | Storage account | `Standard_LRS`, HTTPS only, TLS 1.2, no public blob access | Azure Functions runtime state only |
 | Application Insights | Optional Log Analytics workspace | Non-secret operational telemetry |
 
-You also need:
+You also need the following:
 
-- an Azure subscription and a resource group where you can create these resources and assign the **Key Vault Secrets User** role;
-- the Azure CLI with Bicep support;
-- a **GitHub OAuth App** (not a PAT, not a GitHub App user token) whose callback URL is `https://<functionAppName>.azurewebsites.net/auth/callback`;
-- at least one GitHub organization, or `org/team-slug`, whose active members may read the dashboard;
-- a network path from the Function App (and from any ingestion host) to Azure Managed Redis. The template disables Redis public network access and does not create a virtual network or private endpoint, so you must add private networking that fits your tenant;
+- An Azure subscription and a resource group where you can create these resources and assign the **Key Vault Secrets User** role.
+- The Azure CLI with Bicep support.
+- A **GitHub OAuth App** (not a PAT, not a GitHub App user token) whose callback URL is `https://<functionAppName>.azurewebsites.net/auth/callback`.
+- At least one GitHub organization, or `org/team-slug`, whose active members may read the dashboard.
+- A network path from the Function App (and from any ingestion host) to Azure Managed Redis. The template disables Redis public network access and does not create a virtual network or private endpoint, so you must add private networking that fits your tenant.
 - Go 1.27.1 and Node.js 24 to build the deployment package;
-- a trusted dashboard payload produced by `cao-dashboard.yml` in your control repository.
+- A trusted dashboard payload produced by `cao-dashboard.yml` in your control repository.
 
-The optional collection profile additionally requires a container registry image of the collector, a GitHub App, and Azure Container Apps. See [Optional collection profile](#optional-collection-profile).
+The optional collection profile additionally requires a container registry image of the collector, a GitHub App, and Azure Container Apps. For more information, see [Using the optional collection profile](#using-the-optional-collection-profile).
 
-## Deploy
+## Deploying the dashboard
 
-1. **Register the OAuth App.** In GitHub, create an OAuth App with the callback URL `https://<functionAppName>.azurewebsites.net/auth/callback`. Keep the client secret for the next step; never commit it.
-2. **Generate a session secret** of at least 32 random characters, for example with `openssl rand -base64 48`.
-3. **Deploy the infrastructure.** Supply secure parameters interactively or from your secret manager, never from a checked-in parameters file:
+1. Register a GitHub OAuth App and set its **Authorization callback URL** to `https://<functionAppName>.azurewebsites.net/auth/callback`. Store the client secret in a password manager for the next step. Never commit it. For more information, see [Creating an OAuth app](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app) in the GitHub documentation.
+1. Generate a session secret of at least 32 random characters. For example, run `openssl rand -base64 48`.
+1. Deploy the infrastructure. Supply secure parameters interactively or from your secret manager, never from a checked-in parameters file.
 
    ```bash
    az group create --name cao-dashboard --location <region>
@@ -65,9 +64,9 @@ The optional collection profile additionally requires a container registry image
    ```
 
    The CLI prompts for `githubClientSecret`, `sessionSecret`, and `redisConnectionString`. The Redis access key does not exist until Azure Managed Redis is created, so for the first deployment supply a temporary `rediss://` value, then read the database access key after provisioning and redeploy with the real `rediss://:<access-key>@<redis-host>:10000/0` URL. The template stores it only as the `cao-redis-url` Key Vault secret.
-4. **Record the outputs.** The template outputs only non-secret values: `functionHostName`, `githubOAuthRedirectUri`, `redisEnterpriseHostName`, `redisDatabaseName`, `keyVaultUri`, and `collectionEnabled`. Confirm that `githubOAuthRedirectUri` matches the OAuth App callback.
-5. **Add private networking** so the Function App can reach Redis while Redis public access stays disabled.
-6. **Build the package** from a trusted checkout:
+1. Record the deployment outputs. The template outputs only non-secret values: `functionHostName`, `githubOAuthRedirectUri`, `redisEnterpriseHostName`, `redisDatabaseName`, `keyVaultUri`, and `collectionEnabled`. Confirm that `githubOAuthRedirectUri` matches the OAuth App callback.
+1. Add private networking so that the Function App can reach Redis while Redis public access stays disabled.
+1. From a trusted checkout, build the deployment package.
 
    ```bash
    npm --prefix dashboard/site ci
@@ -76,8 +75,8 @@ The optional collection profile additionally requires a container registry image
    ```
 
    Assemble a Functions package containing the `cao-functions` executable, the built site in `site/`, the Dashboard Language document at `site/dashboard.json` (or set `CAO_AZURE_DASHBOARD_QUERIES`), a `host.json` whose `customHandler.description.defaultExecutablePath` is `cao-functions` with `enableForwardingHttpRequest: true` and an empty HTTP `routePrefix`, and one anonymous catch-all `httpTrigger` function with route `{*path}`. `scripts/azure-local/azure-local.sh` generates exactly this layout and is the reference.
-7. **Publish the package** with your standard Functions zip deployment, for example `az functionapp deployment source config-zip`.
-8. **Load dashboard data.** In the default profile the Function App does not ingest artifacts by itself. From a host with private network access to Redis, run ingestion against the same namespace the Function App uses:
+1. Publish the package with your standard Azure Functions zip deployment. For example, run `az functionapp deployment source config-zip`.
+1. Load the dashboard data. In the default profile, the Function App does not ingest artifacts by itself. From a host with private network access to Redis, run ingestion against the namespace that the Function App uses.
 
    ```bash
    go -C server run ./cmd/cao-dashboard ingest \
@@ -87,11 +86,16 @@ The optional collection profile additionally requires a container registry image
    ```
 
    Read `CAO_REDIS_URL` from Key Vault into the process environment only; do not pass it through shell history, tickets, or logs.
-9. **Verify.** `GET /api/health` should succeed, and `GET /api/readiness` should return `200` once an active generation exists. Sign in through GitHub, confirm that a user outside the allowed organizations or teams is refused, and run a representative dashboard view.
+1. Verify the deployment.
 
-Validate the Functions HTTP surface locally, without Azure credentials, with `./scripts/azure-local/azure-local.sh run`. It starts Functions Core Tools, Azurite, and Redis on Linux.
+   - Confirm that `GET /api/health` succeeds and that `GET /api/readiness` returns `200` after an active generation exists.
+   - Sign in with GitHub and open a representative dashboard view.
+   - Confirm that a user outside the allowed organizations or teams is refused.
 
-## Configuration
+> [!TIP]
+> To test the Functions HTTP surface locally without Azure credentials, run `./scripts/azure-local/azure-local.sh run` on Linux. The script starts Functions Core Tools, Azurite, and Redis.
+
+## Configuration reference
 
 App settings created by the template:
 
@@ -118,7 +122,7 @@ Other template parameters: `location`, `hostingPlanName`, `redisSkuName` (`Balan
 
 Azure mode fails closed at startup unless `rediss://` Redis, a namespace, allowed hosts, HTTPS enforcement, the OAuth client ID, secret, and redirect URL, a session secret of at least 32 characters, and at least one allowed organization or team are all configured. It never accepts the local bearer capability or PATs.
 
-## Telemetry and observability
+## Monitoring the deployment
 
 - **Functions host telemetry.** The template sets `APPLICATIONINSIGHTS_CONNECTION_STRING`, so Functions host requests, failures, and logs flow to Application Insights. Link a Log Analytics workspace with `logAnalyticsWorkspaceResourceId` for workspace-based queries and retention.
 - **OpenTelemetry traces from the Go server.** The server uses vendor-neutral OpenTelemetry. Every HTTP request is wrapped with `otelhttp`, and queries and ingestion emit `cao_dashboard.query.execute` and `cao_dashboard.ingest.run` spans with non-secret counts, revisions, and durations only. No Azure Monitor SDK is linked. To export spans, run an OpenTelemetry Collector with the `azuremonitorexporter` configured with the Application Insights connection string, and add these app settings:
@@ -134,9 +138,9 @@ Azure mode fails closed at startup unless `rediss://` Redis, a namespace, allowe
 - **Debug logs.** Set `DEBUG` to `cao:server`, `cao:query`, `cao:ingest`, `cao:redis`, `cao:cli`, or a pattern such as `cao:*,-cao:redis`. Current `main` also logs the resolved site directory, query path, and listen address of `cao-functions` under `cao:functions:startup`. Logs go to stderr and contain operation names, counts, timings, and fixed `oauth branch=<operation>.<outcome>` identifiers, never tokens, credentials, query payloads, or source records. Append `?debug=auth` in the browser to see matching client-side authentication events.
 - **Health endpoints.** `GET /api/health` (liveness), `GET /api/readiness` (503 until data is active), and `GET /api/v1/health`. Health and readiness probes are exempt from rate limits.
 - **Diagnostics.** `cao-dashboard doctor --redis-url "$CAO_REDIS_URL" --redis-namespace azure-dashboard` runs a read-only check of Redis, canonical data, queries, and collection. Add `--deep` to read every active source, `--format json` for automation, and `--strict` to fail on warnings.
-- **Agentic workflow traces** are configured separately in the control repository. See [Optional observability](configuration.md#optional-observability).
+- **Agentic workflow traces** are configured separately in the control repository. For more information, see [Optional observability](configuration.md#optional-observability).
 
-## Optional collection profile
+## Using the optional collection profile
 
 By default the server serves snapshots published by the Activity workflow and collects nothing. Setting `collectorImage` selects the collection profile instead: `server/azure/collector.bicep` adds an Azure Container Apps environment, KEDA-scaled collection workers (`redis-streams` backlog trigger, `minimumWorkers` default `0`, `collectorMaximumWorkers` default `20`), a backfill job, a user-assigned identity with Key Vault access, and a premium Azure Files evidence lake (`collectorLakeStorageSku`, default `Premium_LRS`).
 
@@ -144,7 +148,7 @@ The collection profile requires `collectorGithubAppId`, `collectorPrivateKey`, `
 
 The two profiles are alternatives, never layers. Configuring both `CAO_SOURCE_DIRECTORY` and `CAO_COLLECT_APP_ID` is rejected at startup.
 
-## Guarantees
+## What this deployment guarantees
 
 - The browser never receives Redis URLs or credentials, GitHub access or refresh tokens, or Key Vault secret values.
 - Every secret-bearing app setting is a versionless Key Vault reference resolved by managed identity; template outputs contain no secrets.
@@ -154,7 +158,7 @@ The two profiles are alternatives, never layers. Configuring both `CAO_SOURCE_DI
 - Rate limits are enforced atomically in Redis across instances and fail closed with `503` when Redis cannot enforce them.
 - Ingestion stages a complete generation and activates it atomically. A failed ingestion or rebuild leaves the previous generation active.
 
-## Non-guarantees
+## What this deployment does not guarantee
 
 - **Production readiness.** The profile is experimental and has no CAO support commitment or SLA. Availability is that of your Azure resources.
 - **Networking.** The template does not provision virtual networks, private endpoints, WAF, or Front Door. You own network isolation and ingress.
@@ -165,11 +169,19 @@ The two profiles are alternatives, never layers. Configuring both `CAO_SOURCE_DI
 - **Cost.** The EP1 plan and Azure Managed Redis are always-on costs regardless of traffic.
 - **Credential rotation.** Rotating secrets is an operator procedure; rolling back a package does not roll back OAuth, session, or Redis credentials.
 
-## Rotate secrets and roll back
+## Rotating secrets and rolling back
 
 - **Session secret.** Redeploy with the old key as `previousSessionSecret` and the new key as `sessionSecret`, wait for active sessions and queued revocations to drain, then redeploy without `previousSessionSecret`.
 - **Redis key.** Regenerate the access key in Azure, publish a new `cao-redis-url` secret version, and restart the Function App.
 - **OAuth secret.** Rotate in GitHub, publish a new Key Vault secret version, and restart the Function App.
 - **Application.** Redeploy the previous known-good package. If the projection is unusable, clear only the `azure-dashboard` namespace and re-ingest the retained artifact.
 
-See [`server/README.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md#hosted-azure-architecture) and [`server/SECURITY.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/SECURITY.md#azure-functions-profile) for the complete threat model and control list.
+For the complete threat model and control list, see [`server/README.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md#hosted-azure-architecture) and [`server/SECURITY.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/SECURITY.md#azure-functions-profile).
+
+## Further reading
+
+- [Deployment options](deployment.md)
+- [Coolify](deployment-coolify.md)
+- [`server/README.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md)
+- [`server/SECURITY.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/SECURITY.md)
+- [`scripts/azure-local/README.md`](https://github.com/githubnext/gh-aw-cao/blob/main/scripts/azure-local/README.md)
