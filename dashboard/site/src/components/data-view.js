@@ -19,6 +19,7 @@ import { processScatterPoints } from '../data-processor.js';
 import { MAX_RENDERED_SCATTER_POINTS } from '../scatter-clustering.js';
 import { createPromptCliActionControl, renderDeclaredCliAction, renderRowCliAction } from './cli-actions.js';
 import { effect, onCleanup, state } from '../reactive.js';
+import { createFactoryScope } from './factory-elements.js';
 import { createDebug } from '../debug.js';
 
 /** @type {Record<string, 'organization-link'|'repository-link'|'workflow-link'>} */
@@ -1409,21 +1410,16 @@ function renderChartView(context) {
       }
       if (!current.token) renderEffect.stop();
     });
+    const swimlaneScope = createFactoryScope();
+    swimlaneScope.bind(section);
+    swimlaneScope.signal.addEventListener('abort', () => {
+      consumeEffect.stop();
+      renderEffect.stop();
+    }, { once: true });
     const consumeEffect = effect(() => {
       let active = true;
-      let wasConnected = section.isConnected;
-      const observer = new MutationObserver(() => {
-        if (section.isConnected) {
-          wasConnected = true;
-        } else if (wasConnected) {
-          consumeEffect.stop();
-          renderEffect.stop();
-        }
-      });
-      observer.observe(document.documentElement, { childList: true, subtree: true });
       onCleanup(() => {
         active = false;
-        observer.disconnect();
       });
       queueMicrotask(async () => {
         let current = continuationState.get();
@@ -1432,8 +1428,7 @@ function renderChartView(context) {
         try {
           while (active && current.token) {
             const next = await continuation.load(current.token);
-            if (!active || (wasConnected && !section.isConnected)) return;
-            wasConnected ||= section.isConnected;
+            if (!active || swimlaneScope.signal.aborted) return;
             const remainingRows = Math.max(0, maximumRows - accumulatedRows.length);
             const acceptedRows = Number.isFinite(maximumRows)
               ? next.rows.slice(0, remainingRows)
