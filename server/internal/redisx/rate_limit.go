@@ -6,7 +6,11 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var rateLimitLog = logger.New("cao:redis:ratelimit")
 
 // RateLimitResult describes the state of a token bucket after one attempted
 // token consumption.
@@ -63,16 +67,33 @@ return {allowed, math.floor(tokens), retry, reset}`
 	if err != nil {
 		return RateLimitResult{}, fmt.Errorf("update Redis rate limit: %w", err)
 	}
+	result, err := parseRateLimitReply(value, capacity, refillPeriod)
+	if err != nil {
+		return RateLimitResult{}, err
+	}
+	if !result.Allowed {
+		rateLimitLog.Printf("rate limit denied remaining=%d retry_after_ms=%d", result.Remaining, result.RetryAfter.Milliseconds())
+	}
+	return result, nil
+}
+
+// parseRateLimitReply decodes the four-element EVAL reply the rate-limit
+// script returns (allowed, remaining tokens, retry-after, reset-after) into a
+// RateLimitResult, rejecting a reply that is malformed or out of the bounds
+// capacity and refillPeriod allow. It is a pure function so the script's
+// reply contract is testable without a real or fake Redis client.
+func parseRateLimitReply(value any, capacity int, refillPeriod time.Duration) (RateLimitResult, error) {
 	items, ok := value.([]any)
 	if !ok || len(items) != 4 {
 		return RateLimitResult{}, errors.New("redis rate limit returned an invalid response")
 	}
 	parsed := make([]int64, len(items))
 	for index, item := range items {
-		parsed[index], err = strconv.ParseInt(fmt.Sprint(item), 10, 64)
+		value, err := strconv.ParseInt(fmt.Sprint(item), 10, 64)
 		if err != nil {
 			return RateLimitResult{}, errors.New("redis rate limit returned an invalid response")
 		}
+		parsed[index] = value
 	}
 	if parsed[0] != 0 && parsed[0] != 1 {
 		return RateLimitResult{}, errors.New("redis rate limit returned an invalid response")
