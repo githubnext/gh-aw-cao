@@ -523,7 +523,10 @@ func fakeRedis(t *testing.T) (string, func()) {
 						mu.Lock()
 						result := 1
 						bulkResult := ""
+						rateLimitResult := false
 						switch {
+						case strings.Contains(command[1], `local current = redis.call("TIME")`):
+							rateLimitResult = true
 						case len(command) >= 6 && strings.Contains(command[1], `redis.call("SADD"`) && strings.Contains(command[1], `redis.call("DEL"`):
 							bulkResult = values[command[3]]
 							if bulkResult == "" {
@@ -561,7 +564,9 @@ func fakeRedis(t *testing.T) (string, func()) {
 							}
 						}
 						mu.Unlock()
-						if bulkResult != "" {
+						if rateLimitResult {
+							_, _ = fmt.Fprint(connection, "*4\r\n:1\r\n:119\r\n:0\r\n:500\r\n")
+						} else if bulkResult != "" {
 							_, _ = fmt.Fprintf(connection, "$%d\r\n%s\r\n", len(bulkResult), bulkResult)
 						} else {
 							_, _ = fmt.Fprintf(connection, ":%d\r\n", result)

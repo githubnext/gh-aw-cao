@@ -32,8 +32,8 @@ func TestTakeRateLimitTokenUsesAtomicRedisTokenBucket(t *testing.T) {
 	if !result.Allowed || result.Remaining != 29 || result.RetryAfter != 0 || result.ResetAfter != 2*time.Second {
 		t.Fatalf("unexpected rate limit result: %#v", result)
 	}
-	if len(client.command) != 7 || client.command[0] != "EVAL" || client.command[2] != "1" ||
-		client.command[3] != "rate-test:rate-limit:query:subject" ||
+	if len(client.command) != 6 || client.command[0] != "EVAL" || client.command[2] != "1" ||
+		client.command[3] != "cao:rate-test:rate-limit:query:subject" ||
 		client.command[4] != "30" || client.command[5] != "60000" {
 		t.Fatalf("unexpected Redis command: %#v", client.command)
 	}

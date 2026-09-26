@@ -97,7 +97,7 @@ func TestRateLimitUsesHashedAuthenticatedIdentity(t *testing.T) {
 	handler.ServeHTTP(response, request)
 
 	sum := sha256.Sum256([]byte("user:octocat"))
-	expectedKey := "test:rate-limit:general:" + hex.EncodeToString(sum[:])
+	expectedKey := "cao:test:rate-limit:general:" + hex.EncodeToString(sum[:])
 	if len(client.command) < 4 || client.command[3] != expectedKey {
 		t.Fatalf("rate limit key = %#v, want %q", client.command, expectedKey)
 	}
