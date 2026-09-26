@@ -36,6 +36,16 @@ Mutating browser requests require the session-bound CSRF token. The webhook
 route is exempt from browser authentication only because it independently
 requires a valid `X-Hub-Signature-256` signature and delivery identity.
 
+API and OAuth abuse is bounded with atomic Redis token buckets shared by all
+server replicas. Authenticated buckets use a digest of the GitHub login, while
+OAuth entry points use a digest of the client IP; trusted forwarding headers are
+used only at the configured proxy boundary. Query requests receive the tightest
+limit because they consume the most server and Redis work. The limiter fails
+closed when Redis is unavailable, and `429` responses communicate the cooldown
+with `Retry-After` plus the standard `RateLimit-*` headers. Health/readiness
+probes and signature-verified GitHub webhooks remain exempt so platform health
+checks and delivery retries do not consume user quotas.
+
 Webhook delivery IDs and projection leases are stored in the deployment Redis
 namespace. Failed reconciliation removes its delivery marker so GitHub can
 retry. Full rebuilds and webhook reconciliation share a distributed lease;

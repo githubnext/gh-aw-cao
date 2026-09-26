@@ -246,7 +246,7 @@ func (a *App) Handler() http.Handler {
 			return request.Method + " /*"
 		}),
 	)
-	return securityHeaders(a.requireAccess(instrumented))
+	return securityHeaders(a.requireAccess(a.rateLimit(instrumented)))
 }
 
 // withResponseTraceHeaders exposes the W3C trace/span ids that otelhttp

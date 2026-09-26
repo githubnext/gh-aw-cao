@@ -136,6 +136,26 @@ The Redis command client reuses a bounded connection pool, applies operation
 deadlines, and retries read-only commands once when a pooled connection has
 gone stale. Write commands are not replayed automatically.
 
+### Request rate limiting
+
+The HTTP server uses atomic Redis token buckets to enforce limits consistently
+across replicas. Authenticated requests are keyed by a SHA-256 digest of the
+GitHub login; unauthenticated OAuth requests are keyed by a digest of the client
+IP. `X-Forwarded-For` is considered only at the configured trusted-proxy
+boundary. Raw logins and client addresses are not stored in rate-limit keys.
+
+| Request class | Capacity | Refill period |
+| --- | ---: | ---: |
+| Dashboard query (`POST /api/v1/query`) | 30 | 1 minute |
+| OAuth entry and callback | 10 | 5 minutes |
+| Other API and auth requests | 120 | 1 minute |
+
+Health/readiness probes, static assets, and independently authenticated GitHub
+webhooks are exempt. Every limited response includes `RateLimit-Limit`,
+`RateLimit-Remaining`, `RateLimit-Reset`, and `RateLimit-Policy`. An exhausted
+bucket returns `429 Too Many Requests` with `Retry-After` in seconds. If Redis
+cannot enforce a limit, the request fails closed with `503 Service Unavailable`.
+
 ### Hosted Azure architecture
 
 > [!WARNING]
