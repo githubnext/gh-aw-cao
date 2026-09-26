@@ -115,7 +115,7 @@ The Compose service also runs with `read_only: true`, a 64 MiB `noexec` `/tmp`, 
 - **Platform.** Coolify, the host, Docker, TLS certificates, and the proxy network are operator-managed. CAO provides no SLA and does not harden the host.
 - **Redis operations.** Redis authentication, ACLs, persistence, memory sizing, and network isolation are your responsibility. Redis is disposable and not backed up by CAO.
 - **Adapter.** The repository does not ship the Coolify deployment adapter; you must implement and secure the synchronous contract above.
-- **Data freshness.** Nothing refreshes the artifact volume automatically. Data is as fresh as the last staged volume or rebuild.
+- **Data freshness.** Nothing refreshes the artifact volume automatically. Data is as fresh as the last staged volume or rebuild. For the upstream schedule, see [CAO Activity](activity.md).
 - **Live updates.** Server-Sent Events are best-effort; clients fall back to refresh polling.
 - **Per-repository authorization.** Authorized users can read the full active generation.
 - **Secret rollback.** Rolling back an image does not roll back OAuth, webhook, or session secrets.
@@ -129,6 +129,10 @@ For the detailed reference, see [`server/README.md`](https://github.com/githubne
 ## Further reading
 
 - [Deployment options](deployment.md)
+- [GitHub Actions only](deployment-actions.md)
 - [Azure](deployment-azure.md)
+- [Data ingestion](dashboard-data-ingestion.md)
+- [Data model](dashboard-data-model.md)
+- [Incident response](operations.md#incident-response)
 - [`server/README.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md)
 - [`server/SECURITY.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/SECURITY.md)

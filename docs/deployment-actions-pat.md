@@ -110,6 +110,9 @@ For suspected exposure, set affected campaign kill switches to `false`, cancel a
 
 ## Further reading
 
+- [GitHub Actions only](deployment-actions.md)
+- [Admission gates](admission.md), including [Diagnose a skipped run](admission.md#diagnose-a-skipped-run)
+- [Credentials](configuration.md#credentials) in the configuration reference
 - [Control plane authentication profiles](control-plane-authentication.md#configure-a-fine-grained-token)
 - [Fine-grained PAT fallback](authentication.md#fine-grained-pat-fallback)
 - [GitHub Actions with GitHub Apps](deployment-actions-github-app.md)

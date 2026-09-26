@@ -37,8 +37,8 @@ You also need the following:
 - A **GitHub OAuth App** (not a PAT, not a GitHub App user token) whose callback URL is `https://<functionAppName>.azurewebsites.net/auth/callback`.
 - At least one GitHub organization, or `org/team-slug`, whose active members may read the dashboard.
 - A network path from the Function App (and from any ingestion host) to Azure Managed Redis. The template disables Redis public network access and does not create a virtual network or private endpoint, so you must add private networking that fits your tenant.
-- Go 1.27.1 and Node.js 24 to build the deployment package;
-- A trusted dashboard payload produced by `cao-dashboard.yml` in your control repository.
+- Go 1.27.1 and Node.js 24 to build the deployment package.
+- A trusted dashboard payload produced by `cao-dashboard.yml` in your control repository. To produce one, complete the [GitHub Actions only](deployment-actions.md) deployment first, optionally with `control-plane.campaigns.dashboard.deploy` set to `false`.
 
 The optional collection profile additionally requires a container registry image of the collector, a GitHub App, and Azure Container Apps. For more information, see [Using the optional collection profile](#using-the-optional-collection-profile).
 
@@ -164,7 +164,7 @@ The two profiles are alternatives, never layers. Configuring both `CAO_SOURCE_DI
 - **Networking.** The template does not provision virtual networks, private endpoints, WAF, or Front Door. You own network isolation and ingress.
 - **Automatic ingestion.** In the default profile nothing pushes new payloads into Redis; you must schedule ingestion yourself or use the collection profile.
 - **Live updates.** Server-Sent Events at `GET /api/v1/events` are best-effort; cold starts, scale-in, idle timeouts, and plan limits can end them. Clients fall back to `POST /api/v1/refresh`. WebSockets are not supported.
-- **Durability.** Redis is disposable derived state and is not backed up by CAO. Rebuild it from the retained artifact or evidence lake.
+- **Durability.** Redis is disposable derived state and is not backed up by CAO. Rebuild it from the retained artifact or evidence lake. For long-term retention, see [Create a historical archive](dashboard-data-ingestion.md#create-a-historical-archive).
 - **Per-repository authorization.** Authorized users can read the full active generation; there is no per-repository or per-source filtering.
 - **Cost.** The EP1 plan and Azure Managed Redis are always-on costs regardless of traffic.
 - **Credential rotation.** Rotating secrets is an operator procedure; rolling back a package does not roll back OAuth, session, or Redis credentials.
@@ -181,7 +181,12 @@ For the complete threat model and control list, see [`server/README.md`](https:/
 ## Further reading
 
 - [Deployment options](deployment.md)
+- [GitHub Actions only](deployment-actions.md)
 - [Coolify](deployment-coolify.md)
+- [Data ingestion](dashboard-data-ingestion.md)
+- [Data model](dashboard-data-model.md)
+- [Dashboard Language](dashboard-language.md)
+- [Incident response](operations.md#incident-response)
 - [`server/README.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md)
 - [`server/SECURITY.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/SECURITY.md)
 - [`scripts/azure-local/README.md`](https://github.com/githubnext/gh-aw-cao/blob/main/scripts/azure-local/README.md)

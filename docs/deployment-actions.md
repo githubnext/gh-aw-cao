@@ -6,7 +6,7 @@ description: Deploy the Central Agentic Ops dashboard as a static GitHub Pages s
 > [!WARNING]
 > **Experimental:** The GitHub Actions only deployment is experimental. Workflow names, cache keys, payload layout, and configuration fields may change between releases. The published site can contain private repository data; confirm the Pages access boundary before the first deployment.
 
-This is the default deployment. Everything runs in the control repository's GitHub Actions: the Activity workflow collects evidence, the dashboard workflow builds a static site plus its data payload, and GitHub Pages serves it. All queries run in the viewer's browser, in a Web Worker over a per-browser IndexedDB database. There is no server, database, or cloud account to operate.
+This is the default deployment. Everything runs in the control repository's GitHub Actions: the [CAO Activity](activity.md) workflow collects evidence, the dashboard workflow builds a static site plus its data payload, and GitHub Pages serves it. All queries run in the viewer's browser, in a Web Worker over a per-browser IndexedDB database. There is no server, database, or cloud account to operate. For the browser pipeline, see [Data ingestion](dashboard-data-ingestion.md#browser-data-pipeline).
 
 ## Prerequisites
 
@@ -14,7 +14,7 @@ This is the default deployment. Everything runs in the control repository's GitH
 | --- | --- |
 | GitHub repository | The private control repository that runs CAO. A GitHub Enterprise account is not required. |
 | GitHub Actions | Enabled for the repository, with GitHub-hosted `ubuntu-latest` runners (or compatible self-hosted runners) and enough minutes for a scheduled Activity run about every 15 minutes. |
-| Actions cache | Used for the Activity snapshot (`cao-activity-v5-*`) and the built dashboard (`central-agentic-ops-dashboard`). Cache eviction is tolerated; the dashboard falls back to the latest successful Activity artifact. |
+| Actions cache | Used for the Activity snapshot (`cao-activity-v5-*`) and the built dashboard (`central-agentic-ops-dashboard`). Cache eviction is tolerated; the dashboard falls back to the latest successful Activity artifact. For more information, see [Cache contract](activity.md#cache-contract). |
 | Actions artifacts | `cao-activity-index` and `central-agentic-ops-dashboard` artifacts. The dashboard artifact is retained for one day. |
 | GitHub Pages | Source set to **GitHub Actions**. Access-controlled (private) Pages visibility requires a plan that supports it, such as GitHub Enterprise Cloud; otherwise the site is public. |
 | `github-pages` environment | Created by Pages; optionally protected with required reviewers. |
@@ -55,9 +55,9 @@ At runtime a configured App takes precedence over a PAT, and a PAT takes precede
    1. Restrict the site visibility to the intended audience.
 
 1. Optionally, protect the `github-pages` environment. For more information, see [Managing environments for deployment](https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-deployments/managing-environments-for-deployment) in the GitHub documentation.
-1. Under your repository name, click **Actions**. In the left sidebar, click **CAO Activity**, then click **Run workflow**. Wait for the run to succeed. The dashboard build fails if no successful Activity run exists.
+1. Under your repository name, click **Actions**. In the left sidebar, click **CAO Activity**, then click **Run workflow**. Wait for the run to succeed. The dashboard build fails if no successful Activity run exists. If the run fails, see [Monitor and recover](operations.md#routine-monitoring).
 1. In the left sidebar, click **CAO Dashboard**, then click **Run workflow**.
-1. Open the deployment URL from the `deploy` job, and confirm that the site shows data only from the intended control repository.
+1. Open the deployment URL from the `deploy` job, and confirm that the site shows data only from the intended control repository. To learn how to read the site, see [Dashboard](dashboard.md) and the [Overview](dashboard-overview.md) view.
 
 The dashboard workflow also runs on pushes to the default branch that change `.github/workflows/cao.json`, `.github/workflows/cao-dashboard.yml`, `*/dashboard.json`, or `dashboard/**`. It has no schedule of its own; add one, or dispatch it after Activity runs, when you need the published site to track new evidence automatically.
 
@@ -67,8 +67,10 @@ The dashboard workflow also runs on pushes to the default branch that change `.g
 | --- | --- | --- | --- |
 | `control-plane.campaigns.dashboard.deploy` | `.github/workflows/cao.json` | `true` | Must be a boolean. `false` keeps building and caching the dashboard artifact but skips the standalone Pages deployment, so an existing Pages workflow can publish it. |
 | Activity schedule | `.github/workflows/cao-activity.yml` | About every 15 minutes | Controls evidence freshness. Change it through the campaign source and `gh aw update`, not by hand-editing an installed lock file. |
-| Activity retention | `cao-activity.yml` and `cao-dashboard.yml` ingestion steps | 30 days of runs and records | Bounds the payload size served to browsers. |
+| Activity retention | `cao-activity.yml` and `cao-dashboard.yml` ingestion steps | 30 days of runs and records | Bounds the payload size served to browsers. For more information, see [Update and retain browser data](dashboard-data-model.md#update-and-retain-browser-data). |
 | Pages visibility | **Settings > Pages** | Repository plan default | Determines who can read the site. |
+
+Pages destinations also follow the campaign's rollout mode: `review` publishes to access-controlled review Pages, and `live` publishes to production Pages. For more information, see [Pages report routing](rollout-and-routing.md#pages-report-routing).
 
 When another workflow already owns Pages, set `deploy` to `false`. That workflow can list successful `cao-dashboard.yml` runs on the default branch, download the latest `central-agentic-ops-dashboard` artifact into its site output, and deploy the combined result.
 
@@ -81,7 +83,7 @@ This option runs no server, so there is no server-side OpenTelemetry endpoint to
 - **Credential health.** Skipped `create-github-app-token` steps, admission capacity gates, and authentication failures reveal which credential a run actually used. The [GitHub Apps](deployment-actions-github-app.md#monitoring-the-deployment) and [PAT](deployment-actions-pat.md#monitoring-the-deployment) pages describe the signals specific to each profile.
 - **Agentic workflow traces.** Orchestrators and workers export OpenTelemetry spans through gh-aw. Set the `GH_AW_DEFAULT_OTLP_ENDPOINT` Actions variable and the `GH_AW_DEFAULT_OTLP_HEADERS` Actions secret at repository, organization, or enterprise scope. For more information, see [Optional observability](configuration.md#optional-observability).
 - **Browser diagnostics.** Append `?debug=1`, `?debug=*`, or a category filter such as `?debug=data:query,-render:*` to the dashboard URL to log structured, non-sensitive diagnostics to the browser console. `?debug=data:query` reports per-stage query timings.
-- **Local reproduction.** Run `npm run dashboard:local -- --repo OWNER/REPOSITORY` in a catalog checkout to download the published data and preview it locally.
+- **Local reproduction.** Run `npm run dashboard:local -- --repo OWNER/REPOSITORY` in a catalog checkout to download the published data and preview it locally. To query the same data with SQLite, see [Use local SQLite](dashboard-data-ingestion.md#use-local-sqlite).
 
 ## What this deployment guarantees
 
@@ -95,7 +97,7 @@ This option runs no server, so there is no server-side OpenTelemetry endpoint to
 
 - **Freshness.** The site is a snapshot. It reflects the last successful dashboard deployment, which may lag the latest Activity run.
 - **Confidentiality.** A private repository does not make its Pages site private. Access control depends on the Pages visibility settings your plan supports.
-- **Durability.** Actions caches may be evicted and artifacts expire. The site is a presentation snapshot, not an archive; target repository history and Actions run metadata remain the authority.
+- **Durability.** Actions caches may be evicted and artifacts expire. The site is a presentation snapshot, not an archive; target repository history and Actions run metadata remain the authority. To keep history longer, see [Create a historical archive](dashboard-data-ingestion.md#create-a-historical-archive).
 - **Scale.** All data is downloaded and queried in each viewer's browser. Very large fleets can exceed browser memory or make first load slow; consider a server-backed option.
 - **Per-user authorization.** Everyone who can read the Pages site can read all of its data. There is no per-user or per-repository filtering.
 - **Availability.** Availability is that of GitHub Pages and GitHub Actions; CAO adds no SLA.
@@ -105,12 +107,16 @@ This option runs no server, so there is no server-side OpenTelemetry endpoint to
 
 - Re-run **CAO Dashboard** from a known-good commit, or revert the offending change and push.
 - Set `control-plane.campaigns.dashboard.deploy` to `false` to stop future standalone deployments; this does not unpublish the current site.
-- To take the site down, unpublish it from the repository's Pages settings, or block the `github-pages` environment. Treat an unintended data exposure as a Pages incident.
+- To take the site down, unpublish it from the repository's Pages settings, or block the `github-pages` environment. Treat an unintended data exposure as a Pages incident. For more information, see [Incident response](operations.md#incident-response).
 
 ## Further reading
 
 - [Deployment options](deployment.md)
+- [Quickstart](getting-started.md)
 - [Configure authentication](authentication.md)
+- [CAO Activity](activity.md)
+- [Data ingestion](dashboard-data-ingestion.md)
+- [Publishing Pages reports](operations.md#publishing-pages-reports)
 - [Monitor and recover](operations.md)
 - [Configuring a publishing source for your GitHub Pages site](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site) in the GitHub documentation
 - [Changing the visibility of your GitHub Pages site](https://docs.github.com/en/enterprise-cloud@latest/pages/getting-started-with-github-pages/changing-the-visibility-of-your-github-pages-site) in the GitHub documentation

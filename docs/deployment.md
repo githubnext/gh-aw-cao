@@ -6,7 +6,7 @@ description: Compare the GitHub Actions only, Azure, and Coolify deployment opti
 > [!WARNING]
 > **Experimental:** Every deployment option on this page is experimental. Interfaces, configuration names, infrastructure templates, and operating procedures may change between releases without a migration path. None of the options has been certified for production use. Complete your own security, compliance, privacy, network, monitoring, incident-response, and rollback review before exposing a deployment to real users or data.
 
-The control plane itself always runs in GitHub Actions: orchestrators, workers, and the Activity collector are Actions workflows in the control repository. A deployment option decides only **where the dashboard is served and where its query data lives**. It never changes campaign policy, rollout mode, credentials, or target authority; those remain in the control repository's reviewed `.github/workflows/cao.json`.
+The [control plane](architecture.md) itself always runs in GitHub Actions: [orchestrators and workers](orchestrators-and-workers.md), and the [CAO Activity](activity.md) collector, are Actions workflows in the control repository. A deployment option decides only **where the dashboard is served and where its query data lives**. It never changes campaign policy, rollout mode, credentials, or target authority; those remain in the control repository's reviewed `.github/workflows/cao.json`. For more information, see [Configuration](configuration.md#control-policy) and [Roll out a campaign](rollout-and-routing.md).
 
 Three hosting options are currently available. The GitHub Actions only option has two credential profiles, which are listed separately below:
 
@@ -19,7 +19,7 @@ Three hosting options are currently available. The GitHub Actions only option ha
 
 ## Choosing an option
 
-- Start with **GitHub Actions only**. It needs no infrastructure beyond the control repository and is what `gh aw add githubnext/gh-aw-cao` installs by default.
+- Start with **GitHub Actions only**. It needs no infrastructure beyond the control repository and is what `gh aw add githubnext/gh-aw-cao` installs by default. If you have not set up a control repository yet, follow the [Quickstart](getting-started.md) first.
 - Within GitHub Actions only, use **GitHub Apps** by default. Use a **fine-grained PAT** only with informed consent, when no App can be installed and the scope is one resource owner with PAT-compatible APIs. For self-review, or bounded review of public targets, the built-in workflow token needs neither. For more information, see [Choosing a credential profile](deployment-actions.md#choosing-a-credential-profile).
 - The credential profile also applies to Azure and Coolify, because the Activity workflow still collects their evidence in GitHub Actions. Dashboard users authenticate separately with a GitHub OAuth App. The Azure collection profile requires a GitHub App and does not support PATs.
 - Choose **Azure** or **Coolify** only when you need server-side query execution for data that is too large for the browser, per-user GitHub OAuth authorization instead of Pages visibility, or webhook-driven refresh.
@@ -33,11 +33,13 @@ Every option serves data derived from the same evidence:
 1. `cao-dashboard.yml` assembles the dashboard site plus a hash-manifested data payload (`payload-hashes.json`, `inventory-sources.json`, `gh-aw-logs-runs/*.jsonl`, `gh-aw-logs-records/*.jsonl`).
 1. The selected option serves that payload: GitHub Pages ships it to the browser, while the Go server verifies it, projects it into Redis, and answers bounded queries.
 
+For collection boundaries, retention, and browser processing, see [Data ingestion](dashboard-data-ingestion.md). For entities and identities, see [Data model](dashboard-data-model.md).
+
 The optional Azure *collection profile* replaces step 1 with server-side collection workers driven by GitHub App webhooks. For more information, see [Using the optional collection profile](deployment-azure.md#using-the-optional-collection-profile).
 
 ## What every option guarantees
 
-- The dashboard is read-only with respect to campaigns. It cannot start work, approve outputs, change policy, or write to target repositories.
+- The dashboard is read-only with respect to campaigns. It cannot start work, approve outputs, change policy, or write to target repositories. For more information, see [Dashboard](dashboard.md#know-the-boundary) and [Execution and safety](execution-and-safety.md).
 - Dashboard data is derived state. IndexedDB (Actions only) and Redis (Azure, Coolify) are disposable projections that can be rebuilt from the retained artifact; neither is an authority.
 - Payload files are verified against `payload-hashes.json` before they are parsed. Missing manifests, hash mismatches, unsafe paths, or malformed records fail closed.
 - Secrets are never written to the dashboard site, API responses, URLs, or logs.
@@ -51,6 +53,9 @@ The optional Azure *collection profile* replaces step 1 with server-side collect
 
 ## Further reading
 
+- [Dashboard](dashboard.md) explains what the dashboard shows and how to read it.
 - [Deployment and governance](deployment-and-governance.md) covers control-repository topology, ownership, and enrollment.
+- [Monitor and recover](operations.md) covers routine monitoring, [publishing Pages reports](operations.md#publishing-pages-reports), and [incident response](operations.md#incident-response).
+- [Glossary](glossary.md) defines terms such as control plane, operator, and canonical data.
 - [Configuration](configuration.md#optional-observability) covers OpenTelemetry export for the agentic workflows themselves.
 - [`server/README.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md) and [`server/SECURITY.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/SECURITY.md) are the detailed references for the Go server.

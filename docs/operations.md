@@ -152,6 +152,8 @@ This path supports issue outputs only. It does not transfer issues, publish pull
 
 ## Publishing Pages Reports
 
+This section covers the GitHub Actions only dashboard. For a step-by-step procedure, credential profiles, and server-backed alternatives, see [Deployment options](deployment.md).
+
 ### Install the dashboard campaign
 
 The root Central Agentic Ops campaign installs the deterministic activity index and dashboard by default. To install the dashboard without the operational workflows, install both focused deterministic campaigns from the same published release tag:
