@@ -97,9 +97,7 @@ func (a *App) enforceRateLimit(
 func requiresPreAuthRateLimit(path string) bool {
 	return !publicServiceEndpoint(path) &&
 		path != "/api/github/webhook" &&
-		!strings.HasPrefix(path, "/auth/login") &&
-		!strings.HasPrefix(path, "/auth/logged-out") &&
-		!strings.HasPrefix(path, "/auth/callback")
+		!strings.HasPrefix(path, "/auth/logged-out")
 }
 
 func ratePolicy(request *http.Request) (requestRatePolicy, bool) {
@@ -122,23 +120,38 @@ func (a *App) rateLimitSubject(request *http.Request) string {
 		strings.TrimSpace(session.Login) != "" {
 		return "user:" + strings.ToLower(strings.TrimSpace(session.Login))
 	}
+	if request.URL.Path == "/auth/callback" && a.oauth != nil && a.oauth.validState(request) {
+		if cookie, err := request.Cookie("cao_oauth_state"); err == nil && cookie.Value != "" {
+			return "oauth-state:" + cookie.Value
+		}
+	}
 	return "client:" + a.clientIP(request)
 }
 
 func (a *App) clientIP(request *http.Request) string {
 	if a.proxyPolicy().TrustForwarded {
-		if ip := parseForwardedIP(forwardedHeader(request, "X-Forwarded-For")); ip != nil {
+		if forwarded := forwardedHeader(request, "X-Forwarded-For"); forwarded != "" {
+			if ip := parseForwardedIP(forwarded); ip != nil {
+				return ip.String()
+			}
+			return remoteIP(request.RemoteAddr)
+		}
+		if ip := parseForwardedFor(forwardedHeader(request, "Forwarded")); ip != nil {
 			return ip.String()
 		}
 	}
-	host, _, err := net.SplitHostPort(request.RemoteAddr)
+	return remoteIP(request.RemoteAddr)
+}
+
+func remoteIP(address string) string {
+	host, _, err := net.SplitHostPort(address)
 	if err == nil {
 		if ip := net.ParseIP(host); ip != nil {
 			return ip.String()
 		}
 		return host
 	}
-	if ip := net.ParseIP(request.RemoteAddr); ip != nil {
+	if ip := net.ParseIP(address); ip != nil {
 		return ip.String()
 	}
 	return "unknown"
@@ -154,6 +167,18 @@ func parseForwardedIP(value string) net.IP {
 		return nil
 	}
 	return net.ParseIP(host)
+}
+
+func parseForwardedFor(value string) net.IP {
+	for _, parameter := range strings.Split(value, ";") {
+		name, candidate, found := strings.Cut(parameter, "=")
+		if !found || !strings.EqualFold(strings.TrimSpace(name), "for") {
+			continue
+		}
+		candidate = strings.Trim(strings.TrimSpace(candidate), `"`)
+		return parseForwardedIP(candidate)
+	}
+	return nil
 }
 
 func cooldownSeconds(duration time.Duration) int {

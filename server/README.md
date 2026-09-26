@@ -140,9 +140,15 @@ gone stale. Write commands are not replayed automatically.
 
 The HTTP server uses atomic Redis token buckets to enforce limits consistently
 across replicas. Authenticated requests are keyed by a SHA-256 digest of the
-GitHub login; unauthenticated OAuth requests are keyed by a digest of the client
-IP. `X-Forwarded-For` is considered only at the configured trusted-proxy
-boundary. Raw logins and client addresses are not stored in rate-limit keys.
+GitHub login; OAuth login requests are keyed by a digest of the client IP, and
+valid callbacks by a digest of their signed state. Forwarding headers are
+considered only at the configured trusted-proxy boundary. Raw logins, client
+addresses, and OAuth state are not stored in rate-limit keys.
+Enterprise proxy boundaries may supply either `X-Forwarded-For` or RFC 7239
+`Forwarded`; only the final value written by the trusted boundary is accepted.
+Authenticated quotas are per GitHub login, and OAuth callbacks use their opaque
+state cookie, so users sharing a corporate egress address do not share those
+quotas. The normative contract is `specs/server-rate-limiting.md`.
 
 | Request class | Capacity | Refill period |
 | --- | ---: | ---: |

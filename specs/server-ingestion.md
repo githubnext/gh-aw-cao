@@ -24,6 +24,10 @@ It defines profile selection and exclusivity, enrollment, event admission,
 collection, the evidence lake, projection, cold start, gap recovery, rate-limit
 governance, authority, and failure behavior.
 
+Its rate-limit governance applies to outbound GitHub API capacity. Inbound
+dashboard request abuse protection is defined separately by
+`specs/server-rate-limiting.md`.
+
 It does not define dashboard presentation, workflow rollout policy, or durable
 operational outcomes. It does not define the canonical data model, the shard
 format, or the `gh aw` audit mapping: those remain owned by

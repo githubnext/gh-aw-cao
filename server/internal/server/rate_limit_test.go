@@ -113,6 +113,34 @@ func TestRateLimitUsesHashedAuthenticatedIdentity(t *testing.T) {
 	}
 }
 
+func TestRateLimitSeparatesOAuthCallbacksBehindEnterpriseProxy(t *testing.T) {
+	oauth := &githubOAuth{key: []byte("test-signing-key")}
+	for _, state := range []string{"state-one", "state-two"} {
+		client := &serverRateLimitClient{result: []any{int64(1), int64(9), int64(0), int64(500)}}
+		app := &App{store: redisx.NewStore(client, "test"), oauth: oauth}
+		handler := app.rateLimit(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+			response.WriteHeader(http.StatusNoContent)
+		}))
+		request := httptest.NewRequestWithContext(
+			t.Context(), http.MethodGet, "https://dashboard.example/auth/callback?state="+state, nil)
+		request.RemoteAddr = "192.0.2.10:4321"
+		signedState := oauth.sign(state)
+		request.AddCookie(&http.Cookie{
+			Name: "cao_oauth_state", Value: signedState, Secure: true,
+			HttpOnly: true, SameSite: http.SameSiteLaxMode,
+		})
+		response := httptest.NewRecorder()
+
+		handler.ServeHTTP(response, request)
+
+		sum := sha256.Sum256([]byte("oauth-state:" + signedState))
+		expectedKey := "cao:test:rate-limit:auth:" + hex.EncodeToString(sum[:])
+		if len(client.command) < 4 || client.command[3] != expectedKey {
+			t.Fatalf("OAuth callback key = %#v, want %q", client.command, expectedKey)
+		}
+	}
+}
+
 func TestRateLimitExemptsServiceProbesAndWebhooks(t *testing.T) {
 	for _, path := range []string{"/api/v1/health", "/api/health", "/api/readiness", "/api/github/webhook", "/assets/app.js"} {
 		client := &serverRateLimitClient{}
@@ -148,6 +176,31 @@ func TestRateLimitUsesForwardedClientOnlyAtTrustedBoundary(t *testing.T) {
 	request.Header.Set("X-Forwarded-For", "203.0.113.9, unknown")
 	if got := trusted.clientIP(request); got != "127.0.0.1" {
 		t.Fatalf("malformed trusted address fell back to caller input: %q", got)
+	}
+}
+
+func TestRateLimitSupportsRFC7239EnterpriseProxyAddress(t *testing.T) {
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "https://dashboard.example/auth/login", nil)
+	request.RemoteAddr = "127.0.0.1:4321"
+	request.Header.Add("Forwarded", `for=203.0.113.9;proto=http`)
+	request.Header.Add("Forwarded", `for="[2001:db8::8]:4567";proto=https`)
+	app := &App{config: Config{Proxy: ProxyPolicy{
+		AllowedHosts: []string{"dashboard.example"}, TrustForwarded: true,
+	}}}
+
+	if got := app.clientIP(request); got != "2001:db8::8" {
+		t.Fatalf("RFC 7239 forwarded address = %q, want 2001:db8::8", got)
+	}
+
+	request.Header.Set("Forwarded", `for=unknown;proto=https`)
+	if got := app.clientIP(request); got != "127.0.0.1" {
+		t.Fatalf("obfuscated forwarded address fell back to caller input: %q", got)
+	}
+
+	request.Header.Set("X-Forwarded-For", "unknown")
+	request.Header.Set("Forwarded", `for=203.0.113.9;proto=https`)
+	if got := app.clientIP(request); got != "127.0.0.1" {
+		t.Fatalf("malformed preferred address fell through to secondary header: %q", got)
 	}
 }
 
@@ -226,6 +279,24 @@ func TestPreAuthRateLimitCoversHostedStaticRequests(t *testing.T) {
 
 	if response.Code != http.StatusNoContent || client.callCount != 1 {
 		t.Fatalf("hosted static request was not edge limited: status=%d calls=%d", response.Code, client.callCount)
+	}
+}
+
+func TestPreAuthRateLimitCoversOAuthEntryAtSharedEnterpriseEdge(t *testing.T) {
+	client := &serverRateLimitClient{result: []any{int64(1), int64(1199), int64(0), int64(50)}}
+	app := hostedRateLimitApp(client)
+	handler := app.preAuthRateLimit(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.WriteHeader(http.StatusFound)
+	}))
+	request := httptest.NewRequestWithContext(
+		t.Context(), http.MethodGet, "https://dashboard.example/auth/login", nil)
+	response := httptest.NewRecorder()
+
+	handler.ServeHTTP(response, request)
+
+	if response.Code != http.StatusFound || client.callCount != 1 ||
+		len(client.command) < 4 || !strings.Contains(client.command[3], ":rate-limit:edge:") {
+		t.Fatalf("OAuth entry was not edge limited: status=%d command=%#v", response.Code, client.command)
 	}
 }
 
