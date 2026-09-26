@@ -198,6 +198,67 @@
         "properties": { "reviewers": { "minItems": 1 } }
       }
     },
+    "marketplaceAuth": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type"],
+          "properties": { "type": { "const": "none" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "secret"],
+          "properties": {
+            "type": { "const": "pat" },
+            "secret": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,127}$" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "app-id-secret", "private-key-secret", "installation-id-secret"],
+          "properties": {
+            "type": { "const": "github-app" },
+            "app-id-secret": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,127}$" },
+            "private-key-secret": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,127}$" },
+            "installation-id-secret": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,127}$" }
+          }
+        }
+      ]
+    },
+    "marketplaceRegistry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "repository", "ref"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "repository": { "$ref": "#/$defs/repository" },
+        "path": {
+          "type": "string",
+          "maxLength": 512,
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]*$"
+        },
+        "ref": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "api-url": { "type": "string", "format": "uri", "pattern": "^https://" },
+        "auth": { "$ref": "#/$defs/marketplaceAuth" }
+      }
+    },
+    "marketplace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["registries"],
+      "properties": {
+        "cache-ttl-seconds": { "type": "integer", "minimum": 30, "maximum": 86400 },
+        "registries": {
+          "type": "array",
+          "maxItems": 32,
+          "items": { "$ref": "#/$defs/marketplaceRegistry" }
+        }
+      }
+    },
     "controlPlane": {
       "type": "object",
       "additionalProperties": false,
@@ -207,7 +268,8 @@
         "web": { "$ref": "#/$defs/web" },
         "defaults": { "$ref": "#/$defs/defaults" },
         "campaigns": { "$ref": "#/$defs/controlCampaigns" },
-        "publishing": { "$ref": "#/$defs/publishing" }
+        "publishing": { "$ref": "#/$defs/publishing" },
+        "marketplace": { "$ref": "#/$defs/marketplace" }
       }
     },
     "targetCampaign": {

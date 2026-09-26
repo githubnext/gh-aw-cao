@@ -1056,6 +1056,9 @@ The optional table-column field `display` is `text`, `status`, `grader-status`, 
 
 A dashboard CLI action placement is `toolbar`, `settings`, `view`, or `row`. A `view` action is rendered only by the view that references it and is not duplicated in Settings or the global toolbar.
 
+A CLI action may declare `copy-only: true`. Presenters must expose its resolved
+command for copying and must not execute it.
+
 A dashboard CLI action command is a single-line GitHub CLI invocation.
 Presenters recognize `gh aw ...`, `gh workflow run <workflow> ...`, and
 `gh agent-task create --from-file -` by default; the workflow command triggers a workflow that declares `workflow_dispatch`, while the agent-task command receives the reviewed prompt through standard input.

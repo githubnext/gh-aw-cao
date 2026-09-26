@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { attachCliActions, renderCliActions, renderRowCliAction, setDeclaredCliActions } from '../../src/components/cli-actions.js';
+import {
+  attachCliActions,
+  createPromptCliActionControl,
+  renderCliActions,
+  renderRowCliAction,
+  setDeclaredCliActions
+} from '../../src/components/cli-actions.js';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -58,6 +64,44 @@ describe('CLI actions', () => {
     expect(checkbox.checked).toBe(true);
     expect(rendered?.querySelector('.cli-action-command')?.textContent)
       .toBe('gh aw upgrade --repo octo/example --create-pull-request');
+  });
+
+  it('keeps copy-only actions non-executable in every placement', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText }
+    });
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    const rendered = renderCliActions([{
+      id: 'copy-package-command',
+      label: 'Copy add command',
+      icon: 'copy',
+      command: './cao.sh add octo/packages/demo@abc123',
+      'copy-only': true
+    }], { canExecute: true });
+
+    rendered?.querySelector('.cli-action-trigger')?.dispatchEvent(new MouseEvent('click'));
+    rendered?.querySelector('.cli-action-confirm')?.dispatchEvent(new MouseEvent('click'));
+
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith(
+      './cao.sh add octo/packages/demo@abc123'
+    ));
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('does not create an executable prompt control for copy-only actions', () => {
+    setDeclaredCliActions([{
+      id: 'copy-agent-prompt',
+      label: 'Copy prompt',
+      icon: 'copy',
+      command: 'gh agent-task create --from-file -',
+      placement: 'row',
+      'copy-only': true
+    }], { canExecute: true });
+
+    expect(createPromptCliActionControl('copy-agent-prompt', () => 'prompt')).toBeNull();
   });
 
   it('attaches toolbar and settings actions to the dashboard shell', () => {
@@ -275,6 +319,37 @@ describe('CLI actions', () => {
     expect(rendered.querySelector('.cli-action-command')?.textContent)
       .toBe('gh aw update --repo octo/example');
     expect(rendered.querySelector('.table-cli-action-button .octicon-sync')).not.toBeNull();
+  });
+
+  it('never executes a copy-only row action', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText }
+    });
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    setDeclaredCliActions([{
+      id: 'add-marketplace-package',
+      label: 'Copy add command',
+      icon: 'copy',
+      command: './cao.sh add {{package-source}}',
+      placement: 'row',
+      'copy-only': true
+    }], { canExecute: true });
+    const rendered = renderRowCliAction('add-marketplace-package', {
+      'package-source': 'octo/packages/demo@abc123'
+    });
+    document.body.append(/** @type {HTMLElement} */ (rendered));
+
+    rendered?.querySelector('button')?.click();
+    expect(rendered?.querySelector('.cli-action-confirm')?.textContent).toContain('Copy command');
+    rendered?.querySelector('.cli-action-confirm')?.dispatchEvent(new MouseEvent('click'));
+
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith(
+      './cao.sh add octo/packages/demo@abc123'
+    ));
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it('is disabled by default (no debug output) when the debug query is absent', async () => {

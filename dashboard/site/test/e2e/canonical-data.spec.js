@@ -14,7 +14,7 @@ const databaseName = 'gh-aw-cao-dashboard-data';
 const shardName = `gh-aw-logs-runs/logs-${'a'.repeat(64)}-${'b'.repeat(16)}.jsonl`;
 const recordShardName = `gh-aw-logs-records/logs-${'c'.repeat(64)}-${'d'.repeat(16)}.jsonl`;
 const canonicalEntityTables = [
-  'audits', 'campaigns', 'domains', 'issues', 'operationalValues', 'repositories', 'runs', 'tools', 'workflows'
+  'audits', 'campaigns', 'domains', 'issues', 'marketplacePackages', 'operationalValues', 'repositories', 'runs', 'tools', 'workflows'
 ];
 
 function ghAwLogInput() {

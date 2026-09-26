@@ -163,6 +163,16 @@ package computation retains its prior rows and cannot mutate canonical evidence,
 while removing a package removes its rows on the next clustering run. Package
 computations run as bounded, timed, cancelable subprocesses so one worker fault
 does not block other contributors.
+
+The read-only campaign marketplace is another trusted-resolution flow. An
+ordered registry list in `cao.json` identifies gh-aw package repositories and
+references secret names, never secret values. Activity resolves registries
+during static precomputation and publishes safe normalized package metadata into
+the canonical IndexedDB path. The hosted Go server resolves the same contract
+on demand and caches safe results in Redis. Registry credentials remain in the
+trusted resolver in both profiles. Marketplace views consume only the existing
+data-worker query boundary and render declarative package cards and copy-only
+CAO add commands; browsers never fetch registries or install packages.
 The browser materializes bounded runtime and failure-scope results by
 generation, computes detailed audit causes only for selected or prioritized
 partitions, and discards every result safely because canonical evidence remains

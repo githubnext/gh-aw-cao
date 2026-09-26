@@ -239,6 +239,7 @@ test("control policy exposes scope and publishing defaults to deterministic add-
       experimental: false,
       favicon: "./favicon.svg",
     },
+    marketplace: { registries: [] },
     campaigns: {
       dependabot: {
         enabled: true,

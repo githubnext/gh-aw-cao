@@ -29,6 +29,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-aw-cao/server/internal/marketplace"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
@@ -695,6 +696,12 @@ type generationLoader struct {
 }
 
 func (loader *generationLoader) LoadSource(name string, definition *query.Definition) (model.Source, model.Metrics, error) {
+	if name == marketplace.SourceName {
+		// The marketplace catalog is never stored as an ingested Redis source:
+		// it is resolved (and cached) transparently here so every query-engine
+		// caller sees an ordinary source, with no secrets ever leaving this call.
+		return marketplaceSource(loader.ctx, loader.store, loader.generation), model.Metrics{}, nil
+	}
 	source, metrics, err := loader.store.LoadSource(loader.ctx, loader.generation, name, definition)
 	if errors.Is(err, redisx.ErrSourceUnavailable) {
 		return unavailableSource(name), metrics, nil

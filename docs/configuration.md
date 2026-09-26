@@ -105,6 +105,50 @@ Shared control applies schema defaults, then `control-plane.defaults`, campaign 
 
 `live` workers use only the control repository's `.github/workflows/cao.json` as their policy authority. Declare live campaign and worker ceilings, allowed owners or repositories, and target-specific modes there. Workers resolve that policy from the exact workflow SHA before agent execution; no `cao.json` or authority declaration is required in a target repository.
 
+## Campaign Package Marketplace
+
+`control-plane.marketplace.registries` is an ordered registry list. Earlier
+registries take precedence when multiple registries expose the same package
+coordinate. New policies include the official catalog explicitly; remove that
+entry to disable it or add public, private, or GitHub Enterprise registries.
+
+```json
+{
+  "control-plane": {
+    "marketplace": {
+      "cache-ttl-seconds": 900,
+      "registries": [
+        {
+          "id": "official",
+          "name": "Official CAO catalog",
+          "repository": "githubnext/gh-aw-cao",
+          "ref": "main",
+          "auth": { "type": "none" }
+        },
+        {
+          "id": "internal",
+          "repository": "acme/cao-packages",
+          "path": "packages",
+          "ref": "stable",
+          "api-url": "https://github.acme.example/api/v3",
+          "auth": { "type": "pat", "secret": "CAO_INTERNAL_REGISTRY_PAT" }
+        }
+      ]
+    }
+  }
+}
+```
+
+Authentication types are `none`, `pat`, and `github-app`. PAT entries reference
+one environment secret name. GitHub App entries reference `app-id-secret`,
+`private-key-secret`, and `installation-id-secret`. Values stay in the trusted
+Activity or hosted resolver and are never published to the dashboard. The
+marketplace is read-only: its action copies
+`./cao.sh add OWNER/REPOSITORY[/PATH]@COMMIT`; it does not execute installation.
+See [Browse campaign packages](marketplace.md) for registry setup, backend
+behavior, troubleshooting, and the read-only dashboard flow.
+`specs/marketplace.md` defines the normalized package and failure contracts.
+
 ## Credentials
 
 For private or internal targets, alternate review repositories, or live writes, configure a GitHub App or fine-grained PAT. For bounded review runs against public targets, no App or PAT secret is required when outputs stay in the current control repository.

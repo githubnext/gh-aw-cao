@@ -352,6 +352,13 @@ async function waitForServer() {
 async function executeRedisBackend(artifactDirectory, queries, names) {
   const binary = process.env.DASHBOARD_SERVER_BINARY;
   if (!binary) throw new Error("DASHBOARD_SERVER_BINARY is required");
+  const marketplacePolicyPath = join(artifactDirectory, "cao.json");
+  await writeFile(marketplacePolicyPath, JSON.stringify({
+    version: 1,
+    "control-plane": {
+      marketplace: { registries: [] },
+    },
+  }));
   const child = spawn(binary, [
     "serve",
     "--source", artifactDirectory,
@@ -362,7 +369,10 @@ async function executeRedisBackend(artifactDirectory, queries, names) {
     "--database-queries", databaseQueriesPath,
     "--redis-url", process.env.REDIS_URL ?? "redis://127.0.0.1:6379/0",
     "--redis-namespace", `query-parity-${process.pid}`,
-  ], { stdio: ["ignore", "pipe", "pipe"] });
+  ], {
+    stdio: ["ignore", "pipe", "pipe"],
+    env: { ...process.env, CAO_MARKETPLACE_POLICY_PATH: marketplacePolicyPath },
+  });
   let logs = "";
   child.stdout.on("data", (chunk) => { logs += chunk; });
   child.stderr.on("data", (chunk) => { logs += chunk; });

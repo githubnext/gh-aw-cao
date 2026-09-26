@@ -21,8 +21,51 @@ describe('entity card templates', () => {
       'run',
       'event',
       'campaign',
-      'operation'
+      'operation',
+      'marketplace-package'
     ]));
+  });
+
+  it('declares a Primer-branded marketplace package card', () => {
+    expect(templates['marketplace-package']).toMatchObject({
+      icon: 'archive',
+      'detail-labels': 'visible',
+      title: { field: 'package-name' },
+      subtitle: { field: 'package-description' },
+      actions: [{ action: 'add-marketplace-package', context: ['package-source'] }]
+    });
+  });
+
+  it('declares marketplace list and detail routes', () => {
+    expect(pages.marketplace.experimental).toBe(true);
+    expect(dashboard.navigation.find(
+      (/** @type {Record<string, any>} */ section) => section.label === 'Updates'
+    )?.pages).toContain('marketplace');
+    expect(pages.marketplace.views[0]).toMatchObject({
+      data: { source: 'marketplace-packages' },
+      list: {
+        style: 'entity-cards',
+        icon: 'archive',
+        card: 'marketplace-package',
+        drill: { page: 'marketplace-package', query: 'marketplace-package-detail' }
+      }
+    });
+    expect(pages['marketplace-package']).toMatchObject({
+      route: { 'hash-query-parameter': 'package-source', 'navigation-page': 'marketplace' }
+    });
+    expect(pages['marketplace-package'].views[0]).toMatchObject({
+      list: { icon: 'archive', card: 'marketplace-package' }
+    });
+  });
+
+  it('declares the marketplace action as copy-only', () => {
+    expect(dashboard['cli-actions'].find(
+      (/** @type {Record<string, any>} */ action) => action.id === 'add-marketplace-package'
+    )).toMatchObject({
+      command: './cao.sh add {{package-source}}',
+      placement: 'row',
+      'copy-only': true
+    });
   });
 
   it('declares the factory campaign cards in JSON', () => {

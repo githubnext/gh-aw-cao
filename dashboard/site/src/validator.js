@@ -979,6 +979,13 @@ function validateDashboard(dashboard, dashboardNode, errors) {
             `${path}.placement`
           ));
         }
+        if (action['copy-only'] !== undefined && typeof action['copy-only'] !== 'boolean') {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'CLI action copy-only must be a boolean.',
+            `${path}.copy-only`
+          ));
+        }
       }
       validateStringField(action.command, `${path}.command`, true, errors);
       if (typeof action.command === 'string') {

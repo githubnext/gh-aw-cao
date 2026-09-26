@@ -7,7 +7,7 @@ import { tidy } from '../../data-operations.js';
 const debug = createDebug('data:indexeddb');
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 25;
+export const DATABASE_VERSION = 26;
 
 /** @param {string} [pathname] */
 export function canonicalDatabaseName(pathname) {
@@ -23,7 +23,8 @@ export const ENTITY_STORES = /** @type {const} */ ([
   'tools',
   'audits',
   'issues',
-  'operationalValues'
+  'operationalValues',
+  'marketplacePackages'
 ]);
 export const TRANSACTION_STORE = 'transactions';
 export const DATABASE_STORES = /** @type {const} */ ([...ENTITY_STORES, TRANSACTION_STORE]);
@@ -91,6 +92,13 @@ export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
     indexes: {
       byRepository: 'repositoryId',
       byValue: 'valueId'
+    }
+  },
+  marketplacePackages: {
+    keyPath: 'id',
+    indexes: {
+      byRegistry: 'registryId',
+      byRepository: 'repository'
     }
   },
   transactions: {

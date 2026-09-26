@@ -2,7 +2,7 @@ import { createDebug } from './debug.js';
 
 const TEMPLATE_TOKEN_PATTERN = /\{\{([a-z][a-z0-9]*(?:-[a-z0-9]+)*)\}\}/g;
 const REPOSITORY_SLUG_PATTERN = /^[A-Za-z0-9_.][A-Za-z0-9_.-]*\/[A-Za-z0-9_.][A-Za-z0-9_.-]*$/;
-const SAFE_TOKEN_PATTERN = /^[A-Za-z0-9_.][A-Za-z0-9_.:/-]*$/;
+const SAFE_TOKEN_PATTERN = /^[A-Za-z0-9_.][A-Za-z0-9_.:/@-]*$/;
 
 const debugCliActionTemplate = createDebug('cli-action-template');
 

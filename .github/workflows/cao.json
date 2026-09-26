@@ -24,6 +24,20 @@
       "experimental": true,
       "favicon": "./favicon.svg"
     },
+    "marketplace": {
+      "cache-ttl-seconds": 300,
+      "registries": [
+        {
+          "id": "official",
+          "name": "Official CAO catalog",
+          "repository": "githubnext/gh-aw-cao",
+          "ref": "main",
+          "auth": {
+            "type": "none"
+          }
+        }
+      ]
+    },
     "campaigns": {
       "dashboard": {
         "deploy": false
