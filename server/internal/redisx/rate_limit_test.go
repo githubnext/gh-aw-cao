@@ -57,4 +57,8 @@ func TestTakeRateLimitTokenRejectsInvalidBoundsAndResponses(t *testing.T) {
 	if _, err := store.TakeRateLimitToken(t.Context(), "general:subject", 1, time.Minute); err == nil {
 		t.Fatal("invalid Redis response was accepted")
 	}
+	client.value = []any{int64(1), int64(2), int64(0), int64(1)}
+	if _, err := store.TakeRateLimitToken(t.Context(), "general:subject", 1, time.Minute); err == nil {
+		t.Fatal("out-of-range Redis response was accepted")
+	}
 }

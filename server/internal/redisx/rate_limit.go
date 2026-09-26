@@ -77,6 +77,12 @@ return {allowed, math.floor(tokens), retry, reset}`
 	if parsed[0] != 0 && parsed[0] != 1 {
 		return RateLimitResult{}, errors.New("Redis rate limit returned an invalid response")
 	}
+	maximumDuration := refillPeriod.Milliseconds()
+	if parsed[1] < 0 || parsed[1] > int64(capacity) ||
+		parsed[2] < 0 || parsed[2] > maximumDuration ||
+		parsed[3] < 0 || parsed[3] > maximumDuration {
+		return RateLimitResult{}, errors.New("Redis rate limit returned an invalid response")
+	}
 	return RateLimitResult{
 		Allowed:    parsed[0] == 1,
 		Remaining:  int(parsed[1]),
