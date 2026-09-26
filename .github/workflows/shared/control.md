@@ -84,14 +84,14 @@ jobs:
         id: cao_control_source
         run: |
           set -euo pipefail
-          echo "[CAO activation] Resolving the control runtime from the exact workflow revision."
+          echo "[cao] Resolving the control runtime from the exact workflow revision."
           runtime="$GITHUB_WORKSPACE/.cao/.github/workflows/shared/control.mjs"
           if [[ ! -f "$runtime" ]]; then
             echo "CAO control runtime is unavailable from the shared checkout" >&2
             exit 1
           fi
           echo "runtime=$runtime" >> "$GITHUB_OUTPUT"
-          echo "[CAO activation] Control runtime resolved."
+          echo "[cao] Control runtime resolved."
 
       - name: Evaluate Central Agentic Ops admission
         id: cao_admission
@@ -122,12 +122,12 @@ jobs:
             };
             const failClosed = async (error) => {
               if (hasAdmissionOutput()) {
-                core.info('[CAO activation] Preserving admission outputs emitted before the runtime failure.');
+                core.info('[cao] Preserving admission outputs emitted before the runtime failure.');
                 core.debug(`CAO admission already emitted outputs before failure: ${error?.stack || error?.message || error}`);
                 process.exitCode = 0;
                 return;
               }
-              core.warning(`[CAO activation] Admission failed closed: ${reason}`);
+              core.warning(`[cao] Admission failed closed: ${reason}`);
               core.setOutput('authorized', 'false');
               core.setOutput('reason', reason);
               core.setOutput('monthly_credit_budget', '0');
@@ -147,14 +147,14 @@ jobs:
               process.exitCode = 0;
             };
             let control;
-            core.info('[CAO activation] Loading the control runtime for admission.');
+            core.info('[cao] Loading the control runtime for admission.');
             try {
               control = await import(process.env.CAO_CONTROL_RUNTIME);
             } catch (error) {
               await failClosed(error);
               return;
             }
-            core.info('[CAO activation] Control runtime loaded; evaluating admission.');
+            core.info('[cao] Control runtime loaded; evaluating admission.');
             process.exitCode = 0;
             try {
               await control.main({ core, github, context, exec, io, getOctokit }, ['admit']);
@@ -163,7 +163,7 @@ jobs:
               return;
             }
             if (process.exitCode) throw new Error(`control.mjs exited with code ${process.exitCode}`);
-            core.info('[CAO activation] Admission evaluation completed.');
+            core.info('[cao] Admission evaluation completed.');
 
       - name: Run CAO control precompute
         id: cao_precompute
@@ -187,13 +187,13 @@ jobs:
         with:
           github-token: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || github.token }}
           script: |
-            core.info('[CAO activation] Loading the control runtime for precompute.');
+            core.info('[cao] Loading the control runtime for precompute.');
             const control = await import(process.env.CAO_CONTROL_RUNTIME);
-            core.info('[CAO activation] Control runtime loaded; preparing the activation handoff.');
+            core.info('[cao] Control runtime loaded; preparing the activation handoff.');
             process.exitCode = 0;
             await control.main({ core, github, context, exec, io, getOctokit }, ['precompute']);
             if (process.exitCode) throw new Error(`control.mjs exited with code ${process.exitCode}`);
-            core.info('[CAO activation] Control precompute completed.');
+            core.info('[cao] Control precompute completed.');
 
       - name: Ensure CAO admission record
         id: cao_admission_record
@@ -208,10 +208,10 @@ jobs:
           set -euo pipefail
           record="${RUNNER_TEMP}/cao/admission.json"
           if [[ -f "$record" ]]; then
-            echo "[CAO activation] Preserving the admission record produced by the control runtime."
+            echo "[cao] Preserving the admission record produced by the control runtime."
             exit 0
           fi
-          echo "[CAO activation] Synthesizing a fail-closed admission record because the runtime did not produce one."
+          echo "[cao] Synthesizing a fail-closed admission record because the runtime did not produce one."
           mkdir -p "$(dirname "$record")"
           node - "$record" <<'EOF'
           const fs = require("node:fs");
@@ -299,21 +299,21 @@ jobs:
           out=/tmp/gh-aw/agent/control-precompute.json
           expected_worker="$CAO_WORKER"
           [ "$CAO_ROLE" != "orchestrator" ] || expected_worker=""
-          echo "[CAO activation] Checking that the precompute artifact exists."
+          echo "[cao] Checking that the precompute artifact exists."
           [ -f "$out" ]
-          echo "[CAO activation] Checking that precompute authorized activation."
+          echo "[cao] Checking that precompute authorized activation."
           jq -e '.authorized == true' "$out" >/dev/null
-          echo "[CAO activation] Checking the precompute campaign identity."
+          echo "[cao] Checking the precompute campaign identity."
           jq -e --arg campaign "$CAO_CAMPAIGN" '.campaign == $campaign and .bundle == $campaign' "$out" >/dev/null
-          echo "[CAO activation] Checking the precompute control role."
+          echo "[cao] Checking the precompute control role."
           jq -e --arg role "$CAO_ROLE" '.control_role == $role' "$out" >/dev/null
-          echo "[CAO activation] Checking the precompute worker identity."
+          echo "[cao] Checking the precompute worker identity."
           jq -e --arg worker "$expected_worker" '.worker == $worker' "$out" >/dev/null
-          echo "[CAO activation] Checking that precompute used policy from the exact workflow revision."
+          echo "[cao] Checking that precompute used policy from the exact workflow revision."
           jq -e --arg repository "$CONTROL_REPOSITORY" --arg sha "$GITHUB_WORKFLOW_SHA" \
             '.policy_source == {repository:$repository,path:".github/workflows/cao.json",sha:$sha}' \
             "$out" >/dev/null
-          echo "[CAO activation] Control precompute artifact validation completed."
+          echo "[cao] Control precompute artifact validation completed."
 
       - name: Upload CAO control precompute artifact
         id: cao_precompute_upload
@@ -364,18 +364,18 @@ jobs:
             precompute_artifact_upload: process.env.CAO_PRECOMPUTE_UPLOAD_OUTCOME,
           };
           for (const [step, outcome] of Object.entries(steps)) {
-            console.log(`[CAO activation] ${JSON.stringify({ step, outcome: outcome || "not-run" })}`);
+            console.log(`[cao] ${JSON.stringify({ step, outcome: outcome || "not-run" })}`);
           }
           const credential = steps.github_app_token === "success"
             ? "github-app"
             : steps.github_app_token === "skipped"
               ? "fallback-token-chain"
               : `github-app-${steps.github_app_token || "not-run"}`;
-          console.log(`[CAO activation] ${JSON.stringify({
+          console.log(`[cao] ${JSON.stringify({
             decision: "read-credential",
             outcome: credential,
           })}`);
-          console.log(`[CAO activation] ${JSON.stringify({
+          console.log(`[cao] ${JSON.stringify({
             decision: "control-handoff",
             ready: process.env.CAO_ADMISSION_AUTHORIZED === "true"
               && process.env.CAO_PRECOMPUTE_AUTHORIZED === "true"
@@ -398,25 +398,25 @@ jobs:
 
       - name: Log CAO activation handoff
         id: cao_activation_handoff_log
-        run: |
-          node <<'EOF'
-          const fs = require("node:fs");
-          const precompute = JSON.parse(fs.readFileSync("/tmp/gh-aw/agent/control-precompute.json", "utf8"));
-          console.log(`[CAO activation] ${JSON.stringify({
-            decision: "agent-handoff",
-            outcome: "accepted",
-            campaign: precompute.campaign,
-            role: precompute.control_role,
-            mode: precompute.safe_output_mode,
-            candidate_count: Array.isArray(precompute.candidate_repositories)
-              ? precompute.candidate_repositories.length
-              : 0,
-            eligible_worker_count: Array.isArray(precompute.worker_workflows)
-              ? precompute.worker_workflows.filter(({ eligible }) => eligible).length
-              : 0,
-            effective_cap: precompute.effective_max_repos ?? 0,
-          })}`);
-          EOF
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require("node:fs");
+            const precompute = JSON.parse(fs.readFileSync("/tmp/gh-aw/agent/control-precompute.json", "utf8"));
+            core.info(`[cao] ${JSON.stringify({
+              decision: "agent-handoff",
+              outcome: "accepted",
+              campaign: precompute.campaign,
+              role: precompute.control_role,
+              mode: precompute.safe_output_mode,
+              candidate_count: Array.isArray(precompute.candidate_repositories)
+                ? precompute.candidate_repositories.length
+                : 0,
+              eligible_worker_count: Array.isArray(precompute.worker_workflows)
+                ? precompute.worker_workflows.filter(({ eligible }) => eligible).length
+                : 0,
+              effective_cap: precompute.effective_max_repos ?? 0,
+            })}`);
 
 post-steps:
   - name: Emit control-plane dispatcher telemetry

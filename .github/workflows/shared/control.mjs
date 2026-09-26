@@ -66,7 +66,7 @@ function log(message) {
 }
 
 function logDecision(decision, outcome, details = {}) {
-  console.log(`[CAO decision] ${JSON.stringify({ decision, outcome, ...details })}`);
+  console.log(`[cao] ${JSON.stringify({ decision, outcome, ...details })}`);
 }
 
 function actionsCommand(command, message = "") {
