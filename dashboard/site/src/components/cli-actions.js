@@ -137,7 +137,14 @@ function commandPreview(action, values, templateValues) {
     renderCliActionCommand(action.command, templateValues),
     ...(action.arguments ?? []).filter((argument) => values[argument.id]).map((argument) => argument.flag)
   ].join(' ');
-  return navigator.platform.startsWith('Win') && /^\.\/\S+\.sh(?:\s|$)/.test(command)
+  const userAgentData = typeof navigator === 'undefined'
+    ? undefined
+    : /** @type {{ platform?: unknown }} */ (Reflect.get(navigator, 'userAgentData'));
+  const platform = typeof userAgentData?.platform === 'string'
+    ? userAgentData.platform
+    : typeof navigator === 'undefined' ? '' : navigator.platform || navigator.userAgent;
+  // Windows terminals need an explicit Bash interpreter; leave other commands untouched.
+  return /^win/i.test(platform) && /^\.\/\S+\.sh(?:\s|$)/.test(command)
     ? `bash ${command}`
     : command;
 }
