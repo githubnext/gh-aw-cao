@@ -2488,9 +2488,7 @@ function issueStatusTargets(issues) {
 
 function issueStatusQuery(batch) {
   const fields = batch.map((target, index) => (
-    `i${index}: issueOrPullRequest(number: ${target.number}) {
-      ... on Issue { number state stateReason closedAt url }
-    }`
+    `i${index}: issueOrPullRequest(number: ${target.number}) { ... on Issue { number state stateReason closedAt url } }`
   )).join('\n');
   return `query($owner: String!, $name: String!) {
   repository(owner: $owner, name: $name) {
