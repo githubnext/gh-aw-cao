@@ -1,5 +1,5 @@
 import { h } from '../dom.js';
-import { formatMediumUtcDateTime } from './ui-primitives.js';
+import { formatMediumUtcDateTimeWithSuffix } from './ui-primitives.js';
 
 /** @param {{ evaluatedAt: string, commitSha?: string | null }} options */
 export function renderDashboardFooter({ evaluatedAt, commitSha }) {
@@ -10,7 +10,7 @@ export function renderDashboardFooter({ evaluatedAt, commitSha }) {
       'div',
       { className: 'report-footer-status' },
       h('span', null, 'Last updated'),
-      h('time', { dateTime: evaluatedAt }, `${formatMediumUtcDateTime(new Date(evaluatedAt))} UTC`),
+      h('time', { dateTime: evaluatedAt }, formatMediumUtcDateTimeWithSuffix(new Date(evaluatedAt))),
       h('span', { className: 'report-footer-provenance' }, '· Generated deterministically from dashboard data.')
     ),
     commitSha && commitSha !== 'development'
