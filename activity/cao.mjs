@@ -130,7 +130,6 @@ const USAGE = `Usage:
   cao gh runs [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--status STATUS] [--since TIME] [--until TIME] [--limit COUNT]
   cao gh issues [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--since TIME] [--until TIME] [--limit COUNT]
   cao gh prs [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--since TIME] [--until TIME] [--limit COUNT]
-
 Query local CAO data as JSON. Download the deployed snapshot before querying:
   cao download
   cao dashboard-complexity --input dashboard/site/dashboard.json
