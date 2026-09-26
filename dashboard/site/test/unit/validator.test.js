@@ -73,6 +73,7 @@ describe('dashboard document validation', () => {
   it('DLS-VIEW-005 limits categorical section encodings to horizontal bar charts', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const costPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'cost');
+    const costPageIndex = document.dashboard.pages.indexOf(costPage);
     const workflowCost = costPage.views.find(
       (/** @type {{ id: string }} */ view) => view.id === 'cost-by-workflow'
     );
@@ -89,7 +90,7 @@ describe('dashboard document validation', () => {
       expect(wrongChart.errors).toEqual(expect.arrayContaining([
         expect.objectContaining({
           code: 'DLS-E010',
-          path: '$.dashboard.pages[37].views[2].encoding.section'
+          path: `$.dashboard.pages[${costPageIndex}].views[2].encoding.section`
         })
       ]));
     }
@@ -102,7 +103,7 @@ describe('dashboard document validation', () => {
       expect(wrongType.errors).toEqual(expect.arrayContaining([
         expect.objectContaining({
           code: 'DLS-E010',
-          path: '$.dashboard.pages[37].views[2].encoding.section.type'
+          path: `$.dashboard.pages[${costPageIndex}].views[2].encoding.section.type`
         })
       ]));
     }
@@ -775,6 +776,51 @@ describe('dashboard document validation', () => {
     ]);
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
+
+  it('defines experimental skill analytics with rankings and workflow drill-through', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const skills = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'skills');
+
+    expect(document.dashboard.navigation.find(
+      (/** @type {{ label: string }} */ section) => section.label === 'Data'
+    ).pages).toContain('skills');
+    expect(skills).toMatchObject({
+      kind: 'custom',
+      experimental: true,
+      views: [
+        {
+          id: 'skills-most-invoked',
+          mark: 'chart',
+          chart: 'horizontal-bar',
+          data: { source: 'skill-invocations-by-skill', limit: 10 }
+        },
+        {
+          id: 'skills-by-workflow',
+          mark: 'chart',
+          chart: 'horizontal-bar',
+          data: { source: 'skill-invocations-by-workflow' },
+          encoding: { href: { field: 'workflow-link' } }
+        },
+        {
+          id: 'skills-workflow-inventory',
+          mark: 'table',
+          controls: 'interactive',
+          'lazy-list': true,
+          layout: 'full-view',
+          data: { source: 'skill-workflow-inventory' },
+          encoding: { href: { field: 'workflow-link' } }
+        }
+      ]
+    });
+    expect(skills.views[2].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toEqual([
+      'skill',
+      'workflow',
+      'repository-coordinate',
+      'invocations'
+    ]);
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+  });
+
 
 
 
