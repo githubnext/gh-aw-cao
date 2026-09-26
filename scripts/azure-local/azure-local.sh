@@ -115,6 +115,25 @@ process_matches() {
     [[ "$actual_executable" == "$(readlink -f "$expected_executable")" ]]
 }
 
+wait_for_process_group() {
+  local pid expected_executable pgid executable
+  pid="$1"
+  expected_executable="$(readlink -f "$2")"
+  for _ in {1..50}; do
+    if [[ -r "/proc/$pid/stat" && -e "/proc/$pid/exe" ]]; then
+      pgid="$(awk '{print $5}' "/proc/$pid/stat")"
+      executable="$(readlink -f "/proc/$pid/exe")"
+      if [[ "$pgid" == "$pid" && "$executable" == "$expected_executable" ]]; then
+        FUNCTIONS_START_TIME="$(awk '{print $22}' "/proc/$pid/stat")"
+        FUNCTIONS_PGID="$pgid"
+        return 0
+      fi
+    fi
+    sleep 0.1
+  done
+  fail "Azure Functions host did not establish its process group"
+}
+
 process_group_matches() {
   local process stat_pgid executable expected_handler
   [[ -n "${FUNCTIONS_PGID:-}" ]] || return 1
@@ -334,8 +353,7 @@ JSON
     # setsid makes Core Tools the process-group leader tracked for exact teardown.
     setsid "$FUNC_BIN" start --port "$function_port" --verbose >"$LOG_DIR/functions.log" 2>&1 &
     FUNCTIONS_PID=$!
-    FUNCTIONS_START_TIME="$(awk '{print $22}' "/proc/$FUNCTIONS_PID/stat")"
-    FUNCTIONS_PGID="$(ps -o pgid= -p "$FUNCTIONS_PID" | tr -d ' ')"
+    wait_for_process_group "$FUNCTIONS_PID" "$FUNC_BIN"
     write_env_value FUNCTIONS_PID "$FUNCTIONS_PID"
     write_env_value FUNCTIONS_START_TIME "$FUNCTIONS_START_TIME"
     write_env_value FUNCTIONS_PGID "$FUNCTIONS_PGID"
