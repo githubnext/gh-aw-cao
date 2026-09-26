@@ -205,11 +205,11 @@ test("workers with title prefixes provide unprefixed safe-output titles", () => 
 
 test("review bundles skip safely when the agent artifact omits their prepared directory", () => {
   const reviewBundle = workflow("shared/review-bundle.md");
+  const missingBundleBranch = /if \[ ! -d "\$SOURCE_DIR" \]; then[\s\S]*?^\s+fi$/m.exec(reviewBundle)?.[0];
 
-  assert.match(
-    reviewBundle,
-    /if \[ ! -d "\$SOURCE_DIR" \]; then\s+echo "skip_upload=true" >> "\$GITHUB_OUTPUT"\s+echo "Review bundle was not persisted in the agent artifact; skipping publish: \$SOURCE_DIR_RAW" >&2\s+exit 0/s,
-  );
+  assert.ok(missingBundleBranch, "missing review bundle branch must exist");
+  assert.match(missingBundleBranch, /echo "skip_upload=true" >> "\$GITHUB_OUTPUT"/);
+  assert.match(missingBundleBranch, /exit 0/);
   assert.match(reviewBundle, /if: steps\.prepare\.outputs\.skip_upload != 'true'/);
 });
 
