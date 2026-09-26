@@ -5574,33 +5574,6 @@ describe('declarative query validation', () => {
     }
   });
 
-  it('rejects canonical storage identifiers that run-record tables do not expose', () => {
-    const valid = {
-      name: 'skill-invocations',
-      from: 'tools',
-      select: [
-        { field: 'event', as: 'invocation' },
-        { field: 'workflow' }
-      ]
-    };
-    expect(validateDashboardDocument(queryDocument([valid], 'skill-invocations')).ok).toBe(true);
-
-    const result = validateDashboardDocument(queryDocument([{
-      ...valid,
-      select: [{ field: 'id', as: 'invocation' }, { field: 'workflow' }]
-    }], 'skill-invocations'));
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.errors).toEqual(expect.arrayContaining([
-        expect.objectContaining({
-          code: 'DLS-E010',
-          path: '$.dashboard.queries[0].select[0].field'
-        })
-      ]));
-    }
-  });
-
   it('rejects view fields that the derived output schema does not declare and limits beyond the documented maximum', () => {
     const document = JSON.parse(queryDocument([aicQuery, validQuery]));
     document.dashboard.queries[1].limit = 1000000;

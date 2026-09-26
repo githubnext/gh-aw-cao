@@ -386,15 +386,23 @@ async function queryLiveDashboard(
       context.queries,
       nonNativeRequested.filter((name) => !dailyAggregateSourceNames.has(name))
     );
+    const declaredQueryNames = new Set(context.queries
+      .map((definition) => (
+        definition && typeof definition === 'object' && !Array.isArray(definition)
+          ? /** @type {{ name?: unknown }} */ (definition).name
+          : undefined
+      ))
+      .filter((name) => typeof name === 'string'));
+    const requiredDatabaseSources = required.filter((name) => !declaredQueryNames.has(name));
     /** @type {{ databaseMs: number, projectionMs: number, totalMs: number, recordsRead: number, stores: string[] } | undefined} */
     let databaseMetrics;
     const databasePayload = await queryDatabaseSources(
       indexedDB,
       dashboard.logicalSources,
-      required,
+      requiredDatabaseSources,
       { onMetrics: (metrics) => { databaseMetrics = metrics; } }
     );
-    const healthPayload = required.some((name) => (
+    const healthPayload = requiredDatabaseSources.some((name) => (
       name === 'data-health-collections' || name === 'data-health-coverage'
     ))
       ? deriveDataHealthCalloutSources(databasePayload)

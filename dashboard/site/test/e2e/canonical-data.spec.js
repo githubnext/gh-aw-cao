@@ -878,29 +878,43 @@ test('data worker returns skill invocation rankings on initial and navigated req
       sourceNames,
       context
     );
-    const navigated = await loadCanonicalDashboardPage(sourceNames, context);
+    const navigated = await loadCanonicalDashboardPage(sourceNames, context, undefined, { pageId: 'skills' });
     return { initial, navigated };
   });
 
-  for (const payload of [result.initial, result.navigated]) {
-    expect(Object.keys(payload)).toEqual([
-      'skill-invocations-by-skill',
-      'skill-invocations-by-workflow'
-    ]);
-    expect(payload['skill-invocations-by-skill']).toMatchObject({
+  expect(Object.keys(result.initial)).toEqual([
+    'skill-invocations-by-skill',
+    'skill-invocations-by-workflow'
+  ]);
+  expect(result.initial['skill-invocations-by-skill']).toMatchObject({
       source: 'skill-invocations-by-skill',
       rows: [{ skill: 'reactive-ui', invocations: 1 }],
       metadata: { 'source-kind': 'derived', 'query-name': 'skill-invocations-by-skill' }
-    });
-    expect(payload['skill-invocations-by-workflow']).toMatchObject({
+  });
+  expect(result.initial['skill-invocations-by-workflow']).toMatchObject({
       source: 'skill-invocations-by-workflow',
       rows: [{
         'workflow-coordinate': 'githubnext/gh-aw-cao:.github/workflows/dashboard.md',
         invocations: 1
       }],
       metadata: { 'source-kind': 'derived', 'query-name': 'skill-invocations-by-workflow' }
-    });
-  }
+  });
+
+  expect(Object.keys(result.navigated)).toEqual([
+    'view:skills:skills-most-invoked:skill-invocations-by-skill',
+    'view:skills:skills-by-workflow:skill-invocations-by-workflow'
+  ]);
+  expect(result.navigated['view:skills:skills-most-invoked:skill-invocations-by-skill']).toMatchObject({
+    rows: [{ skill: 'reactive-ui', invocations: 1 }],
+    metadata: { availability: 'available' }
+  });
+  expect(result.navigated['view:skills:skills-by-workflow:skill-invocations-by-workflow']).toMatchObject({
+    rows: [{
+      'workflow-coordinate': 'githubnext/gh-aw-cao:.github/workflows/dashboard.md',
+      invocations: 1
+    }],
+    metadata: { availability: 'available' }
+  });
 });
 
 

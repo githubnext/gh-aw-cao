@@ -707,6 +707,7 @@ describe('dashboard view query contracts', () => {
     for (const name of requested) {
       expect(results[name]?.source).toBe(name);
       expect(results[name]?.rows).toEqual(expect.any(Array));
+      expect(results[name]?.metadata.availability, name).not.toBe('unavailable');
     }
   });
 });
