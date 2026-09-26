@@ -219,6 +219,20 @@ export function formatUtcDateTime(value) {
 }
 
 /**
+ * Formats a `Date` or millisecond timestamp as {@link formatMediumUtcDateTime}
+ * with a trailing ` UTC` suffix (e.g. `Aug 30, 2026, 10:00 AM UTC`), the
+ * shape shared by tooltip titles, footer timestamps, and history readouts
+ * that all annotate their formatted instant with an explicit UTC label.
+ * Callers are responsible for validating their input; invalid input renders
+ * `Invalid Date UTC`.
+ * @param {Date | number} input
+ * @returns {string}
+ */
+export function formatMediumUtcDateTimeWithSuffix(input) {
+  return `${formatMediumUtcDateTime(input)} UTC`;
+}
+
+/**
  * Renders a digest string's first 12 characters wrapped in `<code>`, or
  * `null` when the digest is empty. Shared by the table cell display's
  * `digest` type and the workflow operational-grader stat, which
