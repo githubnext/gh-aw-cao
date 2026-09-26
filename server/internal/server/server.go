@@ -40,23 +40,24 @@ import (
 var serverLog = logger.New("cao:server")
 
 type Config struct {
-	Listen              string
-	SiteDirectory       string
-	CertFile            string
-	KeyFile             string
-	AccessToken         string
-	HostingMode         HostingMode
-	Proxy               ProxyPolicy
-	AzureProxy          AzureProxyPolicy
-	GitHubOAuth         *GitHubOAuthConfig
-	DatabaseQueriesPath string
-	DashboardQueries    []query.Definition
-	SourceDirectory     string
-	Reconciler          Reconciler
-	Collector           *CollectorConfig
-	WebhookSecret       string
-	AdminUsers          []string
-	Logger              *log.Logger
+	Listen               string
+	SiteDirectory        string
+	CertFile             string
+	KeyFile              string
+	AccessToken          string
+	HostingMode          HostingMode
+	Proxy                ProxyPolicy
+	AzureProxy           AzureProxyPolicy
+	AzureLocalSimulation bool
+	GitHubOAuth          *GitHubOAuthConfig
+	DatabaseQueriesPath  string
+	DashboardQueries     []query.Definition
+	SourceDirectory      string
+	Reconciler           Reconciler
+	Collector            *CollectorConfig
+	WebhookSecret        string
+	AdminUsers           []string
+	Logger               *log.Logger
 }
 
 type App struct {
