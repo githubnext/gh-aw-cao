@@ -28,7 +28,7 @@ Do not confuse workflow adoption with creation of the measured phenomenon. Befor
 Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-operational-value OWNER/REPO WORKFLOW-NAME` to design one. Add `--campaign CAMPAIGN-SLUG` to restrict selection to workflows directly included by one campaign and place the resulting module under that campaign.
 
 - `OWNER/REPO`: repository containing the workflow. Outcome evidence may come from other affected repositories.
-- `WORKFLOW-NAME`: filename stem using lowercase letters, numbers, and single hyphens, such as `daily-file-diet`. Do not accept a path or `.md` suffix.
+- `WORKFLOW-NAME`: filename stem using lowercase letters, numbers, and single hyphens, such as `example-workflow`. Do not accept a path or `.md` suffix.
 - `CAMPAIGN-SLUG`: optional top-level campaign directory containing `aw.yml`. It scopes workflow selection to directly included workers and owns the shared CAO adapter. Never infer it from a workflow name.
 - After validation, set `WORKFLOW-PATH` to `.github/workflows/WORKFLOW-NAME.md` and use `WORKFLOW-NAME` unchanged as the slug.
 - Never infer the repository, workflow, or campaign from the workspace, environment, or Git remotes.

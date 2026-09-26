@@ -19,21 +19,13 @@ const cao = path.join(root, "activity", "cao.mjs");
 test("operational-value runs locally and contains an injected GitHub permission failure", () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), "cao-operational-value-local-"));
   const packages = path.join(temporary, "packages");
-  const source = path.join(temporary, "source");
-  const archive = path.join(temporary, "repository.tar.gz");
   const fakeGh = path.join(temporary, "gh");
   const output = path.join(temporary, "operational-values.jsonl");
   const token = "read-only-test-token";
   const timestamp = "2026-09-24T19:30:24Z";
-  const commit = "0123456789abcdef0123456789abcdef01234567";
 
   try {
     mkdirSync(packages);
-    mkdirSync(path.join(source, "pkg"), { recursive: true });
-    writeFileSync(path.join(source, "pkg", "large.go"), "line\n".repeat(1200));
-    writeFileSync(path.join(source, "pkg", "healthy.go"), "line\n".repeat(800));
-    spawnSync("tar", ["-czf", archive, "-C", source, "."], { stdio: "inherit" });
-    cpSync(path.join(root, "daily-file-diet"), path.join(packages, "daily-file-diet"), { recursive: true });
     cpSync(path.join(root, "dependabot"), path.join(packages, "dependabot"), { recursive: true });
     writeFileSync(output, `${JSON.stringify({
       schema_version: 2,
@@ -49,11 +41,7 @@ test("operational-value runs locally and contains an injected GitHub permission 
     })}\n`);
     writeFileSync(fakeGh, `#!/usr/bin/env bash
 set -euo pipefail
-if [[ " $* " == *"repos/github/gh-aw/tarball/"* ]]; then
-  cat ${JSON.stringify(archive)}
-elif [[ " $* " == *"repos/github/gh-aw/commits"* ]]; then
-  printf '[{"sha":"${commit}","commit":{"committer":{"date":"2026-09-24T18:00:00Z"}}}]\\n'
-elif [[ " $* " == *"repos/githubnext/gh-aw-cao/issues"* ]]; then
+if [[ " $* " == *"repos/githubnext/gh-aw-cao/issues"* ]]; then
   echo "gh: Resource not accessible by integration: $GH_TOKEN (HTTP 403)" >&2
   exit 1
 else
@@ -89,13 +77,7 @@ fi
     const result = JSON.parse(execution.stdout);
     assert.deepEqual(result.warnings.map(({ package: campaign }) => campaign), ["dependabot"]);
     assert.doesNotMatch(result.warnings[0].message, new RegExp(token));
-    assert.deepEqual(
-      result.values.map(({ campaign, valueId }) => ({ campaign, valueId })),
-      [
-        { campaign: "daily-file-diet", valueId: "daily-file-diet.largest-file-health" },
-        { campaign: "daily-file-diet", valueId: "daily-file-diet.compliant-line-mass-share" },
-      ],
-    );
+    assert.deepEqual(result.values, []);
 
     const envelopes = readFileSync(output, "utf8").trim().split("\n").map(JSON.parse);
     assert.deepEqual(
@@ -106,8 +88,6 @@ fi
       })),
       [
         { campaign: "dependabot", valueId: "dependabot-update-planner.consumed-plan-share", value: 1 },
-        { campaign: "daily-file-diet", valueId: "daily-file-diet.largest-file-health", value: 0.8325 },
-        { campaign: "daily-file-diet", valueId: "daily-file-diet.compliant-line-mass-share", value: 0.4 },
       ],
     );
   } finally {

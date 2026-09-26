@@ -130,17 +130,20 @@ includes:
 
 test("CAO verification accepts namespaced metrics for multiple repositories", () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), "operational-value-multi-repository-"));
-  const source = path.join(root, "daily-file-diet/operational-value/daily-file-diet.mjs");
-  const valueModule = path.join(temporary, "daily-file-diet.mjs");
+  const source = path.join(root, "optimization/operational-value/optimization-token-optimizer.mjs");
+  const valueModule = path.join(temporary, "example-workflow.mjs");
   const adapter = path.join(temporary, "operational-value.mjs");
   writeFileSync(valueModule, `
 import * as original from ${JSON.stringify(pathToFileURL(source).href)};
 export const definition = {
   ...original.definition,
+  slug: "example-workflow",
+  workflowName: "Example Workflow",
   evidence: {
     ...original.definition.evidence,
     repositories: ["github/gh-aw", "githubnext/gh-aw-cao"]
-  }
+  },
+  metrics: original.definition.metrics.map(({rollup, ...metric}) => metric)
 };
 export const collectBatch = original.collectBatch;
 export const scoreMetric = original.scoreMetric;
@@ -154,22 +157,24 @@ const request = JSON.parse(await new Promise((resolve) => {
 }));
 console.log(JSON.stringify({
   kind: "operational_value_definition",
-  workflowSlug: "daily-file-diet",
-  adoptedAt: "2025-11-15T13:36:21Z",
+  workflowSlug: "example-workflow",
+  adoptedAt: "2026-09-15T23:30:36Z",
   evaluationMode: "baseline-comparable",
-  cadenceDays: 7,
+  cadenceDays: 1,
   repositories: ["github/gh-aw", "githubnext/gh-aw-cao"],
   valueIds: [
-    "daily-file-diet.largest-file-health",
-    "daily-file-diet.compliant-line-mass-share"
+    "example-workflow.aic-per-successful-run",
+    "example-workflow.failure-rate-percent",
+    "example-workflow.cancellation-rate-percent"
   ]
 }));
 for (const repository of request.repositories) {
   for (const valueId of [
-    "daily-file-diet.largest-file-health",
-    "daily-file-diet.compliant-line-mass-share"
+    "example-workflow.aic-per-successful-run",
+    "example-workflow.failure-rate-percent",
+    "example-workflow.cancellation-rate-percent"
   ]) {
-    const metricUnit = valueId.endsWith("largest-file-health") ? "score" : "share";
+    const metricUnit = valueId.endsWith("aic-per-successful-run") ? "aic-per-run" : "percent";
     console.log(JSON.stringify({repository, valueId, value: 0.5, metricUnit, timestamp: request.timestamp}));
   }
 }
