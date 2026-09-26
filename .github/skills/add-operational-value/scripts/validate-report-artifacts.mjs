@@ -21,7 +21,8 @@ const valid = timeline.schemaVersion === 2
   && timeline.valueFunction.definition?.slug === timeline.workflowSlug
   && ["baseline-comparable", "attainment-only"].includes(timeline.evaluationMode ?? "baseline-comparable")
   && Date.parse(timeline.window?.startAt) < Date.parse(timeline.window?.endAt)
-  && Array.isArray(snapshots) && snapshots.length >= 2
+  && Array.isArray(snapshots)
+  && snapshots.length >= (timeline.evaluationMode === "attainment-only" ? 1 : 2)
   && JSON.stringify(snapshots.map(({ observedAt }) => observedAt))
     === JSON.stringify(snapshots.map(({ observedAt }) => observedAt).toSorted())
   && snapshots.every((snapshot) => snapshot.evidence

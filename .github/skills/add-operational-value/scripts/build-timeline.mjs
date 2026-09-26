@@ -19,7 +19,10 @@ const valid = typeof observations.repository === "string"
   && isFinite(Date.parse(observations.window?.startAt))
   && Date.parse(observations.window.startAt) < Date.parse(observations.window.endAt)
   && observations.evidenceCoverage && typeof observations.evidenceCoverage === "object"
-  && Array.isArray(observations.snapshots) && observations.snapshots.length >= 2
+  && Array.isArray(observations.snapshots)
+  && observations.snapshots.length >= (
+    definition.evaluation?.mode === "attainment-only" ? 1 : 2
+  )
   && observations.snapshots.every((item) => item.evidence && typeof item.evidence === "object"
     && (definition.schemaVersion !== 3 || (item.window?.startAt && item.window?.endAt
       && Array.isArray(item.provenance) && item.provenance.length > 0)))
@@ -39,9 +42,14 @@ const snapshots = observations.snapshots.map((snapshot, index) => {
   }
   return { ...snapshot, metrics: metricValues };
 });
-const first = snapshots[0].metrics;
-const last = snapshots.at(-1).metrics;
 const mode = definition.evaluation?.mode ?? "baseline-comparable";
+const baselineAt = Date.parse(definition.adoption.baselineAt ?? definition.adoption.adoptedAt);
+const beforeSnapshot = mode === "baseline-comparable"
+  ? snapshots.filter(({ observedAt }) => Date.parse(observedAt) <= baselineAt).at(-1)
+  : null;
+const afterSnapshot = snapshots.at(-1);
+const first = beforeSnapshot?.metrics ?? snapshots[0].metrics;
+const last = afterSnapshot.metrics;
 const improvement = (metric, before, after) => {
   if (before === null || after === null) return null;
   if (metric.direction === "increase") return after - before;
