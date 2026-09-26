@@ -22,6 +22,7 @@ import { runPruneDashboard } from "./prune-dashboard.mjs";
 import { runQuery } from "./query.mjs";
 import { runSetupAuth } from "./setup-auth.mjs";
 import { runUpdate } from "./update.mjs";
+import { runValidateActivityData } from "./validate-activity-data.mjs";
 
 export const commandHandlers = new Map([
   ["activity-stats", runActivityStats],
@@ -48,4 +49,5 @@ export const commandHandlers = new Map([
   ["query", runQuery],
   ["setup-auth", runSetupAuth],
   ["update", runUpdate],
+  ["validate-activity-data", runValidateActivityData],
 ]);

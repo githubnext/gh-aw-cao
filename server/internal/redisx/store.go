@@ -3,6 +3,7 @@ package redisx
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -84,6 +85,83 @@ func (s *Store) LockHeld(ctx context.Context, name string) (bool, error) {
 	return value != nil, nil
 }
 
+// ReserveRateLimit atomically checks and decrements one serialized rate-limit
+// state. It returns 1 for a parked installation and 2 for exhausted headroom.
+func (s *Store) ReserveRateLimit(
+	ctx context.Context, key, field string, floor, cost int, now int64,
+) (int, error) {
+	script := `
+local value = redis.call("HGET", KEYS[1], ARGV[1]) or ""
+local remaining, reset, parked = string.match(value, "^(-?%d+)|(-?%d+)|(-?%d+)$")
+if not remaining then return 3 end
+remaining = tonumber(remaining) or 0
+reset = tonumber(reset) or 0
+parked = tonumber(parked) or 0
+local now = tonumber(ARGV[4])
+if parked > now then return 1 end
+if reset > 0 and reset < now then
+  return 3
+end
+local floor = tonumber(ARGV[2])
+if remaining <= floor then return 2 end
+remaining = math.max(remaining - tonumber(ARGV[3]), 0)
+redis.call("HSET", KEYS[1], ARGV[1], remaining .. "|" .. reset .. "|" .. parked)
+return 0`
+	value, err := s.Client.Do(
+		ctx, "EVAL", script, "1", s.Key(key), field,
+		strconv.Itoa(floor), strconv.Itoa(cost), strconv.FormatInt(now, 10))
+	if err != nil {
+		return 0, err
+	}
+	result, err := strconv.Atoi(fmt.Sprint(value))
+	if err != nil {
+		return 0, errors.New("invalid rate-limit reservation response")
+	}
+	return result, nil
+}
+
+// ObserveRateLimit atomically records authoritative response headroom without
+// increasing a same-window value that a concurrent reservation already lowered.
+func (s *Store) ObserveRateLimit(
+	ctx context.Context, key, field string, remaining int, reset int64,
+) error {
+	script := `
+local value = redis.call("HGET", KEYS[1], ARGV[1]) or ""
+local current, current_reset, parked = string.match(value, "^(-?%d+)|(-?%d+)|(-?%d+)$")
+current = tonumber(current)
+current_reset = tonumber(current_reset)
+parked = tonumber(parked) or 0
+local observed = tonumber(ARGV[2])
+local observed_reset = tonumber(ARGV[3])
+if current and current_reset == observed_reset then
+  observed = math.min(current, observed)
+end
+redis.call("HSET", KEYS[1], ARGV[1], observed .. "|" .. observed_reset .. "|" .. parked)
+return 0`
+	_, err := s.Client.Do(
+		ctx, "EVAL", script, "1", s.Key(key), field,
+		strconv.Itoa(remaining), strconv.FormatInt(reset, 10))
+	return err
+}
+
+// ParkRateLimit atomically extends an installation's backoff without changing
+// its current headroom.
+func (s *Store) ParkRateLimit(
+	ctx context.Context, key, field string, parkedTo int64,
+) error {
+	script := `
+local value = redis.call("HGET", KEYS[1], ARGV[1]) or ""
+local remaining, reset, parked = string.match(value, "^(-?%d+)|(-?%d+)|(-?%d+)$")
+remaining = tonumber(remaining) or 0
+reset = tonumber(reset) or 0
+parked = math.max(tonumber(parked) or 0, tonumber(ARGV[2]))
+redis.call("HSET", KEYS[1], ARGV[1], remaining .. "|" .. reset .. "|" .. parked)
+return 0`
+	_, err := s.Client.Do(
+		ctx, "EVAL", script, "1", s.Key(key), field, strconv.FormatInt(parkedTo, 10))
+	return err
+}
+
 func (s *Store) RememberDelivery(ctx context.Context, delivery string, ttl time.Duration) (bool, error) {
 	sum := sha256.Sum256([]byte(delivery))
 	key := s.Key("github-delivery:" + hex.EncodeToString(sum[:]))
@@ -111,6 +189,115 @@ func (s *Store) OperationalState(ctx context.Context, name string) ([]byte, erro
 		return nil, err
 	}
 	return []byte(fmt.Sprint(value)), nil
+}
+
+const repositoryMemoryManifestField = "repository-memory:manifest"
+
+func repositoryMemoryFileField(campaign, path string) string {
+	return "repository-memory:file:" + base64.RawURLEncoding.EncodeToString([]byte(campaign+"\x00"+path))
+}
+
+func (s *Store) PutRepositoryMemory(ctx context.Context, generation string, manifest []byte, files map[string][]byte) error {
+	if _, err := s.Client.Do(ctx, "HSET", s.generationKey(generation), repositoryMemoryManifestField, string(manifest)); err != nil {
+		return fmt.Errorf("write repository-memory manifest: %w", err)
+	}
+	commands := make([][]string, 0, redisWriteBatchSize)
+	for key, content := range files {
+		campaign, path, found := strings.Cut(key, "\x00")
+		if !found {
+			return errors.New("repository-memory file key is invalid")
+		}
+		commands = append(commands, []string{
+			"HSET", s.generationKey(generation), repositoryMemoryFileField(campaign, path), string(content),
+		})
+		if len(commands) == cap(commands) {
+			if _, err := s.Client.DoMany(ctx, commands); err != nil {
+				return fmt.Errorf("write repository-memory files: %w", err)
+			}
+			commands = commands[:0]
+		}
+	}
+	if len(commands) > 0 {
+		if _, err := s.Client.DoMany(ctx, commands); err != nil {
+			return fmt.Errorf("write repository-memory files: %w", err)
+		}
+	}
+	return nil
+}
+
+func (s *Store) RepositoryMemoryManifest(ctx context.Context, generation string) ([]byte, error) {
+	value, err := s.Client.Do(ctx, "HGET", s.generationKey(generation), repositoryMemoryManifestField)
+	if err != nil {
+		return nil, err
+	}
+	if value == nil {
+		return nil, ErrSourceUnavailable
+	}
+	return []byte(fmt.Sprint(value)), nil
+}
+
+func (s *Store) RepositoryMemoryFile(ctx context.Context, generation, campaign, path string) ([]byte, error) {
+	value, err := s.Client.Do(ctx, "HGET", s.generationKey(generation), repositoryMemoryFileField(campaign, path))
+	if err != nil {
+		return nil, err
+	}
+	if value == nil {
+		return nil, ErrSourceUnavailable
+	}
+	return []byte(fmt.Sprint(value)), nil
+}
+
+func repositoryMemoryCacheKey(parts ...string) string {
+	sum := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
+	return hex.EncodeToString(sum[:])
+}
+
+func (s *Store) CachedRepositoryMemoryCampaign(ctx context.Context, campaign string) ([]byte, error) {
+	value, err := s.Client.Do(ctx, "GET", s.Key(
+		"repository-memory:campaign:"+repositoryMemoryCacheKey(campaign)))
+	if err != nil || value == nil {
+		return nil, err
+	}
+	return []byte(fmt.Sprint(value)), nil
+}
+
+func (s *Store) CacheRepositoryMemoryCampaign(
+	ctx context.Context, campaign string, content []byte, ttl time.Duration,
+) error {
+	_, err := s.Client.Do(
+		ctx,
+		"SET",
+		s.Key("repository-memory:campaign:"+repositoryMemoryCacheKey(campaign)),
+		string(content),
+		"PX",
+		strconv.FormatInt(ttl.Milliseconds(), 10),
+	)
+	return err
+}
+
+func (s *Store) CachedRepositoryMemoryFile(
+	ctx context.Context, campaign, commit, path string,
+) ([]byte, error) {
+	value, err := s.Client.Do(ctx, "GET", s.Key(
+		"repository-memory:cached-file:"+repositoryMemoryCacheKey(campaign, commit, path)))
+	if err != nil || value == nil {
+		return nil, err
+	}
+	return []byte(fmt.Sprint(value)), nil
+}
+
+func (s *Store) CacheRepositoryMemoryFile(
+	ctx context.Context, campaign, commit, path string, content []byte, ttl time.Duration,
+) error {
+	_, err := s.Client.Do(
+		ctx,
+		"SET",
+		s.Key("repository-memory:cached-file:"+repositoryMemoryCacheKey(campaign, commit, path)),
+		string(content),
+		"PX",
+		strconv.FormatInt(ttl.Milliseconds(), 10),
+	)
+	return err
 }
 
 func (s *Store) Key(suffix string) string {

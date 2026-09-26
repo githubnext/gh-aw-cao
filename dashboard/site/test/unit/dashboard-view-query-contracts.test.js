@@ -209,6 +209,7 @@ describe('dashboard view query contracts', () => {
       'campaign-problems': 'problems',
       'campaign-runs': 'runs',
       'campaign-issues': 'issues',
+      'campaign-memory': 'memory',
       'campaign-detail': 'overview'
     };
 
@@ -251,7 +252,8 @@ describe('dashboard view query contracts', () => {
     const expectedTabs = [
       { id: 'insights', label: 'Insights', icon: 'graph', page: 'campaign-insights' },
       { id: 'problems', label: 'Problems', icon: 'alert', page: 'campaign-problems' },
-      { id: 'issues', label: 'Issues', icon: 'issue-opened', page: 'campaign-issues' }
+      { id: 'issues', label: 'Issues', icon: 'issue-opened', page: 'campaign-issues' },
+      { id: 'memory', label: 'Memory', icon: 'archive', page: 'campaign-memory' }
     ];
 
     for (const page of campaignPages) {

@@ -18,9 +18,10 @@ export function withoutIgnoredDashboardPageIds(pageIds) {
 // can actually see are assessed, so hidden views neither block hydration nor
 // consume the assessment's time budget.
 export const visibleViewSelector = "[data-view-id]:visible";
-export const visibleBusyViewSelector = '[aria-busy="true"]:visible';
 export const visibleLoadingViewSelector =
   ".dashboard-view-skeleton:visible, .dashboard-lazy-view-skeleton:visible";
+export const visibleBusyViewSelector =
+  `[aria-busy="true"]:visible, ${visibleLoadingViewSelector}`;
 
 export function declaredDashboardViewIds(pageDefinition, reusableViews = []) {
   const views = pageDefinition?.kind === "built-in"

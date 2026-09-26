@@ -184,6 +184,17 @@ export function queryRemoteDiagnostics(signal) {
 }
 
 /**
+ * @param {string} campaign
+ * @param {string | undefined} path
+ * @param {AbortSignal} [signal]
+ */
+export function queryRemoteRepositoryMemory(campaign, path, signal) {
+  const campaignPath = encodeURIComponent(campaign);
+  const suffix = path === undefined ? "" : `/content?path=${encodeURIComponent(path)}`;
+  return apiRequest(`/api/v1/memory/${campaignPath}${suffix}`, {}, signal);
+}
+
+/**
  * @param {(revision: number) => void} onRevision
  * @param {(error: Error) => void} [onError]
  */

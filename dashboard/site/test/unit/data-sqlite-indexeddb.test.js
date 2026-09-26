@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   DATABASE_NAME,
   DATABASE_VERSION,
+  countCollections,
   maintainCanonicalDatabase,
   openCanonicalDatabase,
   publishDailyOverviewAggregates,
@@ -97,6 +98,11 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     expect(await readTransactions(reopened)).toEqual([
       expect.objectContaining({ id: 'transaction:1' })
     ]);
+    expect(await countCollections(reopened, ['runs', 'audits', 'transactions'])).toEqual({
+      runs: 1,
+      audits: 2,
+      transactions: 1
+    });
 
     const replacement = batch();
     replacement.audits = [];

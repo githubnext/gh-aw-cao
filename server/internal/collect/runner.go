@@ -23,6 +23,10 @@ type TokenProvider interface {
 	InstallationToken(ctx context.Context, installationID int64) (string, error)
 }
 
+type rateLimitProvider interface {
+	RateLimit(ctx context.Context, installationID int64) (int, time.Time, error)
+}
+
 // Runner acquires one repository's evidence.
 //
 // It invokes the same `gh aw logs --audit` command and the same
@@ -135,6 +139,20 @@ func (r Runner) Collect(ctx context.Context, task Task) error {
 	reserve := 2000
 	if r.Budget != nil {
 		reserved, err := r.Budget.Reserve(ctx, task.InstallationID)
+		if errors.Is(err, githubapp.ErrBudgetUnknown) {
+			provider, ok := r.Tokens.(rateLimitProvider)
+			if !ok {
+				return errors.New("rate-limit budget is unknown and cannot be refreshed")
+			}
+			remaining, reset, refreshErr := provider.RateLimit(ctx, task.InstallationID)
+			if refreshErr != nil {
+				return refreshErr
+			}
+			if refreshErr = r.Budget.Observe(ctx, task.InstallationID, remaining, reset); refreshErr != nil {
+				return refreshErr
+			}
+			reserved, err = r.Budget.Reserve(ctx, task.InstallationID)
+		}
 		if err != nil {
 			return err
 		}

@@ -2,6 +2,9 @@ package main
 
 import (
 	"errors"
+	"io"
+	"sort"
+	"strings"
 	"testing"
 )
 
@@ -227,5 +230,78 @@ func TestResolveIngestSource(t *testing.T) {
 				t.Errorf("resolveIngestSource() origin = %q, want %q", gotOrigin, tt.wantOrigin)
 			}
 		})
+	}
+}
+
+func TestRootCommandRegistersEverySubcommand(t *testing.T) {
+	want := []string{"backfill", "collect", "doctor", "ingest", "serve", "serve-hosted"}
+	root := newRootCommand()
+
+	got := make([]string, 0, len(want))
+	for _, cmd := range root.Commands() {
+		got = append(got, cmd.Name())
+	}
+	sort.Strings(got)
+
+	if len(got) != len(want) {
+		t.Fatalf("newRootCommand() registered %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("newRootCommand() registered %v, want %v", got, want)
+			break
+		}
+	}
+}
+
+func TestRootCommandRejectsUnknownSubcommand(t *testing.T) {
+	root := newRootCommand()
+	root.SetArgs([]string{"bogus"})
+	root.SetOut(io.Discard)
+	root.SetErr(io.Discard)
+
+	err := root.Execute()
+	if err == nil {
+		t.Fatal("Execute() error = nil, want non-nil")
+	}
+	if !strings.Contains(err.Error(), `unknown command "bogus"`) {
+		t.Fatalf("Execute() error = %q, want to contain %q", err.Error(), `unknown command "bogus"`)
+	}
+}
+
+func TestRootCommandReportsUsageErrorWithNoSubcommand(t *testing.T) {
+	root := newRootCommand()
+	root.SetArgs(nil)
+	root.SetOut(io.Discard)
+	root.SetErr(io.Discard)
+
+	err := root.Execute()
+	if err == nil {
+		t.Fatal("Execute() error = nil, want non-nil")
+	}
+	if !strings.Contains(err.Error(), "usage: cao-dashboard") {
+		t.Fatalf("Execute() error = %q, want to contain %q", err.Error(), "usage: cao-dashboard")
+	}
+}
+
+func TestRootCommandParsesKnownSubcommandFlags(t *testing.T) {
+	root := newRootCommand()
+
+	found, _, err := root.Find([]string{"serve-hosted", "--listen", "127.0.0.1:9000"})
+	if err != nil {
+		t.Fatalf("Find() error = %v, want nil", err)
+	}
+	if found.Name() != "serve-hosted" {
+		t.Fatalf("Find() name = %q, want %q", found.Name(), "serve-hosted")
+	}
+	if err := found.ParseFlags([]string{"--listen", "127.0.0.1:9000"}); err != nil {
+		t.Fatalf("ParseFlags() error = %v, want nil", err)
+	}
+	gotListen, err := found.Flags().GetString("listen")
+	if err != nil {
+		t.Fatalf("Flags().GetString(listen) error = %v, want nil", err)
+	}
+	if gotListen != "127.0.0.1:9000" {
+		t.Errorf("listen flag = %q, want %q", gotListen, "127.0.0.1:9000")
 	}
 }

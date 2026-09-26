@@ -26,7 +26,9 @@ type Budget struct {
 // so tests can substitute an in-memory implementation without a Redis server.
 type BudgetStore interface {
 	HashGet(ctx context.Context, key, field string) (string, error)
-	HashSet(ctx context.Context, key, field, value string) error
+	ReserveRateLimit(ctx context.Context, key, field string, floor, cost int, now int64) (int, error)
+	ObserveRateLimit(ctx context.Context, key, field string, remaining int, reset int64) error
+	ParkRateLimit(ctx context.Context, key, field string, parkedTo int64) error
 }
 
 const budgetKey = "collect:rate-limit"
@@ -38,6 +40,9 @@ var ErrBudgetExhausted = errors.New("installation rate-limit budget is exhausted
 // Retry-After or secondary rate-limit response.
 var ErrInstallationParked = errors.New("installation is parked after a rate-limit response")
 
+// ErrBudgetUnknown reports that no current GitHub rate-limit observation exists.
+var ErrBudgetUnknown = errors.New("installation rate-limit budget is unknown")
+
 type budgetState struct {
 	Remaining int
 	Reset     time.Time
@@ -48,45 +53,31 @@ type budgetState struct {
 // carries authoritative numbers, so observation corrects drift rather than
 // relying on local accounting.
 func (b Budget) Observe(ctx context.Context, installationID int64, remaining int, reset time.Time) error {
-	state, err := b.read(ctx, installationID)
-	if err != nil {
-		return err
+	if b.Store == nil {
+		return errors.New("rate-limit governor requires a store")
 	}
-	state.Remaining = remaining
-	state.Reset = reset
-	return b.write(ctx, installationID, state)
+	return b.Store.ObserveRateLimit(
+		ctx, budgetKey, strconv.FormatInt(installationID, 10), remaining, unixOrZero(reset))
 }
 
 // Park places an installation in backoff until the supplied instant, with
 // jitter so concurrent workers do not resume in lockstep.
 func (b Budget) Park(ctx context.Context, installationID int64, until time.Time) error {
-	state, err := b.read(ctx, installationID)
-	if err != nil {
-		return err
+	if b.Store == nil {
+		return errors.New("rate-limit governor requires a store")
 	}
 	// #nosec G404 -- jitter only de-synchronizes worker resume; it is not a secret.
 	jitter := time.Duration(rand.Int64N(int64(5 * time.Second)))
-	state.ParkedTo = until.Add(jitter).UTC()
-	return b.write(ctx, installationID, state)
+	return b.Store.ParkRateLimit(
+		ctx, budgetKey, strconv.FormatInt(installationID, 10), until.Add(jitter).UTC().Unix())
 }
 
 // Reserve claims budget for one collection. It returns the reserve to pass to
 // the collection subprocess so the subprocess itself stops before exhausting
 // the installation.
 func (b Budget) Reserve(ctx context.Context, installationID int64) (int, error) {
-	state, err := b.read(ctx, installationID)
-	if err != nil {
-		return 0, err
-	}
-	now := time.Now().UTC()
-	if !state.ParkedTo.IsZero() && state.ParkedTo.After(now) {
-		return 0, fmt.Errorf("%w until %s", ErrInstallationParked, state.ParkedTo.Format(time.RFC3339))
-	}
-	if !state.Reset.IsZero() && state.Reset.Before(now) {
-		// The window rolled over; headroom is unknown again until the next
-		// observation, and the caller is expected to observe before spending.
-		state.Remaining = 0
-		state.Reset = time.Time{}
+	if b.Store == nil {
+		return 0, errors.New("rate-limit governor requires a store")
 	}
 	floor := b.Floor
 	if floor <= 0 {
@@ -96,12 +87,21 @@ func (b Budget) Reserve(ctx context.Context, installationID int64) (int, error) 
 	if cost <= 0 {
 		cost = 500
 	}
-	if state.Remaining > 0 && state.Remaining <= floor {
-		return 0, fmt.Errorf("%w: %d remaining at floor %d", ErrBudgetExhausted, state.Remaining, floor)
-	}
-	state.Remaining = max(state.Remaining-cost, 0)
-	if err := b.write(ctx, installationID, state); err != nil {
+	result, err := b.Store.ReserveRateLimit(
+		ctx, budgetKey, strconv.FormatInt(installationID, 10), floor, cost, time.Now().UTC().Unix())
+	if err != nil {
 		return 0, err
+	}
+	switch result {
+	case 1:
+		return 0, ErrInstallationParked
+	case 2:
+		return 0, ErrBudgetExhausted
+	case 3:
+		return 0, ErrBudgetUnknown
+	case 0:
+	default:
+		return 0, errors.New("rate-limit governor returned an invalid reservation result")
 	}
 	return floor, nil
 }
@@ -125,10 +125,6 @@ func (b Budget) read(ctx context.Context, installationID int64) (budgetState, er
 		return budgetState{}, err
 	}
 	return parseBudgetState(value), nil
-}
-
-func (b Budget) write(ctx context.Context, installationID int64, state budgetState) error {
-	return b.Store.HashSet(ctx, budgetKey, strconv.FormatInt(installationID, 10), formatBudgetState(state))
 }
 
 func formatBudgetState(state budgetState) string {

@@ -73,6 +73,29 @@ type Repository struct {
 	PushedAt time.Time
 }
 
+// GitTreeEntry is one entry returned by the Git tree API.
+type GitTreeEntry struct {
+	Path string
+	OID  string
+	Mode string
+	Type string
+	Size int64
+}
+
+// APIResponse carries the rate-limit and retry metadata needed by the shared
+// Redis-backed governor.
+type APIResponse struct {
+	Remaining  int
+	Reset      time.Time
+	RetryAfter time.Duration
+	StatusCode int
+	Truncated  bool
+	Secondary  bool
+}
+
+// ErrNotFound reports that a requested Git object or ref does not exist.
+var ErrNotFound = errors.New("GitHub object was not found")
+
 // Delivery is one App webhook delivery, used for gap recovery.
 type Delivery struct {
 	ID             int64
@@ -221,6 +244,69 @@ func (c *Client) RateLimit(ctx context.Context, installationID int64) (int, time
 	return limits.Core.Remaining, limits.Core.Reset.Time, nil
 }
 
+// ResolveRef resolves one repository ref without checking out a working tree.
+func (c *Client) ResolveRef(
+	ctx context.Context, installationID int64, repository, ref string,
+) (string, APIResponse, error) {
+	client, owner, name, err := c.repositoryClient(installationID, repository)
+	if err != nil {
+		return "", APIResponse{}, err
+	}
+	reference, response, err := client.Git.GetRef(ctx, owner, name, ref)
+	state := apiResponse(response, err)
+	if err != nil {
+		return "", state, classifyGitHubError("resolve repository ref", err, state)
+	}
+	oid := reference.GetObject().GetSHA()
+	if oid == "" {
+		return "", state, errors.New("repository ref is missing an object id")
+	}
+	return oid, state, nil
+}
+
+// Tree reads one recursive Git tree.
+func (c *Client) Tree(
+	ctx context.Context, installationID int64, repository, oid string,
+) ([]GitTreeEntry, APIResponse, error) {
+	client, owner, name, err := c.repositoryClient(installationID, repository)
+	if err != nil {
+		return nil, APIResponse{}, err
+	}
+	tree, response, err := client.Git.GetTree(ctx, owner, name, oid, true)
+	state := apiResponse(response, err)
+	if err != nil {
+		return nil, state, classifyGitHubError("read repository tree", err, state)
+	}
+	state.Truncated = tree.GetTruncated()
+	entries := make([]GitTreeEntry, 0, len(tree.Entries))
+	for _, entry := range tree.Entries {
+		entries = append(entries, GitTreeEntry{
+			Path: entry.GetPath(),
+			OID:  entry.GetSHA(),
+			Mode: entry.GetMode(),
+			Type: entry.GetType(),
+			Size: int64(entry.GetSize()),
+		})
+	}
+	return entries, state, nil
+}
+
+// Blob reads one Git blob as raw bytes.
+func (c *Client) Blob(
+	ctx context.Context, installationID int64, repository, oid string,
+) ([]byte, APIResponse, error) {
+	client, owner, name, err := c.repositoryClient(installationID, repository)
+	if err != nil {
+		return nil, APIResponse{}, err
+	}
+	content, response, err := client.Git.GetBlobRaw(ctx, owner, name, oid)
+	state := apiResponse(response, err)
+	if err != nil {
+		return nil, state, classifyGitHubError("read repository blob", err, state)
+	}
+	return content, state, nil
+}
+
 // ListDeliveries reads App webhook deliveries newest first. Gap recovery walks
 // this list back to the last processed delivery instead of sweeping
 // repositories.
@@ -272,6 +358,54 @@ func (c *Client) installationClient(installationID int64) (*github.Client, error
 		return nil, err
 	}
 	return entry.client, nil
+}
+
+func (c *Client) repositoryClient(
+	installationID int64, repository string,
+) (*github.Client, string, string, error) {
+	owner, name, found := strings.Cut(strings.TrimSpace(repository), "/")
+	if !found || owner == "" || name == "" || strings.Contains(name, "/") {
+		return nil, "", "", fmt.Errorf("invalid repository reference %q", repository)
+	}
+	client, err := c.installationClient(installationID)
+	return client, owner, name, err
+}
+
+func apiResponse(response *github.Response, err error) APIResponse {
+	state := APIResponse{}
+	if response != nil {
+		state.Remaining = response.Rate.Remaining
+		state.Reset = response.Rate.Reset.Time
+		if response.Response != nil {
+			state.StatusCode = response.StatusCode
+		}
+	}
+	var primary *github.RateLimitError
+	if errors.As(err, &primary) {
+		state.Remaining = primary.Rate.Remaining
+		state.Reset = primary.Rate.Reset.Time
+		if primary.Response != nil {
+			state.StatusCode = primary.Response.StatusCode
+		}
+	}
+	var secondary *github.AbuseRateLimitError
+	if errors.As(err, &secondary) {
+		state.Secondary = true
+		if secondary.Response != nil {
+			state.StatusCode = secondary.Response.StatusCode
+		}
+		if secondary.RetryAfter != nil {
+			state.RetryAfter = *secondary.RetryAfter
+		}
+	}
+	return state
+}
+
+func classifyGitHubError(operation string, err error, response APIResponse) error {
+	if response.StatusCode == http.StatusNotFound {
+		return fmt.Errorf("%s: %w", operation, ErrNotFound)
+	}
+	return fmt.Errorf("%s: %w", operation, err)
 }
 
 func (c *Client) installation(installationID int64) (*installationEntry, error) {

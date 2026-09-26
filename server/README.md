@@ -342,7 +342,7 @@ The same binary runs every role:
 | `cao-dashboard serve-hosted` | serve the dashboard and admit webhook deliveries |
 | `cao-dashboard collect` | lease tasks, collect repositories, and project |
 | `cao-dashboard backfill` | cold start: replay the lake, enumerate installations, seed tasks |
-| `cao-dashboard backfill -replay-only` | repopulate the database from retained evidence with no GitHub requests |
+| `cao-dashboard backfill --replay-only` | repopulate the database from retained evidence with no GitHub requests |
 | `cao-dashboard doctor` | run a read-only, systematic check-up of Redis, canonical data, queries, and collection |
 
 `GET /api/admin/collection/status` reports enrollment coverage, queue backlog,
