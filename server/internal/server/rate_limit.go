@@ -128,7 +128,9 @@ func (a *App) rateLimitSubject(request *http.Request) string {
 }
 
 func (a *App) clientIP(request *http.Request) string {
-	if a.proxyPolicy().TrustForwarded {
+	policy := a.proxyPolicy()
+	if policy.TrustForwarded &&
+		(len(policy.TrustedProxyPrefixes) == 0 || trustedProxyPeer(request.RemoteAddr, policy.TrustedProxyPrefixes)) {
 		if forwarded := forwardedHeader(request, "X-Forwarded-For"); forwarded != "" {
 			if ip := parseForwardedIP(forwarded); ip != nil {
 				return ip.String()

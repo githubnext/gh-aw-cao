@@ -28,6 +28,8 @@ structure:
   dashboard: dashboard/
   dashboard_data: dashboard/site/src/data/
   dashboard_redis_server: server/
+  dashboard_coolify_profile: server/coolify/
+  dashboard_container: server/Dockerfile
   workflow_sources: .github/workflows/*.md
   workflow_artifacts: .github/workflows/*.lock.yml
   workflow_shared: .github/workflows/shared/
@@ -136,6 +138,12 @@ components:
   dashboard_https_server:
     path: server/
     responsibility: ingest deployed dashboard artifacts, execute Dashboard Language queries server-side, and serve bounded canonical results locally or through an authenticated host-neutral profile
+  dashboard_coolify_deployment:
+    path: server/coolify/
+    responsibility: build and run the non-root serve-hosted container behind a fail-closed Coolify TLS proxy with a managed Redis connection and an atomically populated external read-only artifact volume
+  dashboard_coolify_delivery:
+    path: .github/workflows/coolify-deploy.yml
+    responsibility: use trusted workflow definitions to independently test exact sources, scan unique candidates, bind canonical identities by digest equality, revalidate freshness, and synchronously deploy exact GHCR digests to isolated protected environments
   dashboard_canonical_api:
     path: server/internal/server/
     responsibility: expose canonical repositories, workflows, runs, jobs, sessions, and events without exposing Redis keys or representations
@@ -206,6 +214,8 @@ dependencies:
   - redis_projection -> dashboard_https_server
   - dashboard_https_server -> dashboard_language_queries
   - dashboard_https_server -> dashboard_canonical_api
+  - dashboard_coolify_deployment -> dashboard_https_server
+  - dashboard_coolify_delivery -> dashboard_coolify_deployment
   - dashboard_github_auth -> dashboard_https_server
   - dashboard_webhook_reconciliation -> dashboard_rebuild_control
   - dashboard_rebuild_control -> redis_projection
@@ -284,7 +294,10 @@ invariants:
   - "Dashboard data operations MUST be declared in Dashboard Language and execute outside the browser main thread: in the data Web Worker for static deployment or in the Go HTTP(S) server for the Redis profile."
   - "In the Redis profile, Dashboard Language queries execute in the Go HTTP(S) server and compatible stages MUST be pushed into Redis before bounded Go fallback."
   - "The local Redis profile MUST bind to loopback, use HTTP by default for localhost debugging, enable HTTPS only with operator-supplied certificate files, and MUST NOT expose Redis endpoints or credentials to browser code."
-  - "The hosted Redis profile MUST use GitHub OAuth with explicit organization or team authorization, explicit rebuild administrators, server-side secrets and sessions, and an explicit account-selection flow for switching GitHub identities; Redis transport MUST use TLS, non-loopback listeners MUST terminate TLS, and forwarded headers may be trusted only across a loopback-bound proxy boundary."
+  - "The hosted Redis profile MUST use GitHub OAuth with explicit organization or team authorization, explicit rebuild administrators, server-side secrets and sessions, and an explicit account-selection flow for switching GitHub identities."
+  - "Hosted Redis MUST use TLS by default and Azure Functions MUST always require TLS; private plaintext Redis is allowed only through an explicit opt-in and only for a private IP or single-label service hostname."
+  - "A hosted non-loopback listener MUST terminate TLS or explicitly trust only private proxy CIDRs; forwarded headers are authoritative only from a direct peer in those CIDRs, with an exact allowed host and HTTPS protocol."
+  - "Coolify delivery MUST refuse fork repository payloads; map main pushes to alpha and published prerelease/non-prerelease events to beta/stable; admit manual alpha only from current main and manual beta/stable from main or release only at the latest eligible published tag commit; independently scan exact sources, deploy exact digests through tier-specific protected environments, and never implicitly promote or deploy mutable channel tags."
   - "Hosted logout and account switching MUST remove active session authority before remote token revocation; failed GitHub revocations MUST retain encrypted credentials only in the durable Redis pending-revocation queue for bounded maintenance retries through credential expiry."
   - "Hosted session encryption MUST identify the active key and support one explicitly configured previous key during controlled rotation; the previous key MUST remain available until sessions and revocation records using it drain."
   - "OAuth refresh MUST atomically compare-and-swap the encrypted session record; a refresh superseded by logout or another refresh MUST revoke or durably queue its newly issued credentials and MUST NOT restore session authority."
@@ -359,6 +372,16 @@ flows:
     - dashboard_canonical_api
     - dashboard_language_queries
     - dashboard_ui
+  activity_dashboard_coolify:
+    - dashboard_publisher
+    - dashboard_coolify_deployment
+    - dashboard_https_server
+    - redis_projection
+    - dashboard_language_queries
+    - dashboard_ui
+  coolify_image_delivery:
+    - dashboard_coolify_delivery
+    - dashboard_coolify_deployment
   activity_cli:
     - gh_aw_logs
     - activity_jsonl_shards
@@ -438,6 +461,8 @@ commands:
       tests: go test ./...
       redis_up: docker compose up -d
       redis_down: docker compose down
+      coolify_contract_tests: node --test ../tests/unit/coolify-deployment-contract.test.mjs
+      coolify_image_build: docker build -f Dockerfile ..
 
 validation:
   default_command_refs:

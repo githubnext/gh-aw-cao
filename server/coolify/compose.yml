@@ -1,0 +1,48 @@
+services:
+  dashboard:
+    image: ${CAO_IMAGE:?CAO_IMAGE must be an immutable GHCR image digest}
+    command:
+      - serve-hosted
+      - --listen
+      - 0.0.0.0:8080
+      - --site
+      - /app/site
+      - --dashboard-queries
+      - /app/dashboard.json
+      - --database-queries
+      - /app/queries/database.json
+    environment:
+      CAO_REDIS_URL: ${CAO_REDIS_URL:?Configure the Coolify-managed Redis connection}
+      CAO_REDIS_NAMESPACE: ${CAO_REDIS_NAMESPACE:-coolify-dashboard}
+      CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS: ${CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS:-false}
+      CAO_ALLOWED_HOSTS: ${CAO_ALLOWED_HOSTS:?Configure the public dashboard host}
+      CAO_TRUSTED_PROXY_CIDRS: ${CAO_TRUSTED_PROXY_CIDRS:?Configure the exact Coolify proxy network CIDR}
+      CAO_GITHUB_CLIENT_ID: ${CAO_GITHUB_CLIENT_ID:?Configure the GitHub OAuth client ID}
+      CAO_GITHUB_CLIENT_SECRET: ${CAO_GITHUB_CLIENT_SECRET:?Configure the GitHub OAuth client secret}
+      CAO_GITHUB_REDIRECT_URL: ${CAO_GITHUB_REDIRECT_URL:?Configure the OAuth callback URL}
+      CAO_SESSION_SECRET: ${CAO_SESSION_SECRET:?Configure the session secret}
+      CAO_SESSION_SECRET_PREVIOUS: ${CAO_SESSION_SECRET_PREVIOUS:-}
+      CAO_GITHUB_ALLOWED_ORGS: ${CAO_GITHUB_ALLOWED_ORGS:-}
+      CAO_GITHUB_ALLOWED_TEAMS: ${CAO_GITHUB_ALLOWED_TEAMS:-}
+      CAO_GITHUB_ADMIN_USERS: ${CAO_GITHUB_ADMIN_USERS:?Configure at least one administrator}
+      CAO_GITHUB_WEBHOOK_SECRET: ${CAO_GITHUB_WEBHOOK_SECRET:?Configure the webhook secret}
+      CAO_SOURCE_DIRECTORY: /app/source
+      CAO_BUILD_VERSION: ${CAO_BUILD_VERSION:-unknown}
+    expose:
+      - "8080"
+    volumes:
+      - cao-dashboard-artifact:/app/source:ro
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+volumes:
+  cao-dashboard-artifact:
+    external: true
+    name: ${CAO_ARTIFACT_VOLUME:?Configure the pre-populated Coolify artifact volume}

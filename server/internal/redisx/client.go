@@ -41,11 +41,19 @@ type redisResponseError struct {
 	message string
 }
 
+type Options struct {
+	AllowPrivatePlaintext bool
+}
+
 func (err redisResponseError) Error() string {
 	return err.message
 }
 
 func New(rawURL string) (*Client, error) {
+	return NewWithOptions(rawURL, Options{})
+}
+
+func NewWithOptions(rawURL string, options Options) (*Client, error) {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
 		return nil, errors.New("invalid Redis URL")
@@ -57,8 +65,9 @@ func New(rawURL string) (*Client, error) {
 		return nil, errors.New("redis URL must include a host")
 	}
 	hostname := parsed.Hostname()
-	if parsed.Scheme == "redis" && !isLoopbackHost(hostname) {
-		return nil, errors.New("plaintext redis URL must use localhost or a loopback IP")
+	if parsed.Scheme == "redis" && !isLoopbackHost(hostname) &&
+		(!options.AllowPrivatePlaintext || !isPrivateRedisHost(hostname)) {
+		return nil, errors.New("plaintext redis URL must use localhost or an explicitly allowed private host")
 	}
 	dialHostname := hostname
 	if parsed.Scheme == "redis" && strings.EqualFold(hostname, "localhost") {
@@ -93,6 +102,17 @@ func New(rawURL string) (*Client, error) {
 		timeout:   10 * time.Second,
 		pool:      make(chan *redisConnection, 8),
 	}, nil
+}
+
+func isPrivateRedisHost(hostname string) bool {
+	if strings.Contains(hostname, ".") {
+		ip := net.ParseIP(hostname)
+		return ip != nil && (ip.IsPrivate() || ip.IsLoopback())
+	}
+	if ip := net.ParseIP(hostname); ip != nil {
+		return ip.IsPrivate() || ip.IsLoopback()
+	}
+	return hostname != ""
 }
 
 func isLoopbackHost(hostname string) bool {
