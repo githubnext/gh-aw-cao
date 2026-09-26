@@ -2455,33 +2455,7 @@
       {
         "name": "overview-run-summary",
         "intent": "Summarize successful, failed, and active runs with rollout-mode counts.",
-        "from": "runs",
-        "joins": [
-          {
-            "source": "workflows",
-            "type": "left",
-            "on": [
-              {
-                "left": "organization",
-                "right": "organization"
-              },
-              {
-                "left": "repository",
-                "right": "repository"
-              },
-              {
-                "left": "workflow",
-                "right": "workflow"
-              }
-            ],
-            "fields": [
-              {
-                "field": "campaign",
-                "as": "declared-campaign"
-              }
-            ]
-          }
-        ],
+        "from": "overview-runs",
         "aggregate": {
           "values": [
             {
@@ -2580,36 +2554,8 @@
       {
         "name": "overview-delivery-summary",
         "intent": "Count distinct target repositories with successful worker dispatch runs in the selected horizon.",
-        "from": "runs",
+        "from": "overview-runs",
         "joins": [
-          {
-            "source": "workflows",
-            "type": "left",
-            "on": [
-              {
-                "left": "organization",
-                "right": "organization"
-              },
-              {
-                "left": "repository",
-                "right": "repository"
-              },
-              {
-                "left": "workflow",
-                "right": "workflow"
-              }
-            ],
-            "fields": [
-              {
-                "field": "workflow-role",
-                "as": "workflow-role"
-              },
-              {
-                "field": "workflow-active",
-                "as": "workflow-active"
-              }
-            ]
-          },
           {
             "source": "repositories",
             "type": "inner",
@@ -2963,7 +2909,7 @@
       {
         "name": "overview-rhythm",
         "intent": "Show current-week successful runs from Monday through today and the matching previous-week count for weekdays not yet reached.",
-        "from": "runs",
+        "from": "overview-runs",
         "time": {
           "range": "15d"
         },
@@ -7429,10 +7375,137 @@
         ]
       },
       {
+        "name": "campaign-runtime-health-runs",
+        "intent": "Project only the run and workflow fields required to classify current campaign runtime health.",
+        "description": "A bounded runtime-health input that excludes audit outcomes and presentation-only campaign run fields.",
+        "from": "overview-runs",
+        "compute": [
+          {
+            "as": "status",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "run-conclusion"
+              },
+              {
+                "field": "run-status"
+              },
+              {
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "as": "runtime-repository",
+            "function": "concat",
+            "args": [
+              {
+                "field": "organization"
+              },
+              {
+                "value": "/"
+              },
+              {
+                "field": "repository"
+              }
+            ]
+          },
+          {
+            "as": "is-worker",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "workflow-role"
+              },
+              {
+                "value": "worker"
+              }
+            ]
+          },
+          {
+            "as": "is-orchestrator",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "workflow-role"
+              },
+              {
+                "value": "orchestrator"
+              }
+            ]
+          },
+          {
+            "as": "root-dispatch-type",
+            "function": "if",
+            "args": [
+              {
+                "field": "is-orchestrator"
+              },
+              {
+                "value": "Campaign orchestrator"
+              },
+              {
+                "value": "Standalone workflow"
+              }
+            ]
+          },
+          {
+            "as": "dispatch-type",
+            "function": "if",
+            "args": [
+              {
+                "field": "is-worker"
+              },
+              {
+                "value": "Campaign worker"
+              },
+              {
+                "field": "root-dispatch-type"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "started-at"
+          },
+          {
+            "field": "campaign"
+          },
+          {
+            "field": "campaign-name"
+          },
+          {
+            "field": "workflow"
+          },
+          {
+            "field": "workflow-name"
+          },
+          {
+            "field": "workflow-role"
+          },
+          {
+            "field": "dispatch-type"
+          },
+          {
+            "field": "runtime-repository"
+          },
+          {
+            "field": "run"
+          },
+          {
+            "field": "run-status"
+          },
+          {
+            "field": "status"
+          }
+        ]
+      },
+      {
         "name": "campaign-runtime-health-groups",
         "intent": "Compute each campaign workflow and runtime repository's latest consecutive failure streak in the selected horizon.",
         "description": "Current retained failure streaks grouped by campaign workflow and runtime repository, considering only concluded Runs so an in-flight retry cannot mask an active failure streak.",
-        "from": "campaign-runs",
+        "from": "campaign-runtime-health-runs",
         "filter": {
           "predicates": [
             {
@@ -7562,7 +7635,7 @@
         "name": "workflow-run-observation-counts",
         "intent": "Count retained Runs for each workflow identity in the selected horizon.",
         "description": "One row per organization, repository, and workflow with retained Run counts, safe to join without row multiplication.",
-        "from": "runs",
+        "from": "overview-runs",
         "aggregate": {
           "by": [
             "organization",

@@ -192,6 +192,20 @@ describe('dashboard view query contracts', () => {
     }]);
   });
 
+  it('keeps Overview runtime health independent from audit-heavy campaign run presentation', () => {
+    const runtimeHealth = dashboard.queries.find(
+      (/** @type {Record<string, unknown>} */ query) => query.name === 'campaign-runtime-health-groups'
+    );
+    const runtimeHealthInput = dashboard.queries.find(
+      (/** @type {Record<string, unknown>} */ query) => query.name === 'campaign-runtime-health-runs'
+    );
+
+    expect(runtimeHealth).toMatchObject({ from: 'campaign-runtime-health-runs' });
+    expect(runtimeHealthInput).toMatchObject({ from: 'overview-runs' });
+    expect(declaredQueryReferences(runtimeHealthInput)).not.toContain('run-incomplete-outcomes');
+    expect(declaredQueryReferences(runtimeHealthInput)).not.toContain('audits');
+  });
+
   it('keeps campaign run navigation first and failure views scoped to dispatches', () => {
     const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-runs');
     const views = viewsOf(page);

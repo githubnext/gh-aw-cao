@@ -575,6 +575,32 @@ describe('canonical view sources', () => {
     expect(metrics?.totalMs).toBeGreaterThanOrEqual(metrics?.databaseMs ?? 0);
   });
 
+  it('projects the narrow run fields required by Overview', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+
+    const projected = await queryCanonicalViewSources(indexedDB, sources, ['overview-runs']);
+
+    expect(projected['overview-runs']).toMatchObject({
+      source: 'overview-runs',
+      rows: [{
+        id: expect.any(String),
+        organization: 'githubnext',
+        repository: 'gh-aw-cao',
+        workflow: '.github/workflows/dashboard.md',
+        'workflow-name': 'Published registry name',
+        'workflow-role': 'worker',
+        campaign: 'dashboard',
+        'campaign-name': 'CAO Dashboard',
+        run: '42',
+        'target-repository': 'github/gh-aw',
+        'run-status': 'completed',
+        'run-conclusion': 'failure',
+        'rollout-mode': 'review'
+      }],
+      metadata: { 'source-kind': 'database-query' }
+    });
+  });
+
   it('projects campaign rows and workflow membership from canonical records', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
 

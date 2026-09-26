@@ -16,7 +16,7 @@ import {
   partitionQueryDefinitions,
   queryPerformanceMarkdown,
 } from "./dashboard-query-performance-helpers.mjs";
-import { dashboardPageSourceNames } from "../../dashboard/site/src/dashboard-chunks.js";
+import { dashboardPageAllSourceNames } from "../../dashboard/site/src/dashboard-chunks.js";
 
 const shard = parseQueryPerformanceShard(process.env.DASHBOARD_QUERY_PERFORMANCE_SHARD);
 const outputDirectory = resolve("test-results/dashboard-query-performance");
@@ -37,7 +37,7 @@ const dashboardContext = {
   queries: dashboardDocument.queries,
   views: dashboardDocument.views ?? [],
 };
-const overviewSourceNames = dashboardPageSourceNames(
+const overviewSourceNames = dashboardPageAllSourceNames(
   { dashboard: dashboardDocument },
   "overview",
 );
@@ -282,6 +282,7 @@ test(`benchmarks every dashboard query against settled deployed data (shard ${sh
         ),
       };
     }, { context: dashboardContext, sourceNames: overviewSourceNames });
+    expect(overviewRequest.requestMs).toBeLessThan(500);
     const worker = await Promise.race([
       overviewWorkerMetrics,
       new Promise((_, rejectPromise) => {

@@ -1584,6 +1584,7 @@ describe('presenter built-in and custom pages', () => {
         'operational-graders': { source: 'operational-graders', rows: [], metadata },
         usage: { source: 'usage', rows: [], metadata },
         runs: { source: 'runs', rows: [], metadata },
+        'overview-runs': { source: 'overview-runs', rows: [], metadata },
         repositories: { source: 'repositories', rows: [], metadata },
         'work-items': { source: 'work-items', rows: [], metadata },
         workflows: {
