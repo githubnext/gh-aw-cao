@@ -107,7 +107,7 @@ test("public read-only operation uses the built-in token without widening access
   const control = workflow("shared/control.md");
   const precompute = controlPrecompute();
 
-  assert.match(control, /GH_TOKEN:.*secrets\.GH_AW_GITHUB_TOKEN.*github\.token/);
+  assert.match(control, /GH_TOKEN:.*secrets\.GH_AW_GITHUB_READ_PAT.*secrets\.GH_AW_GITHUB_TOKEN.*github\.token/);
   assert.match(precompute, /\{id, full_name, archived, disabled, private, pushed_at, default_branch\}/);
   assert.match(authentication, /App or PAT is not required for a bounded `review` run when every target repository is public/);
   assert.match(authentication, /use `review` mode and keep safe outputs in the current control repository/);
@@ -135,9 +135,11 @@ test("authentication prefers an optional GitHub App and retains bounded fallback
   assert.match(control, /private-key: \$\{\{ secrets\.GH_AW_GITHUB_READ_APP_PRIVATE_KEY \}\}/);
   assert.match(control, /safe-outputs:\n\s+github-app:\n\s+client-id: \$\{\{ vars\.GH_AW_GITHUB_WRITE_APP_ID \}\}/);
   assert.match(control, /private-key: \$\{\{ secrets\.GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY \}\}/);
+  assert.match(control, /github-token: \$\{\{ secrets\.GH_AW_GITHUB_READ_PAT \|\| secrets\.GH_AW_GITHUB_TOKEN \|\| secrets\.GITHUB_TOKEN \}\}/);
+  assert.match(control, /safe-outputs:[\s\S]*?github-token: \$\{\{ secrets\.GH_AW_GITHUB_WRITE_PAT \|\| secrets\.GH_AW_GITHUB_TOKEN \|\| secrets\.GITHUB_TOKEN \}\}/);
   assert.match(control, /ignore-if-missing: true/);
   assert.doesNotMatch(control, /repositories: \["\*"\]/);
-  assert.match(control, /jobs:\n\s+pre-activation:[\s\S]*?secrets\.GH_AW_GITHUB_TOKEN \|\| github\.token/);
+  assert.match(control, /jobs:\n\s+pre-activation:[\s\S]*?secrets\.GH_AW_GITHUB_READ_PAT \|\| secrets\.GH_AW_GITHUB_TOKEN \|\| github\.token/);
   assert.match(authentication, /runtime availability precedence, not permission to choose a PAT silently/);
   assert.match(authentication, /A PAT is not a substitute for repository or organization access/);
   assert.match(authentication, /A fine-grained PAT cannot access multiple organizations at once/);

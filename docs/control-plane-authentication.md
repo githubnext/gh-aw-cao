@@ -80,11 +80,11 @@ Run:
   --repo acme/central-agentic-ops
 ```
 
-The command reads `.github/workflows/cao.json`, opens GitHub's fine-grained-token form with the resource owner, a 30-day expiration, and `Contents: write` prefilled, and prints the exact control and target repositories to select. GitHub does not support preselecting repository names through token-template URLs, so choose **Only select repositories** and select every repository printed by the command. After generating the token, return to the terminal and enter it only at the interactive `gh secret set GH_AW_GITHUB_TOKEN` prompt. CAO never accepts it as a command argument. Use `--no-open` to print the URL without opening a browser, `--expires-in DAYS` to choose a shorter approved lifetime, or `--policy PATH` for a non-default policy path.
+The command creates separate `GH_AW_GITHUB_READ_PAT` and `GH_AW_GITHUB_WRITE_PAT` secrets. It reads `.github/workflows/cao.json`, opens host-aware fine-grained-token forms with the resource owner, a 30-day expiration, and role-specific permissions prefilled, and prints the exact repositories to select for each token. GitHub does not support preselecting repository names through token-template URLs, so choose **Only select repositories** and select every repository printed for that role. After generating each token, return to the terminal and enter it only at the corresponding interactive `gh secret set` prompt. CAO never accepts tokens as command arguments. Use `--write-repository OWNER/REPO` one or more times to replace the default write scope of the control repository, `--no-open` to print URLs without opening a browser, `--expires-in DAYS` to choose a shorter approved lifetime, or `--policy PATH` for a non-default policy path.
 
 The credential is user-bound, longer-lived than an App installation token, normally limited to one resource owner, manually rotated, and potentially incompatible with required APIs. It does not bypass organization approval or repository permissions. Never substitute a classic PAT.
 
-The current token profile uses one `GH_AW_GITHUB_TOKEN` for reads and approved safe outputs. Its permissions therefore form a shared ceiling; omit write permissions for review-only operation and reconsider private Apps before enabling live outputs.
+Read operations receive only `GH_AW_GITHUB_READ_PAT`; safe-output processing receives `GH_AW_GITHUB_WRITE_PAT`. The legacy `GH_AW_GITHUB_TOKEN` remains a compatibility fallback but should not be configured for new installations.
 
 ## Use the workflow token
 

@@ -31,7 +31,7 @@ on:
 
 checkout:
   repository: ${{ inputs.target_repo }}
-  github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+  github-token: ${{ secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
   fetch-depth: 0
   current: true
 env:
@@ -141,7 +141,7 @@ pre-agent-steps:
   - name: Download and grade the live dashboard artifact
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' }}
     env:
-      GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
     run: |
       set -euo pipefail
       review_dir=/tmp/gh-aw/agent/self-care-dashboard-review

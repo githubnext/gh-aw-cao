@@ -146,14 +146,14 @@ jobs:
         continue-on-error: true
         uses: github/gh-aw-actions/setup-cli@924af5fdc64061cfbf66fb584c8b07e2ac230c60 # v0.89.21
         env:
-          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
+          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || github.token }}
         with:
           version: ${{ steps.gh-aw-compiler.outputs.version }}
 
       - name: Collect dashboard inventory
         env:
           ACTIVITY_APP_TOKEN: ${{ steps.activity-app-token.outputs.token }}
-          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
+          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || github.token }}
           REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity/control-settings.json
           REPORT_INVENTORY: ${{ runner.temp }}/cao-activity/control-plane-inventory.json
           REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity/inventory-sources.json
@@ -184,7 +184,7 @@ jobs:
 
       - name: Download agentic workflow logs
         env:
-          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
+          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || github.token }}
           REPORT_AIC_CACHE: ${{ runner.temp }}/cao-gh-aw-logs
           REPORT_ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
           REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity/control-settings.json
@@ -236,7 +236,7 @@ jobs:
       - name: Compute repository operational value
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
-          CAO_OPERATIONAL_VALUE_GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
+          CAO_OPERATIONAL_VALUE_GH_TOKEN: ${{ steps.activity-app-token.outputs.token || secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || github.token }}
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
         run: |
           if ! node activity/cao.mjs operational-value \

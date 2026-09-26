@@ -357,7 +357,7 @@ test("control workflows deny before activation through one shared admission cont
   assert.match(sharedControl, /Generate CAO pre-activation GitHub App token/);
   assert.match(sharedControl, /actions\/create-github-app-token@[0-9a-f]{40} # v3\.2\.0/);
   assert.match(sharedControl, /permission-actions: read[\s\S]*?permission-contents: read/);
-  assert.match(sharedControl, /CAO_API_TOKEN: \$\{\{ steps\.cao_pre_activation_app_token\.outputs\.token \|\| secrets\.GH_AW_GITHUB_TOKEN \|\| github\.token \}\}/);
+  assert.match(sharedControl, /CAO_API_TOKEN: \$\{\{ steps\.cao_pre_activation_app_token\.outputs\.token \|\| secrets\.GH_AW_GITHUB_READ_PAT \|\| secrets\.GH_AW_GITHUB_TOKEN \|\| github\.token \}\}/);
   assert.match(sharedControl, /name: Checkout CAO control modules/);
   assert.match(sharedControl, /actions\/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7\.0\.1/);
   assert.match(sharedControl, /ref: \$\{\{ github\.workflow_sha \}\}/);

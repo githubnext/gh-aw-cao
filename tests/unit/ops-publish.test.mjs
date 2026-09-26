@@ -286,6 +286,7 @@ test("Ops Publish remains an explicit least-privilege add-on", () => {
   assert.match(workflow, /CONTROL_TOKEN: \$\{\{ steps\.control-app-token\.outputs\.token \|\| secrets\.CENTRAL_AGENTIC_OPS_PUBLISH_CONTROL_TOKEN \|\| github\.token \}\}/);
   assert.match(workflow, /TARGET_TOKEN: \$\{\{ steps\.target-app-token\.outputs\.token \|\| secrets\.CENTRAL_AGENTIC_OPS_PUBLISH_TARGET_TOKEN \}\}/);
   assert.doesNotMatch(workflow, /secrets\.GH_AW_GITHUB_TOKEN/);
+  assert.doesNotMatch(workflow, /secrets\.GH_AW_GITHUB_(?:READ|WRITE)_PAT/);
   assert.doesNotMatch(workflow, /copilot-requests|models:/);
   const publisher = readFileSync(join(root, "ops-publish", "ops-publish.mjs"), "utf8");
   assert.match(publisher, /AbortSignal\.timeout\(API_TIMEOUT_MS\)/);
