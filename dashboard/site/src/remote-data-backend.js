@@ -3,6 +3,9 @@ import {
   dashboardFormDefaultValues,
   resolveDashboardQueryParameters
 } from "./data/queries/view-payload-compiler.js";
+import { createDebug } from "./debug.js";
+
+const debugRemoteBackend = createDebug("remote-data-backend");
 
 const BACKEND_META_NAME = "dashboard-data-backend";
 const REMOTE_BACKEND = "redis-http";
@@ -86,6 +89,7 @@ async function apiRequest(path, init = {}, signal) {
     },
   });
   if (!response.ok) {
+    debugRemoteBackend({ event: "request-failed", path, status: response.status });
     const payload = await response.json().catch(() => null);
     throw new Error(payload?.error || `Dashboard data server request failed: ${response.status}`);
   }
@@ -173,6 +177,7 @@ export async function refreshRemoteDashboard(sourceNames, context, pagination, o
   const status = await apiRequest("/api/v1/refresh", { method: "POST" }, options.signal);
   const revision = Number.isSafeInteger(status?.revision) ? status.revision : null;
   const changed = revision !== null && observedRevision !== null && revision !== observedRevision;
+  debugRemoteBackend({ event: "refresh-checked", changed });
   if (typeof status?.evaluatedAt === "string") observedEvaluatedAt = status.evaluatedAt;
   const result = await queryRemoteDashboard(sourceNames, context, pagination, options);
   return { sources: result.sources, changed };
@@ -253,6 +258,8 @@ export function subscribeRemoteRevision(onRevision, onError) {
       throw new Error("Dashboard data server event stream disconnected.");
     } catch (error) {
       if (stopped || controller.signal.aborted) return;
+      const errorName = error instanceof Error ? error.name : "UnknownError";
+      debugRemoteBackend({ event: "stream-reconnecting", errorName });
       onError?.(error instanceof Error ? error : new Error(String(error)));
       retry = setTimeout(() => void connect(), 1000);
     }
