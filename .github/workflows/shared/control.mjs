@@ -65,6 +65,10 @@ function log(message) {
   console.log(`[CAO] ${message}`);
 }
 
+function logDecision(decision, outcome, details = {}) {
+  console.log(`[CAO decision] ${JSON.stringify({ decision, outcome, ...details })}`);
+}
+
 function actionsCommand(command, message = "") {
   const escaped = message
     .replaceAll("%", "%25")
@@ -318,9 +322,17 @@ function writeCapacityBlockedPrecompute(campaignName, role, capacity) {
 }
 
 async function applyGithubApiAdmission(result, options) {
-  if (!result.authorized) return result;
+  if (!result.authorized) {
+    logDecision("github-api-capacity", "skipped", { reason: "policy-denied" });
+    return result;
+  }
   const required = githubApiRequestRequirement(result, options);
   const capacity = await githubApiCapacity(required);
+  logDecision("github-api-capacity", capacity.status, {
+    required,
+    remaining: capacity.remaining,
+    limit: capacity.limit,
+  });
   if (capacity.status === "available") return { ...result, github_api_capacity: capacity };
   return {
     ...result,
@@ -386,25 +398,41 @@ async function admit() {
   try {
     if (!options.campaignName || !options.role) throw new ControlError("admission requires a campaign and control role");
     if (!SHA_PATTERN.test(workflowSha)) throw new ControlError("github.workflow_sha must be an exact commit SHA");
+    logDecision("admission-inputs", "accepted", {
+      campaign: options.campaignName,
+      role: options.role,
+      worker: options.workerName || "none",
+      target_requested: Boolean(options.targetRepository),
+      mode_narrowing_requested: Boolean(options.requestedMode),
+      repository_limit_requested: Boolean(options.requestedMaxRepositories),
+      rollout_narrowing_requested: Boolean(options.requestedRolloutPercent),
+    });
 
     const directory = admissionDirectory();
     mkdirSync(directory, { recursive: true });
     let source;
     try {
       source = await decodeRepositoryFile(options.controlRepository, POLICY_PATH, workflowSha);
+      logDecision("policy-source", "loaded", { source: "github.workflow_sha" });
     } catch {
       throw new ControlError(`cannot read ${POLICY_PATH} at github.workflow_sha`);
     }
     let document;
     try {
       document = parsePolicy(source);
+      logDecision("policy-document", "validated");
     } catch (error) {
       throw new ControlError(error instanceof PolicyError ? "control policy validation failed" : error.message);
     }
-    result = await applyGithubApiAdmission(effectivePolicy(document, options), options);
+    const effective = effectivePolicy(document, options);
+    logDecision("effective-policy", effective.authorized ? "authorized" : "denied", {
+      reason: effective.reason,
+    });
+    result = await applyGithubApiAdmission(effective, options);
     writeFileSync(join(directory, "effective-policy.json"), `${JSON.stringify(result, null, 2)}\n`);
   } catch (error) {
     result = { authorized: false, reason: error.message };
+    logDecision("admission-evaluation", "failed", { reason: result.reason });
   }
 
   writeAdmissionRecord(result, options, workflowSha);
@@ -581,12 +609,19 @@ async function validateOutputDestination({ mode, role, safeOutputRepository, tar
     if (role === "worker" && !repositoryEqual(safeOutputRepository, targetRepository)) {
       throw new ControlError("live worker safe_output_repo must equal target_repo");
     }
+    logDecision("safe-output-destination", "accepted", {
+      mode,
+      validation: role === "worker" ? "target-bound" : "live-orchestrator",
+    });
     return;
   }
   if (repositoryEqual(safeOutputRepository, targetRepository) && !repositoryEqual(safeOutputRepository, controlRepository)) {
     throw new ControlError("review safe_output_repo must differ from target_repo");
   }
-  if (repositoryEqual(safeOutputRepository, controlRepository)) return;
+  if (repositoryEqual(safeOutputRepository, controlRepository)) {
+    logDecision("safe-output-destination", "accepted", { mode, validation: "central-review-shortcut" });
+    return;
+  }
   let repository;
   try {
     repository = JSON.parse(await ghApi(`repos/${safeOutputRepository}`));
@@ -595,6 +630,7 @@ async function validateOutputDestination({ mode, role, safeOutputRepository, tar
     throw new ControlError("review safe_output_repo must be accessible");
   }
   if (repository.private !== true) throw new ControlError("non-central review safe_output_repo must be private");
+  logDecision("safe-output-destination", "accepted", { mode, validation: "private-review-repository" });
 }
 
 function validateWorkerDispatch(context) {
@@ -619,6 +655,10 @@ function validateWorkerDispatch(context) {
   if (context.controlPlaneRunUrl !== expected) {
     throw new ControlError("control_plane_run_url must match correlation_id and central_repo");
   }
+  logDecision("worker-dispatch-envelope", "accepted", {
+    mode: context.mode,
+    worker_max_mode: context.workerPolicy.maxMode,
+  });
 }
 
 function createContext(policy) {
@@ -705,8 +745,11 @@ function writeWorkerPrecompute(context) {
 async function selectInventory(context, maximum) {
   if (context.targetRepository) {
     try {
-      return { repositories: [await loadRepository(`repos/${context.targetRepository}`)], source: "target_repo", error: "" };
+      const result = { repositories: [await loadRepository(`repos/${context.targetRepository}`)], source: "target_repo", error: "" };
+      logDecision("repository-inventory", "selected", { source: result.source, repository_count: 1 });
+      return result;
     } catch (error) {
+      logDecision("repository-inventory", "unavailable", { source: "target_repo", repository_count: 0 });
       return { repositories: [], source: "target_repo", error: error.message };
     }
   }
@@ -717,13 +760,19 @@ async function selectInventory(context, maximum) {
       try {
         repositories.push(await loadRepository(`repos/${repository}`));
       } catch {
+        logDecision("repository-inventory", "unavailable", { source: "allowed_repos", repository_count: 0 });
         return { repositories: [], source: "allowed_repos", error: `cannot read allowed repository ${repository}` };
       }
     }
+    logDecision("repository-inventory", "selected", { source: "allowed_repos", repository_count: repositories.length });
     return { repositories, source: "allowed_repos", error: "" };
   }
   const organization = context.controlRepository.split("/", 1)[0];
   const { repositories, error } = await loadBoundedInventory(organization, maximum);
+  logDecision("repository-inventory", error ? "unavailable" : "selected", {
+    source: "organization",
+    repository_count: repositories.length,
+  });
   return { repositories, source: "organization", error };
 }
 
@@ -760,6 +809,13 @@ function createInventory(context, repositories) {
     throw new ControlError(`batch_index must be smaller than the selected cell batch count (${batchCount})`);
   }
   const candidates = cell.slice(batchIndex * batchSize, (batchIndex + 1) * batchSize);
+  logDecision("inventory-partition", "selected", {
+    input_count: repositories.length,
+    unique_count: sorted.length,
+    cell_count: cell.length,
+    batch_count: candidates.length,
+    target_shortcut: Boolean(context.targetRepository),
+  });
   return {
     candidates,
     metadata: {
@@ -812,7 +868,7 @@ async function writeOrchestratorPrecompute(context) {
     const policy = context.policy.worker_policies?.[configured];
     const enabled = policy?.enabled ?? false;
     const active = match && !String(match.state ?? "").startsWith("disabled");
-    return {
+    const resolved = {
       configured,
       matched: Boolean(match),
       worker: policy?.worker ?? null,
@@ -833,6 +889,12 @@ async function writeOrchestratorPrecompute(context) {
               ? "worker workflow disabled"
               : null,
     };
+    logDecision("worker-workflow", resolved.eligible ? "eligible" : "skipped", {
+      workflow: configured,
+      reason: resolved.skip_reason ?? "available",
+      max_mode: resolved.max_mode ?? "none",
+    });
+    return resolved;
   });
   const eligibleWorkers = workerWorkflows.filter(({ eligible }) => eligible).length;
   const percentCap = resolvedCandidates.length === 0
@@ -840,6 +902,14 @@ async function writeOrchestratorPrecompute(context) {
     : Math.max(1, Math.ceil(resolvedCandidates.length * context.policy.rollout_percent / 100));
   const dispatchCap = eligibleWorkers === 0 ? 0 : Math.floor(context.dispatchMaximum / eligibleWorkers);
   const effectiveMaximum = Math.min(context.policy.max_repositories, percentCap, dispatchCap);
+  logDecision("repository-cap", "resolved", {
+    candidates: resolvedCandidates.length,
+    eligible_workers: eligibleWorkers,
+    policy_cap: context.policy.max_repositories,
+    rollout_cap: percentCap,
+    dispatch_cap: dispatchCap,
+    effective_cap: effectiveMaximum,
+  });
 
   const result = {
     authorized: true,
@@ -890,10 +960,13 @@ async function precompute() {
   }
   if (!policy.authorized) {
     writeDeniedPrecompute(policy);
-    log("Precompute skipped because admission was denied.");
+    logDecision("precompute", "skipped", { reason: policy.reason ?? "policy-denied" });
     return;
   }
-  log("Applying the admitted control policy.");
+  logDecision("precompute-policy", "accepted", {
+    campaign: policy.campaign,
+    role: environment("CAO_ROLE"),
+  });
   const context = createContext(policy);
   try {
     requireMode(context.mode, "safe_output_mode");
@@ -904,15 +977,26 @@ async function precompute() {
     if (context.role === "worker") {
       validateWorkerDispatch(context);
       writeWorkerPrecompute(context);
-      log("Prepared worker precompute data.");
+      logDecision("precompute", "prepared", { role: "worker", candidate_count: 0 });
       return;
     }
     await writeOrchestratorPrecompute(context);
-    log("Prepared orchestrator precompute data.");
+    const result = readJson(OUTPUT_PATH);
+    logDecision("precompute", "prepared", {
+      role: "orchestrator",
+      candidate_count: result.candidate_repositories.length,
+      eligible_worker_count: result.worker_workflows.filter(({ eligible }) => eligible).length,
+      effective_cap: result.effective_max_repos,
+    });
   } catch (error) {
     if (!isRateLimitError(error)) throw error;
     const required = githubApiRequestRequirement(policy, { role: context.role, targetRepository: context.targetRepository });
     const capacity = await githubApiCapacity(required);
+    logDecision("precompute-rate-limit-recovery", capacity.status, {
+      required,
+      remaining: capacity.remaining,
+      limit: capacity.limit,
+    });
     writeCapacityBlockedPrecompute(
       context.campaignName,
       context.role,
