@@ -236,6 +236,40 @@ func TestBudgetObservationDoesNotRestoreReservedHeadroom(t *testing.T) {
 	}
 }
 
+func TestInterpretReservationResult(t *testing.T) {
+	cases := []struct {
+		result  int
+		wantErr error
+	}{
+		{result: 0, wantErr: nil},
+		{result: 1, wantErr: ErrInstallationParked},
+		{result: 2, wantErr: ErrBudgetExhausted},
+		{result: 3, wantErr: ErrBudgetUnknown},
+	}
+	for _, testCase := range cases {
+		err := interpretReservationResult(testCase.result)
+		if testCase.wantErr == nil {
+			if err != nil {
+				t.Fatalf("result %d: got error %v, want nil", testCase.result, err)
+			}
+			continue
+		}
+		if !errors.Is(err, testCase.wantErr) {
+			t.Fatalf("result %d: got error %v, want %v", testCase.result, err, testCase.wantErr)
+		}
+	}
+}
+
+func TestInterpretReservationResultRejectsUnknownCode(t *testing.T) {
+	err := interpretReservationResult(99)
+	if err == nil {
+		t.Fatal("expected an error for an unrecognized reservation result code")
+	}
+	if errors.Is(err, ErrInstallationParked) || errors.Is(err, ErrBudgetExhausted) || errors.Is(err, ErrBudgetUnknown) {
+		t.Fatalf("unrecognized result code must not match a known sentinel error, got %v", err)
+	}
+}
+
 func TestConfigValidationRejectsIncompleteCredentials(t *testing.T) {
 	cases := []Config{
 		{},
