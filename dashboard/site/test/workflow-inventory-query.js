@@ -1,9 +1,7 @@
-import { readFileSync } from 'node:fs';
 import { processDataRequest } from '../src/data-worker.js';
+import { authoritativeDashboard as authoritativeDocument } from './authoritative-dashboard.js';
 
-const authoritativeDashboard = JSON.parse(
-  readFileSync(`${process.cwd()}/dashboard.json`, 'utf8')
-).dashboard;
+const authoritativeDashboard = authoritativeDocument.dashboard;
 const authoritativeQueries = authoritativeDashboard.queries;
 
 /**

@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { processDataRequest } from '../../src/data-worker.js';
 import { dashboardQueryDefects, executeDashboardQueries } from '../../src/data/queries/declarative.js';
@@ -6,7 +5,7 @@ import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-
 import { CAMPAIGN_ROUTE_BODY_VALUES } from '../../src/components/route-body-specification.js';
 import { TABLE_FIELDS } from '../../src/specification.js';
 
-const document = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8'));
+import { authoritativeDashboard as document } from '../authoritative-dashboard.js';
 const dashboard = document.dashboard;
 const queries = dashboard.queries;
 const queryNames = new Set(queries.map((/** @type {{ name: string }} */ query) => query.name));

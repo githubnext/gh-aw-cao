@@ -1,0 +1,592 @@
+{
+  "queries": [
+    {
+      "name": "campaign-problem-runs",
+      "intent": "List retained failed runs for campaign problem investigation.",
+      "description": "Failed campaign runs ordered from newest to oldest with retained diagnostic metadata.",
+      "from": "campaign-runs",
+      "filter": {
+        "predicates": [
+          {
+            "field": "status",
+            "in": [
+              "failure",
+              "startup-failure",
+              "stale",
+              "timed-out"
+            ]
+          }
+        ]
+      },
+      "order-by": [
+        {
+          "field": "started-at",
+          "direction": "desc"
+        },
+        {
+          "field": "run",
+          "direction": "desc"
+        }
+      ]
+    },
+    {
+      "name": "campaign-problem-run-evidence",
+      "intent": "Attach the current campaign runtime problem summary to each retained failed Run for that partition.",
+      "description": "Failed campaign runs annotated with the failure-count and problem-kind of their active runtime problem, one row per retained failed Run.",
+      "from": "campaign-problem-runs",
+      "joins": [
+        {
+          "source": "campaign-runtime-problems",
+          "type": "inner",
+          "on": [
+            {
+              "left": "campaign",
+              "right": "campaign"
+            },
+            {
+              "left": "workflow",
+              "right": "workflow"
+            },
+            {
+              "left": "runtime-repository",
+              "right": "runtime-repository"
+            }
+          ],
+          "fields": [
+            {
+              "field": "failure-count",
+              "as": "failure-count"
+            },
+            {
+              "field": "problem-kind",
+              "as": "problem-kind"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "campaign-problem-latest-target-runs",
+      "intent": "Identify the most recent retained failed Run for each campaign workflow target repository.",
+      "description": "One row per campaign workflow and target repository with its most recent retained failed Run identity.",
+      "from": "campaign-problem-run-evidence",
+      "aggregate": {
+        "by": [
+          "campaign",
+          "workflow",
+          "runtime-repository",
+          "target-repository"
+        ],
+        "values": [
+          {
+            "field": "run",
+            "as": "latest-target-run",
+            "reducer": "max"
+          }
+        ]
+      }
+    },
+    {
+      "name": "campaign-problem-error-groups",
+      "intent": "Cluster retained failed Run evidence by workflow, runtime repository, target repository, and error signature so repeated identical failures for one target collapse into one diagnosable group.",
+      "description": "One row per distinct target repository and error signature within a campaign runtime problem partition, with an occurrence count and the most recent matching Run identity for follow-up.",
+      "from": "campaign-problem-run-evidence",
+      "aggregate": {
+        "by": [
+          "campaign",
+          "campaign-name",
+          "workflow",
+          "workflow-name",
+          "workflow-role",
+          "runtime-repository",
+          "target-repository",
+          "rollout-mode",
+          "failure-count",
+          "problem-kind",
+          "error-signature",
+          "error-signature-label"
+        ],
+        "values": [
+          {
+            "field": "run",
+            "as": "occurrence-count",
+            "reducer": "count"
+          },
+          {
+            "field": "run",
+            "as": "latest-run",
+            "reducer": "max"
+          }
+        ]
+      }
+    },
+    {
+      "name": "campaign-current-problem-error-groups",
+      "intent": "Keep only the newest error signature for each campaign workflow target repository.",
+      "description": "Current target-specific error groups whose representative Run is the target repository's most recent retained failed Run.",
+      "from": "campaign-problem-error-groups",
+      "joins": [
+        {
+          "source": "campaign-problem-latest-target-runs",
+          "type": "inner",
+          "on": [
+            {
+              "left": "campaign",
+              "right": "campaign"
+            },
+            {
+              "left": "workflow",
+              "right": "workflow"
+            },
+            {
+              "left": "runtime-repository",
+              "right": "runtime-repository"
+            },
+            {
+              "left": "latest-run",
+              "right": "latest-target-run"
+            }
+          ],
+          "fields": [
+            {
+              "field": "latest-target-run",
+              "as": "current-target-run"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "campaign-problem-items",
+      "intent": "Attach the most recent representative Run evidence to each distinct campaign runtime problem error signature.",
+      "description": "Current campaign runtime problems represented by the newest error signature for each target repository, with its effective rollout mode, an occurrence count, the most recent matching failed Run, and a repair prompt.",
+      "from": "campaign-current-problem-error-groups",
+      "joins": [
+        {
+          "source": "campaign-problem-run-evidence",
+          "type": "inner",
+          "on": [
+            {
+              "left": "campaign",
+              "right": "campaign"
+            },
+            {
+              "left": "workflow",
+              "right": "workflow"
+            },
+            {
+              "left": "runtime-repository",
+              "right": "runtime-repository"
+            },
+            {
+              "left": "latest-run",
+              "right": "run"
+            }
+          ],
+          "fields": [
+            {
+              "field": "started-at",
+              "as": "started-at"
+            },
+            {
+              "field": "run",
+              "as": "run"
+            },
+            {
+              "field": "status",
+              "as": "status"
+            },
+            {
+              "field": "status-detail",
+              "as": "status-detail"
+            },
+            {
+              "field": "failure-job",
+              "as": "failure-job"
+            },
+            {
+              "field": "failure-message",
+              "as": "failure-message"
+            },
+            {
+              "field": "failure-step",
+              "as": "failure-step"
+            },
+            {
+              "field": "failure-log",
+              "as": "failure-log"
+            },
+            {
+              "field": "gh-aw-version",
+              "as": "gh-aw-version"
+            },
+            {
+              "field": "engine",
+              "as": "engine"
+            },
+            {
+              "field": "engine-version",
+              "as": "engine-version"
+            },
+            {
+              "field": "requested-model",
+              "as": "requested-model"
+            },
+            {
+              "field": "resolved-model",
+              "as": "resolved-model"
+            },
+            {
+              "field": "run-link",
+              "as": "run-link"
+            },
+            {
+              "field": "repository-link",
+              "as": "repository-link"
+            },
+            {
+              "field": "workflow-link",
+              "as": "workflow-link"
+            },
+            {
+              "field": "workflow-source-link",
+              "as": "workflow-source-link"
+            }
+          ]
+        }
+      ],
+      "union": [
+        "campaign-unobserved-orchestrators"
+      ],
+      "compute": [
+        {
+          "as": "problem-title",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "failure-message"
+            },
+            {
+              "field": "status-detail"
+            },
+            {
+              "field": "error-signature-label"
+            },
+            {
+              "field": "workflow-name"
+            }
+          ]
+        },
+        {
+          "as": "_runtime-repository-encoded",
+          "function": "url-encode",
+          "args": [
+            {
+              "field": "runtime-repository"
+            }
+          ]
+        },
+        {
+          "as": "_runtime-repository-href",
+          "function": "concat",
+          "args": [
+            {
+              "value": "#page-repository-detail?repository="
+            },
+            {
+              "field": "_runtime-repository-encoded"
+            }
+          ]
+        },
+        {
+          "as": "runtime-repository-link",
+          "function": "dashboard-link",
+          "args": [
+            {
+              "field": "repository-link"
+            },
+            {
+              "field": "_runtime-repository-href"
+            },
+            {
+              "field": "runtime-repository"
+            },
+            {
+              "field": "runtime-repository"
+            }
+          ]
+        },
+        {
+          "as": "_target-repository-encoded",
+          "function": "url-encode",
+          "args": [
+            {
+              "field": "target-repository"
+            }
+          ]
+        },
+        {
+          "as": "_target-repository-href",
+          "function": "concat",
+          "args": [
+            {
+              "value": "#page-repository-detail?repository="
+            },
+            {
+              "field": "_target-repository-encoded"
+            }
+          ]
+        },
+        {
+          "as": "target-repository-link",
+          "function": "dashboard-link",
+          "args": [
+            {
+              "field": "target-repository"
+            },
+            {
+              "field": "_target-repository-href"
+            },
+            {
+              "field": "target-repository"
+            }
+          ]
+        }
+      ],
+      "order-by": [
+        {
+          "field": "workflow-name",
+          "direction": "asc"
+        },
+        {
+          "field": "runtime-repository",
+          "direction": "asc"
+        },
+        {
+          "field": "occurrence-count",
+          "direction": "desc"
+        },
+        {
+          "field": "started-at",
+          "direction": "desc"
+        }
+      ]
+    },
+    {
+      "name": "campaign-problem-tab-counts",
+      "intent": "Count the current runtime problem items available for each campaign Problems tab.",
+      "description": "One campaign row with the number of current runtime problem groups.",
+      "from": "campaign-problem-items",
+      "aggregate": {
+        "by": [
+          "campaign"
+        ],
+        "values": [
+          {
+            "field": "campaign",
+            "as": "items",
+            "reducer": "count"
+          }
+        ]
+      }
+    }
+  ],
+  "views": [
+    {
+      "id": "campaign-problem-detail-view",
+      "title": "Problem",
+      "description": "Evidence and repair guidance for this campaign runtime problem.",
+      "data": {
+        "sources": [
+          "campaign-problem-items"
+        ],
+        "arguments": [
+          {
+            "name": "campaign",
+            "field": "campaign"
+          },
+          {
+            "name": "workflow",
+            "field": "workflow"
+          },
+          {
+            "name": "target-repository",
+            "field": "target-repository"
+          },
+          {
+            "name": "error-signature",
+            "field": "error-signature"
+          }
+        ]
+      },
+      "mark": "element",
+      "element": "problem-detail",
+      "layout": "full"
+    }
+  ],
+  "pages": [
+    {
+      "id": "campaign-problems",
+      "kind": "custom",
+      "title": "Campaign",
+      "description": "Operational activity for this campaign.",
+      "icon": "alert",
+      "class-name": "campaign-problems-page",
+      "route": {
+        "hash-query-parameter": "campaign",
+        "title-format": "title-case",
+        "tabs-class-name": "campaign-tabs",
+        "tab": "problems",
+        "tabs": [
+          {
+            "id": "insights",
+            "label": "Operational Value",
+            "icon": "graph",
+            "page": "campaign-insights"
+          },
+          {
+            "id": "problems",
+            "label": "Failures",
+            "icon": "alert",
+            "page": "campaign-problems"
+          },
+          {
+            "id": "issues",
+            "label": "Issues",
+            "icon": "issue-opened",
+            "page": "campaign-issues"
+          },
+          {
+            "id": "memory",
+            "label": "Memory",
+            "icon": "archive",
+            "page": "campaign-memory"
+          }
+        ]
+      },
+      "views": [
+        {
+          "id": "campaign-problems-navigation",
+          "title": "Campaign problems",
+          "data": {
+            "sources": [
+              "workflows",
+              "campaign-insight-tab-counts",
+              "campaign-problem-tab-counts",
+              "campaign-issue-tab-counts"
+            ],
+            "arguments": [
+              {
+                "name": "campaign",
+                "field": "campaign"
+              }
+            ]
+          },
+          "mark": "element",
+          "element": "campaign-route",
+          "layout": "full",
+          "config": {
+            "body": "problems"
+          }
+        },
+        {
+          "id": "campaign-current-runtime-problems",
+          "title": "Failures",
+          "description": "Current runtime failures and missing orchestrator observations, grouped by workflow with the target repository and effective Live or Review mode identified for each error group.",
+          "data": {
+            "source": "campaign-problem-items",
+            "arguments": [
+              {
+                "name": "campaign",
+                "field": "campaign"
+              }
+            ]
+          },
+          "mark": "list",
+          "list": {
+            "style": "entity-cards",
+            "card": "problem",
+            "icon": "alert",
+            "drill": {
+              "type": "query",
+              "page": "campaign-problem-detail",
+              "query": "campaign-problem-items",
+              "title-field": "problem-title",
+              "arguments": [
+                {
+                  "name": "campaign",
+                  "field": "campaign"
+                },
+                {
+                  "name": "workflow",
+                  "field": "workflow"
+                },
+                {
+                  "name": "target-repository",
+                  "field": "target-repository"
+                },
+                {
+                  "name": "error-signature",
+                  "field": "error-signature"
+                }
+              ]
+            }
+          },
+          "empty-message": "No current runtime problems were observed for this campaign in the selected horizon.",
+          "layout": "full",
+          "encoding": {
+            "columns": [
+              {
+                "field": "problem-title",
+                "type": "nominal",
+                "title": "Problem"
+              },
+              {
+                "field": "workflow-name",
+                "type": "nominal",
+                "title": "Workflow"
+              },
+              {
+                "field": "target-repository",
+                "type": "nominal",
+                "title": "Target repository"
+              },
+              {
+                "field": "rollout-mode",
+                "type": "nominal",
+                "title": "Mode",
+                "display": "mode"
+              },
+              {
+                "field": "occurrence-count",
+                "type": "quantitative",
+                "title": "Occurrences"
+              },
+              {
+                "field": "started-at",
+                "type": "temporal",
+                "title": "Observed",
+                "format": "human-friendly-timestamp"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "campaign-problem-detail",
+      "kind": "custom",
+      "title": "Problem",
+      "description": "Runtime failure details and repair guidance for a specific campaign problem.",
+      "icon": "alert",
+      "class-name": "campaign-problem-detail-page",
+      "route": {
+        "hash-query-parameter": "target-repository",
+        "navigation-page": "campaigns"
+      },
+      "views": [
+        "campaign-problem-detail-view"
+      ]
+    }
+  ]
+}

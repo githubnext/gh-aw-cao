@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { TABLE_FIELDS } from '../../src/specification.js';
+import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
 /** @param {string} path */
 const read = (path) => readFileSync(resolve(path), 'utf8');
@@ -30,7 +31,7 @@ describe('dashboard query architecture', () => {
      * aggregate?: unknown,
      * joins?: unknown[]
      * }>} */ (JSON.parse(read('src/data/queries/database.json')));
-    const dashboard = JSON.parse(read('dashboard.json')).dashboard;
+    const dashboard = authoritativeDashboard.dashboard;
 
     expect(worker).toContain('queryIndexedDatabaseSources(');
     expect(worker).toMatch(/executeDashboardQueries\(\s*context\.queries,\s*\{ \.\.\.databasePayload, \.\.\.healthPayload, \.\.\.nativeSources \},\s*directRequests/);

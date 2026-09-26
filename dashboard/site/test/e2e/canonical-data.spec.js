@@ -7,6 +7,7 @@ import { ingestGhAwLogs as ingestNodeGhAwLogs } from '../../src/data/ingest/coor
 import { readCanonicalBatch } from '../../src/data/storage/indexeddb.js';
 import { createSqliteIndexedDB } from '../../src/data/storage/sqlite-indexeddb.js';
 import { normalizedActivityShards } from './normalized-shard.js';
+import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
 const databaseName = 'gh-aw-cao-dashboard-data';
@@ -399,6 +400,13 @@ test.beforeEach(async ({ context, page }) => {
       return;
     }
     const filePath = join(siteRoot, pathname);
+    if (pathname === '/dashboard.json') {
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify(authoritativeDashboard)
+      });
+      return;
+    }
     if (existsSync(filePath)) {
       await route.fulfill({
         contentType: pathname.endsWith('.json') ? 'application/json' : 'application/javascript',

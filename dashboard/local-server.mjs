@@ -5,7 +5,6 @@ import { execFile } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import {
   appendFile,
-  copyFile,
   mkdir,
   mkdtemp,
   readFile,
@@ -33,7 +32,7 @@ import {
 } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createGzip, gzipSync } from "node:zlib";
-import { bundleDashboardFiles } from "./report/bundle-dashboards.mjs";
+import { bundleDashboardFiles, loadDashboardSource } from "./report/bundle-dashboards.mjs";
 import { buildDashboardPageChunkPath, splitDashboardDocument } from "./site/src/dashboard-chunks.js";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
@@ -718,14 +717,17 @@ export async function startDashboardServer({
   const rebuild = async (notify = true, traceId, forceNotify = false) => {
     output("Checking dashboard sources for updates.");
     const campaignPaths = await campaignDashboardPaths(resolvedCatalogRoot);
-    const nextSignature = await sourceSignature([baseDashboardPath, ...campaignPaths]);
+    const dashboardSources = await Promise.all(
+      [baseDashboardPath, ...campaignPaths].map((source) => loadDashboardSource(source)),
+    );
+    const editableDashboardPaths = dashboardSources.flatMap(({ sourcePaths }) => sourcePaths);
+    const nextSignature = await sourceSignature(editableDashboardPaths);
     if (nextSignature === signature) {
       if (notify && forceNotify) broadcastDashboard(traceId);
-      return campaignPaths;
+      return editableDashboardPaths;
     }
 
-    await copyFile(baseDashboardPath, bundledDashboardPath);
-    await bundleDashboardFiles(bundledDashboardPath, campaignPaths);
+    await bundleDashboardFiles(bundledDashboardPath, campaignPaths, baseDashboardPath);
     const dashboardDocument = JSON.parse(await readFile(bundledDashboardPath, "utf8"));
     if (repository) dashboardDocument.dashboard.repository = repository;
     const splitDashboard = splitDashboardDocument({
@@ -742,26 +744,26 @@ export async function startDashboardServer({
     signature = nextSignature;
     output("Dashboard preview rebuilt.", {
       bundledDashboardPath,
-      editableDashboardPaths: [baseDashboardPath, ...campaignPaths],
+      editableDashboardPaths,
       notify,
     });
     trace.record("server", "preview.rebuilt", {
       traceId,
       details: {
         bundledDashboardPath,
-        editableDashboardPaths: [baseDashboardPath, ...campaignPaths],
+        editableDashboardPaths,
         notify,
       },
     });
     if (notify) broadcastDashboard(traceId);
-    return campaignPaths;
+    return editableDashboardPaths;
   };
 
-  const refreshWatchers = async (campaignPaths) => {
+  const refreshWatchers = async (dashboardPaths) => {
     if (closed) return;
     const candidates = new Set([
       resolvedSiteRoot,
-      ...campaignPaths.map(dirname),
+      ...dashboardPaths.map(dirname),
     ]);
     if (resolvedCatalogRoot) candidates.add(resolvedCatalogRoot);
     for (const directory of await existingDirectories(candidates)) {

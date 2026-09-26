@@ -15,6 +15,7 @@ import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { loadDashboardSource } from "../../dashboard/report/bundle-dashboards.mjs";
 import { analyzeDashboardComplexity } from "../../activity/dashboard-complexity.mjs";
 import {
   executeDashboardQueries,
@@ -160,7 +161,7 @@ export async function openDeployedDatabase(databasePath) {
 
 /** @param {string} documentPath */
 export async function readDashboardDocument(documentPath) {
-  return JSON.parse(await readFile(path.resolve(documentPath), "utf8"));
+  return (await loadDashboardSource(path.resolve(documentPath))).document;
 }
 
 /**

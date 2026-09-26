@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
 import { validateDashboardDocument, validateLogicalSources } from '../../src/validator.js';
 import { DASHBOARD_QUERY_LIMITS, QUERY_MAX_JOINS } from '../../src/specification.js';
 import { campaignDashboardSources } from '../campaign-dashboard-documents.js';
-
-const authoritativeDashboardSource = readFileSync(`${process.cwd()}/dashboard.json`, 'utf8');
+import { authoritativeDashboardSource } from '../authoritative-dashboard.js';
 
 const validDocument = `language-version: "0.1.0"
 dashboard:
