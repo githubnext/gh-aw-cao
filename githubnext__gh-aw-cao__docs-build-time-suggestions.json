@@ -1,1 +1,361 @@
-{"source_sha":"2f31b6bce306b9da76b8067202de94e9113f1022","next_category":"reusable dashboard generation","evaluations":[{"evaluated_at":"2026-09-26T12:36:00Z","worker_run_id":36242095052,"category":"reusable dashboard generation","evidence_run_ids":[36239225579,36239830417,36240655139,36241009203,36241354638],"outcome":"incomplete: latest 20 completed docs.yml runs in the last 14 days contained only 5 successful runs in the evidence window, but they spanned 4 source SHAs and only 1-3 successes per SHA. Comparable like-for-like analysis by trigger and source revision was therefore not possible from this bounded window. Evidence window 2026-09-26T11:34:03Z to 2026-09-26T12:16:19Z. Stopped before timing and suggestion generation to avoid mixing unlike revisions. No fresh actionable recommendation was evaluated."},{"evaluated_at":"2026-09-26T12:56:00Z","worker_run_id":36243354407,"category":"scheduling, concurrency, and avoidable rebuilds","evidence_run_ids":[36241574268,36242150462,36242950163,36243153596,36243278966],"outcome":"no-op: evidence window 2026-09-26T12:19:54Z to 2026-09-26T12:52:53Z. Analyzed 5 comparable successful docs.yml runs from the latest 20 completed runs in the last 14 days (2 schedule, 3 workflow_run), while disclosing 15 completed outliers in the same 20-run window: 13 action_required workflow_run runs and 2 skipped workflow_run runs. The comparable sample split across only two source SHAs (cdf6a7193f8ec5f2cacea6538892b3586b899fc4 with 2 successes and 627c0a7af7d20aeabe36212741d77f59e513116d with 2 successes, plus 1 newer workflow_run success at 7bb12670a8fd08bb608f8a764e940ef904022291), so confidence is low and timing was used only to check for obvious duplicate-trigger waste. Workflow median duration was 50.0s (p90 53.0s); build-job median 30.0s (p90 32.6s); deploy-job median 10.0s (p90 17.4s); build queue median 3.0s (p90 3.0s). Trusted step metadata confirmed Restore node_modules cache hits on 5/5 runs, Install dependencies and Save node_modules skipped on 5/5, Restore cached CAO Dashboard cache hits on 5/5, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 5/5. Repeated costs remained small: Build documentation median 8.0s, Upload Pages artifact median 5.0s, and Deploy Pages median 7.0s. Source review shows docs.yml already serializes executions with concurrency.group documentation-pages and cancel-in-progress false while listening to schedule, push, and successful CAO Dashboard workflow_run events, and the bounded comparable sample does not show repeated completed builds for the same trigger and same revision. The only repeated waste still above threshold remains the already-tracked split-deployment recommendation fingerprint 4d8a9f6f1f8db7a9f0b2, so no fresh non-duplicate scheduling or concurrency recommendation is warranted.","suggestion_fingerprint":""},{"evaluated_at":"2026-09-26T13:23:00Z","worker_run_id":36244855089,"category":"artifact transfer and Pages packaging","evidence_run_ids":[36243520953,36243791447,36244171809,36244830293,36244907467],"outcome":"no-op: evidence window 2026-09-26T12:56:36Z to 2026-09-26T13:21:47Z. Analyzed 5 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 13 action_required workflow_run runs and 3 skipped workflow_run runs excluded from the timing sample. Workflow median execution was 48.0s (p90 62.0s), build median 29.0s (p90 42.6s), deploy median 10.0s (p90 11.0s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed Restore node_modules cache hits on 5/5 runs, Install dependencies and Save node_modules skipped on 5/5, Restore cached CAO Dashboard cache hits on 5/5, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 5/5. Artifact-transfer costs were below the actionable threshold: Upload Pages artifact median 3.0s (p90 6.0s) and Deploy Pages median 7.0s (p90 7.6s). Bounded log review of run 36243791447 showed the uploaded github-pages artifact was 27,190,860 bytes and finished blob upload in about 5.6s, which is well under the required 60s or 15% savings threshold for a safe workflow-only change. No fresh non-duplicate artifact-transfer or Pages-packaging recommendation is warranted.","suggestion_fingerprint":""},{"evaluated_at":"2026-09-26T13:50:00Z","worker_run_id":36246381977,"category":"scheduling, concurrency, and avoidable rebuilds","evidence_run_ids":[36246247644,36245984487,36245435394,36244924294,36244907467,36244830293,36244171809],"outcome":"no-op: evidence window 2026-09-26T13:08:33Z to 2026-09-26T13:46:37Z. Analyzed 7 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 9 action_required workflow_run runs and 4 skipped workflow_run runs excluded from timing metrics. Comparable sample confidence is medium because 4/7 successful runs came from distinct SHAs, but repeated trigger behavior remained observable. Workflow median execution was 48.0s (p90 62.2s), build median 26.0s (p90 31.8s), deploy median 10.0s (p90 13.4s), and queue median 0.0s (p90 0.0s). Trusted metadata confirmed Restore node_modules cache hits on 7/7 runs, Install dependencies and Save node_modules skipped on 7/7, and cached CAO Dashboard hits on 7/7 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 7/7. Repeated remaining costs stayed small: Build documentation median 8.0s, Upload Pages artifact median 2.0s, and Deploy Pages median 6.0s. The only large dashboard-generation cost observed was a one-off fallback artifact path in CAO Dashboard run 36243434490 where Restore collected activity data missed, Download fallback activity data took about 6s, and Upgrade fallback activity data took 36s before later docs runs reused the refreshed central-agentic-ops-dashboard cache. Because docs.yml itself already avoided rebuilding the dashboard in every sampled run and no repeated docs-side dashboard bottleneck above the 60s or 15% threshold remains, no fresh non-duplicate reusable-dashboard recommendation is warranted.","suggestion_fingerprint":""},{"evaluated_at":"2026-09-26T14:30:00Z","worker_run_id":36248265408,"category":"dependency installation and caching","evidence_run_ids":[36248277075,36247096673,36246247644,36245984487,36245435394,36244924294,36244907467,36244830293,36244171809],"outcome":"no-op: evidence window 2026-09-26T13:08:33Z to 2026-09-26T14:23:08Z. Analyzed 9 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 6 action_required workflow_run runs and 4 skipped workflow_run runs excluded from timing metrics. Median workflow execution was 48.0s (p90 58.6s), build median 26.0s (p90 31.4s), deploy median 10.0s (p90 13.0s), and queue median 0.0s (p90 0.0s). Trusted metadata and logs confirmed actions/setup-node restored the npm cache on 9/9 runs, the explicit node_modules cache hit on 9/9 runs, Install dependencies and Save node_modules skipped on 9/9 runs, and the CAO Dashboard cache hit on 9/9 runs. The remaining dependency-and-cache cost was Restore node_modules median 5.0s and Set up Node.js median 4.0s; together they are well below the 60s or 15% action threshold. No fresh non-duplicate actionable caching recommendation is warranted.","suggestion_fingerprint":""},{"evaluated_at":"2026-09-26T14:40:00Z","worker_run_id":36248954986,"category":"Astro documentation generation","evidence_run_ids":[36248846507,36248277075,36247096673,36246247644,36245984487,36245435394,36244924294,36244907467,36244830293,36244171809],"outcome":"no-op: evidence window 2026-09-26T13:08:33Z to 2026-09-26T14:32:18Z. Analyzed 10 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 6 action_required workflow_run runs and 4 skipped workflow_run runs excluded from timing metrics. Evaluated category Astro documentation generation. Median workflow execution was 46.0s (p90 56.8s), build median 25.5s (p90 31.2s), deploy median 10.5s (p90 12.5s), and queue median 0.0s (p90 0.0s). Trusted metadata confirmed actions/setup-node npm cache hits on 10/10, explicit node_modules cache hits on 10/10, Install dependencies and Save node_modules skipped on 10/10, and cached CAO Dashboard hits on 10/10 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 10/10. Astro generation remained small: Build documentation median 8.0s (p90 9.1s), which is 17% of median execution and far below the 60s savings threshold; no workflow-only change in docs generation is evidenced to save at least 60s or 15% of total median execution without changing correctness or freshness. The only observable duplicate tax above threshold remains the already-tracked duplicate publish pattern where push and workflow_run both publish the same revision, so no fresh Astro-specific non-duplicate recommendation is warranted.","suggestion_fingerprint":""},{"evaluated_at":"2026-09-26T14:50:00Z","worker_run_id":36249847466,"category":"reusable dashboard generation","evidence_run_ids":[36249601021,36248846507,36248277075,36247096673,36246247644,36245984487,36245435394,36244924294,36244907467,36244830293],"outcome":"no-op: evidence window 2026-09-26T13:20:22Z to 2026-09-26T14:45:41Z. Analyzed 10 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 6 action_required workflow_run runs and 4 skipped workflow_run runs excluded from timing metrics. Evaluated category reusable dashboard generation. Median workflow execution was 48.5s (p90 55.0s), build median 27.5s (p90 31.0s), deploy median 11.0s (p90 12.0s), and queue median 0.0s (p90 0.0s). Trusted metadata and bounded logs confirmed actions/setup-node restored the npm cache on sampled runs, the explicit node_modules cache hit on 10/10, Install dependencies and Save node_modules skipped on 10/10, and Restore cached CAO Dashboard hit on 10/10 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 10/10. Dashboard reuse overhead in docs.yml stayed small: Restore cached CAO Dashboard median 1.0s and Pages artifact upload median 2.0s. The only large dashboard-generation cost observed was a one-off fallback artifact path in CAO Dashboard run 36243434490 where Restore collected activity data missed, Download fallback activity data took about 6s, and Upgrade fallback activity data took 36s before later docs runs reused the refreshed central-agentic-ops-dashboard cache. Because docs.yml itself already avoided rebuilding the dashboard in every sampled run and no repeated docs-side dashboard bottleneck above the 60s or 15% threshold remains, no fresh non-duplicate reusable-dashboard recommendation is warranted.","suggestion_fingerprint":""},{"evaluated_at":"2026-09-26T15:24:00Z","worker_run_id":36251666413,"category":"artifact transfer and Pages packaging","evidence_run_ids":[36251664939,36250501117,36249601021,36248846507,36248277075,36247096673,36246247644,36245984487,36245435394,36244924294,36244907467,36244830293],"outcome":"no-op: evidence window 2026-09-26T13:20:22Z to 2026-09-26T15:21:41Z. Analyzed 12 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 4 action_required workflow_run runs and 3 skipped workflow_run runs excluded from the timing sample. Evaluated category artifact transfer and Pages packaging. Median workflow execution was 49.5s (p90 58.6s), build median 29.0s (p90 32.8s), deploy median 10.5s (p90 12.0s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed node_modules restore cache hits on 12/12 runs because Install dependencies and Save node_modules were skipped on 12/12, and cached CAO Dashboard hits on 12/12 because Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped on 12/12 after Restore cached CAO Dashboard. Artifact-transfer and Pages packaging remained small: Upload Pages artifact median 2.0s (p90 3.0s), Deploy Pages median 6.5s (p90 8.9s), and the whole deploy job median 10.5s. These costs are well below the threshold of saving at least 60 seconds or 15 percent of median execution without reducing correctness or freshness, so no fresh non-duplicate recommendation is actionable.","suggestion_fingerprint":""},{"evaluated_at":"2026-09-26T15:37:04Z","worker_run_id":36252395821,"category":"scheduling, concurrency, and avoidable rebuilds","evidence_run_ids":[36252283846,36251921157,36251664939,36250501117,36249601021,36248846507,36248277075,36247096673,36246247644,36245984487,36245435394,36244924294],"outcome":"no-op: evidence window 2026-09-26T13:22:04Z to 2026-09-26T15:32:18Z. Analyzed 12 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 4 action_required workflow_run runs and 3 skipped workflow_run runs excluded from the timing sample. Evaluated category scheduling, concurrency, and avoidable rebuilds. Median workflow execution was 48.0s (p90 58.6s), build median 28.0s (p90 31.0s), deploy median 10.0s (p90 12.0s), and queue median 0.0s (p90 0.0s). Trusted metadata confirmed actions/setup-node npm cache hits and explicit node_modules cache hits on 12/12 sampled runs, with Install dependencies and Save node_modules skipped on 12/12, and cached CAO Dashboard hits on 12/12 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 12/12. Repeated remaining costs stayed small: Build documentation median 8.0s, Upload Pages artifact median 2.0s, and Deploy Pages median 6.0s. The visible duplicate pattern is one push success followed 17s later by one workflow_run success for the same head SHA 2b87d67e1d8c1012bfb8bd72e5b3246f276d8667, but the extra completed run added about 53s total wall time once in the bounded sample and still does not meet the threshold of at least 60 seconds or 15 percent of median execution saved by a safe workflow-only change. No fresh non-duplicate actionable recommendation is warranted.","suggestion_fingerprint":""},{"evaluated_at":"2026-09-26T15:55:00Z","worker_run_id":36253200321,"category":"scheduling, concurrency, and avoidable rebuilds","evidence_run_ids":[36253252859,36253060251,36252283846,36251921157,36251664939,36250501117,36249601021,36248846507,36248277075,36247096673,36246247644,36245984487],"outcome":"suggestion: evidence window 2026-09-26T13:41:02Z to 2026-09-26T15:49:54Z. Analyzed 12 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 5 action_required and 3 skipped docs.yml runs excluded from timing metrics. Median workflow execution was 48.0s (p90 58.4s), build median 29.5s (p90 33.7s), deploy median 10.0s (p90 12.0s), and queue median 3.0s (p90 13.9s). Trusted metadata confirmed node_modules install/save skipped on 12/12 and CAO Dashboard lookup/mount skipped on 12/12 because caches were hot. The actionable repeated cost was one same-SHA duplicate publish pair at c9d775724a586efa318e3ba163442e3d5237c28f: workflow_run success 36251921157 was followed by schedule success 36252283846 six minutes later, adding about 47s of avoidable workflow time with unchanged content. Recommended adding a schedule-only freshness gate in docs.yml to skip when the latest successful CAO Dashboard run already built the current default-branch SHA and that SHA already has a recent successful docs workflow_run publish.","suggestion_fingerprint":"d4624c545a9a8f39ca9f"},{"evaluated_at":"2026-09-26T16:26:00Z","worker_run_id":36255305250,"category":"dependency installation and caching","evidence_run_ids":[36255341668,36254892662,36254856438,36254009833,36253955010,36253584636],"outcome":"suggestion: evidence window 2026-09-26T15:54:53Z to 2026-09-26T16:24:29Z. Analyzed 6 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 10 non-comparable completed outliers excluded from timing metrics (8 action_required workflow_run runs and 2 skipped workflow_run runs). Evaluated category dependency installation and caching. Median workflow execution was 44.5s (p90 50.0s), build median 25.5s (p90 33.0s), deploy median 9.5s (p90 11.0s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed the explicit node_modules cache hit on 6/6 sampled docs runs, with Install dependencies and Save node_modules skipped on 6/6, and docs-side dashboard cache hits on 6/6 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 6/6. The repeated remaining dependency cost is split across Set up Node.js median 3.0s and Restore node_modules median 5.5s in docs.yml, but the materially larger caching cost is in cao-dashboard.yml where every successful dashboard rebuild still runs Install dashboard build dependencies for about 6s and the follow-on docs run then spends another median 8.5s on Node setup plus node_modules restore before an 8s docs build. Because docs.yml only needs npm run docs:build and a cached dist/cao payload, replacing the explicit node_modules cache/restore path with setup-node npm caching plus npm ci --prefer-offline in docs.yml would simplify the workflow but would not meet threshold alone. The actionable optimization is to add a built dashboard/site dependency cache in cao-dashboard.yml and stop rebuilding that dependency tree on every dashboard push, which is expected to save about 6s in dashboard plus avoid repeated downstream wait before workflow_run-triggered docs publishes; combined with the paired docs-side dependency restore tax this removes about 14.5s from the push+workflow_run publish path for the same revision, roughly 19% of the combined median execution time of the two workflows without weakening freshness or correctness.","suggestion_fingerprint":"9fd90d8330c0d4574c8f"},{"evaluated_at":"2026-09-26T16:38:00Z","worker_run_id":36256113775,"category":"Astro documentation generation","evidence_run_ids":[36255341668,36254892662,36254856438,36254009833,36253955010,36253584636],"outcome":"no-op: evidence window 2026-09-26T15:54:53Z to 2026-09-26T16:24:29Z. Analyzed 6 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 10 non-comparable completed outliers excluded from timing metrics (8 action_required workflow_run runs and 2 skipped workflow_run runs). Evaluated category Astro documentation generation. Median workflow execution was 44.5s (p90 50.0s), build median 25.5s (p90 32.5s), deploy median 9.5s (p90 10.5s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed npm cache reuse via setup-node and explicit node_modules cache hits on 6/6 docs runs, with Install dependencies and Save node_modules skipped on 6/6, and cached CAO Dashboard hits on 6/6 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 6/6. Astro generation remained a small portion of execution: Build documentation median 8.0s (p90 8.0s), versus Set up Node.js plus Restore node_modules median 8.5s and total build-job median 25.5s. Bounded log review of run 36254892662 also showed Pages packaging uploaded only a 5.9 MB artifact in about 1.3s after the docs build completed. Source review of .github/workflows/docs.yml shows Build documentation is already a single npm run docs:build step with no repeated generation substeps to collapse, and no evidence-backed Astro-only workflow change reaches the threshold of saving at least 60 seconds or 15 percent of median execution without weakening freshness or correctness. The only current actionable findings in memory remain the already-recorded duplicate scheduling suggestion fingerprint d4624c545a9a8f39ca9f and dashboard dependency caching suggestion fingerprint 9fd90d8330c0d4574c8f, so no fresh Astro-specific non-duplicate recommendation is warranted.","suggestion_fingerprint":""},{"evaluated_at":"2026-09-26T16:50:00Z","worker_run_id":36256869246,"category":"reusable dashboard generation","evidence_run_ids":[36256643164,36255933040,36255341668,36254892662,36254856438,36254009833,36253955010],"outcome":"no-op: evidence window 2026-09-26T16:01:13Z to 2026-09-26T16:46:11Z. Analyzed 7 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 9 completed outliers excluded from timing metrics (7 action_required workflow_run runs and 2 skipped workflow_run runs). Evaluated category reusable dashboard generation. Median workflow execution was 46.0s (p90 50.0s), build median 26.0s (p90 33.0s), deploy median 10.0s (p90 11.0s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed the explicit node_modules cache hit on 7/7 sampled docs runs, with Install dependencies and Save node_modules skipped on 7/7, and docs-side dashboard cache hits on 7/7 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 7/7. Reusable dashboard overhead inside docs.yml remained small: Restore cached CAO Dashboard median 1.0s and Upload Pages artifact median 3.0s. Relevant CAO Dashboard evidence from matching successful source SHAs 36254856403, 36253914191 showed its own build still spends about 6-8s in Install dashboard build dependencies on every rebuild, but that improvement is already represented by open issue fingerprint 9fd90d8330c0d4574c8f and has not materially changed in source or timing evidence. No fresh non-duplicate reusable-dashboard recommendation is warranted.","suggestion_fingerprint":""},{"evaluated_at":"2026-09-26T17:23:43Z","worker_run_id":36258694408,"category":"artifact transfer and Pages packaging","evidence_run_ids":[36258655413,36257961190,36257556763,36257524248,36257479389,36256643164,36255933040,36255341668,36254892662,36254856438],"outcome":"suggestion: evidence window 2026-09-26T16:16:17Z to 2026-09-26T17:20:08Z. Analyzed 10 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 6 action_required workflow_run runs and 2 skipped workflow_run runs excluded from timing metrics. Evaluated category artifact transfer and Pages packaging. Median workflow execution was 48.5s (p90 61.3s), build median 26.5s (p90 31.2s), deploy median 10.5s (p90 13.0s), and queue median 3.0s (p90 21.0s). Trusted step metadata confirmed node_modules cache hits on 10/10 runs because Install dependencies and Save node_modules were skipped on 10/10, and cached CAO Dashboard hits on 10/10 because Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped on 10/10 after Restore cached CAO Dashboard. Pages artifact upload and deploy remained small at 2.0s and 10.5s medians, so docs.yml artifact transfer is not the bottleneck. Relevant source-matched CAO Dashboard runs 36254856403, 36257479249, and 36257918088 still spent 5-7s every time in Install dashboard build dependencies even when activity data restore, dashboard assembly, and artifact upload were all 1-4s. Because docs.yml depends on successful CAO Dashboard completion for workflow_run-triggered publishes, adding a cache for dashboard/site dependencies in cao-dashboard.yml is expected to remove about 6s from every dashboard rebuild and roughly 12.4% of the docs workflow median wait on revisions that publish through CAO Dashboard, without weakening freshness or deployment safety. This materially reinforces the existing dashboard dependency caching recommendation fingerprint 9fd90d8330c0d4574c8f with newer source SHA 7f1ad4ea46ab1d46fabb48b8dc2e9d3890696de2 timing evidence.","suggestion_fingerprint":"9fd90d8330c0d4574c8f"},{"evaluated_at":"2026-09-26T17:35:00Z","worker_run_id":36259427171,"category":"scheduling, concurrency, and avoidable rebuilds","evidence_run_ids":[36259310005,36259109772,36259073941,36258655413,36257961190,36257556763,36257524248,36257479389,36256643164,36255933040],"outcome":"no-op: evidence window 2026-09-26T16:34:22Z to 2026-09-26T17:31:06Z. Analyzed 10 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 7 action_required workflow_run runs and 2 skipped workflow_run runs excluded from timing metrics. Evaluated category scheduling, concurrency, and avoidable rebuilds. Median workflow execution was 49.5s (p90 61.3s), build median 28.0s (p90 31.4s), deploy median 10.5s (p90 13.0s), and queue median 4.0s (p90 22.8s). Trusted step metadata confirmed node_modules cache hits on 10/10 because Install dependencies and Save node_modules were skipped on 10/10, and cached CAO Dashboard hits on 9/10 because Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped on 9/10 after Restore cached CAO Dashboard. The one miss at docs run 36259073941 still recovered in about 3 seconds. Repeated visible work remained small: Build documentation median 8.0s, Upload Pages artifact median 2.0s, and Deploy Pages median 7.0s. Same-SHA duplicate publications were present for 9abe9d221f09c714ea824ffdcc2ef7b70f3a0a45 and 9f9391d17bbc393f07f1ff7dac01407c4334052b, but the scheduling category already has an open recommendation recorded under fingerprint d4624c545a9a8f39ca9f. No fresh non-duplicate actionable recommendation is warranted.","suggestion_fingerprint":""},{"evaluated_at":"2026-09-26T17:55:00Z","worker_run_id":36260390976,"category":"dependency installation and caching","evidence_run_ids":[36260180079,36259310005,36259109772,36259073941,36258655413,36257961190,36257556763,36257524248,36256643164,36255933040],"outcome":"no-op: evidence window 2026-09-26T16:34:22Z to 2026-09-26T17:45:54Z. Analyzed 10 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 7 non-comparable completed outliers excluded from timing metrics (5 action_required workflow_run runs and 2 skipped workflow_run runs). Evaluated category dependency installation and caching. Median workflow execution was 51.0s (p90 61.3s), build median 28.0s (p90 32.3s), deploy median 10.5s (p90 13.0s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed the explicit node_modules cache hit on 10/10 sampled docs runs, with Install dependencies and Save node_modules skipped on 10/10, and cached CAO Dashboard hits on 9/10 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 9/10. The one dashboard-cache miss at docs run 36259073941 recovered through Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact in about 3 seconds. Remaining docs-side dependency cost stayed at Set up Node.js median 3.0s plus Restore node_modules median 5.0s, while source-matched successful CAO Dashboard runs 36253914191, 36254856403, 36257479249, and 36257918088 still spent a median 6.5s in Install dashboard build dependencies on every rebuild. That dashboard dependency tax is already represented by the open recommendation fingerprint 9fd90d8330c0d4574c8f and has not materially changed enough to justify a duplicate issue. No fresh non-duplicate actionable dependency or caching recommendation is warranted.","suggestion_fingerprint":""},{"evaluated_at":"2026-09-26T18:35:00Z","worker_run_id":36262499235,"category":"scheduling, concurrency, and avoidable rebuilds","evidence_run_ids":[36262567900,36261352636,36261167008,36261094119,36260180079,36259310005,36259109772,36259073941,36258655413,36257961190],"outcome":"no-op: evidence window 2026-09-26T17:08:33Z to 2026-09-26T18:27:43Z. Analyzed 10 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 5 action_required workflow_run runs, 2 skipped workflow_run runs, and 3 successful outlier push/workflow_run docs publishes on different SHAs excluded from the category decision. Evaluated category scheduling, concurrency, and avoidable rebuilds. Median workflow execution was 49.5s (p90 56.3s), build median 29.5s (p90 34.1s), deploy median 10.0s (p90 12.1s), and queue median 9.5s (p90 11.7s). Trusted step metadata confirmed node_modules cache hits on 10/10 because Install dependencies and Save node_modules were skipped on 10/10, and cached CAO Dashboard hits on 9/10 with the one miss recovering through Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact in about 3 seconds. Same-SHA duplicate publications were still present for 9f9391d17bbc393f07f1ff7dac01407c4334052b and 25e0222f96adcec8c529ea0810329cdad5b56b92 across push, workflow_run, and schedule triggers, but the open recommendation fingerprint d4624c545a9a8f39ca9f already covers this class of avoidable rebuild and the newer timing did not materially change the case. No fresh non-duplicate actionable scheduling or concurrency recommendation is warranted.","suggestion_fingerprint":""},{"evaluated_at":"2026-09-26T19:00:00Z","worker_run_id":36264138345,"category":"dependency installation and caching","evidence_run_ids":[36263855859,36263747247,36263298617,36262567900,36261352636,36261167008,36261094119,36260180079,36259310005,36259109772,36259073941,36258655413,36257961190],"outcome":"no-op: evidence window 2026-09-26T17:08:33Z to 2026-09-26T18:49:34Z. Analyzed 13 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 7 completed outliers excluded from timing metrics (3 action_required workflow_run runs and 4 skipped workflow_run runs). Evaluated category dependency installation and caching. Median workflow execution was 50.0s (p90 58.4s), build median 30.0s (p90 33.8s), deploy median 10.0s (p90 12.0s), and queue median 4.0s (p90 18.4s). Trusted step metadata confirmed the explicit node_modules cache hit on 13/13 sampled docs runs, with Install dependencies and Save node_modules skipped on 13/13, and cached CAO Dashboard hits on 12/13 with the one miss recovering through Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact in about 3 seconds. Bounded source-matched CAO Dashboard runs 36259074011, 36257918088, 36261319834, and 36263708486 still spent 7-8 seconds in Install dashboard build dependencies on every successful rebuild even while restore, assembly, and upload each stayed around 1-4 seconds. That remains the largest repeated dependency tax across the docs publish path, but it is already represented by recommendation fingerprint 9fd90d8330c0d4574c8f and no open issue was found using that fingerprint or a stable equivalent subject in githubnext/gh-aw-cao. Because this cycle forbids duplicate recommendations unless evidence materially changes, no fresh non-duplicate actionable dependency or caching recommendation is warranted from this run.","suggestion_fingerprint":""},{"evaluated_at":"2026-09-26T19:25:00Z","worker_run_id":36265610404,"category":"dependency installation and caching","evidence_run_ids":[36265637807,36264589793,36263855859,36263747247,36263298617,36262567900,36261352636,36261167008,36261094119],"outcome":"no-op: evidence window 2026-09-26T18:01:42Z to 2026-09-26T19:20:00Z. Analyzed 9 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 11 completed outliers excluded from timing metrics (5 action_required workflow_run runs, 5 skipped workflow_run runs, and 1 outlier success on a distinct push SHA). Evaluated category dependency installation and caching. Median workflow execution was 48.0s (p90 58.6s), build median 30.0s (p90 33.2s), deploy median 10.0s (p90 12.0s), and queue median 3.0s (p90 10.8s). Trusted step metadata confirmed the explicit node_modules cache hit on 9/9 sampled docs runs, with Install dependencies and Save node_modules skipped on 9/9, and cached CAO Dashboard hits on 9/9 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 9/9. The remaining docs-side dependency cost stayed at Set up Node.js median 4.0s plus Restore node_modules median 6.0s, while matching successful CAO Dashboard runs 36263708486, 36261319834, and 36259074011 still spent 7-8 seconds in Install dashboard build dependencies on every rebuild. This reinforces existing fingerprint 9fd90d8330c0d4574c8f but does not materially change the source or timing evidence enough to justify a duplicate issue. No fresh non-duplicate actionable dependency or caching recommendation is warranted.","suggestion_fingerprint":""}]}
+{
+  "source_sha": "6b423205e436eb37ddd5dd1e9cfeb8483b22a354",
+  "next_category": "Astro documentation generation",
+  "evaluations": [
+    {
+      "evaluated_at": "2026-09-26T12:36:00Z",
+      "worker_run_id": 36242095052,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        36239225579,
+        36239830417,
+        36240655139,
+        36241009203,
+        36241354638
+      ],
+      "outcome": "incomplete: latest 20 completed docs.yml runs in the last 14 days contained only 5 successful runs in the evidence window, but they spanned 4 source SHAs and only 1-3 successes per SHA. Comparable like-for-like analysis by trigger and source revision was therefore not possible from this bounded window. Evidence window 2026-09-26T11:34:03Z to 2026-09-26T12:16:19Z. Stopped before timing and suggestion generation to avoid mixing unlike revisions. No fresh actionable recommendation was evaluated."
+    },
+    {
+      "evaluated_at": "2026-09-26T12:56:00Z",
+      "worker_run_id": 36243354407,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        36241574268,
+        36242150462,
+        36242950163,
+        36243153596,
+        36243278966
+      ],
+      "outcome": "no-op: evidence window 2026-09-26T12:19:54Z to 2026-09-26T12:52:53Z. Analyzed 5 comparable successful docs.yml runs from the latest 20 completed runs in the last 14 days (2 schedule, 3 workflow_run), while disclosing 15 completed outliers in the same 20-run window: 13 action_required workflow_run runs and 2 skipped workflow_run runs. The comparable sample split across only two source SHAs (cdf6a7193f8ec5f2cacea6538892b3586b899fc4 with 2 successes and 627c0a7af7d20aeabe36212741d77f59e513116d with 2 successes, plus 1 newer workflow_run success at 7bb12670a8fd08bb608f8a764e940ef904022291), so confidence is low and timing was used only to check for obvious duplicate-trigger waste. Workflow median duration was 50.0s (p90 53.0s); build-job median 30.0s (p90 32.6s); deploy-job median 10.0s (p90 17.4s); build queue median 3.0s (p90 3.0s). Trusted step metadata confirmed Restore node_modules cache hits on 5/5 runs, Install dependencies and Save node_modules skipped on 5/5, Restore cached CAO Dashboard cache hits on 5/5, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 5/5. Repeated costs remained small: Build documentation median 8.0s, Upload Pages artifact median 5.0s, and Deploy Pages median 7.0s. Source review shows docs.yml already serializes executions with concurrency.group documentation-pages and cancel-in-progress false while listening to schedule, push, and successful CAO Dashboard workflow_run events, and the bounded comparable sample does not show repeated completed builds for the same trigger and same revision. The only repeated waste still above threshold remains the already-tracked split-deployment recommendation fingerprint 4d8a9f6f1f8db7a9f0b2, so no fresh non-duplicate scheduling or concurrency recommendation is warranted.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-26T13:23:00Z",
+      "worker_run_id": 36244855089,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        36243520953,
+        36243791447,
+        36244171809,
+        36244830293,
+        36244907467
+      ],
+      "outcome": "no-op: evidence window 2026-09-26T12:56:36Z to 2026-09-26T13:21:47Z. Analyzed 5 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 13 action_required workflow_run runs and 3 skipped workflow_run runs excluded from the timing sample. Workflow median execution was 48.0s (p90 62.0s), build median 29.0s (p90 42.6s), deploy median 10.0s (p90 11.0s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed Restore node_modules cache hits on 5/5 runs, Install dependencies and Save node_modules skipped on 5/5, Restore cached CAO Dashboard cache hits on 5/5, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 5/5. Artifact-transfer costs were below the actionable threshold: Upload Pages artifact median 3.0s (p90 6.0s) and Deploy Pages median 7.0s (p90 7.6s). Bounded log review of run 36243791447 showed the uploaded github-pages artifact was 27,190,860 bytes and finished blob upload in about 5.6s, which is well under the required 60s or 15% savings threshold for a safe workflow-only change. No fresh non-duplicate artifact-transfer or Pages-packaging recommendation is warranted.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-26T13:50:00Z",
+      "worker_run_id": 36246381977,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        36246247644,
+        36245984487,
+        36245435394,
+        36244924294,
+        36244907467,
+        36244830293,
+        36244171809
+      ],
+      "outcome": "no-op: evidence window 2026-09-26T13:08:33Z to 2026-09-26T13:46:37Z. Analyzed 7 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 9 action_required workflow_run runs and 4 skipped workflow_run runs excluded from timing metrics. Comparable sample confidence is medium because 4/7 successful runs came from distinct SHAs, but repeated trigger behavior remained observable. Workflow median execution was 48.0s (p90 62.2s), build median 26.0s (p90 31.8s), deploy median 10.0s (p90 13.4s), and queue median 0.0s (p90 0.0s). Trusted metadata confirmed Restore node_modules cache hits on 7/7 runs, Install dependencies and Save node_modules skipped on 7/7, and cached CAO Dashboard hits on 7/7 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 7/7. Repeated remaining costs stayed small: Build documentation median 8.0s, Upload Pages artifact median 2.0s, and Deploy Pages median 6.0s. The only large dashboard-generation cost observed was a one-off fallback artifact path in CAO Dashboard run 36243434490 where Restore collected activity data missed, Download fallback activity data took about 6s, and Upgrade fallback activity data took 36s before later docs runs reused the refreshed central-agentic-ops-dashboard cache. Because docs.yml itself already avoided rebuilding the dashboard in every sampled run and no repeated docs-side dashboard bottleneck above the 60s or 15% threshold remains, no fresh non-duplicate reusable-dashboard recommendation is warranted.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-26T14:30:00Z",
+      "worker_run_id": 36248265408,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        36248277075,
+        36247096673,
+        36246247644,
+        36245984487,
+        36245435394,
+        36244924294,
+        36244907467,
+        36244830293,
+        36244171809
+      ],
+      "outcome": "no-op: evidence window 2026-09-26T13:08:33Z to 2026-09-26T14:23:08Z. Analyzed 9 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 6 action_required workflow_run runs and 4 skipped workflow_run runs excluded from timing metrics. Median workflow execution was 48.0s (p90 58.6s), build median 26.0s (p90 31.4s), deploy median 10.0s (p90 13.0s), and queue median 0.0s (p90 0.0s). Trusted metadata and logs confirmed actions/setup-node restored the npm cache on 9/9 runs, the explicit node_modules cache hit on 9/9 runs, Install dependencies and Save node_modules skipped on 9/9 runs, and the CAO Dashboard cache hit on 9/9 runs. The remaining dependency-and-cache cost was Restore node_modules median 5.0s and Set up Node.js median 4.0s; together they are well below the 60s or 15% action threshold. No fresh non-duplicate actionable caching recommendation is warranted.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-26T14:40:00Z",
+      "worker_run_id": 36248954986,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        36248846507,
+        36248277075,
+        36247096673,
+        36246247644,
+        36245984487,
+        36245435394,
+        36244924294,
+        36244907467,
+        36244830293,
+        36244171809
+      ],
+      "outcome": "no-op: evidence window 2026-09-26T13:08:33Z to 2026-09-26T14:32:18Z. Analyzed 10 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 6 action_required workflow_run runs and 4 skipped workflow_run runs excluded from timing metrics. Evaluated category Astro documentation generation. Median workflow execution was 46.0s (p90 56.8s), build median 25.5s (p90 31.2s), deploy median 10.5s (p90 12.5s), and queue median 0.0s (p90 0.0s). Trusted metadata confirmed actions/setup-node npm cache hits on 10/10, explicit node_modules cache hits on 10/10, Install dependencies and Save node_modules skipped on 10/10, and cached CAO Dashboard hits on 10/10 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 10/10. Astro generation remained small: Build documentation median 8.0s (p90 9.1s), which is 17% of median execution and far below the 60s savings threshold; no workflow-only change in docs generation is evidenced to save at least 60s or 15% of total median execution without changing correctness or freshness. The only observable duplicate tax above threshold remains the already-tracked duplicate publish pattern where push and workflow_run both publish the same revision, so no fresh Astro-specific non-duplicate recommendation is warranted.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-26T14:50:00Z",
+      "worker_run_id": 36249847466,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        36249601021,
+        36248846507,
+        36248277075,
+        36247096673,
+        36246247644,
+        36245984487,
+        36245435394,
+        36244924294,
+        36244907467,
+        36244830293
+      ],
+      "outcome": "no-op: evidence window 2026-09-26T13:20:22Z to 2026-09-26T14:45:41Z. Analyzed 10 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 6 action_required workflow_run runs and 4 skipped workflow_run runs excluded from timing metrics. Evaluated category reusable dashboard generation. Median workflow execution was 48.5s (p90 55.0s), build median 27.5s (p90 31.0s), deploy median 11.0s (p90 12.0s), and queue median 0.0s (p90 0.0s). Trusted metadata and bounded logs confirmed actions/setup-node restored the npm cache on sampled runs, the explicit node_modules cache hit on 10/10, Install dependencies and Save node_modules skipped on 10/10, and Restore cached CAO Dashboard hit on 10/10 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 10/10. Dashboard reuse overhead in docs.yml stayed small: Restore cached CAO Dashboard median 1.0s and Pages artifact upload median 2.0s. The only large dashboard-generation cost observed was a one-off fallback artifact path in CAO Dashboard run 36243434490 where Restore collected activity data missed, Download fallback activity data took about 6s, and Upgrade fallback activity data took 36s before later docs runs reused the refreshed central-agentic-ops-dashboard cache. Because docs.yml itself already avoided rebuilding the dashboard in every sampled run and no repeated docs-side dashboard bottleneck above the 60s or 15% threshold remains, no fresh non-duplicate reusable-dashboard recommendation is warranted.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-26T15:24:00Z",
+      "worker_run_id": 36251666413,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        36251664939,
+        36250501117,
+        36249601021,
+        36248846507,
+        36248277075,
+        36247096673,
+        36246247644,
+        36245984487,
+        36245435394,
+        36244924294,
+        36244907467,
+        36244830293
+      ],
+      "outcome": "no-op: evidence window 2026-09-26T13:20:22Z to 2026-09-26T15:21:41Z. Analyzed 12 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 4 action_required workflow_run runs and 3 skipped workflow_run runs excluded from the timing sample. Evaluated category artifact transfer and Pages packaging. Median workflow execution was 49.5s (p90 58.6s), build median 29.0s (p90 32.8s), deploy median 10.5s (p90 12.0s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed node_modules restore cache hits on 12/12 runs because Install dependencies and Save node_modules were skipped on 12/12, and cached CAO Dashboard hits on 12/12 because Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped on 12/12 after Restore cached CAO Dashboard. Artifact-transfer and Pages packaging remained small: Upload Pages artifact median 2.0s (p90 3.0s), Deploy Pages median 6.5s (p90 8.9s), and the whole deploy job median 10.5s. These costs are well below the threshold of saving at least 60 seconds or 15 percent of median execution without reducing correctness or freshness, so no fresh non-duplicate recommendation is actionable.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-26T15:37:04Z",
+      "worker_run_id": 36252395821,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        36252283846,
+        36251921157,
+        36251664939,
+        36250501117,
+        36249601021,
+        36248846507,
+        36248277075,
+        36247096673,
+        36246247644,
+        36245984487,
+        36245435394,
+        36244924294
+      ],
+      "outcome": "no-op: evidence window 2026-09-26T13:22:04Z to 2026-09-26T15:32:18Z. Analyzed 12 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 4 action_required workflow_run runs and 3 skipped workflow_run runs excluded from the timing sample. Evaluated category scheduling, concurrency, and avoidable rebuilds. Median workflow execution was 48.0s (p90 58.6s), build median 28.0s (p90 31.0s), deploy median 10.0s (p90 12.0s), and queue median 0.0s (p90 0.0s). Trusted metadata confirmed actions/setup-node npm cache hits and explicit node_modules cache hits on 12/12 sampled runs, with Install dependencies and Save node_modules skipped on 12/12, and cached CAO Dashboard hits on 12/12 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 12/12. Repeated remaining costs stayed small: Build documentation median 8.0s, Upload Pages artifact median 2.0s, and Deploy Pages median 6.0s. The visible duplicate pattern is one push success followed 17s later by one workflow_run success for the same head SHA 2b87d67e1d8c1012bfb8bd72e5b3246f276d8667, but the extra completed run added about 53s total wall time once in the bounded sample and still does not meet the threshold of at least 60 seconds or 15 percent of median execution saved by a safe workflow-only change. No fresh non-duplicate actionable recommendation is warranted.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-26T15:55:00Z",
+      "worker_run_id": 36253200321,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        36253252859,
+        36253060251,
+        36252283846,
+        36251921157,
+        36251664939,
+        36250501117,
+        36249601021,
+        36248846507,
+        36248277075,
+        36247096673,
+        36246247644,
+        36245984487
+      ],
+      "outcome": "suggestion: evidence window 2026-09-26T13:41:02Z to 2026-09-26T15:49:54Z. Analyzed 12 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 5 action_required and 3 skipped docs.yml runs excluded from timing metrics. Median workflow execution was 48.0s (p90 58.4s), build median 29.5s (p90 33.7s), deploy median 10.0s (p90 12.0s), and queue median 3.0s (p90 13.9s). Trusted metadata confirmed node_modules install/save skipped on 12/12 and CAO Dashboard lookup/mount skipped on 12/12 because caches were hot. The actionable repeated cost was one same-SHA duplicate publish pair at c9d775724a586efa318e3ba163442e3d5237c28f: workflow_run success 36251921157 was followed by schedule success 36252283846 six minutes later, adding about 47s of avoidable workflow time with unchanged content. Recommended adding a schedule-only freshness gate in docs.yml to skip when the latest successful CAO Dashboard run already built the current default-branch SHA and that SHA already has a recent successful docs workflow_run publish.",
+      "suggestion_fingerprint": "d4624c545a9a8f39ca9f"
+    },
+    {
+      "evaluated_at": "2026-09-26T16:26:00Z",
+      "worker_run_id": 36255305250,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        36255341668,
+        36254892662,
+        36254856438,
+        36254009833,
+        36253955010,
+        36253584636
+      ],
+      "outcome": "suggestion: evidence window 2026-09-26T15:54:53Z to 2026-09-26T16:24:29Z. Analyzed 6 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 10 non-comparable completed outliers excluded from timing metrics (8 action_required workflow_run runs and 2 skipped workflow_run runs). Evaluated category dependency installation and caching. Median workflow execution was 44.5s (p90 50.0s), build median 25.5s (p90 33.0s), deploy median 9.5s (p90 11.0s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed the explicit node_modules cache hit on 6/6 sampled docs runs, with Install dependencies and Save node_modules skipped on 6/6, and docs-side dashboard cache hits on 6/6 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 6/6. The repeated remaining dependency cost is split across Set up Node.js median 3.0s and Restore node_modules median 5.5s in docs.yml, but the materially larger caching cost is in cao-dashboard.yml where every successful dashboard rebuild still runs Install dashboard build dependencies for about 6s and the follow-on docs run then spends another median 8.5s on Node setup plus node_modules restore before an 8s docs build. Because docs.yml only needs npm run docs:build and a cached dist/cao payload, replacing the explicit node_modules cache/restore path with setup-node npm caching plus npm ci --prefer-offline in docs.yml would simplify the workflow but would not meet threshold alone. The actionable optimization is to add a built dashboard/site dependency cache in cao-dashboard.yml and stop rebuilding that dependency tree on every dashboard push, which is expected to save about 6s in dashboard plus avoid repeated downstream wait before workflow_run-triggered docs publishes; combined with the paired docs-side dependency restore tax this removes about 14.5s from the push+workflow_run publish path for the same revision, roughly 19% of the combined median execution time of the two workflows without weakening freshness or correctness.",
+      "suggestion_fingerprint": "9fd90d8330c0d4574c8f"
+    },
+    {
+      "evaluated_at": "2026-09-26T16:38:00Z",
+      "worker_run_id": 36256113775,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        36255341668,
+        36254892662,
+        36254856438,
+        36254009833,
+        36253955010,
+        36253584636
+      ],
+      "outcome": "no-op: evidence window 2026-09-26T15:54:53Z to 2026-09-26T16:24:29Z. Analyzed 6 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 10 non-comparable completed outliers excluded from timing metrics (8 action_required workflow_run runs and 2 skipped workflow_run runs). Evaluated category Astro documentation generation. Median workflow execution was 44.5s (p90 50.0s), build median 25.5s (p90 32.5s), deploy median 9.5s (p90 10.5s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed npm cache reuse via setup-node and explicit node_modules cache hits on 6/6 docs runs, with Install dependencies and Save node_modules skipped on 6/6, and cached CAO Dashboard hits on 6/6 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 6/6. Astro generation remained a small portion of execution: Build documentation median 8.0s (p90 8.0s), versus Set up Node.js plus Restore node_modules median 8.5s and total build-job median 25.5s. Bounded log review of run 36254892662 also showed Pages packaging uploaded only a 5.9 MB artifact in about 1.3s after the docs build completed. Source review of .github/workflows/docs.yml shows Build documentation is already a single npm run docs:build step with no repeated generation substeps to collapse, and no evidence-backed Astro-only workflow change reaches the threshold of saving at least 60 seconds or 15 percent of median execution without weakening freshness or correctness. The only current actionable findings in memory remain the already-recorded duplicate scheduling suggestion fingerprint d4624c545a9a8f39ca9f and dashboard dependency caching suggestion fingerprint 9fd90d8330c0d4574c8f, so no fresh Astro-specific non-duplicate recommendation is warranted.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-26T16:50:00Z",
+      "worker_run_id": 36256869246,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        36256643164,
+        36255933040,
+        36255341668,
+        36254892662,
+        36254856438,
+        36254009833,
+        36253955010
+      ],
+      "outcome": "no-op: evidence window 2026-09-26T16:01:13Z to 2026-09-26T16:46:11Z. Analyzed 7 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 9 completed outliers excluded from timing metrics (7 action_required workflow_run runs and 2 skipped workflow_run runs). Evaluated category reusable dashboard generation. Median workflow execution was 46.0s (p90 50.0s), build median 26.0s (p90 33.0s), deploy median 10.0s (p90 11.0s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed the explicit node_modules cache hit on 7/7 sampled docs runs, with Install dependencies and Save node_modules skipped on 7/7, and docs-side dashboard cache hits on 7/7 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 7/7. Reusable dashboard overhead inside docs.yml remained small: Restore cached CAO Dashboard median 1.0s and Upload Pages artifact median 3.0s. Relevant CAO Dashboard evidence from matching successful source SHAs 36254856403, 36253914191 showed its own build still spends about 6-8s in Install dashboard build dependencies on every rebuild, but that improvement is already represented by open issue fingerprint 9fd90d8330c0d4574c8f and has not materially changed in source or timing evidence. No fresh non-duplicate reusable-dashboard recommendation is warranted.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-26T17:23:43Z",
+      "worker_run_id": 36258694408,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        36258655413,
+        36257961190,
+        36257556763,
+        36257524248,
+        36257479389,
+        36256643164,
+        36255933040,
+        36255341668,
+        36254892662,
+        36254856438
+      ],
+      "outcome": "suggestion: evidence window 2026-09-26T16:16:17Z to 2026-09-26T17:20:08Z. Analyzed 10 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 6 action_required workflow_run runs and 2 skipped workflow_run runs excluded from timing metrics. Evaluated category artifact transfer and Pages packaging. Median workflow execution was 48.5s (p90 61.3s), build median 26.5s (p90 31.2s), deploy median 10.5s (p90 13.0s), and queue median 3.0s (p90 21.0s). Trusted step metadata confirmed node_modules cache hits on 10/10 runs because Install dependencies and Save node_modules were skipped on 10/10, and cached CAO Dashboard hits on 10/10 because Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped on 10/10 after Restore cached CAO Dashboard. Pages artifact upload and deploy remained small at 2.0s and 10.5s medians, so docs.yml artifact transfer is not the bottleneck. Relevant source-matched CAO Dashboard runs 36254856403, 36257479249, and 36257918088 still spent 5-7s every time in Install dashboard build dependencies even when activity data restore, dashboard assembly, and artifact upload were all 1-4s. Because docs.yml depends on successful CAO Dashboard completion for workflow_run-triggered publishes, adding a cache for dashboard/site dependencies in cao-dashboard.yml is expected to remove about 6s from every dashboard rebuild and roughly 12.4% of the docs workflow median wait on revisions that publish through CAO Dashboard, without weakening freshness or deployment safety. This materially reinforces the existing dashboard dependency caching recommendation fingerprint 9fd90d8330c0d4574c8f with newer source SHA 7f1ad4ea46ab1d46fabb48b8dc2e9d3890696de2 timing evidence.",
+      "suggestion_fingerprint": "9fd90d8330c0d4574c8f"
+    },
+    {
+      "evaluated_at": "2026-09-26T17:35:00Z",
+      "worker_run_id": 36259427171,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        36259310005,
+        36259109772,
+        36259073941,
+        36258655413,
+        36257961190,
+        36257556763,
+        36257524248,
+        36257479389,
+        36256643164,
+        36255933040
+      ],
+      "outcome": "no-op: evidence window 2026-09-26T16:34:22Z to 2026-09-26T17:31:06Z. Analyzed 10 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 7 action_required workflow_run runs and 2 skipped workflow_run runs excluded from timing metrics. Evaluated category scheduling, concurrency, and avoidable rebuilds. Median workflow execution was 49.5s (p90 61.3s), build median 28.0s (p90 31.4s), deploy median 10.5s (p90 13.0s), and queue median 4.0s (p90 22.8s). Trusted step metadata confirmed node_modules cache hits on 10/10 because Install dependencies and Save node_modules were skipped on 10/10, and cached CAO Dashboard hits on 9/10 because Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped on 9/10 after Restore cached CAO Dashboard. The one miss at docs run 36259073941 still recovered in about 3 seconds. Repeated visible work remained small: Build documentation median 8.0s, Upload Pages artifact median 2.0s, and Deploy Pages median 7.0s. Same-SHA duplicate publications were present for 9abe9d221f09c714ea824ffdcc2ef7b70f3a0a45 and 9f9391d17bbc393f07f1ff7dac01407c4334052b, but the scheduling category already has an open recommendation recorded under fingerprint d4624c545a9a8f39ca9f. No fresh non-duplicate actionable recommendation is warranted.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-26T17:55:00Z",
+      "worker_run_id": 36260390976,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        36260180079,
+        36259310005,
+        36259109772,
+        36259073941,
+        36258655413,
+        36257961190,
+        36257556763,
+        36257524248,
+        36256643164,
+        36255933040
+      ],
+      "outcome": "no-op: evidence window 2026-09-26T16:34:22Z to 2026-09-26T17:45:54Z. Analyzed 10 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 7 non-comparable completed outliers excluded from timing metrics (5 action_required workflow_run runs and 2 skipped workflow_run runs). Evaluated category dependency installation and caching. Median workflow execution was 51.0s (p90 61.3s), build median 28.0s (p90 32.3s), deploy median 10.5s (p90 13.0s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed the explicit node_modules cache hit on 10/10 sampled docs runs, with Install dependencies and Save node_modules skipped on 10/10, and cached CAO Dashboard hits on 9/10 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 9/10. The one dashboard-cache miss at docs run 36259073941 recovered through Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact in about 3 seconds. Remaining docs-side dependency cost stayed at Set up Node.js median 3.0s plus Restore node_modules median 5.0s, while source-matched successful CAO Dashboard runs 36253914191, 36254856403, 36257479249, and 36257918088 still spent a median 6.5s in Install dashboard build dependencies on every rebuild. That dashboard dependency tax is already represented by the open recommendation fingerprint 9fd90d8330c0d4574c8f and has not materially changed enough to justify a duplicate issue. No fresh non-duplicate actionable dependency or caching recommendation is warranted.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-26T18:35:00Z",
+      "worker_run_id": 36262499235,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        36262567900,
+        36261352636,
+        36261167008,
+        36261094119,
+        36260180079,
+        36259310005,
+        36259109772,
+        36259073941,
+        36258655413,
+        36257961190
+      ],
+      "outcome": "no-op: evidence window 2026-09-26T17:08:33Z to 2026-09-26T18:27:43Z. Analyzed 10 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 5 action_required workflow_run runs, 2 skipped workflow_run runs, and 3 successful outlier push/workflow_run docs publishes on different SHAs excluded from the category decision. Evaluated category scheduling, concurrency, and avoidable rebuilds. Median workflow execution was 49.5s (p90 56.3s), build median 29.5s (p90 34.1s), deploy median 10.0s (p90 12.1s), and queue median 9.5s (p90 11.7s). Trusted step metadata confirmed node_modules cache hits on 10/10 because Install dependencies and Save node_modules were skipped on 10/10, and cached CAO Dashboard hits on 9/10 with the one miss recovering through Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact in about 3 seconds. Same-SHA duplicate publications were still present for 9f9391d17bbc393f07f1ff7dac01407c4334052b and 25e0222f96adcec8c529ea0810329cdad5b56b92 across push, workflow_run, and schedule triggers, but the open recommendation fingerprint d4624c545a9a8f39ca9f already covers this class of avoidable rebuild and the newer timing did not materially change the case. No fresh non-duplicate actionable scheduling or concurrency recommendation is warranted.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-26T19:00:00Z",
+      "worker_run_id": 36264138345,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        36263855859,
+        36263747247,
+        36263298617,
+        36262567900,
+        36261352636,
+        36261167008,
+        36261094119,
+        36260180079,
+        36259310005,
+        36259109772,
+        36259073941,
+        36258655413,
+        36257961190
+      ],
+      "outcome": "no-op: evidence window 2026-09-26T17:08:33Z to 2026-09-26T18:49:34Z. Analyzed 13 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 7 completed outliers excluded from timing metrics (3 action_required workflow_run runs and 4 skipped workflow_run runs). Evaluated category dependency installation and caching. Median workflow execution was 50.0s (p90 58.4s), build median 30.0s (p90 33.8s), deploy median 10.0s (p90 12.0s), and queue median 4.0s (p90 18.4s). Trusted step metadata confirmed the explicit node_modules cache hit on 13/13 sampled docs runs, with Install dependencies and Save node_modules skipped on 13/13, and cached CAO Dashboard hits on 12/13 with the one miss recovering through Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact in about 3 seconds. Bounded source-matched CAO Dashboard runs 36259074011, 36257918088, 36261319834, and 36263708486 still spent 7-8 seconds in Install dashboard build dependencies on every successful rebuild even while restore, assembly, and upload each stayed around 1-4 seconds. That remains the largest repeated dependency tax across the docs publish path, but it is already represented by recommendation fingerprint 9fd90d8330c0d4574c8f and no open issue was found using that fingerprint or a stable equivalent subject in githubnext/gh-aw-cao. Because this cycle forbids duplicate recommendations unless evidence materially changes, no fresh non-duplicate actionable dependency or caching recommendation is warranted from this run.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-26T19:25:00Z",
+      "worker_run_id": 36265610404,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        36265637807,
+        36264589793,
+        36263855859,
+        36263747247,
+        36263298617,
+        36262567900,
+        36261352636,
+        36261167008,
+        36261094119
+      ],
+      "outcome": "no-op: evidence window 2026-09-26T18:01:42Z to 2026-09-26T19:20:00Z. Analyzed 9 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 11 completed outliers excluded from timing metrics (5 action_required workflow_run runs, 5 skipped workflow_run runs, and 1 outlier success on a distinct push SHA). Evaluated category dependency installation and caching. Median workflow execution was 48.0s (p90 58.6s), build median 30.0s (p90 33.2s), deploy median 10.0s (p90 12.0s), and queue median 3.0s (p90 10.8s). Trusted step metadata confirmed the explicit node_modules cache hit on 9/9 sampled docs runs, with Install dependencies and Save node_modules skipped on 9/9, and cached CAO Dashboard hits on 9/9 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 9/9. The remaining docs-side dependency cost stayed at Set up Node.js median 4.0s plus Restore node_modules median 6.0s, while matching successful CAO Dashboard runs 36263708486, 36261319834, and 36259074011 still spent 7-8 seconds in Install dashboard build dependencies on every rebuild. This reinforces existing fingerprint 9fd90d8330c0d4574c8f but does not materially change the source or timing evidence enough to justify a duplicate issue. No fresh non-duplicate actionable dependency or caching recommendation is warranted.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-26T19:33:00Z",
+      "worker_run_id": 36266352310,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        36266330652,
+        36265637807,
+        36264589793,
+        36263855859,
+        36263747247,
+        36263298617,
+        36262567900,
+        36261352636
+      ],
+      "outcome": "suggestion: evidence window 2026-09-26T18:06:07Z to 2026-09-26T19:31:49Z. Analyzed 8 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 12 completed outliers excluded from timing metrics (8 skipped workflow_run runs and 4 action_required workflow_run runs). Evaluated category dependency installation and caching. Median docs.yml workflow execution was 47.5s (p90 60.9s), build median 28.5s (p90 33.3s), deploy median 9.5s (p90 11.3s), and queue median 3.0s (p90 14.2s). Trusted step metadata confirmed the explicit node_modules cache hit on 8/8 sampled docs runs, with Install dependencies and Save node_modules skipped on 8/8, and cached CAO Dashboard hits on 8/8 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 8/8. Source-matched successful CAO Dashboard runs 36261319834 and 36263708486 still reran npm ci --prefix dashboard/site --ignore-scripts on every rebuild, with logs showing added 268 packages and audited 269 packages in 7s and step timing median 7.5s. Because docs.yml itself is already hot-cached, the largest repeated dependency tax left on the docs publish path is uncached dashboard/site dependency installation in cao-dashboard.yml. Adding a dashboard/site dependency cache there is expected to save about 7-8s per successful dashboard rebuild and roughly 15-17% of the current docs.yml median execution time from the upstream path without weakening freshness or correctness.",
+      "suggestion_fingerprint": "e76660e8d5e0c2a12c8f"
+    }
+  ]
+}
