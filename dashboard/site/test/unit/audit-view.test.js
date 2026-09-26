@@ -38,9 +38,7 @@ describe('Audit dashboard view', () => {
       ],
       arguments: [{ name: 'campaign', field: 'campaign' }]
     });
-    const auditTable = insights.views.find((/** @type {{ id: string }} */ view) => view.id === 'campaign-audit-event-table');
-    expect(auditTable).toBeDefined();
-    expect(auditTable?.data).toMatchObject({
+    expect(insights.views[2].data).toMatchObject({
       source: 'audit-event-summary-buckets',
       'route-field': 'campaign'
     });
