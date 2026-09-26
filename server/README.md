@@ -91,6 +91,8 @@ SDK. Configuration is supplied through:
 | Variable | Purpose |
 | --- | --- |
 | `CAO_REDIS_URL` | Redis endpoint. `rediss://` is the hosted default and is always mandatory for Azure. |
+| `CAO_REDIS_MODE` | Optional Redis consistency profile; defaults to `standard`. Use `upstash` only for the constrained single-session profile below. |
+| `CAO_UPSTASH_SINGLE_REPLICA` | Required exact `true` acknowledgement in Upstash mode. The application deployment must run exactly one replica. |
 | `CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS` | Optional exact `true` opt-in for `redis://` to a private IP or single-label service name. Intended only for a Coolify-managed Redis connection on the private service network. |
 | `CAO_REDIS_NAMESPACE` | Optional deployment namespace; defaults to `hosted-dashboard`. |
 | `CAO_ALLOWED_HOSTS` | Required comma-separated trusted public host names. |
@@ -110,6 +112,29 @@ Supply secrets through the deployment platform's secret manager (for example,
 Key Vault references, Kubernetes Secrets mounted into the process environment,
 or an equivalent managed facility), never command-line arguments or checked-in
 configuration.
+
+### Upstash Redis provider
+
+The host-neutral service has an explicit `CAO_REDIS_MODE=upstash` profile for
+Upstash Redis's per-TCP-session causal consistency. It serializes every command
+through one connection, never recycles that connection, disables transparent
+retries, and permanently fails closed after transport loss. A process restart
+is required to recover.
+
+Every start derives a random internal namespace from `CAO_REDIS_NAMESPACE`.
+This prevents state written through an earlier TCP session from reappearing
+after restart, and deliberately invalidates existing OAuth sessions. Superseded
+namespaces remain disposable data and consume capacity until an operator removes
+them while the application is stopped.
+
+This mode requires `CAO_UPSTASH_SINGLE_REPLICA=true`, exactly one application
+replica, a dedicated Upstash database, artifact ingestion through
+`CAO_SOURCE_DIRECTORY`, and `rediss://` transport. Server-side collection and
+standalone collection roles are rejected. The acknowledgement is fail-closed
+configuration, not platform-level replica enforcement; operators must configure
+the hosting platform itself for one replica. Do not configure the Upstash REST
+URL or REST token. For the operator procedure, see [Deploying the dashboard with
+Upstash Redis](https://github.com/githubnext/gh-aw-cao/blob/main/docs/deployment-upstash.md).
 
 ### Coolify container profile
 

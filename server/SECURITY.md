@@ -194,6 +194,27 @@ authorization, queries, webhook verification, and rate limits. If required,
 rebuild the disposable Redis namespace from the retained artifact rather than
 treating Redis as rollback authority.
 
+## Upstash profile
+
+Upstash provides causal consistency within one TCP session rather than across
+independent connections. `CAO_REDIS_MODE=upstash` therefore uses one serialized
+connection for projection data and hosted security state. It does not recycle or
+retry that connection. Any transport loss permanently fails that client, so
+health and readiness fail until the process restarts.
+
+Restart recovery uses a fresh random internal namespace and rebuilds from the
+verified artifact. This isolates the process from stale state written through an
+earlier TCP session and invalidates all existing CAO sessions. Old namespaces
+remain disposable storage until an operator removes them while the application
+is stopped.
+
+The mode fails startup unless the endpoint uses `rediss://` on an Upstash host
+and `CAO_UPSTASH_SINGLE_REPLICA=true` is set. The deployment must independently
+enforce exactly one application replica and use a dedicated Upstash database.
+Server-side collection and standalone collection roles are unsupported. The
+single-replica acknowledgement does not turn Upstash into a cross-process
+coordination service and must not be used to justify additional replicas.
+
 ## Azure Functions profile
 
 > [!WARNING]

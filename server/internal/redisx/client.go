@@ -21,13 +21,16 @@ var redisLog = logger.New("cao:redis")
 const maxIdleConnectionAge = 5 * time.Minute
 
 type Client struct {
-	address   string
-	username  string
-	password  string
-	database  int
-	tlsConfig *tls.Config
-	timeout   time.Duration
-	pool      chan *redisConnection
+	address       string
+	username      string
+	password      string
+	database      int
+	tlsConfig     *tls.Config
+	timeout       time.Duration
+	pool          chan *redisConnection
+	singleSession bool
+	sessionPermit chan struct{}
+	sessionErr    error
 }
 
 type redisConnection struct {
@@ -43,6 +46,7 @@ type redisResponseError struct {
 
 type Options struct {
 	AllowPrivatePlaintext bool
+	SingleSession         bool
 }
 
 func (err redisResponseError) Error() string {
@@ -93,14 +97,23 @@ func NewWithOptions(rawURL string, options Options) (*Client, error) {
 			ServerName: hostname,
 		}
 	}
+	poolSize := 8
+	var sessionPermit chan struct{}
+	if options.SingleSession {
+		poolSize = 1
+		sessionPermit = make(chan struct{}, 1)
+		sessionPermit <- struct{}{}
+	}
 	return &Client{
-		address:   net.JoinHostPort(dialHostname, port),
-		username:  username,
-		password:  password,
-		database:  database,
-		tlsConfig: tlsConfig,
-		timeout:   10 * time.Second,
-		pool:      make(chan *redisConnection, 8),
+		address:       net.JoinHostPort(dialHostname, port),
+		username:      username,
+		password:      password,
+		database:      database,
+		tlsConfig:     tlsConfig,
+		timeout:       10 * time.Second,
+		pool:          make(chan *redisConnection, poolSize),
+		singleSession: options.SingleSession,
+		sessionPermit: sessionPermit,
 	}, nil
 }
 
@@ -128,7 +141,7 @@ func (c *Client) Do(ctx context.Context, args ...string) (any, error) {
 		redisLog.Printf("executing command=%s arguments=%d", args[0], len(args)-1)
 	}
 	attempts := 1
-	if len(args) > 0 && retryableCommand(args[0]) {
+	if !c.singleSession && len(args) > 0 && retryableCommand(args[0]) {
 		attempts = 2
 	}
 	var lastErr error
@@ -153,12 +166,14 @@ func (c *Client) Do(ctx context.Context, args ...string) (any, error) {
 			continue
 		}
 		value, err := readRESP(connection.reader)
-		c.release(connection, err == nil)
+		var responseErr redisResponseError
+		isResponseErr := errors.As(err, &responseErr)
+		reusable := err == nil || (c.singleSession && isResponseErr)
+		c.release(connection, reusable)
 		if err == nil {
 			return value, nil
 		}
-		var responseErr redisResponseError
-		if errors.As(err, &responseErr) {
+		if isResponseErr {
 			return nil, err
 		}
 		lastErr = err
@@ -202,26 +217,51 @@ func (c *Client) DoMany(ctx context.Context, commands [][]string) ([]any, error)
 }
 
 func (c *Client) acquire(ctx context.Context) (*redisConnection, bool, error) {
+	if c.singleSession {
+		select {
+		case <-ctx.Done():
+			return nil, false, ctx.Err()
+		case <-c.sessionPermit:
+		}
+		if c.sessionErr != nil {
+			c.sessionPermit <- struct{}{}
+			return nil, false, c.sessionErr
+		}
+	}
 	select {
 	case connection := <-c.pool:
-		if time.Since(connection.lastUsed) > maxIdleConnectionAge {
+		if !c.singleSession && time.Since(connection.lastUsed) > maxIdleConnectionAge {
 			_ = connection.connection.Close()
 			fresh, err := c.connect(ctx)
+			if err != nil {
+				c.poisonSession(err)
+				c.releaseSessionPermit()
+			}
 			return fresh, false, err
 		}
 		return connection, true, nil
 	default:
 		connection, err := c.connect(ctx)
+		if err != nil {
+			c.poisonSession(err)
+			c.releaseSessionPermit()
+		}
 		return connection, false, err
 	}
 }
 
 func (c *Client) release(connection *redisConnection, reusable bool) {
+	if c.singleSession {
+		defer func() {
+			c.sessionPermit <- struct{}{}
+		}()
+	}
 	if connection == nil {
 		return
 	}
 	if !reusable {
 		_ = connection.connection.Close()
+		c.poisonSession(errors.New("single-session Redis connection was lost"))
 		return
 	}
 	_ = connection.connection.SetDeadline(time.Time{})
@@ -230,6 +270,18 @@ func (c *Client) release(connection *redisConnection, reusable bool) {
 	case c.pool <- connection:
 	default:
 		_ = connection.connection.Close()
+	}
+}
+
+func (c *Client) poisonSession(err error) {
+	if c.singleSession && c.sessionErr == nil {
+		c.sessionErr = err
+	}
+}
+
+func (c *Client) releaseSessionPermit() {
+	if c.singleSession {
+		c.sessionPermit <- struct{}{}
 	}
 }
 

@@ -17,14 +17,14 @@ Choosing a deployment option never changes campaign policy, rollout mode, creden
 
 ## Comparing the options
 
-You can host the dashboard in three ways. The GitHub Actions only option has two credential profiles, so it appears twice.
+You can host the dashboard in three ways. The GitHub Actions only option has two credential profiles, so it appears twice. Server-backed deployments can use their platform's Redis service or a compatible external provider such as Upstash.
 
 | Option | Dashboard host | Where queries run | Who can sign in | Infrastructure you operate |
 | --- | --- | --- | --- | --- |
 | [GitHub Actions only with GitHub Apps](deployment-actions-github-app.md) | GitHub Pages | In each viewer's browser | Anyone who can read the Pages site | Two private GitHub Apps |
 | [GitHub Actions only with a fine-grained PAT](deployment-actions-pat.md) | GitHub Pages | In each viewer's browser | Anyone who can read the Pages site | Two fine-grained personal access tokens (PATs) owned by one user |
 | [Azure](deployment-azure.md) | Azure Functions | On the server, over Azure Managed Redis | Members of allowed GitHub organizations or teams | Function App, Key Vault, Azure Managed Redis, storage account, and Application Insights |
-| [Coolify](deployment-coolify.md) | A container on your Coolify server | On the server, over Redis | Members of allowed GitHub organizations or teams | Coolify server, Redis, container image, and a deployment adapter |
+| [Coolify](deployment-coolify.md) | A container on your Coolify server | On the server, over Redis | Members of allowed GitHub organizations or teams | Coolify server, Redis or [Upstash Redis](deployment-upstash.md), container image, and a deployment adapter |
 
 ## Choosing an option
 
@@ -33,6 +33,10 @@ You can host the dashboard in three ways. The GitHub Actions only option has two
 1. **Move to a server-backed option only when you need to.** Choose Azure or Coolify when your data is too large to query in a browser, when you need per-user sign-in instead of Pages visibility, or when you need webhook-driven refresh.
 
 Azure and Coolify run the same Go service from the `server/` directory, with the same authentication, authorization, cross-site request forgery (CSRF), webhook, rate-limit, and logging protections. They differ in platform, secret management, ingress, and delivery.
+
+### Using Upstash Redis
+
+[Upstash Redis](deployment-upstash.md) is a managed Redis option for the host-neutral Go server. Upstash doesn't host the CAO application. Run the container on Coolify or another application platform, provide its verified artifact there, and configure the server to use the Upstash TLS Redis endpoint.
 
 > [!NOTE]
 > Your credential profile still matters for Azure and Coolify. The CAO Activity workflow collects their evidence in GitHub Actions, using the profile that you configure. Dashboard users sign in separately, through a GitHub OAuth app. The optional Azure collection profile requires a GitHub App and doesn't support PATs.

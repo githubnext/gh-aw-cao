@@ -68,6 +68,72 @@ func TestHostedRedisRequiresTLSUnlessPrivatePlaintextIsExplicit(t *testing.T) {
 	}
 }
 
+func TestHostedUpstashModeRequiresProviderTLS(t *testing.T) {
+	upstashURL := "rediss://" + "default:test-token" + "@us1-example.upstash.io:6379"
+	otherURL := "rediss://" + "default:test-token" + "@redis.example.com:6379"
+	if enabled, err := hostedUpstashMode("upstash", upstashURL, false); err != nil || !enabled {
+		t.Fatalf("Upstash TLS endpoint rejected: enabled=%t err=%v", enabled, err)
+	}
+	for _, endpoint := range []string{
+		"redis://us1-example.upstash.io:6379",
+		otherURL,
+	} {
+		if _, err := hostedUpstashMode("upstash", endpoint, false); err == nil {
+			t.Errorf("Upstash mode accepted unsupported endpoint %q", endpoint)
+		}
+	}
+	if _, err := hostedUpstashMode("upstash", upstashURL, true); err == nil {
+		t.Fatal("Upstash mode accepted the private plaintext opt-in")
+	}
+	if _, err := hostedUpstashMode("unknown", "rediss://redis.example.com:6379", false); err == nil {
+		t.Fatal("unknown Redis mode was accepted")
+	}
+}
+
+func TestUpstashNamespacesAreIsolatedPerProcessSession(t *testing.T) {
+	first, err := isolatedUpstashNamespace("cao:hosted-dashboard")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := isolatedUpstashNamespace("cao:hosted-dashboard")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first == second {
+		t.Fatal("Upstash process sessions shared a namespace")
+	}
+	for _, namespace := range []string{first, second} {
+		if !strings.HasPrefix(namespace, "cao:upstash-") {
+			t.Fatalf("isolated namespace = %q", namespace)
+		}
+		if _, err := redisx.NormalizeNamespace(namespace); err != nil {
+			t.Fatalf("isolated namespace is invalid: %v", err)
+		}
+	}
+}
+
+func TestUpstashSingleReplicaAcknowledgementIsExact(t *testing.T) {
+	for _, value := range []string{"true", " TRUE "} {
+		if !exactTrue(value) {
+			t.Errorf("single-replica acknowledgement %q was rejected", value)
+		}
+	}
+	for _, value := range []string{"", "false", "1", "yes"} {
+		if exactTrue(value) {
+			t.Errorf("single-replica acknowledgement %q was accepted", value)
+		}
+		if err := validateUpstashSingleReplica(true, value); err == nil {
+			t.Errorf("Upstash startup accepted acknowledgement %q", value)
+		}
+	}
+	if err := validateUpstashSingleReplica(true, "true"); err != nil {
+		t.Fatalf("Upstash startup rejected exact acknowledgement: %v", err)
+	}
+	if err := validateUpstashSingleReplica(false, ""); err != nil {
+		t.Fatalf("standard mode required an Upstash acknowledgement: %v", err)
+	}
+}
+
 func TestAzureRedisLocalSimulationIsLoopbackOnly(t *testing.T) {
 	for _, endpoint := range []string{
 		"redis://127.0.0.1:6379/0",

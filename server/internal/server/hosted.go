@@ -2,6 +2,9 @@ package server
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"log"
 	"net"
@@ -34,11 +37,21 @@ func NewHostedAppFromEnv(
 	if err := validateHostedRedisURL(redisURL, allowPrivatePlaintext); err != nil {
 		return nil, err
 	}
-	client, err := redisx.NewWithOptions(redisURL, redisx.Options{AllowPrivatePlaintext: allowPrivatePlaintext})
+	upstashMode, err := hostedUpstashMode(os.Getenv("CAO_REDIS_MODE"), redisURL, allowPrivatePlaintext)
 	if err != nil {
 		return nil, err
 	}
-	store, err := storeFromClient(ctx, client)
+	if err := validateUpstashSingleReplica(upstashMode, os.Getenv("CAO_UPSTASH_SINGLE_REPLICA")); err != nil {
+		return nil, err
+	}
+	client, err := redisx.NewWithOptions(redisURL, redisx.Options{
+		AllowPrivatePlaintext: allowPrivatePlaintext,
+		SingleSession:         upstashMode,
+	})
+	if err != nil {
+		return nil, err
+	}
+	store, err := storeFromClient(ctx, client, upstashMode)
 	if err != nil {
 		return nil, err
 	}
@@ -53,6 +66,9 @@ func NewHostedAppFromEnv(
 	}
 	if collector == nil && sourceDirectory == "" {
 		return nil, errors.New("CAO_SOURCE_DIRECTORY is required")
+	}
+	if upstashMode && collector != nil {
+		return nil, errors.New("upstash mode supports artifact ingestion only, not server-side collection")
 	}
 	webhookSecret := os.Getenv("CAO_GITHUB_WEBHOOK_SECRET")
 	if len(webhookSecret) < 32 {
@@ -130,6 +146,40 @@ func privatePlaintextRedisOptIn(value string) (bool, error) {
 	}
 }
 
+func hostedUpstashMode(value, redisURL string, allowPrivatePlaintext bool) (bool, error) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "", "standard":
+		return false, nil
+	case "upstash":
+		parsed, err := url.Parse(strings.TrimSpace(redisURL))
+		if err != nil || !strings.EqualFold(parsed.Scheme, "rediss") {
+			return false, errors.New("upstash mode requires a rediss:// Redis URL")
+		}
+
+		if allowPrivatePlaintext {
+			return false, errors.New("upstash mode does not allow private plaintext Redis")
+		}
+		hostname := strings.ToLower(parsed.Hostname())
+		if hostname != "upstash.io" && !strings.HasSuffix(hostname, ".upstash.io") {
+			return false, errors.New("upstash mode requires an Upstash Redis endpoint")
+		}
+		return true, nil
+	default:
+		return false, errors.New("CAO_REDIS_MODE must be standard, upstash, or unset")
+	}
+}
+
+func exactTrue(value string) bool {
+	return strings.EqualFold(strings.TrimSpace(value), "true")
+}
+
+func validateUpstashSingleReplica(upstashMode bool, value string) error {
+	if upstashMode && !exactTrue(value) {
+		return errors.New("upstash mode requires CAO_UPSTASH_SINGLE_REPLICA=true")
+	}
+	return nil
+}
+
 func privateRedisHostname(hostname string) bool {
 	if hostname == "" {
 		return false
@@ -190,14 +240,21 @@ func StoreFromEnv(ctx context.Context) (*redisx.Store, error) {
 	if err := validateHostedRedisURL(redisURL, allowPrivatePlaintext); err != nil {
 		return nil, err
 	}
+	upstashMode, err := hostedUpstashMode(os.Getenv("CAO_REDIS_MODE"), redisURL, allowPrivatePlaintext)
+	if err != nil {
+		return nil, err
+	}
+	if upstashMode {
+		return nil, errors.New("upstash mode is not supported by standalone collection roles")
+	}
 	client, err := redisx.NewWithOptions(redisURL, redisx.Options{AllowPrivatePlaintext: allowPrivatePlaintext})
 	if err != nil {
 		return nil, err
 	}
-	return storeFromClient(ctx, client)
+	return storeFromClient(ctx, client, false)
 }
 
-func storeFromClient(ctx context.Context, client *redisx.Client) (*redisx.Store, error) {
+func storeFromClient(ctx context.Context, client *redisx.Client, isolateSession bool) (*redisx.Store, error) {
 	namespaceValue := strings.TrimSpace(os.Getenv("CAO_REDIS_NAMESPACE"))
 	if namespaceValue == "" {
 		namespaceValue = "hosted-dashboard"
@@ -206,9 +263,26 @@ func storeFromClient(ctx context.Context, client *redisx.Client) (*redisx.Store,
 	if err != nil {
 		return nil, err
 	}
+	if isolateSession {
+		namespace, err = isolatedUpstashNamespace(namespace)
+		if err != nil {
+			return nil, err
+		}
+	}
 	store := redisx.NewStore(client, namespace)
 	if err := store.Ping(ctx); err != nil {
 		return nil, errors.New("redis is unavailable")
 	}
 	return store, nil
+}
+
+func isolatedUpstashNamespace(namespace string) (string, error) {
+	var nonce [16]byte
+	if _, err := rand.Read(nonce[:]); err != nil {
+		return "", errors.New("generate Upstash session namespace")
+	}
+	sum := sha256.Sum256([]byte(namespace))
+	return redisx.NormalizeNamespace(
+		"upstash-" + hex.EncodeToString(sum[:6]) + "-" + hex.EncodeToString(nonce[:]),
+	)
 }

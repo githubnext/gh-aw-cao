@@ -194,7 +194,7 @@ Steering can refine evidence, priorities, and selection within resolved policy. 
 
 ## Optional Observability
 
-The dispatcher span is built into `shared/control.md`; exporter configuration determines where gh-aw sends it. Set the `GH_AW_DEFAULT_OTLP_ENDPOINT` Actions variable and `GH_AW_DEFAULT_OTLP_HEADERS` Actions secret at repository, organization, or enterprise scope. Export is disabled when the endpoint or matching headers are absent. Hosted dashboard servers configure their own OpenTelemetry export; see [Azure](deployment-azure.md#monitoring-the-deployment) and [Coolify](deployment-coolify.md#monitoring-the-deployment).
+The dispatcher span is built into `shared/control.md`; exporter configuration determines where gh-aw sends it. Set the `GH_AW_DEFAULT_OTLP_ENDPOINT` Actions variable and `GH_AW_DEFAULT_OTLP_HEADERS` Actions secret at repository, organization, or enterprise scope. Export is disabled when the endpoint or matching headers are absent. Hosted dashboard servers configure their own OpenTelemetry export; see [Azure](deployment-azure.md#monitoring-the-deployment), [Coolify](deployment-coolify.md#monitoring-the-deployment), and [Upstash Redis](deployment-upstash.md#monitoring-the-deployment).
 
 ```bash
 CONTROL_REPO="acme/central-agentic-ops"
