@@ -386,23 +386,15 @@ async function queryLiveDashboard(
       context.queries,
       nonNativeRequested.filter((name) => !dailyAggregateSourceNames.has(name))
     );
-    const declaredQueryNames = new Set(context.queries
-      .map((definition) => (
-        definition && typeof definition === 'object' && !Array.isArray(definition)
-          ? /** @type {{ name?: unknown }} */ (definition).name
-          : undefined
-      ))
-      .filter((name) => typeof name === 'string'));
-    const requiredDatabaseSources = required.filter((name) => !declaredQueryNames.has(name));
     /** @type {{ databaseMs: number, projectionMs: number, totalMs: number, recordsRead: number, stores: string[] } | undefined} */
     let databaseMetrics;
     const databasePayload = await queryDatabaseSources(
       indexedDB,
       dashboard.logicalSources,
-      requiredDatabaseSources,
+      required,
       { onMetrics: (metrics) => { databaseMetrics = metrics; } }
     );
-    const healthPayload = requiredDatabaseSources.some((name) => (
+    const healthPayload = required.some((name) => (
       name === 'data-health-collections' || name === 'data-health-coverage'
     ))
       ? deriveDataHealthCalloutSources(databasePayload)
@@ -440,7 +432,10 @@ async function queryLiveDashboard(
     const viewAliases = viewPayload.queries.length > 0
       ? executeDashboardQueries(viewPayload.queries, querySources, viewPayload.aliases, { signal })
       : {};
-    const selected = pageScopedSources(querySources, requested);
+    const selected = pageScopedSources(
+      querySources,
+      new Set([...requested].filter((name) => !replacedSources.has(name)))
+    );
     const responseSources = { ...selected, ...viewAliases };
     const response = paginateDashboardSources(
       responseSources,
