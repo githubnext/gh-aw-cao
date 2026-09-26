@@ -12587,7 +12587,7 @@
             },
             {
               "id": "problems",
-              "label": "Problems",
+              "label": "Failures",
               "icon": "alert",
               "page": "campaign-problems"
             },
@@ -12779,7 +12779,7 @@
             },
             {
               "id": "problems",
-              "label": "Problems",
+              "label": "Failures",
               "icon": "alert",
               "page": "campaign-problems"
             },
@@ -12818,7 +12818,7 @@
           },
           {
             "id": "campaign-current-runtime-problems",
-            "title": "Problems",
+            "title": "Failures",
             "description": "Current runtime failures and missing orchestrator observations, grouped by workflow with the target repository and effective Live or Review mode identified for each error group.",
             "data": {
               "source": "campaign-problem-items",
@@ -12935,7 +12935,7 @@
             },
             {
               "id": "problems",
-              "label": "Problems",
+              "label": "Failures",
               "icon": "alert",
               "page": "campaign-problems"
             },
@@ -13113,7 +13113,7 @@
             },
             {
               "id": "problems",
-              "label": "Problems",
+              "label": "Failures",
               "icon": "alert",
               "page": "campaign-problems"
             },
@@ -13234,7 +13234,7 @@
             },
             {
               "id": "problems",
-              "label": "Problems",
+              "label": "Failures",
               "icon": "alert",
               "page": "campaign-problems"
             },
@@ -13390,7 +13390,7 @@
             },
             {
               "id": "problems",
-              "label": "Problems",
+              "label": "Failures",
               "icon": "alert",
               "page": "campaign-problems"
             },
@@ -13660,7 +13660,7 @@
             },
             {
               "id": "problems",
-              "label": "Problems",
+              "label": "Failures",
               "icon": "alert",
               "page": "campaign-problems"
             },
@@ -13792,7 +13792,7 @@
             },
             {
               "id": "problems",
-              "label": "Problems",
+              "label": "Failures",
               "icon": "alert",
               "page": "campaign-problems"
             },
