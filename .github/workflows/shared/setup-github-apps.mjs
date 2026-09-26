@@ -163,6 +163,14 @@ export function isManifestCode(code) {
   return /^[A-Za-z0-9_-]+$/.test(code);
 }
 
+export function githubServerUrl(environment = process.env) {
+  const configured = environment.GH_HOST?.trim()
+    || environment.GITHUB_SERVER_URL?.trim()
+    || "github.com";
+  const url = configured.includes("://") ? configured : `https://${configured}`;
+  return new URL(url).origin;
+}
+
 export function setRepositoryCredentials(profile, app, repo, runner = runGh) {
   runner(["variable", "set", profile.variable, "--repo", repo, "--body", app.clientId]);
   runner(["secret", "set", profile.secret, "--repo", repo], { input: app.pem });
@@ -228,7 +236,7 @@ function verifyTarget(repo) {
   runGh(["api", `/users/${owner}`, "--jq", ".login"]);
   return {
     owner,
-    homepageUrl: `https://github.com/${canonicalRepo}`,
+    homepageUrl: `${githubServerUrl()}/${canonicalRepo}`,
   };
 }
 
@@ -277,7 +285,7 @@ function exchangeManifestCode(code) {
     slug: payload.slug,
     name: payload.name,
     settingsUrl: payload.html_url,
-    installUrl: `https://github.com/apps/${payload.slug}/installations/new`,
+    installUrl: `${githubServerUrl()}/apps/${payload.slug}/installations/new`,
   };
 }
 
@@ -294,12 +302,12 @@ function existingGitHubApp(name, clientId) {
     clientId: payload.client_id,
     slug: payload.slug,
     name: payload.name,
-    installUrl: `https://github.com/apps/${payload.slug}/installations/new`,
+    installUrl: `${githubServerUrl()}/apps/${payload.slug}/installations/new`,
   };
 }
 
-export function appRegistrationUrl(owner, state) {
-  return `https://github.com/organizations/${owner}/settings/apps/new?state=${state}`;
+export function appRegistrationUrl(owner, state, serverUrl = githubServerUrl()) {
+  return `${serverUrl}/organizations/${owner}/settings/apps/new?state=${state}`;
 }
 
 async function createGitHubApp({ owner, name, homepageUrl, description, permissions, openBrowser }) {
@@ -436,7 +444,7 @@ function listInstallationRepositories(installationId) {
 
 export function validateInstallationScope(installation, owner) {
   if (installation.repositorySelection !== "selected") {
-    const settingsUrl = `https://github.com/organizations/${owner}/settings/installations/${installation.id}`;
+    const settingsUrl = `${githubServerUrl()}/organizations/${owner}/settings/installations/${installation.id}`;
     const error = new Error(`GitHub App is installed for all ${owner} repositories; select only approved repositories at ${settingsUrl}`);
     error.name = "InstallationScopeError";
     throw error;
@@ -554,7 +562,7 @@ async function main() {
       + "configure existing enterprise-owned Apps or a fine-grained token",
     );
   }
-  const homepageUrl = `https://github.com/${repo}`;
+  const homepageUrl = `${githubServerUrl()}/${repo}`;
   const appNames = {
     read: options.readAppName || deriveAppName(repo, "read"),
     write: options.writeAppName || deriveAppName(repo, "write"),
