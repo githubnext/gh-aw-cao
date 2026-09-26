@@ -997,9 +997,10 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(page).toHaveURL(/#page-memory$/);
   await expect(page.getByRole('heading', { name: 'Memory', exact: true, level: 1 })).toBeVisible();
   const memoryView = page.getByRole('region', { name: 'CAO repository memory' });
-  await expect(memoryView.getByRole('button')).toHaveText(['AW Doctor', 'Dependabot']);
-  await memoryView.getByRole('button', { name: 'Dependabot' }).click();
-  await expect(memoryView.getByRole('button', { name: 'Dependabot' })).toHaveAttribute('aria-current', 'true');
+  const campaignBranches = memoryView.locator('.cao-memory-campaign-branch');
+  await expect(campaignBranches.locator(':scope > summary')).toHaveText(['AW Doctor', 'Dependabot']);
+  await campaignBranches.nth(1).locator(':scope > summary').click();
+  await expect(campaignBranches.nth(1)).toHaveAttribute('open', '');
   await expect(page).toHaveURL(/#page-memory$/);
   await expect(memoryView.getByRole('link')).toHaveCount(0);
   await expect(updatesSection.locator('summary')).toHaveText('Updates');

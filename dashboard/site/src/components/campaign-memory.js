@@ -9,6 +9,7 @@ const debugCampaignMemory = createDebug('campaign-memory');
 
 /** @typedef {{ campaign: string, campaignName: string }} Campaign */
 /** @typedef {{ path: string, oid: string, sha256?: string, size: number }} MemoryFile */
+/** @typedef {{ directories: Map<string, MemoryTreeNode>, files: { name: string, entry: MemoryFile }[] }} MemoryTreeNode */
 /** @typedef {{ fileLimit: number, fileSize: number, totalSize: number, extension: number, nesting: number, unsafePath: number, invalidContent: number, unsupportedType: number }} OmittedFiles */
 /** @typedef {{ branch: string, commit: string, files: MemoryFile[], omitted: OmittedFiles }} CampaignMemory */
 /** @typedef {{ status: string, branch: string, commit: string, files: MemoryFile[], omitted: OmittedFiles, error: string }} ManifestState */
@@ -109,8 +110,8 @@ export function renderAllCampaignMemory(context) {
   const source = bindFactorySources(context.sources, [sourceName], context)[sourceName];
   const scope = createFactoryScope();
   const root = h('section', { className: 'cao-memory-browser', 'aria-label': 'CAO repository memory' });
-  let selectedCampaign = '';
   let renderedCampaigns = '';
+  let browserController = new AbortController();
 
   effect(() => {
     if (source.pending()) {
@@ -121,6 +122,7 @@ export function renderAllCampaignMemory(context) {
     }
     root.removeAttribute('aria-busy');
     if (source.unavailable()) {
+      browserController.abort();
       root.replaceChildren(renderEmptyMessage('Campaign memory is unavailable.', { role: 'alert' }));
       return;
     }
@@ -133,51 +135,184 @@ export function renderAllCampaignMemory(context) {
     const campaignSignature = JSON.stringify(campaigns);
     if (campaignSignature === renderedCampaigns) return;
     renderedCampaigns = campaignSignature;
+    browserController.abort();
+    browserController = new AbortController();
     if (campaigns.length === 0) {
+      browserController.abort();
       root.replaceChildren(renderEmptyMessage('No campaigns are registered.'));
       return;
     }
-
-    const selected = campaigns.find((campaign) => campaign.campaign === selectedCampaign) ?? campaigns[0];
-    selectedCampaign = selected.campaign;
-    const content = h('div', { className: 'cao-memory-content' });
-    const buttons = campaigns.map((campaign) => /** @type {HTMLButtonElement} */ (h(
-      'button',
-      {
-        type: 'button',
-        className: 'cao-memory-campaign',
-        'aria-current': campaign.campaign === selectedCampaign ? 'true' : null,
-      },
-      campaign.campaignName
-    )));
-    /** @param {Campaign} campaign @param {HTMLButtonElement} button */
-    const select = (campaign, button) => {
-      selectedCampaign = campaign.campaign;
-      for (const candidate of buttons) candidate.removeAttribute('aria-current');
-      button.setAttribute('aria-current', 'true');
-      content.replaceChildren(renderCampaignMemory({
-        campaignId: campaign.campaign,
-        campaignName: campaign.campaignName,
-      }));
-    };
-    campaigns.forEach((campaign, index) => {
-      buttons[index].addEventListener('click', () => select(campaign, buttons[index]));
-    });
-    select(selected, buttons[campaigns.indexOf(selected)]);
-
-    root.replaceChildren(
-      h(
-        'aside',
-        { className: 'cao-memory-campaigns', 'aria-label': 'Campaigns' },
-        h('h2', null, 'Campaigns'),
-        h('ul', null, ...buttons.map((button) => h('li', null, button)))
-      ),
-      content
-    );
+    root.replaceChildren(renderCampaignTree(campaigns, browserController.signal));
   }, { signal: scope.signal });
 
+  scope.signal.addEventListener('abort', () => browserController.abort(), { once: true });
   scope.bind(root);
   return root;
+}
+
+/**
+ * @param {Campaign[]} campaigns
+ * @param {AbortSignal} signal
+ */
+function renderCampaignTree(campaigns, signal) {
+  const content = h(
+    'article',
+    { className: 'cao-memory-file-content', 'aria-live': 'polite' },
+    renderEmptyMessage('Select a memory file to view it.')
+  );
+  /** @type {AbortController | null} */
+  let fileController = null;
+  const branches = campaigns.map((campaign, index) => {
+    const files = h('div', { className: 'cao-memory-tree-status', role: 'status' }, 'Expand to load files.');
+    const details = /** @type {HTMLDetailsElement} */ (h(
+      'details',
+      { className: 'cao-memory-campaign-branch', open: index === 0 },
+      h('summary', { className: 'cao-memory-campaign' }, campaign.campaignName),
+      files
+    ));
+    let loaded = false;
+
+    const load = () => {
+      if (loaded || !details.open) return;
+      loaded = true;
+      files.replaceChildren(renderEmptyMessage('Loading repository memory...', { role: 'status', 'aria-busy': 'true' }));
+      listRepositoryMemory(campaign.campaign, signal).then((manifest) => {
+        if (signal.aborted) return;
+        if (!manifest) {
+          files.replaceChildren(renderEmptyMessage('No repository-memory branch has been published for this campaign.'));
+          return;
+        }
+        const warning = renderOmissionWarning(manifest.omitted);
+        if (manifest.files.length === 0) {
+          files.replaceChildren(
+            ...(warning ? [warning] : []),
+            renderEmptyMessage('The repository-memory branch contains no supported files.')
+          );
+          return;
+        }
+        /** @param {MemoryFile} entry @param {HTMLButtonElement} button */
+        const select = (entry, button) => {
+          fileController?.abort();
+          fileController = new AbortController();
+          const abort = () => fileController?.abort();
+          signal.addEventListener('abort', abort, { once: true });
+          for (const selected of details.closest('.cao-memory-browser')?.querySelectorAll(
+            '.campaign-memory-file[aria-current="true"]'
+          ) ?? []) selected.removeAttribute('aria-current');
+          button.setAttribute('aria-current', 'true');
+          content.replaceChildren(
+            h('h2', null, entry.path),
+            renderEmptyMessage('Loading file...', { role: 'status', 'aria-busy': 'true' })
+          );
+          const activeController = fileController;
+          readRepositoryMemoryFile(campaign.campaign, entry.path, activeController.signal).then((result) => {
+            if (!activeController.signal.aborted) {
+              content.replaceChildren(
+                h('h2', null, entry.path),
+                h('pre', null, h('code', null, result.content))
+              );
+            }
+          }).catch((error) => {
+            if (error?.name !== 'AbortError') {
+              content.replaceChildren(
+                h('h2', null, entry.path),
+                renderEmptyMessage(
+                  `Unable to load this memory file. ${error instanceof Error ? error.message : String(error)}`,
+                  { role: 'alert' }
+                )
+              );
+            }
+          }).finally(() => signal.removeEventListener('abort', abort));
+        };
+        const tree = renderFileTree(manifest.files, select);
+        files.replaceChildren(
+          h('p', { className: 'campaign-memory-branch' },
+            h('strong', null, manifest.branch),
+            ` at ${manifest.commit.slice(0, 7)}`
+          ),
+          ...(warning ? [warning] : []),
+          tree
+        );
+        if (index === 0) {
+          /** @type {HTMLButtonElement | null} */ (tree.querySelector('.campaign-memory-file'))?.click();
+        }
+      }).catch((error) => {
+        if (error?.name !== 'AbortError') {
+          files.replaceChildren(renderEmptyMessage(
+            `Repository memory is unavailable. ${error instanceof Error ? error.message : String(error)}`,
+            { role: 'alert' }
+          ));
+        }
+      });
+    };
+    details.addEventListener('toggle', load);
+    if (details.open) queueMicrotask(load);
+    return h('li', null, details);
+  });
+
+  return h(
+    'div',
+    { className: 'cao-memory-layout' },
+    h(
+      'nav',
+      { className: 'cao-memory-tree', 'aria-label': 'Campaign memory files' },
+      h('h2', null, 'Files'),
+      h('ul', null, ...branches)
+    ),
+    content
+  );
+}
+
+/**
+ * @param {MemoryFile[]} entries
+ * @param {(entry: MemoryFile, button: HTMLButtonElement) => void} select
+ */
+function renderFileTree(entries, select) {
+  const root = /** @type {MemoryTreeNode} */ ({ directories: new Map(), files: [] });
+  for (const entry of entries) {
+    const segments = entry.path.split('/');
+    let node = root;
+    for (const segment of segments.slice(0, -1)) {
+      let child = node.directories.get(segment);
+      if (!child) {
+        child = { directories: new Map(), files: [] };
+        node.directories.set(segment, child);
+      }
+      node = child;
+    }
+    node.files.push({ name: segments.at(-1) ?? entry.path, entry });
+  }
+
+  /** @param {MemoryTreeNode} node @returns {HTMLElement} */
+  const renderNode = (node) => h(
+    'ul',
+    null,
+    ...[...node.directories].map(([name, child]) => h(
+      'li',
+      null,
+      h(
+        'details',
+        { className: 'campaign-memory-directory', open: true },
+        h('summary', null, name),
+        renderNode(child)
+      )
+    )),
+    ...node.files.map(({ name, entry }) => {
+      const button = /** @type {HTMLButtonElement} */ (h(
+        'button',
+        {
+          type: 'button',
+          className: 'campaign-memory-file',
+          title: entry.path,
+          onclick: () => select(entry, button),
+        },
+        h('span', null, name),
+        h('small', null, formatFileSize(entry.size))
+      ));
+      return h('li', null, button);
+    })
+  );
+  return renderNode(root);
 }
 
 /**

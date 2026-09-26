@@ -27,7 +27,7 @@ describe('campaign repository memory', () => {
       .mockResolvedValueOnce({
         branch: 'memory/ambient-context',
         commit: 'a'.repeat(40),
-        files: [{ path: 'ambient.md', oid: 'b'.repeat(40), size: 9 }],
+        files: [{ path: 'notes/ambient.md', oid: 'b'.repeat(40), size: 9 }],
         omitted: {},
       })
       .mockResolvedValueOnce({
@@ -70,8 +70,18 @@ describe('campaign repository memory', () => {
     await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Ambient'));
     expect([...rendered.querySelectorAll('.cao-memory-campaign')].map((node) => node.textContent))
       .toEqual(['Ambient Context', 'Security Review']);
+    expect(rendered.querySelector('.cao-memory-tree')).not.toBeNull();
+    expect(rendered.querySelector('.cao-memory-file-content')).not.toBeNull();
+    expect(rendered.querySelector('.campaign-memory-directory > summary')?.textContent).toBe('notes');
+    expect(rendered.querySelector('.campaign-memory-file')?.textContent).toContain('ambient.md');
 
-    /** @type {HTMLButtonElement} */ (rendered.querySelectorAll('.cao-memory-campaign')[1]).click();
+    const secondCampaign = /** @type {HTMLDetailsElement} */ (
+      rendered.querySelectorAll('.cao-memory-campaign-branch')[1]
+    );
+    secondCampaign.open = true;
+    secondCampaign.dispatchEvent(new Event('toggle'));
+    await vi.waitFor(() => expect(secondCampaign.querySelector('.campaign-memory-file')).not.toBeNull());
+    /** @type {HTMLButtonElement} */ (secondCampaign.querySelector('.campaign-memory-file')).click();
     await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Security'));
     publishSource('campaign-memory-campaigns', {
       source: 'campaign-memory-campaigns',
@@ -93,6 +103,10 @@ describe('campaign repository memory', () => {
     expect(location.hash).toBe('');
     expect(memoryApi.list.mock.calls.map(([campaign]) => campaign))
       .toEqual(['ambient-context', 'security-review']);
+    expect(memoryApi.read.mock.calls.map(([campaign, path]) => [campaign, path])).toEqual([
+      ['ambient-context', 'notes/ambient.md'],
+      ['security-review', 'security.md'],
+    ]);
   });
 
   it('renders an honest empty state when no campaigns are registered', () => {
