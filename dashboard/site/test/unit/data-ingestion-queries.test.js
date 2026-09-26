@@ -9,6 +9,24 @@ const metadata = {
 };
 
 describe('dashboard source ingestion queries', () => {
+  it('uses unknown for an absent run gh-aw version', () => {
+    const adapted = queryDashboardSourceObservations({
+      runs: {
+        rows: [{
+          organization: 'githubnext',
+          repository: 'gh-aw-cao',
+          workflow: '.github/workflows/dashboard.md',
+          run: '12345',
+          'run-status': 'completed',
+          'observed-at': '2026-09-09T04:30:00Z'
+        }],
+        metadata
+      }
+    });
+
+    expect(normalize(adapted.observations).runs[0].ghAwVersion).toBe('unknown');
+  });
+
   it('converts real source-shaped repository, workflow, and run rows', () => {
     const adapted = queryDashboardSourceObservations({
       campaigns: {
