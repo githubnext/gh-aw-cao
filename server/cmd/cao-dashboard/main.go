@@ -159,6 +159,24 @@ func registerRedisNamespaceFlagWithEnvOverride(cmd *cobra.Command, usage string)
 	return namespace, defaultSource, err
 }
 
+// newRedisStore builds a redisx.Store from a raw Redis URL and namespace,
+// consolidating the client-then-namespace-then-store construction repeated
+// by every subcommand that talks to Redis directly. It logs only which
+// construction stage failed, so no URL or namespace value reaches the log.
+func newRedisStore(rawURL, rawNamespace string) (*redisx.Store, error) {
+	client, err := redisx.New(rawURL)
+	if err != nil {
+		commandLog.Printf("redis store construction failed stage=client")
+		return nil, err
+	}
+	namespace, err := redisx.NormalizeNamespace(rawNamespace)
+	if err != nil {
+		commandLog.Printf("redis store construction failed stage=namespace")
+		return nil, err
+	}
+	return redisx.NewStore(client, namespace), nil
+}
+
 // telemetrySetupFunc matches telemetry.Setup's signature so tests can
 // substitute a fake without opening real OTLP exporters or network sockets.
 type telemetrySetupFunc func(ctx context.Context, version string) (telemetry.Shutdown, error)
@@ -360,11 +378,7 @@ func newServeCommand() *cobra.Command {
 			return err
 		}
 		defer closeTelemetry()
-		client, err := redisx.New(*redisURL)
-		if err != nil {
-			return err
-		}
-		namespace, err := redisx.NormalizeNamespace(*redisNamespace)
+		store, err := newRedisStore(*redisURL, *redisNamespace)
 		if err != nil {
 			return err
 		}
@@ -372,7 +386,7 @@ func newServeCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		app, err := server.New(redisx.NewStore(client, namespace), server.Config{
+		app, err := server.New(store, server.Config{
 			Listen:              *listen,
 			SiteDirectory:       *siteDirectory,
 			CertFile:            *cert,
@@ -409,15 +423,10 @@ func newIngestCommand() *cobra.Command {
 			return err
 		}
 		commandLog.Printf("ingest flags parsed source_origin=%s", sourceOrigin)
-		client, err := redisx.New(*redisURL)
+		store, err := newRedisStore(*redisURL, *redisNamespace)
 		if err != nil {
 			return err
 		}
-		namespace, err := redisx.NormalizeNamespace(*redisNamespace)
-		if err != nil {
-			return err
-		}
-		store := redisx.NewStore(client, namespace)
 		ctx := context.Background()
 		closeTelemetry, err := setupTelemetry(ctx, version, telemetry.Setup)
 		if err != nil {
