@@ -30,7 +30,8 @@ const STORES = /** @type {const} */ ([
   'tools',
   'audits',
   'issues',
-  'operationalValues'
+  'operationalValues',
+  'marketplacePackages'
 ]);
 const RUN_LINKED_STORES = /** @type {const} */ (['domains', 'tools', 'audits', 'issues']);
 const WORKFLOW_INVENTORY_FIELDS = /** @type {const} */ ([
@@ -125,6 +126,7 @@ export function capCanonicalBatchSize(batch, maxBytes) {
     workflows: batch.workflows,
     runs: batch.runs.filter((record) => !evictedRuns.has(String(record.id))),
     operationalValues: batch.operationalValues ?? [],
+    marketplacePackages: batch.marketplacePackages ?? [],
     ...Object.fromEntries(RUN_LINKED_STORES.map((storeName) => [
       storeName,
       batch[storeName].filter((record) => !evictedRuns.has(String(record.runId)))

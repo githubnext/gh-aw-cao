@@ -471,6 +471,7 @@ describe('dashboard document validation', () => {
       icon: 'play',
       command: 'gh aw compile --strict --no-emit',
       placement: 'settings',
+      'copy-only': true,
       arguments: [{
         id: 'pre-releases',
         label: 'Include pre-releases',
@@ -482,6 +483,11 @@ describe('dashboard document validation', () => {
     const addedAction = document.dashboard['cli-actions'][document.dashboard['cli-actions'].length - 1];
     const actionArguments = addedAction.arguments;
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    addedAction['copy-only'] = 'true';
+    expect(validateDashboardDocument(JSON.stringify(document)).errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ message: 'CLI action copy-only must be a boolean.' })
+    ]));
+    addedAction['copy-only'] = true;
 
     delete addedAction.arguments;
     addedAction.command = './cao.sh update';

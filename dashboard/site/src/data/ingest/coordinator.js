@@ -51,7 +51,8 @@ const NORMALIZED_BATCH_COLLECTIONS = /** @type {const} */ ([
   'tools',
   'audits',
   'issues',
-  'operationalValues'
+  'operationalValues',
+  'marketplacePackages'
 ]);
 const NORMALIZED_JSONL_WRITE_BATCH_SIZE = 250;
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();

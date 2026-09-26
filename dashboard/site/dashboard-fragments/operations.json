@@ -1,6 +1,11 @@
 {
   "queries": [
     {
+      "name": "marketplace-package-detail",
+      "intent": "Select one normalized marketplace package by its resolver-produced source coordinate.",
+      "from": "marketplace-packages"
+    },
+    {
       "name": "indexing-daily-records",
       "intent": "Aggregate records committed from CAO Activity by ingestion UTC day.",
       "from": "transactions",
@@ -949,6 +954,124 @@
     }
   ],
   "pages": [
+    {
+      "id": "marketplace",
+      "kind": "custom",
+      "title": "Marketplace",
+      "navigation-label": "Marketplace",
+      "icon": "workflow",
+      "description": "Browse read-only CAO campaign packages from the configured registries.",
+      "views": [
+        {
+          "id": "marketplace-packages",
+          "title": "Campaign packages",
+          "description": "Registry metadata is resolved by the trusted CAO backend. Select a package for details and its add command.",
+          "data": {
+            "source": "marketplace-packages",
+            "order-by": [
+              {
+                "field": "package-name",
+                "direction": "asc"
+              }
+            ]
+          },
+          "mark": "list",
+          "list": {
+            "style": "entity-cards",
+            "layout": "grid",
+            "icon": "workflow",
+            "card": "marketplace-package",
+            "drill": {
+              "type": "query",
+              "page": "marketplace-package",
+              "query": "marketplace-package-detail",
+              "title-field": "package-name",
+              "arguments": [
+                {
+                  "name": "package-source",
+                  "field": "package-source"
+                }
+              ]
+            }
+          },
+          "encoding": {
+            "columns": [
+              {
+                "field": "package-name",
+                "type": "nominal",
+                "title": "Package"
+              },
+              {
+                "field": "package-description",
+                "type": "nominal",
+                "title": "Description"
+              },
+              {
+                "field": "registry-name",
+                "type": "nominal",
+                "title": "Registry"
+              }
+            ]
+          },
+          "layout": "full",
+          "empty-message": "No marketplace packages were resolved."
+        }
+      ]
+    },
+    {
+      "id": "marketplace-package",
+      "kind": "custom",
+      "title": "Package",
+      "icon": "workflow",
+      "description": "Review normalized package metadata and copy the canonical CAO add command.",
+      "route": {
+        "hash-query-parameter": "package-source",
+        "navigation-page": "marketplace"
+      },
+      "views": [
+        {
+          "id": "marketplace-package-detail",
+          "title": "Package details",
+          "data": {
+            "source": "marketplace-package-detail",
+            "arguments": [
+              {
+                "name": "package-source",
+                "field": "package-source"
+              }
+            ]
+          },
+          "mark": "list",
+          "list": {
+            "style": "entity-cards",
+            "appearance": "grouped",
+            "icon": "workflow",
+            "card": "marketplace-package"
+          },
+          "encoding": {
+            "columns": [
+              {
+                "field": "package-name",
+                "type": "nominal",
+                "title": "Package"
+              },
+              {
+                "field": "package-source",
+                "type": "nominal",
+                "title": "Source"
+              },
+              {
+                "field": "package-contents",
+                "type": "nominal",
+                "title": "Contents"
+              }
+            ]
+          },
+          "layout": "full",
+          "empty-message": "The selected package is unavailable."
+        }
+      ]
+    },
     {
       "id": "indexing",
       "kind": "custom",

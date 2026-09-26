@@ -94,6 +94,18 @@ components:
   dashboard_data:
     path: dashboard/site/src/data/
     responsibility: normalize, persist, and declaratively query canonical browser data in a Web Worker
+  marketplace_registry_policy:
+    path: .github/workflows/cao.json
+    responsibility: define ordered campaign package registries, resolver cache policy, and secret references without secret values
+  marketplace_static_resolver:
+    path: activity/marketplace.mjs
+    responsibility: resolve registry refs and gh-aw package manifests during Activity precomputation into safe normalized marketplace package records
+  marketplace_hosted_resolver:
+    path: server/
+    responsibility: resolve the same registry contract at runtime and cache safe normalized results in Redis
+  marketplace_ui:
+    path: dashboard/site/dashboard-fragments/operations.json
+    responsibility: render declarative package list and detail views with copy-only canonical CAO add commands
   gh_aw_logs:
     external: true
     responsibility: authoritative execution-log source for Activity collection
@@ -210,6 +222,12 @@ dependencies:
   - sqlite_projection -> package_problem_clustering
   - package_problem_clustering -> cao_cli
   - activity_jsonl_shards -> indexeddb_projection
+  - marketplace_registry_policy -> marketplace_static_resolver
+  - marketplace_registry_policy -> marketplace_hosted_resolver
+  - marketplace_static_resolver -> browser_data_worker
+  - marketplace_hosted_resolver -> redis_projection
+  - marketplace_static_resolver -> marketplace_ui
+  - marketplace_hosted_resolver -> marketplace_ui
 
 boundaries:
   - subject: policy_resolution
@@ -237,6 +255,8 @@ boundaries:
     must_not_depend_on:
       - source_data_queries
       - business_relationship_reconstruction
+      - registry_credentials
+      - direct_registry_fetches
   - subject: computations
     may_depend_on:
       - canonical_evidence
@@ -295,6 +315,10 @@ invariants:
   - "Installed campaign records MUST be updated through gh-aw campaign commands."
   - "The repository-layout and installation specification defines canonical runtime ownership, immutable materialization, and fail-closed installation lifecycle requirements."
   - "Policy and workflow changes MUST be committed together."
+  - "Marketplace registry order defines precedence; the official registry is removable configuration rather than hard-coded resolver behavior."
+  - "Marketplace registry authentication MUST reference secrets, remain registry-scoped in trusted Activity or hosted resolvers, and MUST NOT enter manifests, canonical package records, IndexedDB, query payloads, or UI state."
+  - "Static and hosted marketplace resolvers MUST produce the same normalized package contract; failure of one registry MUST NOT make other registries unavailable."
+  - "Marketplace UI access MUST cross the existing data-worker query boundary and package actions MUST be copy-only canonical CAO add commands; the dashboard MUST NOT install packages."
 
 flows:
   operation_review:
@@ -341,6 +365,19 @@ flows:
     - sqlite_projection
     - computations
     - cao_cli
+  marketplace_static:
+    - marketplace_registry_policy
+    - marketplace_static_resolver
+    - browser_data_worker
+    - indexeddb_projection
+    - dashboard_language_queries
+    - marketplace_ui
+  marketplace_hosted:
+    - marketplace_registry_policy
+    - marketplace_hosted_resolver
+    - redis_projection
+    - dashboard_language_queries
+    - marketplace_ui
 
 generation:
   codebase_model:

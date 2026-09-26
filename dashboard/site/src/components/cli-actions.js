@@ -7,7 +7,7 @@ import { createDebug } from '../debug.js';
 const debugCliActions = createDebug('cli-actions');
 
 const endpoint = './__cli_action';
-/** @type {Array<{ id: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'view'|'row', arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>} */
+/** @type {Array<{ id: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'view'|'row', 'copy-only'?: boolean, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>} */
 let declaredCliActions = [];
 let declaredCliActionsCanExecute = true;
 /** @type {Record<string, string>} */
@@ -328,7 +328,7 @@ export function renderRowCliAction(actionId, templateValues, options = {}) {
   const { trigger, dialog } = renderCliActionControl(action, {
     presentation: 'row',
     templateValues,
-    canExecute: declaredCliActionsCanExecute,
+    canExecute: declaredCliActionsCanExecute && action['copy-only'] !== true,
     showRowLabel: options.showLabel === true
   });
   return h('span', { className: 'table-cli-action-control' }, trigger, dialog);
@@ -344,7 +344,7 @@ export function renderDeclaredCliAction(actionId, templateValues = {}) {
   if (!action) return null;
   const rendered = renderCliActionControl(action, {
     templateValues: { ...declaredCliActionTemplateValues, ...templateValues },
-    canExecute: declaredCliActionsCanExecute
+    canExecute: declaredCliActionsCanExecute && action['copy-only'] !== true
   });
   return h('span', { className: 'declared-cli-action' }, rendered.trigger, rendered.dialog);
 }

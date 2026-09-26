@@ -87,6 +87,7 @@ const activityExpectedFiles = [
   "activity/gh-aw-logs.mjs",
   "activity/inventory.mjs",
   "activity/inventory-sources.mjs",
+  "activity/marketplace.mjs",
   "activity/token-intervention-lifecycle.mjs",
   "activity/version.mjs",
   ".github/workflows/cao-activity.yml",

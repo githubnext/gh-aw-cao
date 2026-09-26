@@ -473,6 +473,58 @@
         ]
       },
       {
+        "id": "marketplace-package",
+        "icon": "workflow",
+        "title": {
+          "field": "package-name",
+          "title": "Package"
+        },
+        "subtitle": {
+          "field": "package-description",
+          "title": "Description"
+        },
+        "labels": [
+          {
+            "field": "registry-name",
+            "title": "Registry",
+            "display": "label"
+          },
+          {
+            "field": "package-version",
+            "title": "Version",
+            "display": "ref"
+          }
+        ],
+        "details": [
+          {
+            "field": "publisher",
+            "title": "Publisher"
+          },
+          {
+            "field": "repository",
+            "title": "Repository"
+          },
+          {
+            "field": "path",
+            "title": "Path"
+          },
+          {
+            "field": "package-ref",
+            "title": "Configured ref"
+          },
+          {
+            "field": "package-contents",
+            "title": "Contents"
+          }
+        ],
+        "actions": [
+          {
+            "action": "add-marketplace-package",
+            "context": ["package-source"]
+          }
+        ]
+      },
+      {
         "id": "attention-signal",
         "icon": "issue-opened",
         "icon-field": "icon",
@@ -782,6 +834,15 @@
         "icon": "copilot",
         "command": "gh agent-task create --from-file -",
         "placement": "row"
+      },
+      {
+        "id": "add-marketplace-package",
+        "label": "Copy add command",
+        "description": "Copy the canonical CAO command for this package. The dashboard does not install packages.",
+        "icon": "copy",
+        "command": "./cao.sh add {{package-source}}",
+        "placement": "row",
+        "copy-only": true
       }
     ],
     "horizon": {
@@ -854,6 +915,7 @@
         "label": "Data",
         "pages": [
           "campaigns",
+          "marketplace",
           "memory",
           "repositories",
           "workflows",

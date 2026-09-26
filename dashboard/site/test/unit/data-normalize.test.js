@@ -14,6 +14,31 @@ function observation(kind, sourceId, observedAt, data, source = 'dashboard-sourc
 }
 
 describe('canonical normalization', () => {
+  it('normalizes marketplace packages without credential-shaped fields', () => {
+    const batch = normalize([observation(
+      'marketplace-package',
+      'official:octo/packages/demo@abc',
+      '2026-09-26T00:00:00Z',
+      {
+        id: 'official:octo/packages/demo@abc',
+        registryId: 'official',
+        registryName: 'Official',
+        repository: 'octo/packages',
+        path: 'demo',
+        source: 'octo/packages/demo@abc',
+        addCommand: './cao.sh add octo/packages/demo@abc'
+      }
+    )]);
+
+    expect(batch.marketplacePackages).toHaveLength(1);
+    expect(batch.marketplacePackages[0]).toMatchObject({
+      id: 'official:octo/packages/demo@abc',
+      registryId: 'official',
+      repository: 'octo/packages'
+    });
+    expect(JSON.stringify(batch.marketplacePackages[0])).not.toMatch(/token|secret|authorization/i);
+  });
+
   it('enriches renamed entities without duplicating stable identities', () => {
     const observations = [
       observation('repository', 'repo-old', '2026-09-08T00:00:00Z', {

@@ -82,7 +82,8 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
       return init?.method === 'HEAD'
         ? new Response(null, { headers: { 'content-length': '1' } })
         : new Response(normalized('runs', {
-            ...batch, domains: [], tools: [], audits: [], issues: [], operationalValues: []
+            ...batch, domains: [], tools: [], audits: [], issues: [], operationalValues: [],
+            marketplacePackages: []
           }));
     }
     if (init?.method !== 'HEAD') downloadedShards.push(url);
@@ -93,7 +94,8 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
       : new Response(normalized('records', {
           campaigns: [], repositories: [], workflows: [], runs: [],
           domains: batch.domains, tools: batch.tools, audits: batch.audits, issues: batch.issues,
-          operationalValues: batch.operationalValues
+          operationalValues: batch.operationalValues,
+          marketplacePackages: batch.marketplacePackages
         }));
   });
 

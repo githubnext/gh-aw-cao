@@ -1,5 +1,30 @@
 [
   {
+    "name": "marketplace-packages",
+    "stores": ["marketplacePackages"],
+    "from": "$marketplacePackages",
+    "select": [
+      { "field": "id" },
+      { "field": "registryId", "as": "registry-id" },
+      { "field": "registryName", "as": "registry-name" },
+      { "field": "registryPrecedence", "as": "registry-precedence" },
+      { "field": "name", "as": "package-name" },
+      { "field": "description", "as": "package-description" },
+      { "field": "publisher" },
+      { "field": "repository" },
+      { "field": "path" },
+      { "field": "ref", "as": "package-ref" },
+      { "field": "resolvedCommit", "as": "resolved-commit" },
+      { "field": "version", "as": "package-version" },
+      { "field": "icon", "as": "package-icon" },
+      { "field": "artwork", "as": "package-artwork" },
+      { "field": "contents", "as": "package-contents" },
+      { "field": "sourceCoordinate", "as": "package-source" },
+      { "field": "addCommand", "as": "add-command" },
+      { "field": "observedAt", "as": "observed-at" }
+    ]
+  },
+  {
     "name": "campaigns",
     "stores": ["campaigns"],
     "from": "$campaigns",

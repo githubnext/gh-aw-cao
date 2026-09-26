@@ -2,7 +2,7 @@ export class PolicyError extends Error {}
 
 const SCHEMA_URI = "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json";
 const ROOT_KEYS = ["$schema", "version", "gh-aw-version", "control-plane", "target-authority"];
-const CONTROL_KEYS = ["scope", "inventory", "web", "defaults", "campaigns", "publishing"];
+const CONTROL_KEYS = ["scope", "inventory", "web", "defaults", "campaigns", "publishing", "marketplace"];
 const SCOPE_KEYS = ["allowed-owners", "allowed-repositories"];
 const INVENTORY_KEYS = ["max-scan-repositories", "cell-count", "cell-index", "batch-size", "batch-index"];
 const WEB_KEYS = ["experimental", "favicon"];
@@ -16,6 +16,18 @@ const CAMPAIGN_KEYS = ["enabled", ...DEFAULT_KEYS, "icon", "deploy", "targets", 
 const TARGET_POLICY_KEYS = ["mode"];
 const WORKER_KEYS = ["workflow", "enabled", "max-mode"];
 const PUBLISHING_KEYS = ["enabled", "control-repositories", "reviewers"];
+const MARKETPLACE_KEYS = ["cache-ttl-seconds", "registries"];
+const REGISTRY_KEYS = ["id", "name", "repository", "path", "ref", "api-url", "auth"];
+const REGISTRY_AUTH_KEYS = {
+  none: ["type"],
+  pat: ["type", "secret"],
+  "github-app": ["type", "app-id-secret", "private-key-secret", "installation-id-secret"],
+};
+const SECRET_REFERENCE_PATTERN = /^[A-Z][A-Z0-9_]{0,127}$/;
+const SAFE_REGISTRY_PATH_PATTERN = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))[A-Za-z0-9._/-]*$/;
+const REGISTRY_NAME_PATTERN = /^.{1,100}$/s;
+const REGISTRY_REF_PATTERN = /^.{1,255}$/s;
+const HTTPS_URL_PATTERN = /^https:\/\/\S+$/;
 const TARGET_AUTHORITY_KEYS = ["campaigns"];
 const TARGET_CAMPAIGN_KEYS = ["authority"];
 const REPOSITORY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
@@ -161,6 +173,51 @@ function validateControlPlane(control) {
     validateCampaignRepositoryScopes(control);
   }
   if ("publishing" in control) validatePublishing(control.publishing);
+  if ("marketplace" in control) validateMarketplace(control.marketplace);
+}
+
+function validateMarketplace(marketplace) {
+  const path = "control-plane.marketplace";
+  assertMapping(marketplace, path);
+  assertKeys(marketplace, MARKETPLACE_KEYS, path);
+  if ("cache-ttl-seconds" in marketplace) {
+    assertInteger(marketplace["cache-ttl-seconds"], `${path}.cache-ttl-seconds`, 30, 86_400);
+  }
+  if (!Array.isArray(marketplace.registries)) throw new PolicyError(`${path}.registries must be a sequence`);
+  if (marketplace.registries.length > 32) throw new PolicyError(`${path}.registries must contain at most 32 entries`);
+  const ids = new Set();
+  marketplace.registries.forEach((registry, index) => {
+    const registryPath = `${path}.registries[${index}]`;
+    assertMapping(registry, registryPath);
+    assertKeys(registry, REGISTRY_KEYS, registryPath);
+    assertString(registry.id, `${registryPath}.id`, SLUG_PATTERN);
+    if (ids.has(registry.id)) throw new PolicyError(`${path}.registries contains duplicate id: ${registry.id}`);
+    ids.add(registry.id);
+    if ("name" in registry) assertString(registry.name, `${registryPath}.name`, REGISTRY_NAME_PATTERN);
+    assertString(registry.repository, `${registryPath}.repository`, REPOSITORY_PATTERN);
+    assertString(registry.ref, `${registryPath}.ref`, REGISTRY_REF_PATTERN);
+    if ("path" in registry) assertString(registry.path, `${registryPath}.path`, SAFE_REGISTRY_PATH_PATTERN);
+    if ("api-url" in registry) {
+      assertString(registry["api-url"], `${registryPath}.api-url`, HTTPS_URL_PATTERN);
+      let apiURL;
+      try {
+        apiURL = new URL(registry["api-url"]);
+      } catch {
+        throw new PolicyError(`${registryPath}.api-url must be a valid HTTPS URL`);
+      }
+      if (apiURL.protocol !== "https:" || apiURL.username || apiURL.password) {
+        throw new PolicyError(`${registryPath}.api-url must be a credential-free HTTPS URL`);
+      }
+    }
+    const auth = registry.auth ?? { type: "none" };
+    assertMapping(auth, `${registryPath}.auth`);
+    const keys = REGISTRY_AUTH_KEYS[auth.type];
+    if (!keys) throw new PolicyError(`${registryPath}.auth.type must be none, pat, or github-app`);
+    assertKeys(auth, keys, `${registryPath}.auth`);
+    for (const key of keys.filter((key) => key !== "type")) {
+      assertString(auth[key], `${registryPath}.auth.${key}`, SECRET_REFERENCE_PATTERN);
+    }
+  });
 }
 
 function validateScope(scope) {
@@ -475,6 +532,7 @@ export function controlSettings(document, controlRepository) {
       experimental: web.experimental ?? false,
       favicon: web.favicon ?? "./favicon.svg",
     },
+    marketplace: control.marketplace ?? { registries: [] },
     campaigns,
     publishing_enabled: publishing.enabled ?? false,
     publishing_control_repositories: publishing["control-repositories"] ?? [controlRepository],

@@ -13,6 +13,12 @@ describe('CLI action command templates', () => {
       .toBe('gh aw update --repo octo/example --source octo/example');
   });
 
+  it('renders immutable marketplace package coordinates', () => {
+    expect(renderCliActionCommand('./cao.sh add {{package-source}}', {
+      'package-source': 'octo/packages/demo@0123456789abcdef'
+    })).toBe('./cao.sh add octo/packages/demo@0123456789abcdef');
+  });
+
   it.each([
     [{}, 'missing or invalid'],
     [{ repository: 'octo/example --force' }, 'not a safe command token'],

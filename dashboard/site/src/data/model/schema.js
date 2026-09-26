@@ -1,4 +1,4 @@
-export const CANONICAL_SCHEMA_VERSION = 17;
+export const CANONICAL_SCHEMA_VERSION = 18;
 
 export const ENTITY_KINDS = /** @type {const} */ ([
   'campaign',
@@ -9,7 +9,8 @@ export const ENTITY_KINDS = /** @type {const} */ ([
   'tool',
   'audit',
   'issue',
-  'operational-value'
+  'operational-value',
+  'marketplace-package'
 ]);
 const RUN_LINKED_COLLECTIONS = /** @type {const} */ (['domains', 'tools', 'audits', 'issues']);
 
@@ -38,6 +39,7 @@ const RUN_LINKED_COLLECTIONS = /** @type {const} */ (['domains', 'tools', 'audit
  * @property {Record<string, unknown>[]} audits
  * @property {Record<string, unknown>[]} issues
  * @property {Record<string, unknown>[]} operationalValues
+ * @property {Record<string, unknown>[]} marketplacePackages
  */
 
 /**

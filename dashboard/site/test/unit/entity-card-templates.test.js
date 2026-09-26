@@ -21,8 +21,36 @@ describe('entity card templates', () => {
       'run',
       'event',
       'campaign',
-      'operation'
+      'operation',
+      'marketplace-package'
     ]));
+  });
+
+  it('declares marketplace list, detail, and copy-only add action', () => {
+    expect(templates['marketplace-package']).toMatchObject({
+      icon: 'workflow',
+      title: { field: 'package-name' },
+      subtitle: { field: 'package-description' },
+      actions: [{ action: 'add-marketplace-package', context: ['package-source'] }]
+    });
+    expect(pages.marketplace.views[0]).toMatchObject({
+      data: { source: 'marketplace-packages' },
+      list: {
+        style: 'entity-cards',
+        card: 'marketplace-package',
+        drill: { page: 'marketplace-package', query: 'marketplace-package-detail' }
+      }
+    });
+    expect(pages['marketplace-package']).toMatchObject({
+      route: { 'hash-query-parameter': 'package-source', 'navigation-page': 'marketplace' }
+    });
+    expect(dashboard['cli-actions'].find(
+      (/** @type {Record<string, any>} */ action) => action.id === 'add-marketplace-package'
+    )).toMatchObject({
+      command: './cao.sh add {{package-source}}',
+      placement: 'row',
+      'copy-only': true
+    });
   });
 
   it('declares the factory campaign cards in JSON', () => {

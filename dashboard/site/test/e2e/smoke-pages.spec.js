@@ -992,7 +992,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(cleanNavigation).toHaveText(['Overview']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
-  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Memory', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Operational Value', 'Cost', 'Models & Agents', 'Skills', 'Firewall', 'MCPs', 'Steering']);
+  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Marketplace', 'Memory', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Operational Value', 'Cost', 'Models & Agents', 'Skills', 'Firewall', 'MCPs', 'Steering']);
   await data.getByRole('link', { name: /Memory/ }).click();
   await expect(page).toHaveURL(/#page-memory$/);
   await expect(page.getByRole('heading', { name: 'Memory', exact: true, level: 1 })).toBeVisible();

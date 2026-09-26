@@ -300,6 +300,42 @@ func (s *Store) CacheRepositoryMemoryFile(
 	return err
 }
 
+func marketplaceCacheKey(registryID, generation string) string {
+	return repositoryMemoryCacheKey(registryID, generation)
+}
+
+// CachedMarketplaceRegistry returns one registry's cached, already-normalized
+// package list for the given dashboard data revision (generation), or nil if
+// no entry is cached. The cache key is derived from both registryID and
+// generation so results never leak across registries or across revisions.
+func (s *Store) CachedMarketplaceRegistry(ctx context.Context, registryID, generation string) ([]byte, error) {
+	value, err := s.Client.Do(ctx, "GET", s.Key("marketplace:registry:"+marketplaceCacheKey(registryID, generation)))
+	if err != nil || value == nil {
+		return nil, err
+	}
+	return []byte(fmt.Sprint(value)), nil
+}
+
+// CacheMarketplaceRegistry stores one registry's normalized package list for
+// ttl, isolated by registryID and generation. content must already be safe to
+// serve to clients: callers must never cache raw secrets or access tokens.
+func (s *Store) CacheMarketplaceRegistry(
+	ctx context.Context, registryID, generation string, content []byte, ttl time.Duration,
+) error {
+	if ttl <= 0 {
+		return nil
+	}
+	_, err := s.Client.Do(
+		ctx,
+		"SET",
+		s.Key("marketplace:registry:"+marketplaceCacheKey(registryID, generation)),
+		string(content),
+		"PX",
+		strconv.FormatInt(ttl.Milliseconds(), 10),
+	)
+	return err
+}
+
 func (s *Store) Key(suffix string) string {
 	return s.namespace + ":" + suffix
 }

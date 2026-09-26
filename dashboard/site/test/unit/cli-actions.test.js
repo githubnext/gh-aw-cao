@@ -277,6 +277,37 @@ describe('CLI actions', () => {
     expect(rendered.querySelector('.table-cli-action-button .octicon-sync')).not.toBeNull();
   });
 
+  it('never executes a copy-only row action', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText }
+    });
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    setDeclaredCliActions([{
+      id: 'add-marketplace-package',
+      label: 'Copy add command',
+      icon: 'copy',
+      command: './cao.sh add {{package-source}}',
+      placement: 'row',
+      'copy-only': true
+    }], { canExecute: true });
+    const rendered = renderRowCliAction('add-marketplace-package', {
+      'package-source': 'octo/packages/demo@abc123'
+    });
+    document.body.append(/** @type {HTMLElement} */ (rendered));
+
+    rendered?.querySelector('button')?.click();
+    expect(rendered?.querySelector('.cli-action-confirm')?.textContent).toContain('Copy command');
+    rendered?.querySelector('.cli-action-confirm')?.dispatchEvent(new MouseEvent('click'));
+
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith(
+      './cao.sh add octo/packages/demo@abc123'
+    ));
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it('is disabled by default (no debug output) when the debug query is absent', async () => {
     const output = { debug: vi.fn() };
     vi.doMock('../../src/debug.js', async () => {
