@@ -12,7 +12,11 @@ import (
 	"regexp"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var loadLog = logger.New("cao:repositorymemory")
 
 const (
 	MaxFileCount = 400
@@ -124,16 +128,9 @@ func Load(directory string) (snapshot Snapshot, returnErr error) {
 	if manifest.Version != 1 || manifest.Campaigns == nil {
 		return Snapshot{}, errors.New("repository-memory manifest is invalid")
 	}
-	var totalSize int64
-	for _, campaign := range manifest.Campaigns {
-		for _, file := range campaign.Files {
-			if file.Size >= 0 && file.Size <= MaxFileSize {
-				if file.Size > MaxTotalSize-totalSize {
-					return Snapshot{}, errors.New("repository-memory files exceed the total size limit")
-				}
-				totalSize += file.Size
-			}
-		}
+	totalSize, err := validateTotalSize(manifest.Campaigns)
+	if err != nil {
+		return Snapshot{}, err
 	}
 	files := make(map[string][]byte)
 	seenCampaigns := make(map[string]struct{})
@@ -191,7 +188,28 @@ func Load(directory string) (snapshot Snapshot, returnErr error) {
 		return Snapshot{}, err
 	}
 	revision := sha256.Sum256(revisionBytes)
+	loadLog.Printf("loaded repository memory campaigns=%d files=%d total_size=%d",
+		len(manifest.Campaigns), len(files), totalSize)
 	return Snapshot{Manifest: normalized, Files: files, Revision: hex.EncodeToString(revision[:])}, nil
+}
+
+// validateTotalSize sums each campaign file's declared size, rejecting the
+// manifest once the running total would exceed MaxTotalSize. A file whose
+// declared size is out of range is skipped here; the per-file validation
+// loop in Load reports that as its own error.
+func validateTotalSize(campaigns []Campaign) (int64, error) {
+	var totalSize int64
+	for _, campaign := range campaigns {
+		for _, file := range campaign.Files {
+			if file.Size >= 0 && file.Size <= MaxFileSize {
+				if file.Size > MaxTotalSize-totalSize {
+					return 0, errors.New("repository-memory files exceed the total size limit")
+				}
+				totalSize += file.Size
+			}
+		}
+	}
+	return totalSize, nil
 }
 
 func openRegularFile(root *os.Root, name string) (*os.File, error) {

@@ -184,6 +184,51 @@ func TestLoadRejectsMemoryOverTotalSizeLimit(t *testing.T) {
 	}
 }
 
+func TestValidateTotalSizeSumsFileSizesAcrossCampaigns(t *testing.T) {
+	campaigns := []Campaign{
+		{Campaign: "a", Files: []File{{Path: "one.md", Size: 10}, {Path: "two.md", Size: 20}}},
+		{Campaign: "b", Files: []File{{Path: "three.md", Size: 30}}},
+	}
+	total, err := validateTotalSize(campaigns)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if total != 60 {
+		t.Fatalf("total = %d, want 60", total)
+	}
+}
+
+func TestValidateTotalSizeSkipsOutOfRangeFileSizes(t *testing.T) {
+	// A negative or over-limit file size is validated by Load's per-file
+	// checks; validateTotalSize must not let such a value corrupt the running
+	// total or falsely trip the total-size limit.
+	campaigns := []Campaign{
+		{Campaign: "a", Files: []File{{Path: "negative.md", Size: -1}, {Path: "huge.md", Size: MaxFileSize + 1}, {Path: "ok.md", Size: 5}}},
+	}
+	total, err := validateTotalSize(campaigns)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if total != 5 {
+		t.Fatalf("total = %d, want 5", total)
+	}
+}
+
+func TestValidateTotalSizeRejectsOverallLimit(t *testing.T) {
+	// Each file must individually respect MaxFileSize, so reaching
+	// MaxTotalSize requires enough MaxFileSize-sized files plus one more byte
+	// to tip over the limit.
+	files := make([]File, 0, MaxTotalSize/MaxFileSize+1)
+	for size := int64(0); size < MaxTotalSize; size += MaxFileSize {
+		files = append(files, File{Path: fmt.Sprintf("file-%d.md", len(files)), Size: MaxFileSize})
+	}
+	files = append(files, File{Path: "extra.md", Size: 1})
+	campaigns := []Campaign{{Campaign: "a", Files: files}}
+	if _, err := validateTotalSize(campaigns); err == nil || !strings.Contains(err.Error(), "total size limit") {
+		t.Fatalf("error = %v, want total size limit", err)
+	}
+}
+
 func decodeManifest(t *testing.T, data []byte) Manifest {
 	t.Helper()
 	var manifest Manifest
