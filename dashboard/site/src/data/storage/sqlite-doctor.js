@@ -12,6 +12,9 @@ import {
 } from './indexeddb.js';
 import { mergeRetainedRecords, RETENTION_WINDOW_DAYS } from './retention.js';
 import { SQLITE_INDEXEDDB_METADATA_SCHEMA } from './sqlite-indexeddb.js';
+import { createDebug } from '../../debug.js';
+
+const debug = createDebug('sqlite-doctor');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const EXPECTED_STORES = Object.keys(CANONICAL_DATABASE_SCHEMA);
@@ -572,6 +575,14 @@ export async function doctorSqliteDatabase(filename, options = {}) {
   let repairedCanonicalRows = canonicalRowsRemoved;
   let repairedTransactionRows = transactionRowsRemoved;
 
+  debug('diagnosed database', {
+    event: 'diagnosed',
+    needsRepair,
+    schemaIssueCount: beforeSchema.issues.length,
+    foreignKeyViolations: beforeSqlite.foreignKeyViolations,
+    invalidRecordCount: scanned.invalid.length
+  });
+
   if (needsRepair) {
     let repair;
     try {
@@ -633,6 +644,14 @@ export async function doctorSqliteDatabase(filename, options = {}) {
     else if (!sameBatch(lockedBatch, repair.repairedBatch)) actions.push('normalize-canonical-records');
     if (repairedTransactionRows > 0) actions.push('prune-expired-transactions');
     maintainSqlite(databasePath, actions, errors);
+    debug('repaired database', {
+      event: 'repaired',
+      actionCount: actions.length,
+      errorCount: errors.length,
+      invalidRecordsRemoved,
+      canonicalRecordsRemoved: repairedCanonicalRows,
+      transactionsRemoved: repairedTransactionRows
+    });
   }
 
   const afterSqlite = sqliteDiagnostics(databasePath);
@@ -646,6 +665,8 @@ export async function doctorSqliteDatabase(filename, options = {}) {
     && afterRelationshipIssues.length === 0
     && !afterScan.error
     && errors.length === 0;
+
+  debug('completed doctor run', { event: 'completed', healthy, actionCount: actions.length, errorCount: errors.length });
 
   return {
     command: 'doctor',

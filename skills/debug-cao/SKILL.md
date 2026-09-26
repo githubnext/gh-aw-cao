@@ -33,6 +33,8 @@ Choose the narrowest path that matches the first failed job or observed symptom.
 | `CAO_DASHBOARD_*` failure, Pages failure, or broken dashboard build | `.github/workflows/cao-dashboard.yml`, Activity dependency, build/deploy job, `dashboard/` source | [Dashboard source](https://github.com/githubnext/gh-aw-cao/tree/main/dashboard), [GitHub Pages Actions](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages) |
 | GitHub API rate limit or inaccessible evidence | admission summary, exact credential selected, rate-limit reset and target visibility | [CAO API capacity admission](https://githubnext.github.io/gh-aw-cao/authentication/#api-capacity-admission), [GitHub API rate limits](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api) |
 | Runner, checkout, action, Node, npm, or build failure | failed step logs, runner image, pinned action SHA/version, lockfile and runtime version | [GitHub Actions troubleshooting](https://docs.github.com/en/actions/monitoring-and-troubleshooting-workflows/troubleshooting-workflows) |
+| Dashboard client behaves incorrectly but the run/build succeeded | category-scoped browser logging via `?debug=` query parameter | `dashboard/site/src/debug.js`, [dashboard debug logging](#dashboard-debug-logging) |
+| Go/Redis dashboard server (`cao-dashboard`, `cao-functions`) misbehaves but starts | namespace logger output via `DEBUG` environment variable | `server/internal/logger/logger.go`, `server/README.md#debug-logging`, [dashboard debug logging](#dashboard-debug-logging) |
 
 ## Source Map
 
@@ -50,8 +52,19 @@ Inspect files at the failing workflow commit, not `main`.
 | Campaign declaration | `<campaign>/aw.yml`, `<campaign>/cao.json` | [CAO catalog](https://github.com/githubnext/gh-aw-cao) |
 | CAO architecture and contracts | `CODEBASE.yml`, `ARCHITECTURE.md`, `specs/` | [architecture source](https://github.com/githubnext/gh-aw-cao/blob/main/ARCHITECTURE.md), [specifications](https://github.com/githubnext/gh-aw-cao/tree/main/specs) |
 | gh-aw implementation | installed `gh aw` extension and generated lock metadata | [github/gh-aw](https://github.com/github/gh-aw), [documentation](https://github.github.com/gh-aw/) |
+| Dashboard client debug logging | `dashboard/site/src/debug.js` (`createDebug`, `isDebugEnabled`) | category loggers gated by `?debug=` query parameter |
+| Go/Redis dashboard server debug logging | `server/internal/logger/logger.go`, `server/internal/logger/slog_adapter.go` | namespace loggers gated by `DEBUG` environment variable |
 
 When linking a source file in an issue, replace `main` with the full 40-character CAO `resolvedCommit`, workflow SHA, gh-aw commit, or action SHA whenever one is known.
+
+### Dashboard debug logging
+
+Both the browser dashboard and the Go/Redis server share the same disabled-by-default, namespace/category pattern for diagnostic logging. Prefer enabling it over adding new log statements.
+
+- **Dashboard client (`dashboard/site/src/debug.js`)**: category loggers created with `createDebug(category)` stay silent until the page URL carries a `?debug=` query parameter. Use `?debug=1` or `?debug=*` for everything, or a comma-separated, wildcard-capable filter such as `?debug=data,render:*`; prefix a pattern with `-` to exclude it (e.g. `?debug=*,-render:*`). `?debug=auth` surfaces fixed `oauth branch=<operation>.<outcome>` authentication identifiers only, never credential values. `?debug-shard-limit=N` and `?debug-eager-ingest=1` narrow or force-complete activity-shard ingestion for reproducible profiling.
+- **Go/Redis dashboard server (`server/internal/logger/logger.go`)**: namespace loggers created with `logger.New(namespace)` write to stderr only when the namespace matches the `DEBUG` environment variable (comma-separated, wildcard-capable, `-` to exclude), for example `DEBUG=cao:server,cao:query` or `DEBUG='cao:*,-cao:redis'`. `ACTIONS_RUNNER_DEBUG=true` enables all namespaces (`cao:cli`, `cao:server`, `cao:ingest`, `cao:query`, `cao:redis`) when `DEBUG` is unset. Logs never contain access tokens, OAuth credentials, Redis credentials, query payloads, or source records.
+
+When a symptom is confined to the browser client or the Go server and the run/build/compile already succeeded, capture output with the narrowest matching `?debug=` or `DEBUG` filter before reading raw source, and quote only the resulting log lines (never secret values) as evidence in step 2.
 
 ## Procedure
 
