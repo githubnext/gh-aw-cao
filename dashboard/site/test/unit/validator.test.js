@@ -2524,8 +2524,7 @@ dashboard:
           'built-in page "overview" requires declarative definitions for source "workflows".',
           'built-in page "overview" requires declarative definitions for source "runs".',
           'built-in page "overview" requires declarative definitions for source "usage".',
-          'built-in page "overview" requires declarative definitions for source "findings".',
-          'built-in page "overview" requires declarative definitions for source "operational-graders".'
+          'built-in page "overview" requires declarative definitions for source "findings".'
         ])
       );
     }
@@ -2649,7 +2648,7 @@ dashboard:
     }
   });
 
-  it('DLS-PAGE-002 DLS-PAGE-014 rejects an overview built-in page definition that omits linked findings and operational-grader timeline coverage with DLS-E003', () => {
+  it('DLS-PAGE-002 rejects an overview built-in page definition that omits linked findings coverage with DLS-E003', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
   id: incomplete-overview-page
@@ -2696,14 +2695,6 @@ dashboard:
             encoding:
               columns:
                 - field: observed-at
-          - id: operational-graders-view
-            data:
-              source: operational-graders
-            mark: table
-            encoding:
-              columns:
-                - field: operational-grader
-                - field: observed-at
 `);
 
     expect(result.ok).toBe(false);
@@ -2724,11 +2715,6 @@ dashboard:
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
             message: 'built-in page "overview" definition must expose field "run-link" for source "findings".'
-          }),
-          expect.objectContaining({
-            code: 'DLS-E003',
-            path: '$.dashboard.pages[0].definition.views',
-            message: 'built-in page "overview" definition must expose field "operational-grader-definition" for source "operational-graders".'
           })
         ])
       );
@@ -2910,20 +2896,6 @@ dashboard:
                 - field: issue-link
                 - field: pull-request-link
                 - field: run-link
-          - id: operational-grader-timeline
-            data:
-              source: operational-graders
-            mark: chart
-            encoding:
-              x:
-                field: observed-at
-                type: temporal
-                time-unit: day
-              y:
-                field: operational-grader
-                aggregate: max
-              color:
-                field: operational-grader-definition
     - id: runs
       kind: built-in
       page: runs
@@ -3158,28 +3130,6 @@ dashboard:
                 - field: issue-link
                 - field: pull-request-link
                 - field: run-link
-          - id: operational-grader-timeline
-            data:
-              source: operational-graders
-              source-metadata:
-                source-id: operational-graders-fixture
-                source-kind: fixture
-                as-of: '2026-08-29T12:00:00Z'
-                retrieved-at: '2026-08-29T12:05:00Z'
-                completeness: unknown
-                freshness: fresh
-                availability: unavailable
-            mark: chart
-            encoding:
-              x:
-                field: observed-at
-                type: temporal
-                time-unit: day
-              y:
-                field: operational-grader
-                aggregate: max
-              color:
-                field: operational-grader-definition
 `);
 
     expect(result.ok).toBe(true);
@@ -5224,13 +5174,13 @@ describe('declarative query validation', () => {
   it('validates reusable temporal-series projections', () => {
     const query = {
       name: 'workflow-costs',
-      from: 'operational-graders',
+      from: 'grader-observations',
       'temporal-series': {
         time: 'observed-at',
         series: 'workflow',
         carry: ['workflow'],
-        measures: [{ field: 'operational-grader', key: 'operational-grader-definition', kind: 'primary' }],
-        maps: [{ field: 'diagnostics', definitions: 'diagnostic-definitions', group: 'operational-grader-definition', kind: 'diagnostic' }]
+        measures: [{ field: 'value', key: 'grader', kind: 'primary' }],
+        maps: [{ field: 'status', definitions: 'grader', group: 'grader', kind: 'diagnostic' }]
       }
     };
 
