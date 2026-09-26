@@ -10,6 +10,9 @@ on:
   workflow_dispatch:
 max-ai-credits: 400
 max-daily-ai-credits: -1
+engine:
+  id: pi
+  model: copilot/gpt-5.4
 timeout-minutes: 30
 run-name: "SVG visual audit · ${{ github.event.pull_request.number || github.run_number }}"
 concurrency:
@@ -21,8 +24,9 @@ permissions:
   copilot-requests: write
 strict: true
 tools:
+  cli-proxy: true
   playwright:
-    version: "0.1.13"
+    version: "0.1.18"
 network:
   allowed:
     - defaults
