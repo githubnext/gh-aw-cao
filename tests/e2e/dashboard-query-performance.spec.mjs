@@ -59,7 +59,9 @@ async function serveDashboard(request, response) {
       "cache-control": "no-store",
       "content-type": contentTypes.get(extname(localPath)) || "application/octet-stream",
     });
-    response.end(await readFile(localPath));
+    response.end(pathname === "/dashboard.json"
+      ? JSON.stringify(dashboardSource)
+      : await readFile(localPath));
     return;
   } catch (error) {
     if (error?.code !== "ENOENT" && error?.message !== "Not a file") throw error;
