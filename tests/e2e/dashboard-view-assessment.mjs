@@ -50,12 +50,15 @@ export function renderAssessedDashboardQueryUsageGraph(dashboard, pageChunks) {
 // timeout for setup and summary upload, while allowing a margin beyond 49 views.
 export const dashboardAssessmentStartupBudgetMs = 120_000;
 export const dashboardAssessmentPageBudgetMs = 30_000;
+export const dashboardAssessmentCleanupBudgetMs = 15_000;
 export const maximumDashboardAssessmentTimeoutMs = 1_600_000;
 
 export function dashboardAssessmentTimeout(pageCount) {
   const pages = Number.isFinite(pageCount) && pageCount > 0 ? Math.floor(pageCount) : 0;
   return Math.min(
-    dashboardAssessmentStartupBudgetMs + pages * dashboardAssessmentPageBudgetMs,
+    dashboardAssessmentStartupBudgetMs
+      + pages * dashboardAssessmentPageBudgetMs
+      + dashboardAssessmentCleanupBudgetMs,
     maximumDashboardAssessmentTimeoutMs,
   );
 }
