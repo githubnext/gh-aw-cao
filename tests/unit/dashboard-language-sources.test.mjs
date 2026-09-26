@@ -543,6 +543,11 @@ test("dashboard source bridge publishes normalized gh-aw events", () => {
   assert.equal("events" in sources, false);
   assert.equal(sources.audits.rows[0]["event-type"], "agent_turn");
   assert.equal(sources.audits.rows[0]["event-source"], "agent");
+  assert.deepEqual(sources.workflows.rows[0]["workflow-link"], {
+    relation: "workflow",
+    href: "https://github.com/githubnext/gh-aw-cao/actions/workflows/dashboard.lock.yml",
+    label: ".github/workflows/dashboard.lock.yml",
+  });
 });
 
 test("dashboard source bridge excludes transaction logs outside the current run generation", () => {

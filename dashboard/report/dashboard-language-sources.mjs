@@ -755,6 +755,13 @@ function workflowRows(deployed, generatedAt, inventory, controlSettings) {
       "gh-aw-update-state": workflow.updateState || "unknown",
       "gh-aw-metadata": workflow.ghAwMetadata || null,
       "gh-aw-manifest": workflow.ghAwManifest || null,
+      ...(workflow.path ? {
+        "workflow-link": link(
+          "workflow",
+          `${githubServerUrl}/${workflow.repository}/actions/workflows/${workflow.path.split("/").at(-1)}`,
+          workflow.name || workflow.path,
+        ),
+      } : {}),
       "rollout-mode": details?.campaignTargets?.find(
         (target) => target.repository.toLowerCase() === workflowRepository,
       )?.mode || details?.configuredMode || recentMode,
