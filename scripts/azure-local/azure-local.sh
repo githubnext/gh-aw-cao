@@ -96,6 +96,23 @@ process_matches() {
     [[ "$actual_executable" == "$(readlink -f "$expected_executable")" ]]
 }
 
+process_group_matches() {
+  local process stat_pgid executable expected_handler expected_host
+  [[ -n "${FUNCTIONS_PGID:-}" ]] || return 1
+  expected_handler="$(readlink -f "$APP_DIR/cao-functions")"
+  expected_host="$(readlink -f "${FUNC_BIN:-/nonexistent}")"
+  for process in /proc/[0-9]*; do
+    [[ -r "$process/stat" && -e "$process/exe" ]] || continue
+    stat_pgid="$(awk '{print $5}' "$process/stat")"
+    [[ "$stat_pgid" == "$FUNCTIONS_PGID" ]] || continue
+    executable="$(readlink -f "$process/exe")"
+    if [[ "$executable" == "$expected_handler" || "$executable" == "$expected_host" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 stop_internal() {
   mkdir -p "$LOG_DIR"
   if [[ -f "$RUNTIME_ENV" ]]; then
@@ -103,13 +120,14 @@ stop_internal() {
     source "$RUNTIME_ENV"
   fi
   if process_matches \
-    "${FUNCTIONS_PID:-}" "${FUNCTIONS_START_TIME:-}" "${FUNC_BIN:-}"; then
-    kill -TERM -- "-$FUNCTIONS_PID" 2>/dev/null || kill -TERM "$FUNCTIONS_PID" 2>/dev/null || true
+    "${FUNCTIONS_PID:-}" "${FUNCTIONS_START_TIME:-}" "${FUNC_BIN:-}" ||
+    process_group_matches; then
+    kill -TERM -- "-${FUNCTIONS_PGID:-$FUNCTIONS_PID}" 2>/dev/null || true
     for _ in {1..50}; do
-      kill -0 "$FUNCTIONS_PID" 2>/dev/null || break
+      kill -0 -- "-${FUNCTIONS_PGID:-$FUNCTIONS_PID}" 2>/dev/null || break
       sleep 0.1
     done
-    kill -KILL -- "-$FUNCTIONS_PID" 2>/dev/null || true
+    kill -KILL -- "-${FUNCTIONS_PGID:-$FUNCTIONS_PID}" 2>/dev/null || true
   fi
   capture_container_logs "${AZURITE_CONTAINER_ID:-}" azurite
   capture_container_logs "${REDIS_CONTAINER_ID:-}" redis
@@ -291,9 +309,11 @@ JSON
     setsid "$FUNC_BIN" start --port "$function_port" --verbose >"$LOG_DIR/functions.log" 2>&1 &
     FUNCTIONS_PID=$!
     FUNCTIONS_START_TIME="$(awk '{print $22}' "/proc/$FUNCTIONS_PID/stat")"
+    FUNCTIONS_PGID="$(ps -o pgid= -p "$FUNCTIONS_PID" | tr -d ' ')"
     printf '%s\n' "$FUNCTIONS_PID" >"$STATE_DIR/functions.pid"
     write_env_value FUNCTIONS_PID "$FUNCTIONS_PID"
     write_env_value FUNCTIONS_START_TIME "$FUNCTIONS_START_TIME"
+    write_env_value FUNCTIONS_PGID "$FUNCTIONS_PGID"
   )
   if [[ -n "$previous_exit_trap" ]]; then
     eval "$previous_exit_trap"
