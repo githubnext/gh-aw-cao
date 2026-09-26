@@ -35,7 +35,8 @@ test("multi-device docs tester runs daily and covers browser and appearance comp
   assert.match(compiled, /cron: "\d+ \d+ \* \* \*"  # Friendly format: daily \(scattered\)/);
   assert.doesNotMatch(compiled, /^  pull_request:/m);
   assert.match(source, /for ATTEMPT in 1 2 3/);
-  assert.match(source, /npm ci --ignore-scripts && exit 0/);
+  assert.match(source, /timeout 3m npm ci --ignore-scripts && exit 0/);
+  assert.match(source, /npm ci failed after 3 attempts/);
   assert.match(source, /playwright@1\.63\.0-alpha-2026-08-05 install --with-deps webkit/);
   assert.equal(
     (source.match(/PLAYWRIGHT_BROWSERS_PATH: \$\{\{ runner\.temp \}\}\/gh-aw\/playwright-browsers/g) || []).length,

@@ -56,15 +56,14 @@ network:
 pre-agent-steps:
   - name: Install documentation dependencies
     run: |
-      timeout 10m bash <<'EOF'
       for ATTEMPT in 1 2 3; do
-        npm ci --ignore-scripts && exit 0
+        timeout 3m npm ci --ignore-scripts && exit 0
         if [ "$ATTEMPT" -lt 3 ]; then
           sleep $((ATTEMPT * 10))
         fi
       done
+      echo "npm ci failed after 3 attempts" >&2
       exit 1
-      EOF
   - name: Build documentation
     run: timeout 10m npm run docs:build
   - name: Install WebKit browser
