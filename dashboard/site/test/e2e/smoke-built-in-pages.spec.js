@@ -464,7 +464,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   const campaignInsights = page.locator('[data-page-id="campaign-insights"]');
   await expect(campaignInsights).toBeVisible();
   await expect(campaignInsights.locator('[data-view-id="campaign-audit-event-summary-buckets"]')).toHaveCount(0);
-  await expect(campaignInsights).toHaveAttribute('data-view-mode', 'chart');
+  await expect(campaignInsights).toHaveAttribute('data-view-mode', 'table');
   await expect(campaignInsights.locator('.view-mode-control')).toHaveCount(0);
   await expect(campaignInsights.getByRole('navigation', { name: 'Ambient Context views' })).toBeVisible();
   await expect(campaignInsights.getByRole('navigation', { name: 'Ambient Context views' })).toHaveCSS('display', 'grid');

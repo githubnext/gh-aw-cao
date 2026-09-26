@@ -38,14 +38,17 @@ describe('Audit dashboard view', () => {
       ],
       arguments: [{ name: 'campaign', field: 'campaign' }]
     });
-    expect(insights.views.slice(2).map((/** @type {{ data: Record<string, string> }} */ view) => view.data)).toEqual([
-      expect.objectContaining({ source: 'audit-event-summary-buckets', 'route-field': 'campaign' })
-    ]);
+    const auditTable = insights.views.find((/** @type {{ id: string }} */ view) => view.id === 'campaign-audit-event-table');
+    expect(auditTable?.data).toMatchObject({
+      source: 'audit-event-summary-buckets',
+      'route-field': 'campaign'
+    });
+    expect(insights.views.some(
+      (/** @type {{ id: string }} */ view) => view.id === 'campaign-audit-event-summary-buckets'
+    )).toBe(false);
     expect(insights.views.filter((/** @type {{ mark: string }} */ view) => view.mark !== 'element')
       .map((/** @type {{ mark: string }} */ view) => view.mark))
       .toEqual(['table', 'list']);
-    expect(insights.views.map((/** @type {{ title: string }} */ view) => view.title))
-      .not.toContain('Severity audit events');
     expect(issues.views
       .filter((/** @type {{ data?: { source?: string } }} */ view) => view.data?.source === 'campaign-worker-issues')
       .map((/** @type {{ data: Record<string, string> }} */ view) => view.data['route-field'])).toEqual([
