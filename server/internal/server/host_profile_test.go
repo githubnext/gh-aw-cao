@@ -63,6 +63,12 @@ func TestHostProfileRejectsInconsistentCapabilities(t *testing.T) {
 			value.SingleReplica = true
 			return value
 		}(),
+		func() HostProfile {
+			value := base
+			value.Authentication = HostAuthenticationBearer
+			value.Listener = HostListenerPlatform
+			return value
+		}(),
 	}
 
 	for _, profile := range tests {

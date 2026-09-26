@@ -100,11 +100,11 @@ func (profile HostProfile) validate() error {
 	if profile.RedisSession != HostRedisPooled && profile.RedisSession != HostRedisSerialized {
 		return fmt.Errorf("host profile %q has unsupported Redis session %q", profile.Name, profile.RedisSession)
 	}
-	if profile.RedisSession == HostRedisSerialized && !profile.RequiresRedis {
-		return fmt.Errorf("host profile %q cannot serialize an optional Redis dependency", profile.Name)
+	if !profile.RequiresRedis {
+		return fmt.Errorf("host profile %q cannot disable the server Redis dependency", profile.Name)
 	}
-	if profile.Authentication == HostAuthenticationOAuth && !profile.RequiresRedis {
-		return fmt.Errorf("host profile %q cannot use server-side OAuth without Redis", profile.Name)
+	if profile.Listener == HostListenerPlatform && profile.Authentication != HostAuthenticationOAuth {
+		return fmt.Errorf("host profile %q cannot use bearer authentication with a platform listener", profile.Name)
 	}
 	if profile.IsolateProcessNamespace && profile.RedisSession != HostRedisSerialized {
 		return fmt.Errorf("host profile %q requires namespace isolation without a serialized Redis session", profile.Name)
