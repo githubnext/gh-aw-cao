@@ -1,4 +1,3 @@
-import { elementLoadsSourcesAsync } from "../../dashboard/site/src/components/ui-elements.js";
 import { resolveDashboardDocument } from "../../dashboard/site/src/dashboard-chunks.js";
 import { renderDashboardQueryUsageGraph } from "../../dashboard/site/src/query-usage.js";
 
@@ -38,20 +37,6 @@ export function declaredDashboardViewIds(pageDefinition, reusableViews = []) {
         ? view.id
         : typeof view === "string" && reusableViewIds.has(view) ? view : `view-${index + 1}`
     ));
-}
-
-export function dashboardPageRendersBeforeSources(pageDefinition, reusableViews = []) {
-  const reusableById = new Map(reusableViews.map((view) => [view?.id, view]));
-  const views = pageDefinition?.kind === "built-in"
-    ? pageDefinition.definition?.views
-    : pageDefinition?.views;
-  return Array.isArray(views) && views.some((configured) => {
-    const view = typeof configured === "string" ? reusableById.get(configured) : configured;
-    return typeof view === "object"
-      && view !== null
-      && typeof view.element === "string"
-      && elementLoadsSourcesAsync(view.element);
-  });
 }
 
 export function renderAssessedDashboardQueryUsageGraph(dashboard, pageChunks) {

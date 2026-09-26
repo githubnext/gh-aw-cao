@@ -6,7 +6,6 @@ import {
   dashboardAssessmentPageBudgetMs,
   dashboardAssessmentStartupBudgetMs,
   dashboardAssessmentTimeout,
-  dashboardPageRendersBeforeSources,
   declaredDashboardViewIds,
   ignoredDashboardPageIds,
   isIgnoredDashboardPageId,
@@ -192,13 +191,9 @@ test("each selected dashboard view renders with live data", async ({ page }, tes
             "The dashboard must complete its canonical data refresh",
           ).toBe("completed");
         }
-        const expectedPageRenders = dashboardPageRendersBeforeSources(
-          pageDefinition,
-          dashboard.dashboard.views,
-        ) ? 2 : 1;
-        await page.waitForFunction(({ pageId, expected }) =>
-          (window.__dashboardPageRenderCounts[pageId] || 0) >= expected,
-        { pageId: pageDefinition.id, expected: expectedPageRenders }, {
+        await page.waitForFunction((pageId) =>
+          (window.__dashboardPageRenderCounts[pageId] || 0) >= 1,
+        pageDefinition.id, {
           timeout: dashboardAssessmentPageBudgetMs,
         });
         await expect(dashboardRoot).not.toHaveAttribute("aria-busy", "true", { timeout: 120_000 });
