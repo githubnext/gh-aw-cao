@@ -208,10 +208,12 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
     const metadata = queryMetadata(logicalSources, source, source, true);
     return [name, {
       source: name,
-      rows: [{
-        ...computedLiterals,
-        ...Object.fromEntries(values.map((value) => [value.as, counts[source]]))
-      }],
+      rows: counts[source] === 0 && Object.keys(computedLiterals).length > 0
+        ? []
+        : [{
+            ...computedLiterals,
+            ...Object.fromEntries(values.map((value) => [value.as, counts[source]]))
+          }],
       metadata: {
         ...metadata,
         'source-id': `${name}-query`,

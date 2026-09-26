@@ -363,9 +363,7 @@ describe('canonical view sources', () => {
     expect(result['indexing-tools-table-count'].rows).toEqual([
       { table: 'tool events', records: 1 }
     ]);
-    expect(result['indexing-domains-table-count'].rows).toEqual([
-      { table: 'network domains', records: 0 }
-    ]);
+    expect(result['indexing-domains-table-count'].rows).toEqual([]);
     expect(Object.keys(result)).toEqual(required.filter((name) => (
       name !== 'indexing-operational-values-table-count'
     )));
