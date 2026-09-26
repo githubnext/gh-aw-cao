@@ -159,6 +159,32 @@ func registerRedisNamespaceFlagWithEnvOverride(cmd *cobra.Command, usage string)
 	return namespace, defaultSource, err
 }
 
+// telemetrySetupFunc matches telemetry.Setup's signature so tests can
+// substitute a fake without opening real OTLP exporters or network sockets.
+type telemetrySetupFunc func(ctx context.Context, version string) (telemetry.Shutdown, error)
+
+// setupTelemetry configures tracing for one subcommand invocation and
+// returns a close function every subcommand defers identically.
+//
+// The close function bounds shutdown to 5 seconds using a context that
+// survives cancellation of ctx, because ctx is normally already cancelled by
+// the signal handler that triggered shutdown. A failed flush is logged
+// rather than propagated: telemetry cleanup must never mask the subcommand's
+// own result.
+func setupTelemetry(ctx context.Context, version string, setup telemetrySetupFunc) (func(), error) {
+	shutdown, err := setup(ctx, version)
+	if err != nil {
+		return nil, fmt.Errorf("configure telemetry: %w", err)
+	}
+	return func() {
+		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		if err := shutdown(shutdownCtx); err != nil {
+			commandLog.Printf("telemetry shutdown failed")
+		}
+	}, nil
+}
+
 func main() {
 	if override := strings.TrimSpace(os.Getenv("CAO_BUILD_VERSION")); override != "" {
 		version = override
@@ -290,15 +316,11 @@ func newServeHostedCommand() *cobra.Command {
 	cmd.RunE = func(*cobra.Command, []string) error {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
-		shutdownTelemetry, err := telemetry.Setup(ctx, version)
+		closeTelemetry, err := setupTelemetry(ctx, version, telemetry.Setup)
 		if err != nil {
-			return fmt.Errorf("configure telemetry: %w", err)
+			return err
 		}
-		defer func() {
-			shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-			defer cancel()
-			_ = shutdownTelemetry(shutdownCtx)
-		}()
+		defer closeTelemetry()
 		app, err := server.NewHostedAppFromEnv(
 			ctx, *listen, *cert, *key, *siteDirectory, *dashboardQueries, *databaseQueries,
 			log.New(os.Stderr, "cao-dashboard: ", log.LstdFlags),
@@ -333,15 +355,11 @@ func newServeCommand() *cobra.Command {
 		commandLog.Printf("serve flags parsed tls=%t source_ingestion=%t", *cert != "", *source != "")
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
-		shutdownTelemetry, err := telemetry.Setup(ctx, version)
+		closeTelemetry, err := setupTelemetry(ctx, version, telemetry.Setup)
 		if err != nil {
-			return fmt.Errorf("configure telemetry: %w", err)
+			return err
 		}
-		defer func() {
-			shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-			defer cancel()
-			_ = shutdownTelemetry(shutdownCtx)
-		}()
+		defer closeTelemetry()
 		client, err := redisx.New(*redisURL)
 		if err != nil {
 			return err
@@ -401,15 +419,11 @@ func newIngestCommand() *cobra.Command {
 		}
 		store := redisx.NewStore(client, namespace)
 		ctx := context.Background()
-		shutdownTelemetry, err := telemetry.Setup(ctx, version)
+		closeTelemetry, err := setupTelemetry(ctx, version, telemetry.Setup)
 		if err != nil {
-			return fmt.Errorf("configure telemetry: %w", err)
+			return err
 		}
-		defer func() {
-			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			_ = shutdownTelemetry(shutdownCtx)
-		}()
+		defer closeTelemetry()
 		if err := store.Ping(ctx); err != nil {
 			return errors.New("redis is unavailable")
 		}
@@ -437,15 +451,11 @@ func newCollectCommand() *cobra.Command {
 	cmd.RunE = func(*cobra.Command, []string) error {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
-		shutdownTelemetry, err := telemetry.Setup(ctx, version)
+		closeTelemetry, err := setupTelemetry(ctx, version, telemetry.Setup)
 		if err != nil {
-			return fmt.Errorf("configure telemetry: %w", err)
+			return err
 		}
-		defer func() {
-			shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-			defer cancel()
-			_ = shutdownTelemetry(shutdownCtx)
-		}()
+		defer closeTelemetry()
 		collector, err := server.NewCollectorFromEnv(ctx, *databaseQueries)
 		if err != nil {
 			return err
