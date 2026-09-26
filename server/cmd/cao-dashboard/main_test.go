@@ -65,6 +65,48 @@ func TestResolveRedisEndpoint(t *testing.T) {
 	}
 }
 
+func TestResolveNamespaceDefault(t *testing.T) {
+	const checkoutDefault = "checkout-abc123"
+
+	tests := []struct {
+		name          string
+		envValue      string
+		wantNamespace string
+		wantSource    namespaceDefaultSource
+	}{
+		{
+			name:          "env override takes priority over checkout default",
+			envValue:      "custom-namespace",
+			wantNamespace: "custom-namespace",
+			wantSource:    namespaceDefaultSourceEnv,
+		},
+		{
+			name:          "checkout default used when env is empty",
+			envValue:      "",
+			wantNamespace: checkoutDefault,
+			wantSource:    namespaceDefaultSourceCheckout,
+		},
+		{
+			name:          "checkout default used when env is only whitespace",
+			envValue:      "   ",
+			wantNamespace: checkoutDefault,
+			wantSource:    namespaceDefaultSourceCheckout,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotNamespace, gotSource := resolveNamespaceDefault(tt.envValue, checkoutDefault)
+			if gotNamespace != tt.wantNamespace {
+				t.Errorf("resolveNamespaceDefault() namespace = %q, want %q", gotNamespace, tt.wantNamespace)
+			}
+			if gotSource != tt.wantSource {
+				t.Errorf("resolveNamespaceDefault() source = %q, want %q", gotSource, tt.wantSource)
+			}
+		})
+	}
+}
+
 func TestResolveConsumerName(t *testing.T) {
 	stubHostname := func() (string, error) { return "stub-host", nil }
 
