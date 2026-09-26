@@ -472,7 +472,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await expect(mobileBack).toBeVisible();
   await expect(page.locator('.overview-header')).toContainText('Operational activity for the Ambient Context campaign.');
   const performanceBaseline = campaignInsights.locator('[data-view-id="campaign-performance-baseline"]');
-  await expect(performanceBaseline).toBeHidden();
+  await expect(performanceBaseline).toBeVisible();
   await expect(performanceBaseline).toContainText('Run success');
   await expect(performanceBaseline).toContainText('Produced outputs');
   await expect(performanceBaseline).toContainText('Average AIC / successful run');

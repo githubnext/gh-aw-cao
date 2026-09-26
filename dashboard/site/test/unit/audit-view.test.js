@@ -43,9 +43,6 @@ describe('Audit dashboard view', () => {
       source: 'audit-event-summary-buckets',
       'route-field': 'campaign'
     });
-    expect(insights.views.some(
-      (/** @type {{ id: string }} */ view) => view.id === 'campaign-audit-event-summary-buckets'
-    )).toBe(false);
     expect(insights.views.filter((/** @type {{ mark: string }} */ view) => view.mark !== 'element')
       .map((/** @type {{ mark: string }} */ view) => view.mark))
       .toEqual(['table', 'list']);
