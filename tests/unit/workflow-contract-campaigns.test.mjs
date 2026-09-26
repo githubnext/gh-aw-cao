@@ -494,6 +494,15 @@ test("campaign creation guidance defines optional package problem clustering", (
   assert.match(campaignSkill, /fault-isolated, timed, cancelable subprocess/);
 });
 
+test("campaign creation guidance gives dispatchers campaign-scoped repo-memory", () => {
+  const campaignSkill = readFileSync(join(root, "skills", "create-cao-campaign", "SKILL.md"), "utf8");
+
+  assert.match(campaignSkill, /repo-memory:\n  branch-name: "memory\/<campaign-slug>"/);
+  assert.match(campaignSkill, /orchestrator prompt must read and use `\$GH_AW_MEMORY_DIR` before selecting dispatches/);
+  assert.match(campaignSkill, /Encourage workers to use the same campaign memory branch/);
+  assert.match(campaignSkill, /never as policy, target authority, credential storage/);
+});
+
 test("README routes zero-to-CAO requests to the setup skill", () => {
   const readme = readFileSync(join(root, "README.md"), "utf8");
   const setupSkillPath = join(root, "skills", "setup-cao", "SKILL.md");
