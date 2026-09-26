@@ -89,12 +89,24 @@ func ValidPath(value string) bool {
 }
 
 func Load(directory string) (Snapshot, error) {
-	manifestPath := filepath.Join(directory, "memory", "manifest.json")
-	content, err := os.ReadFile(manifestPath) // #nosec G304 -- directory is operator-selected.
+	root, err := os.OpenRoot(directory)
+	if err != nil {
+		return Snapshot{}, fmt.Errorf("open repository-memory root: %w", err)
+	}
+	defer root.Close()
+	manifestPath := filepath.Join("memory", "manifest.json")
+	var content []byte
+	manifestFile, err := openRegularFile(root, manifestPath)
 	if errors.Is(err, os.ErrNotExist) {
 		content = []byte(`{"version":1,"campaigns":[]}`)
 	} else if err != nil {
 		return Snapshot{}, fmt.Errorf("read repository-memory manifest: %w", err)
+	} else {
+		content, err = io.ReadAll(manifestFile)
+		closeErr := manifestFile.Close()
+		if err != nil || closeErr != nil {
+			return Snapshot{}, errors.New("read repository-memory manifest: unavailable")
+		}
 	}
 	var manifest Manifest
 	if err := json.Unmarshal(content, &manifest); err != nil {
@@ -127,14 +139,10 @@ func Load(directory string) (Snapshot, error) {
 				!objectIDPattern.MatchString(file.OID) {
 				return Snapshot{}, fmt.Errorf("repository-memory file %q is invalid", file.Path)
 			}
-			fullPath := filepath.Join(directory, "memory", campaign.Campaign, filepath.FromSlash(file.Path))
-			info, err := os.Lstat(fullPath) // #nosec G304 -- campaign and path are strictly validated.
-			if err != nil || !info.Mode().IsRegular() {
-				return Snapshot{}, fmt.Errorf("read repository-memory file %q: unavailable", file.Path)
-			}
-			handle, err := os.Open(fullPath) // #nosec G304 -- campaign and path are strictly validated.
+			fullPath := filepath.Join("memory", campaign.Campaign, filepath.FromSlash(file.Path))
+			handle, err := openRegularFile(root, fullPath)
 			if err != nil {
-				return Snapshot{}, fmt.Errorf("open repository-memory file %q: %w", file.Path, err)
+				return Snapshot{}, fmt.Errorf("read repository-memory file %q: unavailable", file.Path)
 			}
 			payload, readErr := io.ReadAll(io.LimitReader(handle, MaxFileSize+1))
 			closeErr := handle.Close()
@@ -163,4 +171,20 @@ func Load(directory string) (Snapshot, error) {
 	}
 	revision := sha256.Sum256(revisionBytes)
 	return Snapshot{Manifest: normalized, Files: files, Revision: hex.EncodeToString(revision[:])}, nil
+}
+
+func openRegularFile(root *os.Root, name string) (*os.File, error) {
+	segments := strings.Split(filepath.Clean(name), string(filepath.Separator))
+	for index := range segments {
+		info, err := root.Lstat(filepath.Join(segments[:index+1]...))
+		if err != nil {
+			return nil, err
+		}
+		if info.Mode()&os.ModeSymlink != 0 ||
+			(index < len(segments)-1 && !info.IsDir()) ||
+			(index == len(segments)-1 && !info.Mode().IsRegular()) {
+			return nil, errors.New("repository-memory path is not a regular file")
+		}
+	}
+	return root.Open(name)
 }

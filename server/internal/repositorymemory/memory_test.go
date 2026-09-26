@@ -122,6 +122,31 @@ func TestLoadRejectsInvalidMemory(t *testing.T) {
 	}
 }
 
+func TestLoadRejectsSymlinkedMemoryPath(t *testing.T) {
+	root := t.TempDir()
+	outside := t.TempDir()
+	content := []byte("context")
+	manifest := Manifest{
+		Version: 1,
+		Campaigns: []Campaign{{
+			Campaign: "campaign",
+			Branch:   "memory/campaign",
+			Files:    []File{{Path: "notes/context.txt", Size: int64(len(content))}},
+		}},
+	}
+	writeFixture(t, root, manifest, "campaign/unused.txt", content)
+	if err := os.WriteFile(filepath.Join(outside, "context.txt"), content, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(root, "memory", "campaign", "notes")); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := Load(root); err == nil || !strings.Contains(err.Error(), "unavailable") {
+		t.Fatalf("error = %v, want unavailable symlink path", err)
+	}
+}
+
 func decodeManifest(t *testing.T, data []byte) Manifest {
 	t.Helper()
 	var manifest Manifest
