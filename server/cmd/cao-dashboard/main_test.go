@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"errors"
+	"testing"
+)
 
 func TestResolveRedisEndpoint(t *testing.T) {
 	const defaultValue = "redis://127.0.0.1:6379/0"
@@ -60,4 +63,55 @@ func TestResolveRedisEndpoint(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestResolveConsumerName(t *testing.T) {
+	stubHostname := func() (string, error) { return "stub-host", nil }
+
+	t.Run("flag takes priority over hostname", func(t *testing.T) {
+		gotName, gotSource, err := resolveConsumerName("worker-1", stubHostname)
+		if err != nil {
+			t.Fatalf("resolveConsumerName() error = %v, want nil", err)
+		}
+		if gotName != "worker-1" {
+			t.Errorf("resolveConsumerName() name = %q, want %q", gotName, "worker-1")
+		}
+		if gotSource != consumerNameSourceFlag {
+			t.Errorf("resolveConsumerName() source = %q, want %q", gotSource, consumerNameSourceFlag)
+		}
+	})
+
+	t.Run("hostname used when flag is empty", func(t *testing.T) {
+		gotName, gotSource, err := resolveConsumerName("", stubHostname)
+		if err != nil {
+			t.Fatalf("resolveConsumerName() error = %v, want nil", err)
+		}
+		if gotName != "stub-host" {
+			t.Errorf("resolveConsumerName() name = %q, want %q", gotName, "stub-host")
+		}
+		if gotSource != consumerNameSourceHostname {
+			t.Errorf("resolveConsumerName() source = %q, want %q", gotSource, consumerNameSourceHostname)
+		}
+	})
+
+	t.Run("hostname used when flag is only whitespace", func(t *testing.T) {
+		gotName, gotSource, err := resolveConsumerName("   ", stubHostname)
+		if err != nil {
+			t.Fatalf("resolveConsumerName() error = %v, want nil", err)
+		}
+		if gotName != "stub-host" {
+			t.Errorf("resolveConsumerName() name = %q, want %q", gotName, "stub-host")
+		}
+		if gotSource != consumerNameSourceHostname {
+			t.Errorf("resolveConsumerName() source = %q, want %q", gotSource, consumerNameSourceHostname)
+		}
+	})
+
+	t.Run("error propagated when flag empty and hostname fails", func(t *testing.T) {
+		failingHostname := func() (string, error) { return "", errors.New("no hostname") }
+		_, _, err := resolveConsumerName("", failingHostname)
+		if err == nil {
+			t.Fatal("resolveConsumerName() error = nil, want non-nil")
+		}
+	})
 }
