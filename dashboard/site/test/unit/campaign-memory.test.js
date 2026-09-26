@@ -134,4 +134,124 @@ describe('campaign repository memory', () => {
       'Memory file exceeds the published size limit.'
     ));
   });
+
+  it('stays silent by default and logs only scalar metadata under its predictable category', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '?debug=campaign-memory', output })
+      };
+    });
+    vi.resetModules();
+    const { renderCampaignMemory: renderCampaignMemoryWithDebug } = await import('../../src/components/campaign-memory.js');
+
+    memoryApi.list.mockResolvedValue({
+      branch: 'memory/ambient-context',
+      commit: 'a'.repeat(40),
+      files: [{ path: 'notes/first.json', oid: 'b'.repeat(40), size: 14 }],
+      omitted: {
+        fileLimit: 0, fileSize: 0, extension: 0, nesting: 0, unsafePath: 0, unsupportedType: 0
+      },
+    });
+    memoryApi.read.mockResolvedValueOnce({ content: '{"answer":42}\n' });
+
+    const rendered = renderCampaignMemoryWithDebug({ campaignId: 'ambient-context', campaignName: 'Ambient Context' });
+    document.body.append(rendered);
+
+    await vi.waitFor(() => expect(output.debug).toHaveBeenCalledWith(
+      '[cao:campaign-memory]',
+      { operation: 'list-manifest', status: 'ready', fileCount: 1 }
+    ));
+    await vi.waitFor(() => expect(output.debug).toHaveBeenCalledWith(
+      '[cao:campaign-memory]',
+      { operation: 'read-file', status: 'ready', contentLength: '{"answer":42}\n'.length }
+    ));
+
+    for (const call of output.debug.mock.calls) {
+      const metadata = call[1];
+      expect(Object.values(metadata).every((value) => typeof value !== 'object')).toBe(true);
+    }
+
+    rendered.remove();
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
+
+  it('logs a read-file error with only the error name, never the message', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '?debug=campaign-memory', output })
+      };
+    });
+    vi.resetModules();
+    const { renderCampaignMemory: renderCampaignMemoryWithDebug } = await import('../../src/components/campaign-memory.js');
+
+    memoryApi.list.mockResolvedValue({
+      branch: 'memory/ambient-context',
+      commit: 'a'.repeat(40),
+      files: [{ path: 'large.txt', oid: 'b'.repeat(40), sha256: 'c'.repeat(64), size: 10 }],
+      omitted: {
+        fileLimit: 0, fileSize: 0, extension: 0, nesting: 0, unsafePath: 0, unsupportedType: 0
+      },
+    });
+    memoryApi.read.mockRejectedValue(new Error('Memory file exceeds the published size limit.'));
+
+    const rendered = renderCampaignMemoryWithDebug({ campaignId: 'ambient-context', campaignName: 'Ambient Context' });
+    document.body.append(rendered);
+
+    await vi.waitFor(() => expect(output.debug).toHaveBeenCalledWith(
+      '[cao:campaign-memory]',
+      { operation: 'read-file', status: 'error', errorName: 'Error' }
+    ));
+    const loggedValues = output.debug.mock.calls.flatMap((call) => Object.values(call[1]));
+    expect(loggedValues.some((value) => typeof value === 'string' && value.includes('published size limit'))).toBe(false);
+
+    rendered.remove();
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
+
+  it('is disabled by default (no debug output) when the debug query is absent', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '', output })
+      };
+    });
+    vi.resetModules();
+    const { renderCampaignMemory: renderCampaignMemoryWithoutDebug } = await import('../../src/components/campaign-memory.js');
+
+    memoryApi.list.mockResolvedValue({
+      branch: 'memory/ambient-context',
+      commit: 'a'.repeat(40),
+      files: [{ path: 'notes/first.json', oid: 'b'.repeat(40), size: 14 }],
+      omitted: {
+        fileLimit: 0, fileSize: 0, extension: 0, nesting: 0, unsafePath: 0, unsupportedType: 0
+      },
+    });
+    memoryApi.read.mockResolvedValueOnce({ content: '{"answer":42}\n' });
+
+    const rendered = renderCampaignMemoryWithoutDebug({ campaignId: 'ambient-context', campaignName: 'Ambient Context' });
+    document.body.append(rendered);
+    await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('{"answer":42}\n'));
+
+    expect(output.debug).not.toHaveBeenCalled();
+
+    rendered.remove();
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
 });

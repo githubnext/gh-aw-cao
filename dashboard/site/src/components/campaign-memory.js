@@ -1,8 +1,11 @@
 import { h } from '../dom.js';
 import { listRepositoryMemory, readRepositoryMemoryFile } from '../data-processor.js';
+import { createDebug } from '../debug.js';
 import { effect, onCleanup, render, state } from '../reactive.js';
 import { createFactoryScope } from './factory-elements.js';
 import { renderEmptyMessage } from './ui-primitives.js';
+
+const debugCampaignMemory = createDebug('campaign-memory');
 
 /** @typedef {{ path: string, oid: string, sha256?: string, size: number }} MemoryFile */
 /** @typedef {{ fileLimit: number, fileSize: number, totalSize: number, extension: number, nesting: number, unsafePath: number, invalidContent: number, unsupportedType: number }} OmittedFiles */
@@ -34,6 +37,11 @@ export function renderCampaignMemory({ campaignId, campaignName }) {
   }), { signal: scope.signal });
 
   listRepositoryMemory(campaignId, scope.signal).then((campaign) => {
+    debugCampaignMemory({
+      operation: 'list-manifest',
+      status: campaign ? 'ready' : 'empty',
+      fileCount: campaign?.files.length ?? 0
+    });
     if (!campaign) {
       manifestState.set({
         status: 'empty', branch: '', commit: '', files: [], omitted: emptyOmissions(), error: ''
@@ -71,9 +79,13 @@ export function renderCampaignMemory({ campaignId, campaignName }) {
     fileState.set({ status: 'loading', content: '', error: '' });
     readRepositoryMemoryFile(campaignId, filePath, controller.signal).then((result) => {
       const content = result.content;
-      if (!controller.signal.aborted) fileState.set({ status: 'ready', content, error: '' });
+      if (!controller.signal.aborted) {
+        debugCampaignMemory({ operation: 'read-file', status: 'ready', contentLength: content.length });
+        fileState.set({ status: 'ready', content, error: '' });
+      }
     }).catch((error) => {
       if (error?.name !== 'AbortError') {
+        debugCampaignMemory({ operation: 'read-file', status: 'error', errorName: error?.name ?? 'Error' });
         fileState.set({
           status: 'error',
           content: '',
