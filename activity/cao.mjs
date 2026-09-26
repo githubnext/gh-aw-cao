@@ -2486,7 +2486,7 @@ function issueStatusTargets(issues) {
   });
 }
 
-function issueStatusQuery(batch) {
+export function issueStatusQuery(batch) {
   const fields = batch.map((target, index) => (
     `i${index}: issueOrPullRequest(number: ${target.number}) { ... on Issue { number state stateReason closedAt url } }`
   )).join('\n');
