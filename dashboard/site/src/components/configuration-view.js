@@ -3,7 +3,7 @@ import { collectFullDiagnostics } from '../diagnostics.js';
 import { capturedConsoleLogText } from '../console-log-capture.js';
 import { createDebug, fullDebugUrl } from '../debug.js';
 import { copyTextToClipboard, createCopyControl, renderCheckbox } from './ui-primitives.js';
-import { isPlainObject, renderLazyDisclosure, renderSectionHeading } from './ui-primitives.js';
+import { isPlainObject, renderLazyDisclosure, renderLiveRegion, renderSectionHeading } from './ui-primitives.js';
 import { renderSettingsCliActions } from './cli-actions.js';
 import { renderResetDashboardControl } from './reset-dashboard-control.js';
 import {
@@ -266,10 +266,7 @@ function renderSettingsEditor(policyDocument) {
       updateStatus();
     }
   }, 'Discard changes');
-  const diagnosticsStatus = /** @type {HTMLOutputElement} */ (h('output', {
-    className: 'configuration-copy-status',
-    'aria-live': 'polite'
-  }));
+  const diagnosticsStatus = /** @type {HTMLOutputElement} */ (renderLiveRegion('output', 'configuration-copy-status'));
   const diagnosticsButton = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button',
     className: 'configuration-diagnostics-button',
