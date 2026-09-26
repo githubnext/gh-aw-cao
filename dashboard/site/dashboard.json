@@ -10168,6 +10168,88 @@
         ]
       },
       {
+        "name": "campaign-memory-links",
+        "intent": "Provide one navigation row per registered campaign that opens its repository memory.",
+        "description": "Registered campaigns with a resolved dashboard link to their repository-memory browser.",
+        "from": "campaigns",
+        "compute": [
+          {
+            "as": "encoded-campaign",
+            "function": "url-encode",
+            "args": [
+              {
+                "field": "campaign"
+              }
+            ]
+          },
+          {
+            "as": "campaign-memory-href",
+            "function": "concat",
+            "args": [
+              {
+                "value": "#page-campaign-memory?campaign="
+              },
+              {
+                "field": "encoded-campaign"
+              }
+            ]
+          },
+          {
+            "as": "campaign-memory-label",
+            "function": "concat",
+            "args": [
+              {
+                "value": "Browse "
+              },
+              {
+                "field": "campaign-name"
+              },
+              {
+                "value": " campaign memory"
+              }
+            ]
+          },
+          {
+            "as": "campaign-memory-link",
+            "function": "dashboard-link",
+            "args": [
+              {
+                "value": ""
+              },
+              {
+                "field": "campaign-memory-href"
+              },
+              {
+                "field": "campaign-memory-label"
+              },
+              {
+                "field": "campaign"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "campaign"
+          },
+          {
+            "field": "campaign-name"
+          },
+          {
+            "field": "campaign-icon"
+          },
+          {
+            "field": "campaign-memory-link"
+          }
+        ],
+        "order-by": [
+          {
+            "field": "campaign-name",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
         "name": "campaign-repository-coverage",
         "intent": "Count distinct registered target repositories reached by successful worker dispatches for each campaign.",
         "description": "Campaign repository coverage derived from successful worker dispatch runs in the selected horizon.",
@@ -12965,6 +13047,38 @@
             }
           ]
         }
+      },
+      {
+        "id": "memory",
+        "kind": "custom",
+        "title": "Memory",
+        "navigation-label": "Memory",
+        "icon": "archive",
+        "experimental": true,
+        "class-name": "memory-page",
+        "description": "Browse repository memory published by centrally managed campaigns.",
+        "views": [
+          {
+            "id": "campaign-memory-links",
+            "title": "Campaign memory",
+            "intent": "Let operators select any registered campaign and inspect its published repository memory.",
+            "data": {
+              "sources": [
+                "campaign-memory-links"
+              ]
+            },
+            "mark": "element",
+            "element": "link-button-list",
+            "config": {
+              "label-field": "campaign-name",
+              "link-field": "campaign-memory-link",
+              "icon-field": "campaign-icon",
+              "fallback-icon": "archive",
+              "empty-message": "No campaigns are registered."
+            },
+            "layout": "full"
+          }
+        ]
       },
       {
         "id": "campaign-insights",
@@ -16605,6 +16719,7 @@
         "label": "Data",
         "pages": [
           "campaigns",
+          "memory",
           "repositories",
           "workflows",
           "runs",

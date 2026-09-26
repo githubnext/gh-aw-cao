@@ -56,7 +56,7 @@ describe('dashboard document validation', () => {
     });
   });
 
-  it('marks Steering, Indexing, Issues, and campaign Memory as experimental', () => {
+  it('marks Steering, Indexing, Issues, and Memory pages as experimental', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentalPageIds = document.dashboard.pages
       .filter((/** @type {{ experimental?: boolean }} */ page) => page.experimental === true)
@@ -66,8 +66,51 @@ describe('dashboard document validation', () => {
       'steering',
       'indexing',
       'issues',
+      'memory',
       'campaign-memory',
     ]));
+  });
+
+  it('defines the all-campaign Memory page with reusable declarative navigation', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const page = document.dashboard.pages.find(
+      (/** @type {{ id?: string }} */ candidate) => candidate.id === 'memory'
+    );
+    const query = document.dashboard.queries.find(
+      (/** @type {{ name?: string }} */ candidate) => candidate.name === 'campaign-memory-links'
+    );
+
+    expect(page).toMatchObject({
+      kind: 'custom',
+      title: 'Memory',
+      experimental: true,
+      views: [{
+        id: 'campaign-memory-links',
+        data: { sources: ['campaign-memory-links'] },
+        mark: 'element',
+        element: 'link-button-list',
+        config: {
+          'label-field': 'campaign-name',
+          'link-field': 'campaign-memory-link',
+          'icon-field': 'campaign-icon',
+          'fallback-icon': 'archive',
+          'empty-message': 'No campaigns are registered.'
+        },
+        layout: 'full'
+      }]
+    });
+    expect(query).toMatchObject({
+      from: 'campaigns',
+      select: expect.arrayContaining([
+        { field: 'campaign-name' },
+        { field: 'campaign-memory-link' }
+      ]),
+      'order-by': [{ field: 'campaign-name', direction: 'asc' }]
+    });
+    expect(document.dashboard.navigation.find(
+      (/** @type {{ label?: string }} */ section) => section.label === 'Data'
+    ).pages).toContain('memory');
+    expect(validateDashboardDocument(authoritativeDashboardSource).ok).toBe(true);
   });
 
   it('DLS-VIEW-005 limits categorical section encodings to horizontal bar charts', () => {
