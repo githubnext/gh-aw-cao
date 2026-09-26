@@ -87,7 +87,7 @@ func TestValidateRegistryRejectsInvalidShapes(t *testing.T) {
 			"invalid github-app secret name",
 			Registry{
 				ID: "official", Repository: "example/packages", Ref: "main",
-				Auth: Auth{
+				Auth: Auth{ // #nosec G101 -- test values are secret references, not credentials
 					Type: AuthGitHubApp, AppIDSecret: "APP_ID",
 					PrivateKeySecret: "not-an-env-name", InstallationIDSecret: "INSTALLATION_ID",
 				},

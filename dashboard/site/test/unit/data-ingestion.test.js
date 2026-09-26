@@ -196,6 +196,22 @@ describe('database table ingestion and queries', () => {
     })).rejects.toThrow('Unsupported normalized activity schema: 12');
   });
 
+  it('accepts the oldest compatible normalized JSONL schema', async () => {
+    async function* chunks() {
+      yield JSON.stringify({
+        kind: 'metadata',
+        schemaVersion: 17,
+        ingestionVersion: 3,
+        phase: 'runs',
+        records: 0
+      });
+    }
+    await expect(ingestNormalizedJsonl(indexedDB, chunks(), {
+      payloadIdentity: 'b'.repeat(64),
+      payloadScope: 'https://example.test/gh-aw-logs-runs/previous.jsonl'
+    })).resolves.toMatchObject({ updated: true });
+  });
+
   it('defers canonical maintenance for batched shard imports until it is finalized', async () => {
     const shard = (/** @type {{ id: string, observedAt: string }[]} */ runs) => {
       const lines = [

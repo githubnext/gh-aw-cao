@@ -99,14 +99,6 @@ func (f *fakeGitHubServer) baseURL() string {
 	return f.server.URL
 }
 
-func (f *fakeGitHubServer) client() *http.Client {
-	client := f.server.Client()
-	// Every fake server in a test run is self-signed; tests intentionally
-	// never talk to the real network, so trusting any of them here is safe.
-	client.Transport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true} // #nosec G402 -- test-only transport
-	return client
-}
-
 func (f *fakeGitHubServer) requestCount() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
