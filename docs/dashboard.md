@@ -61,6 +61,7 @@ its reviewed workflows and policy.
 
 - Start with [Overview](dashboard-overview.md) to understand the default
 	operational view.
+- Choose where to host the dashboard in [Deployment options](deployment.md).
 - Read [Data ingestion](dashboard-data-ingestion.md) to follow evidence from
 	GitHub Actions into the browser.
 - Use the [Data model](dashboard-data-model.md) to understand entities,

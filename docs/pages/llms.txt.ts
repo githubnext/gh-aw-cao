@@ -12,6 +12,7 @@ const documentationOrder = [
   "execution-and-safety",
   "orchestrators-and-workers",
   "deployment-and-governance",
+  "deployment",
   "operations",
   "dashboard-language-specification",
 ] as const;

@@ -7,6 +7,7 @@ Data ingestion moves operational evidence from GitHub Actions into the browser
 dashboard and local tools. Read this page to understand collection boundaries,
 retention, failure behavior, and the available `cao` commands. For entity
 identities and relationships, use the [Data model](dashboard-data-model.md).
+For where the dashboard is served, see [Deployment options](deployment.md).
 
 ## Data flow
 
