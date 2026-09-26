@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { publishRepositoryMemory } from "../../activity/repository-memory.mjs";
+import { publishRepositoryMemory, REPOSITORY_MEMORY_LIMITS } from "../../activity/repository-memory.mjs";
 
 function git(repository, ...arguments_) {
   return execFileSync("git", ["-C", repository, ...arguments_], { encoding: "utf8" }).trim();
@@ -27,8 +27,13 @@ test("publishes installed campaign memory from remote refs without checking them
     git(repository, "rm", "-rf", ".");
     writeFileSync(join(repository, "notes.json"), '{"answer":42}\n');
     writeFileSync(join(repository, ".state.json"), '{"cursor":1}\n');
+    writeFileSync(join(repository, "unsupported.js"), "throw new Error();\n");
+    writeFileSync(join(repository, "oversized.txt"), "x".repeat(REPOSITORY_MEMORY_LIMITS.maxFileSize + 1));
+    const deepDirectory = join(repository, ...Array.from({ length: REPOSITORY_MEMORY_LIMITS.maxNesting + 1 }, (_, index) => `d${index}`));
+    mkdirSync(deepDirectory, { recursive: true });
+    writeFileSync(join(deepDirectory, "too-deep.md"), "# Too deep\n");
     symlinkSync("../runtime.txt", join(repository, "outside"));
-    git(repository, "add", "notes.json", ".state.json", "outside");
+    git(repository, "add", ".");
     git(repository, "commit", "-m", "memory");
     const memoryHead = git(repository, "rev-parse", "HEAD");
     git(repository, "update-ref", "refs/remotes/origin/memory/ambient-context", memoryHead);
@@ -54,6 +59,7 @@ test("publishes installed campaign memory from remote refs without checking them
     assert.deepEqual(manifest, {
       version: 1,
       generatedAt: "2026-09-25T22:24:29.769Z",
+      limits: REPOSITORY_MEMORY_LIMITS,
       campaigns: [{
         campaign: "ambient-context",
         branch: "memory/ambient-context",
@@ -74,7 +80,40 @@ test("publishes installed campaign memory from remote refs without checking them
     });
     assert.deepEqual(JSON.parse(readFileSync(join(output, "manifest.json"), "utf8")), manifest);
     assert.throws(() => readFileSync(join(output, "ambient-context", "outside")));
+    assert.throws(() => readFileSync(join(output, "ambient-context", "unsupported.js")));
+    assert.throws(() => readFileSync(join(output, "ambient-context", "oversized.txt")));
+    assert.throws(() => readFileSync(join(output, "ambient-context", ...Array.from(
+      { length: REPOSITORY_MEMORY_LIMITS.maxNesting + 1 },
+      (_, index) => `d${index}`,
+    ), "too-deep.md")));
     assert.throws(() => readFileSync(join(output, "not-installed", "private.json")));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("caps the number of files published for each campaign", async () => {
+  const root = mkdtempSync(join(tmpdir(), "cao-repository-memory-count-"));
+  const repository = join(root, "repository");
+  try {
+    execFileSync("git", ["init", repository]);
+    git(repository, "config", "user.name", "CAO Test");
+    git(repository, "config", "user.email", "cao@example.test");
+    for (let index = 0; index <= REPOSITORY_MEMORY_LIMITS.maxFileCount; index += 1) {
+      writeFileSync(join(repository, `${String(index).padStart(3, "0")}.txt`), `${index}\n`);
+    }
+    git(repository, "add", ".");
+    git(repository, "commit", "-m", "bounded memory");
+    git(repository, "update-ref", "refs/remotes/origin/memory/bounded", git(repository, "rev-parse", "HEAD"));
+
+    const manifest = await publishRepositoryMemory({
+      repository,
+      inventory: { campaigns: { rows: [{ campaign: "bounded" }] } },
+      output: join(root, "output"),
+    });
+
+    assert.equal(manifest.campaigns[0].files.length, REPOSITORY_MEMORY_LIMITS.maxFileCount);
+    assert.equal(manifest.campaigns[0].files.at(-1).path, "399.txt");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

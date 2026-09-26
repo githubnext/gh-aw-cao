@@ -64,4 +64,45 @@ describe('campaign repository memory', () => {
     document.body.append(invalid);
     await vi.waitFor(() => expect(invalid.textContent).toContain('Repository-memory manifest is invalid.'));
   });
+
+  it('rejects file metadata outside the publication limits', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      version: 1,
+      campaigns: [{
+        campaign: 'ambient-context',
+        branch: 'memory/ambient-context',
+        commit: 'a'.repeat(40),
+        files: [{ path: 'script.js', oid: 'b'.repeat(40), size: 10 }],
+      }],
+    }))));
+    const rendered = renderCampaignMemory({ campaignId: 'ambient-context', campaignName: 'Ambient Context' });
+    document.body.append(rendered);
+
+    await vi.waitFor(() => expect(rendered.textContent).toContain(
+      'Campaign repository-memory file metadata is invalid.'
+    ));
+  });
+
+  it('stops reading files that exceed the size limit', async () => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        version: 1,
+        campaigns: [{
+          campaign: 'ambient-context',
+          branch: 'memory/ambient-context',
+          commit: 'a'.repeat(40),
+          files: [{ path: 'large.txt', oid: 'b'.repeat(40), size: 10 }],
+        }],
+      })))
+      .mockResolvedValueOnce(new Response('x', {
+        headers: { 'content-length': String(1024 * 1024 + 1) },
+      }));
+    vi.stubGlobal('fetch', fetch);
+    const rendered = renderCampaignMemory({ campaignId: 'ambient-context', campaignName: 'Ambient Context' });
+    document.body.append(rendered);
+
+    await vi.waitFor(() => expect(rendered.textContent).toContain(
+      'Memory file exceeds the published size limit.'
+    ));
+  });
 });

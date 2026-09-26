@@ -4,6 +4,10 @@ import { createFactoryScope } from './factory-elements.js';
 import { renderEmptyMessage } from './ui-primitives.js';
 
 const CAMPAIGN_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{0,99})$/;
+const ALLOWED_EXTENSIONS = new Set(['.json', '.jsonl', '.md', '.txt', '.yaml', '.yml']);
+const MAX_FILE_COUNT = 400;
+const MAX_FILE_SIZE = 1024 * 1024;
+const MAX_NESTING = 10;
 
 /** @typedef {{ path: string, oid: string, size: number }} MemoryFile */
 /** @typedef {{ branch: string, commit: string, files: MemoryFile[] }} CampaignMemory */
@@ -162,7 +166,8 @@ async function loadCampaignMemory(campaignId, signal) {
   if (campaign.branch !== `memory/${campaignId}`
       || typeof campaign.commit !== 'string'
       || !/^[0-9a-f]{40,64}$/i.test(campaign.commit)
-      || !Array.isArray(campaign.files)) {
+      || !Array.isArray(campaign.files)
+      || campaign.files.length > MAX_FILE_COUNT) {
     throw new Error('Campaign repository-memory entry is invalid.');
   }
   const files = /** @type {unknown[]} */ (campaign.files).map((entry) => {
@@ -176,6 +181,7 @@ async function loadCampaignMemory(campaignId, signal) {
   if (files.some((entry) => !entry.path
       || !Number.isSafeInteger(entry.size)
       || entry.size < 0
+      || entry.size > MAX_FILE_SIZE
       || !/^[0-9a-f]{40,64}$/i.test(entry.oid))) {
     throw new Error('Campaign repository-memory file metadata is invalid.');
   }
@@ -194,14 +200,50 @@ async function loadMemoryFile(campaignId, filePath, signal) {
   }
   const response = await fetch(fileUrl, { cache: 'no-store', credentials: 'same-origin', signal });
   if (!response.ok) throw new Error(`File request returned ${response.status}.`);
-  return response.text();
+  return readBoundedText(response, MAX_FILE_SIZE);
 }
 
 /** @param {unknown} value */
 function safeMemoryPath(value) {
   if (typeof value !== 'string' || !value || value.startsWith('/') || value.includes('\\')) return '';
   const segments = value.split('/');
-  return segments.some((segment) => !segment || segment === '.' || segment === '..') ? '' : value;
+  if (segments.some((segment) => !segment || segment === '.' || segment === '..')) return '';
+  if (segments.length - 1 > MAX_NESTING) return '';
+  const extensionIndex = segments.at(-1)?.lastIndexOf('.') ?? -1;
+  const extension = extensionIndex >= 0 ? segments.at(-1)?.slice(extensionIndex).toLowerCase() : '';
+  return extension && ALLOWED_EXTENSIONS.has(extension) ? value : '';
+}
+
+/** @param {Response} response @param {number} maximumBytes */
+async function readBoundedText(response, maximumBytes) {
+  const declaredLength = Number(response.headers.get('content-length'));
+  if (Number.isFinite(declaredLength) && declaredLength > maximumBytes) {
+    throw new Error('Memory file exceeds the published size limit.');
+  }
+  if (!response.body) {
+    const content = await response.arrayBuffer();
+    if (content.byteLength > maximumBytes) throw new Error('Memory file exceeds the published size limit.');
+    return new TextDecoder().decode(content);
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let bytes = 0;
+  let content = '';
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > maximumBytes) throw new Error('Memory file exceeds the published size limit.');
+      content += decoder.decode(value, { stream: true });
+    }
+    return content + decoder.decode();
+  } catch (error) {
+    await reader.cancel().catch(() => undefined);
+    throw error;
+  } finally {
+    reader.releaseLock();
+  }
 }
 
 /** @param {number} bytes */

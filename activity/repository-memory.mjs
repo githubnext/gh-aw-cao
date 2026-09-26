@@ -7,6 +7,13 @@ import { fileURLToPath } from "node:url";
 
 const CAMPAIGN_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{0,99})$/;
 const MEMORY_REF_PREFIX = "refs/remotes/origin/memory/";
+export const REPOSITORY_MEMORY_LIMITS = Object.freeze({
+  allowedExtensions: Object.freeze([".json", ".jsonl", ".md", ".txt", ".yaml", ".yml"]),
+  maxFileCount: 400,
+  maxFileSize: 1024 * 1024,
+  maxNesting: 10,
+});
+const ALLOWED_EXTENSIONS = new Set(REPOSITORY_MEMORY_LIMITS.allowedExtensions);
 
 function git(repository, arguments_, options = {}) {
   const result = spawnSync("git", ["-C", repository, ...arguments_], {
@@ -31,6 +38,8 @@ function safeMemoryPath(value) {
   if (!value || value.startsWith("/") || value.includes("\\")) return "";
   const segments = value.split("/");
   if (segments.some((segment) => !segment || segment === "." || segment === "..")) return "";
+  if (segments.length - 1 > REPOSITORY_MEMORY_LIMITS.maxNesting) return "";
+  if (!ALLOWED_EXTENSIONS.has(path.posix.extname(value).toLowerCase())) return "";
   return segments.join("/");
 }
 
@@ -49,14 +58,51 @@ function memoryRefs(repository, campaigns) {
   }).sort((left, right) => left.campaign.localeCompare(right.campaign));
 }
 
-function memoryFiles(repository, ref) {
-  const output = git(repository, ["ls-tree", "-rlz", "--full-tree", ref], { encoding: "buffer" });
-  return output.toString("utf8").split("\0").filter(Boolean).flatMap((entry) => {
-    const match = /^([0-9]{6}) blob ([0-9a-f]{40,64})\s+([0-9]+)\t([\s\S]+)$/i.exec(entry);
-    if (!match || (match[1] !== "100644" && match[1] !== "100755")) return [];
-    const filePath = safeMemoryPath(match[4]);
-    return filePath ? [{ path: filePath, oid: match[2], size: Number(match[3]) }] : [];
-  }).sort((left, right) => left.path.localeCompare(right.path));
+async function memoryFiles(repository, ref) {
+  const child = spawn("git", ["-C", repository, "ls-tree", "-rlz", "--full-tree", ref], {
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let stderr = "";
+  child.stderr.setEncoding("utf8");
+  child.stderr.on("data", (chunk) => { stderr = `${stderr}${chunk}`.slice(-65536); });
+  const completion = new Promise((resolve, reject) => {
+    child.once("error", reject);
+    child.once("close", (status, signal) => resolve({ status, signal }));
+  });
+
+  const files = [];
+  let pending = Buffer.alloc(0);
+  let capped = false;
+  try {
+    for await (const chunk of child.stdout) {
+      pending = Buffer.concat([pending, chunk]);
+      let separator;
+      while ((separator = pending.indexOf(0)) >= 0) {
+        const entry = pending.subarray(0, separator).toString("utf8");
+        pending = pending.subarray(separator + 1);
+        const match = /^([0-9]{6}) blob ([0-9a-f]{40,64})\s+([0-9]+)\t([\s\S]+)$/i.exec(entry);
+        if (!match || (match[1] !== "100644" && match[1] !== "100755")) continue;
+        const filePath = safeMemoryPath(match[4]);
+        const size = Number(match[3]);
+        if (filePath && Number.isSafeInteger(size) && size <= REPOSITORY_MEMORY_LIMITS.maxFileSize) {
+          files.push({ path: filePath, oid: match[2], size });
+          if (files.length === REPOSITORY_MEMORY_LIMITS.maxFileCount) {
+            capped = true;
+            child.kill();
+            break;
+          }
+        }
+      }
+      if (capped) break;
+    }
+    const { status } = await completion;
+    if (!capped && status !== 0) throw new Error(stderr.trim() || "git ls-tree failed");
+    return files;
+  } catch (error) {
+    child.kill();
+    await completion.catch(() => undefined);
+    throw error;
+  }
 }
 
 async function writeBlob(repository, oid, destination) {
@@ -84,7 +130,7 @@ export async function publishRepositoryMemory({ repository, inventory, output, g
 
   const campaigns = [];
   for (const branch of memoryRefs(repositoryRoot, campaignIds(inventory))) {
-    const files = memoryFiles(repositoryRoot, branch.ref);
+    const files = await memoryFiles(repositoryRoot, branch.ref);
     for (const file of files) {
       const destination = path.resolve(outputRoot, branch.campaign, ...file.path.split("/"));
       if (!destination.startsWith(`${path.join(outputRoot, branch.campaign)}${path.sep}`)) {
@@ -100,7 +146,7 @@ export async function publishRepositoryMemory({ repository, inventory, output, g
     });
   }
 
-  const manifest = { version: 1, generatedAt, campaigns };
+  const manifest = { version: 1, generatedAt, limits: REPOSITORY_MEMORY_LIMITS, campaigns };
   await writeFile(path.join(outputRoot, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
   return manifest;
 }
