@@ -73,7 +73,7 @@ func TestRepositoryMemoryHandlersRejectInvalidAndMissingRequests(t *testing.T) {
 	missingRequest := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/memory/missing", nil)
 	missingRequest.SetPathValue("campaign", "missing")
 	app.repositoryMemoryCampaign(missing, missingRequest)
-	if missing.Code != http.StatusNotFound {
+	if missing.Code != http.StatusOK || strings.TrimSpace(missing.Body.String()) != "null" {
 		t.Fatalf("missing campaign response = %d", missing.Code)
 	}
 }

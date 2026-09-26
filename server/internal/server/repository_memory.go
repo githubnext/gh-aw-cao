@@ -20,7 +20,7 @@ func (a *App) repositoryMemoryCampaign(response http.ResponseWriter, request *ht
 	}
 	_, campaign, err := a.repositoryMemorySnapshot(request, campaignID)
 	if errors.Is(err, errCanonicalEntityNotFound) {
-		writeError(response, http.StatusNotFound, "repository-memory branch was not found")
+		writeJSON(response, http.StatusOK, nil)
 		return
 	}
 	if err != nil {
