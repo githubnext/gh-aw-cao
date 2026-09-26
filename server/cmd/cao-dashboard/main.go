@@ -107,6 +107,33 @@ func resolveNamespaceDefault(envValue, checkoutDefault string) (string, namespac
 	return checkoutDefault, namespaceDefaultSourceCheckout
 }
 
+// ingestSourceOrigin identifies which input determined the ingest command's
+// deployed dashboard directory. It is useful for diagnosing misconfiguration
+// without logging the directory path itself.
+type ingestSourceOrigin string
+
+const (
+	ingestSourceOriginFlag          ingestSourceOrigin = "flag"
+	ingestSourceOriginPositionalArg ingestSourceOrigin = "positional-arg"
+)
+
+// resolveIngestSource applies the standard priority for the ingest command's
+// deployed dashboard directory: an explicit --source flag value, then a
+// single positional argument. It returns the resolved source and which input
+// supplied it, so callers can log the source without exposing the directory
+// path. An error is returned when neither input supplies a non-blank value.
+func resolveIngestSource(flagValue string, positionalArgs []string) (string, ingestSourceOrigin, error) {
+	if source := strings.TrimSpace(flagValue); source != "" {
+		return source, ingestSourceOriginFlag, nil
+	}
+	if len(positionalArgs) == 1 {
+		if source := strings.TrimSpace(positionalArgs[0]); source != "" {
+			return source, ingestSourceOriginPositionalArg, nil
+		}
+	}
+	return "", "", errors.New("ingest requires --source DIRECTORY")
+}
+
 func main() {
 	if override := strings.TrimSpace(os.Getenv("CAO_BUILD_VERSION")); override != "" {
 		version = override
@@ -316,13 +343,12 @@ func ingestCommand(arguments []string) error {
 	if err := flags.Parse(arguments); err != nil {
 		return err
 	}
-	if *source == "" && flags.NArg() == 1 {
-		*source = flags.Arg(0)
+	resolvedSource, sourceOrigin, err := resolveIngestSource(*source, flags.Args())
+	if err != nil {
+		return err
 	}
-	if *source == "" {
-		return errors.New("ingest requires --source DIRECTORY")
-	}
-	commandLog.Printf("ingest flags parsed")
+	*source = resolvedSource
+	commandLog.Printf("ingest flags parsed source_origin=%s", sourceOrigin)
 	client, err := redisx.New(*redisURL)
 	if err != nil {
 		return err
