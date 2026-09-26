@@ -44,8 +44,10 @@ function validateArgument(name, schema, value) {
     if (typeof value !== 'number' || !Number.isFinite(value)) return { error: `"${name}" must be a finite number.` };
     if (typeof schema.minimum === 'number' && value < schema.minimum) return { error: `"${name}" must be at least ${schema.minimum}.` };
     if (typeof schema.maximum === 'number' && value > schema.maximum) return { error: `"${name}" must be at most ${schema.maximum}.` };
-  } else if (typeof value !== 'string' || value.length === 0) {
-    return { error: `"${name}" must be a non-empty string.` };
+  } else if (schema.type === 'string') {
+    if (typeof value !== 'string' || value.length === 0) return { error: `"${name}" must be a non-empty string.` };
+  } else {
+    return { error: `"${name}" declares an unsupported type.` };
   }
   if (Array.isArray(schema.enum) && !schema.enum.includes(/** @type {string | number | boolean} */ (value))) {
     return { error: `"${name}" must be one of ${schema.enum.join(', ')}.` };
@@ -178,12 +180,24 @@ export function startDashboardWebMCP(browserDocument, options) {
       const message = error instanceof Error ? error.message : String(error);
       return toolResult(`Unable to read the ${tool.title} page: ${message}`, true);
     } finally {
+      // One read per invocation: releasing the subscription keeps a tool call
+      // from retaining a live page subscription for the rest of the session.
       controller.abort();
     }
   };
 
   const refresh = () => {
     const manifest = webMCPManifestForDashboard(options.dashboardDocument());
+    const manifestNames = new Set(manifest.map((tool) => tool.name));
+    for (const [name, entry] of registered) {
+      if (manifestNames.has(name)) continue;
+      try {
+        entry.unregister?.();
+      } catch {
+        // A browser that cannot unregister keeps the tool until the page unloads.
+      }
+      registered.delete(name);
+    }
     for (const tool of manifest) {
       const existing = registered.get(tool.name);
       if (existing) {

@@ -66,6 +66,8 @@
         setLoadingProgressState(document, state);
       });
       const cancelCommand = offerCancelCommand(document);
+      /** @type {ReturnType<typeof startDashboardWebMCP>} */
+      let dashboardWebMCP = null;
       const stopDashboardAppUpdates = usesRemoteDataBackend(document)
         ? () => {}
         : startDashboardAppUpdates();
@@ -263,8 +265,6 @@
         });
         console.log("Dashboard preview socket initialized.");
       }
-      /** @type {ReturnType<typeof startDashboardWebMCP>} */
-      let dashboardWebMCP = null;
       /**
        * Keeps the generated WebMCP tools aligned with the rendered dashboard
        * definition. WebMCP is progressive enhancement: browsers without

@@ -157,6 +157,22 @@ describe('WebMCP dashboard driver', () => {
     expect(driver.toolNames()).toEqual([]);
   });
 
+  it('unregisters tools whose page left the dashboard definition', () => {
+    const modelContext = buildModelContext();
+    const document = buildDashboardDocument();
+    const driver = requireDriver(startDashboardWebMCP({ modelContext }, {
+      dashboardDocument: () => document,
+      loadPageSources: vi.fn()
+    }));
+    expect(driver.toolNames()).toEqual(['cao_cost', 'cao_campaign_detail']);
+
+    document.dashboard.pages = document.dashboard.pages.filter((page) => page.id !== 'campaign-detail');
+    driver.refresh();
+
+    expect(driver.toolNames()).toEqual(['cao_cost']);
+    expect([...modelContext.tools.keys()]).toEqual(['cao_cost']);
+  });
+
   it('executes tools through the page projection boundary', async () => {
     const modelContext = buildModelContext();
     const loadPageSources = vi.fn().mockResolvedValue({

@@ -157,7 +157,7 @@ function formFieldSchema(field) {
 export function webMCPToolForPage(page, context = {}) {
   const pageId = text(page.id);
   const title = text(page.title) || text(page['navigation-label']) || pageId;
-  const dashboardTitle = text(context.dashboardTitle) || 'Central Agentic Ops dashboard';
+  const dashboardTitle = text(context.dashboardTitle) || 'Central Agentic Ops Dashboard';
   const pageDescription = text(page.description)
     || text(page.intent)
     || `Read the ${title} page of the ${dashboardTitle}.`;
@@ -212,7 +212,7 @@ export function webMCPManifestForDashboard(document) {
   const dashboard = isPlainObject(document?.dashboard) ? document.dashboard : null;
   const pages = Array.isArray(dashboard?.pages) ? dashboard.pages : [];
   const navigationPages = navigationPageIds(dashboard?.navigation);
-  /** @type {Map<string, import('./manifest.js').WebMCPToolDescriptor>} */
+  /** @type {Map<string, WebMCPToolDescriptor>} */
   const tools = new Map();
   for (const page of pages) {
     if (!isAgentFacingPage(page, navigationPages)) continue;
