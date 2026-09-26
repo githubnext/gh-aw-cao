@@ -1288,13 +1288,13 @@ async function hashFileContents(filePath) {
   return hash.digest('hex');
 }
 
-function workflowRunId(value) {
-  return value === undefined || value === null ? null : String(value);
-}
+function workflowRunId(value) { return value === undefined || value === null ? null : String(value); }
 
 function isAgenticWorkflowRun(record) {
   return typeof record?.run?.workflow_path === 'string' && record.run.workflow_path.endsWith('.lock.yml');
 }
+
+function createJsonlCompactionState() { return { seenRunRecordDigests: new Set(), deduplicatedRunRecords: 0 }; }
 
 function compactedJsonlLine(line, agenticRunIds, state) {
   const record = JSON.parse(line);
@@ -1339,7 +1339,7 @@ async function inspectJsonlCompaction(sourcePaths) {
   let sourceRecords = 0;
   let retainedRecords = 0;
   let filtered = false;
-  const state = { seenRunRecordDigests: new Set(), deduplicatedRunRecords: 0 };
+  const state = createJsonlCompactionState();
   for await (const line of jsonlLines(sourcePaths)) {
     sourceRecords += 1;
     const retained = compactedJsonlLine(line, agenticRunIds, state);
@@ -1399,7 +1399,7 @@ async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
   let bufferedLines = [];
   let bufferedBytes = 0;
   let retainedRecords = 0;
-  const state = { seenRunRecordDigests: new Set(), deduplicatedRunRecords: 0 };
+  const state = createJsonlCompactionState();
   const flush = async () => {
     if (bufferedLines.length === 0) return;
     const content = bufferedLines.join('');
