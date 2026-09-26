@@ -171,6 +171,12 @@ export function githubServerUrl(environment = process.env) {
   return new URL(url).origin;
 }
 
+export function appPermissionsForServer(profile, serverUrl = githubServerUrl()) {
+  if (!new URL(serverUrl).hostname.endsWith(".ghe.com")) return profile.permissions;
+  const { campaigns: _unsupported, ...permissions } = profile.permissions;
+  return permissions;
+}
+
 export function setRepositoryCredentials(profile, app, repo, runner = runGh) {
   runner(["variable", "set", profile.variable, "--repo", repo, "--body", app.clientId]);
   runner(["secret", "set", profile.secret, "--repo", repo], { input: app.pem });
@@ -583,7 +589,7 @@ async function main() {
         homepageUrl,
         redirectUrl: "http://127.0.0.1:0/callback",
         description: `Central Agentic Ops ${profile.label} App for ${repo}`,
-        permissions: profile.permissions,
+        permissions: appPermissionsForServer(profile),
       }),
     }));
     console.log(JSON.stringify({ repo, installationTargets, apps }, null, 2));
@@ -608,7 +614,7 @@ async function main() {
       name: appNames[profile.role],
       homepageUrl: target.homepageUrl,
       description: `Central Agentic Ops ${profile.label} App for ${repo}`,
-      permissions: profile.permissions,
+      permissions: appPermissionsForServer(profile),
       openBrowser: options.openBrowser,
     });
     setRepositoryCredentials(profile, app, repo);

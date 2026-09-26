@@ -72,7 +72,9 @@ The CLI reads `control-plane.scope.allowed-repositories` from `.github/workflows
 
 On a GitHub Enterprise Cloud data-residency hostname, export `GH_HOST` before
 running setup. The helper uses that host for repository API calls and all App
-registration, installation, and settings URLs.
+registration, installation, and settings URLs. It omits the Campaigns
+permission from data-residency App manifests because that permission is not
+available on those hosts.
 
 Enterprise ownership does not grant repository access or widen CAO policy. The App still has no access until each organization approves a selected-repository installation, and shared control still enforces the exact checked-in allowlist. Confirm the read App has no write permission and install the write App only where approved safe outputs may write. Public Apps are unsupported; replace an earlier public App with private organization- or enterprise-owned Apps after reviewing credential rotation.
 
