@@ -382,6 +382,11 @@ test.beforeEach(async ({ context, page }) => {
                 }
               ]
             },
+            skill_activations: [{
+              name: 'reactive-ui',
+              status: 'success',
+              timestamp: '2026-09-09T04:04:30Z'
+            }],
             firewall_analysis: {
               requests_by_domain: {
                 'api.github.com:443': { allowed: 4, blocked: 2 },
@@ -857,6 +862,54 @@ test('data worker returns MCP tool totals without safe outputs calls on initial 
   }
 });
 
+test('data worker returns skill invocation rankings on initial and navigated requests', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const processorUrl = `${location.origin}/src/data-processor.js`;
+    const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
+    const dashboard = await fetch(`${location.origin}/dashboard.json`).then((response) => response.json());
+    const context = {
+      githubUrlBase: 'https://github.com',
+      pages: dashboard.dashboard.pages,
+      queries: dashboard.dashboard.queries
+    };
+    const sourceNames = ['skill-invocations-by-skill', 'skill-invocations-by-workflow'];
+    const initial = await loadCanonicalDashboardSources(
+      `${location.origin}/payload-hashes.json`,
+      sourceNames,
+      context
+    );
+    const navigated = await loadCanonicalDashboardPage(sourceNames, context, undefined, { pageId: 'skills' });
+    return { initial, navigated };
+  });
+
+  expect(result.initial['skill-invocations-by-skill']).toMatchObject({
+    rows: [{ skill: 'reactive-ui', invocations: 1 }],
+    metadata: { availability: 'available' }
+  });
+  expect(result.initial['skill-invocations-by-workflow']).toMatchObject({
+    rows: [{
+      'workflow-coordinate': 'githubnext/gh-aw-cao:.github/workflows/dashboard.md',
+      invocations: 1
+    }],
+    metadata: { availability: 'available' }
+  });
+  expect(Object.keys(result.navigated)).toEqual([
+    'view:skills:skills-most-invoked:skill-invocations-by-skill',
+    'view:skills:skills-by-workflow:skill-invocations-by-workflow'
+  ]);
+  expect(result.navigated['view:skills:skills-most-invoked:skill-invocations-by-skill']).toMatchObject({
+    rows: [{ skill: 'reactive-ui', invocations: 1 }],
+    metadata: { availability: 'available' }
+  });
+  expect(result.navigated['view:skills:skills-by-workflow:skill-invocations-by-workflow']).toMatchObject({
+    rows: [{
+      'workflow-coordinate': 'githubnext/gh-aw-cao:.github/workflows/dashboard.md',
+      invocations: 1
+    }],
+    metadata: { availability: 'available' }
+  });
+});
+
 
 test('data worker queries firewall summaries on initial and navigated requests', async ({ page }) => {
   const result = await page.evaluate(async () => {
@@ -969,7 +1022,17 @@ test('data worker computes repository and campaign pages with request-scoped das
     metadata: { 'source-kind': 'derived', 'query-name': 'repository-activity' }
   });
   const horizonSource = result.horizon[Object.keys(result.horizon)[0]];
-  expect(horizonSource.rows).toEqual([]);
+  expect(Object.keys(result.horizon)).not.toContain('repository-activity');
+  expect(horizonSource).toMatchObject({
+    rows: [{
+      repository: 'githubnext/gh-aw-cao',
+      workflows: 1,
+      reports: 1,
+      runs: 0,
+      aic: 0
+    }],
+    metadata: { availability: 'available' }
+  });
   expect(Object.keys(result.navigated)).toEqual(['campaign-inventory']);
   expect(result.navigated['campaign-inventory']).toMatchObject({
     rows: [{

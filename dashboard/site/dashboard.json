@@ -11036,7 +11036,8 @@
         },
         "select": [
           {
-            "field": "id"
+            "field": "event",
+            "as": "id"
           },
           {
             "field": "name",
