@@ -91,20 +91,26 @@ func ValidPath(value string) bool {
 	return allowed
 }
 
-func Load(directory string) (Snapshot, error) {
+func Load(directory string) (snapshot Snapshot, returnErr error) {
 	root, err := os.OpenRoot(directory)
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("open repository-memory root: %w", err)
 	}
-	defer root.Close()
+	defer func() {
+		if err := root.Close(); err != nil && returnErr == nil {
+			snapshot = Snapshot{}
+			returnErr = fmt.Errorf("close repository-memory root: %w", err)
+		}
+	}()
 	manifestPath := filepath.Join("memory", "manifest.json")
 	var content []byte
 	manifestFile, err := openRegularFile(root, manifestPath)
-	if errors.Is(err, os.ErrNotExist) {
+	switch {
+	case errors.Is(err, os.ErrNotExist):
 		content = []byte(`{"version":1,"campaigns":[]}`)
-	} else if err != nil {
+	case err != nil:
 		return Snapshot{}, fmt.Errorf("read repository-memory manifest: %w", err)
-	} else {
+	default:
 		content, err = io.ReadAll(manifestFile)
 		closeErr := manifestFile.Close()
 		if err != nil || closeErr != nil {
