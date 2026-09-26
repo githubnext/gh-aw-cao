@@ -37,7 +37,8 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	listener, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", port))
+	var listenConfig net.ListenConfig
+	listener, err := listenConfig.Listen(ctx, "tcp", net.JoinHostPort("127.0.0.1", port))
 	if err != nil {
 		return err
 	}
