@@ -23,7 +23,7 @@ The Coolify deployment is an alternative to the Azure deployment. It doesn't rep
 | Coolify | A self-hosted Coolify instance that can run Docker Compose resources. Its proxy must terminate TLS for a public host name that you control. |
 | Container runtime | Docker on the Coolify server, with access to pull images from GitHub Container Registry (GHCR). |
 | Container image | `ghcr.io/OWNER/REPOSITORY/cao-dashboard@sha256:DIGEST`, built from `server/Dockerfile`. Always refer to the image by its digest. |
-| Redis | A Redis service on the Coolify private network, or an external Redis service that uses TLS. No Redis modules are required. Set the eviction policy to `noeviction`, and size memory for the number of data generations that you keep. |
+| Redis | A Redis service on the Coolify private network, or an external Redis service that uses TLS, such as [Upstash Redis](deployment-upstash.md). No Redis modules are required. Set the eviction policy to `noeviction`, and size memory for the number of data generations that you keep. |
 | Artifact volume | A named Docker volume, managed by Coolify, that contains a complete and verified dashboard payload. |
 | GitHub OAuth app | An OAuth app with the callback URL `https://PUBLIC-HOST/auth/callback`. |
 | Webhook secret | A secret of at least 32 characters. The server requires one even if you don't use webhooks. |
@@ -50,7 +50,7 @@ In the following steps, replace `PUBLIC-HOST` with the public host name of your 
    - **For hosted use,** choose an image that `coolify-deploy.yml` published. Always refer to it as `NAME@sha256:DIGEST`.
 
 1. Register a GitHub OAuth app. Set its **Authorization callback URL** to `https://PUBLIC-HOST/auth/callback`. For more information, see [Creating an OAuth app](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app) in the GitHub documentation.
-1. Create a Redis service in Coolify on the same private network as the dashboard, or use an external `rediss://` endpoint.
+1. Create a Redis service in Coolify on the same private network as the dashboard, or use an external `rediss://` endpoint. To use Upstash, follow [Deploying the dashboard with Upstash Redis](deployment-upstash.md) and keep `CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS=false`.
 1. Prepare the artifact volume.
 
    1. Create a new volume that isn't attached to any service.
@@ -213,6 +213,7 @@ If you suspect an incident, see [Incident response](operations.md#incident-respo
 - [About deployment options](deployment.md)
 - [Deploying the dashboard with GitHub Actions](deployment-actions.md)
 - [Deploying the dashboard to Azure](deployment-azure.md)
+- [Deploying the dashboard with Upstash Redis](deployment-upstash.md)
 - [Data ingestion](dashboard-data-ingestion.md)
 - [Data model](dashboard-data-model.md)
 - [`server/README.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md)
