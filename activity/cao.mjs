@@ -1288,33 +1288,41 @@ async function hashFileContents(filePath) {
   return hash.digest('hex');
 }
 
-function workflowRunId(value) {
-  return value === undefined || value === null ? null : String(value);
+async function totalFileBytes(paths) {
+  return (await Promise.all(paths.map(async (filePath) => (await stat(filePath)).size)))
+    .reduce((sum, size) => sum + size, 0);
 }
+
+function workflowRunId(value) { return value === undefined || value === null ? null : String(value); }
 
 function isAgenticWorkflowRun(record) {
-  return typeof record?.run?.workflow_path === 'string'
-    && record.run.workflow_path.endsWith('.lock.yml');
+  return typeof record?.run?.workflow_path === 'string' && record.run.workflow_path.endsWith('.lock.yml');
 }
 
-function compactedJsonlLine(line, agenticRunIds) {
+function createJsonlCompactionState() { return { seenRunRecordDigests: new Set(), deduplicatedRunRecords: 0 }; }
+
+function compactedJsonlLine(line, agenticRunIds, state) {
   const record = JSON.parse(line);
   if (record?.kind === 'run' || record?.kind === 'token_efficiency_run_context') {
-    return isAgenticWorkflowRun(record) ? line : null;
+    if (!isAgenticWorkflowRun(record)) return null;
+    if (record.kind === 'run') {
+      const digest = createHash('sha256').update(line).digest('hex');
+      if (state.seenRunRecordDigests.has(digest)) {
+        state.deduplicatedRunRecords += 1;
+        return null;
+      }
+      state.seenRunRecordDigests.add(digest);
+    }
+    return line;
   }
   if (record?.kind === 'safe_output_item') {
     return agenticRunIds.has(workflowRunId(record.safe_output?.run_id)) ? line : null;
   }
-  if (
-    record?.kind === 'token_efficiency_observation'
-    || record?.kind === 'token_efficiency_lifecycle_observation'
-  ) {
+  if (record?.kind === 'token_efficiency_observation' || record?.kind === 'token_efficiency_lifecycle_observation') {
     return agenticRunIds.has(workflowRunId(record.observation?.optimizerRunId)) ? line : null;
   }
   if (record?.kind !== 'workflow_runs' || !Array.isArray(record.payload)) return line;
-  const payload = record.payload.filter((run) =>
-    agenticRunIds.has(workflowRunId(run?.databaseId))
-  );
+  const payload = record.payload.filter((run) => agenticRunIds.has(workflowRunId(run?.databaseId)));
   if (payload.length === 0) return null;
   return payload.length === record.payload.length ? line : JSON.stringify({ ...record, payload });
 }
@@ -1331,9 +1339,10 @@ async function inspectJsonlCompaction(sourcePaths) {
   let sourceRecords = 0;
   let retainedRecords = 0;
   let filtered = false;
+  const state = createJsonlCompactionState();
   for await (const line of jsonlLines(sourcePaths)) {
     sourceRecords += 1;
-    const retained = compactedJsonlLine(line, agenticRunIds);
+    const retained = compactedJsonlLine(line, agenticRunIds, state);
     if (retained === null) {
       filtered = true;
       continue;
@@ -1341,7 +1350,7 @@ async function inspectJsonlCompaction(sourcePaths) {
     retainedRecords += 1;
     if (retained !== line) filtered = true;
   }
-  return { agenticRunIds, sourceRecords, retainedRecords, filtered };
+  return { agenticRunIds, sourceRecords, retainedRecords, deduplicatedRunRecords: state.deduplicatedRunRecords, filtered };
 }
 
 function* normalizedJsonlLines(payload) {
@@ -1364,8 +1373,7 @@ function* normalizedJsonlLines(payload) {
 
 async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
   const sourcePaths = names.map((name) => path.join(directory, name));
-  const sourceBytes = (await Promise.all(sourcePaths.map(async (filePath) => (await stat(filePath)).size)))
-    .reduce((sum, size) => sum + size, 0);
+  const sourceBytes = await totalFileBytes(sourcePaths);
   const inspection = await inspectJsonlCompaction(sourcePaths);
   if (sourcePaths.length <= 1 && sourceBytes <= maxBytes && !inspection.filtered) {
     return {
@@ -1373,6 +1381,7 @@ async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
       sourceFiles: sourcePaths.length,
       sourceRecords: inspection.sourceRecords,
       retainedRecords: inspection.retainedRecords,
+      deduplicatedRunRecords: inspection.deduplicatedRunRecords,
       sourceBytes,
       compactedBytes: sourceBytes,
       output: sourcePaths[0] ?? null,
@@ -1390,6 +1399,7 @@ async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
   let bufferedLines = [];
   let bufferedBytes = 0;
   let retainedRecords = 0;
+  const state = createJsonlCompactionState();
   const flush = async () => {
     if (bufferedLines.length === 0) return;
     const content = bufferedLines.join('');
@@ -1407,7 +1417,7 @@ async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
   };
   try {
     for await (const line of jsonlLines(sourcePaths)) {
-      const retained = compactedJsonlLine(line, inspection.agenticRunIds);
+      const retained = compactedJsonlLine(line, inspection.agenticRunIds, state);
       if (retained === null) continue;
       const outputLine = `${retained}\n`;
       const lineBytes = Buffer.byteLength(outputLine);
@@ -1422,13 +1432,13 @@ async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
     throw error;
   }
   await Promise.all(sourcePaths.filter((filePath) => !outputPaths.includes(filePath)).map((filePath) => rm(filePath)));
-  const compactedBytes = (await Promise.all(outputPaths.map(async (filePath) => (await stat(filePath)).size)))
-    .reduce((sum, size) => sum + size, 0);
+  const compactedBytes = await totalFileBytes(outputPaths);
   return {
     prefix,
     sourceFiles: sourcePaths.length,
     sourceRecords: inspection.sourceRecords,
     retainedRecords,
+    deduplicatedRunRecords: state.deduplicatedRunRecords,
     sourceBytes,
     compactedBytes,
     output: outputPaths[0] ?? null,

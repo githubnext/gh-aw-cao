@@ -21,6 +21,7 @@ mkdir -p "$output_directory" "$shard_directory" "$(dirname "$exit_code_path")"
 
 repositories=()
 shard_groups=()
+shard_prefixes=()
 add_repository() {
   local candidate="$1"
   local normalized_candidate
@@ -52,7 +53,32 @@ for target_repository in "${repositories[@]}"; do
   else
     shard_prefix="$shard_directory/${cache_name}-logs-"
   fi
+  shard_prefixes+=("$shard_prefix")
   shard_groups+=("$target_repository=$(basename "$shard_prefix")")
+done
+
+cao_script=activity/cao.mjs
+if [[ ! -f "$cao_script" ]]; then
+  echo "CAO activity CLI is unavailable" >&2
+  exit_code=1
+fi
+compact_shards() {
+  local compact_args=(compact-jsonl --input-dir "$shard_directory")
+  local shard_group
+  for shard_group in "${shard_groups[@]}"; do
+    compact_args+=(--group "$shard_group")
+  done
+  node "$cao_script" "${compact_args[@]}"
+}
+if [[ $exit_code -eq 0 ]]; then
+  compact_shards || exit_code=$?
+fi
+
+for index in "${!repositories[@]}"; do
+  [[ $exit_code -eq 0 ]] || break
+  target_repository="${repositories[$index]}"
+  cache_name="${target_repository//\//-}"
+  shard_prefix="${shard_prefixes[$index]}"
   set +e
   gh aw logs --audit \
     --repo "$target_repository" \
@@ -81,18 +107,7 @@ for target_repository in "${repositories[@]}"; do
 done
 
 if [[ $exit_code -eq 0 ]]; then
-  cao_script=activity/cao.mjs
-  if [[ ! -f "$cao_script" ]]; then
-    echo "CAO activity CLI is unavailable" >&2
-    exit_code=1
-  fi
-  if [[ $exit_code -eq 0 ]]; then
-    compact_args=(compact-jsonl --input-dir "$shard_directory")
-    for shard_group in "${shard_groups[@]}"; do
-      compact_args+=(--group "$shard_group")
-    done
-    node "$cao_script" "${compact_args[@]}" || exit_code=$?
-  fi
+  compact_shards || exit_code=$?
   if [[ $exit_code -eq 0 && -n "$activity_database" ]]; then
     node "$cao_script" ingest-jsonl \
       --database "$activity_database" \
@@ -112,5 +127,5 @@ fi
 printf '%s\n' "$exit_code" > "$exit_code_path"
 
 # The shard directory is persisted by the caller so each repository reuses
-# known runs. Successful collections consolidate each repository's files into
-# one shard; out-of-range records are pruned by `--cache-before`.
+# known runs. Restored shards are compacted before collection, successful
+# collections compact again, and `--cache-before` prunes out-of-range records.
