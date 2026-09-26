@@ -5574,6 +5574,24 @@ describe('declarative query validation', () => {
     }
   });
 
+  it('rejects view query graphs that materialize an unavailable source', () => {
+    const result = validateDashboardDocument(queryDocument([{
+      name: 'workflow-costs',
+      from: 'missing-source',
+      select: [{ field: 'workflow' }]
+    }]));
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          code: 'DLS-E010',
+          message: expect.stringContaining('materializes as unavailable')
+        })
+      ]));
+    }
+  });
+
   it('rejects view fields that the derived output schema does not declare and limits beyond the documented maximum', () => {
     const document = JSON.parse(queryDocument([aicQuery, validQuery]));
     document.dashboard.queries[1].limit = 1000000;

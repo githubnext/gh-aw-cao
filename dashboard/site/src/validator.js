@@ -160,6 +160,8 @@ import {
 import { cliActionTemplateFields } from './cli-action-template.js';
 import { compileDashboardQueryTypes } from './query-type-checker.js';
 import { findDeadDashboardQueries } from './query-usage.js';
+import { executeDashboardQueries, resolveDashboardQuerySources } from './data/queries/declarative.js';
+import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-compiler.js';
 
 /**
  * @param {string} command
@@ -1177,6 +1179,7 @@ function validateDashboard(dashboard, dashboardNode, errors) {
     }
     validatePage(resolveReusablePageViews(page), getSequenceItemNode(getValueNodeByKey(dashboardNode, 'pages'), index), `$.dashboard.pages[${index}]`, pageIds, errors);
   });
+  validateViewQueryMaterialization(dashboard, errors);
   (Array.isArray(dashboard['card-templates']) ? dashboard['card-templates'] : []).forEach((template, index) => {
     if (!isPlainObject(template) || !isPlainObject(template.drill)) return;
     const fields = [
@@ -1218,6 +1221,7 @@ function validateDashboard(dashboard, dashboardNode, errors) {
             `$.dashboard.pages[${index}].route.navigation-page`
           ));
         }
+
       }
     }
     if (isPlainObject(page.route) && Array.isArray(page.route.tabs)) {
@@ -4744,6 +4748,79 @@ function validateSource(source, path, errors) {
       path
     ));
   }
+}
+
+/**
+ * Compile and execute every authored view-query graph against available empty
+ * canonical sources. This catches query graphs that are structurally valid in
+ * isolation but become unavailable after page-scoped aliases are introduced.
+ *
+ * @param {Record<string, unknown>} dashboard
+ * @param {ValidationError[]} errors
+ */
+function validateViewQueryMaterialization(dashboard, errors) {
+    if (!Array.isArray(dashboard.pages) || !Array.isArray(dashboard.queries)) return;
+    const metadata = {
+      'source-id': 'validator',
+      'source-kind': 'fixture',
+      'as-of': '1970-01-01T00:00:00.000Z',
+      'retrieved-at': '1970-01-01T00:00:00.000Z',
+      completeness: 'complete',
+      freshness: 'fresh',
+      availability: 'empty'
+    };
+    const canonicalSources = Object.fromEntries(TABLE_VALUES.map((name) => [
+      name,
+      { source: name, rows: [], metadata }
+    ]));
+
+    dashboard.pages.forEach((page, pageIndex) => {
+      const resolvedPage = resolveReusablePageViews(page);
+      if (!isPlainObject(resolvedPage) || typeof resolvedPage.id !== 'string') return;
+      const views = resolvedPage.kind === 'built-in' && isPlainObject(resolvedPage.definition)
+        ? resolvedPage.definition.views
+        : resolvedPage.views;
+      if (!Array.isArray(views)) return;
+      const requested = [...new Set(views.flatMap((view) => {
+        if (!isPlainObject(view) || !isPlainObject(view.data)) return [];
+        if (typeof view.data.source === 'string') return [view.data.source];
+        return Array.isArray(view.data.sources)
+          ? view.data.sources.filter((name) => typeof name === 'string')
+          : [];
+      }))].filter((name) => declaredQueries.has(name));
+      if (requested.length === 0) return;
+
+      try {
+        const required = new Set(resolveDashboardQuerySources(dashboard.queries, requested));
+        const scopedQueries = dashboard.queries.filter((query) => (
+          isPlainObject(query) && typeof query.name === 'string' && required.has(query.name)
+        ));
+        const declared = executeDashboardQueries(scopedQueries, canonicalSources, requested);
+        const payload = compileDashboardViewPayloadQueries(resolvedPage, resolvedPage.id, {
+          queries: scopedQueries,
+          sourceNames: requested
+        });
+        const materialized = executeDashboardQueries(
+          payload.queries,
+          { ...canonicalSources, ...declared },
+          payload.aliases
+        );
+        for (const alias of payload.aliases) {
+          if (materialized[alias]?.metadata?.availability !== 'unavailable') continue;
+          errors.push(createError(
+            ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+            `view query source "${alias}" materializes as unavailable.`,
+            `$.dashboard.pages[${pageIndex}].views`
+          ));
+        }
+      } catch (error) {
+        errors.push(createError(
+          ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+          `page-scoped view queries must materialize successfully: ${error instanceof Error ? error.message : String(error)}`,
+          `$.dashboard.pages[${pageIndex}]`
+        ));
+      }
+    });
 }
 
 /**

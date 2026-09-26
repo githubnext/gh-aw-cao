@@ -432,7 +432,10 @@ async function queryLiveDashboard(
     const viewAliases = viewPayload.queries.length > 0
       ? executeDashboardQueries(viewPayload.queries, querySources, viewPayload.aliases, { signal })
       : {};
-    const selected = pageScopedSources(querySources, requested);
+    const selected = pageScopedSources(
+      querySources,
+      new Set([...requested].filter((name) => !replacedSources.has(name)))
+    );
     const responseSources = { ...selected, ...viewAliases };
     const response = paginateDashboardSources(
       responseSources,
