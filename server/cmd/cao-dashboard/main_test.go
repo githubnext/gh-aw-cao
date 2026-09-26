@@ -236,6 +236,33 @@ func TestResolveIngestSource(t *testing.T) {
 	}
 }
 
+func TestResolveBackfillMode(t *testing.T) {
+	tests := []struct {
+		name       string
+		replayOnly bool
+		want       backfillMode
+	}{
+		{
+			name:       "replay-only flag selects replay-only mode",
+			replayOnly: true,
+			want:       backfillModeReplayOnly,
+		},
+		{
+			name:       "unset flag selects full mode",
+			replayOnly: false,
+			want:       backfillModeFull,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := resolveBackfillMode(tt.replayOnly); got != tt.want {
+				t.Errorf("resolveBackfillMode(%v) = %q, want %q", tt.replayOnly, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestRootCommandRegistersEverySubcommand(t *testing.T) {
 	want := []string{"backfill", "collect", "doctor", "ingest", "serve", "serve-hosted"}
 	root := newRootCommand()
