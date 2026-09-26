@@ -169,7 +169,9 @@ test("SelfCare server Go logging worker adds real tests without mocks", () => {
   assert.match(source, /allowed-files:\n\s+- "server\/\*\*\/\*\.go"/);
   assert.match(source, /golangci-lint\/v2\/cmd\/golangci-lint@v2\.13\.2/);
   assert.match(source, /go env GOPATH\)\/bin" >> "\$GITHUB_PATH"/);
-  assert.match(source, /golangci-lint fmt --diff && golangci-lint run \.\/\.\.\./);
+  assert.match(source, /working-directory: server/);
+  assert.match(source, /test ! -s \/tmp\/golangci-lint-fmt\.diff/);
+  assert.match(source, /golangci-lint run \.\/\.\.\./);
   assert.match(source, /go -C server vet \.\/\.\.\./);
   assert.match(source, /go -C server test \.\/\.\.\./);
   assert.match(source, /draft: true/);

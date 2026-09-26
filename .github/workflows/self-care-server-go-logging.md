@@ -120,7 +120,12 @@ pre-agent-steps:
       echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
   - name: Lint server baseline
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
-    run: cd server && golangci-lint fmt --diff && golangci-lint run ./...
+    working-directory: server
+    run: |
+      set -o pipefail
+      golangci-lint fmt --diff | tee /tmp/golangci-lint-fmt.diff
+      test ! -s /tmp/golangci-lint-fmt.diff
+      golangci-lint run ./...
   - name: Validate server baseline
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     run: go -C server test ./...
