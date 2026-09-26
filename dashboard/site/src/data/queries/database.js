@@ -25,6 +25,7 @@ const DATABASE_TABLE_SOURCES = new Set([
   'runs',
   ...RUN_RECORD_STORES,
   'operational-values',
+  'marketplace-packages',
   'transactions'
 ]);
 
