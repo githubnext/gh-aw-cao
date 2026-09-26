@@ -80,7 +80,7 @@ Run:
   --repo acme/central-agentic-ops
 ```
 
-The command invokes `gh secret set GH_AW_GITHUB_TOKEN` interactively. Enter the token only at that prompt. CAO never accepts it as a command argument.
+The command reads `.github/workflows/cao.json`, opens GitHub's fine-grained-token form with the resource owner, a 30-day expiration, and `Contents: write` prefilled, and prints the exact control and target repositories to select. GitHub does not support preselecting repository names through token-template URLs, so choose **Only select repositories** and select every repository printed by the command. After generating the token, return to the terminal and enter it only at the interactive `gh secret set GH_AW_GITHUB_TOKEN` prompt. CAO never accepts it as a command argument. Use `--no-open` to print the URL without opening a browser, `--expires-in DAYS` to choose a shorter approved lifetime, or `--policy PATH` for a non-default policy path.
 
 The credential is user-bound, longer-lived than an App installation token, normally limited to one resource owner, manually rotated, and potentially incompatible with required APIs. It does not bypass organization approval or repository permissions. Never substitute a classic PAT.
 
