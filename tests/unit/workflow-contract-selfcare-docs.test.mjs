@@ -35,7 +35,9 @@ test("multi-device docs tester runs daily and covers browser and appearance comp
   assert.match(compiled, /cron: "\d+ \d+ \* \* \*"  # Friendly format: daily \(scattered\)/);
   assert.doesNotMatch(compiled, /^  pull_request:/m);
   assert.match(source, /MAX_ATTEMPTS=3/);
-  assert.match(source, /if timeout 3m npm ci --ignore-scripts/);
+  assert.match(source, /shell: bash/);
+  assert.match(source, /STATUS=1/);
+  assert.match(source, /if timeout 5m npm ci --ignore-scripts/);
   assert.match(source, /npm ci attempt \$ATTEMPT\/\$MAX_ATTEMPTS failed with exit code \$STATUS/);
   assert.match(source, /playwright@1\.63\.0-alpha-2026-08-05 install --with-deps webkit/);
   assert.equal(

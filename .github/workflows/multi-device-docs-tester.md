@@ -55,10 +55,12 @@ network:
 
 pre-agent-steps:
   - name: Install documentation dependencies
+    shell: bash
     run: |
       MAX_ATTEMPTS=3
+      STATUS=1
       for (( ATTEMPT=1; ATTEMPT<=MAX_ATTEMPTS; ATTEMPT++ )); do
-        if timeout 3m npm ci --ignore-scripts; then
+        if timeout 5m npm ci --ignore-scripts; then
           exit 0
         else
           STATUS=$?
