@@ -35,6 +35,15 @@ The built-in dashboard keeps its shared query foundations and its controls, repo
 
 The [Overview component model](../../docs/dashboard-overview-components.md) documents that page's UI ownership boundaries, state coverage, and fixture-based visual testing convention. The [dashboard view catalog](../../docs/dashboard-view-catalog.md) indexes every standardized product view, built-in page, mark, chart, and named element.
 
+## WebMCP adapter
+
+Dashboard pages define the semantic capabilities of the dashboard. Human rendering and WebMCP are generated adapters over the same page definitions and the same query execution path, so there is no second tool catalog to maintain.
+
+- `src/webmcp/manifest.js` is a pure generator. It derives one read-only tool descriptor per agent-facing page: `page.id` becomes the `cao_<page_id>` tool name, `title` becomes the tool title, `description` or `intent` becomes the tool description, a `route.hash-query-parameter` becomes a required string property, and `form.fields` controls map to JSON Schema properties (`slider` to a bounded number, `checkbox` to a boolean, `radio` and `select` to an enum, `text` to a string). A page is agent facing when it appears in the declared navigation or is addressed by one route parameter.
+- `src/webmcp/runtime.js` registers those descriptors with `document.modelContext` and executes them. Execution validates the declared arguments, navigates the dashboard to the page route, and reads the page projection through the same page source loader and data-worker boundary the rendered page uses. Tools annotate `readOnlyHint` and never write.
+
+WebMCP is progressive enhancement. The runtime feature-detects `document.modelContext.registerTool` instead of sniffing user agents, ships no polyfill, and registers nothing when the API is absent, disabled, or its origin trial has expired; the dashboard then behaves exactly as before.
+
 ## Quality gates
 
 ```bash

@@ -10,6 +10,7 @@
       import { applyTableQuerySafetyLimits, browserTableCapacityDecision, logTableCapacityDecision } from "./data/table-capacity.js";
       import { startConsoleLogCapture } from "./console-log-capture.js";
       import { usesRemoteDataBackend } from "./remote-data-backend.js";
+      import { startDashboardWebMCP, supportsWebMCP } from "./webmcp/runtime.js";
       import {
         dashboardPageChunkPath,
         dashboardPageIsLoaded,
@@ -72,6 +73,7 @@
         if (!event.persisted) {
           stopDashboardAppUpdates();
           stopWorkerLoadingProgress();
+          dashboardWebMCP?.stop();
         }
       });
       const dashboardSchema = await fetch("./dashboard.json", { cache: "no-store" })
@@ -261,6 +263,29 @@
         });
         console.log("Dashboard preview socket initialized.");
       }
+      /** @type {ReturnType<typeof startDashboardWebMCP>} */
+      let dashboardWebMCP = null;
+      /**
+       * Keeps the generated WebMCP tools aligned with the rendered dashboard
+       * definition. WebMCP is progressive enhancement: browsers without
+       * `document.modelContext` register nothing and render as before.
+       */
+      const syncDashboardWebMCP = () => {
+        if (!supportsWebMCP(document)) return;
+        if (dashboardWebMCP) {
+          dashboardWebMCP.refresh();
+          return;
+        }
+        const loadPageSources = renderedPageSourceLoader;
+        if (!loadPageSources) return;
+        dashboardWebMCP = startDashboardWebMCP(document, {
+          dashboardDocument: () => dashboardDocument,
+          loadPageSources: (pageId, loadOptions) => (renderedPageSourceLoader ?? loadPageSources)(pageId, loadOptions),
+          navigate: (route) => {
+            window.location.hash = route;
+          },
+        });
+      };
       /**
       * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
       * @param {'ready' | 'loading' | 'cached' | 'stale'} [state]
@@ -304,6 +329,7 @@
         const previousDashboard = root.firstElementChild;
         if (previousDashboard instanceof HTMLElement) disposeDashboard(previousDashboard);
         root.replaceChildren(dashboard);
+        syncDashboardWebMCP();
         return dashboard;
       };
       window.addEventListener("dashboard-preview-update", (event) => {
