@@ -5,7 +5,7 @@ import { createFactoryScope } from './factory-elements.js';
 import { renderEmptyMessage } from './ui-primitives.js';
 
 /** @typedef {{ path: string, oid: string, sha256?: string, size: number }} MemoryFile */
-/** @typedef {{ fileLimit: number, fileSize: number, extension: number, nesting: number, unsafePath: number, invalidContent: number, unsupportedType: number }} OmittedFiles */
+/** @typedef {{ fileLimit: number, fileSize: number, totalSize: number, extension: number, nesting: number, unsafePath: number, invalidContent: number, unsupportedType: number }} OmittedFiles */
 /** @typedef {{ branch: string, commit: string, files: MemoryFile[], omitted: OmittedFiles }} CampaignMemory */
 /** @typedef {{ status: string, branch: string, commit: string, files: MemoryFile[], omitted: OmittedFiles, error: string }} ManifestState */
 /** @typedef {{ status: string, content: string, error: string }} MemoryFileState */
@@ -156,7 +156,7 @@ function memoryView({ campaignName, manifest, selectedPath, file, select }) {
 }
 
 function emptyOmissions() {
-  return { fileLimit: 0, fileSize: 0, extension: 0, nesting: 0, unsafePath: 0, invalidContent: 0, unsupportedType: 0 };
+  return { fileLimit: 0, fileSize: 0, totalSize: 0, extension: 0, nesting: 0, unsafePath: 0, invalidContent: 0, unsupportedType: 0 };
 }
 
 /** @param {OmittedFiles} omitted */
@@ -164,6 +164,7 @@ function renderOmissionWarning(omitted) {
   const reasons = [
     ['fileLimit', 'the file-count limit'],
     ['fileSize', 'the file-size limit'],
+    ['totalSize', 'the total-size limit'],
     ['extension', 'unsupported file extensions'],
     ['nesting', 'the nesting limit'],
     ['unsafePath', 'unsafe paths'],

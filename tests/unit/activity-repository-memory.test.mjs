@@ -83,6 +83,7 @@ test("publishes installed campaign memory from remote refs without checking them
         omitted: {
           fileLimit: 0,
           fileSize: 1,
+          totalSize: 0,
           extension: 1,
           nesting: 1,
           unsafePath: 0,

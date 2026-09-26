@@ -77,6 +77,7 @@ async function memoryFiles(repository, ref) {
   const omitted = {
     fileLimit: 0,
     fileSize: 0,
+    totalSize: 0,
     extension: 0,
     nesting: 0,
     unsafePath: 0,
@@ -181,7 +182,7 @@ export async function publishRepositoryMemory({ repository, inventory, output, g
     const publishedFiles = [];
     for (const file of files) {
       if (totalSize + file.size > REPOSITORY_MEMORY_LIMITS.maxTotalSize) {
-        omitted.fileSize += 1;
+        omitted.totalSize += 1;
         continue;
       }
       const destination = path.resolve(outputRoot, branch.campaign, ...file.path.split("/"));

@@ -141,7 +141,7 @@ function repositoryMemoryPath(value) {
 function repositoryMemoryOmissions(value) {
   const source = value && typeof value === 'object' ? /** @type {Record<string, unknown>} */ (value) : {};
   const omitted = {
-    fileLimit: 0, fileSize: 0, extension: 0, nesting: 0, unsafePath: 0, invalidContent: 0, unsupportedType: 0
+    fileLimit: 0, fileSize: 0, totalSize: 0, extension: 0, nesting: 0, unsafePath: 0, invalidContent: 0, unsupportedType: 0
   };
   for (const key of Object.keys(omitted)) {
     const count = source[key] ?? 0;
@@ -307,7 +307,11 @@ async function queryRepositoryMemory(request, signal) {
     const actual = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
     if (actual !== file.sha256.toLowerCase()) throw new Error('Memory file hash does not match its manifest.');
   }
-  return { content: new TextDecoder().decode(content) };
+  try {
+    return { content: new TextDecoder('utf-8', { fatal: true }).decode(content) };
+  } catch {
+    throw new Error('Memory file is not valid UTF-8 text.');
+  }
 }
 
 const RUN_PHASE_DATABASE_SOURCES = new Set(['campaigns', 'repositories', 'workflows', 'runs']);

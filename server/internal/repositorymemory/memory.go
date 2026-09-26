@@ -37,6 +37,7 @@ type File struct {
 type Omissions struct {
 	FileLimit       int `json:"fileLimit"`
 	FileSize        int `json:"fileSize"`
+	TotalSize       int `json:"totalSize"`
 	Extension       int `json:"extension"`
 	Nesting         int `json:"nesting"`
 	UnsafePath      int `json:"unsafePath"`
@@ -141,7 +142,7 @@ func Load(directory string) (Snapshot, error) {
 			return Snapshot{}, fmt.Errorf("repository-memory campaign %q is duplicated", campaign.Campaign)
 		}
 		seenCampaigns[campaign.Campaign] = struct{}{}
-		if campaign.Omitted.FileLimit < 0 || campaign.Omitted.FileSize < 0 ||
+		if campaign.Omitted.FileLimit < 0 || campaign.Omitted.FileSize < 0 || campaign.Omitted.TotalSize < 0 ||
 			campaign.Omitted.Extension < 0 || campaign.Omitted.Nesting < 0 ||
 			campaign.Omitted.UnsafePath < 0 || campaign.Omitted.InvalidContent < 0 ||
 			campaign.Omitted.UnsupportedType < 0 {

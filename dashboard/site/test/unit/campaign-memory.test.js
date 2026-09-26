@@ -76,6 +76,7 @@ describe('campaign repository memory', () => {
       omitted: {
         fileLimit: 1,
         fileSize: 2,
+        totalSize: 1,
         extension: 3,
         nesting: 0,
         unsafePath: 0,
@@ -93,10 +94,16 @@ describe('campaign repository memory', () => {
       'This view does not represent the entire memory branch'
     );
     expect(rendered.querySelector('.campaign-memory-warning')?.textContent).toContain(
-      '1 excluded by the file-count limit, 2 excluded by the file-size limit, 3 excluded by unsupported file extensions'
+      '1 excluded by the file-count limit, 2 excluded by the file-size limit'
+    );
+    expect(rendered.querySelector('.campaign-memory-warning')?.textContent).toContain(
+      '3 excluded by unsupported file extensions'
     );
     expect(rendered.querySelector('.campaign-memory-warning')?.textContent).toContain(
       '1 excluded by invalid text content'
+    );
+    expect(rendered.querySelector('.campaign-memory-warning')?.textContent).toContain(
+      '1 excluded by the total-size limit'
     );
   });
 
