@@ -1,8 +1,11 @@
 import { createElapsedStepTracker } from './elapsed-step-tracker.js';
+import { createDebug } from './debug.js';
 
 const INGESTION_PROGRESS_INTERVAL_MS = 1_000;
 const INGESTION_PROGRESS_HISTORY_LIMIT = 100;
 let nextIngestionProgressId = 0;
+
+const debugIngestionProgress = createDebug('ingestion-progress');
 
 /**
  * Publishes a user-facing notification from the data worker.
@@ -83,6 +86,7 @@ export function startIngestionProgress(target = self, requestId) {
       publishWorkerLoadingProgress({ id, phase: 'start' }, target);
       report();
       interval = setInterval(report, INGESTION_PROGRESS_INTERVAL_MS);
+      debugIngestionProgress({ event: 'started', id });
     },
     /** @param {number | undefined} bytes */
     setWorkload(bytes) {
@@ -90,6 +94,7 @@ export function startIngestionProgress(target = self, requestId) {
       processedBytes = 0;
       workloadStartedAt = Date.now();
       updateStatus();
+      debugIngestionProgress({ event: 'workload-set', id, totalBytes });
     },
     /**
      * @param {{ bytesProcessed: number, recordsIngested: number, totalBytes?: number }} progress
@@ -133,6 +138,7 @@ export function startIngestionProgress(target = self, requestId) {
       if (completed) return;
       completed = true;
       if (interval) clearInterval(interval);
+      debugIngestionProgress({ event: 'completed', id, started });
       if (!started) return;
       publishWorkerLoadingProgress({ id, phase: 'complete' }, target);
       publishWorkerNotification({ id, dismiss: true }, target);

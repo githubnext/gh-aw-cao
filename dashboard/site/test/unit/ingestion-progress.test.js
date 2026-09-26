@@ -189,4 +189,75 @@ describe('data-worker ingestion progress', () => {
 
     expect(postMessage).not.toHaveBeenCalled();
   });
+
+  it('is disabled by default (no debug output) when the debug query is absent', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '', output })
+      };
+    });
+    vi.resetModules();
+    const { startIngestionProgress: startIngestionProgressWithoutDebug } = await import('../../src/ingestion-progress.js');
+
+    const postMessage = vi.fn();
+    const progress = startIngestionProgressWithoutDebug({ postMessage });
+    progress.start();
+    progress.setWorkload(1_000);
+    progress.complete();
+
+    expect(output.debug).not.toHaveBeenCalled();
+
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
+
+  it('logs only scalar metadata for started, workload-set, and completed transitions under its predictable category', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '?debug=ingestion-progress', output })
+      };
+    });
+    vi.resetModules();
+    const { startIngestionProgress: startIngestionProgressWithDebug } = await import('../../src/ingestion-progress.js');
+
+    const postMessage = vi.fn();
+    const progress = startIngestionProgressWithDebug({ postMessage });
+    progress.start();
+    expect(output.debug).toHaveBeenCalledWith('[cao:ingestion-progress]', {
+      event: 'started',
+      id: expect.stringMatching(/^ingestion-progress-/)
+    });
+
+    progress.setWorkload(2_048);
+    expect(output.debug).toHaveBeenCalledWith('[cao:ingestion-progress]', {
+      event: 'workload-set',
+      id: expect.stringMatching(/^ingestion-progress-/),
+      totalBytes: 2_048
+    });
+
+    progress.complete();
+    expect(output.debug).toHaveBeenCalledWith('[cao:ingestion-progress]', {
+      event: 'completed',
+      id: expect.stringMatching(/^ingestion-progress-/),
+      started: true
+    });
+
+    for (const call of output.debug.mock.calls) {
+      const metadata = call[1];
+      expect(Object.values(metadata).every((value) => typeof value !== 'object')).toBe(true);
+    }
+
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
 });
