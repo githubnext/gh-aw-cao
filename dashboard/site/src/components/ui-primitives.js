@@ -629,17 +629,19 @@ export function nameInitials(value, options = {}) {
 }
 
 /**
- * Renders a `<span>` wrapping a single octicon, used by the attention-domain
- * cards, readiness-verdict hero, and signal-list rows to present one
- * decorative or semantic icon inside a component-specific class name.
+ * Renders a `<span>` (or another element tag) wrapping a single octicon,
+ * used by the attention-domain cards, readiness-verdict hero, signal-list
+ * rows, metric/document/issue cards, factory stations, the filter search
+ * control, and discussion post avatars to present one decorative or
+ * semantic icon inside a component-specific class name.
  * @param {string} className
  * @param {string} iconName
- * @param {{ ariaHidden?: boolean }} [options]
+ * @param {{ ariaHidden?: boolean, tag?: string }} [options]
  * @returns {HTMLElement}
  */
 export function renderIconSpan(className, iconName, options = {}) {
   return h(
-    'span',
+    options.tag ?? 'span',
     options.ariaHidden ? { className, 'aria-hidden': 'true' } : { className },
     octicon(iconName)
   );
