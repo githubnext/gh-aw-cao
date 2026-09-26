@@ -206,13 +206,24 @@ func (c *Client) DoMany(ctx context.Context, commands [][]string) ([]any, error)
 		return nil, err
 	}
 	results := make([]any, len(commands))
+	var responseErr error
 	for index := range commands {
 		results[index], err = readRESP(connection.reader)
 		if err != nil {
+			var redisErr redisResponseError
+			if errors.As(err, &redisErr) {
+				if responseErr == nil {
+					responseErr = err
+				}
+				continue
+			}
 			return nil, err
 		}
 	}
 	reusable = true
+	if responseErr != nil {
+		return nil, responseErr
+	}
 	return results, nil
 }
 
@@ -222,6 +233,10 @@ func (c *Client) acquire(ctx context.Context) (*redisConnection, bool, error) {
 		case <-ctx.Done():
 			return nil, false, ctx.Err()
 		case <-c.sessionPermit:
+		}
+		if err := ctx.Err(); err != nil {
+			c.sessionPermit <- struct{}{}
+			return nil, false, err
 		}
 		if c.sessionErr != nil {
 			c.sessionPermit <- struct{}{}

@@ -16,7 +16,7 @@ The deployment uses the existing host-neutral `serve-hosted` profile:
 - The browser connects only to the CAO server. It never receives the Upstash endpoint or credentials.
 - The server uses core Redis commands and Lua scripts. It doesn't use the Upstash REST API or require Redis modules.
 - `CAO_REDIS_MODE=upstash` serializes every Redis operation through one TCP session. If that session is lost, the client fails closed until the process restarts.
-- Each process start uses a fresh internal Redis namespace, so state from an earlier TCP session can't reappear after a restart.
+- Each process start uses a fresh internal Redis namespace, so active session and projection state from an earlier TCP session can't reappear after a restart. The encrypted pending-revocation queue uses a stable deployment-scoped prefix so failed GitHub token revocations remain retryable after restart.
 - Upstash stores a disposable projection of the dashboard data, server-side sessions, rate limits, webhook delivery markers, and rebuild coordination state.
 
 ```mermaid
@@ -77,7 +77,7 @@ The Upstash-specific settings are:
 | `CAO_REDIS_URL` | Yes | Yes | The Upstash Redis TCP connection string. It must use `rediss://`. Don't use the REST URL or token. |
 | `CAO_REDIS_MODE` | Yes | No | Must be `upstash`. Selects the serialized, fail-closed Redis session. |
 | `CAO_UPSTASH_SINGLE_REPLICA` | Yes | No | Must be `true`. Records the required single-replica deployment constraint. |
-| `CAO_REDIS_NAMESPACE` | No | No | Stable deployment identity used to derive a fresh internal namespace at every process start. Defaults to `hosted-dashboard`. |
+| `CAO_REDIS_NAMESPACE` | No | No | Stable deployment identity used to derive a fresh internal namespace at every process start and the durable pending-revocation prefix. Defaults to `hosted-dashboard`. |
 | `CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS` | No | No | Leave unset or `false`. This exception is only for a private deployment-managed Redis network and must not be used with Upstash. |
 
 Upstash provides causal consistency only within one TCP connection. Upstash mode therefore serializes all commands through one connection, disables connection recycling and retries, and permanently fails that client after transport loss. Restarting creates an isolated namespace and re-ingests the verified artifact. Server-side collection and standalone collection roles aren't supported in this mode.
@@ -92,7 +92,7 @@ The standalone `doctor` command starts another TCP session and can't inspect the
 
 ### Upstash usage
 
-Monitor database storage, rejected commands, latency, connection count, and command volume in Upstash. Ingestion writes every retained source row and can create a short command-volume spike. Each restart leaves its isolated namespace behind, so remove superseded namespaces only while the single application replica is stopped.
+Monitor database storage, rejected commands, latency, connection count, and command volume in Upstash. Ingestion writes every retained source row and can create a short command-volume spike. Each restart leaves its isolated namespace behind, so remove superseded process namespaces only while the single application replica is stopped. Do not remove the stable `upstash-…-durable` pending-revocation prefix.
 
 Configure capacity alerts before the database reaches its storage or command limits. The server fails closed when Redis can't enforce authentication-related state or rate limits.
 
@@ -131,7 +131,7 @@ Credential rotation doesn't require a data migration because the new process reb
 
 ## Recovering the deployment
 
-If the Redis projection becomes unusable, stop the CAO replica and restart it from the retained verified artifact. The new process uses a fresh namespace. Remove superseded namespaces from the dedicated database only while the application is stopped.
+If the Redis projection becomes unusable, stop the CAO replica and restart it from the retained verified artifact. The new process uses a fresh namespace. Remove superseded process namespaces from the dedicated database only while the application is stopped; retain the stable `upstash-…-durable` pending-revocation prefix.
 
 To roll back the application, redeploy the last known-good image digest through the same protected deployment environment. Then verify readiness, OAuth authorization, a bounded query, webhook handling, and rate limits. Rolling back the image doesn't roll back Upstash credentials or session secrets.
 

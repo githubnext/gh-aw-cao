@@ -44,6 +44,10 @@ func NewHostedAppFromEnv(
 	if err := validateUpstashSingleReplica(upstashMode, os.Getenv("CAO_UPSTASH_SINGLE_REPLICA")); err != nil {
 		return nil, err
 	}
+	revocationKeyPrefix, err := upstashRevocationKeyPrefix(upstashMode, os.Getenv("CAO_REDIS_NAMESPACE"))
+	if err != nil {
+		return nil, err
+	}
 	client, err := redisx.NewWithOptions(redisURL, redisx.Options{
 		AllowPrivatePlaintext: allowPrivatePlaintext,
 		SingleSession:         upstashMode,
@@ -112,6 +116,7 @@ func NewHostedAppFromEnv(
 			PreviousSessionSecret: os.Getenv("CAO_SESSION_SECRET_PREVIOUS"),
 			AllowedOrganizations:  splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_ORGS")),
 			AllowedTeams:          splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_TEAMS")),
+			RevocationKeyPrefix:   revocationKeyPrefix,
 		},
 		Logger: logger,
 	}
@@ -281,8 +286,24 @@ func isolatedUpstashNamespace(namespace string) (string, error) {
 	if _, err := rand.Read(nonce[:]); err != nil {
 		return "", errors.New("generate Upstash session namespace")
 	}
+
 	sum := sha256.Sum256([]byte(namespace))
 	return redisx.NormalizeNamespace(
 		"upstash-" + hex.EncodeToString(sum[:6]) + "-" + hex.EncodeToString(nonce[:]),
 	)
+}
+
+func upstashRevocationKeyPrefix(upstashMode bool, namespace string) (string, error) {
+	if !upstashMode {
+		return "", nil
+	}
+	if strings.TrimSpace(namespace) == "" {
+		namespace = "hosted-dashboard"
+	}
+	normalized, err := redisx.NormalizeNamespace(namespace)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256([]byte(normalized))
+	return "upstash-" + hex.EncodeToString(sum[:12]) + "-durable:", nil
 }

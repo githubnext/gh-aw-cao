@@ -334,7 +334,7 @@ invariants:
   - "Installed campaign records MUST be updated through gh-aw campaign commands."
   - "The repository-layout and installation specification defines canonical runtime ownership, immutable materialization, and fail-closed installation lifecycle requirements."
   - "Policy and workflow changes MUST be committed together."
-  - "Upstash mode MUST run exactly one application replica, serialize every Redis operation through one TCP session, fail closed after transport loss, isolate every process start in a fresh namespace, and use artifact ingestion rather than server-side collection."
+  - "Upstash mode MUST run exactly one application replica, serialize every Redis operation through one TCP session, fail closed after transport loss, isolate every process start in a fresh namespace except for its stable encrypted pending-revocation queue, and use artifact ingestion rather than server-side collection."
   - "Marketplace registry order defines precedence; the official registry is removable configuration rather than hard-coded resolver behavior."
   - "Marketplace registry authentication MUST reference secrets, remain registry-scoped in trusted Activity or hosted resolvers, and MUST NOT enter manifests, canonical package records, IndexedDB, query payloads, or UI state."
   - "Static and hosted marketplace resolvers MUST produce the same normalized package contract; failure of one registry MUST NOT make other registries unavailable."

@@ -206,7 +206,9 @@ Restart recovery uses a fresh random internal namespace and rebuilds from the
 verified artifact. This isolates the process from stale state written through an
 earlier TCP session and invalidates all existing CAO sessions. Old namespaces
 remain disposable storage until an operator removes them while the application
-is stopped.
+is stopped. The encrypted pending-revocation queue is the exception: it uses a
+stable deployment-scoped prefix so GitHub credentials queued for revocation
+remain available to the bounded retry worker after restart.
 
 The mode fails startup unless the endpoint uses `rediss://` on an Upstash host
 and `CAO_UPSTASH_SINGLE_REPLICA=true` is set. The deployment must independently

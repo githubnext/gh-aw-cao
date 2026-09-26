@@ -2,6 +2,7 @@ package redisx
 
 import (
 	"bufio"
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -9,6 +10,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"math/big"
 	"net"
@@ -235,6 +237,7 @@ func TestSingleSessionKeepsConnectionAfterRedisCommandError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	t.Cleanup(func() { _ = listener.Close() })
 	var accepted atomic.Int32
 	serverErr := make(chan error, 1)
@@ -274,6 +277,64 @@ func TestSingleSessionKeepsConnectionAfterRedisCommandError(t *testing.T) {
 	}
 	if count := accepted.Load(); count != 1 {
 		t.Fatalf("accepted %d connections, want one session", count)
+	}
+}
+
+func TestSingleSessionKeepsConnectionAfterPipelinedRedisCommandError(t *testing.T) {
+	var listenConfig net.ListenConfig
+	listener, err := listenConfig.Listen(t.Context(), "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = listener.Close() })
+	serverErr := make(chan error, 1)
+	go func() {
+		connection, acceptErr := listener.Accept()
+		if acceptErr != nil {
+			serverErr <- acceptErr
+			return
+		}
+		defer func() { _ = connection.Close() }()
+		reader := bufio.NewReader(connection)
+		for index, response := range []string{"-ERR rejected\r\n", "+OK\r\n", "+PONG\r\n"} {
+			if _, readErr := readRESP(reader); readErr != nil {
+				serverErr <- fmt.Errorf("command %d: %w", index, readErr)
+				return
+			}
+			if _, writeErr := fmt.Fprint(connection, response); writeErr != nil {
+				serverErr <- writeErr
+				return
+			}
+		}
+		serverErr <- nil
+	}()
+	client, err := NewWithOptions("redis://"+listener.Addr().String(), Options{SingleSession: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.DoMany(t.Context(), [][]string{{"BAD"}, {"SET", "key", "value"}}); err == nil {
+		t.Fatal("pipelined Redis command error was not returned")
+	}
+	if value, err := client.Do(t.Context(), "PING"); err != nil || fmt.Sprint(value) != "PONG" {
+		t.Fatalf("connection was not reusable after pipelined Redis error: value=%v err=%v", value, err)
+	}
+	if err := <-serverErr; err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSingleSessionRejectsCanceledContextWithoutPoisoning(t *testing.T) {
+	client, err := NewWithOptions("redis://127.0.0.1:1", Options{SingleSession: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if _, err := client.Do(ctx, "PING"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled command returned %v", err)
+	}
+	if client.sessionErr != nil {
+		t.Fatalf("canceled command poisoned the session: %v", client.sessionErr)
 	}
 }
 

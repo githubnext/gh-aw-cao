@@ -134,8 +134,10 @@ that guarantees causal ordering only within one TCP session. That profile runs
 exactly one application replica, serializes all Redis operations through one
 non-reconnecting connection, and uses a fresh internal namespace on every
 process start. A lost connection fails closed until restart. Restart rebuilds
-from the verified artifact and invalidates prior sessions; server-side
-collection is not available in this profile. The default hosted and Azure
+from the verified artifact and invalidates prior sessions. Its encrypted
+pending-revocation queue alone retains a stable deployment prefix so token
+revocation retries survive restart; server-side collection is not available in
+this profile. The default hosted and Azure
 profiles retain their ordinary pooled Redis behavior.
 
 The Redis profile acquires evidence through exactly one of two mutually

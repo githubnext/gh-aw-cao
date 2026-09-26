@@ -95,10 +95,12 @@ func TestUpstashNamespacesAreIsolatedPerProcessSession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	second, err := isolatedUpstashNamespace("cao:hosted-dashboard")
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if first == second {
 		t.Fatal("Upstash process sessions shared a namespace")
 	}
@@ -109,6 +111,30 @@ func TestUpstashNamespacesAreIsolatedPerProcessSession(t *testing.T) {
 		if _, err := redisx.NormalizeNamespace(namespace); err != nil {
 			t.Fatalf("isolated namespace is invalid: %v", err)
 		}
+	}
+}
+
+func TestUpstashRevocationKeyPrefixIsStableAndModeSpecific(t *testing.T) {
+	first, err := upstashRevocationKeyPrefix(true, "dashboard")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := upstashRevocationKeyPrefix(true, " cao:DASHBOARD ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first == "" || first != second {
+		t.Fatalf("upstash revocation prefix must be stable: %q, %q", first, second)
+	}
+	other, err := upstashRevocationKeyPrefix(true, "other")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first == other {
+		t.Fatal("different configured namespaces shared an Upstash revocation prefix")
+	}
+	if value, err := upstashRevocationKeyPrefix(false, "invalid namespace!"); err != nil || value != "" {
+		t.Fatalf("standard mode unexpectedly received a revocation prefix: %q", value)
 	}
 }
 

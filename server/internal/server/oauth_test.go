@@ -225,6 +225,22 @@ func TestLogoutStagesCredentialsWithoutRefreshing(t *testing.T) {
 	}
 }
 
+func TestOAuthRevocationKeysCanUseDurablePrefix(t *testing.T) {
+	oauth := newGitHubOAuth(
+		GitHubOAuthConfig{
+			SessionSecret:       "session-secret-0123456789abcdef",
+			RevocationKeyPrefix: "durable:",
+		},
+		redisx.NewStore(nil, "ephemeral"),
+	)
+	if key := oauth.revocationIndexKey(); key != "durable:oauth-revocations" {
+		t.Fatalf("unexpected durable revocation index key: %q", key)
+	}
+	if key := oauth.revocationKey("session"); !strings.HasPrefix(key, "durable:oauth-revocation:") {
+		t.Fatalf("unexpected durable revocation record key: %q", key)
+	}
+}
+
 func TestSessionEncryptionSupportsControlledKeyRotation(t *testing.T) {
 	oldSecret := "old-session-secret-0123456789abcdef"
 	newSecret := "new-session-secret-0123456789abcdef"
