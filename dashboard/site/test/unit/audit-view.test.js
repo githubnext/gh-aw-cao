@@ -38,10 +38,14 @@ describe('Audit dashboard view', () => {
       ],
       arguments: [{ name: 'campaign', field: 'campaign' }]
     });
-    expect(insights.views[2].data).toMatchObject({
-      source: 'audit-event-summary-buckets',
-      'route-field': 'campaign'
-    });
+    expect(insights.views.find((/** @type {{ id: string }} */ view) => view.id === 'campaign-audit-event-table'))
+      .toMatchObject({
+        id: 'campaign-audit-event-table',
+        data: {
+          source: 'audit-event-summary-buckets',
+          'route-field': 'campaign'
+        }
+      });
     expect(insights.views.filter((/** @type {{ mark: string }} */ view) => view.mark !== 'element')
       .map((/** @type {{ mark: string }} */ view) => view.mark))
       .toEqual(['table', 'list']);
