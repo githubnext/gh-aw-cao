@@ -9,8 +9,13 @@ test("SVG visual audit covers every tracked SVG in both color schemes", () => {
   const compiled = workflow("svg-visual-audit.lock.yml");
 
   assert.match(source, /git ls-files '\*\.svg'/);
+  assert.match(source, /local checkout and manifest as the complete audit scope/);
   assert.match(source, /colorScheme: "light"/);
   assert.match(source, /colorScheme: "dark"/);
+  assert.match(source, /\bid: pi\b/);
+  assert.match(source, /\bmodel: copilot\/gpt-5\.4\b/);
+  assert.match(source, /playwright:/);
+  assert.match(source, /version: "0\.1\.\d+"/);
   assert.match(source, /4\.5:1/);
   assert.match(source, /overlap between a `<text>` element and its own descendant `<tspan>`/);
   assert.match(source, /create-check-run:/);
@@ -34,6 +39,11 @@ test("multi-device docs tester runs daily and covers browser and appearance comp
   assert.doesNotMatch(source, /pull_request:|workflow_dispatch:|inputs\.devices/);
   assert.match(compiled, /cron: "\d+ \d+ \* \* \*"  # Friendly format: daily \(scattered\)/);
   assert.doesNotMatch(compiled, /^  pull_request:/m);
+  assert.match(source, /MAX_ATTEMPTS=3/);
+  assert.match(source, /shell: bash/);
+  assert.match(source, /STATUS=1/);
+  assert.match(source, /if timeout 5m npm ci --ignore-scripts/);
+  assert.match(source, /npm ci attempt \$ATTEMPT\/\$MAX_ATTEMPTS failed with exit code \$STATUS/);
   assert.match(source, /playwright@1\.63\.0-alpha-2026-08-05 install --with-deps webkit/);
   assert.equal(
     (source.match(/PLAYWRIGHT_BROWSERS_PATH: \$\{\{ runner\.temp \}\}\/gh-aw\/playwright-browsers/g) || []).length,
@@ -93,7 +103,10 @@ test("SelfCare runs every 20 minutes", () => {
   assert.match(source, /schedule: every 20 minutes/);
   assert.match(source, /engine: copilot/);
   assert.doesNotMatch(source, /model: copilot\/gpt-5\.4/);
-  assert.match(source, /self-care-dashboard-data-schema`, `self-care-docs-maintainer`, `self-care-glossary`, and `self-care-release-blogger`.*preceding 24 hours/);
+  assert.match(
+    source,
+    /self-care-dashboard-data-schema`, `self-care-data-acquisition-audit`, `self-care-docs-maintainer`, `self-care-glossary`, and `self-care-release-blogger`.*preceding 24 hours/
+  );
   assert.match(source, /ten most recent runs of each workflow/);
   assert.match(source, /self-care-pages-health.*no run of that workflow is queued, in progress, or started during the preceding six hours/);
   assert.match(source, /at most the 20 most recent Pages Health workflow runs/);

@@ -10,6 +10,9 @@ on:
   workflow_dispatch:
 max-ai-credits: 400
 max-daily-ai-credits: -1
+engine:
+  id: pi
+  model: copilot/gpt-5.4
 timeout-minutes: 30
 run-name: "SVG visual audit · ${{ github.event.pull_request.number || github.run_number }}"
 concurrency:
@@ -22,7 +25,7 @@ permissions:
 strict: true
 tools:
   playwright:
-    version: "0.1.13"
+    version: "0.1.18"
 network:
   allowed:
     - defaults
@@ -54,6 +57,7 @@ steps:
 # SVG Visual Audit
 
 Audit every SVG listed in `/tmp/gh-aw/agent/svg-audit/svg-files.txt`. Serve the repository inside this agent sandbox and open it with Playwright at `http://127.0.0.1:4321/`.
+Use the local checkout and manifest as the complete audit scope; do not query GitHub for pull request files or diffs.
 
 ## Required procedure
 

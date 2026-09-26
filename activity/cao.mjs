@@ -2,7 +2,7 @@
 
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { createReadStream, createWriteStream, realpathSync } from 'node:fs';
+import { createReadStream, createWriteStream, readFileSync, realpathSync } from 'node:fs';
 import { readFile, readdir, mkdir, mkdtemp, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { createInterface } from 'node:readline';
@@ -38,6 +38,7 @@ import { runProblemClustering } from './problem-clustering.mjs';
 import { discoverInventory } from './inventory.mjs';
 import { discoverInventoryDashboardSources } from './inventory-sources.mjs';
 import { hasComputation, queryComputation } from './computations/index.mjs';
+import { FINE_GRAINED_PAT_PROFILES } from './authentication.mjs';
 import {
   analyzeDashboardComplexity,
   formatDashboardComplexityMarkdown,
@@ -102,7 +103,7 @@ const USAGE = `Usage:
   cao init
   cao setup-auth github-app [--repo OWNER/REPO] [APP_SETUP_OPTIONS...]
   cao setup-auth enterprise-app --repo OWNER/REPO --read-client-id ID --write-client-id ID [--dry-run]
-  cao setup-auth token [--repo OWNER/REPO] --acknowledge-token-risks
+  cao setup-auth token --repo OWNER/REPO [--write-repository OWNER/REPO...] [--policy PATH] [--expires-in DAYS] [--no-open]
   cao setup-auth workflow-token
   cao add CAMPAIGN [GH_AW_ADD_OPTIONS...]
   cao update [--pre-releases] [GH_AW_UPDATE_OPTIONS...]
@@ -119,7 +120,7 @@ const USAGE = `Usage:
   cao issue-status [--database FILE] --input-dir SHARD_DIRECTORY [--batch-size COUNT] [--graphql-cost-budget POINTS] [--graphql-min-remaining POINTS]
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao computation runtime-health [--database FILE] [--inventory FILE] [--campaign SLUG] [--diagnose]
-  cao operational-value [--database FILE] [--root DIRECTORY] [--output FILE] [--timestamp TIME] [--repository OWNER/REPO] [--retention-days DAYS|all] [--max-github-api-rate-limit LIMIT]
+  cao operational-value [--database FILE] [--root DIRECTORY] [--output FILE] [--timestamp TIME] [--repository OWNER/REPO] [--campaign SLUG] [--retention-days DAYS|all] [--history-campaign SLUG] [--max-github-api-rate-limit LIMIT]
   cao cluster-problems [--database FILE] [--root DIRECTORY] [--timestamp TIME]
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
   cao download [--url URL] [--output DIRECTORY]
@@ -139,7 +140,7 @@ Query local CAO data as JSON. Download the deployed snapshot before querying:
   cao computation runtime-health
   cao computation runtime-health --campaign dependabot
   cao computation runtime-health --campaign dependabot --diagnose
-  cao operational-value --output .cao/gh-aw-logs-shards/operational-values.jsonl --max-github-api-rate-limit -2000
+  cao operational-value --output .cao/gh-aw-logs-shards/operational-values.jsonl --retention-days 30 --history-campaign optimization --max-github-api-rate-limit -2000
   cao cluster-problems
   cao gh runs -R githubnext/gh-aw-cao -w cao-activity --status failure --since 2026-09-01 --until 2026-09-15
   cao gh issues -R githubnext/gh-aw-cao --since 2026-09-01
@@ -184,6 +185,8 @@ Operational value scripts:
   cao operational-value discovers <package>/operational-value.mjs below --root.
   Each script receives one JSON request on stdin and emits JSONL records with
   timestamp, repository, valueId, and a finite numeric value.
+  --history-campaign queries missing cadence observations within the retention
+  window from prefetched evidence and writes them only when --output is present.
 
 Problem clustering scripts:
   cao cluster-problems discovers <package>/problem-clustering.mjs below --root.
@@ -321,8 +324,84 @@ export async function initializeCaoPolicy({
   return { command: 'init', policy: policyPath, 'gh-aw-version': version };
 }
 
+function githubServerUrl(environment = process.env) {
+  const configured = environment.GH_HOST?.trim()
+    || environment.GITHUB_SERVER_URL?.trim()
+    || 'github.com';
+  const url = configured.includes('://') ? configured : `https://${configured}`;
+  return new URL(url).origin;
+}
+
+function openBrowser(url, execute = spawnSync) {
+  const command = process.platform === 'darwin' ? ['open', [url]]
+    : process.platform === 'win32' ? ['cmd', ['/c', 'start', '', url]]
+      : ['xdg-open', [url]];
+  const result = execute(command[0], command[1], { stdio: 'ignore' });
+  return !result.error && result.status === 0;
+}
+
+export function fineGrainedTokenSetups({
+  repo,
+  policyPath = DEFAULT_POLICY_PATH,
+  expiresIn = '30',
+  writeRepositories = [],
+  environment = process.env,
+} = {}) {
+  if (!REPOSITORY_COORDINATE.test(repo || '')) {
+    throw new UsageError('--repo must be an exact OWNER/REPOSITORY');
+  }
+  if (!/^(?:[1-9]|[1-9][0-9]|[12][0-9]{2}|3[0-5][0-9]|36[0-6])$/.test(expiresIn)) {
+    throw new UsageError('--expires-in must be an integer from 1 through 366');
+  }
+  let policy;
+  try {
+    policy = validateGlobalPolicy(JSON.parse(readFileSync(path.resolve(policyPath), 'utf8')), policyPath);
+  } catch (error) {
+    if (error?.code === 'ENOENT') throw new Error(`${policyPath} is required for guided token setup`);
+    if (error instanceof SyntaxError) throw new Error(`${policyPath} contains invalid JSON: ${error.message}`);
+    throw error;
+  }
+  const configuredRepositories = policy['control-plane']?.scope?.['allowed-repositories'] ?? [];
+  if (!Array.isArray(configuredRepositories)
+    || configuredRepositories.some((repository) => typeof repository !== 'string' || !REPOSITORY_COORDINATE.test(repository))) {
+    throw new Error(`${policyPath} control-plane.scope.allowed-repositories must contain exact OWNER/REPOSITORY values`);
+  }
+  if (!Array.isArray(writeRepositories)
+    || writeRepositories.some((repository) => typeof repository !== 'string' || !REPOSITORY_COORDINATE.test(repository))) {
+    throw new UsageError('--write-repository must be an exact OWNER/REPOSITORY');
+  }
+  const readRepositories = [...new Set([repo, ...configuredRepositories])];
+  const selectedWriteRepositories = [...new Set(writeRepositories.length > 0 ? writeRepositories : [repo])];
+  const repositories = [...new Set([...readRepositories, ...selectedWriteRepositories])];
+  const owners = new Set(repositories.map((repository) => repository.split('/')[0].toLowerCase()));
+  if (owners.size !== 1) {
+    throw new Error('fine-grained token setup requires the control repository and all allowed repositories to have one owner');
+  }
+  const [owner, controlRepository] = repo.split('/');
+  const patNameBase = `CAO-${owner}-${controlRepository.replace(/-token$/i, '')}-PAT`.toUpperCase();
+  return FINE_GRAINED_PAT_PROFILES.map((profile) => {
+    const profileRepositories = profile.role === 'read' ? readRepositories : selectedWriteRepositories;
+    const parameters = new URLSearchParams({
+      name: `${patNameBase}-${profile.role.toUpperCase()}`.slice(0, 40),
+      description: `Central Agentic Ops ${profile.role} access for ${repo}`,
+      target_name: owner,
+      expires_in: expiresIn,
+      ...profile.permissions,
+    });
+    return {
+      ...profile,
+      url: `${githubServerUrl(environment)}/settings/personal-access-tokens/new?${parameters}`,
+      owner,
+      repositories: profileRepositories,
+      expiresIn: Number(expiresIn),
+    };
+  });
+}
+
 export function setupCaoAuthentication(method, arguments_ = [], {
-  execute = spawnSync
+  execute = spawnSync,
+  launchBrowser = (url) => openBrowser(url, execute),
+  writeInstruction = (message) => console.error(message),
 } = {}) {
   if (method === 'github-app') {
     const script = path.join('.github', 'workflows', 'shared', 'setup-github-apps.mjs');
@@ -382,29 +461,49 @@ export function setupCaoAuthentication(method, arguments_ = [], {
   }
   if (method === 'token') {
     const options = parseOptions(arguments_);
-    rejectUnknownOptions(options, ['repo', 'acknowledge-token-risks']);
-    if (!options['acknowledge-token-risks']) {
-      throw new UsageError(
-        'token setup requires --acknowledge-token-risks after reviewing the user-bound, '
-        + 'single-owner, expiration, approval, rotation, and API compatibility limits',
-      );
-    }
-    const repo = option(options, 'repo', false);
+    rejectUnknownOptions(options, ['repo', 'write-repository', 'policy', 'expires-in', 'no-open']);
+    const repo = option(options, 'repo');
+    const writeRepositories = options['write-repository'] === undefined
+      ? []
+      : Array.isArray(options['write-repository'])
+        ? options['write-repository']
+        : [options['write-repository']];
+    const setups = fineGrainedTokenSetups({
+      repo,
+      policyPath: option(options, 'policy', false) || DEFAULT_POLICY_PATH,
+      expiresIn: option(options, 'expires-in', false) || '30',
+      writeRepositories,
+    });
     const auth = execute('gh', ['auth', 'status'], { encoding: 'utf8' });
     if (auth.error || auth.status !== 0) {
       throw new Error(`GitHub CLI authentication check failed: ${commandFailureMessage(auth, 'gh auth status failed')}`);
     }
-    const secretArguments = ['secret', 'set', 'GH_AW_GITHUB_TOKEN'];
-    if (repo) secretArguments.push('--repo', repo);
-    const result = execute('gh', secretArguments, { stdio: 'inherit' });
-    if (result.error || result.status !== 0) {
-      throw new Error(`Fine-grained token setup failed: ${commandFailureMessage(result, `exit ${result.status}`)}`);
+    for (const setup of setups) {
+      writeInstruction(`Create the ${setup.role} fine-grained PAT for ${setup.owner}:`);
+      writeInstruction(`- expiration: ${setup.expiresIn} days`);
+      writeInstruction('- repository access: Only select repositories');
+      for (const repository of setup.repositories) writeInstruction(`  - ${repository}`);
+      writeInstruction('- repository permissions:');
+      for (const [permission, level] of Object.entries(setup.permissions)) {
+        writeInstruction(`  - ${permission}: ${level}`);
+      }
+      if (options['no-open'] || !launchBrowser(setup.url)) {
+        writeInstruction(`Open this URL to continue: ${setup.url}`);
+      }
+      writeInstruction(`Generate the token, then paste it only into the secure prompt for ${setup.secret}.`);
+      const result = execute('gh', [
+        'secret', 'set', setup.secret, '--repo', repo,
+      ], { stdio: 'inherit' });
+      if (result.error || result.status !== 0) {
+        throw new Error(`${setup.role} fine-grained token setup failed: ${commandFailureMessage(result, `exit ${result.status}`)}`);
+      }
     }
     return {
       command: 'setup-auth',
       profile: 'fine-grained-token',
-      secret: 'GH_AW_GITHUB_TOKEN',
-      ...(repo ? { repo } : {}),
+      secrets: setups.map(({ role, secret }) => ({ role, secret })),
+      repo,
+      repositories: Object.fromEntries(setups.map(({ role, repositories }) => [role, repositories])),
     };
   }
   if (method === 'workflow-token') {
@@ -958,14 +1057,14 @@ function parseOptions(arguments_) {
     if (!argument.startsWith('--') && !aliases[argument]) throw new UsageError(`Unexpected argument: ${argument}`);
     const name = aliases[argument] ?? argument.slice(2);
     if (name === 'help' || name === 'stdin' || name === 'keep' || name === 'diagnose'
-      || name === 'acknowledge-token-risks' || name === 'dry-run') {
+      || name === 'dry-run' || name === 'no-open') {
       options[name] = 'true';
       continue;
     }
     const value = arguments_[index + 1];
     if (!value || value.startsWith('--')) throw new UsageError(`Missing value for --${name}`);
     index += 1;
-    if (name === 'where' || name === 'group' || name === 'repository') {
+    if (name === 'where' || name === 'group' || name === 'repository' || name === 'write-repository') {
       const existing = options[name];
       options[name] = [...(Array.isArray(existing) ? existing : []), value];
     } else if (options[name] !== undefined) {
@@ -1190,33 +1289,41 @@ async function hashFileContents(filePath) {
   return hash.digest('hex');
 }
 
-function workflowRunId(value) {
-  return value === undefined || value === null ? null : String(value);
+async function totalFileBytes(paths) {
+  return (await Promise.all(paths.map(async (filePath) => (await stat(filePath)).size)))
+    .reduce((sum, size) => sum + size, 0);
 }
+
+function workflowRunId(value) { return value === undefined || value === null ? null : String(value); }
 
 function isAgenticWorkflowRun(record) {
-  return typeof record?.run?.workflow_path === 'string'
-    && record.run.workflow_path.endsWith('.lock.yml');
+  return typeof record?.run?.workflow_path === 'string' && record.run.workflow_path.endsWith('.lock.yml');
 }
 
-function compactedJsonlLine(line, agenticRunIds) {
+function createJsonlCompactionState() { return { seenRunRecordDigests: new Set(), deduplicatedRunRecords: 0 }; }
+
+function compactedJsonlLine(line, agenticRunIds, state) {
   const record = JSON.parse(line);
   if (record?.kind === 'run' || record?.kind === 'token_efficiency_run_context') {
-    return isAgenticWorkflowRun(record) ? line : null;
+    if (!isAgenticWorkflowRun(record)) return null;
+    if (record.kind === 'run') {
+      const digest = createHash('sha256').update(line).digest('hex');
+      if (state.seenRunRecordDigests.has(digest)) {
+        state.deduplicatedRunRecords += 1;
+        return null;
+      }
+      state.seenRunRecordDigests.add(digest);
+    }
+    return line;
   }
   if (record?.kind === 'safe_output_item') {
     return agenticRunIds.has(workflowRunId(record.safe_output?.run_id)) ? line : null;
   }
-  if (
-    record?.kind === 'token_efficiency_observation'
-    || record?.kind === 'token_efficiency_lifecycle_observation'
-  ) {
+  if (record?.kind === 'token_efficiency_observation' || record?.kind === 'token_efficiency_lifecycle_observation') {
     return agenticRunIds.has(workflowRunId(record.observation?.optimizerRunId)) ? line : null;
   }
   if (record?.kind !== 'workflow_runs' || !Array.isArray(record.payload)) return line;
-  const payload = record.payload.filter((run) =>
-    agenticRunIds.has(workflowRunId(run?.databaseId))
-  );
+  const payload = record.payload.filter((run) => agenticRunIds.has(workflowRunId(run?.databaseId)));
   if (payload.length === 0) return null;
   return payload.length === record.payload.length ? line : JSON.stringify({ ...record, payload });
 }
@@ -1233,9 +1340,10 @@ async function inspectJsonlCompaction(sourcePaths) {
   let sourceRecords = 0;
   let retainedRecords = 0;
   let filtered = false;
+  const state = createJsonlCompactionState();
   for await (const line of jsonlLines(sourcePaths)) {
     sourceRecords += 1;
-    const retained = compactedJsonlLine(line, agenticRunIds);
+    const retained = compactedJsonlLine(line, agenticRunIds, state);
     if (retained === null) {
       filtered = true;
       continue;
@@ -1243,7 +1351,7 @@ async function inspectJsonlCompaction(sourcePaths) {
     retainedRecords += 1;
     if (retained !== line) filtered = true;
   }
-  return { agenticRunIds, sourceRecords, retainedRecords, filtered };
+  return { agenticRunIds, sourceRecords, retainedRecords, deduplicatedRunRecords: state.deduplicatedRunRecords, filtered };
 }
 
 function* normalizedJsonlLines(payload) {
@@ -1266,8 +1374,7 @@ function* normalizedJsonlLines(payload) {
 
 async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
   const sourcePaths = names.map((name) => path.join(directory, name));
-  const sourceBytes = (await Promise.all(sourcePaths.map(async (filePath) => (await stat(filePath)).size)))
-    .reduce((sum, size) => sum + size, 0);
+  const sourceBytes = await totalFileBytes(sourcePaths);
   const inspection = await inspectJsonlCompaction(sourcePaths);
   if (sourcePaths.length <= 1 && sourceBytes <= maxBytes && !inspection.filtered) {
     return {
@@ -1275,6 +1382,7 @@ async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
       sourceFiles: sourcePaths.length,
       sourceRecords: inspection.sourceRecords,
       retainedRecords: inspection.retainedRecords,
+      deduplicatedRunRecords: inspection.deduplicatedRunRecords,
       sourceBytes,
       compactedBytes: sourceBytes,
       output: sourcePaths[0] ?? null,
@@ -1292,6 +1400,7 @@ async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
   let bufferedLines = [];
   let bufferedBytes = 0;
   let retainedRecords = 0;
+  const state = createJsonlCompactionState();
   const flush = async () => {
     if (bufferedLines.length === 0) return;
     const content = bufferedLines.join('');
@@ -1309,7 +1418,7 @@ async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
   };
   try {
     for await (const line of jsonlLines(sourcePaths)) {
-      const retained = compactedJsonlLine(line, inspection.agenticRunIds);
+      const retained = compactedJsonlLine(line, inspection.agenticRunIds, state);
       if (retained === null) continue;
       const outputLine = `${retained}\n`;
       const lineBytes = Buffer.byteLength(outputLine);
@@ -1324,13 +1433,13 @@ async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
     throw error;
   }
   await Promise.all(sourcePaths.filter((filePath) => !outputPaths.includes(filePath)).map((filePath) => rm(filePath)));
-  const compactedBytes = (await Promise.all(outputPaths.map(async (filePath) => (await stat(filePath)).size)))
-    .reduce((sum, size) => sum + size, 0);
+  const compactedBytes = await totalFileBytes(outputPaths);
   return {
     prefix,
     sourceFiles: sourcePaths.length,
     sourceRecords: inspection.sourceRecords,
     retainedRecords,
+    deduplicatedRunRecords: state.deduplicatedRunRecords,
     sourceBytes,
     compactedBytes,
     output: outputPaths[0] ?? null,
@@ -2378,9 +2487,9 @@ function issueStatusTargets(issues) {
   });
 }
 
-function issueStatusQuery(batch) {
+export function issueStatusQuery(batch) {
   const fields = batch.map((target, index) => (
-    `i${index}: issue(number: ${target.number}) { number state stateReason closedAt url }`
+    `i${index}: issueOrPullRequest(number: ${target.number}) { ... on Issue { number state stateReason closedAt url } }`
   )).join('\n');
   return `query($owner: String!, $name: String!) {
   repository(owner: $owner, name: $name) {

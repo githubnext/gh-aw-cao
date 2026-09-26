@@ -43,6 +43,32 @@ const (
 	redisEndpointSourceDefault redisEndpointSource = "default"
 )
 
+// consumerNameSource identifies which input determined the resolved
+// collection worker consumer name. It is useful for diagnosing
+// misconfiguration without logging the name itself.
+type consumerNameSource string
+
+const (
+	consumerNameSourceFlag     consumerNameSource = "flag"
+	consumerNameSourceHostname consumerNameSource = "hostname"
+)
+
+// resolveConsumerName applies the standard priority for a collection worker's
+// consumer name: an explicit flag value, then the machine hostname obtained
+// from hostnameFunc. It returns the resolved name and which input supplied
+// it, so callers can log the source without exposing the name. An error is
+// returned only when the flag is empty and hostnameFunc fails.
+func resolveConsumerName(flagValue string, hostnameFunc func() (string, error)) (string, consumerNameSource, error) {
+	if name := strings.TrimSpace(flagValue); name != "" {
+		return name, consumerNameSourceFlag, nil
+	}
+	hostname, err := hostnameFunc()
+	if err != nil {
+		return "", "", fmt.Errorf("resolve consumer name: %w", err)
+	}
+	return hostname, consumerNameSourceHostname, nil
+}
+
 // resolveRedisEndpoint applies the standard priority for a server-side Redis
 // URL: an explicit flag value, then an environment override, then
 // defaultValue. It returns both the resolved endpoint and which input
@@ -55,6 +81,57 @@ func resolveRedisEndpoint(flagValue, envValue, defaultValue string) (string, red
 		return endpoint, redisEndpointSourceEnv
 	}
 	return defaultValue, redisEndpointSourceDefault
+}
+
+// namespaceDefaultSource identifies which input determined the default value
+// offered to the doctor command's --redis-namespace flag before any explicit
+// flag override. It is useful for diagnosing misconfiguration without
+// logging the namespace itself.
+type namespaceDefaultSource string
+
+const (
+	namespaceDefaultSourceEnv      namespaceDefaultSource = "env"
+	namespaceDefaultSourceCheckout namespaceDefaultSource = "checkout"
+)
+
+// resolveNamespaceDefault applies the standard priority for the doctor
+// command's default Redis namespace: an explicit CAO_REDIS_NAMESPACE
+// environment override, then checkoutDefault, which is normally derived from
+// the working directory by redisx.DefaultNamespace. It returns the resolved
+// default and which input supplied it, so callers can log the source without
+// exposing the namespace value.
+func resolveNamespaceDefault(envValue, checkoutDefault string) (string, namespaceDefaultSource) {
+	if namespace := strings.TrimSpace(envValue); namespace != "" {
+		return namespace, namespaceDefaultSourceEnv
+	}
+	return checkoutDefault, namespaceDefaultSourceCheckout
+}
+
+// ingestSourceOrigin identifies which input determined the ingest command's
+// deployed dashboard directory. It is useful for diagnosing misconfiguration
+// without logging the directory path itself.
+type ingestSourceOrigin string
+
+const (
+	ingestSourceOriginFlag          ingestSourceOrigin = "flag"
+	ingestSourceOriginPositionalArg ingestSourceOrigin = "positional-arg"
+)
+
+// resolveIngestSource applies the standard priority for the ingest command's
+// deployed dashboard directory: an explicit --source flag value, then a
+// single positional argument. It returns the resolved source and which input
+// supplied it, so callers can log the source without exposing the directory
+// path. An error is returned when neither input supplies a non-blank value.
+func resolveIngestSource(flagValue string, positionalArgs []string) (string, ingestSourceOrigin, error) {
+	if source := strings.TrimSpace(flagValue); source != "" {
+		return source, ingestSourceOriginFlag, nil
+	}
+	if len(positionalArgs) == 1 {
+		if source := strings.TrimSpace(positionalArgs[0]); source != "" {
+			return source, ingestSourceOriginPositionalArg, nil
+		}
+	}
+	return "", "", errors.New("ingest requires --source DIRECTORY")
 }
 
 func main() {
@@ -109,13 +186,13 @@ func run(arguments []string) error {
 func doctorCommand(arguments []string) error {
 	flags := flag.NewFlagSet("doctor", flag.ContinueOnError)
 	redisURL := flags.String("redis-url", "", "server-side Redis URL; defaults to CAO_REDIS_URL then "+defaultRedisURL)
-	defaultNamespace, err := redisx.DefaultNamespace(".")
+	checkoutNamespace, err := redisx.DefaultNamespace(".")
 	if err != nil {
 		return err
 	}
-	if configured := strings.TrimSpace(os.Getenv("CAO_REDIS_NAMESPACE")); configured != "" {
-		defaultNamespace = configured
-	}
+	defaultNamespace, namespaceDefaultSource := resolveNamespaceDefault(
+		os.Getenv("CAO_REDIS_NAMESPACE"), checkoutNamespace)
+	commandLog.Printf("doctor resolved namespace default source=%s", namespaceDefaultSource)
 	redisNamespace := flags.String("redis-namespace", defaultNamespace, "Redis key namespace")
 	databaseQueries := flags.String("database-queries",
 		"../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
@@ -266,13 +343,12 @@ func ingestCommand(arguments []string) error {
 	if err := flags.Parse(arguments); err != nil {
 		return err
 	}
-	if *source == "" && flags.NArg() == 1 {
-		*source = flags.Arg(0)
+	resolvedSource, sourceOrigin, err := resolveIngestSource(*source, flags.Args())
+	if err != nil {
+		return err
 	}
-	if *source == "" {
-		return errors.New("ingest requires --source DIRECTORY")
-	}
-	commandLog.Printf("ingest flags parsed")
+	*source = resolvedSource
+	commandLog.Printf("ingest flags parsed source_origin=%s", sourceOrigin)
 	client, err := redisx.New(*redisURL)
 	if err != nil {
 		return err
@@ -329,16 +405,13 @@ func collectCommand(arguments []string) error {
 	if err != nil {
 		return err
 	}
-	name := strings.TrimSpace(*consumer)
-	if name == "" {
-		hostname, err := os.Hostname()
-		if err != nil {
-			return fmt.Errorf("resolve consumer name: %w", err)
-		}
-		name = hostname
+	name, nameSource, err := resolveConsumerName(*consumer, os.Hostname)
+	if err != nil {
+		return err
 	}
 	worker := collector.Worker(name)
 	worker.Project = *project
+	commandLog.Printf("collect resolved consumer name source=%s", nameSource)
 	log.Printf("collection worker %s started", name)
 	if err := worker.Run(ctx); err != nil && ctx.Err() == nil {
 		return err

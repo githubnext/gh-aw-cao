@@ -115,7 +115,9 @@ For private or internal targets, alternate review repositories, or live writes, 
 | `GH_AW_GITHUB_READ_APP_PRIVATE_KEY` | With App authentication | Repository secret containing the read-only App private key. |
 | `GH_AW_GITHUB_WRITE_APP_ID` | With write-capable App authentication | Repository variable containing the safe-output and API-gate GitHub App client ID. |
 | `GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY` | With write-capable App authentication | Repository secret containing the safe-output and API-gate App private key. |
-| `GH_AW_GITHUB_TOKEN` | PAT fallback | Fine-grained token for cross-repository access. |
+| `GH_AW_GITHUB_READ_PAT` | PAT fallback | Read-only fine-grained token for control and target repository access. |
+| `GH_AW_GITHUB_WRITE_PAT` | PAT fallback | Write-capable fine-grained token used only by safe-output processing. |
+| `GH_AW_GITHUB_TOKEN` | Deprecated PAT fallback | Legacy combined token retained for backward compatibility. |
 | `GH_AW_CI_TOKEN` | Optional Dependabot path | Additional token used only when an empty CI commit is required. |
 
 The root campaign manifest remains free of interactive setup so `gh aw add` works non-interactively. Follow [Automated App setup](authentication.md#automated-app-setup) to create both Apps and install them for the accounts represented in the exact repository allowlist, or configure the four values manually. Shared control uses the read-only App for GitHub tools and admission. It exposes the write-capable App to safe outputs and, with only `Actions: write`, to best-effort API-gate persistence after a fresh capacity denial. Each path uses only its documented credential fallback when that credential's reach is sufficient.

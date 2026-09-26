@@ -3,8 +3,9 @@ import { collectFullDiagnostics } from '../diagnostics.js';
 import { capturedConsoleLogText } from '../console-log-capture.js';
 import { createDebug, fullDebugUrl } from '../debug.js';
 import { copyTextToClipboard, createCopyControl, renderCheckbox } from './ui-primitives.js';
-import { isPlainObject, renderLazyDisclosure, renderSectionHeading } from './ui-primitives.js';
+import { isPlainObject, renderLazyDisclosure, renderLiveRegion, renderSectionHeading } from './ui-primitives.js';
 import { renderSettingsCliActions } from './cli-actions.js';
+import { createFactoryScope } from './factory-elements.js';
 import { renderResetDashboardControl } from './reset-dashboard-control.js';
 import {
   automaticDashboardBackgroundUpdatesActive,
@@ -266,10 +267,7 @@ function renderSettingsEditor(policyDocument) {
       updateStatus();
     }
   }, 'Discard changes');
-  const diagnosticsStatus = /** @type {HTMLOutputElement} */ (h('output', {
-    className: 'configuration-copy-status',
-    'aria-live': 'polite'
-  }));
+  const diagnosticsStatus = /** @type {HTMLOutputElement} */ (renderLiveRegion('output', 'configuration-copy-status'));
   const diagnosticsButton = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button',
     className: 'configuration-diagnostics-button',
@@ -373,17 +371,9 @@ function renderAutomaticDataUpdatesSetting() {
     status
   );
   const stopStatusUpdates = onAutomaticDashboardBackgroundUpdateStatus(updateStatus);
-  let wasConnected = section.isConnected;
-  const observer = new MutationObserver(() => {
-    if (section.isConnected) {
-      wasConnected = true;
-      return;
-    }
-    if (!wasConnected) return;
-    observer.disconnect();
-    stopStatusUpdates();
-  });
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  const sectionScope = createFactoryScope();
+  sectionScope.signal.addEventListener('abort', stopStatusUpdates, { once: true });
+  sectionScope.bind(section);
   return section;
 }
 

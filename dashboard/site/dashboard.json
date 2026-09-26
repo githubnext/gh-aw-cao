@@ -8647,6 +8647,45 @@
             ]
           },
           {
+            "as": "_runtime-repository-encoded",
+            "function": "url-encode",
+            "args": [
+              {
+                "field": "runtime-repository"
+              }
+            ]
+          },
+          {
+            "as": "_runtime-repository-href",
+            "function": "concat",
+            "args": [
+              {
+                "value": "#page-repository-detail?repository="
+              },
+              {
+                "field": "_runtime-repository-encoded"
+              }
+            ]
+          },
+          {
+            "as": "runtime-repository-link",
+            "function": "dashboard-link",
+            "args": [
+              {
+                "field": "repository-link"
+              },
+              {
+                "field": "_runtime-repository-href"
+              },
+              {
+                "field": "runtime-repository"
+              },
+              {
+                "field": "runtime-repository"
+              }
+            ]
+          },
+          {
             "as": "_target-repository-encoded",
             "function": "url-encode",
             "args": [

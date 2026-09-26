@@ -18,7 +18,7 @@ function row(overrides = {}) {
   return {
     owner: "github",
     repository: "gh-aw",
-    declaredWorkflowPath: ".github/workflows/daily-file-diet.md",
+    declaredWorkflowPath: ".github/workflows/example-workflow.md",
     concludedRuns: 10,
     successfulRuns: 8,
     successfulRunsWithAic: 8,

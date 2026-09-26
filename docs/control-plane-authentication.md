@@ -23,13 +23,35 @@ CAO creates separate read-only and write-capable Apps. Review the dry-run manife
 For one organization:
 
 ```bash
+export GH_HOST=github.example.ghe.com # Omit on github.com.
+
 ./cao.sh setup-auth github-app \
   --repo acme/central-agentic-ops \
   --dry-run
 
 ./cao.sh setup-auth github-app \
-  --repo acme/central-agentic-ops
+  --repo acme/central-agentic-ops \
+  --write-repository acme/approved-output-repository
 ```
+
+The read App is installed on the control repository and every exact repository
+allowed by `.github/workflows/cao.json`. The write App defaults to only the
+control repository for review outputs. Repeat `--write-repository OWNER/REPO`
+to replace that default with the exact repositories approved for safe-output
+writes.
+
+The helper uses `GH_HOST`, or `GITHUB_SERVER_URL` in Actions, for repository,
+App registration, installation, and settings URLs. On GitHub Enterprise Cloud
+data-residency hosts (`*.ghe.com`), it omits the unavailable Campaigns App
+permission from the generated read-App manifest.
+
+On data-residency hosts, GitHub exposes organization installation metadata but
+does not expose the selected repository list to the CLI's OAuth token. The
+helper verifies that each installation uses **Only select repositories**, opens
+the organization-owned App installation settings route, and prints the exact
+repositories that the operator must verify there. The first bounded workflow
+run must then prove read access to every intended repository and write access
+only in an approved safe-output repository.
 
 An organization-owned private App fails closed when policy enrolls a repository owned by another organization.
 
@@ -47,6 +69,15 @@ For organizations in one enterprise, create the read and write Apps manually in 
   --read-client-id '<read-app-client-id>' \
   --write-client-id '<write-app-client-id>'
 ```
+
+Use the same separate permission ceilings as the organization-owned Apps:
+
+| Enterprise App | Organization installations |
+| --- | --- |
+| Read App | Install on the control repository and every exact target repository that CAO must inspect, including separate selected-repository installations in each enrolled organization |
+| Write App | Install only on organizations and repositories approved to receive safe outputs |
+
+Keep both Apps private and disable webhooks. Generate one private key for each App only after reviewing its permissions and installations. On a GitHub Enterprise Cloud data-residency host, omit the unavailable Campaigns permission from the read App.
 
 The client IDs are not secrets. The command stores them as repository variables and prompts for each PEM private key through `gh secret set`; never put a private key in a command argument. The operator must be able to create Apps for that enterprise and approve each organization installation.
 
@@ -71,14 +102,23 @@ Run:
 ```bash
 ./cao.sh setup-auth token \
   --repo acme/central-agentic-ops \
-  --acknowledge-token-risks
+  --write-repository acme/approved-output-repository
 ```
 
-The command invokes `gh secret set GH_AW_GITHUB_TOKEN` interactively. Enter the token only at that prompt. CAO never accepts it as a command argument.
+The command creates separate `GH_AW_GITHUB_READ_PAT` and `GH_AW_GITHUB_WRITE_PAT` secrets. It reads `.github/workflows/cao.json`, opens host-aware fine-grained-token forms with the resource owner, a 30-day expiration, and role-specific permissions prefilled, and prints the exact repositories to select for each token. GitHub does not support preselecting repository names through token-template URLs, so choose **Only select repositories** and select every repository printed for that role. After generating each token, return to the terminal and enter it only at the corresponding interactive `gh secret set` prompt. CAO never accepts tokens as command arguments. Use `--write-repository OWNER/REPO` one or more times to replace the default write scope of the control repository, `--no-open` to print URLs without opening a browser, `--expires-in DAYS` to choose a shorter approved lifetime, or `--policy PATH` for a non-default policy path.
 
-The acknowledgement confirms that the credential is user-bound, longer-lived than an App installation token, normally limited to one resource owner, manually rotated, and potentially incompatible with required APIs. It does not bypass organization approval or repository permissions. Never substitute a classic PAT.
+The two tokens intentionally have different repository selections:
 
-The current token profile uses one `GH_AW_GITHUB_TOKEN` for reads and approved safe outputs. Its permissions therefore form a shared ceiling; omit write permissions for review-only operation and reconsider private Apps before enabling live outputs.
+| Token | Select these repositories |
+| --- | --- |
+| Read PAT | The control repository and every exact repository allowed by `.github/workflows/cao.json` |
+| Write PAT | Only repositories explicitly passed with `--write-repository`; otherwise only the control repository |
+
+Do not add a target to the write PAT merely because the read PAT covers it. The write PAT is used only by trusted safe-output processing and should remain narrower than the read PAT whenever review outputs stay in the control repository or writes are approved for only a subset of targets.
+
+The credential is user-bound, longer-lived than an App installation token, normally limited to one resource owner, manually rotated, and potentially incompatible with required APIs. It does not bypass organization approval or repository permissions. Never substitute a classic PAT.
+
+Read operations receive only `GH_AW_GITHUB_READ_PAT`; safe-output processing receives `GH_AW_GITHUB_WRITE_PAT`. The legacy `GH_AW_GITHUB_TOKEN` remains a compatibility fallback but should not be configured for new installations.
 
 ## Use the workflow token
 
@@ -95,7 +135,10 @@ This creates no secret. Keep outputs in the control repository and treat unavail
 - Confirm the chosen credential covers every enrolled repository but no unrelated repository.
 - Confirm the read App has no write permissions.
 - Install the write App only where approved safe outputs require writes.
+- For an enterprise App profile, mint and test the read token separately for every enrolled organization, then perform and clean up a reversible write probe using only the write App in an approved output repository.
 - Confirm PAT approval, expiration, resource owner, and API compatibility when using a token.
+- For a PAT profile, prove independently that the read PAT can read every enrolled repository but cannot perform the selected reversible write probe, then prove that the write PAT can perform and clean up that probe only in an approved output repository.
+- When migrating from `GH_AW_GITHUB_TOKEN`, rerun the same proof after deleting the legacy secret so a successful run cannot be using the compatibility fallback.
 - Run the first campaign with `max_repos=1`, `rollout_percent=100`, and `safe_output_mode=review`.
 - Reassess authentication whenever target scope, campaign API requirements, mode, or review destination changes.
 

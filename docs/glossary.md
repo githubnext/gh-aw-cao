@@ -26,9 +26,9 @@ An evidence-backed warning that a workflow may be harder to control, secure, ope
 
 A general description for work performed with limited manual intervention. Automation is not a distinct CAO entity or workflow role. Prefer the specific term **campaign**, **coordinator**, **worker**, or **run** when naming something in the product or documentation.
 
-## Campaign
+## Agentic campaign
 
-A persistent body of agentic work that continuously pursues a defined outcome across a set of targets. An operator configures, supervises, and evaluates a campaign together with its distributable workflows, shared dependencies, and manifest. A campaign is implemented by one coordinator and one or more workers. Examples include Dependabot review, workflow optimization, and compliance assessment.
+Continuous centralized agentic work that pursues your goals for your enterprise as a whole.
 
 ## Canonical data
 

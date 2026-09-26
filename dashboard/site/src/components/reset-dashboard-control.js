@@ -3,7 +3,7 @@ import { deleteCanonicalDatabase } from '../data/storage/indexeddb.js';
 import { octicon } from '../octicons.js';
 import { clearScopedStorage } from '../storage-scope.js';
 import { createDebug } from '../debug.js';
-import { createModalDialog, renderCloseButton } from './ui-primitives.js';
+import { createModalDialog, renderCloseButton, renderLiveRegion } from './ui-primitives.js';
 
 const debug = createDebug('data:reset');
 
@@ -56,10 +56,7 @@ export function renderResetDashboardControl(options = {}) {
     ariaLabel: 'Reset dashboard confirmation',
     onFallbackClose: () => trigger.focus()
   });
-  const status = /** @type {HTMLOutputElement} */ (h('output', {
-    className: 'reset-dashboard-status',
-    'aria-live': 'polite'
-  }));
+  const status = /** @type {HTMLOutputElement} */ (renderLiveRegion('output', 'reset-dashboard-status'));
   const cancel = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button',
     className: 'reset-dashboard-cancel',

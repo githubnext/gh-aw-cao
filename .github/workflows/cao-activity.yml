@@ -14,6 +14,9 @@ on:
     paths:
       - .github/workflows/cao.json
       - .github/workflows/cao-activity.yml
+      - "activity/**"
+      - "*/operational-value.mjs"
+      - "*/operational-value/**"
   schedule:
     - cron: "7,22,37,52 * * * *"
 
@@ -147,14 +150,14 @@ jobs:
         continue-on-error: true
         uses: github/gh-aw-actions/setup-cli@924af5fdc64061cfbf66fb584c8b07e2ac230c60 # v0.89.21
         env:
-          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
+          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || github.token }}
         with:
           version: ${{ steps.gh-aw-compiler.outputs.version }}
 
       - name: Collect dashboard inventory
         env:
           ACTIVITY_APP_TOKEN: ${{ steps.activity-app-token.outputs.token }}
-          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
+          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || github.token }}
           REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity/control-settings.json
           REPORT_INVENTORY: ${{ runner.temp }}/cao-activity/control-plane-inventory.json
           REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity/inventory-sources.json
@@ -204,17 +207,16 @@ jobs:
 
       - name: Download agentic workflow logs
         env:
-          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
+          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || github.token }}
           REPORT_AIC_CACHE: ${{ runner.temp }}/cao-gh-aw-logs
           REPORT_ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
           REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity/control-settings.json
           REPORT_DRAIN3_WEIGHTS: ${{ runner.temp }}/cao-activity/drain3_weights.json
           REPORT_GH_AW_LOGS_EXIT_CODE: ${{ runner.temp }}/cao-activity/gh-aw-logs-exit-code
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
+          REPORT_DEFER_ISSUE_STATUS: "1"
           REPORT_LOG_TIMEOUT: "15"
           REPORT_MAX_GITHUB_API_RATE_LIMIT: "-4000"
-          REPORT_ISSUE_STATUS_GRAPHQL_COST_BUDGET: "25"
-          REPORT_ISSUE_STATUS_GRAPHQL_MIN_REMAINING: "500"
           REPORT_MAX_STORAGE: "1200"
           REPORT_RUN_LIMIT: "10000"
           REPORT_RUN_WINDOW_DAYS: "30"
@@ -225,6 +227,32 @@ jobs:
             echo "One or more repository log collections failed" >&2
             exit "$collection_exit_code"
           fi
+
+      - name: Refresh GitHub App token for issue status
+        id: issue-status-app-token
+        env:
+          GH_AW_IGNORE_IF_MISSING_PRIVATE_KEY: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
+        if: ${{ vars.GH_AW_GITHUB_READ_APP_ID != '' && env.GH_AW_IGNORE_IF_MISSING_PRIVATE_KEY != '' }}
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.GH_AW_GITHUB_READ_APP_ID }}
+          private-key: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ steps.activity-settings.outputs.repositories }}
+          github-api-url: ${{ github.api_url }}
+          permission-issues: read
+
+      - name: Enrich issue statuses
+        env:
+          ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
+          GH_TOKEN: ${{ steps.issue-status-app-token.outputs.token || secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || github.token }}
+          REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
+        run: |
+          node activity/cao.mjs issue-status \
+            --database "$ACTIVITY_DATABASE" \
+            --input-dir "$REPORT_GH_AW_LOGS_SHARDS" \
+            --graphql-cost-budget 25 \
+            --graphql-min-remaining 500
 
       - name: Generate phased activity shards
         env:
@@ -253,17 +281,45 @@ jobs:
             --retention-days 30 \
             --run-retention-days 30
 
+      - name: Refresh GitHub App token for operational value
+        id: operational-value-app-token
+        env:
+          GH_AW_IGNORE_IF_MISSING_PRIVATE_KEY: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
+        if: ${{ vars.GH_AW_GITHUB_READ_APP_ID != '' && env.GH_AW_IGNORE_IF_MISSING_PRIVATE_KEY != '' }}
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.GH_AW_GITHUB_READ_APP_ID }}
+          private-key: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ steps.activity-settings.outputs.repositories }}
+          github-api-url: ${{ github.api_url }}
+          permission-actions: read
+          permission-contents: read
+          permission-issues: read
+          permission-pull-requests: read
+          permission-security-events: read
+          permission-vulnerability-alerts: read
+
       - name: Compute repository operational value
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
-          CAO_OPERATIONAL_VALUE_GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
+          CAO_OPERATIONAL_VALUE_GH_TOKEN: ${{ steps.operational-value-app-token.outputs.token || secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || github.token }}
+          GH_TOKEN: ${{ steps.operational-value-app-token.outputs.token || secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || github.token }}
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
         run: |
+          if ! gh api rate_limit --silent >/dev/null; then
+            echo "::warning::Fresh operational value token failed preflight; collection will fail closed."
+          fi
+          history_args=()
+          if [[ -f optimization/operational-value.mjs ]]; then
+            history_args=(--history-campaign optimization)
+          fi
           if ! node activity/cao.mjs operational-value \
               --database "$ACTIVITY_DATABASE" \
               --root . \
               --output "$REPORT_GH_AW_LOGS_SHARDS/operational-values.jsonl" \
               --retention-days 30 \
+              "${history_args[@]}" \
               --max-github-api-rate-limit -2000; then
             echo "::warning::Operational value collection failed; continuing activity indexing."
           fi

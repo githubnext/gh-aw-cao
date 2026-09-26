@@ -1,7 +1,7 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { renderCliActionCommand } from '../cli-action-template.js';
-import { createCopyControl, createModalDialog, renderCloseButton } from './ui-primitives.js';
+import { createCopyControl, createModalDialog, renderCloseButton, renderLiveRegion } from './ui-primitives.js';
 import { createDebug } from '../debug.js';
 
 const debugCliActions = createDebug('cli-actions');
@@ -90,10 +90,7 @@ function resultText(result) {
 export function createPromptCliActionControl(actionId, getPrompt) {
   const action = declaredCliActions.find((candidate) => candidate.id === actionId);
   if (!declaredCliActionsCanExecute || !action) return null;
-  const status = /** @type {HTMLOutputElement} */ (h('output', {
-    className: 'table-intent-copy-status',
-    'aria-live': 'polite'
-  }));
+  const status = /** @type {HTMLOutputElement} */ (renderLiveRegion('output', 'table-intent-copy-status'));
   const output = h('pre', { className: 'cli-action-output', hidden: true });
   const button = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button',
@@ -205,10 +202,7 @@ function renderCliActionControl(action, options = {}) {
     failureText: 'Could not copy command.',
     trackState: true
   });
-  const status = copyControl?.status ?? /** @type {HTMLOutputElement} */ (h('output', {
-    className: 'cli-action-status',
-    'aria-live': 'polite'
-  }));
+  const status = copyControl?.status ?? /** @type {HTMLOutputElement} */ (renderLiveRegion('output', 'cli-action-status'));
   const output = h('pre', { className: 'cli-action-output', hidden: true });
   const cancel = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button',

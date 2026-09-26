@@ -10,12 +10,15 @@ import { text } from './count-formatters.js';
 import { findLink } from './link-content.js';
 import { bindFactorySources, createFactoryScope } from './factory-elements.js';
 import { effect } from '../reactive.js';
+import { createDebug } from '../debug.js';
 
 const CAMPAIGN_TAB_COUNT_SOURCES = Object.freeze({
   insights: 'campaign-insight-tab-counts',
   problems: 'campaign-problem-tab-counts',
   issues: 'campaign-issue-tab-counts'
 });
+
+const debugCampaignRouteShell = createDebug('campaign-route-shell');
 
 /**
  * @typedef {{
@@ -81,6 +84,7 @@ export function renderCampaignRouteShell(context, config) {
         const databaseLoading = bindings.workflows.pending();
         if (databaseLoading) {
           const campaignName = campaignNameForRoute(campaignId, workflows);
+          debugCampaignRouteShell({ event: 'route-render', tab: config.currentTab, status: 'loading' });
           return {
             allocation: {
               title: campaignName,
@@ -121,10 +125,12 @@ export function renderCampaignRouteShell(context, config) {
             content: renderEmptyMessage('Campaign data will appear after the first data load completes.')
           };
         }
+        debugCampaignRouteShell({ event: 'route-render', tab: config.currentTab, status: 'not-found' });
         return null;
       }
       const campaignName = campaignNameForRoute(campaignId, workflows);
       const titleLink = campaignTitleLink(campaignName, workflows);
+      debugCampaignRouteShell({ event: 'route-render', tab: config.currentTab, status: 'matched', workflowCount: workflows.length });
       return {
         allocation: {
           title: campaignName,

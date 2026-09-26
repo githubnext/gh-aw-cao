@@ -343,6 +343,7 @@ describe('campaign detail route', () => {
   it('keeps campaign facets above the page filter bar for the route view lifetime', async () => {
     const page = document.createElement('section');
     page.className = 'dashboard-page';
+    document.body.append(page);
     const loadingTabs = document.createElement('div');
     loadingTabs.className = 'route-tab-navigation';
     loadingTabs.append(document.createElement('nav'));
@@ -363,8 +364,9 @@ describe('campaign detail route', () => {
     expect(page.querySelectorAll('[data-route-tabs]')).toHaveLength(1);
 
     rendered.remove();
-    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(page.querySelector('.campaign-tabs')).toBeNull();
+    page.remove();
   });
 
   it('places campaign facets above already-rendered page content when no page chrome is present', () => {

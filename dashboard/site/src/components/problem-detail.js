@@ -48,10 +48,10 @@ const DETAIL_GROUPS = [
     title: 'Failure',
     fields: [
       { label: 'Status detail', field: 'status-detail' },
-      { label: 'Failure message', field: 'failure-message' },
+      { label: 'Failure message', field: 'failure-message', fallback: 'status-detail', missing: 'The run ended without emitting a failure message.' },
       { label: 'Error signature', field: 'error-signature' },
-      { label: 'Job', field: 'failure-job' },
-      { label: 'Step', field: 'failure-step' }
+      { label: 'Job', field: 'failure-job', missing: 'The failed job was not identified in retained run telemetry.' },
+      { label: 'Step', field: 'failure-step', missing: 'The failed step was not identified in retained run telemetry.' }
     ]
   },
   {
@@ -60,18 +60,18 @@ const DETAIL_GROUPS = [
       { label: 'Campaign', field: 'campaign-name', fallback: 'campaign' },
       { label: 'Workflow', field: 'workflow-name', fallback: 'workflow', linkField: 'workflow-link' },
       { label: 'Workflow role', field: 'workflow-role' },
-      { label: 'Runtime repository', field: 'runtime-repository', linkField: 'repository-link' },
+      { label: 'Runtime repository', field: 'runtime-repository', linkField: 'runtime-repository-link' },
       { label: 'Target repository', field: 'target-repository', linkField: 'target-repository-link' }
     ]
   },
   {
     title: 'Runtime environment',
     fields: [
-      { label: 'gh-aw version', field: 'gh-aw-version' },
-      { label: 'Engine', field: 'engine' },
-      { label: 'Engine version', field: 'engine-version' },
-      { label: 'Requested model', field: 'requested-model' },
-      { label: 'Resolved model', field: 'resolved-model' }
+      { label: 'gh-aw version', field: 'gh-aw-version', missing: 'The compiler version was not recorded for this run.' },
+      { label: 'Engine', field: 'engine', missing: 'The engine did not initialize before the failure.' },
+      { label: 'Engine version', field: 'engine-version', missing: 'The engine version was not emitted before the failure.' },
+      { label: 'Requested model', field: 'requested-model', missing: 'Automatic model selection was requested.' },
+      { label: 'Resolved model', field: 'resolved-model', missing: 'Model resolution did not complete before the failure.' }
     ]
   }
 ];
@@ -148,10 +148,15 @@ function renderHighlight(label, value) {
 }
 
 /**
- * @param {{ title: string, fields: { label: string, field: string, fallback?: string, linkField?: string }[] }} group
+ * @param {{ title: string, fields: { label: string, field: string, fallback?: string, linkField?: string, missing?: string }[] }} group
  * @param {Record<string, unknown>} problem
  */
 function renderDetailGroup(group, problem) {
+  const fields = group.fields.map(({ label, field, fallback, linkField, missing }) => {
+    const value = text(problem[field]) || (fallback ? text(problem[fallback]) : '') || missing || 'Not reported by run telemetry.';
+    const link = linkField ? findLink(problem, linkField) : null;
+    return h('div', null, h('dt', null, label), h('dd', null, renderExternalLinkOrFallback(link, value, value)));
+  });
   return h(
     'section',
     { className: 'problem-view-section' },
@@ -159,11 +164,7 @@ function renderDetailGroup(group, problem) {
     h(
       'dl',
       null,
-      ...group.fields.map(({ label, field, fallback, linkField }) => {
-        const value = text(problem[field]) || (fallback ? text(problem[fallback]) : '') || 'Unavailable';
-        const link = linkField ? findLink(problem, linkField) : null;
-        return h('div', null, h('dt', null, label), h('dd', null, renderExternalLinkOrFallback(link, value, value)));
-      })
+      ...fields
     )
   );
 }

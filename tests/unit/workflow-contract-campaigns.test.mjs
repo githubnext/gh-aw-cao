@@ -540,7 +540,7 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /If the command fails, is forbidden, or is inconclusive, say so once and continue/);
   assert.match(setupSkill, /explicitly author and compile a workflow using another supported engine\/provider/);
   assert.match(setupSkill, /`total_seats: 0`[\s\S]*?HTTP 403/);
-  assert.match(setupSkill, /GitHub App or `GH_AW_GITHUB_TOKEN` for target access does not authenticate model inference/);
+  assert.match(setupSkill, /GitHub App or target-access PAT does not authenticate model inference/);
   assert.match(setupSkill, /every installed Copilot-backed source declares `copilot-requests: write`/);
   assert.match(setupSkill, /no generated lock declares `\$\{\{ secrets\.COPILOT_GITHUB_TOKEN \}\}`/);
   assert.match(setupSkill, /Do not replace `auto` with an explicit model/);

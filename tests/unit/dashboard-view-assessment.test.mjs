@@ -3,9 +3,9 @@ import { test } from "node:test";
 import dashboardViewsConfig from "../playwright/configs/dashboard-views.config.mjs";
 import {
   dashboardAssessmentPageBudgetMs,
+  dashboardAssessmentCleanupBudgetMs,
   dashboardAssessmentStartupBudgetMs,
   dashboardAssessmentTimeout,
-  dashboardPageRendersBeforeSources,
   declaredDashboardViewIds,
   ignoredDashboardPageIds,
   isExpectedPageCloseAbort,
@@ -40,21 +40,6 @@ test("finds declared views in loaded custom and built-in page definitions", () =
   assert.deepEqual(declaredDashboardViewIds({ kind: "custom" }), []);
 });
 
-test("identifies pages that render before companion sources resolve", () => {
-  assert.equal(dashboardPageRendersBeforeSources({
-    kind: "custom",
-    views: [{ element: "factory-header" }],
-  }), true);
-  assert.equal(dashboardPageRendersBeforeSources({
-    kind: "custom",
-    views: ["shared-table"],
-  }, [{ id: "shared-table", mark: "table" }]), false);
-  assert.equal(dashboardPageRendersBeforeSources({
-    kind: "built-in",
-    definition: { views: [{ mark: "table" }] },
-  }), false);
-});
-
 test("renders the assessed page chunks as a view-query graph", () => {
   const dashboard = {
     "language-version": "0.1.0",
@@ -85,19 +70,31 @@ test("renders the assessed page chunks as a view-query graph", () => {
 test("grows the assessment timeout with the number of selected views", () => {
   assert.equal(
     dashboardAssessmentTimeout(1),
-    dashboardAssessmentStartupBudgetMs + dashboardAssessmentPageBudgetMs,
+    dashboardAssessmentStartupBudgetMs
+      + dashboardAssessmentPageBudgetMs
+      + dashboardAssessmentCleanupBudgetMs,
   );
   assert.equal(
     dashboardAssessmentTimeout(10),
-    dashboardAssessmentStartupBudgetMs + 10 * dashboardAssessmentPageBudgetMs,
+    dashboardAssessmentStartupBudgetMs
+      + 10 * dashboardAssessmentPageBudgetMs
+      + dashboardAssessmentCleanupBudgetMs,
   );
-  assert.equal(dashboardAssessmentTimeout(0), dashboardAssessmentStartupBudgetMs);
-  assert.equal(dashboardAssessmentTimeout(undefined), dashboardAssessmentStartupBudgetMs);
   assert.equal(
-    dashboardAssessmentTimeout(49),
-    dashboardAssessmentStartupBudgetMs + 49 * dashboardAssessmentPageBudgetMs,
+    dashboardAssessmentTimeout(0),
+    dashboardAssessmentStartupBudgetMs + dashboardAssessmentCleanupBudgetMs,
   );
-  assert.equal(dashboardAssessmentTimeout(50), maximumDashboardAssessmentTimeoutMs);
+  assert.equal(
+    dashboardAssessmentTimeout(undefined),
+    dashboardAssessmentStartupBudgetMs + dashboardAssessmentCleanupBudgetMs,
+  );
+  assert.equal(
+    dashboardAssessmentTimeout(48),
+    dashboardAssessmentStartupBudgetMs
+      + 48 * dashboardAssessmentPageBudgetMs
+      + dashboardAssessmentCleanupBudgetMs,
+  );
+  assert.equal(dashboardAssessmentTimeout(49), maximumDashboardAssessmentTimeoutMs);
   assert.equal(
     dashboardAssessmentTimeout(69),
     maximumDashboardAssessmentTimeoutMs,

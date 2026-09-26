@@ -53,6 +53,7 @@ export function parseArgs(argv) {
     repo: "",
     readAppName: "",
     writeAppName: "",
+    writeRepositories: [],
     policy: ".github/workflows/cao.json",
     dryRun: false,
     force: false,
@@ -67,6 +68,8 @@ export function parseArgs(argv) {
       options.readAppName = requireArgument(argv, ++index, argument);
     } else if (argument === "--write-app-name") {
       options.writeAppName = requireArgument(argv, ++index, argument);
+    } else if (argument === "--write-repository") {
+      options.writeRepositories.push(requireArgument(argv, ++index, argument));
     } else if (argument === "--policy") {
       options.policy = requireArgument(argv, ++index, argument);
     } else if (argument === "--dry-run") {
@@ -125,6 +128,21 @@ export function buildGitHubAppManifest({ name, homepageUrl, redirectUrl, descrip
 
 export function deriveInstallationTargets(document, controlRepository) {
   const [controlOwner] = splitRepo(controlRepository);
+  return groupInstallationTargets([
+    controlRepository,
+    ...(document["control-plane"]?.scope?.["allowed-repositories"] ?? []),
+  ], controlOwner);
+}
+
+export function deriveWriteInstallationTargets(controlRepository, writeRepositories = []) {
+  const [controlOwner] = splitRepo(controlRepository);
+  return groupInstallationTargets(
+    writeRepositories.length > 0 ? writeRepositories : [controlRepository],
+    controlOwner,
+  );
+}
+
+function groupInstallationTargets(repositories, controlOwner) {
   const repositoriesByOwner = new Map();
   const add = (repository) => {
     const [owner, name] = splitRepo(repository);
@@ -135,8 +153,7 @@ export function deriveInstallationTargets(document, controlRepository) {
     repositoriesByOwner.get(normalizedOwner).repositories.set(name.toLowerCase(), name);
   };
 
-  add(controlRepository);
-  for (const repository of document["control-plane"]?.scope?.["allowed-repositories"] ?? []) {
+  for (const repository of repositories) {
     add(repository);
   }
 
@@ -161,6 +178,24 @@ function loadControlPolicy(path) {
 
 export function isManifestCode(code) {
   return /^[A-Za-z0-9_-]+$/.test(code);
+}
+
+export function githubServerUrl(environment = process.env) {
+  const configured = environment.GH_HOST?.trim()
+    || environment.GITHUB_SERVER_URL?.trim()
+    || "github.com";
+  const url = configured.includes("://") ? configured : `https://${configured}`;
+  return new URL(url).origin;
+}
+
+export function isDataResidencyServer(serverUrl = githubServerUrl()) {
+  return new URL(serverUrl).hostname.endsWith(".ghe.com");
+}
+
+export function appPermissionsForServer(profile, serverUrl = githubServerUrl()) {
+  if (!isDataResidencyServer(serverUrl)) return profile.permissions;
+  const { campaigns: _unsupported, ...permissions } = profile.permissions;
+  return permissions;
 }
 
 export function setRepositoryCredentials(profile, app, repo, runner = runGh) {
@@ -228,7 +263,7 @@ function verifyTarget(repo) {
   runGh(["api", `/users/${owner}`, "--jq", ".login"]);
   return {
     owner,
-    homepageUrl: `https://github.com/${canonicalRepo}`,
+    homepageUrl: `${githubServerUrl()}/${canonicalRepo}`,
   };
 }
 
@@ -258,7 +293,20 @@ function openUrl(url) {
   });
 }
 
-function exchangeManifestCode(code) {
+export function appInstallationUrl(owner, slug, serverUrl = githubServerUrl()) {
+  if (isDataResidencyServer(serverUrl)) {
+    return `${serverUrl}/organizations/${owner}/settings/apps/${slug}/installations`;
+  }
+  return `${serverUrl}/apps/${slug}/installations/new`;
+}
+
+export function accountInstallationsEndpoint(owner, serverUrl = githubServerUrl()) {
+  return isDataResidencyServer(serverUrl)
+    ? `/orgs/${owner}/installations?per_page=100`
+    : "/user/installations?per_page=100";
+}
+
+function exchangeManifestCode(code, owner) {
   const payload = JSON.parse(runGh([
     "api",
     "-X",
@@ -277,11 +325,29 @@ function exchangeManifestCode(code) {
     slug: payload.slug,
     name: payload.name,
     settingsUrl: payload.html_url,
-    installUrl: `https://github.com/apps/${payload.slug}/installations/new`,
+    installUrl: appInstallationUrl(owner, payload.slug),
   };
 }
 
-function existingGitHubApp(name, clientId) {
+function existingGitHubApp(owner, name, clientId) {
+  if (isDataResidencyServer()) {
+    const installation = listAccountInstallations(owner).find(
+      (candidate) => candidate.clientId === clientId,
+    );
+    if (!installation?.slug) {
+      throw new Error(
+        `stored credentials do not match an installed GitHub App owned by ${owner}; `
+        + "install it from the organization App settings or use --force to create a replacement",
+      );
+    }
+    return {
+      id: installation.appId,
+      clientId: installation.clientId,
+      slug: installation.slug,
+      name,
+      installUrl: appInstallationUrl(owner, installation.slug),
+    };
+  }
   const payload = JSON.parse(runGh(["api", `/apps/${name}`]));
   if (payload.client_id !== clientId || !payload.slug) {
     throw new Error(`stored credentials do not match GitHub App ${name}`);
@@ -294,12 +360,12 @@ function existingGitHubApp(name, clientId) {
     clientId: payload.client_id,
     slug: payload.slug,
     name: payload.name,
-    installUrl: `https://github.com/apps/${payload.slug}/installations/new`,
+    installUrl: appInstallationUrl(owner, payload.slug),
   };
 }
 
-export function appRegistrationUrl(owner, state) {
-  return `https://github.com/organizations/${owner}/settings/apps/new?state=${state}`;
+export function appRegistrationUrl(owner, state, serverUrl = githubServerUrl()) {
+  return `${serverUrl}/organizations/${owner}/settings/apps/new?state=${state}`;
 }
 
 async function createGitHubApp({ owner, name, homepageUrl, description, permissions, openBrowser }) {
@@ -344,7 +410,7 @@ async function createGitHubApp({ owner, name, homepageUrl, description, permissi
     }
 
     try {
-      const app = exchangeManifestCode(code);
+      const app = exchangeManifestCode(code, owner);
       settled = true;
       response.writeHead(302, { Location: app.installUrl }).end();
       complete(app);
@@ -404,7 +470,7 @@ function printManifestReview(owner, manifest) {
 function listAccountInstallations(owner) {
   const output = runGh([
     "api",
-    "/user/installations?per_page=100",
+    accountInstallationsEndpoint(owner),
     "--paginate",
     "--jq",
     ".installations[] | [(.id|tostring), (.client_id // \"\"), (.app_id|tostring), .app_slug, .repository_selection, .account.login] | @tsv",
@@ -436,7 +502,7 @@ function listInstallationRepositories(installationId) {
 
 export function validateInstallationScope(installation, owner) {
   if (installation.repositorySelection !== "selected") {
-    const settingsUrl = `https://github.com/organizations/${owner}/settings/installations/${installation.id}`;
+    const settingsUrl = `${githubServerUrl()}/organizations/${owner}/settings/installations/${installation.id}`;
     const error = new Error(`GitHub App is installed for all ${owner} repositories; select only approved repositories at ${settingsUrl}`);
     error.name = "InstallationScopeError";
     throw error;
@@ -468,6 +534,15 @@ function selectedInstallation(app, target) {
   const installation = matchingInstallation(app, target.owner);
   if (!installation) {
     return undefined;
+  }
+  if (isDataResidencyServer()) {
+    validateInstallationScope(installation, target.owner);
+    const settingsUrl = `${githubServerUrl()}/organizations/${target.owner}/settings/installations/${installation.id}`;
+    console.error(
+      `GitHub does not expose selected repository membership to this CLI credential on ${githubServerUrl()}; `
+      + `verify ${target.repositories.map((repository) => `${target.owner}/${repository}`).join(", ")} at ${settingsUrl}.`,
+    );
+    return installation;
   }
   return installationIncludesTarget(installation, target) ? installation : undefined;
 }
@@ -528,6 +603,7 @@ Options:
   --repo OWNER/REPO       Control repository (defaults to the current repository)
   --read-app-name NAME    Globally unique read App name
   --write-app-name NAME   Globally unique write App name
+  --write-repository REPO Repository approved for write App access; repeatable
   --policy PATH           CAO policy (default: .github/workflows/cao.json)
   --dry-run               Print manifests without changing GitHub
   --force                 Create replacements even when both credential pairs exist
@@ -544,8 +620,11 @@ async function main() {
   const repo = options.repo || runGh(["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"]);
   const [controlOwner] = splitRepo(repo);
   const policy = loadControlPolicy(options.policy);
-  const installationTargets = deriveInstallationTargets(policy, repo);
-  const externalTarget = installationTargets.find(
+  const installationTargets = {
+    read: deriveInstallationTargets(policy, repo),
+    write: deriveWriteInstallationTargets(repo, options.writeRepositories),
+  };
+  const externalTarget = [...installationTargets.read, ...installationTargets.write].find(
     (target) => target.owner.toLowerCase() !== controlOwner.toLowerCase(),
   );
   if (externalTarget) {
@@ -554,7 +633,7 @@ async function main() {
       + "configure existing enterprise-owned Apps or a fine-grained token",
     );
   }
-  const homepageUrl = `https://github.com/${repo}`;
+  const homepageUrl = `${githubServerUrl()}/${repo}`;
   const appNames = {
     read: options.readAppName || deriveAppName(repo, "read"),
     write: options.writeAppName || deriveAppName(repo, "write"),
@@ -575,7 +654,7 @@ async function main() {
         homepageUrl,
         redirectUrl: "http://127.0.0.1:0/callback",
         description: `Central Agentic Ops ${profile.label} App for ${repo}`,
-        permissions: profile.permissions,
+        permissions: appPermissionsForServer(profile),
       }),
     }));
     console.log(JSON.stringify({ repo, installationTargets, apps }, null, 2));
@@ -586,10 +665,11 @@ async function main() {
   const target = verifyTarget(repo);
   const state = repositoryState(repo);
   for (const profile of APP_PROFILES) {
+    const profileInstallationTargets = installationTargets[profile.role];
     const complete = state.variables.has(profile.variable) && state.secrets.has(profile.secret);
     if (complete && !options.force) {
-      const app = existingGitHubApp(appNames[profile.role], repositoryVariableValue(repo, profile.variable));
-      await ensureInstallations(app, installationTargets, options.openBrowser);
+      const app = existingGitHubApp(target.owner, appNames[profile.role], repositoryVariableValue(repo, profile.variable));
+      await ensureInstallations(app, profileInstallationTargets, options.openBrowser);
       continue;
     }
     if (state.variables.has(profile.variable) !== state.secrets.has(profile.secret)) {
@@ -600,13 +680,13 @@ async function main() {
       name: appNames[profile.role],
       homepageUrl: target.homepageUrl,
       description: `Central Agentic Ops ${profile.label} App for ${repo}`,
-      permissions: profile.permissions,
+      permissions: appPermissionsForServer(profile),
       openBrowser: options.openBrowser,
     });
     setRepositoryCredentials(profile, app, repo);
     console.error(`Set repository variable ${profile.variable}.`);
     console.error(`Set repository secret ${profile.secret}.`);
-    await ensureInstallations(app, installationTargets, options.openBrowser, true);
+    await ensureInstallations(app, profileInstallationTargets, options.openBrowser, true);
   }
 
   const finalState = repositoryState(repo);

@@ -418,10 +418,10 @@ export function renderCountBadge(count, ariaLabel) {
 
 /**
  * Renders the shared "empty `aria-live="polite"` status element, populated
- * later by the caller's render loop" pattern used by the operations
- * marketplace count, notifications-inbox count, and work-project filter
- * result count. Callers differ only in element tag (`span` vs `output`) and
- * class name.
+ * later by the caller's render loop" pattern used by the table intent-action
+ * dialog, the CLI action approval dialog, the reset-dashboard confirmation,
+ * and the configuration diagnostics control. Callers differ only in element
+ * tag (`span` vs `output`) and class name.
  * @param {'span'|'output'} tag
  * @param {string} className
  * @returns {HTMLElement}

@@ -11,6 +11,7 @@ const metadata = {
   availability: /** @type {'available'} */ ('available')
 };
 
+/** @param {Record<string, unknown>[]} rows */
 function context(rows = [problem()]) {
   return {
     pageId: 'campaign-problem-detail',
@@ -36,7 +37,7 @@ function problem() {
     workflow: '.github/workflows/dependabot.md',
     'workflow-name': 'Dependabot / Update Planner',
     'workflow-role': 'orchestrator',
-    'runtime-repository': 'github/gh-aw',
+    'runtime-repository': 'githubnext/gh-aw-cao',
     'target-repository': 'github/gh-aw',
     'rollout-mode': 'live',
     'problem-kind': 'failure',
@@ -61,10 +62,9 @@ function problem() {
       href: 'https://github.com/github/gh-aw/actions/runs/1',
       label: 'View run'
     },
-    'repository-link': {
-      relation: 'repository',
-      href: 'https://github.com/github/gh-aw',
-      label: 'github/gh-aw'
+    'runtime-repository-link': {
+      'dashboard-href': '#page-repository-detail?repository=githubnext%2Fgh-aw-cao',
+      'dashboard-label': 'githubnext/gh-aw-cao'
     },
     'workflow-link': {
       relation: 'workflow',
@@ -95,7 +95,7 @@ describe('problem detail', () => {
     expect(rendered.querySelector('.problem-view-sections')?.textContent).toContain('Error signaturedependency-update-failed');
     expect(rendered.querySelector('.problem-view-sections')?.textContent).toContain('Resolved modelmodel-b');
     expect(rendered.querySelector('a[href*="/actions/runs/1"]')?.textContent).toBe('View run');
-    expect(rendered.querySelector('a[href="https://github.com/github/gh-aw"]')?.textContent).toBe('github/gh-aw');
+    expect(rendered.querySelector('a[href="#page-repository-detail?repository=githubnext%2Fgh-aw-cao"]')?.textContent).toBe('githubnext/gh-aw-cao');
     expect(rendered.querySelector('a[href*="/actions/workflows/dependabot.lock.yml"]')?.textContent).toBe('Dependabot / Update Planner');
     expect(rendered.querySelector('a[href="#page-repository-detail?repository=github%2Fgh-aw"]')?.textContent).toBe('github/gh-aw');
     expect(rendered.querySelector('.problem-view-log')?.textContent).toContain('##[error]dependency update failed');
@@ -115,5 +115,29 @@ describe('problem detail', () => {
     }));
 
     expect(rendered.textContent).toBe('This runtime problem is no longer present in the selected horizon.');
+  });
+
+  it('explains fields not emitted before a sparse driver-exit failure', () => {
+    const sparseProblem = /** @type {Record<string, unknown>} */ ({ ...problem() });
+    for (const field of [
+      'failure-message',
+      'failure-job',
+      'failure-step',
+      'failure-log',
+      'engine-version',
+      'requested-model',
+      'resolved-model'
+    ]) delete sparseProblem[field];
+    const rendered = renderProblemDetail(context([sparseProblem]));
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'target-repository', value: 'github/gh-aw' }
+    }));
+
+    expect(rendered.textContent).not.toContain('Unavailable');
+    expect(rendered.querySelector('.problem-view-sections')?.textContent).toContain('Failure messageWorkflow failed');
+    expect(rendered.querySelector('.problem-view-sections')?.textContent).toContain('JobThe failed job was not identified in retained run telemetry.');
+    expect(rendered.querySelector('.problem-view-sections')?.textContent).toContain('Requested modelAutomatic model selection was requested.');
+    expect(rendered.querySelector('.problem-view-sections')?.textContent).toContain('Resolved modelModel resolution did not complete before the failure.');
+    expect(rendered.querySelector('.problem-view-log')?.textContent).toContain('did not retain raw output');
   });
 });
