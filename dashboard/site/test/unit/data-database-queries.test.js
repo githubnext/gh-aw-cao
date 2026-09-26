@@ -548,6 +548,7 @@ describe('canonical view sources', () => {
     expect(projected['overview-runs']).toMatchObject({
       source: 'overview-runs',
       rows: [{
+        id: expect.any(String),
         organization: 'githubnext',
         repository: 'gh-aw-cao',
         workflow: '.github/workflows/dashboard.md',

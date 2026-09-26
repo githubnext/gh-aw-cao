@@ -323,6 +323,7 @@
       }
     ],
     "select": [
+      { "field": "id" },
       { "field": "owner", "as": "organization" },
       { "field": "repository" },
       { "field": "workflow" },

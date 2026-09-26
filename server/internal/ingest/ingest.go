@@ -389,7 +389,7 @@ func projectSources(canonical map[string][]model.Row, inventory map[string]model
 		result, _, _, err := query.ExecuteDefinition(definition, available, query.MaxOperations)
 		return result, err
 	}
-	for _, name := range []string{"campaigns", "repositories", "workflows", "runs", "operational-values"} {
+	for _, name := range []string{"campaigns", "repositories", "workflows", "runs", "overview-runs", "operational-values"} {
 		definition, ok := index[name]
 		if !ok {
 			continue
