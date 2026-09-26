@@ -1,6 +1,7 @@
 import { h } from '../dom.js';
 import { listRepositoryMemory, readRepositoryMemoryFile } from '../data-processor.js';
 import { createDebug } from '../debug.js';
+import { octicon } from '../octicons.js';
 import { effect, onCleanup, render, state } from '../reactive.js';
 import { bindFactorySources, createFactoryScope } from './factory-elements.js';
 import { renderEmptyMessage } from './ui-primitives.js';
@@ -29,13 +30,19 @@ export function renderCampaignMemory({ campaignId, campaignName }) {
   }));
   const selectedPath = state('');
   const fileState = state(/** @type {MemoryFileState} */ ({ status: 'idle', content: '', error: '' }));
+  const mobileView = state('browser');
 
   render(root, () => memoryView({
     campaignName,
     manifest: manifestState.get(),
     selectedPath: selectedPath.get(),
     file: fileState.get(),
-    select: (filePath) => selectedPath.set(filePath),
+    mobileView: mobileView.get(),
+    select: (filePath) => {
+      selectedPath.set(filePath);
+      mobileView.set('file');
+    },
+    showFiles: () => mobileView.set('browser'),
   }), { signal: scope.signal });
 
   listRepositoryMemory(campaignId, scope.signal).then((campaign) => {
@@ -155,6 +162,14 @@ export function renderAllCampaignMemory(context) {
  * @param {AbortSignal} signal
  */
 function renderCampaignTree(campaigns, signal) {
+  /** @type {HTMLButtonElement | null} */
+  let selectedButton = null;
+  /** @type {HTMLDivElement} */
+  let layout;
+  const showFiles = () => {
+    layout.dataset.memoryView = 'browser';
+    selectedButton?.focus();
+  };
   const content = h(
     'article',
     { className: 'cao-memory-file-content', 'aria-live': 'polite' },
@@ -192,6 +207,8 @@ function renderCampaignTree(campaigns, signal) {
         }
         /** @param {MemoryFile} entry @param {HTMLButtonElement} button */
         const select = (entry, button) => {
+          selectedButton = button;
+          layout.dataset.memoryView = 'file';
           fileController?.abort();
           fileController = new AbortController();
           const abort = () => fileController?.abort();
@@ -201,21 +218,21 @@ function renderCampaignTree(campaigns, signal) {
           ) ?? []) selected.removeAttribute('aria-current');
           button.setAttribute('aria-current', 'true');
           content.replaceChildren(
-            h('h2', null, entry.path),
+            renderMemoryFileHeader(entry.path, showFiles),
             renderEmptyMessage('Loading file...', { role: 'status', 'aria-busy': 'true' })
           );
           const activeController = fileController;
           readRepositoryMemoryFile(campaign.campaign, entry.path, activeController.signal).then((result) => {
             if (!activeController.signal.aborted) {
               content.replaceChildren(
-                h('h2', null, entry.path),
+                renderMemoryFileHeader(entry.path, showFiles),
                 h('pre', null, h('code', null, result.content))
               );
             }
           }).catch((error) => {
             if (error?.name !== 'AbortError') {
               content.replaceChildren(
-                h('h2', null, entry.path),
+                renderMemoryFileHeader(entry.path, showFiles),
                 renderEmptyMessage(
                   `Unable to load this memory file. ${error instanceof Error ? error.message : String(error)}`,
                   { role: 'alert' }
@@ -235,6 +252,7 @@ function renderCampaignTree(campaigns, signal) {
         );
         if (index === 0) {
           /** @type {HTMLButtonElement | null} */ (tree.querySelector('.campaign-memory-file'))?.click();
+          layout.dataset.memoryView = 'browser';
         }
       }).catch((error) => {
         if (error?.name !== 'AbortError') {
@@ -250,9 +268,9 @@ function renderCampaignTree(campaigns, signal) {
     return h('li', null, details);
   });
 
-  return h(
+  layout = /** @type {HTMLDivElement} */ (h(
     'div',
-    { className: 'cao-memory-layout' },
+    { className: 'cao-memory-layout', dataset: { memoryView: 'browser' } },
     h(
       'nav',
       { className: 'cao-memory-tree', 'aria-label': 'Campaign memory files' },
@@ -260,7 +278,8 @@ function renderCampaignTree(campaigns, signal) {
       h('ul', null, ...branches)
     ),
     content
-  );
+  ));
+  return layout;
 }
 
 /**
@@ -321,10 +340,12 @@ function renderFileTree(entries, select) {
  *   manifest: ManifestState,
  *   selectedPath: string,
  *   file: MemoryFileState,
- *   select: (filePath: string) => void
+ *   mobileView: string,
+ *   select: (filePath: string) => void,
+ *   showFiles: () => void
  * }} options
  */
-function memoryView({ campaignName, manifest, selectedPath, file, select }) {
+function memoryView({ campaignName, manifest, selectedPath, file, mobileView, select, showFiles }) {
   if (manifest.status === 'loading') {
     return renderEmptyMessage('Loading repository memory...', { role: 'status', 'aria-busy': 'true' });
   }
@@ -348,7 +369,7 @@ function memoryView({ campaignName, manifest, selectedPath, file, select }) {
     warning,
     h(
       'div',
-      { className: 'campaign-memory-layout' },
+      { className: 'campaign-memory-layout', dataset: { memoryView: mobileView } },
       h(
         'aside',
         { className: 'campaign-memory-files', 'aria-label': `${campaignName} memory files` },
@@ -370,7 +391,7 @@ function memoryView({ campaignName, manifest, selectedPath, file, select }) {
       h(
         'article',
         { className: 'campaign-memory-content', 'aria-live': 'polite' },
-        selected ? h('h2', null, selected.path) : null,
+        selected ? renderMemoryFileHeader(selected.path, showFiles) : null,
         file.status === 'loading'
           ? renderEmptyMessage('Loading file...', { role: 'status', 'aria-busy': 'true' })
           : file.status === 'error'
@@ -380,6 +401,29 @@ function memoryView({ campaignName, manifest, selectedPath, file, select }) {
               : null
       )
     )
+  );
+}
+
+/**
+ * @param {string} path
+ * @param {() => void} showFiles
+ */
+function renderMemoryFileHeader(path, showFiles) {
+  return h(
+    'header',
+    { className: 'memory-file-header' },
+    h(
+      'button',
+      {
+        type: 'button',
+        className: 'memory-mobile-back',
+        'aria-label': 'Back to files',
+        onclick: showFiles,
+      },
+      octicon('chevron-left'),
+      h('span', null, 'Files')
+    ),
+    h('h2', null, path)
   );
 }
 

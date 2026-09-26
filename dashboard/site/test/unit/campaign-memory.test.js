@@ -68,6 +68,7 @@ describe('campaign repository memory', () => {
     document.body.append(rendered);
 
     await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Ambient'));
+    expect(rendered.querySelector('.cao-memory-layout')).toHaveAttribute('data-memory-view', 'browser');
     expect([...rendered.querySelectorAll('.cao-memory-campaign')].map((node) => node.textContent))
       .toEqual(['Ambient Context', 'Security Review']);
     expect(rendered.querySelector('.cao-memory-tree')).not.toBeNull();
@@ -83,6 +84,14 @@ describe('campaign repository memory', () => {
     await vi.waitFor(() => expect(secondCampaign.querySelector('.campaign-memory-file')).not.toBeNull());
     /** @type {HTMLButtonElement} */ (secondCampaign.querySelector('.campaign-memory-file')).click();
     await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Security'));
+    expect(rendered.querySelector('.cao-memory-layout')).toHaveAttribute('data-memory-view', 'file');
+    const backButton = /** @type {HTMLButtonElement} */ (
+      rendered.querySelector('.cao-memory-file-content .memory-mobile-back')
+    );
+    expect(backButton.getAttribute('aria-label')).toBe('Back to files');
+    backButton.click();
+    expect(rendered.querySelector('.cao-memory-layout')).toHaveAttribute('data-memory-view', 'browser');
+    expect(document.activeElement).toBe(secondCampaign.querySelector('.campaign-memory-file'));
     publishSource('campaign-memory-campaigns', {
       source: 'campaign-memory-campaigns',
       rows: [
@@ -146,12 +155,16 @@ describe('campaign repository memory', () => {
     document.body.append(rendered);
 
     await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('{"answer":42}\n'));
+    expect(rendered.querySelector('.campaign-memory-layout')).toHaveAttribute('data-memory-view', 'browser');
     expect(rendered.querySelector('.campaign-memory-branch')?.textContent).toContain('memory/ambient-context');
     expect([...rendered.querySelectorAll('.campaign-memory-file span')].map((node) => node.textContent))
       .toEqual(['notes/first.json', 'summary.md']);
 
     rendered.querySelectorAll('button')[1].click();
     await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Summary'));
+    expect(rendered.querySelector('.campaign-memory-layout')).toHaveAttribute('data-memory-view', 'file');
+    /** @type {HTMLButtonElement} */ (rendered.querySelector('.memory-mobile-back')).click();
+    expect(rendered.querySelector('.campaign-memory-layout')).toHaveAttribute('data-memory-view', 'browser');
     expect(memoryApi.read.mock.calls.map(([campaign, path]) => [campaign, path])).toEqual([
       ['ambient-context', 'notes/first.json'],
       ['ambient-context', 'summary.md'],
