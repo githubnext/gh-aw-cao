@@ -35,7 +35,6 @@ export async function buildDashboardSite({
     cp(new URL("icon-maskable-512.png", siteRoot), join(destinationPath, "icon-maskable-512.png")),
     cp(new URL("manifest.webmanifest", siteRoot), join(destinationPath, "manifest.webmanifest")),
     cp(new URL("service-worker.js", siteRoot), join(destinationPath, "service-worker.js")),
-    cp(new URL("dashboard.json", siteRoot), join(destinationPath, "dashboard.json")),
     cp(new URL("src/smells.svg", siteRoot), join(destinationPath, "smells.svg")),
     cp(new URL("src", siteRoot), join(destinationPath, "src"), { recursive: true }),
   ]);
@@ -47,7 +46,11 @@ export async function buildDashboardSite({
   const campaignDashboards = await findCampaignDashboards(repositoryPath, controlSettings);
 
   const dashboardPath = join(destinationPath, "dashboard.json");
-  await bundleDashboardFiles(dashboardPath, campaignDashboards);
+  await bundleDashboardFiles(
+    dashboardPath,
+    campaignDashboards,
+    fileURLToPath(new URL("dashboard.json", siteRoot)),
+  );
   const dashboard = filterExperimentalDashboardViews(
     JSON.parse(await readFile(dashboardPath, "utf8")),
     controlSettings.web?.experimental === true,

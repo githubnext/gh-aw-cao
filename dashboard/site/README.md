@@ -4,6 +4,23 @@ Production Dashboard Language validator and presenter for the Central Agentic Op
 
 The dashboard build workflow copies this directory to its configured `site-path`, bundles installed `<campaign>/dashboard.json` documents into a small core `dashboard.json` plus per-page `dashboard-pages/*.json` chunks, and generates `sources.json`. The browser loads the core shell first, fetches page chunks on demand, derives presentation-only data, and renders the `/cao` experience without page-specific HTML generation.
 
+## Source composition
+
+An authoring `dashboard.json` may declare a top-level `fragments` array of JSON paths relative to that file. Each fragment is a partial `dashboard` object whose array fields are appended in declaration order. Keep coherent feature slices together: one fragment may contain multiple related `queries`, reusable `views`, and `pages`.
+
+```json
+{
+  "language-version": "0.1.0",
+  "fragments": ["dashboard-features/repositories.json"],
+  "dashboard": {
+    "id": "central-agentic-ops-dashboard",
+    "title": "Central Agentic Ops"
+  }
+}
+```
+
+Fragment paths must remain within the root document's directory, including after symbolic-link resolution. Fragments cannot include other fragments. Builds and local previews fully compose authoring fragments before campaign composition, validation, and runtime page chunking, so the deployed `dashboard.json` and `dashboard-pages/` format is unchanged.
+
 ## Data pipeline
 
 1. The activity action writes inventory, deployed-workflow, AI Credit, and operational-value JSON into one bounded cache snapshot.
