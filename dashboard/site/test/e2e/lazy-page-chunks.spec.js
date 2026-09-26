@@ -50,6 +50,28 @@ const inventory = {
     }],
     metadata: { 'as-of': '2026-09-15T10:00:00Z', 'retrieved-at': '2026-09-15T10:00:00Z', completeness: 'complete', freshness: 'fresh', availability: 'available' },
   },
+  'marketplace-packages': {
+    rows: [{
+      id: `official:githubnext/gh-aw-cao/dependabot@${'a'.repeat(40)}`,
+      'registry-id': 'official',
+      'registry-name': 'Official CAO catalog',
+      'registry-precedence': 0,
+      name: 'Dependabot',
+      description: 'Dependabot automation',
+      publisher: 'githubnext',
+      repository: 'githubnext/gh-aw-cao',
+      path: 'dependabot',
+      ref: 'main',
+      'resolved-commit': 'a'.repeat(40),
+      version: 'main',
+      icon: 'workflow',
+      artwork: '',
+      contents: ['aw.yml'],
+      source: `githubnext/gh-aw-cao/dependabot@${'a'.repeat(40)}`,
+      'add-command': `./cao.sh add githubnext/gh-aw-cao/dependabot@${'a'.repeat(40)}`,
+    }],
+    metadata: { 'as-of': '2026-09-15T10:00:00Z', 'retrieved-at': '2026-09-15T10:00:00Z', completeness: 'complete', freshness: 'fresh', availability: 'available' },
+  },
   'configuration-policy': {
     rows: [{
       path: '.github/workflows/cao.json',
@@ -230,6 +252,16 @@ test('async Factory Overview elements receive their chunked query definitions', 
   await expect(overview.locator('.factory-station').nth(1)).toContainText('1');
   await expect(overview).not.toContainText('Unavailable');
   await expect.poll(() => chunkRequests.filter((id) => id === 'overview').length).toBe(1);
+});
+
+test('marketplace page renders canonical package cards after ingestion', async ({ page }) => {
+  await page.goto(`${origin}/#page-marketplace`);
+
+  const marketplace = page.locator('[data-page-id="marketplace"]');
+  await expect(page.getByRole('heading', { name: 'Marketplace', exact: true, level: 1 })).toBeVisible();
+  await expect(marketplace.locator('.entity-card-list-card')).toHaveCount(1);
+  await expect(marketplace).toContainText('Dependabot');
+  await expect(marketplace).not.toContainText('Unable to load this page.');
 });
 
 test('deep links and redirect routes fetch only the requested initial page chunk', async ({ page }) => {
