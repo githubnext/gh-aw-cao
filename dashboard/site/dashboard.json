@@ -14879,6 +14879,9 @@
             "layout": "full-view",
             "empty-message": "No skill invocations were observed.",
             "encoding": {
+              "href": {
+                "field": "workflow-link"
+              },
               "columns": [
                 {
                   "field": "skill",

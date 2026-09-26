@@ -802,7 +802,8 @@ describe('dashboard document validation', () => {
           controls: 'interactive',
           'lazy-list': true,
           layout: 'full-view',
-          data: { source: 'skill-workflow-inventory' }
+          data: { source: 'skill-workflow-inventory' },
+          encoding: { href: { field: 'workflow-link' } }
         }
       ]
     });

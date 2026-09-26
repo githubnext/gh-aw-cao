@@ -981,6 +981,59 @@ describe('presenter built-in and custom pages', () => {
     expect(aicInsights?.querySelector('table')).not.toBeNull();
   });
 
+  it('renders skill analytics with workflow drill-through in chart and card views', async () => {
+    const metadata = {
+      'source-id': 'skills-fixture',
+      'source-kind': 'fixture',
+      'as-of': '2026-09-02T12:00:00Z',
+      'retrieved-at': '2026-09-02T12:01:00Z',
+      completeness: /** @type {'complete'} */ ('complete'),
+      freshness: /** @type {'fresh'} */ ('fresh'),
+      availability: /** @type {'available'} */ ('available')
+    };
+    const workflowLink = {
+      'dashboard-href': '#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Freview.md',
+      'dashboard-label': 'View githubnext/gh-aw-cao:.github/workflows/review.md workflow dashboard'
+    };
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {
+        'skill-invocations-by-skill': {
+          source: 'skill-invocations-by-skill',
+          rows: [{ skill: 'reactive-ui', invocations: 3 }],
+          metadata
+        },
+        'skill-invocations-by-workflow': {
+          source: 'skill-invocations-by-workflow',
+          rows: [{
+            'workflow-coordinate': 'githubnext/gh-aw-cao:.github/workflows/review.md',
+            'workflow-link': workflowLink,
+            invocations: 3
+          }],
+          metadata
+        },
+        'skill-workflow-inventory': {
+          source: 'skill-workflow-inventory',
+          rows: [{
+            skill: 'reactive-ui',
+            workflow: '.github/workflows/review.md',
+            'repository-coordinate': 'githubnext/gh-aw-cao',
+            'workflow-link': workflowLink,
+            invocations: 3
+          }],
+          metadata
+        },
+        outcomes: { source: 'outcomes', rows: [], metadata }
+      }
+    });
+
+    const page = await activatePage(rendered, 'skills');
+    expect(page?.querySelectorAll('[data-chart-widget="horizontal-bar"]')).toHaveLength(2);
+    expect(page?.querySelector('[data-view-id="skills-workflow-inventory"] table')).not.toBeNull();
+    expect(page?.querySelector('[data-view-id="skills-workflow-inventory"] [data-mobile-card-list] [data-card-drill]')?.getAttribute('href'))
+      .toBe(workflowLink['dashboard-href']);
+  });
+
 
   it('renders indexing trends, database table counts, and transaction cards', async () => {
     const metadata = {
