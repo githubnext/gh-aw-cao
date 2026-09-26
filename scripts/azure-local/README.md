@@ -33,8 +33,8 @@ The dispatcher also supports iterative use:
 ```
 
 `run` always stops its services, including after a test failure or interruption.
-`stop` is idempotent. Logs remain under `.tmp/azure-local/<run>/logs/`; generated
-settings and transient state remain outside version control. Set
+`stop` is idempotent. It removes generated settings and transient state while
+logs remain under `.tmp/azure-local/<run>/logs/`. Set
 `AZURE_LOCAL_STATE_DIR` to use an explicit isolated state directory or run
 several stacks in parallel. Set `AZURE_LOCAL_WAIT_TIMEOUT` to change the
 120-second readiness deadline.

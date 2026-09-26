@@ -101,7 +101,9 @@ stop_internal() {
   capture_container_logs "${REDIS_CONTAINER_ID:-}" redis
   [[ -z "${AZURITE_CONTAINER_ID:-}" ]] || docker rm -f "$AZURITE_CONTAINER_ID" >/dev/null 2>&1 || true
   [[ -z "${REDIS_CONTAINER_ID:-}" ]] || docker rm -f "$REDIS_CONTAINER_ID" >/dev/null 2>&1 || true
-  rm -f "$STATE_DIR/functions.pid" "$STATE_DIR/azurite.container" "$STATE_DIR/redis.container"
+  rm -rf "$APP_DIR"
+  rm -f "$RUNTIME_ENV" "$RUNTIME_JSON" \
+    "$STATE_DIR/functions.pid" "$STATE_DIR/azurite.container" "$STATE_DIR/redis.container"
 }
 
 poll() {
@@ -185,6 +187,8 @@ start() {
   fi
 
   : >"$RUNTIME_ENV"
+  local previous_exit_trap
+  previous_exit_trap="$(trap -p EXIT || true)"
   trap 'stop_internal' EXIT
   local run_id redis_name azurite_name function_port redis_port blob_port queue_port table_port namespace
   local azurite_account azurite_key
@@ -272,7 +276,11 @@ JSON
     printf '%s\n' "$FUNCTIONS_PID" >"$STATE_DIR/functions.pid"
     write_env_value FUNCTIONS_PID "$FUNCTIONS_PID"
   )
-  trap - EXIT
+  if [[ -n "$previous_exit_trap" ]]; then
+    eval "$previous_exit_trap"
+  else
+    trap - EXIT
+  fi
   printf 'azure-local: started stack at %s\n' "$STATE_DIR"
 }
 
