@@ -152,13 +152,13 @@ function commandPreview(action, values, templateValues) {
 }
 
 /**
- * @param {{ id: string, label: string, description?: string, icon: string, command: string, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }} action
+ * @param {{ id: string, label: string, description?: string, icon: string, command: string, 'copy-only'?: boolean, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }} action
  * @param {{ presentation?: 'menu'|'settings'|'row', templateValues?: Record<string, string>, canExecute?: boolean, showRowLabel?: boolean }} [options]
  */
 function renderCliActionControl(action, options = {}) {
   const settingsPresentation = options.presentation === 'settings';
   const rowPresentation = options.presentation === 'row';
-  const canExecute = options.canExecute !== false;
+  const canExecute = options.canExecute !== false && action['copy-only'] !== true;
   const templateValues = options.templateValues ?? {};
   const argumentValues = Object.fromEntries(
     (action.arguments ?? []).map((argument) => [argument.id, argument.default === true])
@@ -328,7 +328,7 @@ export function renderRowCliAction(actionId, templateValues, options = {}) {
   const { trigger, dialog } = renderCliActionControl(action, {
     presentation: 'row',
     templateValues,
-    canExecute: declaredCliActionsCanExecute && action['copy-only'] !== true,
+    canExecute: declaredCliActionsCanExecute,
     showRowLabel: options.showLabel === true
   });
   return h('span', { className: 'table-cli-action-control' }, trigger, dialog);
@@ -344,7 +344,7 @@ export function renderDeclaredCliAction(actionId, templateValues = {}) {
   if (!action) return null;
   const rendered = renderCliActionControl(action, {
     templateValues: { ...declaredCliActionTemplateValues, ...templateValues },
-    canExecute: declaredCliActionsCanExecute && action['copy-only'] !== true
+    canExecute: declaredCliActionsCanExecute
   });
   return h('span', { className: 'declared-cli-action' }, rendered.trigger, rendered.dialog);
 }
@@ -352,7 +352,7 @@ export function renderDeclaredCliAction(actionId, templateValues = {}) {
 /**
  * Render dashboard-declared CLI actions. Every invocation requires a fresh,
  * explicit confirmation; approval is never persisted or inferred.
- * @param {Array<{ id: string, label: string, description?: string, icon: string, command: string, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }> | undefined} actions
+ * @param {Array<{ id: string, label: string, description?: string, icon: string, command: string, 'copy-only'?: boolean, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }> | undefined} actions
  * @param {{ presentation?: 'menu'|'settings', templateValues?: Record<string, string>, canExecute?: boolean }} [options]
  * @returns {HTMLElement | null}
  */

@@ -959,7 +959,7 @@
       "kind": "custom",
       "title": "Marketplace",
       "navigation-label": "Marketplace",
-      "icon": "workflow",
+      "icon": "archive",
       "description": "Browse read-only CAO campaign packages from the configured registries.",
       "views": [
         {
@@ -979,7 +979,7 @@
           "list": {
             "style": "entity-cards",
             "layout": "grid",
-            "icon": "workflow",
+            "icon": "archive",
             "card": "marketplace-package",
             "drill": {
               "type": "query",
@@ -1022,7 +1022,7 @@
       "id": "marketplace-package",
       "kind": "custom",
       "title": "Package",
-      "icon": "workflow",
+      "icon": "archive",
       "description": "Review normalized package metadata and copy the canonical CAO add command.",
       "route": {
         "hash-query-parameter": "package-source",
@@ -1045,7 +1045,7 @@
           "list": {
             "style": "entity-cards",
             "appearance": "grouped",
-            "icon": "workflow",
+            "icon": "archive",
             "card": "marketplace-package"
           },
           "encoding": {

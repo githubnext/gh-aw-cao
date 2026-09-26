@@ -26,17 +26,22 @@ describe('entity card templates', () => {
     ]));
   });
 
-  it('declares marketplace list, detail, and copy-only add action', () => {
+  it('declares a Primer-branded marketplace package card', () => {
     expect(templates['marketplace-package']).toMatchObject({
-      icon: 'workflow',
+      icon: 'archive',
+      'detail-labels': 'visible',
       title: { field: 'package-name' },
       subtitle: { field: 'package-description' },
       actions: [{ action: 'add-marketplace-package', context: ['package-source'] }]
     });
+  });
+
+  it('declares marketplace list and detail routes', () => {
     expect(pages.marketplace.views[0]).toMatchObject({
       data: { source: 'marketplace-packages' },
       list: {
         style: 'entity-cards',
+        icon: 'archive',
         card: 'marketplace-package',
         drill: { page: 'marketplace-package', query: 'marketplace-package-detail' }
       }
@@ -44,6 +49,12 @@ describe('entity card templates', () => {
     expect(pages['marketplace-package']).toMatchObject({
       route: { 'hash-query-parameter': 'package-source', 'navigation-page': 'marketplace' }
     });
+    expect(pages['marketplace-package'].views[0]).toMatchObject({
+      list: { icon: 'archive', card: 'marketplace-package' }
+    });
+  });
+
+  it('declares the marketplace action as copy-only', () => {
     expect(dashboard['cli-actions'].find(
       (/** @type {Record<string, any>} */ action) => action.id === 'add-marketplace-package'
     )).toMatchObject({

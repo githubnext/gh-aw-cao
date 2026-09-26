@@ -60,6 +60,31 @@ describe('CLI actions', () => {
       .toBe('gh aw upgrade --repo octo/example --create-pull-request');
   });
 
+  it('keeps copy-only actions non-executable in every placement', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText }
+    });
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    const rendered = renderCliActions([{
+      id: 'copy-package-command',
+      label: 'Copy add command',
+      icon: 'copy',
+      command: './cao.sh add octo/packages/demo@abc123',
+      'copy-only': true
+    }], { canExecute: true });
+
+    rendered?.querySelector('.cli-action-trigger')?.dispatchEvent(new MouseEvent('click'));
+    rendered?.querySelector('.cli-action-confirm')?.dispatchEvent(new MouseEvent('click'));
+
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith(
+      './cao.sh add octo/packages/demo@abc123'
+    ));
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it('attaches toolbar and settings actions to the dashboard shell', () => {
     const dashboard = document.createElement('div');
     const reportActions = document.createElement('div');

@@ -474,7 +474,8 @@
       },
       {
         "id": "marketplace-package",
-        "icon": "workflow",
+        "icon": "archive",
+        "detail-labels": "visible",
         "title": {
           "field": "package-name",
           "title": "Package"
