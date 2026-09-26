@@ -12,7 +12,7 @@ import (
 // token consumption.
 type RateLimitResult struct {
 	Allowed    bool
-	Remaining  int
+	Remaining  int64
 	RetryAfter time.Duration
 	ResetAfter time.Duration
 }
@@ -85,7 +85,7 @@ return {allowed, math.floor(tokens), retry, reset}`
 	}
 	return RateLimitResult{
 		Allowed:    parsed[0] == 1,
-		Remaining:  int(parsed[1]),
+		Remaining:  parsed[1],
 		RetryAfter: time.Duration(parsed[2]) * time.Millisecond,
 		ResetAfter: time.Duration(parsed[3]) * time.Millisecond,
 	}, nil

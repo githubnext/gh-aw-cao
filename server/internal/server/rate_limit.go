@@ -43,7 +43,7 @@ func (a *App) rateLimit(next http.Handler) http.Handler {
 		}
 		resetSeconds := cooldownSeconds(result.ResetAfter)
 		response.Header().Set("RateLimit-Limit", strconv.Itoa(policy.capacity))
-		response.Header().Set("RateLimit-Remaining", strconv.Itoa(result.Remaining))
+		response.Header().Set("RateLimit-Remaining", strconv.FormatInt(result.Remaining, 10))
 		response.Header().Set("RateLimit-Reset", strconv.Itoa(resetSeconds))
 		response.Header().Set(
 			"RateLimit-Policy",
