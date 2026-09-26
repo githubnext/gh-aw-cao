@@ -64,6 +64,7 @@ jobs:
           client-id: ${{ vars.GH_AW_GITHUB_READ_APP_ID }}
           private-key: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
           github-api-url: ${{ github.api_url }}
           permission-actions: read
           permission-contents: read
