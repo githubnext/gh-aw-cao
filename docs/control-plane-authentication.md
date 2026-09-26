@@ -55,6 +55,15 @@ For organizations in one enterprise, create the read and write Apps manually in 
   --write-client-id '<write-app-client-id>'
 ```
 
+Use the same separate permission ceilings as the organization-owned Apps:
+
+| Enterprise App | Organization installations |
+| --- | --- |
+| Read App | Install on the control repository and every exact target repository that CAO must inspect, including separate selected-repository installations in each enrolled organization |
+| Write App | Install only on organizations and repositories approved to receive safe outputs |
+
+Keep both Apps private and disable webhooks. Generate one private key for each App only after reviewing its permissions and installations. On a GitHub Enterprise Cloud data-residency host, omit the unavailable Campaigns permission from the read App.
+
 The client IDs are not secrets. The command stores them as repository variables and prompts for each PEM private key through `gh secret set`; never put a private key in a command argument. The operator must be able to create Apps for that enterprise and approve each organization installation.
 
 :::caution[Enterprise installation is not repository access]
@@ -111,6 +120,7 @@ This creates no secret. Keep outputs in the control repository and treat unavail
 - Confirm the chosen credential covers every enrolled repository but no unrelated repository.
 - Confirm the read App has no write permissions.
 - Install the write App only where approved safe outputs require writes.
+- For an enterprise App profile, mint and test the read token separately for every enrolled organization, then perform and clean up a reversible write probe using only the write App in an approved output repository.
 - Confirm PAT approval, expiration, resource owner, and API compatibility when using a token.
 - For a PAT profile, prove independently that the read PAT can read every enrolled repository but cannot perform the selected reversible write probe, then prove that the write PAT can perform and clean up that probe only in an approved output repository.
 - When migrating from `GH_AW_GITHUB_TOKEN`, rerun the same proof after deleting the legacy secret so a successful run cannot be using the compatibility fallback.
