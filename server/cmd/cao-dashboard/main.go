@@ -135,6 +135,21 @@ func resolveIngestSource(flagValue string, positionalArgs []string) (string, ing
 	return "", "", errors.New("ingest requires --source DIRECTORY")
 }
 
+// checkoutNamespaceDefault resolves this checkout's default Redis namespace
+// once, so both --redis-namespace registration paths below share the same
+// lookup instead of each calling redisx.DefaultNamespace independently. A
+// resolution failure is logged at this shared boundary, without exposing
+// the namespace value itself, so it is diagnosed the same way regardless of
+// which subcommand registered the flag.
+func checkoutNamespaceDefault() (string, error) {
+	namespace, err := redisx.DefaultNamespace(".")
+	if err != nil {
+		commandLog.Printf("checkout namespace default resolution failed")
+		return "", err
+	}
+	return namespace, nil
+}
+
 // registerRedisNamespaceFlag registers a --redis-namespace flag whose default
 // is the current checkout's namespace. A namespace-detection failure is
 // returned rather than applied immediately, so every other flag on cmd is
@@ -142,7 +157,7 @@ func resolveIngestSource(flagValue string, positionalArgs []string) (string, ing
 // user-supplied flag value never masks the original error behind an
 // "unknown flag" one.
 func registerRedisNamespaceFlag(cmd *cobra.Command, usage string) (namespace *string, namespaceErr error) {
-	checkoutNamespace, err := redisx.DefaultNamespace(".")
+	checkoutNamespace, err := checkoutNamespaceDefault()
 	namespace = cmd.Flags().String("redis-namespace", checkoutNamespace, usage)
 	return namespace, err
 }
@@ -153,7 +168,7 @@ func registerRedisNamespaceFlag(cmd *cobra.Command, usage string) (namespace *st
 // supplied that default, so callers can log the source without exposing the
 // namespace value.
 func registerRedisNamespaceFlagWithEnvOverride(cmd *cobra.Command, usage string) (namespace *string, source namespaceDefaultSource, namespaceErr error) {
-	checkoutNamespace, err := redisx.DefaultNamespace(".")
+	checkoutNamespace, err := checkoutNamespaceDefault()
 	defaultNamespace, defaultSource := resolveNamespaceDefault(os.Getenv("CAO_REDIS_NAMESPACE"), checkoutNamespace)
 	namespace = cmd.Flags().String("redis-namespace", defaultNamespace, usage)
 	return namespace, defaultSource, err

@@ -8,6 +8,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/spf13/cobra"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
@@ -110,6 +113,78 @@ func TestResolveNamespaceDefault(t *testing.T) {
 				t.Errorf("resolveNamespaceDefault() source = %q, want %q", gotSource, tt.wantSource)
 			}
 		})
+	}
+}
+
+func TestCheckoutNamespaceDefaultMatchesRedisxDefaultNamespace(t *testing.T) {
+	want, err := redisx.DefaultNamespace(".")
+	if err != nil {
+		t.Fatalf("redisx.DefaultNamespace() error = %v, want nil", err)
+	}
+	got, err := checkoutNamespaceDefault()
+	if err != nil {
+		t.Fatalf("checkoutNamespaceDefault() error = %v, want nil", err)
+	}
+	if got != want {
+		t.Errorf("checkoutNamespaceDefault() = %q, want %q", got, want)
+	}
+	if _, normalizeErr := redisx.NormalizeNamespace(got); normalizeErr != nil {
+		t.Errorf("checkoutNamespaceDefault() = %q is not a valid namespace: %v", got, normalizeErr)
+	}
+}
+
+func TestRegisterRedisNamespaceFlagUsesCheckoutDefault(t *testing.T) {
+	want, err := checkoutNamespaceDefault()
+	if err != nil {
+		t.Fatalf("checkoutNamespaceDefault() error = %v, want nil", err)
+	}
+
+	cmd := &cobra.Command{Use: "test"}
+	namespace, namespaceErr := registerRedisNamespaceFlag(cmd, "usage")
+	if namespaceErr != nil {
+		t.Fatalf("registerRedisNamespaceFlag() error = %v, want nil", namespaceErr)
+	}
+	if *namespace != want {
+		t.Errorf("registerRedisNamespaceFlag() default = %q, want %q", *namespace, want)
+	}
+	if got, err := cmd.Flags().GetString("redis-namespace"); err != nil || got != want {
+		t.Errorf("cmd.Flags().GetString(redis-namespace) = (%q, %v), want (%q, nil)", got, err, want)
+	}
+}
+
+func TestRegisterRedisNamespaceFlagWithEnvOverridePrefersEnv(t *testing.T) {
+	t.Setenv("CAO_REDIS_NAMESPACE", "custom-namespace")
+
+	cmd := &cobra.Command{Use: "test"}
+	namespace, source, namespaceErr := registerRedisNamespaceFlagWithEnvOverride(cmd, "usage")
+	if namespaceErr != nil {
+		t.Fatalf("registerRedisNamespaceFlagWithEnvOverride() error = %v, want nil", namespaceErr)
+	}
+	if *namespace != "custom-namespace" {
+		t.Errorf("registerRedisNamespaceFlagWithEnvOverride() default = %q, want %q", *namespace, "custom-namespace")
+	}
+	if source != namespaceDefaultSourceEnv {
+		t.Errorf("registerRedisNamespaceFlagWithEnvOverride() source = %q, want %q", source, namespaceDefaultSourceEnv)
+	}
+}
+
+func TestRegisterRedisNamespaceFlagWithEnvOverrideFallsBackToCheckout(t *testing.T) {
+	t.Setenv("CAO_REDIS_NAMESPACE", "")
+	want, err := checkoutNamespaceDefault()
+	if err != nil {
+		t.Fatalf("checkoutNamespaceDefault() error = %v, want nil", err)
+	}
+
+	cmd := &cobra.Command{Use: "test"}
+	namespace, source, namespaceErr := registerRedisNamespaceFlagWithEnvOverride(cmd, "usage")
+	if namespaceErr != nil {
+		t.Fatalf("registerRedisNamespaceFlagWithEnvOverride() error = %v, want nil", namespaceErr)
+	}
+	if *namespace != want {
+		t.Errorf("registerRedisNamespaceFlagWithEnvOverride() default = %q, want %q", *namespace, want)
+	}
+	if source != namespaceDefaultSourceCheckout {
+		t.Errorf("registerRedisNamespaceFlagWithEnvOverride() source = %q, want %q", source, namespaceDefaultSourceCheckout)
 	}
 }
 
