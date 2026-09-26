@@ -493,7 +493,7 @@
           },
           {
             "id": "issues",
-            "label": "Issues",
+            "label": "Reports",
             "icon": "issue-opened",
             "page": "campaign-issues"
           },

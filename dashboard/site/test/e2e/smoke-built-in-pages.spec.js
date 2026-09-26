@@ -435,8 +435,8 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await page.getByRole('button', { name: 'Table' }).click();
   await expect(campaignRunsPage.locator('[data-view-id="campaign-run-table"] tbody tr')).toHaveCount(5);
   await page.getByRole('button', { name: 'Chart' }).click();
-  await campaignNavigation.getByRole('link', { name: 'Issues' }).click();
-  await expect(campaignNavigation.getByRole('link', { name: 'Issues' })).toHaveAttribute('aria-current', 'page');
+  await campaignNavigation.getByRole('link', { name: 'Reports' }).click();
+  await expect(campaignNavigation.getByRole('link', { name: 'Reports' })).toHaveAttribute('aria-current', 'page');
   await page.getByRole('button', { name: 'Cards' }).click();
   const campaignIssueView = page.locator('[data-page-id="campaign-issues"] [data-view-id="campaign-issue-table"]');
   await expect(campaignIssueView).toBeVisible();

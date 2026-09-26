@@ -394,7 +394,7 @@
     },
     {
       "name": "campaign-issue-tab-counts",
-      "intent": "Count the retained worker issues available for each campaign Issues tab.",
+      "intent": "Count the retained worker issues available for each campaign Reports tab.",
       "description": "One campaign row with the number of retained issue outcomes produced by campaign workers.",
       "from": "campaign-worker-issues",
       "aggregate": {
@@ -687,7 +687,7 @@
           },
           {
             "id": "issues",
-            "label": "Issues",
+            "label": "Reports",
             "icon": "issue-opened",
             "page": "campaign-issues"
           },
@@ -871,7 +871,7 @@
           },
           {
             "id": "issues",
-            "label": "Issues",
+            "label": "Reports",
             "icon": "issue-opened",
             "page": "campaign-issues"
           },
@@ -998,7 +998,7 @@
           },
           {
             "id": "issues",
-            "label": "Issues",
+            "label": "Reports",
             "icon": "issue-opened",
             "page": "campaign-issues"
           },
@@ -1160,7 +1160,7 @@
           },
           {
             "id": "issues",
-            "label": "Issues",
+            "label": "Reports",
             "icon": "issue-opened",
             "page": "campaign-issues"
           },
@@ -1298,7 +1298,7 @@
           },
           {
             "id": "issues",
-            "label": "Issues",
+            "label": "Reports",
             "icon": "issue-opened",
             "page": "campaign-issues"
           },
@@ -1426,7 +1426,7 @@
           },
           {
             "id": "issues",
-            "label": "Issues",
+            "label": "Reports",
             "icon": "issue-opened",
             "page": "campaign-issues"
           },
