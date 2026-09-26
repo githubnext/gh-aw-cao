@@ -2,11 +2,12 @@ import { h } from '../dom.js';
 import { listRepositoryMemory, readRepositoryMemoryFile } from '../data-processor.js';
 import { createDebug } from '../debug.js';
 import { effect, onCleanup, render, state } from '../reactive.js';
-import { createFactoryScope } from './factory-elements.js';
+import { bindFactorySources, createFactoryScope } from './factory-elements.js';
 import { renderEmptyMessage } from './ui-primitives.js';
 
 const debugCampaignMemory = createDebug('campaign-memory');
 
+/** @typedef {{ campaign: string, campaignName: string }} Campaign */
 /** @typedef {{ path: string, oid: string, sha256?: string, size: number }} MemoryFile */
 /** @typedef {{ fileLimit: number, fileSize: number, totalSize: number, extension: number, nesting: number, unsafePath: number, invalidContent: number, unsupportedType: number }} OmittedFiles */
 /** @typedef {{ branch: string, commit: string, files: MemoryFile[], omitted: OmittedFiles }} CampaignMemory */
@@ -93,6 +94,86 @@ export function renderCampaignMemory({ campaignId, campaignName }) {
         });
       }
     });
+  }, { signal: scope.signal });
+
+  scope.bind(root);
+  return root;
+}
+
+/**
+ * Renders all registered campaign memory without leaving the Memory page.
+ * @param {import('./ui-elements.js').ElementRenderContext} context
+ */
+export function renderAllCampaignMemory(context) {
+  const sourceName = context.sourceNames[0] ?? '';
+  const source = bindFactorySources(context.sources, [sourceName], context)[sourceName];
+  const scope = createFactoryScope();
+  const root = h('section', { className: 'cao-memory-browser', 'aria-label': 'CAO repository memory' });
+  let selectedCampaign = '';
+  let renderedCampaigns = '';
+
+  effect(() => {
+    if (source.pending()) {
+      if (renderedCampaigns) return;
+      root.replaceChildren(renderEmptyMessage('Loading campaign memory...', { role: 'status', 'aria-busy': 'true' }));
+      root.setAttribute('aria-busy', 'true');
+      return;
+    }
+    root.removeAttribute('aria-busy');
+    if (source.unavailable()) {
+      root.replaceChildren(renderEmptyMessage('Campaign memory is unavailable.', { role: 'alert' }));
+      return;
+    }
+    const campaigns = source.rows()
+      .map((row) => ({
+        campaign: typeof row.campaign === 'string' ? row.campaign : '',
+        campaignName: typeof row['campaign-name'] === 'string' ? row['campaign-name'] : '',
+      }))
+      .filter((campaign) => campaign.campaign && campaign.campaignName);
+    const campaignSignature = JSON.stringify(campaigns);
+    if (campaignSignature === renderedCampaigns) return;
+    renderedCampaigns = campaignSignature;
+    if (campaigns.length === 0) {
+      root.replaceChildren(renderEmptyMessage('No campaigns are registered.'));
+      return;
+    }
+
+    const selected = campaigns.find((campaign) => campaign.campaign === selectedCampaign) ?? campaigns[0];
+    selectedCampaign = selected.campaign;
+    const content = h('div', { className: 'cao-memory-content' });
+    const buttons = campaigns.map((campaign) => /** @type {HTMLButtonElement} */ (h(
+      'button',
+      {
+        type: 'button',
+        className: 'cao-memory-campaign',
+        'aria-current': campaign.campaign === selectedCampaign ? 'true' : null,
+      },
+      campaign.campaignName
+    )));
+    /** @param {Campaign} campaign @param {HTMLButtonElement} button */
+    const select = (campaign, button) => {
+      selectedCampaign = campaign.campaign;
+      for (const candidate of buttons) candidate.removeAttribute('aria-current');
+      button.setAttribute('aria-current', 'true');
+      content.replaceChildren(renderCampaignMemory({
+        campaignId: campaign.campaign,
+        campaignName: campaign.campaignName,
+      }));
+    };
+    campaigns.forEach((campaign, index) => {
+      buttons[index].addEventListener('click', () => select(campaign, buttons[index]));
+    });
+    select(selected, buttons[campaigns.indexOf(selected)]);
+
+    root.replaceChildren(
+      h(
+        'aside',
+        { className: 'cao-memory-campaigns', 'aria-label': 'Campaigns' },
+        h('h2', null, 'Campaigns'),
+        h('ul', null, ...buttons.map((button) => h('li', null, button)))
+      ),
+      content
+    );
   }, { signal: scope.signal });
 
   scope.bind(root);

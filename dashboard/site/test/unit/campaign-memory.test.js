@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { renderCampaignMemory } from '../../src/components/campaign-memory.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderAllCampaignMemory, renderCampaignMemory } from '../../src/components/campaign-memory.js';
+import { dashboardViewAliasName } from '../../src/data/queries/view-payload-compiler.js';
+import { publishSource, resetSourceStore } from '../../src/source-store.js';
 
 const memoryApi = vi.hoisted(() => ({
   list: vi.fn(),
@@ -11,13 +13,102 @@ vi.mock('../../src/data-processor.js', () => ({
   readRepositoryMemoryFile: memoryApi.read,
 }));
 
+beforeEach(resetSourceStore);
 afterEach(() => {
+  resetSourceStore();
   memoryApi.list.mockReset();
   memoryApi.read.mockReset();
   document.body.replaceChildren();
 });
 
 describe('campaign repository memory', () => {
+  it('browses every campaign memory in place', async () => {
+    memoryApi.list
+      .mockResolvedValueOnce({
+        branch: 'memory/ambient-context',
+        commit: 'a'.repeat(40),
+        files: [{ path: 'ambient.md', oid: 'b'.repeat(40), size: 9 }],
+        omitted: {},
+      })
+      .mockResolvedValueOnce({
+        branch: 'memory/security-review',
+        commit: 'c'.repeat(40),
+        files: [{ path: 'security.md', oid: 'd'.repeat(40), size: 10 }],
+        omitted: {},
+      });
+    memoryApi.read
+      .mockResolvedValueOnce({ content: '# Ambient' })
+      .mockResolvedValueOnce({ content: '# Security' });
+
+    const rendered = renderAllCampaignMemory({
+      pageId: 'memory',
+      title: 'Campaign memory',
+      sourceNames: ['campaign-memory-campaigns'],
+      sources: {
+        'campaign-memory-campaigns': {
+          source: 'campaign-memory-campaigns',
+          rows: [
+            { campaign: 'ambient-context', 'campaign-name': 'Ambient Context' },
+            { campaign: 'security-review', 'campaign-name': 'Security Review' },
+          ],
+          metadata: {
+            'source-id': 'campaign-memory-test',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-26T00:00:00Z',
+            'retrieved-at': '2026-09-26T00:00:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'available',
+          },
+        },
+      },
+      contextDetails: [],
+      headingTag: 'h3',
+    });
+    document.body.append(rendered);
+
+    await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Ambient'));
+    expect([...rendered.querySelectorAll('.cao-memory-campaign')].map((node) => node.textContent))
+      .toEqual(['Ambient Context', 'Security Review']);
+
+    /** @type {HTMLButtonElement} */ (rendered.querySelectorAll('.cao-memory-campaign')[1]).click();
+    await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Security'));
+    publishSource('campaign-memory-campaigns', {
+      source: 'campaign-memory-campaigns',
+      rows: [
+        { campaign: 'ambient-context', 'campaign-name': 'Ambient Context' },
+        { campaign: 'security-review', 'campaign-name': 'Security Review' },
+      ],
+      metadata: {
+        'source-id': 'campaign-memory-refresh',
+        'source-kind': 'fixture',
+        'as-of': '2026-09-26T01:00:00Z',
+        'retrieved-at': '2026-09-26T01:00:00Z',
+        completeness: 'complete',
+        freshness: 'fresh',
+        availability: 'available',
+      },
+    }, dashboardViewAliasName('memory', { id: 'campaign-memory-browser' }, 0, 'campaign-memory-campaigns', 0));
+    await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Security'));
+    expect(location.hash).toBe('');
+    expect(memoryApi.list.mock.calls.map(([campaign]) => campaign))
+      .toEqual(['ambient-context', 'security-review']);
+  });
+
+  it('renders an honest empty state when no campaigns are registered', () => {
+    const rendered = renderAllCampaignMemory({
+      pageId: 'memory',
+      title: 'Campaign memory',
+      sourceNames: ['campaign-memory-campaigns'],
+      sources: {},
+      contextDetails: [],
+      headingTag: 'h3',
+    });
+
+    expect(rendered.textContent).toBe('No campaigns are registered.');
+    expect(memoryApi.list).not.toHaveBeenCalled();
+  });
+
   it('loads the static manifest and browses campaign files', async () => {
     memoryApi.list.mockResolvedValue({
       branch: 'memory/ambient-context',

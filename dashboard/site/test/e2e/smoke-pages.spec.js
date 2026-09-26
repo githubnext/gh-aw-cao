@@ -709,7 +709,14 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
         label: 'Review dependency evidence'
       };
       const sources = {
-        campaigns: { source: 'campaigns', rows: [{ id: 'campaign-1' }, { id: 'campaign-2' }], metadata },
+        campaigns: {
+          source: 'campaigns',
+          rows: [
+            { id: 'campaign-1', campaign: 'aw-doctor', 'campaign-name': 'AW Doctor', 'campaign-icon': 'tools' },
+            { id: 'campaign-2', campaign: 'dependabot', 'campaign-name': 'Dependabot', 'campaign-icon': 'dependabot' }
+          ],
+          metadata
+        },
         issues: {
           source: 'issues',
           rows: Array.from({ length: 17 }, (_, index) => ({ id: \`issue-\${index + 1}\` })),
@@ -985,7 +992,16 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(cleanNavigation).toHaveText(['Overview']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
-  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Operational Value', 'Cost', 'Models & Agents', 'Skills', 'Firewall', 'MCPs', 'Steering']);
+  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Memory', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Operational Value', 'Cost', 'Models & Agents', 'Skills', 'Firewall', 'MCPs', 'Steering']);
+  await data.getByRole('link', { name: /Memory/ }).click();
+  await expect(page).toHaveURL(/#page-memory$/);
+  await expect(page.getByRole('heading', { name: 'Memory', exact: true, level: 1 })).toBeVisible();
+  const memoryView = page.getByRole('region', { name: 'CAO repository memory' });
+  await expect(memoryView.getByRole('button')).toHaveText(['AW Doctor', 'Dependabot']);
+  await memoryView.getByRole('button', { name: 'Dependabot' }).click();
+  await expect(memoryView.getByRole('button', { name: 'Dependabot' })).toHaveAttribute('aria-current', 'true');
+  await expect(page).toHaveURL(/#page-memory$/);
+  await expect(memoryView.getByRole('link')).toHaveCount(0);
   await expect(updatesSection.locator('summary')).toHaveText('Updates');
   await expect(updatesSection.getByRole('link')).toHaveText(['Updates', 'Indexing', 'Settings']);
   await expect(updatesSection).toHaveClass(/nav-section-bottom/);

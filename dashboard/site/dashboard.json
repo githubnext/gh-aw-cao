@@ -10185,6 +10185,26 @@
         ]
       },
       {
+        "name": "campaign-memory-campaigns",
+        "intent": "Provide the registered campaigns whose repository memory can be browsed together.",
+        "description": "Registered campaigns ordered for the all-campaign repository-memory browser.",
+        "from": "campaigns",
+        "select": [
+          {
+            "field": "campaign"
+          },
+          {
+            "field": "campaign-name"
+          }
+        ],
+        "order-by": [
+          {
+            "field": "campaign-name",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
         "name": "campaign-repository-coverage",
         "intent": "Count distinct registered target repositories reached by successful worker dispatches for each campaign.",
         "description": "Campaign repository coverage derived from successful worker dispatch runs in the selected horizon.",
@@ -13018,6 +13038,31 @@
             }
           ]
         }
+      },
+      {
+        "id": "memory",
+        "kind": "custom",
+        "title": "Memory",
+        "navigation-label": "Memory",
+        "icon": "archive",
+        "experimental": true,
+        "class-name": "memory-page",
+        "description": "Browse repository memory published by centrally managed campaigns.",
+        "views": [
+          {
+            "id": "campaign-memory-browser",
+            "title": "Campaign memory",
+            "intent": "Let operators browse published repository memory from every registered campaign without leaving this page.",
+            "data": {
+              "sources": [
+                "campaign-memory-campaigns"
+              ]
+            },
+            "mark": "element",
+            "element": "all-campaign-memory",
+            "layout": "full"
+          }
+        ]
       },
       {
         "id": "campaign-insights",
@@ -16616,6 +16661,7 @@
         "label": "Data",
         "pages": [
           "campaigns",
+          "memory",
           "repositories",
           "workflows",
           "runs",
