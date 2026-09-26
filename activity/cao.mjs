@@ -1293,15 +1293,7 @@ function workflowRunId(value) {
 }
 
 function isAgenticWorkflowRun(record) {
-  return typeof record?.run?.workflow_path === 'string'
-    && record.run.workflow_path.endsWith('.lock.yml');
-}
-
-function createJsonlCompactionState() {
-  return {
-    seenRunRecordDigests: new Set(),
-    deduplicatedRunRecords: 0
-  };
+  return typeof record?.run?.workflow_path === 'string' && record.run.workflow_path.endsWith('.lock.yml');
 }
 
 function compactedJsonlLine(line, agenticRunIds, state) {
@@ -1347,7 +1339,7 @@ async function inspectJsonlCompaction(sourcePaths) {
   let sourceRecords = 0;
   let retainedRecords = 0;
   let filtered = false;
-  const state = createJsonlCompactionState();
+  const state = { seenRunRecordDigests: new Set(), deduplicatedRunRecords: 0 };
   for await (const line of jsonlLines(sourcePaths)) {
     sourceRecords += 1;
     const retained = compactedJsonlLine(line, agenticRunIds, state);
@@ -1358,13 +1350,7 @@ async function inspectJsonlCompaction(sourcePaths) {
     retainedRecords += 1;
     if (retained !== line) filtered = true;
   }
-  return {
-    agenticRunIds,
-    sourceRecords,
-    retainedRecords,
-    deduplicatedRunRecords: state.deduplicatedRunRecords,
-    filtered
-  };
+  return { agenticRunIds, sourceRecords, retainedRecords, deduplicatedRunRecords: state.deduplicatedRunRecords, filtered };
 }
 
 function* normalizedJsonlLines(payload) {
@@ -1387,8 +1373,7 @@ function* normalizedJsonlLines(payload) {
 
 async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
   const sourcePaths = names.map((name) => path.join(directory, name));
-  const sourceBytes = (await Promise.all(sourcePaths.map(async (filePath) => (await stat(filePath)).size)))
-    .reduce((sum, size) => sum + size, 0);
+  const sourceBytes = (await Promise.all(sourcePaths.map(async (filePath) => (await stat(filePath)).size))).reduce((sum, size) => sum + size, 0);
   const inspection = await inspectJsonlCompaction(sourcePaths);
   if (sourcePaths.length <= 1 && sourceBytes <= maxBytes && !inspection.filtered) {
     return {
@@ -1414,7 +1399,7 @@ async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
   let bufferedLines = [];
   let bufferedBytes = 0;
   let retainedRecords = 0;
-  const state = createJsonlCompactionState();
+  const state = { seenRunRecordDigests: new Set(), deduplicatedRunRecords: 0 };
   const flush = async () => {
     if (bufferedLines.length === 0) return;
     const content = bufferedLines.join('');
@@ -1447,8 +1432,7 @@ async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
     throw error;
   }
   await Promise.all(sourcePaths.filter((filePath) => !outputPaths.includes(filePath)).map((filePath) => rm(filePath)));
-  const compactedBytes = (await Promise.all(outputPaths.map(async (filePath) => (await stat(filePath)).size)))
-    .reduce((sum, size) => sum + size, 0);
+  const compactedBytes = (await Promise.all(outputPaths.map(async (filePath) => (await stat(filePath)).size))).reduce((sum, size) => sum + size, 0);
   return {
     prefix,
     sourceFiles: sourcePaths.length,
