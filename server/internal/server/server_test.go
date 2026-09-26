@@ -564,17 +564,19 @@ func fakeRedis(t *testing.T) (string, func()) {
 							}
 						}
 						mu.Unlock()
-						if rateLimitResult {
+						switch {
+						case rateLimitResult:
 							remaining := 119
-							if command[4] == "30" {
+							switch command[4] {
+							case "30":
 								remaining = 29
-							} else if command[4] == "10" {
+							case "10":
 								remaining = 9
 							}
 							_, _ = fmt.Fprintf(connection, "*4\r\n:1\r\n:%d\r\n:0\r\n:500\r\n", remaining)
-						} else if bulkResult != "" {
+						case bulkResult != "":
 							_, _ = fmt.Fprintf(connection, "$%d\r\n%s\r\n", len(bulkResult), bulkResult)
-						} else {
+						default:
 							_, _ = fmt.Fprintf(connection, ":%d\r\n", result)
 						}
 					case "SRANDMEMBER":

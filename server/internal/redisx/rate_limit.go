@@ -65,23 +65,23 @@ return {allowed, math.floor(tokens), retry, reset}`
 	}
 	items, ok := value.([]any)
 	if !ok || len(items) != 4 {
-		return RateLimitResult{}, errors.New("Redis rate limit returned an invalid response")
+		return RateLimitResult{}, errors.New("redis rate limit returned an invalid response")
 	}
 	parsed := make([]int64, len(items))
 	for index, item := range items {
 		parsed[index], err = strconv.ParseInt(fmt.Sprint(item), 10, 64)
 		if err != nil {
-			return RateLimitResult{}, errors.New("Redis rate limit returned an invalid response")
+			return RateLimitResult{}, errors.New("redis rate limit returned an invalid response")
 		}
 	}
 	if parsed[0] != 0 && parsed[0] != 1 {
-		return RateLimitResult{}, errors.New("Redis rate limit returned an invalid response")
+		return RateLimitResult{}, errors.New("redis rate limit returned an invalid response")
 	}
 	maximumDuration := refillPeriod.Milliseconds()
 	if parsed[1] < 0 || parsed[1] > int64(capacity) ||
 		parsed[2] < 0 || parsed[2] > maximumDuration ||
 		parsed[3] < 0 || parsed[3] > maximumDuration {
-		return RateLimitResult{}, errors.New("Redis rate limit returned an invalid response")
+		return RateLimitResult{}, errors.New("redis rate limit returned an invalid response")
 	}
 	return RateLimitResult{
 		Allowed:    parsed[0] == 1,

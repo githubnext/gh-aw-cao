@@ -95,11 +95,11 @@ func (a *App) enforceRateLimit(
 }
 
 func requiresPreAuthRateLimit(path string) bool {
-	return !(publicServiceEndpoint(path) ||
-		path == "/api/github/webhook" ||
-		strings.HasPrefix(path, "/auth/login") ||
-		strings.HasPrefix(path, "/auth/logged-out") ||
-		strings.HasPrefix(path, "/auth/callback"))
+	return !publicServiceEndpoint(path) &&
+		path != "/api/github/webhook" &&
+		!strings.HasPrefix(path, "/auth/login") &&
+		!strings.HasPrefix(path, "/auth/logged-out") &&
+		!strings.HasPrefix(path, "/auth/callback")
 }
 
 func ratePolicy(request *http.Request) (requestRatePolicy, bool) {
