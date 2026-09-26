@@ -1,0 +1,51 @@
+name: Local Azure Functions integration
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/azure-local-integration.yml
+      - dashboard/site/**
+      - scripts/azure-local/**
+      - server/**
+      - tests/integration/azure-local-functions.test.mjs
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/azure-local-integration.yml
+      - dashboard/site/**
+      - scripts/azure-local/**
+      - server/**
+      - tests/integration/azure-local-functions.test.mjs
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  azure-local:
+    name: Functions, Azurite, and Redis
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: dashboard/site/package-lock.json
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version: 1.27.1
+          cache: false
+      - name: Run local Azure integration
+        run: ./scripts/azure-local/azure-local.sh run
+      - name: Upload local Azure logs
+        if: ${{ always() && failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: azure-local-integration
+          path: .tmp/azure-local/*/logs/
+          if-no-files-found: warn
+          retention-days: 14

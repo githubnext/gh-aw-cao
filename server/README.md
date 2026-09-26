@@ -661,6 +661,21 @@ mode fails closed unless all of the following are configured:
 - at least one explicit `CAO_GITHUB_ALLOWED_ORGS` or
   `CAO_GITHUB_ALLOWED_TEAMS` value.
 
+For Linux-only local integration testing, the repository-owned harness starts
+Azure Functions Core Tools, Azurite, and Redis and drives the Functions HTTP
+surface without Azure credentials:
+
+```bash
+./scripts/azure-local/azure-local.sh run
+```
+
+See [`scripts/azure-local/README.md`](../scripts/azure-local/README.md) for
+prerequisites, individual lifecycle commands, logs, process isolation, and the
+local-vs-cloud test boundary. The harness sets the explicit
+`CAO_AZURE_LOCAL_SIMULATION=1` seam, which permits only loopback plaintext Redis
+and local HTTP. Without that setting, Azure mode continues to require
+`rediss://` Redis and HTTPS exactly as production does.
+
 Azure mode does not accept the local bearer capability and does not support
 PATs. Login alone does not grant access: after exchanging the OAuth code, the
 server calls GitHub with the minimum `read:org` scope needed for organization
