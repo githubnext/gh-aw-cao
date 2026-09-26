@@ -165,22 +165,35 @@ func normalizeEnumeratedRepositories(covered []githubapp.Repository) (names []st
 	return names, repositories, skipped
 }
 
-// seed queues backfill tasks ordered by recency so active repositories become
-// queryable first.
-func (b Backfill) seed(ctx context.Context, repositories []enrolledRepository) (int, error) {
+// sortByRecency orders enrolled repositories most-recently-pushed first, in
+// place. It is a pure function so seed's ordering behavior is testable
+// without a queue or enrollment fake.
+func sortByRecency(repositories []enrolledRepository) {
 	sort.Slice(repositories, func(first, second int) bool {
 		return repositories[first].pushedAt.After(repositories[second].pushedAt)
 	})
+}
+
+// seed queues backfill tasks ordered by recency so active repositories become
+// queryable first.
+func (b Backfill) seed(ctx context.Context, repositories []enrolledRepository) (int, error) {
+	sortByRecency(repositories)
 	if err := b.Queue.Ensure(ctx); err != nil {
 		return 0, err
 	}
 	queued := 0
+	unmapped := 0
 	for _, repository := range repositories {
 		if ctx.Err() != nil {
 			return queued, ctx.Err()
 		}
 		installationID, err := b.Enrollment.InstallationFor(ctx, repository.name)
 		if err != nil || installationID == 0 {
+			// Enrollment covers the repository but no installation maps to
+			// it; the repository stays queryable once enrollment is
+			// repaired, so the gap is worth surfacing rather than treating
+			// as a failure.
+			unmapped++
 			continue
 		}
 		enqueued, err := b.Queue.Enqueue(ctx, Task{
@@ -194,6 +207,9 @@ func (b Backfill) seed(ctx context.Context, repositories []enrolledRepository) (
 		if enqueued {
 			queued++
 		}
+	}
+	if unmapped > 0 {
+		backfillLog.Printf("seed skipped repositories without installation mapping count=%d", unmapped)
 	}
 	return queued, nil
 }
