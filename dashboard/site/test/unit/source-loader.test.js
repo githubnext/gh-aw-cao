@@ -92,4 +92,91 @@ describe('dashboard source loader', () => {
     );
     expect(fetchSource).toHaveBeenCalledTimes(2);
   });
+
+  it('stays silent by default and logs only scalar metadata under its predictable category', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '?debug=source-loader', output })
+      };
+    });
+    vi.resetModules();
+    const { loadDashboardSources: loadDashboardSourcesWithDebug } = await import('../../src/source-loader.js');
+
+    const fetchSource = vi.fn(async (input) => new URL(String(input)).pathname.endsWith('/sources/manifest.json')
+      ? new Response('', { status: 404 })
+      : new Response(JSON.stringify({ workflows: { source: 'workflows', rows: [] } })));
+
+    await loadDashboardSourcesWithDebug(fetchSource, 'https://example.test/cao/sources.json');
+    expect(output.debug).toHaveBeenCalledWith('[cao:source-loader]', { event: 'monolith-fallback', reason: 'manifest-missing' });
+
+    for (const call of output.debug.mock.calls) {
+      const metadata = call[1];
+      expect(Object.values(metadata).every((value) => typeof value !== 'object')).toBe(true);
+    }
+
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
+
+  it('logs split-source counts and generation mismatches under the predictable category', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '?debug=source-loader', output })
+      };
+    });
+    vi.resetModules();
+    const { loadDashboardSources: loadDashboardSourcesWithDebug } = await import('../../src/source-loader.js');
+
+    const generation = 'a'.repeat(64);
+    const fetchSource = vi.fn(async (input) => new URL(String(input)).pathname.endsWith('/sources/manifest.json')
+      ? new Response(JSON.stringify({ version: 1, generation, sources: ['runs'] }))
+      : new Response(JSON.stringify({
+        source: 'runs',
+        rows: [],
+        metadata: { 'artifact-generation': 'b'.repeat(64) }
+      })));
+
+    await expect(loadDashboardSourcesWithDebug(fetchSource, 'https://example.test/cao/sources.json')).rejects.toThrow(
+      'Dashboard source runs does not match the source manifest generation.'
+    );
+    expect(output.debug).toHaveBeenCalledWith('[cao:source-loader]', { event: 'generation-mismatch', name: 'runs' });
+
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
+
+  it('is disabled by default (no debug output) when the debug query is absent', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '', output })
+      };
+    });
+    vi.resetModules();
+    const { loadDashboardSources: loadDashboardSourcesWithoutDebug } = await import('../../src/source-loader.js');
+
+    const fetchSource = vi.fn(async (input) => new URL(String(input)).pathname.endsWith('/sources/manifest.json')
+      ? new Response(JSON.stringify({ version: 1, sources: ['runs'] }))
+      : new Response(JSON.stringify({ source: 'runs', rows: [] })));
+
+    await loadDashboardSourcesWithoutDebug(fetchSource, 'https://example.test/cao/sources.json');
+    expect(output.debug).not.toHaveBeenCalled();
+
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
 });
