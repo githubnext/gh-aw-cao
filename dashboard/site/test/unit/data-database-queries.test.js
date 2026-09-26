@@ -366,8 +366,10 @@ describe('canonical view sources', () => {
     expect(result['indexing-domains-table-count'].rows).toEqual([
       { table: 'network domains', records: 0 }
     ]);
-    expect(Object.keys(result)).toEqual(required);
-    expect(nativeCounts).toHaveBeenCalledTimes(required.length);
+    expect(Object.keys(result)).toEqual(required.filter((name) => (
+      name !== 'indexing-operational-values-table-count'
+    )));
+    expect(nativeCounts).toHaveBeenCalledTimes(required.length - 1);
     expect(collectionReads).not.toHaveBeenCalled();
   });
 

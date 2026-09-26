@@ -616,7 +616,11 @@ function compileDashboardQuery(name, index, sources, defects, budget, compiled, 
     if (!definition) return;
     visiting.add(queryName);
     for (const input of queryInputNames(definition)) {
-      if (index.has(input) && !Object.hasOwn(sources, input)) compile(input);
+      const precomputed = sources[input];
+      if (index.has(input)
+          && (!precomputed || precomputed.metadata?.availability === 'unavailable')) {
+        compile(input);
+      }
     }
     visiting.delete(queryName);
     budget.checkpoint();

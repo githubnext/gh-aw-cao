@@ -159,14 +159,14 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
       computed.function === 'literal'
         && Array.isArray(computed.args)
         && computed.args.length === 1
-        && Object.hasOwn(computed.args[0], 'value')
+        && 'value' in computed.args[0]
         ? [[computed.as, computed.args[0].value]]
         : []
     )));
     const computedFields = Object.keys(computedLiterals);
     const groupedFields = definition.aggregate?.by ?? [];
     if (!table
-        || typeof table.keyPath !== 'string'
+        || (computedFields.length === 0 && typeof table.keyPath !== 'string')
         || definition.union?.length
         || definition.joins?.length
         || definition.filter
@@ -180,7 +180,11 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
         || definition.limit !== undefined
         || !Array.isArray(values)
         || values.length === 0
-        || values.some((value) => value.reducer !== 'count' || value.field !== table.keyPath || value.filter)) {
+        || values.some((value) => (
+          value.reducer !== 'count'
+          || (computedFields.length === 0 && value.field !== table.keyPath)
+          || value.filter
+        ))) {
       return [];
     }
     return [{ name, source: definition.from, values, computedLiterals }];
