@@ -34,7 +34,9 @@ export GH_HOST=github.example.ghe.com # Omit on github.com.
 ```
 
 The helper uses `GH_HOST`, or `GITHUB_SERVER_URL` in Actions, for repository,
-App registration, installation, and settings URLs.
+App registration, installation, and settings URLs. On GitHub Enterprise Cloud
+data-residency hosts (`*.ghe.com`), it omits the unavailable Campaigns App
+permission from the generated read-App manifest.
 
 An organization-owned private App fails closed when policy enrolls a repository owned by another organization.
 

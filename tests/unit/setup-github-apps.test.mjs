@@ -7,6 +7,7 @@ import test from "node:test";
 
 import {
   APP_PROFILES,
+  appPermissionsForServer,
   appRegistrationUrl,
   buildGitHubAppManifest,
   deriveAppName,
@@ -41,6 +42,16 @@ test("GitHub App profiles preserve separate permission ceilings", () => {
   assert.equal(write.permissions.contents, "write");
   assert.equal(write.permissions.issues, "write");
   assert.equal(write.permissions.pull_requests, "write");
+});
+
+test("GitHub Enterprise Cloud data-residency manifests omit unsupported campaigns permission", () => {
+  const read = APP_PROFILES.find((profile) => profile.role === "read");
+  assert.ok(read);
+  assert.equal(appPermissionsForServer(read, "https://github.com").campaigns, "read");
+  assert.equal(
+    Object.hasOwn(appPermissionsForServer(read, "https://contoso-aw.ghe.com"), "campaigns"),
+    false,
+  );
 });
 
 test("GitHub App manifests are private and disable webhooks and OAuth", () => {
