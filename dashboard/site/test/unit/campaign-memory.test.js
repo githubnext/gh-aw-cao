@@ -2,29 +2,37 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderCampaignMemory } from '../../src/components/campaign-memory.js';
 
+const memoryApi = vi.hoisted(() => ({
+  list: vi.fn(),
+  read: vi.fn(),
+}));
+vi.mock('../../src/data-processor.js', () => ({
+  listRepositoryMemory: memoryApi.list,
+  readRepositoryMemoryFile: memoryApi.read,
+}));
+
 afterEach(() => {
-  vi.unstubAllGlobals();
+  memoryApi.list.mockReset();
+  memoryApi.read.mockReset();
   document.body.replaceChildren();
 });
 
 describe('campaign repository memory', () => {
   it('loads the static manifest and browses campaign files', async () => {
-    const fetch = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        version: 1,
-        campaigns: [{
-          campaign: 'ambient-context',
-          branch: 'memory/ambient-context',
-          commit: 'a'.repeat(40),
-          files: [
-            { path: 'notes/first.json', oid: 'b'.repeat(40), size: 14 },
-            { path: 'summary.md', oid: 'c'.repeat(40), sha256: 'e'.repeat(64), size: 8 },
-          ],
-        }],
-      })))
-      .mockResolvedValueOnce(new Response('{"answer":42}\n'))
-      .mockResolvedValueOnce(new Response('# Summary'));
-    vi.stubGlobal('fetch', fetch);
+    memoryApi.list.mockResolvedValue({
+      branch: 'memory/ambient-context',
+      commit: 'a'.repeat(40),
+      files: [
+        { path: 'notes/first.json', oid: 'b'.repeat(40), size: 14 },
+        { path: 'summary.md', oid: 'c'.repeat(40), sha256: 'e'.repeat(64), size: 8 },
+      ],
+      omitted: {
+        fileLimit: 0, fileSize: 0, extension: 0, nesting: 0, unsafePath: 0, unsupportedType: 0
+      },
+    });
+    memoryApi.read
+      .mockResolvedValueOnce({ content: '{"answer":42}\n' })
+      .mockResolvedValueOnce({ content: '# Summary' });
 
     const rendered = renderCampaignMemory({
       campaignId: 'ambient-context',
@@ -39,18 +47,14 @@ describe('campaign repository memory', () => {
 
     rendered.querySelectorAll('button')[1].click();
     await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Summary'));
-    expect(fetch.mock.calls.map(([url]) => String(url))).toEqual([
-      'http://localhost:3000/memory/manifest.json',
-      'http://localhost:3000/memory/ambient-context/notes/first.json',
-      'http://localhost:3000/memory/ambient-context/summary.md',
+    expect(memoryApi.read.mock.calls.map(([campaign, path]) => [campaign, path])).toEqual([
+      ['ambient-context', 'notes/first.json'],
+      ['ambient-context', 'summary.md'],
     ]);
   });
 
   it('renders honest empty and invalid-manifest states', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      version: 1,
-      campaigns: [],
-    }))));
+    memoryApi.list.mockResolvedValueOnce(null);
     const empty = renderCampaignMemory({ campaignId: 'ambient-context', campaignName: 'Ambient Context' });
     document.body.append(empty);
     await vi.waitFor(() => expect(empty.textContent).toContain(
@@ -58,33 +62,26 @@ describe('campaign repository memory', () => {
     ));
     empty.remove();
 
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      version: 2,
-      campaigns: [],
-    }))));
+    memoryApi.list.mockRejectedValueOnce(new Error('Repository-memory manifest is invalid.'));
     const invalid = renderCampaignMemory({ campaignId: 'ambient-context', campaignName: 'Ambient Context' });
     document.body.append(invalid);
     await vi.waitFor(() => expect(invalid.textContent).toContain('Repository-memory manifest is invalid.'));
   });
 
   it('renders empty branches and warns when excluded files make the view incomplete', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      version: 1,
-      campaigns: [{
-        campaign: 'ambient-context',
-        branch: 'memory/ambient-context',
-        commit: 'a'.repeat(40),
-        files: [],
-        omitted: {
-          fileLimit: 1,
-          fileSize: 2,
-          extension: 3,
-          nesting: 0,
-          unsafePath: 0,
-          unsupportedType: 0,
-        },
-      }],
-    }))));
+    memoryApi.list.mockResolvedValue({
+      branch: 'memory/ambient-context',
+      commit: 'a'.repeat(40),
+      files: [],
+      omitted: {
+        fileLimit: 1,
+        fileSize: 2,
+        extension: 3,
+        nesting: 0,
+        unsafePath: 0,
+        unsupportedType: 0,
+      },
+    });
     const rendered = renderCampaignMemory({ campaignId: 'ambient-context', campaignName: 'Ambient Context' });
     document.body.append(rendered);
 
@@ -100,15 +97,7 @@ describe('campaign repository memory', () => {
   });
 
   it('rejects file metadata outside the publication limits', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      version: 1,
-      campaigns: [{
-        campaign: 'ambient-context',
-        branch: 'memory/ambient-context',
-        commit: 'a'.repeat(40),
-        files: [{ path: 'script.js', oid: 'b'.repeat(40), sha256: 'c'.repeat(64), size: 10 }],
-      }],
-    }))));
+    memoryApi.list.mockRejectedValue(new Error('Campaign repository-memory file metadata is invalid.'));
     const rendered = renderCampaignMemory({ campaignId: 'ambient-context', campaignName: 'Ambient Context' });
     document.body.append(rendered);
 
@@ -118,20 +107,15 @@ describe('campaign repository memory', () => {
   });
 
   it('stops reading files that exceed the size limit', async () => {
-    const fetch = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        version: 1,
-        campaigns: [{
-          campaign: 'ambient-context',
-          branch: 'memory/ambient-context',
-          commit: 'a'.repeat(40),
-          files: [{ path: 'large.txt', oid: 'b'.repeat(40), sha256: 'c'.repeat(64), size: 10 }],
-        }],
-      })))
-      .mockResolvedValueOnce(new Response('x', {
-        headers: { 'content-length': String(1024 * 1024 + 1) },
-      }));
-    vi.stubGlobal('fetch', fetch);
+    memoryApi.list.mockResolvedValue({
+      branch: 'memory/ambient-context',
+      commit: 'a'.repeat(40),
+      files: [{ path: 'large.txt', oid: 'b'.repeat(40), sha256: 'c'.repeat(64), size: 10 }],
+      omitted: {
+        fileLimit: 0, fileSize: 0, extension: 0, nesting: 0, unsafePath: 0, unsupportedType: 0
+      },
+    });
+    memoryApi.read.mockRejectedValue(new Error('Memory file exceeds the published size limit.'));
     const rendered = renderCampaignMemory({ campaignId: 'ambient-context', campaignName: 'Ambient Context' });
     document.body.append(rendered);
 

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   disableRemoteDashboardPwa,
   queryRemoteDashboard,
+  queryRemoteRepositoryMemory,
   refreshRemoteDashboard,
   subscribeRemoteRevision,
   usesRemoteDataBackend,
@@ -109,6 +110,29 @@ describe("remote dashboard data backend", () => {
     expect(fetchMock.mock.calls.map(([url]) => new URL(url).pathname)).toEqual([
       "/api/v1/refresh",
       "/api/v1/query",
+    ]);
+  });
+
+  it("resolves repository memory through the authenticated server API", async () => {
+    const manifest = { version: 1, campaigns: [{ campaign: "security-review", files: [] }] };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(manifest), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ content: "# Context" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(queryRemoteRepositoryMemory("security-review", undefined)).resolves.toEqual(manifest);
+    await expect(queryRemoteRepositoryMemory("security-review", "notes/context.md"))
+      .resolves.toEqual({ content: "# Context" });
+
+    expect(fetchMock.mock.calls.map(([url]) => new URL(url).pathname + new URL(url).search)).toEqual([
+      "/api/v1/memory/security-review",
+      "/api/v1/memory/security-review/content?path=notes%2Fcontext.md",
     ]);
   });
 

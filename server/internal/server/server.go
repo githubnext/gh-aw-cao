@@ -218,6 +218,8 @@ func (a *App) Handler() http.Handler {
 	register("GET /api/v1/events", a.events)
 	register("POST /api/v1/query", a.query)
 	register("GET /api/v1/diagnostics", a.diagnostics)
+	register("GET /api/v1/memory/{campaign}", a.repositoryMemoryCampaign)
+	register("GET /api/v1/memory/{campaign}/content", a.repositoryMemoryContent)
 	register("POST /api/v1/refresh", a.refresh)
 	register("GET /api/repositories", a.repositories)
 	register("GET /api/repositories/{id}", a.repository)

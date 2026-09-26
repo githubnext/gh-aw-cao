@@ -3,6 +3,7 @@ package redisx
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -109,6 +110,62 @@ func (s *Store) OperationalState(ctx context.Context, name string) ([]byte, erro
 	value, err := s.Client.Do(ctx, "GET", s.Key("state:"+name))
 	if err != nil || value == nil {
 		return nil, err
+	}
+	return []byte(fmt.Sprint(value)), nil
+}
+
+const repositoryMemoryManifestField = "repository-memory:manifest"
+
+func repositoryMemoryFileField(campaign, path string) string {
+	return "repository-memory:file:" + base64.RawURLEncoding.EncodeToString([]byte(campaign+"\x00"+path))
+}
+
+func (s *Store) PutRepositoryMemory(ctx context.Context, generation string, manifest []byte, files map[string][]byte) error {
+	if _, err := s.Client.Do(ctx, "HSET", s.generationKey(generation), repositoryMemoryManifestField, string(manifest)); err != nil {
+		return fmt.Errorf("write repository-memory manifest: %w", err)
+	}
+	commands := make([][]string, 0, redisWriteBatchSize)
+	for key, content := range files {
+		campaign, path, found := strings.Cut(key, "\x00")
+		if !found {
+			return errors.New("repository-memory file key is invalid")
+		}
+		commands = append(commands, []string{
+			"HSET", s.generationKey(generation), repositoryMemoryFileField(campaign, path), string(content),
+		})
+		if len(commands) == cap(commands) {
+			if _, err := s.Client.DoMany(ctx, commands); err != nil {
+				return fmt.Errorf("write repository-memory files: %w", err)
+			}
+			commands = commands[:0]
+		}
+	}
+	if len(commands) > 0 {
+		if _, err := s.Client.DoMany(ctx, commands); err != nil {
+			return fmt.Errorf("write repository-memory files: %w", err)
+		}
+	}
+	return nil
+}
+
+func (s *Store) RepositoryMemoryManifest(ctx context.Context, generation string) ([]byte, error) {
+	value, err := s.Client.Do(ctx, "HGET", s.generationKey(generation), repositoryMemoryManifestField)
+	if err != nil {
+		return nil, err
+	}
+	if value == nil {
+		return nil, ErrSourceUnavailable
+	}
+	return []byte(fmt.Sprint(value)), nil
+}
+
+func (s *Store) RepositoryMemoryFile(ctx context.Context, generation, campaign, path string) ([]byte, error) {
+	value, err := s.Client.Do(ctx, "HGET", s.generationKey(generation), repositoryMemoryFileField(campaign, path))
+	if err != nil {
+		return nil, err
+	}
+	if value == nil {
+		return nil, ErrSourceUnavailable
 	}
 	return []byte(fmt.Sprint(value)), nil
 }

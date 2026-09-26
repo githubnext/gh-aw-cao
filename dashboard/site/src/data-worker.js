@@ -88,6 +88,11 @@ const inFlightDashboardSources = new Map();
 /** @type {Set<string>} */
 const dirtyDashboardSubscriptions = new Set();
 const SUBSCRIPTION_FLUSH_DELAY_MS = 50;
+const REPOSITORY_MEMORY_CAMPAIGN_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{0,99})$/;
+const REPOSITORY_MEMORY_EXTENSIONS = new Set(['.json', '.jsonl', '.md', '.txt', '.yaml', '.yml']);
+const REPOSITORY_MEMORY_MAX_FILES = 400;
+const REPOSITORY_MEMORY_MAX_FILE_SIZE = 1024 * 1024;
+const REPOSITORY_MEMORY_MAX_NESTING = 10;
 /** @type {ReturnType<typeof setTimeout> | null} */
 let subscriptionFlushTimer = null;
 let subscriptionFlushRunning = false;
@@ -117,6 +122,164 @@ function requestedSourceNames(sourceNames) {
     throw new TypeError('Canonical dashboard source names must be an array of strings.');
   }
   return new Set(sourceNames);
+}
+
+/** @param {unknown} value */
+function repositoryMemoryPath(value) {
+  if (typeof value !== 'string' || !value || value.startsWith('/') || value.includes('\\')) return '';
+  const segments = value.split('/');
+  if (segments.some((segment) => !segment || segment === '.' || segment === '..')) return '';
+  if (segments.length - 1 > REPOSITORY_MEMORY_MAX_NESTING) return '';
+  const name = segments.at(-1) ?? '';
+  const extensionIndex = name.lastIndexOf('.');
+  const extension = extensionIndex >= 0 ? name.slice(extensionIndex).toLowerCase() : '';
+  return REPOSITORY_MEMORY_EXTENSIONS.has(extension) ? value : '';
+}
+
+/** @param {unknown} value */
+function repositoryMemoryOmissions(value) {
+  const source = value && typeof value === 'object' ? /** @type {Record<string, unknown>} */ (value) : {};
+  const omitted = {
+    fileLimit: 0, fileSize: 0, extension: 0, nesting: 0, unsafePath: 0, unsupportedType: 0
+  };
+  for (const key of Object.keys(omitted)) {
+    const count = source[key] ?? 0;
+    if (!Number.isSafeInteger(count) || Number(count) < 0) {
+      throw new Error('Campaign repository-memory omission metadata is invalid.');
+    }
+    omitted[/** @type {keyof typeof omitted} */ (key)] = Number(count);
+  }
+  return omitted;
+}
+
+/** @param {unknown} value @param {string} campaign */
+function repositoryMemoryCampaign(value, campaign) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Campaign repository-memory entry is invalid.');
+  }
+  const entry = /** @type {Record<string, unknown>} */ (value);
+  if (entry.campaign !== campaign
+      || entry.branch !== `memory/${campaign}`
+      || typeof entry.commit !== 'string'
+      || !/^[0-9a-f]{40,64}$/i.test(entry.commit)
+      || !Array.isArray(entry.files)
+      || entry.files.length > REPOSITORY_MEMORY_MAX_FILES) {
+    throw new Error('Campaign repository-memory entry is invalid.');
+  }
+  const files = entry.files.map((value) => {
+    const file = /** @type {Record<string, unknown>} */ (value);
+    return {
+      path: repositoryMemoryPath(file.path),
+      size: Number(file.size),
+      oid: String(file.oid ?? ''),
+      sha256: file.sha256 === undefined ? undefined : String(file.sha256),
+    };
+  });
+  if (files.some((file) => !file.path
+      || !Number.isSafeInteger(file.size)
+      || file.size < 0
+      || file.size > REPOSITORY_MEMORY_MAX_FILE_SIZE
+      || !/^[0-9a-f]{40,64}$/i.test(file.oid)
+      || (file.sha256 !== undefined && !/^[0-9a-f]{64}$/i.test(file.sha256)))) {
+    throw new Error('Campaign repository-memory file metadata is invalid.');
+  }
+  return {
+    branch: String(entry.branch),
+    commit: String(entry.commit),
+    files,
+    omitted: repositoryMemoryOmissions(entry.omitted),
+  };
+}
+
+/** @param {Response} response */
+async function boundedRepositoryMemoryContent(response) {
+  const declaredLength = Number(response.headers.get('content-length'));
+  if (Number.isFinite(declaredLength) && declaredLength > REPOSITORY_MEMORY_MAX_FILE_SIZE) {
+    throw new Error('Memory file exceeds the published size limit.');
+  }
+  const reader = response.body?.getReader();
+  if (!reader) {
+    const content = await response.arrayBuffer();
+    if (content.byteLength > REPOSITORY_MEMORY_MAX_FILE_SIZE) {
+      throw new Error('Memory file exceeds the published size limit.');
+    }
+    return new Uint8Array(content);
+  }
+  /** @type {Uint8Array[]} */
+  const chunks = [];
+  let bytes = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > REPOSITORY_MEMORY_MAX_FILE_SIZE) {
+        throw new Error('Memory file exceeds the published size limit.');
+      }
+      chunks.push(value);
+    }
+  } catch (error) {
+    await reader.cancel().catch(() => undefined);
+    throw error;
+  } finally {
+    reader.releaseLock();
+  }
+  const content = new Uint8Array(bytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    content.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return content;
+}
+
+/** @param {Record<string, unknown>} request @param {AbortSignal} [signal] */
+async function queryRepositoryMemory(request, signal) {
+  if (!REPOSITORY_MEMORY_CAMPAIGN_PATTERN.test(String(request.campaign ?? ''))) {
+    throw new Error('Repository-memory campaign is invalid.');
+  }
+  if (typeof request.memoryRoot !== 'string') throw new Error('Repository-memory root is invalid.');
+  const memoryRoot = new URL(request.memoryRoot);
+  if (!['http:', 'https:'].includes(memoryRoot.protocol)
+      || (globalThis.location?.origin
+        && globalThis.location.origin !== 'null'
+        && memoryRoot.origin !== globalThis.location.origin)) {
+    throw new Error('Repository-memory root must be same-origin.');
+  }
+  const manifestResponse = await fetch(new URL('manifest.json', memoryRoot), {
+    cache: 'no-store', credentials: 'same-origin', signal
+  });
+  if (!manifestResponse.ok) throw new Error(`Manifest request returned ${manifestResponse.status}.`);
+  const manifest = await manifestResponse.json();
+  if (manifest?.version !== 1 || !Array.isArray(manifest.campaigns)) {
+    throw new Error('Repository-memory manifest is invalid.');
+  }
+  const campaignId = String(request.campaign);
+  const campaignValue = manifest.campaigns.find(
+    (/** @type {Record<string, unknown>} */ entry) => entry?.campaign === campaignId
+  );
+  if (!campaignValue) return null;
+  const campaign = repositoryMemoryCampaign(campaignValue, campaignId);
+  if (request.action === 'list') return campaign;
+  if (request.action !== 'content') throw new Error('Repository-memory action is invalid.');
+  const filePath = repositoryMemoryPath(request.path);
+  const file = campaign.files.find((entry) => entry.path === filePath);
+  if (!file) throw new Error('Memory file path is invalid.');
+  const campaignRoot = new URL(`${encodeURIComponent(campaignId)}/`, memoryRoot);
+  const fileUrl = new URL(filePath.split('/').map(encodeURIComponent).join('/'), campaignRoot);
+  if (fileUrl.origin !== memoryRoot.origin || !fileUrl.href.startsWith(campaignRoot.href)) {
+    throw new Error('Memory file path is invalid.');
+  }
+  const response = await fetch(fileUrl, { cache: 'no-store', credentials: 'same-origin', signal });
+  if (!response.ok) throw new Error(`File request returned ${response.status}.`);
+  const content = await boundedRepositoryMemoryContent(response);
+  if (content.byteLength !== file.size) throw new Error('Memory file size does not match its manifest.');
+  if (file.sha256) {
+    const digest = await crypto.subtle.digest('SHA-256', content);
+    const actual = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+    if (actual !== file.sha256.toLowerCase()) throw new Error('Memory file hash does not match its manifest.');
+  }
+  return { content: new TextDecoder().decode(content) };
 }
 
 const RUN_PHASE_DATABASE_SOURCES = new Set(['campaigns', 'repositories', 'workflows', 'runs']);
@@ -442,11 +605,14 @@ export function publishedPhasedActivityShards(hashes) {
 }
 
 /**
- * @param {{ id?: unknown, operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, ingest?: unknown, pageId?: unknown, viewId?: unknown, routeParameters?: unknown, queryContext?: unknown }} request
+ * @param {{ id?: unknown, operation?: unknown, action?: unknown, campaign?: unknown, path?: unknown, memoryRoot?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, ingest?: unknown, pageId?: unknown, viewId?: unknown, routeParameters?: unknown, queryContext?: unknown }} request
  * @param {AbortSignal} [signal] cancels declarative query execution
  * @returns {unknown}
  */
 export function processDataRequest(request, signal) {
+  if (request?.operation === 'query-repository-memory') {
+    return queryRepositoryMemory(/** @type {Record<string, unknown>} */ (request), signal);
+  }
   if (request?.operation === 'query-canonical-dashboard') {
     const requested = requestedSourceNames(request.sourceNames);
     const context = dashboardContext(request.context);
