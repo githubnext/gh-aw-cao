@@ -157,3 +157,75 @@ func TestResolveConsumerName(t *testing.T) {
 		}
 	})
 }
+
+func TestResolveIngestSource(t *testing.T) {
+	tests := []struct {
+		name           string
+		flagValue      string
+		positionalArgs []string
+		wantSource     string
+		wantOrigin     ingestSourceOrigin
+		wantErr        bool
+	}{
+		{
+			name:           "flag takes priority over positional arg",
+			flagValue:      "/flag/dir",
+			positionalArgs: []string{"/positional/dir"},
+			wantSource:     "/flag/dir",
+			wantOrigin:     ingestSourceOriginFlag,
+		},
+		{
+			name:           "positional arg used when flag is empty",
+			flagValue:      "",
+			positionalArgs: []string{"/positional/dir"},
+			wantSource:     "/positional/dir",
+			wantOrigin:     ingestSourceOriginPositionalArg,
+		},
+		{
+			name:           "positional arg used when flag is only whitespace",
+			flagValue:      "   ",
+			positionalArgs: []string{"/positional/dir"},
+			wantSource:     "/positional/dir",
+			wantOrigin:     ingestSourceOriginPositionalArg,
+		},
+		{
+			name:           "error when flag and positional args are empty",
+			flagValue:      "",
+			positionalArgs: nil,
+			wantErr:        true,
+		},
+		{
+			name:           "error when flag empty and multiple positional args",
+			flagValue:      "",
+			positionalArgs: []string{"/one", "/two"},
+			wantErr:        true,
+		},
+		{
+			name:           "error when flag empty and single positional arg is blank",
+			flagValue:      "",
+			positionalArgs: []string{"   "},
+			wantErr:        true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotSource, gotOrigin, err := resolveIngestSource(tt.flagValue, tt.positionalArgs)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("resolveIngestSource() error = nil, want non-nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("resolveIngestSource() error = %v, want nil", err)
+			}
+			if gotSource != tt.wantSource {
+				t.Errorf("resolveIngestSource() source = %q, want %q", gotSource, tt.wantSource)
+			}
+			if gotOrigin != tt.wantOrigin {
+				t.Errorf("resolveIngestSource() origin = %q, want %q", gotOrigin, tt.wantOrigin)
+			}
+		})
+	}
+}
