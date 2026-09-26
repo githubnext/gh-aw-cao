@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderAllCampaignMemory, renderCampaignMemory } from '../../src/components/campaign-memory.js';
-import { resetSourceStore } from '../../src/source-store.js';
+import { dashboardViewAliasName } from '../../src/data/queries/view-payload-compiler.js';
+import { publishSource, resetSourceStore } from '../../src/source-store.js';
 
 const memoryApi = vi.hoisted(() => ({
   list: vi.fn(),
@@ -71,6 +72,23 @@ describe('campaign repository memory', () => {
       .toEqual(['Ambient Context', 'Security Review']);
 
     /** @type {HTMLButtonElement} */ (rendered.querySelectorAll('.cao-memory-campaign')[1]).click();
+    await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Security'));
+    publishSource('campaign-memory-campaigns', {
+      source: 'campaign-memory-campaigns',
+      rows: [
+        { campaign: 'ambient-context', 'campaign-name': 'Ambient Context' },
+        { campaign: 'security-review', 'campaign-name': 'Security Review' },
+      ],
+      metadata: {
+        'source-id': 'campaign-memory-refresh',
+        'source-kind': 'fixture',
+        'as-of': '2026-09-26T01:00:00Z',
+        'retrieved-at': '2026-09-26T01:00:00Z',
+        completeness: 'complete',
+        freshness: 'fresh',
+        availability: 'available',
+      },
+    }, dashboardViewAliasName('memory', { id: 'campaign-memory-browser' }, 0, 'campaign-memory-campaigns', 0));
     await vi.waitFor(() => expect(rendered.querySelector('pre')?.textContent).toBe('# Security'));
     expect(location.hash).toBe('');
     expect(memoryApi.list.mock.calls.map(([campaign]) => campaign))

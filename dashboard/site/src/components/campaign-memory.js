@@ -110,9 +110,11 @@ export function renderAllCampaignMemory(context) {
   const scope = createFactoryScope();
   const root = h('section', { className: 'cao-memory-browser', 'aria-label': 'CAO repository memory' });
   let selectedCampaign = '';
+  let renderedCampaigns = '';
 
   effect(() => {
     if (source.pending()) {
+      if (renderedCampaigns) return;
       root.replaceChildren(renderEmptyMessage('Loading campaign memory...', { role: 'status', 'aria-busy': 'true' }));
       root.setAttribute('aria-busy', 'true');
       return;
@@ -128,6 +130,9 @@ export function renderAllCampaignMemory(context) {
         campaignName: typeof row['campaign-name'] === 'string' ? row['campaign-name'] : '',
       }))
       .filter((campaign) => campaign.campaign && campaign.campaignName);
+    const campaignSignature = JSON.stringify(campaigns);
+    if (campaignSignature === renderedCampaigns) return;
+    renderedCampaigns = campaignSignature;
     if (campaigns.length === 0) {
       root.replaceChildren(renderEmptyMessage('No campaigns are registered.'));
       return;
