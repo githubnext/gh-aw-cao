@@ -2,6 +2,8 @@ package main
 
 import (
 	"errors"
+	"io"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -231,81 +233,63 @@ func TestResolveIngestSource(t *testing.T) {
 	}
 }
 
-func TestResolveSubcommand(t *testing.T) {
-	tests := []struct {
-		name        string
-		arguments   []string
-		wantName    string
-		wantRest    []string
-		wantErr     bool
-		errContains string
-	}{
-		{
-			name:      "known subcommand with trailing flags",
-			arguments: []string{"serve", "--listen", "127.0.0.1:9000"},
-			wantName:  "serve",
-			wantRest:  []string{"--listen", "127.0.0.1:9000"},
-		},
-		{
-			name:      "known subcommand with no remaining arguments",
-			arguments: []string{"doctor"},
-			wantName:  "doctor",
-			wantRest:  []string{},
-		},
-		{
-			name:        "no arguments reports usage",
-			arguments:   nil,
-			wantErr:     true,
-			errContains: "usage: cao-dashboard",
-		},
-		{
-			name:        "unknown subcommand is rejected",
-			arguments:   []string{"bogus"},
-			wantErr:     true,
-			errContains: `unknown subcommand "bogus"`,
-		},
-	}
+func TestRootCommandRegistersEverySubcommand(t *testing.T) {
+	want := []string{"backfill", "collect", "doctor", "ingest", "serve", "serve-hosted"}
+	root := newRootCommand()
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotName, gotRest, err := resolveSubcommand(tt.arguments)
-			if tt.wantErr {
-				if err == nil {
-					t.Fatal("resolveSubcommand() error = nil, want non-nil")
-				}
-				if !strings.Contains(err.Error(), tt.errContains) {
-					t.Fatalf("resolveSubcommand() error = %q, want to contain %q", err.Error(), tt.errContains)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("resolveSubcommand() error = %v, want nil", err)
-			}
-			if gotName != tt.wantName {
-				t.Errorf("resolveSubcommand() name = %q, want %q", gotName, tt.wantName)
-			}
-			if len(gotRest) != len(tt.wantRest) {
-				t.Fatalf("resolveSubcommand() rest = %v, want %v", gotRest, tt.wantRest)
-			}
-			for i := range gotRest {
-				if gotRest[i] != tt.wantRest[i] {
-					t.Errorf("resolveSubcommand() rest[%d] = %q, want %q", i, gotRest[i], tt.wantRest[i])
-				}
-			}
-		})
+	got := make([]string, 0, len(want))
+	for _, cmd := range root.Commands() {
+		got = append(got, cmd.Name())
+	}
+	sort.Strings(got)
+
+	if len(got) != len(want) {
+		t.Fatalf("newRootCommand() registered %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("newRootCommand() registered %v, want %v", got, want)
+			break
+		}
 	}
 }
 
-func TestResolveSubcommandCoversEveryDispatchedName(t *testing.T) {
-	// run's switch must handle every name resolveSubcommand can return, so
-	// this guards the two from silently diverging.
-	for _, name := range subcommands {
-		gotName, _, err := resolveSubcommand([]string{name})
-		if err != nil {
-			t.Fatalf("resolveSubcommand(%q) error = %v, want nil", name, err)
-		}
-		if gotName != name {
-			t.Errorf("resolveSubcommand(%q) name = %q, want %q", name, gotName, name)
-		}
+func TestRootCommandRejectsUnknownSubcommand(t *testing.T) {
+	root := newRootCommand()
+	root.SetArgs([]string{"bogus"})
+	root.SetOut(io.Discard)
+	root.SetErr(io.Discard)
+
+	err := root.Execute()
+	if err == nil {
+		t.Fatal("Execute() error = nil, want non-nil")
+	}
+	if !strings.Contains(err.Error(), `unknown command "bogus"`) {
+		t.Fatalf("Execute() error = %q, want to contain %q", err.Error(), `unknown command "bogus"`)
+	}
+}
+
+func TestRootCommandParsesKnownSubcommandFlags(t *testing.T) {
+	root := newRootCommand()
+	root.SetArgs([]string{"serve-hosted", "--listen", "127.0.0.1:9000"})
+	root.SetOut(io.Discard)
+	root.SetErr(io.Discard)
+
+	found, _, err := root.Find([]string{"serve-hosted", "--listen", "127.0.0.1:9000"})
+	if err != nil {
+		t.Fatalf("Find() error = %v, want nil", err)
+	}
+	if found.Name() != "serve-hosted" {
+		t.Fatalf("Find() name = %q, want %q", found.Name(), "serve-hosted")
+	}
+	if err := found.ParseFlags([]string{"--listen", "127.0.0.1:9000"}); err != nil {
+		t.Fatalf("ParseFlags() error = %v, want nil", err)
+	}
+	gotListen, err := found.Flags().GetString("listen")
+	if err != nil {
+		t.Fatalf("Flags().GetString(listen) error = %v, want nil", err)
+	}
+	if gotListen != "127.0.0.1:9000" {
+		t.Errorf("listen flag = %q, want %q", gotListen, "127.0.0.1:9000")
 	}
 }

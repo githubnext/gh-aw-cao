@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -19,6 +18,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/server"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
+	"github.com/spf13/cobra"
 )
 
 // version is the standardized service.version resource attribute reported by
@@ -147,331 +147,339 @@ func main() {
 	}
 }
 
-// subcommands lists the dispatchable cao-dashboard subcommands in the order
-// they are advertised in usage and error text, so both stay in sync with the
-// switch in run.
-var subcommands = []string{"serve", "serve-hosted", "ingest", "collect", "backfill", "doctor"}
-
-// resolveSubcommand validates the first CLI argument against subcommands and
-// splits it from the remaining arguments. It is a pure function so run's
-// dispatch validation is testable without exercising any subcommand.
-func resolveSubcommand(arguments []string) (name string, rest []string, err error) {
-	if len(arguments) == 0 {
-		return "", nil, fmt.Errorf(
-			"usage: cao-dashboard <%s> [flags]", strings.Join(subcommands, "|"))
+// newRootCommand builds the cao-dashboard subcommand tree using cobra. It is
+// a pure constructor (no global state, no side effects until Execute is
+// called) so tests can build and execute a fresh tree per case.
+func newRootCommand() *cobra.Command {
+	root := &cobra.Command{
+		Use:           "cao-dashboard",
+		Short:         "cao-dashboard serves, ingests, and collects dashboard data",
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
-	name = arguments[0]
-	for _, known := range subcommands {
-		if name == known {
-			return name, arguments[1:], nil
-		}
-	}
-	return "", nil, fmt.Errorf(
-		"unknown subcommand %q; expected %s", name, strings.Join(subcommands, ", "))
+	// The shell-completion subcommand isn't part of cao-dashboard's
+	// documented interface, so keep the command surface as-is.
+	root.CompletionOptions.DisableDefaultCmd = true
+	root.AddCommand(
+		newServeCommand(),
+		newServeHostedCommand(),
+		newIngestCommand(),
+		newCollectCommand(),
+		newBackfillCommand(),
+		newDoctorCommand(),
+	)
+	return root
 }
 
 func run(arguments []string) error {
-	name, rest, err := resolveSubcommand(arguments)
-	if err != nil {
-		return err
+	root := newRootCommand()
+	root.SetArgs(arguments)
+	name := "help"
+	if len(arguments) > 0 {
+		name = arguments[0]
 	}
 	commandLog.Printf("running subcommand=%s", name)
-	switch name {
-	case "serve":
-		return serve(rest)
-	case "ingest":
-		return ingestCommand(rest)
-	case "serve-hosted":
-		return serveHosted(rest)
-	case "collect":
-		return collectCommand(rest)
-	case "backfill":
-		return backfillCommand(rest)
-	case "doctor":
-		return doctorCommand(rest)
-	default:
-		// resolveSubcommand only returns a name present in subcommands, so
-		// this is unreachable unless subcommands and this switch diverge.
-		return fmt.Errorf("unhandled subcommand %q", name)
-	}
+	return root.Execute()
 }
 
-// doctorCommand runs the read-only diagnostic check-up.
+// newDoctorCommand builds the read-only diagnostic check-up subcommand.
 //
 // It reports rather than repairs, and it exits non-zero when it found a
 // breaking condition so it is usable as a deployment gate as well as by a
 // person or an agent reading the report.
-func doctorCommand(arguments []string) error {
-	flags := flag.NewFlagSet("doctor", flag.ContinueOnError)
-	redisURL := flags.String("redis-url", "", "server-side Redis URL; defaults to CAO_REDIS_URL then "+defaultRedisURL)
+func newDoctorCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "doctor",
+		Short: "run a read-only check-up of Redis, canonical data, queries, and collection",
+	}
+	redisURL := cmd.Flags().String("redis-url", "", "server-side Redis URL; defaults to CAO_REDIS_URL then "+defaultRedisURL)
 	checkoutNamespace, err := redisx.DefaultNamespace(".")
 	if err != nil {
-		return err
+		cmd.RunE = func(*cobra.Command, []string) error { return err }
+		return cmd
 	}
 	defaultNamespace, namespaceDefaultSource := resolveNamespaceDefault(
 		os.Getenv("CAO_REDIS_NAMESPACE"), checkoutNamespace)
-	commandLog.Printf("doctor resolved namespace default source=%s", namespaceDefaultSource)
-	redisNamespace := flags.String("redis-namespace", defaultNamespace, "Redis key namespace")
-	databaseQueries := flags.String("database-queries",
+	redisNamespace := cmd.Flags().String("redis-namespace", defaultNamespace, "Redis key namespace")
+	databaseQueries := cmd.Flags().String("database-queries",
 		"../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
-	format := flags.String("format", "text", "report format: text or json")
-	deep := flags.Bool("deep", false, "additionally read every source to confirm stored rows decode")
-	strict := flags.Bool("strict", false, "exit non-zero on warnings as well as failures")
-	timeout := flags.Duration("timeout", 10*time.Second, "per-check timeout")
-	if err := flags.Parse(arguments); err != nil {
-		return err
-	}
-	endpoint, endpointSource := resolveRedisEndpoint(*redisURL, os.Getenv("CAO_REDIS_URL"), defaultRedisURL)
-	commandLog.Printf("doctor resolved redis endpoint source=%s", endpointSource)
-	namespace, err := redisx.NormalizeNamespace(*redisNamespace)
-	if err != nil {
-		return err
-	}
-	check := doctor.Doctor{
-		RedisURL:            endpoint,
-		Namespace:           namespace,
-		DatabaseQueriesPath: *databaseQueries,
-		Version:             version,
-		Deep:                *deep,
-		Timeout:             *timeout,
-	}
-	// A client that cannot be constructed is itself a finding, so the report
-	// is still produced; the Redis checks report why they could not run.
-	if client, err := redisx.New(endpoint); err == nil {
-		check.Store = redisx.NewStore(client, namespace)
-	} else {
-		commandLog.Printf("doctor could not construct a Redis client")
-	}
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	report := check.Run(ctx)
-	if err := doctor.Render(os.Stdout, report, *format); err != nil {
-		return err
-	}
-	if report.Failed(*strict) {
-		// main recognizes this sentinel and exits without adding a redundant
-		// error line, so the report remains the whole output.
-		return errDoctorFoundProblems
-	}
-	return nil
-}
-
-func serveHosted(arguments []string) error {
-	flags := flag.NewFlagSet("serve-hosted", flag.ContinueOnError)
-	listen := flags.String("listen", "127.0.0.1:8080", "listen address; non-loopback listeners require TLS")
-	cert := flags.String("cert", "", "TLS certificate PEM file required for a non-loopback listener")
-	key := flags.String("key", "", "TLS private key PEM file required for a non-loopback listener")
-	siteDirectory := flags.String("site", "../dashboard/site/dist", "built dashboard site directory")
-	databaseQueries := flags.String("database-queries", "../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
-	dashboardQueries := flags.String("dashboard-queries", "../dashboard/site/dashboard.json", "default dashboard query document")
-	if err := flags.Parse(arguments); err != nil {
-		return err
-	}
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	shutdownTelemetry, err := telemetry.Setup(ctx, version)
-	if err != nil {
-		return fmt.Errorf("configure telemetry: %w", err)
-	}
-	defer func() {
-		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-		defer cancel()
-		_ = shutdownTelemetry(shutdownCtx)
-	}()
-	app, err := server.NewHostedAppFromEnv(
-		ctx, *listen, *cert, *key, *siteDirectory, *dashboardQueries, *databaseQueries,
-		log.New(os.Stderr, "cao-dashboard: ", log.LstdFlags),
-	)
-	if err != nil {
-		return err
-	}
-	return app.Serve(ctx)
-}
-
-func serve(arguments []string) error {
-	flags := flag.NewFlagSet("serve", flag.ContinueOnError)
-	redisURL := flags.String("redis-url", defaultRedisURL, "server-side Redis URL")
-	defaultNamespace, err := redisx.DefaultNamespace(".")
-	if err != nil {
-		return err
-	}
-	redisNamespace := flags.String("redis-namespace", defaultNamespace, "Redis key and index namespace")
-	siteDirectory := flags.String("site", "../dashboard/site/dist", "built dashboard site directory")
-	listen := flags.String("listen", "127.0.0.1:8443", "HTTPS listen address")
-	cert := flags.String("cert", "", "optional TLS certificate PEM file")
-	key := flags.String("key", "", "optional TLS private key PEM file")
-	accessToken := flags.String("access-token", "", "dashboard access token (generated when omitted)")
-	source := flags.String("source", "", "deployed dashboard directory to ingest before serving")
-	databaseQueries := flags.String("database-queries", "../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
-	dashboardQueries := flags.String("dashboard-queries", "../dashboard/site/dashboard.json", "default dashboard query document")
-	if err := flags.Parse(arguments); err != nil {
-		return err
-	}
-	commandLog.Printf("serve flags parsed tls=%t source_ingestion=%t", *cert != "", *source != "")
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	shutdownTelemetry, err := telemetry.Setup(ctx, version)
-	if err != nil {
-		return fmt.Errorf("configure telemetry: %w", err)
-	}
-	defer func() {
-		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-		defer cancel()
-		_ = shutdownTelemetry(shutdownCtx)
-	}()
-	client, err := redisx.New(*redisURL)
-	if err != nil {
-		return err
-	}
-	namespace, err := redisx.NormalizeNamespace(*redisNamespace)
-	if err != nil {
-		return err
-	}
-	definitions, err := server.ParseDashboardQueries(*dashboardQueries)
-	if err != nil {
-		return err
-	}
-	app, err := server.New(redisx.NewStore(client, namespace), server.Config{
-		Listen:              *listen,
-		SiteDirectory:       *siteDirectory,
-		CertFile:            *cert,
-		KeyFile:             *key,
-		AccessToken:         *accessToken,
-		SourceDirectory:     *source,
-		DatabaseQueriesPath: *databaseQueries,
-		DashboardQueries:    definitions,
-		Logger:              log.New(os.Stderr, "cao-dashboard: ", log.LstdFlags),
-	})
-	if err != nil {
-		return err
-	}
-	return app.Serve(ctx)
-}
-
-func ingestCommand(arguments []string) error {
-	flags := flag.NewFlagSet("ingest", flag.ContinueOnError)
-	redisURL := flags.String("redis-url", defaultRedisURL, "server-side Redis URL")
-	defaultNamespace, err := redisx.DefaultNamespace(".")
-	if err != nil {
-		return err
-	}
-	redisNamespace := flags.String("redis-namespace", defaultNamespace, "Redis key and index namespace")
-	source := flags.String("source", "", "deployed dashboard directory")
-	databaseQueries := flags.String("database-queries", "../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
-	if err := flags.Parse(arguments); err != nil {
-		return err
-	}
-	resolvedSource, sourceOrigin, err := resolveIngestSource(*source, flags.Args())
-	if err != nil {
-		return err
-	}
-	*source = resolvedSource
-	commandLog.Printf("ingest flags parsed source_origin=%s", sourceOrigin)
-	client, err := redisx.New(*redisURL)
-	if err != nil {
-		return err
-	}
-	namespace, err := redisx.NormalizeNamespace(*redisNamespace)
-	if err != nil {
-		return err
-	}
-	store := redisx.NewStore(client, namespace)
-	ctx := context.Background()
-	shutdownTelemetry, err := telemetry.Setup(ctx, version)
-	if err != nil {
-		return fmt.Errorf("configure telemetry: %w", err)
-	}
-	defer func() {
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = shutdownTelemetry(shutdownCtx)
-	}()
-	if err := store.Ping(ctx); err != nil {
-		return errors.New("redis is unavailable")
-	}
-	result, err := ingest.Run(ctx, store, *source, ingest.Options{DatabaseQueriesPath: *databaseQueries})
-	if err != nil {
-		return err
-	}
-	return json.NewEncoder(os.Stdout).Encode(result)
-}
-
-// collectCommand runs the collection worker role. It is the same binary as the
-// server, started with a different role, so collection scales independently
-// without a second deployment artifact.
-func collectCommand(arguments []string) error {
-	flags := flag.NewFlagSet("collect", flag.ContinueOnError)
-	databaseQueries := flags.String("database-queries",
-		"../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
-	consumer := flags.String("consumer", "", "consumer name; defaults to the hostname")
-	project := flags.Bool("project", true, "participate in coalesced projection")
-	if err := flags.Parse(arguments); err != nil {
-		return err
-	}
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	shutdownTelemetry, err := telemetry.Setup(ctx, version)
-	if err != nil {
-		return fmt.Errorf("configure telemetry: %w", err)
-	}
-	defer func() {
-		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-		defer cancel()
-		_ = shutdownTelemetry(shutdownCtx)
-	}()
-	collector, err := server.NewCollectorFromEnv(ctx, *databaseQueries)
-	if err != nil {
-		return err
-	}
-	name, nameSource, err := resolveConsumerName(*consumer, os.Hostname)
-	if err != nil {
-		return err
-	}
-	worker := collector.Worker(name)
-	worker.Project = *project
-	commandLog.Printf("collect resolved consumer name source=%s", nameSource)
-	log.Printf("collection worker %s started", name)
-	if err := worker.Run(ctx); err != nil && ctx.Err() == nil {
-		return err
-	}
-	return nil
-}
-
-// backfillCommand performs cold start and exits. It is safe to re-run: a
-// populated evidence lake is replayed without GitHub requests, and enrollment
-// and queue writes are idempotent.
-func backfillCommand(arguments []string) error {
-	flags := flag.NewFlagSet("backfill", flag.ContinueOnError)
-	databaseQueries := flags.String("database-queries",
-		"../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
-	replayOnly := flags.Bool("replay-only", false,
-		"reproject the evidence lake without contacting GitHub")
-	if err := flags.Parse(arguments); err != nil {
-		return err
-	}
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	collector, err := server.NewCollectorFromEnv(ctx, *databaseQueries)
-	if err != nil {
-		return err
-	}
-	backfill := collector.Backfill()
-	if *replayOnly {
-		result, err := backfill.Replay(ctx)
+	format := cmd.Flags().String("format", "text", "report format: text or json")
+	deep := cmd.Flags().Bool("deep", false, "additionally read every source to confirm stored rows decode")
+	strict := cmd.Flags().Bool("strict", false, "exit non-zero on warnings as well as failures")
+	timeout := cmd.Flags().Duration("timeout", 10*time.Second, "per-check timeout")
+	cmd.RunE = func(*cobra.Command, []string) error {
+		commandLog.Printf("doctor resolved namespace default source=%s", namespaceDefaultSource)
+		endpoint, endpointSource := resolveRedisEndpoint(*redisURL, os.Getenv("CAO_REDIS_URL"), defaultRedisURL)
+		commandLog.Printf("doctor resolved redis endpoint source=%s", endpointSource)
+		namespace, err := redisx.NormalizeNamespace(*redisNamespace)
 		if err != nil {
 			return err
 		}
-		log.Printf("replayed evidence lake revision=%d", result.Revision)
+		check := doctor.Doctor{
+			RedisURL:            endpoint,
+			Namespace:           namespace,
+			DatabaseQueriesPath: *databaseQueries,
+			Version:             version,
+			Deep:                *deep,
+			Timeout:             *timeout,
+		}
+		// A client that cannot be constructed is itself a finding, so the
+		// report is still produced; the Redis checks report why they could
+		// not run.
+		if client, err := redisx.New(endpoint); err == nil {
+			check.Store = redisx.NewStore(client, namespace)
+		} else {
+			commandLog.Printf("doctor could not construct a Redis client")
+		}
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		report := check.Run(ctx)
+		if err := doctor.Render(os.Stdout, report, *format); err != nil {
+			return err
+		}
+		if report.Failed(*strict) {
+			// main recognizes this sentinel and exits without adding a
+			// redundant error line, so the report remains the whole output.
+			return errDoctorFoundProblems
+		}
 		return nil
 	}
-	state, err := backfill.Run(ctx)
-	if err != nil {
-		return err
+	return cmd
+}
+
+func newServeHostedCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "serve-hosted",
+		Short: "serve the dashboard and admit webhook deliveries",
 	}
-	report, err := json.MarshalIndent(state, "", "  ")
-	if err != nil {
-		return err
+	listen := cmd.Flags().String("listen", "127.0.0.1:8080", "listen address; non-loopback listeners require TLS")
+	cert := cmd.Flags().String("cert", "", "TLS certificate PEM file required for a non-loopback listener")
+	key := cmd.Flags().String("key", "", "TLS private key PEM file required for a non-loopback listener")
+	siteDirectory := cmd.Flags().String("site", "../dashboard/site/dist", "built dashboard site directory")
+	databaseQueries := cmd.Flags().String("database-queries", "../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
+	dashboardQueries := cmd.Flags().String("dashboard-queries", "../dashboard/site/dashboard.json", "default dashboard query document")
+	cmd.RunE = func(*cobra.Command, []string) error {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		shutdownTelemetry, err := telemetry.Setup(ctx, version)
+		if err != nil {
+			return fmt.Errorf("configure telemetry: %w", err)
+		}
+		defer func() {
+			shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+			defer cancel()
+			_ = shutdownTelemetry(shutdownCtx)
+		}()
+		app, err := server.NewHostedAppFromEnv(
+			ctx, *listen, *cert, *key, *siteDirectory, *dashboardQueries, *databaseQueries,
+			log.New(os.Stderr, "cao-dashboard: ", log.LstdFlags),
+		)
+		if err != nil {
+			return err
+		}
+		return app.Serve(ctx)
 	}
-	fmt.Println(string(report))
-	return nil
+	return cmd
+}
+
+func newServeCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "serve",
+		Short: "serve the dashboard from Redis",
+	}
+	redisURL := cmd.Flags().String("redis-url", defaultRedisURL, "server-side Redis URL")
+	defaultNamespace, err := redisx.DefaultNamespace(".")
+	if err != nil {
+		cmd.RunE = func(*cobra.Command, []string) error { return err }
+		return cmd
+	}
+	redisNamespace := cmd.Flags().String("redis-namespace", defaultNamespace, "Redis key and index namespace")
+	siteDirectory := cmd.Flags().String("site", "../dashboard/site/dist", "built dashboard site directory")
+	listen := cmd.Flags().String("listen", "127.0.0.1:8443", "HTTPS listen address")
+	cert := cmd.Flags().String("cert", "", "optional TLS certificate PEM file")
+	key := cmd.Flags().String("key", "", "optional TLS private key PEM file")
+	accessToken := cmd.Flags().String("access-token", "", "dashboard access token (generated when omitted)")
+	source := cmd.Flags().String("source", "", "deployed dashboard directory to ingest before serving")
+	databaseQueries := cmd.Flags().String("database-queries", "../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
+	dashboardQueries := cmd.Flags().String("dashboard-queries", "../dashboard/site/dashboard.json", "default dashboard query document")
+	cmd.RunE = func(*cobra.Command, []string) error {
+		commandLog.Printf("serve flags parsed tls=%t source_ingestion=%t", *cert != "", *source != "")
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		shutdownTelemetry, err := telemetry.Setup(ctx, version)
+		if err != nil {
+			return fmt.Errorf("configure telemetry: %w", err)
+		}
+		defer func() {
+			shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+			defer cancel()
+			_ = shutdownTelemetry(shutdownCtx)
+		}()
+		client, err := redisx.New(*redisURL)
+		if err != nil {
+			return err
+		}
+		namespace, err := redisx.NormalizeNamespace(*redisNamespace)
+		if err != nil {
+			return err
+		}
+		definitions, err := server.ParseDashboardQueries(*dashboardQueries)
+		if err != nil {
+			return err
+		}
+		app, err := server.New(redisx.NewStore(client, namespace), server.Config{
+			Listen:              *listen,
+			SiteDirectory:       *siteDirectory,
+			CertFile:            *cert,
+			KeyFile:             *key,
+			AccessToken:         *accessToken,
+			SourceDirectory:     *source,
+			DatabaseQueriesPath: *databaseQueries,
+			DashboardQueries:    definitions,
+			Logger:              log.New(os.Stderr, "cao-dashboard: ", log.LstdFlags),
+		})
+		if err != nil {
+			return err
+		}
+		return app.Serve(ctx)
+	}
+	return cmd
+}
+
+func newIngestCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "ingest [source]",
+		Short: "ingest a deployed dashboard directory into Redis",
+	}
+	redisURL := cmd.Flags().String("redis-url", defaultRedisURL, "server-side Redis URL")
+	defaultNamespace, err := redisx.DefaultNamespace(".")
+	if err != nil {
+		cmd.RunE = func(*cobra.Command, []string) error { return err }
+		return cmd
+	}
+	redisNamespace := cmd.Flags().String("redis-namespace", defaultNamespace, "Redis key and index namespace")
+	source := cmd.Flags().String("source", "", "deployed dashboard directory")
+	databaseQueries := cmd.Flags().String("database-queries", "../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
+	cmd.RunE = func(_ *cobra.Command, args []string) error {
+		resolvedSource, sourceOrigin, err := resolveIngestSource(*source, args)
+		if err != nil {
+			return err
+		}
+		commandLog.Printf("ingest flags parsed source_origin=%s", sourceOrigin)
+		client, err := redisx.New(*redisURL)
+		if err != nil {
+			return err
+		}
+		namespace, err := redisx.NormalizeNamespace(*redisNamespace)
+		if err != nil {
+			return err
+		}
+		store := redisx.NewStore(client, namespace)
+		ctx := context.Background()
+		shutdownTelemetry, err := telemetry.Setup(ctx, version)
+		if err != nil {
+			return fmt.Errorf("configure telemetry: %w", err)
+		}
+		defer func() {
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_ = shutdownTelemetry(shutdownCtx)
+		}()
+		if err := store.Ping(ctx); err != nil {
+			return errors.New("redis is unavailable")
+		}
+		result, err := ingest.Run(ctx, store, resolvedSource, ingest.Options{DatabaseQueriesPath: *databaseQueries})
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(os.Stdout).Encode(result)
+	}
+	return cmd
+}
+
+// newCollectCommand builds the collection worker role subcommand. It is the
+// same binary as the server, started with a different role, so collection
+// scales independently without a second deployment artifact.
+func newCollectCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "collect",
+		Short: "lease tasks, collect repositories, and project",
+	}
+	databaseQueries := cmd.Flags().String("database-queries",
+		"../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
+	consumer := cmd.Flags().String("consumer", "", "consumer name; defaults to the hostname")
+	project := cmd.Flags().Bool("project", true, "participate in coalesced projection")
+	cmd.RunE = func(*cobra.Command, []string) error {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		shutdownTelemetry, err := telemetry.Setup(ctx, version)
+		if err != nil {
+			return fmt.Errorf("configure telemetry: %w", err)
+		}
+		defer func() {
+			shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+			defer cancel()
+			_ = shutdownTelemetry(shutdownCtx)
+		}()
+		collector, err := server.NewCollectorFromEnv(ctx, *databaseQueries)
+		if err != nil {
+			return err
+		}
+		name, nameSource, err := resolveConsumerName(*consumer, os.Hostname)
+		if err != nil {
+			return err
+		}
+		worker := collector.Worker(name)
+		worker.Project = *project
+		commandLog.Printf("collect resolved consumer name source=%s", nameSource)
+		log.Printf("collection worker %s started", name)
+		if err := worker.Run(ctx); err != nil && ctx.Err() == nil {
+			return err
+		}
+		return nil
+	}
+	return cmd
+}
+
+// newBackfillCommand builds the cold-start subcommand. It performs cold
+// start and exits. It is safe to re-run: a populated evidence lake is
+// replayed without GitHub requests, and enrollment and queue writes are
+// idempotent.
+func newBackfillCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "backfill",
+		Short: "cold start: replay the lake, enumerate installations, seed tasks",
+	}
+	databaseQueries := cmd.Flags().String("database-queries",
+		"../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
+	replayOnly := cmd.Flags().Bool("replay-only", false,
+		"reproject the evidence lake without contacting GitHub")
+	cmd.RunE = func(*cobra.Command, []string) error {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		collector, err := server.NewCollectorFromEnv(ctx, *databaseQueries)
+		if err != nil {
+			return err
+		}
+		backfill := collector.Backfill()
+		if *replayOnly {
+			result, err := backfill.Replay(ctx)
+			if err != nil {
+				return err
+			}
+			log.Printf("replayed evidence lake revision=%d", result.Revision)
+			return nil
+		}
+		state, err := backfill.Run(ctx)
+		if err != nil {
+			return err
+		}
+		report, err := json.MarshalIndent(state, "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(report))
+		return nil
+	}
+	return cmd
 }
