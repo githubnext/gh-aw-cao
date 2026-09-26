@@ -935,6 +935,16 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
           metadata
         }
       };
+      sources['overview-runs'] = {
+        source: 'overview-runs',
+        rows: sources.runs.rows.map((run) => ({
+          ...run,
+          ...sources.workflows.rows.find((workflow) => (
+            workflow.repository === run.repository && workflow.workflow === run.workflow
+          ))
+        })),
+        metadata
+      };
       const loadPageSources = (pageId, options) => prepareDashboardViewSources(
         documentModel,
         pageId,

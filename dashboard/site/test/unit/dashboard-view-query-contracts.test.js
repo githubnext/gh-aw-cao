@@ -201,10 +201,7 @@ describe('dashboard view query contracts', () => {
     );
 
     expect(runtimeHealth).toMatchObject({ from: 'campaign-runtime-health-runs' });
-    expect(runtimeHealthInput).toMatchObject({
-      from: 'runs',
-      joins: [{ source: 'workflows' }]
-    });
+    expect(runtimeHealthInput).toMatchObject({ from: 'overview-runs' });
     expect(declaredQueryReferences(runtimeHealthInput)).not.toContain('run-incomplete-outcomes');
     expect(declaredQueryReferences(runtimeHealthInput)).not.toContain('audits');
   });

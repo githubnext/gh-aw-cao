@@ -68,6 +68,25 @@ const emptyRunRecordSources = Object.fromEntries(['domains', 'tools', 'audits', 
   { source, rows: [], metadata: metadata(source) }
 ]));
 
+/**
+ * @param {Record<string, unknown>[]} rows
+ * @param {Record<string, unknown>[]} [workflowRows]
+ */
+function overviewRuns(rows, workflowRows = []) {
+  return {
+    source: 'overview-runs',
+    rows: rows.map((run) => ({
+      ...run,
+      ...workflowRows.find((workflow) => (
+        workflow.organization === run.organization
+        && workflow.repository === run.repository
+        && workflow.workflow === run.workflow
+      ))
+    })),
+    metadata: metadata('overview-runs')
+  };
+}
+
 describe('declarative dashboard queries', () => {
 
   it('unions specialized run records before applying query clauses', () => {
@@ -128,6 +147,7 @@ describe('declarative dashboard queries', () => {
       dashboardQueries,
       {
         runs: { source: 'runs', rows: runs, metadata: metadata('runs') },
+        'overview-runs': overviewRuns(runs),
         workflows: { source: 'workflows', rows: [], metadata: metadata('workflows') },
         'grader-observations': { source: 'grader-observations', rows: graders, metadata: metadata('grader-observations') }
       },
@@ -142,6 +162,7 @@ describe('declarative dashboard queries', () => {
       dashboardQueries,
       {
         runs: { source: 'runs', rows: [{ run: '1', 'run-conclusion': 'success', 'run-status': 'completed' }], metadata: metadata('runs') },
+        'overview-runs': overviewRuns([{ run: '1', 'run-conclusion': 'success', 'run-status': 'completed' }]),
         workflows: { source: 'workflows', rows: [], metadata: metadata('workflows') },
         'grader-observations': { source: 'grader-observations', rows: [], metadata: metadata('grader-observations', { availability: 'unavailable' }) }
       },
@@ -153,38 +174,41 @@ describe('declarative dashboard queries', () => {
   });
 
   it('uses retained failure descriptions as campaign problem titles', () => {
+    const workflowRows = [{
+      organization: 'githubnext',
+      repository: 'gh-aw-cao',
+      workflow: '.github/workflows/dashboard.md',
+      campaign: 'dashboard',
+      'campaign-name': 'CAO Dashboard',
+      'workflow-name': 'Dashboard',
+      'workflow-role': 'worker'
+    }];
+    const runRows = [{
+      organization: 'githubnext',
+      repository: 'gh-aw-cao',
+      workflow: '.github/workflows/dashboard.md',
+      run: '42',
+      'run-attempt': 1,
+      'run-status': 'completed',
+      'run-conclusion': 'failure',
+      'started-at': '2026-09-09T04:00:00Z',
+      'failure-message': 'Dependency update failed',
+      'failure-detail': 'Dependency update failed',
+      'target-repository': 'github/gh-aw',
+      'rollout-mode': 'review'
+    }];
     const result = executeDashboardQueries(
       dashboardQueries,
       {
         runs: {
           source: 'runs',
-          rows: [{
-            organization: 'githubnext',
-            repository: 'gh-aw-cao',
-            workflow: '.github/workflows/dashboard.md',
-            run: '42',
-            'run-attempt': 1,
-            'run-status': 'completed',
-            'run-conclusion': 'failure',
-            'started-at': '2026-09-09T04:00:00Z',
-            'failure-message': 'Dependency update failed',
-            'failure-detail': 'Dependency update failed',
-            'target-repository': 'github/gh-aw',
-            'rollout-mode': 'review'
-          }],
+          rows: runRows,
           metadata: metadata('runs')
         },
+        'overview-runs': overviewRuns(runRows, workflowRows),
         workflows: {
           source: 'workflows',
-          rows: [{
-            organization: 'githubnext',
-            repository: 'gh-aw-cao',
-            workflow: '.github/workflows/dashboard.md',
-            campaign: 'dashboard',
-            'campaign-name': 'CAO Dashboard',
-            'workflow-name': 'Dashboard',
-            'workflow-role': 'worker'
-          }],
+          rows: workflowRows,
           metadata: metadata('workflows')
         }
       },
@@ -221,6 +245,7 @@ describe('declarative dashboard queries', () => {
           metadata: metadata('campaigns')
         },
         runs: { source: 'runs', rows: [], metadata: metadata('runs') },
+        'overview-runs': overviewRuns([]),
         workflows: { source: 'workflows', rows: [], metadata: metadata('workflows') },
         'grader-observations': {
           source: 'grader-observations',
@@ -269,22 +294,24 @@ describe('declarative dashboard queries', () => {
   });
 
   it('executes built-in aggregate-local filters with the same filtered totals', () => {
+    const runRows = [
+      { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1, event: 'workflow_dispatch', 'run-conclusion': 'success', 'run-status': 'completed', 'rollout-mode': 'live' },
+      { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1, event: 'workflow_dispatch', 'run-conclusion': 'failure', 'run-status': 'completed', 'rollout-mode': 'review' },
+      { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '3', 'run-attempt': 1, event: 'workflow_dispatch', 'run-conclusion': 'timed-out', 'run-status': 'queued', 'rollout-mode': 'live', 'aic-total': 3 },
+      { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '4', 'run-attempt': 1, event: 'workflow_dispatch', 'run-conclusion': 'startup-failure', 'run-status': 'in_progress', 'rollout-mode': 'review', 'aic-total': 5 },
+      { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '5', 'run-attempt': 1, event: 'push', 'run-conclusion': 'success', 'run-status': 'in-progress', 'rollout-mode': 'review', 'aic-total': 7 },
+      { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '6', 'run-attempt': 1, event: 'push', 'run-conclusion': 'action-required', 'run-status': 'completed', 'rollout-mode': 'review' },
+      { organization: 'githubnext', repository: 'other', workflow: 'c.md', run: '7', 'run-attempt': 1, event: 'push', 'run-conclusion': 'success', 'run-status': 'completed', 'rollout-mode': 'review' }
+    ];
     const result = executeDashboardQueries(
       dashboardQueries,
       {
         runs: {
           source: 'runs',
-          rows: [
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1, event: 'workflow_dispatch', 'run-conclusion': 'success', 'run-status': 'completed', 'rollout-mode': 'live' },
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1, event: 'workflow_dispatch', 'run-conclusion': 'failure', 'run-status': 'completed', 'rollout-mode': 'review' },
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '3', 'run-attempt': 1, event: 'workflow_dispatch', 'run-conclusion': 'timed-out', 'run-status': 'queued', 'rollout-mode': 'live', 'aic-total': 3 },
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '4', 'run-attempt': 1, event: 'workflow_dispatch', 'run-conclusion': 'startup-failure', 'run-status': 'in_progress', 'rollout-mode': 'review', 'aic-total': 5 },
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '5', 'run-attempt': 1, event: 'push', 'run-conclusion': 'success', 'run-status': 'in-progress', 'rollout-mode': 'review', 'aic-total': 7 },
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '6', 'run-attempt': 1, event: 'push', 'run-conclusion': 'action-required', 'run-status': 'completed', 'rollout-mode': 'review' },
-            { organization: 'githubnext', repository: 'other', workflow: 'c.md', run: '7', 'run-attempt': 1, event: 'push', 'run-conclusion': 'success', 'run-status': 'completed', 'rollout-mode': 'review' }
-          ],
+          rows: runRows,
           metadata: metadata('runs')
         },
+        'overview-runs': overviewRuns(runRows),
         workflows: {
           source: 'workflows',
           rows: [
@@ -384,6 +411,7 @@ describe('declarative dashboard queries', () => {
       dashboardQueries,
       {
         runs: { source: 'runs', rows: runRows, metadata: metadata('runs') },
+        'overview-runs': overviewRuns(runRows, workflowRows),
         workflows: { source: 'workflows', rows: workflowRows, metadata: metadata('workflows') },
         repositories: {
           source: 'repositories',
