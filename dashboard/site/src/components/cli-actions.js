@@ -133,10 +133,13 @@ export function createPromptCliActionControl(actionId, getPrompt) {
  * @param {Record<string, string>} templateValues
  */
 function commandPreview(action, values, templateValues) {
-  return [
+  const command = [
     renderCliActionCommand(action.command, templateValues),
     ...(action.arguments ?? []).filter((argument) => values[argument.id]).map((argument) => argument.flag)
   ].join(' ');
+  return navigator.platform.startsWith('Win') && /^\.\/\S+\.sh(?:\s|$)/.test(command)
+    ? `bash ${command}`
+    : command;
 }
 
 /**
