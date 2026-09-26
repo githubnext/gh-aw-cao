@@ -195,7 +195,15 @@ describe('declarative dashboard queries', () => {
       expect.objectContaining({
         'problem-title': 'Dependency update failed',
         'failure-message': 'Dependency update failed',
-        'status-detail': 'Dependency update failed'
+        'status-detail': 'Dependency update failed',
+        'runtime-repository-link': expect.objectContaining({
+          'dashboard-href': '#page-repository-detail?repository=githubnext%2Fgh-aw-cao',
+          'dashboard-label': 'githubnext/gh-aw-cao'
+        }),
+        'target-repository-link': expect.objectContaining({
+          'dashboard-href': '#page-repository-detail?repository=github%2Fgh-aw',
+          'dashboard-label': 'github/gh-aw'
+        })
       })
     ]);
   });

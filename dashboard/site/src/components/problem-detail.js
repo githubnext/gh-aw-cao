@@ -60,7 +60,7 @@ const DETAIL_GROUPS = [
       { label: 'Campaign', field: 'campaign-name', fallback: 'campaign' },
       { label: 'Workflow', field: 'workflow-name', fallback: 'workflow', linkField: 'workflow-link' },
       { label: 'Workflow role', field: 'workflow-role' },
-      { label: 'Runtime repository', field: 'runtime-repository', linkField: 'repository-link' },
+      { label: 'Runtime repository', field: 'runtime-repository', linkField: 'runtime-repository-link' },
       { label: 'Target repository', field: 'target-repository', linkField: 'target-repository-link' }
     ]
   },
@@ -152,6 +152,13 @@ function renderHighlight(label, value) {
  * @param {Record<string, unknown>} problem
  */
 function renderDetailGroup(group, problem) {
+  const fields = group.fields.flatMap(({ label, field, fallback, linkField }) => {
+    const value = text(problem[field]) || (fallback ? text(problem[fallback]) : '');
+    if (!value) return [];
+    const link = linkField ? findLink(problem, linkField) : null;
+    return [h('div', null, h('dt', null, label), h('dd', null, renderExternalLinkOrFallback(link, value, value)))];
+  });
+  if (fields.length === 0) return null;
   return h(
     'section',
     { className: 'problem-view-section' },
@@ -159,11 +166,7 @@ function renderDetailGroup(group, problem) {
     h(
       'dl',
       null,
-      ...group.fields.map(({ label, field, fallback, linkField }) => {
-        const value = text(problem[field]) || (fallback ? text(problem[fallback]) : '') || 'Unavailable';
-        const link = linkField ? findLink(problem, linkField) : null;
-        return h('div', null, h('dt', null, label), h('dd', null, renderExternalLinkOrFallback(link, value, value)));
-      })
+      ...fields
     )
   );
 }
