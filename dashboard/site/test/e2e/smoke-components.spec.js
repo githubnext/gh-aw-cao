@@ -1,4 +1,4 @@
-import { DATABASE_NAME, buildPresenterModuleUrl, devices, expect, readFileSync, registerSmokeRoutes, test } from './helpers/smoke-fixtures.js';
+import { DATABASE_NAME, authoritativeDashboard, buildPresenterModuleUrl, devices, expect, registerSmokeRoutes, test } from './helpers/smoke-fixtures.js';
 
 registerSmokeRoutes();
 
@@ -268,7 +268,7 @@ test('Settings disables hourly dashboard downloads when unsupported', async ({ p
 });
 
 test('production Settings view loads without an unsupported-view warning', async ({ page }) => {
-  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  const documentModel = authoritativeDashboard;
   await page.setContent(`
     <div id="root"></div>
     <script type="module">

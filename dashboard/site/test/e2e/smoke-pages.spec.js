@@ -1,10 +1,10 @@
-import { assert, buildPresenterModuleUrl, expect, expectLayoutWithin, readFileSync, registerSmokeRoutes, test } from './helpers/smoke-fixtures.js';
+import { assert, authoritativeDashboard, buildPresenterModuleUrl, expect, expectLayoutWithin, registerSmokeRoutes, test } from './helpers/smoke-fixtures.js';
 
 registerSmokeRoutes();
 
 test('mobile shell keeps Overview navigation in the hamburger menu', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
-  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  const documentModel = authoritativeDashboard;
   await page.setViewportSize({ width: 390, height: 844 });
   await page.setContent(`
     <div id="root"></div>
@@ -68,7 +68,7 @@ test('mobile shell keeps Overview navigation in the hamburger menu', async ({ pa
 
 
 test('Indexing shows CAO Activity status, size trend, and retained transactions', async ({ page }) => {
-  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  const documentModel = authoritativeDashboard;
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
     <div id="root"></div>
@@ -185,7 +185,7 @@ test('Indexing shows CAO Activity status, size trend, and retained transactions'
 });
 
 test('Runs renders a last-week stacked area graph above its responsive table and scrolls like Cost', async ({ page }) => {
-  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  const documentModel = authoritativeDashboard;
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
     <div id="root"></div>
@@ -476,7 +476,7 @@ test('a page combining a chart with a full-view table fills and scrolls in table
 });
 
 test('Runs renders the worker-projected table', async ({ page }) => {
-  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  const documentModel = authoritativeDashboard;
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
     <div id="root"></div>
@@ -543,7 +543,7 @@ test('Runs renders the worker-projected table', async ({ page }) => {
 });
 
 test('Issues switches between its top-repository chart, table, and cards', async ({ page }) => {
-  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  const documentModel = authoritativeDashboard;
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
     <div id="root"></div>
@@ -684,7 +684,7 @@ test('desktop navigation sections collapse and expand around the current view', 
 
 test('clean navigation preserves the Overview decision hierarchy across desktop and mobile', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
-  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  const documentModel = authoritativeDashboard;
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.setContent(`
     <div id="root"></div>

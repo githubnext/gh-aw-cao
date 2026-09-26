@@ -1,0 +1,444 @@
+{
+  "queries": [
+    {
+      "name": "campaign-operational-value-primary-series",
+      "intent": "Project repository-level campaign operational value into temporal series while preserving maturity status.",
+      "description": "Repository operational-value history with interim observations kept visibly separate from matured evidence.",
+      "from": "operational-values",
+      "temporal-series": {
+        "time": "observed-at",
+        "series": "repository",
+        "shape": "groups",
+        "carry": [
+          "campaign",
+          "repository",
+          "operational-value-role",
+          "operational-value-name",
+          "operational-value-unit",
+          "operational-value-direction",
+          "adoption-at",
+          "evaluation-mode",
+          "workflow-slug",
+          "workflow-name"
+        ],
+        "measures": [
+          {
+            "field": "operational-value",
+            "key": "operational-value-definition",
+            "kind": "primary"
+          }
+        ],
+        "trend": {
+          "direction": "operational-value-direction"
+        }
+      }
+    },
+    {
+      "name": "campaign-operational-value-rollup-input",
+      "intent": "Identify repository operational-value observations that publish additive native evidence for a weighted campaign rollup.",
+      "description": "Repository observations with explicit native-unit numerators and eligible denominators.",
+      "from": "operational-values",
+      "compute": [
+        {
+          "as": "has-rollup-evidence",
+          "function": "greater-than",
+          "args": [
+            {
+              "field": "rollup-denominator"
+            },
+            {
+              "value": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "campaign-operational-value-rollup-totals",
+      "intent": "Sum native-unit numerators and eligible denominators across target repositories without averaging repository ratios.",
+      "description": "Additive campaign operational-value evidence grouped by metric and observation time.",
+      "from": "campaign-operational-value-rollup-input",
+      "filter": {
+        "predicates": [
+          {
+            "field": "has-rollup-evidence",
+            "equals": true
+          }
+        ]
+      },
+      "aggregate": {
+        "by": [
+          "campaign",
+          "observed-at",
+          "operational-value-definition",
+          "operational-value-role",
+          "operational-value-name",
+          "operational-value-unit",
+          "operational-value-direction",
+          "maturity-status",
+          "adoption-at",
+          "evaluation-mode",
+          "workflow-slug",
+          "workflow-name"
+        ],
+        "values": [
+          {
+            "field": "rollup-numerator",
+            "as": "campaign-rollup-numerator",
+            "reducer": "sum"
+          },
+          {
+            "field": "rollup-denominator",
+            "as": "campaign-rollup-denominator",
+            "reducer": "sum"
+          },
+          {
+            "field": "repository",
+            "as": "contributing-repositories",
+            "reducer": "distinct-count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "campaign-operational-value-rollup-values",
+      "intent": "Calculate the weighted campaign operational-value ratio from summed additive evidence.",
+      "description": "Campaign-wide values whose weighting matches the combined eligible-opportunity population.",
+      "from": "campaign-operational-value-rollup-totals",
+      "compute": [
+        {
+          "as": "operational-value",
+          "function": "quotient",
+          "args": [
+            {
+              "field": "campaign-rollup-numerator"
+            },
+            {
+              "field": "campaign-rollup-denominator"
+            }
+          ]
+        },
+        {
+          "as": "repository-scope",
+          "function": "concat",
+          "args": [
+            {
+              "value": "Campaign"
+            },
+            {
+              "value": " rollup"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "campaign-operational-value-rollup-series",
+      "intent": "Project weighted campaign operational value into temporal series for the default campaign insight.",
+      "description": "Weighted campaign rollup history with contributing repository counts and maturity metadata.",
+      "from": "campaign-operational-value-rollup-values",
+      "temporal-series": {
+        "time": "observed-at",
+        "series": "repository-scope",
+        "shape": "groups",
+        "carry": [
+          "campaign",
+          "operational-value-role",
+          "operational-value-name",
+          "operational-value-unit",
+          "operational-value-direction",
+          "adoption-at",
+          "evaluation-mode",
+          "workflow-slug",
+          "workflow-name"
+        ],
+        "measures": [
+          {
+            "field": "operational-value",
+            "key": "operational-value-definition",
+            "kind": "primary"
+          }
+        ],
+        "trend": {
+          "direction": "operational-value-direction"
+        }
+      }
+    },
+    {
+      "name": "campaign-operational-value-evidence-state-totals",
+      "intent": "Summarize whether selected-horizon repository operational-value observations include matured evidence or only interim evidence.",
+      "description": "Campaign-level maturity counts used to distinguish interim from matured operational-value evidence.",
+      "from": "operational-values",
+      "aggregate": {
+        "by": [
+          "campaign"
+        ],
+        "values": [
+          {
+            "field": "observed-at",
+            "as": "observation-count",
+            "reducer": "count"
+          },
+          {
+            "field": "operational-value",
+            "as": "matured-observation-count",
+            "reducer": "count",
+            "filter": {
+              "predicates": [
+                {
+                  "field": "maturity-status",
+                  "equals": "matured"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "campaign-operational-value-evidence-state",
+      "intent": "Classify selected-horizon repository operational-value evidence by maturity without changing native values.",
+      "description": "Campaign-level evidence state consumed by the repository operational-value history presenter.",
+      "from": "campaign-operational-value-evidence-state-totals",
+      "compute": [
+        {
+          "as": "has-matured-observations",
+          "function": "greater-than",
+          "args": [
+            {
+              "field": "matured-observation-count"
+            },
+            {
+              "value": 0
+            }
+          ]
+        },
+        {
+          "as": "evidence-state",
+          "function": "if",
+          "args": [
+            {
+              "field": "has-matured-observations"
+            },
+            {
+              "value": "observed-value"
+            },
+            {
+              "value": "interim-evidence"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "campaign-operational-value-plot-inventory",
+      "intent": "Describe each repository operational-value plot rendered on campaign Insights.",
+      "description": "One plot-inventory row for every repository operational-value measure and maturity state.",
+      "from": "campaign-operational-value-primary-series"
+    },
+    {
+      "name": "campaign-audit-summary-plot-inventory",
+      "intent": "Describe the rendered audit-summary chart using the shared campaign Insights plot contract.",
+      "description": "One plot-inventory row per campaign when its high- and medium-severity audit summary chart has data.",
+      "from": "audit-event-summary-buckets",
+      "aggregate": {
+        "by": [
+          "campaign"
+        ],
+        "values": [
+          {
+            "field": "event-summary",
+            "as": "buckets",
+            "reducer": "count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "campaign-insight-plot-inventory",
+      "intent": "Inventory every plot rendered on each campaign Insights page through one reusable plot contract.",
+      "description": "One campaign row per rendered Insights plot, independent of the plot's data source or renderer.",
+      "from": "campaign-operational-value-plot-inventory",
+      "union": [
+        "campaign-audit-summary-plot-inventory"
+      ]
+    },
+    {
+      "name": "campaign-insight-tab-counts",
+      "intent": "Count the plots declared by the shared campaign Insights plot inventory.",
+      "description": "One campaign row with the number of rendered Insights plots, independent of plot type.",
+      "from": "campaign-insight-plot-inventory",
+      "aggregate": {
+        "by": [
+          "campaign"
+        ],
+        "values": [
+          {
+            "field": "campaign",
+            "as": "items",
+            "reducer": "count"
+          }
+        ]
+      }
+    }
+  ],
+  "pages": [
+    {
+      "id": "campaign-insights",
+      "kind": "custom",
+      "title": "Campaign",
+      "description": "Operational activity for this campaign.",
+      "icon": "graph",
+      "class-name": "campaign-insights-page",
+      "view-mode-control": false,
+      "route": {
+        "hash-query-parameter": "campaign",
+        "title-format": "title-case",
+        "tabs-class-name": "campaign-tabs",
+        "tab": "insights",
+        "tabs": [
+          {
+            "id": "insights",
+            "label": "Operational Value",
+            "icon": "graph",
+            "page": "campaign-insights"
+          },
+          {
+            "id": "problems",
+            "label": "Failures",
+            "icon": "alert",
+            "page": "campaign-problems"
+          },
+          {
+            "id": "issues",
+            "label": "Issues",
+            "icon": "issue-opened",
+            "page": "campaign-issues"
+          },
+          {
+            "id": "memory",
+            "label": "Memory",
+            "icon": "archive",
+            "page": "campaign-memory"
+          }
+        ]
+      },
+      "views": [
+        {
+          "id": "campaign-insights-navigation",
+          "title": "Campaign insights",
+          "data": {
+            "sources": [
+              "workflows",
+              "campaign-insight-tab-counts",
+              "campaign-problem-tab-counts",
+              "campaign-issue-tab-counts",
+              "campaign-operational-value-primary-series",
+              "campaign-operational-value-rollup-series",
+              "campaign-operational-value-run-days",
+              "campaign-operational-value-repository-run-days",
+              "campaign-operational-value-evidence-state"
+            ],
+            "arguments": [
+              {
+                "name": "campaign",
+                "field": "campaign"
+              }
+            ]
+          },
+          "mark": "element",
+          "element": "campaign-route",
+          "layout": "full",
+          "config": {
+            "body": "insights"
+          }
+        },
+        {
+          "id": "campaign-performance-baseline",
+          "title": "Baseline interpretation",
+          "description": "Deterministic reliability, unverified production, and successful-run efficiency facts. Produced outputs are not accepted outcomes or operational value.",
+          "data": {
+            "source": "campaign-performance-baseline",
+            "route-field": "campaign"
+          },
+          "mark": "table",
+          "layout": "full",
+          "empty-message": "No campaign run attempts were observed during the selected horizon.",
+          "encoding": {
+            "columns": [
+              {
+                "field": "concluded-runs",
+                "type": "quantitative",
+                "title": "Concluded runs"
+              },
+              {
+                "field": "success-rate-display",
+                "type": "nominal",
+                "title": "Run success"
+              },
+              {
+                "field": "reliability-signal",
+                "type": "nominal",
+                "title": "Reliability signal"
+              },
+              {
+                "field": "produced-outputs",
+                "type": "quantitative",
+                "title": "Produced outputs"
+              },
+              {
+                "field": "production-signal",
+                "type": "nominal",
+                "title": "Production signal"
+              },
+              {
+                "field": "aic-per-successful-run",
+                "type": "quantitative",
+                "title": "Average AIC / successful run",
+                "unit": "aic-per-run"
+              }
+            ]
+          }
+        },
+        {
+          "id": "campaign-audit-event-table",
+          "title": "Audit events",
+          "description": "Audit event summaries with links to dedicated entity insights and related runs.",
+          "data": {
+            "source": "audit-event-summary-buckets",
+            "route-field": "campaign",
+            "limit": 20
+          },
+          "mark": "list",
+          "list": {
+            "style": "entity-cards",
+            "card": "audit",
+            "icon": "checklist"
+          },
+          "layout": "full-view",
+          "empty-message": "No high- or medium-severity audit events were observed for this campaign in the current run window.",
+          "encoding": {
+            "columns": [
+              {
+                "field": "event-summary",
+                "type": "nominal",
+                "title": "Audit event"
+              },
+              {
+                "field": "workflow",
+                "type": "nominal",
+                "title": "Workflow",
+                "format": "workflow-relative-path"
+              },
+              {
+                "field": "events",
+                "type": "quantitative",
+                "title": "Events"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

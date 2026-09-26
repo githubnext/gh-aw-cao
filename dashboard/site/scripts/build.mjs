@@ -35,6 +35,7 @@ export async function buildDashboardSite({
     cp(new URL("icon-maskable-512.png", siteRoot), join(destinationPath, "icon-maskable-512.png")),
     cp(new URL("manifest.webmanifest", siteRoot), join(destinationPath, "manifest.webmanifest")),
     cp(new URL("service-worker.js", siteRoot), join(destinationPath, "service-worker.js")),
+    cp(new URL("dashboard-fragments", siteRoot), join(destinationPath, "dashboard-fragments"), { recursive: true }),
     cp(new URL("src/smells.svg", siteRoot), join(destinationPath, "smells.svg")),
     cp(new URL("src", siteRoot), join(destinationPath, "src"), { recursive: true }),
   ]);
@@ -62,6 +63,7 @@ export async function buildDashboardSite({
   await writeFile(dashboardPath, `${JSON.stringify(splitDashboard.core)}\n`);
   await writeDashboardPageChunks(destinationPath, splitDashboard.pageChunks);
   await bundleSiteJavascript(destinationPath);
+  await rm(join(destinationPath, "dashboard-fragments"), { force: true, recursive: true });
   await cacheBustSiteImports(destinationPath);
 
   for (const page of splitDashboard.core.dashboard?.pages ?? []) {

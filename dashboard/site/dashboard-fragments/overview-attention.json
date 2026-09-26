@@ -1,0 +1,789 @@
+{
+  "queries": [
+    {
+      "name": "failure-run-base",
+      "intent": "Reuse shared query stages for failed-runs, overview-failing-runs",
+      "from": "runs",
+      "filter": {
+        "predicates": [
+          {
+            "field": "run-conclusion",
+            "in": [
+              "failure",
+              "startup-failure",
+              "stale",
+              "timed-out"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "failed-runs",
+      "intent": "List failed workflow runs that need operator attention.",
+      "from": "failure-run-base",
+      "order-by": [
+        {
+          "field": "started-at",
+          "direction": "desc"
+        }
+      ]
+    },
+    {
+      "name": "overview-failing-runs",
+      "intent": "Identify failed runs in the selected snapshot horizon so subsequent streak logic can use the same declarative failure definition.",
+      "from": "failure-run-base",
+      "aggregate": {
+        "by": [
+          "organization",
+          "repository",
+          "workflow",
+          "run"
+        ],
+        "values": [
+          {
+            "field": "run",
+            "as": "failing-runs",
+            "reducer": "distinct-count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "overview-failing-workflows",
+      "intent": "Identify only workflows that have at least one failed run in the selected snapshot horizon before computing streaks.",
+      "from": "overview-failing-runs",
+      "aggregate": {
+        "by": [
+          "organization",
+          "repository",
+          "workflow"
+        ],
+        "values": [
+          {
+            "field": "run",
+            "as": "failing-runs",
+            "reducer": "distinct-count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "overview-repeated-failure-groups",
+      "intent": "Group each workflow's latest consecutive failing run sequence in the selected snapshot horizon, resetting the group after any successful run.",
+      "from": "runs",
+      "joins": [
+        {
+          "source": "overview-failing-workflows",
+          "type": "inner",
+          "on": [
+            {
+              "left": "organization",
+              "right": "organization"
+            },
+            {
+              "left": "repository",
+              "right": "repository"
+            },
+            {
+              "left": "workflow",
+              "right": "workflow"
+            }
+          ],
+          "fields": [
+            {
+              "field": "failing-runs",
+              "as": "failing-runs"
+            }
+          ]
+        },
+        {
+          "source": "overview-failing-runs",
+          "type": "left",
+          "on": [
+            {
+              "left": "organization",
+              "right": "organization"
+            },
+            {
+              "left": "repository",
+              "right": "repository"
+            },
+            {
+              "left": "workflow",
+              "right": "workflow"
+            },
+            {
+              "left": "run",
+              "right": "run"
+            }
+          ],
+          "fields": [
+            {
+              "field": "failing-runs",
+              "as": "run-failing-count"
+            }
+          ]
+        }
+      ],
+      "compute": [
+        {
+          "as": "failure-streak-point",
+          "function": "failure-streak-point",
+          "args": [
+            {
+              "field": "started-at"
+            },
+            {
+              "field": "run"
+            },
+            {
+              "field": "run-failing-count"
+            }
+          ]
+        }
+      ],
+      "aggregate": {
+        "by": [
+          "organization",
+          "repository",
+          "workflow"
+        ],
+        "values": [
+          {
+            "field": "failure-streak-point",
+            "as": "failure-count",
+            "reducer": "latest-failure-streak"
+          }
+        ]
+      }
+    },
+    {
+      "name": "overview-repeated-failure-candidates",
+      "intent": "Attach selected-horizon failure counts to each workflow's latest canonical work item.",
+      "from": "work-items",
+      "joins": [
+        {
+          "source": "overview-repeated-failure-groups",
+          "type": "inner",
+          "on": [
+            {
+              "left": "organization",
+              "right": "organization"
+            },
+            {
+              "left": "repository",
+              "right": "repository"
+            },
+            {
+              "left": "workflow",
+              "right": "workflow"
+            }
+          ],
+          "fields": [
+            {
+              "field": "failure-count",
+              "as": "failure-count"
+            }
+          ]
+        }
+      ],
+      "filter": {
+        "predicates": [
+          {
+            "field": "lifecycle-state",
+            "equals": "blocked"
+          }
+        ]
+      },
+      "compute": [
+        {
+          "as": "is-repeated",
+          "function": "greater-than",
+          "args": [
+            {
+              "field": "failure-count"
+            },
+            {
+              "value": 1
+            }
+          ]
+        },
+        {
+          "as": "attention-signal-id",
+          "function": "concat",
+          "args": [
+            {
+              "value": "repeated-failure:"
+            },
+            {
+              "field": "organization"
+            },
+            {
+              "value": "/"
+            },
+            {
+              "field": "repository"
+            },
+            {
+              "value": ":"
+            },
+            {
+              "field": "workflow"
+            }
+          ]
+        },
+        {
+          "as": "kind",
+          "function": "coalesce",
+          "args": [
+            {
+              "value": "Repeated workflow failures"
+            },
+            {
+              "value": "Repeated workflow failures"
+            }
+          ]
+        },
+        {
+          "as": "title",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "workflow"
+            },
+            {
+              "value": "Workflow"
+            }
+          ]
+        },
+        {
+          "as": "attention-reason",
+          "function": "concat",
+          "args": [
+            {
+              "field": "failure-count"
+            },
+            {
+              "value": " failed runs in the selected horizon"
+            }
+          ]
+        },
+        {
+          "as": "action",
+          "function": "coalesce",
+          "args": [
+            {
+              "value": "Open latest failed run on GitHub"
+            },
+            {
+              "value": "Open latest failed run on GitHub"
+            }
+          ]
+        },
+        {
+          "as": "icon",
+          "function": "coalesce",
+          "args": [
+            {
+              "value": "x-circle"
+            },
+            {
+              "value": "x-circle"
+            }
+          ]
+        },
+        {
+          "as": "tone",
+          "function": "coalesce",
+          "args": [
+            {
+              "value": "critical"
+            },
+            {
+              "value": "critical"
+            }
+          ]
+        },
+        {
+          "as": "priority",
+          "function": "number",
+          "args": [
+            {
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "is-repeated"
+        },
+        {
+          "field": "attention-signal-id"
+        },
+        {
+          "field": "kind"
+        },
+        {
+          "field": "title"
+        },
+        {
+          "field": "scope"
+        },
+        {
+          "field": "attention-reason",
+          "as": "reason"
+        },
+        {
+          "field": "observed-at"
+        },
+        {
+          "field": "action"
+        },
+        {
+          "field": "evidence-link"
+        },
+        {
+          "field": "run-link"
+        },
+        {
+          "field": "icon"
+        },
+        {
+          "field": "tone"
+        },
+        {
+          "field": "priority"
+        },
+        {
+          "field": "failure-count"
+        }
+      ]
+    },
+    {
+      "name": "overview-repeated-failure-attention",
+      "intent": "Keep only unresolved workflows with two or more failures in the selected horizon.",
+      "from": "overview-repeated-failure-candidates",
+      "filter": {
+        "predicates": [
+          {
+            "field": "is-repeated",
+            "equals": true
+          }
+        ]
+      },
+      "select": [
+        {
+          "field": "attention-signal-id"
+        },
+        {
+          "field": "kind"
+        },
+        {
+          "field": "title"
+        },
+        {
+          "field": "scope"
+        },
+        {
+          "field": "reason"
+        },
+        {
+          "field": "observed-at"
+        },
+        {
+          "field": "action"
+        },
+        {
+          "field": "evidence-link"
+        },
+        {
+          "field": "run-link"
+        },
+        {
+          "field": "icon"
+        },
+        {
+          "field": "tone"
+        },
+        {
+          "field": "priority"
+        },
+        {
+          "field": "failure-count"
+        }
+      ]
+    },
+    {
+      "name": "overview-review-attention",
+      "intent": "Select only unresolved outputs explicitly awaiting human review with their retained GitHub evidence destination.",
+      "from": "work-items",
+      "filter": {
+        "predicates": [
+          {
+            "field": "lifecycle-state",
+            "equals": "review"
+          }
+        ]
+      },
+      "compute": [
+        {
+          "as": "kind",
+          "function": "coalesce",
+          "args": [
+            {
+              "value": "Human review required"
+            },
+            {
+              "value": "Human review required"
+            }
+          ]
+        },
+        {
+          "as": "title",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "objective"
+            },
+            {
+              "value": "Produced output"
+            }
+          ]
+        },
+        {
+          "as": "action",
+          "function": "coalesce",
+          "args": [
+            {
+              "value": "Open review item on GitHub"
+            },
+            {
+              "value": "Open review item on GitHub"
+            }
+          ]
+        },
+        {
+          "as": "icon",
+          "function": "coalesce",
+          "args": [
+            {
+              "value": "eye"
+            },
+            {
+              "value": "eye"
+            }
+          ]
+        },
+        {
+          "as": "tone",
+          "function": "coalesce",
+          "args": [
+            {
+              "value": "action"
+            },
+            {
+              "value": "action"
+            }
+          ]
+        },
+        {
+          "as": "priority",
+          "function": "number",
+          "args": [
+            {
+              "value": 1
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "work-item-id",
+          "as": "attention-signal-id"
+        },
+        {
+          "field": "kind"
+        },
+        {
+          "field": "title"
+        },
+        {
+          "field": "scope"
+        },
+        {
+          "field": "reason"
+        },
+        {
+          "field": "observed-at"
+        },
+        {
+          "field": "action"
+        },
+        {
+          "field": "evidence-link"
+        },
+        {
+          "field": "run-link"
+        },
+        {
+          "field": "icon"
+        },
+        {
+          "field": "tone"
+        },
+        {
+          "field": "priority"
+        }
+      ]
+    },
+    {
+      "name": "overview-needs-attention",
+      "intent": "Combine grouped repeated failures and unresolved review outputs without introducing ordinary activity or duplicate work items.",
+      "from": "overview-repeated-failure-attention",
+      "union": [
+        "overview-review-attention"
+      ],
+      "order-by": [
+        {
+          "field": "priority",
+          "direction": "asc"
+        },
+        {
+          "field": "observed-at",
+          "direction": "desc"
+        },
+        {
+          "field": "attention-signal-id",
+          "direction": "asc"
+        }
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "id": "overview-failed-runs",
+      "kind": "custom",
+      "title": "Failed runs",
+      "icon": "x-circle",
+      "description": "Runs in the selected horizon that ended in a failure state and need investigation.",
+      "route": {
+        "navigation-page": "overview"
+      },
+      "views": [
+        {
+          "id": "overview-failed-runs-ledger",
+          "title": "Failed run evidence",
+          "description": "Open a run on GitHub to inspect its jobs, logs, and retained evidence.",
+          "data": {
+            "source": "failed-runs",
+            "filters": {
+              "run-conclusion": [
+                "failure",
+                "startup-failure",
+                "stale",
+                "timed-out"
+              ]
+            },
+            "order-by": [
+              {
+                "field": "started-at",
+                "direction": "desc"
+              }
+            ]
+          },
+          "mark": "table",
+          "controls": "interactive",
+          "lazy-list": true,
+          "column-summaries": true,
+          "empty-message": "No failed runs were observed in the selected horizon.",
+          "layout": "full-view",
+          "encoding": {
+            "columns": [
+              {
+                "field": "started-at",
+                "type": "temporal",
+                "format": "human-friendly-timestamp",
+                "title": "Date"
+              },
+              {
+                "field": "repository",
+                "type": "nominal",
+                "title": "Repository"
+              },
+              {
+                "field": "failure-detail",
+                "type": "nominal",
+                "title": "Error",
+                "display": "run-link"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "overview-blocked-work",
+      "kind": "custom",
+      "title": "Blocked work",
+      "icon": "stop",
+      "description": "Delegated work whose latest admission or run state prevents progress.",
+      "route": {
+        "navigation-page": "overview"
+      },
+      "views": [
+        {
+          "id": "overview-blocked-work-ledger",
+          "title": "Blocked work evidence",
+          "description": "Open the latest GitHub run to resolve the admission or execution failure.",
+          "data": {
+            "source": "work-items",
+            "filters": {
+              "lifecycle-state": "blocked"
+            },
+            "order-by": [
+              {
+                "field": "waiting-since",
+                "direction": "asc"
+              }
+            ]
+          },
+          "mark": "table",
+          "controls": "interactive",
+          "column-summaries": true,
+          "empty-message": "No blocked work was observed in the selected horizon.",
+          "layout": "full-view",
+          "encoding": {
+            "columns": [
+              {
+                "field": "waiting-since",
+                "type": "temporal",
+                "format": "human-friendly-timestamp",
+                "title": "Date"
+              },
+              {
+                "field": "repository",
+                "type": "nominal",
+                "title": "Repository"
+              },
+              {
+                "field": "reason",
+                "type": "nominal",
+                "title": "Blocked by",
+                "display": "run-link"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "overview-awaiting-review",
+      "kind": "custom",
+      "title": "Awaiting review",
+      "icon": "eye",
+      "description": "Produced outcomes that are waiting for a reviewer decision.",
+      "route": {
+        "navigation-page": "overview"
+      },
+      "views": [
+        {
+          "id": "overview-awaiting-review-ledger",
+          "title": "Review evidence",
+          "description": "Open the retained GitHub outcome or its run evidence to complete the review.",
+          "data": {
+            "source": "work-items",
+            "filters": {
+              "lifecycle-state": "review"
+            },
+            "order-by": [
+              {
+                "field": "waiting-since",
+                "direction": "asc"
+              }
+            ]
+          },
+          "mark": "table",
+          "controls": "interactive",
+          "column-summaries": true,
+          "empty-message": "No work is awaiting review in the selected horizon.",
+          "layout": "full-view",
+          "encoding": {
+            "columns": [
+              {
+                "field": "waiting-since",
+                "type": "temporal",
+                "format": "human-friendly-timestamp",
+                "title": "Date"
+              },
+              {
+                "field": "repository",
+                "type": "nominal",
+                "title": "Repository"
+              },
+              {
+                "field": "objective",
+                "type": "nominal",
+                "title": "Work",
+                "display": "evidence-link"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "overview-security-findings",
+      "kind": "custom",
+      "title": "Security findings",
+      "icon": "shield",
+      "description": "Detected prompt-injection, secret-leak, and malicious-patch evidence from collected workflow runs.",
+      "route": {
+        "navigation-page": "overview"
+      },
+      "views": [
+        {
+          "id": "overview-security-findings-ledger",
+          "title": "Security finding evidence",
+          "description": "Open the GitHub run that produced each threat-detection finding.",
+          "data": {
+            "source": "security-findings",
+            "order-by": [
+              {
+                "field": "observed-at",
+                "direction": "desc"
+              }
+            ]
+          },
+          "mark": "table",
+          "controls": "interactive",
+          "column-summaries": true,
+          "empty-message": "No security findings were observed in the selected horizon.",
+          "layout": "full-view",
+          "encoding": {
+            "columns": [
+              {
+                "field": "observed-at",
+                "type": "temporal",
+                "format": "human-friendly-timestamp",
+                "title": "Date"
+              },
+              {
+                "field": "repository",
+                "type": "nominal",
+                "title": "Repository"
+              },
+              {
+                "field": "smell-name",
+                "type": "nominal",
+                "title": "Finding",
+                "display": "run-link"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

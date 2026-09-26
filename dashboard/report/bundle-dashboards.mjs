@@ -1,7 +1,7 @@
 import { readFile, readdir, realpath, writeFile } from "node:fs/promises";
+import { readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { actionsLog as log } from "../../activity/actions-log.mjs";
 import { composeDashboardDocuments } from "./compose-dashboard-documents.mjs";
 
 /** @typedef {import("./compose-dashboard-documents.mjs").DashboardDocument} DashboardDocument */
@@ -27,15 +27,22 @@ function dashboard(value, source) {
   return /** @type {DashboardDocument} */ (value);
 }
 
+/** @param {unknown} value @returns {value is Record<string, any>} */
 function isObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+/** @param {string} root @param {string} candidate */
 function isWithin(root, candidate) {
   const relativePath = path.relative(root, candidate);
   return relativePath === "" || (!relativePath.startsWith(`..${path.sep}`) && relativePath !== ".." && !path.isAbsolute(relativePath));
 }
 
+/**
+ * @param {Record<string, any>} target
+ * @param {unknown} fragment
+ * @param {string} source
+ */
 function mergeDashboardFragment(target, fragment, source) {
   if (!isObject(fragment)) throw new Error(`${source} is not a dashboard fragment`);
   if ("fragments" in fragment) throw new Error(`${source} cannot declare nested dashboard fragments`);
@@ -47,7 +54,7 @@ function mergeDashboardFragment(target, fragment, source) {
       }
       target[key] ??= [];
       if (key === "navigation") {
-        const sections = new Map(target.navigation.map((section) => [section?.label, section]));
+        const sections = new Map(target.navigation.map((/** @type {any} */ section) => [section?.label, section]));
         for (const incoming of value) {
           const section = sections.get(incoming?.label);
           if (section && Array.isArray(section.pages) && Array.isArray(incoming?.pages)) {
@@ -70,6 +77,7 @@ function mergeDashboardFragment(target, fragment, source) {
   }
 }
 
+/** @param {string} source */
 async function readJson(source) {
   try {
     return JSON.parse(await readFile(source, "utf8"));
@@ -133,6 +141,59 @@ export async function loadDashboardSource(source) {
 }
 
 /**
+ * Synchronous counterpart for test fixtures and command-line consumers that
+ * load the authoritative dashboard during module initialization.
+ * @param {string | URL} source
+ * @returns {{ document: DashboardDocument, sourcePaths: string[] }}
+ */
+export function loadDashboardSourceSync(source) {
+  const sourcePath = realpathSync(source);
+  const sourceRoot = realpathSync(path.dirname(sourcePath));
+  const value = JSON.parse(readFileSync(sourcePath, "utf8"));
+  if (!isObject(value)) throw new Error(`${source} is not a dashboard document`);
+  const fragmentPaths = value.fragments;
+  if (fragmentPaths !== undefined && (
+    !Array.isArray(fragmentPaths)
+    || fragmentPaths.some((fragmentPath) => typeof fragmentPath !== "string" || fragmentPath.length === 0)
+  )) {
+    throw new Error(`${source} dashboard fragments must be non-empty relative path strings`);
+  }
+  if (!isObject(value.dashboard)) throw new Error(`${source} is not a dashboard document`);
+
+  const document = structuredClone(value);
+  delete document.fragments;
+  const resolvedPaths = [];
+  const seen = new Set();
+  for (const fragmentPath of fragmentPaths ?? []) {
+    if (path.isAbsolute(fragmentPath)) {
+      throw new Error(`${source} dashboard fragment path must be relative: ${fragmentPath}`);
+    }
+    const candidate = path.resolve(sourceRoot, fragmentPath);
+    if (!isWithin(sourceRoot, candidate)) {
+      throw new Error(`${source} dashboard fragment path escapes its source directory: ${fragmentPath}`);
+    }
+    const resolvedPath = realpathSync(candidate);
+    if (!isWithin(sourceRoot, resolvedPath)) {
+      throw new Error(`${source} dashboard fragment path escapes its source directory: ${fragmentPath}`);
+    }
+    if (seen.has(resolvedPath)) {
+      throw new Error(`${source} declares duplicate dashboard fragment: ${fragmentPath}`);
+    }
+    seen.add(resolvedPath);
+    mergeDashboardFragment(
+      document.dashboard,
+      JSON.parse(readFileSync(resolvedPath, "utf8")),
+      resolvedPath,
+    );
+    resolvedPaths.push(resolvedPath);
+  }
+  return {
+    document: dashboard(document, sourcePath),
+    sourcePaths: [sourcePath, ...resolvedPaths],
+  };
+}
+
+/**
  * @param {string} outputPath
  * @param {string} dashboardsDirectory
  */
@@ -168,18 +229,13 @@ async function main() {
   if (!outputPath || !dashboardsDirectory) {
     throw new Error("usage: bundle-dashboards.mjs OUTPUT_DASHBOARD DASHBOARDS_DIRECTORY");
   }
-  log.group`Bundle dashboard documents`;
-  try {
-    await bundleDashboards(path.resolve(outputPath), path.resolve(dashboardsDirectory));
-    log.info`Bundled dashboard documents into ${outputPath}`;
-  } finally {
-    log.endGroup();
-  }
+  await bundleDashboards(path.resolve(outputPath), path.resolve(dashboardsDirectory));
+  console.log(`Bundled dashboard documents into ${outputPath}`);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   await main().catch((error) => {
-    log.error`${error instanceof Error ? error.stack || error.message : String(error)}`;
+    console.error(error instanceof Error ? error.stack || error.message : String(error));
     process.exitCode = 1;
   });
 }

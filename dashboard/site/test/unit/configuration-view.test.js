@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
 const queryCanonicalDatabaseDiagnostics = vi.hoisted(() => vi.fn().mockResolvedValue({
   schemaVersion: 13,
@@ -202,7 +201,7 @@ describe('Configuration dashboard view', () => {
   });
 
   it('exposes Settings in the bottom management navigation without a chart', () => {
-    const dashboard = JSON.parse(readFileSync(resolve('dashboard.json'), 'utf8')).dashboard;
+    const dashboard = authoritativeDashboard.dashboard;
     const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'configuration');
     const manageNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => candidate.label === 'Updates');
 
@@ -220,7 +219,7 @@ describe('Configuration dashboard view', () => {
   });
 
   it('separates CAO package and compiler maintenance inventory', () => {
-    const dashboard = JSON.parse(readFileSync(resolve('dashboard.json'), 'utf8')).dashboard;
+    const dashboard = authoritativeDashboard.dashboard;
     const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'maintenance');
     const manageNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => candidate.label === 'Updates');
 
@@ -272,7 +271,7 @@ describe('Configuration dashboard view', () => {
   });
 
   it('wires the Settings view to a supported UI element', () => {
-    const dashboard = JSON.parse(readFileSync(resolve('dashboard.json'), 'utf8')).dashboard;
+    const dashboard = authoritativeDashboard.dashboard;
     const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'configuration');
     const [view] = page.views;
     const rendered = renderUiElement(view.element, {

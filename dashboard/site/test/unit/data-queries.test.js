@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from 'vitest';
-import { readFileSync } from 'node:fs';
 import {
   DASHBOARD_QUERY_LIMITS,
   DashboardQueryCancelledError,
@@ -61,7 +60,7 @@ const usage = {
   ],
   metadata: metadata('usage', { freshness: 'stale' })
 };
-const dashboardDocument = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8'));
+import { authoritativeDashboard as dashboardDocument } from '../authoritative-dashboard.js';
 const dashboardQueries = dashboardDocument.dashboard.queries;
 const emptyRunRecordSources = Object.fromEntries(['domains', 'tools', 'audits', 'issues'].map((source) => [
   source,

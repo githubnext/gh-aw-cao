@@ -21,6 +21,8 @@ An authoring `dashboard.json` may declare a top-level `fragments` array of JSON 
 
 Fragment paths must remain within the root document's directory, including after symbolic-link resolution. Fragments cannot include other fragments. Builds and local previews fully compose authoring fragments before campaign composition, validation, and runtime page chunking, so the deployed `dashboard.json` and `dashboard-pages/` format is unchanged.
 
+The built-in dashboard keeps its shared query foundations and its controls, repository, workflow/run, campaign, inventory, operations, overview, and entity surfaces under `dashboard-fragments/`. Each file stays below the repository's size limits and owns a coherent set of related queries, reusable views, and pages.
+
 ## Data pipeline
 
 1. The activity action writes inventory, deployed-workflow, AI Credit, and operational-value JSON into one bounded cache snapshot.

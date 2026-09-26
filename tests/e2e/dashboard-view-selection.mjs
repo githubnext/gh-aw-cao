@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { composeDashboardDocuments } from "../../dashboard/report/compose-dashboard-documents.mjs";
+import { loadDashboardSourceSync } from "../../dashboard/report/bundle-dashboards.mjs";
 import { withoutIgnoredDashboardPageIds } from "./dashboard-view-assessment.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "../..");
@@ -63,6 +64,7 @@ function dashboardPaths() {
 
 function readDashboard(path, ref) {
   try {
+    if (!ref) return loadDashboardSourceSync(join(repositoryRoot, path)).document;
     const content = ref
       ? execFileSync("git", ["show", `${ref}:${path}`], {
           cwd: repositoryRoot,

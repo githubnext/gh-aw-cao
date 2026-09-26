@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { processDataRequest } from '../../src/data-worker.js';
+import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
-const dashboard = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8')).dashboard;
+const dashboard = authoritativeDashboard.dashboard;
 const metadata = {
   'source-id': 'audit-fixture',
   'source-kind': 'fixture',
