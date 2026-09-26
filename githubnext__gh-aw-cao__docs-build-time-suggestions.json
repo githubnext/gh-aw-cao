@@ -1,6 +1,6 @@
 {
   "source_sha": "be8cbe23c5668fed4111726022a39b6464b85941",
-  "next_category": "dependency installation and caching",
+  "next_category": "Astro documentation generation",
   "evaluations": [
     {
       "evaluated_at": "2026-09-26T12:36:00Z",
@@ -57,6 +57,24 @@
         36244171809
       ],
       "outcome": "no-op: evidence window 2026-09-26T13:08:33Z to 2026-09-26T13:46:37Z. Analyzed 7 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 9 action_required workflow_run runs and 4 skipped workflow_run runs excluded from the timing sample. Evaluated category scheduling, concurrency, and avoidable rebuilds. Comparable sample confidence is medium because 4/7 successful runs came from distinct SHAs, but repeated trigger behavior remained observable. Workflow median execution was 48.0s (p90 62.2s), build median 26.0s (p90 31.8s), deploy median 10.0s (p90 13.4s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed Restore node_modules cache hits on 7/7 runs, Install dependencies and Save node_modules skipped on 7/7, and Restore cached CAO Dashboard cache hits on 7/7 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 7/7. Repeated remaining costs were small: Build documentation median 8.0s, Upload Pages artifact median 2.0s, and Deploy Pages median 6.0s. Source review shows docs.yml still listens to schedule, push, and successful CAO Dashboard workflow_run events, but the latest evidence window already includes both push and follow-on workflow_run successes for the same revision only once (head sha 2b87d67e1d8c1012bfb8bd72e5b3246f276d8667) and otherwise does not show a stable duplicate-build tax above the 60s or 15% threshold. No fresh non-duplicate actionable recommendation is warranted.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-26T14:30:00Z",
+      "worker_run_id": 36248265408,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        36248277075,
+        36247096673,
+        36246247644,
+        36245984487,
+        36245435394,
+        36244924294,
+        36244907467,
+        36244830293,
+        36244171809
+      ],
+      "outcome": "no-op: evidence window 2026-09-26T13:08:33Z to 2026-09-26T14:23:08Z. Analyzed 9 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 6 action_required workflow_run runs and 4 skipped workflow_run runs excluded from the timing sample. Median workflow execution was 48.0s (p90 58.6s), build median 26.0s (p90 31.4s), deploy median 10.0s (p90 13.0s), and queue median 0.0s (p90 0.0s). Trusted metadata and logs confirmed actions/setup-node restored the npm cache on 9/9 runs, the explicit node_modules cache hit on 9/9 runs, Install dependencies and Save node_modules skipped on 9/9 runs, and the CAO Dashboard cache hit on 9/9 runs. The remaining dependency-and-cache cost was Restore node_modules median 5.0s and Set up Node.js median 4.0s; together they are well below the 60s or 15% action threshold. No fresh non-duplicate actionable caching recommendation is warranted.",
       "suggestion_fingerprint": ""
     }
   ]
