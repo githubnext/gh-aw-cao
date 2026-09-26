@@ -269,7 +269,7 @@ test('marketplace page renders canonical package cards after ingestion', async (
 
   await packageCard.getByRole('link', { name: 'Dependabot' }).click();
   await expect(page.locator('[data-page-id="marketplace-package"]')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Package', exact: true, level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Dependabot', exact: true, level: 1 })).toBeVisible();
 });
 
 test('deep links and redirect routes fetch only the requested initial page chunk', async ({ page }) => {
