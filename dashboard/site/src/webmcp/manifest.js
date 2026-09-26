@@ -29,7 +29,7 @@
  *   routeParameter: string | null,
  *   formFields: string[],
  *   inputSchema: { type: 'object', properties: Record<string, Record<string, unknown>>, required?: string[], additionalProperties: false },
- *   annotations: { readOnlyHint: true }
+ *   annotations: { readOnlyHint: true, untrustedContentHint: true }
  * }} WebMCPToolDescriptor
  */
 
@@ -214,7 +214,11 @@ export function webMCPToolForPage(page, context = {}) {
       ...(required.length > 0 ? { required } : {}),
       additionalProperties: false
     },
-    annotations: { readOnlyHint: true }
+    // `readOnlyHint` states that the tool only reads. `untrustedContentHint`
+    // states that the rows it returns are ingested from GitHub and agentic
+    // workflow runs, so an agent must treat the result as data and never as
+    // instructions.
+    annotations: { readOnlyHint: true, untrustedContentHint: true }
   };
 }
 

@@ -101,7 +101,7 @@ describe('WebMCP manifest generation', () => {
       'cao_simulator'
     ]);
     for (const tool of manifest) {
-      expect(tool.annotations).toEqual({ readOnlyHint: true });
+      expect(tool.annotations).toEqual({ readOnlyHint: true, untrustedContentHint: true });
       expect(tool.inputSchema.additionalProperties).toBe(false);
     }
   });
