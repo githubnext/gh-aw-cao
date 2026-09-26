@@ -97,16 +97,15 @@ process_matches() {
 }
 
 process_group_matches() {
-  local process stat_pgid executable expected_handler expected_host
+  local process stat_pgid executable expected_handler
   [[ -n "${FUNCTIONS_PGID:-}" ]] || return 1
   expected_handler="$(readlink -f "$APP_DIR/cao-functions")"
-  expected_host="$(readlink -f "${FUNC_BIN:-/nonexistent}")"
   for process in /proc/[0-9]*; do
     [[ -r "$process/stat" && -e "$process/exe" ]] || continue
     stat_pgid="$(awk '{print $5}' "$process/stat")"
     [[ "$stat_pgid" == "$FUNCTIONS_PGID" ]] || continue
     executable="$(readlink -f "$process/exe")"
-    if [[ "$executable" == "$expected_handler" || "$executable" == "$expected_host" ]]; then
+    if [[ "$executable" == "$expected_handler" ]]; then
       return 0
     fi
   done
