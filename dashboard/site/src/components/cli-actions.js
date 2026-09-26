@@ -143,8 +143,10 @@ function commandPreview(action, values, templateValues) {
   const platform = typeof userAgentData?.platform === 'string'
     ? userAgentData.platform
     : typeof navigator === 'undefined' ? '' : navigator.platform || navigator.userAgent;
+  const userAgent = typeof navigator === 'undefined' ? '' : navigator.userAgent;
   // Windows terminals need an explicit Bash interpreter; leave other commands untouched.
-  return /^win/i.test(platform) && /^\.\/\S+\.sh(?:\s|$)/.test(command)
+  return (/^win/i.test(platform) || /windows/i.test(userAgent))
+    && /^(?:"[^"]+\.sh"|'[^']+\.sh'|\S+\.sh)(?:\s|$)/.test(command)
     ? `bash ${command}`
     : command;
 }
