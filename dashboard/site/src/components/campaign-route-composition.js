@@ -86,7 +86,7 @@ const CAMPAIGN_ROUTE_COMPOSITIONS = {
   },
   insights: {
     rootClassName: 'campaign-insights',
-    selectMessage: 'Select a campaign to view its audit insights.',
+    selectMessage: 'Select a campaign to view its operational value.',
     description: 'Operational activity for the {campaignName} campaign.',
     currentTab: 'insights',
     bodyRenderer: ({ context }) => renderMeasureHistory({

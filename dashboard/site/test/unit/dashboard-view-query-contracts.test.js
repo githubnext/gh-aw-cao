@@ -249,7 +249,7 @@ describe('dashboard view query contracts', () => {
       /** @type {Record<string, unknown> | undefined} */ (page.route)?.['hash-query-parameter'] === 'campaign'
     ));
     const expectedTabs = [
-      { id: 'insights', label: 'Insights', icon: 'graph', page: 'campaign-insights' },
+      { id: 'insights', label: 'Operational Value', icon: 'graph', page: 'campaign-insights' },
       { id: 'problems', label: 'Problems', icon: 'alert', page: 'campaign-problems' },
       { id: 'issues', label: 'Issues', icon: 'issue-opened', page: 'campaign-issues' }
     ];

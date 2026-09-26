@@ -12581,7 +12581,7 @@
           "tabs": [
             {
               "id": "insights",
-              "label": "Insights",
+              "label": "Operational Value",
               "icon": "graph",
               "page": "campaign-insights"
             },
@@ -12677,48 +12677,6 @@
             }
           },
           {
-            "id": "campaign-audit-event-summary-buckets",
-            "title": "Severity audit events",
-            "description": "The 20 most frequent audit-event buckets for this campaign, sorted by severity and event count after info-level events are excluded.",
-            "data": {
-              "source": "audit-event-summary-buckets",
-              "route-field": "campaign",
-              "limit": 20,
-              "order-by": [
-                {
-                  "field": "event-status",
-                  "direction": "asc"
-                },
-                {
-                  "field": "events",
-                  "direction": "desc"
-                }
-              ]
-            },
-            "mark": "chart",
-            "chart": "horizontal-bar",
-            "layout": "full",
-            "empty-message": "No high- or medium-severity audit events were observed for this campaign in the current run window.",
-            "encoding": {
-              "x": {
-                "field": "workflow",
-                "type": "nominal",
-                "format": "workflow-relative-path",
-                "title": "Workflow"
-              },
-              "y": {
-                "field": "events",
-                "type": "quantitative",
-                "title": "Events"
-              },
-              "color": {
-                "field": "event-status",
-                "type": "nominal",
-                "title": "Severity"
-              }
-            }
-          },
-          {
             "id": "campaign-audit-event-table",
             "title": "Audit events",
             "description": "Audit event summaries with links to dedicated entity insights and related runs.",
@@ -12773,7 +12731,7 @@
           "tabs": [
             {
               "id": "insights",
-              "label": "Insights",
+              "label": "Operational Value",
               "icon": "graph",
               "page": "campaign-insights"
             },
@@ -12929,7 +12887,7 @@
           "tabs": [
             {
               "id": "insights",
-              "label": "Insights",
+              "label": "Operational Value",
               "icon": "graph",
               "page": "campaign-insights"
             },
@@ -13107,7 +13065,7 @@
           "tabs": [
             {
               "id": "insights",
-              "label": "Insights",
+              "label": "Operational Value",
               "icon": "graph",
               "page": "campaign-insights"
             },
@@ -13228,7 +13186,7 @@
           "tabs": [
             {
               "id": "insights",
-              "label": "Insights",
+              "label": "Operational Value",
               "icon": "graph",
               "page": "campaign-insights"
             },
@@ -13384,7 +13342,7 @@
           "tabs": [
             {
               "id": "insights",
-              "label": "Insights",
+              "label": "Operational Value",
               "icon": "graph",
               "page": "campaign-insights"
             },
@@ -13654,7 +13612,7 @@
           "tabs": [
             {
               "id": "insights",
-              "label": "Insights",
+              "label": "Operational Value",
               "icon": "graph",
               "page": "campaign-insights"
             },
@@ -13786,7 +13744,7 @@
           "tabs": [
             {
               "id": "insights",
-              "label": "Insights",
+              "label": "Operational Value",
               "icon": "graph",
               "page": "campaign-insights"
             },
