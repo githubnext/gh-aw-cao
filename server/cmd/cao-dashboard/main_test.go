@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -227,5 +228,84 @@ func TestResolveIngestSource(t *testing.T) {
 				t.Errorf("resolveIngestSource() origin = %q, want %q", gotOrigin, tt.wantOrigin)
 			}
 		})
+	}
+}
+
+func TestResolveSubcommand(t *testing.T) {
+	tests := []struct {
+		name        string
+		arguments   []string
+		wantName    string
+		wantRest    []string
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:      "known subcommand with trailing flags",
+			arguments: []string{"serve", "--listen", "127.0.0.1:9000"},
+			wantName:  "serve",
+			wantRest:  []string{"--listen", "127.0.0.1:9000"},
+		},
+		{
+			name:      "known subcommand with no remaining arguments",
+			arguments: []string{"doctor"},
+			wantName:  "doctor",
+			wantRest:  []string{},
+		},
+		{
+			name:        "no arguments reports usage",
+			arguments:   nil,
+			wantErr:     true,
+			errContains: "usage: cao-dashboard",
+		},
+		{
+			name:        "unknown subcommand is rejected",
+			arguments:   []string{"bogus"},
+			wantErr:     true,
+			errContains: `unknown subcommand "bogus"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotName, gotRest, err := resolveSubcommand(tt.arguments)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("resolveSubcommand() error = nil, want non-nil")
+				}
+				if !strings.Contains(err.Error(), tt.errContains) {
+					t.Fatalf("resolveSubcommand() error = %q, want to contain %q", err.Error(), tt.errContains)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("resolveSubcommand() error = %v, want nil", err)
+			}
+			if gotName != tt.wantName {
+				t.Errorf("resolveSubcommand() name = %q, want %q", gotName, tt.wantName)
+			}
+			if len(gotRest) != len(tt.wantRest) {
+				t.Fatalf("resolveSubcommand() rest = %v, want %v", gotRest, tt.wantRest)
+			}
+			for i := range gotRest {
+				if gotRest[i] != tt.wantRest[i] {
+					t.Errorf("resolveSubcommand() rest[%d] = %q, want %q", i, gotRest[i], tt.wantRest[i])
+				}
+			}
+		})
+	}
+}
+
+func TestResolveSubcommandCoversEveryDispatchedName(t *testing.T) {
+	// run's switch must handle every name resolveSubcommand can return, so
+	// this guards the two from silently diverging.
+	for _, name := range subcommands {
+		gotName, _, err := resolveSubcommand([]string{name})
+		if err != nil {
+			t.Fatalf("resolveSubcommand(%q) error = %v, want nil", name, err)
+		}
+		if gotName != name {
+			t.Errorf("resolveSubcommand(%q) name = %q, want %q", name, gotName, name)
+		}
 	}
 }

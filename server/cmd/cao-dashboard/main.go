@@ -147,34 +147,52 @@ func main() {
 	}
 }
 
-func run(arguments []string) error {
+// subcommands lists the dispatchable cao-dashboard subcommands in the order
+// they are advertised in usage and error text, so both stay in sync with the
+// switch in run.
+var subcommands = []string{"serve", "serve-hosted", "ingest", "collect", "backfill", "doctor"}
+
+// resolveSubcommand validates the first CLI argument against subcommands and
+// splits it from the remaining arguments. It is a pure function so run's
+// dispatch validation is testable without exercising any subcommand.
+func resolveSubcommand(arguments []string) (name string, rest []string, err error) {
 	if len(arguments) == 0 {
-		return errors.New(
-			"usage: cao-dashboard <serve|serve-hosted|ingest|collect|backfill|doctor> [flags]")
+		return "", nil, fmt.Errorf(
+			"usage: cao-dashboard <%s> [flags]", strings.Join(subcommands, "|"))
 	}
-	switch arguments[0] {
+	name = arguments[0]
+	for _, known := range subcommands {
+		if name == known {
+			return name, arguments[1:], nil
+		}
+	}
+	return "", nil, fmt.Errorf(
+		"unknown subcommand %q; expected %s", name, strings.Join(subcommands, ", "))
+}
+
+func run(arguments []string) error {
+	name, rest, err := resolveSubcommand(arguments)
+	if err != nil {
+		return err
+	}
+	commandLog.Printf("running subcommand=%s", name)
+	switch name {
 	case "serve":
-		commandLog.Printf("running serve command")
-		return serve(arguments[1:])
+		return serve(rest)
 	case "ingest":
-		commandLog.Printf("running ingest command")
-		return ingestCommand(arguments[1:])
+		return ingestCommand(rest)
 	case "serve-hosted":
-		commandLog.Printf("running hosted serve command")
-		return serveHosted(arguments[1:])
+		return serveHosted(rest)
 	case "collect":
-		commandLog.Printf("running collect command")
-		return collectCommand(arguments[1:])
+		return collectCommand(rest)
 	case "backfill":
-		commandLog.Printf("running backfill command")
-		return backfillCommand(arguments[1:])
+		return backfillCommand(rest)
 	case "doctor":
-		commandLog.Printf("running doctor command")
-		return doctorCommand(arguments[1:])
+		return doctorCommand(rest)
 	default:
-		return fmt.Errorf(
-			"unknown subcommand %q; expected serve, serve-hosted, ingest, collect, backfill, or doctor",
-			arguments[0])
+		// resolveSubcommand only returns a name present in subcommands, so
+		// this is unreachable unless subcommands and this switch diverge.
+		return fmt.Errorf("unhandled subcommand %q", name)
 	}
 }
 
