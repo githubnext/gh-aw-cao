@@ -74,25 +74,6 @@ func TestNewAcceptsRemoteRedisOnlyWithTLS(t *testing.T) {
 	}
 }
 
-func TestNewAcceptsUpstashTLSURL(t *testing.T) {
-	client, err := New("rediss://" + "default:test-credential" + "@us1-example.upstash.io:6379")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if client.address != "us1-example.upstash.io:6379" {
-		t.Fatalf("address = %q, want Upstash TCP endpoint", client.address)
-	}
-	if client.username != "default" || client.password != "test-credential" {
-		t.Fatal("Upstash credentials were not preserved")
-	}
-	if client.database != 0 {
-		t.Fatalf("database = %d, want default database 0", client.database)
-	}
-	if client.tlsConfig == nil || client.tlsConfig.ServerName != "us1-example.upstash.io" {
-		t.Fatalf("Upstash TLS configuration is invalid: %#v", client.tlsConfig)
-	}
-}
-
 func TestRedisURLErrorsDoNotExposeCredentials(t *testing.T) {
 	value := strings.Repeat("x", 24)
 	_, err := New("redis://user:" + value + "@example.com:6379")

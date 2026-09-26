@@ -111,25 +111,6 @@ Key Vault references, Kubernetes Secrets mounted into the process environment,
 or an equivalent managed facility), never command-line arguments or checked-in
 configuration.
 
-### Upstash Redis provider
-
-The host-neutral service can use Upstash Redis as its managed Redis provider.
-Upstash runs the Redis projection, not the CAO container, HTTPS ingress, or
-artifact storage. Run `serve-hosted` on a container platform or other application
-host and set `CAO_REDIS_URL` to the database's `rediss://` TCP connection string.
-Do not configure the Upstash REST URL or REST token: the server uses the Redis
-TCP protocol and Lua scripts for atomic operations.
-
-Keep `CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS` unset or `false`, use a dedicated
-Upstash database for each deployment security boundary, and set a
-deployment-unique `CAO_REDIS_NAMESPACE` to prevent accidental key collisions.
-The namespace is not tenant isolation. Store the complete connection string only
-in the application host's secret manager. Disable database eviction so capacity
-exhaustion fails writes rather than silently removing active data or hosted
-security state. The application host still owns verified artifact delivery,
-OAuth configuration, TLS ingress, health checks, and rollbacks. For the
-operator procedure, see [Deploying the dashboard with Upstash Redis](https://github.com/githubnext/gh-aw-cao/blob/main/docs/deployment-upstash.md).
-
 ### Coolify container profile
 
 Coolify is a peer deployment profile to Azure Functions; it does not replace or

@@ -222,22 +222,9 @@ func (d Doctor) checkRedisPersistence(ctx context.Context) Check {
 	if skip, ok := d.storeUnavailable(id, areaRedis, title); ok {
 		return skip
 	}
-	value, err := d.Store.Client.Do(ctx, "INFO", "persistence")
+	fields, err := d.redisInfo(ctx, "persistence")
 	if err != nil {
 		return failed(id, areaRedis, title, err)
-	}
-	if value == nil {
-		return failed(id, areaRedis, title, fmt.Errorf("INFO persistence returned no data"))
-	}
-	fields := parseInfoReply(fmt.Sprint(value))
-	if len(fields) == 0 {
-		doctorLog.Printf("redis info parsed no fields section=persistence")
-		return Check{
-			ID: id, Area: areaRedis, Title: title, Status: StatusWarn,
-			Summary: "Redis does not report persistence metrics",
-			Remedy:  "confirm the managed Redis provider's durability and recovery behavior; retain authoritative evidence for a rebuild",
-			Details: []Detail{detail("metricsAvailable", "false")},
-		}
 	}
 	aofEnabled := infoInt(fields, "aof_enabled") == 1
 	lastSave := strings.TrimSpace(fields["rdb_last_bgsave_status"])
