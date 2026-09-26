@@ -70,8 +70,9 @@ disposable, and health distinguishes an available service from ready data.
 `CAO_REDIS_URL`, OAuth secrets, the webhook secret, and session secrets are
 process-only configuration resolved by the deployment's secret manager. They
 are never accepted as hosted command-line flags, returned by APIs, or written
-to logs. Every hosted Redis connection uses `rediss://` with certificate and
-hostname verification; the core service imports no cloud identity or
+to logs. Hosted Redis uses `rediss://` with certificate and hostname
+verification by default; only the explicit Coolify private-network exception
+permits plaintext. The core service imports no cloud identity or
 secret-management SDK.
 
 ## Dashboard access capability
@@ -125,19 +126,55 @@ identity-aware authentication in a remote service.
 
 ## Hosted transport boundary
 
-Hosted mode has no developer override for transport protections:
+Hosted mode has no developer override for public transport protections:
 
-- it requires `rediss://` even when Redis is on loopback;
+- it requires `rediss://` by default;
+- plaintext Redis requires the exact
+  `CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS=true` opt-in and is then restricted to a
+  private IP or single-label service name;
 - it requires HTTPS and rejects attempts to disable that policy;
 - it binds to loopback by default, allowing forwarded host/protocol headers
   only across that local process or pod boundary; and
 - a non-loopback bind requires an operator-supplied TLS certificate and key,
-  ignores forwarded headers, and validates the direct TLS connection and
-  allow-listed `Host`.
+  or explicit private `CAO_TRUSTED_PROXY_CIDRS`. Forwarded headers are accepted
+  only from a direct peer in those CIDRs and must identify an allow-listed host
+  over HTTPS.
 
-Plaintext loopback Redis, generated bearer capabilities, and optional local TLS
-belong only to the separate `serve` developer profile. They cannot be enabled
-in `serve-hosted`.
+Generated bearer capabilities and optional local TLS belong only to the
+separate `serve` developer profile. The private plaintext Redis opt-in is for a
+deployment-managed private service network, never public or cross-network
+Redis.
+
+## Coolify profile
+
+The Coolify profile uses the same `serve-hosted` authentication and application
+security boundary. It does not add a bypass for OAuth, organization/team
+authorization, CSRF, webhook signatures, shared rate limits, or logging
+redaction.
+
+Coolify terminates public TLS. The container has no published port and accepts
+the private HTTP hop only when `CAO_TRUSTED_PROXY_CIDRS` names the exact Coolify
+proxy network. A caller outside those prefixes cannot make its forwarded
+headers authoritative. Host matching remains exact and forwarded protocol must
+be `https`. Broad, malformed, public, or missing CIDRs fail startup.
+
+The image runs as numeric user/group `65532`, drops Linux capabilities, enables
+`no-new-privileges`, uses a read-only root filesystem, and mounts only the
+trusted dashboard artifact read-only. Secrets are injected by Coolify and are
+not present in the Dockerfile, Compose file, image labels, or health check.
+
+`rediss://` remains preferred. `redis://` is acceptable only for a
+Coolify-managed Redis service isolated on the same private network, after the
+explicit plaintext opt-in. Network isolation and Redis authentication remain
+operator responsibilities. Azure Functions ignores this hosted opt-in and
+continues to require `rediss://` to Azure Managed Redis.
+
+Deployment uses a protected GitHub environment and an exact GHCR digest.
+Mutable channel tags are never deployment inputs. Rollback means redeploying a
+previously recorded digest through the same protected environment, then
+checking readiness, OAuth authorization, queries, webhook verification, and
+rate limits. If required, rebuild the disposable Redis namespace from the
+retained artifact rather than treating Redis as rollback authority.
 
 ## Azure Functions profile
 
@@ -346,10 +383,13 @@ minute interval begins.
 
 ## Redis transport and isolation
 
-- Plaintext `redis://` connections are accepted only for `localhost` or a
-  literal loopback IP address.
-- Non-local Redis requires `rediss://` with normal certificate-chain and
-  hostname verification. There is no insecure TLS mode.
+- Plaintext `redis://` connections are accepted by default only for `localhost`
+  or a literal loopback IP address. `serve-hosted` additionally accepts a
+  private IP or single-label service hostname only when
+  `CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS=true`.
+- All other Redis connections require `rediss://` with normal certificate-chain
+  and hostname verification. Azure always follows this path. There is no
+  insecure TLS mode.
 - Redis usernames and passwords remain in the Go process and are never returned
   in HTML, browser configuration, API payloads, or query URLs.
 - Every deployment uses a validated Redis namespace. The default is derived

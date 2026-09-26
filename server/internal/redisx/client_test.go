@@ -52,6 +52,18 @@ func TestNewRejectsRemotePlaintextURLsWithoutResolvingHostnames(t *testing.T) {
 	}
 }
 
+func TestNewWithOptionsAllowsOnlyPrivatePlaintextRedis(t *testing.T) {
+	if _, err := NewWithOptions("redis://redis:6379/0", Options{AllowPrivatePlaintext: true}); err != nil {
+		t.Fatalf("private service hostname rejected: %v", err)
+	}
+	if _, err := NewWithOptions("redis://10.42.0.4:6379/0", Options{AllowPrivatePlaintext: true}); err != nil {
+		t.Fatalf("private IP rejected: %v", err)
+	}
+	if _, err := NewWithOptions("redis://redis.example.com:6379/0", Options{AllowPrivatePlaintext: true}); err == nil {
+		t.Fatal("public hostname accepted for plaintext Redis")
+	}
+}
+
 func TestNewAcceptsRemoteRedisOnlyWithTLS(t *testing.T) {
 	client, err := New("rediss://redis.example.com:6380/4")
 	if err != nil {

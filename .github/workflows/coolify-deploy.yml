@@ -1,0 +1,223 @@
+name: Coolify dashboard image
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - .github/workflows/coolify-deploy.yml
+      - .dockerignore
+      - dashboard/site/**
+      - server/**
+      - tests/unit/coolify-deployment-contract.test.mjs
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/coolify-deploy.yml
+      - .dockerignore
+      - dashboard/site/**
+      - server/**
+      - tests/unit/coolify-deployment-contract.test.mjs
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  classify:
+    name: Select explicit deployment tier
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      eligible: ${{ steps.tier.outputs.eligible }}
+      environment: ${{ steps.tier.outputs.environment }}
+      tier: ${{ steps.tier.outputs.tier }}
+      version: ${{ steps.tier.outputs.version }}
+    steps:
+      - id: tier
+        name: Classify event without promotion
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ACTION: ${{ github.event.action }}
+          RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
+          PR_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          REPOSITORY: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          eligible=false
+          environment=
+          tier=
+          version=
+          case "${EVENT_NAME}" in
+            release)
+              if [[ "${EVENT_ACTION}" != "published" ]]; then exit 1; fi
+              version="${RELEASE_TAG}"
+              if [[ "${RELEASE_PRERELEASE}" == "true" ]]; then
+                tier=beta
+                environment=coolify-beta
+              else
+                tier=stable
+                environment=coolify-stable
+              fi
+              eligible=true
+              ;;
+            push)
+              tier=alpha
+              environment=coolify-alpha
+              version="0.0.0-alpha.${SHA:0:12}"
+              eligible=true
+              ;;
+            pull_request)
+              if [[ "${PR_DRAFT}" != "true" && "${PR_HEAD_REPOSITORY}" == "${REPOSITORY}" ]]; then
+                tier=preview
+                environment=coolify-preview
+                version="0.0.0-preview.${SHA:0:12}"
+                eligible=true
+              fi
+              ;;
+          esac
+          {
+            echo "eligible=${eligible}"
+            echo "environment=${environment}"
+            echo "tier=${tier}"
+            echo "version=${version}"
+          } >> "${GITHUB_OUTPUT}"
+
+  test:
+    name: Test image inputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version: 1.27.1
+          cache: false
+      - name: Install Node dependencies
+        run: npm ci
+      - name: Deployment contract tests
+        run: node --test tests/unit/coolify-deployment-contract.test.mjs
+      - name: Go tests
+        run: go -C server test ./...
+      - name: Dashboard production build
+        run: |
+          npm --prefix dashboard/site ci
+          npm run dashboard:server:build
+
+  image:
+    name: Build, scan, and publish immutable image
+    if: needs.classify.outputs.eligible == 'true'
+    needs: [classify, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.publish.outputs.image }}
+      digest: ${{ steps.publish.outputs.digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build local image
+        env:
+          VERSION: ${{ needs.classify.outputs.version }}
+          REVISION: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          docker build \
+            --file server/Dockerfile \
+            --build-arg "VERSION=${VERSION}" \
+            --build-arg "REVISION=${REVISION}" \
+            --build-arg "CREATED=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --tag "cao-dashboard:${REVISION}" \
+            .
+      - name: Scan local image
+        uses: aquasecurity/trivy-action@57a97c7060a3f8bc153738150e71b7be9592aadd # v0.35.0
+        with:
+          image-ref: cao-dashboard:${{ github.sha }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+      - name: Log in to GHCR
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: publish
+        name: Push commit identity and capture registry digest
+        env:
+          REPOSITORY: ${{ github.repository }}
+          REVISION: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          repository="ghcr.io/${REPOSITORY,,}/cao-dashboard"
+          reference="${repository}:sha-${REVISION}-run-${RUN_ID}-${RUN_ATTEMPT}"
+          docker tag "cao-dashboard:${REVISION}" "${reference}"
+          push_output="$(docker push "${reference}")"
+          digest="$(printf '%s\n' "${push_output}" | sed -n 's/.*digest: \(sha256:[0-9a-f]\{64\}\).*/\1/p' | tail -n 1)"
+          if [[ ! "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "GHCR did not return an immutable image digest" >&2
+            exit 1
+          fi
+          {
+            echo "digest=${digest}"
+            echo "image=${repository}@${digest}"
+          } >> "${GITHUB_OUTPUT}"
+
+  deploy:
+    name: Deploy exact digest to Coolify
+    if: needs.classify.outputs.eligible == 'true'
+    needs: [classify, image]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: coolify-${{ needs.classify.outputs.environment }}
+      cancel-in-progress: false
+    environment:
+      name: ${{ needs.classify.outputs.environment }}
+    steps:
+      - name: Request digest deployment
+        env:
+          COOLIFY_DEPLOY_ENDPOINT: ${{ secrets.COOLIFY_DEPLOY_ENDPOINT }}
+          COOLIFY_DEPLOY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
+          IMAGE: ${{ needs.image.outputs.image }}
+          DIGEST: ${{ needs.image.outputs.digest }}
+          SOURCE_SHA: ${{ github.sha }}
+          TIER: ${{ needs.classify.outputs.tier }}
+        run: |
+          set -euo pipefail
+          case "${COOLIFY_DEPLOY_ENDPOINT}" in
+            https://*) ;;
+            *) echo "COOLIFY_DEPLOY_ENDPOINT must use HTTPS" >&2; exit 1 ;;
+          esac
+          if [[ "${IMAGE}" != *"@${DIGEST}" || ! "${DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "refusing a mutable deployment reference" >&2
+            exit 1
+          fi
+          payload="$(jq -cn \
+            --arg image "${IMAGE}" \
+            --arg digest "${DIGEST}" \
+            --arg source_sha "${SOURCE_SHA}" \
+            --arg tier "${TIER}" \
+            '{image: $image, digest: $digest, source_sha: $source_sha, tier: $tier}')"
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --oauth2-bearer "${COOLIFY_DEPLOY_TOKEN}" \
+            --header "Content-Type: application/json" \
+            --data "${payload}" \
+            "${COOLIFY_DEPLOY_ENDPOINT}" >/dev/null

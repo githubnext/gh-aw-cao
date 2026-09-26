@@ -178,7 +178,7 @@ reconstructable.
 | `<operation>/problem-clustering.mjs` | Optional bounded problem computation installed with its package. |
 | `activity/` | Deterministic Activity collection, JSONL ingestion, SQLite projection, and the `cao` CLI. |
 | `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and static browser application. |
-| `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Redis projection, and server-side Dashboard Language query engine. |
+| `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Redis projection, server-side Dashboard Language query engine, and peer Azure Functions and Coolify deployment profiles. |
 | `dashboard/site/src/data/` | Canonical browser data model, adapters, normalization, storage, and declarative query engine. |
 | `research/` | Executable notebooks and experimental reference runtimes used to validate proposed computation semantics against canonical data; these are not dashboard production code. |
 | `specs/computations.md` | Versioned computation, bounded insight, provenance, quality, and measure contracts. |
@@ -272,15 +272,25 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   cannot replace the projection concurrently. Its client exposes the active
   GitHub login and supports explicit account switching through a fresh OAuth
   account-selection flow without combining account authority. Hosted transport
-  is fail-closed: Redis always uses TLS, a public listener terminates TLS
-  directly, and forwarded host/protocol headers are trusted only across a
-  loopback-bound proxy boundary. Logout atomically removes active session
+  is fail-closed: Redis uses TLS by default and always in Azure; a Coolify-managed
+  Redis service may use private plaintext only through an explicit opt-in and a
+  private address. A public listener terminates TLS directly, while a private
+  Coolify listener may rely on proxy TLS only when the direct proxy peer belongs
+  to an explicit private CIDR allow-list. Forwarded hosts must still match the
+  public host allow-list and forwarded protocol must be HTTPS. Logout atomically removes active session
   authority before remote token revocation; transient GitHub failures retain
   encrypted credentials only in a durable Redis revocation queue drained by a
   bounded maintenance worker. Encrypted records identify their key so controlled
   rotation can retain the previous key until sessions and revocations drain.
   Refreshed sessions use an atomic compare-and-swap so logout cannot be undone
   by a concurrent OAuth refresh.
+- The Coolify image builds the dashboard and Go server together, runs as a
+  non-root user, and mounts the authoritative artifact read-only. Conventional
+  GitHub Actions builds and scans each eligible stable, beta, alpha, or
+  same-repository preview event independently, publishes a commit identity to
+  GHCR, and deploys only the returned digest through tier-specific protected
+  environments. Tiers never promote artifacts implicitly and deployments never
+  consume mutable channel tags.
 - Browsers and external clients never receive Redis endpoints or credentials.
   Redis generations are staged and validated before atomic activation; a failed
   rebuild leaves the previous generation active, and an empty Redis instance is

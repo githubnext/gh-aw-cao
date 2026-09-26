@@ -39,22 +39,31 @@ func TestValidateListenSafety(t *testing.T) {
 }
 
 func TestValidateHostedListenRequiresTLSOutsideLoopback(t *testing.T) {
-	if err := validateHostedListen("127.0.0.1:8080", "", ""); err != nil {
+	if err := validateHostedListen("127.0.0.1:8080", "", "", false); err != nil {
 		t.Fatalf("loopback hosted listener rejected: %v", err)
 	}
-	if err := validateHostedListen("0.0.0.0:8080", "", ""); err == nil {
+	if err := validateHostedListen("0.0.0.0:8080", "", "", false); err == nil {
 		t.Fatal("expected non-loopback hosted listener without TLS to be rejected")
 	}
-	if err := validateHostedListen("0.0.0.0:8443", "cert.pem", "key.pem"); err != nil {
+	if err := validateHostedListen("0.0.0.0:8443", "cert.pem", "key.pem", false); err != nil {
 		t.Fatalf("TLS-protected hosted listener rejected: %v", err)
+	}
+	if err := validateHostedListen("0.0.0.0:8080", "", "", true); err != nil {
+		t.Fatalf("trusted proxy hosted listener rejected: %v", err)
 	}
 }
 
-func TestHostedRedisRequiresTLS(t *testing.T) {
-	if err := validateHostedRedisURL("redis://127.0.0.1:6379/0"); err == nil {
-		t.Fatal("hosted mode accepted plaintext loopback Redis")
+func TestHostedRedisRequiresTLSUnlessPrivatePlaintextIsExplicit(t *testing.T) {
+	if err := validateHostedRedisURL("redis://redis:6379/0", false); err == nil {
+		t.Fatal("hosted mode accepted plaintext Redis without opt-in")
 	}
-	if err := validateHostedRedisURL("rediss://redis.example.com:6380/0"); err != nil {
+	if err := validateHostedRedisURL("redis://redis:6379/0", true); err != nil {
+		t.Fatalf("hosted mode rejected explicitly allowed private Redis: %v", err)
+	}
+	if err := validateHostedRedisURL("redis://redis.example.com:6379/0", true); err == nil {
+		t.Fatal("hosted mode accepted a public plaintext Redis hostname")
+	}
+	if err := validateHostedRedisURL("rediss://redis.example.com:6380/0", false); err != nil {
 		t.Fatalf("hosted mode rejected TLS Redis: %v", err)
 	}
 }
@@ -72,8 +81,45 @@ func TestHostedProxyHeadersAreTrustedOnlyOnLoopbackBoundary(t *testing.T) {
 
 	loopbackProxy := direct
 	loopbackProxy.TrustForwarded = true
+	loopbackProxy.TrustedProxyPrefixes = loopbackProxyPrefixes()
+	request.RemoteAddr = "127.0.0.1:12345"
 	if !validAzureProxyRequest(request, loopbackProxy) {
 		t.Fatal("loopback proxy boundary rejected trusted forwarded headers")
+	}
+	request.RemoteAddr = "203.0.113.10:12345"
+	if validAzureProxyRequest(request, loopbackProxy) {
+		t.Fatal("hosted boundary trusted forwarded headers from an untrusted peer")
+	}
+}
+
+func TestCoolifyProxyCIDRsFailClosed(t *testing.T) {
+	prefixes, err := parseTrustedProxyPrefixes("10.42.0.0/24,fd00:42::/64")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(prefixes) != 2 {
+		t.Fatalf("got %d proxy prefixes, want 2", len(prefixes))
+	}
+	for _, value := range []string{"0.0.0.0/0", "203.0.113.0/24", "not-a-cidr"} {
+		if _, err := parseTrustedProxyPrefixes(value); err == nil {
+			t.Fatalf("accepted unsafe trusted proxy CIDR %q", value)
+		}
+	}
+}
+
+func TestPrivatePlaintextRedisOptInIsExplicit(t *testing.T) {
+	for _, value := range []string{"", "false", "FALSE"} {
+		allowed, err := privatePlaintextRedisOptIn(value)
+		if err != nil || allowed {
+			t.Fatalf("value %q unexpectedly enabled plaintext Redis: allowed=%t err=%v", value, allowed, err)
+		}
+	}
+	allowed, err := privatePlaintextRedisOptIn("true")
+	if err != nil || !allowed {
+		t.Fatalf("explicit opt-in was rejected: allowed=%t err=%v", allowed, err)
+	}
+	if _, err := privatePlaintextRedisOptIn("yes"); err == nil {
+		t.Fatal("ambiguous plaintext Redis opt-in was accepted")
 	}
 }
 
