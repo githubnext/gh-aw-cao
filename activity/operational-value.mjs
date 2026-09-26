@@ -217,7 +217,8 @@ export function operationalValueReserve(value, UsageError = Error) {
 
 function parseOperationalValueOutput(content, source, repositories) {
   const allowedRepositories = new Set(repositories.map((repository) => repository.toLowerCase()));
-  return String(content).split(/\r?\n/).flatMap((line, index) => {
+  const definitions = new Set();
+  const values = String(content).split(/\r?\n/).flatMap((line, index) => {
     if (!line.trim()) return [];
     let record;
     try {
@@ -227,6 +228,24 @@ function parseOperationalValueOutput(content, source, repositories) {
     }
     if (!record || typeof record !== 'object' || Array.isArray(record)) {
       throw new Error(`${source}:${index + 1} must emit a JSON object`);
+    }
+    if (record.kind === 'operational_value_definition') {
+      if (
+        !Array.isArray(record.valueIds)
+        || record.valueIds.length === 0
+        || record.valueIds.some((valueId) => (
+          typeof valueId !== 'string' || !OPERATIONAL_VALUE_ID.test(valueId)
+        ))
+      ) {
+        throw new Error(`${source}:${index + 1} must emit valid operational value definition IDs`);
+      }
+      for (const valueId of record.valueIds) {
+        if (definitions.has(valueId)) {
+          throw new Error(`${source}:${index + 1} emitted a duplicate operational value definition ID: ${valueId}`);
+        }
+        definitions.add(valueId);
+      }
+      return [];
     }
     const timestamp = canonicalTimestamp(record.timestamp, `${source}:${index + 1}.timestamp`);
     const repository = String(record.repository ?? '');
@@ -310,6 +329,7 @@ function parseOperationalValueOutput(content, source, repositories) {
       ...(hasRollupNumerator ? { rollupNumerator, rollupDenominator } : {})
     }];
   });
+  return { definitions, values };
 }
 
 async function retainedOperationalValueEnvelopes(outputPath, cutoff) {
@@ -368,6 +388,7 @@ export async function runOperationalValue({
   })}\n`;
   const values = [];
   const warnings = [];
+  const activeValueIds = new Map();
   const worker = operationalValueWorkerEnvironment(databasePath, observedAt, rateLimitReserve);
   const warn = (entry, error) => {
     const message = redactToken(error instanceof Error ? error.message : error, worker.token);
@@ -385,8 +406,9 @@ export async function runOperationalValue({
         signal,
         timeoutMs: workerTimeoutMs
       });
-      values.push(...parseOperationalValueOutput(output, entry.script, uniqueRepositories)
-        .map((record) => ({ ...record, campaign: entry.package })));
+      const parsed = parseOperationalValueOutput(output, entry.script, uniqueRepositories);
+      values.push(...parsed.values.map((record) => ({ ...record, campaign: entry.package })));
+      if (parsed.definitions.size > 0) activeValueIds.set(entry.package, parsed.definitions);
     } catch (error) {
       signal?.throwIfAborted();
       warn(entry, error);
@@ -432,7 +454,12 @@ export async function runOperationalValue({
     const retained = retentionWindow === undefined
       ? []
       : await retainedOperationalValueEnvelopes(output, Date.parse(observedAt) - retentionWindow);
-    const merged = new Map([...retained, ...envelopes].map((envelope) => {
+    const currentRetained = retained.filter((envelope) => {
+      const value = envelope.operational_value;
+      const activeIds = activeValueIds.get(value.campaign);
+      return !activeIds || activeIds.has(value.value_id);
+    });
+    const merged = new Map([...currentRetained, ...envelopes].map((envelope) => {
       const value = envelope.operational_value;
       return [`${String(value.repository).toLowerCase()}\0${value.value_id}\0${value.timestamp}`, envelope];
     }));

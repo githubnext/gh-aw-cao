@@ -59,6 +59,10 @@ for (const moduleFile of moduleFiles) {
   ) {
     fail(`Invalid operational value module: ${moduleFile}`);
   }
+  console.log(JSON.stringify({
+    kind: "operational_value_definition",
+    valueIds: definition.metrics.map((metric) => `${definition.slug}.${metric.id}`),
+  }));
 
   const supported = new Set(
     definition.evidence.repositories.map((repository) => String(repository).toLowerCase()),

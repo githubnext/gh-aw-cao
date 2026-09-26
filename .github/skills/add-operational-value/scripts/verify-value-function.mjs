@@ -162,6 +162,15 @@ if (caoAdapter) {
     fail(`CAO adapter did not exit cleanly: ${error.message}`);
   }
   const expectedIds = new Set(metrics.map(({ id }) => `${definition.slug}.${id}`));
+  const definitionRecords = records.filter(({ kind }) => kind === "operational_value_definition");
+  records = records.filter(({ kind }) => kind !== "operational_value_definition");
+  const definitionIds = definitionRecords[0]?.valueIds;
+  const uniqueDefinitionIds = new Set(Array.isArray(definitionIds) ? definitionIds : []);
+  const validDefinitions = definitionRecords.length === 1
+    && Array.isArray(definitionIds)
+    && definitionIds.length === expectedIds.size
+    && uniqueDefinitionIds.size === expectedIds.size
+    && [...expectedIds].every((valueId) => uniqueDefinitionIds.has(valueId));
   const recordKeys = records.map(
     ({ repository, valueId }) => `${String(repository).toLowerCase()}\0${valueId}`,
   );
@@ -186,7 +195,7 @@ if (caoAdapter) {
         && record.metricUnit === metric?.unit
         && (metric?.rollup ? hasValidRollup : !Object.hasOwn(record, "rollupNumerator") || hasValidRollup);
     });
-  if (!validRecords) fail("CAO adapter returned invalid repository metric JSONL");
+  if (!validDefinitions || !validRecords) fail("CAO adapter returned invalid repository metric JSONL");
 }
 
 console.log(`verified ${valueFunction}`);

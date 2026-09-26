@@ -213,6 +213,63 @@ for (const repository of request.repositories) {
   );
 });
 
+test('cao operational-value definitions retire obsolete cached metric IDs', () => {
+  const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-definitions-'));
+  const packageDirectory = path.join(temporary, 'example');
+  const output = path.join(temporary, 'values.jsonl');
+  mkdirSync(packageDirectory);
+  writeFileSync(path.join(packageDirectory, 'operational-value.mjs'), `
+const chunks = [];
+for await (const chunk of process.stdin) chunks.push(chunk);
+const request = JSON.parse(Buffer.concat(chunks).toString());
+console.log(JSON.stringify({kind:"operational_value_definition",valueIds:["example-worker.current"]}));
+console.log(JSON.stringify({timestamp:request.timestamp,repository:request.repositories[0],valueId:"example-worker.current",value:3}));\n`);
+  writeFileSync(output, [
+    {
+      schema_version: 2,
+      kind: 'operational_value',
+      operational_value: {
+        campaign: 'example',
+        repository: 'githubnext/gh-aw-cao',
+        value_id: 'example-worker.retired',
+        value: 1,
+        timestamp: '2026-09-21T10:00:00.000Z'
+      }
+    },
+    {
+      schema_version: 2,
+      kind: 'operational_value',
+      operational_value: {
+        campaign: 'unrelated',
+        repository: 'githubnext/gh-aw-cao',
+        value_id: 'preserved',
+        value: 4,
+        timestamp: '2026-09-21T10:00:00.000Z'
+      }
+    }
+  ].map(JSON.stringify).join('\n') + '\n');
+
+  execFileSync(process.execPath, [
+    cao,
+    'operational-value',
+    '--database', path.join(temporary, 'dashboard.sqlite'),
+    '--root', temporary,
+    '--output', output,
+    '--timestamp', '2026-09-24T10:00:00Z',
+    '--retention-days', '30',
+    '--repository', 'githubnext/gh-aw-cao'
+  ]);
+
+  const envelopes = readFileSync(output, 'utf8').trim().split('\n').map(JSON.parse);
+  assert.deepEqual(envelopes.map((entry) => ({
+    campaign: entry.operational_value.campaign,
+    valueId: entry.operational_value.value_id
+  })), [
+    { campaign: 'unrelated', valueId: 'preserved' },
+    { campaign: 'example', valueId: 'example-worker.current' }
+  ]);
+});
+
 test('cao operational-value warns on worker failure and preserves successful values', () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-resilience-'));
   const failedDirectory = path.join(temporary, 'failed');
@@ -290,7 +347,8 @@ fi\n`);
       ...process.env,
       PATH: `${temporary}:${process.env.PATH}`
     } }
-  ).trim().split('\n').map(JSON.parse);
+  ).trim().split('\n').map(JSON.parse)
+    .filter(({ kind }) => kind !== 'operational_value_definition');
 
   assert.deepEqual(result.map(({ valueId, value }) => ({ valueId, value })), [
     { valueId: 'dependabot-update-planner.consumed-plan-share', value: 1 },

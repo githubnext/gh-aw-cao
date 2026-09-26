@@ -152,6 +152,13 @@ const request = JSON.parse(await new Promise((resolve) => {
   process.stdin.on("data", (chunk) => { input += chunk; });
   process.stdin.on("end", () => resolve(input));
 }));
+console.log(JSON.stringify({
+  kind: "operational_value_definition",
+  valueIds: [
+    "daily-file-diet.largest-file-health",
+    "daily-file-diet.compliant-line-mass-share"
+  ]
+}));
 for (const repository of request.repositories) {
   for (const valueId of [
     "daily-file-diet.largest-file-health",
