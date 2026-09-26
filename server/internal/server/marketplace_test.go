@@ -123,7 +123,9 @@ func TestQueryTransparentlyInjectsMarketplacePackagesWithoutSecretLeakage(t *tes
 	if !ok {
 		t.Fatalf("expected the marketplace-packages source to be injected, got: %#v", result.Sources)
 	}
-	if len(source.Rows) != 1 || source.Rows[0]["name"] != "Demo" {
+	if len(source.Rows) != 1 ||
+		source.Rows[0]["package-name"] != "Demo" ||
+		source.Rows[0]["package-source"] != "example/packages/demo@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" {
 		t.Fatalf("expected the resolved demo package row, got: %#v", source.Rows)
 	}
 	if source.Metadata["availability"] != "available" {
