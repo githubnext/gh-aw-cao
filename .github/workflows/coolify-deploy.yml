@@ -33,6 +33,10 @@ jobs:
       environment: ${{ steps.tier.outputs.environment }}
       tier: ${{ steps.tier.outputs.tier }}
       version: ${{ steps.tier.outputs.version }}
+      identity: ${{ steps.tier.outputs.identity }}
+      source_ref: ${{ steps.tier.outputs.source_ref }}
+      expected_sha: ${{ steps.tier.outputs.expected_sha }}
+      pr_number: ${{ steps.tier.outputs.pr_number }}
     steps:
       - id: tier
         name: Classify event without promotion
@@ -43,38 +47,80 @@ jobs:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
           PR_DRAFT: ${{ github.event.pull_request.draft }}
           PR_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           REPOSITORY: ${{ github.repository }}
+          REF: ${{ github.ref }}
           SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
+          stable_tag_re='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+          prerelease_identifier='(0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)'
+          prerelease_tag_re="^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)-${prerelease_identifier}(\\.${prerelease_identifier})*$"
           eligible=false
           environment=
           tier=
           version=
+          identity=
+          source_ref=
+          expected_sha=
+          pr_number=
           case "${EVENT_NAME}" in
             release)
               if [[ "${EVENT_ACTION}" != "published" ]]; then exit 1; fi
+              if (( ${#RELEASE_TAG} > 128 )); then
+                echo "release tag is too long for an exact image identity" >&2
+                exit 1
+              fi
               version="${RELEASE_TAG}"
               if [[ "${RELEASE_PRERELEASE}" == "true" ]]; then
+                if [[ ! "${RELEASE_TAG}" =~ ${prerelease_tag_re} ]]; then
+                  echo "published prerelease tag must be vX.Y.Z-prerelease SemVer without build metadata" >&2
+                  exit 1
+                fi
                 tier=beta
                 environment=coolify-beta
-              else
+              elif [[ "${RELEASE_PRERELEASE}" == "false" ]]; then
+                if [[ ! "${RELEASE_TAG}" =~ ${stable_tag_re} ]]; then
+                  echo "published stable tag must be exactly vX.Y.Z SemVer" >&2
+                  exit 1
+                fi
                 tier=stable
                 environment=coolify-stable
+              else
+                echo "release prerelease classification is missing" >&2
+                exit 1
               fi
+              identity="${RELEASE_TAG}"
+              source_ref="refs/tags/${RELEASE_TAG}"
               eligible=true
               ;;
             push)
+              if [[ "${REF}" != "refs/heads/main" || ! "${SHA}" =~ ^[0-9a-f]{40}$ ]]; then
+                echo "alpha requires an exact main commit" >&2
+                exit 1
+              fi
               tier=alpha
               environment=coolify-alpha
               version="0.0.0-alpha.${SHA:0:12}"
+              identity="sha-${SHA}"
+              source_ref="${SHA}"
+              expected_sha="${SHA}"
               eligible=true
               ;;
             pull_request)
               if [[ "${PR_DRAFT}" != "true" && "${PR_HEAD_REPOSITORY}" == "${REPOSITORY}" ]]; then
+                if [[ ! "${PR_NUMBER}" =~ ^[1-9][0-9]*$ || ! "${PR_HEAD_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
+                  echo "preview requires an exact pull request head commit" >&2
+                  exit 1
+                fi
                 tier=preview
                 environment=coolify-preview
-                version="0.0.0-preview.${SHA:0:12}"
+                version="0.0.0-preview.${PR_NUMBER}.${PR_HEAD_SHA:0:12}"
+                identity="pr-${PR_NUMBER}-sha-${PR_HEAD_SHA}"
+                source_ref="${PR_HEAD_SHA}"
+                expected_sha="${PR_HEAD_SHA}"
+                pr_number="${PR_NUMBER}"
                 eligible=true
               fi
               ;;
@@ -84,6 +130,10 @@ jobs:
             echo "environment=${environment}"
             echo "tier=${tier}"
             echo "version=${version}"
+            echo "identity=${identity}"
+            echo "source_ref=${source_ref}"
+            echo "expected_sha=${expected_sha}"
+            echo "pr_number=${pr_number}"
           } >> "${GITHUB_OUTPUT}"
 
   test:
@@ -119,20 +169,58 @@ jobs:
     needs: [classify, test]
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    concurrency:
+      group: coolify-image-${{ needs.classify.outputs.identity }}
+      cancel-in-progress: false
     permissions:
       contents: read
       packages: write
     outputs:
       image: ${{ steps.publish.outputs.image }}
       digest: ${{ steps.publish.outputs.digest }}
+      source_sha: ${{ steps.source.outputs.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ needs.classify.outputs.source_ref }}
           persist-credentials: false
+      - id: source
+        name: Resolve and verify exact source commit
+        env:
+          TIER: ${{ needs.classify.outputs.tier }}
+          RELEASE_TAG: ${{ needs.classify.outputs.identity }}
+          EXPECTED_SHA: ${{ needs.classify.outputs.expected_sha }}
+        run: |
+          set -euo pipefail
+          source_sha="$(git rev-parse --verify 'HEAD^{commit}')"
+          if [[ ! "${source_sha}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "checkout did not resolve to a full commit SHA" >&2
+            exit 1
+          fi
+          case "${TIER}" in
+            stable|beta)
+              tag_sha="$(git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}")"
+              if [[ "${source_sha}" != "${tag_sha}" ]]; then
+                echo "release checkout does not match the published tag target" >&2
+                exit 1
+              fi
+              ;;
+            alpha|preview)
+              if [[ "${source_sha}" != "${EXPECTED_SHA}" ]]; then
+                echo "checkout does not match the event source commit" >&2
+                exit 1
+              fi
+              ;;
+            *)
+              echo "unknown deployment tier" >&2
+              exit 1
+              ;;
+          esac
+          echo "sha=${source_sha}" >> "${GITHUB_OUTPUT}"
       - name: Build local image
         env:
           VERSION: ${{ needs.classify.outputs.version }}
-          REVISION: ${{ github.sha }}
+          REVISION: ${{ steps.source.outputs.sha }}
         run: |
           set -euo pipefail
           docker build \
@@ -145,7 +233,7 @@ jobs:
       - name: Scan local image
         uses: aquasecurity/trivy-action@57a97c7060a3f8bc153738150e71b7be9592aadd # v0.35.0
         with:
-          image-ref: cao-dashboard:${{ github.sha }}
+          image-ref: cao-dashboard:${{ steps.source.outputs.sha }}
           format: table
           exit-code: "1"
           ignore-unfixed: true
@@ -157,19 +245,73 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - id: publish
-        name: Push commit identity and capture registry digest
+        name: Publish exact source identity and capture registry digest
         env:
           REPOSITORY: ${{ github.repository }}
-          REVISION: ${{ github.sha }}
-          RUN_ID: ${{ github.run_id }}
-          RUN_ATTEMPT: ${{ github.run_attempt }}
+          REVISION: ${{ steps.source.outputs.sha }}
+          VERSION: ${{ needs.classify.outputs.version }}
+          IDENTITY: ${{ needs.classify.outputs.identity }}
+          TIER: ${{ needs.classify.outputs.tier }}
+          PR_NUMBER: ${{ needs.classify.outputs.pr_number }}
         run: |
           set -euo pipefail
           repository="ghcr.io/${REPOSITORY,,}/cao-dashboard"
-          reference="${repository}:sha-${REVISION}-run-${RUN_ID}-${RUN_ATTEMPT}"
-          docker tag "cao-dashboard:${REVISION}" "${reference}"
-          push_output="$(docker push "${reference}")"
-          digest="$(printf '%s\n' "${push_output}" | sed -n 's/.*digest: \(sha256:[0-9a-f]\{64\}\).*/\1/p' | tail -n 1)"
+          reference="${repository}:${IDENTITY}"
+
+          case "${TIER}" in
+            stable)
+              [[ "${IDENTITY}" == "${VERSION}" && "${IDENTITY}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+              ;;
+            beta)
+              [[ "${IDENTITY}" == "${VERSION}" && "${IDENTITY}" == v*-* ]]
+              ;;
+            alpha)
+              [[ "${IDENTITY}" == "sha-${REVISION}" ]]
+              ;;
+            preview)
+              [[ "${IDENTITY}" == "pr-${PR_NUMBER}-sha-${REVISION}" ]]
+              ;;
+            *)
+              exit 1
+              ;;
+          esac
+
+          inspect_output=
+          if inspect_output="$(docker buildx imagetools inspect "${reference}" 2>&1)"; then
+            digest="$(printf '%s\n' "${inspect_output}" | sed -n 's/^Digest:[[:space:]]*\(sha256:[0-9a-f]\{64\}\).*$/\1/p' | head -n 1)"
+            if [[ ! "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+              echo "existing identity did not resolve to one immutable digest" >&2
+              exit 1
+            fi
+            docker pull "${repository}@${digest}" >/dev/null
+            existing_revision="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "${repository}@${digest}")"
+            existing_version="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "${repository}@${digest}")"
+            if [[ "${existing_revision}" != "${REVISION}" || "${existing_version}" != "${VERSION}" ]]; then
+              echo "refusing to redefine an existing immutable source identity" >&2
+              exit 1
+            fi
+            verify_output="$(docker buildx imagetools inspect "${reference}")"
+            verify_digest="$(printf '%s\n' "${verify_output}" | sed -n 's/^Digest:[[:space:]]*\(sha256:[0-9a-f]\{64\}\).*$/\1/p' | head -n 1)"
+            if [[ "${verify_digest}" != "${digest}" ]]; then
+              echo "immutable source identity changed while it was being verified" >&2
+              exit 1
+            fi
+          else
+            if ! printf '%s\n' "${inspect_output}" | grep -Eqi '(manifest unknown|not found)'; then
+              printf '%s\n' "${inspect_output}" >&2
+              echo "unable to verify whether the immutable source identity exists" >&2
+              exit 1
+            fi
+            docker tag "cao-dashboard:${REVISION}" "${reference}"
+            push_output="$(docker push "${reference}")"
+            digest="$(printf '%s\n' "${push_output}" | sed -n 's/.*digest: \(sha256:[0-9a-f]\{64\}\).*/\1/p' | tail -n 1)"
+            verify_output="$(docker buildx imagetools inspect "${reference}")"
+            verify_digest="$(printf '%s\n' "${verify_output}" | sed -n 's/^Digest:[[:space:]]*\(sha256:[0-9a-f]\{64\}\).*$/\1/p' | head -n 1)"
+            if [[ "${verify_digest}" != "${digest}" ]]; then
+              echo "published identity does not resolve to the pushed artifact" >&2
+              exit 1
+            fi
+          fi
           if [[ ! "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
             echo "GHCR did not return an immutable image digest" >&2
             exit 1
@@ -197,7 +339,7 @@ jobs:
           COOLIFY_DEPLOY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
           IMAGE: ${{ needs.image.outputs.image }}
           DIGEST: ${{ needs.image.outputs.digest }}
-          SOURCE_SHA: ${{ github.sha }}
+          SOURCE_SHA: ${{ needs.image.outputs.source_sha }}
           TIER: ${{ needs.classify.outputs.tier }}
         run: |
           set -euo pipefail

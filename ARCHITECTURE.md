@@ -287,10 +287,13 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
 - The Coolify image builds the dashboard and Go server together, runs as a
   non-root user, and mounts the authoritative artifact read-only. Conventional
   GitHub Actions builds and scans each eligible stable, beta, alpha, or
-  same-repository preview event independently, publishes a commit identity to
-  GHCR, and deploys only the returned digest through tier-specific protected
-  environments. Tiers never promote artifacts implicitly and deployments never
-  consume mutable channel tags.
+  same-repository preview event independently. Releases use the validated
+  published tag and its target commit, alpha uses the full `main` commit, and
+  previews use the pull request number and full head commit. Each source
+  identity is published without silent redefinition, and only its exact digest
+  is deployed through a tier-specific protected environment. Tiers never
+  promote artifacts implicitly and deployments never consume mutable channel
+  tags.
 - Browsers and external clients never receive Redis endpoints or credentials.
   Redis generations are staged and validated before atomic activation; a failed
   rebuild leaves the previous generation active, and an empty Redis instance is

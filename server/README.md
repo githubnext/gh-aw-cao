@@ -151,25 +151,26 @@ network, with `CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS=true` and a single-label servic
 name or private IP. The opt-in does not affect Azure: Azure Functions continues
 to require `rediss://`.
 
-The conventional `.github/workflows/coolify-deploy.yml` builds and scans a new
-image for each eligible event, pushes only
-`sha-<commit>-run-<run-id>-<attempt>` immutable identity tags, captures the
-registry digest, and sends only the `name@sha256:...` reference to a protected
-GitHub environment:
+The conventional `.github/workflows/coolify-deploy.yml` resolves and checks out
+the exact event source, builds and scans it, captures the registry digest, and
+sends only the `name@sha256:...` reference to a protected GitHub environment:
 
-| Event | GitHub environment |
-| --- | --- |
-| Published non-prerelease release | `coolify-stable` |
-| Published prerelease | `coolify-beta` |
-| Push to `main` | `coolify-alpha` |
-| Non-draft same-repository pull request | `coolify-preview` |
+| Event | Immutable GHCR identity | GitHub environment |
+| --- | --- | --- |
+| Published non-prerelease `vX.Y.Z` release | the release tag and its target commit (`vX.Y.Z`) | `coolify-stable` |
+| Published SemVer prerelease | the prerelease tag and its target commit (`vX.Y.Z-<prerelease>`) | `coolify-beta` |
+| Push to `main` | `sha-<full-main-commit>` | `coolify-alpha` |
+| Non-draft same-repository pull request | `pr-<number>-sha-<full-head-commit>` | `coolify-preview` |
 
 Configure `COOLIFY_DEPLOY_ENDPOINT` and `COOLIFY_DEPLOY_TOKEN` as secrets on each
 environment. The HTTPS endpoint is the deployment adapter for that Coolify
 resource; it must update `CAO_IMAGE` from the request's exact digest reference
 and trigger that resource only. Environment protection rules provide approvals.
 No tier reads another tier's image, no release promotes an alpha/beta artifact,
-and the workflow never deploys a mutable channel tag.
+and the workflow never deploys a mutable channel tag. Release tags must satisfy
+the channel's SemVer form and build metadata is rejected because `+` cannot be
+preserved in a Docker tag. A rerun reuses an existing identity only after its
+digest and source labels are verified; it never silently retargets that identity.
 
 #### Rollback
 
