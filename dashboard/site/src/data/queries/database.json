@@ -278,6 +278,69 @@
     ]
   },
   {
+    "name": "overview-runs",
+    "stores": ["workflows", "runs"],
+    "from": "$runs",
+    "joins": [
+      {
+        "source": "$workflows",
+        "type": "left",
+        "on": [{ "left": "workflowId", "right": "id" }],
+        "fields": [
+          { "field": "path", "as": "_workflow-path" },
+          { "field": "rolloutMode", "as": "_workflow-rollout-mode" },
+          { "field": "campaign", "as": "campaign" },
+          { "field": "campaignName", "as": "campaign-name" },
+          { "field": "name", "as": "workflow-name" },
+          { "field": "role", "as": "workflow-role" }
+        ]
+      }
+    ],
+    "compute": [
+      {
+        "as": "workflow",
+        "function": "coalesce",
+        "args": [{ "field": "workflowPath" }, { "field": "_workflow-path" }]
+      },
+      {
+        "as": "run",
+        "function": "concat",
+        "args": [{ "field": "githubRunId" }]
+      },
+      {
+        "as": "_rollout-unknown",
+        "function": "equals-any",
+        "args": [{ "field": "rolloutMode" }, { "value": "unknown" }, { "value": null }]
+      },
+      {
+        "as": "effective-rollout-mode",
+        "function": "if",
+        "args": [
+          { "field": "_rollout-unknown" },
+          { "field": "_workflow-rollout-mode" },
+          { "field": "rolloutMode" }
+        ]
+      }
+    ],
+    "select": [
+      { "field": "id" },
+      { "field": "owner", "as": "organization" },
+      { "field": "repository" },
+      { "field": "workflow" },
+      { "field": "workflow-name" },
+      { "field": "workflow-role" },
+      { "field": "campaign" },
+      { "field": "campaign-name" },
+      { "field": "run" },
+      { "field": "targetRepository", "as": "target-repository" },
+      { "field": "event" },
+      { "field": "startedAt", "as": "started-at" },
+      { "field": "status", "as": "run-status" },
+      { "field": "conclusion", "as": "run-conclusion" },
+      { "field": "effective-rollout-mode", "as": "rollout-mode" }
+    ]
+  },
+  {
     "name": "operational-values",
     "stores": ["repositories", "campaigns", "operationalValues"],
     "from": "$operationalValues",

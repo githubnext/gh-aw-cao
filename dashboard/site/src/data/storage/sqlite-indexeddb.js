@@ -322,6 +322,23 @@ class SqliteIDBObjectStore {
   }
 
   /** @param {unknown} [query] */
+  count(query) {
+    return this.requireTransaction().runRequest(() => {
+      if (query !== undefined) {
+        return this.database.records(this.name)
+          .filter((record) => matchesQuery(record.key, query))
+          .length;
+      }
+      const row = /** @type {{ count: number }} */ (this.database.connection.prepare(`
+        SELECT count(*) AS count
+        FROM __idb_records
+        WHERE database_name = ? AND store_name = ?
+      `).get(this.database.name, this.name));
+      return Number(row.count);
+    });
+  }
+
+  /** @param {unknown} [query] */
   getAllKeys(query) {
     return this.requireTransaction().runRequest(() => this.database.records(this.name)
       .map((record) => record.key)

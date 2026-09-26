@@ -162,6 +162,37 @@ describe('CLI actions', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it('uses Bash to make shell-script commands copyable from Windows terminals', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { platform: 'Win32', clipboard: { writeText } });
+    const rendered = renderCliActions([{
+      id: 'update-repository',
+      label: 'Update all',
+      icon: 'sync',
+      command: './.github/aw/cao.sh update --repo {{repository}}',
+      arguments: [{
+        id: 'create-pull-request',
+        label: 'Create pull request',
+        type: 'boolean',
+        flag: '--create-pull-request',
+        default: true
+      }]
+    }], {
+      canExecute: false,
+      templateValues: { repository: 'octo/example' }
+    });
+    document.body.append(/** @type {HTMLElement} */ (rendered));
+
+    rendered?.querySelector('.cli-action-trigger')?.dispatchEvent(new MouseEvent('click'));
+    expect(rendered?.querySelector('.cli-action-command')?.textContent)
+      .toBe('bash ./.github/aw/cao.sh update --repo octo/example --create-pull-request');
+    rendered?.querySelector('.cli-action-confirm')?.dispatchEvent(new MouseEvent('click'));
+
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith(
+      'bash ./.github/aw/cao.sh update --repo octo/example --create-pull-request'
+    ));
+  });
+
   it('requires a fresh confirmation before every execution', async () => {
     const streamingBody = () => {
       const encoder = new TextEncoder();

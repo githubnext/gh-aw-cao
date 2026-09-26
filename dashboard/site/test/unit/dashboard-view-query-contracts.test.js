@@ -192,6 +192,20 @@ describe('dashboard view query contracts', () => {
     }]);
   });
 
+  it('keeps Overview runtime health independent from audit-heavy campaign run presentation', () => {
+    const runtimeHealth = dashboard.queries.find(
+      (/** @type {Record<string, unknown>} */ query) => query.name === 'campaign-runtime-health-groups'
+    );
+    const runtimeHealthInput = dashboard.queries.find(
+      (/** @type {Record<string, unknown>} */ query) => query.name === 'campaign-runtime-health-runs'
+    );
+
+    expect(runtimeHealth).toMatchObject({ from: 'campaign-runtime-health-runs' });
+    expect(runtimeHealthInput).toMatchObject({ from: 'overview-runs' });
+    expect(declaredQueryReferences(runtimeHealthInput)).not.toContain('run-incomplete-outcomes');
+    expect(declaredQueryReferences(runtimeHealthInput)).not.toContain('audits');
+  });
+
   it('keeps campaign run navigation first and failure views scoped to dispatches', () => {
     const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-runs');
     const views = viewsOf(page);
@@ -209,6 +223,7 @@ describe('dashboard view query contracts', () => {
       'campaign-problems': 'problems',
       'campaign-runs': 'runs',
       'campaign-issues': 'issues',
+      'campaign-memory': 'memory',
       'campaign-detail': 'overview'
     };
 
@@ -251,7 +266,8 @@ describe('dashboard view query contracts', () => {
     const expectedTabs = [
       { id: 'insights', label: 'Operational Value', icon: 'graph', page: 'campaign-insights' },
       { id: 'problems', label: 'Problems', icon: 'alert', page: 'campaign-problems' },
-      { id: 'issues', label: 'Issues', icon: 'issue-opened', page: 'campaign-issues' }
+      { id: 'issues', label: 'Issues', icon: 'issue-opened', page: 'campaign-issues' },
+      { id: 'memory', label: 'Memory', icon: 'archive', page: 'campaign-memory' }
     ];
 
     for (const page of campaignPages) {

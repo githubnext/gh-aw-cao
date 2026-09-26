@@ -2455,33 +2455,7 @@
       {
         "name": "overview-run-summary",
         "intent": "Summarize successful, failed, and active runs with rollout-mode counts.",
-        "from": "runs",
-        "joins": [
-          {
-            "source": "workflows",
-            "type": "left",
-            "on": [
-              {
-                "left": "organization",
-                "right": "organization"
-              },
-              {
-                "left": "repository",
-                "right": "repository"
-              },
-              {
-                "left": "workflow",
-                "right": "workflow"
-              }
-            ],
-            "fields": [
-              {
-                "field": "campaign",
-                "as": "declared-campaign"
-              }
-            ]
-          }
-        ],
+        "from": "overview-runs",
         "aggregate": {
           "values": [
             {
@@ -2580,36 +2554,8 @@
       {
         "name": "overview-delivery-summary",
         "intent": "Count distinct target repositories with successful worker dispatch runs in the selected horizon.",
-        "from": "runs",
+        "from": "overview-runs",
         "joins": [
-          {
-            "source": "workflows",
-            "type": "left",
-            "on": [
-              {
-                "left": "organization",
-                "right": "organization"
-              },
-              {
-                "left": "repository",
-                "right": "repository"
-              },
-              {
-                "left": "workflow",
-                "right": "workflow"
-              }
-            ],
-            "fields": [
-              {
-                "field": "workflow-role",
-                "as": "workflow-role"
-              },
-              {
-                "field": "workflow-active",
-                "as": "workflow-active"
-              }
-            ]
-          },
           {
             "source": "repositories",
             "type": "inner",
@@ -2963,7 +2909,7 @@
       {
         "name": "overview-rhythm",
         "intent": "Show current-week successful runs from Monday through today and the matching previous-week count for weekdays not yet reached.",
-        "from": "runs",
+        "from": "overview-runs",
         "time": {
           "range": "15d"
         },
@@ -7429,10 +7375,137 @@
         ]
       },
       {
+        "name": "campaign-runtime-health-runs",
+        "intent": "Project only the run and workflow fields required to classify current campaign runtime health.",
+        "description": "A bounded runtime-health input that excludes audit outcomes and presentation-only campaign run fields.",
+        "from": "overview-runs",
+        "compute": [
+          {
+            "as": "status",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "run-conclusion"
+              },
+              {
+                "field": "run-status"
+              },
+              {
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "as": "runtime-repository",
+            "function": "concat",
+            "args": [
+              {
+                "field": "organization"
+              },
+              {
+                "value": "/"
+              },
+              {
+                "field": "repository"
+              }
+            ]
+          },
+          {
+            "as": "is-worker",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "workflow-role"
+              },
+              {
+                "value": "worker"
+              }
+            ]
+          },
+          {
+            "as": "is-orchestrator",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "workflow-role"
+              },
+              {
+                "value": "orchestrator"
+              }
+            ]
+          },
+          {
+            "as": "root-dispatch-type",
+            "function": "if",
+            "args": [
+              {
+                "field": "is-orchestrator"
+              },
+              {
+                "value": "Campaign orchestrator"
+              },
+              {
+                "value": "Standalone workflow"
+              }
+            ]
+          },
+          {
+            "as": "dispatch-type",
+            "function": "if",
+            "args": [
+              {
+                "field": "is-worker"
+              },
+              {
+                "value": "Campaign worker"
+              },
+              {
+                "field": "root-dispatch-type"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "started-at"
+          },
+          {
+            "field": "campaign"
+          },
+          {
+            "field": "campaign-name"
+          },
+          {
+            "field": "workflow"
+          },
+          {
+            "field": "workflow-name"
+          },
+          {
+            "field": "workflow-role"
+          },
+          {
+            "field": "dispatch-type"
+          },
+          {
+            "field": "runtime-repository"
+          },
+          {
+            "field": "run"
+          },
+          {
+            "field": "run-status"
+          },
+          {
+            "field": "status"
+          }
+        ]
+      },
+      {
         "name": "campaign-runtime-health-groups",
         "intent": "Compute each campaign workflow and runtime repository's latest consecutive failure streak in the selected horizon.",
         "description": "Current retained failure streaks grouped by campaign workflow and runtime repository, considering only concluded Runs so an in-flight retry cannot mask an active failure streak.",
-        "from": "campaign-runs",
+        "from": "campaign-runtime-health-runs",
         "filter": {
           "predicates": [
             {
@@ -7562,7 +7635,7 @@
         "name": "workflow-run-observation-counts",
         "intent": "Count retained Runs for each workflow identity in the selected horizon.",
         "description": "One row per organization, repository, and workflow with retained Run counts, safe to join without row multiplication.",
-        "from": "runs",
+        "from": "overview-runs",
         "aggregate": {
           "by": [
             "organization",
@@ -10913,6 +10986,334 @@
         "limit": 1
       },
       {
+        "name": "skill-invocations",
+        "intent": "Select observed skill invocations for skill usage analytics.",
+        "from": "tools",
+        "filter": {
+          "predicates": [
+            {
+              "field": "is-skill",
+              "equals": true
+            }
+          ]
+        },
+        "select": [
+          {
+            "field": "id"
+          },
+          {
+            "field": "name",
+            "as": "skill"
+          },
+          {
+            "field": "organization"
+          },
+          {
+            "field": "repository"
+          },
+          {
+            "field": "workflow"
+          }
+        ]
+      },
+      {
+        "name": "skill-invocations-by-skill",
+        "intent": "Rank skills by their observed invocation count.",
+        "from": "skill-invocations",
+        "aggregate": {
+          "by": [
+            "skill"
+          ],
+          "values": [
+            {
+              "field": "id",
+              "as": "invocations",
+              "reducer": "count"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "invocations",
+            "direction": "desc"
+          },
+          {
+            "field": "skill",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
+        "name": "skill-invocations-by-workflow-totals",
+        "intent": "Rank workflows by their observed skill invocation count.",
+        "from": "skill-invocations",
+        "aggregate": {
+          "by": [
+            "organization",
+            "repository",
+            "workflow"
+          ],
+          "values": [
+            {
+              "field": "id",
+              "as": "invocations",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "skill-invocations-by-workflow",
+        "intent": "Present workflow skill invocation totals with drill-through navigation to the workflow dashboard.",
+        "from": "skill-invocations-by-workflow-totals",
+        "compute": [
+          {
+            "as": "workflow-coordinate",
+            "function": "concat",
+            "args": [
+              {
+                "field": "organization"
+              },
+              {
+                "value": "/"
+              },
+              {
+                "field": "repository"
+              },
+              {
+                "value": ":"
+              },
+              {
+                "field": "workflow"
+              }
+            ]
+          },
+          {
+            "as": "encoded-workflow",
+            "function": "url-encode",
+            "args": [
+              {
+                "field": "workflow-coordinate"
+              }
+            ]
+          },
+          {
+            "as": "workflow-dashboard-href",
+            "function": "concat",
+            "args": [
+              {
+                "value": "#page-workflow-runtime?workflow="
+              },
+              {
+                "field": "encoded-workflow"
+              }
+            ]
+          },
+          {
+            "as": "workflow-dashboard-label",
+            "function": "concat",
+            "args": [
+              {
+                "value": "View "
+              },
+              {
+                "field": "workflow-coordinate"
+              },
+              {
+                "value": " workflow dashboard"
+              }
+            ]
+          },
+          {
+            "as": "workflow-link",
+            "function": "dashboard-link",
+            "args": [
+              {
+                "value": ""
+              },
+              {
+                "field": "workflow-dashboard-href"
+              },
+              {
+                "field": "workflow-dashboard-label"
+              },
+              {
+                "field": "workflow-coordinate"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "workflow-coordinate"
+          },
+          {
+            "field": "workflow-link"
+          },
+          {
+            "field": "invocations"
+          }
+        ],
+        "order-by": [
+          {
+            "field": "invocations",
+            "direction": "desc"
+          },
+          {
+            "field": "workflow-coordinate",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
+        "name": "skill-workflow-totals",
+        "intent": "Count observed invocations for each skill and workflow.",
+        "from": "skill-invocations",
+        "aggregate": {
+          "by": [
+            "skill",
+            "organization",
+            "repository",
+            "workflow"
+          ],
+          "values": [
+            {
+              "field": "id",
+              "as": "invocations",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "skill-workflow-inventory",
+        "intent": "List observed skills by workflow with drill-through navigation to the workflow dashboard.",
+        "from": "skill-workflow-totals",
+        "compute": [
+          {
+            "as": "repository-coordinate",
+            "function": "concat",
+            "args": [
+              {
+                "field": "organization"
+              },
+              {
+                "value": "/"
+              },
+              {
+                "field": "repository"
+              }
+            ]
+          },
+          {
+            "as": "workflow-coordinate",
+            "function": "concat",
+            "args": [
+              {
+                "field": "organization"
+              },
+              {
+                "value": "/"
+              },
+              {
+                "field": "repository"
+              },
+              {
+                "value": ":"
+              },
+              {
+                "field": "workflow"
+              }
+            ]
+          },
+          {
+            "as": "encoded-workflow",
+            "function": "url-encode",
+            "args": [
+              {
+                "field": "workflow-coordinate"
+              }
+            ]
+          },
+          {
+            "as": "workflow-dashboard-href",
+            "function": "concat",
+            "args": [
+              {
+                "value": "#page-workflow-runtime?workflow="
+              },
+              {
+                "field": "encoded-workflow"
+              }
+            ]
+          },
+          {
+            "as": "workflow-dashboard-label",
+            "function": "concat",
+            "args": [
+              {
+                "value": "View "
+              },
+              {
+                "field": "workflow-coordinate"
+              },
+              {
+                "value": " workflow dashboard"
+              }
+            ]
+          },
+          {
+            "as": "workflow-link",
+            "function": "dashboard-link",
+            "args": [
+              {
+                "value": ""
+              },
+              {
+                "field": "workflow-dashboard-href"
+              },
+              {
+                "field": "workflow-dashboard-label"
+              },
+              {
+                "field": "workflow-coordinate"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "skill"
+          },
+          {
+            "field": "repository-coordinate"
+          },
+          {
+            "field": "workflow"
+          },
+          {
+            "field": "workflow-link"
+          },
+          {
+            "field": "invocations"
+          }
+        ],
+        "order-by": [
+          {
+            "field": "invocations",
+            "direction": "desc"
+          },
+          {
+            "field": "skill",
+            "direction": "asc"
+          },
+          {
+            "field": "workflow",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
         "name": "domain-entity-insights",
         "intent": "Summarize one domain entity for its dedicated Insights view.",
         "from": "domains",
@@ -12596,6 +12997,12 @@
               "label": "Issues",
               "icon": "issue-opened",
               "page": "campaign-issues"
+            },
+            {
+              "id": "memory",
+              "label": "Memory",
+              "icon": "archive",
+              "page": "campaign-memory"
             }
           ]
         },
@@ -12746,6 +13153,12 @@
               "label": "Issues",
               "icon": "issue-opened",
               "page": "campaign-issues"
+            },
+            {
+              "id": "memory",
+              "label": "Memory",
+              "icon": "archive",
+              "page": "campaign-memory"
             }
           ]
         },
@@ -12902,6 +13315,12 @@
               "label": "Issues",
               "icon": "issue-opened",
               "page": "campaign-issues"
+            },
+            {
+              "id": "memory",
+              "label": "Memory",
+              "icon": "archive",
+              "page": "campaign-memory"
             }
           ]
         },
@@ -13080,6 +13499,12 @@
               "label": "Issues",
               "icon": "issue-opened",
               "page": "campaign-issues"
+            },
+            {
+              "id": "memory",
+              "label": "Memory",
+              "icon": "archive",
+              "page": "campaign-memory"
             }
           ]
         },
@@ -13201,6 +13626,12 @@
               "label": "Issues",
               "icon": "issue-opened",
               "page": "campaign-issues"
+            },
+            {
+              "id": "memory",
+              "label": "Memory",
+              "icon": "archive",
+              "page": "campaign-memory"
             }
           ]
         },
@@ -13357,6 +13788,12 @@
               "label": "Issues",
               "icon": "issue-opened",
               "page": "campaign-issues"
+            },
+            {
+              "id": "memory",
+              "label": "Memory",
+              "icon": "archive",
+              "page": "campaign-memory"
             }
           ]
         },
@@ -13627,6 +14064,12 @@
               "label": "Issues",
               "icon": "issue-opened",
               "page": "campaign-issues"
+            },
+            {
+              "id": "memory",
+              "label": "Memory",
+              "icon": "archive",
+              "page": "campaign-memory"
             }
           ]
         },
@@ -13759,6 +14202,12 @@
               "label": "Issues",
               "icon": "issue-opened",
               "page": "campaign-issues"
+            },
+            {
+              "id": "memory",
+              "label": "Memory",
+              "icon": "archive",
+              "page": "campaign-memory"
             }
           ]
         },
@@ -13846,6 +14295,75 @@
               ]
             },
             "layout": "full"
+          }
+        ]
+      },
+      {
+        "id": "campaign-memory",
+        "kind": "custom",
+        "title": "Campaign",
+        "description": "Repository memory published for this campaign.",
+        "icon": "archive",
+        "experimental": true,
+        "class-name": "campaign-memory-page",
+        "view-mode-control": false,
+        "route": {
+          "hash-query-parameter": "campaign",
+          "title-format": "title-case",
+          "tabs-class-name": "campaign-tabs",
+          "tab": "memory",
+          "tabs": [
+            {
+              "id": "insights",
+              "label": "Operational Value",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            },
+            {
+              "id": "memory",
+              "label": "Memory",
+              "icon": "archive",
+              "page": "campaign-memory"
+            }
+          ]
+        },
+        "views": [
+          {
+            "id": "campaign-memory-browser",
+            "title": "Repository memory",
+            "description": "Browse files published from this campaign's repository-memory branch.",
+            "data": {
+              "sources": [
+                "workflows",
+                "campaign-insight-tab-counts",
+                "campaign-problem-tab-counts",
+                "campaign-issue-tab-counts"
+              ],
+              "arguments": [
+                {
+                  "name": "campaign",
+                  "field": "campaign"
+                }
+              ]
+            },
+            "mark": "element",
+            "element": "campaign-route",
+            "layout": "full",
+            "config": {
+              "body": "memory"
+            }
           }
         ]
       },
@@ -14415,6 +14933,125 @@
                   "field": "payload-hash",
                   "type": "nominal",
                   "title": "Payload hash"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "skills",
+        "kind": "custom",
+        "title": "Skills",
+        "navigation-label": "Skills",
+        "icon": "tools",
+        "experimental": true,
+        "description": "Analyze observed skill invocations and drill into the workflows that invoked them.",
+        "views": [
+          {
+            "id": "skills-most-invoked",
+            "title": "Most invoked skills",
+            "description": "Skills ranked by observed invocation count.",
+            "data": {
+              "source": "skill-invocations-by-skill",
+              "order-by": [
+                {
+                  "field": "invocations",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 10
+            },
+            "mark": "chart",
+            "chart": "horizontal-bar",
+            "layout": "full",
+            "empty-message": "No skill invocations were observed.",
+            "encoding": {
+              "x": {
+                "field": "skill",
+                "type": "nominal",
+                "title": "Skill"
+              },
+              "y": {
+                "field": "invocations",
+                "type": "quantitative",
+                "title": "Invocations"
+              }
+            }
+          },
+          {
+            "id": "skills-by-workflow",
+            "title": "Skill invocations per workflow",
+            "description": "Workflows ranked by their observed skill invocation count.",
+            "data": {
+              "source": "skill-invocations-by-workflow",
+              "order-by": [
+                {
+                  "field": "invocations",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 100
+            },
+            "mark": "chart",
+            "chart": "horizontal-bar",
+            "layout": "full",
+            "empty-message": "No workflow skill invocations were observed.",
+            "encoding": {
+              "x": {
+                "field": "workflow-coordinate",
+                "type": "nominal",
+                "title": "Workflow"
+              },
+              "y": {
+                "field": "invocations",
+                "type": "quantitative",
+                "title": "Invocations"
+              },
+              "href": {
+                "field": "workflow-link"
+              }
+            }
+          },
+          {
+            "id": "skills-workflow-inventory",
+            "title": "Skills by workflow",
+            "description": "Observed skills and invocation counts for each workflow.",
+            "data": {
+              "source": "skill-workflow-inventory"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "column-summaries": true,
+            "layout": "full-view",
+            "empty-message": "No skill invocations were observed.",
+            "encoding": {
+              "href": {
+                "field": "workflow-link"
+              },
+              "columns": [
+                {
+                  "field": "skill",
+                  "type": "nominal",
+                  "title": "Skill"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "title": "Workflow",
+                  "display": "workflow-link",
+                  "format": "workflow-relative-path"
+                },
+                {
+                  "field": "repository-coordinate",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "invocations",
+                  "type": "quantitative",
+                  "title": "Invocations"
                 }
               ]
             }
@@ -15933,6 +16570,7 @@
           "operational-value",
           "cost",
           "engines-models",
+          "skills",
           "firewall",
           "mcps",
           "steering"
