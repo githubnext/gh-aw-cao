@@ -265,7 +265,7 @@ describe('dashboard view query contracts', () => {
     ));
     const expectedTabs = [
       { id: 'insights', label: 'Insights', icon: 'graph', page: 'campaign-insights' },
-      { id: 'problems', label: 'Problems', icon: 'alert', page: 'campaign-problems' },
+      { id: 'problems', label: 'Failures', icon: 'alert', page: 'campaign-problems' },
       { id: 'issues', label: 'Issues', icon: 'issue-opened', page: 'campaign-issues' },
       { id: 'memory', label: 'Memory', icon: 'archive', page: 'campaign-memory' }
     ];
