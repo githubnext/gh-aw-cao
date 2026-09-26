@@ -1,20 +1,46 @@
 {
-  "source_sha": "7bb12670a8fd08bb608f8a764e940ef904022291",
-  "next_category": "artifact transfer and Pages packaging",
+  "source_sha": "1e92c86705721537405006438ed57f4ef3c3f551",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
     {
       "evaluated_at": "2026-09-26T12:36:00Z",
       "worker_run_id": 36242095052,
       "category": "reusable dashboard generation",
-      "evidence_run_ids": [36239225579, 36239830417, 36240655139, 36241009203, 36241354638],
+      "evidence_run_ids": [
+        36239225579,
+        36239830417,
+        36240655139,
+        36241009203,
+        36241354638
+      ],
       "outcome": "incomplete: latest 20 completed docs.yml runs in the last 14 days contained only 5 successful runs in the evidence window, but they spanned 4 source SHAs and only 1-3 successes per SHA. Comparable like-for-like analysis by trigger and source revision was therefore not possible from this bounded window. Evidence window 2026-09-26T11:34:03Z to 2026-09-26T12:16:19Z. Stopped before timing and suggestion generation to avoid mixing unlike revisions. No fresh actionable recommendation was evaluated."
     },
     {
       "evaluated_at": "2026-09-26T12:56:00Z",
       "worker_run_id": 36243354407,
       "category": "scheduling, concurrency, and avoidable rebuilds",
-      "evidence_run_ids": [36241574268, 36242150462, 36242950163, 36243153596, 36243278966],
+      "evidence_run_ids": [
+        36241574268,
+        36242150462,
+        36242950163,
+        36243153596,
+        36243278966
+      ],
       "outcome": "no-op: evidence window 2026-09-26T12:19:54Z to 2026-09-26T12:52:53Z. Analyzed 5 comparable successful docs.yml runs from the latest 20 completed runs in the last 14 days (2 schedule, 3 workflow_run), while disclosing 15 completed outliers in the same 20-run window: 13 action_required workflow_run runs and 2 skipped workflow_run runs. The comparable sample split across only two source SHAs (cdf6a7193f8ec5f2cacea6538892b3586b899fc4 with 2 successes and 627c0a7af7d20aeabe36212741d77f59e513116d with 2 successes, plus 1 newer workflow_run success at 7bb12670a8fd08bb608f8a764e940ef904022291), so confidence is low and timing was used only to check for obvious duplicate-trigger waste. Workflow median duration was 50.0s (p90 53.0s); build-job median 30.0s (p90 32.6s); deploy-job median 10.0s (p90 17.4s); build queue median 3.0s (p90 3.0s). Trusted step metadata confirmed Restore node_modules cache hits on 5/5 runs, Install dependencies and Save node_modules skipped on 5/5, Restore cached CAO Dashboard cache hits on 5/5, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 5/5. Repeated costs remained small: Build documentation median 8.0s, Upload Pages artifact median 5.0s, and Deploy Pages median 7.0s. Source review shows docs.yml already serializes executions with concurrency.group documentation-pages and cancel-in-progress false while listening to schedule, push, and successful CAO Dashboard workflow_run events, and the bounded comparable sample does not show repeated completed builds for the same trigger and same revision. The only repeated waste still above threshold remains the already-tracked split-deployment recommendation fingerprint 4d8a9f6f1f8db7a9f0b2, so no fresh non-duplicate scheduling or concurrency recommendation is warranted.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-26T13:23:00Z",
+      "worker_run_id": 36244855089,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        36243520953,
+        36243791447,
+        36244171809,
+        36244830293,
+        36244907467
+      ],
+      "outcome": "no-op: evidence window 2026-09-26T12:56:36Z to 2026-09-26T13:21:47Z. Analyzed 5 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 13 action_required workflow_run runs and 3 skipped workflow_run runs excluded from the timing sample. Workflow median execution was 48.0s (p90 62.0s), build median 29.0s (p90 42.6s), deploy median 10.0s (p90 11.0s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed Restore node_modules cache hits on 5/5 runs, Install dependencies and Save node_modules skipped on 5/5, Restore cached CAO Dashboard cache hits on 5/5, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 5/5. Artifact-transfer costs were below the actionable threshold: Upload Pages artifact median 3.0s (p90 6.0s) and Deploy Pages median 7.0s (p90 7.6s). Bounded log review of run 36243791447 showed the uploaded github-pages artifact was 27,190,860 bytes and finished blob upload in about 5.6s, which is well under the required 60s or 15% savings threshold for a safe workflow-only change. No fresh non-duplicate artifact-transfer or Pages-packaging recommendation is warranted.",
       "suggestion_fingerprint": ""
     }
   ]
