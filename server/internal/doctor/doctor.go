@@ -11,8 +11,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
+
+var doctorLog = logger.New("cao:doctor")
 
 // Doctor runs the check-up.
 //
@@ -123,6 +126,8 @@ func (d Doctor) Run(ctx context.Context) Report {
 	}
 	sortChecks(report.Checks)
 	report.Summary = summarize(report.Checks, time.Since(wallStarted))
+	doctorLog.Printf("check-up completed profile=%s checks=%d status=%s duration_ms=%d",
+		profile.label, report.Summary.Total, report.Summary.Status, report.Summary.DurationMS)
 	return report
 }
 
@@ -218,8 +223,21 @@ func (d Doctor) redisInfo(ctx context.Context, section string) (map[string]strin
 	if value == nil {
 		return nil, errors.New("INFO returned no data")
 	}
+	fields := parseInfoReply(fmt.Sprint(value))
+	if len(fields) == 0 {
+		doctorLog.Printf("redis info parsed no fields section=%s", section)
+		return nil, fmt.Errorf("INFO %s returned no fields", section)
+	}
+	return fields, nil
+}
+
+// parseInfoReply parses a Redis INFO reply's "field:value" lines into a map,
+// skipping blank lines and section headers ("# Section"). It is a pure
+// function so the line-oriented parsing is testable without a fake Redis
+// client.
+func parseInfoReply(raw string) map[string]string {
 	fields := map[string]string{}
-	for _, line := range strings.Split(fmt.Sprint(value), "\n") {
+	for _, line := range strings.Split(raw, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
@@ -230,10 +248,7 @@ func (d Doctor) redisInfo(ctx context.Context, section string) (map[string]strin
 		}
 		fields[strings.TrimSpace(name)] = strings.TrimSpace(content)
 	}
-	if len(fields) == 0 {
-		return nil, fmt.Errorf("INFO %s returned no fields", section)
-	}
-	return fields, nil
+	return fields
 }
 
 func infoInt(fields map[string]string, name string) int64 {
