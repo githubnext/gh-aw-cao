@@ -1047,6 +1047,73 @@ describe('declarative dashboard queries', () => {
     });
   });
 
+  it('groups skill invocations by skill and workflow with workflow drill-through links', () => {
+    const tools = {
+      source: 'tools',
+      rows: [
+        {
+          id: 'skill-1', organization: 'githubnext', repository: 'gh-aw-cao',
+          workflow: '.github/workflows/a.md', name: 'reactive-ui', 'is-skill': true
+        },
+        {
+          id: 'skill-2', organization: 'githubnext', repository: 'gh-aw-cao',
+          workflow: '.github/workflows/a.md', name: 'reactive-ui', 'is-skill': true
+        },
+        {
+          id: 'skill-3', organization: 'githubnext', repository: 'gh-aw-cao',
+          workflow: '.github/workflows/b.md', name: 'dashboard-authoring', 'is-skill': true
+        },
+        {
+          id: 'tool-1', organization: 'githubnext', repository: 'gh-aw-cao',
+          workflow: '.github/workflows/a.md', name: 'bash', 'is-skill': false
+        }
+      ],
+      metadata: metadata('tools')
+    };
+
+    const derived = executeDashboardQueries(
+      dashboardQueries,
+      { tools },
+      ['skill-invocations-by-skill', 'skill-invocations-by-workflow', 'skill-workflow-inventory']
+    );
+
+    expect(derived['skill-invocations-by-skill'].rows).toEqual([
+      { skill: 'reactive-ui', invocations: 2 },
+      { skill: 'dashboard-authoring', invocations: 1 }
+    ]);
+    expect(derived['skill-invocations-by-workflow'].rows).toMatchObject([
+      {
+        'workflow-coordinate': 'githubnext/gh-aw-cao:.github/workflows/a.md',
+        invocations: 2,
+        'workflow-link': {
+          'dashboard-href': '#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fa.md',
+          'dashboard-label': 'View githubnext/gh-aw-cao:.github/workflows/a.md workflow dashboard'
+        }
+      },
+      {
+        'workflow-coordinate': 'githubnext/gh-aw-cao:.github/workflows/b.md',
+        invocations: 1
+      }
+    ]);
+    expect(derived['skill-workflow-inventory'].rows).toMatchObject([
+      {
+        skill: 'reactive-ui',
+        'repository-coordinate': 'githubnext/gh-aw-cao',
+        workflow: '.github/workflows/a.md',
+        invocations: 2,
+        'workflow-link': {
+          'dashboard-href': '#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fa.md',
+          'dashboard-label': 'View githubnext/gh-aw-cao:.github/workflows/a.md workflow dashboard'
+        }
+      },
+      {
+        skill: 'dashboard-authoring',
+        workflow: '.github/workflows/b.md',
+        invocations: 1
+      }
+    ]);
+  });
+
 
 
 

@@ -10913,6 +10913,334 @@
         "limit": 1
       },
       {
+        "name": "skill-invocations",
+        "intent": "Select observed skill invocations for skill usage analytics.",
+        "from": "tools",
+        "filter": {
+          "predicates": [
+            {
+              "field": "is-skill",
+              "equals": true
+            }
+          ]
+        },
+        "select": [
+          {
+            "field": "id"
+          },
+          {
+            "field": "name",
+            "as": "skill"
+          },
+          {
+            "field": "organization"
+          },
+          {
+            "field": "repository"
+          },
+          {
+            "field": "workflow"
+          }
+        ]
+      },
+      {
+        "name": "skill-invocations-by-skill",
+        "intent": "Rank skills by their observed invocation count.",
+        "from": "skill-invocations",
+        "aggregate": {
+          "by": [
+            "skill"
+          ],
+          "values": [
+            {
+              "field": "id",
+              "as": "invocations",
+              "reducer": "count"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "invocations",
+            "direction": "desc"
+          },
+          {
+            "field": "skill",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
+        "name": "skill-invocations-by-workflow-totals",
+        "intent": "Rank workflows by their observed skill invocation count.",
+        "from": "skill-invocations",
+        "aggregate": {
+          "by": [
+            "organization",
+            "repository",
+            "workflow"
+          ],
+          "values": [
+            {
+              "field": "id",
+              "as": "invocations",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "skill-invocations-by-workflow",
+        "intent": "Present workflow skill invocation totals with drill-through navigation to the workflow dashboard.",
+        "from": "skill-invocations-by-workflow-totals",
+        "compute": [
+          {
+            "as": "workflow-coordinate",
+            "function": "concat",
+            "args": [
+              {
+                "field": "organization"
+              },
+              {
+                "value": "/"
+              },
+              {
+                "field": "repository"
+              },
+              {
+                "value": ":"
+              },
+              {
+                "field": "workflow"
+              }
+            ]
+          },
+          {
+            "as": "encoded-workflow",
+            "function": "url-encode",
+            "args": [
+              {
+                "field": "workflow-coordinate"
+              }
+            ]
+          },
+          {
+            "as": "workflow-dashboard-href",
+            "function": "concat",
+            "args": [
+              {
+                "value": "#page-workflow-runtime?workflow="
+              },
+              {
+                "field": "encoded-workflow"
+              }
+            ]
+          },
+          {
+            "as": "workflow-dashboard-label",
+            "function": "concat",
+            "args": [
+              {
+                "value": "View "
+              },
+              {
+                "field": "workflow-coordinate"
+              },
+              {
+                "value": " workflow dashboard"
+              }
+            ]
+          },
+          {
+            "as": "workflow-link",
+            "function": "dashboard-link",
+            "args": [
+              {
+                "value": ""
+              },
+              {
+                "field": "workflow-dashboard-href"
+              },
+              {
+                "field": "workflow-dashboard-label"
+              },
+              {
+                "field": "workflow-coordinate"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "workflow-coordinate"
+          },
+          {
+            "field": "workflow-link"
+          },
+          {
+            "field": "invocations"
+          }
+        ],
+        "order-by": [
+          {
+            "field": "invocations",
+            "direction": "desc"
+          },
+          {
+            "field": "workflow-coordinate",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
+        "name": "skill-workflow-totals",
+        "intent": "Count observed invocations for each skill and workflow.",
+        "from": "skill-invocations",
+        "aggregate": {
+          "by": [
+            "skill",
+            "organization",
+            "repository",
+            "workflow"
+          ],
+          "values": [
+            {
+              "field": "id",
+              "as": "invocations",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "skill-workflow-inventory",
+        "intent": "List observed skills by workflow with drill-through navigation to the workflow dashboard.",
+        "from": "skill-workflow-totals",
+        "compute": [
+          {
+            "as": "repository-coordinate",
+            "function": "concat",
+            "args": [
+              {
+                "field": "organization"
+              },
+              {
+                "value": "/"
+              },
+              {
+                "field": "repository"
+              }
+            ]
+          },
+          {
+            "as": "workflow-coordinate",
+            "function": "concat",
+            "args": [
+              {
+                "field": "organization"
+              },
+              {
+                "value": "/"
+              },
+              {
+                "field": "repository"
+              },
+              {
+                "value": ":"
+              },
+              {
+                "field": "workflow"
+              }
+            ]
+          },
+          {
+            "as": "encoded-workflow",
+            "function": "url-encode",
+            "args": [
+              {
+                "field": "workflow-coordinate"
+              }
+            ]
+          },
+          {
+            "as": "workflow-dashboard-href",
+            "function": "concat",
+            "args": [
+              {
+                "value": "#page-workflow-runtime?workflow="
+              },
+              {
+                "field": "encoded-workflow"
+              }
+            ]
+          },
+          {
+            "as": "workflow-dashboard-label",
+            "function": "concat",
+            "args": [
+              {
+                "value": "View "
+              },
+              {
+                "field": "workflow-coordinate"
+              },
+              {
+                "value": " workflow dashboard"
+              }
+            ]
+          },
+          {
+            "as": "workflow-link",
+            "function": "dashboard-link",
+            "args": [
+              {
+                "value": ""
+              },
+              {
+                "field": "workflow-dashboard-href"
+              },
+              {
+                "field": "workflow-dashboard-label"
+              },
+              {
+                "field": "workflow-coordinate"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "skill"
+          },
+          {
+            "field": "repository-coordinate"
+          },
+          {
+            "field": "workflow"
+          },
+          {
+            "field": "workflow-link"
+          },
+          {
+            "field": "invocations"
+          }
+        ],
+        "order-by": [
+          {
+            "field": "invocations",
+            "direction": "desc"
+          },
+          {
+            "field": "skill",
+            "direction": "asc"
+          },
+          {
+            "field": "workflow",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
         "name": "domain-entity-insights",
         "intent": "Summarize one domain entity for its dedicated Insights view.",
         "from": "domains",
@@ -14464,6 +14792,122 @@
         ]
       },
       {
+        "id": "skills",
+        "kind": "custom",
+        "title": "Skills",
+        "navigation-label": "Skills",
+        "icon": "tools",
+        "experimental": true,
+        "description": "Analyze observed skill invocations and drill into the workflows that invoked them.",
+        "views": [
+          {
+            "id": "skills-most-invoked",
+            "title": "Most invoked skills",
+            "description": "Skills ranked by observed invocation count.",
+            "data": {
+              "source": "skill-invocations-by-skill",
+              "order-by": [
+                {
+                  "field": "invocations",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 10
+            },
+            "mark": "chart",
+            "chart": "horizontal-bar",
+            "layout": "full",
+            "empty-message": "No skill invocations were observed.",
+            "encoding": {
+              "x": {
+                "field": "skill",
+                "type": "nominal",
+                "title": "Skill"
+              },
+              "y": {
+                "field": "invocations",
+                "type": "quantitative",
+                "title": "Invocations"
+              }
+            }
+          },
+          {
+            "id": "skills-by-workflow",
+            "title": "Skill invocations per workflow",
+            "description": "Workflows ranked by their observed skill invocation count.",
+            "data": {
+              "source": "skill-invocations-by-workflow",
+              "order-by": [
+                {
+                  "field": "invocations",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 100
+            },
+            "mark": "chart",
+            "chart": "horizontal-bar",
+            "layout": "full",
+            "empty-message": "No workflow skill invocations were observed.",
+            "encoding": {
+              "x": {
+                "field": "workflow-coordinate",
+                "type": "nominal",
+                "title": "Workflow"
+              },
+              "y": {
+                "field": "invocations",
+                "type": "quantitative",
+                "title": "Invocations"
+              },
+              "href": {
+                "field": "workflow-link"
+              }
+            }
+          },
+          {
+            "id": "skills-workflow-inventory",
+            "title": "Skills by workflow",
+            "description": "Observed skills and invocation counts for each workflow.",
+            "data": {
+              "source": "skill-workflow-inventory"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "column-summaries": true,
+            "layout": "full-view",
+            "empty-message": "No skill invocations were observed.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "skill",
+                  "type": "nominal",
+                  "title": "Skill"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "title": "Workflow",
+                  "display": "workflow-link",
+                  "format": "workflow-relative-path"
+                },
+                {
+                  "field": "repository-coordinate",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "invocations",
+                  "type": "quantitative",
+                  "title": "Invocations"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
         "id": "engines-models",
         "kind": "custom",
         "title": "Models & Agents",
@@ -15975,6 +16419,7 @@
           "operational-value",
           "cost",
           "engines-models",
+          "skills",
           "firewall",
           "mcps",
           "steering"
