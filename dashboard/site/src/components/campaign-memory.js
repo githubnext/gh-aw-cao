@@ -9,6 +9,7 @@ const debugCampaignMemory = createDebug('campaign-memory');
 
 /** @typedef {{ campaign: string, campaignName: string }} Campaign */
 /** @typedef {{ path: string, oid: string, sha256?: string, size: number }} MemoryFile */
+/** @typedef {{ directories: Map<string, MemoryTreeNode>, files: { name: string, entry: MemoryFile }[] }} MemoryTreeNode */
 /** @typedef {{ fileLimit: number, fileSize: number, totalSize: number, extension: number, nesting: number, unsafePath: number, invalidContent: number, unsupportedType: number }} OmittedFiles */
 /** @typedef {{ branch: string, commit: string, files: MemoryFile[], omitted: OmittedFiles }} CampaignMemory */
 /** @typedef {{ status: string, branch: string, commit: string, files: MemoryFile[], omitted: OmittedFiles, error: string }} ManifestState */
@@ -184,11 +185,12 @@ function renderCampaignTree(campaigns, signal) {
         const warning = renderOmissionWarning(manifest.omitted);
         if (manifest.files.length === 0) {
           files.replaceChildren(
-            warning,
+            ...(warning ? [warning] : []),
             renderEmptyMessage('The repository-memory branch contains no supported files.')
           );
           return;
         }
+        /** @param {MemoryFile} entry @param {HTMLButtonElement} button */
         const select = (entry, button) => {
           fileController?.abort();
           fileController = new AbortController();
@@ -228,7 +230,7 @@ function renderCampaignTree(campaigns, signal) {
             h('strong', null, manifest.branch),
             ` at ${manifest.commit.slice(0, 7)}`
           ),
-          warning,
+          ...(warning ? [warning] : []),
           tree
         );
         if (index === 0) {
@@ -266,19 +268,22 @@ function renderCampaignTree(campaigns, signal) {
  * @param {(entry: MemoryFile, button: HTMLButtonElement) => void} select
  */
 function renderFileTree(entries, select) {
-  const root = { directories: new Map(), files: [] };
+  const root = /** @type {MemoryTreeNode} */ ({ directories: new Map(), files: [] });
   for (const entry of entries) {
     const segments = entry.path.split('/');
     let node = root;
     for (const segment of segments.slice(0, -1)) {
-      if (!node.directories.has(segment)) {
-        node.directories.set(segment, { directories: new Map(), files: [] });
+      let child = node.directories.get(segment);
+      if (!child) {
+        child = { directories: new Map(), files: [] };
+        node.directories.set(segment, child);
       }
-      node = node.directories.get(segment);
+      node = child;
     }
     node.files.push({ name: segments.at(-1) ?? entry.path, entry });
   }
 
+  /** @param {MemoryTreeNode} node @returns {HTMLElement} */
   const renderNode = (node) => h(
     'ul',
     null,

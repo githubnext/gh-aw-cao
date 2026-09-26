@@ -87,7 +87,7 @@ describe('dashboard document validation', () => {
         data: { sources: ['campaign-memory-campaigns'] },
         mark: 'element',
         element: 'all-campaign-memory',
-        layout: 'full'
+        layout: 'full-view'
       }]
     });
     expect(query).toMatchObject({
