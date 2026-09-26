@@ -1,6 +1,6 @@
 {
-  "source_sha": "1e92c86705721537405006438ed57f4ef3c3f551",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "source_sha": "be8cbe23c5668fed4111726022a39b6464b85941",
+  "next_category": "dependency installation and caching",
   "evaluations": [
     {
       "evaluated_at": "2026-09-26T12:36:00Z",
@@ -41,6 +41,22 @@
         36244907467
       ],
       "outcome": "no-op: evidence window 2026-09-26T12:56:36Z to 2026-09-26T13:21:47Z. Analyzed 5 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 13 action_required workflow_run runs and 3 skipped workflow_run runs excluded from the timing sample. Workflow median execution was 48.0s (p90 62.0s), build median 29.0s (p90 42.6s), deploy median 10.0s (p90 11.0s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed Restore node_modules cache hits on 5/5 runs, Install dependencies and Save node_modules skipped on 5/5, Restore cached CAO Dashboard cache hits on 5/5, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 5/5. Artifact-transfer costs were below the actionable threshold: Upload Pages artifact median 3.0s (p90 6.0s) and Deploy Pages median 7.0s (p90 7.6s). Bounded log review of run 36243791447 showed the uploaded github-pages artifact was 27,190,860 bytes and finished blob upload in about 5.6s, which is well under the required 60s or 15% savings threshold for a safe workflow-only change. No fresh non-duplicate artifact-transfer or Pages-packaging recommendation is warranted.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-26T13:50:00Z",
+      "worker_run_id": 36246381977,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        36246247644,
+        36245984487,
+        36245435394,
+        36244924294,
+        36244907467,
+        36244830293,
+        36244171809
+      ],
+      "outcome": "no-op: evidence window 2026-09-26T13:08:33Z to 2026-09-26T13:46:37Z. Analyzed 7 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 9 action_required workflow_run runs and 4 skipped workflow_run runs excluded from the timing sample. Evaluated category scheduling, concurrency, and avoidable rebuilds. Comparable sample confidence is medium because 4/7 successful runs came from distinct SHAs, but repeated trigger behavior remained observable. Workflow median execution was 48.0s (p90 62.2s), build median 26.0s (p90 31.8s), deploy median 10.0s (p90 13.4s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed Restore node_modules cache hits on 7/7 runs, Install dependencies and Save node_modules skipped on 7/7, and Restore cached CAO Dashboard cache hits on 7/7 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 7/7. Repeated remaining costs were small: Build documentation median 8.0s, Upload Pages artifact median 2.0s, and Deploy Pages median 6.0s. Source review shows docs.yml still listens to schedule, push, and successful CAO Dashboard workflow_run events, but the latest evidence window already includes both push and follow-on workflow_run successes for the same revision only once (head sha 2b87d67e1d8c1012bfb8bd72e5b3246f276d8667) and otherwise does not show a stable duplicate-build tax above the 60s or 15% threshold. No fresh non-duplicate actionable recommendation is warranted.",
       "suggestion_fingerprint": ""
     }
   ]
