@@ -83,13 +83,27 @@ capture_container_logs() {
   fi
 }
 
+process_matches() {
+  local pid expected_start expected_executable actual_start actual_executable
+  pid="$1"
+  expected_start="$2"
+  expected_executable="$3"
+  [[ -n "$pid" && -n "$expected_start" && -n "$expected_executable" ]] || return 1
+  [[ -r "/proc/$pid/stat" && -e "/proc/$pid/exe" ]] || return 1
+  actual_start="$(awk '{print $22}' "/proc/$pid/stat")"
+  actual_executable="$(readlink -f "/proc/$pid/exe")"
+  [[ "$actual_start" == "$expected_start" ]] &&
+    [[ "$actual_executable" == "$(readlink -f "$expected_executable")" ]]
+}
+
 stop_internal() {
   mkdir -p "$LOG_DIR"
   if [[ -f "$RUNTIME_ENV" ]]; then
     # shellcheck disable=SC1090
     source "$RUNTIME_ENV"
   fi
-  if [[ -n "${FUNCTIONS_PID:-}" ]] && kill -0 "$FUNCTIONS_PID" 2>/dev/null; then
+  if process_matches \
+    "${FUNCTIONS_PID:-}" "${FUNCTIONS_START_TIME:-}" "${FUNC_BIN:-}"; then
     kill -TERM -- "-$FUNCTIONS_PID" 2>/dev/null || kill -TERM "$FUNCTIONS_PID" 2>/dev/null || true
     for _ in {1..50}; do
       kill -0 "$FUNCTIONS_PID" 2>/dev/null || break
@@ -179,7 +193,8 @@ start() {
     # shellcheck disable=SC1090
     source "$RUNTIME_ENV"
     if [[ "${STATE_HARNESS_VERSION:-}" == "$HARNESS_VERSION" ]] &&
-      [[ -n "${FUNCTIONS_PID:-}" ]] && kill -0 "$FUNCTIONS_PID" 2>/dev/null; then
+      process_matches \
+        "${FUNCTIONS_PID:-}" "${FUNCTIONS_START_TIME:-}" "${FUNC_BIN:-}"; then
       printf 'azure-local: matching stack is already running at %s\n' "$STATE_DIR"
       return
     fi
@@ -190,13 +205,15 @@ start() {
   local previous_exit_trap
   previous_exit_trap="$(trap -p EXIT || true)"
   trap 'stop_internal' EXIT
-  local run_id redis_name azurite_name function_port redis_port blob_port queue_port table_port namespace
+  local run_id path_hash redis_name azurite_name function_port redis_port blob_port queue_port table_port namespace
   local azurite_account azurite_key
   run_id="$(basename "$STATE_DIR" | tr -cd 'a-zA-Z0-9_.-' | cut -c1-40)"
   [[ -n "$run_id" ]] || run_id="run-$$"
+  path_hash="$(printf '%s' "$STATE_DIR" | sha256sum | cut -c1-12)"
+  run_id="$(printf '%s' "$run_id" | cut -c1-20)-$path_hash"
   redis_name="cao-azure-local-$run_id-redis"
   azurite_name="cao-azure-local-$run_id-azurite"
-  namespace="azure-local-$(printf '%s' "$STATE_DIR" | sha256sum | cut -c1-16)"
+  namespace="azure-local-$path_hash"
   azurite_account="caoazurelocal"
   azurite_key="$(python3 -c 'import base64,hashlib; print(base64.b64encode(hashlib.sha256(b"cao-azure-local").digest()).decode())')"
 
@@ -273,8 +290,10 @@ JSON
     cd "$APP_DIR"
     setsid "$FUNC_BIN" start --port "$function_port" --verbose >"$LOG_DIR/functions.log" 2>&1 &
     FUNCTIONS_PID=$!
+    FUNCTIONS_START_TIME="$(awk '{print $22}' "/proc/$FUNCTIONS_PID/stat")"
     printf '%s\n' "$FUNCTIONS_PID" >"$STATE_DIR/functions.pid"
     write_env_value FUNCTIONS_PID "$FUNCTIONS_PID"
+    write_env_value FUNCTIONS_START_TIME "$FUNCTIONS_START_TIME"
   )
   if [[ -n "$previous_exit_trap" ]]; then
     eval "$previous_exit_trap"

@@ -171,6 +171,11 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 	if err != nil {
 		return nil, err
 	}
+	allowedHosts := splitCSV(os.Getenv("CAO_AZURE_ALLOWED_HOSTS"))
+	redirectURL := os.Getenv("CAO_GITHUB_REDIRECT_URL")
+	if err := validateAzureLocalEndpoints(localSimulation, allowedHosts, redirectURL); err != nil {
+		return nil, err
+	}
 	if err := validateAzureRedisURL(redisURL, localSimulation); err != nil {
 		return nil, err
 	}
@@ -209,14 +214,14 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 		WebhookSecret:        os.Getenv("CAO_GITHUB_WEBHOOK_SECRET"),
 		AdminUsers:           splitCSV(os.Getenv("CAO_GITHUB_ADMIN_USERS")),
 		AzureProxy: AzureProxyPolicy{
-			AllowedHosts:   splitCSV(os.Getenv("CAO_AZURE_ALLOWED_HOSTS")),
+			AllowedHosts:   allowedHosts,
 			RequireHTTPS:   !localSimulation,
 			TrustForwarded: true,
 		},
 		GitHubOAuth: &GitHubOAuthConfig{
 			ClientID:              os.Getenv("CAO_GITHUB_CLIENT_ID"),
 			ClientSecret:          os.Getenv("CAO_GITHUB_CLIENT_SECRET"),
-			RedirectURL:           os.Getenv("CAO_GITHUB_REDIRECT_URL"),
+			RedirectURL:           redirectURL,
 			SessionSecret:         os.Getenv("CAO_SESSION_SECRET"),
 			PreviousSessionSecret: os.Getenv("CAO_SESSION_SECRET_PREVIOUS"),
 			AllowedOrganizations:  splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_ORGS")),
@@ -262,6 +267,31 @@ func validateAzureRedisURL(redisURL string, localSimulation bool) error {
 		return errors.New("local Azure simulation requires loopback Redis")
 	}
 	return nil
+}
+
+func validateAzureLocalEndpoints(localSimulation bool, allowedHosts []string, redirectURL string) error {
+	if !localSimulation {
+		return nil
+	}
+	for _, host := range allowedHosts {
+		if !isLoopbackHost(host) {
+			return errors.New("local Azure simulation requires loopback allowed hosts")
+		}
+	}
+	parsed, err := url.Parse(strings.TrimSpace(redirectURL))
+	if err != nil || !isLoopbackHost(parsed.Hostname()) {
+		return errors.New("local Azure simulation requires a loopback OAuth redirect URL")
+	}
+	return nil
+}
+
+func isLoopbackHost(host string) bool {
+	host = strings.TrimSpace(host)
+	if host == "localhost" {
+		return true
+	}
+	address := net.ParseIP(host)
+	return address != nil && address.IsLoopback()
 }
 
 func (a *App) AzureFunctionsHandler() http.Handler {

@@ -94,6 +94,34 @@ func TestAzureLocalSimulationFlagFailsClosed(t *testing.T) {
 	}
 }
 
+func TestAzureLocalSimulationRequiresLoopbackHTTPBoundary(t *testing.T) {
+	if err := validateAzureLocalEndpoints(
+		true,
+		[]string{"localhost", "127.0.0.1", "::1"},
+		"http://127.0.0.1:7071/auth/callback",
+	); err != nil {
+		t.Fatalf("loopback local endpoints were rejected: %v", err)
+	}
+	for _, test := range []struct {
+		hosts    []string
+		redirect string
+	}{
+		{hosts: []string{"dashboard.example.com"}, redirect: "http://127.0.0.1:7071/auth/callback"},
+		{hosts: []string{"localhost"}, redirect: "http://dashboard.example.com/auth/callback"},
+	} {
+		if err := validateAzureLocalEndpoints(true, test.hosts, test.redirect); err == nil {
+			t.Fatalf("non-loopback local endpoints were accepted: %#v", test)
+		}
+	}
+	if err := validateAzureLocalEndpoints(
+		false,
+		[]string{"dashboard.example.com"},
+		"https://dashboard.example.com/auth/callback",
+	); err != nil {
+		t.Fatalf("production endpoints were changed by local validation: %v", err)
+	}
+}
+
 func TestHostedProxyHeadersAreTrustedOnlyOnLoopbackBoundary(t *testing.T) {
 	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "https://internal.example.test/", nil)
 	request.Host = "internal.example.test"
