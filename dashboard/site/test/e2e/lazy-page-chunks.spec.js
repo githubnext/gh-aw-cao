@@ -259,9 +259,17 @@ test('marketplace page renders canonical package cards after ingestion', async (
 
   const marketplace = page.locator('[data-page-id="marketplace"]');
   await expect(page.getByRole('heading', { name: 'Marketplace', exact: true, level: 1 })).toBeVisible();
-  await expect(marketplace.locator('.entity-card-list-card')).toHaveCount(1);
+  const packageCard = marketplace.locator('.entity-card-list-marketplace .entity-card-list-card');
+  await expect(packageCard).toHaveCount(1);
   await expect(marketplace).toContainText('Dependabot');
+  await expect(packageCard).toContainText('By');
+  await expect(packageCard).toContainText('githubnext');
+  await expect(packageCard.getByRole('button', { name: 'Copy add command' })).toBeVisible();
   await expect(marketplace).not.toContainText('Unable to load this page.');
+
+  await packageCard.getByRole('link', { name: 'Dependabot' }).click();
+  await expect(page.locator('[data-page-id="marketplace-package"]')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Package', exact: true, level: 1 })).toBeVisible();
 });
 
 test('deep links and redirect routes fetch only the requested initial page chunk', async ({ page }) => {

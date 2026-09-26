@@ -326,6 +326,7 @@ function renderEntityCardListView(options) {
     ? view.list.drill
     : isPlainObject(definition.drill) ? definition.drill : null;
   const grouped = isPlainObject(view.list) && view.list.appearance === 'grouped';
+  const marketplace = isPlainObject(view.list) && view.list.appearance === 'marketplace';
   const cards = renderEntityCardItems(rows, {
     pageId,
     title,
@@ -333,7 +334,7 @@ function renderEntityCardListView(options) {
     toText,
     definition,
     drill,
-    chevron: grouped
+    chevron: grouped || marketplace
   });
   const emptyMessage = metadata.availability === 'unavailable'
     ? 'Data is unavailable for this view.'
@@ -348,7 +349,7 @@ function renderEntityCardListView(options) {
       h('header', { className: 'document-list-header' }, view.description ? h('p', null, view.description) : null, listAction),
       cards.length > 0
         ? h('ul', {
-          className: `document-list issue-list entity-card-list${isPlainObject(view.list) && view.list.layout === 'grid' ? ' entity-card-list-grid' : ''}${grouped ? ' entity-card-list-grouped' : ''}`,
+          className: `document-list issue-list entity-card-list${isPlainObject(view.list) && view.list.layout === 'grid' ? ' entity-card-list-grid' : ''}${grouped ? ' entity-card-list-grouped' : ''}${marketplace ? ' entity-card-list-marketplace' : ''}`,
           'data-custom-view-mark': 'list'
         }, cards)
         : h('p', { className: 'document-list-empty' }, emptyMessage),

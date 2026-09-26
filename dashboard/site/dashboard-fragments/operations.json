@@ -960,13 +960,14 @@
       "title": "Marketplace",
       "navigation-label": "Marketplace",
       "icon": "archive",
+      "class-name": "marketplace-page",
       "experimental": true,
-      "description": "Browse read-only CAO campaign packages from the configured registries.",
+      "description": "Find campaign packages to extend your agentic operations.",
       "views": [
         {
           "id": "marketplace-packages",
-          "title": "Campaign packages",
-          "description": "Registry metadata is resolved by the trusted CAO backend. Select a package for details and its add command.",
+          "title": "Campaign packages for agentic operations",
+          "description": "Discover packages from your configured registries. Select a package to review its contents and copy an immutable add command.",
           "data": {
             "source": "marketplace-packages",
             "order-by": [
@@ -979,9 +980,9 @@
           "mark": "list",
           "list": {
             "style": "entity-cards",
-            "layout": "grid",
+            "appearance": "marketplace",
             "icon": "archive",
-            "card": "marketplace-package",
+            "card": "marketplace-package-summary",
             "drill": {
               "type": "query",
               "page": "marketplace-package",
@@ -1024,6 +1025,7 @@
       "kind": "custom",
       "title": "Package",
       "icon": "archive",
+      "class-name": "marketplace-detail-page",
       "description": "Review normalized package metadata and copy the canonical CAO add command.",
       "route": {
         "hash-query-parameter": "package-source",

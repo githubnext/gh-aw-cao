@@ -22,11 +22,20 @@ describe('entity card templates', () => {
       'event',
       'campaign',
       'operation',
+      'marketplace-package-summary',
       'marketplace-package'
     ]));
   });
 
   it('declares a Primer-branded marketplace package card', () => {
+    expect(templates['marketplace-package-summary']).toMatchObject({
+      icon: 'archive',
+      'icon-field': 'package-icon',
+      title: { field: 'package-name' },
+      subtitle: { field: 'package-description' },
+      details: [{ field: 'publisher', title: 'By' }],
+      actions: [{ action: 'add-marketplace-package', context: ['package-source'] }]
+    });
     expect(templates['marketplace-package']).toMatchObject({
       icon: 'archive',
       'detail-labels': 'visible',
@@ -38,6 +47,7 @@ describe('entity card templates', () => {
 
   it('declares marketplace list and detail routes', () => {
     expect(pages.marketplace.experimental).toBe(true);
+    expect(pages.marketplace['class-name']).toBe('marketplace-page');
     expect(dashboard.navigation.find(
       (/** @type {Record<string, any>} */ section) => section.label === 'Updates'
     )?.pages).toContain('marketplace');
@@ -45,8 +55,9 @@ describe('entity card templates', () => {
       data: { source: 'marketplace-packages' },
       list: {
         style: 'entity-cards',
+        appearance: 'marketplace',
         icon: 'archive',
-        card: 'marketplace-package',
+        card: 'marketplace-package-summary',
         drill: { page: 'marketplace-package', query: 'marketplace-package-detail' }
       }
     });
