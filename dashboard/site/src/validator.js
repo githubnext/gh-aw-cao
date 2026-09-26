@@ -4760,6 +4760,8 @@ function validateSource(source, path, errors) {
  */
 function validateViewQueryMaterialization(dashboard, errors) {
     if (!Array.isArray(dashboard.pages) || !Array.isArray(dashboard.queries)) return;
+    const queries = dashboard.queries;
+    /** @type {import('./presenter.js').SourceMetadata} */
     const metadata = {
       'source-id': 'validator',
       'source-kind': 'fixture',
@@ -4791,8 +4793,8 @@ function validateViewQueryMaterialization(dashboard, errors) {
       if (requested.length === 0) return;
 
       try {
-        const required = new Set(resolveDashboardQuerySources(dashboard.queries, requested));
-        const scopedQueries = dashboard.queries.filter((query) => (
+        const required = new Set(resolveDashboardQuerySources(queries, requested));
+        const scopedQueries = queries.filter((query) => (
           isPlainObject(query) && typeof query.name === 'string' && required.has(query.name)
         ));
         const declared = executeDashboardQueries(scopedQueries, canonicalSources, requested);

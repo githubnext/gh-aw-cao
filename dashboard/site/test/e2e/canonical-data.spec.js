@@ -1022,7 +1022,17 @@ test('data worker computes repository and campaign pages with request-scoped das
     metadata: { 'source-kind': 'derived', 'query-name': 'repository-activity' }
   });
   const horizonSource = result.horizon[Object.keys(result.horizon)[0]];
-  expect(horizonSource.rows).toEqual([]);
+  expect(Object.keys(result.horizon)).not.toContain('repository-activity');
+  expect(horizonSource).toMatchObject({
+    rows: [{
+      repository: 'githubnext/gh-aw-cao',
+      workflows: 1,
+      reports: 1,
+      runs: 0,
+      aic: 0
+    }],
+    metadata: { availability: 'available' }
+  });
   expect(Object.keys(result.navigated)).toEqual(['campaign-inventory']);
   expect(result.navigated['campaign-inventory']).toMatchObject({
     rows: [{
