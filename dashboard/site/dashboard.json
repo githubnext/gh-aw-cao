@@ -12924,6 +12924,12 @@
               "label": "Issues",
               "icon": "issue-opened",
               "page": "campaign-issues"
+            },
+            {
+              "id": "memory",
+              "label": "Memory",
+              "icon": "archive",
+              "page": "campaign-memory"
             }
           ]
         },
@@ -13116,6 +13122,12 @@
               "label": "Issues",
               "icon": "issue-opened",
               "page": "campaign-issues"
+            },
+            {
+              "id": "memory",
+              "label": "Memory",
+              "icon": "archive",
+              "page": "campaign-memory"
             }
           ]
         },
@@ -13272,6 +13284,12 @@
               "label": "Issues",
               "icon": "issue-opened",
               "page": "campaign-issues"
+            },
+            {
+              "id": "memory",
+              "label": "Memory",
+              "icon": "archive",
+              "page": "campaign-memory"
             }
           ]
         },
@@ -13450,6 +13468,12 @@
               "label": "Issues",
               "icon": "issue-opened",
               "page": "campaign-issues"
+            },
+            {
+              "id": "memory",
+              "label": "Memory",
+              "icon": "archive",
+              "page": "campaign-memory"
             }
           ]
         },
@@ -13571,6 +13595,12 @@
               "label": "Issues",
               "icon": "issue-opened",
               "page": "campaign-issues"
+            },
+            {
+              "id": "memory",
+              "label": "Memory",
+              "icon": "archive",
+              "page": "campaign-memory"
             }
           ]
         },
@@ -13727,6 +13757,12 @@
               "label": "Issues",
               "icon": "issue-opened",
               "page": "campaign-issues"
+            },
+            {
+              "id": "memory",
+              "label": "Memory",
+              "icon": "archive",
+              "page": "campaign-memory"
             }
           ]
         },
@@ -13997,6 +14033,12 @@
               "label": "Issues",
               "icon": "issue-opened",
               "page": "campaign-issues"
+            },
+            {
+              "id": "memory",
+              "label": "Memory",
+              "icon": "archive",
+              "page": "campaign-memory"
             }
           ]
         },
@@ -14129,6 +14171,12 @@
               "label": "Issues",
               "icon": "issue-opened",
               "page": "campaign-issues"
+            },
+            {
+              "id": "memory",
+              "label": "Memory",
+              "icon": "archive",
+              "page": "campaign-memory"
             }
           ]
         },
@@ -14216,6 +14264,75 @@
               ]
             },
             "layout": "full"
+          }
+        ]
+      },
+      {
+        "id": "campaign-memory",
+        "kind": "custom",
+        "title": "Campaign",
+        "description": "Repository memory published for this campaign.",
+        "icon": "archive",
+        "experimental": true,
+        "class-name": "campaign-memory-page",
+        "view-mode-control": false,
+        "route": {
+          "hash-query-parameter": "campaign",
+          "title-format": "title-case",
+          "tabs-class-name": "campaign-tabs",
+          "tab": "memory",
+          "tabs": [
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "campaign-insights"
+            },
+            {
+              "id": "problems",
+              "label": "Problems",
+              "icon": "alert",
+              "page": "campaign-problems"
+            },
+            {
+              "id": "issues",
+              "label": "Issues",
+              "icon": "issue-opened",
+              "page": "campaign-issues"
+            },
+            {
+              "id": "memory",
+              "label": "Memory",
+              "icon": "archive",
+              "page": "campaign-memory"
+            }
+          ]
+        },
+        "views": [
+          {
+            "id": "campaign-memory-browser",
+            "title": "Repository memory",
+            "description": "Browse files published from this campaign's repository-memory branch.",
+            "data": {
+              "sources": [
+                "workflows",
+                "campaign-insight-tab-counts",
+                "campaign-problem-tab-counts",
+                "campaign-issue-tab-counts"
+              ],
+              "arguments": [
+                {
+                  "name": "campaign",
+                  "field": "campaign"
+                }
+              ]
+            },
+            "mark": "element",
+            "element": "campaign-route",
+            "layout": "full",
+            "config": {
+              "body": "memory"
+            }
           }
         ]
       },

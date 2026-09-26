@@ -3,12 +3,16 @@ package githubapp
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strconv"
+	"sync"
 	"testing"
 	"time"
 )
 
 type memoryBudgetStore struct {
 	values map[string]string
+	mutex  sync.Mutex
 }
 
 func newMemoryBudgetStore() *memoryBudgetStore {
@@ -16,11 +20,72 @@ func newMemoryBudgetStore() *memoryBudgetStore {
 }
 
 func (s *memoryBudgetStore) HashGet(_ context.Context, key, field string) (string, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	return s.values[key+"/"+field], nil
 }
 
 func (s *memoryBudgetStore) HashSet(_ context.Context, key, field, value string) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	s.values[key+"/"+field] = value
+	return nil
+}
+
+func (s *memoryBudgetStore) ReserveRateLimit(
+	_ context.Context, key, field string, floor, cost int, now int64,
+) (int, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	value, exists := s.values[key+"/"+field]
+	if !exists {
+		return 3, nil
+	}
+	state := parseBudgetState(value)
+	if state.ParkedTo.Unix() > now {
+		return 1, nil
+	}
+	if state.Reset.Unix() > 0 && state.Reset.Unix() < now {
+		return 3, nil
+	}
+	if state.Remaining <= floor {
+		return 2, nil
+	}
+	state.Remaining = max(state.Remaining-cost, 0)
+	s.values[key+"/"+field] = fmt.Sprintf(
+		"%d|%s|%s", state.Remaining,
+		strconv.FormatInt(unixOrZero(state.Reset), 10),
+		strconv.FormatInt(unixOrZero(state.ParkedTo), 10))
+	return 0, nil
+}
+
+func (s *memoryBudgetStore) ObserveRateLimit(
+	_ context.Context, key, field string, remaining int, reset int64,
+) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	storageKey := key + "/" + field
+	state := parseBudgetState(s.values[storageKey])
+	if unixOrZero(state.Reset) == reset && state.Remaining < remaining {
+		remaining = state.Remaining
+	}
+	state.Remaining = remaining
+	state.Reset = instantOrZero(reset)
+	s.values[storageKey] = formatBudgetState(state)
+	return nil
+}
+
+func (s *memoryBudgetStore) ParkRateLimit(
+	_ context.Context, key, field string, parkedTo int64,
+) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	storageKey := key + "/" + field
+	state := parseBudgetState(s.values[storageKey])
+	if parkedTo > unixOrZero(state.ParkedTo) {
+		state.ParkedTo = instantOrZero(parkedTo)
+	}
+	s.values[storageKey] = formatBudgetState(state)
 	return nil
 }
 
@@ -35,7 +100,7 @@ func TestBudgetRefusesToSpendBelowTheFloor(t *testing.T) {
 	if _, err := budget.Reserve(ctx, 7); !errors.Is(err, ErrBudgetExhausted) {
 		t.Fatalf("expected an exhausted budget, got %v", err)
 	}
-	if err := budget.Observe(ctx, 7, 4000, reset); err != nil {
+	if err := budget.Observe(ctx, 7, 4000, reset.Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 	reserve, err := budget.Reserve(ctx, 7)
@@ -74,8 +139,15 @@ func TestBudgetParksAnInstallation(t *testing.T) {
 	if parkedUntil.IsZero() {
 		t.Fatal("expected a park expiry to be recorded")
 	}
-	// An expired park lets work resume without external intervention.
-	if err := budget.Park(ctx, 3, time.Now().Add(-time.Minute)); err != nil {
+	// Model time passing beyond the persisted park.
+	if err := store.HashSet(
+		ctx, budgetKey, "3",
+		formatBudgetState(budgetState{
+			Remaining: 5000,
+			Reset:     time.Now().Add(time.Hour),
+			ParkedTo:  time.Now().Add(-time.Minute),
+		}),
+	); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := budget.Reserve(ctx, 3); err != nil {
@@ -104,6 +176,63 @@ func TestBudgetIsolatesInstallations(t *testing.T) {
 func TestBudgetRequiresAStore(t *testing.T) {
 	if _, err := (Budget{}).Reserve(context.Background(), 1); err == nil {
 		t.Fatal("expected the governor to fail closed without a store")
+	}
+}
+
+func TestBudgetRejectsUnknownHeadroom(t *testing.T) {
+	budget := Budget{Store: newMemoryBudgetStore()}
+	if _, err := budget.Reserve(context.Background(), 1); !errors.Is(err, ErrBudgetUnknown) {
+		t.Fatalf("expected unknown budget, got %v", err)
+	}
+}
+
+func TestBudgetReservationsAreSerialized(t *testing.T) {
+	store := newMemoryBudgetStore()
+	budget := Budget{Store: store, Floor: 100, Cost: 10}
+	if err := budget.Observe(context.Background(), 9, 120, time.Now().Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	const workers = 20
+	results := make(chan error, workers)
+	for range workers {
+		go func() {
+			_, err := budget.Reserve(context.Background(), 9)
+			results <- err
+		}()
+	}
+	successes := 0
+	for range workers {
+		err := <-results
+		if err == nil {
+			successes++
+		} else if !errors.Is(err, ErrBudgetExhausted) {
+			t.Fatalf("unexpected reservation error: %v", err)
+		}
+	}
+	if successes != 2 {
+		t.Fatalf("successful reservations = %d, want 2", successes)
+	}
+}
+
+func TestBudgetObservationDoesNotRestoreReservedHeadroom(t *testing.T) {
+	store := newMemoryBudgetStore()
+	budget := Budget{Store: store, Floor: 1000, Cost: 500}
+	reset := time.Now().Add(time.Hour).UTC().Truncate(time.Second)
+	if err := budget.Observe(context.Background(), 4, 4000, reset); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := budget.Reserve(context.Background(), 4); err != nil {
+		t.Fatal(err)
+	}
+	if err := budget.Observe(context.Background(), 4, 4000, reset); err != nil {
+		t.Fatal(err)
+	}
+	remaining, _, err := budget.Headroom(context.Background(), 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if remaining != 3500 {
+		t.Fatalf("stale observation restored headroom to %d", remaining)
 	}
 }
 
