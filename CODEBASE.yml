@@ -128,10 +128,10 @@ components:
     responsibility: ingest deployed dashboard artifacts, execute Dashboard Language queries server-side, and serve bounded canonical results locally or through an authenticated host-neutral profile
   dashboard_coolify_deployment:
     path: server/coolify/
-    responsibility: build and run the non-root serve-hosted container behind a fail-closed Coolify TLS proxy with a managed Redis connection and read-only artifact mount
+    responsibility: build and run the non-root serve-hosted container behind a fail-closed Coolify TLS proxy with a managed Redis connection and an atomically populated external read-only artifact volume
   dashboard_coolify_delivery:
     path: .github/workflows/coolify-deploy.yml
-    responsibility: independently test, scan, publish, and deploy exact GHCR digests to protected stable, beta, alpha, and same-repository preview environments without implicit promotion
+    responsibility: use trusted workflow definitions to independently test exact sources, scan unique candidates, bind canonical identities by digest equality, revalidate freshness, and synchronously deploy exact GHCR digests to isolated protected environments
   dashboard_canonical_api:
     path: server/internal/server/
     responsibility: expose canonical repositories, workflows, runs, jobs, sessions, and events without exposing Redis keys or representations

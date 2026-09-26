@@ -31,7 +31,7 @@ services:
     expose:
       - "8080"
     volumes:
-      - ./artifact:/app/source:ro
+      - cao-dashboard-artifact:/app/source:ro
     init: true
     read_only: true
     tmpfs:
@@ -41,3 +41,8 @@ services:
     security_opt:
       - no-new-privileges:true
     restart: unless-stopped
+
+volumes:
+  cao-dashboard-artifact:
+    external: true
+    name: ${CAO_ARTIFACT_VOLUME:?Configure the pre-populated Coolify artifact volume}

@@ -160,8 +160,13 @@ be `https`. Broad, malformed, public, or missing CIDRs fail startup.
 
 The image runs as numeric user/group `65532`, drops Linux capabilities, enables
 `no-new-privileges`, uses a read-only root filesystem, and mounts only the
-trusted dashboard artifact read-only. Secrets are injected by Coolify and are
-not present in the Dockerfile, Compose file, image labels, or health check.
+trusted dashboard artifact from a pre-populated external named volume
+read-only. The volume must be staged, hash-verified against
+`payload-hashes.json`, and atomically selected before first start or update;
+never populate the live attached volume, and do not treat a placeholder as
+deployment data. The repository does not supply deployment data. Secrets are
+injected by Coolify and are not present in the Dockerfile, Compose file, image
+labels, or health check.
 
 `rediss://` remains preferred. `redis://` is acceptable only for a
 Coolify-managed Redis service isolated on the same private network, after the
@@ -169,12 +174,25 @@ explicit plaintext opt-in. Network isolation and Redis authentication remain
 operator responsibilities. Azure Functions ignores this hosted opt-in and
 continues to require `rediss://` to Azure Managed Redis.
 
-Deployment uses a protected GitHub environment and an exact GHCR digest.
-Mutable channel tags are never deployment inputs. Rollback means redeploying a
-previously recorded digest through the same protected environment, then
-checking readiness, OAuth authorization, queries, webhook verification, and
-rate limits. If required, rebuild the disposable Redis namespace from the
-retained artifact rather than treating Redis as rollback authority.
+Deployment uses a protected GitHub environment and an exact GHCR digest. The
+privileged preview workflow is loaded from the default branch through
+`pull_request_target`; only non-draft same-repository heads are eligible, and
+pull request code executes only in secretless test/build jobs. A uniquely
+tagged candidate is scanned locally before publication. Existing canonical
+source tags are accepted only when their digest exactly equals that candidate;
+registry labels are not authority.
+
+Immediately before deployment, the workflow proves the source is still current
+for its channel. The synchronous adapter must record the previous digest, poll
+Coolify's asynchronous operation, verify `/api/readiness`, and roll back and
+verify the prior digest before reporting failure. The workflow accepts success
+only when bounded JSON reports `ready` and echoes the exact requested image and
+digest. Mutable channel tags and queued/accepted responses are never deployment
+success. Operational rollback still means redeploying a previously recorded
+digest through the same protected environment, then checking readiness, OAuth
+authorization, queries, webhook verification, and rate limits. If required,
+rebuild the disposable Redis namespace from the retained artifact rather than
+treating Redis as rollback authority.
 
 ## Azure Functions profile
 

@@ -10,5 +10,3 @@
 **/*.lock.yml
 docs
 research
-server/coolify/artifact/*
-!server/coolify/artifact/.gitkeep

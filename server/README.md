@@ -126,16 +126,24 @@ Build from the repository root:
 docker build -f server/Dockerfile \
   --build-arg VERSION=0.0.0-alpha \
   --build-arg REVISION="$(git rev-parse HEAD)" \
-  --build-arg CREATED="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --build-arg CREATED="$(git show -s --format=%cI HEAD)" \
   -t cao-dashboard:test .
 ```
 
 `server/coolify/compose.yml` expects:
 
 - `CAO_IMAGE` as a full `ghcr.io/.../cao-dashboard@sha256:...` reference;
+- `CAO_ARTIFACT_VOLUME` as the name of an existing Coolify-managed volume;
 - the public host and the exact private CIDR of Coolify's proxy network;
-- a trusted deployed dashboard artifact in `server/coolify/artifact/`;
 - OAuth, session, webhook, and Redis credentials supplied as Coolify secrets.
+
+The external artifact volume is authoritative input, not checked-in deployment
+data. Before the first start, populate an unattached staging volume with a
+complete `payload-hashes.json` and every referenced inventory, run, and record
+file from a trusted dashboard build. Verify every manifest hash, then atomically
+select that completed volume as `CAO_ARTIFACT_VOLUME` and deploy it; never copy
+individual files into the volume attached to a running service. Apply updates
+the same way with a newly staged volume.
 
 The Compose file publishes no host port. Coolify's proxy is the only ingress
 path. The app listens on the private service network, but accepts
@@ -151,26 +159,45 @@ network, with `CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS=true` and a single-label servic
 name or private IP. The opt-in does not affect Azure: Azure Functions continues
 to require `rediss://`.
 
-The conventional `.github/workflows/coolify-deploy.yml` resolves and checks out
-the exact event source, builds and scans it, captures the registry digest, and
-sends only the `name@sha256:...` reference to a protected GitHub environment:
+The conventional `.github/workflows/coolify-deploy.yml` resolves published
+release tags to exact commits and checks out the exact event source.
+Same-repository previews use `pull_request_target`, so
+the privileged workflow always comes from the default branch while test and
+image jobs check out the exact pull request head. Fork and draft pull requests
+are ineligible. Pull request code runs only in secretless test/build jobs; GHCR
+publication and the protected deployment job use the fixed base workflow in
+separate jobs.
 
 | Event | Immutable GHCR identity | GitHub environment |
 | --- | --- | --- |
-| Published non-prerelease `vX.Y.Z` release | the release tag and its target commit (`vX.Y.Z`) | `coolify-stable` |
-| Published SemVer prerelease | the prerelease tag and its target commit (`vX.Y.Z-<prerelease>`) | `coolify-beta` |
+| Published non-prerelease `vX.Y.Z` release | tag resolved and repeatedly verified at its exact commit (`vX.Y.Z`) | `coolify-stable` |
+| Published SemVer prerelease | tag resolved and repeatedly verified at its exact commit (`vX.Y.Z-<prerelease>`) | `coolify-beta` |
 | Push to `main` | `sha-<full-main-commit>` | `coolify-alpha` |
 | Non-draft same-repository pull request | `pr-<number>-sha-<full-head-commit>` | `coolify-preview` |
 
 Configure `COOLIFY_DEPLOY_ENDPOINT` and `COOLIFY_DEPLOY_TOKEN` as secrets on each
 environment. The HTTPS endpoint is the deployment adapter for that Coolify
-resource; it must update `CAO_IMAGE` from the request's exact digest reference
-and trigger that resource only. Environment protection rules provide approvals.
-No tier reads another tier's image, no release promotes an alpha/beta artifact,
-and the workflow never deploys a mutable channel tag. Release tags must satisfy
-the channel's SemVer form and build metadata is rejected because `+` cannot be
-preserved in a Docker tag. A rerun reuses an existing identity only after its
-digest and source labels are verified; it never silently retargets that identity.
+resource. It must record the previous digest, update `CAO_IMAGE` from the
+request's exact digest reference, trigger the resource, poll Coolify's
+asynchronous deployment to a terminal state, and verify `/api/readiness`.
+Failure must redeploy the recorded previous digest and verify its readiness
+before returning a non-success response. Success is a bounded JSON response
+containing exactly the requested identity as
+`{"status":"ready","image":"...@sha256:...","digest":"sha256:..."}`; an
+accepted/queued Coolify response is not success.
+
+Before invoking the adapter, the workflow rechecks that alpha is still `main`
+HEAD, preview is still the open same-repository pull request HEAD, and stable or
+beta is still the latest published release in its channel with an unchanged tag
+target. Environment protection rules provide approvals. The scanned local
+image is first pushed under a run/attempt candidate tag. A canonical source
+identity is created from that candidate digest only when absent; if it already
+exists, exact digest equality is mandatory. Labels on existing registry
+objects are never trusted. No tier reads another tier's image, no release
+promotes an alpha/beta artifact, and deployment always uses the verified digest,
+never a candidate or channel tag. Release tags must satisfy the channel's
+SemVer form and build metadata is rejected because `+` cannot be preserved in
+a Docker tag.
 
 #### Rollback
 

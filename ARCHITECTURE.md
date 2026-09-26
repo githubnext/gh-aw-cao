@@ -285,15 +285,20 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
   Refreshed sessions use an atomic compare-and-swap so logout cannot be undone
   by a concurrent OAuth refresh.
 - The Coolify image builds the dashboard and Go server together, runs as a
-  non-root user, and mounts the authoritative artifact read-only. Conventional
-  GitHub Actions builds and scans each eligible stable, beta, alpha, or
-  same-repository preview event independently. Releases use the validated
-  published tag and its target commit, alpha uses the full `main` commit, and
-  previews use the pull request number and full head commit. Each source
-  identity is published without silent redefinition, and only its exact digest
-  is deployed through a tier-specific protected environment. Tiers never
-  promote artifacts implicitly and deployments never consume mutable channel
-  tags.
+  non-root user, and mounts the authoritative artifact read-only from an
+  externally populated named volume whose complete payload is hash-verified and
+  atomically installed. Conventional GitHub Actions loads privileged preview
+  logic from the default branch, then tests and builds the exact eligible
+  same-repository pull request head without secrets. Releases build their event's
+  immutable target SHA and verify the published tag still peels to it; alpha
+  uses the full `main` commit. Every locally scanned image is pushed under a
+  unique run candidate, then a canonical source identity is created or accepted
+  only at the same digest without trusting registry labels. Immediately before
+  a protected deployment, the workflow revalidates channel freshness. Its
+  synchronous adapter reports ready only after Coolify completes and
+  `/api/readiness` passes, rolling back to the recorded prior digest on failure.
+  Tiers never promote artifacts implicitly and deployments never consume
+  mutable channel tags or merely accepted asynchronous operations.
 - Browsers and external clients never receive Redis endpoints or credentials.
   Redis generations are staged and validated before atomic activation; a failed
   rebuild leaves the previous generation active, and an empty Redis instance is
