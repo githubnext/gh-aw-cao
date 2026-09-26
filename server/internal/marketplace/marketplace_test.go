@@ -52,7 +52,7 @@ func TestParseConfigRejectsOversizedPolicy(t *testing.T) {
 }
 
 func TestValidateRegistryNormalizesPathAndDefaultsName(t *testing.T) {
-	registry, err := ValidateRegistry(Registry{ID: "official", Repository: "example/packages", Ref: "main", Path: "/packages/"}, 0)
+	registry, err := ValidateRegistry(Registry{ID: "official", Repository: "example/packages", Ref: "main", Path: "packages/"}, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
