@@ -158,6 +158,8 @@ export default defineConfig({
           items: [
             { label: "Deployment options", link: "/deployment/" },
             { label: "GitHub Actions only", link: "/deployment-actions/" },
+            { label: "Actions with GitHub Apps", link: "/deployment-actions-github-app/" },
+            { label: "Actions with a PAT", link: "/deployment-actions-pat/" },
             { label: "Azure", link: "/deployment-azure/" },
             { label: "Coolify", link: "/deployment-coolify/" },
           ],

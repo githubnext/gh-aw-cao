@@ -9,17 +9,20 @@ Every deployment option on this page is experimental. Interfaces, configuration 
 
 The control plane itself always runs in GitHub Actions: orchestrators, workers, and the Activity collector are Actions workflows in the control repository. A deployment option decides only **where the dashboard is served and where its query data lives**. It never changes campaign policy, rollout mode, credentials, or target authority; those remain in the control repository's reviewed `.github/workflows/cao.json`.
 
-Three options are currently available:
+Three hosting options are currently available. The GitHub Actions only option has two credential profiles, which are listed separately below:
 
 | Option | Dashboard host | Query execution | Authentication | Extra infrastructure |
 | --- | --- | --- | --- | --- |
-| [GitHub Actions only](deployment-actions.md) | GitHub Pages (static site) | In the browser, in a Web Worker over IndexedDB | GitHub Pages access control | None |
+| [GitHub Actions only with GitHub Apps](deployment-actions-github-app.md) | GitHub Pages (static site) | In the browser, in a Web Worker over IndexedDB | GitHub Pages access control | Private read and write GitHub Apps |
+| [GitHub Actions only with a fine-grained PAT](deployment-actions-pat.md) | GitHub Pages (static site) | In the browser, in a Web Worker over IndexedDB | GitHub Pages access control | Read and write fine-grained PATs owned by one user |
 | [Azure](deployment-azure.md) | Azure Functions (custom Go handler) | Go server over Azure Managed Redis | GitHub OAuth plus explicit organization/team authorization | Function App, Key Vault, Azure Managed Redis, storage, Application Insights; optional Container Apps collectors |
 | [Coolify](deployment-coolify.md) | Container on a Coolify host behind its TLS proxy | Go server over Redis | GitHub OAuth plus explicit organization/team authorization | Coolify host, Redis, GHCR image, deployment adapter |
 
 ## Choose an option
 
 - Start with **GitHub Actions only**. It needs no infrastructure beyond the control repository and is what `gh aw add githubnext/gh-aw-cao` installs by default.
+- Within GitHub Actions only, use **GitHub Apps** by default. Use a **fine-grained PAT** only with informed consent, when no App can be installed and the scope is one resource owner with PAT-compatible APIs. For self-review, or bounded review of public targets, the built-in workflow token needs neither. See [Choose a credential profile](deployment-actions.md#choose-a-credential-profile).
+- The credential profile also applies to Azure and Coolify, because the Activity workflow still collects their evidence in GitHub Actions. Dashboard users authenticate separately with a GitHub OAuth App. The Azure collection profile requires a GitHub App and does not support PATs.
 - Choose **Azure** or **Coolify** only when you need server-side query execution for data that is too large for the browser, per-user GitHub OAuth authorization instead of Pages visibility, or webhook-driven refresh.
 - Azure and Coolify run the same Go service (`server/`) with the same authentication, authorization, CSRF, webhook, rate-limit, and logging protections. They differ in platform, secret management, ingress, and delivery.
 
