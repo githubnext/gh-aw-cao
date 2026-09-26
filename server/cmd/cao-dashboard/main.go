@@ -174,11 +174,9 @@ func newRootCommand() *cobra.Command {
 func run(arguments []string) error {
 	root := newRootCommand()
 	root.SetArgs(arguments)
-	name := "help"
-	if len(arguments) > 0 {
-		name = arguments[0]
+	if target, _, err := root.Find(arguments); err == nil && target != root {
+		commandLog.Printf("running subcommand=%s", target.Name())
 	}
-	commandLog.Printf("running subcommand=%s", name)
 	return root.Execute()
 }
 
@@ -193,11 +191,10 @@ func newDoctorCommand() *cobra.Command {
 		Short: "run a read-only check-up of Redis, canonical data, queries, and collection",
 	}
 	redisURL := cmd.Flags().String("redis-url", "", "server-side Redis URL; defaults to CAO_REDIS_URL then "+defaultRedisURL)
-	checkoutNamespace, err := redisx.DefaultNamespace(".")
-	if err != nil {
-		cmd.RunE = func(*cobra.Command, []string) error { return err }
-		return cmd
-	}
+	// A namespace-detection failure is deferred to RunE (rather than
+	// returned here) so every flag is still registered and a user-supplied
+	// flag value never masks this error behind an "unknown flag" one.
+	checkoutNamespace, namespaceErr := redisx.DefaultNamespace(".")
 	defaultNamespace, namespaceDefaultSource := resolveNamespaceDefault(
 		os.Getenv("CAO_REDIS_NAMESPACE"), checkoutNamespace)
 	redisNamespace := cmd.Flags().String("redis-namespace", defaultNamespace, "Redis key namespace")
@@ -208,6 +205,9 @@ func newDoctorCommand() *cobra.Command {
 	strict := cmd.Flags().Bool("strict", false, "exit non-zero on warnings as well as failures")
 	timeout := cmd.Flags().Duration("timeout", 10*time.Second, "per-check timeout")
 	cmd.RunE = func(*cobra.Command, []string) error {
+		if namespaceErr != nil {
+			return namespaceErr
+		}
 		commandLog.Printf("doctor resolved namespace default source=%s", namespaceDefaultSource)
 		endpoint, endpointSource := resolveRedisEndpoint(*redisURL, os.Getenv("CAO_REDIS_URL"), defaultRedisURL)
 		commandLog.Printf("doctor resolved redis endpoint source=%s", endpointSource)
@@ -288,11 +288,10 @@ func newServeCommand() *cobra.Command {
 		Short: "serve the dashboard from Redis",
 	}
 	redisURL := cmd.Flags().String("redis-url", defaultRedisURL, "server-side Redis URL")
-	defaultNamespace, err := redisx.DefaultNamespace(".")
-	if err != nil {
-		cmd.RunE = func(*cobra.Command, []string) error { return err }
-		return cmd
-	}
+	// A namespace-detection failure is deferred to RunE (rather than
+	// returned here) so every flag is still registered and a user-supplied
+	// flag value never masks this error behind an "unknown flag" one.
+	defaultNamespace, namespaceErr := redisx.DefaultNamespace(".")
 	redisNamespace := cmd.Flags().String("redis-namespace", defaultNamespace, "Redis key and index namespace")
 	siteDirectory := cmd.Flags().String("site", "../dashboard/site/dist", "built dashboard site directory")
 	listen := cmd.Flags().String("listen", "127.0.0.1:8443", "HTTPS listen address")
@@ -303,6 +302,9 @@ func newServeCommand() *cobra.Command {
 	databaseQueries := cmd.Flags().String("database-queries", "../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
 	dashboardQueries := cmd.Flags().String("dashboard-queries", "../dashboard/site/dashboard.json", "default dashboard query document")
 	cmd.RunE = func(*cobra.Command, []string) error {
+		if namespaceErr != nil {
+			return namespaceErr
+		}
 		commandLog.Printf("serve flags parsed tls=%t source_ingestion=%t", *cert != "", *source != "")
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
@@ -352,15 +354,17 @@ func newIngestCommand() *cobra.Command {
 		Short: "ingest a deployed dashboard directory into Redis",
 	}
 	redisURL := cmd.Flags().String("redis-url", defaultRedisURL, "server-side Redis URL")
-	defaultNamespace, err := redisx.DefaultNamespace(".")
-	if err != nil {
-		cmd.RunE = func(*cobra.Command, []string) error { return err }
-		return cmd
-	}
+	// A namespace-detection failure is deferred to RunE (rather than
+	// returned here) so every flag is still registered and a user-supplied
+	// flag value never masks this error behind an "unknown flag" one.
+	defaultNamespace, namespaceErr := redisx.DefaultNamespace(".")
 	redisNamespace := cmd.Flags().String("redis-namespace", defaultNamespace, "Redis key and index namespace")
 	source := cmd.Flags().String("source", "", "deployed dashboard directory")
 	databaseQueries := cmd.Flags().String("database-queries", "../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
 	cmd.RunE = func(_ *cobra.Command, args []string) error {
+		if namespaceErr != nil {
+			return namespaceErr
+		}
 		resolvedSource, sourceOrigin, err := resolveIngestSource(*source, args)
 		if err != nil {
 			return err
