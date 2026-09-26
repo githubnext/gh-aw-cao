@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -68,11 +69,13 @@ test("publishes installed campaign memory from remote refs without checking them
           {
             path: ".state.json",
             oid: git(repository, "rev-parse", `${memoryHead}:.state.json`),
+            sha256: createHash("sha256").update('{"cursor":1}\n').digest("hex"),
             size: 13,
           },
           {
             path: "notes.json",
             oid: git(repository, "rev-parse", `${memoryHead}:notes.json`),
+            sha256: createHash("sha256").update('{"answer":42}\n').digest("hex"),
             size: 14,
           },
         ],

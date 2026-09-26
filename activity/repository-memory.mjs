@@ -1,7 +1,9 @@
 import { spawn, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { createWriteStream } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
 
@@ -117,9 +119,17 @@ async function writeBlob(repository, oid, destination) {
     child.once("error", reject);
     child.once("close", resolve);
   });
-  await pipeline(child.stdout, createWriteStream(destination, { mode: 0o644 }));
+  const hash = createHash("sha256");
+  const hasher = new Transform({
+    transform(chunk, encoding, callback) {
+      hash.update(chunk);
+      callback(null, chunk);
+    },
+  });
+  await pipeline(child.stdout, hasher, createWriteStream(destination, { mode: 0o644 }));
   const status = await completion;
   if (status !== 0) throw new Error(stderr.trim() || `Unable to extract repository-memory blob ${oid}`);
+  return hash.digest("hex");
 }
 
 export async function publishRepositoryMemory({ repository, inventory, output, generatedAt = new Date().toISOString() }) {
@@ -136,7 +146,7 @@ export async function publishRepositoryMemory({ repository, inventory, output, g
       if (!destination.startsWith(`${path.join(outputRoot, branch.campaign)}${path.sep}`)) {
         throw new Error(`Repository-memory path escapes its campaign directory: ${file.path}`);
       }
-      await writeBlob(repositoryRoot, file.oid, destination);
+      file.sha256 = await writeBlob(repositoryRoot, file.oid, destination);
     }
     campaigns.push({
       campaign: branch.campaign,

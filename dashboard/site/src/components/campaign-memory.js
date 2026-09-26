@@ -9,7 +9,7 @@ const MAX_FILE_COUNT = 400;
 const MAX_FILE_SIZE = 1024 * 1024;
 const MAX_NESTING = 10;
 
-/** @typedef {{ path: string, oid: string, size: number }} MemoryFile */
+/** @typedef {{ path: string, oid: string, sha256?: string, size: number }} MemoryFile */
 /** @typedef {{ branch: string, commit: string, files: MemoryFile[] }} CampaignMemory */
 /** @typedef {{ status: string, branch: string, commit: string, files: MemoryFile[], error: string }} ManifestState */
 /** @typedef {{ status: string, content: string, error: string }} MemoryFileState */
@@ -176,13 +176,15 @@ async function loadCampaignMemory(campaignId, signal) {
       path: safeMemoryPath(file.path),
       size: Number(file.size),
       oid: String(file.oid ?? ''),
+      sha256: file.sha256 === undefined ? undefined : String(file.sha256),
     };
   });
   if (files.some((entry) => !entry.path
       || !Number.isSafeInteger(entry.size)
       || entry.size < 0
       || entry.size > MAX_FILE_SIZE
-      || !/^[0-9a-f]{40,64}$/i.test(entry.oid))) {
+      || !/^[0-9a-f]{40,64}$/i.test(entry.oid)
+      || (entry.sha256 !== undefined && !/^[0-9a-f]{64}$/i.test(entry.sha256)))) {
     throw new Error('Campaign repository-memory file metadata is invalid.');
   }
   return { branch: String(campaign.branch), commit: String(campaign.commit), files };

@@ -18,7 +18,7 @@ describe('campaign repository memory', () => {
           commit: 'a'.repeat(40),
           files: [
             { path: 'notes/first.json', oid: 'b'.repeat(40), size: 14 },
-            { path: 'summary.md', oid: 'c'.repeat(40), size: 8 },
+            { path: 'summary.md', oid: 'c'.repeat(40), sha256: 'e'.repeat(64), size: 8 },
           ],
         }],
       })))
@@ -72,7 +72,7 @@ describe('campaign repository memory', () => {
         campaign: 'ambient-context',
         branch: 'memory/ambient-context',
         commit: 'a'.repeat(40),
-        files: [{ path: 'script.js', oid: 'b'.repeat(40), size: 10 }],
+        files: [{ path: 'script.js', oid: 'b'.repeat(40), sha256: 'c'.repeat(64), size: 10 }],
       }],
     }))));
     const rendered = renderCampaignMemory({ campaignId: 'ambient-context', campaignName: 'Ambient Context' });
@@ -91,7 +91,7 @@ describe('campaign repository memory', () => {
           campaign: 'ambient-context',
           branch: 'memory/ambient-context',
           commit: 'a'.repeat(40),
-          files: [{ path: 'large.txt', oid: 'b'.repeat(40), size: 10 }],
+          files: [{ path: 'large.txt', oid: 'b'.repeat(40), sha256: 'c'.repeat(64), size: 10 }],
         }],
       })))
       .mockResolvedValueOnce(new Response('x', {
