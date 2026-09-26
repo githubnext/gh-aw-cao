@@ -14,6 +14,9 @@ on:
     paths:
       - .github/workflows/cao.json
       - .github/workflows/cao-activity.yml
+      - "activity/**"
+      - "*/operational-value.mjs"
+      - "*/operational-value/**"
   schedule:
     - cron: "7,22,37,52 * * * *"
 
@@ -233,17 +236,45 @@ jobs:
             --retention-days 30 \
             --run-retention-days 30
 
+      - name: Refresh GitHub App token for operational value
+        id: operational-value-app-token
+        env:
+          GH_AW_IGNORE_IF_MISSING_PRIVATE_KEY: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
+        if: ${{ vars.GH_AW_GITHUB_READ_APP_ID != '' && env.GH_AW_IGNORE_IF_MISSING_PRIVATE_KEY != '' }}
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.GH_AW_GITHUB_READ_APP_ID }}
+          private-key: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ steps.activity-settings.outputs.repositories }}
+          github-api-url: ${{ github.api_url }}
+          permission-actions: read
+          permission-contents: read
+          permission-issues: read
+          permission-pull-requests: read
+          permission-security-events: read
+          permission-vulnerability-alerts: read
+
       - name: Compute repository operational value
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
-          CAO_OPERATIONAL_VALUE_GH_TOKEN: ${{ steps.activity-app-token.outputs.token || secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || github.token }}
+          CAO_OPERATIONAL_VALUE_GH_TOKEN: ${{ steps.operational-value-app-token.outputs.token || secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || github.token }}
+          GH_TOKEN: ${{ steps.operational-value-app-token.outputs.token || secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN || github.token }}
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
         run: |
+          if ! gh api rate_limit --silent >/dev/null; then
+            echo "::warning::Fresh operational value token failed preflight; collection will fail closed."
+          fi
+          history_args=()
+          if [[ -f optimization/operational-value.mjs ]]; then
+            history_args=(--history-campaign optimization)
+          fi
           if ! node activity/cao.mjs operational-value \
               --database "$ACTIVITY_DATABASE" \
               --root . \
               --output "$REPORT_GH_AW_LOGS_SHARDS/operational-values.jsonl" \
               --retention-days 30 \
+              "${history_args[@]}" \
               --max-github-api-rate-limit -2000; then
             echo "::warning::Operational value collection failed; continuing activity indexing."
           fi

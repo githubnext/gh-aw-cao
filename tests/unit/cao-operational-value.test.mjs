@@ -60,6 +60,19 @@ test('operational-value worker execution is cancellable', async () => {
   }
 });
 
+test('operational-value history requires a retention window', async () => {
+  await assert.rejects(
+    runOperationalValue({
+      indexedDB: null,
+      databasePath: ':memory:',
+      root,
+      repositories: [],
+      historyCampaign: 'optimization'
+    }),
+    /history requires a retention window/
+  );
+});
+
 test('operational-value worker execution times out and continues', async () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-value-timeout-'));
   const failedDirectory = path.join(temporary, 'failed');
@@ -213,6 +226,88 @@ for (const repository of request.repositories) {
   );
 });
 
+test('cao operational-value materializes queried history and retires obsolete cached metric IDs', () => {
+  const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-definitions-'));
+  const packageDirectory = path.join(temporary, 'example');
+  const output = path.join(temporary, 'values.jsonl');
+  mkdirSync(packageDirectory);
+  writeFileSync(path.join(packageDirectory, 'operational-value.mjs'), `
+const chunks = [];
+for await (const chunk of process.stdin) chunks.push(chunk);
+const request = JSON.parse(Buffer.concat(chunks).toString());
+console.log(JSON.stringify({kind:"operational_value_definition",workflowSlug:"example-worker",adoptedAt:"2026-09-15T23:30:36Z",evaluationMode:"baseline-comparable",cadenceDays:1,repositories:["githubnext/gh-aw-cao"],valueIds:["example-worker.current"]}));
+console.log(JSON.stringify({timestamp:request.timestamp,repository:request.repositories[0],valueId:"example-worker.current",value:3}));\n`);
+  writeFileSync(output, [
+    {
+      schema_version: 2,
+      kind: 'operational_value',
+      operational_value: {
+        campaign: 'example',
+        repository: 'githubnext/gh-aw-cao',
+        value_id: 'example-worker.retired',
+        value: 1,
+        timestamp: '2026-09-21T10:00:00.000Z'
+      }
+    },
+    {
+      schema_version: 2,
+      kind: 'operational_value',
+      operational_value: {
+        campaign: 'unrelated',
+        repository: 'githubnext/gh-aw-cao',
+        value_id: 'preserved',
+        value: 4,
+        timestamp: '2026-09-21T10:00:00.000Z'
+      }
+    }
+  ].map(JSON.stringify).join('\n') + '\n');
+
+  const arguments_ = [
+    cao,
+    'operational-value',
+    '--database', path.join(temporary, 'dashboard.sqlite'),
+    '--root', temporary,
+    '--output', output,
+    '--timestamp', '2026-09-24T10:00:00Z',
+    '--retention-days', '30',
+    '--history-campaign', 'example',
+    '--repository', 'githubnext/gh-aw-cao'
+  ];
+  const result = JSON.parse(execFileSync(process.execPath, arguments_, { encoding: 'utf8' }));
+
+  const envelopes = readFileSync(output, 'utf8').trim().split('\n').map(JSON.parse);
+  assert.equal(result.historyValues, 12);
+  assert.equal(result.values.length, 13);
+  assert.equal(envelopes.length, 14);
+  assert.equal(
+    envelopes.some((entry) => entry.operational_value.value_id === 'example-worker.retired'),
+    false
+  );
+  assert.deepEqual(
+    envelopes
+      .filter((entry) => entry.operational_value.campaign === 'example')
+      .map((entry) => entry.operational_value.timestamp)
+      .toSorted(),
+    [
+      '2026-09-12T23:30:36.000Z',
+      '2026-09-13T23:30:36.000Z',
+      '2026-09-14T23:30:36.000Z',
+      '2026-09-15T23:30:36.000Z',
+      '2026-09-16T23:30:36.000Z',
+      '2026-09-17T23:30:36.000Z',
+      '2026-09-18T23:30:36.000Z',
+      '2026-09-19T23:30:36.000Z',
+      '2026-09-20T23:30:36.000Z',
+      '2026-09-21T23:30:36.000Z',
+      '2026-09-22T23:30:36.000Z',
+      '2026-09-23T23:30:36.000Z',
+      '2026-09-24T10:00:00.000Z'
+    ]
+  );
+  const repeated = JSON.parse(execFileSync(process.execPath, arguments_, { encoding: 'utf8' }));
+  assert.equal(repeated.historyValues, 0);
+});
+
 test('cao operational-value warns on worker failure and preserves successful values', () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-operational-resilience-'));
   const failedDirectory = path.join(temporary, 'failed');
@@ -290,7 +385,8 @@ fi\n`);
       ...process.env,
       PATH: `${temporary}:${process.env.PATH}`
     } }
-  ).trim().split('\n').map(JSON.parse);
+  ).trim().split('\n').map(JSON.parse)
+    .filter(({ kind }) => kind !== 'operational_value_definition');
 
   assert.deepEqual(result.map(({ valueId, value }) => ({ valueId, value })), [
     { valueId: 'dependabot-update-planner.consumed-plan-share', value: 1 },
@@ -350,9 +446,11 @@ test('Daily File Diet shares one value module between CAO collection and histori
   writeFileSync(path.join(packageDirectory, 'operational-value', 'other-workflow.mjs'), `
 export const definition = {
   slug: "other-workflow",
+  adoption: {adoptedAt: "2026-09-20T00:00:00Z"},
+  evaluation: {mode: "baseline-comparable"},
   evidence: {
     repositories: ["github/gh-aw"],
-    window: {durationDays: 1, maturationDays: 0}
+    window: {durationDays: 1, cadenceDays: 1, maturationDays: 0}
   },
   metrics: [{id: "largest-file-health"}]
 };

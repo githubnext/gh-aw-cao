@@ -69,6 +69,8 @@ The omitted fields default to an enabled campaign and worker and 100 percent rol
 
 Campaign Insights consumes the package-level repository evaluator in [`operational-value/`](./operational-value/). Its evidence contract evaluates the authorized target repository and counts an outcome regardless of whether the Optimization worker, a maintainer, or another system produced it. AI Credit per successful run, failure rate, and cancellation rate existed before campaign adoption, so the evaluator applies identical seven-day native formulas before and after adoption when retained evidence is available. A vertical adoption marker separates baseline and post-adoption observations; missing repository baselines remain missing rather than becoming zero. Worker-computed cost, reliability, and outcome-quality measurements are strong target-bound evidence candidates, but a proposed recommendation is not realized savings.
 
+Accepted Optimization observations can be queried from a local or downloaded canonical Activity database with `cao query --collection operationalValues`. In the control repository, Activity also queries missing cadence points while the required run evidence remains in its bounded canonical database and publishes only the resulting numeric observations through the normal Activity snapshot. The Optimization campaign does not install or publish a historical observation archive.
+
 ## Pause or Stop
 
 Set `control-plane.campaigns.optimization.enabled` to `false` in a reviewed policy change and cancel active runs. Disable an individual worker for a narrower stop. Re-enable in review mode after resolving the incident.
