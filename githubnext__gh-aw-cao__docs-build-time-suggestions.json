@@ -1,5 +1,5 @@
 {
-  "source_sha": "c9d775724a586efa318e3ba163442e3d5237c28f",
+  "source_sha": "405ab8946f9429b7680699f5c2f056102490bd04",
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
@@ -156,6 +156,27 @@
       ],
       "outcome": "no-op: evidence window 2026-09-26T13:22:04Z to 2026-09-26T15:32:18Z. Analyzed 12 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 4 action_required workflow_run runs and 3 skipped workflow_run runs excluded from the timing sample. Evaluated category scheduling, concurrency, and avoidable rebuilds. Median workflow execution was 48.0s (p90 58.6s), build median 28.0s (p90 31.0s), deploy median 10.0s (p90 12.0s), and queue median 0.0s (p90 0.0s). Trusted metadata confirmed actions/setup-node npm cache hits and explicit node_modules cache hits on 12/12 sampled runs, with Install dependencies and Save node_modules skipped on 12/12, and cached CAO Dashboard hits on 12/12 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 12/12. Repeated remaining costs stayed small: Build documentation median 8.0s, Upload Pages artifact median 2.0s, and Deploy Pages median 6.0s. The visible duplicate pattern is one push success followed 17s later by one workflow_run success for the same head SHA 2b87d67e1d8c1012bfb8bd72e5b3246f276d8667, but the extra completed run added about 53s total wall time once in the bounded sample and still does not meet the threshold of at least 60 seconds or 15 percent of median execution saved by a safe workflow-only change. No fresh non-duplicate actionable recommendation is warranted.",
       "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-26T15:55:00Z",
+      "worker_run_id": 36253200321,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        36253252859,
+        36253060251,
+        36252283846,
+        36251921157,
+        36251664939,
+        36250501117,
+        36249601021,
+        36248846507,
+        36248277075,
+        36247096673,
+        36246247644,
+        36245984487
+      ],
+      "outcome": "suggestion: evidence window 2026-09-26T13:41:02Z to 2026-09-26T15:49:54Z. Analyzed 12 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 5 action_required and 3 skipped docs.yml runs excluded from timing metrics. Median workflow execution was 48.0s (p90 58.4s), build median 29.5s (p90 33.7s), deploy median 10.0s (p90 12.0s), and queue median 3.0s (p90 13.9s). Trusted metadata confirmed node_modules install/save skipped on 12/12 and CAO Dashboard lookup/mount skipped on 12/12 because caches were hot. The actionable repeated cost was one same-SHA duplicate publish pair at c9d775724a586efa318e3ba163442e3d5237c28f: workflow_run success 36251921157 was followed by schedule success 36252283846 six minutes later, adding about 47s of avoidable workflow time with unchanged content. Recommended adding a schedule-only freshness gate in docs.yml to skip when the latest successful CAO Dashboard run already built the current default-branch SHA and that SHA already has a recent successful docs workflow_run publish.",
+      "suggestion_fingerprint": "d4624c545a9a8f39ca9f"
     }
   ]
 }
