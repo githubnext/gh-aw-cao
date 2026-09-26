@@ -120,7 +120,7 @@ func (profile HostProfile) validate() error {
 
 func validateHostProfile(store *redisx.Store, config *Config) error {
 	profile := config.HostProfile
-	if profile.Name == "" {
+	if profile == (HostProfile{}) {
 		profile = localHostProfile()
 		config.HostProfile = profile
 	}

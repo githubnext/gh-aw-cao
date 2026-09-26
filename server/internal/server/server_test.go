@@ -90,30 +90,6 @@ func TestHostedUpstashModeRequiresProviderTLS(t *testing.T) {
 	}
 }
 
-func TestUpstashNamespacesAreIsolatedPerProcessSession(t *testing.T) {
-	first, err := isolatedUpstashNamespace("cao:hosted-dashboard")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	second, err := isolatedUpstashNamespace("cao:hosted-dashboard")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if first == second {
-		t.Fatal("Upstash process sessions shared a namespace")
-	}
-	for _, namespace := range []string{first, second} {
-		if !strings.HasPrefix(namespace, "cao:upstash-") {
-			t.Fatalf("isolated namespace = %q", namespace)
-		}
-		if _, err := redisx.NormalizeNamespace(namespace); err != nil {
-			t.Fatalf("isolated namespace is invalid: %v", err)
-		}
-	}
-}
-
 func TestUpstashRevocationKeyPrefixIsStableAndModeSpecific(t *testing.T) {
 	first, err := upstashRevocationKeyPrefix(true, "dashboard")
 	if err != nil {

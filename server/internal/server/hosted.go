@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -267,15 +266,12 @@ func storeFromClient(ctx context.Context, client *redisx.Client, isolateSession 
 	if err != nil {
 		return nil, err
 	}
+	var store *redisx.Store
 	if isolateSession {
-		namespace, err = isolatedUpstashNamespace(namespace)
+		store, err = redisx.NewProcessIsolatedStore(client, namespace)
 		if err != nil {
 			return nil, err
 		}
-	}
-	var store *redisx.Store
-	if isolateSession {
-		store = redisx.NewProcessIsolatedStore(client, namespace)
 	} else {
 		store = redisx.NewStore(client, namespace)
 	}
@@ -283,18 +279,6 @@ func storeFromClient(ctx context.Context, client *redisx.Client, isolateSession 
 		return nil, errors.New("redis is unavailable")
 	}
 	return store, nil
-}
-
-func isolatedUpstashNamespace(namespace string) (string, error) {
-	var nonce [16]byte
-	if _, err := rand.Read(nonce[:]); err != nil {
-		return "", errors.New("generate Upstash session namespace")
-	}
-
-	sum := sha256.Sum256([]byte(namespace))
-	return redisx.NormalizeNamespace(
-		"upstash-" + hex.EncodeToString(sum[:6]) + "-" + hex.EncodeToString(nonce[:]),
-	)
 }
 
 func upstashRevocationKeyPrefix(upstashMode bool, namespace string) (string, error) {

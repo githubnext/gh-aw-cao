@@ -27,6 +27,24 @@ func (*marketplaceStoreCommandClient) DoMany(context.Context, [][]string) ([]any
 	return nil, nil
 }
 
+func TestProcessIsolatedStoresUseFreshNamespaces(t *testing.T) {
+	client := &marketplaceStoreCommandClient{}
+	first, err := NewProcessIsolatedStore(client, "cao:hosted-dashboard")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := NewProcessIsolatedStore(client, "hosted-dashboard")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !first.ProcessIsolated() || !second.ProcessIsolated() {
+		t.Fatal("process-isolated store did not report its capability")
+	}
+	if first.Key("") == second.Key("") {
+		t.Fatal("process-isolated stores shared a namespace")
+	}
+}
+
 func TestCacheMarketplaceRegistrySetsNamespacedKeyAndMillisecondTTL(t *testing.T) {
 	client := &marketplaceStoreCommandClient{}
 	store := NewStore(client, "marketplace-test")
