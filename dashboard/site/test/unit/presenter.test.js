@@ -823,6 +823,11 @@ describe('presenter built-in and custom pages', () => {
       document: authoritativeDashboardDocument,
       sources: {
         'firewall-most-blocked-domains': { source: 'firewall-most-blocked-domains', rows, metadata },
+        'firewall-least-used-domains': {
+          source: 'firewall-least-used-domains',
+          rows: [...rows].sort((left, right) => left.run - right.run || left.domain.localeCompare(right.domain)),
+          metadata
+        },
         'firewall-domain-totals': { source: 'firewall-domain-totals', rows, metadata },
         'firewall-policy-rules': { source: 'firewall-policy-rules', rows: [], metadata }
       }
@@ -832,6 +837,9 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] [data-chart-widget="pie"]')).not.toBeNull();
     expect(page?.querySelector('[data-chart-category="blocked.example"]')).not.toBeNull();
     expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] .chart-legend-pie strong')?.textContent).toBe('3,177,281');
+    const leastUsed = page?.querySelector('[data-view-id="security-firewall-least-used-domains"]');
+    expect(leastUsed?.querySelector('tbody tr td')?.textContent).toBe('blocked.example');
+    expect(leastUsed?.textContent).toContain('Least used domains');
     expect(page?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
     const text = page?.textContent ?? '';
     expect(text).toContain('api.github.com');
@@ -856,6 +864,19 @@ describe('presenter built-in and custom pages', () => {
       sources: {
         'firewall-most-blocked-domains': {
           source: 'firewall-most-blocked-domains',
+          rows: [],
+          metadata: {
+            'source-id': 'firewall-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-05T11:00:00Z',
+            'retrieved-at': '2026-09-05T11:05:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'empty'
+          }
+        },
+        'firewall-least-used-domains': {
+          source: 'firewall-least-used-domains',
           rows: [],
           metadata: {
             'source-id': 'firewall-fixture',

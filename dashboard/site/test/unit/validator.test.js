@@ -650,7 +650,7 @@ describe('dashboard document validation', () => {
       (/** @type {{ label: string }} */ section) => section.label === 'Data'
     ).pages).toContain('firewall');
     expect(firewall.sections).toBeUndefined();
-    expect(firewall.views).toHaveLength(2);
+    expect(firewall.views).toHaveLength(3);
     expect(document.dashboard.queries).toContainEqual(expect.objectContaining({
       name: 'firewall-domain-totals',
       intent: 'Show each observed firewall domain with the number of runs and total accepted and blocked requests.',
@@ -685,7 +685,17 @@ describe('dashboard document validation', () => {
       ],
       limit: 10
     }));
-    const [mostBlocked, domains] = firewall.views;
+    expect(document.dashboard.queries).toContainEqual(expect.objectContaining({
+      name: 'firewall-least-used-domains',
+      intent: 'Highlight uncommon firewall domains observed in the fewest runs.',
+      from: 'firewall-domain-totals',
+      'order-by': [
+        { field: 'run', direction: 'asc' },
+        { field: 'domain', direction: 'asc' }
+      ],
+      limit: 10
+    }));
+    const [mostBlocked, leastUsed, domains] = firewall.views;
     expect(mostBlocked).toMatchObject({
       id: 'security-firewall-most-blocked-domains',
       mark: 'chart',
@@ -701,6 +711,19 @@ describe('dashboard document validation', () => {
         }
       }
     });
+    expect(leastUsed).toMatchObject({
+      id: 'security-firewall-least-used-domains',
+      title: 'Least used domains',
+      mark: 'table',
+      layout: 'full',
+      data: { source: 'firewall-least-used-domains' }
+    });
+    expect(leastUsed.encoding.columns).toEqual([
+      { field: 'domain', type: 'nominal', title: 'Domain' },
+      { field: 'run', type: 'quantitative', title: 'Runs' },
+      { field: 'accepted', type: 'quantitative', title: 'Allowed' },
+      { field: 'blocked', type: 'quantitative', title: 'Blocked' }
+    ]);
     expect(domains).toMatchObject({
       id: 'security-firewall-domains',
       mark: 'table',
@@ -726,6 +749,7 @@ describe('dashboard document validation', () => {
     ]);
     expect(firewall.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual([
       'security-firewall-most-blocked-domains',
+      'security-firewall-least-used-domains',
       'security-firewall-domains'
     ]);
     const serialized = JSON.stringify(firewall).toLowerCase();
