@@ -5,6 +5,7 @@ import { createDebug, fullDebugUrl } from '../debug.js';
 import { copyTextToClipboard, createCopyControl, renderCheckbox } from './ui-primitives.js';
 import { isPlainObject, renderLazyDisclosure, renderSectionHeading } from './ui-primitives.js';
 import { renderSettingsCliActions } from './cli-actions.js';
+import { createFactoryScope } from './factory-elements.js';
 import { renderResetDashboardControl } from './reset-dashboard-control.js';
 import {
   automaticDashboardBackgroundUpdatesActive,
@@ -373,17 +374,9 @@ function renderAutomaticDataUpdatesSetting() {
     status
   );
   const stopStatusUpdates = onAutomaticDashboardBackgroundUpdateStatus(updateStatus);
-  let wasConnected = section.isConnected;
-  const observer = new MutationObserver(() => {
-    if (section.isConnected) {
-      wasConnected = true;
-      return;
-    }
-    if (!wasConnected) return;
-    observer.disconnect();
-    stopStatusUpdates();
-  });
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  const sectionScope = createFactoryScope();
+  sectionScope.signal.addEventListener('abort', stopStatusUpdates, { once: true });
+  sectionScope.bind(section);
   return section;
 }
 
