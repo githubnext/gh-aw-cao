@@ -210,6 +210,7 @@ test("review bundles skip safely when the agent artifact omits their prepared di
     reviewBundle,
     /if \[ ! -d "\$SOURCE_DIR" \]; then\s+echo "skip_upload=true" >> "\$GITHUB_OUTPUT"\s+echo "Review bundle was not persisted in the agent artifact; skipping publish: \$SOURCE_DIR_RAW" >&2\s+exit 0/s,
   );
+  assert.match(reviewBundle, /if: steps\.prepare\.outputs\.skip_upload != 'true'/);
 });
 
 test("workers inherit human-first progressive report disclosure", () => {
