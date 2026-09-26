@@ -165,6 +165,7 @@ func TestPlatformHostProfileRejectsProcessListenerAndEnforcesTrustedProxy(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	store := redisx.NewStore(client, "test")
 	config := Config{
 		HostProfile: azureFunctionsHostProfile(false),
@@ -182,5 +183,13 @@ func TestPlatformHostProfileRejectsProcessListenerAndEnforcesTrustedProxy(t *tes
 	}
 	if !config.Proxy.TrustForwarded {
 		t.Fatal("platform proxy capability was not enforced")
+	}
+}
+
+func TestPlatformHostProfileCannotServeProcessListener(t *testing.T) {
+	app := &App{config: Config{HostProfile: azureFunctionsHostProfile(false)}}
+	if err := app.Serve(t.Context()); err == nil ||
+		!strings.Contains(err.Error(), "delegates listener ownership") {
+		t.Fatalf("platform profile opened a process listener: %v", err)
 	}
 }

@@ -141,6 +141,12 @@ func New(store *redisx.Store, config Config) (*App, error) {
 }
 
 func (a *App) Serve(ctx context.Context) error {
+	if a.config.HostProfile.Listener != HostListenerProcess {
+		return fmt.Errorf(
+			"host profile %q delegates listener ownership to the platform",
+			a.config.HostProfile.Name,
+		)
+	}
 	serverLog.Printf("starting server tls=%t initial_ingestion=%t", a.config.CertFile != "", a.config.SourceDirectory != "")
 	if a.config.SourceDirectory != "" {
 		result, err := ingest.Run(ctx, a.store, a.config.SourceDirectory, ingest.Options{DatabaseQueriesPath: a.config.DatabaseQueriesPath})
