@@ -203,6 +203,15 @@ test("workers with title prefixes provide unprefixed safe-output titles", () => 
   }
 });
 
+test("review bundles skip safely when the agent artifact omits their prepared directory", () => {
+  const reviewBundle = workflow("shared/review-bundle.md");
+
+  assert.match(
+    reviewBundle,
+    /if \[ ! -d "\$SOURCE_DIR" \]; then\s+echo "skip_upload=true" >> "\$GITHUB_OUTPUT"\s+echo "Review bundle was not persisted in the agent artifact; skipping publish: \$SOURCE_DIR_RAW" >&2\s+exit 0/s,
+  );
+});
+
 test("workers inherit human-first progressive report disclosure", () => {
   const campaignSkill = readFileSync(join(root, "skills", "create-cao-campaign", "SKILL.md"), "utf8");
   const sharedControl = workflow("shared/control.md");
