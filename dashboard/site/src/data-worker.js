@@ -141,7 +141,7 @@ function repositoryMemoryPath(value) {
 function repositoryMemoryOmissions(value) {
   const source = value && typeof value === 'object' ? /** @type {Record<string, unknown>} */ (value) : {};
   const omitted = {
-    fileLimit: 0, fileSize: 0, extension: 0, nesting: 0, unsafePath: 0, unsupportedType: 0
+    fileLimit: 0, fileSize: 0, extension: 0, nesting: 0, unsafePath: 0, invalidContent: 0, unsupportedType: 0
   };
   for (const key of Object.keys(omitted)) {
     const count = source[key] ?? 0;
@@ -151,6 +151,28 @@ function repositoryMemoryOmissions(value) {
     omitted[/** @type {keyof typeof omitted} */ (key)] = Number(count);
   }
   return omitted;
+}
+
+/** @param {unknown[]} campaigns */
+function validateRepositoryMemoryTotalSize(campaigns) {
+  let totalSize = 0;
+  for (const value of campaigns) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      throw new Error('Campaign repository-memory entry is invalid.');
+    }
+    const entry = /** @type {Record<string, unknown>} */ (value);
+    if (!Array.isArray(entry.files)) throw new Error('Campaign repository-memory entry is invalid.');
+    for (const file of entry.files) {
+      const size = Number(file?.size);
+      if (!Number.isSafeInteger(size) || size < 0 || size > REPOSITORY_MEMORY_MAX_FILE_SIZE) {
+        throw new Error('Campaign repository-memory file metadata is invalid.');
+      }
+      if (size > REPOSITORY_MEMORY_MAX_TOTAL_SIZE - totalSize) {
+        throw new Error('Campaign repository-memory files exceed the total size limit.');
+      }
+      totalSize += size;
+    }
+  }
 }
 
 /** @param {unknown} value @param {string} campaign */
@@ -259,6 +281,7 @@ async function queryRepositoryMemory(request, signal) {
   if (manifest?.version !== 1 || !Array.isArray(manifest.campaigns)) {
     throw new Error('Repository-memory manifest is invalid.');
   }
+  validateRepositoryMemoryTotalSize(manifest.campaigns);
   const campaignId = String(request.campaign);
   const campaignValue = manifest.campaigns.find(
     (/** @type {Record<string, unknown>} */ entry) => entry?.campaign === campaignId

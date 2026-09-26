@@ -86,7 +86,8 @@ test("publishes installed campaign memory from remote refs without checking them
           extension: 1,
           nesting: 1,
           unsafePath: 0,
-          unsupportedType: 2,
+          invalidContent: 1,
+          unsupportedType: 1,
         },
       }],
     });

@@ -80,6 +80,7 @@ async function memoryFiles(repository, ref) {
     extension: 0,
     nesting: 0,
     unsafePath: 0,
+    invalidContent: 0,
     unsupportedType: 0,
   };
   let pending = Buffer.alloc(0);
@@ -189,7 +190,7 @@ export async function publishRepositoryMemory({ repository, inventory, output, g
       }
       const sha256 = await writeBlob(repositoryRoot, file.oid, destination);
       if (!sha256) {
-        omitted.unsupportedType += 1;
+        omitted.invalidContent += 1;
         continue;
       }
       totalSize += file.size;

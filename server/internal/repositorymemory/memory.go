@@ -40,6 +40,7 @@ type Omissions struct {
 	Extension       int `json:"extension"`
 	Nesting         int `json:"nesting"`
 	UnsafePath      int `json:"unsafePath"`
+	InvalidContent  int `json:"invalidContent"`
 	UnsupportedType int `json:"unsupportedType"`
 }
 
@@ -142,7 +143,8 @@ func Load(directory string) (Snapshot, error) {
 		seenCampaigns[campaign.Campaign] = struct{}{}
 		if campaign.Omitted.FileLimit < 0 || campaign.Omitted.FileSize < 0 ||
 			campaign.Omitted.Extension < 0 || campaign.Omitted.Nesting < 0 ||
-			campaign.Omitted.UnsafePath < 0 || campaign.Omitted.UnsupportedType < 0 {
+			campaign.Omitted.UnsafePath < 0 || campaign.Omitted.InvalidContent < 0 ||
+			campaign.Omitted.UnsupportedType < 0 {
 			return Snapshot{}, fmt.Errorf("repository-memory campaign %q has invalid omission counts", campaign.Campaign)
 		}
 		for fileIndex := range campaign.Files {

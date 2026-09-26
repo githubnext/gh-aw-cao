@@ -22,7 +22,7 @@ describe('repository-memory worker protocol', () => {
         size: content.length,
       }],
       omitted: {
-        fileLimit: 0, fileSize: 0, extension: 0, nesting: 0, unsafePath: 0, unsupportedType: 0
+        fileLimit: 0, fileSize: 0, extension: 0, nesting: 0, unsafePath: 0, invalidContent: 0, unsupportedType: 0
       },
     };
     const fetch = vi.fn()
@@ -74,19 +74,27 @@ describe('repository-memory worker protocol', () => {
   });
 
   it('rejects campaign memory over the total size limit', async () => {
-    const files = Array.from({ length: 65 }, (_, index) => ({
+    const files = Array.from({ length: 32 }, (_, index) => ({
       path: `file-${index}.txt`,
       oid: 'b'.repeat(40),
       size: 1024 * 1024,
     }));
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
       version: 1,
-      campaigns: [{
-        campaign: 'ambient-context',
-        branch: 'memory/ambient-context',
-        commit: 'a'.repeat(40),
-        files,
-      }],
+      campaigns: [
+        {
+          campaign: 'ambient-context',
+          branch: 'memory/ambient-context',
+          commit: 'a'.repeat(40),
+          files,
+        },
+        {
+          campaign: 'other',
+          branch: 'memory/other',
+          commit: 'c'.repeat(40),
+          files: [...files, { path: 'overflow.txt', oid: 'd'.repeat(40), size: 1024 * 1024 }],
+        },
+      ],
     }))));
 
     await expect(processDataRequest({
