@@ -30,7 +30,7 @@ flowchart LR
 | Requirement | Details |
 | --- | --- |
 | Application host | A container platform or host that can run `server/Dockerfile` behind HTTPS. To use the checked-in Compose profile, follow the [Coolify deployment](deployment-coolify.md). |
-| Upstash Redis | A dedicated Upstash Redis database with TLS enabled. Place it near the application host to reduce query and ingestion latency. |
+| Upstash Redis | A dedicated Upstash Redis database for this deployment's security boundary, with TLS enabled. Place it near the application host to reduce query and ingestion latency. |
 | Capacity | Enough database storage and command capacity for the retained dashboard generations, sessions, rate limits, and rebuild traffic. |
 | Eviction | Disable eviction. If Upstash reaches its data limit, writes must fail instead of silently evicting active generation data or security state. |
 | Dashboard artifact | A complete payload from the `cao-dashboard.yml` workflow, including `payload-hashes.json` and every file that it lists. |
@@ -48,7 +48,7 @@ The application host needs outbound access to the Upstash Redis endpoint and to 
    > [!CAUTION]
    > The connection string contains a credential. Don't commit it, pass it as a command-line argument, include it in a URL shown to users, or write it to logs.
 
-1. Set `CAO_REDIS_NAMESPACE` to a unique value, such as `upstash-dashboard`.
+1. Set `CAO_REDIS_NAMESPACE` to a unique value, such as `upstash-dashboard`. The namespace prevents accidental key collisions, but it isn't an access-control boundary. Don't share the database with another deployment or security tenant.
 1. Leave `CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS` unset or set it to `false`. Upstash connections must use TLS.
 1. Configure the remaining `serve-hosted` settings, including the allowed host, trusted proxy boundary, GitHub OAuth app, authorization policy, session secret, administrators, webhook secret, and source directory. For the complete list, see the [hosted service profile](https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md#hosted-service-profile).
 1. Build or select the CAO container image and provide the verified dashboard artifact to the container as read-only input.
@@ -71,7 +71,7 @@ The Upstash-specific settings are:
 | Variable | Required | Secret | Description |
 | --- | --- | --- | --- |
 | `CAO_REDIS_URL` | Yes | Yes | The Upstash Redis TCP connection string. It must use `rediss://`. Don't use the REST URL or token. |
-| `CAO_REDIS_NAMESPACE` | No | No | Prefix for every key owned by this deployment. Defaults to `hosted-dashboard`; use a unique value when a database is shared. |
+| `CAO_REDIS_NAMESPACE` | No | No | Prefix for every key owned by this deployment. Defaults to `hosted-dashboard`. It prevents key collisions but doesn't isolate deployments that share database credentials. |
 | `CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS` | No | No | Leave unset or `false`. This exception is only for a private deployment-managed Redis network and must not be used with Upstash. |
 
 The CAO Redis client supports credentials in the standard TLS Redis URL, verifies the endpoint certificate and host name, reuses a bounded pool of connections, and doesn't log the connection string. The hosted service requires Redis scripting for atomic generation activation, sessions, leases, and rate limits. Before using a new Upstash plan or database type, confirm that it supports the Redis TCP endpoint and `EVAL`.
@@ -88,7 +88,7 @@ Run the read-only diagnostics from the application container:
 /app/cao-dashboard doctor --redis-namespace upstash-dashboard
 ```
 
-`CAO_REDIS_URL` must be present in the process environment. Add `--deep` to inspect every active source, `--format json` for automation, or `--strict` to fail on warnings.
+`CAO_REDIS_URL` must be present in the process environment. Add `--deep` to inspect every active source or `--format json` for automation. `--strict` fails on warnings; Upstash doesn't report Redis persistence metrics, so that expected provider warning also produces a nonzero strict-mode result.
 
 ### Upstash usage
 
@@ -129,7 +129,7 @@ Credential rotation doesn't require a data migration when the endpoint and datab
 
 ## Recovering the deployment
 
-If the Redis projection becomes unusable, stop the CAO replicas, delete only the configured CAO namespace, and restart from the retained verified artifact. Don't delete unrelated keys when the database is shared.
+If the Redis projection becomes unusable, stop the CAO replicas, delete only the configured CAO namespace, and restart from the retained verified artifact. Use a dedicated database for each deployment or security tenant; a namespace alone doesn't prevent one credential from reading or changing another namespace.
 
 To roll back the application, redeploy the last known-good image digest through the same protected deployment environment. Then verify readiness, OAuth authorization, a bounded query, webhook handling, and rate limits. Rolling back the image doesn't roll back Upstash credentials or session secrets.
 

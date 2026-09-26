@@ -120,9 +120,11 @@ host and set `CAO_REDIS_URL` to the database's `rediss://` TCP connection string
 Do not configure the Upstash REST URL or REST token: the server uses the Redis
 TCP protocol and Lua scripts for atomic operations.
 
-Keep `CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS` unset or `false`, use a deployment-unique
-`CAO_REDIS_NAMESPACE`, and store the complete connection string only in the
-application host's secret manager. Disable database eviction so capacity
+Keep `CAO_ALLOW_PRIVATE_PLAINTEXT_REDIS` unset or `false`, use a dedicated
+Upstash database for each deployment security boundary, and set a
+deployment-unique `CAO_REDIS_NAMESPACE` to prevent accidental key collisions.
+The namespace is not tenant isolation. Store the complete connection string only
+in the application host's secret manager. Disable database eviction so capacity
 exhaustion fails writes rather than silently removing active data or hosted
 security state. The application host still owns verified artifact delivery,
 OAuth configuration, TLS ingress, health checks, and rollbacks. For the
