@@ -1,3 +1,7 @@
+import { createDebug } from '../debug.js';
+
+const debugContinuation = createDebug('continuation');
+
 export const CONTINUATION_PAGE_SIZE = 25;
 
 /**
@@ -42,6 +46,7 @@ export function bindSourceContinuations(
       /** @param {string} continuationToken */
       loadContinuation: (continuationToken) => {
         if (continuationToken !== currentToken) {
+          debugContinuation({ event: 'stale-token-rejected', source: name });
           return Promise.reject(new TypeError(`Continuation token for "${name}" is not current.`));
         }
         if (inFlight) return inFlight;
@@ -53,6 +58,12 @@ export function bindSourceContinuations(
           if (!next) throw new TypeError(`Continuation response is missing source "${name}".`);
           validatePage(name, next, totalRows);
           currentToken = next.continuationToken;
+          debugContinuation({
+            event: 'page-loaded',
+            source: name,
+            rowCount: next.rows.length,
+            hasMore: next.continuationToken !== undefined
+          });
           return next;
         }).finally(() => {
           inFlight = undefined;
@@ -79,11 +90,14 @@ export async function drainSourceContinuation(source) {
   /** @type {string | undefined} */
   let token = page.token;
   const load = page.load;
+  let pagesLoaded = 0;
   while (token) {
     const next = await load(token);
     if (Array.isArray(next.rows)) rows.push(...next.rows);
     token = next.continuationToken;
+    pagesLoaded += 1;
   }
+  debugContinuation({ event: 'drain-completed', source: source.source, pagesLoaded, rowCount: rows.length });
   return { ...source, rows, continuationToken: undefined };
 }
 
