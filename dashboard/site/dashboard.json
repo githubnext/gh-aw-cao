@@ -3587,6 +3587,23 @@
         "limit": 10
       },
       {
+        "name": "firewall-least-used-domains",
+        "intent": "Highlight uncommon firewall domains observed in the fewest runs.",
+        "description": "The ten domains observed in the fewest distinct runs.",
+        "from": "firewall-domain-totals",
+        "order-by": [
+          {
+            "field": "run",
+            "direction": "asc"
+          },
+          {
+            "field": "domain",
+            "direction": "asc"
+          }
+        ],
+        "limit": 10
+      },
+      {
         "name": "firewall-domain-workflows",
         "intent": "Show workflows that allowed or blocked requests to each observed firewall domain.",
         "description": "Workflow-level accepted and blocked request totals by firewall domain.",
@@ -11549,8 +11566,44 @@
             }
           },
           {
+            "id": "security-firewall-least-used-domains",
+            "title": "Least used domains",
+            "description": "Uncommon domains observed in the fewest distinct runs.",
+            "data": {
+              "source": "firewall-least-used-domains"
+            },
+            "mark": "table",
+            "layout": "full",
+            "empty-message": "No uncommon firewall domains are available for this selection.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "domain",
+                  "type": "nominal",
+                  "title": "Domain"
+                },
+                {
+                  "field": "run",
+                  "type": "quantitative",
+                  "title": "Runs"
+                },
+                {
+                  "field": "accepted",
+                  "type": "quantitative",
+                  "title": "Allowed"
+                },
+                {
+                  "field": "blocked",
+                  "type": "quantitative",
+                  "title": "Blocked"
+                }
+              ]
+            }
+          },
+          {
             "id": "security-firewall-domains",
-            "title": "Domains",
+            "disclosure-label": "All observed domains",
+            "disclosure": "supplemental",
             "description": "Observed runs and accepted and blocked requests by normalized domain.",
             "data": {
               "source": "firewall-domain-totals",

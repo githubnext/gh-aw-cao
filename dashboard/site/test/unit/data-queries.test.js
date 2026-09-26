@@ -367,6 +367,7 @@ describe('declarative dashboard queries', () => {
       [
         'overview-run-summary',
         'firewall-domain-totals',
+        'firewall-least-used-domains',
         'firewall-domain-workflows',
         'repository-workflow-totals',
         'repository-run-totals'
@@ -379,6 +380,10 @@ describe('declarative dashboard queries', () => {
     expect(result['firewall-domain-totals'].rows).toEqual([
       { domain: 'api.github.com', run: 2, accepted: 2, blocked: 8 },
       { domain: 'uploads.github.com', run: 1, accepted: 7, blocked: 0 }
+    ]);
+    expect(result['firewall-least-used-domains'].rows).toEqual([
+      { domain: 'uploads.github.com', run: 1, accepted: 7, blocked: 0 },
+      { domain: 'api.github.com', run: 2, accepted: 2, blocked: 8 }
     ]);
     expect(result['firewall-domain-workflows'].rows).toEqual([
       {
