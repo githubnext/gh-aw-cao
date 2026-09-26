@@ -214,6 +214,8 @@ Stopping a campaign does not revoke its credential. Disable affected runs and re
 Before promotion, verify:
 
 - App-only authentication when an App is configured;
+- separate read-token minting for each enrolled organization when using enterprise-owned Apps;
+- write-App installation only on approved safe-output repositories, including a reversible write-and-cleanup probe;
 - PAT-only authentication only when the App is intentionally absent, the fallback is eligible, and the operator explicitly consented;
 - expected precedence when both are configured;
 - target repository coverage;
