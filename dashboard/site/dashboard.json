@@ -916,7 +916,6 @@
         "label": "Data",
         "pages": [
           "campaigns",
-          "marketplace",
           "memory",
           "repositories",
           "workflows",
@@ -936,6 +935,7 @@
         "placement": "bottom",
         "pages": [
           "maintenance",
+          "marketplace",
           "indexing",
           "configuration"
         ]

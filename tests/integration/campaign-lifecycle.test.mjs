@@ -278,6 +278,15 @@ test("root campaign bootstraps an empty CAO and preserves resources during workf
         "allowed-owners": [controlRepository.split("/")[0]],
         "allowed-repositories": [controlRepository],
       },
+      marketplace: {
+        registries: [{
+          id: "official",
+          name: "Official CAO catalog",
+          repository: "githubnext/gh-aw-cao",
+          ref: "main",
+          auth: { type: "none" },
+        }],
+      },
       campaigns: {},
     });
     assertInstalledBootstrap(consumer, ghAwVersion, controlRepository);

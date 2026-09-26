@@ -37,6 +37,10 @@ describe('entity card templates', () => {
   });
 
   it('declares marketplace list and detail routes', () => {
+    expect(pages.marketplace.experimental).toBe(true);
+    expect(dashboard.navigation.find(
+      (/** @type {Record<string, any>} */ section) => section.label === 'Updates'
+    )?.pages).toContain('marketplace');
     expect(pages.marketplace.views[0]).toMatchObject({
       data: { source: 'marketplace-packages' },
       list: {

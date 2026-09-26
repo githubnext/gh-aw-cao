@@ -960,6 +960,7 @@
       "title": "Marketplace",
       "navigation-label": "Marketplace",
       "icon": "archive",
+      "experimental": true,
       "description": "Browse read-only CAO campaign packages from the configured registries.",
       "views": [
         {
