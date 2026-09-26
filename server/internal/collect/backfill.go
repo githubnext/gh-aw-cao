@@ -133,22 +133,36 @@ func (b Backfill) enumerate(ctx context.Context) ([]enrolledRepository, int, err
 			backfillLog.Printf("installation enumeration failed; continuing installation=%d", installation.ID)
 			continue
 		}
-		names := make([]string, 0, len(covered))
-		for _, repository := range covered {
-			normalized, err := NormalizeRepository(repository.FullName)
-			if err != nil {
-				continue
-			}
-			names = append(names, normalized)
-			repositories = append(repositories, enrolledRepository{
-				name: normalized, pushedAt: repository.PushedAt,
-			})
+		names, enrolled, skipped := normalizeEnumeratedRepositories(covered)
+		if skipped > 0 {
+			backfillLog.Printf("dropped invalid repository names installation=%d skipped=%d", installation.ID, skipped)
 		}
+		repositories = append(repositories, enrolled...)
 		if err := b.Enrollment.AddRepositories(ctx, installation.ID, names); err != nil {
 			return nil, 0, err
 		}
 	}
 	return repositories, len(installations), nil
+}
+
+// normalizeEnumeratedRepositories canonicalizes one installation's enumerated
+// repositories, dropping any reference NormalizeRepository rejects. It is a
+// pure function so cold start's name-canonicalization behavior is testable
+// without a fake GitHub API.
+func normalizeEnumeratedRepositories(covered []githubapp.Repository) (names []string, repositories []enrolledRepository, skipped int) {
+	names = make([]string, 0, len(covered))
+	for _, repository := range covered {
+		normalized, err := NormalizeRepository(repository.FullName)
+		if err != nil {
+			skipped++
+			continue
+		}
+		names = append(names, normalized)
+		repositories = append(repositories, enrolledRepository{
+			name: normalized, pushedAt: repository.PushedAt,
+		})
+	}
+	return names, repositories, skipped
 }
 
 // seed queues backfill tasks ordered by recency so active repositories become
