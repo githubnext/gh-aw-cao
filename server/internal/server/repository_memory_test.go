@@ -78,6 +78,24 @@ func TestRepositoryMemoryHandlersRejectInvalidAndMissingRequests(t *testing.T) {
 	}
 }
 
+func TestRepositoryMemoryHandlerReportsConcurrentRefresh(t *testing.T) {
+	store := redisx.NewStore(
+		&repositoryMemoryClient{manifest: []byte(`{"version":1,"campaigns":[]}`)}, "test")
+	app := &App{
+		store:  store,
+		memory: &repositorymemory.RemoteResolver{Cache: store},
+	}
+	response := httptest.NewRecorder()
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/memory/example", nil)
+	request.SetPathValue("campaign", "example")
+
+	app.repositoryMemoryCampaign(response, request)
+
+	if response.Code != http.StatusTooManyRequests || response.Header().Get("Retry-After") != "1" {
+		t.Fatalf("throttled response = %d Retry-After=%q", response.Code, response.Header().Get("Retry-After"))
+	}
+}
+
 type repositoryMemoryClient struct {
 	manifest []byte
 	content  []byte

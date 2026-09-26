@@ -170,6 +170,59 @@ func (s *Store) RepositoryMemoryFile(ctx context.Context, generation, campaign, 
 	return []byte(fmt.Sprint(value)), nil
 }
 
+func repositoryMemoryCacheKey(parts ...string) string {
+	sum := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
+	return hex.EncodeToString(sum[:])
+}
+
+func (s *Store) CachedRepositoryMemoryCampaign(ctx context.Context, campaign string) ([]byte, error) {
+	value, err := s.Client.Do(ctx, "GET", s.Key(
+		"repository-memory:campaign:"+repositoryMemoryCacheKey(campaign)))
+	if err != nil || value == nil {
+		return nil, err
+	}
+	return []byte(fmt.Sprint(value)), nil
+}
+
+func (s *Store) CacheRepositoryMemoryCampaign(
+	ctx context.Context, campaign string, content []byte, ttl time.Duration,
+) error {
+	_, err := s.Client.Do(
+		ctx,
+		"SET",
+		s.Key("repository-memory:campaign:"+repositoryMemoryCacheKey(campaign)),
+		string(content),
+		"PX",
+		strconv.FormatInt(ttl.Milliseconds(), 10),
+	)
+	return err
+}
+
+func (s *Store) CachedRepositoryMemoryFile(
+	ctx context.Context, campaign, commit, path string,
+) ([]byte, error) {
+	value, err := s.Client.Do(ctx, "GET", s.Key(
+		"repository-memory:cached-file:"+repositoryMemoryCacheKey(campaign, commit, path)))
+	if err != nil || value == nil {
+		return nil, err
+	}
+	return []byte(fmt.Sprint(value)), nil
+}
+
+func (s *Store) CacheRepositoryMemoryFile(
+	ctx context.Context, campaign, commit, path string, content []byte, ttl time.Duration,
+) error {
+	_, err := s.Client.Do(
+		ctx,
+		"SET",
+		s.Key("repository-memory:cached-file:"+repositoryMemoryCacheKey(campaign, commit, path)),
+		string(content),
+		"PX",
+		strconv.FormatInt(ttl.Milliseconds(), 10),
+	)
+	return err
+}
+
 func (s *Store) Key(suffix string) string {
 	return s.namespace + ":" + suffix
 }

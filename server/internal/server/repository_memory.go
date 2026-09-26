@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
@@ -19,6 +20,20 @@ func (a *App) repositoryMemoryCampaign(response http.ResponseWriter, request *ht
 		return
 	}
 	_, campaign, err := a.repositoryMemorySnapshot(request, campaignID)
+	if err != nil && a.memory != nil &&
+		(errors.Is(err, errCanonicalEntityNotFound) || errors.Is(err, redisx.ErrSourceUnavailable)) {
+		resolved, resolveErr := a.memory.Campaign(request.Context(), campaignID)
+		if resolveErr != nil {
+			writeRepositoryMemoryError(response, resolveErr)
+			return
+		}
+		if resolved == nil {
+			writeJSON(response, http.StatusOK, nil)
+			return
+		}
+		campaign = *resolved
+		err = nil
+	}
 	if errors.Is(err, errCanonicalEntityNotFound) {
 		writeJSON(response, http.StatusOK, nil)
 		return
@@ -38,6 +53,21 @@ func (a *App) repositoryMemoryContent(response http.ResponseWriter, request *htt
 		return
 	}
 	generation, campaign, err := a.repositoryMemorySnapshot(request, campaignID)
+	if err != nil && a.memory != nil &&
+		(errors.Is(err, errCanonicalEntityNotFound) || errors.Is(err, redisx.ErrSourceUnavailable)) {
+		content, resolveErr := a.memory.Content(request.Context(), campaignID, filePath)
+		if errors.Is(resolveErr, repositorymemory.ErrNotFound) ||
+			(resolveErr == nil && content == nil) {
+			writeError(response, http.StatusNotFound, "repository-memory file was not found")
+			return
+		}
+		if resolveErr != nil {
+			writeRepositoryMemoryError(response, resolveErr)
+			return
+		}
+		writeJSON(response, http.StatusOK, map[string]string{"content": string(content)})
+		return
+	}
 	if errors.Is(err, errCanonicalEntityNotFound) {
 		writeError(response, http.StatusNotFound, "repository-memory branch was not found")
 		return
@@ -78,7 +108,7 @@ func (a *App) repositoryMemoryContent(response http.ResponseWriter, request *htt
 func (a *App) repositoryMemorySnapshot(request *http.Request, campaignID string) (string, repositorymemory.Campaign, error) {
 	active, err := a.store.Active(request.Context())
 	if err != nil || active.Generation == "" {
-		return "", repositorymemory.Campaign{}, errors.New("repository memory is unavailable")
+		return "", repositorymemory.Campaign{}, redisx.ErrSourceUnavailable
 	}
 	content, err := a.store.RepositoryMemoryManifest(request.Context(), active.Generation)
 	if err != nil {
@@ -94,4 +124,13 @@ func (a *App) repositoryMemorySnapshot(request *http.Request, campaignID string)
 		}
 	}
 	return active.Generation, repositorymemory.Campaign{}, errCanonicalEntityNotFound
+}
+
+func writeRepositoryMemoryError(response http.ResponseWriter, err error) {
+	if retryAfter, throttled := repositorymemory.RetryAfterSeconds(err); throttled {
+		response.Header().Set("Retry-After", strconv.Itoa(retryAfter))
+		writeError(response, http.StatusTooManyRequests, "repository memory is temporarily throttled")
+		return
+	}
+	writeError(response, http.StatusServiceUnavailable, "repository memory is unavailable")
 }

@@ -121,6 +121,7 @@ func (config *CollectorConfig) Validate() error {
 type Collector struct {
 	config     CollectorConfig
 	client     *githubapp.Client
+	budget     *githubapp.Budget
 	enrollment collect.Enrollment
 	queue      collect.Queue
 	lake       collect.Lake
@@ -207,6 +208,7 @@ func NewCollector(store *redisx.Store, config CollectorConfig, databaseQueriesPa
 	return &Collector{
 		config:     config,
 		client:     client,
+		budget:     budget,
 		enrollment: enrollment,
 		queue:      queue,
 		lake:       lake,
