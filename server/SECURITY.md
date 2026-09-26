@@ -46,6 +46,14 @@ with `Retry-After` plus the standard `RateLimit-*` headers. Health/readiness
 probes and signature-verified GitHub webhooks remain exempt so platform health
 checks and delivery retries do not consume user quotas.
 
+A separate client-IP edge bucket runs before session loading and refresh, so
+invalid or expired sessions cannot bypass abuse controls by failing
+authentication early. At trusted proxy boundaries the server reads forwarded
+addresses from right to left, including address-and-port forms, and ignores
+caller-supplied leftmost entries. Limiter Redis operations have a dedicated
+two-second deadline to prevent a degraded Redis service from holding request
+workers for the full server I/O timeout.
+
 Webhook delivery IDs and projection leases are stored in the deployment Redis
 namespace. Failed reconciliation removes its delivery marker so GitHub can
 retry. Full rebuilds and webhook reconciliation share a distributed lease;

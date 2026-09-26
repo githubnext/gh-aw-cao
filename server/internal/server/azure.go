@@ -105,7 +105,16 @@ func validAzureProxyRequest(request *http.Request, policy AzureProxyPolicy) bool
 }
 
 func forwardedHeader(request *http.Request, name string) string {
-	return strings.TrimSpace(request.Header.Get(name))
+	values := request.Header.Values(name)
+	for valueIndex := len(values) - 1; valueIndex >= 0; valueIndex-- {
+		parts := strings.Split(values[valueIndex], ",")
+		for partIndex := len(parts) - 1; partIndex >= 0; partIndex-- {
+			if value := strings.TrimSpace(parts[partIndex]); value != "" {
+				return value
+			}
+		}
+	}
+	return ""
 }
 
 // processTelemetry lazily installs the OpenTelemetry tracer provider exactly

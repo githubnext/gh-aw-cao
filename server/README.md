@@ -149,12 +149,17 @@ boundary. Raw logins and client addresses are not stored in rate-limit keys.
 | Dashboard query (`POST /api/v1/query`) | 30 | 1 minute |
 | OAuth entry and callback | 10 | 5 minutes |
 | Other API and auth requests | 120 | 1 minute |
+| Hosted pre-authentication edge | 1,200 per client IP | 1 minute |
 
-Health/readiness probes, static assets, and independently authenticated GitHub
-webhooks are exempt. Every limited response includes `RateLimit-Limit`,
+Health/readiness probes and independently authenticated GitHub webhooks are
+exempt. Hosted dashboard assets use the higher-capacity edge bucket so session
+loading remains bounded without applying the tighter API quota to page loads.
+Every limited response includes `RateLimit-Limit`,
 `RateLimit-Remaining`, `RateLimit-Reset`, and `RateLimit-Policy`. An exhausted
 bucket returns `429 Too Many Requests` with `Retry-After` in seconds. If Redis
-cannot enforce a limit, the request fails closed with `503 Service Unavailable`.
+cannot enforce a limit within two seconds, the request fails closed with
+`503 Service Unavailable`. The edge bucket runs before session loading so
+invalid, expired, and unauthenticated requests cannot bypass Redis enforcement.
 
 ### Hosted Azure architecture
 

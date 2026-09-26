@@ -54,6 +54,9 @@ func TestTakeRateLimitTokenRejectsInvalidBoundsAndResponses(t *testing.T) {
 	if _, err := store.TakeRateLimitToken(t.Context(), "general:subject", 1, 0); err == nil {
 		t.Fatal("zero refill period was accepted")
 	}
+	if _, err := store.TakeRateLimitToken(t.Context(), "general:subject", 1, time.Nanosecond); err == nil {
+		t.Fatal("sub-millisecond refill period was accepted")
+	}
 	if _, err := store.TakeRateLimitToken(t.Context(), "general:subject", 1, time.Minute); err == nil {
 		t.Fatal("invalid Redis response was accepted")
 	}

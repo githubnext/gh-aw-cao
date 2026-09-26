@@ -25,8 +25,8 @@ func (s *Store) TakeRateLimitToken(
 	capacity int,
 	refillPeriod time.Duration,
 ) (RateLimitResult, error) {
-	if capacity <= 0 || refillPeriod <= 0 {
-		return RateLimitResult{}, errors.New("rate limit capacity and refill period must be positive")
+	if capacity <= 0 || refillPeriod < time.Millisecond {
+		return RateLimitResult{}, errors.New("rate limit capacity must be positive and refill period must be at least one millisecond")
 	}
 	script := `
 local current = redis.call("TIME")

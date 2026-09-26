@@ -8,17 +8,24 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
 type serverRateLimitClient struct {
-	result  []any
-	command []string
+	result      []any
+	command     []string
+	callCount   int
+	maxDeadline time.Duration
 }
 
-func (client *serverRateLimitClient) Do(_ context.Context, command ...string) (any, error) {
+func (client *serverRateLimitClient) Do(ctx context.Context, command ...string) (any, error) {
 	client.command = append([]string{}, command...)
+	client.callCount++
+	if deadline, ok := ctx.Deadline(); ok {
+		client.maxDeadline = time.Until(deadline)
+	}
 	return client.result, nil
 }
 
@@ -124,7 +131,8 @@ func TestRateLimitExemptsServiceProbesAndWebhooks(t *testing.T) {
 func TestRateLimitUsesForwardedClientOnlyAtTrustedBoundary(t *testing.T) {
 	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "https://dashboard.example/auth/login", nil)
 	request.RemoteAddr = "127.0.0.1:4321"
-	request.Header.Set("X-Forwarded-For", "198.51.100.8, 127.0.0.1")
+	request.Header.Add("X-Forwarded-For", "203.0.113.9")
+	request.Header.Add("X-Forwarded-For", "198.51.100.8:4567")
 
 	untrusted := &App{}
 	if got := untrusted.clientIP(request); got != "127.0.0.1" {
@@ -135,5 +143,99 @@ func TestRateLimitUsesForwardedClientOnlyAtTrustedBoundary(t *testing.T) {
 	}}}
 	if got := trusted.clientIP(request); got != "198.51.100.8" {
 		t.Fatalf("trusted forwarded address not selected: %q", got)
+	}
+
+	request.Header.Set("X-Forwarded-For", "203.0.113.9, unknown")
+	if got := trusted.clientIP(request); got != "127.0.0.1" {
+		t.Fatalf("malformed trusted address fell back to caller input: %q", got)
+	}
+}
+
+func TestForwardedBoundaryUsesTrustedFinalHeaderValues(t *testing.T) {
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "https://internal.example/", nil)
+	request.Host = "internal.example"
+	request.Header.Add("X-Forwarded-Host", "attacker.example")
+	request.Header.Add("X-Forwarded-Host", "dashboard.example")
+	request.Header.Add("X-Forwarded-Proto", "http")
+	request.Header.Add("X-Forwarded-Proto", "https")
+	policy := ProxyPolicy{
+		AllowedHosts:   []string{"dashboard.example"},
+		RequireHTTPS:   true,
+		TrustForwarded: true,
+	}
+
+	if !validAzureProxyRequest(request, policy) {
+		t.Fatal("trusted final forwarded header values were not selected")
+	}
+}
+
+func TestPreAuthRateLimitBoundsRejectedRequests(t *testing.T) {
+	client := &serverRateLimitClient{result: []any{int64(1), int64(1199), int64(0), int64(50)}}
+	app := hostedRateLimitApp(client)
+	handler := app.preAuthRateLimit(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		http.Error(response, "unauthorized", http.StatusUnauthorized)
+	}))
+	request := httptest.NewRequestWithContext(
+		t.Context(), http.MethodGet, "https://dashboard.example/api/repositories", nil)
+	request.RemoteAddr = "192.0.2.10:4321"
+	response := httptest.NewRecorder()
+
+	handler.ServeHTTP(response, request)
+
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("rejected request returned %d", response.Code)
+	}
+	if client.callCount != 1 || len(client.command) < 6 ||
+		!strings.Contains(client.command[3], ":rate-limit:edge:") ||
+		client.command[4] != "1200" || client.command[5] != "60000" {
+		t.Fatalf("pre-authentication limiter command = %#v", client.command)
+	}
+	if client.maxDeadline <= 0 || client.maxDeadline > rateLimitTimeout {
+		t.Fatalf("limiter deadline = %s, want at most %s", client.maxDeadline, rateLimitTimeout)
+	}
+}
+
+func TestPreAuthRateLimitSkipsInvalidRequestBoundary(t *testing.T) {
+	client := &serverRateLimitClient{result: []any{int64(1), int64(1199), int64(0), int64(50)}}
+	app := hostedRateLimitApp(client)
+	handler := app.preAuthRateLimit(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.WriteHeader(http.StatusMisdirectedRequest)
+	}))
+	request := httptest.NewRequestWithContext(
+		t.Context(), http.MethodGet, "https://attacker.example/api/repositories", nil)
+	response := httptest.NewRecorder()
+
+	handler.ServeHTTP(response, request)
+
+	if response.Code != http.StatusMisdirectedRequest || client.callCount != 0 {
+		t.Fatalf("invalid request boundary reached Redis: status=%d calls=%d", response.Code, client.callCount)
+	}
+}
+
+func TestPreAuthRateLimitCoversHostedStaticRequests(t *testing.T) {
+	client := &serverRateLimitClient{result: []any{int64(1), int64(1199), int64(0), int64(50)}}
+	app := hostedRateLimitApp(client)
+	handler := app.preAuthRateLimit(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.WriteHeader(http.StatusNoContent)
+	}))
+	request := httptest.NewRequestWithContext(
+		t.Context(), http.MethodGet, "https://dashboard.example/assets/app.js", nil)
+	response := httptest.NewRecorder()
+
+	handler.ServeHTTP(response, request)
+
+	if response.Code != http.StatusNoContent || client.callCount != 1 {
+		t.Fatalf("hosted static request was not edge limited: status=%d calls=%d", response.Code, client.callCount)
+	}
+}
+
+func hostedRateLimitApp(client *serverRateLimitClient) *App {
+	return &App{
+		store: redisx.NewStore(client, "test"),
+		oauth: &githubOAuth{},
+		config: Config{Proxy: ProxyPolicy{
+			AllowedHosts: []string{"dashboard.example"},
+			RequireHTTPS: true,
+		}},
 	}
 }
