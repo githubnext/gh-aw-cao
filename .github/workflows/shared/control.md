@@ -366,7 +366,11 @@ jobs:
           for (const [step, outcome] of Object.entries(steps)) {
             console.log(`[CAO activation] ${JSON.stringify({ step, outcome: outcome || "not-run" })}`);
           }
-          const credential = steps.github_app_token === "success" ? "github-app" : "fallback-token-chain";
+          const credential = steps.github_app_token === "success"
+            ? "github-app"
+            : steps.github_app_token === "skipped"
+              ? "fallback-token-chain"
+              : `github-app-${steps.github_app_token || "not-run"}`;
           console.log(`[CAO activation] ${JSON.stringify({
             decision: "read-credential",
             outcome: credential,
@@ -374,7 +378,10 @@ jobs:
           console.log(`[CAO activation] ${JSON.stringify({
             decision: "activation",
             authorized: process.env.CAO_ADMISSION_AUTHORIZED === "true"
-              && process.env.CAO_PRECOMPUTE_AUTHORIZED !== "false",
+              && process.env.CAO_PRECOMPUTE_AUTHORIZED === "true"
+              && steps.precompute === "success"
+              && steps.precompute_validation === "success"
+              && steps.precompute_artifact_upload === "success",
             admission_reason: process.env.CAO_ADMISSION_REASON || "not-evaluated",
             precompute_reason: process.env.CAO_PRECOMPUTE_REASON || "not-evaluated",
           })}`);

@@ -812,8 +812,12 @@ function createInventory(context, repositories) {
   logDecision("inventory-partition", "selected", {
     input_count: repositories.length,
     unique_count: sorted.length,
-    cell_count: cell.length,
-    batch_count: candidates.length,
+    configured_cell_count: cellCount,
+    cell_repository_count: cell.length,
+    configured_batch_size: batchSize,
+    batch_count: batchCount,
+    batch_index: batchIndex,
+    candidate_count: candidates.length,
     target_shortcut: Boolean(context.targetRepository),
   });
   return {
@@ -977,10 +981,12 @@ async function precompute() {
     if (context.role === "worker") {
       validateWorkerDispatch(context);
       writeWorkerPrecompute(context);
+      writeActionsOutputs({ authorized: true, reason: "authorized" });
       logDecision("precompute", "prepared", { role: "worker", candidate_count: 0 });
       return;
     }
     await writeOrchestratorPrecompute(context);
+    writeActionsOutputs({ authorized: true, reason: "authorized" });
     const result = readJson(OUTPUT_PATH);
     logDecision("precompute", "prepared", {
       role: "orchestrator",

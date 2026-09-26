@@ -344,7 +344,7 @@ esac
 
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /\[CAO decision] {"decision":"repository-inventory","outcome":"selected","source":"allowed_repos","repository_count":2}/);
-  assert.match(result.stdout, /\[CAO decision] {"decision":"inventory-partition","outcome":"selected","input_count":2,"unique_count":1/);
+  assert.match(result.stdout, /\[CAO decision] {"decision":"inventory-partition","outcome":"selected","input_count":2,"unique_count":1,"configured_cell_count":1,"cell_repository_count":1,"configured_batch_size":100000,"batch_count":1,"batch_index":0,"candidate_count":1/);
   assert.match(result.stdout, /\[CAO decision] {"decision":"worker-workflow","outcome":"eligible","workflow":"dependabot-update-planner"/);
   assert.match(result.stdout, /\[CAO decision] {"decision":"repository-cap","outcome":"resolved","candidates":1,"eligible_workers":1/);
   const precompute = JSON.parse(readFileSync("/tmp/gh-aw/agent/control-precompute.json", "utf8"));

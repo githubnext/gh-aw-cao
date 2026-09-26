@@ -418,6 +418,9 @@ test("control workflows deny before activation through one shared admission cont
   }
   assert.match(stepBlock(sharedControl, "Summarize CAO pre-activation steps"), /decision: "read-credential"/);
   assert.match(stepBlock(sharedControl, "Summarize CAO pre-activation steps"), /decision: "activation"/);
+  assert.match(stepBlock(sharedControl, "Summarize CAO pre-activation steps"), /CAO_PRECOMPUTE_AUTHORIZED === "true"/);
+  assert.match(stepBlock(sharedControl, "Summarize CAO pre-activation steps"), /steps\.precompute_validation === "success"/);
+  assert.match(stepBlock(sharedControl, "Summarize CAO pre-activation steps"), /steps\.precompute_artifact_upload === "success"/);
   assert.doesNotMatch(stepBlock(sharedControl, "Summarize CAO pre-activation steps"), /secrets\.|outputs\.token/);
   assert.match(stepBlock(sharedControl, "Log CAO activation handoff"), /decision: "agent-handoff"/);
   assert.match(sharedControl, /const reason = 'cannot read or execute the CAO control modules at github\.workflow_sha'/);
