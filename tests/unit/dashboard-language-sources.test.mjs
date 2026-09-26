@@ -1276,6 +1276,10 @@ test("dashboard source bridge carries API capacity admission blocks into run row
           failureJob: "pre_activation",
           failureMessage: "Target authority missing",
           failureStep: "CAO admission blocked: GitHub API limited until 2026-09-02T22:04:33.000Z",
+          failureLog: "##[error]Target authority missing",
+          failureKind: "driver_exit",
+          classification: "runtime",
+          runUrl: "https://github.com/githubnext/gh-aw-cao/actions/runs/33682053183",
           resource: "github-rest-api",
           resourceResetAt: "2026-09-02T22:04:33.000Z",
           resourceWaitHours: 1.08,
@@ -1375,18 +1379,31 @@ test("dashboard source bridge carries API capacity admission blocks into run row
 
   assert.deepEqual(
     Object.fromEntries(Object.entries(sources.runs.rows[0]).filter(([key]) => [
-      "admission-status", "admission-reason", "failure-job", "failure-message", "failure-step", "failure-detail", "resource", "resource-reset-at", "resource-wait-hours",
+      "admission-status", "admission-reason", "classification", "failure-kind", "failure-job", "failure-message", "failure-step", "failure-log", "failure-detail", "resource", "resource-reset-at", "resource-wait-hours", "run-link", "workflow-link",
     ].includes(key))),
     {
       "admission-status": "resource-limited",
       "admission-reason": "github-api-capacity-insufficient",
+      classification: "runtime",
+      "failure-kind": "driver_exit",
       "failure-job": "pre_activation",
       "failure-message": "Target authority missing",
       "failure-step": "CAO admission blocked: GitHub API limited until 2026-09-02T22:04:33.000Z",
+      "failure-log": "##[error]Target authority missing",
       "failure-detail": "Target authority missing",
       resource: "github-rest-api",
       "resource-reset-at": "2026-09-02T22:04:33.000Z",
       "resource-wait-hours": 1.08,
+      "run-link": {
+        relation: "run",
+        href: "https://github.com/githubnext/gh-aw-cao/actions/runs/33682053183",
+        label: "View run 33682053183",
+      },
+      "workflow-link": {
+        relation: "workflow",
+        href: "https://github.com/githubnext/gh-aw-cao/actions/workflows/self-care.lock.yml",
+        label: "SelfCare",
+      },
     },
   );
 });

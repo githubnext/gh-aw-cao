@@ -789,6 +789,8 @@ function runRows(deployed, usage) {
         "ended-at": run.status === "completed" ? run.updatedAt : undefined,
         "run-status": run.status === "in_progress" ? "in-progress" : run.status || "unknown",
         "run-conclusion": runConclusion(run.conclusion),
+        ...(run.classification ? { classification: run.classification } : {}),
+        ...(run.failureKind ? { "failure-kind": run.failureKind } : {}),
         ...(run.admissionStatus ? { "admission-status": run.admissionStatus } : {}),
         ...(run.admissionReason ? { "admission-reason": run.admissionReason } : {}),
         ...(run.failureJob ? { "failure-job": run.failureJob } : {}),
@@ -824,7 +826,11 @@ function runRows(deployed, usage) {
             workflow.name || workflow.path,
           ),
         } : {}),
-        "run-link": link("run", `${githubServerUrl}/${workflow.repository}/actions/runs/${run.runId}`, `View run ${run.runId}`),
+        "run-link": link(
+          "run",
+          run.runUrl || `${githubServerUrl}/${workflow.repository}/actions/runs/${run.runId}`,
+          `View run ${run.runId}`,
+        ),
       });
     }
   }

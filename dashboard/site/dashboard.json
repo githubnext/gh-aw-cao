@@ -6368,6 +6368,10 @@
               {
                 "field": "workflow-role",
                 "as": "declared-workflow-role"
+              },
+              {
+                "field": "workflow-link",
+                "as": "declared-workflow-link"
               }
             ]
           },
@@ -6485,11 +6489,41 @@
             ]
           },
           {
-            "as": "error-signature-label",
+            "as": "_error-signature-default-label",
             "function": "title-case",
             "args": [
               {
                 "field": "error-signature"
+              }
+            ]
+          },
+          {
+            "as": "_is-driver-exit",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "error-signature"
+              },
+              {
+                "value": "driver_exit"
+              },
+              {
+                "value": "driver-exit"
+              }
+            ]
+          },
+          {
+            "as": "error-signature-label",
+            "function": "if",
+            "args": [
+              {
+                "field": "_is-driver-exit"
+              },
+              {
+                "value": "Agent process exited unexpectedly"
+              },
+              {
+                "field": "_error-signature-default-label"
               }
             ]
           },
@@ -6901,6 +6935,10 @@
           },
           {
             "field": "workflow"
+          },
+          {
+            "field": "declared-workflow-link",
+            "as": "workflow-source-link"
           },
           {
             "field": "run-link"
@@ -8620,6 +8658,10 @@
               {
                 "field": "workflow-link",
                 "as": "workflow-link"
+              },
+              {
+                "field": "workflow-source-link",
+                "as": "workflow-source-link"
               }
             ]
           }
