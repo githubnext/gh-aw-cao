@@ -2,9 +2,7 @@
 
 import { execFileSync } from "node:child_process";
 
-const DAY_MS = 86_400_000;
 const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
-const PLAN_MARKER = /<!-- dependabot-update-plan:repository=([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+) -->/;
 
 export const definition = {
   schemaVersion: 3,
@@ -15,136 +13,135 @@ export const definition = {
   adoption: {
     commit: "7f31a746d534f128d92221edcad975972c361c0f",
     adoptedAt: "2026-09-17T08:48:00Z",
-    baselineCommit: "3ff44e26cf119464e22e1678457c4019f3d002b2",
-    baselineAt: "2026-09-15T17:38:18Z",
+    baselineCommit: "68bfddaf467b0b6ee608a7fe0827662ba3673f78",
+    baselineAt: "2026-09-17T06:14:04Z",
   },
   evaluation: {
-    mode: "attainment-only",
+    mode: "baseline-comparable",
   },
   evidence: {
-    key: "dependabot-plan-consumption",
-    repositories: ["githubnext/gh-aw-cao"],
-    opportunity: "A durable, target-bound Dependabot plan issue created during the observation window.",
+    key: "dependabot-security-risk",
+    repositories: ["github/gh-aw"],
+    opportunity: "A Dependabot security alert in an authorized target repository that was open at the immutable observation cutoff.",
     filters: [
-      "Issue title ends with the canonical Dependency update plan subject or its body contains the exact repository marker.",
-      "Pull requests and issues without a valid target repository marker or subject are excluded.",
-      "Consumption signals must occur no later than fourteen days after plan creation.",
+      "Count alerts created no later than the cutoff and not fixed, dismissed, or auto-dismissed by that cutoff.",
+      "Count critical and high alerts separately without severity weighting.",
+      "Count Dependabot-authored pull requests created no later than the cutoff and not closed by that cutoff as a separate queue diagnostic.",
+      "Fail the observation closed when complete alert or pull-request lifecycle evidence is unavailable.",
     ],
-    collection: "At the immutable window cutoff, list Dependabot plan issues and collect their bounded child issues, comments, and timeline events through read-only GitHub APIs.",
+    collection: "Fetch Dependabot alert lifecycle records and Dependabot-authored pull-request lifecycle records once per supported repository, then reconstruct every requested cutoff locally from their authoritative timestamps.",
     window: {
-      durationDays: 14,
-      cadenceDays: 14,
-      maturationDays: 14,
+      durationDays: 7,
+      cadenceDays: 7,
+      maturationDays: 0,
     },
-    zeroRule: "Complete evidence for one or more mature plans with no accepted consumption signal records zero.",
-    missingRule: "No eligible plan, immature evidence, inaccessible or paginated evidence, or an ambiguous plan identity records missing rather than zero.",
+    zeroRule: "Complete lifecycle evidence with no alert or pull request open at the cutoff records zero.",
+    missingRule: "Inaccessible, truncated, malformed, or incomplete lifecycle evidence records missing rather than zero.",
   },
   model: {
-    architecture: "Direct opportunity-normalized outcome attainment with disaggregated signal diagnostics.",
-    recommendation: "Use consumed plan share as primary; retain signal shares separately because they identify different forms of active use.",
+    architecture: "Problem-first repository-risk measurement independent of gh-aw outputs, recommendations, runs, and engagement.",
+    recommendation: "Use total open Dependabot security alerts as the primary outcome and retain critical/high alerts and the Dependabot pull-request queue as separate diagnostics. Count improvement regardless of actor and describe adoption-timed movement as association.",
     presentation: {
-      label: "Dependabot plan consumption",
-      betterLabel: "More mature plans actively consumed",
+      label: "Dependabot security risk",
+      betterLabel: "Fewer open security alerts and Dependabot pull requests",
     },
   },
   summary: {
-    nativeLabel: "Share of mature Dependabot plans actively consumed",
+    nativeLabel: "Open Dependabot security-alert backlog",
+  },
+  metricDisposition: {
+    retained: [
+      "Total open Dependabot security alerts are the primary repository outcome.",
+      "Open critical/high Dependabot security alerts are a severity diagnostic.",
+      "Open Dependabot-authored pull requests are a dependency-maintenance queue diagnostic.",
+    ],
+    rejected: [
+      "Plan creation, assignment, comments, checklist progress, linked pull requests, issue closure, workflow runs, and agent assessments are gh-aw mechanism signals.",
+    ],
   },
   metrics: [
     {
-      id: "consumed-plan-share",
-      name: "Consumed plan share",
+      id: "open-security-alert-count",
+      name: "Open security alerts",
       role: "primary",
-      formula: "plans with assignment, external participation, checklist progress, a linked pull request, or closure / eligible mature plans",
-      direction: "increase",
-      presentation: { name: "Consumed plans", legendLabel: "Consumed plans", transform: "identity" },
+      formula: "Dependabot security alerts open at the cutoff",
+      direction: "decrease",
+      unit: "alerts",
+      presentation: {
+        name: "Open security alerts",
+        legendLabel: "Security alerts",
+        transform: "identity",
+      },
     },
-    ...[
-      ["assigned-plan-share", "Assigned plan share", "plans with an assignment / eligible mature plans", "Assigned"],
-      ["participated-plan-share", "Participated plan share", "plans with external participation / eligible mature plans", "Participation"],
-      ["progressed-plan-share", "Progressed plan share", "plans with completed checklist progress / eligible mature plans", "Progress"],
-      ["linked-plan-share", "Linked pull request share", "plans cross-referenced by a pull request / eligible mature plans", "Linked PR"],
-      ["closed-plan-share", "Closed plan share", "closed plans / eligible mature plans", "Closed"],
-    ].map(([id, name, formula, legendLabel]) => ({
-      id,
-      name,
+    {
+      id: "open-high-critical-alert-count",
+      name: "Open critical/high security alerts",
       role: "diagnostic",
-      formula,
-      direction: "increase",
-      presentation: { name, legendLabel, transform: "identity" },
-    })),
+      formula: "Dependabot security alerts with critical or high severity open at the cutoff",
+      direction: "decrease",
+      unit: "alerts",
+      presentation: {
+        name: "Open critical/high alerts",
+        legendLabel: "Critical/high alerts",
+        transform: "identity",
+      },
+    },
+    {
+      id: "open-dependabot-pr-count",
+      name: "Open Dependabot pull requests",
+      role: "diagnostic",
+      formula: "Dependabot-authored dependency pull requests open at the cutoff",
+      direction: "decrease",
+      unit: "pull-requests",
+      presentation: {
+        name: "Open Dependabot pull requests",
+        legendLabel: "Dependabot PRs",
+        transform: "identity",
+      },
+    },
   ],
   validationExamples: {
     targetAttained: {
       valid: true,
-      opportunityCount: 1,
-      consumedCount: 1,
-      assignedCount: 1,
-      participatedCount: 1,
-      progressedCount: 1,
-      linkedCount: 1,
-      closedCount: 1,
+      openSecurityAlertCount: 0,
+      openHighCriticalAlertCount: 0,
+      openDependabotPullRequestCount: 0,
     },
     targetMissed: {
       valid: true,
-      opportunityCount: 1,
-      consumedCount: 0,
-      assignedCount: 0,
-      participatedCount: 0,
-      progressedCount: 0,
-      linkedCount: 0,
-      closedCount: 0,
+      openSecurityAlertCount: 8,
+      openHighCriticalAlertCount: 3,
+      openDependabotPullRequestCount: 6,
     },
-    missing: { valid: false, opportunityCount: 0 },
-    malformed: { valid: true, opportunityCount: "one", consumedCount: 1 },
+    missing: { valid: false },
+    malformed: {
+      valid: true,
+      openSecurityAlertCount: "eight",
+      openHighCriticalAlertCount: 3,
+      openDependabotPullRequestCount: 6,
+    },
   },
 };
 
 const metricFields = {
-  "consumed-plan-share": "consumedCount",
-  "assigned-plan-share": "assignedCount",
-  "participated-plan-share": "participatedCount",
-  "progressed-plan-share": "progressedCount",
-  "linked-plan-share": "linkedCount",
-  "closed-plan-share": "closedCount",
+  "open-security-alert-count": "openSecurityAlertCount",
+  "open-high-critical-alert-count": "openHighCriticalAlertCount",
+  "open-dependabot-pr-count": "openDependabotPullRequestCount",
 };
 
-function boundedShare(numerator, denominator) {
-  if (!Number.isInteger(denominator) || denominator < 1
-      || !Number.isInteger(numerator) || numerator < 0 || numerator > denominator) {
-    return null;
-  }
-  return Math.round((numerator / denominator) * 1_000_000) / 1_000_000;
+function finiteNonNegativeInteger(value) {
+  return Number.isInteger(value) && value >= 0;
 }
 
 export function scoreMetric(id, evidence) {
+  const valid = evidence?.valid === true
+    && finiteNonNegativeInteger(evidence.openSecurityAlertCount)
+    && finiteNonNegativeInteger(evidence.openHighCriticalAlertCount)
+    && evidence.openHighCriticalAlertCount <= evidence.openSecurityAlertCount
+    && finiteNonNegativeInteger(evidence.openDependabotPullRequestCount);
+  if (!valid) return null;
   const field = metricFields[id];
-  if (!field || evidence?.valid !== true) return null;
-  return boundedShare(evidence[field], evidence.opportunityCount);
-}
-
-function api(endpoint, fields = []) {
-  const output = execFileSync("gh", [
-    "api", "--method", "GET", "--paginate", "--slurp", endpoint,
-    ...fields.flatMap(([name, value]) => ["-f", `${name}=${value}`]),
-  ], {
-    encoding: "utf8",
-    maxBuffer: 32 * 1024 * 1024,
-    env: process.env,
-  });
-  const pages = JSON.parse(output);
-  if (!Array.isArray(pages) || pages.some((page) => !Array.isArray(page))) {
-    throw new Error(`GitHub API returned malformed paginated evidence for ${endpoint}`);
-  }
-  return pages;
-}
-
-function onePage(endpoint, fields = []) {
-  const pages = api(endpoint, fields);
-  if (pages.length !== 1) {
-    throw new Error(`GitHub API evidence exceeded its bounded page for ${endpoint}`);
-  }
-  return pages[0];
+  return field ? evidence[field] : null;
 }
 
 function parseTime(value) {
@@ -152,75 +149,116 @@ function parseTime(value) {
   return Number.isFinite(timestamp) ? timestamp : null;
 }
 
-function targetOf(issue) {
-  const marker = String(issue.body ?? "").match(PLAN_MARKER)?.[1];
-  const subject = String(issue.title ?? "").match(/Dependency update plan for ([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)$/)?.[1];
-  if (marker && subject && marker.toLowerCase() !== subject.toLowerCase()) return null;
-  return marker ?? subject ?? null;
+function terminalAt(record) {
+  return [
+    record.fixed_at,
+    record.dismissed_at,
+    record.auto_dismissed_at,
+    record.closed_at,
+  ].map(parseTime).filter((value) => value !== null).sort((left, right) => left - right)[0] ?? null;
 }
 
-function isPublisher(login, issueAuthor) {
-  return login === issueAuthor
-    || login === "github-actions[bot]"
-    || login === "dependabot[bot]"
-    || /^cao-.*\[bot\]$/.test(login);
+export function isOpenAt(record, cutoff) {
+  const createdAt = parseTime(record?.created_at);
+  const cutoffAt = parseTime(cutoff);
+  if (createdAt === null || cutoffAt === null || createdAt > cutoffAt) return false;
+  const endedAt = terminalAt(record);
+  return endedAt === null || endedAt > cutoffAt;
 }
 
-function signalFromTimeline(events, cutoff, kind) {
-  return events.some((event) => {
-    const at = parseTime(event.created_at);
-    if (at === null || at > cutoff) return false;
-    if (kind === "assigned") return event.event === "assigned";
-    if (kind === "linked") return event.event === "cross-referenced" && event.source?.issue?.pull_request;
-    if (kind === "closed") return event.event === "closed";
-    if (kind === "completed") return event.event === "closed" && event.state_reason === "completed";
-    return false;
-  });
-}
-
-function externalParticipation(comments, cutoff, issueAuthor) {
-  return comments.some((comment) => {
-    const at = parseTime(comment.created_at);
-    const login = String(comment.user?.login ?? "");
-    return at !== null && at <= cutoff && login && !isPublisher(login, issueAuthor);
-  });
-}
-
-function collectPlan(repository, issue) {
-  const createdAt = parseTime(issue.created_at);
-  if (createdAt === null) throw new Error(`Plan issue ${issue.number} has an invalid creation timestamp`);
-  const cutoff = createdAt + definition.evidence.window.maturationDays * DAY_MS;
-  const children = onePage(`repos/${repository}/issues/${issue.number}/sub_issues`, [["per_page", "100"]]);
-  if (children.length > 12) throw new Error(`Plan issue ${issue.number} exceeds the twelve-child evidence bound`);
-
-  let assigned = false;
-  let participated = false;
-  let progressed = false;
-  let linked = false;
-  let closed = false;
-  const issueNumbers = [issue.number, ...children.map(({ number }) => number)];
-  for (const number of issueNumbers) {
-    const record = number === issue.number ? issue : children.find((child) => child.number === number);
-    const comments = onePage(`repos/${repository}/issues/${number}/comments`, [["per_page", "100"]]);
-    const timeline = onePage(`repos/${repository}/issues/${number}/timeline`, [["per_page", "100"]]);
-    assigned ||= signalFromTimeline(timeline, cutoff, "assigned");
-    participated ||= externalParticipation(comments, cutoff, String(record?.user?.login ?? ""));
-    linked ||= signalFromTimeline(timeline, cutoff, "linked");
-    if (number !== issue.number) {
-      progressed ||= signalFromTimeline(timeline, cutoff, "completed");
-    } else {
-      closed ||= signalFromTimeline(timeline, cutoff, "closed");
-    }
-  }
+export function buildEvidence({
+  alerts,
+  pullRequests,
+  repository,
+  request,
+}) {
+  if (!Array.isArray(alerts) || !Array.isArray(pullRequests)) return { valid: false };
+  const openAlerts = alerts.filter((alert) => isOpenAt(alert, request.windowEnd));
+  const openPullRequests = pullRequests.filter((pullRequest) => isOpenAt(
+    pullRequest,
+    request.windowEnd,
+  ));
   return {
-    assigned,
-    participated,
-    progressed,
-    linked,
-    closed,
-    consumed: assigned || participated || progressed || linked || closed,
-    issueNumbers,
+    valid: true,
+    openSecurityAlertCount: openAlerts.length,
+    openHighCriticalAlertCount: openAlerts.filter(({ severity }) => (
+      severity === "critical" || severity === "high"
+    )).length,
+    openDependabotPullRequestCount: openPullRequests.length,
+    maturityStatus: "matured",
+    dubious: false,
+    key: definition.evidence.key,
+    repositories: [repository],
+    opportunity: definition.evidence.opportunity,
+    filters: definition.evidence.filters,
+    collection: definition.evidence.collection,
+    window: definition.evidence.window,
   };
+}
+
+function run(command, args) {
+  return execFileSync(command, args, {
+    encoding: "utf8",
+    env: process.env,
+    maxBuffer: 128 * 1024 * 1024,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+}
+
+function api(endpoint, fields = []) {
+  const output = run("gh", [
+    "api", "--method", "GET", "--paginate", "--slurp", endpoint,
+    ...fields.flatMap(([name, value]) => ["-f", `${name}=${value}`]),
+  ]);
+  const pages = JSON.parse(output);
+  if (!Array.isArray(pages)) throw new Error(`GitHub API returned malformed evidence for ${endpoint}`);
+  return pages;
+}
+
+function alertEvidence(repository) {
+  return api(`repos/${repository}/dependabot/alerts`, [
+    ["state", "auto_dismissed,dismissed,fixed,open"],
+    ["per_page", "100"],
+  ]).flat().map((alert) => ({
+    created_at: alert.created_at,
+    fixed_at: alert.fixed_at,
+    dismissed_at: alert.dismissed_at,
+    auto_dismissed_at: alert.auto_dismissed_at,
+    severity: alert.security_advisory?.severity,
+  }));
+}
+
+function pullRequestEvidence(repository, latestCutoff) {
+  const query = `query($searchQuery:String!,$endCursor:String) {
+    search(query:$searchQuery,type:ISSUE,first:100,after:$endCursor) {
+      issueCount
+      nodes {
+        ... on PullRequest {
+          createdAt
+          closedAt
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }`;
+  const output = run("gh", [
+    "api", "graphql", "--paginate", "--slurp",
+    "-f", `query=${query}`,
+    "-f", `searchQuery=repo:${repository} is:pr author:app/dependabot created:<=${latestCutoff}`,
+  ]);
+  const pages = JSON.parse(output);
+  if (!Array.isArray(pages)
+      || pages.some((page) => !Array.isArray(page.data?.search?.nodes))
+      || pages.some((page) => page.data.search.issueCount > 1_000)) {
+    throw new Error(`GitHub GraphQL returned incomplete Dependabot pull request evidence for ${repository}`);
+  }
+  return pages.flatMap((page) => page.data.search.nodes).map((pullRequest) => ({
+    created_at: pullRequest.createdAt,
+    closed_at: pullRequest.closedAt,
+  }));
 }
 
 function validRequest(request) {
@@ -238,87 +276,32 @@ export async function collectBatch(requests) {
   if (!Array.isArray(requests) || requests.length === 0 || requests.some((request) => !validRequest(request))) {
     throw new Error("collectBatch requires valid observation windows");
   }
-
-  const grouped = new Map();
-  for (const request of requests) {
-    const repository = request.repository ?? definition.evidence.repositories[0];
-    if (!REPOSITORY.test(repository)
-        || !definition.evidence.repositories.some((item) => item.toLowerCase() === repository.toLowerCase())) {
+  const supported = new Set(definition.evidence.repositories.map((repository) => repository.toLowerCase()));
+  const grouped = Map.groupBy(requests, (request) => (
+    request.repository ?? definition.evidence.repositories[0]
+  ));
+  const results = new Map();
+  for (const [repository, repositoryRequests] of grouped) {
+    if (!REPOSITORY.test(repository) || !supported.has(repository.toLowerCase())) {
       throw new Error(`Unsupported evidence repository: ${repository}`);
     }
-    if (!grouped.has(repository)) grouped.set(repository, []);
-    grouped.get(repository).push(request);
-  }
-
-  const issuesByRepository = new Map();
-  for (const [repository, windows] of grouped) {
-    const earliest = windows.map(({ windowStart }) => windowStart).sort()[0];
-    const pages = api(`repos/${repository}/issues`, [
-      ["state", "all"],
-      ["labels", "dependabot"],
-      ["since", earliest],
-      ["per_page", "100"],
-    ]);
-    issuesByRepository.set(repository, pages.flat().filter((issue) => !issue.pull_request && targetOf(issue)));
-  }
-
-  const planEvidence = new Map();
-  for (const [repository, issues] of issuesByRepository) {
-    const windows = grouped.get(repository);
-    for (const issue of issues) {
-      const createdAt = parseTime(issue.created_at);
-      const requested = createdAt !== null && windows.some((request) => (
-        createdAt >= parseTime(request.windowStart)
-        && createdAt < parseTime(request.windowEnd)
-        && parseTime(request.observedAt) >= createdAt + definition.evidence.window.maturationDays * DAY_MS
-      ));
-      if (!requested) continue;
-      planEvidence.set(`${repository.toLowerCase()}:${issue.number}`, collectPlan(repository, issue));
+    const alerts = alertEvidence(repository);
+    const latestCutoff = repositoryRequests.map(({ windowEnd }) => windowEnd).toSorted().at(-1);
+    const pullRequests = pullRequestEvidence(repository, latestCutoff);
+    for (const request of repositoryRequests) {
+      results.set(request, {
+        evidence: buildEvidence({
+          alerts,
+          pullRequests,
+          repository,
+          request,
+        }),
+        provenance: [
+          { repository, kind: "dependabot-alert-lifecycle", ref: request.windowEnd },
+          { repository, kind: "dependabot-pull-request-lifecycle", ref: request.windowEnd },
+        ],
+      });
     }
   }
-
-  return requests.map((request) => {
-    const repository = request.repository ?? definition.evidence.repositories[0];
-    const start = parseTime(request.windowStart);
-    const end = parseTime(request.windowEnd);
-    const observedAt = parseTime(request.observedAt);
-    const candidates = issuesByRepository.get(repository).filter((issue) => {
-      const createdAt = parseTime(issue.created_at);
-      return createdAt !== null
-        && createdAt >= start
-        && createdAt < end
-        && observedAt >= createdAt + definition.evidence.window.maturationDays * DAY_MS;
-    });
-    const plans = candidates.map((issue) => ({
-      issue,
-      signals: planEvidence.get(`${repository.toLowerCase()}:${issue.number}`),
-    }));
-    const count = (field) => plans.filter(({ signals }) => signals[field]).length;
-    return {
-      evidence: {
-        valid: true,
-        opportunityCount: plans.length,
-        consumedCount: count("consumed"),
-        assignedCount: count("assigned"),
-        participatedCount: count("participated"),
-        progressedCount: count("progressed"),
-        linkedCount: count("linked"),
-        closedCount: count("closed"),
-        key: definition.evidence.key,
-        repositories: [repository],
-        opportunity: definition.evidence.opportunity,
-        filters: definition.evidence.filters,
-        collection: definition.evidence.collection,
-        window: definition.evidence.window,
-      },
-      provenance: [
-        { repository, kind: "github-issues", ref: `${request.windowStart}/${request.windowEnd}` },
-        ...plans.flatMap(({ issue, signals }) => signals.issueNumbers.map((number) => ({
-          repository,
-          kind: number === issue.number ? "dependabot-plan-issue" : "dependabot-task-issue",
-          ref: String(number),
-        }))),
-      ],
-    };
-  });
+  return requests.map((request) => results.get(request));
 }

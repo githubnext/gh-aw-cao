@@ -92,21 +92,40 @@ if (!refresh && existsSync(finalTimeline)) {
 }
 const cadenceMs = definition.evidence.window.cadenceDays * 86_400_000;
 const scheduled = [];
-for (let at = Date.parse(startAt); at <= Date.parse(endAt); at += cadenceMs) {
+const firstScheduledAt = mode === "attainment-only"
+  ? Date.parse(startAt) + cadenceMs
+  : Date.parse(startAt);
+for (let at = firstScheduledAt; at <= Date.parse(endAt); at += cadenceMs) {
   scheduled.push(new Date(at).toISOString().replace(".000Z", "Z"));
 }
 if (scheduled.at(-1) !== endAt) scheduled.push(endAt);
 const observationTimes = [...new Set([
   ...scheduled,
-  ...archived.map(({ observedAt }) => observedAt).filter((value) => value <= endAt),
-  ...priorSnapshots.map(({ observedAt }) => observedAt).filter((value) => value <= endAt),
-])].toSorted();
-if (observationTimes.length < 2) fail("at least two observation times are required");
+  ...(mode === "baseline-comparable" && definition.adoption.baselineAt
+    ? [definition.adoption.baselineAt]
+    : []),
+  ...archived.map(({ observedAt }) => observedAt)
+    .filter((value) => Date.parse(value) <= Date.parse(endAt)
+      && (mode !== "attainment-only" || Date.parse(value) > Date.parse(startAt))),
+  ...priorSnapshots.map(({ observedAt }) => observedAt)
+    .filter((value) => Date.parse(value) <= Date.parse(endAt)
+      && (mode !== "attainment-only" || Date.parse(value) > Date.parse(startAt))),
+])].toSorted((left, right) => Date.parse(left) - Date.parse(right));
 const windows = observationTimes.map((observedAt) => {
-  const windowEnd = shiftDays(observedAt, -definition.evidence.window.maturationDays);
+  const firstMatureAt = shiftDays(
+    definition.adoption.adoptedAt,
+    definition.evidence.window.durationDays + definition.evidence.window.maturationDays,
+  );
+  const interim = mode === "attainment-only"
+    && Date.parse(observedAt) < Date.parse(firstMatureAt);
+  const windowEnd = interim
+    ? observedAt
+    : shiftDays(observedAt, -definition.evidence.window.maturationDays);
   return {
     observedAt,
-    windowStart: shiftDays(windowEnd, -definition.evidence.window.durationDays),
+    windowStart: interim
+      ? definition.adoption.adoptedAt
+      : shiftDays(windowEnd, -definition.evidence.window.durationDays),
     windowEnd,
   };
 });

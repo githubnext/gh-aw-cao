@@ -1,0 +1,355 @@
+{
+  "schemaVersion": 1,
+  "repository": "githubnext/gh-aw-cao",
+  "workflowSlug": "dependabot-update-planner",
+  "functions": {
+    "78540498a35c483cea4a7727ca961c3b2e0e94ca2c9604ff4b648064ad87ea34": {
+      "valueFunctionSha256": "78540498a35c483cea4a7727ca961c3b2e0e94ca2c9604ff4b648064ad87ea34",
+      "snapshots": [
+        {
+          "observedAt": "2026-08-27T08:48:00Z",
+          "window": {
+            "startAt": "2026-08-20T08:48:00Z",
+            "endAt": "2026-08-27T08:48:00Z"
+          },
+          "evidence": {
+            "valid": true,
+            "openSecurityAlertCount": 7,
+            "openHighCriticalAlertCount": 2,
+            "openDependabotPullRequestCount": 0,
+            "maturityStatus": "matured",
+            "dubious": false,
+            "key": "dependabot-security-risk",
+            "repositories": [
+              "github/gh-aw"
+            ],
+            "opportunity": "A Dependabot security alert in an authorized target repository that was open at the immutable observation cutoff.",
+            "filters": [
+              "Count alerts created no later than the cutoff and not fixed, dismissed, or auto-dismissed by that cutoff.",
+              "Count critical and high alerts separately without severity weighting.",
+              "Count Dependabot-authored pull requests created no later than the cutoff and not closed by that cutoff as a separate queue diagnostic.",
+              "Fail the observation closed when complete alert or pull-request lifecycle evidence is unavailable."
+            ],
+            "collection": "Fetch Dependabot alert lifecycle records and Dependabot-authored pull-request lifecycle records once per supported repository, then reconstruct every requested cutoff locally from their authoritative timestamps.",
+            "window": {
+              "durationDays": 7,
+              "cadenceDays": 7,
+              "maturationDays": 0
+            }
+          },
+          "provenance": [
+            {
+              "repository": "github/gh-aw",
+              "kind": "dependabot-alert-lifecycle",
+              "ref": "2026-08-27T08:48:00Z"
+            },
+            {
+              "repository": "github/gh-aw",
+              "kind": "dependabot-pull-request-lifecycle",
+              "ref": "2026-08-27T08:48:00Z"
+            }
+          ],
+          "metrics": {
+            "open-security-alert-count": 7,
+            "open-high-critical-alert-count": 2,
+            "open-dependabot-pr-count": 0
+          }
+        },
+        {
+          "observedAt": "2026-09-03T08:48:00Z",
+          "window": {
+            "startAt": "2026-08-27T08:48:00Z",
+            "endAt": "2026-09-03T08:48:00Z"
+          },
+          "evidence": {
+            "valid": true,
+            "openSecurityAlertCount": 13,
+            "openHighCriticalAlertCount": 6,
+            "openDependabotPullRequestCount": 6,
+            "maturityStatus": "matured",
+            "dubious": false,
+            "key": "dependabot-security-risk",
+            "repositories": [
+              "github/gh-aw"
+            ],
+            "opportunity": "A Dependabot security alert in an authorized target repository that was open at the immutable observation cutoff.",
+            "filters": [
+              "Count alerts created no later than the cutoff and not fixed, dismissed, or auto-dismissed by that cutoff.",
+              "Count critical and high alerts separately without severity weighting.",
+              "Count Dependabot-authored pull requests created no later than the cutoff and not closed by that cutoff as a separate queue diagnostic.",
+              "Fail the observation closed when complete alert or pull-request lifecycle evidence is unavailable."
+            ],
+            "collection": "Fetch Dependabot alert lifecycle records and Dependabot-authored pull-request lifecycle records once per supported repository, then reconstruct every requested cutoff locally from their authoritative timestamps.",
+            "window": {
+              "durationDays": 7,
+              "cadenceDays": 7,
+              "maturationDays": 0
+            }
+          },
+          "provenance": [
+            {
+              "repository": "github/gh-aw",
+              "kind": "dependabot-alert-lifecycle",
+              "ref": "2026-09-03T08:48:00Z"
+            },
+            {
+              "repository": "github/gh-aw",
+              "kind": "dependabot-pull-request-lifecycle",
+              "ref": "2026-09-03T08:48:00Z"
+            }
+          ],
+          "metrics": {
+            "open-security-alert-count": 13,
+            "open-high-critical-alert-count": 6,
+            "open-dependabot-pr-count": 6
+          }
+        },
+        {
+          "observedAt": "2026-09-10T08:48:00Z",
+          "window": {
+            "startAt": "2026-09-03T08:48:00Z",
+            "endAt": "2026-09-10T08:48:00Z"
+          },
+          "evidence": {
+            "valid": true,
+            "openSecurityAlertCount": 15,
+            "openHighCriticalAlertCount": 5,
+            "openDependabotPullRequestCount": 0,
+            "maturityStatus": "matured",
+            "dubious": false,
+            "key": "dependabot-security-risk",
+            "repositories": [
+              "github/gh-aw"
+            ],
+            "opportunity": "A Dependabot security alert in an authorized target repository that was open at the immutable observation cutoff.",
+            "filters": [
+              "Count alerts created no later than the cutoff and not fixed, dismissed, or auto-dismissed by that cutoff.",
+              "Count critical and high alerts separately without severity weighting.",
+              "Count Dependabot-authored pull requests created no later than the cutoff and not closed by that cutoff as a separate queue diagnostic.",
+              "Fail the observation closed when complete alert or pull-request lifecycle evidence is unavailable."
+            ],
+            "collection": "Fetch Dependabot alert lifecycle records and Dependabot-authored pull-request lifecycle records once per supported repository, then reconstruct every requested cutoff locally from their authoritative timestamps.",
+            "window": {
+              "durationDays": 7,
+              "cadenceDays": 7,
+              "maturationDays": 0
+            }
+          },
+          "provenance": [
+            {
+              "repository": "github/gh-aw",
+              "kind": "dependabot-alert-lifecycle",
+              "ref": "2026-09-10T08:48:00Z"
+            },
+            {
+              "repository": "github/gh-aw",
+              "kind": "dependabot-pull-request-lifecycle",
+              "ref": "2026-09-10T08:48:00Z"
+            }
+          ],
+          "metrics": {
+            "open-security-alert-count": 15,
+            "open-high-critical-alert-count": 5,
+            "open-dependabot-pr-count": 0
+          }
+        },
+        {
+          "observedAt": "2026-09-17T08:48:00Z",
+          "window": {
+            "startAt": "2026-09-10T08:48:00Z",
+            "endAt": "2026-09-17T08:48:00Z"
+          },
+          "evidence": {
+            "valid": true,
+            "openSecurityAlertCount": 15,
+            "openHighCriticalAlertCount": 5,
+            "openDependabotPullRequestCount": 16,
+            "maturityStatus": "matured",
+            "dubious": false,
+            "key": "dependabot-security-risk",
+            "repositories": [
+              "github/gh-aw"
+            ],
+            "opportunity": "A Dependabot security alert in an authorized target repository that was open at the immutable observation cutoff.",
+            "filters": [
+              "Count alerts created no later than the cutoff and not fixed, dismissed, or auto-dismissed by that cutoff.",
+              "Count critical and high alerts separately without severity weighting.",
+              "Count Dependabot-authored pull requests created no later than the cutoff and not closed by that cutoff as a separate queue diagnostic.",
+              "Fail the observation closed when complete alert or pull-request lifecycle evidence is unavailable."
+            ],
+            "collection": "Fetch Dependabot alert lifecycle records and Dependabot-authored pull-request lifecycle records once per supported repository, then reconstruct every requested cutoff locally from their authoritative timestamps.",
+            "window": {
+              "durationDays": 7,
+              "cadenceDays": 7,
+              "maturationDays": 0
+            }
+          },
+          "provenance": [
+            {
+              "repository": "github/gh-aw",
+              "kind": "dependabot-alert-lifecycle",
+              "ref": "2026-09-17T08:48:00Z"
+            },
+            {
+              "repository": "github/gh-aw",
+              "kind": "dependabot-pull-request-lifecycle",
+              "ref": "2026-09-17T08:48:00Z"
+            }
+          ],
+          "metrics": {
+            "open-security-alert-count": 15,
+            "open-high-critical-alert-count": 5,
+            "open-dependabot-pr-count": 16
+          }
+        },
+        {
+          "observedAt": "2026-09-24T08:48:00Z",
+          "window": {
+            "startAt": "2026-09-17T08:48:00Z",
+            "endAt": "2026-09-24T08:48:00Z"
+          },
+          "evidence": {
+            "valid": true,
+            "openSecurityAlertCount": 15,
+            "openHighCriticalAlertCount": 5,
+            "openDependabotPullRequestCount": 13,
+            "maturityStatus": "matured",
+            "dubious": false,
+            "key": "dependabot-security-risk",
+            "repositories": [
+              "github/gh-aw"
+            ],
+            "opportunity": "A Dependabot security alert in an authorized target repository that was open at the immutable observation cutoff.",
+            "filters": [
+              "Count alerts created no later than the cutoff and not fixed, dismissed, or auto-dismissed by that cutoff.",
+              "Count critical and high alerts separately without severity weighting.",
+              "Count Dependabot-authored pull requests created no later than the cutoff and not closed by that cutoff as a separate queue diagnostic.",
+              "Fail the observation closed when complete alert or pull-request lifecycle evidence is unavailable."
+            ],
+            "collection": "Fetch Dependabot alert lifecycle records and Dependabot-authored pull-request lifecycle records once per supported repository, then reconstruct every requested cutoff locally from their authoritative timestamps.",
+            "window": {
+              "durationDays": 7,
+              "cadenceDays": 7,
+              "maturationDays": 0
+            }
+          },
+          "provenance": [
+            {
+              "repository": "github/gh-aw",
+              "kind": "dependabot-alert-lifecycle",
+              "ref": "2026-09-24T08:48:00Z"
+            },
+            {
+              "repository": "github/gh-aw",
+              "kind": "dependabot-pull-request-lifecycle",
+              "ref": "2026-09-24T08:48:00Z"
+            }
+          ],
+          "metrics": {
+            "open-security-alert-count": 15,
+            "open-high-critical-alert-count": 5,
+            "open-dependabot-pr-count": 13
+          }
+        },
+        {
+          "observedAt": "2026-09-26T19:11:31Z",
+          "window": {
+            "startAt": "2026-09-19T19:11:31Z",
+            "endAt": "2026-09-26T19:11:31Z"
+          },
+          "evidence": {
+            "valid": true,
+            "openSecurityAlertCount": 15,
+            "openHighCriticalAlertCount": 5,
+            "openDependabotPullRequestCount": 13,
+            "maturityStatus": "matured",
+            "dubious": false,
+            "key": "dependabot-security-risk",
+            "repositories": [
+              "github/gh-aw"
+            ],
+            "opportunity": "A Dependabot security alert in an authorized target repository that was open at the immutable observation cutoff.",
+            "filters": [
+              "Count alerts created no later than the cutoff and not fixed, dismissed, or auto-dismissed by that cutoff.",
+              "Count critical and high alerts separately without severity weighting.",
+              "Count Dependabot-authored pull requests created no later than the cutoff and not closed by that cutoff as a separate queue diagnostic.",
+              "Fail the observation closed when complete alert or pull-request lifecycle evidence is unavailable."
+            ],
+            "collection": "Fetch Dependabot alert lifecycle records and Dependabot-authored pull-request lifecycle records once per supported repository, then reconstruct every requested cutoff locally from their authoritative timestamps.",
+            "window": {
+              "durationDays": 7,
+              "cadenceDays": 7,
+              "maturationDays": 0
+            }
+          },
+          "provenance": [
+            {
+              "repository": "github/gh-aw",
+              "kind": "dependabot-alert-lifecycle",
+              "ref": "2026-09-26T19:11:31Z"
+            },
+            {
+              "repository": "github/gh-aw",
+              "kind": "dependabot-pull-request-lifecycle",
+              "ref": "2026-09-26T19:11:31Z"
+            }
+          ],
+          "metrics": {
+            "open-security-alert-count": 15,
+            "open-high-critical-alert-count": 5,
+            "open-dependabot-pr-count": 13
+          }
+        },
+        {
+          "observedAt": "2026-09-17T06:14:04Z",
+          "window": {
+            "startAt": "2026-09-10T06:14:04Z",
+            "endAt": "2026-09-17T06:14:04Z"
+          },
+          "evidence": {
+            "valid": true,
+            "openSecurityAlertCount": 15,
+            "openHighCriticalAlertCount": 5,
+            "openDependabotPullRequestCount": 16,
+            "maturityStatus": "matured",
+            "dubious": false,
+            "key": "dependabot-security-risk",
+            "repositories": [
+              "github/gh-aw"
+            ],
+            "opportunity": "A Dependabot security alert in an authorized target repository that was open at the immutable observation cutoff.",
+            "filters": [
+              "Count alerts created no later than the cutoff and not fixed, dismissed, or auto-dismissed by that cutoff.",
+              "Count critical and high alerts separately without severity weighting.",
+              "Count Dependabot-authored pull requests created no later than the cutoff and not closed by that cutoff as a separate queue diagnostic.",
+              "Fail the observation closed when complete alert or pull-request lifecycle evidence is unavailable."
+            ],
+            "collection": "Fetch Dependabot alert lifecycle records and Dependabot-authored pull-request lifecycle records once per supported repository, then reconstruct every requested cutoff locally from their authoritative timestamps.",
+            "window": {
+              "durationDays": 7,
+              "cadenceDays": 7,
+              "maturationDays": 0
+            }
+          },
+          "provenance": [
+            {
+              "repository": "github/gh-aw",
+              "kind": "dependabot-alert-lifecycle",
+              "ref": "2026-09-17T06:14:04Z"
+            },
+            {
+              "repository": "github/gh-aw",
+              "kind": "dependabot-pull-request-lifecycle",
+              "ref": "2026-09-17T06:14:04Z"
+            }
+          ],
+          "metrics": {
+            "open-security-alert-count": 15,
+            "open-high-critical-alert-count": 5,
+            "open-dependabot-pr-count": 16
+          }
+        }
+      ]
+    }
+  }
+}
