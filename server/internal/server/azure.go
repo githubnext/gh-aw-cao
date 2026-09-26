@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -53,7 +55,7 @@ func validateHostedMode(store *redisx.Store, config *Config) error {
 	if config.HostingMode == HostingModeAzureFunctions {
 		policy = config.AzureProxy
 	}
-	if !policy.RequireHTTPS {
+	if !policy.RequireHTTPS && !config.AzureLocalSimulation {
 		return errors.New("hosted mode requires HTTPS")
 	}
 	if config.HostingMode == HostingModeHosted {
@@ -165,8 +167,12 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 	if redisURL == "" {
 		return nil, errors.New("CAO_REDIS_URL is required")
 	}
-	if !strings.HasPrefix(strings.ToLower(redisURL), "rediss://") {
-		return nil, errors.New("azure Functions mode requires rediss:// Redis transport")
+	localSimulation, err := azureLocalSimulationFromEnv()
+	if err != nil {
+		return nil, err
+	}
+	if err := validateAzureRedisURL(redisURL, localSimulation); err != nil {
+		return nil, err
 	}
 	client, err := redisx.New(redisURL)
 	if err != nil {
@@ -195,15 +201,16 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 		return nil, err
 	}
 	app, err := New(store, Config{
-		HostingMode:      HostingModeAzureFunctions,
-		SiteDirectory:    siteDirectory,
-		DashboardQueries: definitions,
-		Collector:        collector,
-		WebhookSecret:    os.Getenv("CAO_GITHUB_WEBHOOK_SECRET"),
-		AdminUsers:       splitCSV(os.Getenv("CAO_GITHUB_ADMIN_USERS")),
+		HostingMode:          HostingModeAzureFunctions,
+		AzureLocalSimulation: localSimulation,
+		SiteDirectory:        siteDirectory,
+		DashboardQueries:     definitions,
+		Collector:            collector,
+		WebhookSecret:        os.Getenv("CAO_GITHUB_WEBHOOK_SECRET"),
+		AdminUsers:           splitCSV(os.Getenv("CAO_GITHUB_ADMIN_USERS")),
 		AzureProxy: AzureProxyPolicy{
 			AllowedHosts:   splitCSV(os.Getenv("CAO_AZURE_ALLOWED_HOSTS")),
-			RequireHTTPS:   true,
+			RequireHTTPS:   !localSimulation,
 			TrustForwarded: true,
 		},
 		GitHubOAuth: &GitHubOAuthConfig{
@@ -222,6 +229,39 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 	}
 	go app.oauth.runRevocationWorker(context.WithoutCancel(ctx))
 	return app.AzureFunctionsHandler(), nil
+}
+
+func azureLocalSimulationFromEnv() (bool, error) {
+	switch value := strings.TrimSpace(os.Getenv("CAO_AZURE_LOCAL_SIMULATION")); value {
+	case "":
+		return false, nil
+	case "1":
+		return true, nil
+	default:
+		return false, errors.New("CAO_AZURE_LOCAL_SIMULATION must be 1 when enabled")
+	}
+}
+
+func validateAzureRedisURL(redisURL string, localSimulation bool) error {
+	parsed, err := url.Parse(redisURL)
+	if err != nil {
+		return errors.New("azure Functions mode requires a valid Redis URL")
+	}
+	if strings.EqualFold(parsed.Scheme, "rediss") {
+		return nil
+	}
+	if !localSimulation || !strings.EqualFold(parsed.Scheme, "redis") {
+		return errors.New("azure Functions mode requires rediss:// Redis transport")
+	}
+	host := parsed.Hostname()
+	if host == "localhost" {
+		return nil
+	}
+	address := net.ParseIP(host)
+	if address == nil || !address.IsLoopback() {
+		return errors.New("local Azure simulation requires loopback Redis")
+	}
+	return nil
 }
 
 func (a *App) AzureFunctionsHandler() http.Handler {

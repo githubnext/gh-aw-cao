@@ -59,6 +59,41 @@ func TestHostedRedisRequiresTLS(t *testing.T) {
 	}
 }
 
+func TestAzureRedisLocalSimulationIsLoopbackOnly(t *testing.T) {
+	for _, endpoint := range []string{
+		"redis://127.0.0.1:6379/0",
+		"redis://[::1]:6379/0",
+		"redis://localhost:6379/0",
+		"rediss://redis.example.com:6380/0",
+	} {
+		if err := validateAzureRedisURL(endpoint, true); err != nil {
+			t.Errorf("local simulation rejected %s: %v", endpoint, err)
+		}
+	}
+	for _, endpoint := range []string{
+		"redis://redis.example.com:6379/0",
+		"http://127.0.0.1:6379/0",
+	} {
+		if err := validateAzureRedisURL(endpoint, true); err == nil {
+			t.Errorf("local simulation accepted %s", endpoint)
+		}
+	}
+	if err := validateAzureRedisURL("redis://127.0.0.1:6379/0", false); err == nil {
+		t.Fatal("production Azure mode accepted plaintext loopback Redis")
+	}
+}
+
+func TestAzureLocalSimulationFlagFailsClosed(t *testing.T) {
+	t.Setenv("CAO_AZURE_LOCAL_SIMULATION", "true")
+	if _, err := azureLocalSimulationFromEnv(); err == nil {
+		t.Fatal("malformed local simulation flag was accepted")
+	}
+	t.Setenv("CAO_AZURE_LOCAL_SIMULATION", "1")
+	if enabled, err := azureLocalSimulationFromEnv(); err != nil || !enabled {
+		t.Fatalf("explicit local simulation flag was not accepted: enabled=%t err=%v", enabled, err)
+	}
+}
+
 func TestHostedProxyHeadersAreTrustedOnlyOnLoopbackBoundary(t *testing.T) {
 	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "https://internal.example.test/", nil)
 	request.Host = "internal.example.test"
