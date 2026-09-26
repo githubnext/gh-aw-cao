@@ -36,6 +36,31 @@ Mutating browser requests require the session-bound CSRF token. The webhook
 route is exempt from browser authentication only because it independently
 requires a valid `X-Hub-Signature-256` signature and delivery identity.
 
+API and OAuth abuse is bounded with atomic Redis token buckets shared by all
+server replicas. Authenticated buckets use a digest of the GitHub login, while
+OAuth login uses a digest of the client IP and valid OAuth callbacks use a digest
+of the signed state. Trusted enterprise proxy headers are used only at the
+configured boundary: the final `X-Forwarded-For` value takes precedence, RFC
+7239 `Forwarded` is supported as a fallback, and malformed final values fall
+back to the direct peer rather than an attacker-controlled earlier hop. Query
+requests receive the tightest limit because they consume the most server and
+Redis work. The limiter fails
+closed when Redis is unavailable, and `429` responses communicate the cooldown
+with `Retry-After` plus the standard `RateLimit-*` headers. Health/readiness
+probes remain exempt. GitHub webhooks are exempt from user quotas but cross the
+high-capacity edge bucket before signature validation, bounding invalid request
+bodies and HMAC work without disrupting ordinary delivery retries.
+
+A separate client-IP edge bucket runs before session loading and refresh, so
+invalid or expired sessions cannot bypass abuse controls by failing
+authentication early. At trusted proxy boundaries the server reads forwarded
+addresses from the final header value, including address-and-port forms, and
+ignores caller-supplied earlier entries. Authenticated and valid OAuth callback
+quotas do not coalesce users behind one enterprise egress address. Limiter Redis
+operations have a dedicated two-second deadline to prevent a degraded Redis
+service from holding request workers for the full server I/O timeout. The
+complete normative contract is `specs/server-rate-limiting.md`.
+
 Webhook delivery IDs and projection leases are stored in the deployment Redis
 namespace. Failed reconciliation removes its delivery marker so GitHub can
 retry. Full rebuilds and webhook reconciliation share a distributed lease;

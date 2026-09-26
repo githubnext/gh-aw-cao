@@ -387,13 +387,13 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
   await expect(campaignNavigation.locator('.count-badge')).toHaveText(['1', '1']);
   const campaignTabBadges = await campaignNavigation.locator('.count-badge').allTextContents();
   await expect(page.getByRole('heading', { name: 'Orchestrator and workers', level: 3 })).toHaveCount(0);
-  await campaignNavigation.getByRole('link', { name: 'Problems' }).click();
+  await campaignNavigation.getByRole('link', { name: 'Failures' }).click();
   await expect(page).toHaveURL(/#page-campaign-problems\?campaign=ambient-context$/);
-  await expect(campaignNavigation.getByRole('link', { name: 'Problems' })).toHaveAttribute('aria-current', 'page');
+  await expect(campaignNavigation.getByRole('link', { name: 'Failures' })).toHaveAttribute('aria-current', 'page');
   expect(await campaignNavigation.locator('.count-badge').allTextContents()).toEqual(campaignTabBadges);
   await expect(page.locator('[data-page-id="campaign-problems"] [data-view-id="campaign-current-runtime-problems"]')).toBeVisible();
   const currentCampaignUrl = page.url();
-  await campaignNavigation.getByRole('link', { name: 'Problems' }).click();
+  await campaignNavigation.getByRole('link', { name: 'Failures' }).click();
   expect(page.url()).toBe(currentCampaignUrl);
   await expect(page.locator('[data-page-id="campaign-problems"] [data-view-id="campaign-current-runtime-problems"]')).toBeVisible();
   await page.evaluate(() => {

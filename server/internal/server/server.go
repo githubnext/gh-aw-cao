@@ -263,7 +263,7 @@ func (a *App) Handler() http.Handler {
 			return request.Method + " /*"
 		}),
 	)
-	return securityHeaders(a.requireAccess(instrumented))
+	return securityHeaders(a.preAuthRateLimit(a.requireAccess(a.rateLimit(instrumented))))
 }
 
 // withResponseTraceHeaders exposes the W3C trace/span ids that otelhttp
@@ -358,11 +358,7 @@ func (a *App) authorized(request *http.Request) bool {
 
 func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		policy := a.config.Proxy
-		if len(policy.AllowedHosts) == 0 {
-			policy = a.config.AzureProxy
-		}
-		if !validAzureProxyRequest(request, policy) {
+		if !validAzureProxyRequest(request, a.proxyPolicy()) {
 			a.logAuthBranch("access.proxy_rejected")
 			http.Error(response, "invalid forwarded request host", http.StatusMisdirectedRequest)
 			return
@@ -409,6 +405,13 @@ func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 		request = request.WithContext(context.WithValue(request.Context(), oauthSessionContextKey{}, session))
 		next.ServeHTTP(response, request)
 	})
+}
+
+func (a *App) proxyPolicy() ProxyPolicy {
+	if len(a.config.Proxy.AllowedHosts) > 0 {
+		return a.config.Proxy
+	}
+	return a.config.AzureProxy
 }
 
 type oauthSessionContextKey struct{}

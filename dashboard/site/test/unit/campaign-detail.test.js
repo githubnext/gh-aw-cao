@@ -220,7 +220,7 @@ describe('campaign detail route', () => {
     }));
 
     expect(rendered.dataset.campaign).toBe('ambient-context');
-    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('Operational ValueProblemsIssuesMemory');
+    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('Operational ValueFailuresIssuesMemory');
     expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')).toBeNull();
     expect([...rendered.querySelectorAll('.campaign-tabs a')].map((link) => link.getAttribute('href'))).toEqual([
       '#page-campaign-insights?campaign=ambient-context',
@@ -284,7 +284,7 @@ describe('campaign detail route', () => {
       count: link.querySelector('.count-badge')?.textContent
     }))).toEqual([
       { label: 'Operational Value', count: '4' },
-      { label: 'Problems', count: '2' },
+      { label: 'Failures', count: '2' },
       { label: 'Issues', count: '1' },
       { label: 'Memory', count: undefined }
     ]);
@@ -397,7 +397,7 @@ describe('campaign detail route', () => {
     }));
 
     expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')).toBeNull();
-    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('Operational ValueProblemsIssuesMemory');
+    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('Operational ValueFailuresIssuesMemory');
   });
 
   describe('workflow run navigation', () => {

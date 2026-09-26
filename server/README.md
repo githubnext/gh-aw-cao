@@ -136,6 +136,38 @@ The Redis command client reuses a bounded connection pool, applies operation
 deadlines, and retries read-only commands once when a pooled connection has
 gone stale. Write commands are not replayed automatically.
 
+### Request rate limiting
+
+The HTTP server uses atomic Redis token buckets to enforce limits consistently
+across replicas. Authenticated requests are keyed by a SHA-256 digest of the
+GitHub login; OAuth login requests are keyed by a digest of the client IP, and
+valid callbacks by a digest of their signed state. Forwarding headers are
+considered only at the configured trusted-proxy boundary. Raw logins, client
+addresses, and OAuth state are not stored in rate-limit keys.
+Enterprise proxy boundaries may supply either `X-Forwarded-For` or RFC 7239
+`Forwarded`; only the final value written by the trusted boundary is accepted.
+Authenticated quotas are per GitHub login, and OAuth callbacks use their opaque
+state cookie, so users sharing a corporate egress address do not share those
+quotas. The normative contract is `specs/server-rate-limiting.md`.
+
+| Request class | Capacity | Refill period |
+| --- | ---: | ---: |
+| Dashboard query (`POST /api/v1/query`) | 30 | 1 minute |
+| OAuth entry and callback | 10 | 5 minutes |
+| Other API and auth requests | 120 | 1 minute |
+| Hosted pre-authentication edge | 1,200 per client IP | 1 minute |
+
+Health/readiness probes are exempt. GitHub webhooks are exempt from user/API
+quotas but use the high-capacity edge bucket before signature validation.
+Hosted dashboard assets use that edge bucket so session loading remains bounded
+without applying the tighter API quota to page loads.
+Every limited response includes `RateLimit-Limit`,
+`RateLimit-Remaining`, `RateLimit-Reset`, and `RateLimit-Policy`. An exhausted
+bucket returns `429 Too Many Requests` with `Retry-After` in seconds. If Redis
+cannot enforce a limit within two seconds, the request fails closed with
+`503 Service Unavailable`. The edge bucket runs before session loading so
+invalid, expired, and unauthenticated requests cannot bypass Redis enforcement.
+
 ### Hosted Azure architecture
 
 > [!WARNING]
