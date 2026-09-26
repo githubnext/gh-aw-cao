@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deriveDataHealthSources } from '../../src/data-health.js';
 
 const metadata = /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
@@ -144,5 +144,91 @@ describe('data shape preview', () => {
     sources.runs.rows = [];
     const schema = /** @type {any} */ (deriveDataHealthSources(sources)['data-health-schema'].rows.find((item) => item.source === 'runs'));
     expect(schema.schema).toBe('{}');
+  });
+});
+
+describe('data health debug logging', () => {
+  afterEach(() => {
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
+
+  it('stays silent by default and logs only scalar metadata under its predictable category', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '', output })
+      };
+    });
+    vi.resetModules();
+    const { deriveDataHealthSources: deriveWithoutDebug } = await import('../../src/data-health.js');
+
+    const sources = completeSources();
+    sources.usage.rows = [];
+    deriveWithoutDebug(sources);
+
+    expect(output.debug).not.toHaveBeenCalled();
+  });
+
+  it('logs a derivation summary and reconciliation/coverage gaps under the data-health category', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '?debug=data-health', output })
+      };
+    });
+    vi.resetModules();
+    const { deriveDataHealthSources: deriveWithDebug } = await import('../../src/data-health.js');
+
+    const sources = completeSources();
+    sources.usage.rows = [];
+
+    deriveWithDebug(sources);
+
+    expect(output.debug).toHaveBeenCalledWith(
+      '[cao:data-health]',
+      expect.objectContaining({ event: 'derived', availability: 'available' })
+    );
+    expect(output.debug).toHaveBeenCalledWith(
+      '[cao:data-health]',
+      expect.objectContaining({ event: 'reconciliation-gap', relationship: 'Runs → usage', state: 'partial' })
+    );
+    expect(output.debug).toHaveBeenCalledWith(
+      '[cao:data-health]',
+      expect.objectContaining({ event: 'coverage-gap', area: 'Usage telemetry', state: 'partial' })
+    );
+    for (const [, payload] of output.debug.mock.calls) {
+      const serialized = JSON.stringify(payload);
+      expect(serialized).not.toMatch(/token|secret|password|authorization/i);
+    }
+  });
+
+  it('excludes a category logging under an unrelated debug filter', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '?debug=render', output })
+      };
+    });
+    vi.resetModules();
+    const { deriveDataHealthSources: deriveWithUnrelatedDebug } = await import('../../src/data-health.js');
+
+    const sources = completeSources();
+    sources.usage.rows = [];
+    deriveWithUnrelatedDebug(sources);
+
+    expect(output.debug).not.toHaveBeenCalled();
   });
 });
