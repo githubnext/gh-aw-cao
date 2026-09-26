@@ -23,6 +23,8 @@ CAO creates separate read-only and write-capable Apps. Review the dry-run manife
 For one organization:
 
 ```bash
+export GH_HOST=github.example.ghe.com # Omit on github.com.
+
 ./cao.sh setup-auth github-app \
   --repo acme/central-agentic-ops \
   --dry-run
@@ -30,6 +32,9 @@ For one organization:
 ./cao.sh setup-auth github-app \
   --repo acme/central-agentic-ops
 ```
+
+The helper uses `GH_HOST`, or `GITHUB_SERVER_URL` in Actions, for repository,
+App registration, installation, and settings URLs.
 
 An organization-owned private App fails closed when policy enrolls a repository owned by another organization.
 
@@ -70,13 +75,12 @@ Run:
 
 ```bash
 ./cao.sh setup-auth token \
-  --repo acme/central-agentic-ops \
-  --acknowledge-token-risks
+  --repo acme/central-agentic-ops
 ```
 
 The command invokes `gh secret set GH_AW_GITHUB_TOKEN` interactively. Enter the token only at that prompt. CAO never accepts it as a command argument.
 
-The acknowledgement confirms that the credential is user-bound, longer-lived than an App installation token, normally limited to one resource owner, manually rotated, and potentially incompatible with required APIs. It does not bypass organization approval or repository permissions. Never substitute a classic PAT.
+The credential is user-bound, longer-lived than an App installation token, normally limited to one resource owner, manually rotated, and potentially incompatible with required APIs. It does not bypass organization approval or repository permissions. Never substitute a classic PAT.
 
 The current token profile uses one `GH_AW_GITHUB_TOKEN` for reads and approved safe outputs. Its permissions therefore form a shared ceiling; omit write permissions for review-only operation and reconsider private Apps before enabling live outputs.
 

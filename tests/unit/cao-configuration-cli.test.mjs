@@ -140,11 +140,10 @@ test("cao setup-auth delegates private GitHub App setup options", () => {
   assert.deepEqual(result, { command: "setup-auth", profile: "github-app" });
 });
 
-test("cao setup-auth configures a consented fine-grained token through stdin", () => {
+test("cao setup-auth configures a fine-grained token through stdin", () => {
   const calls = [];
   const result = setupCaoAuthentication("token", [
     "--repo", "acme/control",
-    "--acknowledge-token-risks",
   ], {
     execute(command, arguments_, options) {
       calls.push([command, arguments_, options]);
@@ -223,13 +222,6 @@ test("cao setup-auth previews enterprise App credential configuration without Gi
       },
     ],
   });
-});
-
-test("cao setup-auth requires explicit token risk acknowledgement", () => {
-  assert.throws(
-    () => setupCaoAuthentication("token", ["--repo", "acme/control"]),
-    /requires --acknowledge-token-risks/,
-  );
 });
 
 test("cao setup-auth accepts the bounded workflow-token profile without secrets", () => {

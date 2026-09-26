@@ -102,7 +102,7 @@ const USAGE = `Usage:
   cao init
   cao setup-auth github-app [--repo OWNER/REPO] [APP_SETUP_OPTIONS...]
   cao setup-auth enterprise-app --repo OWNER/REPO --read-client-id ID --write-client-id ID [--dry-run]
-  cao setup-auth token [--repo OWNER/REPO] --acknowledge-token-risks
+  cao setup-auth token [--repo OWNER/REPO]
   cao setup-auth workflow-token
   cao add CAMPAIGN [GH_AW_ADD_OPTIONS...]
   cao update [--pre-releases] [GH_AW_UPDATE_OPTIONS...]
@@ -381,13 +381,7 @@ export function setupCaoAuthentication(method, arguments_ = [], {
   }
   if (method === 'token') {
     const options = parseOptions(arguments_);
-    rejectUnknownOptions(options, ['repo', 'acknowledge-token-risks']);
-    if (!options['acknowledge-token-risks']) {
-      throw new UsageError(
-        'token setup requires --acknowledge-token-risks after reviewing the user-bound, '
-        + 'single-owner, expiration, approval, rotation, and API compatibility limits',
-      );
-    }
+    rejectUnknownOptions(options, ['repo']);
     const repo = option(options, 'repo', false);
     const auth = execute('gh', ['auth', 'status'], { encoding: 'utf8' });
     if (auth.error || auth.status !== 0) {
@@ -957,7 +951,7 @@ function parseOptions(arguments_) {
     if (!argument.startsWith('--') && !aliases[argument]) throw new UsageError(`Unexpected argument: ${argument}`);
     const name = aliases[argument] ?? argument.slice(2);
     if (name === 'help' || name === 'stdin' || name === 'keep' || name === 'diagnose'
-      || name === 'acknowledge-token-risks' || name === 'dry-run') {
+      || name === 'dry-run') {
       options[name] = 'true';
       continue;
     }

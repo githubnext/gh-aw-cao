@@ -11,6 +11,7 @@ import {
   buildGitHubAppManifest,
   deriveAppName,
   deriveInstallationTargets,
+  githubServerUrl,
   installationIncludesRepository,
   installationIncludesTarget,
   installationInstruction,
@@ -81,6 +82,21 @@ test("App registration targets organization ownership", () => {
   );
 });
 
+test("GitHub App setup honors GitHub Enterprise Cloud host configuration", () => {
+  assert.equal(
+    githubServerUrl({ GH_HOST: "contoso-aw.ghe.com" }),
+    "https://contoso-aw.ghe.com",
+  );
+  assert.equal(
+    githubServerUrl({ GITHUB_SERVER_URL: "https://example.ghe.com/" }),
+    "https://example.ghe.com",
+  );
+  assert.equal(
+    appRegistrationUrl("octo", "state", "https://contoso-aw.ghe.com"),
+    "https://contoso-aw.ghe.com/organizations/octo/settings/apps/new?state=state",
+  );
+});
+
 test("App setup derives selected-repository installations from CAO policy", () => {
   const targets = deriveInstallationTargets({
     "control-plane": {
@@ -138,6 +154,34 @@ test("organization dry run emits private manifests without requiring GitHub acce
     "--dry-run",
   ], {
     encoding: "utf8",
+  });
+
+  test("organization dry run uses the configured GitHub Enterprise Cloud host", (t) => {
+    const directory = mkdtempSync(join(tmpdir(), "cao-setup-policy-"));
+    const policy = join(directory, "cao.json");
+    t.after(() => rmSync(directory, { recursive: true, force: true }));
+    writeFileSync(policy, JSON.stringify({
+      version: 1,
+      "gh-aw-version": "v0.89.21",
+      "control-plane": {
+        scope: { "allowed-repositories": ["platform/control"] },
+        campaigns: {},
+      },
+    }));
+    const result = spawnSync(script, [
+      "--repo", "platform/control",
+      "--policy", policy,
+      "--dry-run",
+    ], {
+      encoding: "utf8",
+      env: { ...process.env, GH_HOST: "contoso-aw.ghe.com" },
+    });
+
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.ok(output.apps.every(
+      (app) => app.manifest.url === "https://contoso-aw.ghe.com/platform/control",
+    ));
   });
 
   assert.equal(result.status, 0, result.stderr);
