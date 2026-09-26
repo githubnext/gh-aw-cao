@@ -1,6 +1,6 @@
 {
-  "source_sha": "c21585c62107dc4682c199f7535011574d9be759",
-  "next_category": "reusable dashboard generation",
+  "source_sha": "54ddf821a7b91357028cf521ab18fc91c14cf965",
+  "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
       "evaluated_at": "2026-09-26T12:36:00Z",
@@ -421,6 +421,28 @@
         36267465696
       ],
       "outcome": "no-op: evidence window 2026-09-26T19:50:59Z to 2026-09-26T20:46:53Z. Analyzed 8 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 12 excluded completed outliers in the same bounded window (4 workflow_run runs with conclusion action_required, 4 workflow_run runs with conclusion skipped, and 4 additional non-comparable successes on different trigger/SHA combinations). Evaluated category Astro documentation generation. Median docs.yml workflow execution was 42.5s (p90 52.5s), build median 27.0s (p90 33.5s), deploy median 10.0s (p90 10.6s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed the explicit node_modules cache hit on 8/8 sampled docs runs, with Install dependencies and Save node_modules skipped on 8/8, and cached CAO Dashboard hits on 8/8 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 8/8. Step medians stayed small in docs.yml: Set up Node.js 4.5s, Restore node_modules 5.0s, Build documentation 8.5s, Restore cached CAO Dashboard 1.0s, Upload Pages artifact 2.5s, and Deploy Pages 6.5s. Source review of .github/workflows/docs.yml shows Build documentation is already a single npm run docs:build step, and bounded trusted step data does not reveal a repeated Astro-only bottleneck above the threshold. Matching successful CAO Dashboard runs 36259074011, 36261319834, and 36263708486 still reran Install dashboard build dependencies for 7-8s on every rebuild even though restore, validate, assemble, upload, and cache-save steps each stayed around 1-3s, but that is outside the Astro category and already represented by the open issue subject Cache dashboard build dependencies in CAO Dashboard workflow. No fresh non-duplicate Astro-specific actionable improvement is warranted.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-26T21:24:12Z",
+      "worker_run_id": 36272614773,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        36272653062,
+        36271882411,
+        36271762149,
+        36271743977,
+        36271497251,
+        36270647303,
+        36269883917,
+        36269526060,
+        36269485284,
+        36269286536,
+        36268196032,
+        36268066867,
+        36267465696
+      ],
+      "outcome": "no-op: evidence window 2026-09-26T19:50:59Z to 2026-09-26T21:22:15Z. Analyzed 13 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 7 excluded completed outliers in the same bounded window (3 workflow_run runs with conclusion action_required, 2 workflow_run runs with conclusion skipped, 1 workflow_run cancelled run, and 1 additional workflow_run skipped run). Evaluated category reusable dashboard generation. Median docs.yml workflow execution was 42.0s (p90 55.0s), build median 26.0s (p90 31.8s), deploy median 10.0s (p90 10.0s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed the explicit node_modules cache hit on 13/13 sampled docs runs, with Install dependencies and Save node_modules skipped on 13/13, and cached CAO Dashboard hits on 13/13 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 13/13. Matching successful CAO Dashboard runs 36267427071, 36269485208, and 36271846436 still reran Install dashboard build dependencies for 6-8 seconds on every rebuild even though restore, validate, assemble, upload, and cache-save related work stayed around 0-5 seconds. That remains the largest repeated dependency tax on the upstream docs publish path, but open issue subject Cache dashboard build dependencies in CAO Dashboard workflow already represents the same underlying work and the source/timing evidence does not materially change the recommendation. No fresh non-duplicate actionable improvement is warranted.",
       "suggestion_fingerprint": ""
     }
   ]
