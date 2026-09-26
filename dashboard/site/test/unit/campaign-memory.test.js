@@ -53,7 +53,9 @@ describe('campaign repository memory', () => {
     }))));
     const empty = renderCampaignMemory({ campaignId: 'ambient-context', campaignName: 'Ambient Context' });
     document.body.append(empty);
-    await vi.waitFor(() => expect(empty.textContent).toContain('No repository memory has been published'));
+    await vi.waitFor(() => expect(empty.textContent).toContain(
+      'No repository-memory branch has been published'
+    ));
     empty.remove();
 
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
@@ -63,6 +65,38 @@ describe('campaign repository memory', () => {
     const invalid = renderCampaignMemory({ campaignId: 'ambient-context', campaignName: 'Ambient Context' });
     document.body.append(invalid);
     await vi.waitFor(() => expect(invalid.textContent).toContain('Repository-memory manifest is invalid.'));
+  });
+
+  it('renders empty branches and warns when excluded files make the view incomplete', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      version: 1,
+      campaigns: [{
+        campaign: 'ambient-context',
+        branch: 'memory/ambient-context',
+        commit: 'a'.repeat(40),
+        files: [],
+        omitted: {
+          fileLimit: 1,
+          fileSize: 2,
+          extension: 3,
+          nesting: 0,
+          unsafePath: 0,
+          unsupportedType: 0,
+        },
+      }],
+    }))));
+    const rendered = renderCampaignMemory({ campaignId: 'ambient-context', campaignName: 'Ambient Context' });
+    document.body.append(rendered);
+
+    await vi.waitFor(() => expect(rendered.textContent).toContain(
+      'The repository-memory branch contains no supported files.'
+    ));
+    expect(rendered.querySelector('.campaign-memory-warning')?.textContent).toContain(
+      'This view does not represent the entire memory branch'
+    );
+    expect(rendered.querySelector('.campaign-memory-warning')?.textContent).toContain(
+      '1 excluded by the file-count limit, 2 excluded by the file-size limit, 3 excluded by unsupported file extensions'
+    );
   });
 
   it('rejects file metadata outside the publication limits', async () => {

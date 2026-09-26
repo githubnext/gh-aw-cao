@@ -56,13 +56,18 @@ describe('dashboard document validation', () => {
     });
   });
 
-  it('marks Steering, Indexing, and Issues as experimental', () => {
+  it('marks Steering, Indexing, Issues, and campaign Memory as experimental', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentalPageIds = document.dashboard.pages
       .filter((/** @type {{ experimental?: boolean }} */ page) => page.experimental === true)
       .map((/** @type {{ id: string }} */ page) => page.id);
 
-    expect(experimentalPageIds).toEqual(expect.arrayContaining(['steering', 'indexing', 'issues']));
+    expect(experimentalPageIds).toEqual(expect.arrayContaining([
+      'steering',
+      'indexing',
+      'issues',
+      'campaign-memory',
+    ]));
   });
 
   it('DLS-VIEW-005 limits categorical section encodings to horizontal bar charts', () => {

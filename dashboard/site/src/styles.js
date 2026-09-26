@@ -1203,6 +1203,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .campaign-tabs a[aria-current="page"]::after { content: ""; height: 2px; position: absolute; right: 0; bottom: -1px; left: 0; border-radius: 2px 2px 0 0; background: var(--accent); }
 .campaign-tabs .tab-trailing-icon { display: none; }
 .campaign-memory-browser { min-width: 0; }
+.campaign-memory-warning { margin: 0 0 12px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--attention) 45%, var(--border)); border-radius: 6px; background: var(--attention-muted); color: var(--fg); }
 .campaign-memory-layout { min-height: 28rem; display: grid; grid-template-columns: minmax(14rem, 28%) minmax(0, 1fr); overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
 .campaign-memory-files { min-width: 0; padding: 12px; overflow: auto; border-right: 1px solid var(--border); background: var(--canvas-subtle); }
 .campaign-memory-branch { margin: 0 4px 12px; color: var(--muted); font-size: .75rem; overflow-wrap: anywhere; }

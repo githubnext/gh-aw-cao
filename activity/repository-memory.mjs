@@ -36,13 +36,13 @@ function campaignIds(inventory) {
     .filter((campaign) => CAMPAIGN_PATTERN.test(campaign)));
 }
 
-function safeMemoryPath(value) {
-  if (!value || value.startsWith("/") || value.includes("\\")) return "";
+function classifyMemoryPath(value) {
+  if (!value || value.startsWith("/") || value.includes("\\")) return "unsafePath";
   const segments = value.split("/");
-  if (segments.some((segment) => !segment || segment === "." || segment === "..")) return "";
-  if (segments.length - 1 > REPOSITORY_MEMORY_LIMITS.maxNesting) return "";
-  if (!ALLOWED_EXTENSIONS.has(path.posix.extname(value).toLowerCase())) return "";
-  return segments.join("/");
+  if (segments.some((segment) => !segment || segment === "." || segment === "..")) return "unsafePath";
+  if (segments.length - 1 > REPOSITORY_MEMORY_LIMITS.maxNesting) return "nesting";
+  if (!ALLOWED_EXTENSIONS.has(path.posix.extname(value).toLowerCase())) return "extension";
+  return "";
 }
 
 function memoryRefs(repository, campaigns) {
@@ -73,8 +73,15 @@ async function memoryFiles(repository, ref) {
   });
 
   const files = [];
+  const omitted = {
+    fileLimit: 0,
+    fileSize: 0,
+    extension: 0,
+    nesting: 0,
+    unsafePath: 0,
+    unsupportedType: 0,
+  };
   let pending = Buffer.alloc(0);
-  let capped = false;
   try {
     for await (const chunk of child.stdout) {
       pending = Buffer.concat([pending, chunk]);
@@ -82,24 +89,32 @@ async function memoryFiles(repository, ref) {
       while ((separator = pending.indexOf(0)) >= 0) {
         const entry = pending.subarray(0, separator).toString("utf8");
         pending = pending.subarray(separator + 1);
-        const match = /^([0-9]{6}) blob ([0-9a-f]{40,64})\s+([0-9]+)\t([\s\S]+)$/i.exec(entry);
-        if (!match || (match[1] !== "100644" && match[1] !== "100755")) continue;
-        const filePath = safeMemoryPath(match[4]);
-        const size = Number(match[3]);
-        if (filePath && Number.isSafeInteger(size) && size <= REPOSITORY_MEMORY_LIMITS.maxFileSize) {
-          files.push({ path: filePath, oid: match[2], size });
-          if (files.length === REPOSITORY_MEMORY_LIMITS.maxFileCount) {
-            capped = true;
-            child.kill();
-            break;
-          }
+        const match = /^([0-9]{6}) (?:blob|commit) ([0-9a-f]{40,64})\s+(?:([0-9]+)|-)\t([\s\S]+)$/i.exec(entry);
+        if (!match) continue;
+        if ((match[1] !== "100644" && match[1] !== "100755") || match[3] === undefined) {
+          omitted.unsupportedType += 1;
+          continue;
         }
+        const pathReason = classifyMemoryPath(match[4]);
+        if (pathReason) {
+          omitted[pathReason] += 1;
+          continue;
+        }
+        const size = Number(match[3]);
+        if (!Number.isSafeInteger(size) || size > REPOSITORY_MEMORY_LIMITS.maxFileSize) {
+          omitted.fileSize += 1;
+          continue;
+        }
+        if (files.length >= REPOSITORY_MEMORY_LIMITS.maxFileCount) {
+          omitted.fileLimit += 1;
+          continue;
+        }
+        files.push({ path: match[4], oid: match[2], size });
       }
-      if (capped) break;
     }
     const { status } = await completion;
-    if (!capped && status !== 0) throw new Error(stderr.trim() || "git ls-tree failed");
-    return files;
+    if (status !== 0) throw new Error(stderr.trim() || "git ls-tree failed");
+    return { files, omitted };
   } catch (error) {
     child.kill();
     await completion.catch(() => undefined);
@@ -140,7 +155,7 @@ export async function publishRepositoryMemory({ repository, inventory, output, g
 
   const campaigns = [];
   for (const branch of memoryRefs(repositoryRoot, campaignIds(inventory))) {
-    const files = await memoryFiles(repositoryRoot, branch.ref);
+    const { files, omitted } = await memoryFiles(repositoryRoot, branch.ref);
     for (const file of files) {
       const destination = path.resolve(outputRoot, branch.campaign, ...file.path.split("/"));
       if (!destination.startsWith(`${path.join(outputRoot, branch.campaign)}${path.sep}`)) {
@@ -153,6 +168,7 @@ export async function publishRepositoryMemory({ repository, inventory, output, g
       branch: `memory/${branch.campaign}`,
       commit: branch.commit,
       files,
+      omitted,
     });
   }
 

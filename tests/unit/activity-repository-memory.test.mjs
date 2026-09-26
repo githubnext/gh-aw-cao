@@ -79,6 +79,14 @@ test("publishes installed campaign memory from remote refs without checking them
             size: 14,
           },
         ],
+        omitted: {
+          fileLimit: 0,
+          fileSize: 1,
+          extension: 1,
+          nesting: 1,
+          unsafePath: 0,
+          unsupportedType: 1,
+        },
       }],
     });
     assert.deepEqual(JSON.parse(readFileSync(join(output, "manifest.json"), "utf8")), manifest);
@@ -117,6 +125,23 @@ test("caps the number of files published for each campaign", async () => {
 
     assert.equal(manifest.campaigns[0].files.length, REPOSITORY_MEMORY_LIMITS.maxFileCount);
     assert.equal(manifest.campaigns[0].files.at(-1).path, "399.txt");
+    assert.equal(manifest.campaigns[0].omitted.fileLimit, 1);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("publishes an empty manifest when no installed campaign has a memory branch", async () => {
+  const root = mkdtempSync(join(tmpdir(), "cao-repository-memory-empty-"));
+  const repository = join(root, "repository");
+  try {
+    execFileSync("git", ["init", repository]);
+    const manifest = await publishRepositoryMemory({
+      repository,
+      inventory: { campaigns: { rows: [{ campaign: "without-memory" }] } },
+      output: join(root, "output"),
+    });
+    assert.deepEqual(manifest.campaigns, []);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

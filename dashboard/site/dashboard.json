@@ -13864,6 +13864,7 @@
         "title": "Campaign",
         "description": "Repository memory published for this campaign.",
         "icon": "archive",
+        "experimental": true,
         "class-name": "campaign-memory-page",
         "view-mode-control": false,
         "route": {
