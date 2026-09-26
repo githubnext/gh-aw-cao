@@ -1,5 +1,5 @@
 {
-  "source_sha": "6b423205e436eb37ddd5dd1e9cfeb8483b22a354",
+  "source_sha": "2b9da32a5e245c360131ebe5e65567fb87f0c7bf",
   "next_category": "Astro documentation generation",
   "evaluations": [
     {
@@ -371,6 +371,23 @@
       ],
       "outcome": "suggestion: evidence window 2026-09-26T18:46:48Z to 2026-09-26T19:46:59Z. Analyzed 6 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 14 excluded completed runs outside the bounded success sample. Evaluated category dependency installation and caching. Median docs.yml workflow execution was 47.5s (p90 64.0s), build median 28.5s (p90 32.0s), deploy median 9.0s (p90 10.5s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed the explicit node_modules cache hit on 6/6 sampled docs runs, with Install dependencies and Save node_modules skipped on 6/6, and cached CAO Dashboard hits on 6/6 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 6/6. Matching successful CAO Dashboard run 36263708486 for source SHA 8ad7218cabab346f6470723abef7ce069c44e44e still reran npm ci --prefix dashboard/site --ignore-scripts, and bounded logs showed added 268 packages and audited 269 packages in 7s. Because docs.yml is already hot-cached, the largest repeated dependency tax left on the docs publish path is uncached dashboard/site dependency installation in cao-dashboard.yml. Adding a dashboard/site dependency cache there is expected to save about 7s per successful dashboard rebuild and about 15% of the current docs.yml median execution time from the upstream publish path without weakening freshness or correctness.",
       "suggestion_fingerprint": "e76660e8d5e0c2a12c8f"
+    },
+    {
+      "evaluated_at": "2026-09-26T20:30:00Z",
+      "worker_run_id": 36269270875,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        36269286536,
+        36268196032,
+        36268066867,
+        36267465696,
+        36267165269,
+        36266330652,
+        36265637807,
+        36264589793
+      ],
+      "outcome": "no-op: evidence window 2026-09-26T19:01:26Z to 2026-09-26T20:22:59Z. Analyzed 8 successful docs.yml runs from the latest 20 completed runs in the last 14 days while disclosing 12 excluded completed outliers in the same bounded window (4 action_required workflow_run runs and 8 skipped or non-success workflow_run runs). Evaluated category dependency installation and caching. Median docs.yml workflow execution was 42.0s (p90 48.0s), build median 26.0s (p90 31.0s), deploy median 8.5s (p90 9.0s), and queue median 0.0s (p90 0.0s). Trusted step metadata confirmed the explicit node_modules cache hit on 8/8 sampled docs runs, with Install dependencies and Save node_modules skipped on 8/8, and cached CAO Dashboard hits on 8/8 with Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 8/8. The remaining docs-side dependency cost stayed at Set up Node.js median 3.0s plus Restore node_modules median 5.0s. Source-matched successful CAO Dashboard runs 36259074011, 36261319834, and 36263708486 still reran npm ci --prefix dashboard/site --ignore-scripts on every rebuild, with bounded logs showing added 268 packages and audited 269 packages in 7s, but open issue subject \"Cache dashboard build dependencies in CAO Dashboard workflow\" already represents that underlying work. Because the current source and timing evidence only reinforce that existing recommendation rather than materially changing it, no fresh non-duplicate actionable dependency or caching recommendation is warranted.",
+      "suggestion_fingerprint": ""
     }
   ]
 }
