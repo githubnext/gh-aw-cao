@@ -2,6 +2,9 @@ import { h } from '../dom.js';
 import { effect, state } from '../reactive.js';
 import { octicon } from '../octicons.js';
 import { renderLabeledSpan, renderTooltip } from './ui-primitives.js';
+import { createDebug } from '../debug.js';
+
+const debugDashboardHorizon = createDebug('dashboard-horizon');
 
 /**
  * @typedef {{
@@ -72,6 +75,7 @@ export function renderDashboardHorizon(options) {
     )
   );
   const root = h('div', { className: 'dashboard-horizon' }, skeleton);
+  let wasAvailable = false;
   /** @param {boolean} expanded */
   const setExpanded = (expanded) => {
     toggle.setAttribute('aria-expanded', String(expanded));
@@ -81,6 +85,7 @@ export function renderDashboardHorizon(options) {
     if (activeFilterBar instanceof HTMLElement) {
       activeFilterBar.classList.toggle('filter-bar-expanded', expanded);
     }
+    debugDashboardHorizon({ event: 'toggled', expanded });
   };
   toggle.addEventListener('click', () => {
     setExpanded(toggle.getAttribute('aria-expanded') !== 'true');
@@ -105,6 +110,10 @@ export function renderDashboardHorizon(options) {
     root.removeAttribute('aria-label');
     root.dataset.dashboardEvaluatedAt = current.evaluatedAt;
     if (root.firstElementChild !== content) root.replaceChildren(content, details);
+    if (!wasAvailable) {
+      wasAvailable = true;
+      debugDashboardHorizon({ event: 'resolved', duration: current.duration });
+    }
     const fullLabel = `${label} ${current.duration}`;
     toggle.setAttribute('aria-label', `${fullLabel}. Show time and mode filters`);
     accessibleLabel.textContent = fullLabel;
@@ -137,6 +146,7 @@ export function renderDashboardHorizon(options) {
     },
     dispose() {
       lifetime.abort();
+      debugDashboardHorizon({ event: 'disposed' });
     }
   };
 }

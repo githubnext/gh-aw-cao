@@ -9,6 +9,7 @@ import { createDebug, withDebugParameter } from './debug.js';
 import {
   queryRemoteDashboard,
   queryRemoteDiagnostics,
+  queryRemoteRepositoryMemory,
   refreshRemoteDashboard,
   subscribeRemoteRevision,
   usesRemoteDataBackend
@@ -276,6 +277,48 @@ export function queryCanonicalDatabaseDiagnostics() {
     () => Promise.reject(new Error('Database diagnostics require a data worker.')),
     false
   ));
+}
+
+/**
+ * Lists one campaign's published repository-memory files.
+ * @param {string} campaign
+ * @param {AbortSignal} [signal]
+ */
+export function listRepositoryMemory(campaign, signal) {
+  if (usesRemoteDataBackend()) return queryRemoteRepositoryMemory(campaign, undefined, signal);
+  return processRequest(
+    {
+      operation: 'query-repository-memory',
+      action: 'list',
+      campaign,
+      memoryRoot: new URL('./memory/', document.baseURI).href,
+    },
+    () => Promise.reject(new Error('Repository memory requires a data worker.')),
+    false,
+    signal
+  );
+}
+
+/**
+ * Reads one published repository-memory file.
+ * @param {string} campaign
+ * @param {string} path
+ * @param {AbortSignal} [signal]
+ */
+export function readRepositoryMemoryFile(campaign, path, signal) {
+  if (usesRemoteDataBackend()) return queryRemoteRepositoryMemory(campaign, path, signal);
+  return processRequest(
+    {
+      operation: 'query-repository-memory',
+      action: 'content',
+      campaign,
+      path,
+      memoryRoot: new URL('./memory/', document.baseURI).href,
+    },
+    () => Promise.reject(new Error('Repository memory requires a data worker.')),
+    false,
+    signal
+  );
 }
 
 /**

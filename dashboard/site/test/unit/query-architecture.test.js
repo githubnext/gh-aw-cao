@@ -33,7 +33,7 @@ describe('dashboard query architecture', () => {
     const dashboard = JSON.parse(read('dashboard.json')).dashboard;
 
     expect(worker).toContain('queryIndexedDatabaseSources(');
-    expect(worker).toMatch(/executeDashboardQueries\(\s*context\.queries,\s*\{ \.\.\.databasePayload, \.\.\.healthPayload \},\s*directRequests/);
+    expect(worker).toMatch(/executeDashboardQueries\(\s*context\.queries,\s*\{ \.\.\.databasePayload, \.\.\.healthPayload, \.\.\.nativeSources \},\s*directRequests/);
     expect(worker).toContain('const replacedSources = new Set(viewPayload.replacedSources)');
     expect(worker).toContain('deriveDataHealthCalloutSources(databasePayload)');
     expect(worker).not.toMatch(/deriveOverviewSources|deriveRepositorySources|deriveRuntimeSources|deriveWorkflowSources/);

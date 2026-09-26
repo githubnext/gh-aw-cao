@@ -114,7 +114,7 @@ func TestDeployedSubsetProjectsCanonicalSources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"repositories", "workflows", "runs", "tools"} {
+	for _, name := range []string{"repositories", "workflows", "runs", "overview-runs", "tools"} {
 		if len(sources[name].Rows) == 0 {
 			t.Errorf("projected source %q is empty", name)
 		}

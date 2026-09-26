@@ -133,10 +133,22 @@ export function createPromptCliActionControl(actionId, getPrompt) {
  * @param {Record<string, string>} templateValues
  */
 function commandPreview(action, values, templateValues) {
-  return [
+  const command = [
     renderCliActionCommand(action.command, templateValues),
     ...(action.arguments ?? []).filter((argument) => values[argument.id]).map((argument) => argument.flag)
   ].join(' ');
+  const userAgentData = typeof navigator === 'undefined'
+    ? undefined
+    : /** @type {{ platform?: unknown }} */ (Reflect.get(navigator, 'userAgentData'));
+  const platform = typeof userAgentData?.platform === 'string'
+    ? userAgentData.platform
+    : typeof navigator === 'undefined' ? '' : navigator.platform || navigator.userAgent;
+  const userAgent = typeof navigator === 'undefined' ? '' : navigator.userAgent;
+  // Windows terminals need an explicit Bash interpreter; leave other commands untouched.
+  return (/^win/i.test(platform) || /windows/i.test(userAgent))
+    && /^(?:"[^"]+\.sh"|'[^']+\.sh'|\S+\.sh)(?:\s|$)/.test(command)
+    ? `bash ${command}`
+    : command;
 }
 
 /**

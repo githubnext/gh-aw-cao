@@ -82,6 +82,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
             ${{ runner.temp }}/cao-activity/drain3_weights.json
+            ${{ runner.temp }}/cao-activity/memory
           key: cao-activity-v5-lookup-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             cao-activity-v5-
@@ -157,7 +158,6 @@ jobs:
               '--inventory', process.env.REPORT_INVENTORY_SOURCES,
               '--output', process.env.REPORT_PAYLOAD_HASHES,
             ])
-
       - name: Validate restored activity data
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
@@ -165,63 +165,20 @@ jobs:
           REPORT_PAYLOAD_HASHES: ${{ runner.temp }}/cao-activity/payload-hashes.json
           REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity/control-settings.json
           REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity/inventory-sources.json
+          REPORT_REPOSITORY_MEMORY: ${{ runner.temp }}/cao-activity/memory/manifest.json
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
-            const crypto = require('crypto')
-            const fs = require('fs')
-            const path = require('path')
-            const formatFileSize = (bytes) => {
-              const units = ['bytes', 'KiB', 'MiB', 'GiB']
-              const unitIndex = bytes === 0
-                ? 0
-                : Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
-              const value = bytes / 1024 ** unitIndex
-              return `${unitIndex === 0 ? value : value.toFixed(1)} ${units[unitIndex]}`
-            }
-            const activityFiles = [
-              process.env.ACTIVITY_DATABASE,
-              process.env.REPORT_PAYLOAD_HASHES,
-              process.env.REPORT_CONTROL_SETTINGS,
-              process.env.REPORT_INVENTORY_SOURCES,
-            ]
-            core.info('Validating restored activity data')
-            let validationFailed = false
-            for (const activityFile of activityFiles) {
-              const fileName = path.basename(activityFile)
-              if (!fs.existsSync(activityFile)) {
-                core.error(`Required activity data file is missing: ${fileName}`)
-                validationFailed = true
-                continue
-              }
-              const shardFiles = fs.readdirSync(process.env.REPORT_GH_AW_LOGS_SHARDS)
-                .filter((name) => name.endsWith('.jsonl'))
-              if (shardFiles.length === 0) {
-                core.setFailed('Required activity shard directory is empty')
-                validationFailed = true
-              }
-              const { size } = fs.statSync(activityFile)
-              if (size === 0) {
-                core.error(`Required activity data file is empty: ${fileName}`)
-                validationFailed = true
-              } else {
-                core.info(`Validated ${fileName} (${formatFileSize(size)})`)
-              }
-            }
-            if (validationFailed) {
-              const activityRoot = path.join(process.env.RUNNER_TEMP, 'cao-activity')
-              core.info('Restored activity cache directory contents:')
-              if (fs.existsSync(activityRoot)) {
-                const restoredFiles = fs.readdirSync(activityRoot, { withFileTypes: true })
-                  .filter((entry) => entry.isFile())
-                  .toSorted((a, b) => a.name.localeCompare(b.name))
-                for (const entry of restoredFiles) {
-                  core.info(`  ${entry.name} (${formatFileSize(fs.statSync(path.join(activityRoot, entry.name)).size)})`)
-                }
-              }
-              throw new Error('Restored activity data validation failed')
-            }
-            core.info(`Restored activity data validation completed (${activityFiles.length} files)`)
+            await exec.exec(process.execPath, [
+              'activity/cao.mjs',
+              'validate-activity-data',
+              '--database', process.env.ACTIVITY_DATABASE,
+              '--shard-dir', process.env.REPORT_GH_AW_LOGS_SHARDS,
+              '--payload-hashes', process.env.REPORT_PAYLOAD_HASHES,
+              '--control-settings', process.env.REPORT_CONTROL_SETTINGS,
+              '--inventory', process.env.REPORT_INVENTORY_SOURCES,
+              '--memory-manifest', process.env.REPORT_REPOSITORY_MEMORY,
+            ])
 
       - name: Assess activity database health
         env:
@@ -301,6 +258,10 @@ jobs:
             const payloadManifest = path.join(process.env.REPORT_OUTPUT, 'payload-hashes.json')
             fs.writeFileSync(payloadManifest, `${JSON.stringify(payloadHashes, null, 2)}\n`)
             core.info(`Wrote payload-hashes.json (${formatFileSize(fs.statSync(payloadManifest).size)})`)
+            const memorySource = path.join(process.env.RUNNER_TEMP, 'cao-activity', 'memory')
+            const memoryDestination = path.join(process.env.REPORT_OUTPUT, 'memory')
+            fs.cpSync(memorySource, memoryDestination, { recursive: true })
+            core.info('Copied campaign repository memory')
             // Copy only manifest-listed shards so the incremental normalization
             // cache under gh-aw-logs-*/.payloads/ is never published.
             for (const directory of ['gh-aw-logs-runs', 'gh-aw-logs-records']) {
@@ -328,6 +289,7 @@ jobs:
           name: central-agentic-ops-dashboard
           path: ${{ runner.temp }}/central-agentic-ops-dashboard
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 1
 
   cache:

@@ -155,24 +155,39 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
     if (!definition || defects.has(name)) return [];
     const table = CANONICAL_DATABASE_SCHEMA[definition.from];
     const values = definition.aggregate?.values;
+    const computedLiterals = Object.fromEntries((definition.compute ?? []).flatMap((computed) => (
+      computed.function === 'literal'
+        && Array.isArray(computed.args)
+        && computed.args.length === 1
+        && 'value' in computed.args[0]
+        ? [[computed.as, computed.args[0].value]]
+        : []
+    )));
+    const computedFields = Object.keys(computedLiterals);
+    const groupedFields = definition.aggregate?.by ?? [];
     if (!table
-        || typeof table.keyPath !== 'string'
+        || (computedFields.length === 0 && typeof table.keyPath !== 'string')
         || definition.union?.length
         || definition.joins?.length
         || definition.filter
-        || definition.compute?.length
+        || computedFields.length !== (definition.compute?.length ?? 0)
+        || groupedFields.length !== computedFields.length
+        || groupedFields.some((field) => !Object.hasOwn(computedLiterals, field))
         || definition['temporal-series']
         || definition.predict?.length
         || definition.select?.length
         || definition['order-by']?.length
         || definition.limit !== undefined
-        || definition.aggregate?.by?.length
         || !Array.isArray(values)
         || values.length === 0
-        || values.some((value) => value.reducer !== 'count' || value.field !== table.keyPath || value.filter)) {
+        || values.some((value) => (
+          value.reducer !== 'count'
+          || (computedFields.length === 0 && value.field !== table.keyPath)
+          || value.filter
+        ))) {
       return [];
     }
-    return [{ name, source: definition.from, values }];
+    return [{ name, source: definition.from, values, computedLiterals }];
   });
   const filterPlans = [...requested].flatMap((name) => {
     const definition = index.get(name);
@@ -189,11 +204,16 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
     indexedDB,
     /** @type {typeof import('../storage/indexeddb.js').DATABASE_STORES[number][]} */ (stores)
   );
-  const counted = Object.fromEntries(countPlans.map(({ name, source, values }) => {
+  const counted = Object.fromEntries(countPlans.map(({ name, source, values, computedLiterals }) => {
     const metadata = queryMetadata(logicalSources, source, source, true);
     return [name, {
       source: name,
-      rows: [Object.fromEntries(values.map((value) => [value.as, counts[source]]))],
+      rows: counts[source] === 0 && Object.keys(computedLiterals).length > 0
+        ? []
+        : [{
+            ...computedLiterals,
+            ...Object.fromEntries(values.map((value) => [value.as, counts[source]]))
+          }],
       metadata: {
         ...metadata,
         'source-id': `${name}-query`,
