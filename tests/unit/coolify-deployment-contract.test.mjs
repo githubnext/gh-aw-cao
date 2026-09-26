@@ -25,6 +25,7 @@ function classify(script, values) {
       PREVIEW_SHA: "",
       REF: "",
       SHA: "",
+      GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
       ...values,
     },
   });
@@ -143,6 +144,63 @@ test("deployment workflow publishes no mutable channel and gates every Coolify t
 
   for (const match of source.matchAll(/uses:\s+[^@\s]+@([^\s#]+)/g)) {
     assert.match(match[1], /^[0-9a-f]{40}$/, `action is not pinned: ${match[0]}`);
+  }
+});
+
+test("deployment workflow logs every delivery phase without exposing sensitive adapter data", async () => {
+  const source = await text(".github/workflows/coolify-deploy.yml");
+  const groups = source.match(/::group::/g) ?? [];
+  const summaries = source.match(/GITHUB_STEP_SUMMARY|core\.summary/g) ?? [];
+  const informationalLogs = source.match(/core\.info|echo "(?!::)/g) ?? [];
+
+  assert.ok(groups.length >= 10, `expected abundant grouped logs, found ${groups.length}`);
+  assert.ok(summaries.length >= 10, `expected abundant step summaries, found ${summaries.length}`);
+  assert.ok(informationalLogs.length >= 30, `expected abundant informational logs, found ${informationalLogs.length}`);
+
+  for (const phrase of [
+    "Resolve published release source",
+    "Resolve preview source",
+    "Classify deployment event",
+    "Verify test checkout",
+    "Tests and production build",
+    "Verify image source checkout",
+    "Candidate image metadata",
+    "Trivy high/critical scan",
+    "Save scanned candidate",
+    "Artifact upload",
+    "Publish unique GHCR candidate",
+    "Bind canonical image identity",
+    "Candidate digest",
+    "Canonical digest",
+    "Revalidate deployment source freshness",
+    "Deployment source freshness",
+    "Request digest deployment",
+    "Adapter HTTP status",
+    "Adapter result: ready digest confirmed",
+  ]) {
+    assert.match(source, new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+
+  assert.doesNotMatch(source, /set\s+-[^ \n]*x/);
+  assert.doesNotMatch(source, /curl[\s\S]*?--(?:verbose|trace(?:-ascii)?)(?:\s|\\)/);
+  assert.doesNotMatch(source, /--show-error/);
+  assert.doesNotMatch(
+    source,
+    /(?:echo|printf|cat|head|tail)\b[^\n]*(?:COOLIFY_DEPLOY_ENDPOINT|COOLIFY_DEPLOY_TOKEN|\$\{payload\}|\$\{response(?:_file)?\}|\$\{[A-Z_]*(?:TOKEN|SECRET|REDIS|OAUTH|SESSION|WEBHOOK|ENDPOINT)[A-Z_]*\})/,
+  );
+  assert.doesNotMatch(
+    source,
+    /core\.(?:info|debug|notice|warning|error)\([^\n]*(?:COOLIFY_DEPLOY_ENDPOINT|COOLIFY_DEPLOY_TOKEN|process\.env\.(?:COOLIFY|REDIS|OAUTH|SESSION|WEBHOOK))/,
+  );
+  assert.doesNotMatch(source, /(?:cat|head|tail|less|more)\s+["']?\$\{response_file\}/);
+  assert.doesNotMatch(source, /echo\s+["']?\$\{inspect_output\}/);
+
+  const errorMessages = [
+    ...source.matchAll(/echo\s+"([^"]+)"\s+>&2/g),
+    ...source.matchAll(/throw new Error\((?:`([^`]+)`|'([^']+)'|"([^"]+)")\)/g),
+  ].map((match) => match.slice(1).find(Boolean));
+  for (const message of errorMessages) {
+    assert.doesNotMatch(message, /\p{Extended_Pictographic}/u, `error message contains an emoji: ${message}`);
   }
 });
 

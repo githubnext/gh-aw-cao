@@ -43,6 +43,9 @@ jobs:
         with:
           github-token: ${{ github.token }}
           script: |
+            core.startGroup('Resolve published release source');
+            core.info(`Repository: ${context.repo.owner}/${context.repo.repo}`);
+            core.info(`Release tag: ${context.payload.release.tag_name}`);
             let { data: ref } = await github.rest.git.getRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -60,7 +63,17 @@ jobs:
             if (object.type !== 'commit' || !/^[0-9a-f]{40}$/.test(object.sha)) {
               throw new Error('Published release tag does not resolve to an immutable commit SHA');
             }
+            core.info(`Resolved commit: ${object.sha}`);
+            core.endGroup();
             core.setOutput('sha', object.sha);
+            await core.summary
+              .addHeading('Release source resolution', 3)
+              .addTable([
+                [{ data: 'Repository', header: true }, `${context.repo.owner}/${context.repo.repo}`],
+                [{ data: 'Release tag', header: true }, context.payload.release.tag_name],
+                [{ data: 'Commit', header: true }, object.sha],
+              ])
+              .write();
       - id: preview-source
         name: Resolve eligible preview pull request
         if: github.event_name == 'repository_dispatch'
@@ -74,6 +87,9 @@ jobs:
             if (!Number.isSafeInteger(number) || number < 1) {
               throw new Error('preview_pr must identify an open pull request');
             }
+            core.startGroup('Resolve preview source');
+            core.info(`Repository: ${context.repo.owner}/${context.repo.repo}`);
+            core.info(`Pull request: #${number}`);
             const { data: pull } = await github.rest.pulls.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -84,8 +100,18 @@ jobs:
                 !/^[0-9a-f]{40}$/.test(pull.head.sha)) {
               throw new Error('Preview requires an open, non-draft same-repository pull request');
             }
+            core.info(`Eligible head commit: ${pull.head.sha}`);
+            core.endGroup();
             core.setOutput('number', String(number));
             core.setOutput('sha', pull.head.sha);
+            await core.summary
+              .addHeading('Preview source resolution', 3)
+              .addTable([
+                [{ data: 'Repository', header: true }, `${context.repo.owner}/${context.repo.repo}`],
+                [{ data: 'Pull request', header: true }, `#${number}`],
+                [{ data: 'Commit', header: true }, pull.head.sha],
+              ])
+              .write();
       - id: tier
         name: Classify event without promotion
         env:
@@ -100,6 +126,9 @@ jobs:
           SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
+          echo "::group::Classify deployment event"
+          echo "Repository: ${GITHUB_REPOSITORY}"
+          echo "Event: ${EVENT_NAME}"
           stable_tag_re='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
           prerelease_identifier='(0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)'
           prerelease_tag_re="^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)-${prerelease_identifier}(\\.${prerelease_identifier})*$"
@@ -174,6 +203,13 @@ jobs:
               eligible=true
               ;;
           esac
+          echo "Eligibility: ${eligible}"
+          echo "Tier: ${tier:-none}"
+          echo "Environment: ${environment:-none}"
+          echo "Version: ${version:-none}"
+          echo "Source commit: ${expected_sha:-none}"
+          if [[ -n "${pr_number}" ]]; then echo "Pull request: #${pr_number}"; fi
+          echo "::endgroup::"
           {
             echo "eligible=${eligible}"
             echo "environment=${environment}"
@@ -184,6 +220,22 @@ jobs:
             echo "expected_sha=${expected_sha}"
             echo "pr_number=${pr_number}"
           } >> "${GITHUB_OUTPUT}"
+          if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+            {
+              echo "### Deployment classification"
+              echo
+              echo "| Fact | Value |"
+              echo "| --- | --- |"
+              echo "| Repository | \`${GITHUB_REPOSITORY}\` |"
+              echo "| Event | \`${EVENT_NAME}\` |"
+              echo "| Eligible | \`${eligible}\` |"
+              echo "| Tier | \`${tier:-none}\` |"
+              echo "| Environment | \`${environment:-none}\` |"
+              echo "| Version | \`${version:-none}\` |"
+              echo "| Source commit | \`${expected_sha:-none}\` |"
+              if [[ -n "${pr_number}" ]]; then echo "| Pull request | #${pr_number} |"; fi
+            } >> "${GITHUB_STEP_SUMMARY}"
+          fi
 
   test:
     name: Test image inputs
@@ -204,6 +256,7 @@ jobs:
           TIER: ${{ needs.classify.outputs.tier }}
         run: |
           set -euo pipefail
+          echo "::group::Verify test checkout"
           source_sha="$(git rev-parse --verify 'HEAD^{commit}')"
           if [[ "${source_sha}" != "${EXPECTED_SHA}" || ! "${source_sha}" =~ ^[0-9a-f]{40}$ ]]; then
             echo "test checkout does not match the classified source commit" >&2
@@ -218,6 +271,22 @@ jobs:
               exit 1
             fi
           fi
+          echo "Tier: ${TIER}"
+          echo "Expected commit: ${EXPECTED_SHA}"
+          echo "Verified commit: ${source_sha}"
+          if [[ "${TIER}" == "stable" || "${TIER}" == "beta" ]]; then
+            echo "Verified release tag: ${RELEASE_TAG}"
+          fi
+          echo "::endgroup::"
+          {
+            echo "### Exact test source"
+            echo
+            echo "- Tier: \`${TIER}\`"
+            echo "- Commit: \`${source_sha}\`"
+            if [[ "${TIER}" == "stable" || "${TIER}" == "beta" ]]; then
+              echo "- Release tag: \`${RELEASE_TAG}\`"
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
@@ -228,14 +297,52 @@ jobs:
           cache: false
       - name: Install Node dependencies
         run: npm ci
-      - name: Deployment contract tests
-        run: node --test tests/unit/coolify-deployment-contract.test.mjs
-      - name: Go tests
-        run: go -C server test ./...
-      - name: Dashboard production build
+      - id: contract-tests
+        name: Deployment contract tests
         run: |
+          set -euo pipefail
+          started="${SECONDS}"
+          echo "::group::Run deployment contract tests"
+          node --test tests/unit/coolify-deployment-contract.test.mjs
+          echo "::endgroup::"
+          echo "Deployment contract tests passed in $((SECONDS - started)) seconds"
+      - id: go-tests
+        name: Go tests
+        run: |
+          set -euo pipefail
+          started="${SECONDS}"
+          echo "::group::Run Go tests"
+          go -C server test ./...
+          echo "::endgroup::"
+          echo "Go tests passed in $((SECONDS - started)) seconds"
+      - id: dashboard-build
+        name: Dashboard production build
+        run: |
+          set -euo pipefail
+          started="${SECONDS}"
+          echo "::group::Install dashboard dependencies"
           npm --prefix dashboard/site ci
+          echo "::endgroup::"
+          echo "::group::Build dashboard server assets"
           npm run dashboard:server:build
+          echo "::endgroup::"
+          echo "Dashboard production build passed in $((SECONDS - started)) seconds"
+      - name: Summarize tests and build
+        if: always()
+        env:
+          CONTRACT_STATUS: ${{ steps.contract-tests.outcome }}
+          GO_STATUS: ${{ steps.go-tests.outcome }}
+          BUILD_STATUS: ${{ steps.dashboard-build.outcome }}
+        run: |
+          {
+            echo "### Tests and production build"
+            echo
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+            echo "| Deployment contract | ${CONTRACT_STATUS} |"
+            echo "| Go test suite | ${GO_STATUS} |"
+            echo "| Dashboard production build | ${BUILD_STATUS} |"
+          } >> "${GITHUB_STEP_SUMMARY}"
 
   image:
     name: Build and scan candidate image
@@ -262,6 +369,7 @@ jobs:
           EXPECTED_SHA: ${{ needs.classify.outputs.expected_sha }}
         run: |
           set -euo pipefail
+          echo "::group::Verify image source checkout"
           source_sha="$(git rev-parse --verify 'HEAD^{commit}')"
           if [[ ! "${source_sha}" =~ ^[0-9a-f]{40}$ ]]; then
             echo "checkout did not resolve to a full commit SHA" >&2
@@ -292,14 +400,33 @@ jobs:
               exit 1
               ;;
           esac
+          echo "Tier: ${TIER}"
+          echo "Expected commit: ${EXPECTED_SHA}"
+          echo "Verified commit: ${source_sha}"
+          if [[ "${TIER}" == "stable" || "${TIER}" == "beta" ]]; then
+            echo "Verified release tag: ${RELEASE_TAG}"
+          fi
+          echo "::endgroup::"
           echo "sha=${source_sha}" >> "${GITHUB_OUTPUT}"
-      - name: Build local image
+          {
+            echo "### Image source verification"
+            echo
+            echo "- Tier: \`${TIER}\`"
+            echo "- Commit: \`${source_sha}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
+      - id: image-build
+        name: Build local image
         env:
           VERSION: ${{ needs.classify.outputs.version }}
           REVISION: ${{ steps.source.outputs.sha }}
         run: |
           set -euo pipefail
+          started="${SECONDS}"
           created="$(git show -s --format=%cI "${REVISION}")"
+          echo "::group::Build candidate image"
+          echo "Version: ${VERSION}"
+          echo "Revision: ${REVISION}"
+          echo "Created: ${created}"
           docker build \
             --file server/Dockerfile \
             --build-arg "VERSION=${VERSION}" \
@@ -307,7 +434,19 @@ jobs:
             --build-arg "CREATED=${created}" \
             --tag "cao-dashboard:${REVISION}" \
             .
-      - name: Scan local image
+          echo "::endgroup::"
+          echo "Candidate image built in $((SECONDS - started)) seconds"
+          {
+            echo "### Candidate image metadata"
+            echo
+            echo "- Local image: \`cao-dashboard:${REVISION}\`"
+            echo "- Version: \`${VERSION}\`"
+            echo "- Revision: \`${REVISION}\`"
+            echo "- Created: \`${created}\`"
+            echo "- Build duration: $((SECONDS - started)) seconds"
+          } >> "${GITHUB_STEP_SUMMARY}"
+      - id: image-scan
+        name: Scan local image
         uses: aquasecurity/trivy-action@57a97c7060a3f8bc153738150e71b7be9592aadd # v0.35.0
         with:
           image-ref: cao-dashboard:${{ steps.source.outputs.sha }}
@@ -315,17 +454,47 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
           severity: CRITICAL,HIGH
-      - name: Save scanned candidate image
+      - id: image-save
+        name: Save scanned candidate image
         env:
           REVISION: ${{ steps.source.outputs.sha }}
-        run: docker image save --output "${RUNNER_TEMP}/cao-dashboard.tar" "cao-dashboard:${REVISION}"
-      - name: Upload scanned candidate image
+        run: |
+          set -euo pipefail
+          echo "::group::Save scanned candidate"
+          docker image save --output "${RUNNER_TEMP}/cao-dashboard.tar" "cao-dashboard:${REVISION}"
+          archive_bytes="$(stat --format='%s' "${RUNNER_TEMP}/cao-dashboard.tar")"
+          echo "Revision: ${REVISION}"
+          echo "Archive size: ${archive_bytes} bytes"
+          echo "::endgroup::"
+      - id: image-upload
+        name: Upload scanned candidate image
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: cao-dashboard-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/cao-dashboard.tar
           retention-days: 1
           compression-level: 0
+      - name: Summarize candidate image
+        if: always()
+        env:
+          REVISION: ${{ steps.source.outputs.sha }}
+          BUILD_STATUS: ${{ steps.image-build.outcome }}
+          SCAN_STATUS: ${{ steps.image-scan.outcome }}
+          SAVE_STATUS: ${{ steps.image-save.outcome }}
+          UPLOAD_STATUS: ${{ steps.image-upload.outcome }}
+        run: |
+          {
+            echo "### Candidate image checks"
+            echo
+            echo "- Revision: \`${REVISION:-unavailable}\`"
+            echo
+            echo "| Stage | Result |"
+            echo "| --- | --- |"
+            echo "| Build | ${BUILD_STATUS} |"
+            echo "| Trivy high/critical scan | ${SCAN_STATUS} |"
+            echo "| Save | ${SAVE_STATUS} |"
+            echo "| Artifact upload | ${UPLOAD_STATUS} |"
+          } >> "${GITHUB_STEP_SUMMARY}"
 
   publish:
     name: Publish candidate and bind canonical identity
@@ -370,11 +539,19 @@ jobs:
           RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
           set -euo pipefail
+          started="${SECONDS}"
           repository="ghcr.io/${REPOSITORY,,}/cao-dashboard"
           candidate_identity="candidate-${RUN_ID}-${RUN_ATTEMPT}"
           candidate_reference="${repository}:${candidate_identity}"
           canonical_reference="${repository}:${IDENTITY}"
 
+          echo "::group::Validate candidate identity and metadata"
+          echo "Repository: ${repository}"
+          echo "Tier: ${TIER}"
+          echo "Version: ${VERSION}"
+          echo "Revision: ${REVISION}"
+          echo "Candidate identity: ${candidate_identity}"
+          echo "Canonical identity: ${IDENTITY}"
           case "${TIER}" in
             stable)
               [[ "${IDENTITY}" == "${VERSION}" && "${IDENTITY}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
@@ -405,7 +582,10 @@ jobs:
             echo "downloaded candidate metadata does not match the classified source" >&2
             exit 1
           fi
+          echo "Candidate labels match the classified version and revision"
+          echo "::endgroup::"
 
+          echo "::group::Publish unique GHCR candidate"
           docker tag "cao-dashboard:${REVISION}" "${candidate_reference}"
           docker push "${candidate_reference}" >/dev/null
           candidate_json="$(docker buildx imagetools inspect \
@@ -415,7 +595,11 @@ jobs:
             echo "candidate did not resolve to one immutable digest" >&2
             exit 1
           fi
+          echo "Candidate repository: ${repository}"
+          echo "Candidate digest: ${candidate_digest}"
+          echo "::endgroup::"
 
+          echo "::group::Bind canonical image identity"
           inspect_output=
           if inspect_output="$(docker buildx imagetools inspect \
             "${canonical_reference}" --format '{{json .Manifest}}' 2>&1)"; then
@@ -428,6 +612,7 @@ jobs:
               echo "refusing to redefine an existing immutable source identity" >&2
               exit 1
             fi
+            echo "Canonical identity already exists at the candidate digest"
           else
             if ! printf '%s\n' "${inspect_output}" | grep -Eqi '(manifest unknown|not found)'; then
               echo "unable to verify whether the immutable source identity exists" >&2
@@ -437,6 +622,7 @@ jobs:
               --prefer-index=false \
               --tag "${canonical_reference}" \
               "${repository}@${candidate_digest}" >/dev/null
+            echo "Created canonical identity: ${IDENTITY}"
           fi
 
           canonical_json="$(docker buildx imagetools inspect \
@@ -446,10 +632,25 @@ jobs:
             echo "canonical identity does not equal the scanned candidate digest" >&2
             exit 1
           fi
+          echo "Canonical digest: ${canonical_digest}"
+          echo "Digest binding verified in $((SECONDS - started)) seconds"
+          echo "::endgroup::"
           {
             echo "digest=${candidate_digest}"
             echo "image=${repository}@${candidate_digest}"
           } >> "${GITHUB_OUTPUT}"
+          {
+            echo "### GHCR publication"
+            echo
+            echo "- Repository: \`${repository}\`"
+            echo "- Tier: \`${TIER}\`"
+            echo "- Version: \`${VERSION}\`"
+            echo "- Source commit: \`${REVISION}\`"
+            echo "- Canonical identity: \`${IDENTITY}\`"
+            echo "- Digest: \`${candidate_digest}\`"
+            echo "- Binding: verified"
+            echo "- Duration: $((SECONDS - started)) seconds"
+          } >> "${GITHUB_STEP_SUMMARY}"
 
   deploy:
     name: Deploy exact digest to Coolify
@@ -481,6 +682,10 @@ jobs:
             if (!/^[0-9a-f]{40}$/.test(expected)) {
               throw new Error('Deployment source is not an immutable commit SHA');
             }
+            core.startGroup('Revalidate deployment source freshness');
+            core.info(`Repository: ${context.repo.owner}/${context.repo.repo}`);
+            core.info(`Tier: ${tier}`);
+            core.info(`Expected commit: ${expected}`);
 
             if (tier === 'alpha') {
               const { data: branch } = await github.rest.repos.getBranch({
@@ -491,6 +696,17 @@ jobs:
               if (branch.commit.sha !== expected) {
                 throw new Error('Alpha source is no longer the main branch HEAD');
               }
+              core.info('Freshness check: main HEAD still matches');
+              core.endGroup();
+              await core.summary
+                .addHeading('Deployment source freshness', 3)
+                .addTable([
+                  [{ data: 'Tier', header: true }, tier],
+                  [{ data: 'Source', header: true }, 'main HEAD'],
+                  [{ data: 'Commit', header: true }, expected],
+                  [{ data: 'Result', header: true }, 'current'],
+                ])
+                .write();
               return;
             }
 
@@ -509,6 +725,17 @@ jobs:
                   pull.head.sha !== expected) {
                 throw new Error('Preview source is no longer the open pull request HEAD');
               }
+              core.info(`Freshness check: pull request #${number} remains eligible`);
+              core.endGroup();
+              await core.summary
+                .addHeading('Deployment source freshness', 3)
+                .addTable([
+                  [{ data: 'Tier', header: true }, tier],
+                  [{ data: 'Pull request', header: true }, `#${number}`],
+                  [{ data: 'Commit', header: true }, expected],
+                  [{ data: 'Result', header: true }, 'current'],
+                ])
+                .write();
               return;
             }
 
@@ -537,6 +764,7 @@ jobs:
             if (!latest || latest.tag_name !== process.env.RELEASE_TAG) {
               throw new Error(`${tier} source is no longer the latest published release for its channel`);
             }
+            core.info(`Latest ${tier} release: ${latest.tag_name}`);
 
             let { data: ref } = await github.rest.git.getRef({
               owner: context.repo.owner,
@@ -555,6 +783,17 @@ jobs:
             if (object.type !== 'commit' || object.sha !== expected) {
               throw new Error('Published release tag no longer peels to its event target SHA');
             }
+            core.info(`Freshness check: ${process.env.RELEASE_TAG} still resolves to ${expected}`);
+            core.endGroup();
+            await core.summary
+              .addHeading('Deployment source freshness', 3)
+              .addTable([
+                [{ data: 'Tier', header: true }, tier],
+                [{ data: 'Release tag', header: true }, process.env.RELEASE_TAG],
+                [{ data: 'Commit', header: true }, expected],
+                [{ data: 'Result', header: true }, 'current'],
+              ])
+              .write();
       - name: Request digest deployment
         env:
           COOLIFY_DEPLOY_ENDPOINT: ${{ secrets.COOLIFY_DEPLOY_ENDPOINT }}
@@ -567,10 +806,14 @@ jobs:
           set -euo pipefail
           case "${COOLIFY_DEPLOY_ENDPOINT}" in
             https://*) ;;
-            *) echo "COOLIFY_DEPLOY_ENDPOINT must use HTTPS" >&2; exit 1 ;;
+            *) echo "deployment adapter URL must use HTTPS" >&2; exit 1 ;;
           esac
           if [[ "${IMAGE}" != *"@${DIGEST}" || ! "${DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
             echo "refusing a mutable deployment reference" >&2
+            exit 1
+          fi
+          if [[ ! "${SOURCE_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "deployment source is not an immutable commit SHA" >&2
             exit 1
           fi
           payload="$(jq -cn \
@@ -583,16 +826,36 @@ jobs:
           rm -f -- "${response_file}"
           (umask 077 && : > "${response_file}")
           trap 'rm -f -- "${response_file}"' EXIT
-          curl --fail --silent --show-error \
-            --connect-timeout 10 \
-            --max-time 300 \
-            --max-filesize 65536 \
-            --request POST \
-            --oauth2-bearer "${COOLIFY_DEPLOY_TOKEN}" \
-            --header "Content-Type: application/json" \
-            --data "${payload}" \
-            --output "${response_file}" \
-            "${COOLIFY_DEPLOY_ENDPOINT}"
+          echo "::group::Request digest deployment"
+          echo "Tier: ${TIER}"
+          echo "Source commit: ${SOURCE_SHA}"
+          echo "Image: ${IMAGE}"
+          echo "Digest: ${DIGEST}"
+          request_started="${SECONDS}"
+          if ! curl_metrics="$(curl --fail --silent \
+              --connect-timeout 10 \
+              --max-time 300 \
+              --max-filesize 65536 \
+              --request POST \
+              --oauth2-bearer "${COOLIFY_DEPLOY_TOKEN}" \
+              --header "Content-Type: application/json" \
+              --data "${payload}" \
+              --output "${response_file}" \
+              --write-out '%{http_code} %{time_total}' \
+              "${COOLIFY_DEPLOY_ENDPOINT}")"; then
+            echo "::endgroup::"
+            echo "deployment adapter request failed" >&2
+            exit 1
+          fi
+          read -r http_status request_seconds <<<"${curl_metrics}"
+          if [[ ! "${http_status}" =~ ^2[0-9][0-9]$ ||
+                ! "${request_seconds}" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+            echo "::endgroup::"
+            echo "deployment adapter returned invalid request metrics" >&2
+            exit 1
+          fi
+          echo "Adapter HTTP status: ${http_status}"
+          echo "Adapter request time: ${request_seconds} seconds"
           if ! jq -e \
             --arg image "${IMAGE}" \
             --arg digest "${DIGEST}" \
@@ -601,6 +864,21 @@ jobs:
              .image == $image and
              .digest == $digest' \
             "${response_file}" >/dev/null; then
+            echo "::endgroup::"
             echo "deployment adapter did not confirm the requested ready digest" >&2
             exit 1
           fi
+          echo "Adapter result: ready digest confirmed"
+          echo "Deployment request completed in $((SECONDS - request_started)) seconds"
+          echo "::endgroup::"
+          {
+            echo "### Deployment adapter result"
+            echo
+            echo "- Tier: \`${TIER}\`"
+            echo "- Source commit: \`${SOURCE_SHA}\`"
+            echo "- Image: \`${IMAGE}\`"
+            echo "- Digest: \`${DIGEST}\`"
+            echo "- HTTP status: \`${http_status}\`"
+            echo "- Adapter result: ready digest confirmed"
+            echo "- Request time: ${request_seconds} seconds"
+          } >> "${GITHUB_STEP_SUMMARY}"
