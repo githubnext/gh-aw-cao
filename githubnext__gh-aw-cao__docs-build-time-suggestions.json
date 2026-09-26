@@ -1,6 +1,6 @@
 {
-  "source_sha": "ed347729a180f03f6a60e8fb179300ac3ee14e07",
-  "next_category": "reusable dashboard generation",
+  "source_sha": "f6c794b1ebc9f24ed03d67d75739b5f49edbad60",
+  "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
       "evaluated_at": "2026-09-17T12:52:00Z",
@@ -336,6 +336,21 @@
         36226611096
       ],
       "outcome": "incomplete: latest 20 completed docs.yml runs in the last 14 days contained only 3 comparable successful runs at source SHA ed347729a180f03f6a60e8fb179300ac3ee14e07 after excluding cancelled, skipped, and older-sha runs, below the required minimum of 5. Evidence window 2026-09-26T07:23:04Z to 2026-09-26T07:34:29Z. Stopped before timing analysis and recommendation generation per worker contract."
+    },
+    {
+      "evaluated_at": "2026-09-26T07:52:06Z",
+      "worker_run_id": 36227914851,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        36220111471,
+        36220211029,
+        36220633639,
+        36221136957,
+        36221751935,
+        36222557072
+      ],
+      "outcome": "no-op: evidence window 2026-09-26T05:12:33Z to 2026-09-26T06:03:27Z. Analyzed 6 comparable successful docs.yml runs from the latest 20 completed runs in the last 14 days (1 push, 1 workflow_run, 4 schedule), while disclosing 2 skipped workflow_run outliers and 12 successful older-sha outliers outside the like-for-like focus. Workflow median duration was 52.0s (p90 55.5s); build-job median 33.5s (p90 37.0s); deploy-job median 9.0s (p90 11.0s); build queue median 3.0s (p90 3.5s); deploy wait median 41.0s (p90 45.0s) because deploy waits on build completion rather than scheduler contention. Trusted step metadata and bounded logs confirmed Restore node_modules hit on 6/6 runs, Install dependencies and Save node_modules skipped on 6/6, Restore cached CAO Dashboard hit on 6/6, and Find latest CAO Dashboard run plus Mount latest CAO Dashboard artifact skipped on 6/6. Bounded logs on all 6 runs showed Upload Pages artifact still repackaged a 25,415,415-25,415,504 byte github-pages artifact every run, costing 5.0s median, and Deploy Pages added 6.5s median. Source review shows docs.yml still uploads the full combined dist directory after restoring the cached dashboard, so the only actionable reusable-dashboard optimization remains the already-tracked split-deployment recommendation fingerprint 4d8a9f6f1f8db7a9f0b2. Current evidence does not materially change that recommendation, so no fresh non-duplicate issue was created.",
+      "suggestion_fingerprint": ""
     }
   ]
 }
