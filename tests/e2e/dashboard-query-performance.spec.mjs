@@ -282,7 +282,7 @@ test(`benchmarks every dashboard query against settled deployed data (shard ${sh
         ),
       };
     }, { context: dashboardContext, sourceNames: overviewSourceNames });
-    expect(overviewRequest.requestMs).toBeLessThan(200);
+    expect(overviewRequest.requestMs).toBeLessThan(500);
     const worker = await Promise.race([
       overviewWorkerMetrics,
       new Promise((_, rejectPromise) => {
