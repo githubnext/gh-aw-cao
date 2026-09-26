@@ -206,11 +206,13 @@ test("workers with title prefixes provide unprefixed safe-output titles", () => 
 test("review bundles skip safely when the agent artifact omits their prepared directory", () => {
   const reviewBundle = workflow("shared/review-bundle.md");
   const missingBundleBranch = /if \[ ! -d "\$SOURCE_DIR" \]; then[\s\S]*?^\s+fi$/m.exec(reviewBundle)?.[0];
+  const uploadStep = /- name: Upload review bundle artifact[\s\S]*?(?=\n---)/.exec(reviewBundle)?.[0];
 
   assert.ok(missingBundleBranch, "missing review bundle branch must exist");
   assert.match(missingBundleBranch, /echo "skip_upload=true" >> "\$GITHUB_OUTPUT"/);
   assert.match(missingBundleBranch, /exit 0/);
-  assert.match(reviewBundle, /if: steps\.prepare\.outputs\.skip_upload != 'true'/);
+  assert.ok(uploadStep, "review bundle upload step must exist");
+  assert.match(uploadStep, /if: steps\.prepare\.outputs\.skip_upload != 'true'/);
 });
 
 test("workers inherit human-first progressive report disclosure", () => {
