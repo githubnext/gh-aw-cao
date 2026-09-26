@@ -271,9 +271,6 @@ func TestRootCommandRejectsUnknownSubcommand(t *testing.T) {
 
 func TestRootCommandParsesKnownSubcommandFlags(t *testing.T) {
 	root := newRootCommand()
-	root.SetArgs([]string{"serve-hosted", "--listen", "127.0.0.1:9000"})
-	root.SetOut(io.Discard)
-	root.SetErr(io.Discard)
 
 	found, _, err := root.Find([]string{"serve-hosted", "--listen", "127.0.0.1:9000"})
 	if err != nil {
