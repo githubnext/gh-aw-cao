@@ -240,7 +240,7 @@ func ValidateRegistry(registry Registry, index int) (Registry, error) {
 		return Registry{}, fmt.Errorf("registry %s ref is required", registry.ID)
 	}
 	path := strings.Trim(registry.Path, "/")
-	if !isSafePath(path) {
+	if strings.HasPrefix(registry.Path, "/") || !isSafePath(path) {
 		return Registry{}, fmt.Errorf("registry %s path is invalid", registry.ID)
 	}
 	if registry.APIURL != "" && !strings.HasPrefix(registry.APIURL, "https://") {

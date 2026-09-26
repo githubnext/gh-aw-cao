@@ -37,7 +37,7 @@ func TestCacheMarketplaceRegistrySetsNamespacedKeyAndMillisecondTTL(t *testing.T
 	if len(client.command) != 5 || client.command[0] != "SET" {
 		t.Fatalf("unexpected Redis command: %#v", client.command)
 	}
-	if client.command[1] != "marketplace-test:marketplace:registry:"+marketplaceCacheKey("official", "generation-1") {
+	if client.command[1] != store.Key("marketplace:registry:"+marketplaceCacheKey("official", "generation-1")) {
 		t.Fatalf("unexpected cache key: %s", client.command[1])
 	}
 	if client.command[2] != `{"packages":[]}` {
@@ -84,7 +84,7 @@ func TestCachedMarketplaceRegistryReturnsStoredPayloadOnHit(t *testing.T) {
 	if string(data) != client.getValue {
 		t.Fatalf("unexpected cached payload: %s", data)
 	}
-	if client.command[1] != "marketplace-test:marketplace:registry:"+marketplaceCacheKey("official", "generation-1") {
+	if client.command[1] != store.Key("marketplace:registry:"+marketplaceCacheKey("official", "generation-1")) {
 		t.Fatalf("unexpected GET key: %s", client.command[1])
 	}
 }
