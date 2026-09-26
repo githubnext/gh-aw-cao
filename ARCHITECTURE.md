@@ -287,11 +287,13 @@ therefore execute one layout. `.github/aw/` remains exclusively gh-aw-owned.
 - The Coolify image builds the dashboard and Go server together, runs as a
   non-root user, and mounts the authoritative artifact read-only from an
   externally populated named volume whose complete payload is hash-verified and
-  atomically installed. Conventional GitHub Actions deploys previews only by
-  explicit repository dispatch resolved from the trusted default branch, then
-  tests and builds the exact eligible same-repository pull request head. Releases build their event's
-  immutable target SHA and verify the published tag still peels to it; alpha
-  uses the full `main` commit. Every locally scanned image is pushed under a
+  atomically installed. Conventional GitHub Actions refuses fork repository
+  payloads. A push to `main` maps to alpha, while
+  published prerelease and non-prerelease events map to beta and stable.
+  Manual alpha runs resolve the current `main` commit; manual beta and stable
+  runs resolve the exact commit of the latest eligible published release for
+  their channel, regardless of whether `main` or `release` is selected. Every
+  locally scanned image is pushed under a
   unique run candidate, then a canonical source identity is created or accepted
   only at the same digest without trusting registry labels. Immediately before
   a protected deployment, the workflow revalidates channel freshness. Its

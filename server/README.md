@@ -160,20 +160,21 @@ name or private IP. The opt-in does not affect Azure: Azure Functions continues
 to require `rediss://`.
 
 The conventional `.github/workflows/coolify-deploy.yml` resolves published
-release tags to exact commits and checks out the exact event source. Preview
-deployment is an explicit `coolify-preview` repository dispatch with a pull
-request number. GitHub loads repository-dispatch workflows from the trusted
-default branch. The workflow resolves and rechecks the exact head of an open,
-non-draft same-repository pull request; forks are ineligible. No
-pull-request-triggered workflow receives GHCR write access or deployment
-credentials.
+release tags to exact commits and checks out the exact event source. It refuses
+every fork repository payload. Manual runs accept a required `alpha`, `beta`,
+or `stable` channel only when `main` or `release` is selected. Alpha additionally
+requires `main` and its current commit. Beta and stable resolve the latest
+eligible published prerelease or non-prerelease tag, respectively, and always
+build that tag's exact commit rather than branch HEAD.
 
 | Event | Immutable GHCR identity | GitHub environment |
 | --- | --- | --- |
 | Published non-prerelease `vX.Y.Z` release | tag resolved and repeatedly verified at its exact commit (`vX.Y.Z`) | `coolify-stable` |
 | Published SemVer prerelease | tag resolved and repeatedly verified at its exact commit (`vX.Y.Z-<prerelease>`) | `coolify-beta` |
 | Push to `main` | `sha-<full-main-commit>` | `coolify-alpha` |
-| `coolify-preview` repository dispatch for a non-draft same-repository pull request | `pr-<number>-sha-<full-head-commit>` | `coolify-preview` |
+| Manual alpha from `main` | current `sha-<full-main-commit>` | `coolify-alpha` |
+| Manual beta from `main` or `release` | latest eligible published prerelease tag at its exact commit | `coolify-beta` |
+| Manual stable from `main` or `release` | latest eligible published non-prerelease tag at its exact commit | `coolify-stable` |
 
 Configure `COOLIFY_DEPLOY_ENDPOINT` and `COOLIFY_DEPLOY_TOKEN` as secrets on each
 environment. The HTTPS endpoint is the deployment adapter for that Coolify
@@ -187,9 +188,8 @@ containing exactly the requested identity as
 accepted/queued Coolify response is not success.
 
 Before invoking the adapter, the workflow rechecks that alpha is still `main`
-HEAD, preview is still the open same-repository pull request HEAD, and stable or
-beta is still the latest published release in its channel with an unchanged tag
-target. Environment protection rules provide approvals. The scanned local
+HEAD and stable or beta is still the latest published release in its channel
+with an unchanged tag target. Environment protection rules provide approvals. The scanned local
 image is first pushed under a run/attempt candidate tag. A canonical source
 identity is created from that candidate digest only when absent; if it already
 exists, exact digest equality is mandatory. Labels on existing registry

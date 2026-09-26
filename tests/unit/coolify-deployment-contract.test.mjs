@@ -21,8 +21,10 @@ function classify(script, values) {
       RELEASE_PRERELEASE: "",
       RELEASE_TAG: "",
       RELEASE_SOURCE_SHA: "",
-      PREVIEW_PR: "",
-      PREVIEW_SHA: "",
+      DISPATCH_CHANNEL: "",
+      MANUAL_RELEASE_TAG: "",
+      MANUAL_SOURCE_SHA: "",
+      REPOSITORY_FORK: "false",
       REF: "",
       SHA: "",
       GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
@@ -81,8 +83,13 @@ test("deployment workflow publishes no mutable channel and gates every Coolify t
   const workflow = parse(source);
   assert.equal(workflow.on.pull_request_target, undefined);
   assert.equal(workflow.on.pull_request, undefined);
-  assert.deepEqual(workflow.on.repository_dispatch.types, ["coolify-preview"]);
-  assert.equal(workflow.on.workflow_dispatch, undefined);
+  assert.equal(workflow.on.repository_dispatch, undefined);
+  assert.deepEqual(workflow.on.workflow_dispatch.inputs.channel, {
+    description: "Deployment channel",
+    required: true,
+    type: "choice",
+    options: ["alpha", "beta", "stable"],
+  });
   assert.deepEqual(workflow.on.release.types, ["published"]);
   assert.deepEqual(workflow.on.push.branches, ["main"]);
   assert.equal(workflow.concurrency["cancel-in-progress"], false);
@@ -92,24 +99,39 @@ test("deployment workflow publishes no mutable channel and gates every Coolify t
   assert.deepEqual(workflow.jobs.image.needs, ["classify", "test"]);
   const testCheckout = workflow.jobs.test.steps.find((step) => step.uses?.startsWith("actions/checkout@"));
   const imageCheckout = workflow.jobs.image.steps.find((step) => step.uses?.startsWith("actions/checkout@"));
-  assert.equal(testCheckout.with.ref, "${{ needs.classify.outputs.source_ref }}");
+  const setupNode = workflow.jobs.test.steps.find((step) => step.uses?.startsWith("actions/setup-node@"));
+  assert.equal(testCheckout.with.ref, "${{ github.sha }}");
   assert.equal(imageCheckout.with.ref, testCheckout.with.ref);
+  assert.equal(setupNode.with.cache, undefined);
   assert.equal(workflow.jobs.image.permissions, undefined);
   assert.equal(workflow.jobs.publish.permissions.packages, "write");
   assert.equal(workflow.jobs.deploy.needs[1], "publish");
-  assert.match(source, /Resolve eligible preview pull request/);
-  assert.match(source, /pull\.head\.repo\?\.full_name !== `\$\{context\.repo\.owner\}\/\$\{context\.repo\.repo\}`/);
-  assert.match(source, /PREVIEW_PR: \$\{\{ steps\.preview-source\.outputs\.number \}\}/);
-  assert.match(source, /PREVIEW_SHA: \$\{\{ steps\.preview-source\.outputs\.sha \}\}/);
+  assert.deepEqual(workflow.jobs.deploy.permissions, { contents: "read" });
+  assert.match(source, /Reject fork repository payload/);
+  assert.match(source, /Resolve manual channel source/);
+  assert.match(source, /DISPATCH_CHANNEL: \$\{\{ inputs\.channel \}\}/);
+  assert.match(source, /MANUAL_RELEASE_TAG: \$\{\{ steps\.manual-source\.outputs\.tag \}\}/);
+  assert.match(source, /MANUAL_SOURCE_SHA: \$\{\{ steps\.manual-source\.outputs\.sha \}\}/);
+  const manualSource = workflow.jobs.classify.steps.find((step) => step.id === "manual-source");
+  assert.equal(
+    manualSource.if,
+    "github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release')",
+  );
+  assert.match(manualSource.with.script, /github\.paginate\(github\.rest\.repos\.listReleases/);
+  assert.match(manualSource.with.script, /release\.prerelease === prerelease/);
+  assert.match(manualSource.with.script, /release\.published_at/);
+  assert.match(manualSource.with.script, /Date\.parse\(right\.published_at\) - Date\.parse\(left\.published_at\)/);
+  assert.match(manualSource.with.script, /ref: `tags\/\$\{tag\}`/);
+  assert.match(manualSource.with.script, /object\.type !== 'commit'/);
+  assert.match(manualSource.with.script, /core\.setOutput\('tag', tag\)/);
+  assert.match(manualSource.with.script, /core\.setOutput\('sha', sha\)/);
   assert.match(source, /environment=coolify-(stable|beta)/);
   assert.match(source, /environment=coolify-alpha/);
-  assert.match(source, /environment=coolify-preview/);
   assert.match(source, /identity="sha-\$\{SHA\}"/);
-  assert.match(source, /identity="pr-\$\{PREVIEW_PR\}-sha-\$\{PREVIEW_SHA\}"/);
-  assert.doesNotMatch(source, /pull_request_target/);
+  assert.doesNotMatch(source, /pull[-_]requests|pull_request|preview/i);
   assert.match(source, /candidate_identity="candidate-\$\{RUN_ID\}-\$\{RUN_ATTEMPT\}"/);
   assert.match(source, /candidate identity is not unique or is a channel alias/);
-  assert.match(source, /ref: \$\{\{ needs\.classify\.outputs\.source_ref \}\}/);
+  assert.match(source, /git checkout --detach "\$\{EXPECTED_SHA\}"/);
   assert.match(source, /refs\/tags\/\$\{RELEASE_TAG\}\^\{commit\}/);
   assert.match(source, /Resolve published release tag/);
   assert.match(source, /core\.setOutput\('sha', object\.sha\)/);
@@ -125,10 +147,9 @@ test("deployment workflow publishes no mutable channel and gates every Coolify t
   assert.match(source, /image=\$\{repository\}@\$\{candidate_digest\}/);
   assert.match(source, /docker buildx imagetools create[\s\S]*--prefer-index=false[\s\S]*--tag "\$\{canonical_reference\}"[\s\S]*"\$\{repository\}@\$\{candidate_digest\}"/);
   assert.doesNotMatch(source, /existing_revision|existing_version/);
-  assert.doesNotMatch(source, /cao-dashboard:(latest|stable|beta|alpha|preview)\b/);
+  assert.doesNotMatch(source, /cao-dashboard:(latest|stable|beta|alpha)\b/);
   assert.match(source, /created="\$\(git show -s --format=%cI "\$\{REVISION\}"\)"/);
   assert.match(source, /Alpha source is no longer the main branch HEAD/);
-  assert.match(source, /Preview source is no longer the open pull request HEAD/);
   assert.match(source, /latest published release for its channel/);
   assert.match(source, /prereleaseTag/);
   assert.match(source, /stableTag/);
@@ -158,8 +179,9 @@ test("deployment workflow logs every delivery phase without exposing sensitive a
   assert.ok(informationalLogs.length >= 30, `expected abundant informational logs, found ${informationalLogs.length}`);
 
   for (const phrase of [
+    "Validate repository payload",
     "Resolve published release source",
-    "Resolve preview source",
+    "Resolve manual channel source",
     "Classify deployment event",
     "Verify test checkout",
     "Tests and production build",
@@ -223,7 +245,6 @@ test("deployment channels map to exact source refs and immutable identities", as
     identity: "v1.2.3",
     source_ref: "d".repeat(40),
     expected_sha: "d".repeat(40),
-    pr_number: "",
   });
 
   const beta = classify(script, {
@@ -251,22 +272,54 @@ test("deployment channels map to exact source refs and immutable identities", as
   assert.equal(alpha.outputs.source_ref, mainSha);
   assert.equal(alpha.outputs.expected_sha, mainSha);
 
-  const headSha = "b".repeat(40);
-  const preview = classify(script, {
-    EVENT_NAME: "repository_dispatch",
-    PREVIEW_SHA: headSha,
-    PREVIEW_PR: "42",
-    SHA: "c".repeat(40),
+  const manualAlpha = classify(script, {
+    EVENT_NAME: "workflow_dispatch",
+    DISPATCH_CHANNEL: "alpha",
+    REF: "refs/heads/main",
+    SHA: mainSha,
+    MANUAL_SOURCE_SHA: mainSha,
   });
-  assert.equal(preview.status, 0, preview.stderr);
-  assert.equal(preview.outputs.environment, "coolify-preview");
-  assert.equal(preview.outputs.identity, `pr-42-sha-${headSha}`);
-  assert.equal(preview.outputs.source_ref, headSha);
-  assert.equal(preview.outputs.expected_sha, headSha);
-  assert.notEqual(preview.outputs.source_ref, "c".repeat(40));
+  assert.equal(manualAlpha.status, 0, manualAlpha.stderr);
+  assert.equal(manualAlpha.outputs.environment, "coolify-alpha");
+  assert.equal(manualAlpha.outputs.identity, `sha-${mainSha}`);
+  assert.equal(manualAlpha.outputs.source_ref, mainSha);
+
+  for (const ref of ["refs/heads/main", "refs/heads/release"]) {
+    const manualBetaSha = "b".repeat(40);
+    const manualBeta = classify(script, {
+      EVENT_NAME: "workflow_dispatch",
+      DISPATCH_CHANNEL: "beta",
+      REF: ref,
+      SHA: "c".repeat(40),
+      MANUAL_RELEASE_TAG: "v3.0.0-rc.2",
+      MANUAL_SOURCE_SHA: manualBetaSha,
+    });
+    assert.equal(manualBeta.status, 0, manualBeta.stderr);
+    assert.equal(manualBeta.outputs.environment, "coolify-beta");
+    assert.equal(manualBeta.outputs.identity, "v3.0.0-rc.2");
+    assert.equal(manualBeta.outputs.source_ref, manualBetaSha);
+    assert.equal(manualBeta.outputs.expected_sha, manualBetaSha);
+    assert.notEqual(manualBeta.outputs.source_ref, "c".repeat(40));
+
+    const manualStableSha = "f".repeat(40);
+    const manualStable = classify(script, {
+      EVENT_NAME: "workflow_dispatch",
+      DISPATCH_CHANNEL: "stable",
+      REF: ref,
+      SHA: "c".repeat(40),
+      MANUAL_RELEASE_TAG: "v3.0.0",
+      MANUAL_SOURCE_SHA: manualStableSha,
+    });
+    assert.equal(manualStable.status, 0, manualStable.stderr);
+    assert.equal(manualStable.outputs.environment, "coolify-stable");
+    assert.equal(manualStable.outputs.identity, "v3.0.0");
+    assert.equal(manualStable.outputs.source_ref, manualStableSha);
+    assert.equal(manualStable.outputs.expected_sha, manualStableSha);
+    assert.notEqual(manualStable.outputs.source_ref, "c".repeat(40));
+  }
 });
 
-test("deployment classification fails closed on invalid release versions and sources", async () => {
+test("deployment classification fails closed on forks, branches, and invalid sources", async () => {
   const workflow = parse(await text(".github/workflows/coolify-deploy.yml"));
   const script = workflow.jobs.classify.steps.find((step) => step.id === "tier").run;
   const invalidReleases = [
@@ -296,12 +349,14 @@ test("deployment classification fails closed on invalid release versions and sou
   });
   assert.notEqual(wrongBranch.status, 0);
 
-  const invalidHead = classify(script, {
-    EVENT_NAME: "repository_dispatch",
-    PREVIEW_SHA: "not-a-sha",
-    PREVIEW_PR: "7",
+  const fork = classify(script, {
+    EVENT_NAME: "push",
+    REF: "refs/heads/main",
+    SHA: "a".repeat(40),
+    REPOSITORY_FORK: "true",
   });
-  assert.notEqual(invalidHead.status, 0);
+  assert.notEqual(fork.status, 0);
+  assert.match(fork.stderr, /refused for a fork repository payload/);
 
   const mutableReleaseTarget = classify(script, {
     EVENT_NAME: "release",
@@ -312,8 +367,58 @@ test("deployment classification fails closed on invalid release versions and sou
   });
   assert.notEqual(mutableReleaseTarget.status, 0);
 
-  const missingPreview = classify(script, {
-    EVENT_NAME: "repository_dispatch",
+  const invalidManualBranch = classify(script, {
+    EVENT_NAME: "workflow_dispatch",
+    DISPATCH_CHANNEL: "stable",
+    REF: "refs/heads/feature",
+    MANUAL_RELEASE_TAG: "v1.2.3",
+    MANUAL_SOURCE_SHA: "d".repeat(40),
   });
-  assert.notEqual(missingPreview.status, 0);
+  assert.notEqual(invalidManualBranch.status, 0);
+
+  const alphaFromRelease = classify(script, {
+    EVENT_NAME: "workflow_dispatch",
+    DISPATCH_CHANNEL: "alpha",
+    REF: "refs/heads/release",
+    SHA: "a".repeat(40),
+    MANUAL_SOURCE_SHA: "a".repeat(40),
+  });
+  assert.notEqual(alphaFromRelease.status, 0);
+
+  const staleMainAlpha = classify(script, {
+    EVENT_NAME: "workflow_dispatch",
+    DISPATCH_CHANNEL: "alpha",
+    REF: "refs/heads/main",
+    SHA: "a".repeat(40),
+    MANUAL_SOURCE_SHA: "b".repeat(40),
+  });
+  assert.notEqual(staleMainAlpha.status, 0);
+
+  const branchHeadStable = classify(script, {
+    EVENT_NAME: "workflow_dispatch",
+    DISPATCH_CHANNEL: "stable",
+    REF: "refs/heads/release",
+    SHA: "a".repeat(40),
+    MANUAL_RELEASE_TAG: "",
+    MANUAL_SOURCE_SHA: "a".repeat(40),
+  });
+  assert.notEqual(branchHeadStable.status, 0);
+
+  const stableWithPrerelease = classify(script, {
+    EVENT_NAME: "workflow_dispatch",
+    DISPATCH_CHANNEL: "stable",
+    REF: "refs/heads/main",
+    MANUAL_RELEASE_TAG: "v1.2.3-rc.1",
+    MANUAL_SOURCE_SHA: "d".repeat(40),
+  });
+  assert.notEqual(stableWithPrerelease.status, 0);
+
+  const betaWithStable = classify(script, {
+    EVENT_NAME: "workflow_dispatch",
+    DISPATCH_CHANNEL: "beta",
+    REF: "refs/heads/release",
+    MANUAL_RELEASE_TAG: "v1.2.3",
+    MANUAL_SOURCE_SHA: "d".repeat(40),
+  });
+  assert.notEqual(betaWithStable.status, 0);
 });
