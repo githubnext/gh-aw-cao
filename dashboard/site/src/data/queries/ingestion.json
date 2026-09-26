@@ -223,7 +223,7 @@
         "event": { "field": "event", "default": "unknown" }, "branch": { "field": "branch" }, "headSha": { "field": "head-sha" },
         "createdAt": { "field": "created-at" }, "status": { "field": "run-status", "default": "unknown" }, "conclusion": { "field": "run-conclusion", "default": null },
         "startedAt": { "field": "started-at", "default": null }, "completedAt": { "field": "ended-at", "default": null }, "updatedAt": { "field": "updated-at" },
-        "classification": { "field": "classification" }, "duration": { "field": "duration" }, "actionMinutes": { "field": "action-minutes" },
+        "classification": { "field": "classification" }, "failureKind": { "field": "failure-kind" }, "duration": { "field": "duration" }, "actionMinutes": { "field": "action-minutes" },
         "githubApiCalls": { "field": "github-api-calls" }, "safeItemsCount": { "field": "safe-items-count" }, "errorCount": { "field": "error-count" },
         "admissionStatus": { "field": "admission-status" }, "admissionReason": { "field": "admission-reason" },
         "failureJob": { "field": "failure-job" }, "failureMessage": { "field": "failure-message" }, "failureStep": { "field": "failure-step" }, "failureLog": { "field": "failure-log" },
