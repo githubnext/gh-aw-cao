@@ -39,7 +39,6 @@ describe('Audit dashboard view', () => {
       arguments: [{ name: 'campaign', field: 'campaign' }]
     });
     expect(insights.views.slice(2).map((/** @type {{ data: Record<string, string> }} */ view) => view.data)).toEqual([
-      expect.objectContaining({ source: 'audit-event-summary-buckets', 'route-field': 'campaign' }),
       expect.objectContaining({ source: 'audit-event-summary-buckets', 'route-field': 'campaign' })
     ]);
     expect(insights.views.filter((/** @type {{ mark: string }} */ view) => view.mark !== 'element')
