@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { parse } from "yaml";
-import { root, workflow, workflowsDirectory } from "./workflow-contract.helpers.mjs";
+import { root, stepBlock, workflow, workflowsDirectory } from "./workflow-contract.helpers.mjs";
 
 // Safe-output reporting, issue, and pull request contracts.
 
@@ -206,12 +206,12 @@ test("workers with title prefixes provide unprefixed safe-output titles", () => 
 test("review bundles skip safely when the agent artifact omits their prepared directory", () => {
   const reviewBundle = workflow("shared/review-bundle.md");
   const missingBundleBranch = /if \[ ! -d "\$SOURCE_DIR" \]; then[\s\S]*?^\s+fi$/m.exec(reviewBundle)?.[0];
-  const uploadStep = /- name: Upload review bundle artifact[\s\S]*?(?=\n---)/.exec(reviewBundle)?.[0];
+  const uploadStep = stepBlock(reviewBundle, "Upload review bundle artifact");
 
   assert.ok(missingBundleBranch, "missing review bundle branch must exist");
+  assert.match(missingBundleBranch, /::warning::Review bundle was not persisted in the agent artifact/);
   assert.match(missingBundleBranch, /echo "skip_upload=true" >> "\$GITHUB_OUTPUT"/);
   assert.match(missingBundleBranch, /exit 0/);
-  assert.ok(uploadStep, "review bundle upload step must exist");
   assert.match(uploadStep, /if: steps\.prepare\.outputs\.skip_upload != 'true'/);
 });
 
