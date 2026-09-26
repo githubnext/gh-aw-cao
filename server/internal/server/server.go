@@ -26,6 +26,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
@@ -122,10 +123,12 @@ func New(store *redisx.Store, config Config) (*App, error) {
 		reconciler = collector
 		if !config.Collector.AdmitOnly {
 			memoryResolver = &repositorymemory.RemoteResolver{
-				Cache:             store,
-				Installations:     collector.enrollment,
-				Source:            collector.client,
-				Governor:          collector.budget,
+				Cache:         store,
+				Installations: collector.enrollment,
+				Source:        collector.client,
+				Governor: &githubapp.Budget{
+					Store: store, Floor: config.Collector.RateLimitFloor, Cost: 1,
+				},
 				ControlRepository: config.Collector.ControlRepository,
 			}
 		}

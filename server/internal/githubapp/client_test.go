@@ -31,8 +31,17 @@ func TestAPIResponseReadsSecondaryRetryAfter(t *testing.T) {
 	}
 
 	response := apiResponse(nil, err)
-	if response.RetryAfter != delay || response.StatusCode != http.StatusForbidden {
+	if response.RetryAfter != delay || response.StatusCode != http.StatusForbidden || !response.Secondary {
 		t.Fatalf("unexpected response: %#v", response)
+	}
+}
+
+func TestAPIResponseClassifiesSecondaryLimitWithoutRetryAfter(t *testing.T) {
+	err := &github.AbuseRateLimitError{
+		Response: &http.Response{StatusCode: http.StatusForbidden},
+	}
+	if response := apiResponse(nil, err); !response.Secondary {
+		t.Fatalf("secondary limit was not classified: %#v", response)
 	}
 }
 

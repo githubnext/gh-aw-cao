@@ -110,6 +110,25 @@ func TestRemoteResolverPreservesInfrastructureErrors(t *testing.T) {
 	}
 }
 
+func TestRemoteResolverRefreshesUnknownBudget(t *testing.T) {
+	cache := newRemoteCache()
+	source := &remoteSource{
+		commit:        testOID,
+		rateRemaining: 5000,
+		rateReset:     time.Now().Add(time.Hour),
+	}
+	governor := &remoteGovernor{reserveErr: githubapp.ErrBudgetUnknown}
+	resolver := newRemoteResolver(cache, source, governor)
+
+	campaign, err := resolver.Campaign(context.Background(), "example")
+	if err != nil || campaign == nil {
+		t.Fatalf("budget was not refreshed: %#v, %v", campaign, err)
+	}
+	if governor.observations == 0 {
+		t.Fatal("refreshed budget was not observed")
+	}
+}
+
 func TestRemoteResolverKeepsSuccessfulLastResponse(t *testing.T) {
 	cache := newRemoteCache()
 	source := &remoteSource{
@@ -206,6 +225,9 @@ type remoteSource struct {
 	response                       githubapp.APIResponse
 	refErr, treeErr, blobErr       error
 	refCalls, treeCalls, blobCalls int
+	rateRemaining                  int
+	rateReset                      time.Time
+	rateErr                        error
 }
 
 func (s *remoteSource) ResolveRef(
@@ -229,6 +251,10 @@ func (s *remoteSource) Blob(
 	return s.content, s.response, s.blobErr
 }
 
+func (s *remoteSource) RateLimit(context.Context, int64) (int, time.Time, error) {
+	return s.rateRemaining, s.rateReset, s.rateErr
+}
+
 type remoteGovernor struct {
 	reservations int
 	observations int
@@ -238,6 +264,9 @@ type remoteGovernor struct {
 
 func (g *remoteGovernor) Reserve(context.Context, int64) (int, error) {
 	g.reservations++
+	if errors.Is(g.reserveErr, githubapp.ErrBudgetUnknown) && g.observations > 0 {
+		return 0, nil
+	}
 	return 0, g.reserveErr
 }
 

@@ -90,6 +90,7 @@ type APIResponse struct {
 	RetryAfter time.Duration
 	StatusCode int
 	Truncated  bool
+	Secondary  bool
 }
 
 // ErrNotFound reports that a requested Git object or ref does not exist.
@@ -389,6 +390,7 @@ func apiResponse(response *github.Response, err error) APIResponse {
 	}
 	var secondary *github.AbuseRateLimitError
 	if errors.As(err, &secondary) {
+		state.Secondary = true
 		if secondary.Response != nil {
 			state.StatusCode = secondary.Response.StatusCode
 		}

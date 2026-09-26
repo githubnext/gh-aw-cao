@@ -17,9 +17,10 @@ import (
 )
 
 const (
-	remoteCampaignTTL = 5 * time.Minute
-	remoteFileTTL     = time.Hour
-	remoteLockTTL     = 2 * time.Minute
+	remoteCampaignTTL  = 5 * time.Minute
+	remoteFileTTL      = time.Hour
+	remoteLockTTL      = 2 * time.Minute
+	remoteOperationTTL = 90 * time.Second
 )
 
 var ErrNotFound = errors.New("repository memory was not found")
@@ -44,6 +45,7 @@ type GitHubSource interface {
 	ResolveRef(context.Context, int64, string, string) (string, githubapp.APIResponse, error)
 	Tree(context.Context, int64, string, string) ([]githubapp.GitTreeEntry, githubapp.APIResponse, error)
 	Blob(context.Context, int64, string, string) ([]byte, githubapp.APIResponse, error)
+	RateLimit(context.Context, int64) (int, time.Time, error)
 }
 
 // Governor shares GitHub rate-limit state across server instances.
@@ -96,6 +98,8 @@ func (r *RemoteResolver) Campaign(ctx context.Context, campaignID string) (*Camp
 	defer func() {
 		_ = r.Cache.Unlock(context.WithoutCancel(ctx), lockName, token)
 	}()
+	ctx, cancel := context.WithTimeout(ctx, remoteOperationTTL)
+	defer cancel()
 	if cached, ok, err := r.cachedCampaign(ctx, campaignID); err != nil || ok {
 		return cached, err
 	}
@@ -165,6 +169,8 @@ func (r *RemoteResolver) Content(ctx context.Context, campaignID, filePath strin
 	defer func() {
 		_ = r.Cache.Unlock(context.WithoutCancel(ctx), lockName, token)
 	}()
+	ctx, cancel := context.WithTimeout(ctx, remoteOperationTTL)
+	defer cancel()
 	content, err = r.Cache.CachedRepositoryMemoryFile(ctx, campaignID, campaign.Commit, filePath)
 	if err == nil && content != nil {
 		return validateRemoteContent(*selected, content)
@@ -217,6 +223,19 @@ func (r *RemoteResolver) cacheCampaign(ctx context.Context, campaignID string, c
 
 func (r *RemoteResolver) reserve(ctx context.Context, installationID int64) error {
 	if _, err := r.Governor.Reserve(ctx, installationID); err != nil {
+		if errors.Is(err, githubapp.ErrBudgetUnknown) {
+			remaining, reset, rateErr := r.Source.RateLimit(ctx, installationID)
+			if rateErr != nil {
+				return rateErr
+			}
+			if observeErr := r.Governor.Observe(ctx, installationID, remaining, reset); observeErr != nil {
+				return observeErr
+			}
+			_, err = r.Governor.Reserve(ctx, installationID)
+			if err == nil {
+				return nil
+			}
+		}
 		if !errors.Is(err, githubapp.ErrBudgetExhausted) &&
 			!errors.Is(err, githubapp.ErrInstallationParked) {
 			return err
@@ -249,6 +268,8 @@ func (r *RemoteResolver) observe(
 	case response.Remaining == 0 && response.Reset.After(time.Now()):
 		retryAt = response.Reset
 	case response.StatusCode == 429:
+		retryAt = time.Now().UTC().Add(time.Minute)
+	case response.Secondary:
 		retryAt = time.Now().UTC().Add(time.Minute)
 	}
 	if !retryAt.IsZero() {

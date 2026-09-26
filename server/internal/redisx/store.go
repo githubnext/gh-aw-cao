@@ -93,17 +93,17 @@ func (s *Store) ReserveRateLimit(
 	script := `
 local value = redis.call("HGET", KEYS[1], ARGV[1]) or ""
 local remaining, reset, parked = string.match(value, "^(-?%d+)|(-?%d+)|(-?%d+)$")
+if not remaining then return 3 end
 remaining = tonumber(remaining) or 0
 reset = tonumber(reset) or 0
 parked = tonumber(parked) or 0
 local now = tonumber(ARGV[4])
 if parked > now then return 1 end
 if reset > 0 and reset < now then
-  remaining = 0
-  reset = 0
+  return 3
 end
 local floor = tonumber(ARGV[2])
-if remaining > 0 and remaining <= floor then return 2 end
+if remaining <= floor then return 2 end
 remaining = math.max(remaining - tonumber(ARGV[3]), 0)
 redis.call("HSET", KEYS[1], ARGV[1], remaining .. "|" .. reset .. "|" .. parked)
 return 0`
@@ -118,6 +118,48 @@ return 0`
 		return 0, errors.New("invalid rate-limit reservation response")
 	}
 	return result, nil
+}
+
+// ObserveRateLimit atomically records authoritative response headroom without
+// increasing a same-window value that a concurrent reservation already lowered.
+func (s *Store) ObserveRateLimit(
+	ctx context.Context, key, field string, remaining int, reset int64,
+) error {
+	script := `
+local value = redis.call("HGET", KEYS[1], ARGV[1]) or ""
+local current, current_reset, parked = string.match(value, "^(-?%d+)|(-?%d+)|(-?%d+)$")
+current = tonumber(current)
+current_reset = tonumber(current_reset)
+parked = tonumber(parked) or 0
+local observed = tonumber(ARGV[2])
+local observed_reset = tonumber(ARGV[3])
+if current and current_reset == observed_reset then
+  observed = math.min(current, observed)
+end
+redis.call("HSET", KEYS[1], ARGV[1], observed .. "|" .. observed_reset .. "|" .. parked)
+return 0`
+	_, err := s.Client.Do(
+		ctx, "EVAL", script, "1", s.Key(key), field,
+		strconv.Itoa(remaining), strconv.FormatInt(reset, 10))
+	return err
+}
+
+// ParkRateLimit atomically extends an installation's backoff without changing
+// its current headroom.
+func (s *Store) ParkRateLimit(
+	ctx context.Context, key, field string, parkedTo int64,
+) error {
+	script := `
+local value = redis.call("HGET", KEYS[1], ARGV[1]) or ""
+local remaining, reset, parked = string.match(value, "^(-?%d+)|(-?%d+)|(-?%d+)$")
+remaining = tonumber(remaining) or 0
+reset = tonumber(reset) or 0
+parked = math.max(tonumber(parked) or 0, tonumber(ARGV[2]))
+redis.call("HSET", KEYS[1], ARGV[1], remaining .. "|" .. reset .. "|" .. parked)
+return 0`
+	_, err := s.Client.Do(
+		ctx, "EVAL", script, "1", s.Key(key), field, strconv.FormatInt(parkedTo, 10))
+	return err
 }
 
 func (s *Store) RememberDelivery(ctx context.Context, delivery string, ttl time.Duration) (bool, error) {
