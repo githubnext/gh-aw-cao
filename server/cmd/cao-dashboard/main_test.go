@@ -236,6 +236,30 @@ func TestResolveIngestSource(t *testing.T) {
 	}
 }
 
+func TestNewRedisStoreSucceedsWithValidURLAndNamespace(t *testing.T) {
+	store, err := newRedisStore("redis://127.0.0.1:6379/0", "checkout-abc123")
+	if err != nil {
+		t.Fatalf("newRedisStore() error = %v, want nil", err)
+	}
+	if store == nil {
+		t.Fatal("newRedisStore() store = nil, want non-nil")
+	}
+}
+
+func TestNewRedisStoreFailsOnInvalidURL(t *testing.T) {
+	_, err := newRedisStore("not-a-url", "checkout-abc123")
+	if err == nil {
+		t.Fatal("newRedisStore() error = nil, want non-nil for an invalid URL")
+	}
+}
+
+func TestNewRedisStoreFailsOnInvalidNamespace(t *testing.T) {
+	_, err := newRedisStore("redis://127.0.0.1:6379/0", "")
+	if err == nil {
+		t.Fatal("newRedisStore() error = nil, want non-nil for an invalid namespace")
+	}
+}
+
 func TestResolveBackfillMode(t *testing.T) {
 	tests := []struct {
 		name       string
