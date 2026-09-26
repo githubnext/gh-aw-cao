@@ -12,13 +12,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/githubnext/gh-aw-cao/server/internal/doctor"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	debuglogger "github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/server"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
-	"github.com/spf13/cobra"
 )
 
 // version is the standardized service.version resource attribute reported by
