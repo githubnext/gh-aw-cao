@@ -657,7 +657,7 @@
           },
           "mark": "element",
           "element": "all-campaign-memory",
-          "layout": "full"
+          "layout": "full-view"
         }
       ]
     },
