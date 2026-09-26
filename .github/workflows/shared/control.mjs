@@ -192,7 +192,7 @@ function capacityGuidance(capacity) {
 
 1. Check the credential and the [REST API rate-limit guidance](${GITHUB_RATE_LIMIT_DOCS}); do not repeatedly retry a 403 or 429 response.
 2. For durable cross-repository automation, configure a least-privilege GitHub App using [GitHub's Actions authentication guide](${GITHUB_APP_ACTIONS_DOCS}).
-3. If an App cannot be installed and the exact scope is eligible, use a fine-grained PAT with minimal repository access, permissions, and expiration. Follow [GitHub's PAT guidance](${GITHUB_PAT_DOCS}) and store it as an [Actions secret](${GITHUB_ACTIONS_SECRETS_DOCS}) named \`GH_AW_GITHUB_TOKEN\`.
+3. If an App cannot be installed and the exact scope is eligible, use separate fine-grained read and write PATs with minimal repository access, permissions, and expiration. Follow [GitHub's PAT guidance](${GITHUB_PAT_DOCS}) and store them as [Actions secrets](${GITHUB_ACTIONS_SECRETS_DOCS}) named \`GH_AW_GITHUB_READ_PAT\` and \`GH_AW_GITHUB_WRITE_PAT\`.
 
 See also [GitHub REST API best practices](${GITHUB_REST_BEST_PRACTICES}).
 `;
@@ -206,7 +206,7 @@ See also [GitHub REST API best practices](${GITHUB_REST_BEST_PRACTICES}).
 
 1. Do not rerun before **${capacity.resetAt}**. That is approximately **${wait.minutes} minutes (${wait.hours.toFixed(2)} hours)** from this admission check. The next scheduled run after that time is a new attempt.
 2. For durable cross-repository automation, configure a least-privilege GitHub App using [GitHub's Actions authentication guide](${GITHUB_APP_ACTIONS_DOCS}). GitHub documents higher, installation-scoped limits for Apps in the [REST API rate-limit guide](${GITHUB_RATE_LIMIT_DOCS}).
-3. If an App cannot be installed and the exact scope is eligible, use a fine-grained PAT with minimal repository access, permissions, and expiration. Follow [GitHub's PAT guidance](${GITHUB_PAT_DOCS}) and store it as an [Actions secret](${GITHUB_ACTIONS_SECRETS_DOCS}) named \`GH_AW_GITHUB_TOKEN\`.
+3. If an App cannot be installed and the exact scope is eligible, use separate fine-grained read and write PATs with minimal repository access, permissions, and expiration. Follow [GitHub's PAT guidance](${GITHUB_PAT_DOCS}) and store them as [Actions secrets](${GITHUB_ACTIONS_SECRETS_DOCS}) named \`GH_AW_GITHUB_READ_PAT\` and \`GH_AW_GITHUB_WRITE_PAT\`.
 
 GitHub says not to retry primary-limit failures until \`x-ratelimit-reset\`; continuing while limited can result in integration blocking. See [GitHub REST API best practices](${GITHUB_REST_BEST_PRACTICES}).
 `;

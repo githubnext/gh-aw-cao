@@ -224,7 +224,8 @@ test("CAO admission blocks exhausted GitHub API capacity with reset and remediat
   assert.match(summary, /### What to do now/);
   assert.match(summary, /Do not rerun before/);
   assert.match(summary, /Making authenticated API requests with a GitHub App|GitHub's Actions authentication guide/);
-  assert.match(summary, /fine-grained PAT/);
-  assert.match(summary, /GH_AW_GITHUB_TOKEN/);
+  assert.match(summary, /fine-grained read and write PATs/);
+  assert.match(summary, /GH_AW_GITHUB_READ_PAT/);
+  assert.match(summary, /GH_AW_GITHUB_WRITE_PAT/);
   assert.match(summary, /docs\.github\.com\/en\/rest\/using-the-rest-api\/rate-limits-for-the-rest-api/);
 });
