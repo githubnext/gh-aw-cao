@@ -446,6 +446,7 @@ test("Activity campaign owns the shared collected-data cache contract", () => {
   assert.match(activityCollector, /gh aw logs --audit/);
   assert.match(workflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl/);
   assert.match(workflow, /Compute repository operational value[\s\S]*?cao\.mjs operational-value[\s\S]*?--max-github-api-rate-limit -2000/);
+  assert.match(workflow, /Compute repository operational value[\s\S]*?--history-campaign optimization/);
   assert.match(workflow, /paths:[\s\S]*?- "activity\/\*\*"/);
   assert.match(workflow, /paths:[\s\S]*?- "\*\/operational-value\/\*\*"/);
   assert.match(workflow, /Refresh GitHub App token for operational value[\s\S]*?actions\/create-github-app-token@[0-9a-f]{40}[\s\S]*?Compute repository operational value/);

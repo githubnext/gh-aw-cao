@@ -120,7 +120,7 @@ const USAGE = `Usage:
   cao issue-status [--database FILE] --input-dir SHARD_DIRECTORY [--batch-size COUNT] [--graphql-cost-budget POINTS] [--graphql-min-remaining POINTS]
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao computation runtime-health [--database FILE] [--inventory FILE] [--campaign SLUG] [--diagnose]
-  cao operational-value [--database FILE] [--root DIRECTORY] [--output FILE] [--timestamp TIME] [--repository OWNER/REPO] [--retention-days DAYS|all] [--max-github-api-rate-limit LIMIT]
+  cao operational-value [--database FILE] [--root DIRECTORY] [--output FILE] [--timestamp TIME] [--repository OWNER/REPO] [--campaign SLUG] [--retention-days DAYS|all] [--history-campaign SLUG] [--max-github-api-rate-limit LIMIT]
   cao cluster-problems [--database FILE] [--root DIRECTORY] [--timestamp TIME]
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
   cao download [--url URL] [--output DIRECTORY]
@@ -139,7 +139,7 @@ Query local CAO data as JSON. Download the deployed snapshot before querying:
   cao computation runtime-health
   cao computation runtime-health --campaign dependabot
   cao computation runtime-health --campaign dependabot --diagnose
-  cao operational-value --output .cao/gh-aw-logs-shards/operational-values.jsonl --max-github-api-rate-limit -2000
+  cao operational-value --output .cao/gh-aw-logs-shards/operational-values.jsonl --retention-days 30 --history-campaign optimization --max-github-api-rate-limit -2000
   cao cluster-problems
   cao gh runs -R githubnext/gh-aw-cao -w cao-activity --status failure --since 2026-09-01 --until 2026-09-15
   cao gh issues -R githubnext/gh-aw-cao --since 2026-09-01
@@ -184,6 +184,8 @@ Operational value scripts:
   cao operational-value discovers <package>/operational-value.mjs below --root.
   Each script receives one JSON request on stdin and emits JSONL records with
   timestamp, repository, valueId, and a finite numeric value.
+  --history-campaign queries missing cadence observations within the retention
+  window from prefetched evidence and writes them only when --output is present.
 
 Problem clustering scripts:
   cao cluster-problems discovers <package>/problem-clustering.mjs below --root.

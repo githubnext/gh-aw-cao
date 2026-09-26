@@ -170,7 +170,14 @@ if (caoAdapter) {
     && Array.isArray(definitionIds)
     && definitionIds.length === expectedIds.size
     && uniqueDefinitionIds.size === expectedIds.size
-    && [...expectedIds].every((valueId) => uniqueDefinitionIds.has(valueId));
+    && [...expectedIds].every((valueId) => uniqueDefinitionIds.has(valueId))
+    && definitionRecords[0].workflowSlug === definition.slug
+    && definitionRecords[0].adoptedAt === definition.adoption.adoptedAt
+    && definitionRecords[0].evaluationMode === (definition.evaluation?.mode ?? "baseline-comparable")
+    && definitionRecords[0].cadenceDays === definition.evidence.window.cadenceDays
+    && Array.isArray(definitionRecords[0].repositories)
+    && JSON.stringify(definitionRecords[0].repositories.map((repository) => repository.toLowerCase()).toSorted())
+      === JSON.stringify(definition.evidence.repositories.map((repository) => repository.toLowerCase()).toSorted());
   const recordKeys = records.map(
     ({ repository, valueId }) => `${String(repository).toLowerCase()}\0${valueId}`,
   );

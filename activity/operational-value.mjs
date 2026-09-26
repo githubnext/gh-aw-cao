@@ -6,6 +6,10 @@ import { readCollection } from '../dashboard/site/src/data/storage/indexeddb.js'
 
 export const REPOSITORY_COORDINATE = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
 const OPERATIONAL_VALUE_ID = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
+const OPERATIONAL_VALUE_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const DAY_MS = 86_400_000;
+const BASELINE_OBSERVATIONS = 3;
+const MAX_HISTORY_OBSERVATIONS = 366;
 const WORKER_TIMEOUT_MS = 2 * 60 * 1000;
 const RATE_LIMIT_TIMEOUT_MS = 30 * 1000;
 const WORKER_ENVIRONMENT = [
@@ -217,7 +221,8 @@ export function operationalValueReserve(value, UsageError = Error) {
 
 function parseOperationalValueOutput(content, source, repositories) {
   const allowedRepositories = new Set(repositories.map((repository) => repository.toLowerCase()));
-  const definitions = new Set();
+  const definitions = [];
+  const definedIds = new Set();
   const values = String(content).split(/\r?\n/).flatMap((line, index) => {
     if (!line.trim()) return [];
     let record;
@@ -230,21 +235,48 @@ function parseOperationalValueOutput(content, source, repositories) {
       throw new Error(`${source}:${index + 1} must emit a JSON object`);
     }
     if (record.kind === 'operational_value_definition') {
+      const workflowSlug = String(record.workflowSlug ?? '');
+      const evaluationMode = record.evaluationMode;
+      const cadenceDays = record.cadenceDays;
       if (
-        !Array.isArray(record.valueIds)
+        !OPERATIONAL_VALUE_SLUG.test(workflowSlug)
+        || !['baseline-comparable', 'attainment-only'].includes(evaluationMode)
+        || typeof cadenceDays !== 'number'
+        || !Number.isFinite(cadenceDays)
+        || cadenceDays <= 0
+        || !Array.isArray(record.repositories)
+        || record.repositories.length === 0
+        || record.repositories.some((repository) => (
+          typeof repository !== 'string' || !REPOSITORY_COORDINATE.test(repository)
+        ))
+        || !Array.isArray(record.valueIds)
         || record.valueIds.length === 0
         || record.valueIds.some((valueId) => (
-          typeof valueId !== 'string' || !OPERATIONAL_VALUE_ID.test(valueId)
+          typeof valueId !== 'string'
+          || !OPERATIONAL_VALUE_ID.test(valueId)
+          || !valueId.startsWith(`${workflowSlug}.`)
         ))
       ) {
-        throw new Error(`${source}:${index + 1} must emit valid operational value definition IDs`);
+        throw new Error(`${source}:${index + 1} must emit a valid operational value definition`);
       }
+      const adoptedAt = canonicalTimestamp(
+        record.adoptedAt,
+        `${source}:${index + 1}.adoptedAt`
+      );
       for (const valueId of record.valueIds) {
-        if (definitions.has(valueId)) {
+        if (definedIds.has(valueId)) {
           throw new Error(`${source}:${index + 1} emitted a duplicate operational value definition ID: ${valueId}`);
         }
-        definitions.add(valueId);
+        definedIds.add(valueId);
       }
+      definitions.push({
+        adoptedAt,
+        cadenceDays,
+        evaluationMode,
+        repositories: [...new Set(record.repositories.map((repository) => repository.toLowerCase()))],
+        valueIds: [...record.valueIds],
+        workflowSlug
+      });
       return [];
     }
     const timestamp = canonicalTimestamp(record.timestamp, `${source}:${index + 1}.timestamp`);
@@ -332,6 +364,27 @@ function parseOperationalValueOutput(content, source, repositories) {
   return { definitions, values };
 }
 
+function historicalObservationTimes(definition, observedAt, retentionWindow) {
+  const cadence = definition.cadenceDays * DAY_MS;
+  const adoption = Date.parse(definition.adoptedAt);
+  const origin = definition.evaluationMode === 'attainment-only'
+    ? adoption
+    : adoption - BASELINE_OBSERVATIONS * cadence;
+  const cutoff = Math.max(origin, Date.parse(observedAt) - retentionWindow);
+  const times = [];
+  for (let timestamp = origin; timestamp < Date.parse(observedAt); timestamp += cadence) {
+    if (timestamp >= cutoff) times.push(new Date(timestamp).toISOString());
+    if (times.length > MAX_HISTORY_OBSERVATIONS) {
+      throw new Error(`Operational value history exceeds ${MAX_HISTORY_OBSERVATIONS} observations`);
+    }
+  }
+  return times;
+}
+
+function operationalValueKey(repository, valueId, timestamp) {
+  return `${String(repository).toLowerCase()}\0${valueId}\0${timestamp}`;
+}
+
 async function retainedOperationalValueEnvelopes(outputPath, cutoff) {
   let content;
   try {
@@ -355,6 +408,8 @@ async function retainedOperationalValueEnvelopes(outputPath, cutoff) {
 }
 
 export async function runOperationalValue({
+  campaign,
+  historyCampaign,
   indexedDB,
   databasePath,
   root = '.',
@@ -368,6 +423,9 @@ export async function runOperationalValue({
 }) {
   signal?.throwIfAborted();
   const observedAt = canonicalTimestamp(timestamp, '--timestamp');
+  if (historyCampaign && retentionWindow === undefined) {
+    throw new Error('Operational value history requires a retention window');
+  }
   const selectedRepositories = repositories.length > 0
     ? repositories
     : (await readCollection(indexedDB, 'repositories'))
@@ -379,7 +437,27 @@ export async function runOperationalValue({
   if (uniqueRepositories.length === 0) {
     throw new Error('Operational value requires at least one repository in the dashboard database or --repository');
   }
-  const scripts = await discoverOperationalValueScripts(root);
+  const discoveredScripts = await discoverOperationalValueScripts(root);
+  const scripts = campaign
+    ? discoveredScripts.filter((entry) => entry.package === campaign)
+    : discoveredScripts;
+  if (campaign && scripts.length === 0) {
+    throw new Error(`Operational value campaign not found: ${campaign}`);
+  }
+  if (historyCampaign && !scripts.some((entry) => entry.package === historyCampaign)) {
+    throw new Error(`Operational value history campaign not found: ${historyCampaign}`);
+  }
+  const output = outputPath ? path.resolve(outputPath) : undefined;
+  const cutoff = retentionWindow === undefined
+    ? Number.NEGATIVE_INFINITY
+    : Date.parse(observedAt) - retentionWindow;
+  const retained = output && retentionWindow !== undefined
+    ? await retainedOperationalValueEnvelopes(output, cutoff)
+    : [];
+  const retainedKeys = new Set(retained.map((envelope) => {
+    const value = envelope.operational_value;
+    return operationalValueKey(value.repository, value.value_id, value.timestamp);
+  }));
   const request = `${JSON.stringify({
     schemaVersion: 1,
     timestamp: observedAt,
@@ -389,6 +467,7 @@ export async function runOperationalValue({
   const values = [];
   const warnings = [];
   const activeValueIds = new Map();
+  let historyValues = 0;
   const worker = operationalValueWorkerEnvironment(databasePath, observedAt, rateLimitReserve);
   const warn = (entry, error) => {
     const message = redactToken(error instanceof Error ? error.message : error, worker.token);
@@ -402,13 +481,77 @@ export async function runOperationalValue({
       if (rateLimitReserve !== undefined && await githubApiRemaining(worker.env, signal) <= rateLimitReserve) {
         throw new Error(`GitHub API core remaining is at or below the reserved ${rateLimitReserve} requests`);
       }
-      const output = await runOperationalValueWorker(entry, request, worker.env, {
+      const workerOutput = await runOperationalValueWorker(entry, request, worker.env, {
         signal,
         timeoutMs: workerTimeoutMs
       });
-      const parsed = parseOperationalValueOutput(output, entry.script, uniqueRepositories);
+      const parsed = parseOperationalValueOutput(workerOutput, entry.script, uniqueRepositories);
       values.push(...parsed.values.map((record) => ({ ...record, campaign: entry.package })));
-      if (parsed.definitions.size > 0) activeValueIds.set(entry.package, parsed.definitions);
+      if (parsed.definitions.length > 0) {
+        activeValueIds.set(entry.package, new Set(
+          parsed.definitions.flatMap((definition) => definition.valueIds)
+        ));
+      }
+      if (entry.package === historyCampaign) {
+        for (const definition of parsed.definitions) {
+          const supportedRepositories = uniqueRepositories.filter((repository) => (
+            definition.repositories.includes(repository.toLowerCase())
+          ));
+          if (supportedRepositories.length === 0) continue;
+          const timestamps = historicalObservationTimes(
+            definition,
+            observedAt,
+            retentionWindow
+          ).filter((historyTimestamp) => supportedRepositories.some((repository) => (
+            definition.valueIds.some((valueId) => (
+              !retainedKeys.has(operationalValueKey(repository, valueId, historyTimestamp))
+            ))
+          )));
+          const historyEnvironment = {
+            ...worker.env,
+            CAO_OPERATIONAL_VALUE_MODULE: definition.workflowSlug
+          };
+          for (const historyTimestamp of timestamps) {
+            signal?.throwIfAborted();
+            const historyRequest = `${JSON.stringify({
+              schemaVersion: 1,
+              timestamp: historyTimestamp,
+              repositories: supportedRepositories,
+              database: path.resolve(databasePath)
+            })}\n`;
+            const historyOutput = await runOperationalValueWorker(
+              entry,
+              historyRequest,
+              historyEnvironment,
+              { signal, timeoutMs: workerTimeoutMs }
+            );
+            const historyParsed = parseOperationalValueOutput(
+              historyOutput,
+              entry.script,
+              supportedRepositories
+            );
+            const expectedIds = new Set(definition.valueIds);
+            if (historyParsed.values.some((record) => (
+              record.timestamp !== historyTimestamp || !expectedIds.has(record.valueId)
+            ))) {
+              throw new Error(`${entry.script} emitted values outside the requested history observation`);
+            }
+            const records = historyParsed.values.map((record) => ({
+              ...record,
+              campaign: entry.package
+            }));
+            values.push(...records);
+            historyValues += records.length;
+            for (const record of records) {
+              retainedKeys.add(operationalValueKey(
+                record.repository,
+                record.valueId,
+                record.timestamp
+              ));
+            }
+          }
+        }
+      }
     } catch (error) {
       signal?.throwIfAborted();
       warn(entry, error);
@@ -425,7 +568,6 @@ export async function runOperationalValue({
     }
   }
   signal?.throwIfAborted();
-  const output = outputPath ? path.resolve(outputPath) : undefined;
   if (output) {
     await mkdir(path.dirname(output), { recursive: true });
     const envelopes = values.map((record) => ({
@@ -451,9 +593,6 @@ export async function runOperationalValue({
         rollup_denominator: record.rollupDenominator
       }
     }));
-    const retained = retentionWindow === undefined
-      ? []
-      : await retainedOperationalValueEnvelopes(output, Date.parse(observedAt) - retentionWindow);
     const currentRetained = retained.filter((envelope) => {
       const value = envelope.operational_value;
       const activeIds = activeValueIds.get(value.campaign);
@@ -461,7 +600,7 @@ export async function runOperationalValue({
     });
     const merged = new Map([...currentRetained, ...envelopes].map((envelope) => {
       const value = envelope.operational_value;
-      return [`${String(value.repository).toLowerCase()}\0${value.value_id}\0${value.timestamp}`, envelope];
+      return [operationalValueKey(value.repository, value.value_id, value.timestamp), envelope];
     }));
     const jsonl = [...merged.values()].map((envelope) => JSON.stringify(envelope)).join('\n');
     const temporary = `${output}.tmp-${process.pid}-${Date.now()}`;
@@ -478,6 +617,7 @@ export async function runOperationalValue({
     timestamp: observedAt,
     repositories: uniqueRepositories.length,
     scripts: scripts.map((entry) => entry.package),
+    historyValues,
     values,
     warnings,
     output: output ?? null

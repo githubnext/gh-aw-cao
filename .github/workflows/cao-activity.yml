@@ -265,11 +265,16 @@ jobs:
           if ! gh api rate_limit --silent >/dev/null; then
             echo "::warning::Fresh operational value token failed preflight; collection will fail closed."
           fi
+          history_args=()
+          if [[ -f optimization/operational-value.mjs ]]; then
+            history_args=(--history-campaign optimization)
+          fi
           if ! node activity/cao.mjs operational-value \
               --database "$ACTIVITY_DATABASE" \
               --root . \
               --output "$REPORT_GH_AW_LOGS_SHARDS/operational-values.jsonl" \
               --retention-days 30 \
+              "${history_args[@]}" \
               --max-github-api-rate-limit -2000; then
             echo "::warning::Operational value collection failed; continuing activity indexing."
           fi

@@ -9,12 +9,12 @@ It measures repository outcomes rather than workflow runs, generated output, or 
 
 CAO uses one shared campaign module for both collection paths:
 
-- Scheduled `cao operational-value` collection evaluates only the current repository observation and publishes compact numeric records to the canonical data model.
+- By default, scheduled `cao operational-value` collection evaluates only the current repository observation and publishes compact numeric records to the canonical data model.
 - Explicit historical evaluation incrementally fills missing immutable observations and produces the evidence archive, timeline, chart, and definitions page.
 
-Both paths import the same frozen evidence contract, collector, and scoring functions. Routine collection does not rebuild repository history, and a metric cannot drift between the dashboard record and its historical report.
+Both paths import the same frozen evidence contract, collector, and scoring functions. Default routine collection does not rebuild repository history, and a metric cannot drift between the dashboard record and its historical report.
 
-Accepted operational-value observations are queryable from any local or downloaded canonical SQLite snapshot with `cao query --collection operationalValues`. Querying does not publish or reconstruct history. Scheduled Activity remains the only path that appends current observations to the published canonical shards; explicit historical evaluation may reuse locally preserved observations and can reconstruct only windows whose authoritative source evidence is still available.
+Accepted operational-value observations are queryable from any local or downloaded canonical SQLite snapshot with `cao query --collection operationalValues`. Querying alone does not publish or reconstruct history. The Activity compute path may explicitly query missing cadence observations for a named campaign while their authoritative source evidence remains in its bounded canonical database; it writes only the resulting numeric observations into the same canonical Activity shard used for current values. No history archive is installed with the campaign. The Dashboard workflow then deploys those canonical records to Pages through the normal Activity snapshot pipeline.
 
 The rolling Activity database is a query source for current observations, not the definition of operational-value history. Explicit evaluation schedules observations from adoption and incrementally preserves accepted snapshots. Git and other immutable repository facts can be reconstructed at historical cutoffs. Ephemeral run, usage, artifact, queue, and tool-call facts can be backfilled only while their source remains available; an expired interval without a contemporaneous snapshot is missing, not zero. The current live Activity publication retains 30 days of operational-value records, while the explicit evidence archive is the durable since-adoption record.
 

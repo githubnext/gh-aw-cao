@@ -56,11 +56,22 @@ for (const moduleFile of moduleFiles) {
     || typeof scoreMetric !== "function"
     || !Array.isArray(definition?.metrics)
     || !Array.isArray(definition?.evidence?.repositories)
+    || typeof definition?.adoption?.adoptedAt !== "string"
+    || Number.isNaN(Date.parse(definition.adoption.adoptedAt))
+    || !["baseline-comparable", "attainment-only"].includes(definition?.evaluation?.mode)
+    || typeof definition?.evidence?.window?.cadenceDays !== "number"
+    || !Number.isFinite(definition.evidence.window.cadenceDays)
+    || definition.evidence.window.cadenceDays <= 0
   ) {
     fail(`Invalid operational value module: ${moduleFile}`);
   }
   console.log(JSON.stringify({
     kind: "operational_value_definition",
+    workflowSlug: definition.slug,
+    adoptedAt: definition.adoption.adoptedAt,
+    evaluationMode: definition.evaluation?.mode ?? "baseline-comparable",
+    cadenceDays: definition.evidence.window.cadenceDays,
+    repositories: definition.evidence.repositories,
     valueIds: definition.metrics.map((metric) => `${definition.slug}.${metric.id}`),
   }));
 
