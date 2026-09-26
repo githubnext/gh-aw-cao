@@ -727,6 +727,8 @@ describe('dashboard document validation', () => {
     expect(domains).toMatchObject({
       id: 'security-firewall-domains',
       mark: 'table',
+      'disclosure-label': 'All observed domains',
+      disclosure: 'supplemental',
       controls: 'interactive',
       'lazy-list': true,
       'column-summaries': true,

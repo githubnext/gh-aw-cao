@@ -11602,7 +11602,8 @@
           },
           {
             "id": "security-firewall-domains",
-            "title": "Domains",
+            "disclosure-label": "All observed domains",
+            "disclosure": "supplemental",
             "description": "Observed runs and accepted and blocked requests by normalized domain.",
             "data": {
               "source": "firewall-domain-totals",

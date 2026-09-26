@@ -905,10 +905,10 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const page = await activatePage(rendered, 'firewall');
-    const view = page?.querySelector('[data-view-id="security-firewall-domains"]');
-    expect(view?.getAttribute('data-view-layout')).toBe('full-view');
+    const view = page?.querySelector('[data-view-id="security-firewall-least-used-domains"]');
+    expect(view?.getAttribute('data-view-layout')).toBe('full');
     expect(view?.textContent).toContain(
-      'No observed firewall domains are available for this selection.'
+      'No uncommon firewall domains are available for this selection.'
     );
     rendered.remove();
   });
