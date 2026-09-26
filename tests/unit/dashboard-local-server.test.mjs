@@ -303,6 +303,14 @@ test("canvas dashboard executes only declared CLI actions through the provided e
       command: "gh agent-task create --from-file -",
       placement: "row",
     },
+    {
+      id: "copy-package-command",
+      label: "Copy add command",
+      icon: "copy",
+      command: "./cao.sh add octo/packages/demo@abc123",
+      placement: "row",
+      "copy-only": true,
+    },
   ]));
 
   const preview = await startDashboardServer({
@@ -422,6 +430,15 @@ test("canvas dashboard executes only declared CLI actions through the provided e
       command: "gh agent-task create --from-file -",
       input: prompt,
     });
+
+    const copyOnly = await fetch(new URL("__cli_action", previewUrl), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: origin },
+      body: JSON.stringify({ id: "copy-package-command" }),
+    });
+    assert.equal(copyOnly.status, 403);
+    assert.deepEqual(await copyOnly.json(), { error: "CLI action is copy-only." });
+    assert.equal(calls.length, 5);
 
     const rejectedInput = await fetch(new URL("__cli_action", previewUrl), {
       method: "POST",

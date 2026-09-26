@@ -899,6 +899,10 @@ export async function startDashboardServer({
           sendJson(response, 404, { error: "CLI action is not declared by this dashboard." });
           return;
         }
+        if (action["copy-only"] === true) {
+          sendJson(response, 403, { error: "CLI action is copy-only." });
+          return;
+        }
         const declaredArguments = Array.isArray(action.arguments) ? action.arguments : [];
         const suppliedArguments = payload.arguments ?? {};
         const templateFields = cliActionTemplateFields(action.command);
