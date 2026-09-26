@@ -6,6 +6,7 @@ import {
   CANONICAL_DATABASE_SCHEMA,
   DATABASE_NAME,
   DATABASE_STORES,
+  deleteCanonicalDatabase,
   recordTransaction
 } from '../../src/data/storage/indexeddb.js';
 import {
@@ -168,11 +169,7 @@ function collection(generation, auditRows) {
 }
 
 beforeEach(async () => {
-  await new Promise((resolve, reject) => {
-    const request = indexedDB.deleteDatabase(DATABASE_NAME);
-    request.onsuccess = () => resolve(undefined);
-    request.onerror = () => reject(request.error);
-  });
+  await deleteCanonicalDatabase(indexedDB);
 });
 
 afterEach(() => {
@@ -334,6 +331,48 @@ describe('canonical view sources', () => {
     ]);
     expect(nativeCounts).toHaveBeenCalledOnce();
     expect(collectionReads).not.toHaveBeenCalled();
+  });
+
+  it('memoizes repeated and concurrent native counts without retaining query rows', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+    const nativeCounts = vi.spyOn(IDBObjectStore.prototype, 'count');
+    const query = {
+      name: 'repository-count',
+      from: 'repositories',
+      aggregate: { values: [{ field: 'id', as: 'repositories', reducer: 'count' }] }
+    };
+
+    const [first, second] = await Promise.all([
+      queryNativeCountSources(indexedDB, sources, [query], [query.name]),
+      queryNativeCountSources(indexedDB, sources, [query], [query.name])
+    ]);
+    const third = await queryNativeCountSources(indexedDB, sources, [query], [query.name]);
+
+    expect(first[query.name].rows).toEqual([{ repositories: 1 }]);
+    expect(second).toEqual(first);
+    expect(third).toEqual(first);
+    expect(nativeCounts).toHaveBeenCalledOnce();
+  });
+
+  it('invalidates a memoized count after a database update', async () => {
+    const query = {
+      name: 'transaction-count',
+      from: 'transactions',
+      aggregate: { values: [{ field: 'id', as: 'transactions', reducer: 'count' }] }
+    };
+    const nativeCounts = vi.spyOn(IDBObjectStore.prototype, 'count');
+
+    const before = await queryNativeCountSources(indexedDB, sources, [query], [query.name]);
+    await recordTransaction(indexedDB, {
+      id: 'ingest-jsonl:current:memoization',
+      kind: 'ingest-jsonl',
+      createdAt: '2026-09-09T05:00:00Z'
+    });
+    const after = await queryNativeCountSources(indexedDB, sources, [query], [query.name]);
+
+    expect(before[query.name].rows).toEqual([{ transactions: 0 }]);
+    expect(after[query.name].rows).toEqual([{ transactions: 1 }]);
+    expect(nativeCounts).toHaveBeenCalledTimes(2);
   });
 
   it('pushes declarative failed-run predicates into the canonical run index', async () => {

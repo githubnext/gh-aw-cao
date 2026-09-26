@@ -127,6 +127,23 @@ const QUERYABLE_STRING_KEY_PATHS = new Set([
   'event'
 ]);
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
+/** @type {WeakMap<IDBFactory, Map<string, number | { promise: Promise<number> }>>} */
+const collectionCountMemo = new WeakMap();
+
+/**
+ * Drops memoized counts after a committed database mutation. The WeakMap owns
+ * only scalar results (or an in-flight promise), so query intermediates remain
+ * reclaimable once a count settles.
+ *
+ * @param {IDBFactory} indexedDB
+ * @param {readonly string[]} [storeNames]
+ */
+function invalidateCollectionCounts(indexedDB, storeNames = DATABASE_STORES) {
+  const memo = collectionCountMemo.get(indexedDB);
+  if (!memo) return;
+  for (const storeName of storeNames) memo.delete(storeName);
+  if (memo.size === 0) collectionCountMemo.delete(indexedDB);
+}
 
 /**
  * @template T
@@ -231,6 +248,7 @@ export function deleteCanonicalDatabase(indexedDB, options = {}) {
       action();
     };
     request.onsuccess = () => settle(() => {
+      invalidateCollectionCounts(indexedDB);
       debug('deleted database', name);
       resolve();
     });
@@ -344,6 +362,7 @@ export async function upsertCanonicalBatch(indexedDB, batch, options = {}) {
         }
         commitTransaction(transaction);
         await done;
+        invalidateCollectionCounts(indexedDB, [storeName]);
         committedRecords += boundedRecords.length;
         committedBatches += 1;
         await options.onBatchCommitted?.({ committedBatches, committedRecords });
@@ -486,6 +505,7 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
           });
         }
         await done;
+        invalidateCollectionCounts(indexedDB, [storeName]);
       }
 
       if (options.reconcileRelationships) {
@@ -533,6 +553,7 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
             });
           }
           await done;
+          invalidateCollectionCounts(indexedDB, ['workflows', 'repositories']);
         }
       }
 
@@ -593,6 +614,7 @@ export async function maintainCanonicalDatabase(indexedDB, options) {
           }
         }
         await done;
+        invalidateCollectionCounts(indexedDB, ['runs', ...RUN_LINKED_STORES]);
       }
 
       if (deletedRecords > 0) {
@@ -666,29 +688,52 @@ export async function readCollections(indexedDB, storeNames) {
  */
 export async function countCollections(indexedDB, storeNames) {
   const startedAt = monotonicNow();
-  const database = await openCanonicalDatabase(indexedDB);
-  try {
-    const counts = storeNames.length === 0
-      ? []
-      : await (async () => {
-          const transaction = database.transaction([...storeNames]);
-          const done = transactionDone(transaction);
-          const values = await Promise.all(storeNames.map((storeName) =>
-            requestResult(transaction.objectStore(storeName).count())
-          ));
-          await done;
-          return values;
-        })();
-    debug('completed multi-store collection count', {
-      storeCount: storeNames.length,
-      requestCount: storeNames.length,
-      stores: [...storeNames].join('|'),
-      durationMs: monotonicNow() - startedAt
-    });
-    return Object.fromEntries(storeNames.map((storeName, index) => [storeName, counts[index]]));
-  } finally {
-    database.close();
+  let memo = collectionCountMemo.get(indexedDB);
+  if (!memo) {
+    memo = new Map();
+    collectionCountMemo.set(indexedDB, memo);
   }
+  const missing = [...new Set(storeNames)].filter((storeName) => !memo.has(storeName));
+  if (missing.length > 0) {
+    const database = await openCanonicalDatabase(indexedDB);
+    const batch = (async () => {
+      try {
+        const transaction = database.transaction(missing);
+        const done = transactionDone(transaction);
+        const values = await Promise.all(missing.map((storeName) =>
+          requestResult(transaction.objectStore(storeName).count())
+        ));
+        await done;
+        return Object.fromEntries(missing.map((storeName, index) => [storeName, values[index]]));
+      } finally {
+        database.close();
+      }
+    })();
+    for (const storeName of missing) {
+      const entry = { promise: batch.then((counts) => counts[storeName]) };
+      memo.set(storeName, entry);
+      entry.promise.then(
+        (count) => {
+          if (memo.get(storeName) === entry) memo.set(storeName, count);
+        },
+        () => {
+          if (memo.get(storeName) === entry) memo.delete(storeName);
+        }
+      );
+    }
+  }
+  const counts = await Promise.all(storeNames.map((storeName) => {
+    const cached = memo.get(storeName);
+    return typeof cached === 'number' ? cached : cached?.promise;
+  }));
+  debug('completed multi-store collection count', {
+    storeCount: storeNames.length,
+    requestCount: missing.length,
+    memoizedCount: storeNames.length - missing.length,
+    stores: [...storeNames].join('|'),
+    durationMs: monotonicNow() - startedAt
+  });
+  return Object.fromEntries(storeNames.map((storeName, index) => [storeName, counts[index]]));
 }
 
 /**
@@ -934,6 +979,7 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
           });
         }
         await removalDone;
+        invalidateCollectionCounts(indexedDB, [storeName]);
         committedBatches += 1;
       } catch (error) {
         abortedTransactions += 1;
@@ -963,6 +1009,7 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
           requestCount += boundedRecords.length;
           commitTransaction(transaction);
           await done;
+          invalidateCollectionCounts(indexedDB, [storeName]);
           committedBatches += 1;
         } catch (error) {
           abortedTransactions += 1;
@@ -1317,6 +1364,7 @@ export async function recordTransaction(indexedDB, transaction) {
       });
     }
     await done;
+    invalidateCollectionCounts(indexedDB, [TRANSACTION_STORE]);
     debug('recorded ingestion transaction', {
       kind: transaction.kind,
       committedRecords: transaction.committedRecords ?? null
@@ -1458,6 +1506,7 @@ export async function withCanonicalIngestionLock(indexedDB, task, options = {}) 
         }
       }
       await done;
+      invalidateCollectionCounts(indexedDB, [TRANSACTION_STORE]);
     } finally {
       // Always close the connection, even if the lock check fails, so a
       // failed acquisition attempt never leaves an open handle that blocks
@@ -1480,6 +1529,7 @@ export async function withCanonicalIngestionLock(indexedDB, task, options = {}) 
       const existing = await requestResult(store.get(INGESTION_LOCK_ID));
       if (existing?.owner === owner) store.delete(INGESTION_LOCK_ID);
       await done;
+      invalidateCollectionCounts(indexedDB, [TRANSACTION_STORE]);
     } finally {
       database.close();
     }
