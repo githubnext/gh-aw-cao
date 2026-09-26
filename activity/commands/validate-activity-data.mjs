@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdir, readdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { actionsLog } from "../actions-log.mjs";
 
@@ -31,6 +31,9 @@ export async function runValidateActivityData({
   ];
 
   if (!existsSync(memoryManifest)) {
+    // Older activity caches predate repository-memory publication. Preserve
+    // compatibility only when the file is absent; an existing manifest must
+    // still pass validation below.
     await mkdir(path.dirname(memoryManifest), { recursive: true });
     await writeFile(memoryManifest, `${JSON.stringify({
       version: 1,
@@ -52,6 +55,17 @@ export async function runValidateActivityData({
     if (size === 0) {
       actionsLog.error`Required activity data file is empty: ${fileName}`;
       validationFailed = true;
+    } else if (activityFile === memoryManifest) {
+      try {
+        const manifest = JSON.parse(await readFile(memoryManifest, "utf8"));
+        if (manifest?.version !== 1 || !Array.isArray(manifest.campaigns)) {
+          throw new Error("invalid repository-memory manifest");
+        }
+        actionsLog.info`Validated ${fileName} (${formatFileSize(size)})`;
+      } catch {
+        actionsLog.error`Required activity data file is invalid: ${fileName}`;
+        validationFailed = true;
+      }
     } else {
       actionsLog.info`Validated ${fileName} (${formatFileSize(size)})`;
     }

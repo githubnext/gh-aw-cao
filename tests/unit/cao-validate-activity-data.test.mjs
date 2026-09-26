@@ -72,3 +72,31 @@ test("rejects missing, empty, and shardless restored activity data", async () =>
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("rejects an existing invalid memory manifest instead of replacing it", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "cao-validate-activity-memory-invalid-"));
+  const shards = path.join(root, "gh-aw-logs-shards");
+  const memoryManifest = path.join(root, "memory", "manifest.json");
+  const files = {
+    database: path.join(root, "gh-aw-logs.sqlite"),
+    "payload-hashes": path.join(root, "payload-hashes.json"),
+    "control-settings": path.join(root, "control-settings.json"),
+    inventory: path.join(root, "inventory-sources.json"),
+  };
+  try {
+    await mkdir(shards);
+    await mkdir(path.dirname(memoryManifest));
+    writeFileSync(path.join(shards, "activity.jsonl"), "{}\n");
+    for (const file of Object.values(files)) writeFileSync(file, "{}\n");
+    writeFileSync(memoryManifest, "{}\n");
+
+    await assert.rejects(runValidateActivityData({
+      options: { ...files, "shard-dir": shards, "memory-manifest": memoryManifest },
+      option,
+      rejectUnknownOptions,
+    }), /Restored activity data validation failed/);
+    assert.equal(readFileSync(memoryManifest, "utf8"), "{}\n");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
