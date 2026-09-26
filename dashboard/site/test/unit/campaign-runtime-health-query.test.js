@@ -1,11 +1,8 @@
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { expect, it } from 'vitest';
 import { executeDashboardQueries, executeDashboardQuery } from '../../src/data/queries/declarative.js';
+import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
-const fixtureDirectory = dirname(fileURLToPath(import.meta.url));
-const dashboard = JSON.parse(readFileSync(resolve(fixtureDirectory, '../../dashboard.json'), 'utf8')).dashboard;
+const dashboard = authoritativeDashboard.dashboard;
 const query = dashboard.queries.find(
   (/** @type {{ name?: string }} */ candidate) => candidate.name === 'overview-campaign-links'
 );

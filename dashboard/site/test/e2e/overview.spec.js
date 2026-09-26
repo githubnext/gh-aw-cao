@@ -2,9 +2,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
+import { authoritativeDashboard as dashboardDocument } from '../authoritative-dashboard.js';
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
-const dashboardDocument = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
 const overviewPage = dashboardDocument.dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'overview');
 if (!overviewPage) throw new Error('The authoritative dashboard must declare the Overview page.');
 

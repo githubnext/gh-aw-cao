@@ -1204,6 +1204,14 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .campaign-tabs a[aria-current="page"] { font-weight: 600; }
 .campaign-tabs a[aria-current="page"]::after { content: ""; height: 2px; position: absolute; right: 0; bottom: -1px; left: 0; border-radius: 2px 2px 0 0; background: var(--accent); }
 .campaign-tabs .tab-trailing-icon { display: none; }
+.cao-memory-browser { min-height: 28rem; display: grid; grid-template-columns: minmax(12rem, 20%) minmax(0, 1fr); overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
+.cao-memory-campaigns { min-width: 0; padding: 12px; overflow: auto; border-right: 1px solid var(--border); background: var(--canvas-subtle); }
+.cao-memory-campaigns h2 { margin: 4px 8px 12px; color: var(--muted); font-size: .75rem; text-transform: uppercase; }
+.cao-memory-campaigns ul { margin: 0; padding: 0; list-style: none; }
+.cao-memory-campaign { width: 100%; min-height: 36px; padding: 7px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+.cao-memory-campaign:hover { background: var(--neutral-muted); }
+.cao-memory-campaign[aria-current="true"] { background: var(--accent-muted); color: var(--accent); font-weight: 600; }
+.cao-memory-content { min-width: 0; padding: 12px; }
 .campaign-memory-browser { min-width: 0; }
 .campaign-memory-warning { margin: 0 0 12px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--attention) 45%, var(--border)); border-radius: 6px; background: var(--attention-muted); color: var(--fg); }
 .campaign-memory-layout { min-height: 28rem; display: grid; grid-template-columns: minmax(14rem, 28%) minmax(0, 1fr); overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
@@ -2001,6 +2009,8 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .campaign-tabs a[aria-current="page"] > .octicon:first-child { color: var(--accent); }
   .campaign-tabs a[aria-current="page"]::after { display: none; }
   .campaign-tabs .tab-trailing-icon { width: 12px; height: 12px; display: block; margin-left: auto; color: var(--muted); }
+  .cao-memory-browser { min-height: 0; grid-template-columns: 1fr; }
+  .cao-memory-campaigns { max-height: 14rem; border-right: 0; border-bottom: 1px solid var(--border); }
   .campaign-memory-layout { min-height: 0; grid-template-columns: 1fr; }
   .campaign-memory-files { max-height: 16rem; border-right: 0; border-bottom: 1px solid var(--border); }
   .campaign-memory-content { padding: 16px; }

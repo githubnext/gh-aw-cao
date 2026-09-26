@@ -7,7 +7,11 @@ import (
 	"math/rand/v2"
 	"strconv"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
+
+var budgetLog = logger.New("cao:githubapp:budget")
 
 // Budget governs GitHub API consumption per installation.
 //
@@ -92,18 +96,30 @@ func (b Budget) Reserve(ctx context.Context, installationID int64) (int, error) 
 	if err != nil {
 		return 0, err
 	}
-	switch result {
-	case 1:
-		return 0, ErrInstallationParked
-	case 2:
-		return 0, ErrBudgetExhausted
-	case 3:
-		return 0, ErrBudgetUnknown
-	case 0:
-	default:
-		return 0, errors.New("rate-limit governor returned an invalid reservation result")
+	if reserveErr := interpretReservationResult(result); reserveErr != nil {
+		budgetLog.Printf("reservation denied result=%d", result)
+		return 0, reserveErr
 	}
 	return floor, nil
+}
+
+// interpretReservationResult maps one of BudgetStore.ReserveRateLimit's
+// integer result codes to the governor's sentinel errors. It is a pure
+// function so the code-to-error mapping is testable without a Redis-backed
+// store, and so Reserve's own logic stays limited to orchestrating the call.
+func interpretReservationResult(result int) error {
+	switch result {
+	case 0:
+		return nil
+	case 1:
+		return ErrInstallationParked
+	case 2:
+		return ErrBudgetExhausted
+	case 3:
+		return ErrBudgetUnknown
+	default:
+		return errors.New("rate-limit governor returned an invalid reservation result")
+	}
 }
 
 // Headroom reports the recorded remaining budget and park expiry for status

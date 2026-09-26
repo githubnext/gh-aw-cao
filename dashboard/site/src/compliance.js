@@ -2,7 +2,7 @@
  * Compliance fixtures and machine-readable conformance helpers for the dashboard validator and presenter.
  */
 
-import authoritativeDashboard from '../dashboard.json' with { type: 'json' };
+import overviewFragment from '../dashboard-fragments/overview.json' with { type: 'json' };
 import { validateDashboardDocument, validateLogicalSources } from './validator.js';
 import { renderDashboard } from './presenter.js';
 import { resolveBuiltInPages as resolveBuiltInPagesAgainstTemplate } from './dashboard-chunks.js';
@@ -16,7 +16,7 @@ export const IMPLEMENTATION_VERSION = '0.1.0-prototype';
  * @param {import('./presenter.js').PresentationDocument} document
  */
 function resolveBuiltInPages(document) {
-  return resolveBuiltInPagesAgainstTemplate(document, authoritativeDashboard);
+  return resolveBuiltInPagesAgainstTemplate(document, { dashboard: { pages: overviewFragment.pages } });
 }
 
 export const appendixAFixture = `language-version: "0.1.0"
@@ -91,16 +91,6 @@ dashboard:
                 - field: issue-link
                 - field: pull-request-link
                 - field: run-link
-          - id: value-overview
-            disclosure: supplemental
-            data:
-              source: operational-graders
-            mark: table
-            encoding:
-              columns:
-                - field: operational-grader
-                - field: operational-grader-definition
-                - field: observed-at
     - id: workflows
       kind: built-in
       page: workflows
@@ -228,11 +218,11 @@ dashboard:
       views:
         - id: value-total
           data:
-            source: operational-graders
+            source: grader-observations
           mark: metric
           encoding:
             value:
-              field: operational-grader
+              field: value
               aggregate: sum
 `,
     expectedCode: 'DLS-E010'
@@ -750,14 +740,6 @@ dashboard:
                 field: aic
                 type: quantitative
                 aggregate: sum
-          - id: experiments-value
-            disclosure: supplemental
-            data:
-              source: operational-graders
-            mark: table
-            encoding:
-              columns:
-                - field: operational-grader
     - id: semantic-custom
       kind: custom
       title: Semantic Custom
@@ -809,20 +791,6 @@ dashboard:
               - field: grader
               - field: value
               - field: status
-        - id: operational-graders
-          disclosure: supplemental
-          data:
-            source: operational-graders
-          mark: table
-          encoding:
-            columns:
-              - field: operational-grader-definition
-              - field: operational-grader
-              - field: delta-from-baseline
-              - field: requested-evidence-at
-              - field: evidence-cutoff
-              - field: maturity-at
-              - field: maturity-status
 `;
 
 const contextFixture = `language-version: "0.1.0"
@@ -995,19 +963,6 @@ function createAppendixASources() {
           }
         }
       ]
-    },
-    'operational-graders': {
-      source: 'operational-graders',
-      metadata: {
-        'source-id': 'value-source',
-        'source-kind': 'fixture',
-        'as-of': '2026-08-29T12:00:00Z',
-        'retrieved-at': '2026-08-29T12:05:00Z',
-        availability: 'unavailable',
-        completeness: 'unknown',
-        freshness: 'unknown'
-      },
-      rows: []
     }
   };
 }
@@ -1228,43 +1183,6 @@ function createSemanticFixtureSources() {
           'reasoning-tokens': 3,
           aic: 1.75,
           'observed-at': '2026-08-29T09:08:00Z'
-        }
-      ]
-    },
-    'operational-graders': {
-      source: 'operational-graders',
-      metadata: {
-        'source-id': 'operational-graders-source',
-        'source-kind': 'fixture',
-        'as-of': '2026-08-29T12:00:00Z',
-        'retrieved-at': '2026-08-29T12:05:00Z',
-        availability: 'available',
-        completeness: 'complete',
-        freshness: 'fresh'
-      },
-      rows: [
-        {
-          organization: 'octo-org',
-          repository: 'octo-org/platform',
-          workflow: '.github/workflows/ci.yml',
-          run: '2001',
-          experiment: 'exp-1',
-          'operational-case': 'merge-latency',
-          'evaluator-digest': 'digest-1',
-          'rollout-mode': 'review',
-          'operational-grader': 0.72,
-          'operational-grader-definition': 'merge-speed',
-          'requested-evidence-at': '2026-08-28T12:00:00Z',
-          'evidence-cutoff': '2026-08-29T08:00:00Z',
-          'maturity-at': '2026-08-29T11:00:00Z',
-          'maturity-status': 'complete',
-          'delta-from-baseline': 0.11,
-          'observed-at': '2026-08-29T09:25:00Z',
-          'evidence-link': {
-            relation: 'evidence',
-            href: 'https://example.com/evidence/1',
-            label: 'Evidence 1'
-          }
         }
       ]
     }

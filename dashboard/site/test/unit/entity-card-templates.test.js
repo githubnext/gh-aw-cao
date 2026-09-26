@@ -1,8 +1,7 @@
 // @vitest-environment node
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const document = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8'));
+import { authoritativeDashboard as document } from '../authoritative-dashboard.js';
 const dashboard = document.dashboard;
 const templates = Object.fromEntries(dashboard['card-templates'].map(
   (/** @type {Record<string, any>} */ template) => [template.id, template]

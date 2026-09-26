@@ -9,6 +9,7 @@ import {
   scoreDashboardQuerySimilarity
 } from '../../activity/dashboard-prune.mjs';
 import { runCli } from '../../activity/cao.mjs';
+import { authoritativeDashboard } from '../helpers/authoritative-dashboard.mjs';
 
 function dashboard(overrides = {}) {
   return {
@@ -74,8 +75,7 @@ function remapFields(value, mapping = new Map(), key) {
 }
 
 async function productionQueries() {
-  const document = JSON.parse(await readFile(new URL('../../dashboard/site/dashboard.json', import.meta.url), 'utf8'));
-  return document.dashboard.queries;
+  return authoritativeDashboard.dashboard.queries;
 }
 
 test('consolidates compatible query projections and rewrites every query reference', () => {

@@ -17,6 +17,7 @@ import {
   queryPerformanceMarkdown,
 } from "./dashboard-query-performance-helpers.mjs";
 import { dashboardPageAllSourceNames } from "../../dashboard/site/src/dashboard-chunks.js";
+import { loadDashboardSource } from "../../dashboard/report/bundle-dashboards.mjs";
 
 const shard = parseQueryPerformanceShard(process.env.DASHBOARD_QUERY_PERFORMANCE_SHARD);
 const outputDirectory = resolve("test-results/dashboard-query-performance");
@@ -29,9 +30,10 @@ const contentTypes = new Map([
   [".svg", "image/svg+xml"],
   [".webmanifest", "application/manifest+json"],
 ]);
-const dashboardDocument = JSON.parse(
-  await readFile(resolve(siteRoot, "dashboard.json"), "utf8"),
-).dashboard;
+const { document: dashboardSource } = await loadDashboardSource(
+  resolve(siteRoot, "dashboard.json"),
+);
+const dashboardDocument = dashboardSource.dashboard;
 const dashboardContext = {
   pages: dashboardDocument.pages,
   queries: dashboardDocument.queries,
@@ -57,7 +59,9 @@ async function serveDashboard(request, response) {
       "cache-control": "no-store",
       "content-type": contentTypes.get(extname(localPath)) || "application/octet-stream",
     });
-    response.end(await readFile(localPath));
+    response.end(pathname === "/dashboard.json"
+      ? JSON.stringify(dashboardSource)
+      : await readFile(localPath));
     return;
   } catch (error) {
     if (error?.code !== "ENOENT" && error?.message !== "Not a file") throw error;

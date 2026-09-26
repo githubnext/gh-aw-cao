@@ -1,5 +1,4 @@
 import 'fake-indexeddb/auto';
-import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ingestCachedGhAwJsonl } from '../../src/data/ingest/coordinator.js';
 import {
@@ -15,15 +14,14 @@ import {
 } from '../../src/data/queries/database.js';
 import { processDataRequest } from '../../src/data-worker.js';
 import { createDashboardQueryBudget, executeDashboardQueries } from '../../src/data/queries/declarative.js';
+import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
 const loadCanonicalViewSources = loadDatabaseQuerySources;
 const queryCanonicalViewSources = queryDatabaseSources;
 const queryNativeCountSources = queryIndexedDatabaseSources;
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
-const dashboardQueries = JSON.parse(
-  readFileSync(`${process.cwd()}/dashboard.json`, 'utf8')
-).dashboard.queries;
+const dashboardQueries = authoritativeDashboard.dashboard.queries;
 
 /** @param {string} storeName @param {Record<string, unknown>} record */
 async function putCanonicalRecord(storeName, record) {

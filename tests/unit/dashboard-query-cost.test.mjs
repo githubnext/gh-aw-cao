@@ -3,10 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { parse } from "yaml";
 import { estimateRetainedBytes, selectCostlyQueries } from "../helpers/dashboard-query-cost.mjs";
-
-const dashboardDocument = JSON.parse(
-  await readFile("dashboard/site/dashboard.json", "utf8"),
-);
+import { authoritativeDashboard as dashboardDocument } from "../helpers/authoritative-dashboard.mjs";
 
 const CANDIDATE_LIMIT = 10;
 

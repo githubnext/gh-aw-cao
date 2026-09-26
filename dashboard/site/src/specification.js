@@ -105,6 +105,7 @@ export const VIEW_ELEMENT_VALUES = [
   'measure-history',
   'factory-header',
   'factory-floor',
+  'all-campaign-memory',
   'link-button-list',
   'markdown'
 ];
@@ -273,7 +274,7 @@ export const PAGE_SECTION_KEYS = ['id', 'title', 'description', 'layout', 'views
 export const PAGE_SECTION_LAYOUT_VALUES = ['full', 'wide', 'narrow', 'horizontal'];
 
 export const BUILT_IN_PAGE_REQUIRED_SOURCES = {
-  overview: ['repositories', 'workflows', 'runs', 'usage', 'findings', 'operational-graders'],
+  overview: ['repositories', 'workflows', 'runs', 'usage', 'findings'],
   organizations: ['organizations', 'repositories', 'workflows', 'runs', 'usage'],
   repositories: ['repository-activity'],
   campaigns: ['campaign-inventory'],
@@ -296,8 +297,7 @@ export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
     workflows: ['workflow-active', 'rollout-mode'],
     runs: ['run-status', 'run-conclusion', 'repository', 'workflow'],
     usage: ['aic'],
-    findings: ['observed-at', 'issue-link', 'pull-request-link', 'run-link'],
-    'operational-graders': ['operational-grader', 'operational-grader-definition', 'observed-at']
+    findings: ['observed-at', 'issue-link', 'pull-request-link', 'run-link']
   },
   organizations: {
     organizations: ['organization'],
@@ -390,7 +390,6 @@ export const TABLE_VALUES = [
   'outcomes',
   'findings',
   'operational-values',
-  'operational-graders',
   'github-api-rate-limits',
   'github-api-collector-health',
   'github-api-call-stacks',
@@ -483,7 +482,6 @@ export const TABLE_FIELDS = {
   'safe-output-performance': ['organization', 'repository', 'workflow', 'run', 'run-conclusion', 'rollout-mode', 'safe-output-kind', 'safe-output-label', 'safe-output-status', 'safe-output-count', 'observed-at', 'run-link'],
   findings: ['organization', 'repository', 'workflow', 'run', 'safe-output', 'code', 'finding-kind', 'finding-severity', 'finding-status', 'finding-summary', 'observed-at', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'issue-link', 'pull-request-link', 'run-link', 'external-link', 'organization-link', 'repository-link', 'workflow-link'],
   'operational-values': ['id', 'organization', 'repository', 'repository-name', 'campaign', 'campaign-name', 'campaign-icon', 'operational-value', 'operational-value-definition', 'operational-value-role', 'operational-value-name', 'operational-value-unit', 'operational-value-direction', 'rollup-numerator', 'rollup-denominator', 'maturity-status', 'adoption-at', 'evaluation-mode', 'workflow-slug', 'workflow-name', 'observed-at', 'organization-link', 'repository-link', 'campaign-link'],
-  'operational-graders': ['organization', 'repository', 'repository-name', 'campaign', 'campaign-name', 'campaign-icon', 'workflow', 'run', 'run-attempt', 'observation-id', 'experiment', 'operational-case', 'evaluator-digest', 'rollout-mode', 'operational-grader', 'operational-grader-definition', 'operational-grader-unit', 'operational-grader-direction', 'requested-evidence-at', 'evidence-cutoff', 'maturity-at', 'maturity-status', 'baseline-value', 'delta-from-baseline', 'accepted-evidence-provenance', 'diagnostics', 'diagnostic-definitions', 'observed-at', 'evidence-link', 'organization-link', 'repository-link', 'campaign-link', 'workflow-link', 'run-link'],
   'github-api-rate-limits': ['observation-id', 'operation-execution-id', 'observed-at', 'phase', 'operation', 'outcome', 'credential', 'credential-type', 'resource', 'bucket', 'maximum-lane', 'history-series', 'has-history', 'limit', 'used', 'remaining', 'remaining-percent', 'reset-at', 'minutes-to-reset', 'consumed-since-previous', 'burn-rate-per-minute', 'projected-remaining-at-reset', 'projected-exhaustion-at', 'runway-ratio', 'risk-status', 'risk-order', 'is-unhealthy', 'is-current', 'attribution-status', 'operation-consumed', 'run-link'],
   'github-api-collector-health': ['observed-at', 'operation-execution-id', 'phase', 'operation', 'outcome', 'credential', 'cache-hydrated', 'cache-bytes', 'cache-entries', 'cache-folders', 'rate-limit-error'],
   'github-api-call-stacks': ['observed-at', 'operation-execution-id', 'phase', 'operation', 'outcome', 'credential', 'stack-frame-id', 'stack-parent-id', 'stack-depth', 'stack-frame'],
@@ -582,7 +580,6 @@ export const SOURCE_ENTITY_IDENTIFIER_FIELDS = {
   outcomes: ['safe-output'],
   findings: ['code'],
   'operational-values': ['operational-value-definition', 'observed-at'],
-  'operational-graders': ['operational-grader-definition', 'operational-case', 'run'],
   'github-api-rate-limits': ['observation-id'],
   'github-api-collector-health': ['operation-execution-id', 'observed-at'],
   'repository-summary': ['label'],

@@ -1,0 +1,1588 @@
+{
+  "queries": [
+    {
+      "name": "run-incomplete-outcomes",
+      "intent": "Project retained report-incomplete terminal outcomes as concise run diagnoses.",
+      "description": "One retained incomplete-evidence diagnosis per workflow Run when the agent explicitly reported that required evidence or access was unavailable.",
+      "from": "audits",
+      "filter": {
+        "predicates": [
+          {
+            "field": "event-type",
+            "equals": "safe_output.created"
+          },
+          {
+            "field": "safe-output-type",
+            "equals": "report_incomplete"
+          }
+        ]
+      },
+      "select": [
+        {
+          "field": "organization"
+        },
+        {
+          "field": "repository"
+        },
+        {
+          "field": "workflow"
+        },
+        {
+          "field": "run"
+        },
+        {
+          "field": "run-attempt"
+        },
+        {
+          "field": "safe-output-type",
+          "as": "outcome-kind"
+        },
+        {
+          "field": "event-summary",
+          "as": "outcome-diagnosis"
+        }
+      ]
+    },
+    {
+      "name": "campaign-runs",
+      "intent": "Project workflow runs with campaign attribution and retained failure evidence.",
+      "description": "Canonical workflow runs joined to their declared campaign and workflow identity.",
+      "from": "runs",
+      "joins": [
+        {
+          "source": "workflows",
+          "type": "left",
+          "on": [
+            {
+              "left": "organization",
+              "right": "organization"
+            },
+            {
+              "left": "repository",
+              "right": "repository"
+            },
+            {
+              "left": "workflow",
+              "right": "workflow"
+            }
+          ],
+          "fields": [
+            {
+              "field": "campaign",
+              "as": "declared-campaign"
+            },
+            {
+              "field": "campaign-name",
+              "as": "declared-campaign-name"
+            },
+            {
+              "field": "workflow-name",
+              "as": "declared-workflow-name"
+            },
+            {
+              "field": "workflow-role",
+              "as": "declared-workflow-role"
+            },
+            {
+              "field": "workflow-link",
+              "as": "declared-workflow-link"
+            }
+          ]
+        },
+        {
+          "source": "run-incomplete-outcomes",
+          "type": "left",
+          "on": [
+            {
+              "left": "organization",
+              "right": "organization"
+            },
+            {
+              "left": "repository",
+              "right": "repository"
+            },
+            {
+              "left": "workflow",
+              "right": "workflow"
+            },
+            {
+              "left": "run",
+              "right": "run"
+            },
+            {
+              "left": "run-attempt",
+              "right": "run-attempt"
+            }
+          ],
+          "fields": [
+            {
+              "field": "outcome-kind",
+              "as": "outcome-kind"
+            },
+            {
+              "field": "outcome-diagnosis",
+              "as": "outcome-diagnosis"
+            }
+          ]
+        }
+      ],
+      "compute": [
+        {
+          "as": "status",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "run-conclusion"
+            },
+            {
+              "field": "run-status"
+            },
+            {
+              "value": "unknown"
+            }
+          ]
+        },
+        {
+          "as": "effective-outcome-kind",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "outcome-kind"
+            },
+            {
+              "field": "terminal-outcome"
+            },
+            {
+              "value": ""
+            }
+          ]
+        },
+        {
+          "as": "is-incomplete-outcome",
+          "function": "equals-any",
+          "args": [
+            {
+              "field": "effective-outcome-kind"
+            },
+            {
+              "value": "report_incomplete"
+            }
+          ]
+        },
+        {
+          "as": "diagnosis-kind",
+          "function": "if",
+          "args": [
+            {
+              "field": "is-incomplete-outcome"
+            },
+            {
+              "value": "incomplete_evidence"
+            },
+            {
+              "value": ""
+            }
+          ]
+        },
+        {
+          "as": "error-signature",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "diagnosis-kind"
+            },
+            {
+              "field": "failure-kind"
+            },
+            {
+              "field": "classification"
+            },
+            {
+              "field": "status"
+            }
+          ]
+        },
+        {
+          "as": "_error-signature-default-label",
+          "function": "title-case",
+          "args": [
+            {
+              "field": "error-signature"
+            }
+          ]
+        },
+        {
+          "as": "_is-driver-exit",
+          "function": "equals-any",
+          "args": [
+            {
+              "field": "error-signature"
+            },
+            {
+              "value": "driver_exit"
+            },
+            {
+              "value": "driver-exit"
+            }
+          ]
+        },
+        {
+          "as": "error-signature-label",
+          "function": "if",
+          "args": [
+            {
+              "field": "_is-driver-exit"
+            },
+            {
+              "value": "Agent process exited unexpectedly"
+            },
+            {
+              "field": "_error-signature-default-label"
+            }
+          ]
+        },
+        {
+          "as": "status-detail",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "outcome-diagnosis"
+            },
+            {
+              "field": "terminal-outcome-detail"
+            },
+            {
+              "field": "failure-detail"
+            },
+            {
+              "field": "failure-message"
+            },
+            {
+              "field": "failure-step"
+            },
+            {
+              "field": "admission-reason"
+            },
+            {
+              "value": ""
+            }
+          ]
+        },
+        {
+          "as": "runtime-repository",
+          "function": "concat",
+          "args": [
+            {
+              "field": "organization"
+            },
+            {
+              "value": "/"
+            },
+            {
+              "field": "repository"
+            }
+          ]
+        },
+        {
+          "as": "is-worker",
+          "function": "equals-any",
+          "args": [
+            {
+              "field": "declared-workflow-role"
+            },
+            {
+              "value": "worker"
+            }
+          ]
+        },
+        {
+          "as": "is-orchestrator",
+          "function": "equals-any",
+          "args": [
+            {
+              "field": "declared-workflow-role"
+            },
+            {
+              "value": "orchestrator"
+            }
+          ]
+        },
+        {
+          "as": "root-dispatch-type",
+          "function": "if",
+          "args": [
+            {
+              "field": "is-orchestrator"
+            },
+            {
+              "value": "Campaign orchestrator"
+            },
+            {
+              "value": "Standalone workflow"
+            }
+          ]
+        },
+        {
+          "as": "dispatch-type",
+          "function": "if",
+          "args": [
+            {
+              "field": "is-worker"
+            },
+            {
+              "value": "Campaign worker"
+            },
+            {
+              "field": "root-dispatch-type"
+            }
+          ]
+        },
+        {
+          "as": "campaign-display-name",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "declared-campaign-name"
+            },
+            {
+              "field": "declared-campaign"
+            }
+          ]
+        },
+        {
+          "as": "workflow-display-name",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "declared-workflow-name"
+            },
+            {
+              "field": "workflow"
+            }
+          ]
+        },
+        {
+          "as": "encoded-campaign",
+          "function": "url-encode",
+          "args": [
+            {
+              "field": "declared-campaign"
+            }
+          ]
+        },
+        {
+          "as": "campaign-dashboard-href",
+          "function": "concat",
+          "args": [
+            {
+              "value": "#page-campaign-insights?campaign="
+            },
+            {
+              "field": "encoded-campaign"
+            }
+          ]
+        },
+        {
+          "as": "campaign-dashboard-label",
+          "function": "concat",
+          "args": [
+            {
+              "value": "View "
+            },
+            {
+              "field": "campaign-display-name"
+            },
+            {
+              "value": " campaign dashboard"
+            }
+          ]
+        },
+        {
+          "as": "campaign-dashboard-link",
+          "function": "dashboard-link",
+          "args": [
+            {
+              "field": "repository-link"
+            },
+            {
+              "field": "campaign-dashboard-href"
+            },
+            {
+              "field": "campaign-dashboard-label"
+            },
+            {
+              "field": "declared-campaign"
+            }
+          ]
+        },
+        {
+          "as": "encoded-repository",
+          "function": "url-encode",
+          "args": [
+            {
+              "field": "runtime-repository"
+            }
+          ]
+        },
+        {
+          "as": "repository-dashboard-href",
+          "function": "concat",
+          "args": [
+            {
+              "value": "#page-repository-detail?repository="
+            },
+            {
+              "field": "encoded-repository"
+            }
+          ]
+        },
+        {
+          "as": "repository-dashboard-label",
+          "function": "concat",
+          "args": [
+            {
+              "value": "View "
+            },
+            {
+              "field": "runtime-repository"
+            },
+            {
+              "value": " repository dashboard"
+            }
+          ]
+        },
+        {
+          "as": "repository-dashboard-link",
+          "function": "dashboard-link",
+          "args": [
+            {
+              "field": "repository-link"
+            },
+            {
+              "field": "repository-dashboard-href"
+            },
+            {
+              "field": "repository-dashboard-label"
+            },
+            {
+              "field": "runtime-repository"
+            }
+          ]
+        },
+        {
+          "as": "workflow-identity",
+          "function": "concat",
+          "args": [
+            {
+              "field": "runtime-repository"
+            },
+            {
+              "value": ":"
+            },
+            {
+              "field": "workflow"
+            }
+          ]
+        },
+        {
+          "as": "encoded-workflow",
+          "function": "url-encode",
+          "args": [
+            {
+              "field": "workflow-identity"
+            }
+          ]
+        },
+        {
+          "as": "workflow-dashboard-href",
+          "function": "concat",
+          "args": [
+            {
+              "value": "#page-workflow-runtime?workflow="
+            },
+            {
+              "field": "encoded-workflow"
+            }
+          ]
+        },
+        {
+          "as": "workflow-dashboard-label",
+          "function": "concat",
+          "args": [
+            {
+              "value": "View "
+            },
+            {
+              "field": "workflow-display-name"
+            },
+            {
+              "value": " workflow dashboard"
+            }
+          ]
+        },
+        {
+          "as": "workflow-dashboard-link",
+          "function": "dashboard-link",
+          "args": [
+            {
+              "field": "workflow-link"
+            },
+            {
+              "field": "workflow-dashboard-href"
+            },
+            {
+              "field": "workflow-dashboard-label"
+            },
+            {
+              "field": "workflow-identity"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "started-at"
+        },
+        {
+          "field": "dispatch-type"
+        },
+        {
+          "field": "declared-campaign",
+          "as": "campaign"
+        },
+        {
+          "field": "declared-campaign-name",
+          "as": "campaign-name"
+        },
+        {
+          "field": "declared-workflow-name",
+          "as": "workflow-name"
+        },
+        {
+          "field": "run"
+        },
+        {
+          "field": "run-attempt"
+        },
+        {
+          "field": "run-title"
+        },
+        {
+          "field": "event"
+        },
+        {
+          "field": "runtime-repository"
+        },
+        {
+          "field": "target-repository"
+        },
+        {
+          "field": "rollout-mode"
+        },
+        {
+          "field": "status"
+        },
+        {
+          "field": "run-status"
+        },
+        {
+          "field": "error-signature"
+        },
+        {
+          "field": "error-signature-label"
+        },
+        {
+          "field": "status-detail"
+        },
+        {
+          "field": "outcome-kind"
+        },
+        {
+          "field": "outcome-diagnosis"
+        },
+        {
+          "field": "declared-workflow-role",
+          "as": "workflow-role"
+        },
+        {
+          "field": "failure-job"
+        },
+        {
+          "field": "failure-message"
+        },
+        {
+          "field": "failure-step"
+        },
+        {
+          "field": "failure-log"
+        },
+        {
+          "field": "engine"
+        },
+        {
+          "field": "engine-version"
+        },
+        {
+          "field": "gh-aw-version"
+        },
+        {
+          "field": "requested-model"
+        },
+        {
+          "field": "resolved-model"
+        },
+        {
+          "field": "aic-total"
+        },
+        {
+          "field": "safe-items-count"
+        },
+        {
+          "field": "resource-reset-at",
+          "as": "status-detail-at"
+        },
+        {
+          "field": "organization"
+        },
+        {
+          "field": "repository"
+        },
+        {
+          "field": "workflow"
+        },
+        {
+          "field": "declared-workflow-link",
+          "as": "workflow-source-link"
+        },
+        {
+          "field": "run-link"
+        },
+        {
+          "field": "campaign-dashboard-link",
+          "as": "campaign-link"
+        },
+        {
+          "field": "repository-dashboard-link",
+          "as": "repository-link"
+        },
+        {
+          "field": "workflow-dashboard-link",
+          "as": "workflow-link"
+        }
+      ],
+      "order-by": [
+        {
+          "field": "started-at",
+          "direction": "desc"
+        }
+      ]
+    },
+    {
+      "name": "campaign-runtime-health-runs",
+      "intent": "Project only the run and workflow fields required to classify current campaign runtime health.",
+      "description": "A bounded runtime-health input that excludes audit outcomes and presentation-only campaign run fields.",
+      "from": "overview-runs",
+      "compute": [
+        {
+          "as": "status",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "run-conclusion"
+            },
+            {
+              "field": "run-status"
+            },
+            {
+              "value": "unknown"
+            }
+          ]
+        },
+        {
+          "as": "runtime-repository",
+          "function": "concat",
+          "args": [
+            {
+              "field": "organization"
+            },
+            {
+              "value": "/"
+            },
+            {
+              "field": "repository"
+            }
+          ]
+        },
+        {
+          "as": "is-worker",
+          "function": "equals-any",
+          "args": [
+            {
+              "field": "workflow-role"
+            },
+            {
+              "value": "worker"
+            }
+          ]
+        },
+        {
+          "as": "is-orchestrator",
+          "function": "equals-any",
+          "args": [
+            {
+              "field": "workflow-role"
+            },
+            {
+              "value": "orchestrator"
+            }
+          ]
+        },
+        {
+          "as": "root-dispatch-type",
+          "function": "if",
+          "args": [
+            {
+              "field": "is-orchestrator"
+            },
+            {
+              "value": "Campaign orchestrator"
+            },
+            {
+              "value": "Standalone workflow"
+            }
+          ]
+        },
+        {
+          "as": "dispatch-type",
+          "function": "if",
+          "args": [
+            {
+              "field": "is-worker"
+            },
+            {
+              "value": "Campaign worker"
+            },
+            {
+              "field": "root-dispatch-type"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "started-at"
+        },
+        {
+          "field": "campaign"
+        },
+        {
+          "field": "campaign-name"
+        },
+        {
+          "field": "workflow"
+        },
+        {
+          "field": "workflow-name"
+        },
+        {
+          "field": "workflow-role"
+        },
+        {
+          "field": "dispatch-type"
+        },
+        {
+          "field": "runtime-repository"
+        },
+        {
+          "field": "run"
+        },
+        {
+          "field": "run-status"
+        },
+        {
+          "field": "status"
+        }
+      ]
+    },
+    {
+      "name": "campaign-runtime-health-groups",
+      "intent": "Compute each campaign workflow and runtime repository's latest consecutive failure streak in the selected horizon.",
+      "description": "Current retained failure streaks grouped by campaign workflow and runtime repository, considering only concluded Runs so an in-flight retry cannot mask an active failure streak.",
+      "from": "campaign-runtime-health-runs",
+      "filter": {
+        "predicates": [
+          {
+            "field": "run-status",
+            "equals": "completed"
+          }
+        ]
+      },
+      "compute": [
+        {
+          "as": "is-runtime-failure",
+          "function": "equals-any",
+          "args": [
+            {
+              "field": "status"
+            },
+            {
+              "value": "failure"
+            },
+            {
+              "value": "startup-failure"
+            },
+            {
+              "value": "stale"
+            },
+            {
+              "value": "timed-out"
+            }
+          ]
+        },
+        {
+          "as": "runtime-failure-streak-point",
+          "function": "failure-streak-point",
+          "args": [
+            {
+              "field": "started-at"
+            },
+            {
+              "field": "run"
+            },
+            {
+              "field": "is-runtime-failure"
+            }
+          ]
+        }
+      ],
+      "aggregate": {
+        "by": [
+          "campaign",
+          "campaign-name",
+          "workflow",
+          "workflow-name",
+          "workflow-role",
+          "dispatch-type",
+          "runtime-repository"
+        ],
+        "values": [
+          {
+            "field": "runtime-failure-streak-point",
+            "as": "failure-count",
+            "reducer": "latest-failure-streak"
+          }
+        ]
+      }
+    },
+    {
+      "name": "campaign-runtime-problem-candidates",
+      "intent": "Mark campaign workflow and runtime repository partitions whose latest retained run streak is failing.",
+      "description": "Campaign runtime partitions annotated with whether their current retained streak contains failures.",
+      "from": "campaign-runtime-health-groups",
+      "compute": [
+        {
+          "as": "has-current-failure",
+          "function": "greater-than",
+          "args": [
+            {
+              "field": "failure-count"
+            },
+            {
+              "value": 0
+            }
+          ]
+        },
+        {
+          "as": "problem-kind",
+          "function": "coalesce",
+          "args": [
+            {
+              "value": "failure"
+            },
+            {
+              "value": "failure"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "campaign-current-runtime-failures",
+      "intent": "Show only campaign workflow and runtime repository partitions whose latest retained run streak is failing.",
+      "description": "Campaign runtime partitions with one or more consecutive failures after their latest retained success.",
+      "from": "campaign-runtime-problem-candidates",
+      "filter": {
+        "predicates": [
+          {
+            "field": "has-current-failure",
+            "equals": true
+          }
+        ]
+      },
+      "order-by": [
+        {
+          "field": "failure-count",
+          "direction": "desc"
+        },
+        {
+          "field": "workflow-name",
+          "direction": "asc"
+        },
+        {
+          "field": "runtime-repository",
+          "direction": "asc"
+        }
+      ]
+    },
+    {
+      "name": "workflow-run-observation-counts",
+      "intent": "Count retained Runs for each workflow identity in the selected horizon.",
+      "description": "One row per organization, repository, and workflow with retained Run counts, safe to join without row multiplication.",
+      "from": "overview-runs",
+      "aggregate": {
+        "by": [
+          "organization",
+          "repository",
+          "workflow"
+        ],
+        "values": [
+          {
+            "field": "run",
+            "as": "observed-run-count",
+            "reducer": "count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "campaign-active-orchestrator-run-presence",
+      "intent": "Count retained Runs for each active campaign orchestrator in the selected horizon.",
+      "description": "Active campaign orchestrators annotated with retained Run presence.",
+      "from": "workflows",
+      "joins": [
+        {
+          "source": "workflow-run-observation-counts",
+          "type": "left",
+          "on": [
+            {
+              "left": "organization",
+              "right": "organization"
+            },
+            {
+              "left": "repository",
+              "right": "repository"
+            },
+            {
+              "left": "workflow",
+              "right": "workflow"
+            }
+          ],
+          "fields": [
+            {
+              "field": "observed-run-count",
+              "as": "joined-observed-run-count"
+            }
+          ]
+        }
+      ],
+      "filter": {
+        "predicates": [
+          {
+            "field": "workflow-role",
+            "equals": "orchestrator"
+          },
+          {
+            "field": "workflow-active",
+            "equals": "true"
+          }
+        ]
+      },
+      "compute": [
+        {
+          "as": "runtime-repository",
+          "function": "concat",
+          "args": [
+            {
+              "field": "organization"
+            },
+            {
+              "value": "/"
+            },
+            {
+              "field": "repository"
+            }
+          ]
+        },
+        {
+          "as": "observed-run-count",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "joined-observed-run-count"
+            },
+            {
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "campaign"
+        },
+        {
+          "field": "campaign-name"
+        },
+        {
+          "field": "workflow"
+        },
+        {
+          "field": "workflow-name"
+        },
+        {
+          "field": "workflow-role"
+        },
+        {
+          "field": "runtime-repository"
+        },
+        {
+          "field": "observed-run-count"
+        }
+      ]
+    },
+    {
+      "name": "campaign-unobserved-orchestrator-candidates",
+      "intent": "Mark active campaign orchestrators with no retained Runs in the selected horizon.",
+      "description": "Active orchestrators annotated with whether runtime evidence is absent.",
+      "from": "campaign-active-orchestrator-run-presence",
+      "compute": [
+        {
+          "as": "is-unobserved",
+          "function": "equals-any",
+          "args": [
+            {
+              "field": "observed-run-count"
+            },
+            {
+              "value": 0
+            }
+          ]
+        },
+        {
+          "as": "failure-count",
+          "function": "sum",
+          "args": [
+            {
+              "value": 0
+            },
+            {
+              "value": 0
+            }
+          ]
+        },
+        {
+          "as": "dispatch-type",
+          "function": "coalesce",
+          "args": [
+            {
+              "value": "Campaign orchestrator"
+            },
+            {
+              "value": "Campaign orchestrator"
+            }
+          ]
+        },
+        {
+          "as": "problem-kind",
+          "function": "coalesce",
+          "args": [
+            {
+              "value": "not-observed"
+            },
+            {
+              "value": "not-observed"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "campaign-unobserved-orchestrators",
+      "intent": "Show active campaign orchestrators with no retained Runs in the selected horizon.",
+      "description": "Active campaign orchestrators whose runtime state cannot be established from retained evidence.",
+      "from": "campaign-unobserved-orchestrator-candidates",
+      "filter": {
+        "predicates": [
+          {
+            "field": "is-unobserved",
+            "equals": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "campaign-runtime-problems",
+      "intent": "Combine current runtime failures with active orchestrators that have no retained Run evidence.",
+      "description": "Current campaign runtime problems requiring investigation.",
+      "from": "campaign-current-runtime-failures",
+      "union": [
+        "campaign-unobserved-orchestrators"
+      ],
+      "order-by": [
+        {
+          "field": "failure-count",
+          "direction": "desc"
+        },
+        {
+          "field": "workflow-name",
+          "direction": "asc"
+        },
+        {
+          "field": "runtime-repository",
+          "direction": "asc"
+        }
+      ]
+    },
+    {
+      "name": "dispatches",
+      "intent": "Select workflow-dispatch runs from campaign-attributed workflow run evidence.",
+      "description": "Canonical workflow runs whose authoritative trigger is workflow_dispatch.",
+      "from": "campaign-runs",
+      "filter": {
+        "predicates": [
+          {
+            "field": "event",
+            "equals": "workflow_dispatch"
+          }
+        ]
+      },
+      "order-by": [
+        {
+          "field": "started-at",
+          "direction": "desc"
+        }
+      ]
+    },
+    {
+      "name": "campaign-dispatch-totals",
+      "intent": "Summarize observed workflow dispatches for each centrally managed campaign.",
+      "description": "Observed workflow-dispatch run totals grouped by campaign.",
+      "from": "dispatches",
+      "aggregate": {
+        "by": [
+          "campaign"
+        ],
+        "values": [
+          {
+            "field": "run",
+            "as": "dispatches",
+            "reducer": "distinct-count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "campaign-workflow-totals",
+      "intent": "Summarize observed workflow and execution totals for each centrally managed campaign.",
+      "description": "Observed workflow, rollout, run, and AI Credit totals grouped by campaign.",
+      "from": "workflow-inventory",
+      "filter": {
+        "predicates": [
+          {
+            "field": "workflow-role",
+            "in": [
+              "orchestrator",
+              "worker"
+            ]
+          }
+        ]
+      },
+      "aggregate": {
+        "by": [
+          "campaign"
+        ],
+        "values": [
+          {
+            "field": "workflow",
+            "as": "workflows",
+            "reducer": "count"
+          },
+          {
+            "field": "workflow-role",
+            "as": "roles",
+            "reducer": "distinct-list"
+          },
+          {
+            "field": "rollout-mode",
+            "as": "modes",
+            "reducer": "distinct-list"
+          },
+          {
+            "field": "workflow-active",
+            "as": "registration",
+            "reducer": "distinct-list"
+          },
+          {
+            "field": "runs",
+            "as": "runs",
+            "reducer": "sum"
+          },
+          {
+            "field": "aic",
+            "as": "aic",
+            "reducer": "sum"
+          }
+        ]
+      }
+    },
+    {
+      "name": "campaign-repository-coverage",
+      "intent": "Count distinct registered target repositories reached by successful worker dispatches for each campaign.",
+      "description": "Campaign repository coverage derived from successful worker dispatch runs in the selected horizon.",
+      "from": "runs",
+      "joins": [
+        {
+          "source": "workflows",
+          "type": "inner",
+          "on": [
+            {
+              "left": "organization",
+              "right": "organization"
+            },
+            {
+              "left": "repository",
+              "right": "repository"
+            },
+            {
+              "left": "workflow",
+              "right": "workflow"
+            }
+          ],
+          "fields": [
+            {
+              "field": "campaign",
+              "as": "campaign"
+            },
+            {
+              "field": "workflow-role",
+              "as": "workflow-role"
+            }
+          ]
+        },
+        {
+          "source": "repositories",
+          "type": "inner",
+          "on": [
+            {
+              "left": "target-repository",
+              "right": "repository-coordinate"
+            }
+          ],
+          "fields": [
+            {
+              "field": "repository-coordinate",
+              "as": "registered-target-repository"
+            }
+          ]
+        }
+      ],
+      "filter": {
+        "predicates": [
+          {
+            "field": "event",
+            "equals": "workflow_dispatch"
+          },
+          {
+            "field": "run-conclusion",
+            "equals": "success"
+          },
+          {
+            "field": "workflow-role",
+            "equals": "worker"
+          }
+        ]
+      },
+      "aggregate": {
+        "by": [
+          "campaign"
+        ],
+        "values": [
+          {
+            "field": "target-repository",
+            "as": "covered-repositories",
+            "reducer": "distinct-count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "campaign-inventory",
+      "intent": "List centrally managed campaigns with their observed workflow and execution totals.",
+      "description": "Canonical campaign inventory enriched with observed workflow, rollout, run, repository coverage, and AI Credit totals.",
+      "from": "campaigns",
+      "joins": [
+        {
+          "source": "campaign-workflow-totals",
+          "type": "left",
+          "on": [
+            {
+              "left": "campaign",
+              "right": "campaign"
+            }
+          ],
+          "fields": [
+            {
+              "field": "workflows",
+              "as": "observed-workflows"
+            },
+            {
+              "field": "roles",
+              "as": "observed-roles"
+            },
+            {
+              "field": "modes",
+              "as": "observed-modes"
+            },
+            {
+              "field": "registration",
+              "as": "observed-registration"
+            },
+            {
+              "field": "runs",
+              "as": "observed-runs"
+            },
+            {
+              "field": "aic",
+              "as": "observed-aic"
+            }
+          ]
+        },
+        {
+          "source": "campaign-dispatch-totals",
+          "type": "left",
+          "on": [
+            {
+              "left": "campaign",
+              "right": "campaign"
+            }
+          ],
+          "fields": [
+            {
+              "field": "dispatches",
+              "as": "observed-dispatches"
+            }
+          ]
+        },
+        {
+          "source": "campaign-repository-coverage",
+          "type": "left",
+          "on": [
+            {
+              "left": "campaign",
+              "right": "campaign"
+            }
+          ],
+          "fields": [
+            {
+              "field": "covered-repositories",
+              "as": "observed-covered-repositories"
+            }
+          ]
+        }
+      ],
+      "compute": [
+        {
+          "as": "workflows",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "observed-workflows"
+            },
+            {
+              "value": 0
+            }
+          ]
+        },
+        {
+          "as": "roles",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "observed-roles"
+            },
+            {
+              "value": ""
+            }
+          ]
+        },
+        {
+          "as": "modes",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "observed-modes"
+            },
+            {
+              "field": "campaign-mode"
+            }
+          ]
+        },
+        {
+          "as": "registration",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "observed-registration"
+            },
+            {
+              "field": "campaign-registration"
+            }
+          ]
+        },
+        {
+          "as": "runs",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "observed-runs"
+            },
+            {
+              "value": 0
+            }
+          ]
+        },
+        {
+          "as": "dispatches",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "observed-dispatches"
+            },
+            {
+              "value": 0
+            }
+          ]
+        },
+        {
+          "as": "covered-repositories",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "observed-covered-repositories"
+            },
+            {
+              "value": 0
+            }
+          ]
+        },
+        {
+          "as": "aic",
+          "function": "coalesce",
+          "args": [
+            {
+              "field": "observed-aic"
+            },
+            {
+              "value": 0
+            }
+          ]
+        },
+        {
+          "as": "encoded-campaign",
+          "function": "url-encode",
+          "args": [
+            {
+              "field": "campaign"
+            }
+          ]
+        },
+        {
+          "as": "campaign-dashboard-href",
+          "function": "concat",
+          "args": [
+            {
+              "value": "#page-campaign-insights?campaign="
+            },
+            {
+              "field": "encoded-campaign"
+            }
+          ]
+        },
+        {
+          "as": "campaign-dashboard-label",
+          "function": "concat",
+          "args": [
+            {
+              "value": "View "
+            },
+            {
+              "field": "campaign-name"
+            },
+            {
+              "value": " campaign dashboard"
+            }
+          ]
+        },
+        {
+          "as": "campaign-dashboard-link",
+          "function": "dashboard-link",
+          "args": [
+            {
+              "value": ""
+            },
+            {
+              "field": "campaign-dashboard-href"
+            },
+            {
+              "field": "campaign-dashboard-label"
+            },
+            {
+              "field": "campaign"
+            }
+          ]
+        }
+      ],
+      "select": [
+        {
+          "field": "campaign"
+        },
+        {
+          "field": "campaign-name"
+        },
+        {
+          "field": "campaign-dashboard-link"
+        },
+        {
+          "field": "workflows"
+        },
+        {
+          "field": "roles"
+        },
+        {
+          "field": "modes"
+        },
+        {
+          "field": "registration"
+        },
+        {
+          "field": "runs"
+        },
+        {
+          "field": "dispatches"
+        },
+        {
+          "field": "covered-repositories"
+        },
+        {
+          "field": "aic"
+        }
+      ],
+      "order-by": [
+        {
+          "field": "campaign-name",
+          "direction": "asc"
+        }
+      ]
+    }
+  ]
+}
