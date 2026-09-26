@@ -163,7 +163,8 @@
         "on": [{ "left": "workflowId", "right": "id" }],
         "fields": [
           { "field": "path", "as": "_workflow-path" },
-          { "field": "rolloutMode", "as": "_workflow-rollout-mode" }
+          { "field": "rolloutMode", "as": "_workflow-rollout-mode" },
+          { "field": "ghAwVersion", "as": "_workflow-gh-aw-version" }
         ]
       }
     ],
@@ -190,6 +191,20 @@
           { "field": "_rollout-unknown" },
           { "field": "_workflow-rollout-mode" },
           { "field": "rolloutMode" }
+        ]
+      },
+      {
+        "as": "_gh-aw-version-unknown",
+        "function": "equals-any",
+        "args": [{ "field": "ghAwVersion" }, { "value": "unknown" }, { "value": null }]
+      },
+      {
+        "as": "effective-gh-aw-version",
+        "function": "if",
+        "args": [
+          { "field": "_gh-aw-version-unknown" },
+          { "field": "_workflow-gh-aw-version" },
+          { "field": "ghAwVersion" }
         ]
       }
     ],
@@ -235,7 +250,7 @@
       { "field": "agentId", "as": "agent-id" },
       { "field": "agentVersion", "as": "agent-version" },
       { "field": "modelId", "as": "model-id" },
-      { "field": "ghAwVersion", "as": "gh-aw-version" },
+      { "field": "effective-gh-aw-version", "as": "gh-aw-version" },
       { "field": "aicTotal", "as": "aic-total" },
       { "field": "inputTokens", "as": "input-tokens" },
       { "field": "outputTokens", "as": "output-tokens" },
