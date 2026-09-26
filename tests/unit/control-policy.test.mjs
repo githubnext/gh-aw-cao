@@ -98,6 +98,10 @@ test("control policy schema accepts config-defined campaign and worker catalogs"
   assert.equal(schema.$defs.controlPlane.properties.web.$ref, "#/$defs/web");
   assert.equal(policy["control-plane"].web.experimental, true);
   assert.equal(policy["control-plane"].web.favicon, "./favicon.svg");
+  assert.deepEqual(policy["control-plane"].marketplace.registries[0].auth, {
+    type: "pat",
+    secret: "GH_TOKEN",
+  });
   assert.equal(schema.$defs.controlCampaigns.additionalProperties.$ref, "#/$defs/campaignPolicy");
   assert.equal(schema.$defs.targetCampaigns.additionalProperties.$ref, "#/$defs/targetCampaign");
   for (const campaignPolicy of Object.values(policy["control-plane"].campaigns)) {
