@@ -24,7 +24,6 @@ permissions:
   copilot-requests: write
 strict: true
 tools:
-  cli-proxy: true
   playwright:
     version: "0.1.18"
 network:
@@ -58,6 +57,7 @@ steps:
 # SVG Visual Audit
 
 Audit every SVG listed in `/tmp/gh-aw/agent/svg-audit/svg-files.txt`. Serve the repository inside this agent sandbox and open it with Playwright at `http://127.0.0.1:4321/`.
+Use the local checkout and manifest as the complete audit scope; do not query GitHub for pull request files or diffs.
 
 ## Required procedure
 
