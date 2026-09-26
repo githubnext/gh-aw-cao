@@ -2,7 +2,7 @@
 
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { createReadStream, createWriteStream, realpathSync } from 'node:fs';
+import { createReadStream, createWriteStream, readFileSync, realpathSync } from 'node:fs';
 import { readFile, readdir, mkdir, mkdtemp, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { createInterface } from 'node:readline';
@@ -102,7 +102,7 @@ const USAGE = `Usage:
   cao init
   cao setup-auth github-app [--repo OWNER/REPO] [APP_SETUP_OPTIONS...]
   cao setup-auth enterprise-app --repo OWNER/REPO --read-client-id ID --write-client-id ID [--dry-run]
-  cao setup-auth token [--repo OWNER/REPO]
+  cao setup-auth token [--repo OWNER/REPO] [--policy PATH] [--expires-in DAYS] [--no-open]
   cao setup-auth workflow-token
   cao add CAMPAIGN [GH_AW_ADD_OPTIONS...]
   cao update [--pre-releases] [GH_AW_UPDATE_OPTIONS...]
@@ -320,8 +320,73 @@ export async function initializeCaoPolicy({
   return { command: 'init', policy: policyPath, 'gh-aw-version': version };
 }
 
+function githubServerUrl(environment = process.env) {
+  const configured = environment.GH_HOST?.trim()
+    || environment.GITHUB_SERVER_URL?.trim()
+    || 'github.com';
+  const url = configured.includes('://') ? configured : `https://${configured}`;
+  return new URL(url).origin;
+}
+
+function openBrowser(url, execute = spawnSync) {
+  const command = process.platform === 'darwin' ? ['open', [url]]
+    : process.platform === 'win32' ? ['cmd', ['/c', 'start', '', url]]
+      : ['xdg-open', [url]];
+  const result = execute(command[0], command[1], { stdio: 'ignore' });
+  return !result.error && result.status === 0;
+}
+
+export function fineGrainedTokenSetup({
+  repo,
+  policyPath = DEFAULT_POLICY_PATH,
+  expiresIn = '30',
+  environment = process.env,
+} = {}) {
+  if (!REPOSITORY_COORDINATE.test(repo || '')) {
+    throw new UsageError('--repo must be an exact OWNER/REPOSITORY');
+  }
+  if (!/^(?:[1-9]|[1-9][0-9]|[12][0-9]{2}|3[0-5][0-9]|36[0-6])$/.test(expiresIn)) {
+    throw new UsageError('--expires-in must be an integer from 1 through 366');
+  }
+  let policy;
+  try {
+    policy = validateGlobalPolicy(JSON.parse(readFileSync(path.resolve(policyPath), 'utf8')), policyPath);
+  } catch (error) {
+    if (error?.code === 'ENOENT') throw new Error(`${policyPath} is required for guided token setup`);
+    if (error instanceof SyntaxError) throw new Error(`${policyPath} contains invalid JSON: ${error.message}`);
+    throw error;
+  }
+  const configuredRepositories = policy['control-plane']?.scope?.['allowed-repositories'] ?? [];
+  if (!Array.isArray(configuredRepositories)
+    || configuredRepositories.some((repository) => typeof repository !== 'string' || !REPOSITORY_COORDINATE.test(repository))) {
+    throw new Error(`${policyPath} control-plane.scope.allowed-repositories must contain exact OWNER/REPOSITORY values`);
+  }
+  const repositories = [...new Set([repo, ...configuredRepositories])];
+  const owners = new Set(repositories.map((repository) => repository.split('/')[0].toLowerCase()));
+  if (owners.size !== 1) {
+    throw new Error('fine-grained token setup requires the control repository and all allowed repositories to have one owner');
+  }
+  const [owner, controlRepository] = repo.split('/');
+  const parameters = new URLSearchParams({
+    name: `CAO ${controlRepository}`.slice(0, 40),
+    description: `Central Agentic Ops access for ${repo}`,
+    target_name: owner,
+    expires_in: expiresIn,
+    contents: 'write',
+  });
+  return {
+    url: `${githubServerUrl(environment)}/settings/personal-access-tokens/new?${parameters}`,
+    owner,
+    repositories,
+    expiresIn: Number(expiresIn),
+    permissions: { contents: 'write' },
+  };
+}
+
 export function setupCaoAuthentication(method, arguments_ = [], {
-  execute = spawnSync
+  execute = spawnSync,
+  launchBrowser = (url) => openBrowser(url, execute),
+  writeInstruction = (message) => console.error(message),
 } = {}) {
   if (method === 'github-app') {
     const script = path.join('.github', 'workflows', 'shared', 'setup-github-apps.mjs');
@@ -381,14 +446,28 @@ export function setupCaoAuthentication(method, arguments_ = [], {
   }
   if (method === 'token') {
     const options = parseOptions(arguments_);
-    rejectUnknownOptions(options, ['repo']);
-    const repo = option(options, 'repo', false);
+    rejectUnknownOptions(options, ['repo', 'policy', 'expires-in', 'no-open']);
+    const repo = option(options, 'repo');
+    const setup = fineGrainedTokenSetup({
+      repo,
+      policyPath: option(options, 'policy', false) || DEFAULT_POLICY_PATH,
+      expiresIn: option(options, 'expires-in', false) || '30',
+    });
     const auth = execute('gh', ['auth', 'status'], { encoding: 'utf8' });
     if (auth.error || auth.status !== 0) {
       throw new Error(`GitHub CLI authentication check failed: ${commandFailureMessage(auth, 'gh auth status failed')}`);
     }
+    writeInstruction(`Create a fine-grained PAT for ${setup.owner}:`);
+    writeInstruction(`- expiration: ${setup.expiresIn} days`);
+    writeInstruction('- repository access: Only select repositories');
+    for (const repository of setup.repositories) writeInstruction(`  - ${repository}`);
+    writeInstruction('- repository permissions: Contents: Read and write');
+    if (options['no-open'] || !launchBrowser(setup.url)) {
+      writeInstruction(`Open this URL to continue: ${setup.url}`);
+    }
+    writeInstruction('Generate the token, then paste it only into the secure prompt below.');
     const secretArguments = ['secret', 'set', 'GH_AW_GITHUB_TOKEN'];
-    if (repo) secretArguments.push('--repo', repo);
+    secretArguments.push('--repo', repo);
     const result = execute('gh', secretArguments, { stdio: 'inherit' });
     if (result.error || result.status !== 0) {
       throw new Error(`Fine-grained token setup failed: ${commandFailureMessage(result, `exit ${result.status}`)}`);
@@ -397,7 +476,8 @@ export function setupCaoAuthentication(method, arguments_ = [], {
       command: 'setup-auth',
       profile: 'fine-grained-token',
       secret: 'GH_AW_GITHUB_TOKEN',
-      ...(repo ? { repo } : {}),
+      repo,
+      repositories: setup.repositories,
     };
   }
   if (method === 'workflow-token') {
@@ -951,7 +1031,7 @@ function parseOptions(arguments_) {
     if (!argument.startsWith('--') && !aliases[argument]) throw new UsageError(`Unexpected argument: ${argument}`);
     const name = aliases[argument] ?? argument.slice(2);
     if (name === 'help' || name === 'stdin' || name === 'keep' || name === 'diagnose'
-      || name === 'dry-run') {
+      || name === 'dry-run' || name === 'no-open') {
       options[name] = 'true';
       continue;
     }
