@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { attachCliActions, renderCliActions, renderRowCliAction, setDeclaredCliActions } from '../../src/components/cli-actions.js';
+import {
+  attachCliActions,
+  createPromptCliActionControl,
+  renderCliActions,
+  renderRowCliAction,
+  setDeclaredCliActions
+} from '../../src/components/cli-actions.js';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -83,6 +89,19 @@ describe('CLI actions', () => {
       './cao.sh add octo/packages/demo@abc123'
     ));
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('does not create an executable prompt control for copy-only actions', () => {
+    setDeclaredCliActions([{
+      id: 'copy-agent-prompt',
+      label: 'Copy prompt',
+      icon: 'copy',
+      command: 'gh agent-task create --from-file -',
+      placement: 'row',
+      'copy-only': true
+    }], { canExecute: true });
+
+    expect(createPromptCliActionControl('copy-agent-prompt', () => 'prompt')).toBeNull();
   });
 
   it('attaches toolbar and settings actions to the dashboard shell', () => {

@@ -89,7 +89,7 @@ function resultText(result) {
  */
 export function createPromptCliActionControl(actionId, getPrompt) {
   const action = declaredCliActions.find((candidate) => candidate.id === actionId);
-  if (!declaredCliActionsCanExecute || !action) return null;
+  if (!declaredCliActionsCanExecute || !action || action['copy-only'] === true) return null;
   const status = /** @type {HTMLOutputElement} */ (renderLiveRegion('output', 'table-intent-copy-status'));
   const output = h('pre', { className: 'cli-action-output', hidden: true });
   const button = /** @type {HTMLButtonElement} */ (h('button', {
