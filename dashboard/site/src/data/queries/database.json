@@ -199,11 +199,16 @@
         "args": [{ "field": "ghAwVersion" }, { "value": "unknown" }, { "value": null }]
       },
       {
+        "as": "_workflow-gh-aw-version-or-unknown",
+        "function": "coalesce",
+        "args": [{ "field": "_workflow-gh-aw-version" }, { "value": "unknown" }]
+      },
+      {
         "as": "effective-gh-aw-version",
         "function": "if",
         "args": [
           { "field": "_gh-aw-version-unknown" },
-          { "field": "_workflow-gh-aw-version" },
+          { "field": "_workflow-gh-aw-version-or-unknown" },
           { "field": "ghAwVersion" }
         ]
       }
