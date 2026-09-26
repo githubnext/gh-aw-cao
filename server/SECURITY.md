@@ -47,8 +47,9 @@ requests receive the tightest limit because they consume the most server and
 Redis work. The limiter fails
 closed when Redis is unavailable, and `429` responses communicate the cooldown
 with `Retry-After` plus the standard `RateLimit-*` headers. Health/readiness
-probes and signature-verified GitHub webhooks remain exempt so platform health
-checks and delivery retries do not consume user quotas.
+probes remain exempt. GitHub webhooks are exempt from user quotas but cross the
+high-capacity edge bucket before signature validation, bounding invalid request
+bodies and HMAC work without disrupting ordinary delivery retries.
 
 A separate client-IP edge bucket runs before session loading and refresh, so
 invalid or expired sessions cannot bypass abuse controls by failing

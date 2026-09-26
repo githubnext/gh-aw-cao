@@ -141,7 +141,7 @@ func TestRateLimitSeparatesOAuthCallbacksBehindEnterpriseProxy(t *testing.T) {
 	}
 }
 
-func TestRateLimitExemptsServiceProbesAndWebhooks(t *testing.T) {
+func TestInnerRateLimitExemptsServiceProbesWebhooksAndAssets(t *testing.T) {
 	for _, path := range []string{"/api/v1/health", "/api/health", "/api/readiness", "/api/github/webhook", "/assets/app.js"} {
 		client := &serverRateLimitClient{}
 		app := &App{store: redisx.NewStore(client, "test")}
@@ -153,6 +153,24 @@ func TestRateLimitExemptsServiceProbesAndWebhooks(t *testing.T) {
 		if response.Code != http.StatusNoContent || len(client.command) != 0 {
 			t.Errorf("%s was rate limited", path)
 		}
+	}
+}
+
+func TestPreAuthRateLimitBoundsWebhookBeforeSignatureValidation(t *testing.T) {
+	client := &serverRateLimitClient{result: []any{int64(1), int64(1199), int64(0), int64(50)}}
+	app := hostedRateLimitApp(client)
+	handler := app.preAuthRateLimit(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.WriteHeader(http.StatusUnauthorized)
+	}))
+	request := httptest.NewRequestWithContext(
+		t.Context(), http.MethodPost, "https://dashboard.example/api/github/webhook", nil)
+	response := httptest.NewRecorder()
+
+	handler.ServeHTTP(response, request)
+
+	if response.Code != http.StatusUnauthorized || client.callCount != 1 ||
+		len(client.command) < 4 || !strings.Contains(client.command[3], ":rate-limit:edge:") {
+		t.Fatalf("webhook was not edge limited: status=%d command=%#v", response.Code, client.command)
 	}
 }
 

@@ -52,11 +52,13 @@ The server MUST apply the following token buckets.
 | General | other `/api/` and `/auth/` requests | 120 | 1 minute | authenticated GitHub login, otherwise client address |
 | Hosted edge | non-public hosted requests before session loading | 1,200 | 1 minute | client address |
 
-Health and readiness endpoints and the independently signature-authenticated
-GitHub webhook endpoint MUST be exempt. The hosted edge bucket MUST cover static
-dashboard requests because they can otherwise trigger session loading or token
-refresh before authentication completes. The local profile MAY leave static
-assets unmetered.
+Health and readiness endpoints MUST be exempt. The independently
+signature-authenticated GitHub webhook endpoint MUST be exempt from inner
+user/API quotas but MUST cross the hosted edge bucket before its body and
+signature are processed. The hosted edge bucket MUST also cover static dashboard
+requests because they can otherwise trigger session loading or token refresh
+before authentication completes. The local profile MAY leave static assets
+unmetered.
 
 The hosted edge bucket and an applicable post-authentication bucket are
 cumulative. The post-authentication response fields MUST describe the narrower
@@ -138,7 +140,7 @@ A conforming implementation MUST test:
 6. repeated and comma-separated proxy headers, address-and-port forms, RFC 7239
    values, and malformed final-value fallback;
 7. separate OAuth callback subjects behind one enterprise egress address; and
-8. health, readiness, and webhook exemptions.
+8. health/readiness exemptions and pre-signature webhook edge coverage.
 
 ## 7. Security and privacy considerations
 

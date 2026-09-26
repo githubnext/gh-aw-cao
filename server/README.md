@@ -157,9 +157,10 @@ quotas. The normative contract is `specs/server-rate-limiting.md`.
 | Other API and auth requests | 120 | 1 minute |
 | Hosted pre-authentication edge | 1,200 per client IP | 1 minute |
 
-Health/readiness probes and independently authenticated GitHub webhooks are
-exempt. Hosted dashboard assets use the higher-capacity edge bucket so session
-loading remains bounded without applying the tighter API quota to page loads.
+Health/readiness probes are exempt. GitHub webhooks are exempt from user/API
+quotas but use the high-capacity edge bucket before signature validation.
+Hosted dashboard assets use that edge bucket so session loading remains bounded
+without applying the tighter API quota to page loads.
 Every limited response includes `RateLimit-Limit`,
 `RateLimit-Remaining`, `RateLimit-Reset`, and `RateLimit-Policy`. An exhausted
 bucket returns `429 Too Many Requests` with `Retry-After` in seconds. If Redis
