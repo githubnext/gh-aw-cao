@@ -115,6 +115,14 @@ process_matches() {
     [[ "$actual_executable" == "$(readlink -f "$expected_executable")" ]]
 }
 
+process_start_matches() {
+  local pid expected_start
+  pid="$1"
+  expected_start="$2"
+  [[ -n "$pid" && -n "$expected_start" && -r "/proc/$pid/stat" ]] || return 1
+  [[ "$(awk '{print $22}' "/proc/$pid/stat")" == "$expected_start" ]]
+}
+
 wait_for_process_group() {
   local pid expected_executable pgid executable
   pid="$1"
@@ -156,15 +164,33 @@ stop_internal() {
     # shellcheck disable=SC1090
     source "$RUNTIME_ENV"
   fi
-  if process_matches \
-    "${FUNCTIONS_PID:-}" "${FUNCTIONS_START_TIME:-}" "${FUNC_BIN:-}" ||
+  if process_start_matches "${FUNCTIONS_PID:-}" "${FUNCTIONS_START_TIME:-}" ||
     process_group_matches; then
-    kill -TERM -- "-${FUNCTIONS_PGID:-$FUNCTIONS_PID}" 2>/dev/null || true
+    local quiet_checks=0
     for _ in {1..50}; do
-      kill -0 -- "-${FUNCTIONS_PGID:-$FUNCTIONS_PID}" 2>/dev/null || break
+      local active=false
+      if process_start_matches "${FUNCTIONS_PID:-}" "${FUNCTIONS_START_TIME:-}"; then
+        kill -TERM "$FUNCTIONS_PID" 2>/dev/null || true
+        active=true
+      fi
+      if process_group_matches; then
+        kill -TERM -- "-$FUNCTIONS_PGID" 2>/dev/null || true
+        active=true
+      fi
+      if [[ "$active" == true ]]; then
+        quiet_checks=0
+      else
+        quiet_checks=$((quiet_checks + 1))
+        (( quiet_checks >= 5 )) && break
+      fi
       sleep 0.1
     done
-    kill -KILL -- "-${FUNCTIONS_PGID:-$FUNCTIONS_PID}" 2>/dev/null || true
+    if process_start_matches "${FUNCTIONS_PID:-}" "${FUNCTIONS_START_TIME:-}"; then
+      kill -KILL "$FUNCTIONS_PID" 2>/dev/null || true
+    fi
+    if process_group_matches; then
+      kill -KILL -- "-$FUNCTIONS_PGID" 2>/dev/null || true
+    fi
   fi
   capture_container_logs "${AZURITE_CONTAINER_ID:-}" azurite
   capture_container_logs "${REDIS_CONTAINER_ID:-}" redis
@@ -353,10 +379,12 @@ JSON
     # setsid makes Core Tools the process-group leader tracked for exact teardown.
     setsid "$FUNC_BIN" start --port "$function_port" --verbose >"$LOG_DIR/functions.log" 2>&1 &
     FUNCTIONS_PID=$!
-    wait_for_process_group "$FUNCTIONS_PID" "$FUNC_BIN"
+    FUNCTIONS_START_TIME="$(awk '{print $22}' "/proc/$FUNCTIONS_PID/stat")"
+    FUNCTIONS_PGID="$FUNCTIONS_PID"
     write_env_value FUNCTIONS_PID "$FUNCTIONS_PID"
     write_env_value FUNCTIONS_START_TIME "$FUNCTIONS_START_TIME"
     write_env_value FUNCTIONS_PGID "$FUNCTIONS_PGID"
+    wait_for_process_group "$FUNCTIONS_PID" "$FUNC_BIN"
   )
   if [[ -n "$previous_exit_trap" ]]; then
     eval "$previous_exit_trap"
