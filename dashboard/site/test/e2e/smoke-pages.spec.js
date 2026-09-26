@@ -994,11 +994,11 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await data.locator('summary').click();
   await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Memory', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Operational Value', 'Cost', 'Models & Agents', 'Skills', 'Firewall', 'MCPs', 'Steering']);
   await data.getByRole('link', { name: /Memory/ }).click();
-  const memoryPage = page.locator('[data-page-id="memory"]');
   await expect(page).toHaveURL(/#page-memory$/);
-  await expect(memoryPage.getByRole('heading', { name: 'Memory', exact: true, level: 1 })).toBeVisible();
-  await expect(memoryPage.locator('.link-button-list-item')).toHaveCount(2);
-  await expect(memoryPage.getByRole('link', { name: 'Browse AW Doctor campaign memory' }))
+  await expect(page.getByRole('heading', { name: 'Memory', exact: true, level: 1 })).toBeVisible();
+  const memoryView = page.getByRole('region', { name: 'Campaign memory' });
+  await expect(memoryView.locator('.link-button-list-item')).toHaveCount(2);
+  await expect(memoryView.getByRole('link', { name: 'Browse AW Doctor campaign memory' }))
     .toHaveAttribute('href', '#page-campaign-memory?campaign=aw-doctor');
   await expect(updatesSection.locator('summary')).toHaveText('Updates');
   await expect(updatesSection.getByRole('link')).toHaveText(['Updates', 'Indexing', 'Settings']);
