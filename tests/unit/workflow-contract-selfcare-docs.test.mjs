@@ -9,8 +9,13 @@ test("SVG visual audit covers every tracked SVG in both color schemes", () => {
   const compiled = workflow("svg-visual-audit.lock.yml");
 
   assert.match(source, /git ls-files '\*\.svg'/);
+  assert.match(source, /local checkout and manifest as the complete audit scope/);
   assert.match(source, /colorScheme: "light"/);
   assert.match(source, /colorScheme: "dark"/);
+  assert.match(source, /\bid: pi\b/);
+  assert.match(source, /\bmodel: copilot\/gpt-5\.4\b/);
+  assert.match(source, /playwright:/);
+  assert.match(source, /version: "0\.1\.\d+"/);
   assert.match(source, /4\.5:1/);
   assert.match(source, /overlap between a `<text>` element and its own descendant `<tspan>`/);
   assert.match(source, /create-check-run:/);
