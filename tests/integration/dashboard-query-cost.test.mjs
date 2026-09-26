@@ -91,6 +91,36 @@ test("benchmark measures computational and space cost per query", async (t) => {
   }
 });
 
+test("benchmark keeps indexing table-count dependencies available", async (t) => {
+  const { root, database } = await syntheticSnapshot();
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const queries = dashboardDocument.dashboard.queries;
+  const indexing = queries.find((query) => query.name === "indexing-database-table-counts");
+  const document = {
+    dashboard: {
+      ...dashboardDocument.dashboard,
+      queries: [
+        ...queries.filter((query) => (
+          query.name === indexing.from || indexing.union.includes(query.name)
+        )),
+        indexing,
+      ],
+    },
+  };
+
+  const report = await benchmarkDashboardQueryCost({
+    databasePath: database,
+    document,
+    limit: document.dashboard.queries.length,
+  });
+  const measurement = report.measurements.find(
+    ({ query }) => query === "indexing-database-table-counts",
+  );
+
+  assert.equal(measurement.status, "available", measurement.failure);
+  assert.ok(measurement.rows > 0);
+});
+
 test("benchmark reports an empty snapshot instead of an all-zero measurement", async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), "cao-query-cost-empty-"));
   t.after(() => rm(root, { recursive: true, force: true }));

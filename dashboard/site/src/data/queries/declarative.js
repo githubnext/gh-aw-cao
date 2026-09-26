@@ -616,7 +616,7 @@ function compileDashboardQuery(name, index, sources, defects, budget, compiled, 
     if (!definition) return;
     visiting.add(queryName);
     for (const input of queryInputNames(definition)) {
-      if (index.has(input)) compile(input);
+      if (index.has(input) && !Object.hasOwn(sources, input)) compile(input);
     }
     visiting.delete(queryName);
     budget.checkpoint();

@@ -167,11 +167,12 @@ async function queryLiveDashboard(
   dashboard ??= await loadActiveDashboard();
   if (signal?.aborted) throw new DashboardQueryCancelledError('dashboard queries were cancelled', 'aborted');
   const startedAt = monotonicNow();
+    const requestedWithDependencies = resolveDashboardQuerySources(context.queries, requested);
     const nativeSources = await queryIndexedDatabaseSources(
       indexedDB,
       dashboard.logicalSources,
       context.queries,
-      requested
+      requestedWithDependencies
     );
     const nativeSourceNames = new Set(Object.keys(nativeSources));
     const nonNativeRequested = [...requested].filter((name) => !nativeSourceNames.has(name));
@@ -228,7 +229,7 @@ async function queryLiveDashboard(
       ...dailyAggregateSources,
       ...executeDashboardQueries(
         context.queries,
-        { ...databasePayload, ...healthPayload },
+        { ...databasePayload, ...healthPayload, ...nativeSources },
         directRequests,
         { signal }
       )
