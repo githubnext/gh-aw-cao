@@ -32,14 +32,14 @@ func isLoopbackListen(address string) bool {
 	return strings.EqualFold(host, "localhost") || (ip != nil && ip.IsLoopback())
 }
 
-func validateHostedListen(address, certFile, keyFile string) error {
+func validateHostedListen(address, certFile, keyFile string, trustForwarded bool) error {
 	if _, _, err := net.SplitHostPort(address); err != nil {
 		return errors.New("hosted listen address must be host:port")
 	}
 	if (certFile == "") != (keyFile == "") {
 		return errors.New("hosted TLS certificate and key must be provided together")
 	}
-	if !isLoopbackListen(address) && certFile == "" {
+	if !isLoopbackListen(address) && certFile == "" && !trustForwarded {
 		return fmt.Errorf("hosted non-loopback listener %q requires a TLS certificate and key", address)
 	}
 	return nil

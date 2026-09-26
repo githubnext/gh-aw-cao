@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"strings"
 	"testing"
 	"time"
@@ -191,8 +192,17 @@ func TestRateLimitUsesForwardedClientOnlyAtTrustedBoundary(t *testing.T) {
 		t.Fatalf("trusted forwarded address not selected: %q", got)
 	}
 
-	request.Header.Set("X-Forwarded-For", "203.0.113.9, unknown")
+	trusted.config.Proxy.TrustedProxyPrefixes = []netip.Prefix{netip.MustParsePrefix("10.42.0.0/24")}
 	if got := trusted.clientIP(request); got != "127.0.0.1" {
+		t.Fatalf("forwarded address from a peer outside the trusted CIDR was selected: %q", got)
+	}
+	request.RemoteAddr = "10.42.0.5:4321"
+	if got := trusted.clientIP(request); got != "198.51.100.8" {
+		t.Fatalf("forwarded address from a trusted CIDR was rejected: %q", got)
+	}
+
+	request.Header.Set("X-Forwarded-For", "203.0.113.9, unknown")
+	if got := trusted.clientIP(request); got != "10.42.0.5" {
 		t.Fatalf("malformed trusted address fell back to caller input: %q", got)
 	}
 }

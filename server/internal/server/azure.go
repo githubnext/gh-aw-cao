@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"os"
 	"strings"
@@ -24,9 +25,10 @@ const (
 )
 
 type ProxyPolicy struct {
-	AllowedHosts   []string
-	RequireHTTPS   bool
-	TrustForwarded bool
+	AllowedHosts         []string
+	RequireHTTPS         bool
+	TrustForwarded       bool
+	TrustedProxyPrefixes []netip.Prefix
 }
 
 type AzureProxyPolicy = ProxyPolicy
@@ -59,10 +61,18 @@ func validateHostedMode(store *redisx.Store, config *Config) error {
 		return errors.New("hosted mode requires HTTPS")
 	}
 	if config.HostingMode == HostingModeHosted {
-		if err := validateHostedListen(config.Listen, config.CertFile, config.KeyFile); err != nil {
+		if isLoopbackListen(config.Listen) && !config.Proxy.TrustForwarded {
+			config.Proxy.TrustForwarded = true
+			config.Proxy.TrustedProxyPrefixes = loopbackProxyPrefixes()
+		}
+		if config.Proxy.TrustForwarded && len(config.Proxy.TrustedProxyPrefixes) == 0 {
+			return errors.New("hosted forwarded headers require explicit trusted proxy CIDRs")
+		}
+		if err := validateHostedListen(
+			config.Listen, config.CertFile, config.KeyFile, config.Proxy.TrustForwarded,
+		); err != nil {
 			return err
 		}
-		config.Proxy.TrustForwarded = isLoopbackListen(config.Listen)
 	}
 	if config.GitHubOAuth == nil {
 		return errors.New("hosted mode requires GitHub OAuth configuration")
@@ -77,6 +87,9 @@ func validAzureProxyRequest(request *http.Request, policy AzureProxyPolicy) bool
 	host := request.Host
 	secure := request.TLS != nil
 	if policy.TrustForwarded {
+		if len(policy.TrustedProxyPrefixes) > 0 && !trustedProxyPeer(request.RemoteAddr, policy.TrustedProxyPrefixes) {
+			return false
+		}
 		if forwarded := forwardedHeader(request, "X-Forwarded-Host"); forwarded != "" {
 			host = forwarded
 		}
@@ -104,6 +117,24 @@ func validAzureProxyRequest(request *http.Request, policy AzureProxyPolicy) bool
 		return true
 	}
 	return secure
+}
+
+func trustedProxyPeer(remoteAddress string, prefixes []netip.Prefix) bool {
+	host, _, err := net.SplitHostPort(remoteAddress)
+	if err != nil {
+		host = remoteAddress
+	}
+	address, err := netip.ParseAddr(strings.Trim(host, "[]"))
+	if err != nil {
+		return false
+	}
+	address = address.Unmap()
+	for _, prefix := range prefixes {
+		if prefix.Contains(address) {
+			return true
+		}
+	}
+	return false
 }
 
 func forwardedHeader(request *http.Request, name string) string {
