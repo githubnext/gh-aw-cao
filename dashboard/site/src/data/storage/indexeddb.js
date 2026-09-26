@@ -695,8 +695,8 @@ export async function countCollections(indexedDB, storeNames) {
   }
   const missing = [...new Set(storeNames)].filter((storeName) => !memo.has(storeName));
   if (missing.length > 0) {
-    const database = await openCanonicalDatabase(indexedDB);
     const batch = (async () => {
+      const database = await openCanonicalDatabase(indexedDB);
       try {
         const transaction = database.transaction(missing);
         const done = transactionDone(transaction);

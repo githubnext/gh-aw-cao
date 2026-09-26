@@ -363,16 +363,20 @@ describe('canonical view sources', () => {
     const nativeCounts = vi.spyOn(IDBObjectStore.prototype, 'count');
 
     const before = await queryNativeCountSources(indexedDB, sources, [query], [query.name]);
+    expect(nativeCounts).toHaveBeenCalledOnce();
     await recordTransaction(indexedDB, {
       id: 'ingest-jsonl:current:memoization',
       kind: 'ingest-jsonl',
       createdAt: '2026-09-09T05:00:00Z'
     });
+    const callsAfterWrite = nativeCounts.mock.calls.length;
     const after = await queryNativeCountSources(indexedDB, sources, [query], [query.name]);
+    const repeated = await queryNativeCountSources(indexedDB, sources, [query], [query.name]);
 
     expect(before[query.name].rows).toEqual([{ transactions: 0 }]);
     expect(after[query.name].rows).toEqual([{ transactions: 1 }]);
-    expect(nativeCounts).toHaveBeenCalledTimes(2);
+    expect(repeated).toEqual(after);
+    expect(nativeCounts).toHaveBeenCalledTimes(callsAfterWrite + 1);
   });
 
   it('pushes declarative failed-run predicates into the canonical run index', async () => {
