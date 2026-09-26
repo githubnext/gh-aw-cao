@@ -64,6 +64,37 @@ func TestDefaultNamespaceIsStablePerCheckout(t *testing.T) {
 	}
 }
 
+func TestCheckoutRootFindsGitMarker(t *testing.T) {
+	checkout := t.TempDir()
+	if err := os.WriteFile(filepath.Join(checkout, ".git"), []byte("gitdir: test"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	nested := filepath.Join(checkout, "server", "internal")
+	if err := os.MkdirAll(nested, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	root, source := checkoutRoot(nested)
+	if root != checkout {
+		t.Fatalf("checkoutRoot(%q) root = %q, want %q", nested, root, checkout)
+	}
+	if source != checkoutRootSourceGitMarker {
+		t.Fatalf("checkoutRoot(%q) source = %q, want %q", nested, source, checkoutRootSourceGitMarker)
+	}
+}
+
+func TestCheckoutRootFallsBackWithoutGitMarker(t *testing.T) {
+	directory := t.TempDir()
+
+	root, source := checkoutRoot(directory)
+	if root != directory {
+		t.Fatalf("checkoutRoot(%q) root = %q, want the original directory", directory, root)
+	}
+	if source != checkoutRootSourceFallback {
+		t.Fatalf("checkoutRoot(%q) source = %q, want %q", directory, source, checkoutRootSourceFallback)
+	}
+}
+
 func TestStoreNamespacesUseDisjointKeysAndIndexes(t *testing.T) {
 	first := NewStore(&Client{}, "first")
 	second := NewStore(&Client{}, "second")
