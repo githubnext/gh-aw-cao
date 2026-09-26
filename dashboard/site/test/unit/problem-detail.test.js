@@ -117,7 +117,7 @@ describe('problem detail', () => {
     expect(rendered.textContent).toBe('This runtime problem is no longer present in the selected horizon.');
   });
 
-  it('omits unavailable fields from sparse driver-exit evidence', () => {
+  it('explains fields not emitted before a sparse driver-exit failure', () => {
     const sparseProblem = /** @type {Record<string, unknown>} */ ({ ...problem() });
     for (const field of [
       'failure-message',
@@ -134,8 +134,10 @@ describe('problem detail', () => {
     }));
 
     expect(rendered.textContent).not.toContain('Unavailable');
-    expect(rendered.querySelector('.problem-view-sections')?.textContent).not.toContain('Failure message');
-    expect(rendered.querySelector('.problem-view-sections')?.textContent).not.toContain('Requested model');
+    expect(rendered.querySelector('.problem-view-sections')?.textContent).toContain('Failure messageWorkflow failed');
+    expect(rendered.querySelector('.problem-view-sections')?.textContent).toContain('JobThe failed job was not identified in retained run telemetry.');
+    expect(rendered.querySelector('.problem-view-sections')?.textContent).toContain('Requested modelAutomatic model selection was requested.');
+    expect(rendered.querySelector('.problem-view-sections')?.textContent).toContain('Resolved modelModel resolution did not complete before the failure.');
     expect(rendered.querySelector('.problem-view-log')?.textContent).toContain('did not retain raw output');
   });
 });
