@@ -1,3 +1,7 @@
+import { createDebug } from './debug.js';
+
+const debugRetry = createDebug('retry');
+
 /**
  * Runs an asynchronous operation again after transient failures.
  *
@@ -18,11 +22,19 @@ export async function withRetries(operation, options = {}) {
 
   for (let attempt = 1; ; attempt += 1) {
     try {
-      return await operation(attempt);
+      const result = await operation(attempt);
+      if (attempt > 1) debugRetry({ event: 'succeeded', attempt, attempts });
+      return result;
     } catch (error) {
-      if (attempt >= attempts) throw error;
+      const errorName = error instanceof Error ? error.name : 'UnknownError';
+      if (attempt >= attempts) {
+        debugRetry({ event: 'exhausted', attempt, attempts, errorName });
+        throw error;
+      }
+      const backoffMs = delayMs * (2 ** (attempt - 1));
+      debugRetry({ event: 'retrying', attempt, attempts, backoffMs, errorName });
       await new Promise((resolve) => {
-        setTimeout(resolve, delayMs * (2 ** (attempt - 1)));
+        setTimeout(resolve, backoffMs);
       });
     }
   }
