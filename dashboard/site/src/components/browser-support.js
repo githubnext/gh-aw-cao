@@ -1,10 +1,14 @@
 import { h } from "../dom.js";
 import { getPrimerStyles } from "../styles.js";
+import { createDebug } from "../debug.js";
+
+const debugBrowserSupport = createDebug("browser-support");
 
 /**
  * @returns {HTMLElement}
  */
 export function renderIndexedDBUnsupported() {
+  debugBrowserSupport({ event: "indexeddb-unsupported" });
   return h(
     "main",
     { className: "browser-support-message" },
