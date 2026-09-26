@@ -26,11 +26,13 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-aw-cao/server/internal/repositorymemory"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
@@ -64,6 +66,7 @@ type App struct {
 	hub           *eventHub
 	canonical     canonicalService
 	reconciler    Reconciler
+	memory        *repositorymemory.RemoteResolver
 	webhookSecret []byte
 }
 
@@ -108,6 +111,7 @@ func New(store *redisx.Store, config Config) (*App, error) {
 		}
 	}
 	reconciler := config.Reconciler
+	var memoryResolver *repositorymemory.RemoteResolver
 	if err := validateProfileExclusivity(config); err != nil {
 		return nil, err
 	}
@@ -117,6 +121,17 @@ func New(store *redisx.Store, config Config) (*App, error) {
 			return nil, fmt.Errorf("configure collection: %w", err)
 		}
 		reconciler = collector
+		if !config.Collector.AdmitOnly {
+			memoryResolver = &repositorymemory.RemoteResolver{
+				Cache:         store,
+				Installations: collector.enrollment,
+				Source:        collector.client,
+				Governor: &githubapp.Budget{
+					Store: store, Floor: config.Collector.RateLimitFloor, Cost: 1,
+				},
+				ControlRepository: config.Collector.ControlRepository,
+			}
+		}
 	}
 	if reconciler == nil && config.SourceDirectory != "" {
 		reconciler = DirectoryReconciler{
@@ -127,7 +142,7 @@ func New(store *redisx.Store, config Config) (*App, error) {
 	serverLog.Printf("initialized hosting_mode=%s oauth=%t source_ingestion=%t", mode, oauth != nil, config.SourceDirectory != "")
 	return &App{
 		store: store, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub(),
-		canonical: canonicalService{store: store}, reconciler: reconciler,
+		canonical: canonicalService{store: store}, reconciler: reconciler, memory: memoryResolver,
 		webhookSecret: []byte(config.WebhookSecret),
 	}, nil
 }
@@ -218,6 +233,8 @@ func (a *App) Handler() http.Handler {
 	register("GET /api/v1/events", a.events)
 	register("POST /api/v1/query", a.query)
 	register("GET /api/v1/diagnostics", a.diagnostics)
+	register("GET /api/v1/memory/{campaign}", a.repositoryMemoryCampaign)
+	register("GET /api/v1/memory/{campaign}/content", a.repositoryMemoryContent)
 	register("POST /api/v1/refresh", a.refresh)
 	register("GET /api/repositories", a.repositories)
 	register("GET /api/repositories/{id}", a.repository)

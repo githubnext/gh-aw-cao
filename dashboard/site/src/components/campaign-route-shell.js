@@ -25,7 +25,7 @@ const debugCampaignRouteShell = createDebug('campaign-route-shell');
  *   rootClassName: string,
  *   selectMessage: string,
  *   description: string,
- *   currentTab: 'overview'|'workflows'|'runs'|'issues'|'repositories'|'insights'|'problems'|'reports',
+ *   currentTab: 'overview'|'workflows'|'runs'|'issues'|'repositories'|'insights'|'problems'|'reports'|'memory',
  *   bodyRenderer: CampaignRouteBodyRenderer | undefined
  * }} CampaignRouteShellConfig
  */
