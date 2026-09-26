@@ -180,7 +180,7 @@ test("each selected dashboard view renders with live data", async ({ context }, 
         succeededRequests.add(response.request());
       });
 
-      const assessment = (async () => {
+      const assessPage = async () => {
         try {
           await assessedPage.goto(`${preview.url}/#page-${encodeURIComponent(pageDefinition.id)}`, {
             waitUntil: "domcontentloaded",
@@ -255,12 +255,24 @@ test("each selected dashboard view renders with live data", async ({ context }, 
           result.crashed = crashed;
           result.status = "failed";
         }
-      })();
+      };
+      const remainingRunBudgetMs = assessmentDeadline - Date.now();
+      if (remainingRunBudgetMs <= 0) {
+        closing = true;
+        await assessedPage.close();
+        result.assessmentErrors.push(
+          "Dashboard view assessment exhausted its run budget during page setup.",
+        );
+        result.status = "failed";
+        summary.results.push(result);
+        break;
+      }
       const pageTimeoutMs = Math.min(
         dashboardAssessmentPageBudgetMs
           + (pageIndex === 0 ? dashboardAssessmentStartupBudgetMs : 0),
-        availableRunBudgetMs,
+        remainingRunBudgetMs,
       );
+      const assessment = assessPage();
       let timeout;
       const outcome = await Promise.race([
         assessment.then(() => "completed"),
