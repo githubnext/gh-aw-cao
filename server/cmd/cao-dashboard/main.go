@@ -192,6 +192,20 @@ func newRedisStore(rawURL, rawNamespace string) (*redisx.Store, error) {
 	return redisx.NewStore(client, namespace), nil
 }
 
+// newOptionalRedisStore attempts to construct a Redis store for the doctor
+// command's read-only checks. Unlike newRedisStore, a construction failure is
+// not fatal here: the doctor command still produces a full report, with the
+// Redis-dependent checks explaining why they could not run. It logs only
+// whether construction succeeded, never the URL or namespace value.
+func newOptionalRedisStore(rawURL, namespace string) *redisx.Store {
+	client, err := redisx.New(rawURL)
+	if err != nil {
+		commandLog.Printf("doctor could not construct a Redis client")
+		return nil
+	}
+	return redisx.NewStore(client, namespace)
+}
+
 // telemetrySetupFunc matches telemetry.Setup's signature so tests can
 // substitute a fake without opening real OTLP exporters or network sockets.
 type telemetrySetupFunc func(ctx context.Context, version string) (telemetry.Shutdown, error)
@@ -314,11 +328,7 @@ func newDoctorCommand() *cobra.Command {
 		// A client that cannot be constructed is itself a finding, so the
 		// report is still produced; the Redis checks report why they could
 		// not run.
-		if client, err := redisx.New(endpoint); err == nil {
-			check.Store = redisx.NewStore(client, namespace)
-		} else {
-			commandLog.Printf("doctor could not construct a Redis client")
-		}
+		check.Store = newOptionalRedisStore(endpoint, namespace)
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
 		report := check.Run(ctx)
