@@ -755,7 +755,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .temporal-plot-current strong { color: var(--fg); font-size: 1.375rem; line-height: 1; }
 .temporal-plot-trend { min-width: 0; max-width: 100%; display: inline-flex; align-items: center; gap: 5px; margin: 0; color: var(--muted); font-size: .6875rem; font-variant-numeric: tabular-nums; line-height: 1.25; }
 .temporal-plot-trend strong { color: var(--fg); }
-.temporal-plot-trend-arrow { display: inline-block; flex: none; font-size: .875rem; font-weight: 800; }
+.temporal-plot-trend-arrow { display: inline-block; flex: none; font-size: .875rem; font-weight: 700; }
 .temporal-plot-trend-improving, .temporal-plot-trend-improving strong,
 .temporal-plot-trend-improving .temporal-plot-trend-arrow { color: var(--success); }
 .temporal-plot-trend-worsening, .temporal-plot-trend-worsening strong,
