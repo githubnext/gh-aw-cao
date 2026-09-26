@@ -175,6 +175,18 @@ gh secret set GH_AW_GITHUB_WRITE_PAT --repo "acme/central-agentic-ops"
 
 The GitHub CLI prompts for each token without echoing it. Do not include either token directly in the command. `GH_AW_GITHUB_TOKEN` remains a deprecated compatibility fallback for existing installations.
 
+### Migrate from the legacy PAT
+
+Do not copy one broad legacy token into both new secrets. Create independent tokens with separate permission and repository ceilings:
+
+1. Configure `GH_AW_GITHUB_READ_PAT` for the control repository and every exact repository that CAO must inspect.
+2. Configure `GH_AW_GITHUB_WRITE_PAT` only for approved safe-output repositories. When review outputs stay in the control repository, it normally needs only the control repository.
+3. Run a bounded review that proves the read PAT can read all intended repositories and cannot perform a reversible write probe.
+4. Prove separately that the write PAT can perform and clean up the same probe only in an approved output repository.
+5. Delete `GH_AW_GITHUB_TOKEN`, then repeat the bounded review to prove neither path depended on the compatibility fallback.
+
+Use a disposable tag, branch, or equivalent repository-standard probe and always clean it up. Do not perform a write probe against an unapproved production repository.
+
 ## Rotation and Revocation
 
 For GitHub Apps:
@@ -206,6 +218,8 @@ Before promotion, verify:
 - expected precedence when both are configured;
 - target repository coverage;
 - organization PAT policy, approval state, resource-owner scope, expiration, and required API compatibility when using a PAT;
-- read operations for repository and workflow discovery;
+- read operations for repository and workflow discovery, plus a negative assertion that the read credential cannot perform the selected write probe;
+- write operations only through the write credential and only in an approved safe-output repository, including cleanup of any reversible probe;
+- absence of `GH_AW_GITHUB_TOKEN` after a split-PAT migration has passed without the compatibility fallback;
 - a review output in the intended control repository without credential material;
 - authentication-profile review whenever target scope, campaign API requirements, mode, or review destination changes.
