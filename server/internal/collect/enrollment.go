@@ -14,8 +14,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
+
+var enrollmentLog = logger.New("cao:collect:enrollment")
 
 const (
 	installationsKey        = "collect:installations"
@@ -97,6 +100,7 @@ func (e Enrollment) AddRepositories(ctx context.Context, installationID int64, r
 	if _, err := e.Store.SetAdd(ctx, installationRepositoriesKey(installationID), normalized...); err != nil {
 		return err
 	}
+	transferred := 0
 	for _, repository := range normalized {
 		// A repository that moved between installations must not stay in the
 		// previous installation's set: a later removal or deletion event for
@@ -106,19 +110,36 @@ func (e Enrollment) AddRepositories(ctx context.Context, installationID int64, r
 		if err != nil {
 			return err
 		}
-		if previous != "" && previous != strconv.FormatInt(installationID, 10) {
-			if identifier, parseErr := strconv.ParseInt(previous, 10, 64); parseErr == nil && identifier > 0 {
-				if err := e.Store.SetRemove(ctx, installationRepositoriesKey(identifier), repository); err != nil {
-					return err
-				}
+		if previousInstallation, ok := repositoryTransfer(previous, installationID); ok {
+			if err := e.Store.SetRemove(ctx, installationRepositoriesKey(previousInstallation), repository); err != nil {
+				return err
 			}
+			transferred++
 		}
 		if err := e.Store.HashSet(ctx, repositoryInstallations, repository,
 			strconv.FormatInt(installationID, 10)); err != nil {
 			return err
 		}
 	}
+	enrollmentLog.Printf("enrolled repositories installation=%d count=%d transferred=%d",
+		installationID, len(normalized), transferred)
 	return nil
+}
+
+// repositoryTransfer decides whether a repository's recorded owner in Redis
+// differs from the installation now claiming it. It returns the previous
+// installation id and whether the caller must move the repository out of
+// that installation's set; an empty or unparsable previous owner, or one that
+// already matches installationID, needs no transfer.
+func repositoryTransfer(previous string, installationID int64) (previousInstallation int64, transferred bool) {
+	if previous == "" || previous == strconv.FormatInt(installationID, 10) {
+		return 0, false
+	}
+	identifier, err := strconv.ParseInt(previous, 10, 64)
+	if err != nil || identifier <= 0 {
+		return 0, false
+	}
+	return identifier, true
 }
 
 // RemoveRepositories drops repositories from enrollment and reports the
@@ -183,6 +204,7 @@ func (e Enrollment) RemoveInstallation(ctx context.Context, installationID int64
 	if err := e.Store.Clear(ctx, installationRepositoriesKey(installationID)); err != nil {
 		return removed, err
 	}
+	enrollmentLog.Printf("removed installation=%d repositories=%d", installationID, len(removed))
 	return removed, e.Store.SetRemove(ctx, installationsKey, strconv.FormatInt(installationID, 10))
 }
 
