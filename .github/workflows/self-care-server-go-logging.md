@@ -113,6 +113,12 @@ pre-agent-steps:
     with:
       go-version-file: server/go.mod
       cache: false
+  - name: Install golangci-lint
+    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2
+  - name: Lint server baseline
+    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    run: cd server && golangci-lint fmt --diff && golangci-lint run ./...
   - name: Validate server baseline
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     run: go -C server test ./...
