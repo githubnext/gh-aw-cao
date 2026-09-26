@@ -64,6 +64,7 @@ const dashboardDocument = {
               default: 'balanced',
               options: [{ value: 'balanced', label: 'Balanced' }, { value: 'fast', label: 'Fast' }]
             },
+            { id: 'offset', label: 'Offset', control: 'slider', default: 0.1, min: 0.1, max: 1, step: 0.25 },
             { id: 'unsupported', label: 'Unsupported', control: 'colour-picker' }
           ]
         }
@@ -122,7 +123,7 @@ describe('WebMCP manifest generation', () => {
 
   it('maps form controls to JSON Schema properties', () => {
     const tool = requireTool(webMCPManifestForDashboard(dashboardDocument), 'cao_simulator');
-    expect(tool.formFields).toEqual(['multiplier', 'include-live', 'profile']);
+    expect(tool.formFields).toEqual(['multiplier', 'include-live', 'profile', 'offset']);
     expect(tool.inputSchema.properties.multiplier).toEqual({
       type: 'number',
       description: 'AIC multiplier',
@@ -141,6 +142,13 @@ describe('WebMCP manifest generation', () => {
       description: 'Profile',
       enum: ['balanced', 'fast'],
       default: 'balanced'
+    });
+    expect(tool.inputSchema.properties.offset).toEqual({
+      type: 'number',
+      description: 'Offset',
+      minimum: 0.1,
+      maximum: 1,
+      default: 0.1
     });
     expect(tool.inputSchema.properties.unsupported).toBeUndefined();
     expect(tool.inputSchema.required).toBeUndefined();

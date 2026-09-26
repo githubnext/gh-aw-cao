@@ -276,11 +276,12 @@
           dashboardWebMCP.refresh();
           return;
         }
-        const loadPageSources = renderedPageSourceLoader;
-        if (!loadPageSources) return;
+        if (!renderedPageSourceLoader) return;
         dashboardWebMCP = startDashboardWebMCP(document, {
           dashboardDocument: () => dashboardDocument,
-          loadPageSources: (pageId, loadOptions) => (renderedPageSourceLoader ?? loadPageSources)(pageId, loadOptions),
+          loadPageSources: (pageId, loadOptions) => renderedPageSourceLoader
+            ? renderedPageSourceLoader(pageId, loadOptions)
+            : Promise.reject(new Error("The dashboard data pipeline is not ready.")),
           navigate: (route) => {
             window.location.hash = route;
           },

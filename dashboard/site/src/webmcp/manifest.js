@@ -99,6 +99,16 @@ export function isAgentFacingPage(page, navigationPages = new Set()) {
 }
 
 /**
+ * Reports whether a value is an exact multiple of a positive step.
+ * @param {number} value
+ * @param {number} step
+ */
+function isMultipleOf(value, step) {
+  const quotient = value / step;
+  return Math.abs(quotient - Math.round(quotient)) < 1e-9;
+}
+
+/**
  * Maps one declared form field to a JSON Schema property.
  * @param {Record<string, unknown>} field
  * @returns {Record<string, unknown> | null}
@@ -117,7 +127,12 @@ function formFieldSchema(field) {
       const schema = { type: 'number', description };
       if (typeof field.min === 'number' && Number.isFinite(field.min)) schema.minimum = field.min;
       if (typeof field.max === 'number' && Number.isFinite(field.max)) schema.maximum = field.max;
-      if (typeof field.step === 'number' && Number.isFinite(field.step) && field.step > 0) schema.multipleOf = field.step;
+      // Slider positions are offsets from `min`, so `multipleOf` (an offset from
+      // zero) is only equivalent when `min` is itself a multiple of the step.
+      if (typeof field.step === 'number' && Number.isFinite(field.step) && field.step > 0
+        && (typeof schema.minimum !== 'number' || isMultipleOf(schema.minimum, field.step))) {
+        schema.multipleOf = field.step;
+      }
       if (typeof field.default === 'number' && Number.isFinite(field.default)) schema.default = field.default;
       return schema;
     }
