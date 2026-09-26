@@ -83,6 +83,30 @@ func resolveRedisEndpoint(flagValue, envValue, defaultValue string) (string, red
 	return defaultValue, redisEndpointSourceDefault
 }
 
+// namespaceDefaultSource identifies which input determined the default value
+// offered to the doctor command's --redis-namespace flag before any explicit
+// flag override. It is useful for diagnosing misconfiguration without
+// logging the namespace itself.
+type namespaceDefaultSource string
+
+const (
+	namespaceDefaultSourceEnv      namespaceDefaultSource = "env"
+	namespaceDefaultSourceCheckout namespaceDefaultSource = "checkout"
+)
+
+// resolveNamespaceDefault applies the standard priority for the doctor
+// command's default Redis namespace: an explicit CAO_REDIS_NAMESPACE
+// environment override, then checkoutDefault, which is normally derived from
+// the working directory by redisx.DefaultNamespace. It returns the resolved
+// default and which input supplied it, so callers can log the source without
+// exposing the namespace value.
+func resolveNamespaceDefault(envValue, checkoutDefault string) (string, namespaceDefaultSource) {
+	if namespace := strings.TrimSpace(envValue); namespace != "" {
+		return namespace, namespaceDefaultSourceEnv
+	}
+	return checkoutDefault, namespaceDefaultSourceCheckout
+}
+
 func main() {
 	if override := strings.TrimSpace(os.Getenv("CAO_BUILD_VERSION")); override != "" {
 		version = override
@@ -135,13 +159,13 @@ func run(arguments []string) error {
 func doctorCommand(arguments []string) error {
 	flags := flag.NewFlagSet("doctor", flag.ContinueOnError)
 	redisURL := flags.String("redis-url", "", "server-side Redis URL; defaults to CAO_REDIS_URL then "+defaultRedisURL)
-	defaultNamespace, err := redisx.DefaultNamespace(".")
+	checkoutNamespace, err := redisx.DefaultNamespace(".")
 	if err != nil {
 		return err
 	}
-	if configured := strings.TrimSpace(os.Getenv("CAO_REDIS_NAMESPACE")); configured != "" {
-		defaultNamespace = configured
-	}
+	defaultNamespace, namespaceDefaultSource := resolveNamespaceDefault(
+		os.Getenv("CAO_REDIS_NAMESPACE"), checkoutNamespace)
+	commandLog.Printf("doctor resolved namespace default source=%s", namespaceDefaultSource)
 	redisNamespace := flags.String("redis-namespace", defaultNamespace, "Redis key namespace")
 	databaseQueries := flags.String("database-queries",
 		"../dashboard/site/src/data/queries/database.json", "canonical database projection queries")
