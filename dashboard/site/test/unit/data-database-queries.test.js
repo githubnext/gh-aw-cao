@@ -337,6 +337,41 @@ describe('canonical view sources', () => {
     expect(collectionReads).not.toHaveBeenCalled();
   });
 
+  it('resolves literal-labelled indexing table counts with native IndexedDB counts', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+    const collectionReads = vi.spyOn(IDBObjectStore.prototype, 'getAll');
+    const nativeCounts = vi.spyOn(IDBObjectStore.prototype, 'count');
+    const required = [
+      'indexing-campaigns-table-count',
+      'indexing-repositories-table-count',
+      'indexing-workflows-table-count',
+      'indexing-runs-table-count',
+      'indexing-domains-table-count',
+      'indexing-tools-table-count',
+      'indexing-audits-table-count',
+      'indexing-issues-table-count',
+      'indexing-operational-values-table-count',
+      'indexing-transactions-table-count'
+    ];
+
+    const result = await queryNativeCountSources(
+      indexedDB,
+      sources,
+      dashboardQueries,
+      required
+    );
+
+    expect(result['indexing-tools-table-count'].rows).toEqual([
+      { table: 'tool events', records: 1 }
+    ]);
+    expect(result['indexing-domains-table-count'].rows).toEqual([]);
+    expect(Object.keys(result)).toEqual(required.filter((name) => (
+      name !== 'indexing-operational-values-table-count'
+    )));
+    expect(nativeCounts).toHaveBeenCalledTimes(required.length - 1);
+    expect(collectionReads).not.toHaveBeenCalled();
+  });
+
   it('pushes declarative failed-run predicates into the canonical run index', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
     const collectionReads = vi.spyOn(IDBObjectStore.prototype, 'getAll');
