@@ -3,6 +3,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
 import {
+  dashboardAssessmentCleanupBudgetMs,
   dashboardAssessmentPageBudgetMs,
   dashboardAssessmentStartupBudgetMs,
   dashboardAssessmentTimeout,
@@ -59,6 +60,7 @@ async function loadPageDefinition(previewUrl, pageDefinition) {
 }
 
 test("each selected dashboard view renders with live data", async ({ context }, testInfo) => {
+  const assessmentStartedAt = Date.now();
   await rm(outputDirectory, { force: true, recursive: true });
   await mkdir(outputDirectory, { recursive: true });
 
@@ -99,7 +101,11 @@ test("each selected dashboard view renders with live data", async ({ context }, 
       throw new Error("No selected page IDs exist in the composed dashboard.");
     }
     summary.queryUsageGraph = renderAssessedDashboardQueryUsageGraph(dashboard, pageChunks);
-    test.setTimeout(dashboardAssessmentTimeout(pages.length));
+    const assessmentTimeoutMs = dashboardAssessmentTimeout(pages.length);
+    const assessmentDeadline = assessmentStartedAt
+      + assessmentTimeoutMs
+      - dashboardAssessmentCleanupBudgetMs;
+    test.setTimeout(assessmentTimeoutMs);
 
     for (const [pageIndex, pageDefinition] of pages.entries()) {
       const result = {
@@ -117,6 +123,15 @@ test("each selected dashboard view renders with live data", async ({ context }, 
         assessmentErrors: [],
         failedRequests: [],
       };
+      const availableRunBudgetMs = assessmentDeadline - Date.now();
+      if (availableRunBudgetMs <= 0) {
+        result.assessmentErrors.push(
+          "Dashboard view assessment exhausted its run budget before this page could start.",
+        );
+        result.status = "failed";
+        summary.results.push(result);
+        break;
+      }
       const assessedPage = await context.newPage();
       let closing = false;
       let crashed = false;
@@ -241,8 +256,11 @@ test("each selected dashboard view renders with live data", async ({ context }, 
           result.status = "failed";
         }
       })();
-      const pageTimeoutMs = dashboardAssessmentPageBudgetMs
-        + (pageIndex === 0 ? dashboardAssessmentStartupBudgetMs : 0);
+      const pageTimeoutMs = Math.min(
+        dashboardAssessmentPageBudgetMs
+          + (pageIndex === 0 ? dashboardAssessmentStartupBudgetMs : 0),
+        availableRunBudgetMs,
+      );
       let timeout;
       const outcome = await Promise.race([
         assessment.then(() => "completed"),
