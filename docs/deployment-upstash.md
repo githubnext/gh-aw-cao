@@ -80,7 +80,7 @@ The CAO Redis client supports credentials in the standard TLS Redis URL, verifie
 
 ### Health and diagnostics
 
-Use `GET /api/health` for liveness and `GET /api/readiness` for readiness. Readiness remains unavailable until the server can reach Upstash and an active generation exists.
+Use `GET /api/health` to check the server's Redis dependency and `GET /api/readiness` to check whether it can serve dashboard data. Both endpoints report an Upstash outage, so don't use them as process-only liveness probes that automatically restart otherwise healthy replicas. Readiness remains unavailable until the server can reach Upstash and an active generation exists.
 
 Run the read-only diagnostics from the application container:
 
@@ -98,7 +98,7 @@ Configure capacity alerts before the database reaches its storage or command lim
 
 ### Logs and traces
 
-Container logs include Redis operation names, counts, timings, and status, but not the Upstash URL, credentials, source records, or query payloads. To enable selected debug namespaces, set `DEBUG` to a value such as `cao:server,cao:redis`.
+Container logs include Redis operation names and argument or batch counts, but not the Upstash URL, credentials, source records, or query payloads. To enable selected debug namespaces, set `DEBUG` to a value such as `cao:server,cao:redis`.
 
 The server exports vendor-neutral OpenTelemetry traces when standard `OTEL_*` environment variables are configured. Keep exporter credentials in your application's secret manager.
 

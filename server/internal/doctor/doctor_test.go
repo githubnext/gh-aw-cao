@@ -124,6 +124,25 @@ func TestRedisStatsFailsAfterAnyEviction(t *testing.T) {
 	}
 }
 
+func TestRedisPersistenceWarnsWhenProviderDoesNotReportMetrics(t *testing.T) {
+	doctor := testDoctor(fakeClient{do: func(arguments ...string) (any, error) {
+		if len(arguments) == 2 && arguments[0] == "INFO" && arguments[1] == "persistence" {
+			return "", nil
+		}
+		return nil, fmt.Errorf("unexpected command %v", arguments)
+	}})
+	check := doctor.checkRedisPersistence(context.Background())
+	if check.Status != StatusWarn {
+		t.Fatalf("status = %s, want warn: %+v", check.Status, check)
+	}
+	if !strings.Contains(check.Summary, "does not report") {
+		t.Fatalf("summary does not identify unavailable provider metrics: %s", check.Summary)
+	}
+	if !strings.Contains(check.Remedy, "authoritative evidence") {
+		t.Fatalf("remedy does not preserve the rebuild path: %s", check.Remedy)
+	}
+}
+
 func TestRedisTransportRejectsPlaintextRemoteEndpoint(t *testing.T) {
 	doctor := Doctor{RedisURL: "redis://redis.example:6379/0"}
 	check := doctor.checkRedisTransport(context.Background())

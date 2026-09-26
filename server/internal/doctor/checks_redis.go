@@ -226,6 +226,13 @@ func (d Doctor) checkRedisPersistence(ctx context.Context) Check {
 	if err != nil {
 		return failed(id, areaRedis, title, err)
 	}
+	if len(fields) == 0 {
+		return Check{
+			ID: id, Area: areaRedis, Title: title, Status: StatusWarn,
+			Summary: "Redis does not report persistence metrics",
+			Remedy:  "confirm the managed Redis provider's durability and recovery behavior; retain authoritative evidence for a rebuild",
+		}
+	}
 	aofEnabled := infoInt(fields, "aof_enabled") == 1
 	lastSave := strings.TrimSpace(fields["rdb_last_bgsave_status"])
 	details := []Detail{
