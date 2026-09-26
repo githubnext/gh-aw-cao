@@ -30,13 +30,28 @@ export GH_HOST=github.example.ghe.com # Omit on github.com.
   --dry-run
 
 ./cao.sh setup-auth github-app \
-  --repo acme/central-agentic-ops
+  --repo acme/central-agentic-ops \
+  --write-repository acme/approved-output-repository
 ```
+
+The read App is installed on the control repository and every exact repository
+allowed by `.github/workflows/cao.json`. The write App defaults to only the
+control repository for review outputs. Repeat `--write-repository OWNER/REPO`
+to replace that default with the exact repositories approved for safe-output
+writes.
 
 The helper uses `GH_HOST`, or `GITHUB_SERVER_URL` in Actions, for repository,
 App registration, installation, and settings URLs. On GitHub Enterprise Cloud
 data-residency hosts (`*.ghe.com`), it omits the unavailable Campaigns App
 permission from the generated read-App manifest.
+
+On data-residency hosts, GitHub exposes organization installation metadata but
+does not expose the selected repository list to the CLI's OAuth token. The
+helper verifies that each installation uses **Only select repositories**, opens
+the organization-owned App installation settings route, and prints the exact
+repositories that the operator must verify there. The first bounded workflow
+run must then prove read access to every intended repository and write access
+only in an approved safe-output repository.
 
 An organization-owned private App fails closed when policy enrolls a repository owned by another organization.
 

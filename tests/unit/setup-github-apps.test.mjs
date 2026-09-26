@@ -7,11 +7,14 @@ import test from "node:test";
 
 import {
   APP_PROFILES,
+  accountInstallationsEndpoint,
+  appInstallationUrl,
   appPermissionsForServer,
   appRegistrationUrl,
   buildGitHubAppManifest,
   deriveAppName,
   deriveInstallationTargets,
+  deriveWriteInstallationTargets,
   githubServerUrl,
   installationIncludesRepository,
   installationIncludesTarget,
@@ -106,6 +109,22 @@ test("GitHub App setup honors GitHub Enterprise Cloud host configuration", () =>
     appRegistrationUrl("octo", "state", "https://contoso-aw.ghe.com"),
     "https://contoso-aw.ghe.com/organizations/octo/settings/apps/new?state=state",
   );
+  assert.equal(
+    appInstallationUrl("octo", "control-read", "https://github.com"),
+    "https://github.com/apps/control-read/installations/new",
+  );
+  assert.equal(
+    appInstallationUrl("octo", "control-read", "https://contoso-aw.ghe.com"),
+    "https://contoso-aw.ghe.com/organizations/octo/settings/apps/control-read/installations",
+  );
+  assert.equal(
+    accountInstallationsEndpoint("octo", "https://github.com"),
+    "/user/installations?per_page=100",
+  );
+  assert.equal(
+    accountInstallationsEndpoint("octo", "https://contoso-aw.ghe.com"),
+    "/orgs/octo/installations?per_page=100",
+  );
 });
 
 test("App setup derives selected-repository installations from CAO policy", () => {
@@ -125,6 +144,17 @@ test("App setup derives selected-repository installations from CAO policy", () =
     { owner: "octo", repositories: ["control", "service-a"] },
     { owner: "other-org", repositories: ["service-a", "service-b"] },
   ]);
+});
+
+test("App setup scopes write installations independently", () => {
+  assert.deepEqual(
+    deriveWriteInstallationTargets("octo/control"),
+    [{ owner: "octo", repositories: ["control"] }],
+  );
+  assert.deepEqual(
+    deriveWriteInstallationTargets("octo/control", ["octo/output-b", "octo/output-a"]),
+    [{ owner: "octo", repositories: ["output-a", "output-b"] }],
+  );
 });
 
 test("repository credentials keep the private key out of command arguments", () => {
@@ -198,6 +228,9 @@ test("organization dry run emits private manifests without requiring GitHub acce
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
   assert.equal(output.repo, "githubnext/gh-aw-cao");
+  assert.deepEqual(output.installationTargets.write, [
+    { owner: "githubnext", repositories: ["gh-aw-cao"] },
+  ]);
   assert.ok(output.apps.every((app) => app.manifest.public === false));
   assert.deepEqual(output.apps.map((app) => app.manifest.name), [
     "cao-githubnext-gh-aw-cao-read",
