@@ -24,6 +24,9 @@ describe('Audit dashboard view', () => {
       'campaign-performance-baseline',
       'campaign-audit-event-table'
     ]);
+    expect(insights.views.some(
+      (/** @type {{ id: string }} */ view) => view.id === 'campaign-audit-event-summary-buckets'
+    )).toBe(false);
     expect(insights.views[0].data).toMatchObject({
       sources: [
         'workflows',
