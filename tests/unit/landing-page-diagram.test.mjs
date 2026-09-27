@@ -172,4 +172,10 @@ test("wizard composes app target and Redis provider modules", () => {
     () => buildWizardHost("azure-functions", "upstash"),
     /Upstash requires the container app target/,
   );
+  assert.deepEqual(buildWizardHost("azure-functions", "redis-cloud").redis, {
+    module: "redis-cloud",
+    "namespace-env": "CAO_REDIS_NAMESPACE",
+    "url-env": "CAO_REDIS_URL",
+    tls: { mode: "required" },
+  });
 });

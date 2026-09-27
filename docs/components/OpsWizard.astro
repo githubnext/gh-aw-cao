@@ -274,7 +274,7 @@ const redisProviders = [
           "## Hosted dashboard",
           "",
           `- Deploy the CAO server with the \`${target}\` app target and \`${redis}\` Redis provider defined in the policy.`,
-          "- Set the provider connection variables in the app host; never commit their values. Use `REDIS_URL` and `REDIS_NAMESPACE` unless the selected provider documents different names.",
+          `- Set the provider connection variables in the app host; never commit their values. Use ${target === "azure-functions" ? "`CAO_REDIS_URL` and `CAO_REDIS_NAMESPACE`" : "`REDIS_URL` and `REDIS_NAMESPACE`"} unless the selected provider documents different names.`,
           "- Configure GitHub OAuth and HTTPS, then follow https://github.com/githubnext/gh-aw-cao/blob/main/docs/deployment-managed-redis.md for the selected modules.",
         ]
       : [];

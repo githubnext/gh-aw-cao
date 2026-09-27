@@ -35,8 +35,11 @@ export function buildWizardHost(targetModule, redisModule) {
 
   const redis = {
     module: redisModule,
-    "namespace-env": "REDIS_NAMESPACE",
+    "namespace-env": targetModule === "azure-functions" ? "CAO_REDIS_NAMESPACE" : "REDIS_NAMESPACE",
   };
+  if (targetModule === "azure-functions" && redisModule !== "gcp-memorystore") {
+    redis["url-env"] = "CAO_REDIS_URL";
+  }
   if (redisModule === "local") {
     redis["allow-private-plaintext"] = true;
     redis.tls = { mode: "disabled" };
