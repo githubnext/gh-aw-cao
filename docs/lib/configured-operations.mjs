@@ -2,7 +2,7 @@ function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export function buildWizardPolicy(controlPolicy, owner, operationSlug) {
+export function buildWizardPolicy(controlPolicy, owner, operationSlug, host) {
   const controlPlane = isRecord(controlPolicy) ? controlPolicy["control-plane"] : undefined;
   const configuredCampaigns = isRecord(controlPlane) ? controlPlane.campaigns : undefined;
   const campaignConfig = isRecord(configuredCampaigns) && isRecord(configuredCampaigns[operationSlug])
@@ -11,7 +11,7 @@ export function buildWizardPolicy(controlPolicy, owner, operationSlug) {
 
   const { icon, ...runtimeCampaignConfig } = JSON.parse(JSON.stringify(campaignConfig));
 
-  return {
+  const policy = {
     version: 1,
     "control-plane": {
       scope: { "allowed-owners": [owner] },
@@ -19,6 +19,37 @@ export function buildWizardPolicy(controlPolicy, owner, operationSlug) {
         [operationSlug]: runtimeCampaignConfig,
       },
     },
+  };
+  if (host) policy["control-plane"].web = { host };
+  return policy;
+}
+
+export function buildWizardHost(targetModule, redisModule) {
+  if (targetModule === "none") return undefined;
+  if (!["container", "azure-functions"].includes(targetModule)) {
+    throw new Error(`Unsupported app target module: ${targetModule}`);
+  }
+  if (redisModule === "upstash" && targetModule !== "container") {
+    throw new Error("Upstash requires the container app target");
+  }
+
+  const redis = {
+    module: redisModule,
+    "namespace-env": "REDIS_NAMESPACE",
+  };
+  if (redisModule === "local") {
+    redis["allow-private-plaintext"] = true;
+    redis.tls = { mode: "disabled" };
+  } else if (["railway", "render"].includes(redisModule)) {
+    redis.tls = { mode: "disabled" };
+    redis["allow-private-plaintext"] = true;
+  } else {
+    redis.tls = { mode: "required" };
+  }
+
+  return {
+    target: { module: targetModule },
+    redis,
   };
 }
 

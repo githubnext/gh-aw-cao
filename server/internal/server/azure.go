@@ -188,13 +188,16 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 	if err != nil {
 		return nil, err
 	}
+	host, err := loadHostPolicyFromEnv()
+	if err != nil {
+		return nil, err
+	}
+	if host == nil && strings.TrimSpace(os.Getenv("CAO_REDIS_URL")) == "" {
+		return nil, errors.New("CAO_REDIS_URL is required")
+	}
 	allowedHosts := splitCSV(os.Getenv("CAO_AZURE_ALLOWED_HOSTS"))
 	redirectURL := os.Getenv("CAO_GITHUB_REDIRECT_URL")
 	if err := validateAzureLocalEndpoints(localSimulation, allowedHosts, redirectURL); err != nil {
-		return nil, err
-	}
-	host, err := loadHostPolicyFromEnv()
-	if err != nil {
 		return nil, err
 	}
 	var store *redisx.Store
@@ -228,9 +231,6 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 		singleReplicaConfirmed = host.SingleReplicaConfirmed
 	} else {
 		redisURL := strings.TrimSpace(os.Getenv("CAO_REDIS_URL"))
-		if redisURL == "" {
-			return nil, errors.New("CAO_REDIS_URL is required")
-		}
 		if err := validateAzureRedisURL(redisURL, localSimulation); err != nil {
 			return nil, err
 		}
