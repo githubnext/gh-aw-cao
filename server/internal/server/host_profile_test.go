@@ -86,6 +86,12 @@ func TestHostProfileRejectsInconsistentCapabilities(t *testing.T) {
 		}(),
 		func() HostProfile {
 			value := base
+			value.RedisSession = HostRedisSerialized
+			value.IsolateProcessNamespace = true
+			return value
+		}(),
+		func() HostProfile {
+			value := base
 			value.Authentication = HostAuthenticationBearer
 			value.Listener = HostListenerPlatform
 			return value

@@ -115,6 +115,9 @@ func (profile HostProfile) validate() error {
 	if profile.IsolateProcessNamespace && profile.RedisSession != HostRedisSerialized {
 		return fmt.Errorf("host profile %q requires namespace isolation without a serialized Redis session", profile.Name)
 	}
+	if profile.IsolateProcessNamespace && !profile.SingleReplica {
+		return fmt.Errorf("host profile %q requires namespace isolation without one replica", profile.Name)
+	}
 	if profile.SingleReplica && profile.RedisSession != HostRedisSerialized {
 		return fmt.Errorf("host profile %q requires one replica without a serialized Redis session", profile.Name)
 	}
