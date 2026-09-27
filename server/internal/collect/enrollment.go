@@ -153,6 +153,7 @@ func repositoryTransfer(previous string, installationID int64) (previousInstalla
 func (e Enrollment) RemoveRepositories(
 	ctx context.Context, installationID int64, repositories []string) ([]string, error) {
 	removed := make([]string, 0, len(repositories))
+	stale := 0
 	for _, repository := range repositories {
 		name, err := NormalizeRepository(repository)
 		if err != nil {
@@ -167,7 +168,8 @@ func (e Enrollment) RemoveRepositories(
 		if err != nil {
 			return removed, err
 		}
-		if owner != "" && installationID > 0 && owner != strconv.FormatInt(installationID, 10) {
+		if staleRemoval(owner, installationID) {
+			stale++
 			continue
 		}
 		if err := e.Store.SetRemove(ctx, repositoriesKey, name); err != nil {
@@ -178,7 +180,22 @@ func (e Enrollment) RemoveRepositories(
 		}
 		removed = append(removed, name)
 	}
+	if stale > 0 {
+		// A stale event from an installation that no longer covers a
+		// repository must not erase evidence the current owner still needs;
+		// the count is worth surfacing since it explains a removal request
+		// that removed fewer repositories than requested.
+		enrollmentLog.Printf("skipped stale removals installation=%d skipped=%d", installationID, stale)
+	}
 	return removed, nil
+}
+
+// staleRemoval reports whether a repository's recorded owner differs from the
+// installation requesting removal. It returns true when removal must be
+// skipped: an unowned repository, a request from an unknown installation, or
+// a request that matches the recorded owner all proceed with removal.
+func staleRemoval(owner string, installationID int64) bool {
+	return owner != "" && installationID > 0 && owner != strconv.FormatInt(installationID, 10)
 }
 
 // RemoveInstallation drops an installation and every repository it covered,
