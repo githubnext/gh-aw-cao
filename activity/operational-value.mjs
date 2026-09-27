@@ -382,7 +382,9 @@ function historicalObservationTimes(definition, observedAt, retentionWindow) {
 }
 
 function operationalValueKey(campaign, repository, valueId, timestamp) {
-  return `${String(campaign ?? '').trim().toLowerCase()}\0${String(repository).toLowerCase()}\0${valueId}\0${timestamp}`;
+  const campaignKey = String(campaign ?? '').trim().toLowerCase();
+  if (!campaignKey) throw new Error('Operational value campaign is required for cache key');
+  return `${campaignKey}\0${String(repository).toLowerCase()}\0${valueId}\0${timestamp}`;
 }
 
 async function retainedOperationalValueEnvelopes(outputPath, cutoff) {
@@ -544,7 +546,7 @@ export async function runOperationalValue({
             historyValues += records.length;
             for (const record of records) {
               retainedKeys.add(operationalValueKey(
-                record.campaign,
+                entry.package,
                 record.repository,
                 record.valueId,
                 record.timestamp
