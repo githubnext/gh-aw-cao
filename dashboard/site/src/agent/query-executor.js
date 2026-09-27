@@ -10,6 +10,7 @@
  */
 
 import { loadDatabaseQuerySources } from '../data/queries/database.js';
+import { DASHBOARD_QUERY_LIMITS } from '../data/queries/declarative.js';
 import { describeQuery, queryExecutionRequirements, queryParameters } from './catalog.js';
 
 /** Maximum rows one named-query result returns when no smaller limit is given. */
@@ -85,14 +86,36 @@ function resolveLimit(limit) {
 }
 
 /**
- * @param {Record<string, unknown>} row
+ * Compiles the requested parameters and row bound into derived declarative
+ * queries so narrowing and limiting are executed by the query engine rather
+ * than by JavaScript over a materialized result.
+ *
+ * The requested query is cloned under a private name because a few dashboard
+ * query names are also declared table sources, and a derived query reading such
+ * a name would consume the empty table placeholder instead of the query result.
+ *
+ * @param {string} queryId
+ * @param {Array<Record<string, unknown>>} queries
  * @param {Array<{ field: string, value: string }>} filters
+ * @param {number} maxRows
+ * @returns {{ alias: string, queries: Array<Record<string, unknown>> }}
  */
-function matchesParameters(row, filters) {
-  return filters.every((filter) => {
-    const value = row[filter.field];
-    return value !== undefined && value !== null && String(value) === filter.value;
-  });
+function compileBoundedQueries(queryId, queries, filters, maxRows) {
+  const alias = `agent:${queryId}`;
+  const sourceName = `${alias}:source`;
+  const definition = queries.find((query) => isPlainObject(query) && query.name === queryId);
+  const clone = { ...(definition ?? { from: queryId }), name: sourceName };
+  return {
+    alias,
+    queries: [clone, {
+      name: alias,
+      from: sourceName,
+      ...(filters.length > 0
+        ? { filter: { predicates: filters.map((filter) => ({ field: filter.field, equals: filter.value })) } }
+        : {}),
+      limit: Math.min(maxRows + 1, DASHBOARD_QUERY_LIMITS['max-output-rows'])
+    }]
+  };
 }
 
 /**
@@ -135,26 +158,19 @@ export async function executeNamedQuery({ indexedDB, document, queryId, paramete
     && Array.isArray(document.dashboard.queries)
     ? document.dashboard.queries
     : [];
-  // The declarative engine reports stage timings through `console.time`, which
-  // would corrupt machine-readable CLI and MCP output.
-  const time = console.time;
-  const timeEnd = console.timeEnd;
-  /** @type {{ rows?: unknown, metadata?: unknown } | undefined} */
-  let source;
-  try {
-    console.time = () => {};
-    console.timeEnd = () => {};
-    const sources = await loadDatabaseQuerySources(indexedDB, {}, { sourceNames: [id], queries });
-    source = /** @type {{ rows?: unknown, metadata?: unknown } | undefined} */ (sources[id]);
-  } finally {
-    console.time = time;
-    console.timeEnd = timeEnd;
-  }
+  const bounded = compileBoundedQueries(id, /** @type {Array<Record<string, unknown>>} */ (queries), filters, maxRows);
+  const sources = await loadDatabaseQuerySources(indexedDB, {}, {
+    sourceNames: [bounded.alias],
+    queries: [...queries, ...bounded.queries]
+  });
+  const source = /** @type {{ rows?: unknown, metadata?: unknown } | undefined} */ (sources[bounded.alias]);
   signal?.throwIfAborted?.();
   const metadata = isPlainObject(source?.metadata) ? source.metadata : {};
-  const allRows = /** @type {Record<string, unknown>[]} */ (Array.isArray(source?.rows) ? source.rows : []);
-  const matched = filters.length === 0 ? allRows : allRows.filter((row) => matchesParameters(row, filters));
-  const rows = matched.slice(0, maxRows);
+  const selected = /** @type {Record<string, unknown>[]} */ (Array.isArray(source?.rows) ? source.rows : []);
+  // The bounded query requests one row beyond the limit so truncation is
+  // reported as partial completeness rather than silently returned as complete.
+  const truncated = selected.length > maxRows;
+  const rows = truncated ? selected.slice(0, maxRows) : selected;
   return {
     query: id,
     rows,
@@ -162,10 +178,9 @@ export async function executeNamedQuery({ indexedDB, document, queryId, paramete
       availability: typeof metadata.availability === 'string'
         ? (metadata.availability === 'available' && rows.length === 0 ? 'empty' : metadata.availability)
         : 'unknown',
-      completeness: rows.length < matched.length ? 'partial' : (metadata.completeness ?? 'unknown'),
+      completeness: truncated ? 'partial' : (metadata.completeness ?? 'unknown'),
       freshness: metadata.freshness ?? 'unknown',
       'as-of': metadata['as-of'] ?? '',
-      'matched-rows': matched.length,
       'returned-rows': rows.length,
       limit: maxRows,
       ...(filters.length > 0

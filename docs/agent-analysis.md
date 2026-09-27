@@ -103,13 +103,20 @@ Named queries never return rows alone:
   "query": "failed-runs",
   "rows": [],
   "metadata": {
-    "availability": "available",
+    "availability": "empty",
     "completeness": "complete",
     "freshness": "fresh",
     "as-of": "2026-09-26T22:00:00Z"
   }
 }
 ```
+
+`availability` distinguishes the cases an agent must not collapse:
+
+- `available`: the query ran and returned rows.
+- `empty`: the query ran against present evidence and matched no rows.
+- `unavailable`: the query could not run, for example because it needs a source
+  the downloaded snapshot does not contain. `query-diagnostic` explains why.
 
 Zero results are not the same as unavailable, partial, or stale data. Report the
 distinction rather than collapsing it.

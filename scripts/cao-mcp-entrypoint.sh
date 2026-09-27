@@ -29,6 +29,9 @@ set -- mcp \
 
 if [ -f "${certificate}" ] && [ -f "${key}" ]; then
   set -- "$@" --cert "${certificate}" --key "${key}"
+elif [ "${host}" != "127.0.0.1" ] && [ "${host}" != "localhost" ] && [ "${host}" != "::1" ]; then
+  echo "Error: TLS material is required to bind ${host}; mount ${certificate} and ${key} read-only at /run/cao" >&2
+  exit 1
 fi
 
 exec node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON /app/activity/cao.mjs "$@"
