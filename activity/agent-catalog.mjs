@@ -139,7 +139,8 @@ export async function readAgentCatalog({ dashboardPath } = {}) {
  *   queryId: string,
  *   parameters?: Record<string, unknown>,
  *   limit?: number,
- *   signal?: AbortSignal
+ *   signal?: AbortSignal,
+ *   unknownQueryHint?: string
  * }} request
  */
 export async function runNamedDashboardQuery({
@@ -148,10 +149,18 @@ export async function runNamedDashboardQuery({
   queryId,
   parameters,
   limit,
-  signal
+  signal,
+  unknownQueryHint
 }) {
   const document = await loadAgentDashboardDocument(dashboardPath);
-  return executeNamedQuery({ indexedDB, document, queryId, parameters, limit, signal });
+  try {
+    return await executeNamedQuery({ indexedDB, document, queryId, parameters, limit, signal });
+  } catch (error) {
+    if (unknownQueryHint && error instanceof NamedQueryError && error.message.startsWith('Unknown dashboard query')) {
+      throw new NamedQueryError(`${error.message}; ${unknownQueryHint}`);
+    }
+    throw error;
+  }
 }
 
 /**

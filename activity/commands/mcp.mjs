@@ -3,7 +3,9 @@ import { startMcpServer } from "../mcp-server.mjs";
 export async function runMcp({ options, indexedDB, signal, option, rejectUnknownOptions, UsageError }) {
   rejectUnknownOptions(options, ["database", "dashboard", "host", "port", "cert", "key"]);
   const port = option(options, "port", false);
-  if (port !== undefined && !/^\d+$/.test(port)) throw new UsageError("--port must be a positive integer");
+  if (port !== undefined && !(/^\d+$/.test(port) && Number(port) >= 1 && Number(port) <= 65535)) {
+    throw new UsageError("--port must be a port number between 1 and 65535");
+  }
   const server = await startMcpServer({
     indexedDB,
     dashboardPath: option(options, "dashboard", false),

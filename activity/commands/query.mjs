@@ -11,7 +11,8 @@ export function runQuery({
   rejectUnknownOptions,
   UsageError,
 }) {
-  const queryId = positional ?? (options.collection === undefined && !options.stdin ? options.id : undefined);
+  const explicitId = options.collection === undefined && !options.stdin ? options.id : undefined;
+  const queryId = positional ?? explicitId;
   if (queryId !== undefined) {
     rejectUnknownOptions(options, ["database", "dashboard", "id", "param", "limit"]);
     if (Array.isArray(queryId)) throw new UsageError("Option --id may only be specified once");
@@ -22,6 +23,11 @@ export function runQuery({
       parameters: parseNamedQueryParameters(options.param),
       limit: options.limit === undefined ? undefined : Number(options.limit),
       signal,
+      // `--id` without `--collection` reads a named dashboard query, so say so
+      // when the identifier is not one.
+      unknownQueryHint: positional === undefined
+        ? "pass --collection COLLECTION to read one canonical record by id"
+        : undefined,
     });
   }
   rejectUnknownOptions(options, ["database", "collection", "id", "where", "limit", "stdin"]);

@@ -54,6 +54,41 @@ function isPlainObject(value) {
 }
 
 /**
+ * Dashboard documents are loaded once and read many times, so derived catalog
+ * views are memoized per document instead of being recomputed for every agent
+ * request. The memo is discarded whenever the document replaces one of the
+ * collections the catalog reads, so a refreshed definition is never served from
+ * a stale catalog.
+ * @type {WeakMap<object, { collections: unknown[], entries: Map<string, any> }>}
+ */
+const caches = new WeakMap();
+
+/** @param {unknown} document */
+function catalogCollections(document) {
+  const dashboard = dashboardOf(document);
+  return [dashboard.pages, dashboard.queries, dashboard.views, dashboard.navigation];
+}
+
+/**
+ * @template T
+ * @param {unknown} document
+ * @param {string} key
+ * @param {() => T} compute
+ * @returns {T}
+ */
+function memoize(document, key, compute) {
+  if (!isPlainObject(document)) return compute();
+  const collections = catalogCollections(document);
+  let cache = caches.get(document);
+  if (!cache || cache.collections.some((value, index) => value !== collections[index])) {
+    cache = { collections, entries: new Map() };
+    caches.set(document, cache);
+  }
+  if (!cache.entries.has(key)) cache.entries.set(key, compute());
+  return cache.entries.get(key);
+}
+
+/**
  * @param {unknown} value
  * @returns {string}
  */
@@ -124,6 +159,14 @@ export function isAgentFacingPage(page, navigationPages = new Set()) {
  * @returns {Record<string, any>[]}
  */
 export function agentFacingPages(document) {
+  return memoize(document, 'agent-facing-pages', () => computeAgentFacingPages(document));
+}
+
+/**
+ * @param {unknown} document
+ * @returns {Record<string, any>[]}
+ */
+function computeAgentFacingPages(document) {
   const dashboard = dashboardOf(document);
   const pages = Array.isArray(dashboard.pages) ? dashboard.pages : [];
   const navigationPages = navigationPageIds(dashboard.navigation);
@@ -276,16 +319,24 @@ function pageDefinition(page) {
  * @param {Record<string, any>} page
  */
 function pageViews(document, page) {
-  const declared = /** @type {Record<string, any>[]} */ (
-    Array.isArray(dashboardOf(document).views) ? dashboardOf(document).views : []
-  );
-  const shared = new Map(declared
-    .filter((view) => isPlainObject(view) && text(view.id))
-    .map((view) => [text(view.id), view]));
+  const shared = memoize(document, 'shared-views', () => sharedViewIndex(document));
   const definition = pageDefinition(page);
   return (Array.isArray(definition.views) ? definition.views : [])
     .map((view) => (text(view) ? shared.get(text(view)) : view))
     .filter(isPlainObject);
+}
+
+/**
+ * @param {unknown} document
+ * @returns {Map<string, Record<string, any>>}
+ */
+function sharedViewIndex(document) {
+  const declared = /** @type {Record<string, any>[]} */ (
+    Array.isArray(dashboardOf(document).views) ? dashboardOf(document).views : []
+  );
+  return new Map(declared
+    .filter((view) => isPlainObject(view) && text(view.id))
+    .map((view) => [text(view.id), view]));
 }
 
 /**
@@ -295,6 +346,15 @@ function pageViews(document, page) {
  * @returns {string[]}
  */
 export function queriesForPage(document, pageId) {
+  return memoize(document, `page-queries:${text(pageId)}`, () => computeQueriesForPage(document, pageId));
+}
+
+/**
+ * @param {unknown} document
+ * @param {string} pageId
+ * @returns {string[]}
+ */
+function computeQueriesForPage(document, pageId) {
   const page = agentFacingPages(document).find((candidate) => text(candidate.id) === text(pageId));
   if (!page) return [];
   const known = queryIndex(document);
@@ -327,6 +387,15 @@ export function queriesForPage(document, pageId) {
  * @returns {Array<{ name: string, field: string }>}
  */
 export function queryParameters(document, queryId) {
+  return memoize(document, `query-parameters:${text(queryId)}`, () => computeQueryParameters(document, queryId));
+}
+
+/**
+ * @param {unknown} document
+ * @param {string} queryId
+ * @returns {Array<{ name: string, field: string }>}
+ */
+function computeQueryParameters(document, queryId) {
   const id = text(queryId);
   /** @type {Map<string, { name: string, field: string }>} */
   const parameters = new Map();
@@ -356,6 +425,15 @@ export function queryParameters(document, queryId) {
  * @returns {{ local: boolean, backend?: string, requirements: string[], missing: string[], reason?: string }}
  */
 export function queryExecutionRequirements(document, queryId) {
+  return memoize(document, `query-execution:${text(queryId)}`, () => computeQueryExecutionRequirements(document, queryId));
+}
+
+/**
+ * @param {unknown} document
+ * @param {string} queryId
+ * @returns {{ local: boolean, backend?: string, requirements: string[], missing: string[], reason?: string }}
+ */
+function computeQueryExecutionRequirements(document, queryId) {
   const index = queryIndex(document);
   const id = text(queryId);
   if (!index.has(id)) {
@@ -405,14 +483,14 @@ export function queryExecutionRequirements(document, queryId) {
  * @returns {AgentPageEntry[]}
  */
 export function listPages(document) {
-  return agentFacingPages(document).map((page) => ({
+  return memoize(document, 'pages', () => agentFacingPages(document).map((page) => ({
     id: text(page.id),
     title: text(page.title) || text(page['navigation-label']) || text(page.id),
     description: text(page.description) || text(page.intent),
     experimental: page.experimental === true,
     parameters: pageParameters(page),
     queries: queriesForPage(document, text(page.id))
-  }));
+  })));
 }
 
 /**
@@ -422,7 +500,10 @@ export function listPages(document) {
  * @returns {AgentPageEntry | null}
  */
 export function describePage(document, pageId) {
-  return listPages(document).find((page) => page.id === text(pageId)) ?? null;
+  const index = memoize(document, 'page-index', () => new Map(
+    listPages(document).map((page) => [page.id, page])
+  ));
+  return index.get(text(pageId)) ?? null;
 }
 
 /**
@@ -431,6 +512,14 @@ export function describePage(document, pageId) {
  * @returns {AgentQueryEntry[]}
  */
 export function listQueries(document) {
+  return memoize(document, 'queries', () => computeListQueries(document));
+}
+
+/**
+ * @param {unknown} document
+ * @returns {AgentQueryEntry[]}
+ */
+function computeListQueries(document) {
   /** @type {Map<string, string[]>} */
   const pagesByQuery = new Map();
   for (const page of agentFacingPages(document)) {
@@ -462,7 +551,10 @@ export function listQueries(document) {
  * @returns {AgentQueryEntry | null}
  */
 export function describeQuery(document, queryId) {
-  return listQueries(document).find((query) => query.id === text(queryId)) ?? null;
+  const index = memoize(document, 'query-index', () => new Map(
+    listQueries(document).map((query) => [query.id, query])
+  ));
+  return index.get(text(queryId)) ?? null;
 }
 
 /**

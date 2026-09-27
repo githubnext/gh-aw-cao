@@ -193,7 +193,7 @@ export async function handleMcpRequest({ headers, body, indexedDB, dashboardPath
       body: errorResponse(null, -32600, `Unsupported MCP-Protocol-Version: ${protocolVersion}; this server implements ${MCP_PROTOCOL_VERSION}`)
     };
   }
-  if (body.length > MAX_MCP_REQUEST_BYTES) {
+  if (Buffer.byteLength(body) > MAX_MCP_REQUEST_BYTES) {
     return { status: 413, body: errorResponse(null, -32600, `Request body exceeds ${MAX_MCP_REQUEST_BYTES} bytes`) };
   }
   let message;
@@ -390,7 +390,9 @@ export async function startMcpServer({
   });
   const address = server.address();
   const boundPort = typeof address === 'object' && address ? address.port : port;
-  const url = `${certPath ? 'https' : 'http'}://${host}:${boundPort}/mcp`;
+  // A wildcard bind is not connectable, so advertise a reachable loopback URL.
+  const advertisedHost = host === '0.0.0.0' || host === '::' ? '127.0.0.1' : host;
+  const url = `${certPath ? 'https' : 'http'}://${advertisedHost}:${boundPort}/mcp`;
   const closed = new Promise((resolve) => server.once('close', resolve));
   const stop = async () => {
     server.close();
