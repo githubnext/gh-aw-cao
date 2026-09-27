@@ -22,6 +22,8 @@ const catalog = readFileSync("docs/lib/catalog.ts", "utf8");
 test("landing page presents the product through real operational surfaces", () => {
   assert.match(landingPage, /text: Explore CAO[\s\S]*?link: \/gh-aw-cao\/architecture-at-a-glance\//);
   assert.match(landingPage, /text: Get started[\s\S]*?link: \/gh-aw-cao\/getting-started\//);
+  assert.match(landingPage, /text: Dashboard[\s\S]*?link: https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao/);
+  assert.doesNotMatch(headerLinks, /label: "Dashboard"/);
   assert.match(landingPage, /title: Central Agentic Ops \(CAO\)/);
   assert.match(landingPage, /Many agentic campaigns\.<br \/>One central control plane\./);
   assert.match(hero, /cao-dashboard-mobile-overview\.png/);
@@ -36,6 +38,8 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(hero, /\.product-shot-value \{[\s\S]*?height: clamp\(28rem, 38vw, 31rem\)/);
   assert.match(hero, /\.product-shot-value :global\(picture\[data-theme-picture\]\) \{[\s\S]*?width: min\(100%, 22rem\)/);
   assert.match(hero, /ThemeImage/);
+  assert.match(hero, /@media \(max-width: 42rem\) \{[\s\S]*?\.hero-callout \{[\s\S]*?display: flex/);
+  assert.match(hero, /\.hero-callout \.callout-line \{[\s\S]*?display: none/);
   assert.match(hero, /From one control repo to many campaigns/);
   assert.match(hero, /\.terminal-story \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(hero, /Coordinate campaign fleets from one control plane/);

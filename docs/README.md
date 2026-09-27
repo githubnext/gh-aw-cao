@@ -16,4 +16,8 @@ hero:
       link: /gh-aw-cao/getting-started/
       variant: secondary
       icon: right-arrow
+    - text: Dashboard
+      link: https://githubnext.github.io/gh-aw-cao/cao
+      variant: secondary
+      icon: right-arrow
 ---
