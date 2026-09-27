@@ -233,9 +233,23 @@ test("SelfCare dashboard reviewer checks deployments through stakeholder persona
 
 test("SelfCare dashboard performance worker selects one highest-ROI small win", () => {
   const source = workflow("self-care-dashboard-performance.md");
+  const liveGuard = "if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}";
   assert.match(source, /^name: "SelfCare \/ Dashboard Performance"$/m);
   assert.match(source, /campaign: self-care\n\s+role: worker\n\s+worker: dashboard-performance/);
   assert.match(source, /safe_output_mode` is `live`/);
+  const noopGate = stepBlock(source, "Emit noop for unsupported dashboard performance dispatch");
+  assert.match(
+    noopGate,
+    /if: \$\{\{ inputs\.target_repo != 'githubnext\/gh-aw-cao' \|\| \(inputs\.safe_output_mode \|\| 'review'\) != 'live' \}\}[\s\S]*\{"type":"noop","message":"Dashboard performance runs only in live mode for githubnext\/gh-aw-cao\."\}[\s\S]*>> "\$GH_AW_SAFE_OUTPUTS"/,
+  );
+  for (const name of [
+    "Install dashboard dependencies",
+    "Cache Chromium",
+    "Install Chromium",
+    "Collect baseline performance evidence",
+  ]) {
+    assert.ok(stepBlock(source, name).includes(liveGuard), `${name} must remain live-only`);
+  }
   assert.match(source, /skip-if-match: 'is:pr is:open "gh-aw-workflow-id: self-care-dashboard-performance" in:body'/);
   assert.match(source, /cache-memory:\n\s+retention-days: 30\n\s+allowed-extensions: \["\.json"\]/);
   assert.match(source, /dashboard-performance-rotation\.json/);

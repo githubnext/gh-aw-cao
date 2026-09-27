@@ -1,0 +1,83 @@
+---
+import { getImage, type ImageMetadata } from "astro:assets";
+
+interface Props {
+  alt: string;
+  class?: string;
+  dark: ImageMetadata;
+  light: ImageMetadata;
+  loading?: "eager" | "lazy";
+  sizes: string;
+  widths: number[];
+}
+
+const {
+  alt,
+  class: className,
+  dark,
+  light,
+  loading = "lazy",
+  sizes,
+  widths,
+} = Astro.props;
+
+async function buildSrcset(src: ImageMetadata): Promise<string> {
+  const images = await Promise.all(widths.map((width) => getImage({ src, width, format: "webp" })));
+  return images.map((image, index) => `${image.src} ${widths[index]}w`).join(", ");
+}
+
+const [darkSrcset, lightSrcset, fallback] = await Promise.all([
+  buildSrcset(dark),
+  buildSrcset(light),
+  getImage({ src: dark, width: widths.at(-1), format: "webp" }),
+]);
+---
+
+<picture data-theme-picture>
+  <source
+    data-theme-source="light"
+    media="(prefers-color-scheme: light)"
+    srcset={lightSrcset}
+    sizes={sizes}
+    type="image/webp"
+  />
+  <source
+    data-theme-source="dark"
+    media="(prefers-color-scheme: dark)"
+    srcset={darkSrcset}
+    sizes={sizes}
+    type="image/webp"
+  />
+  <img
+    src={fallback.src}
+    srcset={darkSrcset}
+    width={dark.width}
+    height={dark.height}
+    sizes={sizes}
+    alt={alt}
+    class={className}
+    loading={loading}
+    decoding="async"
+  />
+</picture>
+
+<script>
+  function syncThemePictures(): void {
+    const theme = document.documentElement.dataset.theme === "light" ? "light" : "dark";
+
+    document.querySelectorAll<HTMLPictureElement>("picture[data-theme-picture]").forEach((picture) => {
+      picture.querySelectorAll<HTMLSourceElement>("source[data-theme-source]").forEach((source) => {
+        source.media = source.dataset.themeSource === theme ? "all" : "not all";
+      });
+    });
+  }
+
+  syncThemePictures();
+
+  new MutationObserver(syncThemePictures).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-theme"],
+  });
+
+  document.addEventListener("astro:page-load", syncThemePictures);
+</script>

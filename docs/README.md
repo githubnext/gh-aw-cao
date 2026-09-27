@@ -1,26 +1,19 @@
 ---
-title: Central Agentic Ops
-description: Persistent agentic work that continuously pursues a defined outcome across a set of targets.
+title: Central Agentic Ops (CAO)
+description: Coordinate multiple GitHub Agentic Workflow campaigns and their repository fleets from one governed control plane.
 template: splash
 editUrl: false
 prev: false
 next: false
 hero:
-  title: Central Agentic Ops
-  tagline: A persistent body of agentic work that continuously pursues a defined outcome across one repository or thousands.
+  title: Many agentic campaigns.<br />One central control plane.
+  tagline: CAO coordinates Agentic Campaigns, each across its explicitly enrolled repository fleet—shared policy, staged rollout, bounded execution, cross-campaign evidence, and human decisions about what scales next.
   actions:
-    - text: Run your first campaign
+    - text: Explore CAO
+      link: /gh-aw-cao/architecture-at-a-glance/
+      icon: right-arrow
+    - text: Get started
       link: /gh-aw-cao/getting-started/
-      icon: right-arrow
-    - text: Explore campaigns
-      link: /gh-aw-cao/catalog/
       variant: secondary
       icon: right-arrow
-    - text: View our dashboard
-      link: https://githubnext.github.io/gh-aw-cao/cao
-      variant: secondary
-      icon: right-arrow
-      attrs:
-        class: dashboard-action
-        title: Updated daily or on demand
 ---

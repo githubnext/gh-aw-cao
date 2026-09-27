@@ -3,7 +3,7 @@ title: Configuration Reference
 description: Checked-in policy, credential secrets, and manual inputs for Central Agentic Ops.
 ---
 
-Persistent non-secret policy lives only in `.github/workflows/cao.json` in the private control repository. Workflows read that file at the exact `github.workflow_sha`, so workflow code and policy are one reviewed revision. Repository variables named `CENTRAL_AGENTIC_OPS_*` are not read as defaults, overrides, or compatibility fallbacks.
+Persistent non-secret policy lives only in `.github/workflows/cao.json` in the control repository. Workflows read that file at the exact `github.workflow_sha`, so workflow code and policy are one reviewed revision. Repository variables named `CENTRAL_AGENTIC_OPS_*` are not read as defaults, overrides, or compatibility fallbacks.
 
 Keep credentials in Actions secrets. Manual inputs may select a target or narrow a checked-in limit for one run, but they never change policy or widen it.
 

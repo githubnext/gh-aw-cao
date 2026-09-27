@@ -335,6 +335,24 @@ func TestNewRedisStoreFailsOnInvalidNamespace(t *testing.T) {
 	}
 }
 
+func TestDoctorStoreSucceedsWithValidEndpoint(t *testing.T) {
+	store := doctorStore("redis://127.0.0.1:6379/0", "checkout-abc123")
+	if store == nil {
+		t.Fatal("doctorStore() = nil, want non-nil for a valid endpoint")
+	}
+}
+
+func TestDoctorStoreToleratesUnconstructibleClient(t *testing.T) {
+	// An unreachable or malformed endpoint must not prevent the doctor
+	// report from being produced; doctorStore reports the failure via
+	// commandLog and returns nil rather than an error so the report still
+	// runs and explains why the Redis checks could not run.
+	store := doctorStore("not-a-url", "checkout-abc123")
+	if store != nil {
+		t.Fatal("doctorStore() != nil, want nil for an unconstructible client")
+	}
+}
+
 func TestResolveBackfillMode(t *testing.T) {
 	tests := []struct {
 		name       string

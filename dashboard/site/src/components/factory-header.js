@@ -1,6 +1,6 @@
 import { h } from '../dom.js';
 import { render } from '../reactive.js';
-import { bindFactorySources, createFactoryScope, resolveFactorySourceNames } from './factory-elements.js';
+import { renderFactoryElement } from './factory-elements.js';
 import { renderFactoryRhythm } from './factory-rhythm.js';
 
 /** @typedef {{ rows: () => Record<string, unknown>[], pending: () => boolean, unavailable: () => boolean }} SourceBinding */
@@ -62,16 +62,10 @@ export const HEADER_DEFAULT_SOURCES = {
  * @param {import('./ui-elements.js').ElementRenderContext} context
  */
 export function renderFactoryHeaderElement(context) {
-  const roleNames = resolveFactorySourceNames(HEADER_DEFAULT_SOURCES, context.elementConfig);
-  const sources = bindFactorySources(context.sources, Object.values(roleNames), {
-    pageId: context.pageId,
-    viewId: context.viewId,
-    viewIndex: context.viewIndex,
-    sourceNames: context.sourceNames,
-    queryContext: context.queryContext
-  });
-  const scope = createFactoryScope();
-  const rendered = renderFactoryHeader(sources, scope, roleNames);
-  scope.bind(rendered);
-  return rendered;
+  return renderFactoryElement(
+    context,
+    HEADER_DEFAULT_SOURCES,
+    (roleNames) => Object.values(roleNames),
+    renderFactoryHeader
+  );
 }

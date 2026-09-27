@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
 const maximumSize = 256 * 1024;
@@ -22,7 +22,8 @@ try {
     encoding: "utf8",
   })
     .split("\0")
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((file) => existsSync(path.join(root, file)));
 } catch {
   console.error("Unable to list tracked files. Ensure Git is installed and this command runs inside the repository.");
   process.exit(1);
