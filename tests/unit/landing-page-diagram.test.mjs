@@ -23,7 +23,7 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(landingPage, /text: Explore CAO[\s\S]*?link: \/gh-aw-cao\/architecture-at-a-glance\//);
   assert.match(landingPage, /text: Get started[\s\S]*?link: \/gh-aw-cao\/getting-started\//);
   assert.match(landingPage, /title: Central Agentic Ops \(CAO\)/);
-  assert.match(landingPage, /Many agentic campaigns\.<br \/>One central control plane\./);
+  assert.match(landingPage, /Hyperscale Agentic Campaigns\.<br \/>Centralized Control Planes\./);
   assert.match(hero, /cao-dashboard-mobile-overview\.png/);
   assert.match(hero, /cao-dashboard-mobile-overview-light\.png/);
   assert.match(hero, /cao-dashboard-run-history-mobile\.png/);
