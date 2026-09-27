@@ -3,6 +3,7 @@ import { collectFullDiagnostics } from '../diagnostics.js';
 import { capturedConsoleLogText } from '../console-log-capture.js';
 import { createDebug, fullDebugUrl } from '../debug.js';
 import { copyTextToClipboard, createCopyControl, renderCheckbox } from './ui-primitives.js';
+import { errorMessage } from './count-formatters.js';
 import { isPlainObject, renderLazyDisclosure, renderLiveRegion, renderSectionHeading } from './ui-primitives.js';
 import { renderSettingsCliActions } from './cli-actions.js';
 import { createFactoryScope } from './factory-elements.js';
@@ -317,7 +318,7 @@ function renderSettingsEditor(policyDocument) {
         diagnosticsStatus.textContent = copied ? 'Diagnostics copied.' : 'Diagnostics collected; copy unavailable.';
         debugConfigurationView('diagnostics collection finished', { status: 'success', copied, durationMs: Date.now() - startedAt });
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const message = errorMessage(error);
         diagnosticsStatus.textContent = `Unable to collect diagnostics: ${message}`;
         debugConfigurationView('diagnostics collection finished', {
           status: 'error',

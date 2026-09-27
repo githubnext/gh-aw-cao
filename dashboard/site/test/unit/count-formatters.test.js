@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { clampPercent, computeObservationCoverage, countBy, finiteNumber, formatAic, formatCount, formatCountNoun, formatCountOf, formatCoveragePercent, formatRoundedPercent, pluralSuffix, slugify, text, textValue, titleCase } from '../../src/components/count-formatters.js';
+import { clampPercent, computeObservationCoverage, countBy, errorMessage, finiteNumber, formatAic, formatCount, formatCountNoun, formatCountOf, formatCoveragePercent, formatRoundedPercent, pluralSuffix, slugify, text, textValue, titleCase } from '../../src/components/count-formatters.js';
 
 describe('count formatters', () => {
   it('formats counts for UI text', () => {
@@ -119,5 +119,14 @@ describe('count formatters', () => {
     expect(formatAic(10)).toBe('10');
     expect(formatAic(1234.567)).toBe('1,234.6');
     expect(formatAic(0.5)).toBe('0.5');
+  });
+
+  it('extracts a display-safe message from a caught Error or non-Error value', () => {
+    expect(errorMessage(new Error('boom'))).toBe('boom');
+    expect(errorMessage(new TypeError('bad type'))).toBe('bad type');
+    expect(errorMessage('plain string')).toBe('plain string');
+    expect(errorMessage(undefined)).toBe('undefined');
+    expect(errorMessage(null)).toBe('null');
+    expect(errorMessage({ message: 'not an Error instance' })).toBe('[object Object]');
   });
 });

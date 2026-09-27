@@ -182,3 +182,15 @@ export function countBy(rows, key) {
   }
   return counts;
 }
+
+/**
+ * Extracts a display-safe message from a caught value, preferring the
+ * `Error#message` when the value is an `Error` and otherwise coercing it to
+ * a string. Shared by view components and controls that surface a caught
+ * error's message in status text, alerts, or debug payloads.
+ * @param {unknown} error
+ * @returns {string}
+ */
+export function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
